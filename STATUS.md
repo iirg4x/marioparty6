@@ -21,19 +21,19 @@ configured `Matching`, and the source-linked `0x10A54` code-byte REL passes
 the complete object, relocation, REL, SHA, and DOL gates. The former
 boot-to-mode-select blocker is therefore closed.
 
-The current flow priority is `mdpartydll.rel`. Wave 90 proves nine more
-application functions and `0x574C` target bytes exact through authenticated
-nested-helper, conversion, lifetime, and control-flow recovery. The
+The current flow priority is `mdpartydll.rel`. Wave 91 proves four more
+application functions and `0x34F4` target bytes exact through authenticated
+helper-boundary, lifetime, expression-tree, and control-flow recovery. The
 application owner represents all 258 functions and all `0x3F424` target text
-bytes; 227 functions and `0x28C6C` bytes are exact, while 31 functions and
-`0x167B8` bytes remain represented compiler-shape residues. Combined
+bytes; 231 functions and `0x2C160` bytes are exact, while 27 functions and
+`0x132C4` bytes remain represented compiler-shape residues. Combined
 application/stage evidence represents all 315 functions and all `0x467FC`
-text bytes, of which 284 functions and `0x30044` bytes are exact. `mdparty.c`
+text bytes, of which 288 functions and `0x33538` bytes are exact. `mdparty.c`
 remains `C-not-yet-matched`, so the module is still outside the conservative
 fully recovered REL total. The separate 19-function, `0xA44` compiler runtime
 remains exact and source-linked only under the authenticated original-assembly
 exception. Evidence is retained in
-[`docs/native_matching_wave90.md`](docs/native_matching_wave90.md).
+[`docs/native_matching_wave91.md`](docs/native_matching_wave91.md).
 
 The evidence-backed target ledger at this build is:
 
