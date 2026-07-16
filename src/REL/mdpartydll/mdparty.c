@@ -2681,9 +2681,9 @@ s16 fn_1_BB30(s16 arg0, LBL_1_DATA_E12_ENTRY *arg1,
 s16 fn_1_BBD8(s16 padNo, s16 *current,
     LBL_1_DATA_E12_ENTRY *entries, s16 count)
 {
-    HuVecF direction = { 0.0f, 0.0f, 0.0f };
-    s16 directionNo = 0;
     s16 next = 0;
+    s16 directionNo = 0;
+    HuVecF direction = { 0.0f, 0.0f, 0.0f };
 
     if (HuPadDStkRep[padNo] & PAD_BUTTON_UP) {
         direction.y = 1.0f;
@@ -2740,8 +2740,7 @@ s16 fn_1_BBD8(s16 padNo, s16 *current,
         directionNo = 11;
     }
 
-    next = fn_1_BB30(*current, entries, directionNo, count);
-    if (next != -1) {
+    if ((next = fn_1_BB30(*current, entries, directionNo, count)) != -1) {
         entries[*current].unk_10 = -1;
         *current = next;
         entries[*current].unk_10 = 1;
