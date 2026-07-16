@@ -21,18 +21,18 @@ configured `Matching`, and the source-linked `0x10A54` code-byte REL passes
 the complete object, relocation, REL, SHA, and DOL gates. The former
 boot-to-mode-select blocker is therefore closed.
 
-The current flow priority is `mdpartydll.rel`. Wave 85 materializes 34 more
-target-backed `mdparty.c` functions and `0xC2F8` represented target text bytes;
-23 functions and `0x736C` bytes prove exact. The application owner now
-represents 215 of 258 functions and `0x1ADAC/0x3F424` target text bytes; 200
-functions and `0x152F8` bytes are exact. Combined application/stage evidence
-is now 272 of 315 represented functions and `0x22184/0x467FC` text bytes, of
-which 257 functions and `0x1C6D0` bytes are exact. `mdparty.c` remains
+The current flow priority is `mdpartydll.rel`. Wave 86 materializes 26 more
+target-backed `mdparty.c` functions and `0xEA50` represented target text bytes;
+8 functions and `0x3258` bytes prove exact. The application owner now
+represents 241 of 258 functions and `0x297FC/0x3F424` target text bytes; 208
+functions and `0x18550` bytes are exact. Combined application/stage evidence
+is now 298 of 315 represented functions and `0x30BD4/0x467FC` text bytes, of
+which 265 functions and `0x1F928` bytes are exact. `mdparty.c` remains
 `C-not-yet-matched`, so the module is still outside the conservative fully
 recovered REL total. The separate 19-function, `0xA44` compiler runtime
 remains exact and source-linked only under the authenticated original-assembly
 exception. Evidence is retained in
-[`docs/native_matching_wave85.md`](docs/native_matching_wave85.md).
+[`docs/native_matching_wave86.md`](docs/native_matching_wave86.md).
 
 The evidence-backed target ledger at this build is:
 
@@ -1159,7 +1159,7 @@ owners are separate from the 396-owner DOL ledger:
 | `REL/selmenuDll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/fileseldll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/meschkdll/meschkdll.c` | `C-not-yet-matched`; `SRC-DIVERGES`; never de-flipped | Five functions are exact; `fn_1_188` remains divergent, so the owner stays fallback-linked. |
-| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | 215/258 functions and `0x1ADAC/0x3F424` target text bytes are represented. 200 functions and `0x152F8` bytes are exact. Wave 85 adds 34 represented functions, of which 23 are exact. There are 43 unrepresented functions and 15 represented residues: the four Wave 84 residues plus `fn_1_4A84`, `fn_1_5324`, `fn_1_6324`, `fn_1_737C`, `fn_1_D058`, `fn_1_150D0`, `fn_1_19860`, `fn_1_329A4`, `fn_1_36518`, `fn_1_38314`, and `fn_1_3BEA8`. No fake local, register force, or unproved Matching flip was admitted. |
+| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | 241/258 functions and `0x297FC/0x3F424` target text bytes are represented. 208 functions and `0x18550` bytes are exact. Wave 86 adds 26 represented functions, of which 8 are exact. There are 17 unrepresented functions and 33 represented residues. The 18 new residues are `fn_1_2B74`, `fn_1_B748`, `fn_1_BBD8`, `fn_1_DA54`, `fn_1_EB74`, `fn_1_F838`, `fn_1_1158C`, `fn_1_12364`, `fn_1_12FD8`, `fn_1_14510`, `fn_1_156B4`, `fn_1_160A0`, `fn_1_18384`, `fn_1_18AA4`, `fn_1_30B4C`, `fn_1_31AC0`, `fn_1_3736C`, and `fn_1_3EAC8`; the prior 15 remain recorded in Wave 85. No fake local, register force, inline assembly, or unproved Matching flip was admitted. |
 
 Wave 70 resolves the two former `mdseldll` fallback rows. Application owner
 `REL/mdseldll/mdsel.c` leaves `C-not-yet-matched` after all 113 functions and
