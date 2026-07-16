@@ -885,8 +885,8 @@ void fn_1_2B74(OMOBJ *obj, MDCAMERA_WORK *camera)
     float moveX;
     float moveZ;
 
-    subStick.x = HuPadSubStkX[0];
     subStick.y = -HuPadSubStkY[0];
+    subStick.x = HuPadSubStkX[0];
     camera->unk_28.x += 0.02f * subStick.y;
     if (camera->unk_28.x > 85.0f) {
         camera->unk_28.x = 85.0f;
@@ -904,10 +904,10 @@ void fn_1_2B74(OMOBJ *obj, MDCAMERA_WORK *camera)
             camera->unk_38 = 5.0f;
         }
     } else {
-        moveX = stickY * sind(camera->rot.y)
-            + stickX * sind(90.0f + camera->rot.y);
-        moveZ = stickY * cosd(camera->rot.y)
-            + stickX * cosd(90.0f + camera->rot.y);
+        moveX = stickX * sind(90.0f + camera->rot.y)
+            + stickY * sind(camera->rot.y);
+        moveZ = stickX * cosd(90.0f + camera->rot.y)
+            + stickY * cosd(camera->rot.y);
         camera->unk_10.x += 0.25f * moveX;
         camera->unk_10.z += 0.25f * moveZ;
     }
@@ -1296,19 +1296,18 @@ void fn_1_4A80(void)
 void fn_1_4A84(OMOBJ *obj)
 {
     s16 done = 0;
+    float duration = 60.0f;
     OMOBJ *obj0 = lbl_1_bss_C;
     OMOBJ *obj1 = lbl_1_bss_10;
     LBL_1_BSS_228_ENTRY *work0 = &lbl_1_bss_228[0];
     LBL_1_BSS_228_ENTRY *work1 = &lbl_1_bss_228[1];
     HuVecF pos;
-    float duration = 60.0f;
 
     if (obj0 != NULL) {
         pos.x = fn_1_1780(work0->pos.x, 500.0f, work0->time, duration);
         pos.y = fn_1_1780(work0->pos.y, 400.0f, work0->time, duration);
         pos.z = work0->pos.z;
-        work0->time += 1.0f;
-        if (work0->time > duration) {
+        if (++work0->time > duration) {
             done++;
             fn_1_43F3C(0, NULL, 0);
         } else {
@@ -1319,8 +1318,7 @@ void fn_1_4A84(OMOBJ *obj)
         pos.x = fn_1_1780(work1->pos.x, -500.0f, work1->time, duration);
         pos.y = fn_1_1780(work1->pos.y, 400.0f, work1->time, duration);
         pos.z = work1->pos.z;
-        work1->time += 1.0f;
-        if (work1->time > duration) {
+        if (++work1->time > duration) {
             done++;
             fn_1_43F3C(1, NULL, 0);
         } else {
@@ -3065,8 +3063,7 @@ void fn_1_DA54(OMOBJ *obj)
 void fn_1_EB74(OMOBJ *obj)
 {
     if (obj->work[0] == 0) {
-        lbl_1_bss_8->work[2] = 2;
-        lbl_1_bss_8->work[3] = 0;
+        fn_1_8950();
     }
     fn_1_C698(21, obj->work[0], 10);
     fn_1_C698(22, obj->work[0], 10);
@@ -3081,10 +3078,7 @@ void fn_1_EB74(OMOBJ *obj)
 void fn_1_F838(OMOBJ *obj)
 {
     if (obj->work[0] == 0) {
-        lbl_1_bss_8->work[0] = 2;
-        lbl_1_bss_8->work[1] = 0;
-        lbl_1_bss_8->work[2] = 2;
-        lbl_1_bss_8->work[3] = 0;
+        fn_1_8CCC();
     }
     fn_1_C698(21, obj->work[0], 10);
     fn_1_C698(22, obj->work[0], 10);
@@ -3193,8 +3187,7 @@ void fn_1_1158C(OMOBJ *obj)
             &lbl_1_data_8A4[i + 33], 1.25f);
     }
     if (obj->work[0] == 0) {
-        lbl_1_bss_9F4.unk_2 = 0;
-        for (i = 0; i < 4; i++) {
+        for (i = 0, lbl_1_bss_9F4.unk_2 = 0; i < 4; i++) {
             if (HuPadStatGet(i) == 0) {
                 lbl_1_bss_9F4.unk_2++;
             }
