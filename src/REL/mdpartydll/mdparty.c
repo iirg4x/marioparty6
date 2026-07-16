@@ -4606,14 +4606,14 @@ void fn_1_1B9E8(OMOBJ *obj)
     if (lbl_1_bss_9F4.unk_0 == 0) {
         for (i = 0, entry = lbl_1_bss_9BC;
              i < 4; i++, entry++) {
-            fn_1_CA68(entry->chrSel, obj->work[0], 10,
+            fn_1_CA68((s16)entry->chrSel, obj->work[0], 10,
                 &lbl_1_data_8A4[i + 29], 1.25f);
         }
     } else {
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][i]];
-            fn_1_CA68(entry->chrSel, obj->work[0], 10,
+            fn_1_CA68((s16)entry->chrSel, obj->work[0], 10,
                 &lbl_1_data_8A4[i + 57], 1.25f);
         }
     }
@@ -4647,7 +4647,7 @@ void fn_1_1D758(OMOBJ *obj)
     fn_1_C698(24, obj->work[0], 10);
     for (i = 0, entry = lbl_1_bss_9BC;
          i < 4; i++, entry++) {
-        fn_1_C698(entry->chrSel, obj->work[0], 10);
+        fn_1_C698((s16)entry->chrSel, obj->work[0], 10);
     }
     if (obj->work[0]++ > 10) {
         fn_1_7C88();
@@ -4684,7 +4684,7 @@ void fn_1_1E7F8(OMOBJ *obj)
     fn_1_C698(24, obj->work[0], 10);
     for (i = 0, entry = lbl_1_bss_9BC;
          i < 4; i++, entry++) {
-        fn_1_C698(entry->chrSel, obj->work[0], 10);
+        fn_1_C698((s16)entry->chrSel, obj->work[0], 10);
     }
     if (obj->work[0]++ > 10) {
         obj->objFunc = NULL;
@@ -4708,14 +4708,14 @@ void fn_1_1F8B8(OMOBJ *obj)
     if (lbl_1_bss_9F4.unk_0 == 0) {
         for (i = 0, entry = lbl_1_bss_9BC;
              i < 4; i++, entry++) {
-            fn_1_CA68(entry->chrSel, obj->work[0], 10,
+            fn_1_CA68((s16)entry->chrSel, obj->work[0], 10,
                 &lbl_1_data_8A4[i + 45], 1.25f);
         }
     } else {
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][i]];
-            fn_1_CA68(entry->chrSel, obj->work[0], 10,
+            fn_1_CA68((s16)entry->chrSel, obj->work[0], 10,
                 &lbl_1_data_8A4[i + 57], 1.25f);
         }
     }
@@ -5901,6 +5901,83 @@ s16 fn_1_2EF24(void)
     return fn_1_3F28(2);
 }
 
+s16 fn_1_2F22C(void)
+{
+    s16 result = 0;
+    s16 turnNo = 0;
+
+    if (GwCommon.saveEnableF == TRUE) {
+        SLBoardLoad();
+        lbl_1_bss_9F4.unk_0 = GwSystem.tagF;
+        lbl_1_bss_9F4.unk_4 = GwSystem.boardNo;
+        lbl_1_bss_9F4.unk_6 = (GwSystem.turnMax / 5) - 2;
+        lbl_1_bss_9F4.unk_8 = GwSystem.mgPack;
+        lbl_1_bss_9F4.unk_A = GwSystem.bonusStarF;
+        lbl_1_bss_9F4.unk_A++;
+        lbl_1_bss_9F4.unk_A %= 2;
+        turnNo = GwSystem.turnNo;
+        fn_1_2EBEC();
+        fn_1_D6B0(fn_1_DA54);
+        fn_1_8124(turnNo, (lbl_1_bss_9F4.unk_6 + 2) * 5);
+        while (TRUE) {
+            HuPrcVSleep();
+            fn_1_52B0();
+            fn_1_4020(2, 0xD0002, 1);
+            result = fn_1_3F28(0);
+            if (result == 0) {
+                _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 0x23));
+                fn_1_8318();
+                fn_1_D6B0(fn_1_EB74);
+                fn_1_3E0C();
+                fn_1_64C();
+                HuAudFXPlay(0x4A2);
+                fn_1_58A0();
+                fn_1_68A4();
+                HuPrcSleep(10);
+                fn_1_463E0();
+                if (lbl_1_data_0 != -1) {
+                    HuAudSStreamFadeOut(lbl_1_data_0, 3000);
+                    lbl_1_data_0 = -1;
+                }
+                HuAudFXPlay(0x4A3);
+                HuPrcSleep(90);
+                fn_1_2B64(fn_1_2E338);
+                HuPrcSleep(60);
+                return 0;
+            }
+            if (result == -1) {
+                fn_1_52B0();
+                fn_1_4020(2, 0xD0008, 1);
+                if (fn_1_3F28(2) != 0) {
+                    continue;
+                }
+                return -1;
+            }
+            while (TRUE) {
+                HuPrcVSleep();
+                fn_1_4020(2, 0xD0026, 1);
+                result = fn_1_3F28(0);
+                if (result != -1) {
+                    break;
+                }
+                fn_1_52B0();
+                fn_1_4020(2, 0xD0008, 1);
+                if (fn_1_3F28(2) != 0) {
+                    continue;
+                }
+                return -1;
+            }
+            if (result != 0) {
+                continue;
+            }
+            fn_1_8318();
+            fn_1_D6B0(fn_1_F838);
+            break;
+        }
+    }
+    return 1;
+}
+
 s16 fn_1_30B4C(void)
 {
     s16 result = 0;
@@ -6599,13 +6676,13 @@ s16 fn_1_38A3C(s16 arg0)
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                if (lbl_1_data_BEE[lbl_1_bss_9F4.unk_4] != 0) {
-                    HuAudFXPlay(2);
-                    result = 0;
-                    break;
+                if (lbl_1_data_BEE[lbl_1_bss_9F4.unk_4] == 0) {
+                    HuAudFXPlay(4);
+                    continue;
                 }
-                HuAudFXPlay(4);
-                continue;
+                HuAudFXPlay(2);
+                result = 0;
+                break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
                 HuAudFXPlay(3);
