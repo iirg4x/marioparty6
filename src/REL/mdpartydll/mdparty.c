@@ -789,8 +789,8 @@ inline float fn_1_21D4(
     float arg0, float arg1, float time, float duration);
 
 void fn_1_22A8(
-    HU3D_MODELID modelId, HuVecF *a, HuVecF *b, HuVecF *c, float time,
-    float duration)
+    HU3D_MODELID modelId, const HuVecF *a, const HuVecF *b, const HuVecF *c,
+    float time, float duration)
 {
     HuVecF pos;
     HuVecF modelPos;
@@ -815,8 +815,8 @@ void fn_1_22A8(
 }
 
 inline void fn_1_22A8(
-    HU3D_MODELID modelId, HuVecF *a, HuVecF *b, HuVecF *c, float time,
-    float duration);
+    HU3D_MODELID modelId, const HuVecF *a, const HuVecF *b, const HuVecF *c,
+    float time, float duration);
 
 void fn_1_26FC(void)
 {
@@ -3724,7 +3724,7 @@ void fn_1_156B4(OMOBJ *obj)
     }
     if (obj->work[0] >= 10) {
         for (i = 0; i < 4; i++) {
-            fn_1_CA68(lbl_1_bss_9BC[i].chrSel,
+            fn_1_CA68((s16)lbl_1_bss_9BC[i].chrSel,
                 obj->work[0] - 10, 10, &lbl_1_data_8A4[i + 45], 1.25f);
         }
     }
@@ -3753,7 +3753,7 @@ void fn_1_160A0(OMOBJ *obj)
     if (obj->work[0] >= 10) {
         fn_1_884C(lbl_1_bss_9F4.unk_4);
         for (i = 0; i < 4; i++) {
-            fn_1_CA68(lbl_1_bss_9BC[i].chrSel,
+            fn_1_CA68((s16)lbl_1_bss_9BC[i].chrSel,
                 obj->work[0] - 10, 10, &lbl_1_data_8A4[i + 49], 1.25f);
         }
     }

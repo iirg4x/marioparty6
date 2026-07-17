@@ -44,19 +44,25 @@ and the target assignment-condition shape in `fn_1_3BEA8` add twelve exact
 functions and `0xC3AC` target bytes. Restoring the exact `fn_1_D6B0`,
 `fn_1_884C`, `fn_1_8C28`, and `fn_1_9804` nested boundaries, the target float
 lifetime, and the `fn_1_737C` state scope closes five more functions and
-`0x20F4` bytes. The application owner represents all 258 functions and all
-`0x3F424` target text bytes; 248 functions and `0x3A600` bytes are exact,
-while 10 functions and `0x4E24` bytes remain
-compiler-shape residues. Combined application/stage evidence represents all
-315 functions and all `0x467FC` text bytes, of which 305 functions and
-`0x419D8` bytes are exact. `mdparty.c` remains `C-not-yet-matched`, so the
-module is still outside the conservative fully recovered REL total. The
-separate 19-function, `0xA44` compiler runtime remains exact and source-linked
-only under the authenticated original-assembly exception. Evidence is retained
+`0x20F4` bytes. Wave 97 restores the read-only path-vector contract in
+`fn_1_22A8` and the signed argument nodes at two exact `fn_1_CA68` inline
+boundaries, closing three more functions and `0x182C` bytes. The application
+owner represents all 258 functions and all `0x3F424` target text bytes; 251
+functions and `0x3BE2C` bytes are exact, while 7 functions and `0x35F8` bytes
+remain compiler-shape residues. Combined application/stage evidence represents
+all 315 functions and all `0x467FC` text bytes, of which 308 functions and
+`0x43204` bytes are exact. The initialized-data owner also remains incomplete:
+target `.data` is `0xF10`, while the current source object emits `0x1D9`.
+`mdparty.c` remains `C-not-yet-matched`, so the module is still outside the
+conservative fully recovered REL total. The separate 19-function, `0xA44`
+compiler runtime remains exact and source-linked only under the authenticated
+original-assembly exception. Evidence is retained
 in [`docs/native_matching_wave91.md`](docs/native_matching_wave91.md) and
 [`docs/native_matching_wave92.md`](docs/native_matching_wave92.md), with the
 shared-flow proof in
-[`docs/native_matching_wave96.md`](docs/native_matching_wave96.md).
+[`docs/native_matching_wave96.md`](docs/native_matching_wave96.md) and the
+typed-contract proof in
+[`docs/native_matching_wave97.md`](docs/native_matching_wave97.md).
 
 Wave 93 moves the board priority forward with one batched easy-win pass across
 `shopevent.c`, `telop.c`, `capspecial.c`, and `capsule.c`. Target frame extent,
@@ -1221,7 +1227,7 @@ owners are separate from the 396-owner DOL ledger:
 | `REL/selmenuDll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/fileseldll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/meschkdll/meschkdll.c` | `C-not-yet-matched`; `SRC-DIVERGES`; never de-flipped | Five functions are exact; `fn_1_188` remains divergent, so the owner stays fallback-linked. |
-| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 248 functions and `0x3A600` bytes are exact. Wave 96 restores six real late-inline helper boundaries, a target float lifetime, two local chronologies, assignment-condition expressions, and the target `fn_1_737C` state scope, closing seventeen functions and `0xE4A0` bytes. The remaining 10 functions and `0x4E24` bytes are represented compiler-shape residues. No fake local, register force, inline assembly, or unproved Matching flip was admitted. |
+| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 251 functions and `0x3BE2C` bytes are exact. Wave 97 restores one read-only vector contract and two signed late-inline argument nodes, closing three functions and `0x182C` bytes without losing an exact function. Seven functions and `0x35F8` bytes remain compiler-shape residues. Initialized data is also incomplete (`0x1D9 / 0xF10` source/target `.data`). No fake local, register force, inline assembly, synthetic literal global, or unproved Matching flip was admitted. |
 
 Wave 70 resolves the two former `mdseldll` fallback rows. Application owner
 `REL/mdseldll/mdsel.c` leaves `C-not-yet-matched` after all 113 functions and
@@ -1389,6 +1395,22 @@ files OK; `main.dol` and `mdpartydll.rel` compare byte-identical, and the build
 leaves `config/GP6E01/symbols.txt` unchanged.
 Detailed evidence is in
 [`docs/native_matching_wave96.md`](docs/native_matching_wave96.md).
+
+Wave 97 recovers the read-only `HuVecF` input contract on `fn_1_22A8`, making
+the `0x454` function exact while preserving all three exact late-inline
+callers. Exact same-translation-unit `fn_1_CA68` callers authenticate the
+explicit signed-16-bit character argument at that helper boundary; applying
+the same source shape closes `fn_1_156B4` and `fn_1_160A0`, each `0x9EC`
+bytes. The owner reaches 251 exact functions and `0x3BE2C` exact target text
+bytes, leaving seven functions and `0x35F8` bytes. Neutral zero-comparison,
+float-literal, and folded-assignment probes are absent. The source object also
+proves that initialized global/table recovery remains real work: `.data` is
+`0x1D9` against the target's `0xF10`. No Matching flip, fake local, register
+force, inline assembly, synthetic literal global, or pragma is admitted. The
+final serialized Ninja build and explicit DTK checksum each report 137 files
+OK; `main.dol` and `mdpartydll.rel` compare byte-identical, and the build
+leaves `config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
+[`docs/native_matching_wave97.md`](docs/native_matching_wave97.md).
 
 Wave 89 restores target evaluation order in the `0x710` camera controller
 `fn_1_2B74` and authentic helper boundaries in `fn_1_EB74` (`0xCC4`) and
