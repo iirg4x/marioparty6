@@ -2651,6 +2651,7 @@ s16 fn_1_B748(s16 arg0, s16 arg1, s16 arg2, s16 arg3,
     return result;
 }
 
+#pragma auto_inline off
 s16 fn_1_BB30(s16 arg0, LBL_1_DATA_E12_ENTRY *arg1,
     s16 arg2, s16 arg3)
 {
@@ -2672,6 +2673,7 @@ s16 fn_1_BB30(s16 arg0, LBL_1_DATA_E12_ENTRY *arg1,
     return fn_1_B748(arg0, order[arg2][0], order[arg2][1],
         order[arg2][2], arg1, arg3);
 }
+#pragma auto_inline reset
 
 s16 fn_1_BBD8(s16 padNo, s16 *current,
     LBL_1_DATA_E12_ENTRY *entries, s16 count)

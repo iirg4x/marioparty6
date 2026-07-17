@@ -48,15 +48,19 @@ lifetime, and the `fn_1_737C` state scope closes five more functions and
 `fn_1_22A8` and the signed argument nodes at two exact `fn_1_CA68` inline
 boundaries, closing three more functions and `0x182C` bytes. Wave 99 restores
 the pointer-null type node in the character-motion ARAM preload check, closing
-both `fn_1_2B0` and its `fn_1_400` inline copy for another `0x39C` bytes. The
-application owner represents all 258 functions and all `0x3F424` target text
-bytes; 253 functions and `0x3C1C8` bytes are exact, while 5 functions and
-`0x325C` bytes remain compiler-shape residues. Combined application/stage
+both `fn_1_2B0` and its `fn_1_400` inline copy for another `0x39C` bytes.
+Wave 100's target/compiler audit then restores the required automatic-inline
+boundary around `fn_1_BB30` without suppressing its inner transform, making
+`fn_1_BBD8` exact for another `0x580` bytes while preserving both direct helper
+relocations. The application owner represents all 258 functions and all
+`0x3F424` target text bytes; 254 functions and `0x3C748` bytes are exact,
+while 4 functions and
+`0x2CDC` bytes remain compiler-shape residues. Combined application/stage
 evidence represents all 315 functions and all `0x467FC` text bytes, of which
-310 functions and `0x435A0` bytes are exact. Wave 98 recovers all `0xF0D`
+311 functions and `0x43B20` bytes are exact. Wave 98 recovers all `0xF0D`
 semantic initialized-data bytes as typed resource, sprite, position, state,
-string, and selection-
-graph owners; each byte matches the target. The target split's `0xF10` extent
+string, and selection-graph owners; each byte matches the target. The target
+split's `0xF10` extent
 ends with three section-alignment zeros, so no padding global is fabricated.
 `mdparty.c` remains `C-not-yet-matched`, so the module is still outside the
 conservative fully recovered REL total. The separate 19-function, `0xA44`
@@ -1235,7 +1239,7 @@ owners are separate from the 396-owner DOL ledger:
 | `REL/selmenuDll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/fileseldll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/meschkdll/meschkdll.c` | `C-not-yet-matched`; `SRC-DIVERGES`; never de-flipped | Five functions are exact; `fn_1_188` remains divergent, so the owner stays fallback-linked. |
-| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 253 functions and `0x3C1C8` bytes are exact. Five functions and `0x325C` bytes remain compiler-shape residues. Wave 98 recovers all `0xF0D` semantic initialized-data bytes; the target split's remaining three bytes are section alignment. Wave 99 recovers the pointer-null ARAM contract in `fn_1_2B0` and its `fn_1_400` inline copy. The real 17-entry group tables, `0x20` `MDSPR_INFO`, typed resource/position banks, strings, state, and 11-entry selection graph replace missing owners without a blob or padding global. No fake local, register force, inline assembly, synthetic literal global, unproved pragma, or unproved Matching flip was admitted. |
+| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 254 functions and `0x3C748` bytes are exact. Four functions and `0x2CDC` bytes remain compiler-shape residues. Wave 98 recovers all `0xF0D` semantic initialized-data bytes; the target split's remaining three bytes are section alignment. Wave 99 recovers the pointer-null ARAM contract in `fn_1_2B0` and its `fn_1_400` inline copy. Wave 100 restores the target-proven automatic-inline boundary around `fn_1_BB30`, closing `fn_1_BBD8` without regressing either helper. The real 17-entry group tables, `0x20` `MDSPR_INFO`, typed resource/position banks, strings, state, and 11-entry selection graph replace missing owners without a blob or padding global. No fake local, register force, inline assembly, synthetic literal global, or unproved Matching flip was admitted; the compiler-control guard is byte-proven but remains source-quality debt because no Hudson/Nintendo sibling spelling is available. |
 
 Wave 70 resolves the two former `mdseldll` fallback rows. Application owner
 `REL/mdseldll/mdsel.c` leaves `C-not-yet-matched` after all 113 functions and
@@ -1454,6 +1458,26 @@ Ninja build and explicit DTK checksum each report 137 files OK; `main.dol` and
 `mdpartydll.rel` compare byte-identical, and the build leaves
 `config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
 [`docs/native_matching_wave99.md`](docs/native_matching_wave99.md).
+
+Wave 100 restores `fn_1_BB30`'s target automatic-inline boundary with a
+function-scoped CodeWarrior `auto_inline off/reset` guard. Unlike the rejected
+`dont_inline` probes, this keeps the helper's required inner transform and the
+caller's `sqrtf` expansion while preventing only automatic expansion of
+`fn_1_BB30` into `fn_1_BBD8`. Both functions and both direct helper
+relocations are exact, adding `0x580` target bytes without losing any prior
+match. The owner reaches 254/258 exact functions and
+`0x3C748 / 0x3F424` exact text; four compiler-coloring residues totaling
+`0x2CDC` remain. CodeWarrior documentation, recovered compiler control flow,
+and genuine original MWCC source establish the pragma's semantics and idiom,
+but no Hudson or Nintendo sibling spelling was found, so the guard remains
+explicit source-quality debt rather than being described as
+sibling-authenticated. No fake local, register force, inline assembly, or
+Matching flip is admitted.
+
+The final serialized Ninja build and explicit DTK checksum each report 137
+files OK; `main.dol` and `mdpartydll.rel` compare byte-identical, and the build
+leaves `config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
+[`docs/native_matching_wave100.md`](docs/native_matching_wave100.md).
 
 Wave 89 restores target evaluation order in the `0x710` camera controller
 `fn_1_2B74` and authentic helper boundaries in `fn_1_EB74` (`0xCC4`) and
