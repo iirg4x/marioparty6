@@ -179,7 +179,6 @@ static void TutorialWatch(void)
 {
     s16 winNo;
     HuVec2f size;
-    BOOL partyF;
 
     HuPrcSleep(60);
     TutorialWinInit();
@@ -205,7 +204,8 @@ static void TutorialWatch(void)
     }
     mbMusFadeOutSpeed(MB_MUS_CHAN_BG, 1000);
     if (tutorialExitOnF) {
-        partyF = GwSystem.partyF;
+        BOOL partyF = GwSystem.partyF;
+
         if (partyF) {
             WipeColorSet(0, 0, 0);
         } else {
@@ -224,7 +224,7 @@ static void TutorialWatch(void)
     TutorialSprGrpClose();
     TutorialModelKillAll();
     mbTutorialMgCallClose();
-    if (tutorialGuideObj != NULL) {
+    if (tutorialGuideObj) {
         mbTutorialGuideClose(tutorialGuideObj);
     }
     mbExitReq();
@@ -389,9 +389,9 @@ s16 mbTutorialViewSet(void)
 {
     HuVecF rot = { -35.0f, 0.0f, 0.0f };
     HuVecF offset = { 0.0f, 200.0f, 0.0f };
-    s16 masuId;
+    int masuId;
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = (s16)mbMasuFind_AttrIdGet(-1, 0x8000);
     mbCameraMoveMasu(masuId, &rot, &offset, mbCameraPlayerViewZoomGet(0), -1.0f, -1);
     mbCameraMoveOnSet(FALSE);
     return masuId;
@@ -673,7 +673,9 @@ void mbTutorialWinMesExec(int message)
         }
     }
     do {
-        mbGuideMotionShiftSet(tutorialGuideObj, 12, TRUE);
+        OMOBJ *guideObj = tutorialGuideObj;
+
+        mbGuideMotionShiftSet(guideObj, 12, TRUE);
     } while (mbTutorialWinWait(winNo));
     mbWinWait(winNo);
 }
@@ -714,14 +716,20 @@ int mbTutorialWinCreate(int message)
             break;
         }
     }
-    mbGuideMotionShiftSet(tutorialGuideObj, 12, TRUE);
+    {
+        OMOBJ *guideObj = tutorialGuideObj;
+
+        mbGuideMotionShiftSet(guideObj, 12, TRUE);
+    }
     return winNo;
 }
 
 void mbTutorialWinKeyWait(int winNo)
 {
     while (mbTutorialWinWait(winNo)) {
-        mbGuideMotionShiftSet(tutorialGuideObj, 12, TRUE);
+        OMOBJ *guideObj = tutorialGuideObj;
+
+        mbGuideMotionShiftSet(guideObj, 12, TRUE);
     }
     mbWinWait(winNo);
 }

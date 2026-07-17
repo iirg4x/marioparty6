@@ -49,6 +49,15 @@ Matching-owner ledger and conservative DOL byte total are unchanged. Evidence
 and rejected-probe results are retained in
 [`docs/native_matching_wave93.md`](docs/native_matching_wave93.md).
 
+Wave 94 closes five more `board/tutorial.c` functions and `0x620` target text
+bytes through target-proven block scope, integer narrowing, saved-pointer
+lifetime, and loop reload points. `board/capevent.c` also recovers the real
+eight-pointer, `0x20` `ev_CapEffMoveOMObj` global without regressing any of its
+83 exact represented functions. Both owners remain `C-not-yet-matched`, so
+the Matching-owner ledger is unchanged. Evidence and rejected allocator-only
+probes are retained in
+[`docs/native_matching_wave94.md`](docs/native_matching_wave94.md).
+
 The evidence-backed target ledger at this build is:
 
 - DOL `game/` plus `board/`: `696000 / 1431136` target `.text` bytes Matching

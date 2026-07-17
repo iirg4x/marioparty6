@@ -24,7 +24,7 @@ static OMOBJ *ev_CapEffStarManOMObj[8];
 static OMOBJ *ev_CapEffCapLoseOMObj[8];
 static OMOBJ *ev_CapEffRayOMObj[8];
 static OMOBJ *ev_CapEffMasuHitOMObj[8];
-static OMOBJ *ev_CapEffMoveOMObj[GW_PLAYER_MAX];
+static OMOBJ *ev_CapEffMoveOMObj[8];
 
 typedef struct CapBonusCoinWork {
     int playerNo;
