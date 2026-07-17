@@ -51,8 +51,10 @@ owner represents all 258 functions and all `0x3F424` target text bytes; 251
 functions and `0x3BE2C` bytes are exact, while 7 functions and `0x35F8` bytes
 remain compiler-shape residues. Combined application/stage evidence represents
 all 315 functions and all `0x467FC` text bytes, of which 308 functions and
-`0x43204` bytes are exact. The initialized-data owner also remains incomplete:
-target `.data` is `0xF10`, while the current source object emits `0x1D9`.
+`0x43204` bytes are exact. Wave 98 recovers all `0xF0D` semantic initialized-
+data bytes as typed resource, sprite, position, state, string, and selection-
+graph owners; each byte matches the target. The target split's `0xF10` extent
+ends with three section-alignment zeros, so no padding global is fabricated.
 `mdparty.c` remains `C-not-yet-matched`, so the module is still outside the
 conservative fully recovered REL total. The separate 19-function, `0xA44`
 compiler runtime remains exact and source-linked only under the authenticated
@@ -62,7 +64,8 @@ in [`docs/native_matching_wave91.md`](docs/native_matching_wave91.md) and
 shared-flow proof in
 [`docs/native_matching_wave96.md`](docs/native_matching_wave96.md) and the
 typed-contract proof in
-[`docs/native_matching_wave97.md`](docs/native_matching_wave97.md).
+[`docs/native_matching_wave97.md`](docs/native_matching_wave97.md). The data
+proof is in [`docs/native_matching_wave98.md`](docs/native_matching_wave98.md).
 
 Wave 93 moves the board priority forward with one batched easy-win pass across
 `shopevent.c`, `telop.c`, `capspecial.c`, and `capsule.c`. Target frame extent,
@@ -1227,7 +1230,7 @@ owners are separate from the 396-owner DOL ledger:
 | `REL/selmenuDll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/fileseldll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/meschkdll/meschkdll.c` | `C-not-yet-matched`; `SRC-DIVERGES`; never de-flipped | Five functions are exact; `fn_1_188` remains divergent, so the owner stays fallback-linked. |
-| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 251 functions and `0x3BE2C` bytes are exact. Wave 97 restores one read-only vector contract and two signed late-inline argument nodes, closing three functions and `0x182C` bytes without losing an exact function. Seven functions and `0x35F8` bytes remain compiler-shape residues. Initialized data is also incomplete (`0x1D9 / 0xF10` source/target `.data`). No fake local, register force, inline assembly, synthetic literal global, or unproved Matching flip was admitted. |
+| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 251 functions and `0x3BE2C` bytes are exact. Seven functions and `0x35F8` bytes remain compiler-shape residues. Wave 98 recovers all `0xF0D` semantic initialized-data bytes; the target split's remaining three bytes are section alignment. The real 17-entry group tables, `0x20` `MDSPR_INFO`, typed resource/position banks, strings, state, and 11-entry selection graph replace missing owners without a blob or padding global. No fake local, register force, inline assembly, synthetic literal global, or unproved Matching flip was admitted. |
 
 Wave 70 resolves the two former `mdseldll` fallback rows. Application owner
 `REL/mdseldll/mdsel.c` leaves `C-not-yet-matched` after all 113 functions and
@@ -1411,6 +1414,25 @@ final serialized Ninja build and explicit DTK checksum each report 137 files
 OK; `main.dol` and `mdpartydll.rel` compare byte-identical, and the build
 leaves `config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
 [`docs/native_matching_wave97.md`](docs/native_matching_wave97.md).
+
+Wave 98 closes the semantic initialized-data gap in
+`REL/mdpartydll/mdparty.c`. The source object grows from `0x1D9` to `0xF0D`
+data bytes, adding `0xD34`; a raw section comparison proves every source byte
+identical to target offsets `0x000..0xF0C`. The target split's `0xF10` extent
+contains three final section-alignment zeros, which remain outside source
+ownership. The recovered owners include 32 sprite-animation IDs, 17 group
+counts, 58 complete `MDSPR_INFO` records, 41 model-animation IDs, 67 typed
+positions, camera/model/animation strings, signed state, and the 11-entry
+directional-selection graph. The sprite descriptor now uses five real `s16`
+fields plus natural alignment instead of a fabricated `pad`, and the two group
+arrays use 17 logical entries rather than fake eighteenth elements. Text
+remains 251/258 exact with no lost function. The owner remains fallback-linked
+because seven real code residues remain; no Matching flip, blob, padding
+global, inline assembly, or invented retail symbol is admitted. The final
+serialized Ninja build and explicit DTK checksum each report 137 files OK;
+`main.dol` and `mdpartydll.rel` compare byte-identical, and the build leaves
+`config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
+[`docs/native_matching_wave98.md`](docs/native_matching_wave98.md).
 
 Wave 89 restores target evaluation order in the `0x710` camera controller
 `fn_1_2B74` and authentic helper boundaries in `fn_1_EB74` (`0xCC4`) and

@@ -37,17 +37,16 @@ struct MdCameraWork_s {
     u8 unk_44[0xC];
 };
 
-typedef struct Lbl1DataC0Entry {
+typedef struct MdSprInfo_s {
     s16 groupNo;
     s16 memberNo;
     s16 animNo;
     s16 priority;
     s16 bank;
-    s16 pad;
     HuVec2f pos;
     HuVec2f scale;
     float zRot;
-} LBL_1_DATA_C0_ENTRY;
+} MDSPR_INFO;
 
 typedef struct Lbl1DataE12Entry {
     s16 unk_0[8];
@@ -153,7 +152,7 @@ extern LBL_1_BSS_228_ENTRY lbl_1_bss_228[2];
 extern LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
 extern ANIMDATA *lbl_1_bss_800[41];
 extern HUSPRID lbl_1_bss_8A4[58];
-extern HUSPR_GROUPID lbl_1_bss_918[18];
+extern HUSPR_GROUPID lbl_1_bss_918[17];
 extern ANIMDATA *lbl_1_bss_93C[32];
 extern LBL_1_BSS_9BC_ENTRY lbl_1_bss_9BC[4];
 extern LBL_1_BSS_9F4 lbl_1_bss_9F4;
@@ -166,8 +165,8 @@ extern s32 lbl_1_data_0;
 extern s32 lbl_1_data_BC8;
 extern s16 lbl_1_data_4[3][4];
 extern u32 lbl_1_data_1C[32];
-extern s16 lbl_1_data_9C[18];
-extern LBL_1_DATA_C0_ENTRY lbl_1_data_C0[58];
+extern s16 lbl_1_data_9C[17];
+extern MDSPR_INFO lbl_1_data_C0[58];
 extern u32 lbl_1_data_800[41];
 extern HuVecF lbl_1_data_8A4[67];
 extern char lbl_1_data_BCC[];
@@ -1263,7 +1262,7 @@ inline void fn_1_47B4(HUSPR_GROUPID groupId, s32 attr);
 
 void fn_1_4834(void)
 {
-    LBL_1_DATA_C0_ENTRY *desc;
+    MDSPR_INFO *desc;
     s16 i;
 
     for (i = 0; i < 32; i++) {
@@ -6776,6 +6775,215 @@ s16 lbl_1_data_4[3][4] = {
     { 0, 2, 1, 3 },
     { 0, 3, 1, 2 },
 };
+u32 lbl_1_data_1C[32] = {
+    DATANUM(DATA_mdparty, 0x1C),
+    DATANUM(DATA_mdparty, 0x04),
+    DATANUM(DATA_mdparty, 0x05),
+    DATANUM(DATA_mdparty, 0x06),
+    DATANUM(DATA_mdparty, 0x07),
+    DATANUM(DATA_mdparty, 0x08),
+    DATANUM(DATA_mdparty, 0x09),
+    DATANUM(DATA_mdparty, 0x0A),
+    DATANUM(DATA_mdparty, 0x0B),
+    DATANUM(DATA_mdparty, 0x0C),
+    DATANUM(DATA_mdparty, 0x0D),
+    DATANUM(DATA_mdparty, 0x0E),
+    DATANUM(DATA_mdparty, 0x0F),
+    DATANUM(DATA_mdparty, 0x10),
+    DATANUM(DATA_mdparty, 0x11),
+    DATANUM(DATA_mdparty, 0x1E),
+    DATANUM(DATA_mdparty, 0x1F),
+    DATANUM(DATA_mdparty, 0x20),
+    DATANUM(DATA_mdparty, 0x21),
+    DATANUM(DATA_mdparty, 0x22),
+    DATANUM(DATA_mdparty, 0x23),
+    DATANUM(DATA_mdparty, 0x1B),
+    DATANUM(DATA_mdparty, 0x15),
+    DATANUM(DATA_mdparty, 0x14),
+    DATANUM(DATA_mdparty, 0x16),
+    DATANUM(DATA_mdparty, 0x17),
+    DATANUM(DATA_mdparty, 0x12),
+    DATANUM(DATA_mdparty, 0x13),
+    DATANUM(DATA_mdparty, 0x18),
+    DATANUM(DATA_mdparty, 0x19),
+    DATANUM(DATA_mdparty, 0x4E),
+    DATANUM(DATA_mdparty, 0x1D),
+};
+s16 lbl_1_data_9C[17] = {
+    2, 6, 6, 4, 2, 2, 2, 2, 4, 4, 4, 4, 5, 2, 4, 4, 1,
+};
+MDSPR_INFO lbl_1_data_C0[58] = {
+    { 0, 0, 0, 10, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 1, 0, 15, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 1, 1, 16, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 1, 2, 17, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 1, 3, 18, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 1, 4, 19, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 1, 5, 20, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 2, 0, 21, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 2, 1, 21, 0, 2, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 2, 2, 21, 0, 5, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 2, 3, 21, 0, 7, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 2, 4, 21, 0, 4, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 2, 5, 21, 0, 6, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 3, 0, 22, 0, 0, { 0.0f, 0.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 3, 1, 22, 0, 0, { 0.0f, 0.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 3, 2, 22, 0, 0, { 0.0f, 0.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 3, 3, 22, 0, 0, { 0.0f, 0.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 4, 0, 22, 9, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 4, 1, 23, 10, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 5, 0, 22, 9, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 5, 1, 23, 10, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 6, 0, 22, 9, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 6, 1, 23, 10, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 7, 0, 22, 9, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 7, 1, 23, 10, 0, { 22.0f, -24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 8, 0, 25, 9, 0, { -44.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 8, 1, 24, 9, 10, { -25.0f, 25.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 8, 2, 24, 9, 0, { -4.0f, 24.0f }, { 0.9f, 0.9f }, 0.0f },
+    { 8, 3, 23, 10, 1, { -22.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 9, 0, 25, 9, 0, { -44.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 9, 1, 24, 9, 10, { -25.0f, 25.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 9, 2, 24, 9, 0, { -4.0f, 24.0f }, { 0.9f, 0.9f }, 0.0f },
+    { 9, 3, 23, 10, 1, { -22.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 10, 0, 25, 9, 0, { -44.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 10, 1, 24, 9, 10, { -25.0f, 25.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 10, 2, 24, 9, 0, { -4.0f, 24.0f }, { 0.9f, 0.9f }, 0.0f },
+    { 10, 3, 23, 10, 1, { -22.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 11, 0, 25, 9, 0, { -44.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 11, 1, 24, 9, 10, { -25.0f, 25.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 11, 2, 24, 9, 0, { -4.0f, 24.0f }, { 0.9f, 0.9f }, 0.0f },
+    { 11, 3, 23, 10, 1, { -22.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 12, 0, 27, 9, 0, { -35.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 12, 1, 27, 9, 0, { 5.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 12, 2, 27, 9, 0, { 85.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 12, 3, 27, 9, 0, { 125.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 12, 4, 26, 10, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 13, 0, 28, 10, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 13, 1, 29, 10, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 14, 0, 25, 9, 0, { -22.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 14, 1, 24, 9, 10, { -3.0f, 25.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 14, 2, 24, 9, 0, { 18.0f, 24.0f }, { 0.9f, 0.9f }, 0.0f },
+    { 14, 3, 23, 10, 2, { 0.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 15, 0, 25, 9, 0, { -22.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 15, 1, 24, 9, 10, { -3.0f, 25.0f }, { 0.8f, 0.8f }, 0.0f },
+    { 15, 2, 24, 9, 0, { 18.0f, 24.0f }, { 0.9f, 0.9f }, 0.0f },
+    { 15, 3, 23, 10, 2, { 0.0f, 24.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 16, 0, 30, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+    { 0, 1, 31, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
+};
+u32 lbl_1_data_800[41] = {
+    DATANUM(DATA_mdparty, 0x27),
+    DATANUM(DATA_mdparty, 0x28),
+    DATANUM(DATA_mdparty, 0x29),
+    DATANUM(DATA_mdparty, 0x2A),
+    DATANUM(DATA_mdparty, 0x2B),
+    DATANUM(DATA_mdparty, 0x2C),
+    DATANUM(DATA_mdparty, 0x2D),
+    DATANUM(DATA_mdparty, 0x2E),
+    DATANUM(DATA_mdparty, 0x2F),
+    DATANUM(DATA_mdparty, 0x30),
+    DATANUM(DATA_mdparty, 0x31),
+    DATANUM(DATA_mdparty, 0x32),
+    DATANUM(DATA_mdparty, 0x33),
+    DATANUM(DATA_mdparty, 0x34),
+    DATANUM(DATA_mdparty, 0x35),
+    DATANUM(DATA_mdparty, 0x36),
+    DATANUM(DATA_mdparty, 0x37),
+    DATANUM(DATA_mdparty, 0x38),
+    DATANUM(DATA_mdparty, 0x25),
+    DATANUM(DATA_mdparty, 0x26),
+    DATANUM(DATA_mdparty, 0x39),
+    DATANUM(DATA_mdparty, 0x3A),
+    DATANUM(DATA_mdparty, 0x3B),
+    DATANUM(DATA_mdparty, 0x3C),
+    DATANUM(DATA_mdparty, 0x3D),
+    DATANUM(DATA_mdparty, 0x3E),
+    DATANUM(DATA_mdparty, 0x3F),
+    DATANUM(DATA_mdparty, 0x40),
+    DATANUM(DATA_mdparty, 0x41),
+    DATANUM(DATA_mdparty, 0x42),
+    DATANUM(DATA_mdparty, 0x43),
+    DATANUM(DATA_mdparty, 0x44),
+    DATANUM(DATA_mdparty, 0x45),
+    DATANUM(DATA_mdparty, 0x46),
+    DATANUM(DATA_mdparty, 0x47),
+    DATANUM(DATA_mdparty, 0x48),
+    DATANUM(DATA_mdparty, 0x49),
+    DATANUM(DATA_mdparty, 0x4A),
+    DATANUM(DATA_mdparty, 0x4B),
+    DATANUM(DATA_mdparty, 0x4C),
+    DATANUM(DATA_mdparty, 0x4D),
+};
+HuVecF lbl_1_data_8A4[67] = {
+    { 0.0f, 275.0f, 0.0f },
+    { -200.0f, 325.0f, 0.0f },
+    { -120.0f, 225.0f, 0.0f },
+    { -40.0f, 325.0f, 0.0f },
+    { 40.0f, 225.0f, 0.0f },
+    { 120.0f, 325.0f, 0.0f },
+    { 200.0f, 225.0f, 0.0f },
+    { -200.0f, 275.0f, 0.0f },
+    { -120.0f, 275.0f, 0.0f },
+    { -40.0f, 275.0f, 0.0f },
+    { 40.0f, 275.0f, 0.0f },
+    { 120.0f, 275.0f, 0.0f },
+    { 200.0f, 275.0f, 0.0f },
+    { 0.0f, 275.0f, -800.0f },
+    { -195.0f, 380.0f, 0.0f },
+    { -65.0f, 380.0f, 0.0f },
+    { 65.0f, 380.0f, 0.0f },
+    { 195.0f, 380.0f, 0.0f },
+    { -130.0f, 240.0f, 0.0f },
+    { 0.0f, 240.0f, 0.0f },
+    { 130.0f, 240.0f, 0.0f },
+    { -195.0f, 100.0f, 0.0f },
+    { -65.0f, 100.0f, 0.0f },
+    { 65.0f, 100.0f, 0.0f },
+    { 195.0f, 100.0f, 0.0f },
+    { -180.0f, 65.0f, 0.0f },
+    { -60.0f, 65.0f, 0.0f },
+    { 60.0f, 65.0f, 0.0f },
+    { 180.0f, 65.0f, 0.0f },
+    { -180.0f, 125.0f, 0.0f },
+    { -60.0f, 125.0f, 0.0f },
+    { 60.0f, 125.0f, 0.0f },
+    { 180.0f, 125.0f, 0.0f },
+    { -180.0f, 275.0f, 0.0f },
+    { -60.0f, 275.0f, 0.0f },
+    { 60.0f, 275.0f, 0.0f },
+    { 180.0f, 275.0f, 0.0f },
+    { -340.0f, 375.0f, 0.0f },
+    { -340.0f, 240.0f, 0.0f },
+    { 340.0f, 375.0f, 0.0f },
+    { 340.0f, 240.0f, 0.0f },
+    { -225.0f, 300.0f, 0.0f },
+    { -75.0f, 300.0f, 0.0f },
+    { 75.0f, 300.0f, 0.0f },
+    { 225.0f, 300.0f, 0.0f },
+    { -180.0f, 175.0f, 0.0f },
+    { -60.0f, 175.0f, 0.0f },
+    { 60.0f, 175.0f, 0.0f },
+    { 180.0f, 175.0f, 0.0f },
+    { -220.0f, 175.0f, 0.0f },
+    { -100.0f, 175.0f, 0.0f },
+    { 100.0f, 175.0f, 0.0f },
+    { 220.0f, 175.0f, 0.0f },
+    { -220.0f, 65.0f, 0.0f },
+    { -100.0f, 65.0f, 0.0f },
+    { 100.0f, 65.0f, 0.0f },
+    { 220.0f, 65.0f, 0.0f },
+    { -220.0f, 125.0f, 0.0f },
+    { -100.0f, 125.0f, 0.0f },
+    { 100.0f, 125.0f, 0.0f },
+    { 220.0f, 125.0f, 0.0f },
+    { -160.0f, 0.0f, 0.0f },
+    { 160.0f, 0.0f, 0.0f },
+    { -225.0f, 275.0f, 0.0f },
+    { -75.0f, 275.0f, 0.0f },
+    { 75.0f, 275.0f, 0.0f },
+    { 225.0f, 275.0f, 0.0f },
+};
 s32 lbl_1_data_BC8 = -1;
 char lbl_1_data_BCC[] = "# ========== win callback :: %d\n";
 s16 lbl_1_data_BEE[7] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -6806,8 +7014,34 @@ char lbl_1_data_CAB[] =
     "\n>>>>>>>>>> mdpartydll :: READ END!! <<<<<<<<<<\n";
 char lbl_1_data_CDC[] = ">>>>>>>>>> mdpartydll :: objsetup!! <<<<<<<<<<\n";
 char lbl_1_data_D0C[] = "\n>>>>>>>>>> mdpartydll :: ovlreturn!! <<<<<<<<<<\n";
+char lbl_1_data_D3E[] = "-----===== CAMERA TEST =====-----";
+char lbl_1_data_D60[] = "CENTER : %.2f, %.2f, %.2f";
+char lbl_1_data_D7A[] = "ROT    : %.2f, %.2f, %.2f";
+char lbl_1_data_D94[] = "ZOOM   : %.2f";
 s16 lbl_1_data_DA2[3] = { -1, -1, 0 };
 s32 lbl_1_data_DA8[3] = { -1, -1, -1 };
+char lbl_1_data_DB4[] = "gN00m1-itemhook_R";
+char lbl_1_data_DC6[] = "gN01m1-itemhook_R";
+char lbl_1_data_DD8[] = "dpic00";
+char lbl_1_data_DDF[] = "dpic01";
+s16 lbl_1_data_DE6[6] = { 0, 0, 0, 0, 0, 0 };
+char lbl_1_data_DF2[] = "ys77120";
+char lbl_1_data_DFA[] = "ys77121";
+char lbl_1_data_E02[] = "ys77060";
+char lbl_1_data_E0A[] = "ys77061";
+LBL_1_DATA_E12_ENTRY lbl_1_data_E12[11] = {
+    { { -1, -1, 1, 5, 4, -1, -1, -1 }, -1 },
+    { { -1, -1, 2, 6, 5, 4, 0, -1 }, -1 },
+    { { -1, -1, 3, -1, 6, 5, 1, -1 }, -1 },
+    { { -1, -1, -1, -1, -1, 6, 2, -1 }, -1 },
+    { { 0, 1, 5, 9, 8, 7, -1, -1 }, -1 },
+    { { 1, 2, 6, 10, 9, 8, 4, 0 }, -1 },
+    { { 2, 3, 10, 10, 10, 9, 5, 1 }, -1 },
+    { { -1, 4, 8, -1, -1, -1, -1, -1 }, -1 },
+    { { 4, 5, 9, -1, -1, -1, 7, -1 }, -1 },
+    { { 5, 6, 10, -1, -1, -1, 8, 4 }, -1 },
+    { { 6, -1, -1, -1, -1, -1, 9, 5 }, -1 },
+};
 char lbl_1_data_ED8[] = "\n-----===== MARIO PARTY 6 :: PARTY MODE =====-----\n\n";
 
 OMOBJMAN *lbl_1_bss_0;
@@ -6838,7 +7072,7 @@ LBL_1_BSS_228_ENTRY lbl_1_bss_228[2];
 LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
 ANIMDATA *lbl_1_bss_800[41];
 HUSPRID lbl_1_bss_8A4[58];
-HUSPR_GROUPID lbl_1_bss_918[18];
+HUSPR_GROUPID lbl_1_bss_918[17];
 ANIMDATA *lbl_1_bss_93C[32];
 LBL_1_BSS_9BC_ENTRY lbl_1_bss_9BC[4];
 LBL_1_BSS_9F4 lbl_1_bss_9F4;
