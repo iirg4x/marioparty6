@@ -10,6 +10,15 @@ party mode, boards, results, and ending. Minigame DLLs, instruction DLLs,
 minigame-mode wrappers, and mic-quiz modes are excluded; their native-port
 black-screen stubs are outside this decompilation repository's work.
 
+`Matching` is necessary binary proof, not by itself a source-authenticity
+claim. Raw packed IDs, opaque tail arrays, explicit natural padding, synthetic
+literal globals, and compiler-control guards remain source-quality debt until
+consumer widths, archive indices, and authenticated sibling shape recover the
+natural code. This rule applies across `game/`, `board/`, and every REL/DLL
+owner; the current target exclusions only control scheduling, not the recovery
+standard. No semantic rewrite retains Matching credit without the normal
+object, relocation, DOL/REL, and checksum gates.
+
 Priority 1a `mdseldll.rel` is recovered and source-linked in Wave 70.
 `include/ovl_table.h` places it at zero-based overlay 93, and the Matching
 `selmenuDll` mode table maps `***:MODE SEL` directly to `DLL_mdseldll`. All
@@ -58,6 +67,21 @@ the Matching-owner ledger is unchanged. Evidence and rejected allocator-only
 probes are retained in
 [`docs/native_matching_wave94.md`](docs/native_matching_wave94.md).
 
+Wave 95 retroactively replaces the Matching `game/mgdata.c` byte scaffold
+with semantic source. The same 82 minigames plus sentinel now use named DLL,
+type, flag, message, data-directory, instruction-picture, and instruction
+message domains in the MP5-authenticated `mgdata.inc` shape. Natural padding,
+day/night/subgame dimensions, active-MP6 byte-buffer types, the direct
+`OSReport("%d\n")` expression, and scalar tail ownership replace raw literals,
+opaque arrays, `_MATH_H`, and fabricated data extents. `selmenuDll` now shares
+the recovered header instead of duplicating an opaque 0x7C-byte struct. The
+strict owner and consumer gates retain 100% text for `mgdata`, `gamemes`,
+`board/pause`, `mdsel`, and `selmenu`; the full build and explicit checksum
+gate report 137 files OK, and `main.dol`, `selmenuDll.rel`, and `mdseldll.rel`
+compare byte-identical. The owner was already Matching, so progress counts do
+not change. Detailed evidence is in
+[`docs/native_matching_wave95.md`](docs/native_matching_wave95.md).
+
 The evidence-backed target ledger at this build is:
 
 - DOL `game/` plus `board/`: `696000 / 1431136` target `.text` bytes Matching
@@ -79,6 +103,10 @@ The evidence-backed target ledger at this build is:
 - `cmp orig/GP6E01/sys/main.dol build/GP6E01/main.dol`: byte-identical
 - `build/GP6E01/main.dol` SHA-1:
   `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`
+- `cmp orig/GP6E01/files/dll/selmenuDll.rel build/GP6E01/selmenuDll/selmenuDll.rel`:
+  byte-identical
+- `build/GP6E01/selmenuDll/selmenuDll.rel` SHA-1:
+  `7bc5aa5991425fdb03153f1611a39bb5fa8e0cd7`
 - `cmp orig/GP6E01/files/dll/mdseldll.rel build/GP6E01/mdseldll/mdseldll.rel`:
   byte-identical
 - `build/GP6E01/mdseldll/mdseldll.rel` SHA-1:

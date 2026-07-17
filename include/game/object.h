@@ -4,16 +4,7 @@
 #include "dolphin.h"
 #include "game/process.h"
 #include "game/hu3d.h"
-
-#define DLL(name) DLL_##name,
-
-typedef enum omOvl_e {
-    DLL_NONE = -1,
-    #include "ovl_table.h"
-    DLL_MAX
-} OMOVL;
-
-#undef DLL
+#include "game/omovl.h"
 
 #define OM_STAT_DELETED (1 << 0)
 #define OM_STAT_DISABLED (1 << 1)

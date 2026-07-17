@@ -12,6 +12,7 @@
 #include "game/objdll.h"
 #include "game/armem.h"
 #include "game/memory.h"
+#include "game/mgdata.h"
 #include "msm.h"
 
 #include "math.h"
@@ -30,27 +31,7 @@ extern s32 rand8(void);
 #define SM_KEY_UP 0x0001
 #define SM_KEY_DOWN 0x0002
 
-#define MG_TYPE_4P 0
-#define MG_TYPE_1VS3 1
-#define MG_TYPE_2VS2 2
-#define MG_TYPE_BATTLE 3
-#define MG_TYPE_KUPA 4
-#define MG_TYPE_LAST 5
-#define MG_TYPE_KETTOU 6
-
-#define MG_FLAG_GRPORDER (1 << 5)
-
-typedef struct MgData_s {
-    /* 0x00 */ u16 ovl;
-    /* 0x02 */ u8 type;
-    /* 0x03 */ u8 unk_3;
-    /* 0x04 */ u16 flag;
-    /* 0x06 */ u8 unk_6[0x76];
-} MGDATA; /* size = 0x7C */
-
-extern MGDATA MgDataTbl[];
 extern OMOVL GameMesOvlPrev;
-extern s32 MgNoGet(s16 ovlNo);
 
 #define GW_TYPE_MAN 0
 
