@@ -239,7 +239,7 @@ void mbev_ShopBackCreate(int dataNum, int motDataNum, int motNo, BOOL linkF)
 
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, char *hookName)
 {
-    int motDataNumTbl[2];
+    int motDataNumTbl[16];
     HuVecF pos;
     HuVecF rot;
     int i;
@@ -288,9 +288,12 @@ void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, 
             case 3:
                 mbObjMotionSpeedSet(work->backModelId[j], 0.0f);
                 break;
-            case 4:
-                mbObjAttrSet(work->backModelId[j], HU3D_MOTATTR_LOOP);
+            case 4: {
+                MBMODELID modelId = work->backModelId[j];
+
+                mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
                 break;
+            }
         }
         if (work->backMotNo[j] == 1 || work->backMotNo[j] == 3) {
             work->backDispF[j] = TRUE;

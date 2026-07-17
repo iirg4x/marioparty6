@@ -49,7 +49,7 @@ void mbev_CapTeresaStealSet(int mesId, int coinNum, TERESA_STEAL_BEGIN_HOOK begi
 void mbev_CapTeresaFadeKill(int objectId)
 {
     Hu3DModelMatHookSet(mbObjModelIDGet(objectId), NULL);
-    if (teresaFadeWork != NULL) {
+    if (teresaFadeWork) {
         HuMemDirectFree(teresaFadeWork->textureData);
         HuMemDirectFree(teresaFadeWork);
         teresaFadeWork = NULL;
@@ -58,7 +58,7 @@ void mbev_CapTeresaFadeKill(int objectId)
 
 static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
 {
-    if (mbExitCheck() || teresaFadeWork == NULL) {
+    if (mbExitCheck() || !teresaFadeWork) {
         omDelObjEx(mbObjMan, obj);
     } else {
         teresaFadeWork->copyF = FALSE;
@@ -67,7 +67,7 @@ static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
 
 void mbev_CapTeresaFadeSet(float alpha)
 {
-    if (teresaFadeWork != NULL) {
+    if (teresaFadeWork) {
         if (alpha < 0.0f) {
             alpha = 0.0f;
         }
@@ -118,15 +118,13 @@ static void ev_CapKoopaDiceMotHook(void)
 
     if (koopaMdlId != -1) {
         mbObjMotionSet(koopaMdlId, 4, 0);
-        for (i = 0;; i++) {
-            if (i == 27) {
+        i = 0;
+        do {
+            if (i++ == 27) {
                 mbDiceObjHit(-1);
             }
             HuPrcVSleep();
-            if (mbObjMotionEndCheck(koopaMdlId)) {
-                break;
-            }
-        }
+        } while (!mbObjMotionEndCheck(koopaMdlId));
         mbObjMotionSet(koopaMdlId, 1, HU3D_MOTATTR_LOOP);
     }
 }

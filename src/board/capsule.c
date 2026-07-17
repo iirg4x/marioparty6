@@ -39,7 +39,9 @@ int mbCapEffUseModeGet(int playerNo)
 
 BOOL mbCapEffUsePosGet(int playerNo, HuVecF *pos)
 {
-    if (capsuleUseEffMode[playerNo] < 1) {
+    int mode = capsuleUseEffMode[playerNo];
+
+    if (mode < 1) {
         return FALSE;
     }
     *pos = capsuleUseEffPos[playerNo];
@@ -48,7 +50,11 @@ BOOL mbCapEffUsePosGet(int playerNo, HuVecF *pos)
 
 BOOL mbCapPlayerThrowCheck(void)
 {
-    return capsulePlayerThrowProc == NULL;
+    if (capsulePlayerThrowProc) {
+        return FALSE;
+    } else {
+        return TRUE;
+    }
 }
 
 void mbCapThrowHookSet(CAPSULE_THROW_HOOK hook)
@@ -67,17 +73,17 @@ void mbCapNumInc(int capsuleNo, int mode)
 
 s16 mbCapValueTypeGet(s16 value)
 {
-    return (u8)value;
+    return value & 0xFF;
 }
 
 s16 mbCapMasuTypeGet(s16 masuId)
 {
-    return (u8)mbMasuCapsuleGet(masuId);
+    return mbCapValueTypeGet(mbMasuCapsuleGet(masuId));
 }
 
 s16 mbCapValuePlayerGet(s16 value)
 {
-    return (u16)value >> 8;
+    return (value >> 8) & 0xFF;
 }
 
 s16 mbCapMasuPlayerGet2(s16 masuId)
@@ -87,7 +93,7 @@ s16 mbCapMasuPlayerGet2(s16 masuId)
 
 void mbCapMasuPlayerSet(s16 masuId, s16 playerNo)
 {
-    s16 capsuleNo = mbMasuCapsuleGet(masuId);
+    s16 capsuleNo = (s16)mbMasuCapsuleGet(masuId);
 
     capsuleNo |= (playerNo & 0xFF) << 8;
     mbMasuCapsuleSet(masuId, capsuleNo);

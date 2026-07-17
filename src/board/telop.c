@@ -8,7 +8,6 @@
 #include "game/pad.h"
 
 #include "msm.h"
-#include "stdlib.h"
 
 #define FLAG_BOARD_WALKDONE FLAGNUM(FLAG_GROUP_COMMON, 16)
 
@@ -54,7 +53,7 @@ BOOL mbTelopCheck(void)
 
 static void TelopTimePauseHook(BOOL dispF)
 {
-    if (telopTimeOMObj != NULL) {
+    if (telopTimeOMObj) {
         mbTelopTimeDispSet(telopTimeOMObj->mdlId[0], dispF);
     }
 }
@@ -159,7 +158,7 @@ void mbTauntInit(void)
 
 void mbTauntClose(void)
 {
-    if (tauntOMObj != NULL) {
+    if (tauntOMObj) {
         TAUNT_WORK *work = omObjGetWork(tauntOMObj, TAUNT_WORK);
         work->killF = TRUE;
         _SetFlag(FLAG_BOARD_WALKDONE);
@@ -265,7 +264,7 @@ void mbBoardDataDirRead(void)
 
 void mbTelopTimeChangeKill(void)
 {
-    if (telopTimeChangeOMObj != NULL) {
+    if (telopTimeChangeOMObj) {
         TELOP_TIME_CHANGE_WORK *work = omObjGetWork(telopTimeChangeOMObj, TELOP_TIME_CHANGE_WORK);
         work->killF = TRUE;
     }

@@ -39,6 +39,16 @@ only under the authenticated original-assembly exception. Evidence is retained
 in [`docs/native_matching_wave91.md`](docs/native_matching_wave91.md) and
 [`docs/native_matching_wave92.md`](docs/native_matching_wave92.md).
 
+Wave 93 moves the board priority forward with one batched easy-win pass across
+`shopevent.c`, `telop.c`, `capspecial.c`, and `capsule.c`. Target frame extent,
+typed saved-register lifetimes, MP5 sibling parity, direct pointer-test nodes,
+external `abs` relocations, and target control flow close 23 exact functions
+and `0x85C` target text bytes. No previously exact function regresses. The
+four owners remain `C-not-yet-matched` because each is incomplete, so the
+Matching-owner ledger and conservative DOL byte total are unchanged. Evidence
+and rejected-probe results are retained in
+[`docs/native_matching_wave93.md`](docs/native_matching_wave93.md).
+
 The evidence-backed target ledger at this build is:
 
 - DOL `game/` plus `board/`: `696000 / 1431136` target `.text` bytes Matching
