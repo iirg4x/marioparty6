@@ -772,13 +772,13 @@ void mbSaveStoryInit(s32 teamChar, s32 mgPack, s32 storyComDif)
     GwMgNightF = 0;
 }
 
-void mbSavePartyInit(s32 boardNo, s32 storyDif, s32 mgPack, s32 turnMax,
+void mbSavePartyInit(BOOL teamF, BOOL bonusStarF, s32 mgPack, s32 turnMax,
                      s32 handicapP1, s32 handicapP2, s32 handicapP3, s32 handicapP4)
 {
     GwSystem.partyF = TRUE;
-    GwSystem.tagF = boardNo;
+    GwSystem.tagF = teamF;
     GwSystem.storyComDif = 0;
-    GwSystem.bonusStarF = storyDif;
+    GwSystem.bonusStarF = bonusStarF;
     GwSystem.mgPack = mgPack;
     GwSystem.turnMax = turnMax;
     GwPlayer[0].handicap = handicapP1;

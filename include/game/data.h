@@ -57,6 +57,7 @@ void HuDataClose(void *ptr);
 void HuDataCloseMulti(void **ptrTbl);
 void HuDataDirClose(int dataNum);
 void HuDataDirCloseNum(s32 num);
+void HuDataDirCloseAll(void);
 BOOL HuDataDirCloseAsync(s16 statId);
 void *HuDataReadNumHeapShortForce(u32 dataNum, s32 num, HEAPID heap);
 

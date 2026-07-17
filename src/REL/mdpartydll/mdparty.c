@@ -4,8 +4,12 @@
 
 #include "dolphin/os.h"
 
+#include "REL/mdpartyDll.h"
+
 #include "game/armem.h"
+#include "game/board/main.h"
 #include "game/charman.h"
+#include "game/data.h"
 #include "game/flag.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
@@ -113,89 +117,16 @@ typedef struct Lbl1Bss9F4 {
     s16 unk_1A;
 } LBL_1_BSS_9F4;
 
+#include "REL/mdpartyDll_globals.h"
+
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-extern void HuDataDirCloseAll(void);
 extern int HuAudFXPlay(int seId);
-extern int HuAudFXPlayPan(int seId, int pan);
-extern void HuAudFXStop(int seId);
+extern int HuAudFXPlayPan(int seId, s16 pan);
+extern void HuAudFXStop(int seNo);
 extern int HuAudSStreamPlay(s16 streamId);
 
-extern s16 lbl_1_bss_28;
-extern s16 lbl_1_bss_2A;
-extern s16 lbl_1_bss_2C;
-extern s16 lbl_1_bss_2E;
-extern s16 lbl_1_bss_34;
-extern float lbl_1_bss_38[6];
-extern HuVecF lbl_1_bss_50[4];
-extern HuVecF lbl_1_bss_80;
-extern HuVecF lbl_1_bss_8C[2];
-extern HuVecF lbl_1_bss_A4[4];
-extern HuVecF lbl_1_bss_D4[4];
-extern OMOBJMAN *lbl_1_bss_0;
-extern OMOBJ *lbl_1_bss_4;
-extern OMOBJ *lbl_1_bss_8;
-extern OMOBJ *lbl_1_bss_C;
-extern OMOBJ *lbl_1_bss_10;
-extern OMOBJ *lbl_1_bss_14;
-extern OMOBJ *lbl_1_bss_18;
-extern LBL_1_BSS_1C lbl_1_bss_1C;
-extern OMOBJ *lbl_1_bss_24;
-extern OMOBJ *lbl_1_bss_30;
-extern HUWINID lbl_1_bss_104[2];
-extern LBL_1_BSS_1C8_ENTRY lbl_1_bss_108[4];
-extern LBL_1_BSS_1C8_ENTRY lbl_1_bss_1C8[2];
-extern LBL_1_BSS_228_ENTRY lbl_1_bss_228[2];
-extern LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
-extern ANIMDATA *lbl_1_bss_800[41];
-extern HUSPRID lbl_1_bss_8A4[58];
-extern HUSPR_GROUPID lbl_1_bss_918[17];
-extern ANIMDATA *lbl_1_bss_93C[32];
-extern LBL_1_BSS_9BC_ENTRY lbl_1_bss_9BC[4];
-extern LBL_1_BSS_9F4 lbl_1_bss_9F4;
-extern MDCAMERA_WORK lbl_1_bss_A10;
-extern HUWINID lbl_1_bss_A60[4];
-extern HU3D_LIGHTID lbl_1_bss_A68[2];
-extern s32 lbl_1_bss_A6C[5];
-
-extern s32 lbl_1_data_0;
-extern s32 lbl_1_data_BC8;
-extern s16 lbl_1_data_4[3][4];
-extern u32 lbl_1_data_1C[32];
-extern s16 lbl_1_data_9C[17];
-extern MDSPR_INFO lbl_1_data_C0[58];
-extern u32 lbl_1_data_800[41];
-extern HuVecF lbl_1_data_8A4[67];
-extern char lbl_1_data_BCC[];
-extern s16 lbl_1_data_BEE[7];
-extern u32 lbl_1_data_BFC[14];
-extern char lbl_1_data_C34[];
-extern char lbl_1_data_C66[];
-extern char lbl_1_data_C77[];
-extern char lbl_1_data_C89[];
-extern char lbl_1_data_C9B[];
-extern char lbl_1_data_CA9[];
-extern char lbl_1_data_CAB[];
-extern char lbl_1_data_CDC[];
-extern char lbl_1_data_D0C[];
-extern char lbl_1_data_D3E[];
-extern char lbl_1_data_D60[];
-extern char lbl_1_data_D7A[];
-extern char lbl_1_data_D94[];
-extern char lbl_1_data_DB4[];
-extern char lbl_1_data_DC6[];
-extern char lbl_1_data_DD8[];
-extern char lbl_1_data_DDF[];
-extern char lbl_1_data_DF2[];
-extern char lbl_1_data_DFA[];
-extern char lbl_1_data_E02[];
-extern char lbl_1_data_E0A[];
-extern LBL_1_DATA_E12_ENTRY lbl_1_data_E12[11];
-extern s16 lbl_1_data_DA2[3];
-extern s32 lbl_1_data_DA8[3];
-extern s16 lbl_1_data_DE6[6];
-extern char lbl_1_data_ED8[];
 
 void fn_1_0(HUWINID winId, u32 mess, s16 index);
 void fn_1_1B4(void);
@@ -205,7 +136,6 @@ void fn_1_64C(void);
 void fn_1_718(void);
 void fn_1_E30(void);
 void fn_1_353C(void);
-void fn_1_4581C(void);
 void fn_1_6284(OMOBJ *obj);
 void fn_1_72C4(OMOBJ *obj);
 void fn_1_109C(s16 arg0);
@@ -341,18 +271,6 @@ s16 fn_1_31508(void);
 s16 fn_1_38314(void);
 s16 fn_1_3BEA8(void);
 void fn_1_3CA70(void);
-void fn_1_44DCC(OMOBJMAN *objman);
-void fn_1_43F3C(s16 arg0, HuVecF *arg1, s16 arg2);
-void fn_1_45A48(HuVecF *arg0);
-void fn_1_45C40(s16 arg0, HuVecF *arg1, s16 arg2);
-void fn_1_45F3C(s16 arg0, HuVecF *arg1, s16 arg2, s16 arg3);
-void fn_1_463E0(void);
-void fn_1_464A0(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo);
-
-extern void mbSaveInit(s32 boardNo);
-extern void mbSavePartyInit(
-    s32, s32, s32, s32, s32, s32, s32, s32);
-
 void fn_1_0(HUWINID winId, u32 mess, s16 index)
 {
     s32 messNum[3] = { 0xD0000, 0xD0025, -1 };

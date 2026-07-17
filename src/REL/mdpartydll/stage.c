@@ -8,6 +8,8 @@
 
 #include "dolphin/os.h"
 
+#include "REL/mdpartyDll.h"
+
 #include "game/data.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
@@ -26,28 +28,37 @@ typedef struct MdpartyStageTextureWork {
     float unk_24;
 } MDPARTY_STAGE_TEXTURE_WORK;
 
-extern s32 frandmod(s32 modulus);
-extern s32 rand8(void);
+u32 lbl_1_data_F10[9] = {
+    DATANUM(DATA_mdparty, 0x82),
+    DATANUM(DATA_mdparty, 0x83),
+    DATANUM(DATA_mdparty, 0x81),
+    DATANUM(DATA_mdparty, 0x84),
+    DATANUM(DATA_mdparty, 0x89),
+    DATANUM(DATA_mdparty, 0x89),
+    DATANUM(DATA_mdparty, 0x89),
+    DATANUM(DATA_mdparty, 0x89),
+    DATANUM(DATA_mdparty, 0x89),
+};
 
-extern u32 lbl_1_data_F10[9];
-
-extern OMOBJMAN *lbl_1_bss_A80;
-extern OMOBJ *lbl_1_bss_A84;
-extern ANIMDATA *lbl_1_bss_A88;
-extern ANIMDATA *lbl_1_bss_A8C;
-extern void *lbl_1_bss_A90;
-extern s16 lbl_1_bss_A94;
-extern HU3D_MODELID lbl_1_bss_A96[6][5];
-extern HU3D_MODELID lbl_1_bss_AD2[2];
-extern HU3D_MODELID lbl_1_bss_AD6[2];
-extern HU3D_MODELID lbl_1_bss_ADA[4];
-extern HU3D_MODELID lbl_1_bss_AE2;
-extern HU3D_MODELID lbl_1_bss_AE4[4];
-extern HU3D_MODELID lbl_1_bss_AEC;
-extern MDPARTY_STAGE_TEXTURE_WORK lbl_1_bss_AF0[2];
-extern ANIMDATA *lbl_1_bss_B40[9];
+ANIMDATA *lbl_1_bss_B40[9];
+MDPARTY_STAGE_TEXTURE_WORK lbl_1_bss_AF0[2];
+HU3D_MODELID lbl_1_bss_AEC;
+HU3D_MODELID lbl_1_bss_AE4[4];
+HU3D_MODELID lbl_1_bss_AE2;
+HU3D_MODELID lbl_1_bss_ADA[4];
+HU3D_MODELID lbl_1_bss_AD6[2];
+HU3D_MODELID lbl_1_bss_AD2[2];
+HU3D_MODELID lbl_1_bss_A96[6][5];
+s16 lbl_1_bss_A94;
+void *lbl_1_bss_A90;
+ANIMDATA *lbl_1_bss_A8C;
+ANIMDATA *lbl_1_bss_A88;
+OMOBJ *lbl_1_bss_A84;
+OMOBJMAN *lbl_1_bss_A80;
 
 void fn_1_3F5EC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
+s32 frandmod(s32 modulus);
+s32 rand8(void);
 void fn_1_3F580(s16 layerNo);
 void fn_1_3FF44(void);
 void fn_1_3FC60(OMOBJ *obj);
@@ -1340,31 +1351,3 @@ void fn_1_464A0(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
         fn_1_44300(groupNo, FALSE);
     }
 }
-
-u32 lbl_1_data_F10[9] = {
-    DATANUM(DATA_mdparty, 0x82),
-    DATANUM(DATA_mdparty, 0x83),
-    DATANUM(DATA_mdparty, 0x81),
-    DATANUM(DATA_mdparty, 0x84),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-};
-
-ANIMDATA *lbl_1_bss_B40[9];
-MDPARTY_STAGE_TEXTURE_WORK lbl_1_bss_AF0[2];
-HU3D_MODELID lbl_1_bss_AEC;
-HU3D_MODELID lbl_1_bss_AE4[4];
-HU3D_MODELID lbl_1_bss_AE2;
-HU3D_MODELID lbl_1_bss_ADA[4];
-HU3D_MODELID lbl_1_bss_AD6[2];
-HU3D_MODELID lbl_1_bss_AD2[2];
-HU3D_MODELID lbl_1_bss_A96[6][5];
-s16 lbl_1_bss_A94;
-void *lbl_1_bss_A90;
-ANIMDATA *lbl_1_bss_A8C;
-ANIMDATA *lbl_1_bss_A88;
-OMOBJ *lbl_1_bss_A84;
-OMOBJMAN *lbl_1_bss_A80;

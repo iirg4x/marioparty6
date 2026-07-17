@@ -92,6 +92,26 @@ compiler-boundary proofs are in
 [`docs/native_matching_wave100.md`](docs/native_matching_wave100.md) and
 [`docs/native_matching_wave101.md`](docs/native_matching_wave101.md).
 
+Wave 103 audits `mdparty.c`'s former 82-keyword-`extern` block instead of
+treating a successful link as ownership proof. Seventy-three declarations are
+target-backed objects defined later in the same translation unit, two are
+REL-authenticated linker labels, and seven are real DOL imports. Real owner
+headers now supply `HuDataDirCloseAll`, `mbSaveInit`, and `mbSavePartyInit`;
+the remaining four audio imports retain their byte-proven translation-unit
+visibility with authoritative signatures. The eight stage-owned prototypes
+move to the module header, while a private globals header preserves the
+compiler-required declare-before-code/define-at-tail shape. A configure-time
+gate now rejects unowned explicit externs or plain import prototypes,
+identifier/tag-only fake ownership, missing/duplicate module definitions,
+comma-packed owner/import declarations, public-header import smuggling,
+unreviewed includes, and DOL/REL authority confusion. Sixteen
+negative/positive tests pass. The cleanup adds no
+recovered-byte credit: final object reports still prove all 258 application
+functions and all 57 stage functions exact, and the serialized project gate
+re-proves the retail REL and DOL. Evidence and rejected compiler-shape probes
+are retained in
+[`docs/native_matching_wave103.md`](docs/native_matching_wave103.md).
+
 Wave 93 moves the board priority forward with one batched easy-win pass across
 `shopevent.c`, `telop.c`, `capspecial.c`, and `capsule.c`. Target frame extent,
 typed saved-register lifetimes, MP5 sibling parity, direct pointer-test nodes,

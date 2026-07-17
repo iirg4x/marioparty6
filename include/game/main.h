@@ -12,5 +12,6 @@ void HuSysVWaitSet(s16 vWait);
 s16 HuSysVWaitGet(s16 prev);
 s16 HuLoadProcModeGet(void);
 void HuLoadProcStart(void (*hook)(void));
+int rand8(void);
 
 #endif

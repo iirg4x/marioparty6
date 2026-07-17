@@ -24,6 +24,7 @@ from tools.project import (
     generate_build,
     is_windows,
 )
+from tools.check_tu_declarations import check_policy_or_exit
 
 # Game versions
 DEFAULT_VERSION = 0
@@ -153,8 +154,21 @@ config.ldflags = [
     "-nodefaults",
     # "-listclosure", # Uncomment for Wii linkers
 ]
-# Use for any additional files that should cause a re-configure when modified
-config.reconfig_deps = []
+# Re-run the mdpartydll declaration-ownership gate whenever its contract or
+# any governed source/header changes.  symbols.txt is deliberately omitted:
+# DTK rewrites it during normal builds, which would create a configure loop.
+tu_declarations_policy = Path("config") / config.version / "tu_declarations.json"
+config.reconfig_deps = [
+    Path("tools/check_tu_declarations.py"),
+    tu_declarations_policy,
+    Path("src/REL/mdpartydll/mdparty.c"),
+    Path("src/REL/mdpartydll/stage.c"),
+    Path("include/REL/mdpartyDll.h"),
+    Path("include/REL/mdpartyDll_globals.h"),
+    Path("include/game/audio.h"),
+    Path("include/game/data.h"),
+    Path("include/game/board/main.h"),
+]
 
 # Base flags, common to most GC/Wii games.
 # Generally leave untouched, with overrides added below.
@@ -1135,6 +1149,7 @@ config.libs = [
 ]
 
 if args.mode == "configure":
+    check_policy_or_exit(tu_declarations_policy)
     # Write build.ninja and objdiff.json
     generate_build(config)
 elif args.mode == "progress":

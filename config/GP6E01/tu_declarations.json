@@ -1,0 +1,146 @@
+{
+  "module_header": "include/REL/mdpartyDll.h",
+  "globals_header": "include/REL/mdpartyDll_globals.h",
+  "header_includes": {
+    "include/REL/mdpartyDll.h": ["game/object.h"],
+    "include/REL/mdpartyDll_globals.h": []
+  },
+  "dol_symbol_files": [
+    "config/GP6E01/symbols.txt"
+  ],
+  "rel_symbol_files": [
+    "config/dll/rels/mdpartydll/symbols.txt"
+  ],
+  "sources": [
+    {
+      "path": "src/REL/mdpartydll/mdparty.c",
+      "required_includes": [
+        "REL/mdpartyDll.h",
+        "REL/mdpartyDll_globals.h",
+        "game/board/main.h",
+        "game/data.h"
+      ],
+      "allowed_includes": [
+        "string.h",
+        "datadir_enum.h",
+        "dolphin/os.h",
+        "REL/mdpartyDll.h",
+        "game/armem.h",
+        "game/board/main.h",
+        "game/charman.h",
+        "game/data.h",
+        "game/flag.h",
+        "game/gamework.h",
+        "game/hu3d.h",
+        "game/object.h",
+        "game/pad.h",
+        "game/printfunc.h",
+        "game/sprite.h",
+        "game/window.h",
+        "game/wipe.h",
+        "REL/mdpartyDll_globals.h"
+      ],
+      "allowed_externs": {
+        "_ctors": {
+          "declaration": "extern const VoidFunc _ctors[];",
+          "authority": "rel"
+        },
+        "_dtors": {
+          "declaration": "extern const VoidFunc _dtors[];",
+          "authority": "rel"
+        },
+        "HuAudFXPlay": {
+          "declaration": "extern int HuAudFXPlay(int seId);",
+          "authority": "dol"
+        },
+        "HuAudFXPlayPan": {
+          "declaration": "extern int HuAudFXPlayPan(int seId, s16 pan);",
+          "authority": "dol"
+        },
+        "HuAudFXStop": {
+          "declaration": "extern void HuAudFXStop(int seNo);",
+          "authority": "dol"
+        },
+        "HuAudSStreamPlay": {
+          "declaration": "extern int HuAudSStreamPlay(s16 streamId);",
+          "authority": "dol"
+        }
+      }
+    },
+    {
+      "path": "src/REL/mdpartydll/stage.c",
+      "required_includes": ["REL/mdpartyDll.h"],
+      "allowed_includes": [
+        "dolphin/math.h",
+        "string.h",
+        "dolphin/os.h",
+        "REL/mdpartyDll.h",
+        "game/data.h",
+        "game/hu3d.h",
+        "game/memory.h",
+        "game/object.h",
+        "game/sprite.h"
+      ],
+      "allowed_externs": {},
+      "allowed_import_prototypes": {
+        "frandmod": {
+          "declaration": "s32 frandmod(s32 modulus);",
+          "authority": "dol"
+        },
+        "rand8": {
+          "declaration": "s32 rand8(void);",
+          "authority": "dol"
+        }
+      }
+    }
+  ],
+  "module_functions": [
+    "fn_1_43F3C",
+    "fn_1_44DCC",
+    "fn_1_4581C",
+    "fn_1_45A48",
+    "fn_1_45C40",
+    "fn_1_45F3C",
+    "fn_1_463E0",
+    "fn_1_464A0"
+  ],
+  "owned_functions": [
+    {
+      "symbol": "HuDataDirCloseAll",
+      "header": "include/game/data.h",
+      "declaration": "void HuDataDirCloseAll(void);"
+    },
+    {
+      "symbol": "mbSaveInit",
+      "header": "include/game/board/main.h",
+      "declaration": "void mbSaveInit(s32 boardNo);"
+    },
+    {
+      "symbol": "mbSavePartyInit",
+      "header": "include/game/board/main.h",
+      "declaration": "void mbSavePartyInit(BOOL teamF, BOOL bonusStarF, s32 mgPack, s32 turnMax, s32 handicapP1, s32 handicapP2, s32 handicapP3, s32 handicapP4);"
+    }
+  ],
+  "mirrored_prototypes": [
+    {
+      "symbol": "HuAudFXPlay",
+      "source": "src/REL/mdpartydll/mdparty.c",
+      "header": "include/game/audio.h"
+    },
+    {
+      "symbol": "HuAudFXPlayPan",
+      "source": "src/REL/mdpartydll/mdparty.c",
+      "header": "include/game/audio.h"
+    },
+    {
+      "symbol": "HuAudFXStop",
+      "source": "src/REL/mdpartydll/mdparty.c",
+      "header": "include/game/audio.h"
+    },
+    {
+      "symbol": "HuAudSStreamPlay",
+      "source": "src/REL/mdpartydll/mdparty.c",
+      "header": "include/game/audio.h"
+    }
+  ]
+}
