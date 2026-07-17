@@ -1092,7 +1092,7 @@ config.libs = [
     Rel(
         "mdpartydll",
         objects={
-            Object(NonMatching, "REL/mdpartydll/mdparty.c"),
+            Object(Matching, "REL/mdpartydll/mdparty.c"),
             Object(Matching, "REL/mdpartydll/stage.c"),
             Object(
                 Matching,

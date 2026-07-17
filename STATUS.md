@@ -30,7 +30,8 @@ configured `Matching`, and the source-linked `0x10A54` code-byte REL passes
 the complete object, relocation, REL, SHA, and DOL gates. The former
 boot-to-mode-select blocker is therefore closed.
 
-The current flow priority is `mdpartydll.rel`. Wave 91 proves four more
+The Priority 1 flow owner `mdpartydll.rel` is recovered and source-linked.
+Wave 91 proves four more
 application functions and `0x34F4` target bytes exact through authenticated
 helper-boundary, lifetime, expression-tree, and control-flow recovery. Wave 92
 then recovers the target initializer chronology and assignment-condition shape
@@ -52,20 +53,32 @@ both `fn_1_2B0` and its `fn_1_400` inline copy for another `0x39C` bytes.
 Wave 100's target/compiler audit then restores the required automatic-inline
 boundary around `fn_1_BB30` without suppressing its inner transform, making
 `fn_1_BBD8` exact for another `0x580` bytes while preserving both direct helper
-relocations. The application owner represents all 258 functions and all
-`0x3F424` target text bytes; 254 functions and `0x3C748` bytes are exact,
-while 4 functions and
-`0x2CDC` bytes remain compiler-shape residues. Combined application/stage
-evidence represents all 315 functions and all `0x467FC` text bytes, of which
-311 functions and `0x43B20` bytes are exact. Wave 98 recovers all `0xF0D`
+relocations. Wave 101 recovers `fn_1_2EBEC`'s signed-short return contract and
+the translation-unit-local implicit-call contract for `HuAudSStreamFadeOut`,
+closing `fn_1_2EBEC` and the `0x1920` `fn_1_2F22C` for another `0x1C58` bytes.
+It also replaces two falsely split message words with the target-proven
+`s32[2]` owner used by all fixed and indexed consumers. Restoring
+`fn_1_38314` as the same signed-short, no-final-return Hudson flow class then
+closes its `0x728` body and supplies the one eliminated temporary needed to
+reproduce `fn_1_3EAC8`'s wrapped allocator chronology. Wave 101 therefore
+closes all former `0x2CDC` residual bytes. The final source-link gate also
+exposes two exact functions emitted in swapped order and 5,158 self-relocation
+records whose sites and types are exact but whose `.bss` addends reflect the
+reversed MWCC tail-definition order. Restoring target function chronology and
+placing the same typed zero-initialized owners in the compiler-proven reverse
+definition order closes the complete relocation stream without padding or a
+binary edit. The application owner represents all 258 functions and all
+`0x3F424` target text bytes exactly. Combined application/stage evidence
+represents all 315 functions and all `0x467FC` text bytes exactly. Wave 98
+recovers all `0xF0D`
 semantic initialized-data bytes as typed resource, sprite, position, state,
 string, and selection-graph owners; each byte matches the target. The target
-split's `0xF10` extent
-ends with three section-alignment zeros, so no padding global is fabricated.
-`mdparty.c` remains `C-not-yet-matched`, so the module is still outside the
-conservative fully recovered REL total. The separate 19-function, `0xA44`
-compiler runtime remains exact and source-linked only under the authenticated
-original-assembly exception. Evidence is retained
+split's `0xF10` extent ends with three section-alignment zeros, so no padding
+global is fabricated. `mdparty.c` is now configured `Matching`; together with
+the already exact stage owner and the separate 19-function, `0xA44` compiler
+runtime admitted only under the authenticated original-assembly exception,
+the complete `mdpartydll.rel` is source-linked and byte-identical. The runtime
+does not count as clean C. Evidence is retained
 in [`docs/native_matching_wave91.md`](docs/native_matching_wave91.md) and
 [`docs/native_matching_wave92.md`](docs/native_matching_wave92.md), with the
 shared-flow proof in
@@ -74,7 +87,10 @@ typed-contract proof in
 [`docs/native_matching_wave97.md`](docs/native_matching_wave97.md). The data
 proof is in [`docs/native_matching_wave98.md`](docs/native_matching_wave98.md),
 and the ARAM null-contract proof is in
-[`docs/native_matching_wave99.md`](docs/native_matching_wave99.md).
+[`docs/native_matching_wave99.md`](docs/native_matching_wave99.md). The
+compiler-boundary proofs are in
+[`docs/native_matching_wave100.md`](docs/native_matching_wave100.md) and
+[`docs/native_matching_wave101.md`](docs/native_matching_wave101.md).
 
 Wave 93 moves the board priority forward with one batched easy-win pass across
 `shopevent.c`, `telop.c`, `capspecial.c`, and `capsule.c`. Target frame extent,
@@ -115,13 +131,15 @@ The evidence-backed target ledger at this build is:
 - DOL `game/` plus `board/`: `696000 / 1431136` target `.text` bytes Matching
   (48.63%), across 70/97 owners. `game/` is 57/57 and `board/` is 13/40;
   Branch is the latest Board promotion.
-- required board/flow RELs: `73264 / ~3100000` target `.text` bytes in fully
-  source-linked modules (approximately 2.36%). The conservative done set is
-  `actmanDLL` (`2412`), `sequencedll` (`2672`), and `mdseldll` (`68180`:
+- required board/flow RELs: `364656 / ~3100000` target `.text` bytes in fully
+  source-linked modules (approximately 11.76%). The conservative done set is
+  `actmanDLL` (`2412`), `sequencedll` (`2672`), `mdseldll` (`68180`:
   `65552` exact C application bytes plus `2628` authenticated compiler-runtime
-  assembly bytes). `bootDll`, `selmenuDll`, and `fileseldll` are not counted
-  because each still links a fallback runtime owner. No auto-generated or
-  fallback-linked text owner is counted as recovered source.
+  assembly bytes), and `mdpartydll` (`291392`: `288764` exact C application and
+  stage bytes plus `2628` authenticated compiler-runtime assembly bytes).
+  `bootDll`, `selmenuDll`, and `fileseldll` are not counted because each still
+  links a fallback runtime owner. No auto-generated or fallback-linked text
+  owner is counted as recovered source.
 
 ## Verification
 
@@ -143,10 +161,10 @@ The evidence-backed target ledger at this build is:
   byte-identical
 - `build/GP6E01/mdpartydll/mdpartydll.rel` SHA-1:
   `519debb149ef42eda1ab3b0a4d2b3132b4f3e3cc`
-- DTK progress at that build: 10.04% code and 31.85% data overall; 47.42% code
-  and 74.59% data in the DOL; 2.12% code and 4.77% data in REL modules
-- Matching owners at that build: 307 of 900 overall, 294 of 396 in the DOL,
-  and 13 of 504 in the REL modules
+- DTK progress at that build: 12.13% code and 32.25% data overall; 47.42% code
+  and 74.59% data in the DOL; 4.65% code and 5.42% data in REL modules
+- Matching owners at that build: 308 of 900 overall, 294 of 396 in the DOL,
+  and 14 of 504 in the REL modules
 - DOL policy split: 255 matching owners without the assembly exception, 39
   matching owners admitted under the source-authentication exception, 101
   `C-not-yet-matched` fallback owners, and 1 `original-was-asm` fallback owner
@@ -1230,7 +1248,7 @@ decompiled owners. Evidence is retained in
 
 ### Active REL fallback taxonomy
 
-The same two buckets apply to every configured REL fallback owner. These five
+The same two buckets apply to every configured REL fallback owner. These four
 owners are separate from the 396-owner DOL ledger:
 
 | Owner | Bucket and reason | Authentication or current evidence |
@@ -1239,7 +1257,13 @@ owners are separate from the 396-owner DOL ledger:
 | `REL/selmenuDll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/fileseldll/runtime.c` | `original-was-asm`; `ASM-GATE-PENDING`; longstanding fallback, never de-flipped | Same MP5 Runtime source authentication; MP6 object/link proof remains pending. |
 | `REL/meschkdll/meschkdll.c` | `C-not-yet-matched`; `SRC-DIVERGES`; never de-flipped | Five functions are exact; `fn_1_188` remains divergent, so the owner stays fallback-linked. |
-| `REL/mdpartydll/mdparty.c` | `C-not-yet-matched`; `SRC-DIVERGES`; new owner, never de-flipped | All 258 functions and all `0x3F424` target text bytes are represented. 254 functions and `0x3C748` bytes are exact. Four functions and `0x2CDC` bytes remain compiler-shape residues. Wave 98 recovers all `0xF0D` semantic initialized-data bytes; the target split's remaining three bytes are section alignment. Wave 99 recovers the pointer-null ARAM contract in `fn_1_2B0` and its `fn_1_400` inline copy. Wave 100 restores the target-proven automatic-inline boundary around `fn_1_BB30`, closing `fn_1_BBD8` without regressing either helper. The real 17-entry group tables, `0x20` `MDSPR_INFO`, typed resource/position banks, strings, state, and 11-entry selection graph replace missing owners without a blob or padding global. No fake local, register force, inline assembly, synthetic literal global, or unproved Matching flip was admitted; the compiler-control guard is byte-proven but remains source-quality debt because no Hudson/Nintendo sibling spelling is available. |
+
+Wave 101 resolves the former `REL/mdpartydll/mdparty.c` fallback row. All 258
+functions and all `0x3F424` application text bytes are exact, all semantic
+initialized data is represented, and the owner is configured `Matching` only
+after the source-linked REL and full project gates pass. The standard compiler
+runtime remains source-linked solely under the authenticated original-assembly
+exception and contributes no clean-C credit.
 
 Wave 70 resolves the two former `mdseldll` fallback rows. Application owner
 `REL/mdseldll/mdsel.c` leaves `C-not-yet-matched` after all 113 functions and
@@ -1478,6 +1502,38 @@ The final serialized Ninja build and explicit DTK checksum each report 137
 files OK; `main.dol` and `mdpartydll.rel` compare byte-identical, and the build
 leaves `config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
 [`docs/native_matching_wave100.md`](docs/native_matching_wave100.md).
+
+Wave 101 restores two prototype-visibility contracts and the paired-message
+state owner. `fn_1_2EBEC` is a signed-short flow helper whose ignored return is
+intentionally absent in source; the non-void carrier supplies the target's
+three formerly missing `r3` interferences and makes its `0x338` body exact.
+The removed TU-local `void HuAudSStreamFadeOut` declaration was added during
+reconstruction after this file already called the function without a visible
+prototype. GC/1.3.2 therefore originally applies its C89 implicit signed-int
+call contract. Restoring that visibility—not changing the real void callee—
+recreates the call-result carrier and complete allocation graph that makes all
+`0x1920` bytes of `fn_1_2F22C` exact. The target's fixed and indexed accesses
+also prove that `LBL_1_BSS_9F4` owns one `s32 unk_10[2]`, replacing undefined
+cross-member arithmetic while remaining byte-neutral in every consumer.
+Restoring `fn_1_38314` as a signed-short flow helper closes its complete
+`0x728` body and creates one ignored, eliminated return temporary at its sole
+caller. The exact compiler oracle proves that this moves the subsequent
+temporary wrap from `v32` to `v33`, reproducing all six former
+`fn_1_3EAC8` differences and closing its `0x95C` target body. The application
+owner reaches 258/258 exact functions and `0x3F424 / 0x3F424` exact text; with
+the already exact stage and authenticated compiler runtime, `mdpartydll.rel`
+is fully source-linked and `mdparty.c` is configured `Matching`. The link gate
+also proves target definition order for `fn_1_26328` before `fn_1_28044` and
+the descending tail declaration order needed for GC/1.3.2 to emit all `0xA80`
+`.bss` bytes at their retail offsets. Before those corrections, 5,158
+module-1 relocation records differed only in `.bss` addends; afterward all
+17,155 self-relocation records and all `0x70A44` REL bytes are exact. No
+callee ABI rewrite, fake return, register force, inline assembly, padding
+owner, or relocation edit is admitted.
+The final serialized Ninja build and explicit DTK checksum each report 137
+files OK; `main.dol` and `mdpartydll.rel` compare byte-identical, and the build
+leaves `config/GP6E01/symbols.txt` unchanged. Detailed evidence is in
+[`docs/native_matching_wave101.md`](docs/native_matching_wave101.md).
 
 Wave 89 restores target evaluation order in the `0x710` camera controller
 `fn_1_2B74` and authentic helper boundaries in `fn_1_EB74` (`0xCC4`) and

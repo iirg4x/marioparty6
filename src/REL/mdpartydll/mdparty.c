@@ -108,8 +108,7 @@ typedef struct Lbl1Bss9F4 {
     s16 unk_A;
     s16 unk_C;
     s16 unk_E;
-    s32 unk_10;
-    s32 unk_14;
+    s32 unk_10[2];
     s16 unk_18;
     s16 unk_1A;
 } LBL_1_BSS_9F4;
@@ -122,7 +121,6 @@ extern int HuAudFXPlay(int seId);
 extern int HuAudFXPlayPan(int seId, int pan);
 extern void HuAudFXStop(int seId);
 extern int HuAudSStreamPlay(s16 streamId);
-extern void HuAudSStreamFadeOut(int streamNo, s32 speed);
 
 extern s16 lbl_1_bss_28;
 extern s16 lbl_1_bss_2A;
@@ -337,10 +335,10 @@ void fn_1_2BBD8(OMOBJ *obj);
 void fn_1_2C874(void);
 void fn_1_2CE00(void);
 s16 fn_1_2E638(void);
-void fn_1_2EBEC(void);
+s16 fn_1_2EBEC(void);
 s16 fn_1_2EF24(void);
 s16 fn_1_31508(void);
-void fn_1_38314(void);
+s16 fn_1_38314(void);
 s16 fn_1_3BEA8(void);
 void fn_1_3CA70(void);
 void fn_1_44DCC(OMOBJMAN *objman);
@@ -4577,8 +4575,8 @@ void fn_1_21C9C(OMOBJ *obj)
     s16 i;
 
     lbl_1_bss_9F4.unk_E = 0;
-    lbl_1_bss_9F4.unk_10 = 0x30037;
-    lbl_1_bss_9F4.unk_14 = 0x30037;
+    lbl_1_bss_9F4.unk_10[0] = 0x30037;
+    lbl_1_bss_9F4.unk_10[1] = 0x30037;
     if (obj->work[0] == 0) {
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[i];
@@ -4588,7 +4586,7 @@ void fn_1_21C9C(OMOBJ *obj)
             fn_1_C158(entry->chrSel, 3, entry->chrSel, 1);
         }
         fn_1_96E4(
-            lbl_1_bss_9F4.unk_10, lbl_1_bss_9F4.unk_14);
+            lbl_1_bss_9F4.unk_10[0], lbl_1_bss_9F4.unk_10[1]);
         fn_1_9E9C();
     }
     if (obj->work[0]++ > 10) {
@@ -4602,16 +4600,16 @@ void fn_1_22010(OMOBJ *obj)
     LBL_1_BSS_9BC_ENTRY *entry;
     s16 i;
 
-    lbl_1_bss_9F4.unk_10 = 0x30037;
-    lbl_1_bss_9F4.unk_14 = 0x30037;
+    lbl_1_bss_9F4.unk_10[0] = 0x30037;
+    lbl_1_bss_9F4.unk_10[1] = 0x30037;
     if (obj->work[0] == 0) {
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[i];
             fn_1_C158(entry->chrSel, 0, entry->chrSel, 1);
             fn_1_C158(entry->chrSel, 2, entry->chrSel, 1);
         }
-        fn_1_9658(0, lbl_1_bss_9F4.unk_10);
-        fn_1_9658(1, lbl_1_bss_9F4.unk_14);
+        fn_1_9658(0, lbl_1_bss_9F4.unk_10[0]);
+        fn_1_9658(1, lbl_1_bss_9F4.unk_10[1]);
     }
     if (obj->work[0]++ > 10) {
         obj->objFunc = NULL;
@@ -4625,18 +4623,18 @@ void fn_1_221F4(OMOBJ *obj)
     LBL_1_BSS_9BC_ENTRY *entry;
 
     if (obj->work[0] == 0) {
-        lbl_1_bss_9F4.unk_10 = fn_1_9558(
+        lbl_1_bss_9F4.unk_10[0] = fn_1_9558(
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][0]].chrSel,
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][1]].chrSel);
-        lbl_1_bss_9F4.unk_14 = fn_1_9558(
+        lbl_1_bss_9F4.unk_10[1] = fn_1_9558(
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][2]].chrSel,
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][3]].chrSel);
-        fn_1_9658(0, lbl_1_bss_9F4.unk_10);
-        fn_1_9658(1, lbl_1_bss_9F4.unk_14);
+        fn_1_9658(0, lbl_1_bss_9F4.unk_10[0]);
+        fn_1_9658(1, lbl_1_bss_9F4.unk_10[1]);
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][i]];
@@ -4857,7 +4855,7 @@ void fn_1_232A0(OMOBJ *obj)
     }
     if (obj->work[0]++ >= 10) {
         fn_1_96E4(
-            lbl_1_bss_9F4.unk_10, lbl_1_bss_9F4.unk_14);
+            lbl_1_bss_9F4.unk_10[0], lbl_1_bss_9F4.unk_10[1]);
         for (i = 0; i < 4; i++) {
             player = &lbl_1_bss_9BC[i];
             if (player->unk_4 == 1) {
@@ -5172,22 +5170,6 @@ void fn_1_25D10(OMOBJ *obj)
     }
 }
 
-void fn_1_28044(OMOBJ *obj)
-{
-    HuVecF pos;
-
-    Hu3DModelPosGet(
-        lbl_1_bss_288[lbl_1_bss_9F4.unk_18 + 21].modelId, &pos);
-    fn_1_A970(2, &pos, 0.0f, -65.0f);
-    fn_1_A970(3, &pos, 0.0f, 65.0f);
-    pos.x = 0.0f;
-    fn_1_A970(4, &pos, -220.0f, 0.0f);
-    fn_1_A970(5, &pos, 220.0f, 0.0f);
-    obj->work[0] = 10;
-    obj->objFunc = fn_1_26328;
-    lbl_1_bss_24->mtnId[0] = 1;
-}
-
 void fn_1_26328(OMOBJ *obj)
 {
     HuVecF pos;
@@ -5314,6 +5296,22 @@ void fn_1_26328(OMOBJ *obj)
         lbl_1_bss_288[lbl_1_bss_9F4.unk_18 + 21].modelId, &pos);
     fn_1_A8D8(2, &pos, 0.0f, -65.0f);
     fn_1_A8D8(3, &pos, 0.0f, 65.0f);
+}
+
+void fn_1_28044(OMOBJ *obj)
+{
+    HuVecF pos;
+
+    Hu3DModelPosGet(
+        lbl_1_bss_288[lbl_1_bss_9F4.unk_18 + 21].modelId, &pos);
+    fn_1_A970(2, &pos, 0.0f, -65.0f);
+    fn_1_A970(3, &pos, 0.0f, 65.0f);
+    pos.x = 0.0f;
+    fn_1_A970(4, &pos, -220.0f, 0.0f);
+    fn_1_A970(5, &pos, 220.0f, 0.0f);
+    obj->work[0] = 10;
+    obj->objFunc = fn_1_26328;
+    lbl_1_bss_24->mtnId[0] = 1;
 }
 
 void fn_1_28434(OMOBJ *obj)
@@ -5614,7 +5612,7 @@ s16 fn_1_2E638(void)
     return TRUE;
 }
 
-void fn_1_2EBEC(void)
+s16 fn_1_2EBEC(void)
 {
     HuVecF pos;
 
@@ -5633,7 +5631,7 @@ void fn_1_2EBEC(void)
     }
 }
 
-inline void fn_1_2EBEC(void);
+inline s16 fn_1_2EBEC(void);
 
 s16 fn_1_2EF24(void)
 {
@@ -6219,7 +6217,7 @@ s16 fn_1_3736C(s16 arg0)
         if (arg0 == 0) {
             return 0;
         }
-        fn_1_96E4(lbl_1_bss_9F4.unk_10, lbl_1_bss_9F4.unk_14);
+        fn_1_96E4(lbl_1_bss_9F4.unk_10[0], lbl_1_bss_9F4.unk_10[1]);
         return 1;
     }
     if (arg0 == 0) {
@@ -6275,11 +6273,11 @@ s16 fn_1_3736C(s16 arg0)
     return result;
 }
 
-void fn_1_38314(void)
+s16 fn_1_38314(void)
 {
     fn_1_5194();
-    fn_1_4258(3, lbl_1_bss_9F4.unk_10, 0);
-    fn_1_4258(3, lbl_1_bss_9F4.unk_14, 1);
+    fn_1_4258(3, lbl_1_bss_9F4.unk_10[0], 0);
+    fn_1_4258(3, lbl_1_bss_9F4.unk_10[1], 1);
     fn_1_4020(3, 0xD0016, 1);
     fn_1_3EC8();
     fn_1_9804();
@@ -6426,12 +6424,12 @@ s16 fn_1_3AD84(s16 arg0)
         fn_1_444C(0x1000A);
         fn_1_52B0();
         fn_1_4258(2,
-            *(&lbl_1_bss_9F4.unk_10 + lbl_1_bss_9F4.unk_C), 0);
+            lbl_1_bss_9F4.unk_10[lbl_1_bss_9F4.unk_C], 0);
         fn_1_4020(2, 0xD0027, 0);
         while (TRUE) {
             HuPrcVSleep();
             fn_1_4258(2,
-                *(&lbl_1_bss_9F4.unk_10 + lbl_1_bss_9F4.unk_C), 0);
+                lbl_1_bss_9F4.unk_10[lbl_1_bss_9F4.unk_C], 0);
             fn_1_4020(2, 0xD0027, 0);
             if (!fn_1_D678()) {
                 continue;
@@ -7046,39 +7044,39 @@ LBL_1_DATA_E12_ENTRY lbl_1_data_E12[11] = {
 };
 char lbl_1_data_ED8[] = "\n-----===== MARIO PARTY 6 :: PARTY MODE =====-----\n\n";
 
-OMOBJMAN *lbl_1_bss_0;
-OMOBJ *lbl_1_bss_4;
-OMOBJ *lbl_1_bss_8;
-OMOBJ *lbl_1_bss_C;
-OMOBJ *lbl_1_bss_10;
-OMOBJ *lbl_1_bss_14;
-OMOBJ *lbl_1_bss_18;
-LBL_1_BSS_1C lbl_1_bss_1C;
-OMOBJ *lbl_1_bss_24;
-s16 lbl_1_bss_28;
-s16 lbl_1_bss_2A;
-s16 lbl_1_bss_2C;
-s16 lbl_1_bss_2E;
-OMOBJ *lbl_1_bss_30;
-s16 lbl_1_bss_34;
-float lbl_1_bss_38[6];
-HuVecF lbl_1_bss_50[4];
-HuVecF lbl_1_bss_80;
-HuVecF lbl_1_bss_8C[2];
-HuVecF lbl_1_bss_A4[4];
-HuVecF lbl_1_bss_D4[4];
-HUWINID lbl_1_bss_104[2];
-LBL_1_BSS_1C8_ENTRY lbl_1_bss_108[4];
-LBL_1_BSS_1C8_ENTRY lbl_1_bss_1C8[2];
-LBL_1_BSS_228_ENTRY lbl_1_bss_228[2];
-LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
-ANIMDATA *lbl_1_bss_800[41];
-HUSPRID lbl_1_bss_8A4[58];
-HUSPR_GROUPID lbl_1_bss_918[17];
-ANIMDATA *lbl_1_bss_93C[32];
-LBL_1_BSS_9BC_ENTRY lbl_1_bss_9BC[4];
-LBL_1_BSS_9F4 lbl_1_bss_9F4;
-MDCAMERA_WORK lbl_1_bss_A10;
-HUWINID lbl_1_bss_A60[4];
-HU3D_LIGHTID lbl_1_bss_A68[2];
 s32 lbl_1_bss_A6C[5];
+HU3D_LIGHTID lbl_1_bss_A68[2];
+HUWINID lbl_1_bss_A60[4];
+MDCAMERA_WORK lbl_1_bss_A10;
+LBL_1_BSS_9F4 lbl_1_bss_9F4;
+LBL_1_BSS_9BC_ENTRY lbl_1_bss_9BC[4];
+ANIMDATA *lbl_1_bss_93C[32];
+HUSPR_GROUPID lbl_1_bss_918[17];
+HUSPRID lbl_1_bss_8A4[58];
+ANIMDATA *lbl_1_bss_800[41];
+LBL_1_BSS_288_ENTRY lbl_1_bss_288[25];
+LBL_1_BSS_228_ENTRY lbl_1_bss_228[2];
+LBL_1_BSS_1C8_ENTRY lbl_1_bss_1C8[2];
+LBL_1_BSS_1C8_ENTRY lbl_1_bss_108[4];
+HUWINID lbl_1_bss_104[2];
+HuVecF lbl_1_bss_D4[4];
+HuVecF lbl_1_bss_A4[4];
+HuVecF lbl_1_bss_8C[2];
+HuVecF lbl_1_bss_80;
+HuVecF lbl_1_bss_50[4];
+float lbl_1_bss_38[6];
+s16 lbl_1_bss_34;
+OMOBJ *lbl_1_bss_30;
+s16 lbl_1_bss_2E;
+s16 lbl_1_bss_2C;
+s16 lbl_1_bss_2A;
+s16 lbl_1_bss_28;
+OMOBJ *lbl_1_bss_24;
+LBL_1_BSS_1C lbl_1_bss_1C;
+OMOBJ *lbl_1_bss_18;
+OMOBJ *lbl_1_bss_14;
+OMOBJ *lbl_1_bss_10;
+OMOBJ *lbl_1_bss_C;
+OMOBJ *lbl_1_bss_8;
+OMOBJ *lbl_1_bss_4;
+OMOBJMAN *lbl_1_bss_0;
