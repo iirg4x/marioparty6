@@ -414,7 +414,7 @@ void fn_1_2B0(void)
     s32 status;
 
     for (i = 0; i < 4; i++) {
-        if (CharMotionAMemPGet(GwPlayer[i].charNo) == 0) {
+        if ((void *)CharMotionAMemPGet(GwPlayer[i].charNo) == NULL) {
             break;
         }
     }
