@@ -1118,6 +1118,23 @@ config.libs = [
         },
     ),
     Rel(
+        "w01Dll",
+        objects={
+            Object(
+                NonMatching,
+                "REL/w01Dll/world01.c",
+                mw_version="GC/2.7",
+            ),
+            Object(
+                NonMatching,
+                "REL/w01Dll/runtime.c",
+                source="REL/w01Dll/runtime.c",
+                mw_version="GC/2.7",
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
         "sequencedll",
         objects={
             Object(
