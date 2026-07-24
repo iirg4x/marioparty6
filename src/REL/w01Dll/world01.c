@@ -47,6 +47,8 @@ static inline BOOL MBTimeDayGet(void)
 
 typedef void (*VoidFunc)(void);
 typedef float (*CurveSlopeFunc)();
+typedef float (*W01CurveEval)(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d,
+    float t);
 
 typedef struct W01StarMasuWork {
     u8 unk00[4];
@@ -1146,9 +1148,9 @@ void fn_1_13CC(void)
     spanLength = 1.2f * work->length;
     height = sqrtf(FN13CC_HEIGHT);
     controlPos.x = work->startPos.x
-        + ((controlT = work->halfLength / work->length) * work->delta.x);
-    controlPos.y = work->startPos.y + (controlT * work->delta.y) - height;
-    controlPos.z = work->startPos.z + (controlT * work->delta.z);
+        + (work->delta.x * (controlT = work->halfLength / work->length));
+    controlPos.y = work->startPos.y + (work->delta.y * controlT) - height;
+    controlPos.z = work->startPos.z + (work->delta.z * controlT);
     count = 10;
     t = 0.0f;
     simpsonLength = 0.0f;
@@ -4410,6 +4412,93 @@ void fn_1_DEA4(void)
     }
 }
 
+static inline float W01HermiteIntegrate(W01CurveEval eval,
+    HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
+{
+    int i;
+    int div;
+    float sampleLength;
+    float baseT;
+    float sampleT;
+    float deltaT;
+
+    div = 10;
+    baseT = 0.0f;
+    deltaT = (t - baseT) / div;
+    sampleT = baseT;
+    sampleLength = 0.0f;
+    for (i = 0; i < div - 1; i++) {
+        sampleT += deltaT;
+        sampleLength += eval(a, b, c, d, sampleT);
+    }
+    sampleLength = deltaT * 0.5
+        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t)
+            + (2.0 * sampleLength));
+    return sampleLength;
+}
+
+static inline float W01CurveNewton(W01CurveEval eval, HuVecF *a,
+    HuVecF *b, HuVecF *c, HuVecF *d, float t, float distance, int maxStep)
+{
+    int step;
+    float sampleLength;
+    float pathLength;
+    float oldT;
+    float minLength;
+
+    minLength = 0.1f;
+    step = 0;
+    do {
+        pathLength = W01HermiteIntegrate(eval, a, b, c, d, t) - distance;
+        if (fabs(sampleLength = eval(a, b, c, d, t)) < minLength) {
+            sampleLength = 1.0f;
+        }
+        oldT = t;
+        t -= pathLength / sampleLength;
+        step++;
+    } while (t != oldT && step < maxStep);
+    return t;
+}
+
+static inline void W01PlayerJumpFinish(int playerNo, HuVecF *dstPos,
+    float dstRotY, float jumpHeight, int maxTime)
+{
+    HuVecF srcPos;
+    HuVecF pos;
+    HuVecF delta;
+    int time;
+    int timeRemaining;
+    float srcRotY;
+    float t;
+    float rotT;
+
+    mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    mbPlayerPosGet(playerNo, &srcPos);
+    srcRotY = mbPlayerRotYGet(playerNo);
+    VECSubtract(dstPos, &srcPos, &delta);
+    for (time = 0; time <= maxTime; time++) {
+        t = time / (float)maxTime;
+        if ((u32)time == maxTime - 6) {
+            mbPlayerMotionShiftSet(playerNo, 5, 0.0f, 2.0f,
+                HU3D_MOTATTR_NONE);
+        }
+        pos.x = srcPos.x + (t * delta.x);
+        pos.y = srcPos.y + (t * delta.y)
+            + (jumpHeight * HuSin(180.0f * t));
+        pos.z = srcPos.z + (t * delta.z);
+        mbPlayerPosSetV(playerNo, &pos);
+        rotT = time / 6.0f;
+        if (rotT > 1.0f) {
+            rotT = 1.0f;
+        }
+        mbPlayerRotYSet(playerNo, mbAngleLerp(srcRotY, dstRotY, rotT));
+        timeRemaining = maxTime - time;
+        mbPlayerWorkGet(playerNo)->_unk08 = timeRemaining;
+        HuPrcVSleep();
+    }
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
+}
+
 void fn_1_E234(int playerNo)
 {
     HuVecF a;
@@ -4426,9 +4515,6 @@ void fn_1_E234(int playerNo)
     HuVecF preSlopeA;
     HuVecF slopeB;
     HuVecF slopeA;
-    HuVecF moveDelta;
-    HuVecF movePos;
-    HuVecF startPos;
     HuVecF *initialPoint;
     HuVecF *pathPoint;
     s16 masuId;
@@ -4438,25 +4524,9 @@ void fn_1_E234(int playerNo)
     s32 segmentNo;
     s32 initialPointNo;
     s32 pathPointNo;
-    s32 div;
-    s32 step;
-    s32 sampleNo;
-    s32 timeRemaining;
-    s32 time2;
     float t;
-    float workT;
     float distance;
     float speed;
-    float finalT;
-    float minLength;
-    float sampleLength;
-    float weight;
-    float oldT;
-    float pathLength;
-    float result;
-    float srcRotY;
-    float rotWeight;
-    float sampleT;
     float angle;
 
     segmentNo = 0;
@@ -4520,40 +4590,8 @@ void fn_1_E234(int playerNo)
         c = slopeA;
         d = slopeB;
 
-        workT = t;
-        minLength = 0.1f;
-        step = 0;
-        do {
-            float baseT;
-            float slope;
-            float deltaT;
-
-            div = 10;
-            baseT = 0.0f;
-            deltaT = (workT - baseT) / div;
-            sampleT = baseT;
-            sampleLength = 0.0f;
-            for (sampleNo = 0; sampleNo < div - 1; sampleNo++) {
-                sampleT += deltaT;
-                sampleLength += ((CurveSlopeFunc)(u32)fn_1_14BF0)(
-                    &a, &b, &c, &d, sampleT);
-            }
-            sampleLength = deltaT * 0.5
-                * (((CurveSlopeFunc)(u32)fn_1_14BF0)(&a, &b, &c, &d, baseT)
-                    + ((CurveSlopeFunc)(u32)fn_1_14BF0)(&a, &b, &c, &d, workT)
-                    + (2.0 * sampleLength));
-            result = sampleLength;
-            pathLength = result - distance;
-            if (fabs(slope = ((CurveSlopeFunc)(u32)fn_1_14BF0)(
-                    &a, &b, &c, &d, workT)) < minLength) {
-                slope = 1.0f;
-            }
-            oldT = workT;
-            workT -= pathLength / slope;
-            step++;
-        } while (workT != oldT && step < 10);
-        finalT = workT;
-        t = finalT;
+        t = W01CurveNewton((W01CurveEval)(u32)fn_1_14BF0,
+            &a, &b, &c, &d, t, distance, 10);
         mbHermiteCalcV(&a, &b, &c, &d, &pos, t);
         mbPlayerPosGet(playerNo, &playerPos);
         PSVECSubtract(&pos, &playerPos, &delta);
@@ -4578,30 +4616,7 @@ void fn_1_E234(int playerNo)
     PSVECSubtract(&masuPos, &endPlayerPos, &delta);
     angle = HuAtan(delta.x, delta.z);
     mbPlayerRotSet(playerNo, 0.0f, angle, 0.0f);
-    mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, FALSE);
-    mbPlayerPosGet(playerNo, &startPos);
-    srcRotY = mbPlayerRotYGet(playerNo);
-    PSVECSubtract(&masuPos, &startPos, &moveDelta);
-    for (time2 = 0; time2 <= 18; time2++) {
-        weight = (float)time2 / 18.0f;
-        if ((u32)time2 == 12) {
-            mbPlayerMotionShiftSet(playerNo, 5, 0.0f, 2.0f, FALSE);
-        }
-        movePos.x = startPos.x + (weight * moveDelta.x);
-        movePos.y = startPos.y + (weight * moveDelta.y)
-            + (100.0 * sin((M_PI * (180.0f * weight)) / 180.0));
-        movePos.z = startPos.z + (weight * moveDelta.z);
-        mbPlayerPosSetV(playerNo, &movePos);
-        rotWeight = (float)time2 / 6.0f;
-        if (rotWeight > 1.0f) {
-            rotWeight = 1.0f;
-        }
-        mbPlayerRotYSet(playerNo, mbAngleLerp(srcRotY, angle, rotWeight));
-        timeRemaining = 18 - time2;
-        mbPlayerWorkGet(playerNo)->_unk08 = timeRemaining;
-        HuPrcVSleep();
-    }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
+    W01PlayerJumpFinish(playerNo, &masuPos, angle, 100.0f, 18);
     mbPlayerMotionKill(playerNo, motionId);
     GwPlayer[playerNo].moveF = FALSE;
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
@@ -6129,9 +6144,6 @@ void fn_1_13F50(void)
         }
     }
 }
-
-typedef float (*W01CurveEval)(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d,
-    float t);
 
 float fn_1_14D34(float a, float b, float c, float d, float t);
 
