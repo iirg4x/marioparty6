@@ -1070,6 +1070,7 @@ void fn_1_13CC(void)
     float distance;
     float t;
     float targetLength;
+    float oldT;
     float controlT;
     float sampleLength;
     float result;
@@ -1081,7 +1082,6 @@ void fn_1_13CC(void)
     float sampleT;
     float finalT;
     float minLength;
-    float oldT;
     double lengthDelta;
     double slopeValue;
 
@@ -1147,17 +1147,17 @@ void fn_1_13CC(void)
     sideLength = work->length - halfLength;
     spanLength = 1.2f * work->length;
     height = sqrtf(FN13CC_HEIGHT);
-    controlPos.x = work->startPos.x
-        + (work->delta.x * (controlT = work->halfLength / work->length));
-    controlPos.y = work->startPos.y + (work->delta.y * controlT) - height;
-    controlPos.z = work->startPos.z + (work->delta.z * controlT);
+    t = work->halfLength / work->length;
+    controlPos.x = work->startPos.x + (t * work->delta.x);
+    controlPos.y = work->startPos.y + (t * work->delta.y) - height;
+    controlPos.z = work->startPos.z + (t * work->delta.z);
     count = 10;
-    t = 0.0f;
+    sampleT = 0.0f;
     simpsonLength = 0.0f;
-    integrationStep = 1.0f - t;
+    integrationStep = 1.0f - sampleT;
     length = 0.5f * (integrationStep
         * (((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos, &controlPos,
-            &work->endPos, NULL, t)
+            &work->endPos, NULL, sampleT)
             + ((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos, &controlPos,
                 &work->endPos, NULL, 1.0f)));
     for (divCount = 1; divCount <= count; divCount *= 2) {
@@ -1165,7 +1165,7 @@ void fn_1_13CC(void)
         for (j = 1; j <= divCount; j++) {
             lengthSum += ((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos,
                 &controlPos, &work->endPos, NULL,
-                t + (integrationStep * ((float)j - 0.5f)));
+                sampleT + (integrationStep * ((float)j - 0.5f)));
         }
         lengthSum *= integrationStep;
         simpsonLength = (1.0f / 3.0f)
@@ -1184,6 +1184,7 @@ void fn_1_13CC(void)
             minLength = 0.1f;
             stepCount = 0;
             do {
+                float sampleT;
                 float slope;
                 float result;
                 float deltaT;
