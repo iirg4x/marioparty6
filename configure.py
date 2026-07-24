@@ -1121,6 +1121,9 @@ config.libs = [
         "w01Dll",
         objects={
             Object(
+                # .text is byte-identical (132/132 functions) but the .rodata
+                # constant pool is ordered differently, which is a pre-existing
+                # gap unrelated to codegen -- see docs/decomp-matching.md.
                 NonMatching,
                 "REL/w01Dll/world01.c",
                 mw_version="GC/2.7",
