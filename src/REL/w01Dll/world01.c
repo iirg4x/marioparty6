@@ -1039,6 +1039,95 @@ void fn_1_10A0(void)
     ) \
     / (4.0f * spanLength * spanLength)
 
+static inline float w01CurveLen2(HuVecF *p0, HuVecF *p1, HuVecF *p2,
+    float endT)
+{
+    float baseT;
+    float sampleT;
+    float deltaT;
+    float sampleLength;
+    s32 div;
+    s32 sampleNo;
+
+    div = 10;
+    baseT = 0.0f;
+    deltaT = (endT - baseT) / div;
+    sampleT = baseT;
+    sampleLength = 0.0f;
+    for (sampleNo = 0; sampleNo < div - 1; sampleNo++) {
+        sampleT += deltaT;
+        sampleLength += ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL,
+            sampleT);
+    }
+    sampleLength = deltaT * 0.5
+        * (((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, baseT)
+            + ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, endT)
+            + (2.0 * sampleLength));
+    return sampleLength;
+}
+
+static inline float w01PathT(HuVecF *p0, HuVecF *p1, HuVecF *p2,
+    float workT, float distance, double *slopeValue)
+{
+    float result;
+    float slope;
+    float oldT;
+    float minLength;
+    s32 stepCount;
+    double absSlope;
+    double slopeMagnitude;
+
+    minLength = 0.1f;
+    stepCount = 0;
+    do {
+        result = w01CurveLen2(p0, p1, p2, workT) - distance;
+        *slopeValue = slope = ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2,
+            NULL, workT);
+        slopeMagnitude = __fabs(*slopeValue);
+        absSlope = slopeMagnitude;
+        if (absSlope < minLength) {
+            slope = 1.0f;
+        }
+        oldT = workT;
+        workT -= result / slope;
+        stepCount++;
+    } while (workT != oldT && stepCount < 10);
+    return workT;
+}
+
+static inline float w01PathLen(HuVecF *p0, HuVecF *p1, HuVecF *p2)
+{
+    float baseT;
+    float integrationStep;
+    float length;
+    float lengthSum;
+    float simpsonLength;
+    s32 count;
+    s32 j;
+    s32 divCount;
+
+    count = 10;
+    baseT = 0.0f;
+    simpsonLength = 0.0f;
+    integrationStep = 1.0f - baseT;
+    length = 0.5f * (integrationStep
+        * (((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, baseT)
+            + ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, 1.0f)));
+    for (divCount = 1; divCount <= count; divCount *= 2) {
+        lengthSum = 0.0f;
+        for (j = 1; j <= divCount; j++) {
+            lengthSum += ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL,
+                baseT + (integrationStep * ((float)j - 0.5f)));
+        }
+        lengthSum *= integrationStep;
+        simpsonLength = (1.0f / 3.0f)
+            * (length + (2.0f * lengthSum));
+        integrationStep *= 0.5f;
+        length = 0.5f * (length + lengthSum);
+    }
+    return simpsonLength;
+}
+
 void fn_1_13CC(void)
 {
     W01_PATH_WORK *work;
@@ -1054,13 +1143,7 @@ void fn_1_13CC(void)
     s32 playerMasuId;
     s32 masuId;
     s32 currentMasuId;
-    s32 count;
-    s32 div;
-    s32 divCount;
-    s32 j;
     s32 modelNo;
-    s32 stepCount;
-    s32 sampleNo;
     s32 i;
     float height;
     float halfLength;
@@ -1070,18 +1153,6 @@ void fn_1_13CC(void)
     float distance;
     float t;
     float targetLength;
-    float oldT;
-    float controlT;
-    float sampleLength;
-    float result;
-    float simpsonLength;
-    float lengthSum;
-    float workT;
-    float length;
-    float integrationStep;
-    float sampleT;
-    float finalT;
-    float minLength;
     double lengthDelta;
     double slopeValue;
 
@@ -1151,81 +1222,14 @@ void fn_1_13CC(void)
     controlPos.x = work->startPos.x + (t * work->delta.x);
     controlPos.y = work->startPos.y + (t * work->delta.y) - height;
     controlPos.z = work->startPos.z + (t * work->delta.z);
-    count = 10;
-    sampleT = 0.0f;
-    simpsonLength = 0.0f;
-    integrationStep = 1.0f - sampleT;
-    length = 0.5f * (integrationStep
-        * (((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos, &controlPos,
-            &work->endPos, NULL, sampleT)
-            + ((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos, &controlPos,
-                &work->endPos, NULL, 1.0f)));
-    for (divCount = 1; divCount <= count; divCount *= 2) {
-        lengthSum = 0.0f;
-        for (j = 1; j <= divCount; j++) {
-            lengthSum += ((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos,
-                &controlPos, &work->endPos, NULL,
-                sampleT + (integrationStep * ((float)j - 0.5f)));
-        }
-        lengthSum *= integrationStep;
-        simpsonLength = (1.0f / 3.0f)
-            * (length + (2.0f * lengthSum));
-        integrationStep *= 0.5f;
-        length = 0.5f * (length + lengthSum);
-    }
-    result = simpsonLength;
-    finalLength = result;
+    finalLength = w01PathLen(&work->startPos, &controlPos, &work->endPos);
     t = 0.0f;
     distance = finalLength / 6.0f;
     prevPos = work->startPos;
     for (i = 0; i < 6; i++, marker++) {
         if (i < 5) {
-            workT = t;
-            minLength = 0.1f;
-            stepCount = 0;
-            do {
-                float sampleT;
-                float slope;
-                float result;
-                float deltaT;
-                float pathLength;
-                float baseT;
-                double slopeMagnitude;
-                double absSlope;
-
-                div = 10;
-                baseT = 0.0f;
-                deltaT = (workT - baseT) / div;
-                sampleT = baseT;
-                sampleLength = 0.0f;
-                for (sampleNo = 0; sampleNo < div - 1; sampleNo++) {
-                    sampleT += deltaT;
-                    sampleLength += ((CurveSlopeFunc)(u32)fn_1_14A90)(
-                        &work->startPos, &controlPos, &work->endPos, NULL,
-                        sampleT);
-                }
-                pathLength = deltaT * 0.5
-                    * (((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos,
-                        &controlPos, &work->endPos, NULL, baseT)
-                        + ((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos,
-                            &controlPos, &work->endPos, NULL, workT)
-                        + (2.0 * sampleLength));
-                result = pathLength;
-                result -= distance;
-                slopeValue = slope = ((CurveSlopeFunc)(u32)fn_1_14A90)(
-                    &work->startPos, &controlPos, &work->endPos, NULL,
-                    workT);
-                slopeMagnitude = __fabs(slopeValue);
-                absSlope = slopeMagnitude;
-                if (absSlope < minLength) {
-                    slope = 1.0f;
-                }
-                oldT = workT;
-                workT -= result / slope;
-                stepCount++;
-            } while (workT != oldT && stepCount < 10);
-            finalT = workT;
-            t = finalT;
+            t = w01PathT(&work->startPos, &controlPos, &work->endPos, t,
+                distance, &slopeValue);
             mbBezierCalcV(&work->startPos, &controlPos, &work->endPos,
                 &curvePos, t);
         } else {
@@ -1477,33 +1481,6 @@ void fn_1_2D08(int playerNo)
         ) \
     ) \
     / (4.0f * valueC * valueC)
-
-static inline float w01CurveLen2(HuVecF *p0, HuVecF *p1, HuVecF *p2,
-    float endT)
-{
-    float baseT;
-    float sampleT;
-    float deltaT;
-    float sampleLength;
-    s32 div;
-    s32 sampleNo;
-
-    div = 10;
-    baseT = 0.0f;
-    deltaT = (endT - baseT) / div;
-    sampleT = baseT;
-    sampleLength = 0.0f;
-    for (sampleNo = 0; sampleNo < div - 1; sampleNo++) {
-        sampleT += deltaT;
-        sampleLength += ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL,
-            sampleT);
-    }
-    sampleLength = deltaT * 0.5
-        * (((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, baseT)
-            + ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, endT)
-            + (2.0 * sampleLength));
-    return sampleLength;
-}
 
 static inline float w01CurveT(HuVecF *p0, HuVecF *p1, HuVecF *p2,
     float workT, float distance)
