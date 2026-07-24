@@ -46,9 +46,7 @@ static inline BOOL MBTimeDayGet(void)
 }
 
 typedef void (*VoidFunc)(void);
-typedef float (*CurveSlopeFunc)();
-typedef float (*W01CurveEval)(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d,
-    float t);
+typedef float (*W01CurveEval)();
 
 typedef struct W01StarMasuWork {
     u8 unk00[4];
@@ -470,7 +468,7 @@ extern HuVecF lbl_1_bss_141C;
 extern HuVecF lbl_1_bss_1428;
 extern s16 lbl_1_bss_1434;
 extern s16 lbl_1_bss_1436;
-extern W01_MOTION_WORK lbl_1_bss_1438;
+extern W01_MOTION_WORK lbl_1_bss_1438[1];
 extern s16 lbl_1_bss_1488;
 extern W01_FLOAT_WORK *lbl_1_bss_148C;
 extern s32 lbl_1_bss_1490;
@@ -1039,8 +1037,8 @@ void fn_1_10A0(void)
     ) \
     / (4.0f * spanLength * spanLength)
 
-static inline float w01CurveLen2(HuVecF *p0, HuVecF *p1, HuVecF *p2,
-    float endT)
+static inline float w01CurveLen2(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
+    HuVecF *p2, float endT)
 {
     float baseT;
     float sampleT;
@@ -1056,18 +1054,18 @@ static inline float w01CurveLen2(HuVecF *p0, HuVecF *p1, HuVecF *p2,
     sampleLength = 0.0f;
     for (sampleNo = 0; sampleNo < div - 1; sampleNo++) {
         sampleT += deltaT;
-        sampleLength += ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL,
+        sampleLength += eval(p0, p1, p2, NULL,
             sampleT);
     }
     sampleLength = deltaT * 0.5
-        * (((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, baseT)
-            + ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, endT)
+        * (eval(p0, p1, p2, NULL, baseT)
+            + eval(p0, p1, p2, NULL, endT)
             + (2.0 * sampleLength));
     return sampleLength;
 }
 
-static inline float w01PathT(HuVecF *p0, HuVecF *p1, HuVecF *p2,
-    float workT, float distance, double *slopeValue)
+static inline float w01CurveT(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
+    HuVecF *p2, float workT, float distance, double *slopeValue)
 {
     float result;
     float slope;
@@ -1080,8 +1078,8 @@ static inline float w01PathT(HuVecF *p0, HuVecF *p1, HuVecF *p2,
     minLength = 0.1f;
     stepCount = 0;
     do {
-        result = w01CurveLen2(p0, p1, p2, workT) - distance;
-        *slopeValue = slope = ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2,
+        result = w01CurveLen2(eval, p0, p1, p2, workT) - distance;
+        *slopeValue = slope = eval(p0, p1, p2,
             NULL, workT);
         slopeMagnitude = __fabs(*slopeValue);
         absSlope = slopeMagnitude;
@@ -1095,7 +1093,8 @@ static inline float w01PathT(HuVecF *p0, HuVecF *p1, HuVecF *p2,
     return workT;
 }
 
-static inline float w01PathLen(HuVecF *p0, HuVecF *p1, HuVecF *p2)
+static inline float w01CurveLen(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
+    HuVecF *p2)
 {
     float baseT;
     float integrationStep;
@@ -1111,12 +1110,12 @@ static inline float w01PathLen(HuVecF *p0, HuVecF *p1, HuVecF *p2)
     simpsonLength = 0.0f;
     integrationStep = 1.0f - baseT;
     length = 0.5f * (integrationStep
-        * (((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, baseT)
-            + ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, 1.0f)));
+        * (eval(p0, p1, p2, NULL, baseT)
+            + eval(p0, p1, p2, NULL, 1.0f)));
     for (divCount = 1; divCount <= count; divCount *= 2) {
         lengthSum = 0.0f;
         for (j = 1; j <= divCount; j++) {
-            lengthSum += ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL,
+            lengthSum += eval(p0, p1, p2, NULL,
                 baseT + (integrationStep * ((float)j - 0.5f)));
         }
         lengthSum *= integrationStep;
@@ -1222,14 +1221,15 @@ void fn_1_13CC(void)
     controlPos.x = work->startPos.x + (t * work->delta.x);
     controlPos.y = work->startPos.y + (t * work->delta.y) - height;
     controlPos.z = work->startPos.z + (t * work->delta.z);
-    finalLength = w01PathLen(&work->startPos, &controlPos, &work->endPos);
+    finalLength = w01CurveLen((W01CurveEval)(u32)fn_1_14A90, &work->startPos,
+        &controlPos, &work->endPos);
     t = 0.0f;
     distance = finalLength / 6.0f;
     prevPos = work->startPos;
     for (i = 0; i < 6; i++, marker++) {
         if (i < 5) {
-            t = w01PathT(&work->startPos, &controlPos, &work->endPos, t,
-                distance, &slopeValue);
+            t = w01CurveT((W01CurveEval)(u32)fn_1_14A90, &work->startPos,
+                &controlPos, &work->endPos, t, distance, &slopeValue);
             mbBezierCalcV(&work->startPos, &controlPos, &work->endPos,
                 &curvePos, t);
         } else {
@@ -1384,8 +1384,6 @@ void fn_1_2A1C(void)
     }
 }
 
-static const float lbl_1_rodata_148 = 0.7f;
-
 void fn_1_2D08(int playerNo)
 {
     W01_SPRING_WORK *work;
@@ -1482,69 +1480,6 @@ void fn_1_2D08(int playerNo)
     ) \
     / (4.0f * valueC * valueC)
 
-static inline float w01CurveT(HuVecF *p0, HuVecF *p1, HuVecF *p2,
-    float workT, float distance)
-{
-    float result;
-    float slope;
-    float oldT;
-    float minLength;
-    s32 stepCount;
-    double absSlope;
-    double slopeMagnitude;
-    double slopeValue;
-
-    minLength = 0.1f;
-    stepCount = 0;
-    do {
-        result = w01CurveLen2(p0, p1, p2, workT) - distance;
-        slopeValue = slope = ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2,
-            NULL, workT);
-        slopeMagnitude = __fabs(slopeValue);
-        absSlope = slopeMagnitude;
-        if (absSlope < minLength) {
-            slope = 1.0f;
-        }
-        oldT = workT;
-        workT -= result / slope;
-        stepCount++;
-    } while (workT != oldT && stepCount < 10);
-    return workT;
-}
-
-static inline float w01CurveLen(HuVecF *p0, HuVecF *p1, HuVecF *p2)
-{
-    float baseT;
-    float simpsonLength;
-    float length;
-    float lengthSum;
-    float integrationStep;
-    s32 count;
-    s32 j;
-    s32 divCount;
-
-    count = 10;
-    baseT = 0.0f;
-    simpsonLength = 0.0f;
-    integrationStep = 1.0f - baseT;
-    length = 0.5f * (integrationStep
-        * (((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, baseT)
-            + ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL, 1.0f)));
-    for (divCount = 1; divCount <= count; divCount *= 2) {
-        lengthSum = 0.0f;
-        for (j = 1; j <= divCount; j++) {
-            lengthSum += ((CurveSlopeFunc)(u32)fn_1_14A90)(p0, p1, p2, NULL,
-                baseT + (integrationStep * ((float)j - 0.5f)));
-        }
-        lengthSum *= integrationStep;
-        simpsonLength = (1.0f / 3.0f)
-            * (length + (2.0f * lengthSum));
-        integrationStep *= 0.5f;
-        length = 0.5f * (length + lengthSum);
-    }
-    return simpsonLength;
-}
-
 void fn_1_3214(float value)
 {
     W01_SPRING_WORK *work;
@@ -1565,6 +1500,7 @@ void fn_1_3214(float value)
     float t;
     float temp;
     float distance;
+    double slopeValue;
 
     work = &lbl_1_bss_1494;
     valueATemp = value * work->length;
@@ -1576,14 +1512,15 @@ void fn_1_3214(float value)
     controlPos.y = (work->startPos.y + (value * work->dir.y)) - temp;
     controlPos.z = work->startPos.z + (value * work->dir.z);
     targetPos = controlPos;
-    finalLength = w01CurveLen(&work->startPos, &controlPos, &work->endPos);
+    finalLength = w01CurveLen((W01CurveEval)(u32)fn_1_14A90, &work->startPos,
+        &controlPos, &work->endPos);
     t = 0.0f;
     distance = finalLength / 16.0f;
     prevPos = work->startPos;
     for (i = 0; i < 16; i++) {
         if (i < 15) {
-            t = w01CurveT(&work->startPos, &controlPos, &work->endPos, t,
-                distance);
+            t = w01CurveT((W01CurveEval)(u32)fn_1_14A90, &work->startPos,
+                &controlPos, &work->endPos, t, distance, &slopeValue);
             mbBezierCalcV(&work->startPos, &controlPos, &work->endPos,
                 &curvePos, t);
         } else {
@@ -1699,21 +1636,14 @@ void fn_1_45A0(void)
 {
     W01_FLOAT_WORK *work;
     u32 attr;
-    BOOL dayF;
-    s32 dataDir;
     s32 i;
 
     lbl_1_bss_1490 = 7;
     work = mbMalloc(lbl_1_bss_1490 * sizeof(W01_FLOAT_WORK));
     lbl_1_bss_148C = work;
     for (i = 0; i < lbl_1_bss_1490; i++, work++) {
-        dayF = !GwSystem.curTime;
-        if (dayF != FALSE) {
-            dataDir = 0xD70000;
-        } else {
-            dataDir = 0xD80000;
-        }
-        work->modelId = mbObjCreate(dataDir | 0xE, NULL, TRUE);
+        work->modelId = mbObjCreate(
+            (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0xE, NULL, TRUE);
         mbObjAttrSet(work->modelId, HU3D_MOTATTR_LOOP);
         work->pos.x = lbl_1_data_48C[i].x;
         work->pos.y = 1000.0f + lbl_1_data_48C[i].y;
@@ -1768,28 +1698,15 @@ void fn_1_47B0(void)
                 if (lbl_1_bss_1488 != work->masuId) {
                     work->active = FALSE;
                 }
-            } else {
-                if (sqrtf((delta.x * delta.x) + (delta.z * delta.z)) < 170.0f) {
-                    if (delta.y > 0.0f) {
-                        goto masu_check;
-                    }
-                    if (mbPlayerWorkGet(playerNo)->moveEndF != TRUE) {
-                        goto inactive;
-                    }
-                } else {
-                    goto inactive;
-                }
-masu_check:
-                if (work->masuId != lbl_1_bss_1488) {
-                    goto inactive;
-                }
+            } else if (sqrtf((delta.x * delta.x) + (delta.z * delta.z))
+                    < 170.0f
+                && (delta.y > 0.0f
+                    || mbPlayerWorkGet(playerNo)->moveEndF == TRUE)
+                && work->masuId == lbl_1_bss_1488) {
                 work->active = TRUE;
                 force -= 50000.0f;
-                goto active_done;
-inactive:
+            } else {
                 work->active = FALSE;
-active_done:
-                ;
             }
         }
         verticalDelta = work->pos.y - pos.y;
@@ -1847,7 +1764,7 @@ void fn_1_4D88(void)
     s32 i;
     s32 j;
 
-    work = &lbl_1_bss_1438;
+    work = lbl_1_bss_1438;
     lbl_1_bss_1436 = mbMasuFind_MAttrIdGet(-1, 0x4000);
     mbMasuPosGet(lbl_1_bss_1436, &lbl_1_bss_1428);
     lbl_1_bss_1434 = mbMasuFind_MAttrIdGet(-1, 0x2000);
@@ -1895,7 +1812,7 @@ void fn_1_4F94(int playerNo)
     float rotWeight;
     void *hook;
 
-    work = &lbl_1_bss_1438;
+    work = lbl_1_bss_1438;
     GwPlayer[playerNo].moveF = TRUE;
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
@@ -1975,7 +1892,7 @@ void fn_1_5560(s32 value)
     float acceleration0;
     float acceleration1;
 
-    work = &lbl_1_bss_1438 + value;
+    work = &lbl_1_bss_1438[value];
     angle = work->unk0C[0] - work->unk0C[1];
     massRatio = work->unk20 / (work->unk1C + work->unk20);
     lengthRatio = work->unk24[1] / work->unk24[0];
@@ -2028,7 +1945,7 @@ void fn_1_5888(s32 index)
     float angle;
     s32 i;
 
-    work = &lbl_1_bss_1438 + index;
+    work = &lbl_1_bss_1438[index];
     points[0].x = work->unk24[0] * mbSinRad(work->unk0C[0]);
     points[0].y = -work->unk24[0] * mbCosRad(work->unk0C[0]);
     points[0].z = 0.0f;
@@ -2068,7 +1985,7 @@ void fn_1_5888(s32 index)
 
 void fn_1_5C18(void)
 {
-    W01_MOTION_WORK *work = &lbl_1_bss_1438;
+    W01_MOTION_WORK *work = lbl_1_bss_1438;
 
     work->unk1C = 1.0f;
     work->unk20 = 20.0f;
@@ -2255,10 +2172,9 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     PSVECSubtract(&linkPos, &startPos, &delta);
     {
         s32 moveI;
+        s32 time;
 
         for (moveI = 0; moveI <= 18; moveI++) {
-            s32 time;
-
             weight = (float)moveI / 18.0f;
             if ((u32)moveI == 12) {
                 mbPlayerMotionShiftSet(playerNo, 5, 0.0f, 2.0f, 0);
@@ -2889,7 +2805,7 @@ void fn_1_8474(void)
             mbMasuFind_MAttrIdGet(-1, lbl_1_data_588[i][2]);
 
         masuP = mbMasuGet(work->masuId);
-        if (work->dayF) {
+        if (work->dayF != FALSE) {
             for (j = 0; j < masuP->linkNum; j++) {
                 if (masuP->linkTbl[j] == work->linkMasuId[1]) {
                     for (k = j + 1; k < masuP->linkNum; k++) {
@@ -3314,8 +3230,7 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     mbWinChoiceGet(winId);
     if (GwPlayer[playerNo].comF) {
         distance = mbMasuFind_IdStepGet(id, lbl_1_bss_1616);
-        if (distance > 13
-            && frandf() < 0.8f) {
+        if (distance > 13 && frandf() < 0.8f) {
             mbComChoiceLeftSet();
         } else {
             mbComChoiceRightSet();
@@ -3500,8 +3415,7 @@ s32 fn_1_A82C(s32 playerNo)
     mbPlayerPosGet(playerNo, &pos);
     delay = (s32)(60.0f + (60.0f * frandf()));
     state = 0;
-    choiceNew = 1;
-    choice = choiceNew;
+    choice = choiceNew = 1;
     padNo = GwPlayer[playerNo].padNo;
     mesId = GameMesTimerCreate(10);
     HuSprGrpDrawNoSet(GameMesGet(mesId)->grpId[0], 32);
@@ -3679,7 +3593,7 @@ void fn_1_B01C(s32 index, s32 type)
     work->pos.x = objPos.x;
     work->pos.y = 1000.0f + objPos.y;
     work->pos.z = objPos.z;
-    scale = 1.984126902243588e-05f;
+    scale = 1.0f / 50400.0f;
     step = 120.0f * scale;
     for (i = 0; (u32)i < 480; i++) {
         if ((u32)i < 120) {
@@ -3976,28 +3890,26 @@ void fn_1_BFA0(HU3D_MODEL *model, Mtx *input)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
 
     count = 0;
-    {
-        for (workIndex = 0; workIndex < 3; workIndex++, work++) {
-            W01_WH_PARTICLE *particle;
-            s32 particleIndex;
+    for (workIndex = 0; workIndex < 3; workIndex++, work++) {
+        W01_WH_PARTICLE *particle;
+        s32 particleIndex;
 
-            particle = work->particle;
-            for (particleIndex = 0; particleIndex < work->particleCount;
-                 particleIndex++, particle++) {
-                mbMtxRot(matrix, particle->rot.x, particle->rot.y,
-                    particle->rot.z);
-                mtxTransCat(matrix, particle->pos.x, particle->pos.y,
-                    particle->pos.z);
-                PSMTXConcat(*input, matrix, matrix);
-                sort[count].pos.x = matrix[0][3];
-                sort[count].pos.y = matrix[1][3];
-                sort[count].pos.z = matrix[2][3];
-                sort[count].workIndex = workIndex;
-                sort[count].facing = matrix[2][1];
-                count++;
-                GXLoadPosMtxImm(matrix, GX_PNMTX0);
-                GXCallDisplayList(lbl_1_bss_1214[0], lbl_1_bss_120C[0]);
-            }
+        particle = work->particle;
+        for (particleIndex = 0; particleIndex < work->particleCount;
+             particleIndex++, particle++) {
+            mbMtxRot(matrix, particle->rot.x, particle->rot.y,
+                particle->rot.z);
+            mtxTransCat(matrix, particle->pos.x, particle->pos.y,
+                particle->pos.z);
+            PSMTXConcat(*input, matrix, matrix);
+            sort[count].pos.x = matrix[0][3];
+            sort[count].pos.y = matrix[1][3];
+            sort[count].pos.z = matrix[2][3];
+            sort[count].workIndex = workIndex;
+            sort[count].facing = matrix[2][1];
+            count++;
+            GXLoadPosMtxImm(matrix, GX_PNMTX0);
+            GXCallDisplayList(lbl_1_bss_1214[0], lbl_1_bss_120C[0]);
         }
     }
 
@@ -4026,27 +3938,25 @@ void fn_1_BFA0(HU3D_MODEL *model, Mtx *input)
             GX_LO_NOOP);
     }
 
-    {
-        for (workIndex = 0; workIndex < count; workIndex++) {
-            GXColor color;
+    for (workIndex = 0; workIndex < count; workIndex++) {
+        GXColor color;
 
-            if (!GwSystem.curTime) {
-                float facing;
+        if (!GwSystem.curTime) {
+            float facing;
 
-                color = lbl_1_data_65C[sort[workIndex].workIndex];
-                facing = fabs(sort[workIndex].facing);
-                color.r = 255.0f * (1.0f - facing) + color.r * facing;
-                color.g = 255.0f * (1.0f - facing) + color.g * facing;
-                color.b = 255.0f * (1.0f - facing) + color.b * facing;
-            } else {
-                color = lbl_1_data_668[sort[workIndex].workIndex];
-            }
-            GXSetTevColor(GX_TEVREG0, color);
-            PSMTXTrans(matrix, sort[workIndex].pos.x, sort[workIndex].pos.y,
-                sort[workIndex].pos.z);
-            GXLoadPosMtxImm(matrix, GX_PNMTX0);
-            GXCallDisplayList(lbl_1_bss_1214[1], lbl_1_bss_120C[1]);
+            color = lbl_1_data_65C[sort[workIndex].workIndex];
+            facing = fabs(sort[workIndex].facing);
+            color.r = 255.0f * (1.0f - facing) + color.r * facing;
+            color.g = 255.0f * (1.0f - facing) + color.g * facing;
+            color.b = 255.0f * (1.0f - facing) + color.b * facing;
+        } else {
+            color = lbl_1_data_668[sort[workIndex].workIndex];
         }
+        GXSetTevColor(GX_TEVREG0, color);
+        PSMTXTrans(matrix, sort[workIndex].pos.x, sort[workIndex].pos.y,
+            sort[workIndex].pos.z);
+        GXLoadPosMtxImm(matrix, GX_PNMTX0);
+        GXCallDisplayList(lbl_1_bss_1214[1], lbl_1_bss_120C[1]);
     }
 }
 
@@ -4090,15 +4000,14 @@ void fn_1_C694(const s32 *displayData, u32 color)
         for (i = 0; i < count; i++) {
             index = *displayData++;
             GXPosition3f32(
-                lbl_1_rodata_148 * lbl_1_rodata_288[index].x,
-                lbl_1_rodata_148 * lbl_1_rodata_288[index].y,
-                lbl_1_rodata_148 * lbl_1_rodata_288[index].z);
+                0.7f * lbl_1_rodata_288[index].x,
+                0.7f * lbl_1_rodata_288[index].y,
+                0.7f * lbl_1_rodata_288[index].z);
             GXColor1u32(color);
         }
     }
 }
 
-inline void fn_1_C694(const s32 *displayData, u32 color);
 
 s32 fn_1_C7DC(void **displayList)
 {
@@ -4368,12 +4277,12 @@ void fn_1_DEA4(void)
         simpsonLength = 0.0f;
         step = 1.0f - t;
         length = 0.5f * (step
-            * (((CurveSlopeFunc)(u32)fn_1_14BF0)(&a, &b, &c, &d, t)
-                + ((CurveSlopeFunc)(u32)fn_1_14BF0)(&a, &b, &c, &d, 1.0)));
+            * (((W01CurveEval)(u32)fn_1_14BF0)(&a, &b, &c, &d, t)
+                + ((W01CurveEval)(u32)fn_1_14BF0)(&a, &b, &c, &d, 1.0)));
         for (divCount = 1; divCount <= count; divCount *= 2) {
             lengthSum = 0.0f;
             for (j = 1; j <= divCount; j++) {
-                lengthSum += ((CurveSlopeFunc)(u32)fn_1_14BF0)(&a, &b, &c, &d,
+                lengthSum += ((W01CurveEval)(u32)fn_1_14BF0)(&a, &b, &c, &d,
                     t + (step * ((float)j - 0.5f)));
             }
             lengthSum *= step;
@@ -4665,7 +4574,6 @@ void fn_1_ED00(void)
     }
 }
 
-inline void fn_1_D50C(W01_SORT_ENTRY *entry, s32 first, s32 last);
 
 void fn_1_F06C(void)
 {
@@ -5295,8 +5203,8 @@ void fn_1_10CB8(s32 playerNo, s16 id)
             mbPlayerMotionShiftSet(playerNo, 5, 0.0f, 2.0f, 0);
         }
         firstPos.x = firstStart.x + (firstWeight * firstDelta.x);
-        firstPos.y = (float)(firstStart.y + (firstWeight * firstDelta.y)
-            + (100.0 * sin((M_PI * (180.0f * firstWeight)) / 180.0)));
+        firstPos.y = firstStart.y + (firstWeight * firstDelta.y)
+            + (100.0 * sin((M_PI * (180.0f * firstWeight)) / 180.0));
         firstPos.z = firstStart.z + (firstWeight * firstDelta.z);
         mbPlayerPosSetV(playerNo, &firstPos);
         firstAngleWeight = (float)firstTime / 6.0f;
@@ -5306,7 +5214,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbPlayerRotYSet(playerNo,
             mbAngleLerp(firstStartAngle, targetAngle, firstAngleWeight));
         firstCountdown = 18 - firstTime;
-        mbPlayerWorkGet(playerNo)->_unk08 = (s16)firstCountdown;
+        mbPlayerWorkGet(playerNo)->_unk08 = firstCountdown;
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
@@ -5337,7 +5245,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbPlayerRotYSet(playerNo,
             mbAngleLerp(secondStartAngle, targetAngle, secondAngleWeight));
         secondCountdown = 18 - secondTime;
-        mbPlayerWorkGet(playerNo)->_unk08 = (s16)secondCountdown;
+        mbPlayerWorkGet(playerNo)->_unk08 = secondCountdown;
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
@@ -5415,7 +5323,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
                 idleTime = 0;
                 motionSpeed = 1.0f;
             } else {
-                if ((idleTime += 1) > 8) {
+                if (++idleTime > 8) {
                     motionSpeed -= 0.1f;
                     if (motionSpeed < 0.0f) {
                         motionSpeed = 0.0f;
@@ -6177,10 +6085,6 @@ float fn_1_142B0(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
     return pathLength;
 }
 
-inline float fn_1_14108(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t);
-inline float fn_1_142B0(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t);
 
 float fn_1_144C0(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
     HuVecF *d, float t, float distance, int maxStep)
@@ -6278,8 +6182,6 @@ float fn_1_14D34(float a, float b, float c, float d, float t)
         + ((3.0f * t2) * d);
 }
 
-inline float fn_1_14CAC(float a, float b, float c, float d, float t);
-inline float fn_1_14D34(float a, float b, float c, float d, float t);
 
 void fn_1_14E0C(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, HuVecF *out,
     float t)
@@ -6319,8 +6221,6 @@ void fn_1_1547C(HuVecF *points, int count, HuVecF *out, float t)
     *out = bezierTbl[0];
     HuMemDirectFree(bezierTbl);
 }
-
-float fn_1_155EC(int index, int degree, float t);
 
 float fn_1_155EC(int index, int degree, float t)
 {
@@ -6529,7 +6429,7 @@ W01_SPRING_WORK lbl_1_bss_1494;
 s32 lbl_1_bss_1490;
 W01_FLOAT_WORK *lbl_1_bss_148C;
 s16 lbl_1_bss_1488;
-W01_MOTION_WORK lbl_1_bss_1438;
+W01_MOTION_WORK lbl_1_bss_1438[1];
 s16 lbl_1_bss_1436;
 s16 lbl_1_bss_1434;
 HuVecF lbl_1_bss_1428;
