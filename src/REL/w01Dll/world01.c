@@ -308,11 +308,11 @@ void fn_1_6D4(OMOBJ *obj);
 s32 fn_1_6D98(void);
 int fn_1_734(int playerNo, s16 id);
 int fn_1_760(int playerNo, s16 id);
-int fn_1_860(int playerNo, s16 id);
+int MB1Ev_MasuHatena(int playerNo, s16 id);
 void fn_1_914(int playerNo);
 void fn_1_944(int playerNo);
-void fn_1_970(void);
-void fn_1_9F0(void);
+void MB1_LightSet(void);
+void MB1_LightReset(void);
 void fn_1_9F4(int modelId, int shopNo);
 void fn_1_AC4(int value);
 void fn_1_B68(void);
@@ -672,7 +672,7 @@ void MB1_Create(void)
     mbScrollInit((MBTimeDayGet() ? 0xD70000 : 0xD80000) | 2);
     mbCapThrowColCreate(
         (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 3);
-    mbLightFuncSet(fn_1_970, fn_1_9F0);
+    mbLightFuncSet(MB1_LightSet, MB1_LightReset);
     if (mbSaveNewF) {
         memset(lbl_1_bss_1618, 0, 0x10);
         fn_1_139F8();
@@ -690,7 +690,7 @@ void MB1_Create(void)
         -1, -1, TRUE);
     mbev_MasuMoveEndSet(fn_1_760);
     mbev_MasuMoveStartSet(fn_1_734);
-    mbev_MasuHatenaSet(fn_1_860);
+    mbev_MasuHatenaSet(MB1Ev_MasuHatena);
     mbStarMoveHookSet(fn_1_13BC4);
     mbMapCameraSet(0, &lbl_1_data_3FC, 18500.0f);
     mbMapHookSet(fn_1_AC4);
@@ -783,7 +783,7 @@ int fn_1_760(int playerNo, s16 id)
     return 0;
 }
 
-int fn_1_860(int playerNo, s16 id)
+int MB1Ev_MasuHatena(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
@@ -818,7 +818,7 @@ void fn_1_944(int playerNo)
     fn_1_44C0();
 }
 
-void fn_1_970(void)
+void MB1_LightSet(void)
 {
     s16 *modelId = lbl_1_bss_15F4;
 
@@ -828,7 +828,7 @@ void fn_1_970(void)
     }
 }
 
-void fn_1_9F0(void)
+void MB1_LightReset(void)
 {
 }
 
