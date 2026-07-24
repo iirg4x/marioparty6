@@ -1498,7 +1498,6 @@ void fn_1_3214(float value)
     float valueA;
     float valueC;
     float finalLength;
-    float sampleLength;
     float scale;
     float valueATemp;
     float minLength;
@@ -1506,6 +1505,7 @@ void fn_1_3214(float value)
     float t;
     float temp;
     float integrationStep;
+    float sampleLength;
     float workT;
     float oldT;
     float distance;
