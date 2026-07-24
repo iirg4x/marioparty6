@@ -1587,12 +1587,13 @@ void fn_1_3214(float value)
                             sampleT);
                     }
                 }
-                pathLength = deltaT * 0.5
+                sampleLength = deltaT * 0.5
                     * (((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos,
                         &controlPos, &work->endPos, NULL, baseT)
                         + ((CurveSlopeFunc)(u32)fn_1_14A90)(&work->startPos,
                             &controlPos, &work->endPos, NULL, workT)
                         + (2.0 * sampleLength));
+                pathLength = sampleLength;
                 result = pathLength - distance;
                 slopeValue = slope = ((CurveSlopeFunc)(u32)fn_1_14A90)(
                     &work->startPos, &controlPos, &work->endPos, NULL,
