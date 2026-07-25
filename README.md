@@ -1,123 +1,117 @@
-# Mario Party 6 decompilation and source recovery
+# Mario Party 6 source recovery
 
 This repository reconstructs the US GameCube build of **Mario Party 6**
-(`GP6E01`) as readable C/C++ source and verifies it against the retail binaries.
-Original game files are not committed.
+(`GP6E01`) as readable C/C++ and verifies promoted work against the retail
+binaries. Original game files and generated binaries are not committed.
 
-The active recovery target is the byte-identical non-minigame game loop: boot,
-menus, party mode, boards, results, and ending. Minigame DLLs, instruction DLLs,
-minigame-mode wrappers, and mic-quiz modes are currently outside that scheduling
-target. See [STATUS.md](STATUS.md) for the evidence-backed progress snapshot.
+The active scheduling target is the non-minigame game loop: boot, menus, party
+mode, boards, results, and ending. Minigame DLLs, instruction DLLs,
+minigame-mode wrappers, and mic-quiz modes are currently excluded from that work
+queue. [`STATUS.md`](STATUS.md) is the historical evidence snapshot, not the
+default agent context.
 
 ## Recovery standard
 
 A binary match is necessary proof, not a complete source-authenticity claim.
-Raw metadata IDs, opaque arrays, fake padding, synthetic literals, unsupported
-semantic names, and unexplained compiler-control techniques remain recovery
-debt even when the output is exact.
+Raw IDs, opaque arrays, fake padding, synthetic literals, invented names, and
+unexplained compiler-control techniques remain recovery debt even when the
+output is exact.
 
-The project tracks binary status separately from source shape, semantics,
-naming, and data-domain recovery. Start with:
+The project tracks five dimensions independently:
 
-- [Source recovery standard](docs/recovery_standard.md)
-- [Recovery index and context workflow](docs/context_workflow.md)
-- [Agent instructions](AGENTS.md)
-
-`src/game/mgdata.c` is the model semantic cleanup: named domains, natural
-layout, consumer-backed widths, and readable source were recovered without
-claiming new matching bytes.
-
-## Token-efficient recovery workflow
-
-Committed recovery knowledge lives in `config/recovery/`. A deterministic
-SQLite index and bounded context packs are generated under `build/context/`.
-The primary lookup path is exact owner, stable identity, symbol, evidence, and
-compiler constraint—not a whole-repository prompt.
-
-```sh
-python tools/recovery_index.py check
-python tools/recovery_index.py build
-python tools/recovery_index.py query mdpartydll:0xBBD8
-
-python tools/context_pack.py \
-  --budget 12000 \
-  --output build/context/mdparty_BBD8.md \
-  function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty
+```text
+binary · source shape · semantics · naming · data domains
 ```
 
-`tools/decompctx.py` still generates preprocessed context for decomp.me.
-`tools/context_pack.py` instead supplies a compact recovery contract, target
-function, bounded owner signatures, evidence, known rejected probes, naming
-debt, and acceptance criteria for agents and human review.
+`src/game/mgdata.c` is the model semantic cleanup: it replaced byte-oriented
+scaffolding with named domains, natural layout, consumer-backed widths, and
+readable source without claiming new matching bytes.
 
-## Source-quality review
+Read:
 
-New compiler-shape controls must be authenticated, recorded as temporary debt,
-or rejected. Review added source lines with:
+- [`AGENTS.md`](AGENTS.md): repository-wide agent rules
+- [`docs/agent_quickstart.md`](docs/agent_quickstart.md): shortest safe workflow
+- [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion rules
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): branches, verification, and handoff
+- [`docs/README.md`](docs/README.md): documentation index
 
-```sh
-python tools/source_quality.py --changed origin/main --strict
-```
+## Agent-ready workflow
 
-The check focuses on newly introduced pragmas, forced inline/no-inline controls,
-`volatile` or `register` used for code generation, inline assembly, include-guard
-overrides, synthetic padding, opaque blobs, and dead code-generation branches.
-It does not retroactively fail unrelated historical code.
-
-Generate a readable status matrix with:
+Use one command as the front door:
 
 ```sh
-python tools/recovery_report.py \
-  --output build/context/recovery-report.md
+python tools/agent.py doctor
 ```
 
-## Building
-
-The project uses [decomp-toolkit](https://github.com/encounter/decomp-toolkit),
-Ninja, the pinned Metrowerks compilers, objdiff, and the repository helper tools.
-Setup details remain in:
-
-- [Dependencies](docs/dependencies.md)
-- [Getting started](docs/getting_started.md)
-- [`symbols.txt`](docs/symbols.md)
-- [`splits.txt`](docs/splits.md)
-
-After the original `GP6E01` files are extracted into `orig/GP6E01`, configure
-and build with the repository’s normal `rtk` environment. The final promotion
-gate is the serialized build plus the configured DTK checksum and explicit
-DOL/REL byte comparisons documented in [STATUS.md](STATUS.md).
-
-Public-safe metadata checks do not require original game files:
+Generate bounded context for the exact task:
 
 ```sh
-python -m unittest discover -s tools/tests -v
-python tools/recovery_index.py check
-python tools/recovery_index.py build
+python tools/agent.py context function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty \
+  --budget 12000
+
+python tools/agent.py context owner main:game/mgdata --budget 7000
 ```
 
-## Project structure
+Run the public-safe branch gate before handoff:
+
+```sh
+python tools/agent.py check --base origin/main
+```
+
+The gate runs Python compilation and tests, recovery metadata validation,
+deterministic SQLite indexing, context/report smoke generation, repository
+cleanup policy, private/generated-path checks, whitespace checks, and
+changed-line source-quality review. It does **not** claim a retail build.
+
+Committed recovery knowledge lives under `config/recovery/`. Generated SQLite,
+reports, and context packs live under ignored `build/context/`. Exact owner,
+address, symbol, evidence, and compiler-constraint lookup comes before fuzzy or
+whole-repository retrieval.
+
+`tools/decompctx.py` remains available for preprocessed decomp.me context. It
+serves a different purpose from the evidence-bounded agent context pack.
+
+## Local build
+
+Install the tools described in [`docs/dependencies.md`](docs/dependencies.md),
+then legally extract the US disc into `orig/GP6E01/` while preserving the disc
+layout.
+
+```sh
+python configure.py
+ninja -j1
+```
+
+The exact input paths and hashes are defined by `config/GP6E01/config.yml`.
+`configure.py` pins the DTK, binutils, compiler, `sjiswrap`, and wrapper
+versions. See [`docs/getting_started.md`](docs/getting_started.md) for complete
+setup and verification instructions.
+
+Any C/C++, shared header, symbol, split, compiler flag, object status, or link
+change requires the relevant relocation-aware object and consumer comparisons,
+serialized DOL/REL build, DTK checksum, and explicit retail byte comparisons
+before promotion.
+
+## Repository layout
 
 - `src/`: recovered game, board, SDK, library, and REL source
-- `include/`: shared declarations, structures, data domains, and generated-style tables
-- `config/GP6E01/`: DOL configuration, symbols, splits, and retail checksums
+- `include/`: shared declarations, structures, and data domains
+- `config/GP6E01/`: DOL inputs, symbols, splits, and retail checksums
 - `config/dll/rels/`: REL symbol and split ownership
-- `config/recovery/`: source-authenticity status, evidence, names, exceptions, and compiler knowledge
-- `docs/`: setup documentation and retained recovery evidence
-- `tools/`: build helpers, declaration gates, indexing, context generation, and checks
-- `build/`: generated and ignored build products, reports, index, and context packs
-- `orig/GP6E01/`: locally extracted and ignored retail files
+- `config/recovery/`: source-quality state, evidence, names, exceptions, and compiler knowledge
+- `docs/`: active documentation and retained recovery evidence
+- `tools/`: build helpers, declaration gates, index/context generation, and checks
+- `build/`: ignored generated output
+- `orig/GP6E01/`: ignored locally extracted retail files
 
-## Contribution rules
+## Contribution boundaries
 
-Work one translation-unit owner or tightly connected function cluster at a
-time. Begin with evidence research, then produce a natural candidate before
-compiler reconciliation. Never regress an independently exact function to make
-one target match. Re-check consumers whenever a shared type, declaration,
-structure, or data owner changes.
+Work on an isolated `agent/<owner>-<goal>` branch or worktree. One agent should
+own one translation unit or tightly connected function cluster. Keep uncertain
+semantics uncertain, preserve stable target identity across renames, record
+rejected probes, and never regress an independently exact function to close
+another target.
 
-Keep uncertain semantics uncertain. Preserve stable target identity when
-renaming. Record rejected probes and owner-specific compiler behavior so the
-next contributor does not spend context and time rediscovering them.
-
-No copyrighted game assets or original binaries should be committed.
+No copyrighted game assets, retail binaries, rebuilt DOL/REL files, or generated
+analysis output may be committed.
