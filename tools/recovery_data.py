@@ -229,7 +229,7 @@ def validate_data(data: dict[str, Any]) -> list[str]:
     return sorted(set(errors))
 
 
-def _mask_c(text: str) -> str:
+def _mask_c(text: str, *, preserve_preprocessor: bool = False) -> str:
     out = list(text)
     i = 0
     state = "code"
@@ -243,7 +243,11 @@ def _mask_c(text: str) -> str:
                 cursor = i
                 while cursor < len(text) and text[cursor] in " \t\r":
                     cursor += 1
-                directive = cursor < len(text) and text[cursor] == "#"
+                directive = (
+                    not preserve_preprocessor
+                    and cursor < len(text)
+                    and text[cursor] == "#"
+                )
                 line_start = False
             if directive:
                 if ch == "\n":
