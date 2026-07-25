@@ -3,8 +3,14 @@
 
 from __future__ import annotations
 
+import argparse
+import json
+import sys
 from pathlib import Path
 from typing import Any
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools import agent_queue as queue
 
@@ -42,11 +48,35 @@ def worktree_audit_summary(
     failures = [value for value in values if value["errors"]]
     if failures:
         first = failures[0]
-        return (
-            "fail",
-            f"{first['owner']}: {first['errors'][0]}",
-        )
-    return (
-        "pass",
-        f"{len(values)} active worktree assignment(s) valid",
-    )
+        return "fail", f"{first['owner']}: {first['errors'][0]}"
+    return "pass", f"{len(values)} active worktree assignment(s) valid"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root")
+    parser.add_argument("--queue-file")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    try:
+        root = queue.git_root(args.root)
+        values = audit_active_worktrees(root, args.queue_file)
+        failures = [value for value in values if value["errors"]]
+        if args.json:
+            print(json.dumps(values, indent=2))
+        elif failures:
+            for value in failures:
+                print(
+                    f"{value['owner']} ({value['agent']}): "
+                    + "; ".join(value["errors"])
+                )
+        else:
+            print(f"active worktrees OK: {len(values)} assignment(s)")
+        return 1 if failures else 0
+    except (OSError, queue.QueueError) as exc:
+        print(f"error: {exc}")
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
