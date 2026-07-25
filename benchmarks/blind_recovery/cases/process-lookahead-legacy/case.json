@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "process-lookahead-legacy-2026-07-25",
+  "status": "legacy-reported",
+  "source": "src/gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c",
+  "function": "ProcessLookAhead",
+  "source_commit": "e49cb7b8ec102ce06730e5be39c58f836da501d5",
+  "reference_sha256": "unavailable-legacy",
+  "difficulty": "small-to-medium",
+  "compiler": {
+    "name": "Clang",
+    "version": "17",
+    "target": "powerpc-unknown-eabi",
+    "flags": [
+      "-mcpu=750",
+      "-m32",
+      "-O2"
+    ],
+    "retail_toolchain": false
+  },
+  "reported_result": {
+    "candidate_attempts": 1,
+    "normalized_assembly_identical": true,
+    "reference_tokens": 204,
+    "candidate_tokens": 204,
+    "source_token_similarity": 1.0,
+    "evidence_tokens_approximate": 412,
+    "candidate_tokens_approximate": 325
+  },
+  "organicity_review": {
+    "verdict": "plausibly-organic-with-source-shape-question",
+    "automated_expected_finding": "guaranteed-post-loop-condition",
+    "finding": "After draining block->queued to zero, the following equality check is guaranteed. It may be defensive historical C, but it should not be treated as authenticated source shape without target or sibling evidence.",
+    "function_body_only": true,
+    "surrounding_structure_debt": [
+      "reserved29"
+    ]
+  },
+  "reproducibility": {
+    "raw_evidence_preserved": false,
+    "raw_candidate_preserved": false,
+    "target_assembly_preserved": false,
+    "candidate_assembly_preserved": false,
+    "prompt_preserved": false,
+    "independently_replayable": false
+  },
+  "artifacts": {},
+  "notes": "This result is retained as a reported proof of concept, not as independently reproducible benchmark evidence. It does not count toward strict benchmark totals."
+}
