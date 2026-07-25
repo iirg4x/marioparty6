@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "id": "main:game/mgdata",
+  "module": "main",
+  "source": "src/game/mgdata.c",
+  "summary": "Model semantic recovery owner: exact code and data expressed through named overlay, message, flag, asset, time, and subgame domains with natural layout and consumer-backed widths.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "authenticated",
+    "semantics": "recovered",
+    "naming": "evidence_backed",
+    "data": "domain_recovered"
+  },
+  "tags": [
+    "model-owner",
+    "metadata",
+    "consumer-validated",
+    "semantic-cleanup"
+  ],
+  "symbols": [
+    {
+      "symbol": "MgNoGet",
+      "stable_id": "main:game/mgdata:MgNoGet"
+    },
+    {
+      "symbol": "MgSubModeGet",
+      "stable_id": "main:game/mgdata:MgSubModeGet"
+    },
+    {
+      "symbol": "MgDecaScoreCalc",
+      "stable_id": "main:game/mgdata:MgDecaScoreCalc"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "All three functions, substantive data sections, and 538 relocations match; natural section-alignment tails are not fabricated as source objects.",
+      "reference": "docs/native_matching_wave95.md"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "REL consumers authenticate the byte widths, day/night and subgame dimensions, and shared MGDATA ownership.",
+      "reference": "docs/native_matching_wave95.md"
+    },
+    {
+      "kind": "sibling_source",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "Mario Party 5 authenticates the separate include table, natural MGDATA layout, sentinel walk, and score-calculation source family.",
+      "reference": "docs/native_matching_wave95.md"
+    }
+  ],
+  "constraints": [],
+  "debt": [],
+  "context": {
+    "priority_files": [
+      "include/game/mgdata.h",
+      "include/mgdata.inc",
+      "include/game/omovl.h",
+      "include/messnum/mg_name.h",
+      "include/messnum/mg_inst.h",
+      "include/datanum/instpic.h"
+    ],
+    "reports": [
+      "build/GP6E01/mgdata_semantic_candidate3.json",
+      "build/GP6E01/mgdata_consumer_gamemes.json",
+      "build/GP6E01/mgdata_consumer_pause.json",
+      "build/GP6E01/mgdata_consumer_mdsel.json",
+      "build/GP6E01/selmenu_mgdata_consumer.json"
+    ]
+  }
+}
