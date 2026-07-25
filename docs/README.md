@@ -4,6 +4,7 @@
 
 - [`../README.md`](../README.md): project scope and top-level commands
 - [`agent_quickstart.md`](agent_quickstart.md): shortest safe agent workflow
+- [`concurrent_agents.md`](concurrent_agents.md): shared owner queue and same-PC Claude/Codex worktrees
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md): task isolation, verification, and handoff
 - [`recovery_standard.md`](recovery_standard.md): evidence hierarchy and faithful-source standard
 - [`context_workflow.md`](context_workflow.md): deterministic index, actionable knowledge cards, selection ranking, token budgets, and wave-distillation audit
@@ -20,6 +21,20 @@
 
 These files retain useful decomp-toolkit background but should be opened only
 when relevant to the active owner or build problem.
+
+## Local task coordination
+
+Claude and Codex share a local claim queue through Git's common directory:
+
+```sh
+python tools/agent.py queue status
+python tools/agent.py queue check
+```
+
+The queue is not committed and contains only coordination state. It prevents
+simultaneous ownership of the same source, branch, worktree, build directory, or
+shared path. Reusable recovery conclusions still belong in `config/recovery/`,
+not in the queue.
 
 ## Reusable recovery knowledge
 
