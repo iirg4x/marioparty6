@@ -10,6 +10,7 @@ from pathlib import Path
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.knowledge_freshness import render_freshness_report, validate_freshness
 from tools.recovery_core import load, root_from
 from tools.recovery_data import RecoveryError
 from tools.recovery_knowledge import recovery_report, validate_knowledge
@@ -23,10 +24,12 @@ def main() -> int:
     try:
         root = root_from(args.root)
         data = load(root, validate=False)
-        errors = validate_knowledge(data)
+        errors = sorted(set([*validate_knowledge(data), *validate_freshness(data)]))
         if errors:
-            raise RecoveryError("recovery knowledge invalid:\n- " + "\n- ".join(errors))
-        text = recovery_report(data)
+            raise RecoveryError(
+                "recovery knowledge invalid:\n- " + "\n- ".join(errors)
+            )
+        text = recovery_report(data).rstrip() + "\n\n" + render_freshness_report(data) + "\n"
         if args.output:
             path = root / args.output
             path.parent.mkdir(parents=True, exist_ok=True)
