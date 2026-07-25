@@ -1,18 +1,26 @@
 name: Recovery task
-description: Claim one source owner or a tightly connected recovery question.
+description: Queue one source owner or a tightly connected recovery question.
 title: "recovery: "
 body:
   - type: markdown
     attributes:
       value: |
-        Keep one agent on one translation unit or tightly connected function cluster. Claude and Codex on the same PC must use separate worktrees, branches, and build directories. Generate bounded context and review automatically selected recovery knowledge before editing.
+        Keep one agent on one translation unit or tightly connected function cluster. Claude and Codex on the same PC must use separate worktrees, branches, and build directories. Add the task to the local claim queue, generate bounded context, and review automatically selected recovery knowledge before editing.
 
   - type: input
     id: owner
     attributes:
-      label: Owner
-      description: Recovery owner ID and source path.
-      placeholder: "REL:mdpartydll:mdparty — src/REL/mdpartydll/mdparty.c"
+      label: Queue owner key
+      description: Use a configured recovery owner ID when one exists; otherwise use the source path.
+      placeholder: "REL:mdpartydll:mdparty or src/board/tutorial.c"
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Source owner path
+      placeholder: "src/REL/mdpartydll/mdparty.c"
     validations:
       required: true
 
@@ -23,6 +31,27 @@ body:
       placeholder: "mdpartydll:0xBBD8 — fn_1_BBD8"
     validations:
       required: true
+
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Intended worker
+      options:
+        - Claude
+        - Codex
+        - Unassigned queue task
+        - Integration worktree
+    validations:
+      required: true
+
+  - type: textarea
+    id: shared_paths
+    attributes:
+      label: Expected shared files
+      description: List central headers, configure.py, symbols, splits, or recovery schemas that must be declared in the local claim. State None when the task is owner-local.
+      placeholder: |
+        - include/game/board.h
+        - configure.py
 
   - type: textarea
     id: question
@@ -85,6 +114,8 @@ body:
     attributes:
       label: Acceptance criteria
       value: |
+        - Owner claimed in the shared local queue before editing
+        - Shared files declared in the claim before editing
         - Automatically selected knowledge cards and counterexamples reviewed
         - Natural evidence-supported candidate documented
         - No independently exact regression
@@ -92,8 +123,10 @@ body:
         - Affected consumers checked
         - Reusable source-to-output finding distilled when one was learned
         - Recovery metadata updated
+        - Last verified commit recorded in the queue
         - Public agent gate passes
         - Required private retail gates pass before promotion
+        - Claim released after handoff
     validations:
       required: true
 
@@ -102,11 +135,15 @@ body:
     attributes:
       label: Task isolation
       options:
-        - label: I will use a dedicated `agent/<owner>-<goal>` branch and worktree.
+        - label: I will use a dedicated `agent/<agent>-<owner>-<goal>` branch and worktree.
           required: true
         - label: I will use a build directory that is not shared with another active agent.
           required: true
-        - label: I will not commit retail inputs or generated build/context files.
+        - label: I will claim this owner through `python tools/agent.py queue claim` before editing.
+          required: true
+        - label: I will not bypass a queue conflict for a shared owner or path.
+          required: true
+        - label: I will not commit retail inputs, queue state, or generated build/context files.
           required: true
         - label: I will not repeat a recorded compiler probe without explaining why the existing card/evidence is insufficient.
           required: true
