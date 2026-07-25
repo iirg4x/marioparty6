@@ -17,24 +17,50 @@ not begin by loading all of `STATUS.md` or the complete wave history.
 
 ```sh
 python tools/agent.py doctor
+python tools/agent.py queue status
 ```
 
 Resolve failures before editing. Warnings about missing `orig/` or Ninja are
 acceptable for documentation and public-safe metadata work, but they mean a
 retail build cannot be claimed.
 
-## 3. Claim one owner
+## 3. Use separate worktrees and claim one owner
 
-Use a recovery-task GitHub issue and an isolated branch/worktree:
+Claude and Codex on the same PC must use worktrees created from the same Git
+repository, separate branches, and separate generated build directories:
 
 ```text
-agent/<owner>-<goal>
+marioparty6-integration/
+marioparty6-claude-task/
+marioparty6-codex-task/
 ```
 
-One task should normally own one translation unit or one tightly connected
-function cluster. Claude and Codex working on the same PC must use separate
-worktrees, branches, and generated build directories. Avoid concurrent edits to
-central headers, `configure.py`, symbol files, and recovery schemas.
+Use a recovery-task issue and a branch such as:
+
+```text
+agent/<agent>-<owner>-<goal>
+```
+
+Claim the owner from the worker's own worktree before editing:
+
+```sh
+python tools/agent.py queue claim <owner> --agent claude
+```
+
+Codex uses `--agent codex`. Declare central headers, `configure.py`, symbol
+files, splits, or recovery schemas with repeated `--shared` arguments. The
+queue rejects duplicate owners, branches, worktrees, build directories, source
+files, and overlapping shared paths.
+
+The orchestrator can add unassigned bulk tasks first:
+
+```sh
+python tools/agent.py queue add src/board/tutorial.c \
+  --source src/board/tutorial.c \
+  --priority high
+```
+
+See `concurrent_agents.md` for the complete same-PC workflow.
 
 ## 4. Generate bounded context
 
@@ -73,6 +99,14 @@ indiscriminately.
 
 ## 5. Separate research from edits
 
+Move the queue status as work progresses:
+
+```sh
+python tools/agent.py queue update <owner> \
+  --agent claude \
+  --status researching
+```
+
 Before touching source, record:
 
 - owner and stable identity;
@@ -91,6 +125,14 @@ visibility, chronology, or helper boundaries.
 A compiler-wide card is a diagnostic. Do not copy its example source into the
 current owner without local evidence. A recorded counterexample is a warning
 that the tempting rule has already failed in that scope.
+
+Add any newly required shared file before editing it:
+
+```sh
+python tools/agent.py queue update <owner> \
+  --agent claude \
+  --add-shared include/game/example.h
+```
 
 ## 6. Keep durable knowledge out of chat history
 
@@ -119,14 +161,21 @@ Generated SQLite, reports, audit output, and context packs remain under ignored
 
 ## 7. Run the public-safe gate
 
+Set the task to verification and record the tested commit:
+
 ```sh
+python tools/agent.py queue update <owner> \
+  --agent claude \
+  --status verifying \
+  --verified-commit HEAD
+
 python tools/agent.py check --base origin/main
 ```
 
 This runs Python compilation, unit tests, owner and knowledge-card validation,
 deterministic index generation, context/report smoke tests, repository cleanup
-policy, diff whitespace checks, generated/private-path checks, and changed-line
-source-quality review.
+policy, queue-health reporting, diff whitespace checks, generated/private-path
+checks, and changed-line source-quality review.
 
 It does not run the retail build.
 
@@ -144,11 +193,20 @@ or link change requires the appropriate local private gates:
 
 State exactly which gates ran in the pull request.
 
-## 9. Handoff
+## 9. Handoff and release
 
 Complete the pull request template. Include accepted and rejected evidence,
 applicable knowledge cards, new cards or counterexamples, natural candidate,
 compiler reconciliation, exact/relocation impact, consumers, metadata changes,
 verification, and remaining debt.
+
+After the commit and handoff are complete:
+
+```sh
+python tools/agent.py queue release <owner> \
+  --agent claude \
+  --status done \
+  --verified-commit HEAD
+```
 
 The handoff should be sufficient without the original agent conversation.
