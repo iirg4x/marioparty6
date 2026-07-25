@@ -11,6 +11,13 @@ These rules apply under `tools/`. Also follow the root `AGENTS.md`.
 - Never read or mutate retail files for a public-safe check.
 - Generated output belongs under `build/`; tools must create parent directories
   and avoid partially written files.
+- The local claim queue belongs under Git's common directory, not inside one
+  worktree. Queue updates must use a cross-platform atomic lock and atomic file
+  replacement.
+- Queue validation must reject duplicate owners, branches, worktrees, build
+  directories, source owners, and overlapping shared paths.
+- Tests for concurrent coordination must create synthetic Git worktrees and must
+  not require network access, compilers, Ninja, or `orig/`.
 - Prefer deterministic exact lookup before fuzzy search. Preserve stable target
   identities in generated output.
 - Knowledge-card ranking must be deterministic and must not infer scope from
@@ -32,6 +39,7 @@ Run:
 ```sh
 python -m unittest discover -s tools/tests -v
 python -m compileall -q tools
+python tools/agent.py queue check
 python tools/knowledge_cards.py check
 python tools/agent.py check --base origin/main
 ```
