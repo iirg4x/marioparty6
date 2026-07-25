@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "REL:mdpartydll:stage",
+  "module": "mdpartydll",
+  "source": "src/REL/mdpartydll/stage.c",
+  "compiler": "GC/1.3.2",
+  "summary": "Exact stage owner whose natural owner-local data placement is accepted, while broad random-function headers are rejected because their visibility changes five target functions.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "address_only",
+    "data": "typed"
+  },
+  "tags": [
+    "priority-flow",
+    "consumer-owner",
+    "compiler-sensitive"
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "All 57 functions, 0x73D8 text bytes, and stage data sections are exact in the final mdpartydll REL.",
+      "reference": "docs/native_matching_wave103.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Moving stage-owned definitions to their natural owner-local position preserves all exact functions and sections.",
+      "reference": "docs/native_matching_wave103.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": false,
+      "summary": "Broad random-function headers change five functions; the two target-visible signed prototypes remain local and policy-backed.",
+      "reference": "docs/native_matching_wave103.md"
+    }
+  ],
+  "constraints": [
+    "mdparty-stage-local-random-prototypes"
+  ],
+  "debt": [
+    {
+      "kind": "semantic_names",
+      "priority": "normal",
+      "summary": "Stage functions exposed through the module interface remain address-named until behavior and consumers authenticate semantic names."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "include/REL/mdpartyDll.h",
+      "include/game/hu3d.h",
+      "include/game/object.h"
+    ],
+    "reports": [
+      "build/GP6E01/mdpartydll/stage_objdiff_wave103_ownership.json",
+      "build/GP6E01/mdpartydll/stage_objdiff_wave103_header_early.json",
+      "build/GP6E01/mdpartydll/stage_objdiff_wave103_header.json"
+    ]
+  }
+}
