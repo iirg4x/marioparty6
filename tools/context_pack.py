@@ -3,27 +3,27 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import argparse
-
-from tools.recovery_core import (
-    RecoveryError,
-    context_pack,
-    load,
-    root_from,
-    token_estimate,
-)
+from tools.recovery_core import load, root_from
+from tools.recovery_data import RecoveryError, token_estimate
+from tools.recovery_knowledge import context_pack
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root")
     parser.add_argument("--budget", type=int, default=12000)
+    parser.add_argument(
+        "--knowledge-limit",
+        type=int,
+        help="maximum automatically selected knowledge cards; 0 disables",
+    )
     parser.add_argument("--output")
     sub = parser.add_subparsers(dest="kind", required=True)
     function = sub.add_parser("function")
@@ -35,11 +35,12 @@ def main() -> int:
     try:
         root = root_from(args.root)
         text = context_pack(
-            load(root),
+            load(root, validate=False),
             args.kind,
             args.target,
             owner_id=getattr(args, "owner", None),
             budget=args.budget,
+            knowledge_limit=args.knowledge_limit,
         )
         if args.output:
             path = root / args.output
