@@ -61,6 +61,11 @@ Historical wave bodies are not loaded automatically.
   `register`, inline assembly, fake storage, or dead branch must be authenticated,
   temporary debt, or rejected.
 - Compiler experiments can prove source shape; they cannot prove semantic names.
+- A blind benchmark must freeze and hash the candidate before reveal. Assembly
+  equality, retained-source similarity, organicity, and reproducibility are
+  separate results.
+- Token-identical C may inherit questionable retained-source structure. Never
+  describe source fidelity alone as proof that a candidate is organic or original.
 
 ## Evidence order
 
@@ -127,6 +132,22 @@ python tools/agent.py integration finalize <owner> \
 Finalization verifies every claimed path in the integration tree still matches
 the worker’s verified commit before setting the task to `done`.
 
+## Blind benchmark evidence
+
+Use `tools/blind_recovery.py` for controlled holdouts. A reproducible case must
+preserve the exact evidence packet, frozen candidate, target and candidate
+assembly, deterministic result, hashes, source path, source commit, and blindness
+assertions. Cases missing those artifacts remain `legacy-reported` and do not
+count toward strict benchmark totals.
+
+```sh
+python tools/blind_recovery.py audit
+python tools/blind_recovery.py audit --strict --replay
+```
+
+Automated organicity findings are review prompts. Confirm or reject them using
+target, consumer, sibling, and compiler evidence.
+
 ## Durable knowledge and handoff
 
 Store reusable findings in `config/recovery/`, not only in chat or a wave report.
@@ -140,4 +161,4 @@ consumers, worker proof, integration requirements, metadata changes, remaining
 debt, and queue status.
 
 See `docs/agent_quickstart.md`, `docs/concurrent_agents.md`, `CONTRIBUTING.md`,
-and `docs/recovery_standard.md`.
+`docs/blind_recovery_benchmark.md`, and `docs/recovery_standard.md`.
