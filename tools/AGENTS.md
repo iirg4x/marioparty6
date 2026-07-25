@@ -49,6 +49,23 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
   supersession state.
 - Wave-document bodies are never automatic prompt context.
 
+## Blind benchmark invariants
+
+- Freeze the candidate and record its SHA-256 before the retained source is
+  revealed or scored.
+- Preserve the exact evidence packet and exact target/candidate assembly used for
+  comparison.
+- Record source path, source commit, retained-function SHA-256, candidate hash,
+  freeze time, toolchain and blindness assertions.
+- Score assembly equivalence, retained-source fidelity, organicity and
+  reproducibility independently.
+- A token-identical candidate may inherit retained-source debt; never convert
+  source similarity directly into an organicity claim.
+- Automated organicity findings are review prompts, not proof that old source is
+  inauthentic.
+- Cases lacking raw candidate or assembly artifacts must remain
+  `legacy-reported` and must not pass a strict replay audit.
+
 ## Source-quality checks
 
 A changed-line rule must ignore comments and string literals, scan the real diff
@@ -61,6 +78,7 @@ python -m compileall -q tools
 python -m unittest discover -s tools/tests -v
 python tools/recovery_index.py check
 python tools/knowledge_cards.py check
+python tools/blind_recovery.py audit
 python tools/agent.py catalog build
 python tools/agent.py queue check
 python tools/agent.py check --base origin/main
