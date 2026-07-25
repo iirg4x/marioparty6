@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Decompilation tooling support
+    url: https://github.com/encounter/decomp-toolkit
+    about: Use upstream decomp-toolkit for generic DTK bugs that are not specific to this repository.
