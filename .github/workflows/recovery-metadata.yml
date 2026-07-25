@@ -52,10 +52,13 @@ jobs:
             docs/context_workflow.md
             tools/agent.py
             tools/agent_queue.py
+            tools/claim_diff.py
+            tools/worktree_audit.py
             tools/owner_catalog.py
             tools/context_engine.py
             tools/local_evidence.py
             tools/knowledge_freshness.py
+            tools/integration_finalize.py
             tools/worktree_manager.py
             tools/hooks.py
             tools/recovery_knowledge.py
@@ -113,10 +116,11 @@ jobs:
           python tools/agent.py catalog query REL:mdpartydll:mdparty
           python tools/agent.py catalog query src/game/mgdata.c
 
-      - name: Check workspace and migrated empty queue
+      - name: Check workspace, queue migration, and worktrees
         run: |
           python tools/agent.py doctor
           python tools/agent.py queue check
+          python tools/worktree_audit.py
 
       - name: Build and query recovery index
         run: |
@@ -130,6 +134,7 @@ jobs:
             --owner REL:mdpartydll:mdparty \
             --symptom "helper boundary" \
             --limit 5
+          mkdir -p build/context
           printf '%s\n' '{"functions":[{"matchPercent":100},{"matchPercent":90}],"relocations":[]}' \
             > build/context/synthetic-objdiff.json
           python tools/agent.py context function fn_1_BBD8 \
