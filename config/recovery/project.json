@@ -12,6 +12,35 @@
     "exceptions": "config/recovery/exceptions.json",
     "compiler_patterns": "config/recovery/compiler_patterns.json"
   },
+  "agent_readiness": {
+    "required_files": [
+      "AGENTS.md",
+      "CONTRIBUTING.md",
+      "README.md",
+      "src/AGENTS.md",
+      "tools/AGENTS.md",
+      "docs/AGENTS.md",
+      "config/recovery/AGENTS.md",
+      "docs/agent_quickstart.md",
+      "docs/recovery_standard.md",
+      "docs/context_workflow.md",
+      "tools/agent.py",
+      ".github/PULL_REQUEST_TEMPLATE.md",
+      ".github/ISSUE_TEMPLATE/recovery-task.yml"
+    ],
+    "forbidden_paths": [
+      ".github.example",
+      ".vscode.example",
+      "README.example.md"
+    ],
+    "generated_paths": [
+      "build/",
+      "build.ninja",
+      "objdiff.json",
+      "ctx.c"
+    ],
+    "task_branch_prefix": "agent/"
+  },
   "dimensions": {
     "binary": [
       "fallback",
