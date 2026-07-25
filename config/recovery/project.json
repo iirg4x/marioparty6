@@ -31,6 +31,8 @@
       "docs/concurrent_agents.md",
       "tools/agent.py",
       "tools/agent_queue.py",
+      "tools/claim_diff.py",
+      "tools/worktree_audit.py",
       "tools/owner_catalog.py",
       "tools/context_engine.py",
       "tools/local_evidence.py",
@@ -87,95 +89,42 @@
     "acceptance_criteria": 7
   },
   "dimensions": {
-    "binary": [
-      "fallback",
-      "partial",
-      "exact"
-    ],
-    "source_shape": [
-      "scaffold",
-      "plausible",
-      "evidence_backed",
-      "authenticated"
-    ],
-    "semantics": [
-      "opaque",
-      "partial",
-      "recovered"
-    ],
-    "naming": [
-      "address_only",
-      "provisional",
-      "partially_semantic",
-      "evidence_backed"
-    ],
-    "data": [
-      "raw",
-      "typed_partial",
-      "typed",
-      "domain_recovered"
-    ]
+    "binary": ["fallback", "partial", "exact"],
+    "source_shape": ["scaffold", "plausible", "evidence_backed", "authenticated"],
+    "semantics": ["opaque", "partial", "recovered"],
+    "naming": ["address_only", "provisional", "partially_semantic", "evidence_backed"],
+    "data": ["raw", "typed_partial", "typed", "domain_recovered"]
   },
-  "confidence_levels": [
-    "unknown",
-    "low",
-    "medium",
-    "high",
-    "confirmed"
-  ],
+  "confidence_levels": ["unknown", "low", "medium", "high", "confirmed"],
   "evidence_hierarchy": [
-    {
-      "id": "same_game_artifact",
-      "rank": 1,
-      "description": "Same-game debug information, map data, symbols, source remnants, or authenticated binary artifacts."
-    },
-    {
-      "id": "target_binary",
-      "rank": 2,
-      "description": "Target instructions, relocations, access widths, sections, call contracts, strings, and object layout."
-    },
-    {
-      "id": "same_game_consumer",
-      "rank": 3,
-      "description": "Same-game callers, consumers, archives, messages, data domains, and ownership relationships."
-    },
-    {
-      "id": "sibling_source",
-      "rank": 4,
-      "description": "Closely related Hudson or Mario Party source used as supporting, not overriding, evidence."
-    },
-    {
-      "id": "compiler_probe",
-      "rank": 5,
-      "description": "Controlled compiler experiments that prove source shape but not semantic meaning."
-    },
-    {
-      "id": "readability_hypothesis",
-      "rank": 6,
-      "description": "A provisional interpretation retained only when stronger evidence is absent."
-    }
+    {"id": "same_game_artifact", "rank": 1, "description": "Same-game debug information, map data, symbols, source remnants, or authenticated binary artifacts."},
+    {"id": "target_binary", "rank": 2, "description": "Target instructions, relocations, access widths, sections, call contracts, strings, and object layout."},
+    {"id": "same_game_consumer", "rank": 3, "description": "Same-game callers, consumers, archives, messages, data domains, and ownership relationships."},
+    {"id": "sibling_source", "rank": 4, "description": "Closely related Hudson or Mario Party source used as supporting, not overriding, evidence."},
+    {"id": "compiler_probe", "rank": 5, "description": "Controlled compiler experiments that prove source shape but not semantic meaning."},
+    {"id": "readability_hypothesis", "rank": 6, "description": "A provisional interpretation retained only when stronger evidence is absent."}
   ],
   "agent_contract": [
     "Recover the most likely original source; do not optimize only for emitted bytes.",
     "Binary identity is required for final promotion but is not, by itself, a source-authenticity claim.",
     "Same-game target and consumer evidence outrank sibling source, compiler probes, and readability hypotheses.",
     "Claim the owner and every shared write path before editing; the real Git diff must remain inside the claim.",
-    "Consult the automatically selected recovery knowledge cards, freshness state, symptoms, and counterexamples before starting a compiler probe.",
-    "Compiler experiments may justify scope, lifetime, declaration visibility, expression shape, or helper boundaries; they do not prove semantic names.",
-    "Do not invent names, types, padding, globals, branches, or literal domains. Leave uncertain semantics explicitly unknown.",
-    "Do not regress independently exact functions or consumers while improving one target.",
-    "Every unusual source construct must be authenticated, recorded as temporary debt, or rejected."
+    "Consult automatically selected knowledge cards, freshness state, symptoms, and counterexamples before starting a compiler probe.",
+    "Compiler experiments may justify source shape; they do not prove semantic names.",
+    "Do not invent names, types, padding, globals, branches, or literal domains.",
+    "Do not regress independently exact functions or consumers.",
+    "Every unusual source construct must be authenticated, temporary debt, or rejected."
   ],
   "acceptance_criteria": [
     "Start with evidence research and a natural source candidate before compiler reconciliation.",
-    "Review applicable confirmed rules, contextual heuristics, owner constraints, freshness warnings, and counterexamples before repeating an old probe.",
-    "Keep every changed path inside the active queue claim and avoid paths owned by another task.",
-    "Record changed semantic names and types with evidence and confidence.",
-    "Record rejected probes so later work does not repeat them.",
-    "Bind verification proof to a clean current commit and record the exact object, relocation, consumer, retail, checksum, and toolchain evidence that actually ran.",
-    "Run relocation-aware object comparison for the changed owner and affected consumers.",
-    "For promotion, re-run the normal DOL or REL checksum and byte-identity gates.",
-    "Update source-shape, semantic, naming, and data status independently from binary status.",
+    "Review applicable rules, constraints, freshness warnings, and counterexamples before repeating a probe.",
+    "Keep every changed path inside the active claim and outside other active claims.",
+    "Record semantic names and types with evidence and confidence.",
+    "Record rejected probes.",
+    "Bind worker verification proof to a clean current commit.",
+    "Run relocation-aware owner and consumer comparisons.",
+    "Run serialized retail checksum and byte gates before integration finalization.",
+    "Update source-quality dimensions independently from binary status.",
     "Do not merge an unexplained compiler-control construct merely because it reaches 100%."
   ]
 }
