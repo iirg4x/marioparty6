@@ -8,7 +8,8 @@
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md): proof and handoff requirements
 - [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
 - [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, local evidence, freshness
-- [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): controlled source-holdout results and remaining retail benchmark
+- [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): sealed holdouts, organicity, reproducibility, and required retail benchmark
+- [`../benchmarks/blind_recovery/README.md`](../benchmarks/blind_recovery/README.md): benchmark artifacts and replay commands
 - [`getting_started.md`](getting_started.md): local toolchain and retail build setup
 - [`github_actions.md`](github_actions.md): draft-local versus ready-PR CI
 
@@ -55,6 +56,25 @@ Cards distinguish confirmed rules, contextual heuristics, and owner constraints.
 A stale card remains visible as a warning. Compiler-wide rules are diagnostics,
 not source templates.
 
+## Blind recovery evidence
+
+Blind cases separate assembly equality, retained-source similarity, organicity,
+and reproducibility:
+
+```sh
+python tools/blind_recovery.py audit
+python tools/blind_recovery.py audit --strict --replay
+```
+
+A reproducible case preserves the raw evidence, frozen candidate, target and
+candidate assembly, result, hashes and source commit. The two initial July 25,
+2026 surrogate trials remain `legacy-reported` because those raw artifacts were
+not preserved.
+
+The organicity review is deliberately independent from source similarity. A
+candidate may reproduce the retained C exactly while inheriting questionable
+retained-source structure.
+
 ## Historical evidence archive
 
 `native_matching_wave*.md` and owner reports remain forensic laboratory records.
@@ -86,6 +106,7 @@ build/context/owner-catalog.json
 build/context/recovery.sqlite
 build/context/recovery-report.md
 build/context/*context*.md
+build/blind-recovery/
 ```
 
 Generate it through `python tools/agent.py check` or the lower-level tools. Never
