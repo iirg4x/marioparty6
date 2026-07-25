@@ -38,10 +38,13 @@ jobs:
             tools/AGENTS.md
             docs/AGENTS.md
             config/recovery/AGENTS.md
+            config/recovery/compiler_patterns.json
             docs/agent_quickstart.md
             docs/recovery_standard.md
             docs/context_workflow.md
             tools/agent.py
+            tools/recovery_knowledge.py
+            tools/knowledge_cards.py
             .github/PULL_REQUEST_TEMPLATE.md
             .github/ISSUE_TEMPLATE/recovery-task.yml
           )
@@ -77,8 +80,10 @@ jobs:
             exit 1
           fi
 
-      - name: Validate recovery metadata
-        run: python tools/recovery_index.py check
+      - name: Validate recovery metadata and knowledge cards
+        run: |
+          python tools/recovery_index.py check
+          python tools/knowledge_cards.py check
 
       - name: Check agent workspace
         run: python tools/agent.py doctor
@@ -89,15 +94,32 @@ jobs:
       - name: Run public-safe tests
         run: python -m unittest discover -s tools/tests -v
 
-      - name: Build recovery index
-        run: python tools/recovery_index.py build
+      - name: Build and query recovery index
+        run: |
+          python tools/recovery_index.py build
+          python tools/recovery_index.py query "broad header"
+          python tools/recovery_index.py query "inspect caller and consumer widths"
 
-      - name: Smoke-test context and report generation
+      - name: Verify exact-target knowledge selection
+        run: |
+          python tools/knowledge_cards.py function fn_1_BBD8 \
+            --owner REL:mdpartydll:mdparty \
+            --limit 5
+          python tools/agent.py context function fn_1_BBD8 \
+            --owner REL:mdpartydll:mdparty \
+            --budget 12000 \
+            --output build/context/mdparty-BBD8.md
+          grep -q "Relevant recovered knowledge" build/context/mdparty-BBD8.md
+          grep -q "gc132-helper-boundary-lifetime" build/context/mdparty-BBD8.md
+          grep -q "mdparty-tail-definition-chronology" build/context/mdparty-BBD8.md
+
+      - name: Verify owner context, report, and wave audit
         run: |
           python tools/agent.py context owner main:game/mgdata \
             --budget 6000 \
             --output build/context/agent-smoke-context.md
           python tools/agent.py report
+          python tools/knowledge_cards.py audit --max-items 5
 
       - name: Check changed paths and source quality
         if: github.event_name == 'pull_request'
