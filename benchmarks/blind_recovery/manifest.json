@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "description": "Committed blind-recovery cases. Reproducible cases preserve the raw evidence, frozen candidate, compared assembly, result, and source commit. Legacy cases remain visible but do not count as independently replayable proof.",
+  "cases": [
+    "cases/process-lookahead-legacy/case.json",
+    "cases/process-stacker-legacy/case.json"
+  ]
+}
