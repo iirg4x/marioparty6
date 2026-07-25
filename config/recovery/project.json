@@ -5,42 +5,38 @@
   "goal": "Recover the most likely original non-minigame Mario Party 6 source while preserving retail binary identity as the final verification gate.",
   "default_context_budget": 12000,
   "knowledge_card_limit": 5,
-  "coordination": {
-    "queue_environment": "MP6_AGENT_QUEUE",
-    "default_location": "git-common-dir/agent-coordination/queue.json",
-    "stale_claim_hours": 24,
-    "active_statuses": [
-      "claimed",
-      "researching",
-      "coding",
-      "verifying",
-      "blocked",
-      "ready"
-    ]
-  },
   "owner_globs": [
     "config/recovery/owners/*.json"
   ],
   "files": {
     "names": "config/recovery/names.json",
     "exceptions": "config/recovery/exceptions.json",
-    "compiler_patterns": "config/recovery/compiler_patterns.json"
+    "compiler_patterns": "config/recovery/compiler_patterns.json",
+    "knowledge_freshness": "config/recovery/knowledge_freshness.json"
   },
   "agent_readiness": {
     "required_files": [
       "AGENTS.md",
       "CONTRIBUTING.md",
       "README.md",
+      "CLAUDE.md",
+      "GEMINI.md",
       "src/AGENTS.md",
       "tools/AGENTS.md",
       "docs/AGENTS.md",
       "config/recovery/AGENTS.md",
       "docs/agent_quickstart.md",
-      "docs/concurrent_agents.md",
       "docs/recovery_standard.md",
       "docs/context_workflow.md",
+      "docs/concurrent_agents.md",
       "tools/agent.py",
       "tools/agent_queue.py",
+      "tools/owner_catalog.py",
+      "tools/context_engine.py",
+      "tools/local_evidence.py",
+      "tools/knowledge_freshness.py",
+      "tools/worktree_manager.py",
+      "tools/hooks.py",
       "tools/recovery_knowledge.py",
       "tools/knowledge_cards.py",
       ".github/PULL_REQUEST_TEMPLATE.md",
@@ -58,6 +54,36 @@
       "ctx.c"
     ],
     "task_branch_prefix": "agent/"
+  },
+  "coordination": {
+    "queue_schema": 2,
+    "default_base_ref": "origin/main",
+    "stale_hours": 24,
+    "default_resources": [
+      "retail-build",
+      "integration",
+      "symbol-regeneration",
+      "configure-shared"
+    ],
+    "change_classes": [
+      "documentation",
+      "tooling",
+      "metadata",
+      "private-source",
+      "shared-interface",
+      "build-configuration"
+    ]
+  },
+  "context_sections": {
+    "recovery_contract": 7,
+    "owner_state": 7,
+    "knowledge": 18,
+    "local_evidence": 10,
+    "target_source": 34,
+    "neighbourhood": 8,
+    "evidence": 12,
+    "constraints_and_debt": 14,
+    "acceptance_criteria": 7
   },
   "dimensions": {
     "binary": [
@@ -132,8 +158,8 @@
     "Recover the most likely original source; do not optimize only for emitted bytes.",
     "Binary identity is required for final promotion but is not, by itself, a source-authenticity claim.",
     "Same-game target and consumer evidence outrank sibling source, compiler probes, and readability hypotheses.",
-    "Claim one owner in the shared local queue before editing and declare shared files before touching them.",
-    "Consult the automatically selected recovery knowledge cards and their counterexamples before starting a compiler probe.",
+    "Claim the owner and every shared write path before editing; the real Git diff must remain inside the claim.",
+    "Consult the automatically selected recovery knowledge cards, freshness state, symptoms, and counterexamples before starting a compiler probe.",
     "Compiler experiments may justify scope, lifetime, declaration visibility, expression shape, or helper boundaries; they do not prove semantic names.",
     "Do not invent names, types, padding, globals, branches, or literal domains. Leave uncertain semantics explicitly unknown.",
     "Do not regress independently exact functions or consumers while improving one target.",
@@ -141,13 +167,14 @@
   ],
   "acceptance_criteria": [
     "Start with evidence research and a natural source candidate before compiler reconciliation.",
-    "Review applicable confirmed rules, contextual heuristics, owner constraints, and counterexamples before repeating an old probe.",
+    "Review applicable confirmed rules, contextual heuristics, owner constraints, freshness warnings, and counterexamples before repeating an old probe.",
+    "Keep every changed path inside the active queue claim and avoid paths owned by another task.",
     "Record changed semantic names and types with evidence and confidence.",
     "Record rejected probes so later work does not repeat them.",
+    "Bind verification proof to a clean current commit and record the exact object, relocation, consumer, retail, checksum, and toolchain evidence that actually ran.",
     "Run relocation-aware object comparison for the changed owner and affected consumers.",
     "For promotion, re-run the normal DOL or REL checksum and byte-identity gates.",
     "Update source-shape, semantic, naming, and data status independently from binary status.",
-    "Record the last verified commit and release the local claim after handoff.",
     "Do not merge an unexplained compiler-control construct merely because it reaches 100%."
   ]
 }
