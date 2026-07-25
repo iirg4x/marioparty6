@@ -2,6 +2,7 @@ name: Recovery metadata
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +14,12 @@ concurrency:
 
 jobs:
   agent-workspace:
+    # Claude and Codex may push many intermediate commits while a task PR is a
+    # draft. Agents run `python tools/agent.py check` locally during that phase.
+    # Automatic CI starts when the PR is marked ready for review, and then runs
+    # again for later commits while the PR remains non-draft. Manual dispatch is
+    # always available when a remote check is needed earlier.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
