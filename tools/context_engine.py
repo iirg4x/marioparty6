@@ -9,6 +9,7 @@ from typing import Any, Mapping, Sequence
 
 from tools.knowledge_freshness import card_freshness
 from tools.local_evidence import EvidenceError, render_summary, summarize_report
+from tools.owner_catalog import CatalogError, build_catalog
 from tools.recovery_core import context_pack as base_context_pack
 from tools.recovery_data import token_estimate
 from tools.recovery_knowledge import (
@@ -21,6 +22,7 @@ DEFAULT_SECTION_WEIGHTS = {
     "Recovery contract": 7,
     "Owner state": 7,
     "Relevant recovered knowledge": 18,
+    "Operational dependency context": 12,
     "Local object-diff evidence": 10,
     "Target function": 34,
     "Owner functions": 30,
@@ -139,6 +141,73 @@ def render_compact_knowledge(
     return "\n".join(lines)
 
 
+def _edge_text(edges: Sequence[Mapping[str, Any]], limit: int = 12) -> str:
+    values = []
+    for edge in edges[:limit]:
+        targets = ", ".join(f"`{item}`" for item in edge.get("owners", [])) or "unresolved"
+        values.append(f"`{edge.get('symbol')}` → {targets}")
+    return "; ".join(values) or "none"
+
+
+def render_operational_dependencies(
+    data: dict[str, Any], owner: Mapping[str, Any]
+) -> str:
+    lines = [
+        "## Operational dependency context",
+        "",
+        "Generated from source/configuration. Call, import, and data edges are conservative operational approximations, not semantic proof.",
+    ]
+    try:
+        catalog = build_catalog(data["root"], reviewed=data.get("owners", []))
+    except (CatalogError, OSError) as exc:
+        return "\n".join([*lines, f"- Catalog unavailable: {exc}"])
+    source = owner.get("source")
+    owner_id = owner.get("id")
+    matches = [
+        item
+        for item in catalog.get("owners", [])
+        if source == item.get("source")
+        or owner_id in {item.get("id"), item.get("reviewed_owner_id")}
+    ]
+    if len(matches) != 1:
+        return "\n".join([*lines, "- No unique operational owner record."])
+    record = matches[0]
+    dependencies = record.get("depends_on_owners", [])
+    lines += [
+        f"- **Owner:** `{record.get('id')}` · `{record.get('source')}` · `{record.get('configured_status')}`",
+        "- **Outgoing owner dependencies:** "
+        + (", ".join(f"`{item}`" for item in dependencies[:20]) or "none"),
+        "- **Direct call edges:** " + _edge_text(record.get("call_edges", [])),
+        "- **Global-data edges:** " + _edge_text(record.get("data_edges", [])),
+        "- **Declared imports:** " + _edge_text(record.get("import_edges", [])),
+    ]
+    incoming_functions: list[str] = []
+    for symbol in record.get("functions_defined", []):
+        consumers = catalog.get("function_consumers", {}).get(symbol, [])
+        if consumers:
+            incoming_functions.append(
+                f"`{symbol}` ← "
+                + ", ".join(f"`{item}`" for item in consumers[:8])
+            )
+    incoming_data: list[str] = []
+    for symbol in record.get("globals_defined", []):
+        consumers = catalog.get("data_consumers", {}).get(symbol, [])
+        if consumers:
+            incoming_data.append(
+                f"`{symbol}` ← "
+                + ", ".join(f"`{item}`" for item in consumers[:8])
+            )
+    lines.append(
+        "- **Incoming function consumers:** "
+        + ("; ".join(incoming_functions[:12]) or "none resolved")
+    )
+    lines.append(
+        "- **Incoming data consumers:** "
+        + ("; ".join(incoming_data[:12]) or "none resolved")
+    )
+    return "\n".join(lines)
+
+
 def _split_sections(text: str) -> tuple[str, list[tuple[str, str]]]:
     matches = list(re.finditer(r"(?m)^## ([^\n]+)\n", text))
     if not matches:
@@ -212,6 +281,7 @@ def _budget_sections(
         "Rejected evidence and probes",
         "Naming ledger",
         "Remaining recovery debt",
+        "Operational dependency context",
     }
     mutable = list(zip([name for name, _ in sections], rendered))
     for index, (name, text) in enumerate(mutable):
@@ -256,6 +326,10 @@ def build_context(
     preamble, sections = _split_sections(base)
     insertion = 2
     sections.insert(insertion, ("Relevant recovered knowledge", knowledge))
+    sections.insert(
+        insertion + 1,
+        ("Operational dependency context", render_operational_dependencies(data, owner)),
+    )
 
     requested = list(reports or [])
     if local_evidence:
@@ -279,7 +353,7 @@ def build_context(
             continue
     if local_evidence or reports:
         sections.insert(
-            insertion + 1,
+            insertion + 2,
             ("Local object-diff evidence", render_summary(summaries)),
         )
     return _budget_sections(preamble, sections, budget=budget)
