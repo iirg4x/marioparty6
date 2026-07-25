@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "id": "REL:mdpartydll:mdparty",
+  "module": "mdpartydll",
+  "source": "src/REL/mdpartydll/mdparty.c",
+  "compiler": "GC/1.3.2",
+  "summary": "Binary-exact party-mode application owner with target-proven declaration visibility and definition chronology. Significant address naming and unknown-field semantics remain recovery debt.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "address_only",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "priority-flow",
+    "large-owner",
+    "compiler-sensitive",
+    "semantic-debt"
+  ],
+  "symbols": [
+    {
+      "symbol": "fn_1_2F22C",
+      "stable_id": "mdpartydll:0x2F22C"
+    },
+    {
+      "symbol": "fn_1_BBD8",
+      "stable_id": "mdpartydll:0xBBD8"
+    },
+    {
+      "symbol": "fn_1_38314",
+      "stable_id": "mdpartydll:0x38314"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "All 258 application functions and all 0x3F424 target text bytes are exact; the linked REL, relocation stream, and retail checksum gates pass.",
+      "reference": "docs/native_matching_wave101.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Moving same-owner definitions before code changes one-pass visibility, text size, BSS size, and register allocation; the retail chronology requires tail definitions.",
+      "reference": "docs/native_matching_wave103.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": false,
+      "summary": "Including the broad audio header changes fn_1_2F22C by eight bytes, so the target-visible local prototypes remain a bounded authenticated exception.",
+      "reference": "docs/native_matching_wave103.md"
+    },
+    {
+      "kind": "readability_hypothesis",
+      "confidence": "unknown",
+      "accepted": false,
+      "summary": "Address-derived function and object names are identifiers, not recovered semantics; semantic renaming remains intentionally unresolved.",
+      "reference": "docs/native_matching_wave103.md"
+    }
+  ],
+  "constraints": [
+    "mdparty-late-owner-definitions",
+    "mdparty-local-audio-prototypes"
+  ],
+  "debt": [
+    {
+      "kind": "semantic_names",
+      "priority": "high",
+      "summary": "Most application functions and many objects still use address-derived names; rename only with same-game or strong sibling evidence."
+    },
+    {
+      "kind": "structure_fields",
+      "priority": "high",
+      "summary": "Several owner-local structures retain unk_* fields whose access patterns are typed but not yet semantically authenticated."
+    },
+    {
+      "kind": "data_domains",
+      "priority": "normal",
+      "summary": "Some message, resource, state, and effect values remain numeric even though the binary layout is exact."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "include/REL/mdpartyDll.h",
+      "include/REL/mdpartyDll_globals.h",
+      "include/game/board/main.h",
+      "include/game/audio.h"
+    ],
+    "reports": [
+      "build/GP6E01/mdpartydll/mdparty_objdiff_wave103_ownership.json",
+      "build/GP6E01/mdpartydll/mdparty_objdiff_wave103_header_early.json",
+      "build/GP6E01/mdpartydll/mdparty_objdiff_wave103_header.json"
+    ]
+  }
+}
