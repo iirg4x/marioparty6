@@ -11,12 +11,8 @@ from pathlib import Path
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.recovery_core import (
-    load,
-    query_index,
-    root_from,
-    validate_data,
-)
+from tools.knowledge_freshness import validate_freshness
+from tools.recovery_core import load, query_index, root_from, validate_data
 from tools.recovery_data import RecoveryError
 from tools.recovery_knowledge import build_recovery_index, validate_knowledge
 
@@ -37,7 +33,15 @@ def main() -> int:
     try:
         root = root_from(args.root)
         data = load(root, validate=False)
-        errors = sorted(set([*validate_data(data), *validate_knowledge(data)]))
+        errors = sorted(
+            set(
+                [
+                    *validate_data(data),
+                    *validate_knowledge(data),
+                    *validate_freshness(data),
+                ]
+            )
+        )
         if errors:
             print("recovery metadata invalid:")
             for error in errors:
@@ -46,7 +50,7 @@ def main() -> int:
         if args.command == "check":
             print(
                 f"recovery metadata OK: {len(data['owners'])} owners, "
-                f"{len(data['patterns'])} knowledge cards"
+                f"{len(data['patterns'])} knowledge cards, freshness complete"
             )
             return 0
         if args.command == "build":
