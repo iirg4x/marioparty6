@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Keep one agent on one translation unit or tightly connected function cluster. Use stable target identities and separate semantic recovery from code-generation reconciliation.
+        Keep one agent on one translation unit or tightly connected function cluster. Claude and Codex on the same PC must use separate worktrees, branches, and build directories. Generate bounded context and review automatically selected recovery knowledge before editing.
 
   - type: input
     id: owner
@@ -45,10 +45,25 @@ body:
       required: true
 
   - type: textarea
+    id: knowledge
+    attributes:
+      label: Applicable recovery knowledge
+      description: Run the context/knowledge command and list selected confirmed rules, heuristics, owner constraints, and counterexamples. Explain any card that is intentionally not applicable.
+      placeholder: |
+        Command: python tools/agent.py knowledge function fn_1_BBD8 --owner REL:mdpartydll:mdparty
+        Cards:
+        - mdparty-tail-definition-chronology — owner constraint
+        - gc132-helper-boundary-lifetime — contextual heuristic
+        Counterexamples:
+        - stage is a counterexample to the general tail-definition shape
+    validations:
+      required: true
+
+  - type: textarea
     id: evidence
     attributes:
       label: Known evidence
-      description: Target instructions, relocations, callers, consumers, same-game domains, sibling source, existing reports, and rejected probes.
+      description: Target instructions, relocations, callers, consumers, same-game domains, sibling source, existing reports, rejected probes, and historical findings already distilled into cards.
     validations:
       required: true
 
@@ -59,14 +74,23 @@ body:
       description: List headers, data owners, callers, or Matching consumers that may need verification.
 
   - type: textarea
+    id: knowledge_output
+    attributes:
+      label: Expected reusable knowledge output
+      description: State whether this task may add/refine a rule, example, counterexample, owner constraint, or only owner-specific evidence. Do not invent a card merely to fill the field.
+      placeholder: "Possible new counterexample for gc132-broad-header-visibility; otherwise owner evidence only."
+
+  - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
       value: |
+        - Automatically selected knowledge cards and counterexamples reviewed
         - Natural evidence-supported candidate documented
         - No independently exact regression
         - Relocation-aware object result recorded
         - Affected consumers checked
+        - Reusable source-to-output finding distilled when one was learned
         - Recovery metadata updated
         - Public agent gate passes
         - Required private retail gates pass before promotion
@@ -78,7 +102,11 @@ body:
     attributes:
       label: Task isolation
       options:
-        - label: I will use a dedicated `agent/<owner>-<goal>` branch or worktree.
+        - label: I will use a dedicated `agent/<owner>-<goal>` branch and worktree.
+          required: true
+        - label: I will use a build directory that is not shared with another active agent.
           required: true
         - label: I will not commit retail inputs or generated build/context files.
+          required: true
+        - label: I will not repeat a recorded compiler probe without explaining why the existing card/evidence is insufficient.
           required: true
