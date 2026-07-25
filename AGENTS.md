@@ -6,154 +6,138 @@ Recover the most likely original Mario Party 6 source. Retail binary identity is
 required for final promotion, but a byte match produced through unsupported
 compiler manipulation is not faithful source recovery.
 
-Use the nearest `AGENTS.md` for the directory you edit. This root file contains
-only repository-wide rules; do not load every instruction or evidence document
-into context by default.
+Use the nearest `AGENTS.md` for the directory you edit. Do not load every
+instruction or historical evidence document by default.
 
 ## Start here
 
-Run the workspace check:
-
 ```sh
 python tools/agent.py doctor
+python tools/agent.py hooks install
+python tools/agent.py queue status
 ```
 
-Before editing, inspect and claim one owner in the shared local queue:
+Work from an isolated task worktree. Claim one owner before editing, or let the
+bootstrap command create and claim it:
 
 ```sh
-python tools/agent.py queue status
-python tools/agent.py queue claim <owner> --agent claude
+python tools/agent.py worktree create <owner> --agent claude
 ```
 
-Codex uses `--agent codex`. Claude and Codex must use worktrees from the same
-Git repository, different branches, and different build directories. Declare
-central headers, `configure.py`, symbols, splits, and recovery schemas with
-`--shared` before editing them. See `docs/concurrent_agents.md`.
+Codex uses `--agent codex`. Claude and Codex must never share a worktree, branch,
+or build directory. Declare central headers, `configure.py`, symbols, splits,
+and recovery schemas with `--shared` before editing them.
 
-Generate bounded context for the exact task:
+Generate bounded task context:
 
 ```sh
 python tools/agent.py context function fn_1_BBD8 \
   --owner REL:mdpartydll:mdparty \
+  --symptom "saved register lifetime" \
+  --local-evidence \
   --budget 12000
-
-python tools/agent.py context owner main:game/mgdata --budget 7000
 ```
 
-The context generator automatically selects up to five applicable recovery
-knowledge cards before the source: exact-target findings, owner constraints,
-module/tag rules, compiler-wide diagnostics, and recorded counterexamples. Read
-those cards before starting a compiler probe.
-
-Inspect the selected cards directly when needed:
-
-```sh
-python tools/agent.py knowledge function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty
-python tools/agent.py knowledge audit
-```
-
-Use exact owner IDs, stable identities, symbols, callers, consumers, and
-recorded evidence first. Expand only a named dependency that remains material.
-Do not attach all of `STATUS.md`, every historical wave report, or an entire
-large translation unit to an agent prompt.
+The packet automatically selects exact-target findings, owner constraints,
+compiler diagnostics, freshness warnings, and counterexamples before the source.
+Historical wave bodies are not loaded automatically.
 
 ## Non-negotiable rules
 
-- Work on a task branch in an isolated worktree, never directly on `main`.
-- Claim the owner before editing; one agent owns one translation unit or one
-  tightly connected function cluster.
-- Never share a worktree, branch, or build directory between Claude and Codex.
-- Add shared files to the claim before touching them. A queue conflict must be
-  resolved by the orchestrator or integration worktree, not bypassed.
-- Do not edit `orig/`, `build/`, `build.ninja`, `objdiff.json`, or generated
-  context/report files.
-- Review applicable knowledge cards and their counterexamples before repeating a
-  source-shape experiment already investigated elsewhere.
-- A compiler-wide card is a diagnostic rule, not permission to copy an
-  owner-specific source shape.
+- Never edit directly on `main`.
+- Claim the source owner and every shared write path before editing.
+- Run `python tools/agent.py queue check-diff --base origin/main` before commits
+  and handoff. Committed, staged, unstaged, and untracked paths must remain
+  inside the claim and outside every other active claim.
+- Do not edit or commit `orig/`, `build/`, `build.ninja`, `objdiff.json`, generated
+  context, or rebuilt retail containers.
+- Read applicable knowledge cards and counterexamples before repeating a known
+  compiler probe. Compiler-wide cards are diagnostics, not source templates.
 - Do not invent semantic names, types, padding, globals, branches, or numeric
-  domains. An honest `unk_*` or address symbol is better than unsupported
-  certainty.
-- Do not regress an independently exact function to close another target.
-- Do not copy an authenticated compiler oddity from one owner into another.
+  domains. Honest unknowns are preferable to unsupported readability.
+- Do not regress an independently exact function or consumer to close another
+  target.
 - A pragma, forced inline/no-inline control, code-generation `volatile` or
-  `register`, inline assembly, fake storage, or dead branch must be authenticated
-  in recovery metadata, explicitly temporary debt, or rejected.
+  `register`, inline assembly, fake storage, or dead branch must be authenticated,
+  temporary debt, or rejected.
 - Compiler experiments can prove source shape; they cannot prove semantic names.
-- Preserve permanent target identity when accepting a semantic rename.
 
 ## Evidence order
 
 1. Same-game maps, symbols, source remnants, and authenticated artifacts.
-2. Target instructions, relocations, access widths, sections, and call contracts.
-3. Same-game callers, consumers, messages, archives, and data ownership.
-4. Authenticated sibling source from the Hudson/Mario Party lineage.
-5. Controlled compiler probes for shape only.
-6. Readability hypotheses, which remain provisional.
+2. Target instructions, relocations, widths, sections, and call contracts.
+3. Same-game callers, consumers, messages, archives, and ownership.
+4. Authenticated sibling source.
+5. Controlled compiler probes for source shape.
+6. Readability hypotheses, kept provisional.
 
-## Required work phases
+## Work phases
 
-1. **Research:** inspect the target, owner, direct dependencies, consumers,
-   automatically selected knowledge cards, existing evidence, and rejected
-   probes. Do not edit source yet.
+1. **Research:** target, relocations, callers, consumers, selected cards, local
+   reports, and rejected probes. Do not edit yet.
 2. **Natural candidate:** write the cleanest evidence-supported C without forcing
-   the final instructions. A natural nonmatching candidate is useful evidence.
-3. **Compiler reconciliation:** vary one evidenced dimension at a time, such as
-   signedness, scope, lifetime, expression grouping, loop form, declaration
-   visibility, or helper boundary.
-4. **Adversarial review:** look for matching-only constructs, fabricated names or
-   data, hidden consumer regressions, and claims stronger than their evidence.
+   code generation.
+3. **Compiler reconciliation:** vary one evidenced dimension at a time.
+4. **Adversarial review:** check for invented semantics, match-only constructs,
+   hidden consumer regressions, and claims stronger than the evidence.
 
-Update the queue as the task moves through `researching`, `coding`, `verifying`,
-`blocked`, or `ready`.
+Update queue status through `researching`, `coding`, `verifying`, `blocked`, and
+`ready`.
 
-## Verification
+## Worker verification
 
-Run the public-safe branch gate before handoff:
+Commit first and leave the worktree clean. Then run:
 
 ```sh
 python tools/agent.py check --base origin/main
+
+python tools/agent.py queue verify <owner> \
+  --agent <claude-or-codex> \
+  --public-gate pass \
+  --object-report build/GP6E01/<report>.json \
+  --functions-exact <exact/total> \
+  --relocations exact \
+  --consumer <owner>=exact \
+  --toolchain GC/1.3.2
+
+python tools/agent.py queue update <owner> \
+  --agent <claude-or-codex> --status ready
 ```
 
-This validates tests, metadata, structured knowledge cards, the deterministic
-recovery index, generated context/report paths, repository cleanup policy, and
-newly added source-shape controls. It does **not** prove a retail build.
+Verification is tied to the clean current commit. Any later change requires a
+new proof.
 
-Any C/C++ source, shared header, compiler flag, object status, symbol, split, or
-link configuration change also requires the relevant relocation-aware object
-comparison, affected-consumer checks, serialized DOL/REL build, DTK checksum,
-and explicit retail byte comparison before promotion.
+## Integration
 
-Record the last verified commit, then release the claim after handoff:
+Workers stop at `ready`. The integration worktree acquires exclusive resources,
+integrates the worker commit, runs the serialized DOL/REL build, consumer checks,
+DTK checksum, and retail comparisons, then finalizes:
 
 ```sh
-python tools/agent.py queue release <owner> \
-  --agent <claude-or-codex> \
-  --status done \
-  --verified-commit HEAD
+python tools/agent.py queue acquire-resource integration --agent integrator
+python tools/agent.py queue acquire-resource retail-build --agent integrator
+
+python tools/agent.py integration finalize <owner> \
+  --agent integrator \
+  --retail-gate pass \
+  --checksum pass \
+  --toolchain GC/1.3.2
 ```
 
-Record reusable findings in `config/recovery/` rather than leaving them only in
-an agent transcript. A repeated relationship between a source condition and
-emitted output belongs in `compiler_patterns.json` with a rule, safe actions,
-scope, examples, counterexamples, and evidence. Update binary, source-shape,
-semantic, naming, and data status independently.
+Finalization verifies every claimed path in the integration tree still matches
+the worker’s verified commit before setting the task to `done`.
 
-## Task handoff
+## Durable knowledge and handoff
 
-A handoff or pull request must state:
+Store reusable findings in `config/recovery/`, not only in chat or a wave report.
+A repeated source-to-output relationship belongs in `compiler_patterns.json`
+with trigger, effects, rule, safe actions, scope, examples, counterexamples, and
+evidence. Update its freshness record when revalidated.
 
-- owner and stable target identity;
-- research question and accepted evidence;
-- applicable knowledge cards and whether a new card or counterexample was added;
-- rejected probes or alternatives;
-- natural candidate and compiler reconciliation, if any;
-- exact-function and relocation impact;
-- affected consumers;
-- public-safe and private verification actually run;
-- recovery metadata changed and remaining debt;
-- queue status and last verified commit.
+A handoff must state owner and stable identity, selected cards, accepted/rejected
+evidence, natural candidate, compiler reconciliation, exact/relocation impact,
+consumers, worker proof, integration requirements, metadata changes, remaining
+debt, and queue status.
 
 See `docs/agent_quickstart.md`, `docs/concurrent_agents.md`, `CONTRIBUTING.md`,
-and `docs/recovery_standard.md` for the detailed workflow.
+and `docs/recovery_standard.md`.
