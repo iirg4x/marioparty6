@@ -44,6 +44,35 @@ A successful isolated match is not enough. Prefer patterns reproduced across
 related call sites with no exact regressions. Record accepted and rejected
 behavior in `config/recovery/compiler_patterns.json` or owner evidence.
 
+## Organic-source review
+
+Before calling a candidate source-authentic, review it independently from its
+objdiff score:
+
+```sh
+python tools/blind_recovery.py organicity <source-path> \
+  --function <symbol>
+```
+
+The automated result is a prompt for evidence review, not a style verdict. A
+finding may be authentic old source, and clean code may still be historically
+wrong. Resolve findings using target, consumer, sibling, and compiler evidence.
+
+In particular:
+
+- do not call a token-identical candidate organic merely because it reproduced
+  retained recovered C;
+- distinguish candidate-only compiler scaffolding from debt inherited from the
+  retained source;
+- keep surrounding `reserved*`/`unk_*` structure debt separate from a clean
+  function-body score;
+- record unexplained redundancy as source-shape debt rather than silently
+  normalizing or authenticating it.
+
+For controlled blind tests, freeze and hash the candidate before revealing the
+retained source. Preserve the exact evidence and assembly artifacts required by
+`benchmarks/blind_recovery/README.md`.
+
 ## Shared interfaces
 
 A change to a header, structure, enum, global owner, message/resource domain, or
