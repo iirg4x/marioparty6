@@ -210,7 +210,6 @@ def build_catalog(
     header_consumers: dict[str, list[str]] = defaultdict(list)
     function_owners: dict[str, list[str]] = defaultdict(list)
     global_owners: dict[str, list[str]] = defaultdict(list)
-    texts: dict[str, str] = {}
     facts: dict[str, dict[str, Any]] = {}
 
     for record in records:
@@ -220,7 +219,6 @@ def build_catalog(
             if source.is_file()
             else ""
         )
-        texts[record["id"]] = text
         includes = sorted(
             {
                 _resolve_include(repo, source, include)
@@ -297,7 +295,7 @@ def build_catalog(
             "functions": "source definitions and direct call-token approximation",
             "globals": "file-scope declaration and identifier-reference approximation",
             "imports": "direct source declaration approximation",
-            "semantic_claim": false
+            "semantic_claim": False,
         },
         "owners": sorted(records, key=lambda item: item["id"]),
         "header_consumers": {
