@@ -1,42 +1,51 @@
 # Recovery metadata instructions
 
-These rules apply under `config/recovery/`. Also follow the root `AGENTS.md`.
+These rules apply under `config/recovery/`. Also follow root `AGENTS.md`.
 
-- Human-authored JSON is the durable knowledge source. Generated SQLite,
-  Markdown reports, audits, and context packs belong under ignored
-  `build/context/`.
+- Human-authored JSON is the durable knowledge source. Generated indexes,
+  catalogs, reports, audits, and context packs belong under ignored `build/`.
 - Keep binary, source-shape, semantic, naming, and data status independent.
-  Never promote a source-quality field only because an object matches.
-- Add an owner only after its current state has been reviewed. Do not bulk-mark
-  owners from file names or progress percentages.
-- Preserve stable identity when changing a C symbol. Record proposed, accepted,
-  rejected, and unresolved names with explicit confidence.
-- Evidence summaries must be concise, falsifiable, and linked to a durable
-  source. Record rejected probes when they would otherwise be repeated.
-- A reusable source-to-output finding belongs in `compiler_patterns.json` with a
-  trigger, possible emitted effects, known signatures, one clear rule, safe
-  actions, scope, examples, counterexamples, and evidence.
-- Use `confirmed_rule` only for repeatable evidence under stated conditions. Use
-  `contextual_heuristic` for a valuable diagnostic path. Use
-  `owner_constraint` only for explicit owners or stable identities.
-- A compiler-wide rule is diagnostic and must not prescribe one owner’s source
-  layout. An owner constraint must never be marked compiler- or project-wide.
-- Preserve negative evidence. A counterexample is a first-class result and is
-  ranked ahead of general rules for that target.
-- Compiler behavior cannot authenticate semantic names.
-- Exceptions must be scoped to an exact path and source-quality rule. Empty rule
-  lists document a constraint but never suppress lint findings.
-- A knowledge card explains what was learned; an exception authorizes a specific
-  unusual construct. One does not widen the other.
-- Temporary exceptions require a removal condition and remain visible debt.
-- Do not weaken schema validation to accommodate malformed metadata.
-- Do not create a new wave report as the only record of reusable knowledge.
-  Distill the conclusion and retain the wave only as evidence.
+- Add a reviewed owner only after examining evidence. The operational catalog is
+  not permission to bulk-classify owners.
+- Preserve stable identity across semantic renames and record accepted, proposed,
+  rejected, and unresolved names with confidence.
+- Evidence summaries must be concise, falsifiable, and linked to durable sources.
+- Preserve rejected probes and counterexamples so agents do not repeat them.
 
-Validate and inspect every edit with:
+## Knowledge cards
+
+A reusable source-to-output finding belongs in `compiler_patterns.json` with:
+
+- trigger and preconditions;
+- possible emitted effects and recognizable signatures;
+- one clear rule and safe actions;
+- exact stable-ID, owner, module, tag, compiler, or project scope;
+- examples, counterexamples, related exceptions, and evidence.
+
+Use `confirmed_rule` only for repeatable evidence, `contextual_heuristic` for a
+bounded diagnostic path, and `owner_constraint` only for explicit owners or
+stable identities. Compiler behavior cannot authenticate semantic names.
+
+Every card must have a matching record in `knowledge_freshness.json` with its
+validated commit/date, watched evidence/source paths, status, and supersession.
+When watched inputs change, revalidate or mark the card stale rather than silently
+continuing to inject it as current knowledge.
+
+## Exceptions
+
+Exceptions authorize specific unusual source forms. They must be path- and
+rule-scoped. Empty rule lists suppress nothing. Temporary exceptions require a
+removal condition. A card explaining behavior does not widen an exception.
+
+Do not create a wave report as the only record of reusable knowledge. Keep the
+wave as forensic evidence and distill the conclusion into structured metadata.
+
+Validate:
 
 ```sh
+python tools/recovery_index.py check
 python tools/knowledge_cards.py check
+python tools/knowledge_cards.py freshness
 python tools/agent.py knowledge audit
 python tools/agent.py check --base origin/main
 ```
