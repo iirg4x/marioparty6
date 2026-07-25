@@ -12,11 +12,23 @@ into context by default.
 
 ## Start here
 
-Run the workspace check before editing:
+Run the workspace check:
 
 ```sh
 python tools/agent.py doctor
 ```
+
+Before editing, inspect and claim one owner in the shared local queue:
+
+```sh
+python tools/agent.py queue status
+python tools/agent.py queue claim <owner> --agent claude
+```
+
+Codex uses `--agent codex`. Claude and Codex must use worktrees from the same
+Git repository, different branches, and different build directories. Declare
+central headers, `configure.py`, symbols, splits, and recovery schemas with
+`--shared` before editing them. See `docs/concurrent_agents.md`.
 
 Generate bounded context for the exact task:
 
@@ -48,8 +60,12 @@ large translation unit to an agent prompt.
 
 ## Non-negotiable rules
 
-- Work on a task branch or isolated worktree, never directly on `main`.
-- One agent owns one translation unit or one tightly connected function cluster.
+- Work on a task branch in an isolated worktree, never directly on `main`.
+- Claim the owner before editing; one agent owns one translation unit or one
+  tightly connected function cluster.
+- Never share a worktree, branch, or build directory between Claude and Codex.
+- Add shared files to the claim before touching them. A queue conflict must be
+  resolved by the orchestrator or integration worktree, not bypassed.
 - Do not edit `orig/`, `build/`, `build.ninja`, `objdiff.json`, or generated
   context/report files.
 - Review applicable knowledge cards and their counterexamples before repeating a
@@ -89,6 +105,9 @@ large translation unit to an agent prompt.
 4. **Adversarial review:** look for matching-only constructs, fabricated names or
    data, hidden consumer regressions, and claims stronger than their evidence.
 
+Update the queue as the task moves through `researching`, `coding`, `verifying`,
+`blocked`, or `ready`.
+
 ## Verification
 
 Run the public-safe branch gate before handoff:
@@ -105,6 +124,15 @@ Any C/C++ source, shared header, compiler flag, object status, symbol, split, or
 link configuration change also requires the relevant relocation-aware object
 comparison, affected-consumer checks, serialized DOL/REL build, DTK checksum,
 and explicit retail byte comparison before promotion.
+
+Record the last verified commit, then release the claim after handoff:
+
+```sh
+python tools/agent.py queue release <owner> \
+  --agent <claude-or-codex> \
+  --status done \
+  --verified-commit HEAD
+```
 
 Record reusable findings in `config/recovery/` rather than leaving them only in
 an agent transcript. A repeated relationship between a source condition and
@@ -124,7 +152,8 @@ A handoff or pull request must state:
 - exact-function and relocation impact;
 - affected consumers;
 - public-safe and private verification actually run;
-- recovery metadata changed and remaining debt.
+- recovery metadata changed and remaining debt;
+- queue status and last verified commit.
 
-See `docs/agent_quickstart.md`, `CONTRIBUTING.md`, and
-`docs/recovery_standard.md` for the detailed workflow.
+See `docs/agent_quickstart.md`, `docs/concurrent_agents.md`, `CONTRIBUTING.md`,
+and `docs/recovery_standard.md` for the detailed workflow.
