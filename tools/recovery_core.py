@@ -47,8 +47,8 @@ def build_index(data: dict[str, Any], output: Path) -> dict[str, int]:
             CREATE INDEX search_key ON search(key);
             """
         )
-        explicit: dict[str, str] = {}
         for owner in data["owners"]:
+            explicit: dict[str, str] = {}
             owner_id = str(owner["id"])
             status = owner["status"]
             connection.execute(
@@ -233,7 +233,7 @@ def quality_findings(data: dict[str, Any], *, base: str | None = None, full: boo
             if file_path.suffix.lower() not in C_SUFFIXES or not file_path.is_file():
                 continue
             original = file_path.read_text(encoding="utf-8", errors="replace")
-            masked = _mask_c(original).splitlines()
+            masked = _mask_c(original, preserve_preprocessor=True).splitlines()
             for line in sorted(lines):
                 value = masked[line - 1] if 0 < line <= len(masked) else ""
                 candidates.append((path, line, value))
@@ -242,7 +242,11 @@ def quality_findings(data: dict[str, Any], *, base: str | None = None, full: boo
             if path.suffix.lower() not in C_SUFFIXES or not path.is_file():
                 continue
             relative = path.relative_to(root).as_posix()
-            for line, value in enumerate(_mask_c(path.read_text(encoding="utf-8", errors="replace")).splitlines(), 1):
+            masked = _mask_c(
+                path.read_text(encoding="utf-8", errors="replace"),
+                preserve_preprocessor=True,
+            )
+            for line, value in enumerate(masked.splitlines(), 1):
                 candidates.append((relative, line, value))
     else:
         raise RecoveryError("quality scan requires a diff base or full=True")
