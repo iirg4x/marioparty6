@@ -1,82 +1,95 @@
 # Blind recovery benchmark
 
-## Purpose
+## Current status
 
-This benchmark tests whether a recovered C implementation can be withheld and
-reconstructed from binary-facing evidence without reading the retained source or
-its historical recovery report.
+The workflow has two **reported source-holdout trials**, but no committed
+independently replayable retail trial yet.
 
-It is a controlled **source-holdout benchmark**. It validates recovery reasoning,
-context size, and source-fidelity scoring. It is not a substitute for a retail
-Metrowerks/object benchmark because the test environment did not contain the
-private GP6E01 inputs or the pinned proprietary compiler.
+The earlier trials reported first-attempt token-identical C and identical
+surrogate PowerPC assembly. Their raw evidence packet, exact frozen candidate,
+compared assembly, prompt and execution transcript were not preserved. They are
+therefore classified as `legacy-reported`, not as reproducible benchmark proof.
 
-## Isolation rules
+Run:
 
-For each trial:
+```sh
+python tools/blind_recovery.py audit
+```
 
-1. Select an already recovered exact C function.
-2. Fetch the source as opaque base64 and decode it directly into a temporary
-   workspace without displaying the body.
-3. Do not read the corresponding wave report.
-4. Extract only the function signature programmatically.
-5. Compile the withheld source to PowerPC assembly with Clang 17 targeting
-   `powerpc-unknown-eabi`, `-mcpu=750`, `-m32`, and `-O2`.
-6. Give the recovery attempt only:
-   - the function signature;
-   - required public type layouts and prototypes;
-   - generated PowerPC assembly.
-7. Write one natural C candidate without reading the source.
-8. Compile the candidate with the same surrogate compiler and compare normalized
-   assembly.
-9. Reveal the withheld source only after the candidate is frozen, then compare
-   source tokens and structure.
+The audit passes while warning about those legacy cases. A strict replay audit
+will fail until the manifest contains only fully reproducible cases:
 
-The benchmark did not use the source body, a decompiler output, a wave report, or
-a knowledge card containing the answer.
+```sh
+python tools/blind_recovery.py audit --strict --replay
+```
 
-## Trial 1: `ProcessLookAhead`
+## What is scored now
 
-Owner:
+Blind recovery is no longer represented by one success number. Every new case
+records four independent dimensions.
+
+### 1. Assembly equivalence
+
+The normalized target and candidate assembly are compared independently from the
+source text. This may be retail Metrowerks output or an explicitly labelled
+surrogate compiler result.
+
+### 2. Retained-source fidelity
+
+After the candidate is frozen and the blind phase ends, its C token sequence is
+compared with the retained recovered source at a recorded Git commit.
+
+This measures how closely the candidate reproduced the retained C. It does not
+prove that the retained C was itself original or organic.
+
+### 3. Organicity
+
+The candidate and retained source are scored separately for visible source debt.
+The automated review flags:
+
+- pragmas, forced inline/no-inline controls and inline assembly;
+- dead preprocessor branches and foreign include-guard manipulation;
+- unexplained `volatile` or `register` use;
+- cast ladders;
+- opaque raw/blob/tail/padding arrays;
+- address-derived and `unk_*`/`reserved*` identifiers;
+- a narrow, high-confidence class of guaranteed post-loop conditions.
+
+The result distinguishes:
 
 ```text
-src/gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c
+candidate-only debt
+retained-source debt inherited by the candidate
+retained-source debt removed by the candidate
 ```
 
-Withheld function:
+The score is a review aid, not proof of historical authenticity. Old organic C
+can contain redundant or unusual constructs, while clean modern C can still be
+historically wrong.
 
-```c
-static void ProcessLookAhead(
-    TosBaseBlock *baseBlock, void **input, s32 inputCount);
+### 4. Reproducibility
+
+A case counts as reproducible only when it preserves:
+
+```text
+raw evidence packet
+frozen candidate C
+exact target assembly used for comparison
+exact candidate assembly used for comparison
+machine-readable result
+human-readable report
+source path, source commit and reference SHA-256
+candidate SHA-256 and freeze time
+blindness assertions
 ```
 
-Evidence packet:
+Replay extracts the retained function from the recorded source commit, verifies
+its hash, reruns deterministic scoring and compares the result with the committed
+record.
 
-- public `TosBaseBlock` and queue declarations;
-- 84 lines of generated PowerPC assembly;
-- no retained C body;
-- no Wave 34 recovery notes.
+## Review of the two legacy trials
 
-Results:
-
-| Metric | Result |
-| --- | ---: |
-| Candidate attempts | 1 |
-| Normalized PowerPC assembly | Identical |
-| Reference tokens | 204 |
-| Candidate tokens | 204 |
-| Token-sequence similarity | 1.000000 |
-| Semantic/control-flow differences | None |
-| Textual differences | Formatting only |
-| Approximate evidence tokens | 412 |
-| Approximate candidate tokens | 325 |
-
-The recovered candidate reproduced the history-ring update, wraparound,
-look-ahead queue delay, threshold output, and flush behavior. After revealing the
-source, the token sequence was identical; only indentation and signature wrapping
-differed.
-
-## Trial 2: `ProcessStacker`
+### `ProcessStacker`
 
 Owner:
 
@@ -84,78 +97,129 @@ Owner:
 src/gssdk_lib/asrpho/common/blocks/stacker.c
 ```
 
-Withheld function:
+The function body looks strongly organic. It performs an ordinary first-input
+scan, early return, output allocation, conditional copies and pointer advance.
+It contains no visible compiler-control scaffolding.
 
-```c
-static void ProcessStacker(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount);
-```
+The surrounding `Stacker` structure still contains `reserved28`, which is
+honest layout debt rather than recovered semantics. That debt is outside the
+blind function body and must not be confused with the function-body score.
 
-Evidence packet:
+Reported legacy result:
 
-- public `TosBaseBlock`, queue, and `memcpy` declarations;
-- 82 lines of generated PowerPC assembly;
-- no retained C body;
-- no Wave 34 recovery notes.
-
-Results:
-
-| Metric | Result |
+| Metric | Reported result |
 | --- | ---: |
 | Candidate attempts | 1 |
-| Normalized PowerPC assembly | Identical |
-| Reference tokens | 140 |
-| Candidate tokens | 140 |
-| Token-sequence similarity | 1.000000 |
-| Semantic/control-flow differences | None |
-| Textual differences | Indentation only |
-| Approximate evidence tokens | 573 |
-| Approximate candidate tokens | 200 |
+| Normalized surrogate assembly | Identical |
+| Source-token similarity | 1.000000 |
+| Reproducible from committed artifacts | No |
 
-The candidate recovered the first-available-input scan, early return, output
-queue allocation, per-input enable mask, element-size copies, and output pointer
-advance. After the source was revealed, the token sequence was identical.
+### `ProcessLookAhead`
 
-## Result
+Owner:
 
-Both blind source holdouts recovered the retained C token-for-token on the first
-candidate and emitted identical surrogate PowerPC assembly.
+```text
+src/gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c
+```
 
-This is positive evidence that focused signatures, public layouts, and compact
-assembly can support highly faithful recovery without loading historical wave
-text. It also demonstrates that a useful target packet can stay below roughly
-600 estimated tokens for small-to-medium functions.
+Most of the function is ordinary circular-history and delayed-output C. One
+source-shape question remains:
 
-## What this benchmark does not prove
+```c
+while (block->queued != 0) {
+    ...
+    block->queued--;
+}
+if (block->queued == 0) {
+    block->flushActive = 0;
+}
+```
 
-It does **not** yet prove:
+The post-loop condition is guaranteed by the loop. It may be authentic defensive
+source, but token-identically reproducing it does not authenticate it. The new
+organicity checker reports this as `guaranteed-post-loop-condition` and requires
+human target/sibling/compiler review rather than silently calling it perfect.
 
-- exact output under the pinned Metrowerks compiler;
-- success against retail GP6E01 assembly rather than assembly generated from the
-  withheld source;
-- performance on large game-state functions;
-- the benefit of knowledge cards on a target with a known compiler trap;
-- comparative token cost against the unstructured `main` workflow;
-- independent Claude and Codex recovery quality across a statistically useful
-  sample.
+The surrounding structure also contains `reserved29`, which remains semantic
+layout debt outside the function body.
 
-## Required retail benchmark
+Reported legacy result:
 
-The next benchmark must run on the local PC with the private target objects and
-pinned compiler:
+| Metric | Reported result |
+| --- | ---: |
+| Candidate attempts | 1 |
+| Normalized surrogate assembly | Identical |
+| Source-token similarity | 1.000000 |
+| Reproducible from committed artifacts | No |
 
-1. Choose at least six exact functions across three difficulty bands and multiple
-   owners.
-2. Remove their C bodies in disposable worktrees while retaining target objects.
-3. Hide source history, relevant wave reports, and answer-revealing owner cards.
-4. Give one worker the structured workflow packet and another an equivalent
-   unstructured baseline packet.
-5. Record attempts, wall time, input/output tokens, objdiff score after each
-   attempt, exact-match result, source-token similarity, unsupported constructs,
-   and affected-consumer regressions.
-6. Reveal and score the retained source only after each final candidate is
-   committed.
+## Reproducible local protocol
 
-Until that retail benchmark is complete, the workflow should be described as
-**infrastructure-tested and source-holdout-tested**, not retail blind-recovery
-validated.
+The evaluator creates a sealed run under ignored `build/blind-recovery/`:
+
+```sh
+python tools/blind_recovery.py prepare \
+  --id board-example \
+  --source src/board/example.c \
+  --function fn_80000000 \
+  --evidence build/blind-evidence/board-example.md \
+  --target-assembly build/blind-evidence/board-example-target.s
+```
+
+The worker receives only the packet and candidate template. The retained body is
+stored under the run’s private directory and must not be mounted into the worker
+worktree or prompt.
+
+Before revealing or scoring against the retained source, freeze the candidate:
+
+```sh
+python tools/blind_recovery.py freeze \
+  --run-dir build/blind-recovery/<run> \
+  --candidate build/blind-recovery/<run>/candidate.c
+```
+
+Compile the frozen candidate with the same toolchain and flags. Then score:
+
+```sh
+python tools/blind_recovery.py score-run \
+  --run-dir build/blind-recovery/<run> \
+  --candidate-assembly build/blind-evidence/board-example-candidate.s
+```
+
+Archive the complete replayable case:
+
+```sh
+python tools/blind_recovery.py archive \
+  --run-dir build/blind-recovery/<run> \
+  --destination benchmarks/blind_recovery/cases/board-example
+```
+
+Add the resulting `case.json` to
+`benchmarks/blind_recovery/manifest.json`, then replay it:
+
+```sh
+python tools/blind_recovery.py replay \
+  benchmarks/blind_recovery/cases/board-example/case.json
+```
+
+## Required retail comparison
+
+The conclusive benchmark must run on the local PC with the private GP6E01 target
+objects and pinned compiler.
+
+Use at least six exact functions across three difficulty bands and multiple
+owners. Give one arm the structured workflow packet and another an equivalent
+unstructured baseline. Preserve and compare:
+
+- exact evidence packets;
+- input/output tokens and wall time;
+- compiler attempts and objdiff progression;
+- retail assembly result;
+- frozen candidate before reveal;
+- source-token fidelity after reveal;
+- organicity findings before and after reveal;
+- unsupported constructs and affected-consumer regressions;
+- target-object identity, toolchain, source commit and hashes.
+
+Until those cases exist, the correct description remains:
+
+> **Infrastructure-tested and source-holdout-tested, not retail blind-recovery validated.**
