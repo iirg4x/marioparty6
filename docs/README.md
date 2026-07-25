@@ -8,6 +8,7 @@
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md): proof and handoff requirements
 - [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
 - [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, local evidence, freshness
+- [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): controlled source-holdout results and remaining retail benchmark
 - [`getting_started.md`](getting_started.md): local toolchain and retail build setup
 - [`github_actions.md`](github_actions.md): draft-local versus ready-PR CI
 
