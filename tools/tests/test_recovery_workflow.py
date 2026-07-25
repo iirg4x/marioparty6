@@ -197,6 +197,28 @@ class RecoveryWorkflowTests(unittest.TestCase):
             findings = quality_findings(data, full=True)
             self.assertEqual(findings[0]["rule"], "compiler_pragma")
 
+    def test_empty_exception_rules_do_not_blanket_suppress(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            source = root / "src/new.c"
+            source.write_text("volatile int real;\n")
+            data = load(root)
+            data["owners"] = [
+                {**data["owners"][0], "source": "src/new.c"}
+            ]
+            data["exceptions"] = [
+                {
+                    "id": "unrelated",
+                    "classification": "authenticated",
+                    "path": "src/new.c",
+                    "rules": [],
+                    "rationale": "unrelated source-shape evidence",
+                }
+            ]
+            findings = quality_findings(data, full=True)
+            self.assertEqual(findings[0]["classification"], "unreviewed")
+
 
 if __name__ == "__main__":
     unittest.main()
