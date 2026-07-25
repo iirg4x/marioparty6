@@ -20,19 +20,44 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          show-progress: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Run public-safe agent gate
+      - name: Check agent workspace
+        run: python tools/agent.py doctor
+
+      - name: Compile public Python tools
+        run: python -m compileall -q tools
+
+      - name: Run public-safe tests
+        run: python -m unittest discover -s tools/tests -v
+
+      - name: Validate and build recovery index
+        run: |
+          python tools/recovery_index.py check
+          python tools/recovery_index.py build
+
+      - name: Smoke-test context and report generation
+        run: |
+          python tools/agent.py context owner main:game/mgdata \
+            --budget 6000 \
+            --output build/context/agent-smoke-context.md
+          python tools/agent.py report
+
+      - name: Check changed paths and source quality
+        if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
         run: |
-          if [[ -n "$BASE_SHA" ]]; then
-            python tools/agent.py check --base "$BASE_SHA"
-          else
-            python tools/agent.py check
+          git diff --check "$BASE_SHA...HEAD"
+          changed_forbidden="$(git diff --name-only "$BASE_SHA...HEAD" | grep -E '^(orig/|build/|build\.ninja$|objdiff\.json$|ctx\.c$)' || true)"
+          if [[ -n "$changed_forbidden" ]]; then
+            printf 'Private/generated paths changed:\n%s\n' "$changed_forbidden"
+            exit 1
           fi
+          python tools/source_quality.py --changed "$BASE_SHA" --strict
