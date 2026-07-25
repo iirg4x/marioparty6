@@ -2,88 +2,74 @@
 
 ## Public-safe workflow
 
-The active workflow is:
+The active workflow is `.github/workflows/recovery-metadata.yml`. It does not
+contain or download retail Mario Party 6 files.
 
-```text
-.github/workflows/recovery-metadata.yml
-```
+It validates:
 
-It runs without retail Mario Party 6 files and is safe for the public
-repository. The workflow checks out full history, installs Python, and executes
-the same agent-facing public gate used locally.
+- required agent/coordination/context entrypoints;
+- template cleanup and untracked retail/generated policy;
+- recovery metadata, knowledge cards, and freshness records;
+- Python compilation and all synthetic public-safe tests;
+- operational owner catalog generation and queries;
+- queue schema migration and empty-queue health;
+- active worktree assignment audit;
+- deterministic recovery index and searchable rules/actions;
+- symptom-aware knowledge selection;
+- local objdiff summary injection and section-budget preservation;
+- owner context, report, and wave-distillation audit;
+- changed-path, whitespace, and source-quality policy.
 
-The public gate covers:
-
-- Python syntax compilation;
-- unit tests under `tools/tests`;
-- recovery metadata and cross-reference validation;
-- deterministic SQLite index generation;
-- bounded context and human-report smoke generation;
-- required agent entrypoints and template-cleanup policy;
-- changed private/generated paths;
-- diff whitespace;
-- newly added source-shape controls that lack scoped evidence.
-
-Generated context, databases, and reports remain ephemeral workflow output. They
-are not uploaded as source artifacts and are not committed.
+Queue, catalog, index, context, and report output remains ephemeral and is not
+uploaded as source evidence.
 
 ## Draft pull requests and notification noise
 
-Claude and Codex may push many intermediate commits from separate worktrees.
-Automatic Actions jobs are therefore skipped while a pull request is a draft.
-During active development, each agent runs the local public gate:
+Claude and Codex may push many intermediate commits. Automatic jobs are skipped
+while a PR is a draft. Workers run locally:
 
 ```sh
+python tools/agent.py hooks install
+python tools/agent.py queue check-diff --base origin/main
 python tools/agent.py check --base origin/main
 ```
 
-Mark the pull request **Ready for review** when the branch is ready for remote
-validation. GitHub Actions then runs automatically, and later commits to that
-non-draft pull request trigger fresh checks. A remote check can also be started
-earlier through manual `workflow_dispatch`.
+Mark the PR **Ready for review** when remote validation is desired. Later pushes
+to a non-draft PR run the workflow again. `workflow_dispatch` remains available
+for a deliberate early remote check.
 
-A draft synchronization still appears in the Actions history as `skipped`; it
-is not a failed check and should not produce failure-notification emails. This
-policy avoids one failure email per exploratory agent commit while retaining a
-required remote gate before merge.
+A draft synchronization appears as `skipped`, not failed. This prevents an email
+for every exploratory commit while retaining a real pre-merge gate.
 
-## Required branch check
+## Branch protection
 
-After this branch is merged, configure the repository’s `main` protection to
-require the **Recovery metadata** workflow before merge. Keep pull requests and
-full history enabled so changed-line checks can compare against the real base
-SHA. Draft PRs must be marked ready before merge, which activates the required
-check.
+After merge, protect `main` and require the **Recovery metadata** job. Keep full
+checkout history so changed-line checks can compare against the exact base SHA.
 
-## Why the retail build is not public
+## Why retail verification is private
 
-A complete build needs copyrighted retail inputs under `orig/GP6E01/`. Those
-files must never be committed, downloaded by public CI, exposed through caches,
-or uploaded as artifacts.
+A complete build requires copyrighted inputs under `orig/GP6E01/`. Public CI
+cannot prove DOL/REL identity, private target-object reports, DTK retail hashes,
+or consumer comparisons dependent on extracted objects.
 
-The public workflow therefore cannot prove:
-
-- DOL or REL byte identity;
-- the DTK `build.sha1` gate;
-- private objdiff reports generated from extracted target objects;
-- consumer comparisons that require the retail split objects.
-
-A successful public workflow must not be described as a successful retail
+A successful public workflow must never be described as a successful retail
 build.
 
-## Private retail-build automation
+## Serialized private integration
 
-Use one of these private environments:
+Use a local integration worktree, private self-hosted runner, or restricted
+private environment with legally provisioned inputs.
 
-- a self-hosted runner with locally provisioned retail inputs;
-- a private build repository/container with access restricted to this project;
-- a local integration worktree.
+Acquire exclusive resources before the full build:
 
-The private environment should provide the extracted `orig/GP6E01` layout at
-runtime and remove it after the job. Pin any container image by immutable digest,
-not a mutable `main` tag.
+```sh
+python tools/agent.py queue acquire-resource integration \
+  --agent integrator --owner <owner>
+python tools/agent.py queue acquire-resource retail-build \
+  --agent integrator --owner <owner>
+```
 
-A private source-promotion job should run, in order:
+Then run:
 
 ```sh
 python tools/agent.py check --base <base-sha>
@@ -92,24 +78,31 @@ ninja -j1
 build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 ```
 
-Use `build/tools/dtk.exe` on Windows. Then perform explicit byte comparisons for
-`main.dol` and every affected REL, and check that generated symbol files contain
-no unexplained diff.
+Use `dtk.exe` on Windows. Compare `main.dol` and every affected REL explicitly,
+check Matching consumers, and ensure generated symbols contain no unexplained
+diff.
 
-Upload only permitted logs and compact summaries. Do not upload retail binaries,
-rebuilt DOL/REL files, extracted objects, disc contents, or reports that embed
+Finalize only after all private gates pass:
+
+```sh
+python tools/agent.py integration finalize <owner> \
+  --agent integrator \
+  --retail-gate pass \
+  --checksum pass \
+  --consumer <consumer>=exact \
+  --toolchain GC/1.3.2
+```
+
+Finalization confirms that each claimed path in the integrated tree still
+matches the worker’s verified commit. Upload only permitted compact logs and
+summaries—never retail/rebuilt binaries, extracted assets, or reports embedding
 copyrighted data.
 
-## Progress publishing
+## Workflow and build-configuration changes
 
-Progress publishing is intentionally not configured in the public workflow.
-Add it only after the project has a real progress service slug and secret. Keep
-progress upload separate from verification so a service outage cannot hide or
-invalidate a failed build gate.
+Changes to workflows, tool pins, `configure.py`, compiler flags, object status,
+symbols, splits, or link order require public validation and a private retail
+integration run before being considered integration-safe.
 
-## Workflow changes
-
-Any edit to workflow files, compiler/tool pins, `configure.py`, object status,
-symbols, splits, or link configuration requires careful review. Public CI can
-validate workflow structure and repository policy, but a private retail build is
-required before treating those changes as integration-safe.
+Progress publishing remains separate from verification and is intentionally not
+configured until a real service slug and secret exist.
