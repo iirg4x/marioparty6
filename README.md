@@ -5,17 +5,14 @@ This repository reconstructs the US GameCube build of **Mario Party 6**
 binaries. Original game files and generated binaries are not committed.
 
 The active scheduling target is the non-minigame game loop: boot, menus, party
-mode, boards, results, and ending. Minigame DLLs, instruction DLLs,
-minigame-mode wrappers, and mic-quiz modes are currently excluded from that work
-queue. [`STATUS.md`](STATUS.md) is the historical evidence snapshot, not the
-default agent context.
+mode, boards, results, and ending. `STATUS.md` is a historical evidence snapshot,
+not the default agent context.
 
 ## Recovery standard
 
 A binary match is necessary proof, not a complete source-authenticity claim.
-Raw IDs, opaque arrays, fake padding, synthetic literals, invented names, and
-unexplained compiler-control techniques remain recovery debt even when the
-output is exact.
+Raw IDs, opaque arrays, fake padding, invented names, and unexplained compiler
+controls remain recovery debt even when the output is exact.
 
 The project tracks five dimensions independently:
 
@@ -23,124 +20,165 @@ The project tracks five dimensions independently:
 binary · source shape · semantics · naming · data domains
 ```
 
-`src/game/mgdata.c` is the model semantic cleanup: it replaced byte-oriented
-scaffolding with named domains, natural layout, consumer-backed widths, and
-readable source without claiming new matching bytes.
-
 Read:
 
-- [`AGENTS.md`](AGENTS.md): repository-wide agent rules
+- [`AGENTS.md`](AGENTS.md): mandatory repository rules
 - [`docs/agent_quickstart.md`](docs/agent_quickstart.md): shortest safe workflow
-- [`docs/concurrent_agents.md`](docs/concurrent_agents.md): Claude/Codex same-PC coordination
-- [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion rules
-- [`docs/context_workflow.md`](docs/context_workflow.md): index, knowledge cards, and context selection
-- [`CONTRIBUTING.md`](CONTRIBUTING.md): branches, verification, and handoff
-- [`docs/README.md`](docs/README.md): documentation index
+- [`docs/concurrent_agents.md`](docs/concurrent_agents.md): Claude/Codex bulk work
+- [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion
+- [`docs/context_workflow.md`](docs/context_workflow.md): index and context design
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): verification and handoff
 
-## Agent-ready workflow
+## Unified agent commands
 
-Use one command as the front door:
+Inspect the checkout and install lightweight local checks:
 
 ```sh
 python tools/agent.py doctor
+python tools/agent.py hooks install
 ```
 
-Claude and Codex use a shared local queue stored under Git's common directory.
-It is visible across worktrees but is not committed:
+Build or query the operational owner inventory generated from `configure.py` and
+source includes:
 
 ```sh
-python tools/agent.py queue status
-python tools/agent.py queue claim <owner> --agent claude
+python tools/agent.py catalog build
+python tools/agent.py catalog query REL:mdpartydll:mdparty
 ```
 
-The queue rejects duplicate owners, branches, worktrees, build directories,
-source files, and overlapping shared paths. Codex uses `--agent codex`. Each
-agent must have a separate worktree and its own `build/` directory.
+The catalog records configured owners, source paths, status, size, includes, and
+header consumers. It does not fabricate semantic-recovery claims.
 
-Generate bounded context for the exact task:
+## Parallel Claude and Codex work
+
+Claude and Codex use a shared queue under Git’s common directory, but separate
+worktrees, branches, and build directories:
+
+```sh
+python tools/agent.py queue add <owner> \
+  --priority high \
+  --batch board-pass-1 \
+  --capability mwcc
+
+python tools/agent.py worktree create <owner> \
+  --agent claude \
+  --base main \
+  --retail <read-only-GP6E01-directory>
+```
+
+Workers may take dependency-ready work automatically:
+
+```sh
+python tools/agent.py queue claim-next \
+  --agent codex \
+  --capability rel \
+  --batch menu-flow
+```
+
+The queue blocks duplicate owners, branches, worktrees, build directories,
+source files, overlapping shared paths, and header-consumer conflicts. Priority
+is preserved when a queued task is claimed.
+
+Before commits, the real committed/staged/unstaged/untracked diff must fit the
+claim:
+
+```sh
+python tools/agent.py queue check-diff --base origin/main
+```
+
+## Focused recovery context
 
 ```sh
 python tools/agent.py context function fn_1_BBD8 \
   --owner REL:mdpartydll:mdparty \
+  --symptom "saved register lifetime" \
+  --local-evidence \
   --budget 12000
-
-python tools/agent.py context owner main:game/mgdata --budget 7000
 ```
 
-Context packs automatically include up to five applicable source-to-output
-knowledge cards before the source. Exact-target findings, owner constraints,
-compiler-wide diagnostics, and known counterexamples are ranked separately so
-an agent sees previously recovered rules without loading wave documents or
-copying owner-specific tricks blindly.
+Context uses fixed section budgets and reserves space for exact-target rules,
+owner constraints, compiler diagnostics, counterexamples, freshness warnings,
+local objdiff summaries, source, and acceptance criteria. Historical wave bodies
+are never loaded automatically.
 
-Inspect the cards or extraction backlog directly:
+Inspect cards or their extraction backlog directly:
 
 ```sh
 python tools/agent.py knowledge function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty
+  --owner REL:mdpartydll:mdparty \
+  --symptom "helper boundary"
 python tools/agent.py knowledge audit
+python tools/knowledge_cards.py freshness
 ```
 
-Run the public-safe branch gate before handoff:
+## Worker proof and integration proof
+
+A worker commits a clean candidate, runs the public gate, records object-level
+proof, and stops at `ready`:
+
+```sh
+python tools/agent.py check --base origin/main
+
+python tools/agent.py queue verify <owner> \
+  --agent claude \
+  --public-gate pass \
+  --object-report build/GP6E01/<report>.json \
+  --functions-exact <exact/total> \
+  --relocations exact \
+  --consumer <consumer>=exact \
+  --toolchain GC/1.3.2
+
+python tools/agent.py queue update <owner> \
+  --agent claude --status ready
+```
+
+The proof is tied to the clean current commit. Any later edit requires a new
+proof.
+
+The integration worktree serializes machine-wide resources, integrates the
+worker commit, runs DOL/REL, consumer, checksum, and retail-byte gates, then
+finalizes the task:
+
+```sh
+python tools/agent.py queue acquire-resource integration --agent integrator
+python tools/agent.py queue acquire-resource retail-build --agent integrator
+
+python tools/agent.py integration finalize <owner> \
+  --agent integrator \
+  --retail-gate pass \
+  --checksum pass \
+  --toolchain GC/1.3.2
+```
+
+Finalization checks that every claimed path in the integration tree still
+matches the worker’s verified commit before setting the task to `done`.
+
+## Public versus private gates
+
+The public-safe gate runs Python compilation/tests, metadata/card/freshness
+validation, owner catalog generation, deterministic indexing, context/report
+smoke tests, queue policy, whitespace, generated/private-path checks, and
+changed-line source-quality review:
 
 ```sh
 python tools/agent.py check --base origin/main
 ```
 
-The gate runs Python compilation and tests, owner and knowledge-card validation,
-deterministic SQLite indexing, context/report smoke generation, repository
-cleanup policy, local queue-health reporting, private/generated-path checks,
-whitespace checks, and changed-line source-quality review. It does **not** claim
-a retail build.
-
-Committed recovery knowledge lives under `config/recovery/`. Generated SQLite,
-reports, audits, and context packs live under ignored `build/context/`. Exact
-owner, address, symbol, rule, safe action, evidence, and counterexample lookup
-comes before fuzzy or whole-repository retrieval.
-
-`tools/decompctx.py` remains available for preprocessed decomp.me context. It
-serves a different purpose from the evidence-bounded agent context pack.
-
-## Local build
-
-Install the tools described in [`docs/dependencies.md`](docs/dependencies.md),
-then legally extract the US disc into `orig/GP6E01/` while preserving the disc
-layout.
-
-```sh
-python configure.py
-ninja -j1
-```
-
-The exact input paths and hashes are defined by `config/GP6E01/config.yml`.
-`configure.py` pins the DTK, binutils, compiler, `sjiswrap`, and wrapper
-versions. See [`docs/getting_started.md`](docs/getting_started.md) for complete
-setup and verification instructions.
-
-Any C/C++, shared header, symbol, split, compiler flag, object status, or link
-change requires the relevant relocation-aware object and consumer comparisons,
-serialized DOL/REL build, DTK checksum, and explicit retail byte comparisons
-before promotion.
+It does **not** prove a retail build. Source promotion also requires the local
+serialized build, relocation-aware object reports, affected consumers, DTK
+checksum, and explicit DOL/REL comparisons.
 
 ## Repository layout
 
-- `src/`: recovered game, board, SDK, library, and REL source
-- `include/`: shared declarations, structures, and data domains
-- `config/GP6E01/`: DOL inputs, symbols, splits, and retail checksums
-- `config/dll/rels/`: REL symbol and split ownership
-- `config/recovery/`: owner state, evidence, names, exceptions, and actionable recovery knowledge
-- `docs/`: active documentation and retained forensic evidence
-- `tools/`: build helpers, claim queue, declaration gates, indexing, knowledge selection, context generation, and checks
-- `build/`: ignored generated output, isolated per worktree
-- `orig/GP6E01/`: ignored locally extracted retail files
-
-## Contribution boundaries
-
-Work on an isolated `agent/<agent>-<owner>-<goal>` worktree branch. Claim the
-owner before editing and declare shared files before touching them. Keep
-uncertain semantics uncertain, preserve stable target identity across renames,
-record rejected probes and reusable source-to-output findings, and never regress
-an independently exact function to close another target.
+- `src/`: recovered source
+- `include/`: shared declarations and data domains
+- `config/GP6E01/`: DOL symbols, splits, and retail checksums
+- `config/dll/rels/`: REL ownership
+- `config/recovery/`: owner state, evidence, names, exceptions, cards, freshness
+- `docs/`: active documentation and forensic evidence
+- `tools/`: build, queue, catalog, worktree, context, knowledge, and verification tools
+- `build/`: ignored output, isolated per worktree
+- `orig/GP6E01/`: ignored local retail inputs
 
 No copyrighted game assets, retail binaries, rebuilt DOL/REL files, local queue
 state, or generated analysis output may be committed.
