@@ -1,28 +1,32 @@
-# Recovery index and context workflow
+# Recovery index, knowledge cards, and context workflow
 
 ## Why this exists
 
 Large repository prompts are expensive and low signal. Decompilation questions
 are anchored by exact identities: owner, module, target address, symbol,
-relocation, caller, global, access width, string, compiler, and known probe. The
-primary index is therefore deterministic SQLite, not an embeddings store.
+relocation, caller, global, access width, compiler, and known probe. The primary
+retrieval path is therefore deterministic and exact-first, not an embeddings
+store or a scan of every historical report.
 
-Embeddings may later help discover broadly similar behavior, but they must not
-replace exact owner, address, symbol, call, and evidence lookup.
+Embeddings may later help discover broadly similar behavior. They must not
+replace exact owner, address, symbol, evidence, and compiler-rule lookup.
 
 ## Agent front door
 
-Use the unified command for normal work:
-
 ```sh
 python tools/agent.py doctor
+
 python tools/agent.py context function fn_1_BBD8 \
   --owner REL:mdpartydll:mdparty \
   --budget 12000
+
+python tools/agent.py knowledge function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty
+
 python tools/agent.py check --base origin/main
 ```
 
-The lower-level tools remain available for investigation and scripting.
+The lower-level tools remain available for scripting.
 
 ## Files of record
 
@@ -47,16 +51,102 @@ build/context/*context*.md
 The generated database and Markdown are disposable. Never hand-edit or commit
 them.
 
+## Knowledge cards
+
+`compiler_patterns.json` now stores actionable source-to-output cards, not only
+free-form notes. Each card records:
+
+```text
+classification
+category
+compiler and confidence
+source condition or change
+affected emitted behavior
+known output signatures
+recovery rule
+safe actions
+explicit applicability
+examples and counterexamples
+related source-shape exceptions
+evidence reports
+```
+
+The three classifications have different authority:
+
+- `confirmed_rule`: repeatable evidence under stated conditions. A
+  compiler-wide rule remains diagnostic; it does not prescribe one source form.
+- `contextual_heuristic`: a high-value mismatch investigation path that still
+  requires local evidence.
+- `owner_constraint`: an authenticated source shape for one owner or stable
+  identity. It must not be copied elsewhere.
+
+A result such as “moving these definitions earlier changes `.text`, `.bss`, and
+hundreds of functions” is therefore stored as both a reusable compiler warning
+and, when appropriate, a narrower owner constraint. Counterexamples prevent the
+warning from becoming cargo-cult style.
+
+Validate and inspect cards directly:
+
+```sh
+python tools/knowledge_cards.py check
+python tools/knowledge_cards.py function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty
+python tools/knowledge_cards.py owner REL:mdpartydll:stage
+python tools/knowledge_cards.py audit
+```
+
+The same operations are available through `tools/agent.py knowledge`.
+
+## Automatic relevance selection
+
+Every normal owner or function context automatically selects at most five cards
+by default. Ranking is deterministic:
+
+1. recorded counterexample for the exact target or owner;
+2. exact stable identity;
+3. confirmed stable-identity example;
+4. explicit owner scope;
+5. confirmed owner example;
+6. module or owner-tag scope;
+7. compiler-wide diagnostic;
+8. project-wide rule.
+
+Confidence and rule type break ties. Cards with a known compiler mismatch are
+not selected. Owner constraints are selected only for their explicit owner or
+stable identity; they never leak into unrelated files.
+
+A counterexample ranks first because it prevents the most expensive mistake:
+blindly applying a previously successful source shape where a local probe has
+already shown that it does not work.
+
+The selected cards appear before the target source, so they survive context
+clipping and guide the first edit. Each compact card contains its trigger,
+possible emitted effects, known signatures, rule, safe actions, counterexamples,
+and evidence paths.
+
+Override the default only deliberately:
+
+```sh
+python tools/agent.py context function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty \
+  --knowledge-limit 3
+
+# Diagnostic only: disables automatic card injection.
+python tools/agent.py context function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty \
+  --knowledge-limit 0
+```
+
 ## Deterministic index
 
-Build and query the index directly when needed:
+Build and query the index directly:
 
 ```sh
 python tools/recovery_index.py check
 python tools/recovery_index.py build
 python tools/recovery_index.py query mdpartydll:0xBBD8
-python tools/recovery_index.py query fn_1_BBD8
-python tools/recovery_index.py query "audio header"
+python tools/recovery_index.py query "broad header"
+python tools/recovery_index.py query "inspect caller and consumer widths"
 ```
 
 The index contains:
@@ -64,13 +154,14 @@ The index contains:
 - owner and multidimensional recovery state;
 - file-scope function spans and stable identities;
 - include edges;
-- accepted and rejected evidence;
+- accepted and rejected owner evidence;
 - semantic and naming debt;
 - source-shape exceptions;
-- compiler patterns, examples, and counterexamples;
-- exact-first text-search records.
+- full knowledge-card text, including rules and safe actions;
+- exact-first search records.
 
-Exact stable IDs and current symbols are resolved before substring search.
+This means a conclusion extracted once can be found by its target, compiler
+symptom, rule, or recommended action without reopening the wave document.
 
 ## Function context pack
 
@@ -81,23 +172,24 @@ python tools/agent.py context function fn_1_BBD8 \
 ```
 
 Unless `--stdout` is supplied, the command writes an ignored Markdown packet
-under `build/context/`. Use `--output` to choose a different ignored path.
+under `build/context/`.
 
 The packet contains, in priority order:
 
 1. global recovery contract;
 2. owner state and summary;
-3. stable identity, signature, location, and current function source;
-4. bounded owner-neighbourhood signatures;
-5. accepted and rejected evidence;
-6. authenticated source-shape constraints;
-7. semantic and naming debt;
-8. local report availability;
-9. acceptance criteria.
+3. automatically selected knowledge cards and counterexamples;
+4. stable identity, signature, location, and current function source;
+5. bounded owner-neighbourhood signatures;
+6. accepted and rejected owner evidence;
+7. authenticated source-shape exceptions;
+8. naming state and recovery debt;
+9. local report availability;
+10. acceptance criteria.
 
-The token budget is tokenizer-independent and conservatively estimated from
-characters. Oversized sections are clipped explicitly. Increase the budget only
-after naming the information that is missing.
+The card section reserves part of the token budget before the base context is
+generated. Oversized source/evidence content is clipped after high-priority
+rules have been inserted.
 
 The equivalent lower-level command is:
 
@@ -116,21 +208,57 @@ python tools/agent.py context owner main:game/mgdata --budget 7000
 ```
 
 Owner packets list bounded function signatures rather than dumping a complete
-large translation unit. They are appropriate for semantic-cleanup planning and
-owner debt review.
+large translation unit. Compiler-wide cards are selected only when the owner
+manifest identifies the compiler; exact owner constraints still work without a
+compiler-wide assumption.
+
+## Historical wave reports
+
+Wave reports remain forensic laboratory records. They are not indexed as prompt
+text and are never automatically injected into a task context.
+
+The intended knowledge flow is:
+
+```text
+wave report or probe
+        ↓ distill once
+structured knowledge card / owner evidence / exception
+        ↓ select automatically
+bounded Claude or Codex task context
+        ↓ new result
+new card, example, counterexample, or refined condition
+```
+
+Audit the extraction backlog without loading the files:
+
+```sh
+python tools/agent.py knowledge audit
+python tools/knowledge_cards.py audit --json
+```
+
+The audit reports:
+
+- number of structured cards;
+- card classifications;
+- number of historical wave documents;
+- waves referenced by cards, owner evidence, and exceptions;
+- a bounded list of waves with no reusable card yet.
+
+A wave with no card is not automatically useless: it may contain only
+owner-specific history. The audit identifies candidates for review; it must not
+fabricate a rule from a filename or matching percentage.
 
 ## Expand context deliberately
 
-A context pack is the first packet, not an artificial ceiling. Expand one
-specific unresolved item:
+Expand one specific unresolved item:
 
 - direct caller or callee;
 - structure declaration;
 - shared data owner;
 - message, archive, state, or resource domain;
-- retained evidence report;
-- object-diff report;
-- compiler-pattern record.
+- one referenced evidence report;
+- one object-diff report;
+- one knowledge card requiring deeper evidence.
 
 Do not automatically attach:
 
@@ -141,11 +269,9 @@ Do not automatically attach:
 - unrelated exact functions;
 - an old agent transcript.
 
-Write reusable findings back to the recovery manifests before handoff.
+Write reusable findings back to structured metadata before handoff.
 
 ## Changed-line source review
-
-The unified public gate reviews added C/C++ lines:
 
 ```sh
 python tools/agent.py check --base origin/main
@@ -158,24 +284,8 @@ python tools/source_quality.py --changed origin/main --strict
 ```
 
 Changed-line review avoids blocking a task on unrelated historical debt.
-Findings identify constructs that commonly indicate match-only workarounds. An
-authenticated exception suppresses only the exact scoped rule. A temporary
-exception remains visible debt and can be rejected explicitly:
-
-```sh
-python tools/source_quality.py \
-  --changed origin/main \
-  --strict \
-  --reject-temporary
-```
-
-A full audit is available for research and backlog creation:
-
-```sh
-python tools/source_quality.py --all
-```
-
-The full audit is intentionally not the merge gate.
+Authenticated exceptions suppress only an exact scoped rule. Temporary
+exceptions remain visible debt.
 
 ## Human-readable report
 
@@ -183,30 +293,25 @@ The full audit is intentionally not the merge gate.
 python tools/agent.py report
 ```
 
-or:
+The report shows the owner matrix, recovery debt, naming ledger, exceptions,
+actionable knowledge cards, and wave-distillation coverage. It complements DTK
+binary progress and never replaces object, relocation, DOL/REL, or checksum
+proof.
 
-```sh
-python tools/recovery_report.py \
-  --output build/context/recovery-report.md
-```
+## Updating knowledge
 
-The report shows the owner matrix, dimension counts, recovery debt, naming
-ledger, source-shape exceptions, and compiler knowledge. It complements binary
-progress; it does not replace DTK progress or checksum verification.
+When a source experiment produces reusable output knowledge:
 
-## Updating an owner
+1. decide whether it is a confirmed rule, contextual heuristic, or owner
+   constraint;
+2. state the exact source condition and required preconditions;
+3. record possible output changes and recognizable signatures;
+4. write one clear recovery rule and concrete safe actions;
+5. scope it by stable identity, owner, module, tags, compiler, or project;
+6. add examples and counterexamples;
+7. link the retained evidence and related exception;
+8. run `python tools/agent.py check --base origin/main`.
 
-When an investigation changes what is known:
-
-1. update only status dimensions supported by evidence;
-2. add concise accepted and rejected evidence;
-3. add or resolve debt;
-4. update `names.json` without discarding stable identity;
-5. add a narrowly scoped authenticated or temporary exception when required;
-6. add compiler behavior with conditions and counterexamples;
-7. run the public agent gate;
-8. run private object, consumer, DOL/REL, and checksum gates when the change
-   affects source or build output.
-
-The public gate and private retail gate are deliberately separate. Neither
-should be claimed when it was not run.
+Never promote one owner’s exact trick into a compiler-wide rule without another
+example or a carefully stated diagnostic scope. Never discard a counterexample
+because it makes the rule less convenient.
