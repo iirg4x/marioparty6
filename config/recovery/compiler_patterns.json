@@ -1,52 +1,404 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "patterns": [
     {
-      "id": "gc132-late-definition-visibility",
+      "id": "gc132-declaration-chronology",
+      "title": "Declaration and definition chronology can change GC/1.3.2 output",
+      "classification": "confirmed_rule",
+      "category": "declaration_visibility",
       "compiler": "GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "For a large translation unit, moving object definitions before code can alter one-pass visibility, register allocation, text size, and BSS even when equivalent declarations remain visible.",
-      "conditions": "Observed in mdparty.c with 73 same-owner objects; do not generalize to every owner without a local probe.",
+      "summary": "Moving file-scope definitions earlier can change one-pass visibility, register allocation, section extents, and relocations even when the C declarations appear equivalent.",
+      "conditions": "Apply as a compiler-wide diagnostic under GC/1.3.2; probe each owner locally because stage.c is a counterexample to the mdparty tail-definition requirement.",
+      "source_condition": {
+        "change": "Move file-scope object definitions earlier or otherwise alter declaration/definition chronology while retaining nominally equivalent declarations.",
+        "requires": [
+          "same compiler version and flags",
+          "same symbol ownership and types",
+          "before/after object and relocation comparison"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "one-pass declaration visibility",
+          "register allocation",
+          ".text size",
+          ".bss size",
+          "relocation addends or object chronology"
+        ],
+        "known_signatures": [
+          "a semantics-preserving reorder regresses many exact functions",
+          "section extent changes without an intentional data-layout change"
+        ]
+      },
+      "rule": "Treat declaration chronology as a testable compiler variable; do not modernize definition placement or copy a tail-definition layout without owner-local proof.",
+      "safe_actions": [
+        "make a bounded owner-local chronology probe",
+        "compare every independently exact function and affected data section",
+        "record both positive and negative owner results"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
       "examples": [
         "REL:mdpartydll:mdparty"
       ],
       "counterexamples": [
         "REL:mdpartydll:stage"
       ],
+      "related_exceptions": [
+        "mdparty-late-owner-definitions"
+      ],
       "evidence": [
         "docs/native_matching_wave103.md"
       ]
     },
     {
-      "id": "gc132-broad-header-visibility",
+      "id": "mdparty-tail-definition-chronology",
+      "title": "Keep mdparty same-owner definitions at the authenticated tail position",
+      "classification": "owner_constraint",
+      "category": "declaration_visibility",
       "compiler": "GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Adding a semantically correct broad header may change calls or allocation when the retail translation unit saw only a narrower local declaration set.",
-      "conditions": "Use exact target-backed local declarations only when an owner-specific probe proves broad visibility wrong; never copy this as a global style rule.",
+      "summary": "mdparty.c requires declarations before code and the same-owner definitions at the translation-unit tail to retain the retail text, BSS, and relocation chronology.",
+      "conditions": "This is specific to REL:mdpartydll:mdparty and must not be copied to stage.c or another owner.",
+      "source_condition": {
+        "change": "Move one or more mdparty-owned object definitions before application code or regroup the authenticated reverse tail order.",
+        "requires": [
+          "owner REL:mdpartydll:mdparty",
+          "GC/1.3.2 retail configuration"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "large exact-function regression",
+          ".text extent",
+          ".bss extent",
+          "self-relocation addends"
+        ],
+        "known_signatures": [
+          "early-definition probe retained only 154 of 258 exact functions",
+          "source text and BSS extents diverged from retail"
+        ]
+      },
+      "rule": "Preserve the authenticated mdparty declaration-before-code and reverse tail-definition chronology unless stronger same-game evidence disproves it.",
+      "safe_actions": [
+        "leave the existing tail chronology intact during semantic cleanup",
+        "test any ownership cleanup in an isolated probe before retaining it",
+        "verify the complete relocation stream after data-definition changes"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [
+          "REL:mdpartydll:mdparty"
+        ],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
       "examples": [
-        "mdpartydll:0x2F22C",
+        "REL:mdpartydll:mdparty"
+      ],
+      "counterexamples": [
         "REL:mdpartydll:stage"
       ],
-      "counterexamples": [],
+      "related_exceptions": [
+        "mdparty-late-owner-definitions"
+      ],
       "evidence": [
         "docs/native_matching_wave101.md",
         "docs/native_matching_wave103.md"
       ]
     },
     {
-      "id": "gc132-helper-boundary-and-lifetime",
+      "id": "gc132-broad-header-visibility",
+      "title": "A broader correct header can still produce the wrong translation-unit output",
+      "classification": "confirmed_rule",
+      "category": "header_visibility",
+      "compiler": "GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "Adding semantically correct declarations through a broad header can change emitted calls, temporary lifetimes, allocation, and inline behavior when the retail translation unit saw a narrower declaration set.",
+      "conditions": "Use as a compiler-wide diagnostic; local prototypes are acceptable only when symbol authority and an owner-specific visibility probe support them.",
+      "source_condition": {
+        "change": "Replace target-visible local prototypes with a broad owner header or add declarations that were not visible in the retail translation unit.",
+        "requires": [
+          "authoritative signatures remain semantically compatible",
+          "the include changes the visible declaration set"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "call-result extension",
+          "temporary lifetime",
+          "register allocation",
+          "automatic inline eligibility",
+          "function size"
+        ],
+        "known_signatures": [
+          "one exact caller becomes eight bytes shorter",
+          "several independently exact functions diverge after a header-only cleanup"
+        ]
+      },
+      "rule": "Do not treat broader modern header visibility as historically authentic merely because the declarations are correct; reproduce and test the retail translation-unit visibility.",
+      "safe_actions": [
+        "compare the preprocessed declaration set before and after the include",
+        "run an owner-local broad-header probe",
+        "retain narrow local declarations only with symbol authority and recorded evidence"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [
+          "REL:mdpartydll:mdparty",
+          "REL:mdpartydll:stage"
+        ],
+        "stable_ids": [
+          "mdpartydll:0x2F22C"
+        ],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "mdpartydll:0x2F22C",
+        "REL:mdpartydll:stage"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [
+        "mdparty-local-audio-prototypes",
+        "mdparty-stage-local-random-prototypes"
+      ],
+      "evidence": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md"
+      ]
+    },
+    {
+      "id": "mdparty-local-audio-visibility",
+      "title": "Retain the target-visible mdparty audio declarations without the broad audio header",
+      "classification": "owner_constraint",
+      "category": "header_visibility",
+      "compiler": "GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "fn_1_2F22C is exact only when mdparty sees the four authenticated local audio declarations rather than the complete audio header.",
+      "conditions": "Applies to the authenticated mdparty translation-unit visibility; it is not a general license for duplicate local prototypes.",
+      "source_condition": {
+        "change": "Include game/audio.h in mdparty.c or otherwise expose the full audio declaration set to fn_1_2F22C.",
+        "requires": [
+          "owner REL:mdpartydll:mdparty",
+          "stable identity mdpartydll:0x2F22C"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "signed return handling",
+          "call-result lifetime",
+          "function length"
+        ],
+        "known_signatures": [
+          "fn_1_2F22C becomes eight bytes shorter with the broad header"
+        ]
+      },
+      "rule": "Keep the four policy-checked local audio declarations and do not include the broad audio header in mdparty.c without new target evidence.",
+      "safe_actions": [
+        "keep signatures mirrored against the authoritative audio header",
+        "let the declaration-ownership gate detect drift",
+        "re-run fn_1_2F22C and its caller evidence after any audio contract change"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [
+          "REL:mdpartydll:mdparty"
+        ],
+        "stable_ids": [
+          "mdpartydll:0x2F22C"
+        ],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "mdpartydll:0x2F22C"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [
+        "mdparty-local-audio-prototypes"
+      ],
+      "evidence": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md"
+      ]
+    },
+    {
+      "id": "stage-local-random-visibility",
+      "title": "Retain stage's authenticated signed random prototypes",
+      "classification": "owner_constraint",
+      "category": "header_visibility",
+      "compiler": "GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "stage.c requires its target-backed signed frandmod and rand8 declarations; broad random-function headers change five exact functions.",
+      "conditions": "Specific to REL:mdpartydll:stage and its retail declaration visibility.",
+      "source_condition": {
+        "change": "Replace stage's local signed frandmod/rand8 prototypes with a broader random-function header.",
+        "requires": [
+          "owner REL:mdpartydll:stage",
+          "GC/1.3.2 retail configuration"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "argument or return extension",
+          "register allocation",
+          "five function bodies"
+        ],
+        "known_signatures": [
+          "broad random visibility reduces source text from the retail extent and diverges five functions"
+        ]
+      },
+      "rule": "Keep the two target-backed signed local prototypes in stage.c unless stronger same-game evidence authenticates broader visibility.",
+      "safe_actions": [
+        "keep symbol authority in the declaration policy",
+        "compare all 57 stage functions after random-contract changes",
+        "do not copy this exception to another owner"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [
+          "REL:mdpartydll:stage"
+        ],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "REL:mdpartydll:stage"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [
+        "mdparty-stage-local-random-prototypes"
+      ],
+      "evidence": [
+        "docs/native_matching_wave103.md"
+      ]
+    },
+    {
+      "id": "gc132-helper-boundary-lifetime",
+      "title": "Check helper boundaries and object lifetimes before adding code-generation controls",
+      "classification": "contextual_heuristic",
+      "category": "control_flow_and_lifetime",
       "compiler": "GC/1.3.2",
       "confidence": "high",
-      "summary": "Helper boundaries, automatic inlining, signed-short contracts, and block-scoped lifetimes can be authentic source-shape evidence when they reproduce multiple callers without regressions.",
-      "conditions": "Require a target or sibling-backed family of call sites; a single isolated 100% result is insufficient.",
+      "summary": "Real helper boundaries, automatic inline decisions, narrow contracts, and block-scoped lifetimes can explain repeated register and control-flow mismatches across related callers.",
+      "conditions": "Use when the same mismatch family appears around calls, saved registers, temporary elimination, or nested control flow; a single isolated match is insufficient.",
+      "source_condition": {
+        "change": "Flatten or recreate helpers, widen a narrow contract, or move a temporary outside its likely original block scope.",
+        "requires": [
+          "a repeated mismatch family across related call sites",
+          "target or sibling evidence for the helper or contract"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "saved-register lifetime",
+          "temporary elimination",
+          "call versus inline shape",
+          "branch grouping",
+          "stack frame extent"
+        ],
+        "known_signatures": [
+          "multiple callers close together after restoring one helper family",
+          "a block-scope or signed-contract correction removes one repeated temporary"
+        ]
+      },
+      "rule": "Before using pragmas or artificial expressions, test the authenticated helper boundary, narrow type contract, and block lifetime that could naturally produce the mismatch family.",
+      "safe_actions": [
+        "compare the same helper pattern across all known callers",
+        "test signedness and scope independently",
+        "retain the change only when related callers improve without exact regressions"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mdpartydll:0xBBD8",
+          "mdpartydll:0x38314"
+        ],
+        "modules": [],
+        "owner_tags": []
+      },
       "examples": [
         "mdpartydll:0xBBD8",
         "mdpartydll:0x38314"
       ],
       "counterexamples": [],
+      "related_exceptions": [],
       "evidence": [
         "docs/native_matching_wave96.md",
         "docs/native_matching_wave100.md",
+        "docs/native_matching_wave101.md"
+      ]
+    },
+    {
+      "id": "gc132-narrow-signed-contracts",
+      "title": "Recover narrow signed contracts from target and consumer widths before widening to int",
+      "classification": "confirmed_rule",
+      "category": "type_contracts",
+      "compiler": "GC/1.3.2",
+      "confidence": "high",
+      "summary": "Signed-short parameters and returns can change extension nodes, temporary lifetimes, branches, and wrapped allocator chronology even when an int signature appears semantically equivalent.",
+      "conditions": "Use as a compiler-wide type diagnostic when callers, symbol data, or target instructions show 16-bit signed movement or extension.",
+      "source_condition": {
+        "change": "Widen an s16 argument or return contract to int, or insert casts that erase the original signed-short node.",
+        "requires": [
+          "target load/store or extension evidence",
+          "caller and consumer width review"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "sign-extension instructions",
+          "condition evaluation",
+          "temporary allocation",
+          "wrapped value chronology",
+          "caller code size"
+        ],
+        "known_signatures": [
+          "an exact body closes only after restoring an s16 return",
+          "multiple inline boundaries share the same signed argument-node difference"
+        ]
+      },
+      "rule": "Choose narrow signed types from target and consumer evidence, not from modern convenience or one function's isolated code generation.",
+      "safe_actions": [
+        "inspect caller and consumer widths before changing the signature",
+        "compare extension instructions at every boundary",
+        "re-test all Matching consumers of a shared declaration"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mdpartydll:0x2F22C",
+          "mdpartydll:0x38314"
+        ],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "mdpartydll:0x2F22C",
+        "mdpartydll:0x38314"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_wave97.md",
         "docs/native_matching_wave101.md"
       ]
     }
