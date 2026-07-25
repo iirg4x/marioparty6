@@ -1,177 +1,100 @@
 # Recovery metadata
 
 This directory is the committed knowledge layer for faithful source recovery.
-It is JSON and Python-standard-library-only so validation adds no package-manager
-dependency to the decompilation toolchain.
+Generated SQLite, owner catalogs, reports, audits, context packs, and local queue
+state belong under ignored build/Git-common paths and must not be committed.
 
-Follow the nearest [`AGENTS.md`](AGENTS.md) before editing these files.
+Follow [`AGENTS.md`](AGENTS.md) before editing.
 
-## Layout
+## Files
 
-- `project.json`: project goal, evidence hierarchy, status vocabularies, context
-  card limit, agent contract, acceptance criteria, and workspace policy.
-- `owners/*.json`: reviewed translation-unit owners. Coverage is intentionally
-  incremental; do not create speculative bulk classifications.
+- `project.json`: project contract, evidence hierarchy, status vocabularies,
+  context/coordination policy, and required tooling.
+- `owners/*.json`: reviewed semantic recovery owners. Coverage is intentionally
+  incremental.
 - `names.json`: stable identities and semantic naming decisions.
-- `exceptions.json`: authenticated, temporary, or forbidden unusual source
-  shapes.
-- `compiler_patterns.json`: actionable source-to-output knowledge cards with
-  scope, examples, counterexamples, rules, and safe actions.
+- `exceptions.json`: scoped authenticated, temporary, or forbidden source forms.
+- `compiler_patterns.json`: actionable source-to-output knowledge cards.
+- `knowledge_freshness.json`: validated commits, watched inputs, status, and
+  supersession for every card.
 
-Generated SQLite data, reports, audits, and context packs belong under
-`build/context/` and must not be committed.
+The generated operational owner catalog is separate. It inventories configured
+source files and dependencies but does not promote semantic status.
 
-## Owner manifest
+## Owner state
 
-An owner manifest records:
+Each reviewed owner tracks binary, source shape, semantics, naming, and data
+independently. Exact output can coexist with address-only naming or semantic
+debt. A natural semantic candidate may be useful before matching.
 
-```json
-{
-  "id": "REL:module:owner",
-  "module": "module",
-  "source": "src/REL/module/owner.c",
-  "compiler": "GC/1.3.2",
-  "status": {
-    "binary": "partial",
-    "source_shape": "plausible",
-    "semantics": "partial",
-    "naming": "address_only",
-    "data": "typed_partial"
-  },
-  "evidence": [],
-  "constraints": [],
-  "debt": []
-}
-```
-
-Keep dimensions independent. An exact object can still have partial semantics,
-address-only naming, raw data domains, or unresolved source-shape debt.
-Conversely, a natural semantic candidate may be valuable before it reaches an
-exact match.
-
-Include the compiler when known so compiler-wide diagnostic cards can be
-selected. Do not infer a compiler from a neighboring owner without checking the
-configured object.
-
-Evidence entries require a kind from `project.json`, confidence, a concise
-accepted/rejected summary, and normally a durable reference. Do not paste an
-agent transcript into a manifest.
+Include the configured compiler when known. Evidence must be concise,
+falsifiable, accepted/rejected explicitly, and normally linked to a durable
+report or source.
 
 ## Knowledge cards
 
-`compiler_patterns.json` uses schema version 2. Every card requires:
+Schema-v2 cards require:
 
-```json
-{
-  "id": "gc132-example",
-  "title": "Human-readable rule title",
-  "classification": "confirmed_rule",
-  "category": "type_contracts",
-  "compiler": "GC/1.3.2",
-  "confidence": "confirmed",
-  "summary": "Compact finding",
-  "conditions": "Compact compatibility/search text",
-  "source_condition": {
-    "change": "The source change that triggers the behavior",
-    "requires": ["precondition"]
-  },
-  "emitted_effect": {
-    "possible_changes": ["register allocation"],
-    "known_signatures": ["recognizable objdiff result"]
-  },
-  "rule": "The coding or investigation rule",
-  "safe_actions": ["bounded next action"],
-  "applicability": {
-    "compiler_wide": true,
-    "project_wide": false,
-    "owners": [],
-    "stable_ids": [],
-    "modules": [],
-    "owner_tags": []
-  },
-  "examples": [],
-  "counterexamples": [],
-  "related_exceptions": [],
-  "evidence": []
-}
+```text
+id and title
+classification and category
+compiler and confidence
+triggering source condition and preconditions
+possible emitted changes and known signatures
+one rule and safe actions
+explicit applicability scope
+examples and counterexamples
+related exceptions and evidence
 ```
 
 Classifications:
 
-- `confirmed_rule`: repeatable finding under stated conditions. A
-  compiler-wide rule is diagnostic, not a source template.
-- `contextual_heuristic`: a proven high-value investigation path that still
-  requires local evidence.
-- `owner_constraint`: an authenticated source shape for explicit owners or
-  stable identities only.
+- `confirmed_rule`: repeatable under stated conditions;
+- `contextual_heuristic`: a high-value bounded diagnostic;
+- `owner_constraint`: authenticated only for explicit owners/stable identities.
 
-An owner constraint cannot be compiler- or project-wide. Every card needs at
-least one safe action. Evidence paths, owner scopes, and related exceptions are
-validated.
+Counterexamples rank before general rules. Compiler-wide cards are diagnostics,
+not permission to copy an owner’s source shape.
 
-Selection ranks counterexamples first, then exact stable identities, owner
-scope, module/tags, compiler-wide rules, and project-wide rules. The default
-context limit is five cards.
+## Freshness
 
-Inspect and audit:
+Every card must have a record in `knowledge_freshness.json`:
 
-```sh
-python tools/knowledge_cards.py check
-python tools/knowledge_cards.py function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty
-python tools/knowledge_cards.py audit
+```json
+{
+  "status": "active",
+  "validated_commit": "40-hex-sha",
+  "validated_at": "YYYY-MM-DD",
+  "watch_paths": ["source/or/evidence"],
+  "supersedes": [],
+  "superseded_by": null
+}
 ```
 
-## Stable naming
+A watched source/evidence change makes the card stale until revalidated. Stale
+cards remain visible as warnings rather than silently disappearing.
 
-Use module plus target address when known. A semantic rename changes the source
-name, not the stable identity. Keep unresolved proposals explicit and record
-rejections so later agents do not repeat speculative work.
+## Stable names and exceptions
 
-Compiler probes may support source shape but cannot independently authenticate a
-semantic name.
+A semantic rename changes the source symbol, not stable target identity.
+Compiler probes cannot independently prove semantic meaning.
 
-## Exceptions
-
-An exception is not a blanket lint suppression. It documents a source form that
-would otherwise resemble a matching shortcut.
-
-- Scope it to one owner/path and exact source-quality rule.
-- Attach target or compiler evidence.
-- `authenticated` entries may remain.
-- `temporary` entries are visible debt and require a removal condition.
-- `forbidden` entries document approaches that must not be introduced.
-- An empty `rules` list records a constraint but suppresses nothing.
-
-Knowledge cards explain what was learned and what to do. Exceptions authorize a
-specific unusual construct. Referencing an exception from a card does not widen
-its scope.
+Exceptions authorize specific unusual constructs and must be scoped to exact
+paths and source-quality rules. A knowledge card explains behavior; it does not
+widen an exception.
 
 ## Historical evidence
 
-Wave reports remain forensic evidence, not default context. A reusable finding
-must be distilled into an owner record, exception, or knowledge card. The audit
-lists wave documents without a knowledge-card reference; it does not assume
-every wave deserves a global rule.
-
-## Workspace readiness
-
-`project.json` declares required agent entrypoints and inactive template paths
-that must not exist. `python tools/agent.py doctor` checks this policy.
+Wave reports remain forensic records, not prompt input. Distill reusable results
+into owner evidence, cards, exceptions, names, or counterexamples. The audit
+shows undistilled waves without assuming every wave contains a global rule.
 
 ## Validation
 
-Use the unified gate:
-
-```sh
-python tools/agent.py check --base origin/main
-```
-
-Lower-level commands remain available:
-
 ```sh
 python tools/recovery_index.py check
-python tools/recovery_index.py build
 python tools/knowledge_cards.py check
-python tools/source_quality.py --changed origin/main --strict
+python tools/knowledge_cards.py freshness
+python tools/agent.py knowledge audit
+python tools/agent.py check --base origin/main
 ```
