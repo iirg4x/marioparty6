@@ -1,81 +1,123 @@
-decomp-toolkit Project Template
-===============================
+# Mario Party 6 decompilation and source recovery
 
-See [STATUS.md](STATUS.md) for the current Mario Party 6 recovery and fallback
-ownership snapshot.
+This repository reconstructs the US GameCube build of **Mario Party 6**
+(`GP6E01`) as readable C/C++ source and verifies it against the retail binaries.
+Original game files are not committed.
 
-If starting a new GameCube / Wii decompilation project, this repository can be used as a scaffold.
+The active recovery target is the byte-identical non-minigame game loop: boot,
+menus, party mode, boards, results, and ending. Minigame DLLs, instruction DLLs,
+minigame-mode wrappers, and mic-quiz modes are currently outside that scheduling
+target. See [STATUS.md](STATUS.md) for the evidence-backed progress snapshot.
 
-See [decomp-toolkit](https://github.com/encounter/decomp-toolkit) for background on the concept and more information on the tooling used.
+## Recovery standard
 
-Documentation
--------------
+A binary match is necessary proof, not a complete source-authenticity claim.
+Raw metadata IDs, opaque arrays, fake padding, synthetic literals, unsupported
+semantic names, and unexplained compiler-control techniques remain recovery
+debt even when the output is exact.
+
+The project tracks binary status separately from source shape, semantics,
+naming, and data-domain recovery. Start with:
+
+- [Source recovery standard](docs/recovery_standard.md)
+- [Recovery index and context workflow](docs/context_workflow.md)
+- [Agent instructions](AGENTS.md)
+
+`src/game/mgdata.c` is the model semantic cleanup: named domains, natural
+layout, consumer-backed widths, and readable source were recovered without
+claiming new matching bytes.
+
+## Token-efficient recovery workflow
+
+Committed recovery knowledge lives in `config/recovery/`. A deterministic
+SQLite index and bounded context packs are generated under `build/context/`.
+The primary lookup path is exact owner, stable identity, symbol, evidence, and
+compiler constraint—not a whole-repository prompt.
+
+```sh
+python tools/recovery_index.py check
+python tools/recovery_index.py build
+python tools/recovery_index.py query mdpartydll:0xBBD8
+
+python tools/context_pack.py \
+  --budget 12000 \
+  --output build/context/mdparty_BBD8.md \
+  function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty
+```
+
+`tools/decompctx.py` still generates preprocessed context for decomp.me.
+`tools/context_pack.py` instead supplies a compact recovery contract, target
+function, bounded owner signatures, evidence, known rejected probes, naming
+debt, and acceptance criteria for agents and human review.
+
+## Source-quality review
+
+New compiler-shape controls must be authenticated, recorded as temporary debt,
+or rejected. Review added source lines with:
+
+```sh
+python tools/source_quality.py --changed origin/main --strict
+```
+
+The check focuses on newly introduced pragmas, forced inline/no-inline controls,
+`volatile` or `register` used for code generation, inline assembly, include-guard
+overrides, synthetic padding, opaque blobs, and dead code-generation branches.
+It does not retroactively fail unrelated historical code.
+
+Generate a readable status matrix with:
+
+```sh
+python tools/recovery_report.py \
+  --output build/context/recovery-report.md
+```
+
+## Building
+
+The project uses [decomp-toolkit](https://github.com/encounter/decomp-toolkit),
+Ninja, the pinned Metrowerks compilers, objdiff, and the repository helper tools.
+Setup details remain in:
 
 - [Dependencies](docs/dependencies.md)
-- [Getting Started](docs/getting_started.md)
+- [Getting started](docs/getting_started.md)
 - [`symbols.txt`](docs/symbols.md)
 - [`splits.txt`](docs/splits.md)
-- [GitHub Actions](docs/github_actions.md) (new!)
 
-General:
+After the original `GP6E01` files are extracted into `orig/GP6E01`, configure
+and build with the repository’s normal `rtk` environment. The final promotion
+gate is the serialized build plus the configured DTK checksum and explicit
+DOL/REL byte comparisons documented in [STATUS.md](STATUS.md).
 
-- [Common BSS](docs/common_bss.md)
-- [`.comment` section](docs/comment_section.md)
+Public-safe metadata checks do not require original game files:
 
-References
---------
+```sh
+python -m unittest discover -s tools/tests -v
+python tools/recovery_index.py check
+python tools/recovery_index.py build
+```
 
-- [Discord: GC/Wii Decompilation](https://discord.gg/hKx3FJJgrV) (Come to `#dtk` for help!)
-- [objdiff](https://github.com/encounter/objdiff) (Local diffing tool)
-- [decomp.me](https://decomp.me) (Collaborate on matches)
-- [frogress](https://github.com/decompals/frogress) (Decompilation progress API)
-- [wibo](https://github.com/decompals/wibo) (Minimal Win32 wrapper for Linux)
-- [sjiswrap](https://github.com/encounter/sjiswrap) (UTF-8 to Shift JIS wrapper)
+## Project structure
 
-Projects using this structure:
+- `src/`: recovered game, board, SDK, library, and REL source
+- `include/`: shared declarations, structures, data domains, and generated-style tables
+- `config/GP6E01/`: DOL configuration, symbols, splits, and retail checksums
+- `config/dll/rels/`: REL symbol and split ownership
+- `config/recovery/`: source-authenticity status, evidence, names, exceptions, and compiler knowledge
+- `docs/`: setup documentation and retained recovery evidence
+- `tools/`: build helpers, declaration gates, indexing, context generation, and checks
+- `build/`: generated and ignored build products, reports, index, and context packs
+- `orig/GP6E01/`: locally extracted and ignored retail files
 
-- [zeldaret/tww](https://github.com/zeldaret/tww)
-- [PrimeDecomp/prime](https://github.com/PrimeDecomp/prime)
-- [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes)
-- [DarkRTA/rb3](https://github.com/DarkRTA/rb3)
-- [doldecomp/melee](https://github.com/doldecomp/melee)
-- [doldecomp/sadx](https://github.com/doldecomp/sadx)
-- [InputEvelution/wp](https://github.com/InputEvelution/wp)
-- [lepelog/ss-dtk](https://github.com/lepelog/ss-dtk)
-- [NWPlayer123/AnimalCrossing-dtk](https://github.com/NWPlayer123/AnimalCrossing-dtk)
-- [Rainchus/mp4-dtk](https://github.com/Rainchus/mp4-dtk)
-- [Rainchus/ttyd_dtk](https://github.com/Rainchus/ttyd_dtk)
-- [Sage-of-Mirrors/zmansion](https://github.com/Sage-of-Mirrors/zmansion)
+## Contribution rules
 
-Features
---------
+Work one translation-unit owner or tightly connected function cluster at a
+time. Begin with evidence research, then produce a natural candidate before
+compiler reconciliation. Never regress an independently exact function to make
+one target match. Re-check consumers whenever a shared type, declaration,
+structure, or data owner changes.
 
-- Few external dependencies: Just `python` for the generator and `ninja` for the build system. See [Dependencies](docs/dependencies.md).
-- Simple configuration: Everything lives in `config.yml`, `symbols.txt`, and `splits.txt`.
-- Multi-version support: Separate configurations for each game version, and a `configure.py --version` flag to switch between them.
-- Feature-rich analyzer: Many time-consuming tasks are automated, allowing you to focus on the decompilation itself. See [Analyzer features](https://github.com/encounter/decomp-toolkit#analyzer-features).
-- REL support: RELs each have their own `symbols.txt` and `splits.txt`, and will automatically be built and linked against the main binary.
-- No manual assembly: decomp-toolkit handles splitting the DOL into relocatable objects based on the configuration. No game assets are committed to the repository.
-- Progress calculation and upload script for [frogress](https://github.com/decompals/frogress).
-- Integration with [objdiff](https://github.com/encounter/objdiff) for a diffing workflow.
-- CI workflow template for GitHub Actions.
+Keep uncertain semantics uncertain. Preserve stable target identity when
+renaming. Record rejected probes and owner-specific compiler behavior so the
+next contributor does not spend context and time rediscovering them.
 
-Project structure
------------------
-
-- `configure.py` - Project configuration and generator script.
-- `config/[GP6E01]` - Configuration files for each game version.
-- `config/[GP6E01]/build.sha1` - SHA-1 hashes for each built artifact, for final verification.
-- `build/` - Build artifacts generated by the the build process. Ignored by `.gitignore`.
-- `orig/[GP6E01]` - Original game files, extracted from the disc. Ignored by `.gitignore`.
-- `orig/[GP6E01]/.gitkeep` - Empty checked-in file to ensure the directory is created on clone.
-- `src/` - C/C++ source files.
-- `include/` - C/C++ header files.
-- `tools/` - Scripts shared between projects.
-
-Temporary, delete when done:
-
-- `config/GP6E01/config.example.yml` - Example configuration file and documentation.
-- `docs/` - Documentation for decomp-toolkit configuration.
-- `README.md` - This file, replace with your own. For a template, see [`README.example.md`](README.example.md).
-- `LICENSE` - This repository is licensed under the CC0 license. Replace with your own if desired.
+No copyrighted game assets or original binaries should be committed.
