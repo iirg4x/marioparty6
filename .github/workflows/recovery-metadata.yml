@@ -1,0 +1,50 @@
+name: Recovery metadata
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run public-safe tests
+        run: python -m unittest discover -s tools/tests -v
+
+      - name: Validate recovery metadata
+        run: python tools/recovery_index.py check
+
+      - name: Build deterministic recovery index
+        run: python tools/recovery_index.py build
+
+      - name: Generate bounded model-owner context
+        run: >-
+          python tools/context_pack.py
+          --budget 6000
+          --output build/context/mgdata-owner.md
+          owner main:game/mgdata
+
+      - name: Generate human-readable recovery report
+        run: >-
+          python tools/recovery_report.py
+          --output build/context/recovery-report.md
+
+      - name: Review newly added source-shape controls
+        if: github.event_name == 'pull_request'
+        run: >-
+          python tools/source_quality.py
+          --changed "${{ github.event.pull_request.base.sha }}"
+          --strict
