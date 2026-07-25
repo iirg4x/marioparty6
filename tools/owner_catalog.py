@@ -15,8 +15,19 @@ from typing import Any, Iterable, Mapping
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.check_tu_declarations import (
+    IDENT_RE,
+    _direct_declarations,
+    _file_scope_items,
+    _mask_comments_and_literals,
+    _splice_lines,
+)
+from tools.recovery_data import parse_functions
+
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]', re.MULTILINE)
+CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".s"}
+CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
 
 
 class CatalogError(ValueError):
@@ -32,7 +43,11 @@ def _name(node: ast.AST | None) -> str | None:
 
 
 def _literal(node: ast.AST | None) -> str | None:
-    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+    return (
+        node.value
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        else None
+    )
 
 
 def _object_record(call: ast.Call, rel: str | None) -> dict[str, Any] | None:
@@ -46,7 +61,7 @@ def _object_record(call: ast.Call, rel: str | None) -> dict[str, Any] | None:
     logical = path.rsplit(".", 1)[0]
     if rel:
         prefix = f"REL/{rel}/"
-        logical = logical[len(prefix):] if logical.startswith(prefix) else logical
+        logical = logical[len(prefix) :] if logical.startswith(prefix) else logical
         owner_id = f"REL:{rel}:{logical}"
         module = rel
     else:
@@ -103,6 +118,54 @@ def _merge_reviewed(
             target["tags"] = owner.get("tags", [])
 
 
+def _source_facts(text: str, suffix: str) -> dict[str, Any]:
+    if suffix == ".s":
+        return {
+            "functions_defined": [],
+            "globals_defined": [],
+            "symbol_imports": [],
+            "call_symbols": [],
+            "tokens": set(),
+        }
+    functions = {function.symbol for function in parse_functions(text)}
+    _, definitions = _file_scope_items(text)
+    functions.update(str(item["symbol"]) for item in definitions)
+    declarations = _direct_declarations(text)
+    globals_defined = {
+        str(item["symbol"])
+        for item in declarations
+        if item.get("kind") == "object" and not item.get("extern")
+    }
+    imports: list[dict[str, str]] = []
+    for item in declarations:
+        symbol = str(item.get("symbol"))
+        kind = str(item.get("kind"))
+        external = bool(item.get("extern")) or (
+            kind == "function" and symbol not in functions
+        )
+        if external:
+            imports.append({"symbol": symbol, "kind": kind})
+    cleaned = _mask_comments_and_literals(_splice_lines(text))
+    calls = {
+        symbol
+        for symbol in CALL_RE.findall(cleaned)
+        if symbol not in CALL_KEYWORDS and symbol not in functions
+    }
+    return {
+        "functions_defined": sorted(functions),
+        "globals_defined": sorted(globals_defined),
+        "symbol_imports": sorted(
+            imports, key=lambda item: (item["symbol"], item["kind"])
+        ),
+        "call_symbols": sorted(calls),
+        "tokens": set(IDENT_RE.findall(cleaned)),
+    }
+
+
+def _edge(symbol: str, owners: Mapping[str, list[str]]) -> dict[str, Any]:
+    return {"symbol": symbol, "owners": sorted(set(owners.get(symbol, [])))}
+
+
 def build_catalog(
     root: str | Path,
     reviewed: Iterable[Mapping[str, Any]] | None = None,
@@ -112,13 +175,16 @@ def build_catalog(
     if not configure.is_file():
         raise CatalogError(f"missing {configure}")
     try:
-        tree = ast.parse(configure.read_text(encoding="utf-8"), filename=str(configure))
+        tree = ast.parse(
+            configure.read_text(encoding="utf-8"), filename=str(configure)
+        )
     except SyntaxError as exc:
         raise CatalogError(f"configure.py is not parseable: {exc}") from exc
-    records: list[dict[str, Any]] = []
-    _walk(tree, None, records)
+
+    configured: list[dict[str, Any]] = []
+    _walk(tree, None, configured)
     unique: dict[str, dict[str, Any]] = {}
-    for record in records:
+    for record in configured:
         unique.setdefault(record["id"], record)
     records = sorted(unique.values(), key=lambda item: item["id"])
 
@@ -142,9 +208,19 @@ def build_catalog(
 
     _merge_reviewed(records, reviewed)
     header_consumers: dict[str, list[str]] = defaultdict(list)
+    function_owners: dict[str, list[str]] = defaultdict(list)
+    global_owners: dict[str, list[str]] = defaultdict(list)
+    texts: dict[str, str] = {}
+    facts: dict[str, dict[str, Any]] = {}
+
     for record in records:
         source = repo / record["source"]
-        text = source.read_text(encoding="utf-8", errors="replace") if source.is_file() else ""
+        text = (
+            source.read_text(encoding="utf-8", errors="replace")
+            if source.is_file()
+            else ""
+        )
+        texts[record["id"]] = text
         includes = sorted(
             {
                 _resolve_include(repo, source, include)
@@ -156,20 +232,97 @@ def build_catalog(
         record["exists"] = source.is_file()
         for include in includes:
             header_consumers[include].append(record["id"])
+        current = _source_facts(text, source.suffix.lower())
+        facts[record["id"]] = current
+        record["functions_defined"] = current["functions_defined"]
+        record["globals_defined"] = current["globals_defined"]
+        record["symbol_imports"] = current["symbol_imports"]
+        record["call_symbols"] = current["call_symbols"]
+        for symbol in current["functions_defined"]:
+            function_owners[symbol].append(record["id"])
+        for symbol in current["globals_defined"]:
+            global_owners[symbol].append(record["id"])
+
+    source_owner = {record["source"]: record["id"] for record in records}
+    function_consumers: dict[str, list[str]] = defaultdict(list)
+    data_consumers: dict[str, list[str]] = defaultdict(list)
+    import_consumers: dict[str, list[str]] = defaultdict(list)
 
     for record in records:
-        dependencies: set[str] = set()
-        for include in record["includes"]:
-            for candidate in records:
-                if candidate["source"] == include:
-                    dependencies.add(candidate["id"])
+        owner_id = record["id"]
+        current = facts[owner_id]
+        call_edges = [
+            _edge(symbol, function_owners)
+            for symbol in current["call_symbols"]
+            if symbol in function_owners
+        ]
+        data_edges = [
+            _edge(symbol, global_owners)
+            for symbol in sorted(current["tokens"] & set(global_owners))
+            if owner_id not in global_owners[symbol]
+        ]
+        import_edges: list[dict[str, Any]] = []
+        for imported in current["symbol_imports"]:
+            symbol = imported["symbol"]
+            owners = (
+                function_owners if imported["kind"] == "function" else global_owners
+            )
+            edge = {**imported, "owners": sorted(set(owners.get(symbol, [])))}
+            import_edges.append(edge)
+            import_consumers[symbol].append(owner_id)
+        record["call_edges"] = call_edges
+        record["data_edges"] = data_edges
+        record["import_edges"] = import_edges
+        dependencies: set[str] = {
+            source_owner[include]
+            for include in record["includes"]
+            if include in source_owner
+        }
+        for edge in [*call_edges, *data_edges, *import_edges]:
+            dependencies.update(
+                dependency
+                for dependency in edge.get("owners", [])
+                if dependency != owner_id
+            )
         record["depends_on_owners"] = sorted(dependencies)
+        for edge in call_edges:
+            function_consumers[edge["symbol"]].append(owner_id)
+        for edge in data_edges:
+            data_consumers[edge["symbol"]].append(owner_id)
+
     return {
-        "schema_version": 1,
+        "schema_version": 2,
+        "analysis_quality": {
+            "includes": "exact direct source includes",
+            "functions": "source definitions and direct call-token approximation",
+            "globals": "file-scope declaration and identifier-reference approximation",
+            "imports": "direct source declaration approximation",
+            "semantic_claim": false
+        },
         "owners": sorted(records, key=lambda item: item["id"]),
         "header_consumers": {
             header: sorted(set(consumers))
             for header, consumers in sorted(header_consumers.items())
+        },
+        "function_owners": {
+            symbol: sorted(set(owners))
+            for symbol, owners in sorted(function_owners.items())
+        },
+        "function_consumers": {
+            symbol: sorted(set(consumers))
+            for symbol, consumers in sorted(function_consumers.items())
+        },
+        "global_owners": {
+            symbol: sorted(set(owners))
+            for symbol, owners in sorted(global_owners.items())
+        },
+        "data_consumers": {
+            symbol: sorted(set(consumers))
+            for symbol, consumers in sorted(data_consumers.items())
+        },
+        "symbol_import_consumers": {
+            symbol: sorted(set(consumers))
+            for symbol, consumers in sorted(import_consumers.items())
         },
     }
 
