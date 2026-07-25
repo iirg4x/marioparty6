@@ -1,190 +1,211 @@
 # Concurrent Claude and Codex workflow
 
-Claude and Codex may work at the same time on one PC, but they must use
-**worktrees from the same Git repository**, separate branches, and separate
-build directories.
+Claude and Codex may work simultaneously on one PC, but they must use separate
+Git worktrees, branches, and build directories. Final retail integration is
+serialized.
 
-## Local layout
+## One-time setup
 
-```text
-marioparty6-integration/        integration and final verification
-marioparty6-claude-task/        Claude worktree
-marioparty6-codex-task/         Codex worktree
+From the integration checkout:
+
+```sh
+python tools/agent.py doctor
+python tools/agent.py hooks install
+python tools/agent.py catalog build
 ```
 
-Each worktree naturally has its own ignored `build/` directory. Retail inputs
-may be exposed read-only to each worktree through a symlink or directory
-junction, but the build outputs must not be shared.
+The operational owner catalog is generated from `configure.py` and source
+includes. It inventories configured owners, source paths, matching status,
+source size, and header consumers without making semantic-recovery claims.
 
-## Shared queue location
-
-The queue is stored outside every worktree under Git's common directory:
+The shared queue lives outside individual worktrees:
 
 ```text
 <git-common-dir>/agent-coordination/queue.json
 ```
 
-All worktrees created from the same repository see it immediately. Queue writes
-use an atomic local lock and atomic file replacement so simultaneous Claude and
-Codex claims cannot overwrite each other.
+All worktrees from the same clone see it immediately. Existing schema-v1 queues
+are migrated to schema v2 when written. Separate clones may share an explicit
+`MP6_AGENT_QUEUE` path.
 
-Separate clones do not share a Git common directory. When clones are required,
-point both to one absolute queue path:
+## Add a batch
 
-```text
-MP6_AGENT_QUEUE=C:\path\to\shared\queue.json
-```
-
-or on Unix:
+The orchestrator adds tasks with dependency and scheduling information:
 
 ```sh
-export MP6_AGENT_QUEUE=/absolute/path/to/shared/queue.json
-```
-
-Do not commit the queue. It contains coordination state, not recovery evidence.
-
-## Create worktrees
-
-From the integration checkout:
-
-```sh
-git worktree add ../marioparty6-claude-task \
-  -b agent/claude-board-tutorial
-
-git worktree add ../marioparty6-codex-task \
-  -b agent/codex-fileseldll
-```
-
-## Add bulk tasks
-
-The orchestrator can queue work before assigning it:
-
-```sh
-python tools/agent.py queue add src/board/tutorial.c \
-  --source src/board/tutorial.c \
+python tools/agent.py queue add main:board/tutorial \
   --priority high \
-  --target fn_80000000
+  --batch board-pass-1 \
+  --capability mwcc \
+  --change-class private-source
 
 python tools/agent.py queue add REL:fileseldll:filesel \
-  --priority high
+  --priority critical \
+  --depends-on main:game/filesel-data \
+  --batch menu-flow \
+  --capability rel \
+  --change-class private-source
 ```
 
-Use a configured recovery owner ID when one exists. Otherwise, use the source
-path as the owner and pass `--source` explicitly.
+Priority is preserved when the task is claimed unless `--priority` is explicitly
+provided again.
 
-## Claim work
+## Create isolated worktrees
 
-From the worker's own worktree:
-
-```sh
-python tools/agent.py queue claim src/board/tutorial.c \
-  --agent claude
-```
+The bootstrap command creates the branch, worktree, private build directory,
+optional read-only retail link, and queue claim together:
 
 ```sh
-python tools/agent.py queue claim REL:fileseldll:filesel \
-  --agent codex
-```
-
-A claim records:
-
-- owner and target;
-- assigned agent;
-- worktree and branch;
-- build directory;
-- status and priority;
-- source owner;
-- shared files that may be edited;
-- last verified commit;
-- timestamps and notes.
-
-The claim is rejected when another active task already uses the same owner,
-branch, worktree, build directory, source file, or overlapping shared path.
-
-## Declare shared-file risk before editing
-
-Central headers, `configure.py`, symbols, splits, and recovery schemas should be
-declared before they are touched:
-
-```sh
-python tools/agent.py queue claim src/board/tutorial.c \
+python tools/agent.py worktree create main:board/tutorial \
   --agent claude \
-  --shared include/game/board.h \
-  --shared configure.py
+  --base main \
+  --retail C:\retail\GP6E01
 ```
 
-For an existing claim:
+```sh
+python tools/agent.py worktree create REL:fileseldll:filesel \
+  --agent codex \
+  --base main \
+  --retail C:\retail\GP6E01
+```
+
+The queue rejects a worktree that belongs to another clone, is on the wrong
+branch, is not registered by `git worktree list`, or uses a build directory
+outside that worktree.
+
+Workers may instead claim an existing task from their own worktree:
 
 ```sh
-python tools/agent.py queue update src/board/tutorial.c \
+python tools/agent.py queue claim-next \
+  --agent claude \
+  --capability mwcc \
+  --batch board-pass-1
+```
+
+`claim-next` considers priority, completed dependencies, capabilities, expected
+work/verification cost, and path conflicts.
+
+## Declare every write path
+
+The source owner is protected automatically. Shared headers, `configure.py`,
+symbols, splits, and recovery schemas must be declared before editing:
+
+```sh
+python tools/agent.py queue update main:board/tutorial \
   --agent claude \
   --add-shared include/game/board.h
 ```
 
-If Codex already claims an overlapping path, the update fails before the edit.
-One worker should then defer the shared change to the integration task.
+The generated include graph also blocks scheduling a consumer in parallel with
+a task that declares one of its headers for modification.
 
-## Track progress
+Before every commit:
 
 ```sh
-python tools/agent.py queue update src/board/tutorial.c \
-  --agent claude \
-  --status researching
-
-python tools/agent.py queue update src/board/tutorial.c \
-  --agent claude \
-  --status coding
-
-python tools/agent.py queue update src/board/tutorial.c \
-  --agent claude \
-  --status verifying \
-  --verified-commit HEAD
+python tools/agent.py queue check-diff --base origin/main
 ```
 
-Available active states are:
+This checks committed, staged, unstaged, and untracked paths. It fails when the
+real Git diff escapes the claim or overlaps another agent’s paths. The managed
+pre-commit hook runs this automatically.
 
-```text
-claimed · researching · coding · verifying · blocked · ready
+## Worker loop
+
+```sh
+python tools/agent.py queue update <owner> \
+  --agent claude --status researching
+
+python tools/agent.py context function <symbol> \
+  --owner <owner> \
+  --symptom "saved register lifetime" \
+  --local-evidence
+
+python tools/agent.py queue update <owner> \
+  --agent claude --status coding
 ```
 
-## Inspect the queue
+During verification, commit first and leave the worktree clean. Then run the
+public gate and record structured proof:
+
+```sh
+python tools/agent.py check --base origin/main
+
+python tools/agent.py queue verify <owner> \
+  --agent claude \
+  --public-gate pass \
+  --object-report build/GP6E01/<report>.json \
+  --functions-exact 24/28 \
+  --relocations exact \
+  --consumer main:game/pause=exact \
+  --toolchain GC/1.3.2
+
+python tools/agent.py queue update <owner> \
+  --agent claude --status ready
+```
+
+Verification is bound to the clean current commit. Any later edit invalidates
+completion because `HEAD` no longer matches the verified commit.
+
+Use `released` to return unfinished work to the queue and `cancelled` to stop it:
+
+```sh
+python tools/agent.py queue release <owner> \
+  --agent claude --status released
+```
+
+## Serialized integration
+
+Object work may run in parallel. The integration worktree must acquire exclusive
+machine resources before a full build:
+
+```sh
+python tools/agent.py queue acquire-resource integration \
+  --agent integrator --owner <owner>
+
+python tools/agent.py queue acquire-resource retail-build \
+  --agent integrator --owner <owner>
+```
+
+After cherry-picking or merging the worker commit, run the serialized retail
+build, consumer checks, DTK checksum, and explicit DOL/REL comparisons. Then:
+
+```sh
+python tools/agent.py integration finalize <owner> \
+  --agent integrator \
+  --resource integration \
+  --retail-gate pass \
+  --checksum pass \
+  --consumer main:game/pause=exact \
+  --toolchain GC/1.3.2
+```
+
+Finalization compares every claimed path between the worker’s verified commit
+and the integration commit. It refuses completion when integration changed or
+omitted the verified source. The integration commit and proof are stored in the
+queue before the task becomes `done`.
+
+Release machine resources afterward:
+
+```sh
+python tools/agent.py queue release-resource retail-build --agent integrator
+python tools/agent.py queue release-resource integration --agent integrator
+```
+
+Finally remove the completed worktree:
+
+```sh
+python tools/agent.py worktree close <owner>
+```
+
+## Status and recovery
 
 ```sh
 python tools/agent.py queue status
 python tools/agent.py queue status --all
 python tools/agent.py queue check
+python tools/agent.py doctor
 ```
 
-Claims with no update for 24 hours are marked with `*`. A stale claim still
-protects its owner and paths until it is explicitly released or cancelled.
-
-`python tools/agent.py doctor` also reports whether the current worktree has a
-matching claim.
-
-## Finish or release work
-
-After verification and handoff:
-
-```sh
-python tools/agent.py queue release src/board/tutorial.c \
-  --agent claude \
-  --status done \
-  --verified-commit HEAD
-```
-
-Use `released` when work is intentionally returned to the queue and `cancelled`
-when it should not continue.
-
-## Integration rules
-
-The integration worktree should:
-
-1. inspect `queue status` before merging worker results;
-2. integrate only claims marked `ready` or `done`;
-3. resolve shared-header or configuration changes centrally;
-4. run the serialized private build and retail gates;
-5. release any remaining integration claims.
-
-Workers may compile different objects in parallel because their build
-directories are isolated. Final retail verification remains serialized in the
-integration worktree.
+Claims inactive for 24 hours are marked stale but continue protecting their
+owners and paths. Queue state is local coordination data and must never be
+committed as recovery evidence.
