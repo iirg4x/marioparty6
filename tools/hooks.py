@@ -51,7 +51,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 PYTHON_BIN="${MP6_PYTHON:-python}"
 BASE="${MP6_AGENT_BASE:-origin/main}"
 cd "$ROOT"
-"$PYTHON_BIN" tools/agent.py queue check-diff --base "$BASE"
+"$PYTHON_BIN" tools/claim_diff.py --base "$BASE"
 changed_py="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.py$' || true)"
 if [ -n "$changed_py" ]; then
   "$PYTHON_BIN" -m py_compile $changed_py
