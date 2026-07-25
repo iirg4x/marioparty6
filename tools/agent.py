@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Agent-facing entry point for setup, context, knowledge, and public checks."""
+"""Agent-facing entry point for setup, queue, context, knowledge, and checks."""
 
 from __future__ import annotations
 
@@ -16,6 +16,12 @@ from typing import Any, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.agent_queue import (
+    QueueError,
+    add_queue_parser,
+    queue_health,
+    run_queue_command,
+)
 from tools.recovery_core import load, quality_findings, root_from
 from tools.recovery_data import RecoveryError, token_estimate, validate_data
 from tools.recovery_knowledge import (
@@ -41,8 +47,10 @@ REQUIRED_AGENT_FILES = [
     "CONTRIBUTING.md",
     "docs/agent_quickstart.md",
     "docs/recovery_standard.md",
+    "docs/concurrent_agents.md",
     "config/recovery/project.json",
     "config/recovery/compiler_patterns.json",
+    "tools/agent_queue.py",
     "tools/knowledge_cards.py",
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
@@ -187,10 +195,12 @@ def doctor_checks(data: dict[str, Any]) -> list[Check]:
                 "pass" if not tracked_generated else "fail",
                 "generated outputs are untracked"
                 if not tracked_generated
-                else "tracked: "
-                + ", ".join(sorted(set(tracked_generated))[:8]),
+                else "tracked: " + ", ".join(sorted(set(tracked_generated))[:8]),
             )
         )
+
+        queue_status, queue_detail = queue_health(root)
+        checks.append(Check("claim queue", queue_status, queue_detail))
 
     ninja_path = shutil.which("ninja")
     checks.append(
@@ -423,6 +433,8 @@ def main() -> int:
         help="treat warnings as failures",
     )
 
+    add_queue_parser(sub)
+
     context = sub.add_parser("context", help="generate bounded recovery context")
     context.add_argument("kind", choices=["function", "owner"])
     context.add_argument("target")
@@ -470,6 +482,12 @@ def main() -> int:
                 or (args.strict and item.status == "warn")
             ]
             return 1 if blocking else 0
+        if args.command == "queue":
+            return run_queue_command(
+                args,
+                root=root,
+                owners=data.get("owners", []),
+            )
         if args.command == "context":
             _write_context(
                 data,
@@ -496,13 +514,15 @@ def main() -> int:
             return public_check(data, base=args.base)
         errors = _metadata_errors(data)
         if errors:
-            raise RecoveryError("recovery metadata invalid:\n- " + "\n- ".join(errors))
+            raise RecoveryError(
+                "recovery metadata invalid:\n- " + "\n- ".join(errors)
+            )
         destination = root / args.output
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(recovery_report(data), encoding="utf-8")
         print(f"wrote {destination.relative_to(root)}")
         return 0
-    except (OSError, RecoveryError) as exc:
+    except (OSError, QueueError, RecoveryError) as exc:
         print(f"error: {exc}")
         return 2
 
