@@ -3,23 +3,22 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 import sys
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import argparse
-import json
-
 from tools.recovery_core import (
-    RecoveryError,
-    build_index,
     load,
     query_index,
     root_from,
     validate_data,
 )
+from tools.recovery_data import RecoveryError
+from tools.recovery_knowledge import build_recovery_index, validate_knowledge
 
 
 def main() -> int:
@@ -38,18 +37,21 @@ def main() -> int:
     try:
         root = root_from(args.root)
         data = load(root, validate=False)
-        errors = validate_data(data)
+        errors = sorted(set([*validate_data(data), *validate_knowledge(data)]))
         if errors:
             print("recovery metadata invalid:")
             for error in errors:
                 print(f"- {error}")
             return 1
         if args.command == "check":
-            print(f"recovery metadata OK: {len(data['owners'])} owners")
+            print(
+                f"recovery metadata OK: {len(data['owners'])} owners, "
+                f"{len(data['patterns'])} knowledge cards"
+            )
             return 0
         if args.command == "build":
             output = root / args.output
-            counts = build_index(data, output)
+            counts = build_recovery_index(data, output)
             summary = ", ".join(
                 f"{key}={value}" for key, value in sorted(counts.items())
             )
@@ -57,7 +59,7 @@ def main() -> int:
             return 0
         database = root / args.database
         if not database.is_file():
-            build_index(data, database)
+            build_recovery_index(data, database)
         rows = query_index(database, args.term, args.limit)
         if args.json:
             print(json.dumps(rows, indent=2))
