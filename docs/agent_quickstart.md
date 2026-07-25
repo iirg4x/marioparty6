@@ -1,212 +1,156 @@
 # Agent quickstart
 
-This is the shortest safe path from a fresh checkout to a reviewable task.
+## 1. Inspect and prepare
 
-## 1. Read only the applicable instructions
-
-Read:
-
-1. root `AGENTS.md`;
-2. the nearest nested `AGENTS.md` for the files you will edit;
-3. this quickstart.
-
-Open `docs/recovery_standard.md` when making source-authenticity decisions. Do
-not begin by loading all of `STATUS.md` or the complete wave history.
-
-## 2. Inspect the workspace
+Read root `AGENTS.md`, the nearest nested `AGENTS.md`, and this file. Do not load
+all of `STATUS.md` or the wave archive.
 
 ```sh
 python tools/agent.py doctor
+python tools/agent.py hooks install
 python tools/agent.py queue status
 ```
 
-Resolve failures before editing. Warnings about missing `orig/` or Ninja are
-acceptable for documentation and public-safe metadata work, but they mean a
-retail build cannot be claimed.
+Warnings about missing retail inputs are acceptable for public-safe work, but
+private DOL/REL proof cannot be claimed.
 
-## 3. Use separate worktrees and claim one owner
+## 2. Claim one owner
 
-Claude and Codex on the same PC must use worktrees created from the same Git
-repository, separate branches, and separate generated build directories:
+Use a recovery-task issue. Claude and Codex must use separate worktrees,
+branches, and build directories.
 
-```text
-marioparty6-integration/
-marioparty6-claude-task/
-marioparty6-codex-task/
-```
-
-Use a recovery-task issue and a branch such as:
-
-```text
-agent/<agent>-<owner>-<goal>
-```
-
-Claim the owner from the worker's own worktree before editing:
+The safest setup is:
 
 ```sh
-python tools/agent.py queue claim <owner> --agent claude
+python tools/agent.py worktree create <owner> \
+  --agent <claude-or-codex> \
+  --base main \
+  --retail <read-only-GP6E01-directory>
 ```
 
-Codex uses `--agent codex`. Declare central headers, `configure.py`, symbol
-files, splits, or recovery schemas with repeated `--shared` arguments. The
-queue rejects duplicate owners, branches, worktrees, build directories, source
-files, and overlapping shared paths.
-
-The orchestrator can add unassigned bulk tasks first:
+For an existing worktree:
 
 ```sh
-python tools/agent.py queue add src/board/tutorial.c \
-  --source src/board/tutorial.c \
-  --priority high
+python tools/agent.py queue claim <owner> --agent <claude-or-codex>
 ```
 
-See `concurrent_agents.md` for the complete same-PC workflow.
-
-## 4. Generate bounded context
-
-For a function:
+The orchestrator can populate batches and workers can take the next eligible
+task:
 
 ```sh
-python tools/agent.py context function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty \
+python tools/agent.py queue claim-next \
+  --agent codex \
+  --capability rel \
+  --batch menu-flow
+```
+
+## 3. Generate focused context
+
+```sh
+python tools/agent.py context function <symbol> \
+  --owner <owner> \
+  --symptom "signed extension" \
+  --local-evidence \
   --budget 12000
 ```
 
-For an owner:
+The packet reserves space for selected knowledge cards, freshness state, local
+objdiff summaries, target source, constraints, and acceptance criteria. Expand
+only one named missing dependency.
 
-```sh
-python tools/agent.py context owner main:game/mgdata --budget 7000
-```
+## 4. Research, then edit
 
-The default output is an ignored Markdown file under `build/context/`. Use
-`--stdout` only when the caller needs the packet directly.
-
-Before the current source, the packet automatically includes up to five relevant
-knowledge cards ranked by exact target, owner, compiler, and counterexample.
-These cards state the source condition, expected output effects, known
-signatures, coding rule, safe actions, and evidence. Read them before trying a
-compiler-shape experiment.
-
-Inspect just the selected knowledge when needed:
-
-```sh
-python tools/agent.py knowledge function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty
-```
-
-Expand one specific missing dependency rather than increasing context
-indiscriminately.
-
-## 5. Separate research from edits
-
-Move the queue status as work progresses:
-
-```sh
-python tools/agent.py queue update <owner> \
-  --agent claude \
-  --status researching
-```
-
-Before touching source, record:
+Before editing, record:
 
 - owner and stable identity;
-- automatically selected rules, owner constraints, and counterexamples;
-- target signature, instructions, relocations, and sections;
-- direct callers/callees and referenced data;
-- consumer widths and same-game semantic domains;
-- relevant sibling evidence;
-- known accepted and rejected compiler probes;
+- selected rules, owner constraints, freshness warnings, and counterexamples;
+- target instructions, relocations, sections, callers, and data references;
+- consumer widths and semantic domains;
+- sibling evidence and previous rejected probes;
 - unresolved semantic questions.
 
-Then write the cleanest natural candidate. Only after that should compiler
-reconciliation vary signedness, scope, lifetime, expression shape, loop form,
-visibility, chronology, or helper boundaries.
+Write a natural candidate first. Reconcile compiler shape one variable at a
+time only after the source meaning and likely structure are clear.
 
-A compiler-wide card is a diagnostic. Do not copy its example source into the
-current owner without local evidence. A recorded counterexample is a warning
-that the tempting rule has already failed in that scope.
+## 5. Keep the real diff inside the claim
 
-Add any newly required shared file before editing it:
+Declare any shared path before touching it:
 
 ```sh
 python tools/agent.py queue update <owner> \
-  --agent claude \
+  --agent <agent> \
   --add-shared include/game/example.h
 ```
 
-## 6. Keep durable knowledge out of chat history
-
-Update the relevant files under `config/recovery/`:
-
-- owner state and debt;
-- accepted/rejected evidence;
-- stable naming decisions;
-- scoped source-shape exceptions;
-- source-to-output knowledge cards with conditions and safe actions;
-- confirmed examples and counterexamples.
-
-When an experiment teaches a reusable relation such as “adding this declaration
-visibility changes these call sites,” add or refine a card in
-`compiler_patterns.json`. Do not create another wave document as the only place
-where the reusable conclusion exists.
-
-Audit the historical extraction backlog with:
+Before commits and handoff:
 
 ```sh
-python tools/agent.py knowledge audit
+python tools/agent.py queue check-diff --base origin/main
 ```
 
-Generated SQLite, reports, audit output, and context packs remain under ignored
-`build/`.
+This examines committed, staged, unstaged, and untracked files. The installed
+pre-commit hook runs the same ownership check automatically.
 
-## 7. Run the public-safe gate
+## 6. Save reusable knowledge
 
-Set the task to verification and record the tested commit:
+Update `config/recovery/` with owner state, evidence, naming, debt, scoped
+exceptions, knowledge cards, examples/counterexamples, and freshness records.
+Do not leave the reusable conclusion only in an agent transcript or wave report.
+
+## 7. Record worker proof
+
+Commit the task and leave the worktree clean:
 
 ```sh
-python tools/agent.py queue update <owner> \
-  --agent claude \
-  --status verifying \
-  --verified-commit HEAD
-
 python tools/agent.py check --base origin/main
+
+python tools/agent.py queue verify <owner> \
+  --agent <agent> \
+  --public-gate pass \
+  --object-report build/GP6E01/<report>.json \
+  --functions-exact <exact/total> \
+  --relocations exact \
+  --consumer <consumer>=exact \
+  --toolchain GC/1.3.2
+
+python tools/agent.py queue update <owner> \
+  --agent <agent> --status ready
 ```
 
-This runs Python compilation, unit tests, owner and knowledge-card validation,
-deterministic index generation, context/report smoke tests, repository cleanup
-policy, queue-health reporting, diff whitespace checks, generated/private-path
-checks, and changed-line source-quality review.
+The proof is tied to the clean current commit. Editing afterward requires
+re-verification.
 
-It does not run the retail build.
+## 8. Integrate serially
 
-## 8. Run private verification when required
-
-Any recovered C/C++, shared header, symbol, split, compiler flag, object status,
-or link change requires the appropriate local private gates:
-
-- relocation-aware object comparison;
-- exact-function regression check;
-- affected Matching consumers;
-- serialized DOL/REL build;
-- DTK checksum;
-- explicit retail DOL/REL byte comparison.
-
-State exactly which gates ran in the pull request.
-
-## 9. Handoff and release
-
-Complete the pull request template. Include accepted and rejected evidence,
-applicable knowledge cards, new cards or counterexamples, natural candidate,
-compiler reconciliation, exact/relocation impact, consumers, metadata changes,
-verification, and remaining debt.
-
-After the commit and handoff are complete:
+The integration worktree acquires exclusive resources, integrates the ready
+commit, and runs the full private gates:
 
 ```sh
-python tools/agent.py queue release <owner> \
-  --agent claude \
-  --status done \
-  --verified-commit HEAD
+python tools/agent.py queue acquire-resource integration --agent integrator
+python tools/agent.py queue acquire-resource retail-build --agent integrator
 ```
 
-The handoff should be sufficient without the original agent conversation.
+After the serialized build, checksum, consumer, and byte comparisons:
+
+```sh
+python tools/agent.py integration finalize <owner> \
+  --agent integrator \
+  --retail-gate pass \
+  --checksum pass \
+  --toolchain GC/1.3.2
+```
+
+Finalization confirms the integration tree contains the worker’s verified
+claimed paths before setting the task to `done`.
+
+## 9. Handoff and cleanup
+
+Complete the PR template with evidence, cards, natural candidate, compiler
+reconciliation, exact/relocation impact, consumers, worker proof, integration
+proof, metadata changes, and remaining debt.
+
+```sh
+python tools/agent.py queue release-resource retail-build --agent integrator
+python tools/agent.py queue release-resource integration --agent integrator
+python tools/agent.py worktree close <owner>
+```
