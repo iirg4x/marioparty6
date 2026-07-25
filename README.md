@@ -31,6 +31,7 @@ Read:
 
 - [`AGENTS.md`](AGENTS.md): repository-wide agent rules
 - [`docs/agent_quickstart.md`](docs/agent_quickstart.md): shortest safe workflow
+- [`docs/concurrent_agents.md`](docs/concurrent_agents.md): Claude/Codex same-PC coordination
 - [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion rules
 - [`docs/context_workflow.md`](docs/context_workflow.md): index, knowledge cards, and context selection
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): branches, verification, and handoff
@@ -43,6 +44,18 @@ Use one command as the front door:
 ```sh
 python tools/agent.py doctor
 ```
+
+Claude and Codex use a shared local queue stored under Git's common directory.
+It is visible across worktrees but is not committed:
+
+```sh
+python tools/agent.py queue status
+python tools/agent.py queue claim <owner> --agent claude
+```
+
+The queue rejects duplicate owners, branches, worktrees, build directories,
+source files, and overlapping shared paths. Codex uses `--agent codex`. Each
+agent must have a separate worktree and its own `build/` directory.
 
 Generate bounded context for the exact task:
 
@@ -76,8 +89,9 @@ python tools/agent.py check --base origin/main
 
 The gate runs Python compilation and tests, owner and knowledge-card validation,
 deterministic SQLite indexing, context/report smoke generation, repository
-cleanup policy, private/generated-path checks, whitespace checks, and
-changed-line source-quality review. It does **not** claim a retail build.
+cleanup policy, local queue-health reporting, private/generated-path checks,
+whitespace checks, and changed-line source-quality review. It does **not** claim
+a retail build.
 
 Committed recovery knowledge lives under `config/recovery/`. Generated SQLite,
 reports, audits, and context packs live under ignored `build/context/`. Exact
@@ -116,18 +130,17 @@ before promotion.
 - `config/dll/rels/`: REL symbol and split ownership
 - `config/recovery/`: owner state, evidence, names, exceptions, and actionable recovery knowledge
 - `docs/`: active documentation and retained forensic evidence
-- `tools/`: build helpers, declaration gates, indexing, knowledge selection, context generation, and checks
-- `build/`: ignored generated output
+- `tools/`: build helpers, claim queue, declaration gates, indexing, knowledge selection, context generation, and checks
+- `build/`: ignored generated output, isolated per worktree
 - `orig/GP6E01/`: ignored locally extracted retail files
 
 ## Contribution boundaries
 
-Work on an isolated `agent/<owner>-<goal>` branch or worktree. Claude and Codex
-on the same PC must use separate worktrees, branches, and build directories. One
-agent should own one translation unit or tightly connected function cluster.
-Keep uncertain semantics uncertain, preserve stable target identity across
-renames, record rejected probes and reusable source-to-output findings, and
-never regress an independently exact function to close another target.
+Work on an isolated `agent/<agent>-<owner>-<goal>` worktree branch. Claim the
+owner before editing and declare shared files before touching them. Keep
+uncertain semantics uncertain, preserve stable target identity across renames,
+record rejected probes and reusable source-to-output findings, and never regress
+an independently exact function to close another target.
 
-No copyrighted game assets, retail binaries, rebuilt DOL/REL files, or generated
-analysis output may be committed.
+No copyrighted game assets, retail binaries, rebuilt DOL/REL files, local queue
+state, or generated analysis output may be committed.
