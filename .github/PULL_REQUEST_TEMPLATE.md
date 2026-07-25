@@ -4,6 +4,11 @@
 - Stable target identity:
 - Current symbol(s):
 - Task issue:
+- Assigned agent: Claude / Codex / integration
+- Worktree branch:
+- Queue status: ready / done / released / cancelled
+- Last verified commit:
+- Shared files declared in the claim:
 - Change class: documentation / tooling / metadata / private source / shared interface / build configuration
 
 ## Research question
@@ -76,6 +81,9 @@ not perform compiler reconciliation.
 
 Mark only checks that were actually run.
 
+- [ ] Owner was claimed in the shared local queue before editing
+- [ ] Shared files were declared before they were edited
+- [ ] `python tools/agent.py queue check`
 - [ ] `python tools/agent.py knowledge function <symbol> --owner <owner-id>` or equivalent owner query
 - [ ] `python tools/knowledge_cards.py check`
 - [ ] `python tools/agent.py check --base origin/main`
@@ -91,9 +99,11 @@ Private retail gates not required for this change because:
 ## Remaining uncertainty
 
 State unresolved semantics, names, source-shape questions, unavailable reports,
-undistilled historical evidence, or private gates that were not run.
+undistilled historical evidence, queue conflicts deferred to integration, or
+private gates that were not run.
 
 ## Handoff
 
-Summarize the next concrete task, relevant cards/counterexamples, and remaining
-debt without requiring the original agent transcript.
+Summarize the next concrete task, relevant cards/counterexamples, remaining debt,
+and whether the local claim has been released. Do not require the original agent
+transcript.
