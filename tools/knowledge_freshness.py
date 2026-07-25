@@ -21,7 +21,10 @@ def freshness_path(data: Mapping[str, Any]) -> Path:
     root = Path(data["root"])
     files = data.get("project", {}).get("files", {})
     relative = (
-        files.get("knowledge_freshness", "config/recovery/knowledge_freshness.json")
+        files.get(
+            "knowledge_freshness",
+            "config/recovery/knowledge_freshness.json",
+        )
         if isinstance(files, Mapping)
         else "config/recovery/knowledge_freshness.json"
     )
@@ -100,7 +103,11 @@ def card_freshness(data: Mapping[str, Any], card_id: str) -> dict[str, Any]:
     value = load_freshness(data)
     record = dict(value.get("cards", {}).get(card_id, {}))
     if not record:
-        return {"status": "unknown", "reason": "no freshness record"}
+        return {
+            "status": "unknown",
+            "effective_status": "unknown",
+            "reason": "no freshness record",
+        }
     root = Path(data["root"])
     configured = record.get("status")
     if configured in {"superseded", "stale"}:
@@ -119,7 +126,14 @@ def card_freshness(data: Mapping[str, Any], card_id: str) -> dict[str, Any]:
         }
     watch = list(record.get("watch_paths", []))
     if watch:
-        diff = _git(root, "diff", "--name-only", f"{commit}...HEAD", "--", *watch)
+        diff = _git(
+            root,
+            "diff",
+            "--name-only",
+            f"{commit}...HEAD",
+            "--",
+            *watch,
+        )
         if diff.returncode:
             return {
                 **record,
@@ -146,3 +160,18 @@ def all_freshness(data: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
         str(card.get("id")): card_freshness(data, str(card.get("id")))
         for card in data.get("patterns", [])
     }
+
+
+def render_freshness_report(data: Mapping[str, Any]) -> str:
+    records = all_freshness(data)
+    lines = ["## Knowledge freshness", ""]
+    if not records:
+        return "\n".join([*lines, "- No knowledge cards."])
+    for card, record in sorted(records.items()):
+        status = record.get("effective_status", record.get("status", "unknown"))
+        line = f"- `{status}` `{card}` — {record.get('reason', 'unknown')}"
+        changed = record.get("changed_paths", [])
+        if changed:
+            line += "; changed: " + ", ".join(f"`{path}`" for path in changed[:5])
+        lines.append(line)
+    return "\n".join(lines)
