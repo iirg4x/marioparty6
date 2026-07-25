@@ -27,12 +27,33 @@ The public gate covers:
 Generated context, databases, and reports remain ephemeral workflow output. They
 are not uploaded as source artifacts and are not committed.
 
+## Draft pull requests and notification noise
+
+Claude and Codex may push many intermediate commits from separate worktrees.
+Automatic Actions jobs are therefore skipped while a pull request is a draft.
+During active development, each agent runs the local public gate:
+
+```sh
+python tools/agent.py check --base origin/main
+```
+
+Mark the pull request **Ready for review** when the branch is ready for remote
+validation. GitHub Actions then runs automatically, and later commits to that
+non-draft pull request trigger fresh checks. A remote check can also be started
+earlier through manual `workflow_dispatch`.
+
+A draft synchronization still appears in the Actions history as `skipped`; it
+is not a failed check and should not produce failure-notification emails. This
+policy avoids one failure email per exploratory agent commit while retaining a
+required remote gate before merge.
+
 ## Required branch check
 
 After this branch is merged, configure the repository’s `main` protection to
 require the **Recovery metadata** workflow before merge. Keep pull requests and
 full history enabled so changed-line checks can compare against the real base
-SHA.
+SHA. Draft PRs must be marked ready before merge, which activates the required
+check.
 
 ## Why the retail build is not public
 
