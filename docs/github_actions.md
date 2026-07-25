@@ -1,52 +1,94 @@
 # GitHub Actions
 
-This repository includes [.github.example/workflows/build.yml](/.github.example/workflows/build.yml) as an example CI workflow. To use it for your project, follow the setup instructions below.
+## Public-safe workflow
 
-- [Build Repository](#build-repository)
-- [Progress](#progress)
-- [Workflow](#workflow)
+The active workflow is:
 
-## Build Repository
+```text
+.github/workflows/recovery-metadata.yml
+```
 
-This repository will be used to build and store the CI build container.
+It runs without retail Mario Party 6 files and is safe for the public
+repository. The workflow checks out full history, installs Python, and executes
+the same agent-facing public gate used locally.
 
-> [!CAUTION]
-> This repository should be **private** to avoid exposing the game's assets.
+The public gate covers:
 
-1. [Create a **private** repository from `encounter/dtk-template-build`](https://github.com/new?template_name=dtk-template-build&template_owner=encounter). A common name is your project's repository name with `-build` appended. For example, `tww-build`.
+- Python syntax compilation;
+- unit tests under `tools/tests`;
+- recovery metadata and cross-reference validation;
+- deterministic SQLite index generation;
+- bounded context and human-report smoke generation;
+- required agent entrypoints and template-cleanup policy;
+- changed private/generated paths;
+- diff whitespace;
+- newly added source-shape controls that lack scoped evidence.
 
-2. Once the repository is created, add your game's assets to the `orig/GP6E01` directory. (Replace `GP6E01` with your game's ID, matching the `orig` layout in your main repository.)  
-    **Only include game files necessary for the build**, such as `sys/main.dol` and any `.rel` or `.sel` files.
+Generated context, databases, and reports remain ephemeral workflow output. They
+are not uploaded as source artifacts and are not committed.
 
-3. Once the build container action completes, visit the package settings:  
-    ![GitHub repository packages](images/github_build_repo_packages.png)  
-    ![GitHub package settings](images/github_package_settings.png)
+## Required branch check
 
-4. Under "Manage Actions access", add your project's main repository with the "Read" role:  
-    ![GitHub package Actions access](images/github_package_settings_access.png)
+After this branch is merged, configure the repository’s `main` protection to
+require the **Recovery metadata** workflow before merge. Keep pull requests and
+full history enabled so changed-line checks can compare against the real base
+SHA.
 
-## Progress
+## Why the retail build is not public
 
-1. In the [GC/Wii Decompilation Discord](https://discord.gg/hKx3FJJgrV), visit `#frogress` and request an API key for your project.  
-    Please provide the following:
-    - Project name
-    - Repository URL
-    - Game ID(s)
-    - Whether the game has RELs
+A complete build needs copyrighted retail inputs under `orig/GP6E01/`. Those
+files must never be committed, downloaded by public CI, exposed through caches,
+or uploaded as artifacts.
 
-2. On GitHub, visit your repo's `/settings/secrets/actions/new` and add a new secret with the name `PROGRESS_API_KEY`:  
-    ![GitHub Actions secrets](images/github_actions_secrets.png)
+The public workflow therefore cannot prove:
 
-## Workflow
+- DOL or REL byte identity;
+- the DTK `build.sha1` gate;
+- private objdiff reports generated from extracted target objects;
+- consumer comparisons that require the retail split objects.
 
-1. Rename `.github.example` to `.github`.
+A successful public workflow must not be described as a successful retail
+build.
 
-2. In `build.yml`, update the `container:` to point to the new [build image](#build-repository).
+## Private retail-build automation
 
-3. In `build.yml`, replace `GP6E01` with your game's ID. (Or list of IDs, for multi-version support.)
+Use one of these private environments:
 
-4. In `build.yml`, update `PROGRESS_SLUG` to match the project name on [frogress](#progress).
+- a self-hosted runner with locally provisioned retail inputs;
+- a private build repository/container with access restricted to this project;
+- a local integration worktree.
 
-5. Commit and push the changes to your repository.
+The private environment should provide the extracted `orig/GP6E01` layout at
+runtime and remove it after the job. Pin any container image by immutable digest,
+not a mutable `main` tag.
 
-If everything is set up correctly, the workflow will build all versions on every push or pull request, and upload progress on pushes the `main` branch.
+A private source-promotion job should run, in order:
+
+```sh
+python tools/agent.py check --base <base-sha>
+python configure.py --map
+ninja -j1
+build/tools/dtk shasum -q -c config/GP6E01/build.sha1
+```
+
+Use `build/tools/dtk.exe` on Windows. Then perform explicit byte comparisons for
+`main.dol` and every affected REL, and check that generated symbol files contain
+no unexplained diff.
+
+Upload only permitted logs and compact summaries. Do not upload retail binaries,
+rebuilt DOL/REL files, extracted objects, disc contents, or reports that embed
+copyrighted data.
+
+## Progress publishing
+
+Progress publishing is intentionally not configured in the public workflow.
+Add it only after the project has a real progress service slug and secret. Keep
+progress upload separate from verification so a service outage cannot hide or
+invalidate a failed build gate.
+
+## Workflow changes
+
+Any edit to workflow files, compiler/tool pins, `configure.py`, object status,
+symbols, splits, or link configuration requires careful review. Public CI can
+validate workflow structure and repository policy, but a private retail build is
+required before treating those changes as integration-safe.
