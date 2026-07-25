@@ -6,26 +6,32 @@ from pathlib import Path
 
 from tools.agent_queue import (
     QueueError,
+    acquire_resource,
     active_tasks,
     add_task,
+    check_diff_claim,
+    claim_next,
     claim_task,
     queue_path,
     read_queue,
+    record_verification,
+    release_resource,
     release_task,
     update_task,
     validate_queue,
 )
 
 
-def run(cwd: Path, *args: str) -> None:
-    subprocess.run(
+def run(cwd: Path, *args: str) -> str:
+    process = subprocess.run(
         args,
         cwd=cwd,
-        check=True,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        check=True,
     )
+    return process.stdout.strip()
 
 
 class AgentQueueTests(unittest.TestCase):
@@ -34,13 +40,20 @@ class AgentQueueTests(unittest.TestCase):
         self.base = Path(self.temporary.name)
         self.main = self.base / "main"
         self.main.mkdir()
-        run(self.main, "git", "init", "-q")
+        run(self.main, "git", "init", "-q", "-b", "main")
         run(self.main, "git", "config", "user.email", "test@example.com")
         run(self.main, "git", "config", "user.name", "Test")
-        (self.main / "README").write_text("fixture\n", encoding="utf-8")
-        run(self.main, "git", "add", "README")
-        run(self.main, "git", "commit", "-qm", "fixture")
-
+        (self.main / "src").mkdir()
+        (self.main / "include").mkdir()
+        (self.main / "src/a.c").write_text("int a;\n", encoding="utf-8")
+        (self.main / "src/b.c").write_text("int b;\n", encoding="utf-8")
+        (self.main / "include/common.h").write_text(
+            "#pragma once\n", encoding="utf-8"
+        )
+        run(self.main, "git", "add", ".")
+        run(self.main, "git", "commit", "-qm", "base")
+        run(self.main, "git", "remote", "add", "origin", str(self.main))
+        run(self.main, "git", "update-ref", "refs/remotes/origin/main", "HEAD")
         self.claude = self.base / "claude"
         self.codex = self.base / "codex"
         run(
@@ -50,7 +63,7 @@ class AgentQueueTests(unittest.TestCase):
             "add",
             "-q",
             "-b",
-            "agent/claude-task",
+            "agent/claude",
             str(self.claude),
         )
         run(
@@ -60,123 +73,132 @@ class AgentQueueTests(unittest.TestCase):
             "add",
             "-q",
             "-b",
-            "agent/codex-task",
+            "agent/codex",
             str(self.codex),
         )
 
     def tearDown(self) -> None:
-        subprocess.run(
-            ["git", "worktree", "remove", "--force", str(self.claude)],
-            cwd=self.main,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        subprocess.run(
-            ["git", "worktree", "remove", "--force", str(self.codex)],
-            cwd=self.main,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
         self.temporary.cleanup()
 
-    def test_all_worktrees_share_one_queue(self) -> None:
-        self.assertEqual(queue_path(self.claude), queue_path(self.codex))
-        claim_task(
-            self.claude,
-            "owner-a",
-            agent="claude",
-            source="src/a.c",
-        )
-        queue = read_queue(queue_path(self.codex))
-        self.assertEqual(len(active_tasks(queue)), 1)
-        self.assertEqual(active_tasks(queue)[0]["agent"], "claude")
+    def test_priority_is_preserved(self) -> None:
+        add_task(self.main, "a", source="src/a.c", priority="high")
+        task = claim_task(self.claude, "a", agent="claude")
+        self.assertEqual(task["priority"], "high")
 
-    def test_duplicate_owner_and_shared_file_are_blocked(self) -> None:
-        claim_task(
-            self.claude,
-            "owner-a",
-            agent="claude",
-            source="src/a.c",
-            shared_files=["include/game/common.h"],
-        )
-        with self.assertRaisesRegex(QueueError, "already"):
+    def test_worktree_and_build_validation(self) -> None:
+        with self.assertRaisesRegex(QueueError, "build directory"):
             claim_task(
-                self.codex,
-                "owner-a",
-                agent="codex",
+                self.claude,
+                "a",
+                agent="claude",
                 source="src/a.c",
+                build_dir=self.base / "shared-build",
             )
-        with self.assertRaisesRegex(QueueError, "overlaps"):
-            claim_task(
-                self.codex,
-                "owner-b",
-                agent="codex",
-                source="src/b.c",
-                shared_files=["include/game/common.h"],
-            )
+        with self.assertRaisesRegex(QueueError, "branch"):
+            claim_task(self.main, "a", agent="claude", source="src/a.c")
 
-    def test_build_directory_conflict_is_blocked(self) -> None:
-        claim_task(self.claude, "owner-a", agent="claude", source="src/a.c")
-        with self.assertRaisesRegex(QueueError, "build_dir"):
-            claim_task(
-                self.codex,
-                "owner-b",
-                agent="codex",
-                source="src/b.c",
-                build_dir=self.claude / "build",
-            )
+    def test_diff_must_be_declared(self) -> None:
+        claim_task(self.claude, "a", agent="claude", source="src/a.c")
+        (self.claude / "src/a.c").write_text("int a = 1;\n", encoding="utf-8")
+        (self.claude / "include/common.h").write_text(
+            "#define X 1\n", encoding="utf-8"
+        )
+        result = check_diff_claim(
+            self.claude, base="origin/main", agent="claude"
+        )
+        self.assertTrue(
+            any("include/common.h" in error for error in result["errors"])
+        )
+        update_task(
+            self.claude,
+            "a",
+            agent="claude",
+            add_shared=["include/common.h"],
+        )
+        result = check_diff_claim(
+            self.claude, base="origin/main", agent="claude"
+        )
+        self.assertEqual(result["errors"], [])
 
-    def test_pending_update_verification_and_release(self) -> None:
+    def test_verification_is_bound_to_clean_head(self) -> None:
+        claim_task(
+            self.claude,
+            "a",
+            agent="claude",
+            source="src/a.c",
+            change_class="documentation",
+        )
+        (self.claude / "src/a.c").write_text("int a = 1;\n", encoding="utf-8")
+        run(self.claude, "git", "add", "src/a.c")
+        run(self.claude, "git", "commit", "-qm", "change")
+        task = record_verification(
+            self.claude, "a", agent="claude", public_gate="pass"
+        )
+        self.assertEqual(
+            task["verification"]["verified_commit"],
+            run(self.claude, "git", "rev-parse", "HEAD"),
+        )
+        (self.claude / "src/a.c").write_text("int a = 2;\n", encoding="utf-8")
+        with self.assertRaisesRegex(QueueError, "clean"):
+            release_task(self.claude, "a", agent="claude", status="done")
+        run(self.claude, "git", "checkout", "--", "src/a.c")
+        done = release_task(self.claude, "a", agent="claude", status="done")
+        self.assertEqual(done["status"], "done")
+
+    def test_source_task_needs_retail_proof_for_done(self) -> None:
+        claim_task(self.claude, "a", agent="claude", source="src/a.c")
+        record_verification(
+            self.claude,
+            "a",
+            agent="claude",
+            public_gate="pass",
+            object_report="build/report.json",
+            functions_exact="1/1",
+            relocations="exact",
+        )
+        with self.assertRaisesRegex(QueueError, "retail_gate"):
+            release_task(self.claude, "a", agent="claude", status="done")
+
+    def test_dependencies_and_claim_next(self) -> None:
+        add_task(self.main, "a", source="src/a.c", priority="high")
         add_task(
             self.main,
-            "owner-a",
-            source="src/a.c",
-            priority="high",
+            "b",
+            source="src/b.c",
+            depends_on=["a"],
+            priority="critical",
         )
-        claimed = claim_task(self.claude, "owner-a", agent="claude")
-        self.assertEqual(claimed["priority"], "normal")
-        updated = update_task(
-            self.claude,
-            "owner-a",
-            agent="claude",
-            status="verifying",
-            add_shared=["include/game/a.h"],
-            verified_commit="HEAD",
+        first = claim_next(self.claude, agent="claude")
+        self.assertEqual(first["owner"], "a")
+
+    def test_resource_lock(self) -> None:
+        record = acquire_resource(
+            self.claude, "retail-build", agent="claude", owner="a"
         )
-        self.assertEqual(updated["status"], "verifying")
-        self.assertEqual(len(updated["last_verified_commit"]), 40)
-        finished = release_task(
-            self.claude,
-            "owner-a",
-            agent="claude",
-            status="done",
-            verified_commit="HEAD",
-        )
-        self.assertEqual(finished["status"], "done")
-        self.assertEqual(active_tasks(read_queue(queue_path(self.main))), [])
+        self.assertEqual(record["agent"], "claude")
+        with self.assertRaisesRegex(QueueError, "held"):
+            acquire_resource(
+                self.codex, "retail-build", agent="codex", owner="b"
+            )
+        release_resource(self.claude, "retail-build", agent="claude")
 
     def test_simultaneous_distinct_claims_are_atomic(self) -> None:
-        def claim(worktree: Path, owner: str, agent: str) -> None:
-            claim_task(
-                worktree,
-                owner,
-                agent=agent,
-                source=f"src/{owner}.c",
-            )
+        def claim(path: Path, owner: str, agent: str, source: str) -> None:
+            claim_task(path, owner, agent=agent, source=source)
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            first = executor.submit(claim, self.claude, "owner-a", "claude")
-            second = executor.submit(claim, self.codex, "owner-b", "codex")
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(
+                claim, self.claude, "a", "claude", "src/a.c"
+            )
+            second = pool.submit(
+                claim, self.codex, "b", "codex", "src/b.c"
+            )
             first.result()
             second.result()
-
         queue = read_queue(queue_path(self.main))
         self.assertEqual(validate_queue(queue), [])
         self.assertEqual(
-            {task["owner"] for task in active_tasks(queue)},
-            {"owner-a", "owner-b"},
+            {task["owner"] for task in active_tasks(queue)}, {"a", "b"}
         )
 
 
