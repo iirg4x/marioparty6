@@ -1,86 +1,79 @@
 # Contributing
 
-This repository accepts both human- and agent-assisted recovery work. The goal
-is faithful source recovery with retail binary identity as the final objective
-check—not byte closure through unexplained source tricks.
+This repository accepts human- and agent-assisted work. The goal is faithful
+source recovery with retail binary identity as the final objective gate—not byte
+closure through unexplained source tricks.
 
-## Choose, queue, and isolate a task
+## Queue and isolate one task
 
-Use a GitHub recovery-task issue or create one from the issue form. The task must
-name:
+A recovery task must name one owner or tightly connected function cluster, its
+stable identity, research question, current status, expected consumers, and
+verification scope.
 
-- one translation-unit owner or a tightly connected function cluster;
-- stable target identity and current symbol when known;
-- the research question;
-- current binary and source-quality status;
-- expected consumers and verification scope.
-
-Use worktrees from the same Git repository and isolated branches:
-
-```text
-agent/<agent>-<owner>-<goal>
-```
-
-Claude and Codex operating on the same PC must use separate worktrees, branches,
-and build directories. Before editing, claim the owner:
+Claude and Codex on the same PC must use separate worktrees, branches, and build
+directories. Prefer the atomic bootstrap:
 
 ```sh
-python tools/agent.py queue claim <owner> --agent claude
+python tools/agent.py worktree create <owner> \
+  --agent <claude-or-codex> \
+  --base main
 ```
 
-Codex uses `--agent codex`. The orchestrator may create pending bulk work with
-`queue add`. Shared headers, `configure.py`, central symbol files, splits, and
-recovery schemas must be added to the claim before they are edited. Conflicting
-claims are rejected rather than silently merged.
-
-See `docs/concurrent_agents.md` for queue storage, same-PC setup, and integration
-rules.
-
-## Prepare the workspace
+For bulk scheduling, the orchestrator may add dependencies, batches,
+capabilities, and expected cost:
 
 ```sh
-python tools/agent.py doctor
-python tools/agent.py queue status
-python tools/agent.py context function <symbol> --owner <owner-id>
+python tools/agent.py queue add <owner> \
+  --priority high \
+  --depends-on <owner> \
+  --batch board-pass-1 \
+  --capability mwcc \
+  --change-class private-source
 ```
 
-The context pack automatically selects applicable recovery knowledge cards and
-counterexamples before the source. Inspect just those rules with:
+Workers can take the next eligible task with `queue claim-next`. Existing queued
+priority is preserved unless a new `--priority` is explicitly supplied.
 
-```sh
-python tools/agent.py knowledge function <symbol> --owner <owner-id>
-```
+## Claim every actual write
 
-Read the root and nearest nested `AGENTS.md`. Do not start with the whole
-repository or a complete historical status file in context.
-
-## Recovery workflow
-
-1. Claim the owner and declare expected shared files.
-2. Research without editing: target code, relocations, calls, data references,
-   consumers, same-game domains, selected knowledge cards, counterexamples, and
-   existing probes.
-3. Write a natural evidence-supported candidate.
-4. Reconcile compiler shape one variable at a time.
-5. Review adversarially for invented semantics and matching-only constructs.
-6. Update durable owner metadata, recovery debt, and reusable source-to-output
-   knowledge.
-7. Record the last verified commit and release the claim after handoff.
-
-Keep the queue status current:
+The owner source is protected automatically. Declare central headers,
+`configure.py`, symbols, splits, and recovery schemas before editing:
 
 ```sh
 python tools/agent.py queue update <owner> \
-  --agent claude \
-  --status coding
+  --agent <agent> \
+  --add-shared include/game/example.h
 ```
 
-A compiler-wide card is a diagnostic rule, not permission to copy an example’s
-source. An owner constraint applies only to its explicit owner or stable
-identity. A counterexample must remain visible.
+Before commits and handoff:
 
-See `docs/recovery_standard.md` and `docs/context_workflow.md` for evidence,
-selection, and promotion rules.
+```sh
+python tools/agent.py queue check-diff --base origin/main
+```
+
+This checks committed, staged, unstaged, and untracked paths against the active
+claim and every other task. The managed pre-commit hook runs it automatically:
+
+```sh
+python tools/agent.py hooks install
+```
+
+## Recovery workflow
+
+1. Inspect the operational owner catalog and claim one task.
+2. Generate focused context with symptoms and local objdiff evidence.
+3. Research target instructions, relocations, callers, consumers, data domains,
+   selected rules, freshness warnings, and previous rejected probes.
+4. Write a natural evidence-supported candidate.
+5. Reconcile compiler shape one variable at a time.
+6. Review adversarially for invented semantics and matching-only constructs.
+7. Update owner metadata, debt, cards, examples/counterexamples, and freshness.
+8. Record worker proof and mark the task `ready`.
+9. Integrate and run retail proof serially before finalization.
+
+A compiler-wide card is diagnostic. An owner constraint never transfers to an
+unrelated owner. A stale card must be revalidated before being relied on as a
+final source-shape rule.
 
 ## Files that must not be committed
 
@@ -89,103 +82,115 @@ Never commit:
 - retail inputs under `orig/`;
 - generated files under `build/`;
 - `build.ninja`, `objdiff.json`, or `ctx.c`;
-- the local queue under Git's common directory;
-- local editor, agent, or virtual-environment state;
+- local queue/resource-lock state;
+- editor, agent, hook, or virtual-environment state;
 - rebuilt DOL/REL binaries or extracted game assets.
 
-Generated objdiff, audit, and context reports may be referenced by path in
-evidence, but the reusable conclusion belongs in `config/recovery/`.
+Generated reports may be referenced by path in structured proof, but durable
+findings belong in `config/recovery/`.
 
 ## Verification matrix
 
-| Change | Public agent gate | Object/consumer proof | Retail DOL/REL gate |
+| Change | Worker public gate | Object/consumer proof | Integration retail gate |
 | --- | --- | --- | --- |
 | Documentation only | Required | Not normally | Not normally |
-| Python tools or recovery metadata | Required | Not normally | Not normally |
-| Private C implementation | Required | Required | Required before promotion |
-| Shared header, type, data owner, or symbol | Required | Required for every affected Matching consumer | Required |
-| Compiler flags, object status, splits, link order, or `configure.py` | Required | Required | Required |
+| Python tools or metadata | Required | Not normally | Not normally |
+| Private C implementation | Required | Required | Required before `done` |
+| Shared header/type/data/symbol | Required | Every affected Matching consumer | Required |
+| Flags/status/splits/link/configure | Required | Required | Required |
 
-Run the public gate:
+## Worker verification
+
+Commit the candidate and leave the worktree clean:
 
 ```sh
-python tools/agent.py queue update <owner> \
-  --agent <claude-or-codex> \
-  --status verifying \
-  --verified-commit HEAD
-
 python tools/agent.py check --base origin/main
+
+python tools/agent.py queue verify <owner> \
+  --agent <agent> \
+  --public-gate pass \
+  --object-report build/GP6E01/<report>.json \
+  --functions-exact <exact/total> \
+  --relocations exact \
+  --consumer <consumer>=exact \
+  --toolchain GC/1.3.2
+
+python tools/agent.py queue update <owner> \
+  --agent <agent> --status ready
 ```
 
-It validates queue health, knowledge-card schema and references, tests,
-indexing, context generation, and source-quality policy. It deliberately does
-not claim a retail build. For source promotion, also run the configured
-serialized build, relocation-aware comparisons, DTK checksum, and explicit
-DOL/REL byte comparisons.
+Verification fails if the worktree is dirty, the branch/worktree/build assignment
+is invalid, or the actual diff escapes the claim. Any later commit invalidates
+the proof.
 
-## Source changes
+Documentation/tooling/metadata tasks do not need object fields, but still require
+a clean verified commit and passing public gate.
 
-Do not regress independently exact functions. Do not introduce a pragma,
-forced-inline control, code-generation `volatile`/`register`, inline assembly,
-fake padding, opaque blob, or dead branch without a scoped recovery exception
-and evidence. A temporary exception must include a removal condition.
+## Serialized integration
 
-Semantic names and fields require evidence. Keep uncertain identifiers unknown
-rather than improving readability through fiction.
+The integration worktree acquires exclusive resources before full builds:
 
-When a probe reveals a reusable relation between source and emitted output, add
-or update a knowledge card with:
+```sh
+python tools/agent.py queue acquire-resource integration --agent integrator
+python tools/agent.py queue acquire-resource retail-build --agent integrator
+```
 
-- the exact triggering source condition;
-- required preconditions;
+After integrating a `ready` worker commit and passing private gates:
+
+```sh
+python tools/agent.py integration finalize <owner> \
+  --agent integrator \
+  --retail-gate pass \
+  --checksum pass \
+  --consumer <consumer>=exact \
+  --toolchain GC/1.3.2
+```
+
+Finalization compares every claimed path between the worker’s verified commit
+and the integrated tree. It refuses `done` if integration changed or omitted the
+verified source.
+
+Release resources and remove completed worktrees afterward.
+
+## Source and knowledge rules
+
+Do not regress independently exact functions. Do not introduce pragmas,
+forced-inline controls, code-generation `volatile`/`register`, inline assembly,
+fake storage, or dead branches without scoped evidence.
+
+Semantic names and fields require evidence. Keep uncertain identifiers unknown.
+
+A reusable source-to-output finding must record:
+
+- exact trigger and preconditions;
 - possible emitted changes and recognizable signatures;
 - one clear coding/investigation rule;
-- concrete safe actions;
-- explicit stable-ID, owner, module, tag, compiler, or project scope;
-- examples, counterexamples, related exceptions, and evidence.
+- safe actions;
+- explicit scope;
+- examples, counterexamples, related exceptions, and evidence;
+- validated commit/date, watched paths, and supersession state.
 
-Do not leave that conclusion only in a wave report or agent conversation.
+## Commits and handoff
 
-## Commits
+Separate semantic cleanup, compiler reconciliation, shared-interface work,
+knowledge extraction, and tooling when independently reviewable.
 
-Keep commits scoped and descriptive. Separate semantic cleanup, compiler-shape
-reconciliation, shared-interface changes, knowledge extraction, and
-workflow/tooling changes when they can be reviewed independently.
-
-Useful commit details include:
+Useful commit trailers/details:
 
 ```text
 Owner: REL:mdpartydll:mdparty
 Stable-Identity: mdpartydll:0xBBD8
 Agent: claude / codex
 Queue-Status: ready / done
-Last-Verified-Commit: <sha>
-Knowledge-Cards: reviewed IDs; added/refined IDs or none
+Verified-Commit: <sha>
+Knowledge-Cards: reviewed or changed IDs
 Functions-Exact: before -> after
 Relocations: exact / changed / not run
-Consumers: names or none
+Consumers: names and results
 Public-Gate: pass
 Retail-Gate: pass / not run
-Evidence: durable report or manifest path
+Evidence: durable path
 ```
 
-Do not claim a gate that was not run.
-
-## Pull requests and handoff
-
-Complete the pull request template. State accepted and rejected evidence,
-applicable knowledge cards, any new rule or counterexample, natural candidate,
-compiler reconciliation, exact-function impact, consumers, verification,
-metadata changes, remaining debt, queue status, and last verified commit.
-
-After handoff, release the claim:
-
-```sh
-python tools/agent.py queue release <owner> \
-  --agent <claude-or-codex> \
-  --status done \
-  --verified-commit HEAD
-```
-
-A useful handoff must allow another contributor to continue without reading the
-entire agent transcript.
+Complete the PR template. A handoff must be usable without reading the original
+agent transcript.
