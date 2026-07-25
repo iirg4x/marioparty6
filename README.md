@@ -27,6 +27,7 @@ Read:
 - [`docs/concurrent_agents.md`](docs/concurrent_agents.md): Claude/Codex bulk work
 - [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion
 - [`docs/context_workflow.md`](docs/context_workflow.md): index and context design
+- [`docs/blind_recovery_benchmark.md`](docs/blind_recovery_benchmark.md): reproducible blind testing and organicity
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): verification and handoff
 
 ## Unified agent commands
@@ -153,12 +154,41 @@ python tools/agent.py integration finalize <owner> \
 Finalization checks that every claimed path in the integration tree still
 matches the worker’s verified commit before setting the task to `done`.
 
+## Blind recovery and organicity
+
+Blind testing is scored on four separate dimensions:
+
+```text
+assembly equivalence
+retained-source fidelity
+candidate organicity
+artifact reproducibility
+```
+
+A token-identical candidate can inherit questionable structure already present
+in the retained source, so source similarity never substitutes for organicity.
+Audit the committed benchmark cases and inspect a function directly:
+
+```sh
+python tools/blind_recovery.py audit
+
+python tools/blind_recovery.py organicity \
+  src/gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c \
+  --function ProcessLookAhead
+```
+
+The two initial surrogate holdouts are explicitly marked `legacy-reported`
+because their raw packets and candidates were not preserved. New cases must
+freeze the candidate before reveal and preserve the evidence, target assembly,
+candidate assembly, result, hashes and source commit. See
+[`benchmarks/blind_recovery/README.md`](benchmarks/blind_recovery/README.md).
+
 ## Public versus private gates
 
 The public-safe gate runs Python compilation/tests, metadata/card/freshness
-validation, owner catalog generation, deterministic indexing, context/report
-smoke tests, queue policy, whitespace, generated/private-path checks, and
-changed-line source-quality review:
+validation, blind-benchmark auditing, owner catalog generation, deterministic
+indexing, context/report smoke tests, queue policy, whitespace,
+generated/private-path checks, and changed-line source-quality review:
 
 ```sh
 python tools/agent.py check --base origin/main
@@ -175,8 +205,9 @@ checksum, and explicit DOL/REL comparisons.
 - `config/GP6E01/`: DOL symbols, splits, and retail checksums
 - `config/dll/rels/`: REL ownership
 - `config/recovery/`: owner state, evidence, names, exceptions, cards, freshness
+- `benchmarks/blind_recovery/`: replayable blind-test manifests and artifacts
 - `docs/`: active documentation and forensic evidence
-- `tools/`: build, queue, catalog, worktree, context, knowledge, and verification tools
+- `tools/`: build, queue, catalog, worktree, context, knowledge, benchmark, and verification tools
 - `build/`: ignored output, isolated per worktree
 - `orig/GP6E01/`: ignored local retail inputs
 
