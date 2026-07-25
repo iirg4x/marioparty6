@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "patterns": [
+    {
+      "id": "gc132-late-definition-visibility",
+      "compiler": "GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "For a large translation unit, moving object definitions before code can alter one-pass visibility, register allocation, text size, and BSS even when equivalent declarations remain visible.",
+      "conditions": "Observed in mdparty.c with 73 same-owner objects; do not generalize to every owner without a local probe.",
+      "examples": [
+        "REL:mdpartydll:mdparty"
+      ],
+      "counterexamples": [
+        "REL:mdpartydll:stage"
+      ],
+      "evidence": [
+        "docs/native_matching_wave103.md"
+      ]
+    },
+    {
+      "id": "gc132-broad-header-visibility",
+      "compiler": "GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "Adding a semantically correct broad header may change calls or allocation when the retail translation unit saw only a narrower local declaration set.",
+      "conditions": "Use exact target-backed local declarations only when an owner-specific probe proves broad visibility wrong; never copy this as a global style rule.",
+      "examples": [
+        "mdpartydll:0x2F22C",
+        "REL:mdpartydll:stage"
+      ],
+      "counterexamples": [],
+      "evidence": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md"
+      ]
+    },
+    {
+      "id": "gc132-helper-boundary-and-lifetime",
+      "compiler": "GC/1.3.2",
+      "confidence": "high",
+      "summary": "Helper boundaries, automatic inlining, signed-short contracts, and block-scoped lifetimes can be authentic source-shape evidence when they reproduce multiple callers without regressions.",
+      "conditions": "Require a target or sibling-backed family of call sites; a single isolated 100% result is insufficient.",
+      "examples": [
+        "mdpartydll:0xBBD8",
+        "mdpartydll:0x38314"
+      ],
+      "counterexamples": [],
+      "evidence": [
+        "docs/native_matching_wave96.md",
+        "docs/native_matching_wave100.md",
+        "docs/native_matching_wave101.md"
+      ]
+    }
+  ]
+}
