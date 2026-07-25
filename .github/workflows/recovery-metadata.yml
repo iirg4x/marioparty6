@@ -27,6 +27,59 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify required agent entrypoints
+        shell: bash
+        run: |
+          required=(
+            AGENTS.md
+            CONTRIBUTING.md
+            README.md
+            src/AGENTS.md
+            tools/AGENTS.md
+            docs/AGENTS.md
+            config/recovery/AGENTS.md
+            docs/agent_quickstart.md
+            docs/recovery_standard.md
+            docs/context_workflow.md
+            tools/agent.py
+            .github/PULL_REQUEST_TEMPLATE.md
+            .github/ISSUE_TEMPLATE/recovery-task.yml
+          )
+          failed=0
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Missing required agent entrypoint: $path"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Verify template cleanup
+        shell: bash
+        run: |
+          forbidden=(.github.example .vscode.example README.example.md)
+          failed=0
+          for path in "${forbidden[@]}"; do
+            if [[ -e "$path" ]]; then
+              echo "Inactive template path remains: $path"
+              find "$path" -maxdepth 3 -print 2>/dev/null || true
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Verify generated and retail files are untracked
+        shell: bash
+        run: |
+          tracked="$(git ls-files -- build build.ninja objdiff.json ctx.c orig | sed '/^orig\/[^/]*\/\.gitkeep$/d')"
+          if [[ -n "$tracked" ]]; then
+            printf 'Generated or retail paths are tracked:\n%s\n' "$tracked"
+            exit 1
+          fi
+
+      - name: Validate recovery metadata
+        run: python tools/recovery_index.py check
+
       - name: Check agent workspace
         run: python tools/agent.py doctor
 
@@ -36,10 +89,8 @@ jobs:
       - name: Run public-safe tests
         run: python -m unittest discover -s tools/tests -v
 
-      - name: Validate and build recovery index
-        run: |
-          python tools/recovery_index.py check
-          python tools/recovery_index.py build
+      - name: Build recovery index
+        run: python tools/recovery_index.py build
 
       - name: Smoke-test context and report generation
         run: |
