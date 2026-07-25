@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "cards": {
+    "gc132-declaration-chronology": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave103.md",
+        "src/REL/mdpartydll/mdparty.c",
+        "src/REL/mdpartydll/stage.c",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mdparty-tail-definition-chronology": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md",
+        "src/REL/mdpartydll/mdparty.c",
+        "include/REL/mdpartyDll_globals.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "gc132-broad-header-visibility": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md",
+        "src/REL/mdpartydll/mdparty.c",
+        "src/REL/mdpartydll/stage.c",
+        "include/game/audio.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mdparty-local-audio-visibility": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md",
+        "src/REL/mdpartydll/mdparty.c",
+        "include/game/audio.h",
+        "config/GP6E01/tu_declarations.json"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "stage-local-random-visibility": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave103.md",
+        "src/REL/mdpartydll/stage.c",
+        "config/GP6E01/tu_declarations.json"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "gc132-helper-boundary-lifetime": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave96.md",
+        "docs/native_matching_wave100.md",
+        "docs/native_matching_wave101.md",
+        "src/REL/mdpartydll/mdparty.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "gc132-narrow-signed-contracts": {
+      "status": "active",
+      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_at": "2026-07-25",
+      "watch_paths": [
+        "docs/native_matching_wave97.md",
+        "docs/native_matching_wave101.md",
+        "src/REL/mdpartydll/mdparty.c",
+        "include/game/audio.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    }
+  }
+}
