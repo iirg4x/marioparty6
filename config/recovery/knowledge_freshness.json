@@ -3,9 +3,10 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave103.md",
         "src/REL/mdpartydll/mdparty.c",
         "src/REL/mdpartydll/stage.c",
@@ -16,9 +17,10 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
         "docs/native_matching_wave103.md",
         "src/REL/mdpartydll/mdparty.c",
@@ -29,9 +31,10 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
         "docs/native_matching_wave103.md",
         "src/REL/mdpartydll/mdparty.c",
@@ -43,9 +46,10 @@
     },
     "mdparty-local-audio-visibility": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
         "docs/native_matching_wave103.md",
         "src/REL/mdpartydll/mdparty.c",
@@ -57,9 +61,10 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave103.md",
         "src/REL/mdpartydll/stage.c",
         "config/GP6E01/tu_declarations.json"
@@ -69,9 +74,10 @@
     },
     "gc132-helper-boundary-lifetime": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave96.md",
         "docs/native_matching_wave100.md",
         "docs/native_matching_wave101.md",
@@ -82,9 +88,10 @@
     },
     "gc132-narrow-signed-contracts": {
       "status": "active",
-      "validated_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+      "validated_commit": "7776b336283a10c78e6b7fda6d1c8ec3472c4571",
       "validated_at": "2026-07-25",
       "watch_paths": [
+        "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave97.md",
         "docs/native_matching_wave101.md",
         "src/REL/mdpartydll/mdparty.c",
