@@ -12,7 +12,8 @@
     "names": "config/recovery/names.json",
     "exceptions": "config/recovery/exceptions.json",
     "compiler_patterns": "config/recovery/compiler_patterns.json",
-    "knowledge_freshness": "config/recovery/knowledge_freshness.json"
+    "knowledge_freshness": "config/recovery/knowledge_freshness.json",
+    "blind_benchmark": "benchmarks/blind_recovery/manifest.json"
   },
   "agent_readiness": {
     "required_files": [
@@ -29,6 +30,9 @@
       "docs/recovery_standard.md",
       "docs/context_workflow.md",
       "docs/concurrent_agents.md",
+      "docs/blind_recovery_benchmark.md",
+      "benchmarks/blind_recovery/README.md",
+      "benchmarks/blind_recovery/manifest.json",
       "tools/agent.py",
       "tools/agent_queue.py",
       "tools/claim_diff.py",
@@ -42,6 +46,7 @@
       "tools/hooks.py",
       "tools/recovery_knowledge.py",
       "tools/knowledge_cards.py",
+      "tools/blind_recovery.py",
       ".github/PULL_REQUEST_TEMPLATE.md",
       ".github/ISSUE_TEMPLATE/recovery-task.yml"
     ],
@@ -89,20 +94,73 @@
     "acceptance_criteria": 7
   },
   "dimensions": {
-    "binary": ["fallback", "partial", "exact"],
-    "source_shape": ["scaffold", "plausible", "evidence_backed", "authenticated"],
-    "semantics": ["opaque", "partial", "recovered"],
-    "naming": ["address_only", "provisional", "partially_semantic", "evidence_backed"],
-    "data": ["raw", "typed_partial", "typed", "domain_recovered"]
+    "binary": [
+      "fallback",
+      "partial",
+      "exact"
+    ],
+    "source_shape": [
+      "scaffold",
+      "plausible",
+      "evidence_backed",
+      "authenticated"
+    ],
+    "semantics": [
+      "opaque",
+      "partial",
+      "recovered"
+    ],
+    "naming": [
+      "address_only",
+      "provisional",
+      "partially_semantic",
+      "evidence_backed"
+    ],
+    "data": [
+      "raw",
+      "typed_partial",
+      "typed",
+      "domain_recovered"
+    ]
   },
-  "confidence_levels": ["unknown", "low", "medium", "high", "confirmed"],
+  "confidence_levels": [
+    "unknown",
+    "low",
+    "medium",
+    "high",
+    "confirmed"
+  ],
   "evidence_hierarchy": [
-    {"id": "same_game_artifact", "rank": 1, "description": "Same-game debug information, map data, symbols, source remnants, or authenticated binary artifacts."},
-    {"id": "target_binary", "rank": 2, "description": "Target instructions, relocations, access widths, sections, call contracts, strings, and object layout."},
-    {"id": "same_game_consumer", "rank": 3, "description": "Same-game callers, consumers, archives, messages, data domains, and ownership relationships."},
-    {"id": "sibling_source", "rank": 4, "description": "Closely related Hudson or Mario Party source used as supporting, not overriding, evidence."},
-    {"id": "compiler_probe", "rank": 5, "description": "Controlled compiler experiments that prove source shape but not semantic meaning."},
-    {"id": "readability_hypothesis", "rank": 6, "description": "A provisional interpretation retained only when stronger evidence is absent."}
+    {
+      "id": "same_game_artifact",
+      "rank": 1,
+      "description": "Same-game debug information, map data, symbols, source remnants, or authenticated binary artifacts."
+    },
+    {
+      "id": "target_binary",
+      "rank": 2,
+      "description": "Target instructions, relocations, access widths, sections, call contracts, strings, and object layout."
+    },
+    {
+      "id": "same_game_consumer",
+      "rank": 3,
+      "description": "Same-game callers, consumers, archives, messages, data domains, and ownership relationships."
+    },
+    {
+      "id": "sibling_source",
+      "rank": 4,
+      "description": "Closely related Hudson or Mario Party source used as supporting, not overriding, evidence."
+    },
+    {
+      "id": "compiler_probe",
+      "rank": 5,
+      "description": "Controlled compiler experiments that prove source shape but not semantic meaning."
+    },
+    {
+      "id": "readability_hypothesis",
+      "rank": 6,
+      "description": "A provisional interpretation retained only when stronger evidence is absent."
+    }
   ],
   "agent_contract": [
     "Recover the most likely original source; do not optimize only for emitted bytes.",
@@ -113,7 +171,8 @@
     "Compiler experiments may justify source shape; they do not prove semantic names.",
     "Do not invent names, types, padding, globals, branches, or literal domains.",
     "Do not regress independently exact functions or consumers.",
-    "Every unusual source construct must be authenticated, temporary debt, or rejected."
+    "Every unusual source construct must be authenticated, temporary debt, or rejected.",
+    "Blind benchmarks must freeze candidates before reveal and score assembly, retained-source fidelity, organicity, and reproducibility separately."
   ],
   "acceptance_criteria": [
     "Start with evidence research and a natural source candidate before compiler reconciliation.",
@@ -125,6 +184,7 @@
     "Run relocation-aware owner and consumer comparisons.",
     "Run serialized retail checksum and byte gates before integration finalization.",
     "Update source-quality dimensions independently from binary status.",
-    "Do not merge an unexplained compiler-control construct merely because it reaches 100%."
+    "Do not merge an unexplained compiler-control construct merely because it reaches 100%.",
+    "Do not describe a blind-recovery trial as reproducible unless its evidence, frozen candidate, compared assembly, hashes, source commit, and deterministic score are preserved."
   ]
 }
