@@ -64,6 +64,7 @@ PYTHON_BIN="${MP6_PYTHON:-python}"
 cd "$ROOT"
 "$PYTHON_BIN" tools/recovery_index.py check
 "$PYTHON_BIN" tools/knowledge_cards.py check
+"$PYTHON_BIN" tools/blind_recovery.py audit
 "$PYTHON_BIN" -m unittest discover -s tools/tests -v
 '''
     else:
