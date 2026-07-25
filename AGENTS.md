@@ -28,6 +28,19 @@ python tools/agent.py context function fn_1_BBD8 \
 python tools/agent.py context owner main:game/mgdata --budget 7000
 ```
 
+The context generator automatically selects up to five applicable recovery
+knowledge cards before the source: exact-target findings, owner constraints,
+module/tag rules, compiler-wide diagnostics, and recorded counterexamples. Read
+those cards before starting a compiler probe.
+
+Inspect the selected cards directly when needed:
+
+```sh
+python tools/agent.py knowledge function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty
+python tools/agent.py knowledge audit
+```
+
 Use exact owner IDs, stable identities, symbols, callers, consumers, and
 recorded evidence first. Expand only a named dependency that remains material.
 Do not attach all of `STATUS.md`, every historical wave report, or an entire
@@ -39,6 +52,10 @@ large translation unit to an agent prompt.
 - One agent owns one translation unit or one tightly connected function cluster.
 - Do not edit `orig/`, `build/`, `build.ninja`, `objdiff.json`, or generated
   context/report files.
+- Review applicable knowledge cards and their counterexamples before repeating a
+  source-shape experiment already investigated elsewhere.
+- A compiler-wide card is a diagnostic rule, not permission to copy an
+  owner-specific source shape.
 - Do not invent semantic names, types, padding, globals, branches, or numeric
   domains. An honest `unk_*` or address symbol is better than unsupported
   certainty.
@@ -62,7 +79,8 @@ large translation unit to an agent prompt.
 ## Required work phases
 
 1. **Research:** inspect the target, owner, direct dependencies, consumers,
-   existing evidence, and rejected probes. Do not edit source yet.
+   automatically selected knowledge cards, existing evidence, and rejected
+   probes. Do not edit source yet.
 2. **Natural candidate:** write the cleanest evidence-supported C without forcing
    the final instructions. A natural nonmatching candidate is useful evidence.
 3. **Compiler reconciliation:** vary one evidenced dimension at a time, such as
@@ -79,9 +97,9 @@ Run the public-safe branch gate before handoff:
 python tools/agent.py check --base origin/main
 ```
 
-This validates tests, metadata, the deterministic recovery index, generated
-context/report paths, repository cleanup policy, and newly added source-shape
-controls. It does **not** prove a retail build.
+This validates tests, metadata, structured knowledge cards, the deterministic
+recovery index, generated context/report paths, repository cleanup policy, and
+newly added source-shape controls. It does **not** prove a retail build.
 
 Any C/C++ source, shared header, compiler flag, object status, symbol, split, or
 link configuration change also requires the relevant relocation-aware object
@@ -89,8 +107,10 @@ comparison, affected-consumer checks, serialized DOL/REL build, DTK checksum,
 and explicit retail byte comparison before promotion.
 
 Record reusable findings in `config/recovery/` rather than leaving them only in
-an agent transcript. Update binary, source-shape, semantic, naming, and data
-status independently.
+an agent transcript. A repeated relationship between a source condition and
+emitted output belongs in `compiler_patterns.json` with a rule, safe actions,
+scope, examples, counterexamples, and evidence. Update binary, source-shape,
+semantic, naming, and data status independently.
 
 ## Task handoff
 
@@ -98,6 +118,7 @@ A handoff or pull request must state:
 
 - owner and stable target identity;
 - research question and accepted evidence;
+- applicable knowledge cards and whether a new card or counterexample was added;
 - rejected probes or alternatives;
 - natural candidate and compiler reconciliation, if any;
 - exact-function and relocation impact;
