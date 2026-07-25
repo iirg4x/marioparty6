@@ -1,45 +1,67 @@
 # Tooling instructions
 
-These rules apply under `tools/`. Also follow the root `AGENTS.md`.
+These rules apply under `tools/`. Also follow root `AGENTS.md`.
 
-- Keep public-safe agent and recovery tooling Python-standard-library-only unless
-  a dependency is already required by the project.
-- Every script must work both as `python tools/name.py` and through imports from
-  `tools.tests`.
-- Use `pathlib`, explicit UTF-8, typed interfaces, useful exit codes, and error
-  messages that identify the failing path or record.
-- Never read or mutate retail files for a public-safe check.
-- Generated output belongs under `build/`; tools must create parent directories
-  and avoid partially written files.
-- The local claim queue belongs under Git's common directory, not inside one
-  worktree. Queue updates must use a cross-platform atomic lock and atomic file
-  replacement.
-- Queue validation must reject duplicate owners, branches, worktrees, build
-  directories, source owners, and overlapping shared paths.
-- Tests for concurrent coordination must create synthetic Git worktrees and must
-  not require network access, compilers, Ninja, or `orig/`.
-- Prefer deterministic exact lookup before fuzzy search. Preserve stable target
-  identities in generated output.
-- Knowledge-card ranking must be deterministic and must not infer scope from
-  prose. Exact counterexamples, stable identities, and owners outrank compiler-
-  wide diagnostics.
-- Owner constraints must never be selected for unrelated owners. A known
-  counterexample must remain visible rather than being filtered out.
-- Reserve context budget for selected rule cards before adding source and long
-  evidence sections. Do not read wave-document bodies automatically.
-- Enrich index search with card triggers, emitted effects, rules, safe actions,
-  examples, and counterexamples.
-- Tests must use temporary directories and synthetic fixtures; do not require a
-  configured compiler, Ninja build, network access, or `orig/`.
-- A source-quality rule must avoid comments and string literals, scan changed
-  lines by default, and require a narrowly scoped exception.
+- Keep public-safe tooling Python-standard-library-only unless the project already
+  requires the dependency.
+- Every script must support direct `python tools/name.py` execution and imports
+  from `tools.tests`.
+- Use `pathlib`, UTF-8, typed interfaces, useful exit codes, and errors that name
+  the failing path or record.
+- Never read or mutate retail inputs during public-safe checks.
+- Generated output belongs under `build/`; use atomic replacement for durable
+  generated state.
+
+## Queue and worktree invariants
+
+- The queue lives under Git’s common directory or `MP6_AGENT_QUEUE`, never in one
+  worktree.
+- Queue schema updates must migrate existing local state safely.
+- Lock and write operations must be cross-platform and atomic.
+- Claims must validate Git common directory, registered worktree path, branch,
+  and build directory containment.
+- Preserve queued priority unless the claim explicitly overrides it.
+- Reject duplicate owners, branches, worktrees, build directories, sources,
+  shared paths, and header-consumer conflicts.
+- Actual diff checks must include committed, staged, unstaged, and untracked
+  paths.
+- Worker proof must be tied to a clean current commit. `ready` requires worker
+  proof; `done` for source work requires serialized integration proof.
+- Machine-wide resources must be exclusive and explicit.
+- Tests must create real temporary Git worktrees and cover simultaneous claims,
+  stale commits, undeclared diffs, dependencies, resource locks, and integration.
+
+## Catalog, context, and knowledge invariants
+
+- The operational owner catalog may inventory configuration and dependencies but
+  must not infer semantic recovery status.
+- Prefer deterministic exact lookup before fuzzy search.
+- Knowledge selection must derive scope from structured fields, never prose.
+- Counterexamples, stable identities, and owners outrank compiler-wide rules.
+- Owner constraints must never leak to unrelated owners.
+- Symptom filtering may narrow compiler-wide diagnostics, but must retain exact
+  target constraints and counterexamples.
+- Reserve section budgets for knowledge, constraints, stable identity, and
+  acceptance criteria before clipping source or historical evidence.
+- Local objdiff parsers must be schema-tolerant and summarize rather than ingest
+  unbounded reports.
+- Freshness records must identify validated commits, watched paths, and
+  supersession state.
+- Wave-document bodies are never automatic prompt context.
+
+## Source-quality checks
+
+A changed-line rule must ignore comments and string literals, scan the real diff
+by default, and require a narrowly scoped exception.
 
 Run:
 
 ```sh
-python -m unittest discover -s tools/tests -v
 python -m compileall -q tools
-python tools/agent.py queue check
+python -m unittest discover -s tools/tests -v
+python tools/recovery_index.py check
 python tools/knowledge_cards.py check
+python tools/agent.py catalog build
+python tools/agent.py queue check
 python tools/agent.py check --base origin/main
 ```
