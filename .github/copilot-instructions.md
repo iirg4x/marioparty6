@@ -1,12 +1,14 @@
-Follow the root `AGENTS.md` and the nearest nested `AGENTS.md` for every file you edit.
+Follow root `AGENTS.md` and the nearest nested `AGENTS.md` for every edited file.
 
-Use `python tools/agent.py doctor` before editing. Inspect the shared queue and
-claim one owner in an isolated worktree, branch, and build directory. Declare
-shared files before touching them. Generate bounded owner or function context
-with `python tools/agent.py context ...`, and run
-`python tools/agent.py check --base origin/main` before handoff.
+Use a dedicated task worktree, branch, and build directory. Claim the owner and
+shared paths before editing. Run `queue check-diff` before commits. Generate
+bounded context with relevant symptoms and local evidence.
+
+A worker commits a clean candidate, passes the public gate, records structured
+queue verification, and stops at `ready`. Only the integration worktree may add
+retail/checksum proof and finalize `done`.
 
 The objective is faithful Mario Party 6 source recovery. Binary identity is a
-required final gate, not proof that names, types, data domains, or compiler-shape
+required final gate, not proof that names, types, domains, or compiler-shape
 constructs are authentic. Never invent semantics or add unexplained matching
 hacks. Keep retail, queue, and generated files uncommitted.
