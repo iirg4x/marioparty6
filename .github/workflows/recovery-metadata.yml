@@ -14,14 +14,11 @@ concurrency:
 
 jobs:
   agent-workspace:
-    # Claude and Codex may push many intermediate commits while a task PR is a
-    # draft. Agents run `python tools/agent.py check` locally during that phase.
-    # Automatic CI starts when the PR is marked ready for review, and then runs
-    # again for later commits while the PR remains non-draft. Manual dispatch is
-    # always available when a remote check is needed earlier.
+    # Draft pushes are checked locally to avoid notification spam. Automatic CI
+    # starts when the PR is marked ready, then runs for later non-draft pushes.
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Check out full history
         uses: actions/checkout@v4
@@ -41,17 +38,26 @@ jobs:
             AGENTS.md
             CONTRIBUTING.md
             README.md
+            CLAUDE.md
+            GEMINI.md
             src/AGENTS.md
             tools/AGENTS.md
             docs/AGENTS.md
             config/recovery/AGENTS.md
             config/recovery/compiler_patterns.json
+            config/recovery/knowledge_freshness.json
             docs/agent_quickstart.md
             docs/concurrent_agents.md
             docs/recovery_standard.md
             docs/context_workflow.md
             tools/agent.py
             tools/agent_queue.py
+            tools/owner_catalog.py
+            tools/context_engine.py
+            tools/local_evidence.py
+            tools/knowledge_freshness.py
+            tools/worktree_manager.py
+            tools/hooks.py
             tools/recovery_knowledge.py
             tools/knowledge_cards.py
             .github/PULL_REQUEST_TEMPLATE.md
@@ -89,15 +95,11 @@ jobs:
             exit 1
           fi
 
-      - name: Validate recovery metadata and knowledge cards
+      - name: Validate metadata, cards, and freshness
         run: |
           python tools/recovery_index.py check
           python tools/knowledge_cards.py check
-
-      - name: Check agent workspace and empty local queue
-        run: |
-          python tools/agent.py doctor
-          python tools/agent.py queue check
+          python tools/knowledge_cards.py freshness
 
       - name: Compile public Python tools
         run: python -m compileall -q tools
@@ -105,24 +107,42 @@ jobs:
       - name: Run public-safe tests
         run: python -m unittest discover -s tools/tests -v
 
+      - name: Build operational owner catalog
+        run: |
+          python tools/agent.py catalog build
+          python tools/agent.py catalog query REL:mdpartydll:mdparty
+          python tools/agent.py catalog query src/game/mgdata.c
+
+      - name: Check workspace and migrated empty queue
+        run: |
+          python tools/agent.py doctor
+          python tools/agent.py queue check
+
       - name: Build and query recovery index
         run: |
           python tools/recovery_index.py build
           python tools/recovery_index.py query "broad header"
           python tools/recovery_index.py query "inspect caller and consumer widths"
 
-      - name: Verify exact-target knowledge selection
+      - name: Verify symptom-aware target context
         run: |
           python tools/knowledge_cards.py function fn_1_BBD8 \
             --owner REL:mdpartydll:mdparty \
+            --symptom "helper boundary" \
             --limit 5
+          printf '%s\n' '{"functions":[{"matchPercent":100},{"matchPercent":90}],"relocations":[]}' \
+            > build/context/synthetic-objdiff.json
           python tools/agent.py context function fn_1_BBD8 \
             --owner REL:mdpartydll:mdparty \
+            --symptom "helper boundary" \
+            --report build/context/synthetic-objdiff.json \
             --budget 12000 \
             --output build/context/mdparty-BBD8.md
           grep -q "Relevant recovered knowledge" build/context/mdparty-BBD8.md
+          grep -q "Local object-diff evidence" build/context/mdparty-BBD8.md
           grep -q "gc132-helper-boundary-lifetime" build/context/mdparty-BBD8.md
           grep -q "mdparty-tail-definition-chronology" build/context/mdparty-BBD8.md
+          grep -q "Acceptance criteria" build/context/mdparty-BBD8.md
 
       - name: Verify owner context, report, and wave audit
         run: |
