@@ -255,7 +255,7 @@ def quality_findings(data: dict[str, Any], *, base: str | None = None, full: boo
         for rule, (message, pattern) in QUALITY_RULES.items():
             if not pattern.search(text):
                 continue
-            matching = [item for item in data["exceptions"] if fnmatch.fnmatch(path, str(item.get("path", ""))) and (not item.get("rules") or rule in item.get("rules", []))]
+            matching = [item for item in data["exceptions"] if fnmatch.fnmatch(path, str(item.get("path", ""))) and rule in item.get("rules", [])]
             authenticated = next((item for item in matching if item.get("classification") == "authenticated"), None)
             if authenticated:
                 continue
