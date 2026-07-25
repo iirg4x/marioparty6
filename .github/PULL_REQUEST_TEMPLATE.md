@@ -71,6 +71,27 @@ selected cards.
 - Binary / source-shape / semantic / naming / data status:
 - New or resolved debt:
 - Exceptions added or removed:
+- Candidate organicity findings reviewed:
+- Retained-source debt inherited or removed:
+
+## Blind benchmark evidence
+
+Complete when this PR reports a blind/source-holdout result; otherwise state
+`not applicable`.
+
+- Benchmark case ID and status: reproducible / legacy-reported
+- Candidate frozen before source reveal:
+- Evidence packet preserved:
+- Target and candidate assembly preserved:
+- Source commit and reference SHA-256:
+- Candidate SHA-256 and freeze time:
+- Assembly equivalence:
+- Retained-source similarity:
+- Candidate organicity:
+- Candidate-only versus inherited retained-source debt:
+- Replay command and result:
+
+A source-token match alone is not an organicity or originality claim.
 
 ## Worker verification
 
@@ -87,6 +108,7 @@ Mark checks actually run:
 
 - [ ] `python tools/agent.py queue check-diff --base origin/main`
 - [ ] `python tools/knowledge_cards.py check`
+- [ ] `python tools/blind_recovery.py audit`
 - [ ] `python tools/agent.py check --base origin/main`
 - [ ] `python tools/agent.py queue verify ...`
 - [ ] Task is `ready`
