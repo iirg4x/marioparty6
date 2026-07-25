@@ -3,15 +3,16 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import argparse
-
-from tools.recovery_core import RecoveryError, load, markdown_report, root_from
+from tools.recovery_core import load, root_from
+from tools.recovery_data import RecoveryError
+from tools.recovery_knowledge import recovery_report, validate_knowledge
 
 
 def main() -> int:
@@ -21,7 +22,11 @@ def main() -> int:
     args = parser.parse_args()
     try:
         root = root_from(args.root)
-        text = markdown_report(load(root))
+        data = load(root, validate=False)
+        errors = validate_knowledge(data)
+        if errors:
+            raise RecoveryError("recovery knowledge invalid:\n- " + "\n- ".join(errors))
+        text = recovery_report(data)
         if args.output:
             path = root / args.output
             path.parent.mkdir(parents=True, exist_ok=True)
