@@ -2,95 +2,90 @@
 
 ## Start here
 
-- [`../README.md`](../README.md): project scope and top-level commands
-- [`agent_quickstart.md`](agent_quickstart.md): shortest safe agent workflow
-- [`concurrent_agents.md`](concurrent_agents.md): shared owner queue and same-PC Claude/Codex worktrees
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md): task isolation, verification, and handoff
-- [`recovery_standard.md`](recovery_standard.md): evidence hierarchy and faithful-source standard
-- [`context_workflow.md`](context_workflow.md): deterministic index, actionable knowledge cards, selection ranking, token budgets, and wave-distillation audit
-- [`getting_started.md`](getting_started.md): project-specific local setup and build workflow
-- [`github_actions.md`](github_actions.md): public-safe CI and private retail-build boundaries
+- [`../README.md`](../README.md): project scope and main commands
+- [`agent_quickstart.md`](agent_quickstart.md): shortest worker path
+- [`concurrent_agents.md`](concurrent_agents.md): queue v2, worktrees, resources, and integration
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md): proof and handoff requirements
+- [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
+- [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, local evidence, freshness
+- [`getting_started.md`](getting_started.md): local toolchain and retail build setup
+- [`github_actions.md`](github_actions.md): draft-local versus ready-PR CI
 
-## Build and configuration reference
+## Build reference
 
-- [`dependencies.md`](dependencies.md): required and optional local tools
-- [`symbols.md`](symbols.md): symbol-file format and ownership
-- [`splits.md`](splits.md): translation-unit and section splits
-- [`common_bss.md`](common_bss.md): common-BSS behavior
-- [`comment_section.md`](comment_section.md): CodeWarrior `.comment` sections
+- [`dependencies.md`](dependencies.md)
+- [`symbols.md`](symbols.md)
+- [`splits.md`](splits.md)
+- [`common_bss.md`](common_bss.md)
+- [`comment_section.md`](comment_section.md)
 
-These files retain useful decomp-toolkit background but should be opened only
-when relevant to the active owner or build problem.
+Open these only when relevant to the active owner or build problem.
 
-## Local task coordination
-
-Claude and Codex share a local claim queue through Git's common directory:
+## Operational coordination
 
 ```sh
+python tools/agent.py catalog build
 python tools/agent.py queue status
-python tools/agent.py queue check
+python tools/worktree_audit.py
+python tools/agent.py hooks install
 ```
 
-The queue is not committed and contains only coordination state. It prevents
-simultaneous ownership of the same source, branch, worktree, build directory, or
-shared path. Reusable recovery conclusions still belong in `config/recovery/`,
-not in the queue.
+The owner catalog is generated scheduling data. The queue and resource locks
+live under Git’s common directory. Neither is committed recovery evidence.
+
+Workers must keep the real Git diff inside their claim, record clean
+commit-bound proof, and stop at `ready`. The integration worktree performs
+serialized retail/checksum gates and finalizes `done`.
 
 ## Reusable recovery knowledge
 
-The normal task context automatically selects compact source-to-output cards
-from `config/recovery/compiler_patterns.json`. Cards distinguish:
-
-- confirmed rules under stated conditions;
-- contextual heuristics that suggest the next bounded probe;
-- owner constraints that must not leak to another translation unit;
-- counterexamples that prevent cargo-cult application.
-
-Inspect selected cards or the extraction backlog without opening historical
-reports:
+Normal context selects compact source-to-output cards with structured scope,
+examples, counterexamples, safe actions, and freshness:
 
 ```sh
 python tools/agent.py knowledge function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty
+  --owner REL:mdpartydll:mdparty \
+  --symptom "helper boundary"
+python tools/knowledge_cards.py freshness
 python tools/agent.py knowledge audit
 ```
 
-## Recovery evidence archive
+Cards distinguish confirmed rules, contextual heuristics, and owner constraints.
+A stale card remains visible as a warning. Compiler-wide rules are diagnostics,
+not source templates.
 
-Files named `native_matching_wave*.md` and other owner-specific reports are
-historical laboratory records. They preserve exact probes, rejected approaches,
-object results, and retail gates. They are not the default agent context and
-their bodies are not automatically indexed into prompts.
+## Historical evidence archive
 
-Reusable conclusions from those reports belong in:
+`native_matching_wave*.md` and owner reports remain forensic laboratory records.
+Their bodies are not automatic prompt context. Reusable conclusions belong in:
 
 ```text
 config/recovery/owners/
 config/recovery/names.json
 config/recovery/exceptions.json
 config/recovery/compiler_patterns.json
+config/recovery/knowledge_freshness.json
 ```
 
 The intended flow is:
 
 ```text
-historical probe → structured rule/constraint/counterexample → bounded context
+historical/local probe
+→ structured evidence/rule/constraint/counterexample
+→ freshness validation
+→ bounded task context
 ```
 
-Use the recovery index and context generator to retrieve the small relevant
-subset. Do not concatenate the full evidence archive into a prompt. The
-knowledge audit identifies wave files without a reusable card, but it does not
-assume every historical batch contains a global rule.
+## Generated local data
 
-## Generated documentation
-
-The following are generated locally and ignored:
+Ignored output includes:
 
 ```text
+build/context/owner-catalog.json
 build/context/recovery.sqlite
 build/context/recovery-report.md
 build/context/*context*.md
 ```
 
-Generate them through `python tools/agent.py check` or the lower-level recovery
-tools. Never commit generated reports in place of durable metadata.
+Generate it through `python tools/agent.py check` or the lower-level tools. Never
+commit generated reports in place of durable metadata.
