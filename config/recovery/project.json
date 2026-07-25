@@ -35,6 +35,7 @@
       "tools/context_engine.py",
       "tools/local_evidence.py",
       "tools/knowledge_freshness.py",
+      "tools/integration_finalize.py",
       "tools/worktree_manager.py",
       "tools/hooks.py",
       "tools/recovery_knowledge.py",
