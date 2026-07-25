@@ -32,9 +32,11 @@ from tools.context_engine import (
     select_context_knowledge,
 )
 from tools.hooks import HookError, add_hooks_parser, hook_status, run_hooks_command
+from tools.integration_finalize import add_integration_parser, run_integration_command
 from tools.knowledge_freshness import (
     FreshnessError,
     all_freshness,
+    render_freshness_report,
     validate_freshness,
 )
 from tools.owner_catalog import CatalogError, build_catalog, find_owner, write_catalog
@@ -70,6 +72,7 @@ REQUIRED_AGENT_FILES = [
     "tools/context_engine.py",
     "tools/local_evidence.py",
     "tools/knowledge_freshness.py",
+    "tools/integration_finalize.py",
     "tools/worktree_manager.py",
     "tools/hooks.py",
     "tools/knowledge_cards.py",
@@ -355,7 +358,13 @@ def public_check(data: dict[str, Any], *, base: str | None) -> int:
         )
         report = root / "build/context/recovery-report.md"
         report.parent.mkdir(parents=True, exist_ok=True)
-        report.write_text(recovery_report(data), encoding="utf-8")
+        report.write_text(
+            recovery_report(data).rstrip()
+            + "\n\n"
+            + render_freshness_report(data)
+            + "\n",
+            encoding="utf-8",
+        )
         model = next(
             (
                 item
@@ -459,6 +468,7 @@ def main() -> int:
     add_queue_parser(sub)
     add_worktree_parser(sub)
     add_hooks_parser(sub)
+    add_integration_parser(sub)
     _add_catalog_parser(sub)
 
     context = sub.add_parser("context")
@@ -522,6 +532,8 @@ def main() -> int:
             )
         if args.command == "hooks":
             return run_hooks_command(args, root=root)
+        if args.command == "integration":
+            return run_integration_command(args, root=root)
         if args.command == "catalog":
             if args.catalog_command == "build":
                 destination = root / args.output
@@ -555,7 +567,13 @@ def main() -> int:
             )
         destination = root / args.output
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(recovery_report(data), encoding="utf-8")
+        destination.write_text(
+            recovery_report(data).rstrip()
+            + "\n\n"
+            + render_freshness_report(data)
+            + "\n",
+            encoding="utf-8",
+        )
         print(f"wrote {destination.relative_to(root)}")
         return 0
     except (
