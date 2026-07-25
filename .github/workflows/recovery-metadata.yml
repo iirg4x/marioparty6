@@ -47,9 +47,11 @@ jobs:
             config/recovery/AGENTS.md
             config/recovery/compiler_patterns.json
             docs/agent_quickstart.md
+            docs/concurrent_agents.md
             docs/recovery_standard.md
             docs/context_workflow.md
             tools/agent.py
+            tools/agent_queue.py
             tools/recovery_knowledge.py
             tools/knowledge_cards.py
             .github/PULL_REQUEST_TEMPLATE.md
@@ -92,8 +94,10 @@ jobs:
           python tools/recovery_index.py check
           python tools/knowledge_cards.py check
 
-      - name: Check agent workspace
-        run: python tools/agent.py doctor
+      - name: Check agent workspace and empty local queue
+        run: |
+          python tools/agent.py doctor
+          python tools/agent.py queue check
 
       - name: Compile public Python tools
         run: python -m compileall -q tools
