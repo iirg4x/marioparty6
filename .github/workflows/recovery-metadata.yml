@@ -50,6 +50,9 @@ jobs:
             docs/concurrent_agents.md
             docs/recovery_standard.md
             docs/context_workflow.md
+            docs/blind_recovery_benchmark.md
+            benchmarks/blind_recovery/README.md
+            benchmarks/blind_recovery/manifest.json
             tools/agent.py
             tools/agent_queue.py
             tools/claim_diff.py
@@ -63,6 +66,7 @@ jobs:
             tools/hooks.py
             tools/recovery_knowledge.py
             tools/knowledge_cards.py
+            tools/blind_recovery.py
             .github/PULL_REQUEST_TEMPLATE.md
             .github/ISSUE_TEMPLATE/recovery-task.yml
           )
@@ -98,11 +102,12 @@ jobs:
             exit 1
           fi
 
-      - name: Validate metadata, cards, and freshness
+      - name: Validate metadata, cards, freshness, and blind cases
         run: |
           python tools/recovery_index.py check
           python tools/knowledge_cards.py check
           python tools/knowledge_cards.py freshness
+          python tools/blind_recovery.py audit
 
       - name: Compile public Python tools
         run: python -m compileall -q tools
@@ -148,6 +153,17 @@ jobs:
           grep -q "gc132-helper-boundary-lifetime" build/context/mdparty-BBD8.md
           grep -q "mdparty-tail-definition-chronology" build/context/mdparty-BBD8.md
           grep -q "Acceptance criteria" build/context/mdparty-BBD8.md
+
+      - name: Verify organicity review separates retained source debt
+        run: |
+          python tools/blind_recovery.py organicity \
+            src/gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c \
+            --function ProcessLookAhead \
+            --json > build/context/lookahead-organicity.json
+          grep -q "guaranteed-post-loop-condition" build/context/lookahead-organicity.json
+          python tools/blind_recovery.py organicity \
+            src/gssdk_lib/asrpho/common/blocks/stacker.c \
+            --function ProcessStacker
 
       - name: Verify owner context, report, and wave audit
         run: |
