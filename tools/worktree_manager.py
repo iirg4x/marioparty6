@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from tools.agent_queue import claim_task, queue_path, read_queue
+from tools.agent_queue import QueueError, claim_task, queue_path, read_queue
 
 
 class WorktreeError(ValueError):
