@@ -1,25 +1,25 @@
 name: Recovery task
-description: Queue one source owner or a tightly connected recovery question.
+description: Queue one owner or tightly connected recovery question.
 title: "recovery: "
 body:
   - type: markdown
     attributes:
       value: |
-        Keep one agent on one translation unit or tightly connected function cluster. Claude and Codex on the same PC must use separate worktrees, branches, and build directories. Add the task to the local claim queue, generate bounded context, and review automatically selected recovery knowledge before editing.
+        One worker owns one translation unit or tightly connected cluster. Claude and Codex on one PC must use separate worktrees, branches, and build directories. Workers stop at ready; the integration worktree supplies retail proof and finalizes done.
 
   - type: input
     id: owner
     attributes:
-      label: Queue owner key
-      description: Use a configured recovery owner ID when one exists; otherwise use the source path.
-      placeholder: "REL:mdpartydll:mdparty or src/board/tutorial.c"
+      label: Operational owner ID
+      description: Query `python tools/agent.py catalog query <term>` and use the configured owner when possible.
+      placeholder: "REL:mdpartydll:mdparty"
     validations:
       required: true
 
   - type: input
     id: source
     attributes:
-      label: Source owner path
+      label: Source path
       placeholder: "src/REL/mdpartydll/mdparty.c"
     validations:
       required: true
@@ -39,19 +39,29 @@ body:
       options:
         - Claude
         - Codex
+        - Human
         - Unassigned queue task
-        - Integration worktree
     validations:
       required: true
 
   - type: textarea
+    id: scheduling
+    attributes:
+      label: Scheduling metadata
+      description: Priority, batch, dependencies, required capabilities, expected work cost, verification cost, and change class.
+      placeholder: |
+        Priority: high
+        Batch: board-pass-1
+        Depends on: main:game/board-data
+        Capabilities: mwcc
+        Change class: private-source
+        Cost: work 2 / verification 3
+
+  - type: textarea
     id: shared_paths
     attributes:
-      label: Expected shared files
-      description: List central headers, configure.py, symbols, splits, or recovery schemas that must be declared in the local claim. State None when the task is owner-local.
-      placeholder: |
-        - include/game/board.h
-        - configure.py
+      label: Expected shared write paths
+      description: Central headers, configure.py, symbols, splits, or recovery schemas. State None for owner-local work.
 
   - type: textarea
     id: question
@@ -76,15 +86,13 @@ body:
   - type: textarea
     id: knowledge
     attributes:
-      label: Applicable recovery knowledge
-      description: Run the context/knowledge command and list selected confirmed rules, heuristics, owner constraints, and counterexamples. Explain any card that is intentionally not applicable.
+      label: Applicable recovery knowledge and symptoms
+      description: List the command, symptoms, selected rules/heuristics/constraints, counterexamples, and freshness warnings.
       placeholder: |
-        Command: python tools/agent.py knowledge function fn_1_BBD8 --owner REL:mdpartydll:mdparty
-        Cards:
-        - mdparty-tail-definition-chronology — owner constraint
-        - gc132-helper-boundary-lifetime — contextual heuristic
-        Counterexamples:
-        - stage is a counterexample to the general tail-definition shape
+        Command: python tools/agent.py knowledge function fn_1_BBD8 --owner REL:mdpartydll:mdparty --symptom "helper boundary"
+        Cards: gc132-helper-boundary-lifetime; mdparty-tail-definition-chronology
+        Freshness: active
+        Counterexamples: stage is not a tail-definition template
     validations:
       required: true
 
@@ -92,41 +100,39 @@ body:
     id: evidence
     attributes:
       label: Known evidence
-      description: Target instructions, relocations, callers, consumers, same-game domains, sibling source, existing reports, rejected probes, and historical findings already distilled into cards.
+      description: Target instructions, relocations, callers, consumers, same-game domains, sibling source, local reports, and rejected probes.
     validations:
       required: true
 
   - type: textarea
     id: consumers
     attributes:
-      label: Expected consumers and shared interfaces
-      description: List headers, data owners, callers, or Matching consumers that may need verification.
+      label: Expected consumers and integration scope
+      description: Matching consumers, shared interfaces, affected REL/DOL containers, and required machine resources.
 
   - type: textarea
     id: knowledge_output
     attributes:
       label: Expected reusable knowledge output
-      description: State whether this task may add/refine a rule, example, counterexample, owner constraint, or only owner-specific evidence. Do not invent a card merely to fill the field.
-      placeholder: "Possible new counterexample for gc132-broad-header-visibility; otherwise owner evidence only."
+      description: Possible card/example/counterexample/freshness update or owner-only evidence. Do not invent a card to fill the field.
 
   - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
       value: |
-        - Owner claimed in the shared local queue before editing
-        - Shared files declared in the claim before editing
-        - Automatically selected knowledge cards and counterexamples reviewed
-        - Natural evidence-supported candidate documented
+        - Owner and shared paths claimed before editing
+        - Real committed/staged/unstaged/untracked diff stays inside the claim
+        - Selected knowledge, symptoms, freshness, and counterexamples reviewed
+        - Natural candidate documented before compiler reconciliation
         - No independently exact regression
-        - Relocation-aware object result recorded
-        - Affected consumers checked
-        - Reusable source-to-output finding distilled when one was learned
-        - Recovery metadata updated
-        - Last verified commit recorded in the queue
-        - Public agent gate passes
-        - Required private retail gates pass before promotion
-        - Claim released after handoff
+        - Relocation-aware object and affected-consumer results recorded
+        - Reusable finding and freshness updated when learned
+        - Worker public gate passes on a clean committed tree
+        - Structured queue verification recorded for that exact commit
+        - Worker task reaches ready
+        - Integration resources are acquired before full retail build
+        - Retail/checksum/byte gates pass before integration finalization
     validations:
       required: true
 
@@ -135,15 +141,13 @@ body:
     attributes:
       label: Task isolation
       options:
-        - label: I will use a dedicated `agent/<agent>-<owner>-<goal>` branch and worktree.
+        - label: I will use a dedicated branch, worktree, and build directory.
           required: true
-        - label: I will use a build directory that is not shared with another active agent.
+        - label: I will use the queue and will not bypass owner, dependency, shared-path, or resource conflicts.
           required: true
-        - label: I will claim this owner through `python tools/agent.py queue claim` before editing.
-          required: true
-        - label: I will not bypass a queue conflict for a shared owner or path.
+        - label: I will run queue check-diff before commits and handoff.
           required: true
         - label: I will not commit retail inputs, queue state, or generated build/context files.
           required: true
-        - label: I will not repeat a recorded compiler probe without explaining why the existing card/evidence is insufficient.
+        - label: I will not repeat a recorded probe without explaining why existing evidence is insufficient.
           required: true
