@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Agent-facing entry point for repository setup, context, and public checks."""
+"""Agent-facing entry point for setup, context, knowledge, and public checks."""
 
 from __future__ import annotations
 
@@ -16,15 +16,19 @@ from typing import Any, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.recovery_core import (
-    build_index,
-    context_pack,
-    load,
-    markdown_report,
-    quality_findings,
-    root_from,
-)
+from tools.recovery_core import load, quality_findings, root_from
 from tools.recovery_data import RecoveryError, token_estimate, validate_data
+from tools.recovery_knowledge import (
+    build_recovery_index,
+    context_pack,
+    knowledge_audit,
+    recovery_report,
+    render_knowledge_audit,
+    render_knowledge_cards,
+    resolve_context_target,
+    select_knowledge_cards,
+    validate_knowledge,
+)
 
 MIN_PYTHON = (3, 10)
 DEFAULT_FORBIDDEN = [
@@ -38,6 +42,8 @@ REQUIRED_AGENT_FILES = [
     "docs/agent_quickstart.md",
     "docs/recovery_standard.md",
     "config/recovery/project.json",
+    "config/recovery/compiler_patterns.json",
+    "tools/knowledge_cards.py",
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 GENERATED_PATHS = ["build", "build.ninja", "objdiff.json", "ctx.c"]
@@ -79,6 +85,10 @@ def _project_list(data: dict[str, Any], key: str, fallback: list[str]) -> list[s
     return value
 
 
+def _metadata_errors(data: dict[str, Any]) -> list[str]:
+    return sorted(set([*validate_data(data), *validate_knowledge(data)]))
+
+
 def doctor_checks(data: dict[str, Any]) -> list[Check]:
     root: Path = data["root"]
     checks: list[Check] = []
@@ -93,12 +103,15 @@ def doctor_checks(data: dict[str, Any]) -> list[Check]:
         )
     )
 
-    errors = validate_data(data)
+    errors = _metadata_errors(data)
     checks.append(
         Check(
             "recovery metadata",
             "pass" if not errors else "fail",
-            f"{len(data['owners'])} governed owners"
+            (
+                f"{len(data['owners'])} governed owners, "
+                f"{len(data['patterns'])} knowledge cards"
+            )
             if not errors
             else "; ".join(errors[:5]),
         )
@@ -134,11 +147,23 @@ def doctor_checks(data: dict[str, Any]) -> list[Check]:
         branch = _git(root, "branch", "--show-current")
         branch_name = branch.stdout.strip() if branch.returncode == 0 else "unknown"
         if branch_name == "main":
-            checks.append(Check("branch isolation", "warn", "currently on main; create a task branch before editing"))
+            checks.append(
+                Check(
+                    "branch isolation",
+                    "warn",
+                    "currently on main; create a task branch before editing",
+                )
+            )
         elif branch_name:
             checks.append(Check("branch isolation", "pass", branch_name))
         else:
-            checks.append(Check("branch isolation", "warn", "detached HEAD or branch unavailable"))
+            checks.append(
+                Check(
+                    "branch isolation",
+                    "warn",
+                    "detached HEAD or branch unavailable",
+                )
+            )
 
         status = _git(root, "status", "--porcelain")
         dirty = [line for line in status.stdout.splitlines() if line.strip()]
@@ -153,14 +178,17 @@ def doctor_checks(data: dict[str, Any]) -> list[Check]:
         tracked_generated: list[str] = []
         for path in GENERATED_PATHS:
             result = _git(root, "ls-files", "--", path)
-            tracked_generated.extend(line for line in result.stdout.splitlines() if line)
+            tracked_generated.extend(
+                line for line in result.stdout.splitlines() if line
+            )
         checks.append(
             Check(
                 "generated files",
                 "pass" if not tracked_generated else "fail",
                 "generated outputs are untracked"
                 if not tracked_generated
-                else "tracked: " + ", ".join(sorted(set(tracked_generated))[:8]),
+                else "tracked: "
+                + ", ".join(sorted(set(tracked_generated))[:8]),
             )
         )
 
@@ -207,10 +235,18 @@ def _write_context(
     target: str,
     owner: str | None,
     budget: int,
+    knowledge_limit: int | None,
     output: str | None,
     stdout: bool,
 ) -> Path | None:
-    text = context_pack(data, kind, target, owner_id=owner, budget=budget)
+    text = context_pack(
+        data,
+        kind,
+        target,
+        owner_id=owner,
+        budget=budget,
+        knowledge_limit=knowledge_limit,
+    )
     if stdout:
         print(text, end="")
         return None
@@ -261,26 +297,43 @@ def public_check(data: dict[str, Any], *, base: str | None) -> int:
         if process.returncode:
             failed = True
 
-    if validate_data(data):
+    errors = _metadata_errors(data)
+    if errors:
+        for error in errors:
+            print(f"metadata: {error}")
         failed = True
     else:
         database = root / "build/context/recovery.sqlite"
-        counts = build_index(data, database)
-        print("\nindex: " + ", ".join(f"{key}={value}" for key, value in sorted(counts.items())))
+        counts = build_recovery_index(data, database)
+        print(
+            "\nindex: "
+            + ", ".join(
+                f"{key}={value}" for key, value in sorted(counts.items())
+            )
+        )
 
         report = root / "build/context/recovery-report.md"
         report.parent.mkdir(parents=True, exist_ok=True)
-        report.write_text(markdown_report(data), encoding="utf-8")
+        report.write_text(recovery_report(data), encoding="utf-8")
         print(f"report: {report.relative_to(root)}")
 
         model_owner = next(
-            (item for item in data["owners"] if "model-owner" in item.get("tags", [])),
+            (
+                item
+                for item in data["owners"]
+                if "model-owner" in item.get("tags", [])
+            ),
             data["owners"][0] if data["owners"] else None,
         )
         if model_owner:
             smoke = root / "build/context/agent-smoke-context.md"
             smoke.write_text(
-                context_pack(data, "owner", str(model_owner["id"]), budget=6000),
+                context_pack(
+                    data,
+                    "owner",
+                    str(model_owner["id"]),
+                    budget=6000,
+                ),
                 encoding="utf-8",
             )
             print(f"context smoke: {smoke.relative_to(root)}")
@@ -310,10 +363,49 @@ def public_check(data: dict[str, Any], *, base: str | None) -> int:
             print("source review: no findings")
 
     print(
-        "\npublic agent gate: " + ("FAILED" if failed else "PASS")
+        "\npublic agent gate: "
+        + ("FAILED" if failed else "PASS")
         + "\nprivate DOL/REL and retail checksum gates are separate"
     )
     return 1 if failed else 0
+
+
+def _print_knowledge(
+    data: dict[str, Any],
+    *,
+    kind: str,
+    target: str | None,
+    owner_id: str | None,
+    limit: int,
+    as_json: bool,
+    max_items: int,
+) -> int:
+    if kind == "audit":
+        audit = knowledge_audit(data)
+        if as_json:
+            print(json.dumps(audit, indent=2))
+        else:
+            print(render_knowledge_audit(audit, max_items=max_items), end="")
+        return 0
+    if not target:
+        raise RecoveryError(f"knowledge {kind} requires a target")
+    owner, stable_identity = resolve_context_target(
+        data,
+        kind,
+        target,
+        owner_id,
+    )
+    matches = select_knowledge_cards(
+        data,
+        owner,
+        stable_identity=stable_identity,
+        limit=limit,
+    )
+    if as_json:
+        print(json.dumps([item.as_dict() for item in matches], indent=2))
+    else:
+        print(render_knowledge_cards(matches))
+    return 0
 
 
 def main() -> int:
@@ -336,8 +428,24 @@ def main() -> int:
     context.add_argument("target")
     context.add_argument("--owner")
     context.add_argument("--budget", type=int, default=12000)
+    context.add_argument(
+        "--knowledge-limit",
+        type=int,
+        help="maximum automatically selected knowledge cards; 0 disables",
+    )
     context.add_argument("--output")
     context.add_argument("--stdout", action="store_true")
+
+    knowledge = sub.add_parser(
+        "knowledge",
+        help="inspect applicable rules or the wave-distillation backlog",
+    )
+    knowledge.add_argument("kind", choices=["function", "owner", "audit"])
+    knowledge.add_argument("target", nargs="?")
+    knowledge.add_argument("--owner")
+    knowledge.add_argument("--limit", type=int, default=5)
+    knowledge.add_argument("--max-items", type=int, default=20)
+    knowledge.add_argument("--json", action="store_true")
 
     check = sub.add_parser("check", help="run the public-safe agent branch gate")
     check.add_argument("--base", help="base ref or SHA for changed-line checks")
@@ -369,15 +477,29 @@ def main() -> int:
                 target=args.target,
                 owner=args.owner,
                 budget=args.budget,
+                knowledge_limit=args.knowledge_limit,
                 output=args.output,
                 stdout=args.stdout,
             )
             return 0
+        if args.command == "knowledge":
+            return _print_knowledge(
+                data,
+                kind=args.kind,
+                target=args.target,
+                owner_id=args.owner,
+                limit=args.limit,
+                as_json=args.json,
+                max_items=args.max_items,
+            )
         if args.command == "check":
             return public_check(data, base=args.base)
+        errors = _metadata_errors(data)
+        if errors:
+            raise RecoveryError("recovery metadata invalid:\n- " + "\n- ".join(errors))
         destination = root / args.output
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(markdown_report(load(root)), encoding="utf-8")
+        destination.write_text(recovery_report(data), encoding="utf-8")
         print(f"wrote {destination.relative_to(root)}")
         return 0
     except (OSError, RecoveryError) as exc:
