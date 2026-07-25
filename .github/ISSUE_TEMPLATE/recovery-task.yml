@@ -1,0 +1,84 @@
+name: Recovery task
+description: Claim one source owner or a tightly connected recovery question.
+title: "recovery: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep one agent on one translation unit or tightly connected function cluster. Use stable target identities and separate semantic recovery from code-generation reconciliation.
+
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: Recovery owner ID and source path.
+      placeholder: "REL:mdpartydll:mdparty — src/REL/mdpartydll/mdparty.c"
+    validations:
+      required: true
+
+  - type: input
+    id: target
+    attributes:
+      label: Stable target identity and symbol
+      placeholder: "mdpartydll:0xBBD8 — fn_1_BBD8"
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+      description: State the semantic, ownership, data-domain, or compiler-shape question.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: binary
+    attributes:
+      label: Current binary status
+      options:
+        - fallback
+        - partial
+        - exact
+        - unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Known evidence
+      description: Target instructions, relocations, callers, consumers, same-game domains, sibling source, existing reports, and rejected probes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: consumers
+    attributes:
+      label: Expected consumers and shared interfaces
+      description: List headers, data owners, callers, or Matching consumers that may need verification.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - Natural evidence-supported candidate documented
+        - No independently exact regression
+        - Relocation-aware object result recorded
+        - Affected consumers checked
+        - Recovery metadata updated
+        - Public agent gate passes
+        - Required private retail gates pass before promotion
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: isolation
+    attributes:
+      label: Task isolation
+      options:
+        - label: I will use a dedicated `agent/<owner>-<goal>` branch or worktree.
+          required: true
+        - label: I will not commit retail inputs or generated build/context files.
+          required: true
