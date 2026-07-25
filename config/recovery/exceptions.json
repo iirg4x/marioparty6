@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "exceptions": [
+    {
+      "id": "mdparty-late-owner-definitions",
+      "classification": "authenticated",
+      "path": "src/REL/mdpartydll/mdparty.c",
+      "kind": "declaration_visibility",
+      "rules": [],
+      "rationale": "The GC/1.3.2 translation unit must see declarations before code while retaining the same-owner object definitions at the tail. Moving definitions earlier changes text size, BSS size, register allocation, and exact-function count.",
+      "evidence": [
+        "docs/native_matching_wave103.md",
+        "build/GP6E01/mdpartydll/mdparty_objdiff_wave103_header_early.json"
+      ]
+    },
+    {
+      "id": "mdparty-local-audio-prototypes",
+      "classification": "authenticated",
+      "path": "src/REL/mdpartydll/mdparty.c",
+      "kind": "header_visibility",
+      "rules": [],
+      "rationale": "The retail translation unit sees four authoritative audio declarations but not the broad audio header. Including that header changes fn_1_2F22C by eight bytes.",
+      "evidence": [
+        "docs/native_matching_wave101.md",
+        "docs/native_matching_wave103.md",
+        "build/GP6E01/mdpartydll/mdparty_objdiff_wave103_header.json"
+      ]
+    },
+    {
+      "id": "mdparty-stage-local-random-prototypes",
+      "classification": "authenticated",
+      "path": "src/REL/mdpartydll/stage.c",
+      "kind": "header_visibility",
+      "rules": [],
+      "rationale": "The signed frandmod and rand8 declarations are target-backed local visibility. Broad random-function headers change five independently exact stage functions.",
+      "evidence": [
+        "docs/native_matching_wave103.md",
+        "build/GP6E01/mdpartydll/stage_objdiff_wave103_header.json"
+      ]
+    }
+  ]
+}
