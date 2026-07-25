@@ -3,7 +3,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.agent_queue import acquire_resource, claim_task, update_task
+from tools.agent_queue import (
+    acquire_resource,
+    claim_task,
+    record_verification,
+    update_task,
+)
 from tools.claim_diff import check
 
 
@@ -45,7 +50,16 @@ class ClaimDiffTests(unittest.TestCase):
                 "agent/worker",
                 str(worker),
             )
-            claim_task(worker, "a", agent="claude", source="src/a.c")
+            claim_task(
+                worker,
+                "a",
+                agent="claude",
+                source="src/a.c",
+                change_class="documentation",
+            )
+            record_verification(
+                worker, "a", agent="claude", public_gate="pass"
+            )
             update_task(worker, "a", agent="claude", status="ready")
             acquire_resource(root, "integration", agent="integrator", owner="a")
             (root / "src/a.c").write_text("int a = 1;\n", encoding="utf-8")
