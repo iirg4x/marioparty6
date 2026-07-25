@@ -13,6 +13,15 @@ These rules apply under `tools/`. Also follow the root `AGENTS.md`.
   and avoid partially written files.
 - Prefer deterministic exact lookup before fuzzy search. Preserve stable target
   identities in generated output.
+- Knowledge-card ranking must be deterministic and must not infer scope from
+  prose. Exact counterexamples, stable identities, and owners outrank compiler-
+  wide diagnostics.
+- Owner constraints must never be selected for unrelated owners. A known
+  counterexample must remain visible rather than being filtered out.
+- Reserve context budget for selected rule cards before adding source and long
+  evidence sections. Do not read wave-document bodies automatically.
+- Enrich index search with card triggers, emitted effects, rules, safe actions,
+  examples, and counterexamples.
 - Tests must use temporary directories and synthetic fixtures; do not require a
   configured compiler, Ninja build, network access, or `orig/`.
 - A source-quality rule must avoid comments and string literals, scan changed
@@ -23,5 +32,6 @@ Run:
 ```sh
 python -m unittest discover -s tools/tests -v
 python -m compileall -q tools
+python tools/knowledge_cards.py check
 python tools/agent.py check --base origin/main
 ```
