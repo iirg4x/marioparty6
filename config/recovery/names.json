@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "names": [
+    {
+      "stable_id": "main:game/mgdata:MgDecaScoreCalc",
+      "owner": "main:game/mgdata",
+      "current_symbol": "MgDecaScoreCalc",
+      "proposed_name": "MgDecaScoreCalc",
+      "status": "accepted",
+      "confidence": "confirmed",
+      "summary": "The exported name, table ownership, callers, and sibling source agree on decathlon score calculation."
+    },
+    {
+      "stable_id": "mdpartydll:0x2F22C",
+      "owner": "REL:mdpartydll:mdparty",
+      "current_symbol": "fn_1_2F22C",
+      "proposed_name": null,
+      "status": "unresolved",
+      "confidence": "unknown",
+      "summary": "The signed-short contract and stream-fade visibility are authenticated; a semantic function name is not."
+    },
+    {
+      "stable_id": "mdpartydll:0xBBD8",
+      "owner": "REL:mdpartydll:mdparty",
+      "current_symbol": "fn_1_BBD8",
+      "proposed_name": null,
+      "status": "unresolved",
+      "confidence": "unknown",
+      "summary": "Initializer chronology and helper boundaries are recovered, but the user-facing behavior has not been named from sufficient evidence."
+    },
+    {
+      "stable_id": "mdpartydll:0x38314",
+      "owner": "REL:mdpartydll:mdparty",
+      "current_symbol": "fn_1_38314",
+      "proposed_name": null,
+      "status": "unresolved",
+      "confidence": "unknown",
+      "summary": "Control flow and signed return behavior are exact; semantic naming remains open."
+    }
+  ]
+}
