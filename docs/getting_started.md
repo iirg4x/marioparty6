@@ -1,132 +1,151 @@
-# Getting Started
+# Getting started
 
-See [Dependencies](dependencies.md) first.
+This repository is already configured for the US GameCube build `GP6E01`. Do
+not rename the version, regenerate initial symbols from a template, or create a
+new project configuration.
 
-1. [Create a new repository from this template](https://github.com/new?template_name=dtk-template&template_owner=encounter), then clone it.
+## 1. Install tools
 
-2. Rename `orig/GP6E01` to the game's ID. (For example, `GLZE01` for _The Legend of Zelda: The Wind Waker_.)
+See [`dependencies.md`](dependencies.md). For public-safe agent work, Git and
+Python 3.10+ are enough. Local decompilation builds also require Ninja and the
+legally obtained retail inputs.
 
-3. Extract your game to `orig/[GP6E01]`. In Dolphin, use "Extract Entire Disc" for GameCube games, or use "Data Partition" -> "Extract Entire Partition" for Wii games.
+## 2. Clone and inspect the workspace
 
-4. Rename `config/GP6E01` to the game's ID and modify `config/[GP6E01]/config.yml` appropriately, using [`config.example.yml`](/config/GP6E01/config.example.yml) as a reference. If the game doesn't use RELs, the `modules` list in `config.yml` can be removed.
-
-5. Generate a `config/[GP6E01]/build.sha1` file for verification. This file is a list of SHA-1 hashes for each build artifact. One possible way:
-
-    ```sh
-    dtk shasum orig/[GP6E01]/sys/main.dol orig/[GP6E01]/files/*.rel -o config/[GP6E01]/build.sha1
-    ```
-
-6. Modify the paths in `config/[GP6E01]/build.sha1` to point to the `build` directory instead of `orig`. The DOL will be built at `build/[GP6E01]/main.dol`, and modules will be built at `build/[GP6E01]/[module_name]/[module_name].rel`.
-
-7. Update `VERSIONS` in [`configure.py`](/configure.py) with the game ID.
-
-8. Run `python configure.py` to generate the initial `build.ninja`.
-
-9. Run `ninja` to perform initial analysis.
-
-If all goes well, the initial `symbols.txt` and `splits.txt` should be automatically generated. Though it's likely it won't build yet. See [Post-analysis](#post-analysis) for next steps.
-
-## Using a `.map`
-
-If the game has `.map` files matching the DOL (and RELs, if applicable), they can be used to fill out `symbols.txt` and `splits.txt` automatically during the initial analysis.
-
-Add the `map` key to `config.yml`, pointing to the `.map` file from the game disc. (For example, `orig/[GP6E01]/files/main.map`.) For RELs, add a `map` key to each module in `config.yml`.
-
-If the game uses [common BSS](common_bss.md), be sure to set `common_start` as well. (See [`config.example.yml`](/config/GP6E01/config.example.yml).) Otherwise, the final link order may fail to be determined.
-
-Once the initial analysis is completed, `symbols.txt` and `splits.txt` will be generated from the map information. **Remove** the `map` fields from `config.yml` to avoid conflicts.
-
-## Post-analysis
-
-After the initial analysis, `symbols.txt` and `splits.txt` will be generated. These files can be modified to adjust symbols and split points.
-
-If the game uses C++ exceptions, it's required to set up a split for the `__init_cpp_exceptions.cpp` file. This differs between linker versions.
-
-Often indicated by the following error:
-
-```
-#   runtime sources 'global_destructor_chain.c' and
-#   '__init_cpp_exceptions.cpp' both need to be updated to latest version.
+```sh
+git clone https://github.com/iirg4x/marioparty6.git
+cd marioparty6
+python tools/agent.py doctor
 ```
 
-### GC 1.0 - 2.6 linkers
+Create a task branch or worktree before editing:
 
-```yaml
-# splits.txt
-Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
-	.text       start:0x803294EC end:0x80329568
-	.ctors      start:0x80338680 end:0x80338684
-	.dtors      start:0x80338820 end:0x80338828
-	.sdata      start:0x803F67F0 end:0x803F67F8
+```text
+agent/<owner>-<goal>
 ```
 
-`.text`:  
-Find the following symbols in `symbols.txt`:
+Read the root and nearest nested `AGENTS.md` files. See
+[`agent_quickstart.md`](agent_quickstart.md) for the task lifecycle.
 
-```
-GetR2__Fv = .text:0x803294EC; // type:function size:0x8 scope:local align:4
-__fini_cpp_exceptions = .text:0x803294F4; // type:function size:0x34 scope:global align:4
-__init_cpp_exceptions = .text:0x80329528; // type:function size:0x40 scope:global align:4
-```
+## 3. Extract `GP6E01`
 
-The split end is the address of `__init_cpp_exceptions` + size.
+Using a legally obtained US Mario Party 6 disc image, extract the disc with
+Dolphin into:
 
-`.ctors`:  
-Find the address of `__init_cpp_exception_reference` or `_ctors` in symbols.txt.  
-Always size 4.
-
-`.dtors`:  
-Look for the address of `__destroy_global_chain_reference` or `_dtors` in symbols.txt.  
-If `__fini_cpp_exceptions_reference` is present, it's size 8, otherwise size 4
-
-`.sdata`:  
-Find the following symbol in `symbols.txt`:
-
-```
-fragmentID = .sdata:0x803F67F0; // type:object size:0x4 scope:local align:4 data:4byte
+```text
+orig/GP6E01/
 ```
 
-The split end includes any inter-TU padding, so it's usually size 8.
+Preserve the extracted directory layout. At minimum, the configured build uses:
 
-### GC 2.7+ and Wii linkers
-
-```yaml
-# splits.txt
-Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
-	.text       start:0x80345C34 end:0x80345CA4
-	.ctors      start:0x803A54A0 end:0x803A54A4 rename:.ctors$10
-	.dtors      start:0x803A56A0 end:0x803A56A4 rename:.dtors$10
-	.dtors      start:0x803A56A4 end:0x803A56A8 rename:.dtors$15
-	.sdata      start:0x80418CA8 end:0x80418CB0
+```text
+orig/GP6E01/sys/main.dol
+orig/GP6E01/files/dll/*.rel
 ```
 
-`.text`:  
-Find the following symbols in `symbols.txt`:
+The exact configured module paths and retail hashes are authoritative in
+`config/GP6E01/config.yml`. Retail files are ignored and must never be
+committed, uploaded as CI artifacts, or included in an agent context pack.
 
-```
-__fini_cpp_exceptions = .text:0x80345C34; // type:function size:0x34 scope:global
-__init_cpp_exceptions = .text:0x80345C68; // type:function size:0x3C scope:global
-```
+Run the doctor again. `private retail inputs` should now pass.
 
-The split end is the address of `__init_cpp_exceptions` + size.
+## 4. Configure
 
-`.ctors$10`:  
-Find the address of `__init_cpp_exception_reference` or `_ctors` in symbols.txt.  
-Always size 4.
+From the repository root:
 
-`.dtors$10`:  
-Look for the address of `__destroy_global_chain_reference` or `_dtors` in symbols.txt.  
-Always size 4.
-
-`.dtors$15`:  
-Look for the address of `__fini_cpp_exceptions_reference` in symbols.txt.  
-Always size 4.
-
-`.sdata`:  
-Find the following symbol in `symbols.txt`:
-
-```
-fragmentID = .sdata:0x80418CA8; // type:object size:0x4 scope:local data:4byte
+```sh
+python configure.py
 ```
 
-The split end includes any inter-TU padding, so it's usually size 8.
+The project pins DTK, binutils, compiler, `sjiswrap`, and wrapper versions in
+`configure.py`. Explicit local tool paths are optional; inspect all overrides
+with:
+
+```sh
+python configure.py --help
+```
+
+Do not use `--debug` or `--non-matching` for retail matching proof. Those modes
+are useful only for explicitly nonmatching or diagnostic work.
+
+## 5. Build
+
+Use a serialized build for final evidence:
+
+```sh
+ninja -j1
+```
+
+The first run performs analysis and downloads or prepares configured tools when
+needed. Build products, `build.ninja`, objdiff configuration, and generated
+reports are ignored.
+
+## 6. Public-safe agent checks
+
+These checks do not need retail inputs:
+
+```sh
+python tools/agent.py check --base origin/main
+```
+
+They cover Python compilation, unit tests, recovery metadata, the deterministic
+index, bounded context/report generation, repository cleanup policy, changed
+private/generated paths, whitespace, and changed-line source-quality review.
+
+## 7. Context and recovery work
+
+Generate context for the exact owner or function rather than loading the whole
+repository:
+
+```sh
+python tools/agent.py context function fn_1_BBD8 \
+  --owner REL:mdpartydll:mdparty \
+  --budget 12000
+```
+
+For decomp.me preprocessing, `tools/decompctx.py` remains available. It is not a
+replacement for the recovery evidence packet.
+
+## 8. Objdiff
+
+After configuration, open the repository in objdiff. The generated
+`objdiff.json` should be discovered automatically. Use relocation-aware
+comparison for source claims and record:
+
+- exact functions and text/data bytes before and after;
+- relocation differences;
+- independently exact regressions;
+- affected consumers.
+
+Do not commit objdiff JSON reports under `build/`. Put reusable conclusions in
+`config/recovery/` or a concise evidence report.
+
+## 9. Retail verification
+
+Before promoting recovered source or build configuration:
+
+1. run the serialized build;
+2. run DTK against `config/GP6E01/build.sha1`;
+3. compare `build/GP6E01/main.dol` with `orig/GP6E01/sys/main.dol`;
+4. compare every affected REL with its retail file;
+5. ensure generated symbol files contain no unexplained changes.
+
+The DTK executable is generated under `build/tools/`; its extension depends on
+the host platform. A typical gate is:
+
+```sh
+build/tools/dtk shasum -q -c config/GP6E01/build.sha1
+```
+
+On Windows, use `build/tools/dtk.exe`. Use `cmp`, `fc /b`, or another exact
+binary comparison appropriate to the platform.
+
+A passing checksum proves the container output. It does not automatically prove
+that semantic names, types, data domains, or unusual source constructs are
+authentic; update those recovery dimensions separately.
+
+## 10. Handoff
+
+Open a pull request with the repository template and state exactly which public,
+object, consumer, DOL/REL, and checksum gates were run. Never imply that a
+private retail gate passed when the inputs were unavailable.
