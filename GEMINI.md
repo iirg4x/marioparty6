@@ -1,12 +1,13 @@
-# Agent entrypoint
+# Gemini entrypoint
 
-Read the root [`AGENTS.md`](AGENTS.md) and the nearest nested `AGENTS.md` for
-every file you edit. Use `python tools/agent.py doctor`, inspect the shared queue,
-and claim one owner before editing. Use a Gemini-only worktree, branch, and build
-directory, and declare shared files in the claim.
+Read root `AGENTS.md` and the nearest nested `AGENTS.md` before editing.
 
-Generate bounded context through `python tools/agent.py context ...`, and run
-`python tools/agent.py check --base origin/main` before handoff.
+Use a dedicated worktree, branch, and build directory. Claim one owner, declare
+all shared paths, generate symptom-aware bounded context, and run queue
+diff-ownership checks before commits.
 
-There are no Gemini-specific recovery rules; `AGENTS.md` is the single source of
-truth.
+Commit a clean candidate, run the public gate, record structured worker proof,
+and stop at `ready`. The integration worktree performs serialized retail and
+checksum verification before finalizing `done`.
+
+There are no separate Gemini recovery rules; `AGENTS.md` is authoritative.
