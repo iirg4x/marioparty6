@@ -4,7 +4,7 @@ This repository accepts both human- and agent-assisted recovery work. The goal
 is faithful source recovery with retail binary identity as the final objective
 check—not byte closure through unexplained source tricks.
 
-## Choose and isolate a task
+## Choose, queue, and isolate a task
 
 Use a GitHub recovery-task issue or create one from the issue form. The task must
 name:
@@ -15,21 +15,32 @@ name:
 - current binary and source-quality status;
 - expected consumers and verification scope.
 
-Use an isolated branch or worktree:
+Use worktrees from the same Git repository and isolated branches:
 
 ```text
-agent/<owner>-<goal>
+agent/<agent>-<owner>-<goal>
 ```
 
-One agent should own one source owner at a time. Claude and Codex operating on
-the same PC must use separate worktrees, branches, and generated build
-directories. Shared headers, `configure.py`, central symbol files, and recovery
-schemas require explicit integration scope.
+Claude and Codex operating on the same PC must use separate worktrees, branches,
+and build directories. Before editing, claim the owner:
+
+```sh
+python tools/agent.py queue claim <owner> --agent claude
+```
+
+Codex uses `--agent codex`. The orchestrator may create pending bulk work with
+`queue add`. Shared headers, `configure.py`, central symbol files, splits, and
+recovery schemas must be added to the claim before they are edited. Conflicting
+claims are rejected rather than silently merged.
+
+See `docs/concurrent_agents.md` for queue storage, same-PC setup, and integration
+rules.
 
 ## Prepare the workspace
 
 ```sh
 python tools/agent.py doctor
+python tools/agent.py queue status
 python tools/agent.py context function <symbol> --owner <owner-id>
 ```
 
@@ -45,14 +56,24 @@ repository or a complete historical status file in context.
 
 ## Recovery workflow
 
-1. Research without editing: target code, relocations, calls, data references,
+1. Claim the owner and declare expected shared files.
+2. Research without editing: target code, relocations, calls, data references,
    consumers, same-game domains, selected knowledge cards, counterexamples, and
    existing probes.
-2. Write a natural evidence-supported candidate.
-3. Reconcile compiler shape one variable at a time.
-4. Review adversarially for invented semantics and matching-only constructs.
-5. Update durable owner metadata, recovery debt, and reusable source-to-output
+3. Write a natural evidence-supported candidate.
+4. Reconcile compiler shape one variable at a time.
+5. Review adversarially for invented semantics and matching-only constructs.
+6. Update durable owner metadata, recovery debt, and reusable source-to-output
    knowledge.
+7. Record the last verified commit and release the claim after handoff.
+
+Keep the queue status current:
+
+```sh
+python tools/agent.py queue update <owner> \
+  --agent claude \
+  --status coding
+```
 
 A compiler-wide card is a diagnostic rule, not permission to copy an example’s
 source. An owner constraint applies only to its explicit owner or stable
@@ -68,6 +89,7 @@ Never commit:
 - retail inputs under `orig/`;
 - generated files under `build/`;
 - `build.ninja`, `objdiff.json`, or `ctx.c`;
+- the local queue under Git's common directory;
 - local editor, agent, or virtual-environment state;
 - rebuilt DOL/REL binaries or extracted game assets.
 
@@ -87,14 +109,19 @@ evidence, but the reusable conclusion belongs in `config/recovery/`.
 Run the public gate:
 
 ```sh
+python tools/agent.py queue update <owner> \
+  --agent <claude-or-codex> \
+  --status verifying \
+  --verified-commit HEAD
+
 python tools/agent.py check --base origin/main
 ```
 
-It validates knowledge-card schema and references as well as tests, indexing,
-context generation, and source-quality policy. It deliberately does not claim a
-retail build. For source promotion, also run the configured serialized build,
-relocation-aware comparisons, DTK checksum, and explicit DOL/REL byte
-comparisons.
+It validates queue health, knowledge-card schema and references, tests,
+indexing, context generation, and source-quality policy. It deliberately does
+not claim a retail build. For source promotion, also run the configured
+serialized build, relocation-aware comparisons, DTK checksum, and explicit
+DOL/REL byte comparisons.
 
 ## Source changes
 
@@ -128,8 +155,11 @@ workflow/tooling changes when they can be reviewed independently.
 Useful commit details include:
 
 ```text
-Owner: REL/mdpartydll/mdparty.c
+Owner: REL:mdpartydll:mdparty
 Stable-Identity: mdpartydll:0xBBD8
+Agent: claude / codex
+Queue-Status: ready / done
+Last-Verified-Commit: <sha>
 Knowledge-Cards: reviewed IDs; added/refined IDs or none
 Functions-Exact: before -> after
 Relocations: exact / changed / not run
@@ -146,7 +176,16 @@ Do not claim a gate that was not run.
 Complete the pull request template. State accepted and rejected evidence,
 applicable knowledge cards, any new rule or counterexample, natural candidate,
 compiler reconciliation, exact-function impact, consumers, verification,
-metadata changes, and remaining debt.
+metadata changes, remaining debt, queue status, and last verified commit.
+
+After handoff, release the claim:
+
+```sh
+python tools/agent.py queue release <owner> \
+  --agent <claude-or-codex> \
+  --status done \
+  --verified-commit HEAD
+```
 
 A useful handoff must allow another contributor to continue without reading the
 entire agent transcript.
