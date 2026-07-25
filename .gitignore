@@ -1,13 +1,39 @@
-__pycache__
-.idea
-.vscode
+# Python
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.venv/
+venv/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Local agent state; durable findings belong in config/recovery/.
+.agent/
+.agents/
+.codex/
+.claude/
+.gemini/
+
+# Generated build and analysis output
 .ninja_*
-.mypy_cache
 *.exe
-build
-build.ninja
-objdiff.json
-orig/*/*
-!orig/*/.gitkeep
+/build/
+/build.ninja
+/objdiff.json
+/ctx.c
+
+# Locally extracted retail files
+/orig/*/*
+!/orig/*/.gitkeep
+
+# Root scratch output
 /*.txt
-ctx.c
