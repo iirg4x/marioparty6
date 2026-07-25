@@ -1,63 +1,62 @@
-## Scope
+## Scope and coordination
 
 - Owner:
-- Stable target identity:
-- Current symbol(s):
-- Task issue:
-- Assigned agent: Claude / Codex / integration
-- Worktree branch:
-- Queue status: ready / done / released / cancelled
-- Last verified commit:
-- Shared files declared in the claim:
-- Change class: documentation / tooling / metadata / private source / shared interface / build configuration
+- Stable identity / current symbol:
+- Task issue and batch:
+- Assigned worker: Claude / Codex / human
+- Worker branch and worktree:
+- Queue status: researching / coding / verifying / ready / done
+- Change class:
+- Claimed source and shared paths:
+- Dependencies and capabilities:
 
 ## Research question
 
-What source, semantic, ownership, or compiler-shape question does this change answer?
+What semantic, ownership, data-domain, or compiler-shape question is answered?
 
-## Reusable recovery knowledge
-
-List the cards automatically selected for this task:
+## Selected recovery knowledge
 
 - Confirmed rules:
 - Contextual heuristics:
 - Owner constraints:
-- Counterexamples or explicit non-applicability:
+- Counterexamples:
+- Freshness warnings or cards revalidated:
+- Existing card/report that prevented a repeated probe:
 
-Knowledge changes made by this PR:
+Knowledge changes:
 
-- New or refined card IDs:
-- New examples:
-- New counterexamples:
-- Historical wave findings distilled:
+- New/refined cards:
+- New examples/counterexamples:
+- Superseded cards:
+- Historical findings distilled:
 
-A compiler-wide card is diagnostic, not permission to copy another owner’s
-source shape. State `None` rather than omitting this section.
+State `None` where appropriate. Compiler-wide cards are diagnostics, not source
+templates.
 
 ## Evidence
 
 ### Accepted
 
-- Same-game artifacts or target evidence:
-- Callers, consumers, data domains, or ownership:
+- Same-game target/artifact evidence:
+- Callers, consumers, data domains, and ownership:
 - Sibling source:
 - Compiler probes:
+- Local objdiff/report summary:
 
 ### Rejected or inconclusive
 
 - Probe or alternative:
-- Why it was rejected:
-- Existing card/report that prevented a repeated probe:
+- Why rejected:
 
 ## Natural source candidate
 
-Describe the readable evidence-supported candidate before compiler reconciliation.
+Describe the readable evidence-supported candidate before compiler
+reconciliation.
 
 ## Compiler reconciliation
 
-List only the source-shape adjustments actually required. Explain how they align
-with or refine the selected knowledge cards. State `None` when this change does
-not perform compiler reconciliation.
+List only required source-shape adjustments and how they align with or refine the
+selected cards.
 
 ## Binary and consumer impact
 
@@ -65,45 +64,49 @@ not perform compiler reconciliation.
 - Exact text/data bytes before → after:
 - Relocations:
 - Previously exact regressions:
-- Affected consumers and their results:
+- Consumers and results:
 
 ## Source-quality impact
 
-- Binary status:
-- Source-shape status:
-- Semantic status:
-- Naming status:
-- Data status:
+- Binary / source-shape / semantic / naming / data status:
 - New or resolved debt:
 - Exceptions added or removed:
 
-## Verification
+## Worker verification
 
-Mark only checks that were actually run.
+- Worker verified commit:
+- Actual diff stayed inside claim:
+- Public gate:
+- Object report:
+- Functions exact:
+- Relocations:
+- Consumer results:
+- Toolchain:
 
-- [ ] Owner was claimed in the shared local queue before editing
-- [ ] Shared files were declared before they were edited
-- [ ] `python tools/agent.py queue check`
-- [ ] `python tools/agent.py knowledge function <symbol> --owner <owner-id>` or equivalent owner query
+Mark checks actually run:
+
+- [ ] `python tools/agent.py queue check-diff --base origin/main`
 - [ ] `python tools/knowledge_cards.py check`
 - [ ] `python tools/agent.py check --base origin/main`
-- [ ] Relocation-aware object comparison
-- [ ] Affected Matching consumers compared
-- [ ] Serialized DOL/REL build
-- [ ] DTK checksum gate
-- [ ] Explicit retail DOL/REL byte comparison
-- [ ] Generated/private files are not committed
+- [ ] `python tools/agent.py queue verify ...`
+- [ ] Task is `ready`
 
-Private retail gates not required for this change because:
+## Integration verification
 
-## Remaining uncertainty
+Complete only after integration; otherwise state `pending`.
 
-State unresolved semantics, names, source-shape questions, unavailable reports,
-undistilled historical evidence, queue conflicts deferred to integration, or
-private gates that were not run.
+- Integration commit:
+- Integration/retail-build resources acquired:
+- Serialized DOL/REL build:
+- DTK checksum:
+- Explicit retail comparisons:
+- Integration consumer results:
+- `python tools/agent.py integration finalize ...`:
 
-## Handoff
+Private retail gates are not required because:
 
-Summarize the next concrete task, relevant cards/counterexamples, remaining debt,
-and whether the local claim has been released. Do not require the original agent
-transcript.
+## Remaining uncertainty and handoff
+
+State unresolved semantics, stale cards, undistilled evidence, deferred shared
+changes, unavailable private proof, remaining debt, and the next concrete task.
+The handoff must not require the original agent transcript.
