@@ -5,3 +5,7 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mdbankdll/runtime.c:
+	.text       start:0x000137DC end:0x00014220
+	.rodata     start:0x000002C0 end:0x000002D8

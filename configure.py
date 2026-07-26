@@ -1239,6 +1239,39 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "mdbankdll",
+        objects={
+            Object(
+                Matching,
+                "REL/mdbankdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "miraclebookdll",
+        objects={
+            Object(
+                Matching,
+                "REL/miraclebookdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "staffdll",
+        objects={
+            Object(
+                Matching,
+                "REL/staffdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 
 ]
 
