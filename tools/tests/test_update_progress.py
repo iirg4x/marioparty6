@@ -84,8 +84,10 @@ class UpdateProgressTests(unittest.TestCase):
             )
 
     def test_missing_category_is_rejected(self):
+        progress = self.progress_data()
+        del progress["modules"]
         with self.assertRaisesRegex(ProgressError, "modules"):
-            build_snapshot({"all": {}, "dol": {}}, "GP6E01")
+            build_snapshot(progress, "GP6E01")
 
 
 if __name__ == "__main__":
