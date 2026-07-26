@@ -37,6 +37,23 @@
         "docs/native_matching_wave103.md",
         "build/GP6E01/mdpartydll/stage_objdiff_wave103_header.json"
       ]
+    },
+    {
+      "id": "shopevent-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/shopevent.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail shopevent.o omits the two weak sqrtf local statics emitted by generic math.h. Exact same-game board owners branch.c and player.c authenticate defining _MATH_H and including dolphin/math.h as the narrow translation-unit visibility pattern. The shopevent probe removes the 16-byte source-only prefix, makes all 11 paired functions and all selected relocation targets exact, and preserves every prior exact function.",
+      "evidence": [
+        "build/pilot/shopevent-baseline.md",
+        "build/pilot/shopevent-research.md",
+        "build/GP6E01/shopevent-live.json",
+        "src/board/branch.c",
+        "src/board/player.c"
+      ]
     }
   ]
 }

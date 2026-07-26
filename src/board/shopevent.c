@@ -1,3 +1,7 @@
+/* Retail shopevent.o omits math.h's weak sqrtf constants. */
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "game/board/main.h"
 #include "game/board/audio.h"
 #include "game/board/masu.h"
