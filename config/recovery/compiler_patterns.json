@@ -777,39 +777,46 @@
     },
     {
       "id": "gc26-board-transitive-sqrtf-pool",
-      "title": "Diagnose target-absent GC/2.6 sqrtf local-static pools before changing board literals",
-      "classification": "contextual_heuristic",
+      "title": "Select the authenticated owner-local GC/2.6 sqrtf header before changing board literals",
+      "classification": "confirmed_rule",
       "category": "header_visibility",
       "compiler": "GC/2.6",
-      "confidence": "high",
-      "summary": "Several board owners emit candidate-only `_half` and `_three` local statics from a transitive sqrtf/math include closure, shifting `.sdata2` ownership and making instruction-identical functions appear nonexact by relocation identity.",
-      "conditions": "Use only for the observed main board owners under their pinned GC/2.6 profiles when strict objdiff rows differ at SDA21 literals but value-aware bytes and resolved addresses agree.",
+      "confidence": "confirmed",
+      "summary": "For a GC/2.6 board owner whose generic math closure emits source-only `_half` and `_three` sqrtf statics, an authenticated translation-unit selection of the canonical `dolphin/math.h` implementation can remove the 16-byte `.sdata2` prefix and close otherwise instruction-identical SDA21 relocation rows. Gate and roulette prove the owner-local form; changing the shared top-level header is unsafe because it regresses exact REL consumers.",
+      "conditions": "Use only for a main-board owner under its pinned GC/2.6 command when strict objdiff rows differ at SDA21 literals, value-aware bytes and resolved addresses agree, raw `.sdata2` shows exactly the source-only `_half`/`_three` prefix, and same-game exact translation units authenticate the owner-local header chronology. Require the public quality gate and a whole-project retail build.",
       "source_condition": {
-        "change": "A translation unit gains or loses transitive visibility of the retained sqrtf implementation whose function-local statics are `_half` and `_three`.",
+        "change": "A translation unit selects generic `math.h` or the canonical `dolphin/math.h` sqrtf implementation, changing whether weak function-local `_half` and `_three` statics own the first 16 bytes of `.sdata2`.",
         "requires": [
           "pinned owner compiler command",
           "strict and data-value objdiff reports",
           "raw `.sdata2` prefix comparison",
-          "preprocessor/include-closure inspection"
+          "preprocessor/include-closure inspection",
+          "authenticated same-game owner-local header chronology",
+          "whole-project retail checksum"
         ]
       },
       "emitted_effect": {
         "possible_changes": [
           "16-byte `.sdata2` prefix insertion or removal",
           "later constant-pool offsets and anonymous relocation identities",
-          "strict match percentages without instruction or resolved-value changes"
+          "strict match percentages without instruction or resolved-value changes",
+          "unrelated exact REL regressions if the shared top-level header is changed globally"
         ],
         "known_signatures": [
           "candidate `.sdata2` begins with 8-byte `_half` and 8-byte `_three` local statics absent from retail",
           "SDA21 mismatches resolve to identical float or double bytes under data-value comparison",
-          "removing one direct math include is neutral because another header keeps the same transitive closure"
+          "removing one direct math include is neutral because another header keeps the same transitive closure",
+          "gate closes 7/11 to 11/11 and 168/168 relocations after authenticated owner-local header selection",
+          "roulette closes 12/21 to 21/21 and 291/291 relocations after the same owner-local selection"
         ]
       },
-      "rule": "Before tuning literals or declaration lifetimes, determine whether transitive sqrtf visibility introduced the `_half`/`_three` pool; treat it as an include-closure diagnostic, never as permission to fabricate constants or suppress an include guard.",
+      "rule": "Before tuning literals or declaration lifetimes, prove whether transitive sqrtf visibility introduced the `_half`/`_three` pool. Prefer a narrowly authenticated owner-local selection of the existing canonical header, reviewed through a path-specific quality exception; never fabricate constants, pad sections, or change the shared top-level header to solve one owner.",
       "safe_actions": [
         "compare strict and data-value relocation reports",
         "inspect the preprocessed include closure and raw `.sdata2` prefix",
         "test only an authenticated owner-local include chronology change",
+        "require a path-specific reviewed quality exception for an include-guard override",
+        "run every configured retail output after any shared-header diagnostic",
         "record a value-resolved function honestly when relocation spelling alone remains"
       ],
       "applicability": {
@@ -821,14 +828,20 @@
         "owner_tags": ["board"]
       },
       "examples": [
+        "main:board/gate",
+        "main:board/roulette",
         "main:board/star",
         "main:board/dice"
       ],
       "counterexamples": [
         "Removing the direct humath include from main:board/dice was byte-neutral because transitive headers still exposed sqrtf.",
-        "An `_MATH_H` guard override improved several main:board/tutorial functions but failed the public source-quality gate and is not a safe action."
+        "Changing shared include/math.h from static to automatic locals improved gate and roulette but regressed seven exact REL outputs, so the global change was reverted.",
+        "An unreviewed `_MATH_H` guard override in main:board/tutorial improved several functions but failed the public source-quality gate; exact peer evidence and a path-specific exception are mandatory."
       ],
-      "related_exceptions": [],
+      "related_exceptions": [
+        "gate-no-generic-math-inline",
+        "roulette-no-generic-math-inline"
+      ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md"
       ]
