@@ -71,7 +71,7 @@ The following do **not** require retail files:
 
 ```sh
 python -m unittest discover -s tools/tests -v
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 ```
 
 A source promotion additionally requires the locally extracted retail inputs,

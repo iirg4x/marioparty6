@@ -33,12 +33,18 @@ Work from an isolated task worktree. Claim one owner before editing, or create
 and claim it automatically:
 
 ```sh
-python tools/agent.py worktree create <owner> --agent claude
+python tools/agent.py worktree create <owner> \
+  --agent claude \
+  --base <AI_BASE_COMMIT>
 ```
 
 Codex uses `--agent codex`. Claude and Codex must never share a worktree, branch,
 or build directory. Declare central headers, `configure.py`, symbols, splits,
 and recovery schemas with `--shared` before editing them.
+
+`AI_BASE_COMMIT` is the pinned commit of `agent/recovery-context-workflow` for
+the active batch. Worker branches and diff checks use that exact commit. Only
+`tools/promote_recovered_c.py` starts a new branch from `main`.
 
 Generate bounded task context:
 
@@ -61,7 +67,7 @@ Historical wave bodies are not loaded automatically.
 - Never transfer agent tooling, prompts, queue files, metadata, benchmarks,
   workflow files, reports, docs, or commit history to `main`.
 - Claim the source owner and every shared write path before editing.
-- Run `python tools/agent.py queue check-diff --base origin/main` before commits
+- Run `python tools/agent.py queue check-diff --base <AI_BASE_COMMIT>` before commits
   and handoff. Committed, staged, unstaged, and untracked paths must remain
   inside the claim and outside every other active claim.
 - Do not edit or commit `orig/`, `build/`, `build.ninja`, `objdiff.json`, generated
@@ -109,7 +115,7 @@ Update queue status through `researching`, `coding`, `verifying`, `blocked`, and
 Commit first and leave the worktree clean:
 
 ```sh
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 
 python tools/agent.py queue verify <owner> \
   --agent <claude-or-codex> \

@@ -85,7 +85,7 @@ reports are ignored.
 These checks do not need retail inputs:
 
 ```sh
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 ```
 
 They cover Python compilation, unit tests, recovery metadata, the deterministic

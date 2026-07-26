@@ -56,6 +56,7 @@ class ClaimDiffTests(unittest.TestCase):
                 agent="claude",
                 source="src/a.c",
                 change_class="documentation",
+                base_ref="origin/main",
             )
             record_verification(
                 worker, "a", agent="claude", public_gate="pass"

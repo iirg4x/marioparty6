@@ -4,6 +4,11 @@ Claude and Codex may work simultaneously on one PC, but they must use separate
 Git worktrees, branches, and build directories. Final retail integration is
 serialized.
 
+Pin `AI_BASE_COMMIT` to the selected commit of
+`agent/recovery-context-workflow` before adding a batch. Worker worktrees store
+that exact ref in their queue claim, and worker diff checks compare against it.
+`main` is reserved for clean C-only promotion worktrees.
+
 ## One-time setup
 
 From the integration checkout:
@@ -58,14 +63,14 @@ optional read-only retail link, and queue claim together:
 ```sh
 python tools/agent.py worktree create main:board/tutorial \
   --agent claude \
-  --base main \
+  --base <AI_BASE_COMMIT> \
   --retail C:\retail\GP6E01
 ```
 
 ```sh
 python tools/agent.py worktree create REL:fileseldll:filesel \
   --agent codex \
-  --base main \
+  --base <AI_BASE_COMMIT> \
   --retail C:\retail\GP6E01
 ```
 
@@ -102,7 +107,7 @@ a task that declares one of its headers for modification.
 Before every commit:
 
 ```sh
-python tools/agent.py queue check-diff --base origin/main
+python tools/agent.py queue check-diff --base <AI_BASE_COMMIT>
 ```
 
 This checks committed, staged, unstaged, and untracked paths. It fails when the
@@ -128,7 +133,7 @@ During verification, commit first and leave the worktree clean. Then run the
 public gate and record structured proof:
 
 ```sh
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 
 python tools/agent.py queue verify <owner> \
   --agent claude \

@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from tools.recovery_core import (
@@ -130,7 +131,7 @@ class RecoveryWorkflowTests(unittest.TestCase):
             database = root / "build/context/index.sqlite"
             counts = build_index(data, database)
             self.assertEqual(counts["functions"], 1)
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 stable_id = connection.execute(
                     "SELECT stable_id FROM functions"
                 ).fetchone()[0]

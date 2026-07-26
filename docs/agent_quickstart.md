@@ -29,7 +29,7 @@ Claude and Codex use separate worktrees, branches, and build directories:
 ```sh
 python tools/agent.py worktree create <owner> \
   --agent <claude-or-codex> \
-  --base main \
+  --base <AI_BASE_COMMIT> \
   --retail <read-only-GP6E01-directory>
 ```
 
@@ -82,7 +82,7 @@ python tools/agent.py queue update <owner> \
 Before commits and handoff:
 
 ```sh
-python tools/agent.py queue check-diff --base origin/main
+python tools/agent.py queue check-diff --base <AI_BASE_COMMIT>
 ```
 
 The check covers committed, staged, unstaged, and untracked files.
@@ -98,7 +98,7 @@ branch and are never promoted to `main`.
 Commit and leave the worktree clean:
 
 ```sh
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 
 python tools/agent.py queue verify <owner> \
   --agent <agent> \

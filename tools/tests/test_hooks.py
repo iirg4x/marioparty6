@@ -1,3 +1,4 @@
+import os
 import subprocess
 import tempfile
 import unittest
@@ -24,7 +25,12 @@ class HookTests(unittest.TestCase):
             run(root, "git", "init", "-q")
             paths = install_hooks(root)
             self.assertEqual(set(hook_status(root).values()), {"managed"})
-            self.assertTrue(all(path.stat().st_mode & 0o100 for path in paths))
+            if os.name != "nt":
+                self.assertTrue(all(path.stat().st_mode & 0o100 for path in paths))
+            pre_commit = next(path for path in paths if path.name == "pre-commit")
+            script = pre_commit.read_text(encoding="utf-8")
+            self.assertNotIn("origin/main", script)
+            self.assertIn("MP6_AGENT_BASE", script)
             uninstall_hooks(root)
             self.assertEqual(set(hook_status(root).values()), {"missing"})
 

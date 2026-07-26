@@ -160,7 +160,8 @@ def _run(root: Path, *args: str, allow_failure: bool = False) -> str:
 
 def git_root(path: str | Path | None = None) -> Path:
     start = Path(path or Path.cwd()).resolve()
-    return Path(_run(start, "git", "rev-parse", "--show-toplevel")).resolve()
+    relative = _run(start, "git", "rev-parse", "--show-cdup")
+    return (start / relative).resolve()
 
 
 def git_commit(root: Path, value: str = "HEAD") -> str:

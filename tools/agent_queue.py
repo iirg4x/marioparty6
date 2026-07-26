@@ -16,10 +16,17 @@ import subprocess
 import tempfile
 import time
 import uuid
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Iterator, Mapping, Sequence
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.git_paths import native_git_path
+from tools.workspace_policy import DEFAULT_WORKER_BASE
 
 SCHEMA_VERSION = 2
 QUEUE_ENV = "MP6_AGENT_QUEUE"
@@ -66,12 +73,21 @@ def _run(cwd: Path, *command: str) -> str:
 
 def git_root(cwd: str | Path | None = None) -> Path:
     start = Path(cwd or Path.cwd()).resolve()
-    return Path(_run(start, "git", "rev-parse", "--show-toplevel")).resolve()
+    relative = _run(start, "git", "rev-parse", "--show-cdup")
+    return (start / relative).resolve()
 
 
 def git_common_dir(root: Path) -> Path:
-    value = Path(_run(root, "git", "rev-parse", "--git-common-dir"))
-    return (value if value.is_absolute() else root / value).resolve()
+    return native_git_path(
+        _run(
+            root,
+            "git",
+            "rev-parse",
+            "--path-format=relative",
+            "--git-common-dir",
+        ),
+        relative_to=root,
+    )
 
 
 def queue_path(root: Path, override: str | Path | None = None) -> Path:
@@ -114,7 +130,7 @@ def _normalise_task(task: Mapping[str, Any]) -> dict[str, Any]:
     value.setdefault("change_class", "private-source")
     value.setdefault("estimated_cost", 1)
     value.setdefault("verification_cost", 1)
-    value.setdefault("base_ref", "origin/main")
+    value.setdefault("base_ref", DEFAULT_WORKER_BASE)
     value.setdefault("created_at", _now())
     value.setdefault("claimed_at", None)
     value.setdefault("updated_at", value.get("created_at") or _now())
@@ -306,9 +322,7 @@ def _validate_worktree(
     if not worktree.is_dir():
         return [f"worktree does not exist: {worktree}"]
     try:
-        actual_root = Path(
-            _run(worktree, "git", "rev-parse", "--show-toplevel")
-        ).resolve()
+        actual_root = git_root(worktree)
         if actual_root != worktree.resolve():
             errors.append(f"worktree root is {actual_root}, not {worktree}")
         if git_common_dir(repository_root) != git_common_dir(worktree):
@@ -322,7 +336,14 @@ def _validate_worktree(
             repository_root, "git", "worktree", "list", "--porcelain"
         )
         registered = {
-            _canon(line.removeprefix("worktree "))
+            _canon(
+                str(
+                    native_git_path(
+                        line.removeprefix("worktree "),
+                        relative_to=repository_root,
+                    )
+                )
+            )
             for line in listing.splitlines()
             if line.startswith("worktree ")
         }
@@ -514,7 +535,7 @@ def add_task(
     change_class: str = "private-source",
     estimated_cost: int = 1,
     verification_cost: int = 1,
-    base_ref: str = "origin/main",
+    base_ref: str = DEFAULT_WORKER_BASE,
 ) -> dict[str, Any]:
     owner = owner.strip()
     if not owner or priority not in PRIORITY:
@@ -782,7 +803,7 @@ def check_diff_claim(
         if require_claim:
             raise QueueError("current worktree has no active claim")
         return {"task": None, "changed": [], "errors": []}
-    effective_base = base or str(task.get("base_ref") or "origin/main")
+    effective_base = base or str(task.get("base_ref") or DEFAULT_WORKER_BASE)
     changed = sorted(changed_paths(root, effective_base))
     allowed = _write_paths(task)
     diff_errors: list[str] = []
@@ -1162,7 +1183,7 @@ def add_queue_parser(subparsers: Any) -> argparse.ArgumentParser:
     )
     add.add_argument("--estimated-cost", type=int, default=1)
     add.add_argument("--verification-cost", type=int, default=1)
-    add.add_argument("--base-ref", default="origin/main")
+    add.add_argument("--base-ref", default=DEFAULT_WORKER_BASE)
     add.add_argument("--note")
 
     claim = actions.add_parser("claim")

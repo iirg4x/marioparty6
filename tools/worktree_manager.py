@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from tools.agent_queue import QueueError, claim_task, queue_path, read_queue
+from tools.workspace_policy import DEFAULT_WORKER_BASE
 
 
 class WorktreeError(ValueError):
@@ -68,7 +69,7 @@ def create_worktree(
     *,
     agent: str,
     owner: str,
-    base: str = "main",
+    base: str = DEFAULT_WORKER_BASE,
     branch: str | None = None,
     path: str | Path | None = None,
     build_dir: str | Path | None = None,
@@ -125,6 +126,7 @@ def create_worktree(
             source=source,
             shared_files=shared_files,
             change_class=change_class,
+            base_ref=base,
             queue_file=queue_file,
             owners=owners,
         )
@@ -203,7 +205,7 @@ def add_worktree_parser(subparsers: Any) -> argparse.ArgumentParser:
     create = commands.add_parser("create")
     create.add_argument("owner")
     create.add_argument("--agent", required=True)
-    create.add_argument("--base", default="main")
+    create.add_argument("--base", default=DEFAULT_WORKER_BASE)
     create.add_argument("--branch")
     create.add_argument("--path")
     create.add_argument("--build-dir")

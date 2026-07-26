@@ -132,6 +132,7 @@ class PromotionTests(unittest.TestCase):
             source_blob = run(root, "git", "rev-parse", f"{source_commit}:src/game/example.c")
             promoted_blob = run(promotion, "git", "rev-parse", "HEAD:src/game/example.c")
             self.assertEqual(source_blob, promoted_blob)
+            self.assertEqual(run(promotion, "git", "rev-parse", "HEAD^"), base)
             message = run(promotion, "git", "log", "-1", "--format=%B")
             self.assertEqual(message, "Recover example processing")
         finally:

@@ -91,7 +91,7 @@
   },
   "coordination": {
     "queue_schema": 2,
-    "default_base_ref": "origin/main",
+    "default_base_ref": "agent/recovery-context-workflow",
     "stale_hours": 24,
     "default_resources": [
       "retail-build",

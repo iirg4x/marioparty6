@@ -27,6 +27,7 @@ def build_index(data: dict[str, Any], output: Path) -> dict[str, int]:
     with tempfile.NamedTemporaryFile(dir=output.parent, prefix=output.name, suffix=".tmp", delete=False) as handle:
         temporary = Path(handle.name)
     counts = Counter()
+    connection: sqlite3.Connection | None = None
     try:
         connection = sqlite3.connect(temporary)
         connection.executescript(
@@ -94,8 +95,11 @@ def build_index(data: dict[str, Any], output: Path) -> dict[str, int]:
         connection.execute("INSERT INTO meta VALUES('digest',?)", (digest([*data["metadata_paths"], *source_paths]),))
         connection.commit()
         connection.close()
+        connection = None
         temporary.replace(output)
     except Exception:
+        if connection is not None:
+            connection.close()
         temporary.unlink(missing_ok=True)
         raise
     return dict(counts)
@@ -103,10 +107,12 @@ def build_index(data: dict[str, Any], output: Path) -> dict[str, int]:
 
 def query_index(database: Path, term: str, limit: int = 20) -> list[dict[str, Any]]:
     connection = sqlite3.connect(database)
-    connection.row_factory = sqlite3.Row
-    exact = connection.execute("SELECT kind,key,owner_id,text FROM search WHERE lower(key)=lower(?) LIMIT ?", (term, limit)).fetchall()
-    rows = exact or connection.execute("SELECT kind,key,owner_id,text FROM search WHERE lower(key) LIKE lower(?) OR lower(text) LIKE lower(?) ORDER BY kind,key LIMIT ?", (f"%{term}%", f"%{term}%", limit)).fetchall()
-    connection.close()
+    try:
+        connection.row_factory = sqlite3.Row
+        exact = connection.execute("SELECT kind,key,owner_id,text FROM search WHERE lower(key)=lower(?) LIMIT ?", (term, limit)).fetchall()
+        rows = exact or connection.execute("SELECT kind,key,owner_id,text FROM search WHERE lower(key) LIKE lower(?) OR lower(text) LIKE lower(?) ORDER BY kind,key LIMIT ?", (f"%{term}%", f"%{term}%", limit)).fetchall()
+    finally:
+        connection.close()
     return [dict(row) for row in rows]
 
 

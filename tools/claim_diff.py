@@ -32,7 +32,9 @@ def _branch(root: Path) -> str:
     return result.stdout.strip()
 
 
-def _integration_result(root: Path, base: str, queue_file: str | None) -> dict[str, Any]:
+def _integration_result(
+    root: Path, base: str | None, queue_file: str | None
+) -> dict[str, Any]:
     data = queue.read_queue(queue.queue_path(root, queue_file))
     errors = queue.validate_queue(data)
     if errors:
@@ -60,7 +62,10 @@ def _integration_result(root: Path, base: str, queue_file: str | None) -> dict[s
     if len(tasks) != 1:
         raise queue.QueueError("integration resource must name one ready task")
     task = tasks[0]
-    changed = sorted(queue.changed_paths(root, base))
+    effective_base = base or str(
+        task.get("base_ref") or queue.DEFAULT_WORKER_BASE
+    )
+    changed = sorted(queue.changed_paths(root, effective_base))
     allowed = queue._write_paths(task)
     failures = [
         f"integration path {path} is outside ready task {owner}"
@@ -79,14 +84,16 @@ def _integration_result(root: Path, base: str, queue_file: str | None) -> dict[s
     return {
         "mode": "integration",
         "task": task,
-        "base": base,
+        "base": effective_base,
         "changed": changed,
         "allowed": sorted(allowed),
         "errors": sorted(set(failures)),
     }
 
 
-def check(root: Path, base: str, queue_file: str | None = None) -> dict[str, Any]:
+def check(
+    root: Path, base: str | None = None, queue_file: str | None = None
+) -> dict[str, Any]:
     try:
         return {
             "mode": "worker",
@@ -101,7 +108,7 @@ def check(root: Path, base: str, queue_file: str | None = None) -> dict[str, Any
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root")
-    parser.add_argument("--base", default="origin/main")
+    parser.add_argument("--base")
     parser.add_argument("--queue-file")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

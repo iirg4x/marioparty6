@@ -38,6 +38,13 @@ class IntegrationFinalizeTests(unittest.TestCase):
             run(root, "git", "commit", "-qm", "base")
             run(root, "git", "remote", "add", "origin", str(root))
             run(root, "git", "update-ref", "refs/remotes/origin/main", "HEAD")
+            run(
+                root,
+                "git",
+                "update-ref",
+                "refs/heads/agent/recovery-context-workflow",
+                "HEAD",
+            )
             worker = Path(directory) / "worker"
             run(
                 root,

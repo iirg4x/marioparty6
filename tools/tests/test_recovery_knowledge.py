@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from tools.recovery_core import load, query_index
@@ -157,7 +158,7 @@ class RecoveryKnowledgeTests(unittest.TestCase):
             build_recovery_index(data, database)
             rows = query_index(database, "inspect all callers")
             self.assertEqual(rows[0]["kind"], "pattern")
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 text = connection.execute(
                     "SELECT text FROM search WHERE kind='pattern'"
                 ).fetchone()[0]

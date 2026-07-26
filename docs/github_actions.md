@@ -40,8 +40,8 @@ skipped while such a PR is draft. Workers run locally:
 
 ```sh
 python tools/agent.py hooks install
-python tools/agent.py queue check-diff --base origin/main
-python tools/agent.py check --base origin/main
+python tools/agent.py queue check-diff --base <AI_BASE_COMMIT>
+python tools/agent.py check --base <AI_BASE_COMMIT>
 ```
 
 Mark an **internal PR targeting the AI workspace branch** ready when remote

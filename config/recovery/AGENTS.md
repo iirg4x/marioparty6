@@ -47,5 +47,5 @@ python tools/recovery_index.py check
 python tools/knowledge_cards.py check
 python tools/knowledge_cards.py freshness
 python tools/agent.py knowledge audit
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 ```

@@ -54,6 +54,13 @@ class AgentQueueTests(unittest.TestCase):
         run(self.main, "git", "commit", "-qm", "base")
         run(self.main, "git", "remote", "add", "origin", str(self.main))
         run(self.main, "git", "update-ref", "refs/remotes/origin/main", "HEAD")
+        run(
+            self.main,
+            "git",
+            "update-ref",
+            "refs/heads/agent/recovery-context-workflow",
+            "HEAD",
+        )
         self.claude = self.base / "claude"
         self.codex = self.base / "codex"
         run(

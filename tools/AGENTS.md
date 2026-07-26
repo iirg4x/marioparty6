@@ -96,5 +96,5 @@ python tools/knowledge_cards.py check
 python tools/blind_recovery.py audit
 python tools/agent.py catalog build
 python tools/agent.py queue check
-python tools/agent.py check --base origin/main
+python tools/agent.py check --base <AI_BASE_COMMIT>
 ```

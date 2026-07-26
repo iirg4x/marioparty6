@@ -117,8 +117,8 @@ def card_freshness(data: Mapping[str, Any], card_id: str) -> dict[str, Any]:
             "reason": "configured status",
         }
     commit = str(record.get("validated_commit", ""))
-    exists = _git(root, "cat-file", "-e", f"{commit}^{{commit}}")
-    if exists.returncode:
+    exists = _git(root, "cat-file", "-t", commit)
+    if exists.returncode or exists.stdout.strip() != "commit":
         return {
             **record,
             "effective_status": "stale",

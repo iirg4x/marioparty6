@@ -35,8 +35,9 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools import agent_queue
+from tools.workspace_policy import DEFAULT_PROMOTION_BASE
 
-DEFAULT_BASE = "main"
+DEFAULT_BASE = DEFAULT_PROMOTION_BASE
 DEFAULT_MANIFEST_ROOT = Path("build/promotion")
 DISALLOWED_BRANCH_PREFIXES = ("agent/", "ai/", "claude/", "codex/")
 AI_MARKER = re.compile(
@@ -99,8 +100,8 @@ def _run(
 
 def git_root(value: str | Path | None = None) -> Path:
     start = Path(value or Path.cwd()).resolve()
-    output = _run(start, "git", "rev-parse", "--show-toplevel").stdout.strip()
-    return Path(output).resolve()
+    relative = _run(start, "git", "rev-parse", "--show-cdup").stdout.strip()
+    return (start / relative).resolve()
 
 
 def resolve_ref(root: Path, value: str) -> str:

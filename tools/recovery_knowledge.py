@@ -488,13 +488,16 @@ def build_recovery_index(data: dict[str, Any], output: Path) -> dict[str, int]:
     if errors:
         raise RecoveryError("recovery knowledge invalid:\n- " + "\n- ".join(errors))
     counts = _build_index(data, output)
-    with sqlite3.connect(output) as connection:
+    connection = sqlite3.connect(output)
+    try:
         for card in data.get("patterns", []):
             connection.execute(
                 "UPDATE search SET text=? WHERE kind='pattern' AND key=?",
                 (_knowledge_search_text(card), card.get("id")),
             )
         connection.commit()
+    finally:
+        connection.close()
     return counts
 
 

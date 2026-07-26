@@ -6,8 +6,14 @@ from __future__ import annotations
 import argparse
 import stat
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.git_paths import native_git_path
 
 MARKER = "# managed-by-mp6-agent-tools"
 
@@ -39,9 +45,17 @@ def hooks_dir(root: Path) -> Path:
     if configured:
         path = Path(configured)
         return (path if path.is_absolute() else root / path).resolve()
-    common = Path(_run(root, "git", "rev-parse", "--git-common-dir"))
-    common = common if common.is_absolute() else root / common
-    return common.resolve() / "hooks"
+    common = native_git_path(
+        _run(
+            root,
+            "git",
+            "rev-parse",
+            "--path-format=relative",
+            "--git-common-dir",
+        ),
+        relative_to=root,
+    )
+    return common / "hooks"
 
 
 def _script(kind: str) -> str:
@@ -49,9 +63,12 @@ def _script(kind: str) -> str:
         body = r'''
 ROOT="$(git rev-parse --show-toplevel)"
 PYTHON_BIN="${MP6_PYTHON:-python}"
-BASE="${MP6_AGENT_BASE:-origin/main}"
 cd "$ROOT"
-"$PYTHON_BIN" tools/claim_diff.py --base "$BASE"
+if [ -n "${MP6_AGENT_BASE:-}" ]; then
+  "$PYTHON_BIN" tools/claim_diff.py --base "$MP6_AGENT_BASE"
+else
+  "$PYTHON_BIN" tools/claim_diff.py
+fi
 changed_py="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.py$' || true)"
 if [ -n "$changed_py" ]; then
   "$PYTHON_BIN" -m py_compile $changed_py
