@@ -1,7 +1,7 @@
 # Board GC/2.6 transitive math-pool evidence
 
 Validated through AI integration commit
-`630e9d333ae7c693e214517d6db0453fcf30995b` with the pinned GC/2.6 owner
+`6edb65c3076abb1d90ed2ffa1419cd65f41ed3f0` with the pinned GC/2.6 owner
 commands and DTK `0.9.2` (`4d039140f2d2ed80572b1949b76a5ff9b3094e06`).
 
 ## Repeated signature
@@ -33,6 +33,15 @@ functions and 291/291 relocations. Their named data is exact; the remaining raw
 section-size differences are target-side synthetic gaps rather than C-owned
 padding.
 
+The same authenticated owner-local boundary produces partial but independently
+exact gains in two larger owners. Tutorial rises from 39/55 to 44/55 strict
+functions, closing TutorialWatch, both tutorial view functions, and both sprite
+display functions without losing an exact neighbor. Dice rises from 39/68 to
+44/68, closing DiceProcExec, DiceObjCreate, DiceObjOMExec, DiceObjHit, and
+DiceNumObjReset. All retained exact-function relocations remain strict, both
+path-specific quality exceptions pass, and the 137-output retail gate remains
+exact.
+
 The shared-header counterexample is equally important. Changing
 `include/math.h` itself from static to automatic locals improved gate and
 roulette and caused no strict loss among the 40 audited board objects, but the
@@ -43,10 +52,14 @@ safe correction is therefore translation-unit-local, not project-wide.
 
 `main:board/tutorial` supplied the original negative source-quality control: an
 unreviewed guard override removed the prefix and exacted several functions, but
-the public gate correctly rejected it. Exact same-game precedent and a narrow
-path-specific quality exception are required before retaining that source
-shape. `main:board/opening` similarly showed that correcting pool chronology
-alone did not establish an owner-clean helper/linkage shape.
+the public gate correctly rejected it. After gate and roulette established
+exact same-game precedent, a narrow path-specific exception authenticated the
+same tutorial source boundary and the five gains became retainable. This does
+not turn the pattern into a blanket rewrite: applying it to `main:board/star`
+was byte-neutral at 60/90 strict functions, confirming that Star's early
+`SignMdlTbl` chronology and map-view frame mismatch are independent.
+`main:board/opening` similarly showed that correcting pool chronology alone did
+not establish an owner-clean helper/linkage shape.
 
 ## Bounded conclusion
 
