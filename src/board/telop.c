@@ -1,4 +1,5 @@
 #include "game/board/main.h"
+#include "game/board/audio.h"
 #include "game/board/pause.h"
 
 #include "game/armem.h"
@@ -6,6 +7,7 @@
 #include "game/sprite.h"
 #include "game/flag.h"
 #include "game/pad.h"
+#include "game/wipe.h"
 
 #include "msm.h"
 
@@ -19,6 +21,23 @@ typedef struct TelopTimeChangeWork_s {
     unsigned killF : 1;
     unsigned completeF : 1;
 } TELOP_TIME_CHANGE_WORK;
+
+static const s32 tauntSeTbl[14] = {
+    0x24D,
+    0x235,
+    0x2C5,
+    0x325,
+    0x2F5,
+    0x1ED,
+    0x30D,
+    0x205,
+    0x2DD,
+    0x295,
+    0x21D,
+    0x295,
+    0x295,
+    0x295,
+};
 
 static float telopTimeBaseTPLvlTbl[8] = {
     1.0f,
@@ -162,6 +181,55 @@ void mbTauntClose(void)
         TAUNT_WORK *work = omObjGetWork(tauntOMObj, TAUNT_WORK);
         work->killF = TRUE;
         _SetFlag(FLAG_BOARD_WALKDONE);
+    }
+}
+
+static void TauntOMExec(OMOBJ *obj)
+{
+    int padNo;
+    int charNo;
+    TAUNT_WORK *work;
+    BOOL charEnabled;
+    int i;
+
+    work = omObjGetWork(obj, TAUNT_WORK);
+    if (work->killF || mbExitCheck()) {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (tauntSeNo[i] >= 0) {
+                mbAudFXStop(tauntSeNo[i]);
+                tauntSeNo[i] = MSM_SENO_NONE;
+            }
+        }
+        tauntOMObj = NULL;
+        omDelObjEx(HuPrcCurrentGet(), obj);
+        return;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        if (tauntSeNo[i] >= 0 && HuAudFXStatusGet(tauntSeNo[i]) == MSM_SE_DONE) {
+            tauntSeNo[i] = MSM_SENO_NONE;
+        }
+    }
+    if (mbPauseProcCheck() || _CheckFlag(FLAG_BOARD_WALKDONE) || WipeCheck()
+        || GwSystem.turnPlayerNo == -1 || GWPartyGet() == FALSE
+        || _CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        return;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        if (i == GwSystem.turnPlayerNo) {
+            continue;
+        }
+        if (GwPlayer[i].comF) {
+            continue;
+        }
+        padNo = GwPlayer[i].padNo;
+        charNo = GwPlayer[i].charNo;
+        charEnabled = charNo == 10 ? TRUE : GWBankFlagGet(charNo + 0x24);
+        if (charEnabled == FALSE) {
+            continue;
+        }
+        if (tauntSeNo[padNo] < 0 && (HuPadBtnDown[padNo] & 0x40)) {
+            tauntSeNo[padNo] = mbAudFXPlay((s16)tauntSeTbl[charNo]);
+        }
     }
 }
 
