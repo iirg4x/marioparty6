@@ -1095,8 +1095,20 @@ static void PlayerMoveOMExec(OMOBJ *objP)
         + (weight * (objP->rot.y - objP->scale.y));
     objP->trans.z = objP->scale.z
         + (weight * (objP->rot.z - objP->scale.z));
-    if (playerWork[workP->playerNo].masuMoveF) {
-        playerWork[workP->playerNo]._unk08 = workP->maxTime - workP->time;
+    {
+        int movePlayerNo = workP->playerNo;
+        MBPLAYERWORK *moveWorkP = &playerWork[movePlayerNo];
+
+        if (moveWorkP->masuMoveF) {
+            int movePlayerNo2;
+            MBPLAYERWORK *moveWorkP2;
+            int moveTime = workP->maxTime - workP->time;
+
+            movePlayerNo2 = workP->playerNo;
+            moveWorkP2 = &playerWork[movePlayerNo2];
+
+            moveWorkP2->_unk08 = moveTime;
+        }
     }
     if (workP->time >= workP->maxTime) {
         GwPlayer[workP->playerNo].moveF = FALSE;
@@ -1108,15 +1120,32 @@ static void PlayerMoveOMExec(OMOBJ *objP)
         mbPlayerPosSet(workP->playerNo, objP->trans.x, objP->trans.y,
             objP->trans.z);
     } else {
-        playerWork[workP->playerNo].moveEndF = FALSE;
+        int movePlayerNo;
+        int jumpPlayerNo;
+
+        {
+            MBPLAYERWORK *moveWorkP;
+
+            movePlayerNo = workP->playerNo;
+            moveWorkP = &playerWork[movePlayerNo];
+
+            moveWorkP->moveEndF = FALSE;
+        }
         if (workP->time >= workP->maxTime - 2) {
             weight = 1.0f;
-            playerWork[workP->playerNo].moveEndF = TRUE;
+            {
+                MBPLAYERWORK *moveWorkP;
+
+                jumpPlayerNo = workP->playerNo;
+                moveWorkP = &playerWork[jumpPlayerNo];
+
+                moveWorkP->moveEndF = TRUE;
+            }
         } else {
             weight = (float)workP->time / (workP->maxTime - 2);
         }
         mbPlayerPosSet(workP->playerNo, objP->trans.x,
-            objP->trans.y + (100.0f * (1.5f * HuSin(weight * 180.0f))),
+            objP->trans.y + (100.0f * (2.0f * HuSin(weight * 180.0f))),
             objP->trans.z);
         if (workP->time == workP->maxTime - 5) {
             mbPlayerMotionShiftSet(workP->playerNo, 5, 2.0f, 2.0f,
