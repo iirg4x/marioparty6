@@ -161,6 +161,16 @@ typedef struct CapEffUseWork_s {
     int capsuleNo;
 } CAP_EFF_USE_WORK;
 
+typedef struct CapSelectMasuWork_s {
+    int unk00;
+    int unk04;
+    int unk08;
+    int unk0C;
+    int objId;
+    int winId1;
+    int winId2;
+} CAP_SELECT_MASU_WORK;
+
 typedef struct CapEffThrowWork_s {
     int modelId;
     int playerNo;
@@ -227,6 +237,16 @@ typedef struct CapAutoThrowWork_s {
     HuVecF endPos;
     HuVecF masuPos;
 } CAP_AUTO_THROW_WORK;
+
+typedef struct CapUseDeleteWork_s {
+    int unk00;
+    int unk04;
+    int unk08;
+    int capObjId;
+    int objId;
+    int winId0;
+    int winId1;
+} CAP_USE_DELETE_WORK;
 
 typedef struct CapUseWork_s {
     int playerNo;
@@ -599,6 +619,45 @@ static void CapPlayerThrowKill(void)
     mbCapObjColorKill(work->objColorId);
     HuMemDirectFree(work);
     capsulePlayerThrowProc = NULL;
+}
+
+static void CapSelectMasuKill(CAP_SELECT_MASU_WORK *work)
+{
+    CapGuideKill();
+    CapEffMasuOkKill();
+    if (work->objId != MB_MODEL_NONE) {
+        mbObjKill(work->objId);
+    }
+    work->objId = MB_MODEL_NONE;
+    if (work->winId1 != MB_MODEL_NONE) {
+        mbWinKill(work->winId1);
+    }
+    work->winId1 = MB_MODEL_NONE;
+    if (work->winId2 != MB_MODEL_NONE) {
+        mbWinKill(work->winId2);
+    }
+    work->winId2 = MB_MODEL_NONE;
+    CapEffHiliteKill();
+}
+
+static void CapUseDeleteKill(CAP_USE_DELETE_WORK *work)
+{
+    if (work->capObjId != MB_MODEL_NONE) {
+        mbCapObjKill(work->capObjId);
+    }
+    work->capObjId = MB_MODEL_NONE;
+    if (work->objId != MB_MODEL_NONE) {
+        mbObjKill(work->objId);
+    }
+    work->objId = MB_MODEL_NONE;
+    if (work->winId0 != MB_MODEL_NONE) {
+        mbWinKill(work->winId0);
+    }
+    work->winId0 = MB_MODEL_NONE;
+    if (work->winId1 != MB_MODEL_NONE) {
+        mbWinKill(work->winId1);
+    }
+    work->winId1 = MB_MODEL_NONE;
 }
 
 static int CapUse(int playerNo, int capsuleNo)
