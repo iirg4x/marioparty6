@@ -2,13 +2,11 @@
 #include "math.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
-#include "game/memory.h"
 #include "game/object.h"
 #include "game/process.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
-#include "string.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -43,14 +41,12 @@ extern int lbl_1_data_10C[2];
 extern char lbl_1_data_114[8];
 extern float lbl_1_rodata_10;
 extern float lbl_1_rodata_30;
-extern float lbl_1_rodata_40;
 extern double lbl_1_rodata_60;
 extern double lbl_1_rodata_70;
 extern float lbl_1_rodata_80;
 extern float lbl_1_rodata_84;
 extern float lbl_1_rodata_8C;
 extern s32 lbl_1_bss_44;
-extern float *lbl_1_bss_48;
 
 void fn_1_A0(void);
 void fn_1_F4(void);
@@ -74,25 +70,10 @@ void fn_1_AFC(void);
 void fn_1_C38(void);
 void fn_1_CEC(void);
 void fn_1_DAC(int playerNo, s16 id);
-float fn_1_1C54(const HuVecF *a, const HuVecF *b, const HuVecF *c, float t);
-float fn_1_1CF8(const HuVecF *a, const HuVecF *b, const HuVecF *c,
-    const HuVecF *d, float t);
-float fn_1_1DB4(const HuVecF *a, const HuVecF *b, const HuVecF *c,
-    const HuVecF *d, float t);
-float fn_1_1EF8(float a, float b, float c, float d, float t);
-void fn_1_2640(HuVecF *points, int count, HuVecF *out, float t);
-float fn_1_27B0(int index, int degree, float t);
-void fn_1_2FE0(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d);
-void fn_1_31BC(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d);
-void fn_1_330C(HuVecF *a, HuVecF *b, HuVecF *out, float t);
 void fn_1_3610(void);
 s32 fn_1_363C(void);
 
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(OMOBJ *));
-float mbBezierCalcSlope(float a, float b, float c, float t);
-float mbHermiteCalcSlope(float a, float b, float c, float d, float t);
 
 int _prolog(void)
 {
@@ -297,167 +278,6 @@ void fn_1_CEC(void)
     mbObjPosSetV(modelId[0], &targetPos);
 }
 
-float fn_1_1C54(const HuVecF *a, const HuVecF *b, const HuVecF *c, float t)
-{
-    HuVecF slope;
-
-    slope.x = mbBezierCalcSlope(a->x, b->x, c->x, t);
-    slope.y = mbBezierCalcSlope(a->y, b->y, c->y, t);
-    slope.z = mbBezierCalcSlope(a->z, b->z, c->z, t);
-    return PSVECMag(&slope);
-}
-
-float fn_1_1CF8(const HuVecF *a, const HuVecF *b, const HuVecF *c,
-    const HuVecF *d, float t)
-{
-    HuVecF slope;
-
-    slope.x = fn_1_1EF8(a->x, b->x, c->x, d->x, t);
-    slope.y = fn_1_1EF8(a->y, b->y, c->y, d->y, t);
-    slope.z = fn_1_1EF8(a->z, b->z, c->z, d->z, t);
-    return PSVECMag(&slope);
-}
-
-float fn_1_1DB4(const HuVecF *a, const HuVecF *b, const HuVecF *c,
-    const HuVecF *d, float t)
-{
-    HuVecF slope;
-
-    slope.x = mbHermiteCalcSlope(a->x, b->x, c->x, d->x, t);
-    slope.y = mbHermiteCalcSlope(a->y, b->y, c->y, d->y, t);
-    slope.z = mbHermiteCalcSlope(a->z, b->z, c->z, d->z, t);
-    return PSVECMag(&slope);
-}
-
-void fn_1_2640(HuVecF *points, int count, HuVecF *out, float t)
-{
-    HuVecF *allocTbl = HuMemDirectMallocNum(
-        HEAP_HEAP, count * sizeof(HuVecF), HU_MEMNUM_OVL);
-    HuVecF *bezierTbl = allocTbl;
-    int i;
-    int j;
-
-    memcpy(bezierTbl, points, count * sizeof(HuVecF));
-    for (i = 1; i < count; i++) {
-        for (j = 0; j < count - i; j++) {
-            bezierTbl[j].x = bezierTbl[j].x
-                + (t * (bezierTbl[j + 1].x - bezierTbl[j].x));
-            bezierTbl[j].y = bezierTbl[j].y
-                + (t * (bezierTbl[j + 1].y - bezierTbl[j].y));
-            bezierTbl[j].z = bezierTbl[j].z
-                + (t * (bezierTbl[j + 1].z - bezierTbl[j].z));
-        }
-    }
-    *out = bezierTbl[0];
-    HuMemDirectFree(bezierTbl);
-}
-
-float fn_1_27B0(int index, int degree, float t)
-{
-    float valueA;
-    float valueB;
-    float divisor;
-
-    if (degree == 0) {
-        if (t >= lbl_1_bss_48[index]
-            && t < lbl_1_bss_48[index + 1]) {
-            return lbl_1_rodata_40;
-        }
-        return lbl_1_rodata_10;
-    }
-    divisor = lbl_1_bss_48[index + degree] - lbl_1_bss_48[index];
-    if (divisor > lbl_1_rodata_10) {
-        valueA = ((t - lbl_1_bss_48[index])
-                     * fn_1_27B0(index, degree - 1, t))
-            / divisor;
-    } else {
-        valueA = lbl_1_rodata_10;
-    }
-    divisor = lbl_1_bss_48[index + degree + 1]
-        - lbl_1_bss_48[index + 1];
-    if (divisor > lbl_1_rodata_10) {
-        valueB = ((lbl_1_bss_48[index + degree + 1] - t)
-                     * fn_1_27B0(index + 1, degree - 1, t))
-            / divisor;
-    } else {
-        valueB = lbl_1_rodata_10;
-    }
-    return valueA + valueB;
-}
-
-void fn_1_2FE0(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
-{
-    HuVecF *point;
-    HuVecF pointB;
-    HuVecF pointC;
-    HuVecF pointD;
-
-    if (index > count - 1) {
-        index = count - 1;
-    }
-    point = &points[index];
-    if (index == count - 1) {
-        pointB = point[0];
-        pointC = pointB;
-        pointD = pointB;
-    } else if (index == count - 2) {
-        pointB = point[1];
-        pointC = pointB;
-        pointD = pointB;
-    } else if (index == count - 3) {
-        pointB = point[1];
-        pointC = point[2];
-        pointD = pointC;
-    } else {
-        pointB = point[1];
-        pointC = point[2];
-        pointD = point[3];
-    }
-    *a = point[0];
-    *b = pointB;
-    *c = pointC;
-    *d = pointD;
-}
-
-void fn_1_31BC(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
-{
-    HuVecF *point;
-    HuVecF slopeA;
-    HuVecF slopeB;
-
-    if (index > count - 1) {
-        index = count - 1;
-    }
-    point = &points[index];
-    if (index == 0) {
-        VECSubtract(&point[1], &point[0], &slopeA);
-    } else {
-        VECSubtract(&point[1], &point[-1], &slopeA);
-    }
-    if (index == count - 2) {
-        VECSubtract(&point[1], &point[0], &slopeB);
-    } else {
-        VECSubtract(&point[2], &point[0], &slopeB);
-    }
-    VECScale(&slopeA, &slopeA, lbl_1_rodata_30);
-    VECScale(&slopeB, &slopeB, lbl_1_rodata_30);
-    *a = point[0];
-    *b = point[1];
-    *c = slopeA;
-    *d = slopeB;
-}
-
-void fn_1_330C(HuVecF *a, HuVecF *b, HuVecF *out, float t)
-{
-    HuVecF delta;
-
-    VECSubtract(b, a, &delta);
-    VECScale(&delta, &delta, t);
-    VECAdd(a, &delta, out);
-}
-
 void fn_1_3610(void)
 {
     lbl_1_bss_44 = OSGetTick();
@@ -467,3 +287,5 @@ s32 fn_1_363C(void)
 {
     return OSGetTick() - lbl_1_bss_44;
 }
+
+#include "src/REL/s01Dll/s01_common.inc"
