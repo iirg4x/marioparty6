@@ -90,6 +90,24 @@
         "src/board/status.c",
         "src/board/player.c"
       ]
+    },
+    {
+      "id": "roulette-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/roulette.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail roulette.o omits the two weak sqrtf local statics emitted by generic math.h. Exact same-game board owners branch.c, status.c, player.c, and gate.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit visibility pattern. The roulette probe removes only the 16-byte source-only prefix, closes all 21 functions and 291 relocations strictly, and preserves the exact named data objects.",
+      "evidence": [
+        "build/board-autonomy/audit-007/raw/roulette-strict.json",
+        "build/roulette-strict.json",
+        "src/board/branch.c",
+        "src/board/status.c",
+        "src/board/player.c",
+        "src/board/gate.c"
+      ]
     }
   ]
 }
