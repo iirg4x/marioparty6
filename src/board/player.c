@@ -452,6 +452,10 @@ static void PlayerTurn(int playerNo)
     BOOL telopF = FALSE;
     BOOL killerF;
     BOOL eventResult;
+    BOOL partyF;
+    int timeTurn;
+    BOOL partyF2;
+    BOOL partyF3;
     int i;
 
     GwSystem.turnPlayerNo = playerNo;
@@ -472,9 +476,13 @@ static void PlayerTurn(int playerNo)
             turnInitHook(playerNo);
         }
         mbStatusDispForceSetAll(TRUE);
-        if (GwSystem.partyF && playerNo == 0 && GwSystem.timeTurn > 0) {
-            mbTelopTimeCreate();
-            telopF = TRUE;
+        partyF = GwSystem.partyF;
+        if (partyF && playerNo == 0) {
+            timeTurn = GwSystem.timeTurn;
+            if (timeTurn > 0) {
+                mbTelopTimeCreate();
+                telopF = TRUE;
+            }
         }
         if (mbWipeSpecialStatGet()) {
             if (playerNo == 0) {
@@ -495,7 +503,8 @@ static void PlayerTurn(int playerNo)
         omVibrate(playerNo, 20, 20, 0);
         mbPauseDisableSet(FALSE);
         mbTutorialCall(3);
-        if (GwSystem.partyF || GwSystem.turnNo == 1) {
+        partyF2 = GwSystem.partyF;
+        if (partyF2 || GwSystem.turnNo == 1) {
             mbTelopPlayerCreate(playerNo);
         }
         GwPlayer[playerNo].moveNum = -1;
@@ -568,7 +577,8 @@ repeat:
     }
     ev_PlayerEndTurn(playerNo);
     mbTutorialCall(4);
-    if (GwSystem.partyF) {
+    partyF3 = GwSystem.partyF;
+    if (partyF3) {
         if (playerNo != GW_PLAYER_MAX - 1) {
             mbWipeSpecialFadeInCreate(5, 1);
         } else {
@@ -2312,12 +2322,13 @@ static void PlayerMetalOMExec(OMOBJ *objP)
         if (!killF) {
             PlayerMetalKill(workP->playerNo);
         }
-        if (objP->data != NULL) {
+        if (objP->data) {
             void *dataP = objP->data;
 
             HuMemDirectFree(dataP);
         }
         omDelObjEx(HuPrcCurrentGet(), objP);
+        return;
     }
 }
 
