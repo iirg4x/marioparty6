@@ -774,6 +774,64 @@
       "evidence": [
         "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/board/naming_provenance"
       ]
+    },
+    {
+      "id": "gc26-board-transitive-sqrtf-pool",
+      "title": "Diagnose target-absent GC/2.6 sqrtf local-static pools before changing board literals",
+      "classification": "contextual_heuristic",
+      "category": "header_visibility",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "Several board owners emit candidate-only `_half` and `_three` local statics from a transitive sqrtf/math include closure, shifting `.sdata2` ownership and making instruction-identical functions appear nonexact by relocation identity.",
+      "conditions": "Use only for the observed main board owners under their pinned GC/2.6 profiles when strict objdiff rows differ at SDA21 literals but value-aware bytes and resolved addresses agree.",
+      "source_condition": {
+        "change": "A translation unit gains or loses transitive visibility of the retained sqrtf implementation whose function-local statics are `_half` and `_three`.",
+        "requires": [
+          "pinned owner compiler command",
+          "strict and data-value objdiff reports",
+          "raw `.sdata2` prefix comparison",
+          "preprocessor/include-closure inspection"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "16-byte `.sdata2` prefix insertion or removal",
+          "later constant-pool offsets and anonymous relocation identities",
+          "strict match percentages without instruction or resolved-value changes"
+        ],
+        "known_signatures": [
+          "candidate `.sdata2` begins with 8-byte `_half` and 8-byte `_three` local statics absent from retail",
+          "SDA21 mismatches resolve to identical float or double bytes under data-value comparison",
+          "removing one direct math include is neutral because another header keeps the same transitive closure"
+        ]
+      },
+      "rule": "Before tuning literals or declaration lifetimes, determine whether transitive sqrtf visibility introduced the `_half`/`_three` pool; treat it as an include-closure diagnostic, never as permission to fabricate constants or suppress an include guard.",
+      "safe_actions": [
+        "compare strict and data-value relocation reports",
+        "inspect the preprocessed include closure and raw `.sdata2` prefix",
+        "test only an authenticated owner-local include chronology change",
+        "record a value-resolved function honestly when relocation spelling alone remains"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": ["main"],
+        "owner_tags": ["board"]
+      },
+      "examples": [
+        "main:board/star",
+        "main:board/dice"
+      ],
+      "counterexamples": [
+        "Removing the direct humath include from main:board/dice was byte-neutral because transitive headers still exposed sqrtf.",
+        "An `_MATH_H` guard override improved several main:board/tutorial functions but failed the public source-quality gate and is not a safe action."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_constant_pool.md"
+      ]
     }
   ]
 }

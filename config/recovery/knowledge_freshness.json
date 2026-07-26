@@ -188,6 +188,23 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "gc26-board-transitive-sqrtf-pool": {
+      "status": "active",
+      "validated_commit": "d3585141f19bd4ba3604f8275aa1f675a56b2fcd",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_board_constant_pool.md",
+        "include/math.h",
+        "src/board/star.c",
+        "src/board/dice.c",
+        "src/board/tutorial.c",
+        "src/board/opening.c",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
