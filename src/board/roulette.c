@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "game/board/roulette.h"
 #include "game/board/audio.h"
 #include "game/board/player.h"
