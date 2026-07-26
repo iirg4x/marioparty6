@@ -12,6 +12,23 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
 - Generated output belongs under `build/`; use atomic replacement for durable
   generated state.
 
+## Permanent branch boundary
+
+- The AI workspace branch must never be merged, squashed, rebased, or
+  cherry-picked into `main`.
+- Main-promotion tooling must create a new branch/worktree directly from `main`.
+- Automatic transfer accepts only explicitly selected added/modified
+  `src/**/*.c` files.
+- Every promoted Git blob must exactly equal the verified worker-commit blob.
+- Reject headers, configuration, symbols, splits, tools, metadata, docs,
+  workflows, benchmarks, generated output, and AI attribution.
+- Promotion manifests remain under ignored `build/promotion/` in the AI
+  workspace; never commit them to the clean branch.
+- If supporting changes are required, they must be recreated and reviewed in the
+  clean main-based worktree rather than copied from this branch.
+- Tests must prove that a promotion branch contains no AI workspace files and
+  that non-C or attributed changes are rejected.
+
 ## Queue and worktree invariants
 
 - The queue lives under Git’s common directory or `MP6_AGENT_QUEUE`, never in one
@@ -26,10 +43,11 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
 - Actual diff checks must include committed, staged, unstaged, and untracked
   paths.
 - Worker proof must be tied to a clean current commit. `ready` requires worker
-  proof; `done` for source work requires serialized integration proof.
+  proof; source promotion requires that exact commit.
 - Machine-wide resources must be exclusive and explicit.
 - Tests must create real temporary Git worktrees and cover simultaneous claims,
-  stale commits, undeclared diffs, dependencies, resource locks, and integration.
+  stale commits, undeclared diffs, dependencies, resource locks, integration,
+  and clean promotion.
 
 ## Catalog, context, and knowledge invariants
 
@@ -53,18 +71,15 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
 
 - Freeze the candidate and record its SHA-256 before the retained source is
   revealed or scored.
-- Preserve the exact evidence packet and exact target/candidate assembly used for
-  comparison.
+- Preserve the exact evidence packet and target/candidate assembly.
 - Record source path, source commit, retained-function SHA-256, candidate hash,
-  freeze time, toolchain and blindness assertions.
-- Score assembly equivalence, retained-source fidelity, organicity and
+  freeze time, toolchain, and blindness assertions.
+- Score assembly equivalence, retained-source fidelity, organicity, and
   reproducibility independently.
 - A token-identical candidate may inherit retained-source debt; never convert
   source similarity directly into an organicity claim.
-- Automated organicity findings are review prompts, not proof that old source is
-  inauthentic.
-- Cases lacking raw candidate or assembly artifacts must remain
-  `legacy-reported` and must not pass a strict replay audit.
+- Automated findings are review prompts, not proof that old source is inauthentic.
+- Cases lacking raw candidate or assembly artifacts remain `legacy-reported`.
 
 ## Source-quality checks
 
