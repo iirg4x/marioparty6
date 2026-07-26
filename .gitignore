@@ -1,13 +1,36 @@
-__pycache__
-.idea
-.vscode
-.ninja_*
-.mypy_cache
-*.exe
-build
-build.ninja
-objdiff.json
+# Editors
+.idea/
+.vs/
+.vscode/
+*.swp
+
+# Python and tool caches
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.cache/
+
+# Original and rebuilt game files
 orig/*/*
 !orig/*/.gitkeep
+*.dol
+*.rel
+*.elf
+*.o
+*.map
+*.MAP
+
+# Generated build files
+build/
+.ninja_*
+build.ninja
+objdiff.json
+compile_commands.json
+
+# Generated context files
+ctx.*
+*.ctx
+
+# Miscellaneous local output
 /*.txt
-ctx.c
+*.exe
