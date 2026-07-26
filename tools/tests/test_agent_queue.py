@@ -92,6 +92,12 @@ class AgentQueueTests(unittest.TestCase):
         task = claim_task(self.claude, "a", agent="claude")
         self.assertEqual(task["priority"], "high")
 
+    def test_claimed_source_rejects_second_open_task(self) -> None:
+        add_task(self.main, "a", source="src/a.c", priority="high")
+        claim_task(self.claude, "a", agent="claude")
+        with self.assertRaisesRegex(QueueError, "write path.*overlaps"):
+            add_task(self.main, "duplicate-a", source="src/a.c")
+
     def test_worktree_and_build_validation(self) -> None:
         with self.assertRaisesRegex(QueueError, "build directory"):
             claim_task(

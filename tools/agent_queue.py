@@ -388,16 +388,20 @@ def _conflicts(
     owners: Sequence[Mapping[str, Any]] | None,
 ) -> list[str]:
     conflicts: list[str] = []
-    for task in active_tasks(queue):
+    for task in _open_tasks(queue):
         if task.get("id") == candidate.get("id"):
             continue
         label = f"{task.get('owner')} ({task.get('agent')})"
         if task.get("owner") == candidate.get("owner"):
             conflicts.append(f"owner already claimed by {label}")
-        if task.get("branch") == candidate.get("branch"):
+        if candidate.get("branch") and task.get("branch") == candidate.get("branch"):
             conflicts.append(f"branch already used by {label}")
         for key in ("worktree", "build_dir"):
-            if _canon(task.get(key)) == _canon(candidate.get(key)):
+            if (
+                candidate.get(key)
+                and task.get(key)
+                and _canon(task.get(key)) == _canon(candidate.get(key))
+            ):
                 conflicts.append(f"{key} already used by {label}")
         for old in _write_paths(task):
             for new in _write_paths(candidate):
@@ -515,6 +519,17 @@ def validate_queue(queue: Mapping[str, Any]) -> list[str]:
                             f"{left.get('owner')} and {right.get('owner')} "
                             f"overlap {first} / {second}"
                         )
+
+    opened = _open_tasks(queue)
+    for index, left in enumerate(opened):
+        for right in opened[index + 1 :]:
+            for first in _write_paths(left):
+                for second in _write_paths(right):
+                    if _overlap(first, second):
+                        errors.append(
+                            f"open tasks {left.get('owner')} and "
+                            f"{right.get('owner')} overlap {first} / {second}"
+                        )
     return sorted(set(errors))
 
 
@@ -571,6 +586,8 @@ def add_task(
                 "note": note or "",
             }
         )
+        if conflicts := _conflicts(queue, task, owners):
+            raise QueueError("task conflicts:\n- " + "\n- ".join(conflicts))
         queue.setdefault("tasks", []).append(task)
         return dict(task)
 
