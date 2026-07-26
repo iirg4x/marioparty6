@@ -1,7 +1,7 @@
 # GC/2.6 board player value-lifetime evidence
 
 `src/board/player.c` is compiled with GC/2.6 using the board profile's final
-`-O0,p` options. Four independently non-matching functions became strict exact
+`-O0,p` options. Five independently non-matching functions became strict exact
 without pragmas or code-generation controls when the source restored explicit
 value captures at the target's apparent use boundaries.
 
@@ -20,11 +20,15 @@ value captures at the target's apparent use boundaries.
 - `mbPlayerMatClone` became strict exact at 160 bytes. Staging the raw allocation,
   typed material, and active clone pointer separately restored the target value
   lifetimes without changing ownership or layout.
-- Together the retained changes added 4 strict functions and 266 verified
+- `PlayerMoveOMExec` became strict exact at 916 bytes. Separate scoped captures
+  at the state-read and state-write boundaries reproduced the target's distinct
+  transition lifetimes, while the target object independently authenticated the
+  double-precision `2.0` literal.
+- Together the retained changes added 5 strict functions and 326 verified
   relocation-bearing target instructions while preserving all 138 prior exact
-  functions.
+  functions, for 4,012 newly exact text bytes.
 
-The integrated object reports 142/165 strict functions. Public recovery checks
+The integrated object reports 143/165 strict functions. Public recovery checks
 pass 78/78, all 137 retail outputs pass DTK checksum, and `main.dol` remains
 byte-identical with SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
 

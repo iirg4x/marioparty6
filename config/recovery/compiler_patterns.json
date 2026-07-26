@@ -1319,7 +1319,9 @@
           "a value becomes live only after an earlier short-circuit check",
           "explicit pointer truthiness restores the target compare sequence",
           "removing a broad cached work pointer restores target-local allocation",
-          "separate raw-allocation and typed-pointer stages restore target lifetime boundaries"
+          "separate raw-allocation and typed-pointer stages restore target lifetime boundaries",
+          "distinct state-read and state-write captures preserve separate register lifetimes around one transition",
+          "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error"
         ]
       },
       "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
@@ -1337,7 +1339,8 @@
           "PlayerTurn",
           "PlayerMetalOMExec",
           "mbev_PlayerColMasuAllSet",
-          "mbPlayerMatClone"
+          "mbPlayerMatClone",
+          "PlayerMoveOMExec"
         ],
         "modules": [
           "main.dol"
@@ -1352,7 +1355,8 @@
         "PlayerTurn",
         "PlayerMetalOMExec",
         "mbev_PlayerColMasuAllSet",
-        "mbPlayerMatClone"
+        "mbPlayerMatClone",
+        "PlayerMoveOMExec"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -1394,7 +1398,8 @@
           "moving a caller before helper definitions restores target calls",
           "a source sum written left-plus-right emits target right-then-left calls",
           "a cached link or work local changes an otherwise target-backed call tree",
-          "an int lifetime narrows only at an authenticated s16 call boundary"
+          "an int lifetime narrows only at an authenticated s16 call boundary",
+          "cleanup work checks, object kills, pointer resets, and state stores retain target call/store chronology"
         ]
       },
       "rule": "Treat definition order and expression-tree evaluation as one bounded owner-local variable; retain a form only when the complete helper family, relocations, and existing exact neighbors agree, without pragmas or forced linkage.",
@@ -1416,7 +1421,9 @@
           "CapUse",
           "CapSelectMasuCheck",
           "CapSelectMasuListGet",
-          "mbCapSelectMasuInit"
+          "mbCapSelectMasuInit",
+          "CapSelectMasuKill",
+          "CapUseDeleteKill"
         ],
         "modules": [
           "main.dol"
@@ -1431,12 +1438,15 @@
         "mbCapSelectMasuNum calling BackNum then FrontNum",
         "CapSelectMasuListGet direct nested-call form",
         "CapUse work/result/workData declaration order",
-        "mbCapSelectMasuInit int-to-s16 boundary"
+        "mbCapSelectMasuInit int-to-s16 boundary",
+        "CapSelectMasuKill check/kill/reset chronology",
+        "CapUseDeleteKill check/kill/reset chronology"
       ],
       "counterexamples": [
         "Forcing helper emission without an authentic caller is non-organic.",
         "A local prototype cannot resolve the rejected mbCapUse shared return-width contract.",
-        "Literal or BSS identity-only residuals are not call-evaluation evidence."
+        "Literal or BSS identity-only residuals are not call-evaluation evidence.",
+        "mbCapNextGet is instruction-exact but its six data/literal relocation identities are not call-chronology evidence."
       ],
       "related_exceptions": [],
       "evidence": [
