@@ -45,9 +45,9 @@ jobs:
       - name: Verify README exposes all progress badges
         shell: bash
         run: |
-          grep -q 'progress/all.json' README.md
-          grep -q 'progress/dol.json' README.md
-          grep -q 'progress/dlls.json' README.md
+          grep -q 'progress%2Fall.json' README.md
+          grep -q 'progress%2Fdol.json' README.md
+          grep -q 'progress%2Fdlls.json' README.md
 
       - name: Require refreshed progress after matching-status changes
         if: github.event_name == 'pull_request'
