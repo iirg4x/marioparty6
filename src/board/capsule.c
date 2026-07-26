@@ -448,6 +448,7 @@ static OMOBJ *capsuleThrowMasuHitOMObj;
 static OMOBJ *capsuleThrowRayOMObj;
 static OMOBJ *capsuleThrowRingOMObj;
 static OMOBJ *capsuleThrowGlowOMObj;
+static BOOL capsuleMasuSelectEndF;
 static int capsuleComChoice;
 static BOOL capsuleUseRemoveOnF;
 
@@ -553,6 +554,8 @@ static void CapEffTrailPosSet(HuVecF *pos);
 static void CapEffTrailAdd(HuVecF *pos, int capsuleNo);
 static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num);
 static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
+static void CapSelectMasuAddFront(s16 *masuFlag, s16 masuId, s16 max);
+static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max);
 void mbCapAutoThrowEnd(CAP_AUTO_THROW_WORK *work);
 static HUPROCESS *capsuleUseEffProc[4];
 static int capsuleUseEffMode[4];
@@ -1266,6 +1269,57 @@ int mbCapValidListGet(int *list)
     }
     return num;
 }
+
+int mbCapSelectMasuNum(int masuId)
+{
+    return mbCapSelectMasuFrontNum(masuId)
+        + mbCapSelectMasuBackNum(masuId);
+}
+
+int mbCapSelectMasuFrontNum(int masuId)
+{
+    s16 *masuFlagData;
+    s16 *masuFlag;
+    s16 i;
+    s16 num;
+
+    masuFlagData = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+    masuFlag = masuFlagData;
+    memset(masuFlag, 0, sizeof(s16) * 256);
+    capsuleMasuSelectEndF = TRUE;
+    CapSelectMasuAddFront(masuFlag, masuId, 5);
+    for (i = 0, num = 0; i < 256; i++) {
+        if (masuFlag[i] & 1) {
+            num++;
+        }
+    }
+    HuMemDirectFree(masuFlag);
+    return num;
+}
+
+int mbCapSelectMasuBackNum(int masuId)
+{
+    s16 *masuFlagData;
+    s16 *masuFlag;
+    s16 i;
+    s16 num;
+
+    masuFlagData = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+    masuFlag = masuFlagData;
+    memset(masuFlag, 0, sizeof(s16) * 256);
+    capsuleMasuSelectEndF = TRUE;
+    CapSelectMasuAddBack(masuFlag, masuId, 5);
+    for (i = 0, num = 0; i < 256; i++) {
+        if (masuFlag[i] & 1) {
+            num++;
+        }
+    }
+    HuMemDirectFree(masuFlag);
+    return num;
+}
+
 
 const float lbl_802C4598 = 8.0f;
 
