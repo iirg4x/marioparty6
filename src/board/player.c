@@ -2165,6 +2165,73 @@ void mbPlayerColOrderReset(void)
     }
 }
 
+static char *eyeMatNameTbl[CHARNO_MAX][2] = {
+    { "eye1", "eye2" },
+    { "eye1", "eye2" },
+    { "mat14", "mat16" },
+    { "eye1", "eye2" },
+    { "Clswario_eye_l1_AUTO14", "Clswario_eye_l1_AUTO15" },
+    { "m_donkey_eye4", "m_donkey_eye5" },
+    { "mat65", "mat66" },
+    { "Clswaluigi_eye_l1_AUTO1", "Clswaluigi_eye_l1_AUTO2" }
+};
+
+void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
+{
+    BOOL validF;
+    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
+    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HSF_DATA *hsf = modelP->hsf;
+    HSF_MATERIAL *matP = hsf->material;
+    HSF_MATERIAL *matCopy = playerWork[playerNo].matCopy;
+
+    if (darkF) {
+        char **name = &eyeMatNameTbl[GwPlayer[playerNo].charNo][0];
+        int i;
+        int j;
+
+        for (i = 0; i < hsf->materialNum; i++, matP++, matCopy++) {
+            validF = TRUE;
+            for (j = 0; j < matP->attrNum; j++) {
+                HSF_ATTRIBUTE *attrP = &hsf->attribute[matP->attr[j]];
+
+                if (strcmp(name[0], attrP->bitmap->name) == 0
+                    || strcmp(name[1], attrP->bitmap->name) == 0) {
+                    validF = FALSE;
+                }
+            }
+            if (validF) {
+                if (darkF) {
+                    matP->color[0] *= 0.0f;
+                    matP->color[1] *= 0.0f;
+                    matP->color[2] *= 0.0f;
+                } else {
+                    matP->color[0] = matCopy->color[0];
+                    matP->color[1] = matCopy->color[1];
+                    matP->color[2] = matCopy->color[2];
+                }
+            }
+        }
+    } else {
+        memcpy(hsf->material, matCopy,
+            hsf->materialNum * sizeof(HSF_MATERIAL));
+    }
+    DCStoreRange(hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
+}
+
+void mbPlayerMatClone(int playerNo)
+{
+    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
+    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HSF_DATA *hsf = modelP->hsf;
+    int size = hsf->materialNum * sizeof(HSF_MATERIAL);
+    HSF_MATERIAL *matP =
+        HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+
+    memcpy(matP, hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
+    playerWork[playerNo].matCopy = matP;
+}
+
 typedef struct PlayerMetalWork {
     u8 killF : 1;
     u8 _unk0_1 : 1;
@@ -3015,73 +3082,6 @@ static void BiriQEffect2Hook(
         }
         dataP->color.a = alpha;
     }
-}
-
-static char *eyeMatNameTbl[CHARNO_MAX][2] = {
-    { "eye1", "eye2" },
-    { "eye1", "eye2" },
-    { "mat14", "mat16" },
-    { "eye1", "eye2" },
-    { "Clswario_eye_l1_AUTO14", "Clswario_eye_l1_AUTO15" },
-    { "m_donkey_eye4", "m_donkey_eye5" },
-    { "mat65", "mat66" },
-    { "Clswaluigi_eye_l1_AUTO1", "Clswaluigi_eye_l1_AUTO2" }
-};
-
-void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
-{
-    BOOL validF;
-    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HSF_DATA *hsf = modelP->hsf;
-    HSF_MATERIAL *matP = hsf->material;
-    HSF_MATERIAL *matCopy = playerWork[playerNo].matCopy;
-
-    if (darkF) {
-        char **name = &eyeMatNameTbl[GwPlayer[playerNo].charNo][0];
-        int i;
-        int j;
-
-        for (i = 0; i < hsf->materialNum; i++, matP++, matCopy++) {
-            validF = TRUE;
-            for (j = 0; j < matP->attrNum; j++) {
-                HSF_ATTRIBUTE *attrP = &hsf->attribute[matP->attr[j]];
-
-                if (strcmp(name[0], attrP->bitmap->name) == 0
-                    || strcmp(name[1], attrP->bitmap->name) == 0) {
-                    validF = FALSE;
-                }
-            }
-            if (validF) {
-                if (darkF) {
-                    matP->color[0] *= 0.0f;
-                    matP->color[1] *= 0.0f;
-                    matP->color[2] *= 0.0f;
-                } else {
-                    matP->color[0] = matCopy->color[0];
-                    matP->color[1] = matCopy->color[1];
-                    matP->color[2] = matCopy->color[2];
-                }
-            }
-        }
-    } else {
-        memcpy(hsf->material, matCopy,
-            hsf->materialNum * sizeof(HSF_MATERIAL));
-    }
-    DCStoreRange(hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
-}
-
-void mbPlayerMatClone(int playerNo)
-{
-    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HSF_DATA *hsf = modelP->hsf;
-    int size = hsf->materialNum * sizeof(HSF_MATERIAL);
-    HSF_MATERIAL *matP =
-        HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
-
-    memcpy(matP, hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
-    playerWork[playerNo].matCopy = matP;
 }
 
 void mbPlayerSwap(int playerNo1, int playerNo2)
