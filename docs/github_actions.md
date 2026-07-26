@@ -1,32 +1,37 @@
-# GitHub Actions
+# GitHub Actions on the AI workspace
 
-## Public-safe workflow
+## Permanent boundary
 
-The active workflow is `.github/workflows/recovery-metadata.yml`. It does not
-contain or download retail Mario Party 6 files.
+This branch is never merged into `main`. Its workflows validate AI recovery
+infrastructure only; they are not intended to become `main` workflows.
 
-It validates:
+`.github/workflows/ai-workspace-boundary.yml` rejects any pull request whose head
+is `agent/recovery-context-workflow` and whose base is `main`.
 
-- required agent/coordination/context entrypoints;
+The closed PR **“AI recovery workspace — do not merge into main”** records the
+policy. Do not reopen it.
+
+## Public-safe AI workspace validation
+
+`.github/workflows/recovery-metadata.yml` does not contain or download retail
+Mario Party 6 files. It validates:
+
+- required AI workspace and promotion entrypoints;
 - template cleanup and untracked retail/generated policy;
-- recovery metadata, knowledge cards, and freshness records;
-- Python compilation and all synthetic public-safe tests;
-- operational owner catalog generation and queries;
-- queue schema migration and empty-queue health;
-- active worktree assignment audit;
-- deterministic recovery index and searchable rules/actions;
-- symptom-aware knowledge selection;
-- local objdiff summary injection and section-budget preservation;
-- owner context, report, and wave-distillation audit;
-- changed-path, whitespace, and source-quality policy.
+- recovery metadata, cards, freshness, and blind cases;
+- Python compilation and synthetic tests;
+- C-only promotion branch creation and rejection rules;
+- confirmation that the full AI workspace cannot pass as a clean main promotion;
+- owner catalog, queue migration, worktree audit, index, context, local evidence,
+  organicity, reports, and source-quality policy.
 
-Queue, catalog, index, context, and report output remains ephemeral and is not
-uploaded as source evidence.
+Queue, catalog, promotion manifests, index, context, and report output remains
+local or ephemeral.
 
-## Draft pull requests and notification noise
+## Draft pull requests and notifications
 
-Claude and Codex may push many intermediate commits. Automatic jobs are skipped
-while a PR is a draft. Workers run locally:
+Internal AI-workspace PRs may push many exploratory commits. Automatic jobs are
+skipped while such a PR is draft. Workers run locally:
 
 ```sh
 python tools/agent.py hooks install
@@ -34,17 +39,24 @@ python tools/agent.py queue check-diff --base origin/main
 python tools/agent.py check --base origin/main
 ```
 
-Mark the PR **Ready for review** when remote validation is desired. Later pushes
-to a non-draft PR run the workflow again. `workflow_dispatch` remains available
-for a deliberate early remote check.
+Mark an **internal PR targeting the AI workspace branch** ready when remote
+validation is desired. Never mark or open a workspace-to-main PR for validation;
+the boundary workflow intentionally fails it.
 
-A draft synchronization appears as `skipped`, not failed. This prevents an email
-for every exploratory commit while retaining a real pre-merge gate.
+## Main promotion has different CI
 
-## Branch protection
+A clean source promotion is created from `main` with:
 
-After merge, protect `main` and require the **Recovery metadata** job. Keep full
-checkout history so changed-line checks can compare against the exact base SHA.
+```sh
+python tools/promote_recovered_c.py create ...
+```
+
+That branch contains only the selected recovered C blobs and whatever supporting
+changes a human recreates from the clean checkout. It does not contain the AI
+workflows, agent docs, metadata, or test harness.
+
+`main` may keep its own ordinary build/source checks. Do not copy these AI
+workspace workflows to it automatically.
 
 ## Why retail verification is private
 
@@ -52,15 +64,12 @@ A complete build requires copyrighted inputs under `orig/GP6E01/`. Public CI
 cannot prove DOL/REL identity, private target-object reports, DTK retail hashes,
 or consumer comparisons dependent on extracted objects.
 
-A successful public workflow must never be described as a successful retail
-build.
+A successful public AI-workspace run is not a successful retail build.
 
-## Serialized private integration
+## Serialized private verification
 
-Use a local integration worktree, private self-hosted runner, or restricted
-private environment with legally provisioned inputs.
-
-Acquire exclusive resources before the full build:
+Use a local integration or clean promotion worktree with legally provisioned
+inputs. Acquire exclusive AI-workspace resources before the full build:
 
 ```sh
 python tools/agent.py queue acquire-resource integration \
@@ -69,7 +78,7 @@ python tools/agent.py queue acquire-resource retail-build \
   --agent integrator --owner <owner>
 ```
 
-Then run:
+Run:
 
 ```sh
 python tools/agent.py check --base <base-sha>
@@ -78,31 +87,13 @@ ninja -j1
 build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 ```
 
-Use `dtk.exe` on Windows. Compare `main.dol` and every affected REL explicitly,
-check Matching consumers, and ensure generated symbols contain no unexplained
-diff.
+Compare `main.dol` and every affected REL, check Matching consumers, and inspect
+generated symbols.
 
-Finalize only after all private gates pass:
+After the AI worker commit is verified, create the clean C-only promotion branch
+from `main` and rerun the relevant object, consumer, DOL/REL, checksum, byte, and
+readability gates there. Only that clean branch is eligible for a human-facing
+pull request to `main`.
 
-```sh
-python tools/agent.py integration finalize <owner> \
-  --agent integrator \
-  --retail-gate pass \
-  --checksum pass \
-  --consumer <consumer>=exact \
-  --toolchain GC/1.3.2
-```
-
-Finalization confirms that each claimed path in the integrated tree still
-matches the worker’s verified commit. Upload only permitted compact logs and
-summaries—never retail/rebuilt binaries, extracted assets, or reports embedding
-copyrighted data.
-
-## Workflow and build-configuration changes
-
-Changes to workflows, tool pins, `configure.py`, compiler flags, object status,
-symbols, splits, or link order require public validation and a private retail
-integration run before being considered integration-safe.
-
-Progress publishing remains separate from verification and is intentionally not
-configured until a real service slug and secret exist.
+Upload only permitted compact logs—never retail/rebuilt binaries, extracted
+assets, or reports embedding copyrighted data.
