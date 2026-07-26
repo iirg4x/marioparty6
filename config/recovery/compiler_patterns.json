@@ -1221,6 +1221,72 @@
       "evidence": [
         "docs/native_matching_conversion_pool_ownership.md"
       ]
+    },
+    {
+      "id": "mwcc-narrow-assignment-wide-lifetime-extension-scheduling",
+      "title": "Separate narrow assignment semantics from the stored lifetime width",
+      "classification": "confirmed_rule",
+      "category": "signed_width_and_lifetime",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "A semantically narrow API result can require an s32 field or local initialized through an explicit s16 cast so MWCC emits sign extensions at the retail consumer sites.",
+      "conditions": "Apply when target code sign-extends a narrow-producing call result and repeats extsh at later consumers, while an s16 source lifetime removes or reschedules those extensions.",
+      "source_condition": {
+        "change": "Declare the stored lifetime itself as s16 instead of storing an explicitly narrowed value in an s32 lifetime.",
+        "requires": [
+          "authenticated producer return width",
+          "target extension at assignment or first use",
+          "consumer-by-consumer extension evidence",
+          "exact instruction and relocation comparison"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "extsh placement or elimination",
+          "register-move substitution",
+          "condition scheduling",
+          "temporary and saved-register lifetime"
+        ],
+        "known_signatures": [
+          "an s16 lifetime turns repeated target extsh instructions into mr",
+          "an explicit narrow cast at assignment plus s32 storage restores consumer extensions",
+          "producer semantics remain narrow even though storage is wide"
+        ]
+      },
+      "rule": "Choose storage width from the complete producer-to-consumer instruction pattern; when authenticated, store the explicitly narrowed result in an s32 lifetime rather than declaring the lifetime s16, and retain it only after every extension site and relocation is exact.",
+      "safe_actions": [
+        "authenticate the producer contract before changing the lifetime",
+        "compare s16 storage against s32 storage with an explicit narrow assignment cast",
+        "inspect every consumer rather than one extsh site",
+        "require exact object and relocation proof"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "s02Dll",
+          "miraclebookdll"
+        ],
+        "owner_tags": [
+          "signed_width",
+          "lifetime",
+          "rel"
+        ]
+      },
+      "examples": [
+        "s02Dll repeated producer/consumer extsh cluster",
+        "miraclebookdll fn_1_7354 HuWinChoiceGet assignment"
+      ],
+      "counterexamples": [
+        "A lone extsh without repeated producer/consumer evidence does not authenticate wide storage.",
+        "Changing the authoritative API return type to s32 is not implied by an s32 local lifetime."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_narrow_assignment_lifetime.md"
+      ]
     }
   ]
 }
