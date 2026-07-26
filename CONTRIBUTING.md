@@ -46,6 +46,22 @@ build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 
 On Windows, use `build/tools/dtk.exe`.
 
+## Progress badges
+
+Use the build wrapper for a verified default build:
+
+```sh
+python tools/build.py
+```
+
+It runs Ninja and refreshes the committed files under `progress/` from
+`build/GP6E01/progress.json`. The README badges then update without editing the
+README itself.
+
+When a change promotes or demotes an object in `configure.py`, include the
+resulting `progress/` changes in the pull request. Do not edit the badge JSON by
+hand.
+
 ## Pull requests
 
 A pull request should explain:

@@ -1,5 +1,11 @@
-Mario Party 6
+Mario Party 6  
+[![Code Progress]][status] [![DOL Progress]][status] [![DLL Progress]][status]
 =============
+
+[Code Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fall.json
+[DOL Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdol.json
+[DLL Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdlls.json
+[status]: STATUS.md
 
 A work-in-progress decompilation of Mario Party 6. The currently supported build is the USA Revision 0 release, with active work focused on the main game flow, menus, party mode, boards, results, and ending.
 
@@ -11,7 +17,7 @@ Version Completion:
 
 - `GP6E01`: Rev 0 (USA) 🚧
 
-See [STATUS.md](STATUS.md) for the latest verified progress snapshot.
+The progress badges show code completion for the complete project, the main DOL, and all DLL/REL modules. They are generated from the latest verified build. See [STATUS.md](STATUS.md) for the dated snapshot and verification notes.
 
 Dependencies
 ============
@@ -79,11 +85,13 @@ Building
   python configure.py
   ```
 
-- Build:
+- Build and refresh the committed progress badge data:
 
   ```sh
-  ninja
+  python tools/build.py
   ```
+
+`tools/build.py` runs Ninja normally, then converts `build/GP6E01/progress.json` into the small files under `progress/`. If progress has not changed, those files remain untouched.
 
 The first configuration may download the pinned support tools and compilers used by the project. Additional options are available through `python configure.py --help`.
 

@@ -1,0 +1,64 @@
+name: Progress
+
+on:
+  pull_request:
+    paths:
+      - README.md
+      - configure.py
+      - progress/**
+      - tools/update_progress.py
+      - tools/tests/test_update_progress.py
+      - .github/workflows/progress.yml
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - progress/**
+      - tools/update_progress.py
+      - tools/tests/test_update_progress.py
+      - .github/workflows/progress.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run progress tests
+        run: python -m unittest tools.tests.test_update_progress -v
+
+      - name: Verify badge files match the snapshot
+        run: python tools/update_progress.py --check
+
+      - name: Verify README exposes all progress badges
+        shell: bash
+        run: |
+          grep -q 'progress%2Fall.json' README.md
+          grep -q 'progress%2Fdol.json' README.md
+          grep -q 'progress%2Fdlls.json' README.md
+
+      - name: Require refreshed progress after matching-status changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          if git diff "$BASE_SHA...HEAD" -- configure.py | grep -Eq '^[+-].*Object\((Matching|NonMatching)'; then
+            if ! git diff --name-only "$BASE_SHA...HEAD" | grep -q '^progress/'; then
+              echo 'Matching status changed, but the committed progress snapshot was not refreshed.'
+              echo 'Run: python tools/build.py'
+              exit 1
+            fi
+          fi

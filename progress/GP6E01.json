@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "version": "GP6E01",
+  "published_snapshot": "2026-07-17",
+  "categories": {
+    "all": {
+      "label": "Code",
+      "code": {
+        "matched": null,
+        "total": null,
+        "percent": 12.13
+      },
+      "data": {
+        "matched": null,
+        "total": null,
+        "percent": 32.25
+      }
+    },
+    "dol": {
+      "label": "DOL",
+      "code": {
+        "matched": null,
+        "total": null,
+        "percent": 47.42
+      },
+      "data": {
+        "matched": null,
+        "total": null,
+        "percent": 74.59
+      }
+    },
+    "modules": {
+      "label": "DLLs",
+      "code": {
+        "matched": null,
+        "total": null,
+        "percent": 4.65
+      },
+      "data": {
+        "matched": null,
+        "total": null,
+        "percent": 5.42
+      }
+    }
+  }
+}
