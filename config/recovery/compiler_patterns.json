@@ -949,7 +949,9 @@
         "Moving strong definitions without authenticated csect boundaries changes final text order rather than solving pool ownership.",
         "An invented uncalled constant seeder duplicates the pool and is not an authenticated chronology owner."
       ],
-      "related_exceptions": [],
+      "related_exceptions": [
+        "w01-world01-exact-source-shape"
+      ],
       "evidence": [
         "docs/native_matching_w01_inline_chronology.md"
       ]

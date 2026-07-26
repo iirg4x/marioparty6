@@ -54,6 +54,25 @@
         "src/board/branch.c",
         "src/board/player.c"
       ]
+    },
+    {
+      "id": "w01-world01-exact-source-shape",
+      "classification": "authenticated",
+      "path": "src/REL/w01Dll/world01.c",
+      "kind": "source_shape",
+      "rules": [
+        "opaque_blob",
+        "synthetic_padding",
+        "compiler_pragma",
+        "volatile"
+      ],
+      "rationale": "The retained owner is byte-exact across .text, .rodata, .data, .bss, and 5,673 relocations. Address-unknown structure fields and explicit padding preserve target-backed sizes and consumer offsets without claiming semantics. The code_type pragmas are the authenticated source-chronology/link-order mechanism. One volatile-qualified model-ID load records the target's repeated reload of globally resident effect work across external calls; it is owner-specific evidence and does not authorize volatile register forcing elsewhere.",
+      "evidence": [
+        "docs/native_matching_w01_inline_chronology.md",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/w01Dll/symbols.txt",
+        "src/REL/w01Dll/world01.c"
+      ]
     }
   ]
 }
