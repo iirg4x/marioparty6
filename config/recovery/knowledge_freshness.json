@@ -191,12 +191,16 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "d0ca8343b43fceb9596337cf797526c23323b943",
+      "validated_commit": "6c9f3941fc24e3857a11bcd7c43e1484c4a74d87",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "config/recovery/exceptions.json",
         "docs/native_matching_board_constant_pool.md",
         "include/math.h",
+        "include/dolphin/math.h",
+        "src/board/gate.c",
+        "src/board/roulette.c",
         "src/board/star.c",
         "src/board/dice.c",
         "src/board/tutorial.c",
