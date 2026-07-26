@@ -91,6 +91,66 @@ class WorktreeManagerTests(unittest.TestCase):
             close_worktree(root, owner="docs-task")
             self.assertFalse(worktree.exists())
 
+    def test_retail_link_preserves_clean_tracked_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            root.mkdir()
+            run(root, "git", "init", "-q", "-b", "main")
+            run(root, "git", "config", "user.email", "test@example.com")
+            run(root, "git", "config", "user.name", "Test")
+            (root / "src").mkdir()
+            (root / "src/a.c").write_text("int a;\n", encoding="utf-8")
+            (root / "orig/GP6E01").mkdir(parents=True)
+            (root / "orig/GP6E01/.gitkeep").write_text("", encoding="utf-8")
+            (root / ".gitignore").write_text(
+                "/orig/*/*\n!/orig/*/.gitkeep\n",
+                encoding="utf-8",
+            )
+            run(root, "git", "add", ".")
+            run(root, "git", "commit", "-qm", "base")
+            run(
+                root,
+                "git",
+                "branch",
+                "agent/recovery-context-workflow",
+                "HEAD",
+            )
+            retail = Path(directory) / "retail"
+            (retail / "sys").mkdir(parents=True)
+            (retail / "sys/main.dol").write_bytes(b"retail")
+
+            value = create_worktree(
+                root,
+                agent="codex",
+                owner="retail-task",
+                base="agent/recovery-context-workflow",
+                source="src/a.c",
+                retail=retail,
+            )
+            worktree = Path(value["worktree"])
+            try:
+                self.assertTrue((worktree / "orig/GP6E01/.gitkeep").is_file())
+                self.assertEqual(
+                    (worktree / "orig/GP6E01/sys/main.dol").read_bytes(),
+                    b"retail",
+                )
+                status = subprocess.run(
+                    ["git", "status", "--short"],
+                    cwd=worktree,
+                    check=True,
+                    text=True,
+                    capture_output=True,
+                ).stdout
+                self.assertEqual(status, "")
+            finally:
+                release_task(
+                    worktree,
+                    "retail-task",
+                    agent="codex",
+                    status="released",
+                )
+                close_worktree(root, owner="retail-task")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -64,6 +64,42 @@ def _link_directory(source: Path, destination: Path) -> None:
         raise WorktreeError(result.stderr.strip() or result.stdout.strip())
 
 
+def _link_file(source: Path, destination: Path) -> None:
+    if destination.exists() or destination.is_symlink():
+        raise WorktreeError(f"retail destination already exists: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        destination.symlink_to(source)
+    except OSError:
+        try:
+            os.link(source, destination)
+        except OSError as exc:
+            raise WorktreeError(
+                f"failed to link retail file {source} to {destination}: {exc}"
+            ) from exc
+
+
+def _link_retail_tree(source: Path, destination: Path) -> None:
+    """Link ignored retail children while preserving the tracked root."""
+
+    destination.mkdir(parents=True, exist_ok=True)
+    existing = {item.name for item in destination.iterdir()}
+    unexpected = existing - {".gitkeep"}
+    if unexpected:
+        raise WorktreeError(
+            f"retail destination is not empty: {destination} "
+            f"({', '.join(sorted(unexpected))})"
+        )
+    for item in source.iterdir():
+        if item.name == ".gitkeep":
+            continue
+        linked = destination / item.name
+        if item.is_dir():
+            _link_directory(item, linked)
+        elif item.is_file():
+            _link_file(item, linked)
+
+
 def create_worktree(
     root: Path,
     *,
@@ -114,7 +150,10 @@ def create_worktree(
                 raise WorktreeError(
                     f"retail directory does not exist: {retail_path}"
                 )
-            _link_directory(retail_path, assigned_path / "orig" / "GP6E01")
+            _link_retail_tree(
+                retail_path,
+                assigned_path / "orig" / "GP6E01",
+            )
         task = claim_task(
             root,
             owner,
