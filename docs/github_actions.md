@@ -5,8 +5,13 @@
 This branch is never merged into `main`. Its workflows validate AI recovery
 infrastructure only; they are not intended to become `main` workflows.
 
-`.github/workflows/ai-workspace-boundary.yml` rejects any pull request whose head
-is `agent/recovery-context-workflow` and whose base is `main`.
+`.github/workflows/ai-workspace-boundary.yml` protects every pull request whose
+base is `main`. It rejects the permanent workspace branch and any derived branch
+that still contains AI workspace markers such as `AI_WORKSPACE.md`, agent tools,
+recovery metadata, or blind-benchmark infrastructure.
+
+A legitimate `recovery/*` branch starts directly from `main`, so it contains none
+of those markers and only the explicitly promoted C blobs.
 
 The closed PR **“AI recovery workspace — do not merge into main”** records the
 policy. Do not reopen it.
@@ -51,9 +56,9 @@ A clean source promotion is created from `main` with:
 python tools/promote_recovered_c.py create ...
 ```
 
-That branch contains only the selected recovered C blobs and whatever supporting
-changes a human recreates from the clean checkout. It does not contain the AI
-workflows, agent docs, metadata, or test harness.
+That branch contains only selected recovered C blobs. Supporting project changes
+use a separate human branch from `main`. Neither branch contains AI workflows,
+agent docs, metadata, or benchmark tooling.
 
 `main` may keep its own ordinary build/source checks. Do not copy these AI
 workspace workflows to it automatically.
