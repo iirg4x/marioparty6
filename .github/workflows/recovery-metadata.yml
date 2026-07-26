@@ -31,11 +31,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify required agent entrypoints
+      - name: Verify required AI-workspace entrypoints
         shell: bash
         run: |
           required=(
             AGENTS.md
+            AI_WORKSPACE.md
             CONTRIBUTING.md
             README.md
             CLAUDE.md
@@ -48,6 +49,7 @@ jobs:
             config/recovery/knowledge_freshness.json
             docs/agent_quickstart.md
             docs/concurrent_agents.md
+            docs/main_promotion.md
             docs/recovery_standard.md
             docs/context_workflow.md
             docs/blind_recovery_benchmark.md
@@ -67,13 +69,15 @@ jobs:
             tools/recovery_knowledge.py
             tools/knowledge_cards.py
             tools/blind_recovery.py
+            tools/promote_recovered_c.py
             .github/PULL_REQUEST_TEMPLATE.md
             .github/ISSUE_TEMPLATE/recovery-task.yml
+            .github/workflows/ai-workspace-boundary.yml
           )
           failed=0
           for path in "${required[@]}"; do
             if [[ ! -f "$path" ]]; then
-              echo "Missing required agent entrypoint: $path"
+              echo "Missing required AI-workspace entrypoint: $path"
               failed=1
             fi
           done
@@ -108,6 +112,17 @@ jobs:
           python tools/knowledge_cards.py check
           python tools/knowledge_cards.py freshness
           python tools/blind_recovery.py audit
+
+      - name: Verify AI workspace cannot pass as a main promotion
+        shell: bash
+        run: |
+          if python tools/promote_recovered_c.py audit \
+              --base origin/main \
+              --head HEAD; then
+            echo 'The AI workspace unexpectedly passed the clean main promotion audit.'
+            exit 1
+          fi
+          echo 'Expected: full AI workspace is not promotable to main.'
 
       - name: Compile public Python tools
         run: python -m compileall -q tools
