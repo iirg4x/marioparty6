@@ -5,3 +5,7 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/s03Dll/runtime.c:
+	.text       start:0x00003178 end:0x00003BBC
+	.rodata     start:0x00000138 end:0x00000150

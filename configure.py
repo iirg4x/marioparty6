@@ -1060,10 +1060,10 @@ config.libs = [
         "objects": [
             Object(Matching, "REL/empty.c"),  # Must be marked as matching
             Object(
-                NonMatching,
+                Matching,
                 "REL/runtime.c",
                 source="REL/runtime.c",
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-proc 7400"],
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
             ),
         ],
     },
@@ -1080,11 +1080,11 @@ config.libs = [
         objects={
             Object(Matching, "REL/selmenuDll/selmenu.c", mw_version=config.linker_version),
             Object(
-                NonMatching,
+                Matching,
                 "REL/selmenuDll/runtime.c",
                 source="REL/selmenuDll/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-DMP6_SELMENU_RUNTIME=1", "-proc 7400"],
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-DMP6_SELMENU_RUNTIME=1"],
             ),
         },
     ),
@@ -1095,11 +1095,11 @@ config.libs = [
             Object(Matching, "REL/fileseldll/filename.c", mw_version=config.linker_version),
             Object(Matching, "REL/fileseldll/saveload.c", mw_version=config.linker_version),
             Object(
-                NonMatching,
+                Matching,
                 "REL/fileseldll/runtime.c",
                 source="REL/fileseldll/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-DMP6_FILESEL_RUNTIME=1", "-proc 7400"],
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-DMP6_FILESEL_RUNTIME=1"],
             ),
         },
     ),
@@ -1155,6 +1155,100 @@ config.libs = [
                 "REL/sequencedll/sequence.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-pooldata off"],
+            ),
+            Object(
+                Matching,
+                "REL/meschkdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "endingdll",
+        objects={
+            Object(
+                Matching,
+                "REL/endingdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "mdpresultdll",
+        objects={
+            Object(
+                Matching,
+                "REL/mdpresultdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "mdsingdll",
+        objects={
+            Object(
+                Matching,
+                "REL/mdsingdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "openingDll",
+        objects={
+            Object(
+                Matching,
+                "REL/openingDll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "optionDll",
+        objects={
+            Object(
+                Matching,
+                "REL/optionDll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "s01Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/s01Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "s02Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/s02Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "s03Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/s03Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
             ),
         },
     ),
