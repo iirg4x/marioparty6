@@ -46,6 +46,7 @@ extern double lbl_1_rodata_70;
 extern float lbl_1_rodata_80;
 extern float lbl_1_rodata_84;
 extern float lbl_1_rodata_8C;
+extern s32 lbl_1_bss_44;
 
 void fn_1_A0(void);
 void fn_1_F4(void);
@@ -69,8 +70,18 @@ void fn_1_AFC(void);
 void fn_1_C38(void);
 void fn_1_CEC(void);
 void fn_1_DAC(int playerNo, s16 id);
+float fn_1_1C54(const HuVecF *a, const HuVecF *b, const HuVecF *c, float t);
+float fn_1_1CF8(const HuVecF *a, const HuVecF *b, const HuVecF *c,
+    const HuVecF *d, float t);
+float fn_1_1DB4(const HuVecF *a, const HuVecF *b, const HuVecF *c,
+    const HuVecF *d, float t);
+float fn_1_1EF8(float a, float b, float c, float d, float t);
+void fn_1_3610(void);
+s32 fn_1_363C(void);
 
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(OMOBJ *));
+float mbBezierCalcSlope(float a, float b, float c, float t);
+float mbHermiteCalcSlope(float a, float b, float c, float d, float t);
 
 int _prolog(void)
 {
@@ -273,4 +284,46 @@ void fn_1_CEC(void)
         * (atan2(delta.x, delta.z) / lbl_1_rodata_60));
     mbObjRotYSet(modelId[0], angle);
     mbObjPosSetV(modelId[0], &targetPos);
+}
+
+float fn_1_1C54(const HuVecF *a, const HuVecF *b, const HuVecF *c, float t)
+{
+    HuVecF slope;
+
+    slope.x = mbBezierCalcSlope(a->x, b->x, c->x, t);
+    slope.y = mbBezierCalcSlope(a->y, b->y, c->y, t);
+    slope.z = mbBezierCalcSlope(a->z, b->z, c->z, t);
+    return PSVECMag(&slope);
+}
+
+float fn_1_1CF8(const HuVecF *a, const HuVecF *b, const HuVecF *c,
+    const HuVecF *d, float t)
+{
+    HuVecF slope;
+
+    slope.x = fn_1_1EF8(a->x, b->x, c->x, d->x, t);
+    slope.y = fn_1_1EF8(a->y, b->y, c->y, d->y, t);
+    slope.z = fn_1_1EF8(a->z, b->z, c->z, d->z, t);
+    return PSVECMag(&slope);
+}
+
+float fn_1_1DB4(const HuVecF *a, const HuVecF *b, const HuVecF *c,
+    const HuVecF *d, float t)
+{
+    HuVecF slope;
+
+    slope.x = mbHermiteCalcSlope(a->x, b->x, c->x, d->x, t);
+    slope.y = mbHermiteCalcSlope(a->y, b->y, c->y, d->y, t);
+    slope.z = mbHermiteCalcSlope(a->z, b->z, c->z, d->z, t);
+    return PSVECMag(&slope);
+}
+
+void fn_1_3610(void)
+{
+    lbl_1_bss_44 = OSGetTick();
+}
+
+s32 fn_1_363C(void)
+{
+    return OSGetTick() - lbl_1_bss_44;
 }
