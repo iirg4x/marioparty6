@@ -1,3 +1,20 @@
+<!--
+AI WORKSPACE ONLY
+
+Do not use this template for a pull request to main. This branch and its
+infrastructure must never merge into main.
+
+After verification, create a fresh recovery/* branch from main with
+`tools/promote_recovered_c.py` and open a separate human-facing source PR.
+-->
+
+## Branch boundary
+
+- [ ] This PR does **not** target `main`.
+- [ ] I understand this AI workspace will never be merged into `main`.
+- C files potentially eligible for later clean promotion:
+- Files that must remain AI-workspace-only:
+
 ## Scope and coordination
 
 - Owner:
@@ -113,7 +130,7 @@ Mark checks actually run:
 - [ ] `python tools/agent.py queue verify ...`
 - [ ] Task is `ready`
 
-## Integration verification
+## AI integration verification
 
 Complete only after integration; otherwise state `pending`.
 
@@ -125,7 +142,16 @@ Complete only after integration; otherwise state `pending`.
 - Integration consumer results:
 - `python tools/agent.py integration finalize ...`:
 
-Private retail gates are not required because:
+The integration result remains on the AI workspace. It is not merged to main.
+
+## Clean main promotion plan
+
+- Verified source commit:
+- Exact `src/**/*.c` paths selected:
+- `promote_recovered_c.py plan` result:
+- Proposed clean `recovery/*` branch:
+- Supporting header/build changes that must be recreated manually from main:
+- AI attribution scan:
 
 ## Remaining uncertainty and handoff
 
