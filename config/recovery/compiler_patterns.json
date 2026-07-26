@@ -1287,6 +1287,75 @@
       "evidence": [
         "docs/native_matching_narrow_assignment_lifetime.md"
       ]
+    },
+    {
+      "id": "gc26-o0-explicit-value-capture-lifetime",
+      "title": "Use explicit value captures only when GC/2.6 O0 lifetime evidence repeats",
+      "classification": "contextual_heuristic",
+      "category": "control_flow_and_lifetime",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "Under the board GC/2.6 -O0,p profile, repeated reads of globals or bitfields can shorten or merge value lifetimes; source-authentic captures at distinct use boundaries can restore the target's saved-register and signed-comparison shape.",
+      "conditions": "Use only for a repeated owner-local mismatch family involving global or bitfield reads, saved registers, or signed comparisons; a convenient temporary by itself is not evidence.",
+      "source_condition": {
+        "change": "Capture a global or bitfield value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
+        "requires": [
+          "GC/2.6 with the same -O0,p board profile",
+          "repeated target evidence for distinct value lifetimes",
+          "before/after exact-function and relocation comparison",
+          "natural source semantics without register-pressure shaping"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "saved-register selection and lifetime",
+          "signed versus unsigned comparison shape",
+          "short-circuit branch grouping",
+          "terminal return placement"
+        ],
+        "known_signatures": [
+          "the target reloads one global or bitfield at multiple semantic use boundaries",
+          "a value becomes live only after an earlier short-circuit check",
+          "explicit pointer truthiness restores the target compare sequence"
+        ]
+      },
+      "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
+      "safe_actions": [
+        "identify the first target instruction that makes each value live",
+        "test captures one semantic boundary at a time",
+        "compare every previously exact function in the owner",
+        "revert capture or return-shape probes that merely move mismatches"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "PlayerTurn",
+          "PlayerMetalOMExec"
+        ],
+        "modules": [
+          "main.dol"
+        ],
+        "owner_tags": [
+          "board",
+          "value_lifetime",
+          "bitfield"
+        ]
+      },
+      "examples": [
+        "PlayerTurn",
+        "PlayerMetalOMExec"
+      ],
+      "counterexamples": [
+        "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
+        "Capsule inline return-shape probes regressed and were reverted.",
+        "BiriQ relocation-identity residuals are not value-lifetime evidence."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_player_value_lifetimes.md"
+      ]
     }
   ]
 }

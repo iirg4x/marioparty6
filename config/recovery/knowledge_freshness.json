@@ -307,6 +307,20 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "gc26-o0-explicit-value-capture-lifetime": {
+      "status": "active",
+      "validated_commit": "1e77c0775e82946dc08d1f40ac53d66407da3963",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_board_player_value_lifetimes.md",
+        "src/board/player.c",
+        "include/game/gamework.h",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
