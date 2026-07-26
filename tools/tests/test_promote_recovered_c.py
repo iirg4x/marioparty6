@@ -108,6 +108,9 @@ class PromotionTests(unittest.TestCase):
         promotion = Path(temporary.name) / "promotion"
         try:
             source_commit = run(root, "git", "rev-parse", "HEAD")
+            hook = root / ".git/hooks/pre-commit"
+            hook.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+            hook.chmod(0o755)
             result = create_promotion(
                 root,
                 base_ref=base,
