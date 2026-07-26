@@ -1,7 +1,7 @@
 # GC/2.6 board capsule call-chronology evidence
 
-`src/board/capsule.c` uses the board GC/2.6 `-O0,p` profile. Two bounded
-target-only recovery passes added six strict functions while preserving every
+`src/board/capsule.c` uses the board GC/2.6 `-O0,p` profile. Three bounded
+target-only recovery passes added seven strict functions while preserving every
 previously exact function. The results show that helper definition visibility,
 expression-tree call evaluation, and local lifetime shape must be recovered
 together.
@@ -21,10 +21,14 @@ together.
   eligibility tests and the target-backed `mbMasuMAttrGet` evaluation retained.
 - `CapSelectMasuListGet` is strict exact at 176 bytes with direct nested calls;
   introducing a cached `linkMasuId` local changes the target allocation.
+- `mbCapSelectMasuInit` is strict exact at 208 bytes when it is defined before
+  `CapSelectMasuListGet`, preserving the target out-of-line call. Its `masuId`
+  lifetime remains `int` and narrows only at the authenticated `s16` call
+  boundary.
 
-Together these functions add 1,008 exact text bytes and 33 verified
+Together these functions add 1,216 exact text bytes and 41 verified
 relocation-bearing target instructions. The capsule owner advanced from 81/165
-to 87/165 strict functions. Public recovery checks pass 78/78, all 137 retail
+to 88/165 strict functions. Public recovery checks pass 78/78, all 137 retail
 outputs pass DTK checksum, and `main.dol` remains byte-identical with SHA-1
 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
 

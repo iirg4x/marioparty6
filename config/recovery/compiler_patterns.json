@@ -1318,7 +1318,8 @@
           "the target reloads one global or bitfield at multiple semantic use boundaries",
           "a value becomes live only after an earlier short-circuit check",
           "explicit pointer truthiness restores the target compare sequence",
-          "removing a broad cached work pointer restores target-local allocation"
+          "removing a broad cached work pointer restores target-local allocation",
+          "separate raw-allocation and typed-pointer stages restore target lifetime boundaries"
         ]
       },
       "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
@@ -1335,7 +1336,8 @@
         "stable_ids": [
           "PlayerTurn",
           "PlayerMetalOMExec",
-          "mbev_PlayerColMasuAllSet"
+          "mbev_PlayerColMasuAllSet",
+          "mbPlayerMatClone"
         ],
         "modules": [
           "main.dol"
@@ -1349,7 +1351,8 @@
       "examples": [
         "PlayerTurn",
         "PlayerMetalOMExec",
-        "mbev_PlayerColMasuAllSet"
+        "mbev_PlayerColMasuAllSet",
+        "mbPlayerMatClone"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -1390,7 +1393,8 @@
         "known_signatures": [
           "moving a caller before helper definitions restores target calls",
           "a source sum written left-plus-right emits target right-then-left calls",
-          "a cached link or work local changes an otherwise target-backed call tree"
+          "a cached link or work local changes an otherwise target-backed call tree",
+          "an int lifetime narrows only at an authenticated s16 call boundary"
         ]
       },
       "rule": "Treat definition order and expression-tree evaluation as one bounded owner-local variable; retain a form only when the complete helper family, relocations, and existing exact neighbors agree, without pragmas or forced linkage.",
@@ -1411,7 +1415,8 @@
           "mbCapSelectMasuNum",
           "CapUse",
           "CapSelectMasuCheck",
-          "CapSelectMasuListGet"
+          "CapSelectMasuListGet",
+          "mbCapSelectMasuInit"
         ],
         "modules": [
           "main.dol"
@@ -1425,7 +1430,8 @@
       "examples": [
         "mbCapSelectMasuNum calling BackNum then FrontNum",
         "CapSelectMasuListGet direct nested-call form",
-        "CapUse work/result/workData declaration order"
+        "CapUse work/result/workData declaration order",
+        "mbCapSelectMasuInit int-to-s16 boundary"
       ],
       "counterexamples": [
         "Forcing helper emission without an authentic caller is non-organic.",
