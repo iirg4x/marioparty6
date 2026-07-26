@@ -1249,6 +1249,34 @@ static BOOL CapSelectMasuCheck(int masuId)
     return FALSE;
 }
 
+void mbCapSelectMasuInit(void)
+{
+    int maxNum = 0;
+    s16 *masuFlagData;
+    s16 *masuFlag;
+    int masuId;
+    int i;
+    int num;
+
+    masuFlagData = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+    masuFlag = masuFlagData;
+    for (masuId = 1; masuId <= mbMasuRawNumGet(); masuId++) {
+        memset(masuFlag, 0, sizeof(s16) * 256);
+        capsuleMasuSelectEndF = TRUE;
+        CapSelectMasuListGet(masuFlag, masuId, 5, 5);
+        for (i = 0, num = 1; i < 256; i++) {
+            if (masuFlag[i] & 1) {
+                num++;
+            }
+        }
+        if (num > maxNum) {
+            maxNum = num;
+        }
+    }
+    HuMemDirectFree(masuFlag);
+}
+
 static void CapSelectMasuListGet(
     s16 *masuFlag, s16 masuId, s16 frontMax, s16 backMax)
 {
