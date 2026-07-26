@@ -1134,6 +1134,76 @@
       "evidence": [
         "docs/native_matching_w01_inline_chronology.md"
       ]
+    },
+    {
+      "id": "mwcc-conversion-pool-relocation-ownership-before-text-retention",
+      "title": "Require conversion-pool relocation ownership before retaining exact text",
+      "classification": "confirmed_rule",
+      "category": "literal_pool_ownership",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "MWCC can reproduce every instruction byte in an integer-to-floating conversion function while binding its synthesized literal to a TU-local pool instead of the retail object's separate or preceding owner.",
+      "conditions": "Apply when function size and instructions are exact but one or more conversion-literal relocations name a compiler-local symbol instead of the target owner.",
+      "source_condition": {
+        "change": "Recover a conversion consumer without the authenticated preceding literal owner or translation-unit chronology.",
+        "requires": [
+          "pinned compiler command and pool profile",
+          "instruction and function-size identity",
+          "exact relocation target comparison",
+          "target/source symbol and section ownership",
+          "preceding-function literal chronology"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "anonymous compiler-local conversion constants",
+          "correct instructions with incorrect relocation targets",
+          "duplicated named and anonymous constants",
+          "downstream pool offsets that depend on an earlier owner"
+        ],
+        "known_signatures": [
+          "text is byte-identical while a target lbl_* relocation becomes source @NNN",
+          "pool_data off does not suppress the synthesized conversion constant",
+          "an equivalent weak named constant coexists with rather than absorbs the anonymous pool",
+          "restoring an authenticated preceding owner is expected to move the downstream pool naturally"
+        ]
+      },
+      "rule": "Do not retain a text-exact function until its conversion-pool relocation owner is exact; restore authenticated source chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name.",
+      "safe_actions": [
+        "compare relocation target symbols in addition to instruction bytes",
+        "compile the authenticated preceding-function cluster under the exact profile",
+        "test pool_data and named-constant controls only as bounded counterexamples",
+        "require organic source and linked consumer proof before retention"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "openingDll",
+          "s02Dll",
+          "s03Dll"
+        ],
+        "owner_tags": [
+          "literal_pool",
+          "relocation_ownership",
+          "rel"
+        ]
+      },
+      "examples": [
+        "s02Dll fn_1_4B8: 0x470 exact text, target lbl_1_rodata_60 versus source @373",
+        "s03Dll fn_1_1238: 536 exact text bytes, target lbl_1_rodata_A0 versus source @360"
+      ],
+      "counterexamples": [
+        "A matching literal value does not prove relocation ownership.",
+        "#pragma pool_data off did not suppress the openingDll conversion pool.",
+        "A weak equivalent named constant emitted alongside the anonymous pool instead of absorbing it."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_conversion_pool_ownership.md"
+      ]
     }
   ]
 }
