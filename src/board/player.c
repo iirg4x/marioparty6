@@ -2229,11 +2229,13 @@ void mbPlayerMatClone(int playerNo)
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HSF_DATA *hsf = modelP->hsf;
     int size = hsf->materialNum * sizeof(HSF_MATERIAL);
-    HSF_MATERIAL *matP =
+    void *materialData =
         HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+    HSF_MATERIAL *matP = materialData;
+    HSF_MATERIAL *material = matP;
 
-    memcpy(matP, hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
-    playerWork[playerNo].matCopy = matP;
+    memcpy(material, hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
+    playerWork[playerNo].matCopy = material;
 }
 
 typedef struct PlayerMetalWork {
