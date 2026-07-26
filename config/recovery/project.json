@@ -5,6 +5,28 @@
   "goal": "Recover the most likely original non-minigame Mario Party 6 source while preserving retail binary identity as the final verification gate.",
   "default_context_budget": 12000,
   "knowledge_card_limit": 5,
+  "branch_boundary": {
+    "human_branch": "main",
+    "ai_workspace_branch": "agent/recovery-context-workflow",
+    "workspace_merge_allowed": false,
+    "automatic_promotion_globs": [
+      "src/**/*.c"
+    ],
+    "automatic_promotion_forbidden": [
+      "headers",
+      "build configuration",
+      "symbols and splits",
+      "tools",
+      "agent instructions",
+      "recovery metadata",
+      "benchmarks",
+      "documentation",
+      "workflows",
+      "generated output",
+      "AI attribution"
+    ],
+    "promotion_branch_prefix": "recovery/"
+  },
   "owner_globs": [
     "config/recovery/owners/*.json"
   ],
@@ -18,6 +40,7 @@
   "agent_readiness": {
     "required_files": [
       "AGENTS.md",
+      "AI_WORKSPACE.md",
       "CONTRIBUTING.md",
       "README.md",
       "CLAUDE.md",
@@ -30,6 +53,7 @@
       "docs/recovery_standard.md",
       "docs/context_workflow.md",
       "docs/concurrent_agents.md",
+      "docs/main_promotion.md",
       "docs/blind_recovery_benchmark.md",
       "benchmarks/blind_recovery/README.md",
       "benchmarks/blind_recovery/manifest.json",
@@ -47,8 +71,10 @@
       "tools/recovery_knowledge.py",
       "tools/knowledge_cards.py",
       "tools/blind_recovery.py",
+      "tools/promote_recovered_c.py",
       ".github/PULL_REQUEST_TEMPLATE.md",
-      ".github/ISSUE_TEMPLATE/recovery-task.yml"
+      ".github/ISSUE_TEMPLATE/recovery-task.yml",
+      ".github/workflows/ai-workspace-boundary.yml"
     ],
     "forbidden_paths": [
       ".github.example",
@@ -166,6 +192,8 @@
     "Recover the most likely original source; do not optimize only for emitted bytes.",
     "Binary identity is required for final promotion but is not, by itself, a source-authenticity claim.",
     "Same-game target and consumer evidence outrank sibling source, compiler probes, and readability hypotheses.",
+    "The AI workspace is permanent and must never be merged, squashed, rebased, or cherry-picked into main.",
+    "Only exact verified src/**/*.c blobs may be promoted automatically to a fresh recovery/* branch based on main.",
     "Claim the owner and every shared write path before editing; the real Git diff must remain inside the claim.",
     "Consult automatically selected knowledge cards, freshness state, symptoms, and counterexamples before starting a compiler probe.",
     "Compiler experiments may justify source shape; they do not prove semantic names.",
@@ -185,6 +213,7 @@
     "Run serialized retail checksum and byte gates before integration finalization.",
     "Update source-quality dimensions independently from binary status.",
     "Do not merge an unexplained compiler-control construct merely because it reaches 100%.",
-    "Do not describe a blind-recovery trial as reproducible unless its evidence, frozen candidate, compared assembly, hashes, source commit, and deterministic score are preserved."
+    "Do not describe a blind-recovery trial as reproducible unless its evidence, frozen candidate, compared assembly, hashes, source commit, and deterministic score are preserved.",
+    "Promote accepted source through a fresh main-based recovery/* worktree containing only selected verified C blobs and no AI attribution."
   ]
 }
