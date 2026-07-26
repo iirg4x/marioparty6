@@ -1,81 +1,115 @@
-decomp-toolkit Project Template
-===============================
+# Mario Party 6
 
-See [STATUS.md](STATUS.md) for the current Mario Party 6 recovery and fallback
-ownership snapshot.
+A work-in-progress decompilation of **Mario Party 6** for Nintendo GameCube.
 
-If starting a new GameCube / Wii decompilation project, this repository can be used as a scaffold.
+The supported build is:
 
-See [decomp-toolkit](https://github.com/encounter/decomp-toolkit) for background on the concept and more information on the tooling used.
+- `GP6E01` — USA, Revision 0
 
-Documentation
--------------
+The current recovery priority is the byte-identical non-minigame game flow: boot,
+menus, party mode, boards, results, and ending. See [STATUS.md](STATUS.md) for the
+latest verified snapshot.
 
-- [Dependencies](docs/dependencies.md)
-- [Getting Started](docs/getting_started.md)
+This repository does **not** contain game assets or original binaries. A legally
+obtained copy of the game is required. This is a source-recovery project, not a
+finished PC port.
+
+## Requirements
+
+- Git
+- Python
+- [Ninja](https://ninja-build.org/)
+
+Platform-specific setup is documented in
+[docs/dependencies.md](docs/dependencies.md).
+
+## Building
+
+1. Clone the repository:
+
+   ```sh
+   git clone https://github.com/iirg4x/marioparty6.git
+   cd marioparty6
+   ```
+
+2. Extract the USA Revision 0 game into `orig/GP6E01`, preserving the disc
+   directory layout. The configured build expects files such as:
+
+   ```text
+   orig/GP6E01/sys/main.dol
+   orig/GP6E01/files/dll/*.rel
+   ```
+
+3. Generate the build files:
+
+   ```sh
+   python configure.py
+   ```
+
+4. Build:
+
+   ```sh
+   ninja
+   ```
+
+The first configuration may download the pinned support tools and compilers used
+by the project. Additional configuration options are available through:
+
+```sh
+python configure.py --help
+```
+
+For a fuller walkthrough, see
+[docs/getting_started.md](docs/getting_started.md).
+
+## Diffing
+
+After configuration, an `objdiff.json` file is generated in the repository root.
+Download [objdiff](https://github.com/encounter/objdiff), set this repository as
+the project directory, and select an object from the left sidebar.
+
+Changes to source files, headers, `configure.py`, symbols, and splits can then be
+rebuilt and compared automatically.
+
+## Verification
+
+A successful local build can be checked against the configured retail hashes:
+
+```sh
+build/tools/dtk shasum -q -c config/GP6E01/build.sha1
+```
+
+On Windows, use `build/tools/dtk.exe`.
+
+Matching source changes should also be checked with relocation-aware object
+comparison and against any affected consumers. Binary equality is required, but
+readable and evidence-supported source remains the goal.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project workflow and source-quality
+expectations.
+
+Useful technical references:
+
 - [`symbols.txt`](docs/symbols.md)
 - [`splits.txt`](docs/splits.md)
-- [GitHub Actions](docs/github_actions.md) (new!)
-
-General:
-
 - [Common BSS](docs/common_bss.md)
-- [`.comment` section](docs/comment_section.md)
+- [CodeWarrior `.comment` sections](docs/comment_section.md)
 
-References
---------
+## Project layout
 
-- [Discord: GC/Wii Decompilation](https://discord.gg/hKx3FJJgrV) (Come to `#dtk` for help!)
-- [objdiff](https://github.com/encounter/objdiff) (Local diffing tool)
-- [decomp.me](https://decomp.me) (Collaborate on matches)
-- [frogress](https://github.com/decompals/frogress) (Decompilation progress API)
-- [wibo](https://github.com/decompals/wibo) (Minimal Win32 wrapper for Linux)
-- [sjiswrap](https://github.com/encounter/sjiswrap) (UTF-8 to Shift JIS wrapper)
+- `src/` — recovered source files
+- `include/` — shared headers and data definitions
+- `config/GP6E01/` — DOL configuration, symbols, splits, and retail hashes
+- `config/dll/rels/` — REL symbols and split ownership
+- `tools/` — build and analysis helpers
+- `orig/GP6E01/` — locally extracted game files; ignored by Git
+- `build/` — generated build output; ignored by Git
 
-Projects using this structure:
+## Related projects and tools
 
-- [zeldaret/tww](https://github.com/zeldaret/tww)
-- [PrimeDecomp/prime](https://github.com/PrimeDecomp/prime)
-- [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes)
-- [DarkRTA/rb3](https://github.com/DarkRTA/rb3)
-- [doldecomp/melee](https://github.com/doldecomp/melee)
-- [doldecomp/sadx](https://github.com/doldecomp/sadx)
-- [InputEvelution/wp](https://github.com/InputEvelution/wp)
-- [lepelog/ss-dtk](https://github.com/lepelog/ss-dtk)
-- [NWPlayer123/AnimalCrossing-dtk](https://github.com/NWPlayer123/AnimalCrossing-dtk)
-- [Rainchus/mp4-dtk](https://github.com/Rainchus/mp4-dtk)
-- [Rainchus/ttyd_dtk](https://github.com/Rainchus/ttyd_dtk)
-- [Sage-of-Mirrors/zmansion](https://github.com/Sage-of-Mirrors/zmansion)
-
-Features
---------
-
-- Few external dependencies: Just `python` for the generator and `ninja` for the build system. See [Dependencies](docs/dependencies.md).
-- Simple configuration: Everything lives in `config.yml`, `symbols.txt`, and `splits.txt`.
-- Multi-version support: Separate configurations for each game version, and a `configure.py --version` flag to switch between them.
-- Feature-rich analyzer: Many time-consuming tasks are automated, allowing you to focus on the decompilation itself. See [Analyzer features](https://github.com/encounter/decomp-toolkit#analyzer-features).
-- REL support: RELs each have their own `symbols.txt` and `splits.txt`, and will automatically be built and linked against the main binary.
-- No manual assembly: decomp-toolkit handles splitting the DOL into relocatable objects based on the configuration. No game assets are committed to the repository.
-- Progress calculation and upload script for [frogress](https://github.com/decompals/frogress).
-- Integration with [objdiff](https://github.com/encounter/objdiff) for a diffing workflow.
-- CI workflow template for GitHub Actions.
-
-Project structure
------------------
-
-- `configure.py` - Project configuration and generator script.
-- `config/[GP6E01]` - Configuration files for each game version.
-- `config/[GP6E01]/build.sha1` - SHA-1 hashes for each built artifact, for final verification.
-- `build/` - Build artifacts generated by the the build process. Ignored by `.gitignore`.
-- `orig/[GP6E01]` - Original game files, extracted from the disc. Ignored by `.gitignore`.
-- `orig/[GP6E01]/.gitkeep` - Empty checked-in file to ensure the directory is created on clone.
-- `src/` - C/C++ source files.
-- `include/` - C/C++ header files.
-- `tools/` - Scripts shared between projects.
-
-Temporary, delete when done:
-
-- `config/GP6E01/config.example.yml` - Example configuration file and documentation.
-- `docs/` - Documentation for decomp-toolkit configuration.
-- `README.md` - This file, replace with your own. For a template, see [`README.example.md`](README.example.md).
-- `LICENSE` - This repository is licensed under the CC0 license. Replace with your own if desired.
+- [Mario Party 4 decompilation](https://github.com/mariopartyrd/marioparty4)
+- [decomp-toolkit](https://github.com/encounter/decomp-toolkit)
+- [objdiff](https://github.com/encounter/objdiff)
+- [decomp.me](https://decomp.me/)
