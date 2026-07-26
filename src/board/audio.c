@@ -94,12 +94,12 @@ static MBMUSDATA musData[MB_MUS_CHAN_MAX];
 
 static int dummyId = -1;
 
-static HUPROCESS *musBoardFadeProc;
-static HUPROCESS *audFXProc;
-static BOOL audFXObjOnF;
-static int audFXObjOnTimer;
-static int audFXDelay;
 static int musChanId[MB_MUS_CHAN_MAX];
+static int audFXDelay;
+static int audFXObjOnTimer;
+static BOOL audFXObjOnF;
+static HUPROCESS *audFXProc;
+static HUPROCESS *musBoardFadeProc;
 
 extern HUPROCESS *mbMainProc;
 extern void mbPlayerPosGet(int playerNo, Vec *pos);
@@ -547,17 +547,20 @@ static void MusPlayKill(void)
     }
 }
 
+static inline void *MusBoardFadeWorkAlloc(void)
+{
+    return HuMemDirectMallocNum(HEAP_HEAP, sizeof(MUSBOARDFADEDATA), HU_MEMNUM_OVL);
+}
+
 BOOL mbMusBoardFadeOut(int chan, int nextChan, int speed, int fadeSpeed, int musId, BOOL pauseF)
 {
     MUSBOARDFADEDATA *work;
-    void *workP;
 
     if (musBoardFadeProc) {
         return FALSE;
     }
     musBoardFadeProc = HuPrcChildCreate(MusBoardFade, 0x2001, 0x2000, 0, mbMainProc);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MUSBOARDFADEDATA), HU_MEMNUM_OVL);
-    work = workP;
+    work = MusBoardFadeWorkAlloc();
     musBoardFadeProc->property = work;
     memset(work, 0, sizeof(MUSBOARDFADEDATA));
     work->chan = chan;
