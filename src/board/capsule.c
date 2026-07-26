@@ -228,6 +228,11 @@ typedef struct CapAutoThrowWork_s {
     HuVecF masuPos;
 } CAP_AUTO_THROW_WORK;
 
+typedef struct CapUseWork_s {
+    int playerNo;
+    int capsuleNo;
+} CAP_USE_WORK;
+
 typedef struct CapsuleData_s {
     u32 file;
     u32 objFile;
@@ -554,6 +559,12 @@ static void CapEffTrailPosSet(HuVecF *pos);
 static void CapEffTrailAdd(HuVecF *pos, int capsuleNo);
 static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num);
 static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
+static int CapUseSelect(CAP_USE_WORK *work);
+static int CapUse(int playerNo, int capsuleNo);
+static BOOL CapSelectMasuCheck(int masuId);
+static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId);
+static void CapSelectMasuListGet(
+    s16 *masuFlag, s16 masuId, s16 frontMax, s16 backMax);
 static void CapSelectMasuAddFront(s16 *masuFlag, s16 masuId, s16 max);
 static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max);
 void mbCapAutoThrowEnd(CAP_AUTO_THROW_WORK *work);
@@ -588,6 +599,24 @@ static void CapPlayerThrowKill(void)
     mbCapObjColorKill(work->objColorId);
     HuMemDirectFree(work);
     capsulePlayerThrowProc = NULL;
+}
+
+static int CapUse(int playerNo, int capsuleNo)
+{
+    CAP_USE_WORK *work;
+    int result;
+    CAP_USE_WORK *workData;
+
+    capsuleNo = mbCapValueTypeGet(capsuleNo);
+    workData = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(CAP_USE_WORK), HU_MEMNUM_OVL);
+    work = workData;
+    memset(work, 0, sizeof(CAP_USE_WORK));
+    work->playerNo = playerNo;
+    work->capsuleNo = capsuleNo;
+    result = CapUseSelect(work);
+    HuMemDirectFree(work);
+    return result;
 }
 
 static BOOL CapSelectMasuDispCheck(int masuId)
@@ -1196,6 +1225,41 @@ result_false:
     result = FALSE;
 done:
     return result;
+}
+
+static BOOL CapSelectMasuCheck(int masuId)
+{
+    int masuType;
+    u32 masuMAttr;
+    int i;
+
+    masuType = mbMasuTypeGet(masuId);
+    masuMAttr = mbMasuMAttrGet(masuId);
+    if (masuType == 1 || masuType == 2) {
+        if (mbCapMasuDispTypeGet(masuId) == 0 ||
+            mbCapMasuDispTypeGet(masuId) == 1) {
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                if (masuId == GwPlayer[i].masuId) {
+                    return FALSE;
+                }
+            }
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+static void CapSelectMasuListGet(
+    s16 *masuFlag, s16 masuId, s16 frontMax, s16 backMax)
+{
+    capsuleMasuSelectEndF = TRUE;
+    CapSelectMasuAddFront(masuFlag, masuId, frontMax);
+    capsuleMasuSelectEndF = TRUE;
+    CapSelectMasuAddBack(masuFlag, masuId, backMax);
+    if (masuId != mbMasuFind_AttrIdGet(-1, 0x8000)) {
+        CapSelectMasuLinkCheck(masuFlag,
+            mbMasuTypeFindLink(mbMasuFind_AttrIdGet(-1, 0x8000), 0));
+    }
 }
 
 int mbCapFileGet(int capsuleNo)
