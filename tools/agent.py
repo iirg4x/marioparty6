@@ -280,9 +280,65 @@ def _safe_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_") or "context"
 
 
+def _with_operational_context_owner(
+    data: dict[str, Any], owner_id: str | None
+) -> dict[str, Any]:
+    """Add an in-memory, non-semantic owner when only the catalog knows it."""
+
+    if not owner_id or any(
+        owner.get("id") == owner_id for owner in data.get("owners", [])
+    ):
+        return data
+    matches = find_owner(_catalog(data), owner_id)
+    if len(matches) != 1:
+        return data
+    record = matches[0]
+    configured = str(record.get("configured_status") or "Unknown")
+    owner = {
+        "id": record["id"],
+        "module": record.get("module"),
+        "source": record["source"],
+        "summary": (
+            "Operational-catalog fallback only; no reviewed semantic owner "
+            "metadata exists for this source."
+        ),
+        "compiler": None,
+        "tags": ["operational-catalog-fallback"],
+        "status": {
+            "binary": "exact" if configured == "Matching" else "partial",
+            "source_shape": "plausible",
+            "semantics": "partial",
+            "naming": "partially_semantic",
+            "data": "typed_partial",
+        },
+        "evidence": [
+            {
+                "kind": "operational_catalog",
+                "confidence": "confirmed",
+                "accepted": True,
+                "summary": f"configure.py status is {configured}",
+                "reference": "build/context/owner-catalog.json",
+            }
+        ],
+        "debt": [
+            {
+                "kind": "owner_metadata",
+                "priority": "normal",
+                "summary": "Reviewed structured owner metadata has not been authored.",
+            }
+        ],
+        "constraints": [],
+        "context": {"reports": []},
+    }
+    result = dict(data)
+    result["owners"] = [*data.get("owners", []), owner]
+    return result
+
+
 def _write_context(data: dict[str, Any], args: argparse.Namespace) -> Path | None:
+    context_data = _with_operational_context_owner(data, args.owner)
     text = build_context(
-        data,
+        context_data,
         args.kind,
         args.target,
         owner_id=args.owner,
@@ -295,7 +351,7 @@ def _write_context(data: dict[str, Any], args: argparse.Namespace) -> Path | Non
     if args.stdout:
         print(text, end="")
         return None
-    root: Path = data["root"]
+    root: Path = context_data["root"]
     destination = root / (
         args.output
         or f"build/context/{args.kind}-{_safe_name(args.owner or '')}-{_safe_name(args.target)}.md"

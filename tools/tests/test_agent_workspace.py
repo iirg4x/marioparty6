@@ -4,7 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.agent import _safe_name, doctor_checks
+from unittest.mock import patch
+
+from tools.agent import _safe_name, _with_operational_context_owner, doctor_checks
 from tools.recovery_core import load
 from tools.tests.test_recovery_workflow import RecoveryWorkflowTests
 
@@ -38,6 +40,25 @@ class AgentWorkspaceTests(unittest.TestCase):
             _safe_name("REL:mdpartydll:mdparty/fn_1_BBD8"),
             "REL_mdpartydll_mdparty_fn_1_BBD8",
         )
+
+    def test_context_can_use_unreviewed_operational_owner(self):
+        data = {"root": Path("."), "owners": []}
+        catalog = {
+            "owners": [
+                {
+                    "id": "main:board/math",
+                    "module": "main",
+                    "source": "src/board/math.c",
+                    "configured_status": "NonMatching",
+                }
+            ]
+        }
+        with patch("tools.agent._catalog", return_value=catalog):
+            result = _with_operational_context_owner(data, "main:board/math")
+        self.assertEqual(result["owners"][0]["id"], "main:board/math")
+        self.assertEqual(result["owners"][0]["status"]["binary"], "partial")
+        self.assertIn("no reviewed", result["owners"][0]["summary"])
+        self.assertEqual(data["owners"], [])
 
     def test_doctor_detects_template_leftovers(self):
         with tempfile.TemporaryDirectory() as directory:
