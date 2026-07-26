@@ -4,21 +4,23 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **July 17, 2026**
+Last published full-project snapshot: **July 26, 2026**
 
-Newer source commits may be ahead of these totals until the next complete build and progress refresh.
+This snapshot was generated from the verified 744-step retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching owners |
 | --- | ---: | ---: | ---: |
-| Entire project | 12.13% | 32.25% | 308 / 900 |
+| Entire project | 13.20% | 32.75% | 325 / 912 |
 | Main DOL | 47.42% | 74.59% | 294 / 396 |
-| REL modules | 4.65% | 5.42% | 14 / 504 |
+| REL modules | 5.95% | 6.24% | 31 / 516 |
 
 Within the main game flow at that snapshot:
 
 - `src/game/`: **57 / 57 owners matching**
 - `src/board/`: **13 / 40 owners matching**
-- Fully source-linked flow modules: `actmanDLL`, `sequencedll`, `mdseldll`, and `mdpartydll`
+- Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, and `w01Dll`
+- Exact shared GC/2.6 runtime owners now cover 15 additional non-minigame RELs, including the results, ending, option, single-player, miracle-book, bank, opening, and staff modules.
+- `w01Dll` is source-linked and byte-identical to retail (`196d7075abbe6eec3031c9484d25216de9dc0889`).
 
 The current priority is the non-minigame game flow: boot, menus, party mode, boards, results, and ending. Minigame modules and mic-quiz modes are not part of the active recovery target.
 
