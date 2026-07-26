@@ -2,17 +2,13 @@
 
 A work-in-progress decompilation of **Mario Party 6** for Nintendo GameCube.
 
-The supported build is:
+Supported build:
 
 - `GP6E01` — USA, Revision 0
 
-The current recovery priority is the byte-identical non-minigame game flow: boot,
-menus, party mode, boards, results, and ending. See [STATUS.md](STATUS.md) for the
-latest verified snapshot.
+The project currently prioritizes the byte-identical non-minigame game flow: boot, menus, party mode, boards, results, and ending. See the concise [project status](STATUS.md) for the latest verified snapshot.
 
-This repository does **not** contain game assets or original binaries. A legally
-obtained copy of the game is required. This is a source-recovery project, not a
-finished PC port.
+This repository does **not** contain game assets or original binaries. A legally obtained copy of the game is required. This is a source-recovery project, not a finished PC port.
 
 ## Requirements
 
@@ -20,8 +16,7 @@ finished PC port.
 - Python
 - [Ninja](https://ninja-build.org/)
 
-Platform-specific setup is documented in
-[docs/dependencies.md](docs/dependencies.md).
+Platform-specific setup is covered in [docs/dependencies.md](docs/dependencies.md).
 
 ## Building
 
@@ -32,8 +27,7 @@ Platform-specific setup is documented in
    cd marioparty6
    ```
 
-2. Extract the USA Revision 0 game into `orig/GP6E01`, preserving the disc
-   directory layout. The configured build expects files such as:
+2. Extract the USA Revision 0 game into `orig/GP6E01`, preserving the disc directory layout. The configured build expects files such as:
 
    ```text
    orig/GP6E01/sys/main.dol
@@ -52,28 +46,23 @@ Platform-specific setup is documented in
    ninja
    ```
 
-The first configuration may download the pinned support tools and compilers used
-by the project. Additional configuration options are available through:
+The first configuration may download the pinned support tools and compilers used by the project. Additional options are available through:
 
 ```sh
 python configure.py --help
 ```
 
-For a fuller walkthrough, see
-[docs/getting_started.md](docs/getting_started.md).
+For a complete walkthrough, see [docs/getting_started.md](docs/getting_started.md).
 
-## Diffing
+## Comparing changes
 
-After configuration, an `objdiff.json` file is generated in the repository root.
-Download [objdiff](https://github.com/encounter/objdiff), set this repository as
-the project directory, and select an object from the left sidebar.
+Configuration generates `objdiff.json` in the repository root. Open the repository in [objdiff](https://github.com/encounter/objdiff) to rebuild and compare individual objects.
 
-Changes to source files, headers, `configure.py`, symbols, and splits can then be
-rebuilt and compared automatically.
+Source recovery should be checked with relocation-aware object comparison and against any affected consumers. A matching binary is required, but readable and evidence-supported source remains the goal.
 
 ## Verification
 
-A successful local build can be checked against the configured retail hashes:
+Check a successful build against the configured retail hashes:
 
 ```sh
 build/tools/dtk shasum -q -c config/GP6E01/build.sha1
@@ -81,21 +70,11 @@ build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 
 On Windows, use `build/tools/dtk.exe`.
 
-Matching source changes should also be checked with relocation-aware object
-comparison and against any affected consumers. Binary equality is required, but
-readable and evidence-supported source remains the goal.
-
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the project workflow and source-quality
-expectations.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for source-quality and verification expectations.
 
-Useful technical references:
-
-- [`symbols.txt`](docs/symbols.md)
-- [`splits.txt`](docs/splits.md)
-- [Common BSS](docs/common_bss.md)
-- [CodeWarrior `.comment` sections](docs/comment_section.md)
+The small documentation index is available at [docs/README.md](docs/README.md).
 
 ## Project layout
 
