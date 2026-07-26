@@ -1,9 +1,17 @@
-# Agent quickstart
+# AI recovery worker quickstart
 
-## 1. Inspect and prepare
+## 1. Understand the branch boundary
 
-Read root `AGENTS.md`, the nearest nested `AGENTS.md`, and this file. Do not load
-all of `STATUS.md` or the wave archive.
+Read root `AGENTS.md`, `AI_WORKSPACE.md`, the nearest nested `AGENTS.md`, and
+this file.
+
+This branch never merges into `main`. It is the AI recovery workspace. Only
+verified recovered `src/**/*.c` blobs may move through a fresh main-based
+`recovery/*` branch.
+
+Do not load all of `STATUS.md` or the wave archive.
+
+## 2. Inspect and prepare
 
 ```sh
 python tools/agent.py doctor
@@ -14,12 +22,9 @@ python tools/agent.py queue status
 Warnings about missing retail inputs are acceptable for public-safe work, but
 private DOL/REL proof cannot be claimed.
 
-## 2. Claim one owner
+## 3. Claim one owner
 
-Use a recovery-task issue. Claude and Codex must use separate worktrees,
-branches, and build directories.
-
-The safest setup is:
+Claude and Codex use separate worktrees, branches, and build directories:
 
 ```sh
 python tools/agent.py worktree create <owner> \
@@ -28,14 +33,7 @@ python tools/agent.py worktree create <owner> \
   --retail <read-only-GP6E01-directory>
 ```
 
-For an existing worktree:
-
-```sh
-python tools/agent.py queue claim <owner> --agent <claude-or-codex>
-```
-
-The orchestrator can populate batches and workers can take the next eligible
-task:
+Or claim an existing eligible task:
 
 ```sh
 python tools/agent.py queue claim-next \
@@ -44,7 +42,7 @@ python tools/agent.py queue claim-next \
   --batch menu-flow
 ```
 
-## 3. Generate focused context
+## 4. Generate focused context
 
 ```sh
 python tools/agent.py context function <symbol> \
@@ -54,27 +52,26 @@ python tools/agent.py context function <symbol> \
   --budget 12000
 ```
 
-The packet reserves space for selected knowledge cards, freshness state, local
-objdiff summaries, target source, constraints, and acceptance criteria. Expand
-only one named missing dependency.
+The packet reserves space for selected cards, freshness state, local objdiff
+summaries, target source, constraints, and acceptance criteria. Expand only one
+named missing dependency.
 
-## 4. Research, then edit
+## 5. Research, then edit
 
 Before editing, record:
 
 - owner and stable identity;
-- selected rules, owner constraints, freshness warnings, and counterexamples;
-- target instructions, relocations, sections, callers, and data references;
+- rules, owner constraints, freshness warnings, and counterexamples;
+- target instructions, relocations, callers, and data references;
 - consumer widths and semantic domains;
-- sibling evidence and previous rejected probes;
+- sibling evidence and rejected probes;
 - unresolved semantic questions.
 
-Write a natural candidate first. Reconcile compiler shape one variable at a
-time only after the source meaning and likely structure are clear.
+Write a natural candidate first. Reconcile compiler shape one variable at a time.
 
-## 5. Keep the real diff inside the claim
+## 6. Keep the real diff inside the claim
 
-Declare any shared path before touching it:
+Declare shared paths before touching them:
 
 ```sh
 python tools/agent.py queue update <owner> \
@@ -88,18 +85,17 @@ Before commits and handoff:
 python tools/agent.py queue check-diff --base origin/main
 ```
 
-This examines committed, staged, unstaged, and untracked files. The installed
-pre-commit hook runs the same ownership check automatically.
+The check covers committed, staged, unstaged, and untracked files.
 
-## 6. Save reusable knowledge
+## 7. Save AI-workspace knowledge
 
-Update `config/recovery/` with owner state, evidence, naming, debt, scoped
-exceptions, knowledge cards, examples/counterexamples, and freshness records.
-Do not leave the reusable conclusion only in an agent transcript or wave report.
+Update `config/recovery/` with owner state, evidence, naming, debt, exceptions,
+cards, examples/counterexamples, and freshness. These records stay on the AI
+branch and are never promoted to `main`.
 
-## 7. Record worker proof
+## 8. Record worker proof
 
-Commit the task and leave the worktree clean:
+Commit and leave the worktree clean:
 
 ```sh
 python tools/agent.py check --base origin/main
@@ -117,37 +113,59 @@ python tools/agent.py queue update <owner> \
   --agent <agent> --status ready
 ```
 
-The proof is tied to the clean current commit. Editing afterward requires
-re-verification.
+Any later edit requires re-verification.
 
-## 8. Integrate serially
+## 9. Run private integration serially
 
-The integration worktree acquires exclusive resources, integrates the ready
-commit, and runs the full private gates:
+The AI integration worktree acquires exclusive resources and runs the full
+private gates:
 
 ```sh
 python tools/agent.py queue acquire-resource integration --agent integrator
 python tools/agent.py queue acquire-resource retail-build --agent integrator
 ```
 
-After the serialized build, checksum, consumer, and byte comparisons:
+This verifies the worker commit. It still does not make the AI branch mergeable.
+
+## 10. Promote only recovered C
+
+From the AI workspace:
 
 ```sh
-python tools/agent.py integration finalize <owner> \
-  --agent integrator \
-  --retail-gate pass \
-  --checksum pass \
-  --toolchain GC/1.3.2
+python tools/promote_recovered_c.py create \
+  --base main \
+  --source <verified-worker-commit> \
+  --owner <queue-owner> \
+  --path src/path/recovered.c \
+  --branch recovery/<human-topic> \
+  --worktree ../marioparty6-promotion-<topic> \
+  --title "Recover <subsystem>"
 ```
 
-Finalization confirms the integration tree contains the worker’s verified
-claimed paths before setting the task to `done`.
+The new worktree is based directly on `main` and contains only the selected exact
+C blobs. It contains none of this branch's tools, prompts, metadata, benchmarks,
+workflows, or history.
 
-## 9. Handoff and cleanup
+If a header or build change is necessary, recreate it in the clean promotion
+worktree and review it separately. Never copy it automatically from this branch.
 
-Complete the PR template with evidence, cards, natural candidate, compiler
-reconciliation, exact/relocation impact, consumers, worker proof, integration
-proof, metadata changes, and remaining debt.
+## 11. Verify and open the human-facing PR
+
+In the clean promotion worktree:
+
+```sh
+python <ai-workspace>/tools/promote_recovered_c.py audit \
+  --root . \
+  --base main \
+  --head HEAD \
+  --source <verified-worker-commit>
+```
+
+Rerun object, consumer, DOL/REL, checksum, byte, readability, and semantic-debt
+review. Push the clean `recovery/*` branch and open a normal PR to `main` without
+AI attribution or operational details.
+
+## 12. Cleanup
 
 ```sh
 python tools/agent.py queue release-resource retail-build --agent integrator
