@@ -1,17 +1,22 @@
-# Contributing
+# Contributing to the AI recovery workspace
 
-This repository accepts human- and agent-assisted work. The goal is faithful
-source recovery with retail binary identity as the final objective gate—not byte
-closure through unexplained source tricks.
+## Permanent separation from `main`
+
+This branch is the AI-forward recovery laboratory. It must never be merged,
+squashed, rebased, or cherry-picked wholesale into `main`.
+
+`main` is human-facing. Only verified recovered `src/**/*.c` blobs may be copied
+to a fresh `recovery/*` branch created directly from `main`.
+
+See `AI_WORKSPACE.md` and `docs/main_promotion.md`.
 
 ## Queue and isolate one task
 
-A recovery task must name one owner or tightly connected function cluster, its
-stable identity, research question, current status, expected consumers, and
-verification scope.
+A task names one owner or connected function cluster, stable identity, research
+question, expected consumers, and verification scope.
 
-Claude and Codex on the same PC must use separate worktrees, branches, and build
-directories. Prefer the atomic bootstrap:
+Claude and Codex on one PC use separate worktrees, branches, and build
+directories:
 
 ```sh
 python tools/agent.py worktree create <owner> \
@@ -19,8 +24,7 @@ python tools/agent.py worktree create <owner> \
   --base main
 ```
 
-For bulk scheduling, the orchestrator may add dependencies, batches,
-capabilities, and expected cost:
+For bulk scheduling:
 
 ```sh
 python tools/agent.py queue add <owner> \
@@ -31,13 +35,10 @@ python tools/agent.py queue add <owner> \
   --change-class private-source
 ```
 
-Workers can take the next eligible task with `queue claim-next`. Existing queued
-priority is preserved unless a new `--priority` is explicitly supplied.
+## Claim every write
 
-## Claim every actual write
-
-The owner source is protected automatically. Declare central headers,
-`configure.py`, symbols, splits, and recovery schemas before editing:
+Declare central headers, `configure.py`, symbols, splits, and recovery schemas
+before editing:
 
 ```sh
 python tools/agent.py queue update <owner> \
@@ -51,8 +52,8 @@ Before commits and handoff:
 python tools/agent.py queue check-diff --base origin/main
 ```
 
-This checks committed, staged, unstaged, and untracked paths against the active
-claim and every other task. The managed pre-commit hook runs it automatically:
+The check covers committed, staged, unstaged, and untracked paths. Install local
+hooks with:
 
 ```sh
 python tools/agent.py hooks install
@@ -60,48 +61,19 @@ python tools/agent.py hooks install
 
 ## Recovery workflow
 
-1. Inspect the operational owner catalog and claim one task.
+1. Claim one owner.
 2. Generate focused context with symptoms and local objdiff evidence.
-3. Research target instructions, relocations, callers, consumers, data domains,
-   selected rules, freshness warnings, and previous rejected probes.
-4. Write a natural evidence-supported candidate.
+3. Research target instructions, relocations, callers, consumers, selected
+   rules, freshness warnings, and rejected probes.
+4. Write natural evidence-supported C.
 5. Reconcile compiler shape one variable at a time.
-6. Review adversarially for invented semantics and matching-only constructs.
-7. Update owner metadata, debt, cards, examples/counterexamples, and freshness.
-8. Record worker proof and mark the task `ready`.
-9. Integrate and run retail proof serially before finalization.
-
-A compiler-wide card is diagnostic. An owner constraint never transfers to an
-unrelated owner. A stale card must be revalidated before being relied on as a
-final source-shape rule.
-
-## Files that must not be committed
-
-Never commit:
-
-- retail inputs under `orig/`;
-- generated files under `build/`;
-- `build.ninja`, `objdiff.json`, or `ctx.c`;
-- local queue/resource-lock state;
-- editor, agent, hook, or virtual-environment state;
-- rebuilt DOL/REL binaries or extracted game assets.
-
-Generated reports may be referenced by path in structured proof, but durable
-findings belong in `config/recovery/`.
-
-## Verification matrix
-
-| Change | Worker public gate | Object/consumer proof | Integration retail gate |
-| --- | --- | --- | --- |
-| Documentation only | Required | Not normally | Not normally |
-| Python tools or metadata | Required | Not normally | Not normally |
-| Private C implementation | Required | Required | Required before `done` |
-| Shared header/type/data/symbol | Required | Every affected Matching consumer | Required |
-| Flags/status/splits/link/configure | Required | Required | Required |
+6. Review for invented semantics and match-only constructs.
+7. Update AI-workspace evidence and knowledge.
+8. Commit, record worker proof, and mark the task `ready`.
+9. Run private retail integration serially.
+10. Promote only the verified C blobs to a fresh main-based branch.
 
 ## Worker verification
-
-Commit the candidate and leave the worktree clean:
 
 ```sh
 python tools/agent.py check --base origin/main
@@ -119,78 +91,83 @@ python tools/agent.py queue update <owner> \
   --agent <agent> --status ready
 ```
 
-Verification fails if the worktree is dirty, the branch/worktree/build assignment
-is invalid, or the actual diff escapes the claim. Any later commit invalidates
-the proof.
-
-Documentation/tooling/metadata tasks do not need object fields, but still require
-a clean verified commit and passing public gate.
+Proof is tied to a clean current commit. Any later edit invalidates it.
 
 ## Serialized integration
 
-The integration worktree acquires exclusive resources before full builds:
+The AI integration worktree may acquire exclusive resources and run the full
+DOL/REL, consumer, checksum, and byte-comparison gates. Completing those gates
+does not make the AI branch mergeable.
+
+## Clean C-only promotion
+
+From the AI workspace:
 
 ```sh
-python tools/agent.py queue acquire-resource integration --agent integrator
-python tools/agent.py queue acquire-resource retail-build --agent integrator
+python tools/promote_recovered_c.py create \
+  --base main \
+  --source <verified-worker-commit> \
+  --owner <queue-owner> \
+  --path src/path/recovered.c \
+  --branch recovery/<human-topic> \
+  --worktree ../marioparty6-promotion-<topic> \
+  --title "Recover <subsystem>"
 ```
 
-After integrating a `ready` worker commit and passing private gates:
+The command creates a branch from `main`, copies exact C blobs, and rejects:
+
+- anything outside `src/**/*.c`;
+- AI/tooling files and metadata;
+- headers and build configuration;
+- AI/agent attribution in comments, branch names, or commit messages;
+- blobs that differ from the verified worker commit.
+
+If a header, symbol, split, or build change is required, recreate it from the
+clean `main` checkout and review it as a separate human-facing change. Never
+copy it automatically from this branch.
+
+In the promotion worktree, run:
 
 ```sh
-python tools/agent.py integration finalize <owner> \
-  --agent integrator \
-  --retail-gate pass \
-  --checksum pass \
-  --consumer <consumer>=exact \
-  --toolchain GC/1.3.2
+python <ai-workspace>/tools/promote_recovered_c.py audit \
+  --root . \
+  --base main \
+  --head HEAD \
+  --source <verified-worker-commit>
 ```
 
-Finalization compares every claimed path between the worker’s verified commit
-and the integrated tree. It refuses `done` if integration changed or omitted the
-verified source.
+Then rerun object, consumer, DOL/REL, checksum, byte, and readability review.
+Only the clean `recovery/*` branch is pushed for a pull request to `main`.
 
-Release resources and remove completed worktrees afterward.
+## What stays on the AI branch
 
-## Source and knowledge rules
+Never promote automatically:
+
+- agent instructions, prompts, queues, locks, hooks, or orchestration;
+- knowledge cards, freshness records, owner metadata, or benchmark artifacts;
+- workflow files, wave reports, AI documentation, or generated reports;
+- commit trailers naming Claude, Codex, agents, or AI provenance.
+
+These records are useful internally but do not belong in the human-facing
+project.
+
+## Source rules
 
 Do not regress independently exact functions. Do not introduce pragmas,
-forced-inline controls, code-generation `volatile`/`register`, inline assembly,
-fake storage, or dead branches without scoped evidence.
+forced-inline controls, allocation-oriented `volatile`/`register`, inline
+assembly, fake storage, or dead branches without scoped evidence.
 
-Semantic names and fields require evidence. Keep uncertain identifiers unknown.
+Semantic names require evidence. Keep uncertain identifiers unknown.
 
-A reusable source-to-output finding must record:
+Blind tests must freeze candidates before reveal and preserve replayable
+artifacts. Source similarity, organicity, and binary equality remain separate.
 
-- exact trigger and preconditions;
-- possible emitted changes and recognizable signatures;
-- one clear coding/investigation rule;
-- safe actions;
-- explicit scope;
-- examples, counterexamples, related exceptions, and evidence;
-- validated commit/date, watched paths, and supersession state.
+## Handoff
 
-## Commits and handoff
+An AI-workspace handoff states owner, stable identity, evidence, candidate,
+compiler reconciliation, exact/relocation impact, consumers, proof, remaining
+debt, and the exact C paths eligible for clean promotion.
 
-Separate semantic cleanup, compiler reconciliation, shared-interface work,
-knowledge extraction, and tooling when independently reviewable.
-
-Useful commit trailers/details:
-
-```text
-Owner: REL:mdpartydll:mdparty
-Stable-Identity: mdpartydll:0xBBD8
-Agent: claude / codex
-Queue-Status: ready / done
-Verified-Commit: <sha>
-Knowledge-Cards: reviewed or changed IDs
-Functions-Exact: before -> after
-Relocations: exact / changed / not run
-Consumers: names and results
-Public-Gate: pass
-Retail-Gate: pass / not run
-Evidence: durable path
-```
-
-Complete the PR template. A handoff must be usable without reading the original
-agent transcript.
+A `main` pull request is different: it is human-facing, contains only clean
+project changes, and discusses source behavior and verification—not agents,
+prompts, orchestration, or token usage.
