@@ -14,7 +14,50 @@ typedef struct Last5CoinWork_s {
     float velocity;
 } LAST5COINWORK;
 
+typedef struct Last5RouletteWork_s {
+    u8 unk0F : 1;
+    u8 killF : 1;
+    u8 unk2F : 1;
+    u8 unk3F : 1;
+    u8 rouletteF : 1;
+    u8 diceHitF : 1;
+    u8 diceF : 1;
+    u8 unk7F : 1;
+    s16 time;
+    s16 unk4;
+    s16 unk6;
+    s16 result;
+    s16 chanceNum;
+    s16 chanceNumCur;
+} LAST5ROULETTEWORK;
+
 extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF);
+extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
+    int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
+extern void mbDiceMotHookSet(int playerNo, void (*hook)(int));
+extern BOOL mbDiceKillCheck(int playerNo);
+extern void mbDiceObjHit(int playerNo);
+
+static OMOBJ *last5RouletteOMObj;
+
+static void ev_Last5SDiceMotHook(int playerNo);
+
+static s8 guideMotTbl[7] = {
+    12,
+    21,
+    7,
+    11,
+    8,
+    6,
+    -1,
+};
+
+static void Last5RouletteKill(OMOBJ *obj)
+{
+    LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
+
+    work->killF = TRUE;
+}
 
 static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
 {
@@ -76,6 +119,40 @@ static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
             }
         }
     }
+}
+
+static void ev_Last5Dice(int playerNo)
+{
+    OMOBJ *obj = last5RouletteOMObj;
+
+    mbObjHookReset(obj->mdlId[0]);
+    mbObjDispSet(obj->mdlId[1], FALSE);
+    mbObjDispSet(obj->mdlId[2], TRUE);
+    mbObjHookSet(obj->mdlId[0], "target", obj->mdlId[2]);
+    omObjGetWork(obj, LAST5ROULETTEWORK)->rouletteF = TRUE;
+    omObjGetWork(obj, LAST5ROULETTEWORK)->diceF = TRUE;
+    mbDiceProcExec(playerNo, 6, NULL, NULL, TRUE, FALSE, NULL, 0);
+    mbDiceMotHookSet(playerNo, ev_Last5SDiceMotHook);
+    while (!mbDiceKillCheck(playerNo)) {
+        HuPrcVSleep();
+    }
+    mbAudFXPlay(0x3FB);
+}
+
+static void ev_Last5SDiceMotHook(int playerNo)
+{
+    int i;
+
+    mbPlayerMotionSet(playerNo, 11, HU3D_MOTATTR_NONE);
+    i = 0;
+    do {
+        if (i++ == 27) {
+            omObjGetWork(last5RouletteOMObj, LAST5ROULETTEWORK)->diceHitF = TRUE;
+            mbDiceObjHit(playerNo);
+        }
+        HuPrcVSleep();
+    } while (!mbPlayerMotionEndCheck(playerNo));
+    mbPlayerMotIdleSet(playerNo);
 }
 
 static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
