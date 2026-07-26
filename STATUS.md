@@ -6,18 +6,19 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 Last published full-project snapshot: **July 26, 2026**
 
-This snapshot was generated from the verified 744-step retail build with `tools/update_progress.py`.
+This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching owners |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.20% | 32.75% | 325 / 912 |
-| Main DOL | 47.42% | 74.59% | 294 / 396 |
+| Entire project | 13.29% | 32.85% | 326 / 912 |
+| Main DOL | 47.94% | 74.86% | 295 / 396 |
 | REL modules | 5.95% | 6.24% | 31 / 516 |
 
 Within the main game flow at that snapshot:
 
 - `src/game/`: **57 / 57 owners matching**
-- `src/board/`: **13 / 40 owners matching**
+- `src/board/`: **14 / 40 owners matching**
+- Newly matching board owner: `src/board/audio.c` (49 / 49 functions and 444 / 444 relocations exact)
 - Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, and `w01Dll`
 - Exact shared GC/2.6 runtime owners now cover 15 additional non-minigame RELs, including the results, ending, option, single-player, miracle-book, bank, opening, and staff modules.
 - `w01Dll` is source-linked and byte-identical to retail (`196d7075abbe6eec3031c9484d25216de9dc0889`).
@@ -35,7 +36,7 @@ build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 
 On Windows, use `build/tools/dtk.exe`.
 
-`main.dol`, `mdseldll.rel`, and `mdpartydll.rel` compared byte-identical with their retail counterparts at that snapshot.
+All 137 configured outputs passed the retail checksum gate, and rebuilt `main.dol` compared byte-identical with retail SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
 
 ## Recovery standard
 
