@@ -108,6 +108,25 @@
         "src/board/player.c",
         "src/board/gate.c"
       ]
+    },
+    {
+      "id": "tutorial-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/tutorial.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail tutorial.o omits the two weak sqrtf local statics emitted through the retained generic math.h closure. Exact same-game board owners gate.c, branch.c, status.c, and player.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. In tutorial.c the same boundary removes only the candidate-owned math pool, makes TutorialWatch, both tutorial view functions, and both tutorial sprite-display functions strictly exact, and preserves all 39 previously exact paired functions.",
+      "evidence": [
+        "build/tutorial-baseline-strict.json",
+        "build/tutorial-math-sdk-strict.json",
+        "docs/native_matching_board_constant_pool.md",
+        "src/board/gate.c",
+        "src/board/branch.c",
+        "src/board/status.c",
+        "src/board/player.c"
+      ]
     }
   ]
 }
