@@ -8,20 +8,50 @@ permissions:
   contents: read
 
 jobs:
-  never-merge-ai-workspace:
-    if: github.head_ref == 'agent/recovery-context-workflow' && github.base_ref == 'main'
+  protect-human-main:
+    if: github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: Reject AI workspace merge
+      - name: Check out proposed branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Reject AI-workspace ancestry and infrastructure
         shell: bash
         run: |
-          echo 'This is the permanent AI recovery workspace.'
-          echo 'It must never be merged into main.'
-          echo 'Create a fresh recovery/* branch from main with tools/promote_recovered_c.py.'
-          exit 1
+          failed=0
 
-  boundary-not-applicable:
-    if: github.head_ref != 'agent/recovery-context-workflow' || github.base_ref != 'main'
+          if [[ "$GITHUB_HEAD_REF" == "agent/recovery-context-workflow" ]]; then
+            echo 'The permanent AI recovery workspace must never merge into main.'
+            failed=1
+          fi
+
+          markers=(
+            AI_WORKSPACE.md
+            tools/agent.py
+            tools/agent_queue.py
+            tools/promote_recovered_c.py
+            config/recovery/project.json
+            benchmarks/blind_recovery/manifest.json
+          )
+
+          for path in "${markers[@]}"; do
+            if [[ -e "$path" ]]; then
+              echo "AI workspace marker present in a main-targeting PR: $path"
+              failed=1
+            fi
+          done
+
+          if [[ "$failed" -ne 0 ]]; then
+            echo 'Create a fresh recovery/* branch directly from main and copy only verified src/**/*.c blobs.'
+            exit 1
+          fi
+
+          echo 'No AI workspace markers detected in this main-targeting branch.'
+
+  non-main-pr:
+    if: github.base_ref != 'main'
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'AI workspace merge boundary is not applicable to this pull request.'
+      - run: echo 'AI workspace boundary guard is not applicable to this internal PR.'
