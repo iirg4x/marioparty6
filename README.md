@@ -1,68 +1,93 @@
-# Mario Party 6
+Mario Party 6
+=============
 
-A work-in-progress decompilation of **Mario Party 6** for Nintendo GameCube.
+A work-in-progress decompilation of Mario Party 6. The currently supported build is the USA Revision 0 release, with active work focused on the main game flow, menus, party mode, boards, results, and ending.
 
-Supported build:
+There is **NO** working PC port yet.
 
-- `GP6E01` — USA, Revision 0
+This repository does **not** contain game assets or original binaries. A legally obtained copy of the game is required.
 
-The project currently prioritizes the byte-identical non-minigame game flow: boot, menus, party mode, boards, results, and ending. See the concise [project status](STATUS.md) for the latest verified snapshot.
+Version Completion:
 
-This repository does **not** contain game assets or original binaries. A legally obtained copy of the game is required. This is a source-recovery project, not a finished PC port.
+- `GP6E01`: Rev 0 (USA) 🚧
 
-## Requirements
+See [STATUS.md](STATUS.md) for the latest verified progress snapshot.
 
-- Git
-- Python
-- [Ninja](https://ninja-build.org/)
+Dependencies
+============
 
-Platform-specific setup is covered in [docs/dependencies.md](docs/dependencies.md).
+Windows
+-------
 
-## Building
+Native Windows tooling is recommended. WSL and MSYS2 are not required. When a checkout is accessed across the Windows/WSL boundary, [objdiff](#diffing) filesystem notifications may not work reliably.
 
-1. Clone the repository:
+- Install [Git](https://git-scm.com/download/win).
+- Install [Python](https://www.python.org/downloads/) and add it to `%PATH%`.
+- Download [Ninja](https://github.com/ninja-build/ninja/releases) and add it to `%PATH%`.
+  - Quick install via pip: `python -m pip install ninja`
 
-   ```sh
-   git clone https://github.com/iirg4x/marioparty6.git
-   cd marioparty6
-   ```
+macOS
+-----
 
-2. Extract the USA Revision 0 game into `orig/GP6E01`, preserving the disc directory layout. The configured build expects files such as:
+- Install Git, Python, and Ninja:
 
-   ```text
-   orig/GP6E01/sys/main.dol
-   orig/GP6E01/files/dll/*.rel
-   ```
+  ```sh
+  brew install git python ninja
+  ```
 
-3. Generate the build files:
+- Install [Wine Crossover](https://github.com/Gcenx/homebrew-wine) for the Metrowerks compiler executables:
 
-   ```sh
-   python configure.py
-   ```
+  ```sh
+  brew install --cask --no-quarantine gcenx/wine/wine-crossover
+  ```
 
-4. Build:
-
-   ```sh
-   ninja
-   ```
-
-The first configuration may download the pinned support tools and compilers used by the project. Additional options are available through:
+After some macOS upgrades, Wine Crossover may need to be unquarantined again:
 
 ```sh
-python configure.py --help
+sudo xattr -rd com.apple.quarantine '/Applications/Wine Crossover.app'
 ```
 
-For a complete walkthrough, see [docs/getting_started.md](docs/getting_started.md).
+Linux
+-----
 
-## Comparing changes
+- Install Git, Python, and [Ninja](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages) through your package manager.
+- On x86 and x86-64 systems, [wibo](https://github.com/decompals/wibo) is downloaded automatically.
+- Other architectures generally require Wine or an explicitly provided compiler wrapper.
 
-Configuration generates `objdiff.json` in the repository root. Open the repository in [objdiff](https://github.com/encounter/objdiff) to rebuild and compare individual objects.
+Building
+========
 
-Source recovery should be checked with relocation-aware object comparison and against any affected consumers. A matching binary is required, but readable and evidence-supported source remains the goal.
+- Clone the repository:
 
-## Verification
+  ```sh
+  git clone https://github.com/iirg4x/marioparty6.git
+  cd marioparty6
+  ```
 
-Check a successful build against the configured retail hashes:
+- Using a legally obtained USA Revision 0 copy of Mario Party 6, extract the game into `orig/GP6E01` while preserving the disc directory layout. The build expects files such as:
+
+  ```text
+  orig/GP6E01/sys/main.dol
+  orig/GP6E01/files/dll/*.rel
+  ```
+
+  Dolphin's **Extract Entire Disc** command can be used for a GameCube disc image.
+
+- Configure:
+
+  ```sh
+  python configure.py
+  ```
+
+- Build:
+
+  ```sh
+  ninja
+  ```
+
+The first configuration may download the pinned support tools and compilers used by the project. Additional options are available through `python configure.py --help`.
+
+To verify a successful build against the configured retail hashes:
 
 ```sh
 build/tools/dtk shasum -q -c config/GP6E01/build.sha1
@@ -70,25 +95,13 @@ build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 
 On Windows, use `build/tools/dtk.exe`.
 
-## Contributing
+Diffing
+=======
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for source-quality and verification expectations.
+Once configuration succeeds, an `objdiff.json` file should exist in the project root.
 
-The small documentation index is available at [docs/README.md](docs/README.md).
+Download the latest release of [objdiff](https://github.com/encounter/objdiff). Under project settings, set the project directory to this repository; the configuration should load automatically.
 
-## Project layout
+Select an object from the left sidebar to begin diffing. Changes to source files, headers, `configure.py`, `splits.txt`, or `symbols.txt` can trigger automatic rebuilds.
 
-- `src/` — recovered source files
-- `include/` — shared headers and data definitions
-- `config/GP6E01/` — DOL configuration, symbols, splits, and retail hashes
-- `config/dll/rels/` — REL symbols and split ownership
-- `tools/` — build and analysis helpers
-- `orig/GP6E01/` — locally extracted game files; ignored by Git
-- `build/` — generated build output; ignored by Git
-
-## Related projects and tools
-
-- [Mario Party 4 decompilation](https://github.com/mariopartyrd/marioparty4)
-- [decomp-toolkit](https://github.com/encounter/decomp-toolkit)
-- [objdiff](https://github.com/encounter/objdiff)
-- [decomp.me](https://decomp.me/)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for source-recovery and verification expectations.
