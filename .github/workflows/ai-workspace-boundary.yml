@@ -1,0 +1,27 @@
+name: AI workspace boundary
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  never-merge-ai-workspace:
+    if: github.head_ref == 'agent/recovery-context-workflow' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject AI workspace merge
+        shell: bash
+        run: |
+          echo 'This is the permanent AI recovery workspace.'
+          echo 'It must never be merged into main.'
+          echo 'Create a fresh recovery/* branch from main with tools/promote_recovered_c.py.'
+          exit 1
+
+  boundary-not-applicable:
+    if: github.head_ref != 'agent/recovery-context-workflow' || github.base_ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'AI workspace merge boundary is not applicable to this pull request.'
