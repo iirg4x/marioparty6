@@ -832,6 +832,68 @@
       "evidence": [
         "docs/native_matching_board_constant_pool.md"
       ]
+    },
+    {
+      "id": "dtk-synthetic-gap-not-source-ownership",
+      "title": "Separate DTK gap extents from meaningful source-owned data",
+      "classification": "confirmed_rule",
+      "category": "section_ownership",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "Strictly exact owners can retain target/source section-size differences when DTK exposes linker gaps, alignment tails, final-symbol extents, or discarded targetless pools that are not C object bytes.",
+      "conditions": "Apply only after every named source-owned object, function, and effective relocation is exact and a current linked retail checksum proves that the residual bytes do not affect shipped output.",
+      "source_condition": {
+        "change": "Interpret a raw section-size or synthetic-symbol extent difference as a missing or incorrectly typed C object.",
+        "requires": [
+          "strict function and relocation comparison",
+          "target and source symbol-table ownership inspection",
+          "named-object byte comparison",
+          "current linked retail checksum"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "fake padding or storage",
+          "incorrectly widened ABI objects",
+          "spurious incomplete-owner classification",
+          "new pool or section-order regressions"
+        ],
+        "known_signatures": [
+          "target-only `.hidden gap_*` symbol covers the residual bytes",
+          "a final DTK symbol extent runs beyond the authenticated source type while all uses and linked bytes are exact",
+          "source-only header constants have no target symbol or effective relocation and are discarded at link"
+        ]
+      },
+      "rule": "Classify ownership at named-object and effective-relocation boundaries; never add padding, widen a real declaration, or retain targetless constants solely to equalize raw section extents.",
+      "safe_actions": [
+        "inspect target and source symbol tables before changing C data",
+        "compare named object bytes and effective relocations rather than top-level section percentages alone",
+        "require the serialized retail hash gate before calling a gap harmless",
+        "record gap-only residuals separately from meaningful data mismatches"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "main:board/audio",
+        "main:board/camera",
+        "main:board/guide",
+        "main:board/pause",
+        "main:board/window"
+      ],
+      "counterexamples": [
+        "A size difference inside a named object, a nonexact effective relocation, or linked-output drift is meaningful and cannot be dismissed as a gap."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_gap_ownership.md",
+        "config/GP6E01/build.sha1"
+      ]
     }
   ]
 }

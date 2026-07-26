@@ -3,7 +3,7 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "0d8280f5649dc14c5a6f6348221499fe79e8e917",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -17,7 +17,7 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -31,7 +31,7 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -46,7 +46,7 @@
     },
     "mdparty-local-audio-visibility": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -61,7 +61,7 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -74,7 +74,7 @@
     },
     "gc132-helper-boundary-lifetime": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -88,7 +88,7 @@
     },
     "gc132-narrow-signed-contracts": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -102,7 +102,7 @@
     },
     "same-game-independent-source-provenance": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -113,7 +113,7 @@
     },
     "configured-matching-needs-retail-replay": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -125,7 +125,7 @@
     },
     "per-owner-final-compiler-profile": {
       "status": "active",
-      "validated_commit": "0d8280f5649dc14c5a6f6348221499fe79e8e917",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -137,7 +137,7 @@
     },
     "same-address-api-alias-not-name-proof": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -149,7 +149,7 @@
     },
     "same-game-header-widths-separate-from-names": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -163,7 +163,7 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -178,7 +178,7 @@
     },
     "board-bulk-rename-is-mapping-provenance": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -191,7 +191,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "0d8280f5649dc14c5a6f6348221499fe79e8e917",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -202,6 +202,24 @@
         "src/board/tutorial.c",
         "src/board/opening.c",
         "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "dtk-synthetic-gap-not-source-ownership": {
+      "status": "active",
+      "validated_commit": "1a502fe7d6c1b55707df714a611fb0b56b538d18",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_board_gap_ownership.md",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "config/GP6E01/build.sha1",
+        "src/board/camera.c",
+        "src/board/guide.c",
+        "src/board/pause.c",
+        "src/board/window.c"
       ],
       "supersedes": [],
       "superseded_by": null
