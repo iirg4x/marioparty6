@@ -1,5 +1,17 @@
 # Agent instructions
 
+## Permanent branch boundary
+
+This is the AI-forward recovery workspace. **Never merge, squash, rebase, or
+cherry-pick this branch into `main`.**
+
+`main` is the clean, human-facing project. The only automatic transfer allowed
+from this workspace is an exact verified `src/**/*.c` blob copied into a fresh
+`recovery/*` branch created directly from `main`.
+
+Read [`AI_WORKSPACE.md`](AI_WORKSPACE.md) and
+[`docs/main_promotion.md`](docs/main_promotion.md).
+
 ## Mission
 
 Recover the most likely original Mario Party 6 source. Retail binary identity is
@@ -17,8 +29,8 @@ python tools/agent.py hooks install
 python tools/agent.py queue status
 ```
 
-Work from an isolated task worktree. Claim one owner before editing, or let the
-bootstrap command create and claim it:
+Work from an isolated task worktree. Claim one owner before editing, or create
+and claim it automatically:
 
 ```sh
 python tools/agent.py worktree create <owner> --agent claude
@@ -38,13 +50,16 @@ python tools/agent.py context function fn_1_BBD8 \
   --budget 12000
 ```
 
-The packet automatically selects exact-target findings, owner constraints,
-compiler diagnostics, freshness warnings, and counterexamples before the source.
+The packet selects exact-target findings, owner constraints, compiler
+diagnostics, freshness warnings, and counterexamples before the source.
 Historical wave bodies are not loaded automatically.
 
 ## Non-negotiable rules
 
 - Never edit directly on `main`.
+- Never open or maintain a merge PR from this workspace to `main`.
+- Never transfer agent tooling, prompts, queue files, metadata, benchmarks,
+  workflow files, reports, docs, or commit history to `main`.
 - Claim the source owner and every shared write path before editing.
 - Run `python tools/agent.py queue check-diff --base origin/main` before commits
   and handoff. Committed, staged, unstaged, and untracked paths must remain
@@ -91,7 +106,7 @@ Update queue status through `researching`, `coding`, `verifying`, `blocked`, and
 
 ## Worker verification
 
-Commit first and leave the worktree clean. Then run:
+Commit first and leave the worktree clean:
 
 ```sh
 python tools/agent.py check --base origin/main
@@ -112,33 +127,38 @@ python tools/agent.py queue update <owner> \
 Verification is tied to the clean current commit. Any later change requires a
 new proof.
 
-## Integration
+## Integration and clean promotion
 
-Workers stop at `ready`. The integration worktree acquires exclusive resources,
-integrates the worker commit, runs the serialized DOL/REL build, consumer checks,
-DTK checksum, and retail comparisons, then finalizes:
+Workers stop at `ready`. The AI integration worktree may run serialized DOL/REL,
+consumer, checksum, and retail comparisons, but its branch still does not merge
+to `main`.
+
+After the source commit is fully verified, create a separate human-facing branch
+from `main`:
 
 ```sh
-python tools/agent.py queue acquire-resource integration --agent integrator
-python tools/agent.py queue acquire-resource retail-build --agent integrator
-
-python tools/agent.py integration finalize <owner> \
-  --agent integrator \
-  --retail-gate pass \
-  --checksum pass \
-  --toolchain GC/1.3.2
+python tools/promote_recovered_c.py create \
+  --base main \
+  --source <verified-worker-commit> \
+  --owner <queue-owner> \
+  --path src/path/recovered.c \
+  --branch recovery/<human-topic> \
+  --worktree ../marioparty6-promotion-<topic> \
+  --title "Recover <subsystem>"
 ```
 
-Finalization verifies every claimed path in the integration tree still matches
-the worker’s verified commit before setting the task to `done`.
+The command accepts only `src/**/*.c`, copies exact verified blobs, rejects AI
+attribution, and proves the clean branch contains none of this workspace's
+infrastructure.
+
+Header, symbol, split, or build changes must be recreated and reviewed separately
+from the clean `main` worktree. Never copy them automatically from this branch.
 
 ## Blind benchmark evidence
 
 Use `tools/blind_recovery.py` for controlled holdouts. A reproducible case must
-preserve the exact evidence packet, frozen candidate, target and candidate
-assembly, deterministic result, hashes, source path, source commit, and blindness
-assertions. Cases missing those artifacts remain `legacy-reported` and do not
-count toward strict benchmark totals.
+preserve the evidence packet, frozen candidate, target and candidate assembly,
+result, hashes, source path, source commit, and blindness assertions.
 
 ```sh
 python tools/blind_recovery.py audit
@@ -153,12 +173,9 @@ target, consumer, sibling, and compiler evidence.
 Store reusable findings in `config/recovery/`, not only in chat or a wave report.
 A repeated source-to-output relationship belongs in `compiler_patterns.json`
 with trigger, effects, rule, safe actions, scope, examples, counterexamples, and
-evidence. Update its freshness record when revalidated.
+evidence. These records stay on the AI workspace branch.
 
 A handoff must state owner and stable identity, selected cards, accepted/rejected
 evidence, natural candidate, compiler reconciliation, exact/relocation impact,
-consumers, worker proof, integration requirements, metadata changes, remaining
-debt, and queue status.
-
-See `docs/agent_quickstart.md`, `docs/concurrent_agents.md`, `CONTRIBUTING.md`,
-`docs/blind_recovery_benchmark.md`, and `docs/recovery_standard.md`.
+consumers, worker proof, clean-promotion requirements, metadata changes,
+remaining debt, and queue status.
