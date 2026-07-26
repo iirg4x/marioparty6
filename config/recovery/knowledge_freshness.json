@@ -3,7 +3,7 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -17,7 +17,7 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -31,7 +31,7 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -46,7 +46,7 @@
     },
     "mdparty-local-audio-visibility": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -61,7 +61,7 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -74,7 +74,7 @@
     },
     "gc132-helper-boundary-lifetime": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -88,7 +88,7 @@
     },
     "gc132-narrow-signed-contracts": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-25",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -102,7 +102,7 @@
     },
     "same-game-independent-source-provenance": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -113,7 +113,7 @@
     },
     "configured-matching-needs-retail-replay": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -125,7 +125,7 @@
     },
     "per-owner-final-compiler-profile": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -137,7 +137,7 @@
     },
     "same-address-api-alias-not-name-proof": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -149,7 +149,7 @@
     },
     "same-game-header-widths-separate-from-names": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -163,7 +163,7 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -178,7 +178,7 @@
     },
     "board-bulk-rename-is-mapping-provenance": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -191,7 +191,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -212,7 +212,7 @@
     },
     "dtk-synthetic-gap-not-source-ownership": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -230,7 +230,7 @@
     },
     "mwcc-source-chronology-csect-link-order": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -245,7 +245,7 @@
     },
     "mwcc-extern-inline-static-local-comdat-ownership": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -260,7 +260,7 @@
     },
     "retail-triangulation-for-missing-inline-owner": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -273,7 +273,7 @@
     },
     "dtk-rodata-boundary-multiset-before-resplit": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -288,7 +288,7 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -299,7 +299,7 @@
     },
     "mwcc-narrow-assignment-wide-lifetime-extension-scheduling": {
       "status": "active",
-      "validated_commit": "4dae3288b072dc2d099df84617fc0876e4a422fd",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -310,7 +310,7 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "1e77c0775e82946dc08d1f40ac53d66407da3963",
+      "validated_commit": "c0da4b43cf1a0a03abd62662b0e69cacebcb808e",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
