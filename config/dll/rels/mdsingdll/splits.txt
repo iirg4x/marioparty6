@@ -5,3 +5,7 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mdsingdll/runtime.c:
+	.text       start:0x00035300 end:0x00035D44
+	.rodata     start:0x00000520 end:0x00000538

@@ -5,3 +5,7 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mdpresultdll/runtime.c:
+	.text       start:0x00026FA4 end:0x000279E8
+	.rodata     start:0x00000FE0 end:0x00000FF8
