@@ -439,14 +439,16 @@ s16 mbTutorialSprDispOn(unsigned int dataNum)
 void mbTutorialSprKill(s16 sprId)
 {
     int i;
+    int index;
 
     for (i = 0; i < 16; i++) {
         if (sprId == tutorialSprId[i]) {
             break;
         }
     }
+    index = i;
     espKill(sprId);
-    tutorialSprId[i] = -1;
+    tutorialSprId[index] = -1;
 }
 
 void mbTutorialSprDispOff(s16 sprId)
@@ -475,6 +477,7 @@ static void TutorialSprClose(void)
 
 void mbTutorialSprGrpSet(s16 grpId)
 {
+    s16 id;
     int i;
 
     for (i = 0; i < 16; i++) {
@@ -482,20 +485,22 @@ void mbTutorialSprGrpSet(s16 grpId)
             break;
         }
     }
-    tutorialSprGrpId[i] = grpId;
+    id = tutorialSprGrpId[i] = grpId;
 }
 
 void mbTutorialSprGrpKill(s16 grpId)
 {
     int i;
+    int index;
 
     for (i = 0; i < 16; i++) {
         if (grpId == tutorialSprGrpId[i]) {
             break;
         }
     }
+    index = i;
     HuSprGrpKill(grpId);
-    tutorialSprId[i] = -1;
+    tutorialSprId[index] = -1;
 }
 
 static void TutorialSprGrpClose(void)
