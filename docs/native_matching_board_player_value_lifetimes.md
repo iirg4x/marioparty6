@@ -1,7 +1,7 @@
 # GC/2.6 board player value-lifetime evidence
 
 `src/board/player.c` is compiled with GC/2.6 using the board profile's final
-`-O0,p` options. Two independently non-matching functions became strict exact
+`-O0,p` options. Three independently non-matching functions became strict exact
 without pragmas or code-generation controls when the source restored explicit
 value captures at the target's apparent use boundaries.
 
@@ -14,11 +14,14 @@ value captures at the target's apparent use boundaries.
 - `PlayerMetalOMExec` became strict exact at 816 bytes. Pointer truthiness plus
   an explicit terminal return restored the target compare and control-flow
   shape.
-- Together the retained changes added 2 strict functions and 192 verified
+- `mbev_PlayerColMasuAllSet` became strict exact at 740 bytes. Removing cached
+  `PLAYERCOLWORK` pointers and restoring the target-backed `BOOL`/declaration
+  order recreated the target allocation and call sequence.
+- Together the retained changes added 3 strict functions and 255 verified
   relocation-bearing target instructions while preserving all 138 prior exact
   functions.
 
-The integrated object reports 140/165 strict functions. Public recovery checks
+The integrated object reports 141/165 strict functions. Public recovery checks
 pass 78/78, all 137 retail outputs pass DTK checksum, and `main.dol` remains
 byte-identical with SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
 

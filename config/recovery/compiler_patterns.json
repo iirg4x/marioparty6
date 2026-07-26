@@ -1311,12 +1311,14 @@
           "saved-register selection and lifetime",
           "signed versus unsigned comparison shape",
           "short-circuit branch grouping",
-          "terminal return placement"
+          "terminal return placement",
+          "cached-pointer allocation and call ordering"
         ],
         "known_signatures": [
           "the target reloads one global or bitfield at multiple semantic use boundaries",
           "a value becomes live only after an earlier short-circuit check",
-          "explicit pointer truthiness restores the target compare sequence"
+          "explicit pointer truthiness restores the target compare sequence",
+          "removing a broad cached work pointer restores target-local allocation"
         ]
       },
       "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
@@ -1332,7 +1334,8 @@
         "owners": [],
         "stable_ids": [
           "PlayerTurn",
-          "PlayerMetalOMExec"
+          "PlayerMetalOMExec",
+          "mbev_PlayerColMasuAllSet"
         ],
         "modules": [
           "main.dol"
@@ -1345,7 +1348,8 @@
       },
       "examples": [
         "PlayerTurn",
-        "PlayerMetalOMExec"
+        "PlayerMetalOMExec",
+        "mbev_PlayerColMasuAllSet"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -1355,6 +1359,82 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_board_player_value_lifetimes.md"
+      ]
+    },
+    {
+      "id": "gc26-o0-definition-order-and-call-evaluation",
+      "title": "Recover helper visibility and call evaluation together under GC/2.6 O0",
+      "classification": "contextual_heuristic",
+      "category": "control_flow_and_lifetime",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "Under the board GC/2.6 -O0,p profile, helper definition order can change automatic inlining, while the natural expression tree and direct nesting determine call evaluation order and register lifetime across the same helper family.",
+      "conditions": "Use for an authenticated owner-local helper family when target calls exist but the candidate inlines a helper, reverses call order, or introduces a cached local absent from the target.",
+      "source_condition": {
+        "change": "Restore helper definition visibility and the target-backed expression tree before introducing locals, prototypes, or inlining controls.",
+        "requires": [
+          "GC/2.6 with the same -O0,p owner profile",
+          "authenticated helper definitions and target call sites",
+          "before/after function and relocation comparison",
+          "zero regressions across previously exact owner functions"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "automatic helper inlining",
+          "right-before-left call evaluation",
+          "nested-call register lifetime",
+          "declaration-order allocation",
+          "branch grouping"
+        ],
+        "known_signatures": [
+          "moving a caller before helper definitions restores target calls",
+          "a source sum written left-plus-right emits target right-then-left calls",
+          "a cached link or work local changes an otherwise target-backed call tree"
+        ]
+      },
+      "rule": "Treat definition order and expression-tree evaluation as one bounded owner-local variable; retain a form only when the complete helper family, relocations, and existing exact neighbors agree, without pragmas or forced linkage.",
+      "safe_actions": [
+        "compare caller placement relative to helper definitions",
+        "inspect emitted call order instead of assuming source operand order",
+        "test direct nesting against one authenticated local lifetime",
+        "preserve target-backed calls whose result is not subsequently consumed",
+        "escalate shared return-width conflicts instead of adding local prototypes"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mbCapSelectMasuFrontNum",
+          "mbCapSelectMasuBackNum",
+          "mbCapSelectMasuNum",
+          "CapUse",
+          "CapSelectMasuCheck",
+          "CapSelectMasuListGet"
+        ],
+        "modules": [
+          "main.dol"
+        ],
+        "owner_tags": [
+          "board",
+          "definition_visibility",
+          "call_evaluation"
+        ]
+      },
+      "examples": [
+        "mbCapSelectMasuNum calling BackNum then FrontNum",
+        "CapSelectMasuListGet direct nested-call form",
+        "CapUse work/result/workData declaration order"
+      ],
+      "counterexamples": [
+        "Forcing helper emission without an authentic caller is non-organic.",
+        "A local prototype cannot resolve the rejected mbCapUse shared return-width contract.",
+        "Literal or BSS identity-only residuals are not call-evaluation evidence."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_capsule_call_chronology.md"
       ]
     }
   ]
