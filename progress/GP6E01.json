@@ -1,45 +1,44 @@
 {
   "schema_version": 1,
   "version": "GP6E01",
-  "published_snapshot": "2026-07-17",
   "categories": {
     "all": {
       "label": "Code",
       "code": {
-        "matched": null,
-        "total": null,
-        "percent": 12.13
+        "matched": 1640796,
+        "total": 12427492,
+        "percent": 13.202954
       },
       "data": {
-        "matched": null,
-        "total": null,
-        "percent": 32.25
+        "matched": 605657,
+        "total": 1849335,
+        "percent": 32.749989
       }
     },
     "dol": {
       "label": "DOL",
       "code": {
-        "matched": null,
-        "total": null,
-        "percent": 47.42
+        "matched": 1030936,
+        "total": 2173968,
+        "percent": 47.421857
       },
       "data": {
-        "matched": null,
-        "total": null,
-        "percent": 74.59
+        "matched": 535066,
+        "total": 717339,
+        "percent": 74.590396
       }
     },
     "modules": {
       "label": "DLLs",
       "code": {
-        "matched": null,
-        "total": null,
-        "percent": 4.65
+        "matched": 609860,
+        "total": 10253524,
+        "percent": 5.947809
       },
       "data": {
-        "matched": null,
-        "total": null,
-        "percent": 5.42
+        "matched": 70591,
+        "total": 1131996,
+        "percent": 6.235976
       }
     }
   }
