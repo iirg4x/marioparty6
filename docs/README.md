@@ -1,17 +1,51 @@
-# Documentation index
+# AI workspace documentation index
+
+> This documentation belongs to the permanent AI recovery branch. It is not
+> intended for `main` and must not be promoted with recovered source.
 
 ## Start here
 
-- [`../README.md`](../README.md): project scope and main commands
+- [`../AI_WORKSPACE.md`](../AI_WORKSPACE.md): permanent branch boundary
+- [`../README.md`](../README.md): AI workspace scope and commands
+- [`main_promotion.md`](main_promotion.md): exact C-only transfer to clean `main`
 - [`agent_quickstart.md`](agent_quickstart.md): shortest worker path
-- [`concurrent_agents.md`](concurrent_agents.md): queue v2, worktrees, resources, and integration
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md): proof and handoff requirements
+- [`concurrent_agents.md`](concurrent_agents.md): queue, worktrees, resources, integration
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md): AI workspace proof and handoff
 - [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
-- [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, local evidence, freshness
-- [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): sealed holdouts, organicity, reproducibility, and required retail benchmark
-- [`../benchmarks/blind_recovery/README.md`](../benchmarks/blind_recovery/README.md): benchmark artifacts and replay commands
+- [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, evidence
+- [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): sealed holdouts and organicity
+- [`../benchmarks/blind_recovery/README.md`](../benchmarks/blind_recovery/README.md): benchmark replay
 - [`getting_started.md`](getting_started.md): local toolchain and retail build setup
 - [`github_actions.md`](github_actions.md): draft-local versus ready-PR CI
+
+## Branch boundary
+
+```text
+main
+  human-facing source and ordinary project history
+
+agent/recovery-context-workflow
+  AI orchestration, prompts, metadata, benchmarks, queue and experiments
+```
+
+Never merge the second branch into the first. After a worker commit is fully
+verified, create a fresh `recovery/*` worktree from `main` and copy only selected
+`src/**/*.c` blobs:
+
+```sh
+python tools/promote_recovered_c.py create \
+  --base main \
+  --source <verified-worker-commit> \
+  --owner <queue-owner> \
+  --path src/path/recovered.c \
+  --branch recovery/<human-topic> \
+  --worktree ../marioparty6-promotion-<topic> \
+  --title "Recover <subsystem>"
+```
+
+Headers and build configuration are deliberately excluded from automatic
+promotion. Recreate and review any necessary supporting change from the clean
+`main` checkout.
 
 ## Build reference
 
@@ -32,17 +66,11 @@ python tools/worktree_audit.py
 python tools/agent.py hooks install
 ```
 
-The owner catalog is generated scheduling data. The queue and resource locks
-live under Git’s common directory. Neither is committed recovery evidence.
-
-Workers must keep the real Git diff inside their claim, record clean
-commit-bound proof, and stop at `ready`. The integration worktree performs
-serialized retail/checksum gates and finalizes `done`.
+The catalog, queue and resource locks are AI workspace state. They never move to
+`main`. Workers keep their real diff inside the claim, record clean commit-bound
+proof, and stop at `ready`.
 
 ## Reusable recovery knowledge
-
-Normal context selects compact source-to-output cards with structured scope,
-examples, counterexamples, safe actions, and freshness:
 
 ```sh
 python tools/agent.py knowledge function fn_1_BBD8 \
@@ -52,50 +80,25 @@ python tools/knowledge_cards.py freshness
 python tools/agent.py knowledge audit
 ```
 
-Cards distinguish confirmed rules, contextual heuristics, and owner constraints.
-A stale card remains visible as a warning. Compiler-wide rules are diagnostics,
-not source templates.
+Knowledge cards, freshness state and wave distillation stay on this branch. Only
+the resulting verified C may cross the promotion boundary.
 
 ## Blind recovery evidence
-
-Blind cases separate assembly equality, retained-source similarity, organicity,
-and reproducibility:
 
 ```sh
 python tools/blind_recovery.py audit
 python tools/blind_recovery.py audit --strict --replay
 ```
 
-A reproducible case preserves the raw evidence, frozen candidate, target and
-candidate assembly, result, hashes and source commit. The two initial July 25,
-2026 surrogate trials remain `legacy-reported` because those raw artifacts were
-not preserved.
-
-The organicity review is deliberately independent from source similarity. A
-candidate may reproduce the retained C exactly while inheriting questionable
-retained-source structure.
+Blind cases separate assembly equality, retained-source similarity, organicity,
+and reproducibility. Benchmark artifacts remain AI workspace evidence and are
+never part of a clean main promotion.
 
 ## Historical evidence archive
 
 `native_matching_wave*.md` and owner reports remain forensic laboratory records.
-Their bodies are not automatic prompt context. Reusable conclusions belong in:
-
-```text
-config/recovery/owners/
-config/recovery/names.json
-config/recovery/exceptions.json
-config/recovery/compiler_patterns.json
-config/recovery/knowledge_freshness.json
-```
-
-The intended flow is:
-
-```text
-historical/local probe
-→ structured evidence/rule/constraint/counterexample
-→ freshness validation
-→ bounded task context
-```
+Their bodies are not automatic prompt context. Reusable conclusions belong in
+`config/recovery/` and stay on this branch.
 
 ## Generated local data
 
@@ -107,7 +110,7 @@ build/context/recovery.sqlite
 build/context/recovery-report.md
 build/context/*context*.md
 build/blind-recovery/
+build/promotion/
 ```
 
-Generate it through `python tools/agent.py check` or the lower-level tools. Never
-commit generated reports in place of durable metadata.
+Never commit generated reports or promotion manifests to either branch.
