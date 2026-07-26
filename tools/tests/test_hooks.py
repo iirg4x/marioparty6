@@ -31,6 +31,10 @@ class HookTests(unittest.TestCase):
             script = pre_commit.read_text(encoding="utf-8")
             self.assertNotIn("origin/main", script)
             self.assertIn("MP6_AGENT_BASE", script)
+            pre_push = next(path for path in paths if path.name == "pre-push")
+            push_script = pre_push.read_text(encoding="utf-8")
+            self.assertIn("git rev-parse --local-env-vars", push_script)
+            self.assertIn('unset "$name"', push_script)
             uninstall_hooks(root)
             self.assertEqual(set(hook_status(root).values()), {"missing"})
 

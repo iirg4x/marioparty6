@@ -77,6 +77,10 @@ fi
     elif kind == "pre-push":
         body = r'''
 ROOT="$(git rev-parse --show-toplevel)"
+LOCAL_GIT_ENV="$(git rev-parse --local-env-vars)"
+for name in $LOCAL_GIT_ENV; do
+  unset "$name"
+done
 PYTHON_BIN="${MP6_PYTHON:-python}"
 cd "$ROOT"
 "$PYTHON_BIN" tools/recovery_index.py check
