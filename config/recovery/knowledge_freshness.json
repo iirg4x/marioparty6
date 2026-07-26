@@ -3,8 +3,8 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
-      "validated_at": "2026-07-25",
+      "validated_commit": "0d8280f5649dc14c5a6f6348221499fe79e8e917",
+      "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave103.md",
@@ -125,7 +125,7 @@
     },
     "per-owner-final-compiler-profile": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "0d8280f5649dc14c5a6f6348221499fe79e8e917",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -191,7 +191,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "064faab8938e30446370c26f8255dfa755ba2243",
+      "validated_commit": "0d8280f5649dc14c5a6f6348221499fe79e8e917",
       "validated_at": "2026-07-26",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
