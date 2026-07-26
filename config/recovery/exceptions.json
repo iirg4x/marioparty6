@@ -73,6 +73,23 @@
         "config/dll/rels/w01Dll/symbols.txt",
         "src/REL/w01Dll/world01.c"
       ]
+    },
+    {
+      "id": "gate-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/gate.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail gate.o omits the two weak sqrtf local statics emitted by generic math.h. Exact same-game board owners branch.c, status.c, and player.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit visibility pattern. The gate probe removes only the 16-byte source-only prefix, closes all 11 functions and 168 relocations strictly, and preserves the exact named data objects.",
+      "evidence": [
+        "build/gate-baseline-strict.json",
+        "build/gate-ready-61beb5c-strict.json",
+        "src/board/branch.c",
+        "src/board/status.c",
+        "src/board/player.c"
+      ]
     }
   ]
 }
