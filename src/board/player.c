@@ -1403,23 +1403,22 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo);
 
 void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
 {
+    BOOL circleF;
+    s8 orderNo;
     int i;
     int j;
     int cornerNo;
     int masuId;
-    s8 orderNo;
     HuVecF pos;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerWork[i].colObj) {
-            PLAYERCOLWORK *workP;
-
             if (GwPlayer[i].masuId == 0) {
                 continue;
             }
-            workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-            workP->masuIdNext = GwPlayer[i].masuIdNext;
-            if (workP->restF) {
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
+                GwPlayer[i].masuIdNext;
+            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF) {
                 continue;
             }
         }
@@ -1429,10 +1428,7 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             continue;
         }
         if (playerWork[i].colObj) {
-            PLAYERCOLWORK *workP =
-                omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-
-            if (!workP->snapF) {
+            if (!omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
                 continue;
             }
         }
@@ -1457,11 +1453,9 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
         {
-            PLAYERCOLWORK *workP =
-                omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-            u8 circleF = workP->circleF;
+            circleF = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
 
-            workP->circleF = FALSE;
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
             if (snapF) {
                 mbPlayerPosSetV(i, &pos);
                 PlayerColCornerSnap(i, masuId, cornerNo);
