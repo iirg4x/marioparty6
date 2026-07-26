@@ -34,6 +34,7 @@
     "names": "config/recovery/names.json",
     "exceptions": "config/recovery/exceptions.json",
     "compiler_patterns": "config/recovery/compiler_patterns.json",
+    "evidence_sources": "config/recovery/evidence_sources.json",
     "knowledge_freshness": "config/recovery/knowledge_freshness.json",
     "blind_benchmark": "benchmarks/blind_recovery/manifest.json"
   },

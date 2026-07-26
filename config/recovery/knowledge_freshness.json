@@ -99,6 +99,95 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "same-game-independent-source-provenance": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "configured-matching-needs-retail-replay": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json",
+        "config/GP6E01/build.sha1"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "per-owner-final-compiler-profile": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "same-address-api-alias-not-name-proof": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json",
+        "include/game/hu3d.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "same-game-header-widths-separate-from-names": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json",
+        "include/game/charman.h",
+        "include/game/gamemes.h",
+        "include/game/mgdata.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "same-game-catalogs-require-archive-verification": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json",
+        "include/datanum",
+        "include/messnum",
+        "include/mgdata.inc",
+        "include/msm_se.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "board-bulk-rename-is-mapping-provenance": {
+      "status": "active",
+      "validated_commit": "95815612788b9f473f94ef8ded51e8c88169087a",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/evidence_sources.json",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

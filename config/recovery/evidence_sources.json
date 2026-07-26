@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "mariopartyrd-mp6-fcf0b69",
+      "repository": "https://github.com/mariopartyrd/marioparty6",
+      "branch": "main",
+      "commit": "fcf0b69092d6a2642c07a19818dcd847e5d6c0f3",
+      "tree": "fbf604d7ec61dc899c0074add6dc6c9144e1bf29",
+      "parents": [
+        "695f523358e4f619bae2454cee867a4cfa7d53d3",
+        "0e9819c098fd6b3ac7f9f1d5cad7cc877d216ac0"
+      ],
+      "commit_date": "2026-07-22T20:39:19-05:00",
+      "license": {
+        "spdx": "CC0-1.0",
+        "path": "LICENSE",
+        "blob": "670154e3538863b2d9891fd5483160fbdfc89164"
+      },
+      "relationship": {
+        "human_main_commit": "4a6761094935be3588ca2b1eda0a71a0988f8efb",
+        "ai_base_commit": "6d1a950a6e7c00132ee1fbdeb63892c9960ada5b",
+        "merge_base_with_human_main": null,
+        "merge_base_with_ai_base": null,
+        "classification": "independent_same_game_evidence",
+        "merge_or_cherry_pick_allowed": false
+      },
+      "inventory": {
+        "configured_objects": 281,
+        "matching_claims": 54,
+        "equivalent_claims": 1,
+        "nonmatching_objects": 226,
+        "matching_families": {
+          "game": 44,
+          "zlib": 8,
+          "rel": 2
+        },
+        "matching_source_comparison_to_human_main": {
+          "identical_blobs": 25,
+          "different_existing_blobs": 28,
+          "upstream_only_blobs": 1
+        }
+      },
+      "board": {
+        "configured_owners": 40,
+        "source_files_present": 0,
+        "board_headers_present": 0,
+        "matching_claims": 0,
+        "target_function_symbols": 2021,
+        "address_name_pairs_identical_to_human_main": 2021,
+        "upstream_only_names": 0,
+        "differently_named_addresses": 0,
+        "implementation_evidence": "none",
+        "symbols": {
+          "path": "config/GP6E01/symbols.txt",
+          "blob": "dc704c750424559e7c3de74a325ef9b4cf26cab4"
+        },
+        "splits": {
+          "path": "config/GP6E01/splits.txt",
+          "blob": "80bc7d0a82e6cf59e97a0a2e55040edb600a7ef7"
+        },
+        "naming_provenance": {
+          "commit": "7a463aa9ec166a800981a8a45dc5db4c28eb7112",
+          "scope": "bulk board symbol renames",
+          "limitation": "The commit authenticates the mapping history, not the semantic meaning of each name."
+        }
+      },
+      "toolchain": {
+        "configure_path": "configure.py",
+        "configure_blob": "e01604976eac0ece8d0d72fd4f4e068bdc208492",
+        "dtk": "v0.9.2",
+        "binutils": "2.42-1",
+        "compiler_bundle": "20240706",
+        "sjiswrap": "v1.1.1",
+        "wibo": "0.6.11",
+        "linker": "GC/2.6",
+        "profiles": [
+          {
+            "class": "base",
+            "compiler": null,
+            "distinguishing_flags": [
+              "-O4,p",
+              "-inline auto",
+              "-fp_contract on",
+              "-str reuse"
+            ]
+          },
+          {
+            "class": "game_and_board",
+            "compiler": "GC/2.6",
+            "distinguishing_flags": [
+              "-O0,p",
+              "-char unsigned",
+              "-fp_contract off"
+            ],
+            "limitation": "The generated build command and later flags must be inspected per translation unit."
+          },
+          {
+            "class": "runtime",
+            "compiler": "GC/2.6",
+            "distinguishing_flags": [
+              "-use_lmw_stmw on",
+              "-gccinc",
+              "-common off"
+            ]
+          },
+          {
+            "class": "dolphin_sdk",
+            "compiler": "GC/1.2.5n",
+            "distinguishing_flags": [
+              "base O4 profile"
+            ]
+          },
+          {
+            "class": "musyx_and_thp",
+            "compiler": "GC/1.2.5",
+            "distinguishing_flags": [
+              "base O4 profile"
+            ]
+          },
+          {
+            "class": "standard_rel_helper",
+            "compiler": "GC/1.3.2",
+            "distinguishing_flags": [
+              "-O0,p",
+              "-char unsigned",
+              "-fp_contract off",
+              "-sdata 0",
+              "-sdata2 0",
+              "-pool off"
+            ]
+          },
+          {
+            "class": "main_rel_library",
+            "compiler": "GC/2.6",
+            "distinguishing_flags": [
+              "-O0,p",
+              "-char unsigned",
+              "-fp_contract off",
+              "-sdata 0",
+              "-sdata2 0",
+              "-pool off"
+            ]
+          }
+        ]
+      },
+      "reusable_owner_evidence": [
+        {
+          "owner": "main:game/charman",
+          "source": "src/game/charman.c",
+          "source_blob": "8207d4b9954f367c76d671c52b03ec253ecc7ff5",
+          "header": "include/game/charman.h",
+          "header_blob": "aa1da32d819b987c444cea3a1263704b178818eb",
+          "introduced_by": "0e9819c098fd6b3ac7f9f1d5cad7cc877d216ac0",
+          "facts": [
+            "103 parsed functions",
+            "narrow s16 and u8 contracts",
+            "GXSpotFn and GXDistAttnFn callback types",
+            "GW_CHARA_MAX table dimensions",
+            "file-local static-inline light accessor before consumers"
+          ],
+          "limitation": "Alternative semantic spellings are not retail-name proof."
+        },
+        {
+          "owner": "main:game/gamemes",
+          "source": "src/game/gamemes.c",
+          "source_blob": "020c0fd6aed1fd25c256829f41ddbd08530033b1",
+          "header": "include/game/gamemes.h",
+          "header_blob": "e6dd8bef0d79c023a7277449ad3eb37b6a500691",
+          "introduced_by": "37687657862f362a7fcbf395553c6f696453b4ff",
+          "facts": [
+            "41 parsed functions",
+            "GAMEMES is an apparent 0x80-byte state object",
+            "function-pointer init and exec dispatch",
+            "process-driven pause and practice state machines",
+            "sprite-group resource ownership"
+          ],
+          "limitation": "Configured-Matching source alternatives require a fresh current-toolchain object comparison."
+        },
+        {
+          "owner": "main:game/mgdata",
+          "source": "src/game/mgdata.c",
+          "source_blob": "649d7c7e6b371969cc4497f74ff5ecf382af365c",
+          "header": "include/game/mgdata.h",
+          "header_blob": "b94fd3f9594f7ceab97c3056bca8fca1a43c3a11",
+          "table": "include/mgdata.inc",
+          "table_blob": "5ccb37aa4e090f2004cd22ec93bd670873549775",
+          "introduced_by": "628f51ba8e8abaa2209f2093f57fc2c50ac7230a",
+          "facts": [
+            "MG_DATA layout through its message matrix at offset 0x40",
+            "MgDataTbl is 0x2834 bytes of 2-byte data at 0x8022FF38",
+            "MgDecaScoreTbl is 0x3C8 bytes of 4-byte data at 0x8023276C",
+            "GwMgTime is signed 16-bit SBSS"
+          ],
+          "limitation": "Cross-section lexical order is not a universal link-order rule."
+        },
+        {
+          "owner": "REL:motchkDll:motchk",
+          "source": "src/REL/motchkDll/motchk.c",
+          "source_blob": "373f1f71705d42bbc0a96c777ecb575dd0757a73",
+          "introduced_by": "9580540094e42d875c8c131273e0f056dce5b5ea",
+          "facts": [
+            "nine functions",
+            "configured Matching under GC/1.3.2 REL profile",
+            "target sections text 0x1FD0, rodata 0x88, data 0xD14, bss 0x78"
+          ],
+          "limitation": "The owner is absent from the current fork and is not a board donor or automatic queue candidate."
+        }
+      ],
+      "common_build_evidence_already_identical": [
+        {
+          "path": "docs/common_bss.md",
+          "blob": "f00ddd98d5082268a4e98b0f80caaf0e5c977c61"
+        },
+        {
+          "path": "docs/comment_section.md",
+          "blob": "10292cafb9be0719020a3993fe9b465c4455b222"
+        },
+        {
+          "path": "tools/project.py",
+          "blob": "4e2263d094c83ced64f144878f45f1fd9456dbd9"
+        },
+        {
+          "path": "config/GP6E01/build.sha1",
+          "blob": "cdb2e3071ee456dc13490b5fde10536a4dbe4544"
+        }
+      ],
+      "api_alias_evidence": [
+        {
+          "stable_address": "main:0x800B392C",
+          "aliases": [
+            "GXInitLightAttnA",
+            "GXInitLightAttnK"
+          ],
+          "source": "src/game/hsfman.c",
+          "source_blob": "881cd0cbbcb8e0d263cb97753603f7b173f5095a",
+          "header": "include/game/hu3d.h",
+          "header_blob": "2b99b071e3b87a86e06b764d80b7924224a45c85",
+          "rule": "Address equality authenticates ABI identity, not original source spelling."
+        }
+      ],
+      "target_specific_catalogs": [
+        {
+          "path": "include/datanum/mariomot.h",
+          "blob": "7799512d0197dbee424491891326775d0cb98c1d",
+          "domain": "character motion assets"
+        },
+        {
+          "path": "include/datanum/gamemes.h",
+          "blob": "8f92958552e1e87c1cc17ec6909b80404ed3d652",
+          "domain": "game-message animation assets"
+        },
+        {
+          "path": "include/datanum/mgconst.h",
+          "blob": "53301f3dde48e6fa227099ea83b5685e81e1084a",
+          "domain": "minigame icon and score assets"
+        },
+        {
+          "path": "include/mgdata.inc",
+          "blob": "5ccb37aa4e090f2004cd22ec93bd670873549775",
+          "domain": "minigame DLL, data, message, and movie mapping"
+        },
+        {
+          "path": "include/messnum/mg_inst_sys.h",
+          "blob": "48fa0263aa595a976909961b0bdfbefafe8e6074",
+          "domain": "pause and instruction messages"
+        },
+        {
+          "path": "include/msm_se.h",
+          "blob": "a628a3370646a94be5deb6441b02c8be6c498e0c",
+          "domain": "MP6 sound IDs"
+        }
+      ],
+      "cautions": [
+        "Configured Matching and Equivalent labels are metadata claims until rebuilt and compared with the pinned retail toolchain.",
+        "The upstream repository contains no object reports, relocation reports, or replayable checksum proof artifacts.",
+        "Stable identities remain owner plus target address; semantic names require separate provenance.",
+        "Same-address API aliases do not authenticate original spelling.",
+        "Target-specific catalogs must be verified against the actual MP6 archives before an index is accepted.",
+        "No upstream source, metadata, or tooling may be merged wholesale across the human-main boundary."
+      ]
+    }
+  ]
+}

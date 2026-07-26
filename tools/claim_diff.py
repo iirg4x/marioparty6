@@ -15,6 +15,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools import agent_queue as queue
+from tools.workspace_policy import AI_WORKSPACE_BRANCH, ORCHESTRATOR_WRITE_PATHS
 
 
 def _canon(value: str | None) -> str:
@@ -52,6 +53,30 @@ def _integration_result(
     if len(locks) != 1:
         raise queue.QueueError("current worktree has no unique integration resource")
     owner = locks[0].get("owner")
+    if owner is None and branch == AI_WORKSPACE_BRANCH:
+        effective_base = base or "HEAD"
+        changed = sorted(queue.changed_paths(root, effective_base))
+        allowed = list(ORCHESTRATOR_WRITE_PATHS)
+        failures = [
+            f"orchestrator path {path} is outside AI-workspace infrastructure"
+            for path in changed
+            if not any(queue._overlap(path, claimed) for claimed in allowed)
+        ]
+        for path in changed:
+            for other in queue.active_tasks(data):
+                for protected in queue._write_paths(other):
+                    if queue._overlap(path, protected):
+                        failures.append(
+                            f"{path} overlaps {protected} owned by {other.get('owner')}"
+                        )
+        return {
+            "mode": "orchestrator",
+            "task": None,
+            "base": effective_base,
+            "changed": changed,
+            "allowed": sorted(allowed),
+            "errors": sorted(set(failures)),
+        }
     tasks = [
         task
         for task in data.get("tasks", [])

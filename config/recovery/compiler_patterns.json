@@ -401,6 +401,379 @@
         "docs/native_matching_wave97.md",
         "docs/native_matching_wave101.md"
       ]
+    },
+    {
+      "id": "same-game-independent-source-provenance",
+      "title": "Pin independent same-game source by commit and blob before using it",
+      "classification": "confirmed_rule",
+      "category": "evidence_provenance",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "The mariopartyrd MP6 repository is same-game evidence with an independent Git history; it can authenticate retained contracts and source hypotheses, but it cannot be merged or treated as a newer ancestor.",
+      "conditions": "Apply whenever source, headers, symbols, catalogs, or configuration are consulted from an independent repository for the same retail target.",
+      "source_condition": {
+        "change": "Adopt a name, type, layout, source shape, or configuration value from an independent same-game repository.",
+        "requires": [
+          "pinned repository commit and path blob",
+          "matching target region or consumer contract",
+          "current-toolchain object and relocation validation for emitted code"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "prototype and ABI visibility",
+          "source expression shape",
+          "symbol naming",
+          "section ownership",
+          "generated object bytes"
+        ],
+        "known_signatures": [
+          "the donor has no merge base with human main",
+          "a retained source blob is labeled Matching without committed object or relocation proof"
+        ]
+      },
+      "rule": "Treat a pinned independent same-game blob as high-value evidence, never as merge authority; target instructions, relocations, sections, consumers, and the current retail build remain decisive.",
+      "safe_actions": [
+        "record repository, commit, path, blob, and introducing commit",
+        "extract only the contract or source hypothesis needed by the active owner",
+        "rebuild and compare the active object before accepting emitted-code claims"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "mariopartyrd-mp6-fcf0b69"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69",
+        "https://github.com/mariopartyrd/marioparty6/tree/fcf0b69092d6a2642c07a19818dcd847e5d6c0f3"
+      ]
+    },
+    {
+      "id": "configured-matching-needs-retail-replay",
+      "title": "A configured Matching label is a claim until retail proof is replayed",
+      "classification": "confirmed_rule",
+      "category": "verification",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "The pinned same-game repository labels 54 owners Matching but commits no object reports, relocation reports, or replayable checksum proof; current acceptance must regenerate those dimensions.",
+      "conditions": "Apply to imported status labels, historical progress reports, cached objdiff output, and source blobs from any branch or repository.",
+      "source_condition": {
+        "change": "Treat a historical Matching or Equivalent label as sufficient evidence for current integration.",
+        "requires": [
+          "fresh active-object build",
+          "instruction and relocation comparison",
+          "section ownership comparison",
+          "linked retail checksum when integration is claimed"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "false exact-function count",
+          "stale section match",
+          "hidden relocation regression",
+          "linked-output drift"
+        ],
+        "known_signatures": [
+          "source blobs differ while both repositories label an owner Matching",
+          "no reproducible object or checksum artifact accompanies the label"
+        ]
+      },
+      "rule": "Report configured status separately from freshly replayed retained-object, relocation, section, and linked-output results.",
+      "safe_actions": [
+        "compile the active object in an isolated current worktree",
+        "save a fresh relocation-aware objdiff report",
+        "run the serialized linked hash gate before integration completion"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "mariopartyrd-mp6-fcf0b69:54-configured-matching"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69"
+      ]
+    },
+    {
+      "id": "per-owner-final-compiler-profile",
+      "title": "Resolve the final compiler profile from the emitted TU command",
+      "classification": "confirmed_rule",
+      "category": "toolchain_profile",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "MP6 uses multiple MWCC versions and layered flag profiles; the same nominal compiler family can emit under different terminal optimization, pooling, small-data, and ABI options.",
+      "conditions": "Apply before source-shape tuning, donor comparison, or any claim that a compiler probe represents retail.",
+      "source_condition": {
+        "change": "Infer a translation unit's effective compiler flags from a base profile, sibling owner, or earlier duplicate option instead of its final generated command.",
+        "requires": [
+          "exact owner and object class",
+          "generated command with later options resolved",
+          "compiler and linker executable hashes"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "automatic inlining",
+          "register scheduling",
+          "stack frames",
+          "constant pooling",
+          "small-data relocations"
+        ],
+        "known_signatures": [
+          "O0 and O4 controls change vector helpers from compact inlined bodies to much larger output",
+          "GC/1.3.2 REL owners require sdata, sdata2, and pool controls absent from game owners"
+        ]
+      },
+      "rule": "Pin and report compiler bundle, executable hash, owner class, complete generated command, final duplicate-option semantics, linker, and region before interpreting a source mismatch.",
+      "safe_actions": [
+        "inspect the exact Ninja command for the active object",
+        "run one untouched-source compiler control when the brief and generated command conflict",
+        "reject a compiler profile that regresses independently exact functions"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "GC/2.6 game",
+        "GC/1.3.2 standard REL",
+        "GC/1.2.5n Dolphin SDK"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/toolchain",
+        "https://github.com/mariopartyrd/marioparty6/blob/fcf0b69092d6a2642c07a19818dcd847e5d6c0f3/configure.py"
+      ]
+    },
+    {
+      "id": "same-address-api-alias-not-name-proof",
+      "title": "A same-address API alias does not prove the original source spelling",
+      "classification": "confirmed_rule",
+      "category": "naming_provenance",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "GXInitLightAttnA and GXInitLightAttnK resolve to the same MP6 target address, proving ABI aliasing but not which SDK spelling appeared in the original source.",
+      "conditions": "Apply when maps, symbol files, headers, or sibling repositories expose multiple names for one target address.",
+      "source_condition": {
+        "change": "Rename a call, export, global, or field solely because another same-address alias emits identical code.",
+        "requires": [
+          "stable target address",
+          "prototype and call-contract agreement",
+          "independent naming provenance for source spelling"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no object-byte change",
+          "semantic-source confidence change",
+          "public API drift"
+        ],
+        "known_signatures": [
+          "two SDK names relocate to main:0x800B392C",
+          "binary equality cannot distinguish the source token"
+        ]
+      },
+      "rule": "Preserve the established exported/API spelling unless maps, exports, SDK provenance, or stronger same-game evidence authenticates the alternative; record byte equality and naming confidence separately.",
+      "safe_actions": [
+        "retain owner plus address as the stable identity",
+        "verify both aliases have the same prototype and relocation target",
+        "record alternate names as aliases rather than silently renaming source"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "main:0x800B392C"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/api_alias_evidence"
+      ]
+    },
+    {
+      "id": "same-game-header-widths-separate-from-names",
+      "title": "Use same-game headers for ABI widths without inheriting unproved semantic names",
+      "classification": "contextual_heuristic",
+      "category": "type_contracts",
+      "compiler": null,
+      "confidence": "high",
+      "summary": "Independent MP6 headers and Matching-owner consumers provide strong width, callback, array-dimension, and offset evidence even when alternate field and function names disagree.",
+      "conditions": "Use when reconstructing prototypes, callback classes, struct layouts, array extents, or compact state fields from same-game retained headers.",
+      "source_condition": {
+        "change": "Adopt a same-game header contract or semantic field name into an active owner.",
+        "requires": [
+          "target access width and offset checks",
+          "caller and consumer ABI review",
+          "separate naming provenance"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "GPR versus FPR argument class",
+          "sign or zero extension",
+          "array indexing",
+          "callback call shape",
+          "source-only semantic naming"
+        ],
+        "known_signatures": [
+          "charman headers expose s16, u8, GX callback, and GW_CHARA_MAX contracts",
+          "different GW_PLAYER bitfield names retain the same byte offsets and widths"
+        ]
+      },
+      "rule": "Adopt mechanically corroborated ABI widths and layouts first; keep semantic names provisional until behavior, exports, maps, or assets authenticate them.",
+      "safe_actions": [
+        "verify offsetof, sizeof, access width, and every consumer",
+        "preserve fn_/lbl_ or established API names when semantic provenance is weaker",
+        "record layout confidence independently from naming confidence"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "main:game/charman",
+        "main:game/gamemes",
+        "main:game/mgdata"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/reusable_owner_evidence"
+      ]
+    },
+    {
+      "id": "same-game-catalogs-require-archive-verification",
+      "title": "Keep same-game asset catalogs target-specific and verify every archive index",
+      "classification": "confirmed_rule",
+      "category": "asset_provenance",
+      "compiler": null,
+      "confidence": "high",
+      "summary": "The independent MP6 repository preserves motion, message, minigame, and sound catalogs, but their numeric domains remain target-specific and require archive or table verification before use.",
+      "conditions": "Apply when naming or generating datanum, message, sound, movie, DLL, or resource constants.",
+      "source_condition": {
+        "change": "Adopt a numeric asset, message, sound, or datanum constant from a retained catalog.",
+        "requires": [
+          "same GP6E01 domain",
+          "actual archive or owning-table count",
+          "every index verified against archive/table order"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no code change for aliases",
+          "data-table contents",
+          "resource ownership",
+          "runtime asset selection"
+        ],
+        "known_signatures": [
+          "filename suffixes need not equal archive indices",
+          "a sibling-game catalog can be structurally similar but numerically wrong"
+        ]
+      },
+      "rule": "Use pinned MP6 catalogs only within their recorded domain, regenerate repetitive enums from actual MP6 archives where possible, and never transfer numeric catalogs between games.",
+      "safe_actions": [
+        "record catalog path, blob, owning archive/table, count, and verification method",
+        "generate rather than manually transcribe repetitive enums",
+        "reject an index inferred only from a filename suffix"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "include/datanum/mariomot.h",
+        "include/mgdata.inc",
+        "include/msm_se.h"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/target_specific_catalogs"
+      ]
+    },
+    {
+      "id": "board-bulk-rename-is-mapping-provenance",
+      "title": "Treat the upstream board bulk rename as mapping provenance, not semantic proof",
+      "classification": "contextual_heuristic",
+      "category": "naming_provenance",
+      "compiler": null,
+      "confidence": "high",
+      "summary": "The independent repository records the same 2,021 board address-to-name pairs as current main, introduced by one bulk rename without per-symbol authentication records.",
+      "conditions": "Apply when evaluating an established semantic board name whose only located provenance is the upstream bulk rename.",
+      "source_condition": {
+        "change": "Treat an address-to-name mapping from commit 7a463aa as proof that the spelling came from retail source or exports.",
+        "requires": [
+          "stable owner and target address",
+          "independent map, export, caller, asset, or sibling evidence for semantic confidence"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no object-byte change",
+          "semantic-source confidence",
+          "public API naming"
+        ],
+        "known_signatures": [
+          "all 2,021 mappings are identical across independent histories",
+          "the rename commit contains no per-name evidence ledger"
+        ]
+      },
+      "rule": "Preserve established public board names for compatibility, but cite the bulk rename only as mapping history and seek separate evidence before calling a semantic name authenticated.",
+      "safe_actions": [
+        "retain owner plus address as stable identity",
+        "record mapping provenance separately from semantic confidence",
+        "do not churn established exported names during body recovery"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [],
+        "owner_tags": []
+      },
+      "examples": [
+        "7a463aa9ec166a800981a8a45dc5db4c28eb7112"
+      ],
+      "counterexamples": [],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/board/naming_provenance"
+      ]
     }
   ]
 }
