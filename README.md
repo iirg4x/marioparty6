@@ -1,20 +1,89 @@
-# Mario Party 6 source recovery
+# Mario Party 6 AI recovery workspace
 
-This repository reconstructs the US GameCube build of **Mario Party 6**
-(`GP6E01`) as readable C/C++ and verifies promoted work against the retail
-binaries. Original game files and generated binaries are not committed.
+> **Permanent branch boundary:** this branch is the AI-forward recovery
+> workspace. It must never be merged, squashed, or rebased into `main`.
+>
+> `main` remains the clean, human-facing project. Only verified recovered
+> `src/**/*.c` blobs may move to a fresh branch created from `main`.
+
+Read [`AI_WORKSPACE.md`](AI_WORKSPACE.md) before doing any work on this branch.
+
+This workspace reconstructs the US GameCube build of **Mario Party 6**
+(`GP6E01`) while coordinating Claude, Codex, local tooling, evidence indexing,
+blind benchmarks, and private verification. Those operating files intentionally
+stay here.
 
 The active scheduling target is the non-minigame game loop: boot, menus, party
 mode, boards, results, and ending. `STATUS.md` is a historical evidence snapshot,
 not the default agent context.
 
+## Branch roles
+
+### Human-facing `main`
+
+`main` contains the ordinary project:
+
+- recovered source;
+- normal build configuration;
+- readable human commit history and pull requests;
+- no agent prompts, orchestration, queue metadata, knowledge-card machinery,
+  blind-benchmark infrastructure, or AI attribution.
+
+### This AI workspace
+
+This branch contains:
+
+- queue, worktree, scheduling, and integration orchestration;
+- exact-first context generation and dependency indexing;
+- knowledge cards, freshness state, and historical evidence distillation;
+- agent instructions, hooks, benchmarks, and experimental CI.
+
+The branches are permanent parallels. They are not intended to converge.
+
+## Promoting recovered C to `main`
+
+Promotion is a content transfer from one verified commit, not a merge or
+cherry-pick of AI-workspace history.
+
+```sh
+python tools/promote_recovered_c.py plan \
+  --base main \
+  --source <verified-worker-commit> \
+  --owner <queue-owner> \
+  --path src/path/recovered.c
+
+python tools/promote_recovered_c.py create \
+  --base main \
+  --source <verified-worker-commit> \
+  --owner <queue-owner> \
+  --path src/path/recovered.c \
+  --branch recovery/<human-topic> \
+  --worktree ../marioparty6-promotion-<topic> \
+  --title "Recover <human-readable subsystem>"
+```
+
+The promotion tool:
+
+- creates the branch directly from `main`;
+- accepts only added or modified `src/**/*.c` files;
+- copies exact blobs from the verified worker commit;
+- rejects headers, tooling, metadata, prompts, workflows, reports, and generated
+  output;
+- rejects AI/agent attribution in source comments, branch names, and commit
+  messages;
+- verifies that the promotion diff contains only selected C files.
+
+Supporting header or build changes must be recreated and reviewed separately in
+the clean promotion worktree. See
+[`docs/main_promotion.md`](docs/main_promotion.md).
+
 ## Recovery standard
 
 A binary match is necessary proof, not a complete source-authenticity claim.
 Raw IDs, opaque arrays, fake padding, invented names, and unexplained compiler
-controls remain recovery debt even when the output is exact.
+controls remain recovery debt even when output is exact.
 
-The project tracks five dimensions independently:
+The workspace tracks:
 
 ```text
 binary · source shape · semantics · naming · data domains
@@ -22,38 +91,25 @@ binary · source shape · semantics · naming · data domains
 
 Read:
 
-- [`AGENTS.md`](AGENTS.md): mandatory repository rules
-- [`docs/agent_quickstart.md`](docs/agent_quickstart.md): shortest safe workflow
+- [`AGENTS.md`](AGENTS.md): mandatory workspace rules
+- [`AI_WORKSPACE.md`](AI_WORKSPACE.md): permanent branch boundary
+- [`docs/main_promotion.md`](docs/main_promotion.md): clean C-only transfer
+- [`docs/agent_quickstart.md`](docs/agent_quickstart.md): worker workflow
 - [`docs/concurrent_agents.md`](docs/concurrent_agents.md): Claude/Codex bulk work
 - [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion
 - [`docs/context_workflow.md`](docs/context_workflow.md): index and context design
-- [`docs/blind_recovery_benchmark.md`](docs/blind_recovery_benchmark.md): reproducible blind testing and organicity
-- [`CONTRIBUTING.md`](CONTRIBUTING.md): verification and handoff
+- [`docs/blind_recovery_benchmark.md`](docs/blind_recovery_benchmark.md): blind testing and organicity
 
-## Unified agent commands
-
-Inspect the checkout and install lightweight local checks:
+## Unified workspace commands
 
 ```sh
 python tools/agent.py doctor
 python tools/agent.py hooks install
-```
-
-Build or query the operational owner inventory generated from `configure.py` and
-source includes:
-
-```sh
 python tools/agent.py catalog build
-python tools/agent.py catalog query REL:mdpartydll:mdparty
+python tools/agent.py queue status
 ```
 
-The catalog records configured owners, source paths, status, size, includes, and
-header consumers. It does not fabricate semantic-recovery claims.
-
-## Parallel Claude and Codex work
-
-Claude and Codex use a shared queue under Git’s common directory, but separate
-worktrees, branches, and build directories:
+Create isolated work:
 
 ```sh
 python tools/agent.py queue add <owner> \
@@ -67,7 +123,7 @@ python tools/agent.py worktree create <owner> \
   --retail <read-only-GP6E01-directory>
 ```
 
-Workers may take dependency-ready work automatically:
+Workers may claim dependency-ready tasks automatically:
 
 ```sh
 python tools/agent.py queue claim-next \
@@ -75,10 +131,6 @@ python tools/agent.py queue claim-next \
   --capability rel \
   --batch menu-flow
 ```
-
-The queue blocks duplicate owners, branches, worktrees, build directories,
-source files, overlapping shared paths, and header-consumer conflicts. Priority
-is preserved when a queued task is claimed.
 
 Before commits, the real committed/staged/unstaged/untracked diff must fit the
 claim:
@@ -97,25 +149,15 @@ python tools/agent.py context function fn_1_BBD8 \
   --budget 12000
 ```
 
-Context uses fixed section budgets and reserves space for exact-target rules,
-owner constraints, compiler diagnostics, counterexamples, freshness warnings,
-local objdiff summaries, source, and acceptance criteria. Historical wave bodies
-are never loaded automatically.
-
-Inspect cards or their extraction backlog directly:
-
-```sh
-python tools/agent.py knowledge function fn_1_BBD8 \
-  --owner REL:mdpartydll:mdparty \
-  --symptom "helper boundary"
-python tools/agent.py knowledge audit
-python tools/knowledge_cards.py freshness
-```
+Context reserves space for exact-target rules, owner constraints, compiler
+diagnostics, counterexamples, freshness warnings, local objdiff summaries,
+source, and acceptance criteria. Historical wave bodies are never loaded
+automatically.
 
 ## Worker proof and integration proof
 
-A worker commits a clean candidate, runs the public gate, records object-level
-proof, and stops at `ready`:
+A worker commits a clean candidate, runs the public gate, records object proof,
+and stops at `ready`:
 
 ```sh
 python tools/agent.py check --base origin/main
@@ -133,30 +175,13 @@ python tools/agent.py queue update <owner> \
   --agent claude --status ready
 ```
 
-The proof is tied to the clean current commit. Any later edit requires a new
-proof.
-
-The integration worktree serializes machine-wide resources, integrates the
-worker commit, runs DOL/REL, consumer, checksum, and retail-byte gates, then
-finalizes the task:
-
-```sh
-python tools/agent.py queue acquire-resource integration --agent integrator
-python tools/agent.py queue acquire-resource retail-build --agent integrator
-
-python tools/agent.py integration finalize <owner> \
-  --agent integrator \
-  --retail-gate pass \
-  --checksum pass \
-  --toolchain GC/1.3.2
-```
-
-Finalization checks that every claimed path in the integration tree still
-matches the worker’s verified commit before setting the task to `done`.
+The integration worktree serializes machine-wide resources and private retail
+gates. After that proof, use `promote_recovered_c.py` to create the clean
+human-facing branch from `main`.
 
 ## Blind recovery and organicity
 
-Blind testing is scored on four separate dimensions:
+Blind tests score four independent dimensions:
 
 ```text
 assembly equivalence
@@ -165,51 +190,37 @@ candidate organicity
 artifact reproducibility
 ```
 
-A token-identical candidate can inherit questionable structure already present
-in the retained source, so source similarity never substitutes for organicity.
-Audit the committed benchmark cases and inspect a function directly:
-
 ```sh
 python tools/blind_recovery.py audit
-
 python tools/blind_recovery.py organicity \
   src/gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c \
   --function ProcessLookAhead
 ```
 
-The two initial surrogate holdouts are explicitly marked `legacy-reported`
-because their raw packets and candidates were not preserved. New cases must
-freeze the candidate before reveal and preserve the evidence, target assembly,
-candidate assembly, result, hashes and source commit. See
-[`benchmarks/blind_recovery/README.md`](benchmarks/blind_recovery/README.md).
+The initial surrogate holdouts remain `legacy-reported` because their raw packet
+and candidate artifacts were not preserved.
 
 ## Public versus private gates
-
-The public-safe gate runs Python compilation/tests, metadata/card/freshness
-validation, blind-benchmark auditing, owner catalog generation, deterministic
-indexing, context/report smoke tests, queue policy, whitespace,
-generated/private-path checks, and changed-line source-quality review:
 
 ```sh
 python tools/agent.py check --base origin/main
 ```
 
-It does **not** prove a retail build. Source promotion also requires the local
-serialized build, relocation-aware object reports, affected consumers, DTK
-checksum, and explicit DOL/REL comparisons.
+The public-safe gate validates tooling and policy. It does **not** prove a retail
+build. Source promotion also requires relocation-aware object reports, affected
+consumers, a serialized DOL/REL build, DTK checksum, and explicit retail
+comparisons in the clean promotion worktree.
 
 ## Repository layout
 
-- `src/`: recovered source
+- `src/`: recovered source under active investigation
 - `include/`: shared declarations and data domains
-- `config/GP6E01/`: DOL symbols, splits, and retail checksums
-- `config/dll/rels/`: REL ownership
-- `config/recovery/`: owner state, evidence, names, exceptions, cards, freshness
-- `benchmarks/blind_recovery/`: replayable blind-test manifests and artifacts
-- `docs/`: active documentation and forensic evidence
-- `tools/`: build, queue, catalog, worktree, context, knowledge, benchmark, and verification tools
+- `config/recovery/`: AI-workspace evidence, cards, queue policy, and freshness
+- `benchmarks/blind_recovery/`: replayable blind-test artifacts
+- `docs/`: workspace documentation and forensic evidence
+- `tools/`: orchestration, context, benchmark, and verification tooling
 - `build/`: ignored output, isolated per worktree
 - `orig/GP6E01/`: ignored local retail inputs
 
-No copyrighted game assets, retail binaries, rebuilt DOL/REL files, local queue
-state, or generated analysis output may be committed.
+No AI workspace file is promoted automatically to `main`. Only verified
+`src/**/*.c` content may cross the boundary through a fresh `recovery/*` branch.
