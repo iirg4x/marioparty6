@@ -88,6 +88,9 @@ class ProjectConfig:
         self.rel_empty_file: Optional[
             str
         ] = None  # Object name for generating empty RELs
+        self.rel_ldscript_replacements: Dict[
+            str, List[Tuple[str, str]]
+        ] = {}  # Per-REL replacements applied to a derived DTK linker script
         self.shift_jis = (
             True  # Convert source files from UTF-8 to Shift JIS automatically
         )
@@ -183,9 +186,35 @@ def load_build_config(
     return build_config
 
 
+def prepare_rel_ldscripts(
+    config: ProjectConfig, build_config: Dict[str, Any]
+) -> None:
+    for module in build_config.get("modules", []):
+        replacements = config.rel_ldscript_replacements.get(module["name"])
+        if not replacements:
+            continue
+
+        source_path = Path(module["ldscript"])
+        if not source_path.is_file():
+            sys.exit(f"Missing REL linker script: {source_path}")
+        contents = source_path.read_text(encoding="utf-8")
+        for old, new in replacements:
+            if old not in contents:
+                sys.exit(
+                    f"REL linker script replacement not found for {module['name']}: {old}"
+                )
+            contents = contents.replace(old, new, 1)
+
+        derived_path = source_path.with_name("ldscript.custom.lcf")
+        derived_path.write_text(contents, encoding="utf-8")
+        module["ldscript"] = str(derived_path)
+
+
 # Generate build.ninja and objdiff.json
 def generate_build(config: ProjectConfig) -> None:
     build_config = load_build_config(config, config.out_path() / "config.json")
+    if build_config:
+        prepare_rel_ldscripts(config, build_config)
     generate_build_ninja(config, build_config)
     generate_objdiff_config(config, build_config)
 

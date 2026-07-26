@@ -223,6 +223,64 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "mwcc-source-chronology-csect-link-order": {
+      "status": "active",
+      "validated_commit": "03531bd40870fe23643506d56d9af8cb6d9d119d",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_w01_inline_chronology.md",
+        "src/REL/w01Dll/world01.c",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/w01Dll/symbols.txt",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-extern-inline-static-local-comdat-ownership": {
+      "status": "active",
+      "validated_commit": "03531bd40870fe23643506d56d9af8cb6d9d119d",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_w01_inline_chronology.md",
+        "src/REL/w01Dll/world01.c",
+        "include/REL/w01Dll_world01.h",
+        "include/math.h",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "retail-triangulation-for-missing-inline-owner": {
+      "status": "active",
+      "validated_commit": "03531bd40870fe23643506d56d9af8cb6d9d119d",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_w01_inline_chronology.md",
+        "src/REL/w01Dll/world01.c",
+        "config/dll/rels/w01Dll/symbols.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "dtk-rodata-boundary-multiset-before-resplit": {
+      "status": "active",
+      "validated_commit": "03531bd40870fe23643506d56d9af8cb6d9d119d",
+      "validated_at": "2026-07-26",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_w01_inline_chronology.md",
+        "src/REL/w01Dll/world01.c",
+        "src/REL/w01Dll/runtime.c",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/w01Dll/symbols.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

@@ -894,6 +894,244 @@
         "docs/native_matching_board_gap_ownership.md",
         "config/GP6E01/build.sha1"
       ]
+    },
+    {
+      "id": "mwcc-source-chronology-csect-link-order",
+      "title": "Separate MWCC source chronology from final csect link order",
+      "classification": "confirmed_rule",
+      "category": "literal_pool_and_code_layout",
+      "compiler": "GC/2.7",
+      "confidence": "confirmed",
+      "summary": "An authenticated inline cluster may need early compiler visibility to seed the retail literal pool even when its machine code belongs later in the linked text order; dedicated csects preserve both dimensions.",
+      "conditions": "Use only when complete same-game code and literal chronology authenticate the early owner, every moved function is instruction-identical, and retail function boundaries identify the later text position.",
+      "source_condition": {
+        "change": "Move an authenticated function cluster earlier in the translation unit while retaining its machine code at a later retail address.",
+        "requires": [
+          "pinned owner compiler and linker commands",
+          "complete instruction-identical cluster and retail function boundaries",
+          "literal chronology and relocation proof",
+          "file-qualified csect selectors and a final linked retail comparison"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "literal-pool order and alignment",
+          "active text csect order",
+          "file-to-section ownership",
+          "linked REL text placement"
+        ],
+        "known_signatures": [
+          "instructions are exact but pooled literals follow first-use rather than target prefix order",
+          "an unqualified wildcard inserts a later object between owner csects",
+          "source csects are independently exact but the linked REL text order is wrong"
+        ]
+      },
+      "rule": "Compile the authenticated cluster in literal-owner chronology under dedicated code csects, then concatenate file-qualified owner csects and later objects in retail order; accept the arrangement only after exact sections, relocations, REL bytes, and the full retail gate.",
+      "safe_actions": [
+        "prove the complete cluster and literal chronology across retail evidence",
+        "split only at authenticated retail function boundaries",
+        "place file-qualified csect selectors before wildcard selectors",
+        "replay object, relocation, consumer, REL, DOL, and checksum gates"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": ["w01Dll", "s01Dll", "w04Dll"],
+        "owner_tags": ["pooled_literals", "rel"]
+      },
+      "examples": [
+        "w01Dll world01 .text/.text.common/.text.after_common"
+      ],
+      "counterexamples": [
+        "An unqualified *(.text) selector placed runtime text before the deferred owner csect and failed final layout.",
+        "Moving strong definitions without authenticated csect boundaries changes final text order rather than solving pool ownership.",
+        "An invented uncalled constant seeder duplicates the pool and is not an authenticated chronology owner."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_w01_inline_chronology.md"
+      ]
+    },
+    {
+      "id": "mwcc-extern-inline-static-local-comdat-ownership",
+      "title": "Authenticate weak extern-inline local-static ownership before using it to explain a pool prefix",
+      "classification": "confirmed_rule",
+      "category": "literal_pool_ownership",
+      "compiler": "GC/2.7",
+      "confidence": "confirmed",
+      "summary": "Under the pinned profile, C++ extern-inline function-local static constants can emit weak inactive rodata at zero active-text cost, and the linker may retain the first copy while deduplicating later copies.",
+      "conditions": "Apply when a target literal prefix precedes every active reference and compiler controls or sibling RELs show weak inactive local-static emission under the exact profile.",
+      "source_condition": {
+        "change": "Expose or reorder an extern-inline body containing function-local static constants.",
+        "requires": [
+          "exact preprocessed inline body and compiler command",
+          "weak visibility and active-bit inspection",
+          "multi-object first-copy and dedup evidence",
+          "authenticated source ownership beyond a capability-only probe"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "weak inactive rodata with no active text",
+          "first-copy retention across linked objects",
+          "deduplication of later local-static copies",
+          "literal-prefix placement before active consumers"
+        ],
+        "known_signatures": [
+          "control object has .text 0 and nonzero rodata with weak inactive constants",
+          "linked sibling objects retain only the earliest compatible copy",
+          "ordinary unused inline literals emit no corresponding block"
+        ]
+      },
+      "rule": "Use weak extern-inline local-static emission as a pool-ownership explanation only after authenticating the real header or shared owner and replaying multi-object link behavior; a synthetic no-text seeder proves capability, not provenance.",
+      "safe_actions": [
+        "inspect weak symbols, active bits, csects, and relocations",
+        "compile the real included inline header under the exact compiler profile",
+        "compare first-copy retention and dedup across sibling RELs",
+        "require exact linked sections and retail bytes"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": ["w01Dll", "s01Dll", "w04Dll"],
+        "owner_tags": ["extern_inline", "literal_pool"]
+      },
+      "examples": [
+        "GC/2.7 math.h-only _half/_three emission control",
+        "w01Dll authenticated common-inline owner"
+      ],
+      "counterexamples": [
+        "Ordinary unused inline literals emitted nothing under the same profile.",
+        "Real MP5 board-math extern-inline bodies did not emit the required MP6 prefix.",
+        "A synthetic 19-static header emitted the prefix at zero text cost but duplicated the active bodies' pool and did not authenticate ownership."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_w01_inline_chronology.md"
+      ]
+    },
+    {
+      "id": "retail-triangulation-for-missing-inline-owner",
+      "title": "Triangulate a missing inline owner from complete sibling retail chronology",
+      "classification": "contextual_heuristic",
+      "category": "evidence_provenance",
+      "compiler": "GC/2.7",
+      "confidence": "high",
+      "summary": "When a historical inline header is absent, a complete byte-identical function cluster plus the same literal prefix and chronology in multiple same-game retail RELs can authenticate shared ownership more strongly than a value-only match.",
+      "conditions": "Use only when no surviving same-game source/header authenticates the owner and at least two independent retail modules provide complete code, size-sequence, literal-prefix, and chronology agreement.",
+      "source_condition": {
+        "change": "Infer a missing shared inline owner from sibling retail modules rather than a surviving source file.",
+        "requires": [
+          "complete target function-cluster hashes",
+          "retail function-size sequence",
+          "complete target literal prefix",
+          "literal-to-body chronology mapping",
+          "current-owner instruction, relocation, section, and linked proof"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "authenticated inline-body placement",
+          "literal-pool prefix ownership",
+          "deferred code chronology",
+          "shared-owner confidence without semantic naming proof"
+        ],
+        "known_signatures": [
+          "multiple retail RELs share a complete cluster hash and size sequence",
+          "the same RELs share an earlier literal prefix explained by cluster chronology",
+          "multiset-only controls cannot distinguish ownership"
+        ]
+      },
+      "rule": "Treat complete cross-module code identity, function boundaries, literal-prefix identity, and literal chronology as a bounded ownership proof; do not infer an owner from matching values or a synthetic emitter alone.",
+      "safe_actions": [
+        "hash complete target clusters across sibling RELs",
+        "compare exact prefix bytes and function-size chronology",
+        "map each retained literal to an authenticated body",
+        "require an organic reconstructed owner and exact retail replay"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": ["w01Dll", "s01Dll", "w04Dll"],
+        "owner_tags": ["missing_header", "retail_triangulation"]
+      },
+      "examples": [
+        "w01Dll/s01Dll/w04Dll 0x2344 common cluster and 0x10..0x77 prefix"
+      ],
+      "counterexamples": [
+        "A matching literal multiset without matching code chronology is not owner proof.",
+        "A synthetic no-text seeder that reproduces bytes is not an authenticated source owner.",
+        "Ordinary-literal extern-inline functions may deduplicate to an existing tail without seeding the target prefix."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_w01_inline_chronology.md"
+      ]
+    },
+    {
+      "id": "dtk-rodata-boundary-multiset-before-resplit",
+      "title": "Use literal multisets and direct consumers before moving a DTK rodata boundary",
+      "classification": "contextual_heuristic",
+      "category": "section_ownership",
+      "compiler": null,
+      "confidence": "high",
+      "summary": "A one-word rodata size mismatch beside a configured TU boundary may be internal pool order/alignment drift rather than missing data or a misplaced split; literal multisets, direct boundary consumers, and an independently exact adjacent owner distinguish the cases.",
+      "conditions": "Apply to PowerPC REL objects when target and source differ near a DTK rodata boundary and the neighboring owner can be built and compared independently.",
+      "source_condition": {
+        "change": "Move a DTK rodata split to absorb or release one alignment word near an object boundary.",
+        "requires": [
+          "target/source section sizes and 32-bit literal multisets",
+          "direct relocation consumers of boundary symbols",
+          "independently exact adjacent-owner section and alignment",
+          "build-local boundary probes and final linked proof"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "object rodata size and alignment",
+          "boundary-symbol resolution",
+          "adjacent-owner constant ownership",
+          "DTK split validity without changing literal values"
+        ],
+        "known_signatures": [
+          "target/source literal multisets agree except one zero alignment word",
+          "a proposed earlier boundary leaves a directly referenced symbol unresolved",
+          "a proposed later boundary bisects the adjacent owner's exact constant object"
+        ]
+      },
+      "rule": "Do not move a DTK rodata boundary from size pressure alone; first prove literal membership, direct consumers, and adjacent-owner ownership, then accept a boundary only if object, relocation, REL, and full checksum gates remain exact.",
+      "safe_actions": [
+        "compare section sizes and 32-bit literal multisets",
+        "audit relocations that name the boundary symbol",
+        "build the adjacent owner independently",
+        "test alternate boundaries only in ignored build-local configs"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": ["w01Dll"],
+        "owner_tags": ["dtk_split", "rodata"]
+      },
+      "examples": [
+        "w01Dll world01/runtime 0x440 rodata boundary"
+      ],
+      "counterexamples": [
+        "Moving the w01 boundary to 0x43C left lbl_1_rodata_43C consumers unresolved.",
+        "Moving it to 0x444 bisected runtime __constants and DTK rejected the split.",
+        "A boundary move that only relabels padding is not ownership proof."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_w01_inline_chronology.md"
+      ]
     }
   ]
 }

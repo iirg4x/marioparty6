@@ -298,6 +298,19 @@ cflags_gssdk = [
 config.linker_version = "GC/2.6"
 config.rel_strip_partial = False
 config.rel_empty_file = "REL/empty.c"
+config.rel_ldscript_replacements = {
+    "w01Dll": [
+        (
+            "        .text ALIGN(0x4):{}",
+            """        .text ALIGN(0x4):{
+            world01.o(.text)
+            world01.o(.text.common)
+            world01.o(.text.after_common)
+            *(.text)
+        }""",
+        ),
+    ],
+}
 
 # Helper function for Dolphin libraries
 def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
@@ -1113,6 +1126,23 @@ config.libs = [
                 "REL/mdpartydll/runtime.c",
                 source="REL/mdpartydll/runtime.c",
                 mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
+    Rel(
+        "w01Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w01Dll/world01.c",
+                mw_version="GC/2.7",
+            ),
+            Object(
+                Matching,
+                "REL/w01Dll/runtime.c",
+                source="REL/w01Dll/runtime.c",
+                mw_version="GC/2.7",
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
             ),
         },
