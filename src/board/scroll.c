@@ -5,8 +5,10 @@
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/pause.h"
+#include "game/board/player.h"
 #include "game/board/status.h"
 #include "game/board/window.h"
+#include "game/esprite.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
 #include "game/sprite.h"
@@ -14,8 +16,35 @@
 typedef void (*MBSCROLLHOOK)(BOOL enterF);
 typedef s16 (*MBSCROLLSTARFINDFUNC)(int playerNo);
 
+typedef struct MapSprWork_s {
+    int used;
+    int dispF;
+    s16 sprId[2];
+    int flags;
+    int type;
+    int masuId;
+    GXColor color;
+    s16 arrowSprId[1];
+    HuVecF pos2D;
+    HuVecF pos;
+    HuVecF colPos;
+} MAPSPRWORK;
+
+typedef struct ScrollWork_s {
+    int mapSprNum;
+    int playerPosNo;
+    int mapFrame;
+    int pathFrame;
+    float mapPathScale;
+    MAPSPRWORK mapSpr[32];
+} SCROLLWORK;
+
 static HuVecF mapViewPos;
 static HuVecF mapViewRot;
+
+static SCROLLWORK scrollWork;
+
+static SCROLLWORK *scrollWorkP = &scrollWork;
 
 static MBSCROLLHOOK mapHook;
 static ANIMDATA *pathAnim;
@@ -39,8 +68,10 @@ static void MapViewCreate(void);
 static void MapViewKill(void);
 static BOOL MapViewExec(int playerNo);
 static void MapSprCreate(int type, int id, int layer);
+static void MapBaseSprCreate(void);
 static BOOL MapSprPlayerCol(void);
 static void MapSprPlayerColAll(void);
+static void MapSprKill(void);
 
 extern void mbWipeDissolveFadeOut(void);
 extern void mbWipeDissolveFadeIn(void);
@@ -207,6 +238,35 @@ static void MapViewKill(void)
     }
 }
 
+static void MapBaseSprCreate(void)
+{
+    s16 masuIdTbl[12];
+    int masuNum;
+    int i;
+    int playerNo;
+
+    if (GWPartyGet() != FALSE) {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (i == GwSystem.turnPlayerNo) {
+                MapSprCreate(GwPlayer[i].charNo, GwPlayer[i].masuId, 5);
+            } else {
+                MapSprCreate(GwPlayer[i].charNo, GwPlayer[i].masuId, 4);
+            }
+        }
+    } else {
+        playerNo = GwSystem.turnPlayerNo;
+        MapSprCreate(GwPlayer[playerNo].charNo, GwPlayer[playerNo].masuId, 1);
+    }
+    masuNum = mbMasuTypeListGet(7, masuIdTbl);
+    for (i = 0; i < masuNum; i++) {
+        MapSprCreate(-1, masuIdTbl[i], 0);
+    }
+    masuNum = mbMasuTypeListGet(10, masuIdTbl);
+    for (i = 0; i < masuNum; i++) {
+        MapSprCreate(-2, masuIdTbl[i], 0);
+    }
+}
+
 static void MapSprPlayerColAll(void)
 {
     int i;
@@ -214,6 +274,28 @@ static void MapSprPlayerColAll(void)
     for (i = 0; i < 50; i++) {
         if (MapSprPlayerCol() == FALSE) {
             break;
+        }
+    }
+}
+
+static void MapSprKill(void)
+{
+    MAPSPRWORK *work;
+    int i;
+    int j;
+
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+        if (work->sprId[0] >= 0) {
+            espKill(work->sprId[0]);
+        }
+        if (work->sprId[1] >= 0) {
+            espKill(work->sprId[1]);
+        }
+        for (j = 0; j < 1; j++) {
+            if (work->arrowSprId[j] >= 0) {
+                espKill(work->arrowSprId[j]);
+            }
         }
     }
 }
