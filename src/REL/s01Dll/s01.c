@@ -10,6 +10,11 @@
 
 typedef void (*VoidFunc)(void);
 
+static inline int MBBoardNoGet(void)
+{
+    return GwSystem.boardNo;
+}
+
 typedef struct S01Marker {
     s16 modelId;
     s16 masuId;
@@ -28,17 +33,26 @@ typedef struct S01PosRot {
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
+extern u32 *lbl_1_bss_40;
 extern s16 lbl_1_bss_3C;
 extern s16 lbl_1_bss_0;
+extern s16 lbl_1_bss_2[3];
 extern S01Npc lbl_1_bss_8[5];
 extern S01Marker lbl_1_bss_30[3];
+extern HuVecF lbl_1_data_0;
+extern HuVecF lbl_1_data_C;
+extern HuVecF lbl_1_data_18;
 extern s32 lbl_1_data_24[3];
 extern HuVecF lbl_1_data_30[3];
 extern S01PosRot lbl_1_data_54[5];
 extern int lbl_1_data_A4[3];
 extern s32 lbl_1_data_B0[5];
+extern S01PosRot lbl_1_data_C4[3];
+extern int lbl_1_data_F4[6];
 extern int lbl_1_data_10C[2];
 extern char lbl_1_data_114[8];
+extern float lbl_1_rodata_78;
+extern float lbl_1_rodata_7C;
 extern float lbl_1_rodata_10;
 extern float lbl_1_rodata_30;
 extern double lbl_1_rodata_60;
@@ -74,6 +88,15 @@ void fn_1_3610(void);
 s32 fn_1_363C(void);
 
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(OMOBJ *));
+void HuAudSndGrpSetSet(s16 grpSet);
+void HuDataDirClose(int dataNum);
+void mbLightFuncSet(VoidFunc setHook, VoidFunc resetHook);
+void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom);
+void mbMapHookSet(void (*hook)(BOOL enterF));
+void mbOpeningViewSet(HuVecF *rot, HuVecF *pos, float zoom);
+void mbPlayerTurnCloseHookSet(void (*hook)(int playerNo));
+void mbPlayerTurnInitHookSet(void (*hook)(int playerNo));
+void mbScrollInit(int dataNum);
 
 int _prolog(void)
 {
@@ -101,6 +124,36 @@ void fn_1_A0(void)
 {
     GwSystem.partyF = FALSE;
     mbObjectSetup(6, fn_1_F4, fn_1_270);
+}
+
+void fn_1_F4(void)
+{
+    s16 *modelId = &lbl_1_bss_3C;
+    s32 boardNo;
+
+    boardNo = MBBoardNoGet();
+
+    HuAudSndGrpSetSet(0x1D);
+    lbl_1_bss_40 = GwSystem.boardWork;
+    mbMasuInit(0xC70000);
+    *modelId = mbObjCreate(0xC70002, NULL, FALSE);
+    mbObjAttrSet(*modelId, 0x40000001);
+    mbScrollInit(0xC70001);
+    mbLightFuncSet(fn_1_404, fn_1_468);
+    mbPlayerTurnInitHookSet(fn_1_3E0);
+    mbPlayerTurnCloseHookSet(fn_1_3E4);
+    mbOpeningViewSet(&lbl_1_data_C, &lbl_1_data_18, lbl_1_rodata_78);
+    mbev_MasuMoveEndSet(fn_1_314);
+    mbev_MasuMoveStartSet(fn_1_2B8);
+    mbev_MasuHatenaSet(fn_1_374);
+    mbMapCameraSet(NULL, &lbl_1_data_0, lbl_1_rodata_7C);
+    mbMapHookSet(fn_1_46C);
+    omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_274);
+    fn_1_4C8();
+    fn_1_8F0();
+    fn_1_AFC();
+    fn_1_C38();
+    HuDataDirClose(0xC70000);
 }
 
 void fn_1_270(OMOBJ *obj)
@@ -244,6 +297,34 @@ void fn_1_A50(void)
                 lbl_1_rodata_8C, 0x40000001);
             mbObjMotionShapeSet(npc->modelId, 1, 0x40000040);
         }
+    }
+}
+
+void fn_1_AFC(void)
+{
+    s16 *modelId = lbl_1_bss_2;
+    s32 motion[16];
+    s32 motionCount = 5;
+    s32 randomA;
+    s32 randomB;
+    s32 temp;
+    s32 i;
+
+    for (i = 0; i < motionCount; i++) {
+        motion[i] = i + 1;
+    }
+    for (i = 0; i < 100; i++) {
+        randomA = mbRandMod(motionCount);
+        randomB = mbRandMod(motionCount);
+        temp = motion[randomA];
+        motion[randomA] = motion[randomB];
+        motion[randomB] = temp;
+    }
+    for (i = 0; i < 3; i++, modelId++) {
+        *modelId = mbObjCreate(0xC70009, lbl_1_data_F4, FALSE);
+        mbObjPosSetV(*modelId, &lbl_1_data_C4[i].pos);
+        mbObjRotYSet(*modelId, lbl_1_data_C4[i].rotY);
+        mbObjMotionSet(*modelId, motion[i], 0x40000001);
     }
 }
 
