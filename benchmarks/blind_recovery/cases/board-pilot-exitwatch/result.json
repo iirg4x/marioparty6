@@ -1,0 +1,57 @@
+{
+  "assembly": {
+    "candidate_lines": 88,
+    "exact": true,
+    "similarity": 1.0,
+    "status": "compared",
+    "target_lines": 88
+  },
+  "binary_equivalence": "exact-surrogate-or-target",
+  "blindness": {
+    "candidate_frozen_before_reveal": true,
+    "raw_candidate_preserved": true,
+    "raw_evidence_preserved": true,
+    "reference_withheld": true
+  },
+  "candidate_frozen_at": "2026-07-26T02:10:57+00:00",
+  "candidate_sha256": "d71f5d13d03d1dabbd212b8918408a4946b3a600d65880110465964901d728b7",
+  "function": "ExitWatch",
+  "id": "board-pilot-exitwatch",
+  "organicity": {
+    "candidate": {
+      "category_deductions": {},
+      "findings": [],
+      "human_review_required": false,
+      "rating": "strongly-organic",
+      "score": 100
+    },
+    "candidate_only_debt": [],
+    "inherited_reference_debt": [],
+    "reference": {
+      "category_deductions": {},
+      "findings": [],
+      "human_review_required": false,
+      "rating": "strongly-organic",
+      "score": 100
+    },
+    "reference_only_debt": []
+  },
+  "reference_sha256": "76e295f6c6257d2f4dab731f5f2cadbc0754926c4656f7c2ebe46ba5de35ba23",
+  "schema_version": 1,
+  "scored_at": "2026-07-26T02:12:37+00:00",
+  "source": {
+    "candidate_tokens": 187,
+    "exact_tokens": false,
+    "reference_tokens": 187,
+    "token_similarity": 0.8983957219251337
+  },
+  "source_commit": "6d1a950a6e7c00132ee1fbdeb63892c9960ada5b",
+  "success_dimensions": {
+    "assembly_exact": true,
+    "candidate_organic_rating": "strongly-organic",
+    "candidate_organic_score": 100,
+    "independent_human_review_required": false,
+    "source_tokens_exact": false
+  },
+  "target_source": "src/board/exit.c"
+}

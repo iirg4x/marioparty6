@@ -1,0 +1,27 @@
+{
+  "archived_at": "2026-07-26T02:12:57+00:00",
+  "artifacts": {
+    "attempt_log": "attempt-log.md",
+    "candidate": "candidate.c",
+    "candidate_assembly": "candidate.s",
+    "evidence": "evidence.md",
+    "object_report": "object-report.json",
+    "report": "report.md",
+    "result": "result.json",
+    "target_assembly": "target.s"
+  },
+  "blindness": {
+    "candidate_frozen_before_reveal": true,
+    "raw_candidate_preserved": true,
+    "raw_evidence_preserved": true,
+    "reference_withheld": true
+  },
+  "candidate_sha256": "d71f5d13d03d1dabbd212b8918408a4946b3a600d65880110465964901d728b7",
+  "function": "ExitWatch",
+  "id": "board-pilot-exitwatch",
+  "reference_sha256": "76e295f6c6257d2f4dab731f5f2cadbc0754926c4656f7c2ebe46ba5de35ba23",
+  "schema_version": 1,
+  "source": "src/board/exit.c",
+  "source_commit": "6d1a950a6e7c00132ee1fbdeb63892c9960ada5b",
+  "status": "reproducible"
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "comparison": "relocation-aware objdiff-cli 3.7.2 one-shot",
+  "target_object_sha256": "56779c9a5fd4c5a802001fb02a631d79d6f3d7f2d8b60143a7fb4a24807b0700",
+  "candidate_harness_object_sha256": "e6ab1a18457fe12450c9063be082ca719d35eb03d4a89c8688d65a1dc72313eb",
+  "function": "ExitWatch",
+  "target_size": 300,
+  "candidate_size": 300,
+  "match_percent": 100.0,
+  "instruction_diff_count": 0,
+  "target_relocations": 23,
+  "candidate_relocations": 23,
+  "relocation_types": {
+    "R_PPC_REL24": 17,
+    "R_PPC_EMB_SDA21": 6
+  },
+  "relocation_types_targets_addends_exact": true,
+  "note": "The harness object intentionally contains only the sealed function context; whole-object hashes and unrelated sections are not expected to equal exit.o."
+}
