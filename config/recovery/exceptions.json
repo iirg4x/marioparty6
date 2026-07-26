@@ -127,6 +127,27 @@
         "src/board/status.c",
         "src/board/player.c"
       ]
+    },
+    {
+      "id": "dice-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/dice.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail dice.o omits the two weak sqrtf local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, branch.c, status.c, and player.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. In dice.c the same boundary removes the candidate-owned math pool, makes five additional functions strictly exact, and preserves all 39 previously exact functions.",
+      "evidence": [
+        "build/dice-baseline-strict.json",
+        "build/dice-math-sdk-strict.json",
+        "docs/native_matching_board_constant_pool.md",
+        "src/board/gate.c",
+        "src/board/roulette.c",
+        "src/board/tutorial.c",
+        "src/board/branch.c",
+        "src/board/status.c",
+        "src/board/player.c"
+      ]
     }
   ]
 }
