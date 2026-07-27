@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "game/armem.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
@@ -7,6 +10,7 @@
 #include "game/board/tutorial.h"
 #include "game/board/window.h"
 #include "game/esprite.h"
+#include "game/mgdata.h"
 #include "game/pad.h"
 #include "game/wipe.h"
 
@@ -36,13 +40,36 @@ typedef struct TutorialGuideData_s {
     int seId;
 } TUTORIALGUIDEDATA;
 
+typedef struct TutorialMgCallWork_s {
+    u8 killF : 1;
+    u8 slideInF : 1;
+    u8 state : 3;
+    u8 cursorNo : 3;
+    u8 dispF : 1;
+    s16 winNo;
+    s16 field04;
+    s16 time;
+    s16 maxTime;
+    int message;
+} TUTORIALMGCALLWORK;
+
+typedef struct TutorialMgCallData_s {
+    int active;
+    int field04;
+    s16 espId[3];
+    s16 field0E[5];
+    OMOBJ *obj[4];
+} TUTORIALMGCALLDATA;
+
 static s16 tutorialSprId[16];
 static s16 tutorialSprGrpId[16];
 static s16 tutorialMdlId[32];
 static TUTORIALCALLWORK tutorialCallWork;
 static TUTORIALWINDATA tutorialWinData[HUWIN_MAX];
+static TUTORIALMGCALLDATA tutorialMgCallData;
 static OMOBJ *tutorialGuideObj;
 static TUTORIALMAINFUNC tutorialMain;
+static s16 tutorialMgCallCursorPos;
 static BOOL tutorialExitOnF;
 static BOOL tutorialExitReqF;
 static HUPROCESS *tutorialMainProc;
@@ -124,12 +151,26 @@ static TUTORIALGUIDEDATA tutorialGuideTbl[] = {
     { -1, -1 },
 };
 
+static int mgCallWinYOfsTbl[5][4] = {
+    { 0, 0, 0, 0 },
+    { 238, 0, 0, 0 },
+    { 214, 262, 0, 0 },
+    { 198, 238, 278, 0 },
+    { 193, 223, 253, 283 },
+};
+
 static void TutorialWatch(void);
 static void TutorialSprClose(void);
 static void TutorialSprGrpClose(void);
 static void TutorialModelKillAll(void);
 static void TutorialWinInit(void);
 static void TutorialWinUpdate(void);
+static void TutorialMgCallOMExec(OMOBJ *obj);
+static void TutorialMgCallListGet(int type, int num, s16 *list);
+static void TutorialMgCallSlideInSet(OMOBJ *obj);
+static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj);
+static void TutorialMgCallGrowSet(OMOBJ *obj);
+static void TutorialMgCallKill(OMOBJ *obj);
 
 void mbTutorialInit(void)
 {
@@ -439,14 +480,16 @@ s16 mbTutorialSprDispOn(unsigned int dataNum)
 void mbTutorialSprKill(s16 sprId)
 {
     int i;
+    int index;
 
     for (i = 0; i < 16; i++) {
         if (sprId == tutorialSprId[i]) {
             break;
         }
     }
+    index = i;
     espKill(sprId);
-    tutorialSprId[i] = -1;
+    tutorialSprId[index] = -1;
 }
 
 void mbTutorialSprDispOff(s16 sprId)
@@ -475,6 +518,7 @@ static void TutorialSprClose(void)
 
 void mbTutorialSprGrpSet(s16 grpId)
 {
+    s16 id;
     int i;
 
     for (i = 0; i < 16; i++) {
@@ -482,20 +526,22 @@ void mbTutorialSprGrpSet(s16 grpId)
             break;
         }
     }
-    tutorialSprGrpId[i] = grpId;
+    id = tutorialSprGrpId[i] = grpId;
 }
 
 void mbTutorialSprGrpKill(s16 grpId)
 {
     int i;
+    int index;
 
     for (i = 0; i < 16; i++) {
         if (grpId == tutorialSprGrpId[i]) {
             break;
         }
     }
+    index = i;
     HuSprGrpKill(grpId);
-    tutorialSprId[i] = -1;
+    tutorialSprId[index] = -1;
 }
 
 static void TutorialSprGrpClose(void)
@@ -527,14 +573,16 @@ MBMODELID mbTutorialModelCreate(int dataNum, BOOL linkF)
 void mbTutorialModelKill(MBMODELID modelId)
 {
     int i;
+    int modelNo;
 
     for (i = 0; i < 32; i++) {
         if (modelId == tutorialMdlId[i]) {
             break;
         }
     }
+    modelNo = i;
     mbObjKill(modelId);
-    tutorialMdlId[i] = -1;
+    tutorialMdlId[modelNo] = -1;
 }
 
 static void TutorialModelKillAll(void)
@@ -683,7 +731,7 @@ void mbTutorialWinMesExec(int message)
 void mbTutorialWinMesMasuExec(int message, int masuId)
 {
     int winNo;
-    s16 sprId;
+    int sprId;
     int i;
 
     winNo = mbWinCreateTime(MBWIN_TYPE_GUIDE, message, -1);
@@ -694,11 +742,17 @@ void mbTutorialWinMesMasuExec(int message, int masuId)
             break;
         }
     }
-    mbGuideMotionShiftSet(tutorialGuideObj, 12, TRUE);
+    {
+        OMOBJ *guideObj = tutorialGuideObj;
+
+        mbGuideMotionShiftSet(guideObj, 12, TRUE);
+    }
     sprId = mbTutorialSprDispOn(masuId);
-    do {
-        mbGuideMotionShiftSet(tutorialGuideObj, 12, TRUE);
-    } while (mbTutorialWinWait(winNo));
+    while (mbTutorialWinWait(winNo)) {
+        OMOBJ *guideObj = tutorialGuideObj;
+
+        mbGuideMotionShiftSet(guideObj, 12, TRUE);
+    }
     mbWinWait(winNo);
     mbTutorialSprDispOff(sprId);
 }
@@ -732,4 +786,263 @@ void mbTutorialWinKeyWait(int winNo)
         mbGuideMotionShiftSet(guideObj, 12, TRUE);
     }
     mbWinWait(winNo);
+}
+
+void mbTutorialMgCallInit(void)
+{
+    memset(&tutorialMgCallData, 0, sizeof(tutorialMgCallData));
+}
+
+void mbTutorialMgCallClose(void)
+{
+    int i;
+
+    if (tutorialMgCallData.active != 0) {
+        for (i = 0; i < 3; i++) {
+            if (tutorialMgCallData.espId[i] >= 0) {
+                espKill(tutorialMgCallData.espId[i]);
+            }
+            tutorialMgCallData.espId[i] = -1;
+        }
+        for (i = 0; i < 4; i++) {
+            if (tutorialMgCallData.obj[i]) {
+                TutorialMgCallKill(tutorialMgCallData.obj[i]);
+            }
+            tutorialMgCallData.obj[i] = NULL;
+        }
+        tutorialMgCallData.active = 0;
+    }
+}
+
+void mbTutorialMgCallExec(int type)
+{
+    TUTORIALMGCALLDATA *data = &tutorialMgCallData;
+    s16 list[4];
+    TUTORIALMGCALLWORK *work;
+    int nextMaxTime;
+    int delay;
+    int nextDelay;
+    int listNum;
+    int delayOfs;
+    int nextTime;
+    int result;
+    int speed;
+    MGDATA *mgData;
+    int i;
+    float weight;
+
+    for (i = 0; i < 3; i++) {
+        data->espId[i] = -1;
+    }
+    for (i = 0; i < 4; i++) {
+        data->obj[i] = NULL;
+    }
+    data->active = TRUE;
+    listNum = 4;
+    TutorialMgCallListGet(type, listNum, list);
+
+    data->espId[0] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x87)), 100, 0);
+    espPosSet(data->espId[0], 288.0f, 230.0f);
+    espDrawNoSet(data->espId[0], 32);
+    data->espId[1] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x88)), 102, 0);
+    espPosSet(data->espId[1], 288.0f, 238.0f);
+    espDrawNoSet(data->espId[1], 32);
+    espTPLvlSet(data->espId[1], 0.5f);
+    data->espId[2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x89)), 101, 0);
+    espPosSet(data->espId[2], 288.0f, 246.0f);
+    espDrawNoSet(data->espId[2], 32);
+    espTPLvlSet(data->espId[2], 0.5f);
+    espDispOff(data->espId[2]);
+    for (i = 1; i <= 30; i++) {
+        weight = 1.0f - (i / 30.0f);
+        espPosSet(data->espId[0], 288.0f, 230.0f + (480.0f * weight));
+        espPosSet(data->espId[1], 288.0f, 238.0f + (480.0f * weight));
+        mbTutorialVSleep();
+    }
+
+    for (i = 0; i < listNum; i++) {
+        mgData = NULL;
+        if (list[i] >= 0) {
+            mgData = &MgDataTbl[list[i]];
+        }
+        data->obj[i] = omAddObjEx(mbObjMan, 257, 0, 0, -1, TutorialMgCallOMExec);
+        work = omObjGetWork(data->obj[i], TUTORIALMGCALLWORK);
+        work->dispF = TRUE;
+        work->cursorNo = i;
+        data->obj[i]->trans.y = mgCallWinYOfsTbl[listNum][i];
+        work->winNo = mbWinCreateHelp(0x002A003D);
+        work->message = -1;
+        if (mgData) {
+            work->message = mgData->nameMes;
+        }
+        mbWinPriSet(work->winNo, 90);
+        TutorialMgCallSlideInSet(data->obj[i]);
+    }
+    tutorialMgCallCursorPos = -1;
+    do {
+        mbTutorialVSleep();
+    } while (!TutorialMgCallSlideInCheck(data->obj[0]));
+
+    tutorialMgCallCursorPos = 0;
+    result = mbRandMod(listNum);
+    delay = mbRandMod(30) + 90;
+    delayOfs = (int)((-7.0f + sqrtf((delay * 8.0f) + 49.0f)) / 2.0f);
+    speed = (result - delayOfs) % listNum;
+    if (speed < 0) {
+        speed += listNum;
+    }
+    nextDelay = (listNum * 12) + (speed * 4);
+    nextTime = nextMaxTime = 4;
+    for (i = 0; i < nextDelay + delay; i++) {
+        if (--nextTime == 0) {
+            tutorialMgCallCursorPos = (tutorialMgCallCursorPos + 1) % listNum;
+            if (i > nextDelay) {
+                nextMaxTime++;
+                nextTime = nextMaxTime;
+            } else {
+                nextTime = nextMaxTime;
+            }
+            espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
+            espDispOn(data->espId[2]);
+            mbAudFXPlay(1009);
+        }
+        mbTutorialVSleep();
+    }
+    tutorialMgCallCursorPos = result;
+    espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
+    TutorialMgCallGrowSet(data->obj[tutorialMgCallCursorPos]);
+    mbAudFXPlay(1134);
+    HuPrcSleep(120);
+}
+
+static void TutorialMgCallListGet(int type, int num, s16 *list)
+{
+    s8 candidates[64];
+    int candidateNum = 0;
+    int mgNo = -1;
+    int i;
+
+    for (i = 0; MgDataTbl[i].ovl != 0xFFFF; i++) {
+        if ((MgDataTbl[i].flag & 0x2C0) == 0 && type == MgDataTbl[i].type) {
+            candidates[candidateNum++] = i;
+        }
+    }
+    if (candidateNum > 0) {
+        mgNo = candidates[mbRandMod(candidateNum)];
+    }
+    for (i = 0; i < num; i++) {
+        list[i] = mgNo;
+    }
+}
+
+static void TutorialMgCallOMExec(OMOBJ *obj)
+{
+    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+    HuVec2f size;
+    float weight;
+    float sinValue;
+
+    if (work->killF || mbExitCheck()) {
+        mbWinKill(work->winNo);
+        omDelObjEx(HuPrcCurrentGet(), obj);
+        return;
+    }
+    if (work->dispF) {
+        mbWinDispSet(work->winNo, TRUE);
+    } else {
+        mbWinDispSet(work->winNo, FALSE);
+    }
+    switch (work->state) {
+        case 0:
+            if (work->time > work->maxTime) {
+                work->slideInF = FALSE;
+                work->state = 1;
+            } else {
+                weight = (float)work->time++ / work->maxTime;
+                sinValue = sin((M_PI * (90.0f * weight)) / 180.0);
+                if ((work->cursorNo & 1) == 0) {
+                    obj->trans.x = -160.0f + (448.0f * sinValue);
+                } else {
+                    obj->trans.x = 736.0f + (-448.0f * sinValue);
+                }
+            }
+            break;
+        case 1:
+            if (work->cursorNo == tutorialMgCallCursorPos) {
+                work->state = 2;
+            }
+            break;
+        case 2:
+            if (work->cursorNo != tutorialMgCallCursorPos) {
+                work->state = 3;
+                work->time = 0;
+                work->maxTime = 8;
+            }
+            break;
+        case 3:
+            if (work->time > work->maxTime) {
+                work->state = 1;
+            } else {
+                weight = (float)work->time++ / work->maxTime;
+            }
+            break;
+        case 4:
+            if (work->time <= work->maxTime) {
+                weight = (float)work->time++ / work->maxTime;
+                obj->scale.x = obj->scale.y = 1.0f + (0.2f * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0));
+            }
+            break;
+        case 5:
+            if (work->time <= work->maxTime) {
+                weight = (float)work->time++ / work->maxTime;
+                obj->trans.y = obj->rot.y + (weight * (96.0f - obj->rot.y));
+                obj->scale.x = obj->scale.y = 0.5f + (0.5f * cos((M_PI * (90.0f * weight)) / 180.0));
+            }
+            break;
+    }
+    mbWinScaleSet(work->winNo, obj->scale.x, obj->scale.y);
+    mbWinMesMaxSizeGet(work->winNo, &size);
+    mbWinPosSet(work->winNo,
+        obj->trans.x - ((size.x / 2) * obj->scale.x),
+        obj->trans.y - ((size.y / 2) * obj->scale.y));
+}
+
+static void TutorialMgCallSlideInSet(OMOBJ *obj)
+{
+    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+
+    work->slideInF = TRUE;
+    work->state = 0;
+    work->time = 0;
+    work->maxTime = 30;
+}
+
+static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj)
+{
+    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+
+    if (work->slideInF) {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static void TutorialMgCallGrowSet(OMOBJ *obj)
+{
+    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+
+    work->state = 4;
+    work->time = 0;
+    work->maxTime = 90;
+    if (work->message >= 0) {
+        mbWinKill(work->winNo);
+        work->winNo = mbWinCreateHelp(work->message);
+    }
+}
+
+static void TutorialMgCallKill(OMOBJ *obj)
+{
+    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+
+    work->killF = TRUE;
 }

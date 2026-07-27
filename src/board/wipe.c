@@ -144,6 +144,295 @@ static GXColor paperAmbColor = { 192, 192, 192, 255 };
 static WIPE_SPECIAL_DATA wipeSpecialData;
 static ANIMDATA *wipeImageAnim[3];
 
+void mbWipeCreate(s16 mode, s16 type, s16 time)
+{
+    if (!_CheckFlag(FLAG_BOARD_TUTORIAL) || !mbTutorialExitReqGet()) {
+        WipeCreate(mode, type, time);
+    }
+}
+
+void mbWipeWait(void)
+{
+    while (WipeCheck()) {
+        HuPrcVSleep();
+    }
+}
+
+void mbWipeFadeOut(void)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 21);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        WipeColorSet(0, 0, 0);
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeFadeIn(void)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 21);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeWhiteFadeOut(void)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_WHITE, 21);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeWhiteFadeIn(void)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE, 21);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeDissolveFadeOut(void)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_CROSS_COPY, 1);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeDissolveFadeIn(void)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, 30);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeFadeOutTime(int time)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, time);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        WipeColorSet(0, 0, 0);
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeFadeInTime(int time)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, time);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeWhiteFadeOutTime(int time)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_WHITE, time);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeWhiteFadeInTime(int time)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE, time);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeDissolveFadeOutTime(int time)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_CROSS_COPY, time);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeDissolveFadeInTime(int time)
+{
+    BOOL wipeF;
+
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+        wipeF = FALSE;
+    } else {
+        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, time);
+        wipeF = TRUE;
+    }
+    if (wipeF) {
+        while (WipeCheck()) {
+            HuPrcVSleep();
+        }
+    }
+}
+
+void mbWipeSpecialInit(void)
+{
+    WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
+    u32 texSize;
+    void *texDataP;
+    u16 *texData;
+    int i;
+
+    memset(wipeData, 0, sizeof(*wipeData));
+    for (i = 0; i < 3; i++) {
+        wipeData->masuModelId[i] = Hu3DModelCreate(
+            HuDataSelHeapReadNum(wipeMasuFileTbl[i], HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelAttrSet(wipeData->masuModelId[i], HU3D_ATTR_DISPOFF);
+        Hu3DModelMatHookSet(wipeData->masuModelId[i], WipeMasuMatHook);
+        Hu3DModelPosSet(wipeData->masuModelId[i], 0.0f, 0.0f, -100.0f);
+        Hu3DModelCameraSet(wipeData->masuModelId[i], HU3D_CAM2);
+        Hu3DModelLayerSet(wipeData->masuModelId[i], 7);
+    }
+    wipeData->texSize = GXGetTexBufferSize(320, 240, GX_TF_RGB565,
+        GX_FALSE, 0);
+    texSize = wipeData->texSize;
+    texDataP = HuMemDirectMallocNum(HEAP_HEAP, texSize, HU_MEMNUM_OVL);
+    texData = texDataP;
+    wipeData->texData = texData;
+    DCFlushRange(wipeData->texData, wipeData->texSize);
+    wipeData->hookModelId = Hu3DHookFuncCreate(WipeSpecialDraw);
+    Hu3DModelCameraSet(wipeData->hookModelId, HU3D_CAM2);
+    Hu3DModelLayerSet(wipeData->hookModelId, 6);
+    for (i = 0; i < 3; i++) {
+        wipeImageAnim[i] = HuSprAnimRead(
+            HuDataSelHeapReadNum(wipeImageFileTbl[i], HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimLock(wipeImageAnim[i]);
+    }
+}
+
+void mbWipeSpecialClose(void)
+{
+    WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
+    void *texData;
+    int i;
+
+    mbWipeSpecialKill();
+    if (wipeData->texData) {
+        texData = wipeData->texData;
+        HuMemDirectFree(texData);
+        wipeData->texData = NULL;
+    }
+    for (i = 0; i < 3; i++) {
+        HuSprAnimKill(wipeImageAnim[i]);
+        wipeImageAnim[i] = NULL;
+    }
+}
+
+void mbWipeSpecialKill(void)
+{
+    WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
+    void *work;
+
+    if (wipeData->work) {
+        work = wipeData->work;
+        HuMemDirectFree(work);
+        wipeData->work = NULL;
+    }
+    wipeData->fadeType = 0;
+    wipeData->active = FALSE;
+    wipeData->type = 0;
+    wipeData->stat = 0;
+}
+
 static void WipeMasuMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     WIPE_SPECIAL_DATA *wipeData;
@@ -251,51 +540,6 @@ static void WipeShapeUpdate(HU3D_MODEL *model, Mtx *mtx,
     }
 }
 
-static void WipePaperVtxUpdate(WIPE_PAPER_WORK *work, float time)
-{
-    WIPE_PAPER_VTX *vtx;
-    HuVec2f pos[64];
-    int i;
-    float radius;
-    float advance;
-    float point;
-    float angle;
-
-    vtx = work->vtx;
-    radius = 200.0f * (1.0f - time);
-    advance = time * (work->length + ((float)M_PI * radius));
-    for (i = 0; i < 64; i++, vtx++) {
-        point = vtx->distance + advance;
-        if (point < work->length) {
-            pos[i].x = point;
-            pos[i].y = 0.0f;
-            vtx->bend = 0.0f;
-        } else if (point < work->length + ((float)M_PI * radius)) {
-            point -= work->length;
-            angle = 360.0f * (point / (2.0f * (float)M_PI * radius));
-            pos[i].x = work->length + (radius * mbSinDeg(angle));
-            pos[i].y = radius * (1.0f - mbCosDeg(angle));
-            if (angle > 90.0f) {
-                angle = 180.0f - angle;
-            }
-            vtx->bend = angle;
-        } else {
-            point -= work->length + ((float)M_PI * radius);
-            pos[i].x = work->length - point;
-            pos[i].y = 2.0f * radius;
-            vtx->bend = 0.0f;
-        }
-    }
-    vtx = work->vtx;
-    for (i = 0; i < 63; i++, vtx++) {
-        HuVec2f dir;
-
-        dir.x = pos[i + 1].x - pos[i].x;
-        dir.y = pos[i + 1].y - pos[i].y;
-        vtx->angle = 180.0 * (atan2(dir.y, dir.x) / M_PI);
-    }
-}
-
 static void WipeGridUpdate(HU3D_MODEL *model, Mtx *mtx,
     WIPE_SPECIAL_DATA *wipeData)
 {
@@ -358,6 +602,51 @@ static void WipeGridUpdate(HU3D_MODEL *model, Mtx *mtx,
         wipeData->fadeType = 0;
         wipeData->active = FALSE;
         wipeData->stat = 1;
+    }
+}
+
+static void WipePaperVtxUpdate(WIPE_PAPER_WORK *work, float time)
+{
+    WIPE_PAPER_VTX *vtx;
+    HuVec2f pos[64];
+    int i;
+    float radius;
+    float advance;
+    float point;
+    float angle;
+
+    vtx = work->vtx;
+    radius = 200.0f * (1.0f - time);
+    advance = time * (work->length + ((float)M_PI * radius));
+    for (i = 0; i < 64; i++, vtx++) {
+        point = vtx->distance + advance;
+        if (point < work->length) {
+            pos[i].x = point;
+            pos[i].y = 0.0f;
+            vtx->bend = 0.0f;
+        } else if (point < work->length + ((float)M_PI * radius)) {
+            point -= work->length;
+            angle = 360.0f * (point / (2.0f * (float)M_PI * radius));
+            pos[i].x = work->length + (radius * mbSinDeg(angle));
+            pos[i].y = radius * (1.0f - mbCosDeg(angle));
+            if (angle > 90.0f) {
+                angle = 180.0f - angle;
+            }
+            vtx->bend = angle;
+        } else {
+            point -= work->length + ((float)M_PI * radius);
+            pos[i].x = work->length - point;
+            pos[i].y = 2.0f * radius;
+            vtx->bend = 0.0f;
+        }
+    }
+    vtx = work->vtx;
+    for (i = 0; i < 63; i++, vtx++) {
+        HuVec2f dir;
+
+        dir.x = pos[i + 1].x - pos[i].x;
+        dir.y = pos[i + 1].y - pos[i].y;
+        vtx->angle = 180.0 * (atan2(dir.y, dir.x) / M_PI);
     }
 }
 
@@ -854,295 +1143,6 @@ static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     GXTexCoord2f32(1.0f, 1.0f);
     GXPosition2f32(left, bottom);
     GXTexCoord2f32(0.0f, 1.0f);
-}
-
-void mbWipeCreate(s16 mode, s16 type, s16 time)
-{
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL) || !mbTutorialExitReqGet()) {
-        WipeCreate(mode, type, time);
-    }
-}
-
-void mbWipeWait(void)
-{
-    while (WipeCheck()) {
-        HuPrcVSleep();
-    }
-}
-
-void mbWipeFadeOut(void)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 21);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        WipeColorSet(0, 0, 0);
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeFadeIn(void)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 21);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeWhiteFadeOut(void)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_WHITE, 21);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeWhiteFadeIn(void)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE, 21);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeDissolveFadeOut(void)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_CROSS_COPY, 1);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeDissolveFadeIn(void)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, 30);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeFadeOutTime(int time)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, time);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        WipeColorSet(0, 0, 0);
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeFadeInTime(int time)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, time);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeWhiteFadeOutTime(int time)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_WHITE, time);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeWhiteFadeInTime(int time)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE, time);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeDissolveFadeOutTime(int time)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_CROSS_COPY, time);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeDissolveFadeInTime(int time)
-{
-    BOOL wipeF;
-
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
-        wipeF = FALSE;
-    } else {
-        WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, time);
-        wipeF = TRUE;
-    }
-    if (wipeF) {
-        while (WipeCheck()) {
-            HuPrcVSleep();
-        }
-    }
-}
-
-void mbWipeSpecialInit(void)
-{
-    WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
-    u32 texSize;
-    void *texDataP;
-    u16 *texData;
-    int i;
-
-    memset(wipeData, 0, sizeof(*wipeData));
-    for (i = 0; i < 3; i++) {
-        wipeData->masuModelId[i] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(wipeMasuFileTbl[i], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelAttrSet(wipeData->masuModelId[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelMatHookSet(wipeData->masuModelId[i], WipeMasuMatHook);
-        Hu3DModelPosSet(wipeData->masuModelId[i], 0.0f, 0.0f, -100.0f);
-        Hu3DModelCameraSet(wipeData->masuModelId[i], HU3D_CAM2);
-        Hu3DModelLayerSet(wipeData->masuModelId[i], 7);
-    }
-    wipeData->texSize = GXGetTexBufferSize(320, 240, GX_TF_RGB565,
-        GX_FALSE, 0);
-    texSize = wipeData->texSize;
-    texDataP = HuMemDirectMallocNum(HEAP_HEAP, texSize, HU_MEMNUM_OVL);
-    texData = texDataP;
-    wipeData->texData = texData;
-    DCFlushRange(wipeData->texData, wipeData->texSize);
-    wipeData->hookModelId = Hu3DHookFuncCreate(WipeSpecialDraw);
-    Hu3DModelCameraSet(wipeData->hookModelId, HU3D_CAM2);
-    Hu3DModelLayerSet(wipeData->hookModelId, 6);
-    for (i = 0; i < 3; i++) {
-        wipeImageAnim[i] = HuSprAnimRead(
-            HuDataSelHeapReadNum(wipeImageFileTbl[i], HU_MEMNUM_OVL, HEAP_MODEL));
-        HuSprAnimLock(wipeImageAnim[i]);
-    }
-}
-
-void mbWipeSpecialClose(void)
-{
-    WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
-    void *texData;
-    int i;
-
-    mbWipeSpecialKill();
-    if (wipeData->texData) {
-        texData = wipeData->texData;
-        HuMemDirectFree(texData);
-        wipeData->texData = NULL;
-    }
-    for (i = 0; i < 3; i++) {
-        HuSprAnimKill(wipeImageAnim[i]);
-        wipeImageAnim[i] = NULL;
-    }
-}
-
-void mbWipeSpecialKill(void)
-{
-    WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
-    void *work;
-
-    if (wipeData->work) {
-        work = wipeData->work;
-        HuMemDirectFree(work);
-        wipeData->work = NULL;
-    }
-    wipeData->fadeType = 0;
-    wipeData->active = FALSE;
-    wipeData->type = 0;
-    wipeData->stat = 0;
 }
 
 void mbWipeSpecialCreate(int state, int type, int time)

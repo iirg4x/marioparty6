@@ -452,6 +452,10 @@ static void PlayerTurn(int playerNo)
     BOOL telopF = FALSE;
     BOOL killerF;
     BOOL eventResult;
+    BOOL partyF;
+    int timeTurn;
+    BOOL partyF2;
+    BOOL partyF3;
     int i;
 
     GwSystem.turnPlayerNo = playerNo;
@@ -472,9 +476,13 @@ static void PlayerTurn(int playerNo)
             turnInitHook(playerNo);
         }
         mbStatusDispForceSetAll(TRUE);
-        if (GwSystem.partyF && playerNo == 0 && GwSystem.timeTurn > 0) {
-            mbTelopTimeCreate();
-            telopF = TRUE;
+        partyF = GwSystem.partyF;
+        if (partyF && playerNo == 0) {
+            timeTurn = GwSystem.timeTurn;
+            if (timeTurn > 0) {
+                mbTelopTimeCreate();
+                telopF = TRUE;
+            }
         }
         if (mbWipeSpecialStatGet()) {
             if (playerNo == 0) {
@@ -495,7 +503,8 @@ static void PlayerTurn(int playerNo)
         omVibrate(playerNo, 20, 20, 0);
         mbPauseDisableSet(FALSE);
         mbTutorialCall(3);
-        if (GwSystem.partyF || GwSystem.turnNo == 1) {
+        partyF2 = GwSystem.partyF;
+        if (partyF2 || GwSystem.turnNo == 1) {
             mbTelopPlayerCreate(playerNo);
         }
         GwPlayer[playerNo].moveNum = -1;
@@ -568,7 +577,8 @@ repeat:
     }
     ev_PlayerEndTurn(playerNo);
     mbTutorialCall(4);
-    if (GwSystem.partyF) {
+    partyF3 = GwSystem.partyF;
+    if (partyF3) {
         if (playerNo != GW_PLAYER_MAX - 1) {
             mbWipeSpecialFadeInCreate(5, 1);
         } else {
@@ -1085,8 +1095,20 @@ static void PlayerMoveOMExec(OMOBJ *objP)
         + (weight * (objP->rot.y - objP->scale.y));
     objP->trans.z = objP->scale.z
         + (weight * (objP->rot.z - objP->scale.z));
-    if (playerWork[workP->playerNo].masuMoveF) {
-        playerWork[workP->playerNo]._unk08 = workP->maxTime - workP->time;
+    {
+        int movePlayerNo = workP->playerNo;
+        MBPLAYERWORK *moveWorkP = &playerWork[movePlayerNo];
+
+        if (moveWorkP->masuMoveF) {
+            int movePlayerNo2;
+            MBPLAYERWORK *moveWorkP2;
+            int moveTime = workP->maxTime - workP->time;
+
+            movePlayerNo2 = workP->playerNo;
+            moveWorkP2 = &playerWork[movePlayerNo2];
+
+            moveWorkP2->_unk08 = moveTime;
+        }
     }
     if (workP->time >= workP->maxTime) {
         GwPlayer[workP->playerNo].moveF = FALSE;
@@ -1098,15 +1120,32 @@ static void PlayerMoveOMExec(OMOBJ *objP)
         mbPlayerPosSet(workP->playerNo, objP->trans.x, objP->trans.y,
             objP->trans.z);
     } else {
-        playerWork[workP->playerNo].moveEndF = FALSE;
+        int movePlayerNo;
+        int jumpPlayerNo;
+
+        {
+            MBPLAYERWORK *moveWorkP;
+
+            movePlayerNo = workP->playerNo;
+            moveWorkP = &playerWork[movePlayerNo];
+
+            moveWorkP->moveEndF = FALSE;
+        }
         if (workP->time >= workP->maxTime - 2) {
             weight = 1.0f;
-            playerWork[workP->playerNo].moveEndF = TRUE;
+            {
+                MBPLAYERWORK *moveWorkP;
+
+                jumpPlayerNo = workP->playerNo;
+                moveWorkP = &playerWork[jumpPlayerNo];
+
+                moveWorkP->moveEndF = TRUE;
+            }
         } else {
             weight = (float)workP->time / (workP->maxTime - 2);
         }
         mbPlayerPosSet(workP->playerNo, objP->trans.x,
-            objP->trans.y + (100.0f * (1.5f * HuSin(weight * 180.0f))),
+            objP->trans.y + (100.0f * (2.0f * HuSin(weight * 180.0f))),
             objP->trans.z);
         if (workP->time == workP->maxTime - 5) {
             mbPlayerMotionShiftSet(workP->playerNo, 5, 2.0f, 2.0f,
@@ -1393,23 +1432,22 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo);
 
 void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
 {
+    BOOL circleF;
+    s8 orderNo;
     int i;
     int j;
     int cornerNo;
     int masuId;
-    s8 orderNo;
     HuVecF pos;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerWork[i].colObj) {
-            PLAYERCOLWORK *workP;
-
             if (GwPlayer[i].masuId == 0) {
                 continue;
             }
-            workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-            workP->masuIdNext = GwPlayer[i].masuIdNext;
-            if (workP->restF) {
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
+                GwPlayer[i].masuIdNext;
+            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF) {
                 continue;
             }
         }
@@ -1419,10 +1457,7 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             continue;
         }
         if (playerWork[i].colObj) {
-            PLAYERCOLWORK *workP =
-                omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-
-            if (!workP->snapF) {
+            if (!omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
                 continue;
             }
         }
@@ -1447,11 +1482,9 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
         {
-            PLAYERCOLWORK *workP =
-                omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-            u8 circleF = workP->circleF;
+            circleF = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
 
-            workP->circleF = FALSE;
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
             if (snapF) {
                 mbPlayerPosSetV(i, &pos);
                 PlayerColCornerSnap(i, masuId, cornerNo);
@@ -2165,6 +2198,75 @@ void mbPlayerColOrderReset(void)
     }
 }
 
+static char *eyeMatNameTbl[CHARNO_MAX][2] = {
+    { "eye1", "eye2" },
+    { "eye1", "eye2" },
+    { "mat14", "mat16" },
+    { "eye1", "eye2" },
+    { "Clswario_eye_l1_AUTO14", "Clswario_eye_l1_AUTO15" },
+    { "m_donkey_eye4", "m_donkey_eye5" },
+    { "mat65", "mat66" },
+    { "Clswaluigi_eye_l1_AUTO1", "Clswaluigi_eye_l1_AUTO2" }
+};
+
+void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
+{
+    BOOL validF;
+    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
+    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HSF_DATA *hsf = modelP->hsf;
+    HSF_MATERIAL *matP = hsf->material;
+    HSF_MATERIAL *matCopy = playerWork[playerNo].matCopy;
+
+    if (darkF) {
+        char **name = &eyeMatNameTbl[GwPlayer[playerNo].charNo][0];
+        int i;
+        int j;
+
+        for (i = 0; i < hsf->materialNum; i++, matP++, matCopy++) {
+            validF = TRUE;
+            for (j = 0; j < matP->attrNum; j++) {
+                HSF_ATTRIBUTE *attrP = &hsf->attribute[matP->attr[j]];
+
+                if (strcmp(name[0], attrP->bitmap->name) == 0
+                    || strcmp(name[1], attrP->bitmap->name) == 0) {
+                    validF = FALSE;
+                }
+            }
+            if (validF) {
+                if (darkF) {
+                    matP->color[0] *= 0.0f;
+                    matP->color[1] *= 0.0f;
+                    matP->color[2] *= 0.0f;
+                } else {
+                    matP->color[0] = matCopy->color[0];
+                    matP->color[1] = matCopy->color[1];
+                    matP->color[2] = matCopy->color[2];
+                }
+            }
+        }
+    } else {
+        memcpy(hsf->material, matCopy,
+            hsf->materialNum * sizeof(HSF_MATERIAL));
+    }
+    DCStoreRange(hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
+}
+
+void mbPlayerMatClone(int playerNo)
+{
+    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
+    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HSF_DATA *hsf = modelP->hsf;
+    int size = hsf->materialNum * sizeof(HSF_MATERIAL);
+    void *materialData =
+        HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+    HSF_MATERIAL *matP = materialData;
+    HSF_MATERIAL *material = matP;
+
+    memcpy(material, hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
+    playerWork[playerNo].matCopy = material;
+}
+
 typedef struct PlayerMetalWork {
     u8 killF : 1;
     u8 _unk0_1 : 1;
@@ -2245,12 +2347,13 @@ static void PlayerMetalOMExec(OMOBJ *objP)
         if (!killF) {
             PlayerMetalKill(workP->playerNo);
         }
-        if (objP->data != NULL) {
+        if (objP->data) {
             void *dataP = objP->data;
 
             HuMemDirectFree(dataP);
         }
         omDelObjEx(HuPrcCurrentGet(), objP);
+        return;
     }
 }
 
@@ -3015,73 +3118,6 @@ static void BiriQEffect2Hook(
         }
         dataP->color.a = alpha;
     }
-}
-
-static char *eyeMatNameTbl[CHARNO_MAX][2] = {
-    { "eye1", "eye2" },
-    { "eye1", "eye2" },
-    { "mat14", "mat16" },
-    { "eye1", "eye2" },
-    { "Clswario_eye_l1_AUTO14", "Clswario_eye_l1_AUTO15" },
-    { "m_donkey_eye4", "m_donkey_eye5" },
-    { "mat65", "mat66" },
-    { "Clswaluigi_eye_l1_AUTO1", "Clswaluigi_eye_l1_AUTO2" }
-};
-
-void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
-{
-    BOOL validF;
-    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HSF_DATA *hsf = modelP->hsf;
-    HSF_MATERIAL *matP = hsf->material;
-    HSF_MATERIAL *matCopy = playerWork[playerNo].matCopy;
-
-    if (darkF) {
-        char **name = &eyeMatNameTbl[GwPlayer[playerNo].charNo][0];
-        int i;
-        int j;
-
-        for (i = 0; i < hsf->materialNum; i++, matP++, matCopy++) {
-            validF = TRUE;
-            for (j = 0; j < matP->attrNum; j++) {
-                HSF_ATTRIBUTE *attrP = &hsf->attribute[matP->attr[j]];
-
-                if (strcmp(name[0], attrP->bitmap->name) == 0
-                    || strcmp(name[1], attrP->bitmap->name) == 0) {
-                    validF = FALSE;
-                }
-            }
-            if (validF) {
-                if (darkF) {
-                    matP->color[0] *= 0.0f;
-                    matP->color[1] *= 0.0f;
-                    matP->color[2] *= 0.0f;
-                } else {
-                    matP->color[0] = matCopy->color[0];
-                    matP->color[1] = matCopy->color[1];
-                    matP->color[2] = matCopy->color[2];
-                }
-            }
-        }
-    } else {
-        memcpy(hsf->material, matCopy,
-            hsf->materialNum * sizeof(HSF_MATERIAL));
-    }
-    DCStoreRange(hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
-}
-
-void mbPlayerMatClone(int playerNo)
-{
-    HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HSF_DATA *hsf = modelP->hsf;
-    int size = hsf->materialNum * sizeof(HSF_MATERIAL);
-    HSF_MATERIAL *matP =
-        HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
-
-    memcpy(matP, hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
-    playerWork[playerNo].matCopy = matP;
 }
 
 void mbPlayerSwap(int playerNo1, int playerNo2)

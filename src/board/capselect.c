@@ -88,6 +88,22 @@ static int CapSelectNumGet(int playerNo)
     return mbPlayerCapsuleNumGet(playerNo);
 }
 
+static int CapSelectComGet(int playerNo, BOOL deleteF)
+{
+    int capsule[5];
+    int capsuleNum;
+    int i;
+
+    capsuleNum = CapSelectNumGet(playerNo);
+    for (i = 0; i < capsuleNum; i++) {
+        capsule[i] = CapSelectCapsuleGet(playerNo, i);
+    }
+    if (!deleteF) {
+        return mbCapSelectComGet(playerNo, capsule, capsuleNum);
+    }
+    return mbCapSelectDeleteComGet(playerNo, capsule, capsuleNum);
+}
+
 void fn_8019A618(void)
 {
 }

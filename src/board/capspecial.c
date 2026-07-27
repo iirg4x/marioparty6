@@ -22,6 +22,19 @@ typedef struct TeresaFadeWork_s {
     u32 textureHeight;
 } TERESA_FADE_WORK;
 
+typedef struct MiracleSprWork_s {
+    BOOL activeF;
+    int sprId;
+    int backSprId;
+    int sprIdTbl[6];
+    int focusTime;
+    int focusNo;
+    BOOL hideF;
+    float unk30;
+    float unk34;
+    HuVecF pos;
+} MIRACLE_SPR_WORK;
+
 static int koopaMdlId = -1;
 static int teresaStealMesId = -1;
 static int diceHitTimer;
@@ -82,6 +95,14 @@ void mbev_CapMiracleKill(void)
 {
 }
 
+static int ev_CapMiracleMesGet(int messNo)
+{
+    if (GwSystem.curTime == FALSE) {
+        return messNo;
+    }
+    return messNo + 16;
+}
+
 static void ev_CapMiracleDiceHitHook(void)
 {
     diceHitTimer = 0;
@@ -92,8 +113,49 @@ static void ev_CapMiracleSprDestroy(void)
     miracleSprObj = NULL;
 }
 
+static void ev_CapMiracleTradeFocusSet(void)
+{
+    int i;
+    OMOBJ *obj = miracleSprObj;
+    MIRACLE_SPR_WORK *work;
+
+    if (miracleSprObj != NULL) {
+        work = obj->data;
+        for (i = 0; i < 6; i++, work++) {
+            if (work->activeF) {
+                work->focusTime = 32;
+                work->focusNo = 0;
+            }
+        }
+    }
+}
+
+static void ev_CapMiracleTradeHideSet(void)
+{
+    int i;
+    OMOBJ *obj = miracleSprObj;
+    MIRACLE_SPR_WORK *work;
+
+    if (miracleSprObj != NULL) {
+        work = obj->data;
+        for (i = 0; i < 6; i++, work++) {
+            if (work->activeF) {
+                work->hideF = TRUE;
+            }
+        }
+    }
+}
+
 void mbev_CapKettouKill(void)
 {
+}
+
+static int ev_CapKettouMesGet(int messNo)
+{
+    if (GwSystem.curTime == FALSE) {
+        return messNo;
+    }
+    return messNo + 23;
 }
 
 void mbev_CapDonkeyKill(void)

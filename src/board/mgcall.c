@@ -1,6 +1,8 @@
 #include "game/board/window.h"
+#include "game/board/model.h"
 
 #include "game/data.h"
+#include "game/esprite.h"
 #include "game/gamework.h"
 #include "game/object.h"
 
@@ -18,6 +20,21 @@ typedef struct MgListWork_s {
     s16 maxTime;
     int hiddenMes;
 } MGLISTWORK;
+
+typedef struct MgCallWork_s {
+    int type;
+    s16 sprId[10];
+    s16 unk18;
+    s16 unk1A;
+    s16 unk1C;
+    s16 unk1E;
+    MBMODELID guideMdlId;
+    MBMODELID guideItemMdlId;
+    s16 battleSprId[3];
+    s16 battleNameSprId[3];
+    s16 battleWinId[3];
+    s16 unk36;
+} MGCALLWORK;
 
 static const HuVec2f statusPos4PBase[GW_PLAYER_MAX] = {
     { 176.0f, 184.0f },
@@ -207,4 +224,50 @@ static u32 MgCallBattleMesGet(u32 mess)
     } else {
         return mess + 4;
     }
+}
+
+static void MgRouletteCreate(MGCALLWORK *workP)
+{
+    int i;
+
+    memset(workP, 0, sizeof(MGCALLWORK));
+    for (i = 0; i < 10; i++) {
+        workP->sprId[i] = -1;
+    }
+    for (i = 0; i < 3; i++) {
+        workP->battleSprId[i] = -1;
+        workP->battleNameSprId[i] = -1;
+        workP->battleWinId[i] = -1;
+    }
+    workP->guideMdlId = -1;
+    workP->guideItemMdlId = -1;
+}
+
+static void MgRouletteKill(MGCALLWORK *workP)
+{
+    int i;
+
+    for (i = 0; i < 10; i++) {
+        if (workP->sprId[i] >= 0) {
+            espKill(workP->sprId[i]);
+        }
+    }
+    if (workP->guideMdlId >= 0) {
+        mbObjKill(workP->guideMdlId);
+    }
+    if (workP->guideItemMdlId >= 0) {
+        mbObjKill(workP->guideItemMdlId);
+    }
+    for (i = 0; i < 3; i++) {
+        if (workP->battleSprId[i] >= 0) {
+            espKill(workP->battleSprId[i]);
+        }
+        if (workP->battleNameSprId[i] >= 0) {
+            espKill(workP->battleNameSprId[i]);
+        }
+        if (workP->battleWinId[i] >= 0) {
+            mbWinKill(workP->battleWinId[i]);
+        }
+    }
+    MgRouletteCreate(workP);
 }
