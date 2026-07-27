@@ -44,7 +44,9 @@ and recovery schemas with `--shared` before editing them.
 
 `AI_BASE_COMMIT` is the pinned commit of `agent/recovery-context-workflow` for
 the active batch. Worker branches and diff checks use that exact commit. Only
-`tools/promote_recovered_c.py` starts a new branch from `main`.
+the promotion tools start a new branch from `main`:
+`tools/promote_recovered_c.py` for recovered C and
+`tools/promote_supporting_change.py` for supporting changes.
 
 Generate bounded task context:
 
@@ -157,8 +159,12 @@ The command accepts only `src/**/*.c`, copies exact verified blobs, rejects AI
 attribution, and proves the clean branch contains none of this workspace's
 infrastructure.
 
-Header, symbol, split, or build changes must be recreated and reviewed separately
-from the clean `main` worktree. Never copy them automatically from this branch.
+Header, symbol, split, or build changes are promoted separately by
+`tools/promote_supporting_change.py`, which cuts its own `project/*` branch
+directly from `main`, transfers only declared verified blobs, and enforces the
+same attribution, contamination, and consumer-re-verification gates. Never copy
+them to `main` outside that tool. See
+`docs/supporting_change_promotion.md`.
 
 ## Blind benchmark evidence
 

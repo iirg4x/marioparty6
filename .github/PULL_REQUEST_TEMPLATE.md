@@ -5,7 +5,9 @@ Do not use this template for a pull request to main. This branch and its
 infrastructure must never merge into main.
 
 After verification, create a fresh recovery/* branch from main with
-`tools/promote_recovered_c.py` and open a separate human-facing source PR.
+`tools/promote_recovered_c.py` (or a project/* branch with
+`tools/promote_supporting_change.py` for supporting changes) and open a
+separate human-facing source PR.
 -->
 
 ## Branch boundary
@@ -150,7 +152,8 @@ The integration result remains on the AI workspace. It is not merged to main.
 - Exact `src/**/*.c` paths selected:
 - `promote_recovered_c.py plan` result:
 - Proposed clean `recovery/*` branch:
-- Supporting header/build changes that must be recreated manually from main:
+- Supporting header/build changes for `promote_supporting_change.py`
+  (own `project/*` branch):
 - AI attribution scan:
 
 ## Remaining uncertainty and handoff

@@ -8,6 +8,7 @@
 - [`../AI_WORKSPACE.md`](../AI_WORKSPACE.md): permanent branch boundary
 - [`../README.md`](../README.md): AI workspace scope and commands
 - [`main_promotion.md`](main_promotion.md): exact C-only transfer to clean `main`
+- [`supporting_change_promotion.md`](supporting_change_promotion.md): audited header/symbol/split/build transfer to clean `main`
 - [`agent_quickstart.md`](agent_quickstart.md): shortest worker path
 - [`concurrent_agents.md`](concurrent_agents.md): queue, worktrees, resources, integration
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md): AI workspace proof and handoff
@@ -43,9 +44,10 @@ python tools/promote_recovered_c.py create \
   --title "Recover <subsystem>"
 ```
 
-Headers and build configuration are deliberately excluded from automatic
-promotion. Recreate and review any necessary supporting change from the clean
-`main` checkout.
+Headers and build configuration are deliberately excluded from the C path.
+Promote them separately with `tools/promote_supporting_change.py` onto a
+`project/*` branch cut from `main`; see
+[`supporting_change_promotion.md`](supporting_change_promotion.md).
 
 ## Build reference
 

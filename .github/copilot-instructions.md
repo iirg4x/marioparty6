@@ -12,9 +12,11 @@ structured verification, and stops at `ready`. Private integration verifies the
 worker commit but still does not merge this branch.
 
 Only selected exact `src/**/*.c` blobs may move to a fresh main-based
-`recovery/*` branch through `tools/promote_recovered_c.py`. Do not transfer
-Copilot/AI attribution, prompts, tooling, metadata, docs, benchmarks, headers, or
-build configuration automatically.
+`recovery/*` branch through `tools/promote_recovered_c.py`. Verified supporting
+changes (headers, symbols, splits, `configure.py`) move only through
+`tools/promote_supporting_change.py` onto their own `project/*` branch. Do not
+transfer Copilot/AI attribution, prompts, tooling, metadata, docs, or
+benchmarks.
 
 Binary identity is required but does not authenticate names, types, domains, or
 source shape. Never invent semantics or add unexplained matching hacks.

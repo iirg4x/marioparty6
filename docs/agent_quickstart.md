@@ -146,8 +146,10 @@ The new worktree is based directly on `main` and contains only the selected exac
 C blobs. It contains none of this branch's tools, prompts, metadata, benchmarks,
 workflows, or history.
 
-If a header or build change is necessary, recreate it in the clean promotion
-worktree and review it separately. Never copy it automatically from this branch.
+If a header or build change is necessary, promote it separately with
+`tools/promote_supporting_change.py` onto its own `project/*` branch (see
+[`supporting_change_promotion.md`](supporting_change_promotion.md)). Never copy
+it to `main` by hand.
 
 ## 11. Verify and open the human-facing PR
 

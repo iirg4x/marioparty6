@@ -17,17 +17,21 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
 - The AI workspace branch must never be merged, squashed, rebased, or
   cherry-picked into `main`.
 - Main-promotion tooling must create a new branch/worktree directly from `main`.
-- Automatic transfer accepts only explicitly selected added/modified
-  `src/**/*.c` files.
+- Automatic transfer accepts only explicitly declared added/modified paths:
+  `src/**/*.c` for `promote_recovered_c.py`; `include/**`, `config/**` (never
+  `config/recovery/**`), and `configure.py` for
+  `promote_supporting_change.py`.
 - Every promoted Git blob must exactly equal the verified worker-commit blob.
-- Reject headers, configuration, symbols, splits, tools, metadata, docs,
-  workflows, benchmarks, generated output, and AI attribution.
+- The C tool rejects headers, configuration, symbols, and splits; both tools
+  reject tools, metadata, docs, workflows, benchmarks, generated output, and AI
+  attribution.
 - Promotion manifests remain under ignored `build/promotion/` in the AI
   workspace; never commit them to the clean branch.
-- If supporting changes are required, they must be recreated and reviewed in the
-  clean main-based worktree rather than copied from this branch.
+- Supporting changes move only through `promote_supporting_change.py` onto
+  their own `project/*` branch, with every affected Matching consumer
+  re-verified; never copy them from this branch by hand.
 - Tests must prove that a promotion branch contains no AI workspace files and
-  that non-C or attributed changes are rejected.
+  that out-of-scope or attributed changes are rejected.
 
 ## Queue and worktree invariants
 
