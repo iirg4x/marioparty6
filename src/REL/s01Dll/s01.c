@@ -31,6 +31,26 @@ typedef struct S01PosRot {
     float rotY;
 } S01PosRot;
 
+typedef struct S01PlayerMoveWork {
+    s16 motionId;
+    HuVecF pos;
+    HuVecF targetPos;
+    HuVecF startPos;
+} S01PlayerMoveWork;
+
+typedef struct S01MotionPair {
+    s16 first;
+    s16 second;
+} S01MotionPair;
+
+typedef struct S01WarpWork {
+    HuVecF delta;
+    HuVecF pos;
+    HuVecF jumpPos;
+    HuVecF targetPos;
+    HuVecF playerPos;
+} S01WarpWork;
+
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern u32 *lbl_1_bss_40;
@@ -51,15 +71,31 @@ extern S01PosRot lbl_1_data_C4[3];
 extern int lbl_1_data_F4[6];
 extern int lbl_1_data_10C[2];
 extern char lbl_1_data_114[8];
+extern HuVecF lbl_1_data_11C;
+extern HuVecF lbl_1_data_128;
 extern float lbl_1_rodata_78;
 extern float lbl_1_rodata_7C;
 extern float lbl_1_rodata_10;
+extern float lbl_1_rodata_40;
+extern float lbl_1_rodata_5C;
+extern float lbl_1_rodata_68;
 extern float lbl_1_rodata_30;
 extern double lbl_1_rodata_60;
 extern double lbl_1_rodata_70;
 extern float lbl_1_rodata_80;
 extern float lbl_1_rodata_84;
+extern float lbl_1_rodata_88;
 extern float lbl_1_rodata_8C;
+extern float lbl_1_rodata_90;
+extern float lbl_1_rodata_94;
+extern float lbl_1_rodata_98;
+extern float lbl_1_rodata_9C;
+extern float lbl_1_rodata_A0;
+extern float lbl_1_rodata_A4;
+extern float lbl_1_rodata_A8;
+extern float lbl_1_rodata_AC;
+extern float lbl_1_rodata_B0;
+extern float lbl_1_rodata_B4;
 extern s32 lbl_1_bss_44;
 
 void fn_1_A0(void);
@@ -97,6 +133,35 @@ void mbOpeningViewSet(HuVecF *rot, HuVecF *pos, float zoom);
 void mbPlayerTurnCloseHookSet(void (*hook)(int playerNo));
 void mbPlayerTurnInitHookSet(void (*hook)(int playerNo));
 void mbScrollInit(int dataNum);
+float mbSinDeg(float angle);
+int mbAudFXPlay(int seId);
+void mbAudFXStop(int handle);
+void mbCameraPlayerViewSetFast(int playerNo, int viewNo);
+void mbCameraShakeSet(int maxTime, float power);
+void mbCameraFocusObjSet(int modelId);
+void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset,
+    float zoom, float fov, s16 maxTime);
+void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset,
+    float zoom, float fov, s16 maxTime);
+void mbMoveNumDispSet(int playerNo, BOOL display);
+void mbPauseDisableSet(BOOL disable);
+void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF);
+int mbPlayerMotionCreate(int playerNo, int dataNum);
+int mbPlayerMotionKill(int playerNo, int motNo);
+void mbPlayerMotionShiftSet(
+    int playerNo, int motNo, float start, float end, u32 attr);
+void mbPlayerPosGet(int playerNo, HuVecF *pos);
+void mbPlayerPosSetV(int playerNo, const HuVecF *pos);
+void mbPlayerRotYSet(int playerNo, float rotY);
+void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime);
+void mbSingleReturnWrite(void);
+void mbWipeCreate(s16 mode, s16 type, s16 time);
+void mbWipeDissolveFadeOut(void);
+void mbWipeFadeOut(void);
+void mbWipeFadeOutTime(int time);
+void mbWipeSpecialCreate(int state, int type, int time);
+void mbWipeSpecialKill(void);
+void mbWipeSpecialWait(void);
 
 int _prolog(void)
 {
@@ -246,6 +311,60 @@ void fn_1_4C8(void)
     }
 }
 
+#include "src/REL/s01Dll/s01_common.inc"
+
+void fn_1_590(int playerNo, int eventNo)
+{
+    S01Marker *marker = &lbl_1_bss_30[eventNo];
+    S01PlayerMoveWork move;
+    int sound;
+    s32 time;
+    float t;
+
+    move.motionId = mbPlayerMotionCreate(playerNo, 0x930022);
+    mbPlayerRotateStart(playerNo, 0, 15);
+    mbCameraPlayerViewSetFast(playerNo, 2);
+    mbCameraShakeSet(48, lbl_1_rodata_88);
+    sound = mbAudFXPlay(0x60D);
+    HuPrcSleep(48);
+    mbPlayerMotionShiftSet(playerNo, 9, lbl_1_rodata_10,
+        lbl_1_rodata_8C, 0);
+    mbMasuPosGet(GwPlayer[playerNo].masuId, &move.startPos);
+    mbMasuPosGet(marker->masuId, &move.targetPos);
+    GwPlayer[playerNo].masuIdNext = marker->masuId;
+    mbMasuNextSet(marker->masuId);
+    mbPlayerColSnapPlayerSet(playerNo, FALSE);
+
+    for (time = 0; (u32)time <= 42; time++) {
+        t = time / lbl_1_rodata_90;
+        if ((u32)time == 0) {
+            mbObjMotionSpeedSet(marker->modelId, lbl_1_rodata_40);
+            mbAudFXPlay(0x60E);
+            mbAudFXStop(sound);
+        } else if ((u32)time == 24) {
+            mbPlayerMotionShiftSet(playerNo, move.motionId,
+                lbl_1_rodata_10, lbl_1_rodata_5C, 0);
+        }
+        move.pos.x = move.startPos.x
+            + t * (move.targetPos.x - move.startPos.x);
+        move.pos.y = move.startPos.y
+            + t * (move.targetPos.y - move.startPos.y)
+            + lbl_1_rodata_94
+                * (lbl_1_rodata_98 * mbSinDeg(lbl_1_rodata_68 * t));
+        move.pos.z = move.startPos.z
+            + t * (move.targetPos.z - move.startPos.z);
+        mbPlayerPosSetV(playerNo, &move.pos);
+        HuPrcVSleep();
+    }
+    mbPlayerMotionShiftSet(playerNo, 6, lbl_1_rodata_10,
+        lbl_1_rodata_8C, 0x40000001);
+    HuPrcSleep(60);
+    mbWipeFadeOut();
+    mbPlayerColSnapPlayerSet(playerNo, TRUE);
+    mbPlayerMotionKill(playerNo, move.motionId);
+    GwPlayer[playerNo].masuId = marker->masuId;
+}
+
 void fn_1_87C(void)
 {
     S01Marker *marker = lbl_1_bss_30;
@@ -359,6 +478,98 @@ void fn_1_CEC(void)
     mbObjPosSetV(modelId[0], &targetPos);
 }
 
+void fn_1_DAC(int playerNo, s16 id)
+{
+    S01Marker *marker = &lbl_1_bss_30[2];
+    S01MotionPair motions;
+    S01WarpWork work;
+    s16 currentMasu;
+    int sound;
+    s32 time;
+    float t;
+    float angle;
+
+    mbPauseDisableSet(TRUE);
+    motions.first = mbPlayerMotionCreate(playerNo, 0x930017);
+    motions.second = mbPlayerMotionCreate(playerNo, 0x930022);
+    mbMoveNumDispSet(playerNo, FALSE);
+    mbCameraMovePlayer((s16)playerNo, &lbl_1_data_11C, NULL,
+        lbl_1_rodata_9C, lbl_1_rodata_A0, 120);
+    currentMasu = GwPlayer[playerNo].masuId;
+    mbMasuPosGet(currentMasu, &work.playerPos);
+    mbMasuPosGet(id, &work.targetPos);
+    PSVECSubtract(&work.targetPos, &work.playerPos, &work.delta);
+    angle = (float)(lbl_1_rodata_70
+        * (atan2(work.delta.x, work.delta.z) / lbl_1_rodata_60));
+    mbPlayerRotYSet(playerNo, angle);
+    mbPlayerMotionShiftSet(playerNo, 2, lbl_1_rodata_10,
+        lbl_1_rodata_8C, 0x40000001);
+
+    for (time = 0; (u32)time <= 120; time++) {
+        t = time / lbl_1_rodata_A4;
+        work.pos.x = work.playerPos.x + t * work.delta.x;
+        work.pos.y = work.playerPos.y + t * work.delta.y;
+        work.pos.z = work.playerPos.z + t * work.delta.z;
+        mbPlayerPosSetV(playerNo, &work.pos);
+        if (time % 30 == 0) {
+            omVibrate((s16)playerNo, 20, 7, 3);
+        }
+        HuPrcVSleep();
+    }
+    mbPlayerMotionShiftSet(playerNo, motions.first, lbl_1_rodata_10,
+        lbl_1_rodata_8C, 0x40000001);
+    HuPrcSleep(30);
+    mbCameraShakeSet(60, lbl_1_rodata_88);
+    sound = mbAudFXPlay(0x60D);
+    HuPrcSleep(60);
+    mbObjMotionSpeedSet(marker->modelId, lbl_1_rodata_40);
+    omVibrate((s16)playerNo, 20, 20, 0);
+    mbAudFXPlay(0x60E);
+    mbAudFXStop(sound);
+    HuPrcSleep(12);
+    mbPlayerMotionShiftSet(playerNo, 9, lbl_1_rodata_10,
+        lbl_1_rodata_8C, 0);
+    mbCameraFocusObjSet(-1);
+    work.delta.x = work.delta.y = work.delta.z = lbl_1_rodata_10;
+    mbPlayerPosGet(playerNo, &work.jumpPos);
+
+    for (time = 0; (u32)time < 72; time++) {
+        work.delta.y += lbl_1_rodata_A8;
+        work.jumpPos.y += lbl_1_rodata_AC * work.delta.y;
+        mbPlayerPosSetV(playerNo, &work.jumpPos);
+        if ((u32)time == 18) {
+            mbPlayerMotionShiftSet(playerNo, motions.second,
+                lbl_1_rodata_10, lbl_1_rodata_5C, 0x40000001);
+        }
+        HuPrcVSleep();
+    }
+    mbWipeDissolveFadeOut();
+    mbCameraMovePos(NULL, &lbl_1_data_128, NULL, lbl_1_rodata_88,
+        lbl_1_rodata_A0, -1);
+    mbObjDispSet(marker->modelId, FALSE);
+    work.jumpPos.y = work.playerPos.y;
+    work.delta.y = lbl_1_rodata_B0;
+    mbPlayerPosSetV(playerNo, &work.jumpPos);
+    mbWipeCreate(1, 0x81, 30);
+    mbMusFadeOutSpeed(0, 1000);
+    mbWipeSpecialCreate(1, 6, 90);
+    mbAudFXPlay(0x60F);
+
+    for (time = 0; (u32)time <= 90; time++) {
+        t = time / lbl_1_rodata_B4;
+        work.delta.y += lbl_1_rodata_A8;
+        work.jumpPos.y += lbl_1_rodata_AC * work.delta.y;
+        mbPlayerPosSetV(playerNo, &work.jumpPos);
+        HuPrcVSleep();
+    }
+    mbWipeSpecialWait();
+    mbWipeFadeOutTime(1);
+    mbWipeSpecialKill();
+    mbPlayerMotionKill(playerNo, motions.first);
+    mbPlayerMotionKill(playerNo, motions.second);
+    mbSingleReturnWrite();
+}
+
 void fn_1_3610(void)
 {
     lbl_1_bss_44 = OSGetTick();
@@ -368,5 +579,3 @@ s32 fn_1_363C(void)
 {
     return OSGetTick() - lbl_1_bss_44;
 }
-
-#include "src/REL/s01Dll/s01_common.inc"
