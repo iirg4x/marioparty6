@@ -3,8 +3,8 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave103.md",
@@ -17,8 +17,8 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-25",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
@@ -31,8 +31,8 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-25",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
@@ -46,8 +46,8 @@
     },
     "mdparty-local-audio-visibility": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-25",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
@@ -61,8 +61,8 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-25",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave103.md",
@@ -74,8 +74,8 @@
     },
     "gc132-helper-boundary-lifetime": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-25",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave96.md",
@@ -88,8 +88,8 @@
     },
     "gc132-narrow-signed-contracts": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-25",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave97.md",
@@ -102,8 +102,8 @@
     },
     "same-game-independent-source-provenance": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json"
@@ -113,8 +113,8 @@
     },
     "configured-matching-needs-retail-replay": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -125,8 +125,8 @@
     },
     "per-owner-final-compiler-profile": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -137,8 +137,8 @@
     },
     "same-address-api-alias-not-name-proof": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -149,8 +149,8 @@
     },
     "same-game-header-widths-separate-from-names": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -163,8 +163,8 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -178,8 +178,8 @@
     },
     "board-bulk-rename-is-mapping-provenance": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -191,8 +191,8 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/exceptions.json",
@@ -212,8 +212,8 @@
     },
     "dtk-synthetic-gap-not-source-ownership": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_gap_ownership.md",
@@ -230,8 +230,8 @@
     },
     "mwcc-source-chronology-csect-link-order": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_w01_inline_chronology.md",
@@ -245,8 +245,8 @@
     },
     "mwcc-extern-inline-static-local-comdat-ownership": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_w01_inline_chronology.md",
@@ -260,8 +260,8 @@
     },
     "retail-triangulation-for-missing-inline-owner": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_w01_inline_chronology.md",
@@ -273,8 +273,8 @@
     },
     "dtk-rodata-boundary-multiset-before-resplit": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_w01_inline_chronology.md",
@@ -288,8 +288,8 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_conversion_pool_ownership.md"
@@ -299,8 +299,8 @@
     },
     "mwcc-narrow-assignment-wide-lifetime-extension-scheduling": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_narrow_assignment_lifetime.md"
@@ -310,8 +310,8 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_player_value_lifetimes.md",
@@ -324,14 +324,38 @@
     },
     "gc26-o0-definition-order-and-call-evaluation": {
       "status": "active",
-      "validated_commit": "3477a9e8bd017121a6155e4b5ee938f7738f3b64",
-      "validated_at": "2026-07-26",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_capsule_call_chronology.md",
         "src/board/capsule.c",
         "include/game/gamemes.h",
         "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-explicit-narrow-return-promotion-preserves-normalization": {
+      "status": "active",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_narrow_return_promotion.md",
+        "src/REL/fileseldll/filesel.c",
+        "include/game/hu3d.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-commutative-fmuls-source-swap-canonicalizes-neutral": {
+      "status": "active",
+      "validated_commit": "d352dd6b0092af62b3ba7dc7e09c39b34aba9a67",
+      "validated_at": "2026-07-27",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_commutative_fmuls_negative.md"
       ],
       "supersedes": [],
       "superseded_by": null
