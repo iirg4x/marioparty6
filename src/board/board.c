@@ -17,6 +17,11 @@
 
 typedef void (*MBHOOK)(void);
 
+static inline s16 GWMgNightFGet(void)
+{
+    return GwMgNightF;
+}
+
 static inline void GWMgPackSet(s32 value)
 {
     GwSystem.mgPack = value;
@@ -147,8 +152,6 @@ BOOL mbReturnMgCheck(void);
 
 void mbObjectSetup(s32 boardNo, MBHOOK init, MBHOOK close)
 {
-    s16 nightF;
-
     omSysPauseEnable(FALSE);
     mbPauseDisableSet(TRUE);
     mbSaveNewF = !_CheckFlag(FLAG_BOARD_SAVEINIT);
@@ -186,8 +189,7 @@ void mbObjectSetup(s32 boardNo, MBHOOK init, MBHOOK close)
         GwSystem.starTotal = 0;
         GwSystem.last5Effect = 0;
         GwSystem.curTime = GwSystem.nextTime = 0;
-        nightF = GwMgNightF;
-        if (nightF == 1) {
+        if (GWMgNightFGet() == 1) {
             GwSystem.curTime = GwSystem.nextTime = 1;
         }
         GwSystem.timeTurn = 0;
