@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching owners |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.35% | 32.86% | 327 / 912 |
+| Entire project | 13.47% | 32.87% | 328 / 914 |
 | Main DOL | 48.28% | 74.87% | 296 / 396 |
-| REL modules | 5.95% | 6.24% | 31 / 516 |
+| REL modules | 6.08% | 6.25% | 32 / 518 |
 
 Within the main game flow at that snapshot:
 
@@ -21,8 +21,9 @@ Within the main game flow at that snapshot:
 - Newly matching board owner: `src/board/board.c` (35 / 35 functions and 618 / 618 relocations exact)
 - Newly matching board owner: `src/board/audio.c` (49 / 49 functions and 444 / 444 relocations exact)
 - Newly strict-exact board sources: `src/board/gate.c` (11 / 11 functions, 168 / 168 relocations) and `src/board/roulette.c` (21 / 21 functions, 291 / 291 relocations)
-- Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, and `w01Dll`
+- Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, `s01Dll`, and `w01Dll`
 - Exact shared GC/2.6 runtime owners now cover 15 additional non-minigame RELs, including the results, ending, option, single-player, miracle-book, bank, opening, and staff modules.
+- `s01Dll` is source-linked and byte-identical to retail (`7f0cfdb2d2b0b2c50b92675e5bef55d72cf94dd7`), including all 44 application functions and 741 relocations.
 - `w01Dll` is source-linked and byte-identical to retail (`196d7075abbe6eec3031c9484d25216de9dc0889`).
 
 The current priority is the non-minigame game flow: boot, menus, party mode, boards, results, and ending. Minigame modules and mic-quiz modes are not part of the active recovery target.
