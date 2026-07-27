@@ -79,9 +79,11 @@ descends from that branch.
 When the C file depends on a header, symbol, split, object-status, or build
 change, the automatic promotion still stops at C.
 
-Do **not** add that supporting change to the C promotion branch. Create a second
-branch directly from `main`, recreate the change from target evidence, and review
-it as a separate human-authored PR.
+Do **not** add that supporting change to the C promotion branch. Promote it
+with `tools/promote_supporting_change.py`, which cuts a second branch directly
+from `main`, transfers only declared verified blobs, and enforces the same
+attribution, contamination, and consumer-re-verification gates. See
+[`supporting_change_promotion.md`](supporting_change_promotion.md).
 
 ```text
 recovery/<subsystem>       verified C blobs only
@@ -92,10 +94,10 @@ This preserves a hard audit rule: the recovered-C PR always contains only
 `src/**/*.c`. The supporting PR may be reviewed and merged first when the C
 branch depends on it.
 
-Never copy a header or configuration file wholesale from the AI workspace. This
-prevents prompt-oriented comments, speculative names, temporary experiments,
-queue identifiers, generated scaffolding, and AI attribution from entering
-`main`.
+Never copy a header or configuration file to `main` outside that tool. Its
+scans exist to keep prompt-oriented comments, speculative names, temporary
+experiments, queue identifiers, generated scaffolding, and AI attribution out
+of `main`; findings refuse the promotion rather than being stripped silently.
 
 ## 4. Run source and retail proof
 
