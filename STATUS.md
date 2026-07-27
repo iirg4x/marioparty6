@@ -4,20 +4,21 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **July 26, 2026**
+Last published full-project snapshot: **July 27, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching owners |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.29% | 32.85% | 326 / 912 |
-| Main DOL | 47.94% | 74.86% | 295 / 396 |
+| Entire project | 13.35% | 32.86% | 327 / 912 |
+| Main DOL | 48.28% | 74.87% | 296 / 396 |
 | REL modules | 5.95% | 6.24% | 31 / 516 |
 
 Within the main game flow at that snapshot:
 
 - `src/game/`: **57 / 57 owners matching**
-- `src/board/`: **14 / 40 owners matching**
+- `src/board/`: **15 / 40 owners matching**
+- Newly matching board owner: `src/board/board.c` (35 / 35 functions and 618 / 618 relocations exact)
 - Newly matching board owner: `src/board/audio.c` (49 / 49 functions and 444 / 444 relocations exact)
 - Newly strict-exact board sources: `src/board/gate.c` (11 / 11 functions, 168 / 168 relocations) and `src/board/roulette.c` (21 / 21 functions, 291 / 291 relocations)
 - Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, and `w01Dll`
