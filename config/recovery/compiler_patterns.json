@@ -1328,6 +1328,7 @@
           "removing a broad cached work pointer restores target-local allocation",
           "separate raw-allocation and typed-pointer stages restore target lifetime boundaries",
           "distinct state-read and state-write captures preserve separate register lifetimes around one transition",
+          "an authenticated inline accessor boundary can preserve a narrow global lifetime that a direct read collapses",
           "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error"
         ]
       },
@@ -1351,7 +1352,9 @@
           "s01Dll:fn_1_F4",
           "miraclebookdll:fn_1_7998",
           "mbMain",
-          "mbNextTime"
+          "mbNextTime",
+          "mbObjectSetup",
+          "GWMgNightFGet"
         ],
         "modules": [
           "main.dol",
@@ -1374,7 +1377,8 @@
         "s01Dll fn_1_F4 board-number and model-ID captures",
         "miraclebookdll fn_1_7998 amplitude capture across two model consumers",
         "mbMain distinct party-state reads",
-        "mbNextTime turn-limit and turn-count captures"
+        "mbNextTime turn-limit and turn-count captures",
+        "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
