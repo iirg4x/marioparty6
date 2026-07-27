@@ -72,7 +72,6 @@
   ],
   "context": {
     "priority_files": [
-      "src/REL/s01Dll/s01_common.inc",
       "config/dll/rels/s01Dll/splits.txt",
       "config/dll/rels/s01Dll/symbols.txt"
     ],

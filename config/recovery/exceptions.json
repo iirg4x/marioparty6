@@ -87,8 +87,7 @@
         "docs/native_matching_w01_inline_chronology.md",
         "config/dll/rels/s01Dll/splits.txt",
         "config/dll/rels/s01Dll/symbols.txt",
-        "src/REL/s01Dll/s01.c",
-        "src/REL/s01Dll/s01_common.inc"
+        "src/REL/s01Dll/s01.c"
       ]
     },
     {
