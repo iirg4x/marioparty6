@@ -285,7 +285,9 @@ static void mbMain(void)
     mbInit();
     if (!_CheckFlag(FLAG_BOARD_OPENING)) {
         if (_CheckFlag(FLAG_BOARD_DEBUG) && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            if (GWPartyGet() != FALSE) {
+            BOOL partyF = GwSystem.partyF;
+
+            if (partyF != FALSE) {
                 s32 starNo = mbStarNoRandGet();
                 if (starNo >= 0) {
                     mbStarNoSet(starNo);
@@ -301,19 +303,23 @@ static void mbMain(void)
                 mbTutorialCall(0);
             }
         }
-        if (GWPartyGet() != FALSE) {
-            if (!GWTeamFGet()) {
-                for (i = 0; i < 4; i++) {
-                    mbPlayerCoinSet(i, 10);
+        {
+            BOOL partyF = GwSystem.partyF;
+
+            if (partyF != FALSE) {
+                if (!GWTeamFGet()) {
+                    for (i = 0; i < 4; i++) {
+                        mbPlayerCoinSet(i, 10);
+                    }
+                } else {
+                    for (i = 0; i < 2; i++) {
+                        mbPlayerTeamCoinSet(i, 20);
+                    }
                 }
             } else {
-                for (i = 0; i < 2; i++) {
-                    mbPlayerTeamCoinSet(i, 20);
+                for (i = 0; i < 4; i++) {
+                    mbPlayerCoinSet(i, 0);
                 }
-            }
-        } else {
-            for (i = 0; i < 4; i++) {
-                mbPlayerCoinSet(i, 0);
             }
         }
         GwSystem.turnPlayerNo = 0;
@@ -489,7 +495,17 @@ void mbChangeTime(void)
 
 void mbNextTime(void)
 {
-    if (mbNextTimeSet()) {
+    BOOL nextTimeF;
+    s32 timeTurnMax = GwSystem.timeTurnMax;
+    s32 timeTurn = GwSystem.timeTurn;
+
+    if (timeTurn >= timeTurnMax) {
+        mbChangeTimeSet();
+        nextTimeF = TRUE;
+    } else {
+        nextTimeF = FALSE;
+    }
+    if (nextTimeF) {
         nextOvl = DLL_NONE;
         _SetFlag(FLAG_BOARD_MOVE_DONE);
         _SetFlag(FLAG_BOARD_MG);
