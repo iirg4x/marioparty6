@@ -570,13 +570,13 @@ MBMODELID mbTutorialModelCreate(int dataNum, BOOL linkF)
     return modelId;
 }
 
-void mbTutorialModelKill(MBMODELID modelId)
+void mbTutorialModelKill(int modelId)
 {
     int i;
     int modelNo;
 
     for (i = 0; i < 32; i++) {
-        if (modelId == tutorialMdlId[i]) {
+        if ((MBMODELID)modelId == tutorialMdlId[i]) {
             break;
         }
     }
