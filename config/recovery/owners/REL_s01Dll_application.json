@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "id": "REL:s01Dll:application",
+  "module": "s01Dll",
+  "source": "src/REL/s01Dll/s01.c",
+  "compiler": "GC/2.6",
+  "summary": "Binary-exact story application owner with authenticated shared-curve csects, local conversion-pool ownership, and exact linked consumers.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "address_only",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "compiler-sensitive",
+    "csect-order",
+    "literal-pool"
+  ],
+  "symbols": [
+    {
+      "symbol": "fn_1_590",
+      "stable_id": "s01Dll:0x590"
+    },
+    {
+      "symbol": "fn_1_DAC",
+      "stable_id": "s01Dll:0xDAC"
+    },
+    {
+      "symbol": "fn_1_12CC",
+      "stable_id": "s01Dll:0x12CC"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "All 44 application functions, 0x366C text bytes, the 0x78 source-owned rodata prefix, and 741 linked relocations reproduce the retail REL exactly.",
+      "reference": "docs/native_matching_s01_application.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Early prototypes pinned the terminal functions to default .text; placing their first declarations under .text.after_common restored the exact linked order.",
+      "reference": "docs/native_matching_s01_application.md"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The final s01Dll.rel, all 137 retail outputs, main.dol, and w01Dll.rel compare byte-for-byte.",
+      "reference": "config/GP6E01/build.sha1"
+    }
+  ],
+  "constraints": [
+    "s01-application-authenticated-csect-order"
+  ],
+  "debt": [
+    {
+      "kind": "semantic_names",
+      "priority": "high",
+      "summary": "Application functions and owner-local objects retain address-derived names pending same-game semantic evidence."
+    },
+    {
+      "kind": "structure_fields",
+      "priority": "normal",
+      "summary": "Event work layouts are target- and consumer-backed but several field meanings remain only operationally named."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/REL/s01Dll/s01_common.inc",
+      "config/dll/rels/s01Dll/splits.txt",
+      "config/dll/rels/s01Dll/symbols.txt"
+    ],
+    "reports": [
+      "docs/native_matching_s01_application.md"
+    ]
+  }
+}

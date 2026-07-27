@@ -310,6 +310,17 @@ config.rel_ldscript_replacements = {
         }""",
         ),
     ],
+    "s01Dll": [
+        (
+            "        .text ALIGN(0x4):{}",
+            """        .text ALIGN(0x4):{
+            s01.o(.text)
+            s01.o(.text.common)
+            s01.o(.text.after_common)
+            *(.text)
+        }""",
+        ),
+    ],
 }
 
 # Helper function for Dolphin libraries
@@ -1239,6 +1250,11 @@ config.libs = [
     Rel(
         "s01Dll",
         objects={
+            Object(
+                Matching,
+                "REL/s01Dll/s01.c",
+                mw_version=config.linker_version,
+            ),
             Object(
                 Matching,
                 "REL/s01Dll/runtime.c",

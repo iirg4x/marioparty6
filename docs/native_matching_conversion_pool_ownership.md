@@ -61,3 +61,18 @@ shaping the consumers independently. Recover the owner-level data binding and
 source chronology once, then re-enable the affected cluster together. Until
 that ownership proof is exact, the functions remain unresolved even when all
 ordinary instructions and literal values agree.
+
+## Linked-owner closure
+
+The completed `s01Dll` owner establishes an important boundary on the rule.
+`fn_1_590` still named its signed-conversion constant `@365` in the intermediate
+source object while retail called the same offset `lbl_1_rodata_28`. Once the
+complete `0x78` application pool was source-owned, authenticated direct literals
+made every application consumer bind that same pool naturally. The final linked
+REL matched retail byte-for-byte at SHA-1
+`7f0cfdb2d2b0b2c50b92675e5bef55d72cf94dd7`.
+
+Therefore intermediate symbol spelling is diagnostic, not the final ownership
+gate. A local name is acceptable only when complete section bytes, linked target
+section/addend, all consumers, and the final REL are exact. Without that full
+linked proof, the earlier rejection rule still applies.

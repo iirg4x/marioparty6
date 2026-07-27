@@ -75,6 +75,23 @@
       ]
     },
     {
+      "id": "s01-application-authenticated-csect-order",
+      "classification": "authenticated",
+      "path": "src/REL/s01Dll/s01.c",
+      "kind": "source_shape",
+      "rules": [
+        "compiler_pragma"
+      ],
+      "rationale": "The complete GC/2.6 application owner is byte-exact only when the authenticated shared curve cluster and the two terminal tick functions retain separate code_type csects. File-qualified linker selectors concatenate .text, .text.common, and .text.after_common into the retail 0x366C order without changing any function body. The same-game w01Dll owner independently proves this source-chronology/link-order mechanism.",
+      "evidence": [
+        "docs/native_matching_w01_inline_chronology.md",
+        "config/dll/rels/s01Dll/splits.txt",
+        "config/dll/rels/s01Dll/symbols.txt",
+        "src/REL/s01Dll/s01.c",
+        "src/REL/s01Dll/s01_common.inc"
+      ]
+    },
+    {
       "id": "gate-no-generic-math-inline",
       "classification": "authenticated",
       "path": "src/board/gate.c",

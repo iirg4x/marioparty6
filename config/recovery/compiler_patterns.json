@@ -917,9 +917,9 @@
       "title": "Separate MWCC source chronology from final csect link order",
       "classification": "confirmed_rule",
       "category": "literal_pool_and_code_layout",
-      "compiler": "GC/2.7",
+      "compiler": "GC/2.6 and GC/2.7",
       "confidence": "confirmed",
-      "summary": "An authenticated inline cluster may need early compiler visibility to seed the retail literal pool even when its machine code belongs later in the linked text order; dedicated csects preserve both dimensions.",
+      "summary": "An authenticated cluster may need one source chronology while its machine code belongs at another linked text position; dedicated csects preserve both dimensions, but MWCC can bind a function to the csect visible at its first declaration.",
       "conditions": "Use only when complete same-game code and literal chronology authenticate the early owner, every moved function is instruction-identical, and retail function boundaries identify the later text position.",
       "source_condition": {
         "change": "Move an authenticated function cluster earlier in the translation unit while retaining its machine code at a later retail address.",
@@ -940,13 +940,15 @@
         "known_signatures": [
           "instructions are exact but pooled literals follow first-use rather than target prefix order",
           "an unqualified wildcard inserts a later object between owner csects",
-          "source csects are independently exact but the linked REL text order is wrong"
+          "source csects are independently exact but the linked REL text order is wrong",
+          "a section pragma before the definition is neutral because an earlier prototype already bound the function to the default csect"
         ]
       },
-      "rule": "Compile the authenticated cluster in literal-owner chronology under dedicated code csects, then concatenate file-qualified owner csects and later objects in retail order; accept the arrangement only after exact sections, relocations, REL bytes, and the full retail gate.",
+      "rule": "Compile the authenticated cluster in literal-owner chronology under dedicated code csects, place each csect pragma before the first declaration of every function it owns, then concatenate file-qualified owner csects and later objects in retail order; accept the arrangement only after exact sections, relocations, REL bytes, and the full retail gate.",
       "safe_actions": [
         "prove the complete cluster and literal chronology across retail evidence",
         "split only at authenticated retail function boundaries",
+        "audit earlier prototypes before treating a code_type pragma as ineffective",
         "place file-qualified csect selectors before wildcard selectors",
         "replay object, relocation, consumer, REL, DOL, and checksum gates"
       ],
@@ -954,12 +956,16 @@
         "compiler_wide": false,
         "project_wide": false,
         "owners": [],
-        "stable_ids": [],
+        "stable_ids": [
+          "s01Dll:fn_1_3610",
+          "s01Dll:fn_1_363C"
+        ],
         "modules": ["w01Dll", "s01Dll", "w04Dll"],
         "owner_tags": ["pooled_literals", "rel"]
       },
       "examples": [
-        "w01Dll world01 .text/.text.common/.text.after_common"
+        "w01Dll world01 .text/.text.common/.text.after_common",
+        "s01Dll application .text/.text.common/.text.after_common; removing pre-pragma tail prototypes enabled the 0x5C terminal csect and exact final REL"
       ],
       "counterexamples": [
         "An unqualified *(.text) selector placed runtime text before the deferred owner csect and failed final layout.",
@@ -967,10 +973,12 @@
         "An invented uncalled constant seeder duplicates the pool and is not an authenticated chronology owner."
       ],
       "related_exceptions": [
-        "w01-world01-exact-source-shape"
+        "w01-world01-exact-source-shape",
+        "s01-application-authenticated-csect-order"
       ],
       "evidence": [
-        "docs/native_matching_w01_inline_chronology.md"
+        "docs/native_matching_w01_inline_chronology.md",
+        "docs/native_matching_s01_application.md"
       ]
     },
     {
@@ -1183,15 +1191,17 @@
           "pool_data off does not suppress the synthesized conversion constant",
           "an equivalent weak named constant coexists with rather than absorbs the anonymous pool",
           "restoring an authenticated preceding owner is expected to move the downstream pool naturally",
-          "multiple natural bodies become instruction-identical but all miss the same split named conversion owner"
+          "multiple natural bodies become instruction-identical but all miss the same split named conversion owner",
+          "an intermediate source object names @NNN while a complete source-owned pool csect and final REL bind the same section offset exactly"
         ]
       },
-      "rule": "Do not retain a text-exact function until its conversion-pool relocation owner is exact; restore authenticated source chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at the same named pool owner, stop per-function shaping and recover the owner-level data binding before re-enabling them together.",
+      "rule": "Do not retain a text-exact function until its conversion-pool relocation owner is exact; restore authenticated source chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at the same named pool owner, stop per-function shaping and recover the owner-level data binding before re-enabling them together. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
         "test pool_data and named-constant controls only as bounded counterexamples",
         "group repeated relocation-only failures by target pool owner before opening more body probes",
+        "compare final linked section offsets and relocation addends before assuming a local source symbol name is fatal",
         "require organic source and linked consumer proof before retention"
       ],
       "applicability": {
@@ -1217,12 +1227,14 @@
         "s02Dll fn_1_4B8: 0x470 exact text, target lbl_1_rodata_60 versus source @373",
         "s03Dll fn_1_1238: 536 exact text bytes, target lbl_1_rodata_A0 versus source @360",
         "miraclebookdll fn_1_479C and fn_1_4FD4: all instruction bytes exact, repeated local conversion relocations versus lbl_1_rodata_98",
-        "optionDll fn_1_7728: 844 exact instruction bytes, local @489 versus target lbl_1_rodata_1E8"
+        "optionDll fn_1_7728: 844 exact instruction bytes, local @489 versus target lbl_1_rodata_1E8",
+        "s01Dll fn_1_590: local @365 at source .rodata+0x28 became exact after the complete 0x78 pool was source-owned and the linked REL matched retail byte-for-byte"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
         "#pragma pool_data off did not suppress the openingDll conversion pool.",
-        "A weak equivalent named constant emitted alongside the anonymous pool instead of absorbing it."
+        "A weak equivalent named constant emitted alongside the anonymous pool instead of absorbing it.",
+        "A local @NNN name without exact source-owned section bytes and final linked relocation proof remains unresolved."
       ],
       "related_exceptions": [],
       "evidence": [
