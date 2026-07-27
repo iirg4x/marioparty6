@@ -191,7 +191,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "57c58643f94f4285c25592806afc70469e081027",
+      "validated_commit": "c66b61258edd4ce72c32e1e73d6b902b9d66eff8",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -230,7 +230,7 @@
     },
     "mwcc-source-chronology-csect-link-order": {
       "status": "active",
-      "validated_commit": "57c58643f94f4285c25592806afc70469e081027",
+      "validated_commit": "c66b61258edd4ce72c32e1e73d6b902b9d66eff8",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -291,7 +291,7 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "57c58643f94f4285c25592806afc70469e081027",
+      "validated_commit": "c66b61258edd4ce72c32e1e73d6b902b9d66eff8",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
