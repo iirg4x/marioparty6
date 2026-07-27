@@ -1220,14 +1220,19 @@
         "compiler_wide": true,
         "project_wide": true,
         "owners": [],
-        "stable_ids": [],
+        "stable_ids": [
+          "endingdll:fn_1_1049C",
+          "endingdll:fn_1_1152C",
+          "endingdll:fn_1_B568"
+        ],
         "modules": [
           "openingDll",
           "s02Dll",
           "s03Dll",
           "s01Dll",
           "miraclebookdll",
-          "optionDll"
+          "optionDll",
+          "endingdll"
         ],
         "owner_tags": [
           "literal_pool",
@@ -1240,7 +1245,9 @@
         "s03Dll fn_1_1238: 536 exact text bytes, target lbl_1_rodata_A0 versus source @360",
         "miraclebookdll fn_1_479C and fn_1_4FD4: all instruction bytes exact, repeated local conversion relocations versus lbl_1_rodata_98",
         "optionDll fn_1_7728: 844 exact instruction bytes, local @489 versus target lbl_1_rodata_1E8",
-        "s01Dll fn_1_590: local @365 at source .rodata+0x28 became exact after the complete 0x78 pool was source-owned and the linked REL matched retail byte-for-byte"
+        "s01Dll fn_1_590: local @365 at source .rodata+0x28 became exact after the complete 0x78 pool was source-owned and the linked REL matched retail byte-for-byte",
+        "endingdll fn_1_1049C and fn_1_1152C: instruction-identical u8-to-float bodies still bound @743 instead of retail lbl_1_rodata_348",
+        "endingdll fn_1_B568: all 1448 instruction bytes matched, but three conversion relocations bound @582 instead of retail lbl_1_rodata_1A8"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -1447,7 +1454,8 @@
           "a source sum written left-plus-right emits target right-then-left calls",
           "a cached link or work local changes an otherwise target-backed call tree",
           "an int lifetime narrows only at an authenticated s16 call boundary",
-          "cleanup work checks, object kills, pointer resets, and state stores retain target call/store chronology"
+          "cleanup work checks, object kills, pointer resets, and state stores retain target call/store chronology",
+          "a preceding exact scalar or teardown helper can automatically expand at several natural call sites without an inline specifier"
         ]
       },
       "rule": "Treat definition order and expression-tree evaluation as one bounded owner-local variable; retain a form only when the complete helper family, relocations, and existing exact neighbors agree, without pragmas or forced linkage.",
@@ -1473,7 +1481,9 @@
           "CapSelectMasuKill",
           "CapUseDeleteKill",
           "endingdll:fn_1_27A0",
-          "endingdll:fn_1_B0A4"
+          "endingdll:fn_1_B0A4",
+          "endingdll:fn_1_DF60",
+          "endingdll:fn_1_8CFC"
         ],
         "modules": [
           "main.dol",
@@ -1494,13 +1504,16 @@
         "CapSelectMasuKill check/kill/reset chronology",
         "CapUseDeleteKill check/kill/reset chronology",
         "endingdll fn_1_27A0 direct product grouping",
-        "endingdll fn_1_B0A4 visible helper call and saved-register lifetime"
+        "endingdll fn_1_B0A4 visible helper call and saved-register lifetime",
+        "endingdll fn_1_DF60 natural calls to the preceding exact scalar helper fn_1_DF18 expand three times into 396 exact bytes",
+        "endingdll fn_1_8CFC natural calls to preceding exact teardown helpers fn_1_26D4, fn_1_3CD4, and fn_1_3F20 expand into a 644-byte exact coordinator"
       ],
       "counterexamples": [
         "Forcing helper emission without an authentic caller is non-organic.",
         "A local prototype cannot resolve the rejected mbCapUse shared return-width contract.",
         "Literal or BSS identity-only residuals are not call-evaluation evidence.",
-        "mbCapNextGet is instruction-exact but its six data/literal relocation identities are not call-chronology evidence."
+        "mbCapNextGet is instruction-exact but its six data/literal relocation identities are not call-chronology evidence.",
+        "endingdll fn_1_DE3C operand-order and capture probes did not reproduce the target and were reverted."
       ],
       "related_exceptions": [],
       "evidence": [

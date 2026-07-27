@@ -55,6 +55,19 @@ Later application-owner work reproduced the same failure at larger scale:
   rodata placement at target offset `0x28`; its only residual was the
   three-instruction signed-conversion relocation binding local `@365` instead
   of `lbl_1_rodata_28`.
+- `endingdll:fn_1_1049C` and `fn_1_1152C` each reached instruction identity for
+  their u8-to-float paths, but the candidate object bound compiler-local `@743`
+  where retail binds the shared `lbl_1_rodata_348` owner.
+- `endingdll:fn_1_B568` reproduced all 1,448 instruction bytes. Its only three
+  differences were conversion relocations to compiler-local `@582` instead of
+  retail `lbl_1_rodata_1A8`, so the function was reverted despite its text
+  match.
+
+The Ending counterexamples are bound to clean worker commits
+`66bf6eb3cc97e3c225b85e891de4161244a1f05f` and
+`8588d7fc1c443ba83cdc2c8b08dc6dcd37316c5b`. They independently confirm that
+instruction identity and matching literal values do not satisfy the ownership
+gate.
 
 When several natural bodies fail only at the same named pool owner, stop
 shaping the consumers independently. Recover the owner-level data binding and

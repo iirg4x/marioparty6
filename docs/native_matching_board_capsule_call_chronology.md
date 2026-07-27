@@ -61,6 +61,19 @@ the relevant boundary, rather than board ownership itself:
   restored, allowing MWCC to recover the retail call-evaluation chronology.
 - `fn_1_B0A4` became strict exact when helper definition visibility and the
   saved-register lifetime were restored together.
+- `fn_1_DF60` became strict exact at 396 bytes when three natural calls to the
+  preceding exact scalar helper `fn_1_DF18` were allowed to expand under
+  `-inline auto`; the result has zero text or relocation differences.
+- `fn_1_8CFC` independently reproduced the same mechanism at a larger boundary:
+  natural calls to preceding exact teardown helpers `fn_1_26D4`, `fn_1_3CD4`,
+  and `fn_1_3F20` expand into the exact 644-byte lifecycle coordinator.
+
+The exact evidence is bound to ending worker commits
+`66bf6eb3cc97e3c225b85e891de4161244a1f05f` and
+`8588d7fc1c443ba83cdc2c8b08dc6dcd37316c5b`; both clean subsets passed the
+78-test public recovery gate. Operand-order and capture probes for
+`fn_1_DE3C` did not reproduce the target and were reverted, so the result does
+not authorize generic expression rewriting.
 
 GC/1.3.2 evidence remains a separate candidate until it has enough independent
 support; these observations do not silently broaden this card across compiler
