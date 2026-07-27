@@ -30,9 +30,9 @@ f32 frandf(void) {
     return ret;
 }
 
-u32 frandmod(u32 arg0) {
+s32 frandmod(s32 modulus) {
     u32 ret;
     frand_seed = frandom(frand_seed);
-    ret = (frand_seed & 0x7FFFFFFF)%arg0;
+    ret = (frand_seed & 0x7FFFFFFF)%(u32)modulus;
     return ret;
 }

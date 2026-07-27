@@ -65,9 +65,9 @@ static void SafeNormalize(HuVecF *in, HuVecF *out)
 {
     BOOL result;
     if(VECSquareMag(in) < 1e-6) {
-        (out)->x = 0.01f*(frandmod(20)-10.0f);
-        (out)->z = 0.01f*(frandmod(20)-10.0f);
-        (out)->y = (frandmod(1) != 0) ? 0.01f : -0.01f;
+        (out)->x = 0.01f*((u32)frandmod(20)-10.0f);
+        (out)->z = 0.01f*((u32)frandmod(20)-10.0f);
+        (out)->y = ((u32)frandmod(1) != 0) ? 0.01f : -0.01f;
         VECNormalize(out, out);
         result = FALSE;
     } else {
@@ -488,7 +488,7 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
                     }
                     norm.y = 0;
                     playerP1->actor->velY = GET_ACTOR_VELY(playerP1->actor, 15000);
-                    playerP1->actor->rotY += frandmod(90)-45.0f;
+                    playerP1->actor->rotY += (u32)frandmod(90)-45.0f;
                     if(!MgPlayerModeAttrCheck(playerP1, MGPLAYER_MODEATTR_HEADJUMP)) {
                         forceZ = VECMag(&norm)/2;
                     } else {
