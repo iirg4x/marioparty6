@@ -6,6 +6,12 @@
 u32 frandom(u32 seed);
 u32 frand(void);
 f32 frandf(void);
-u32 frandmod(u32 arg0);
+/* Signed by DOL authority: every frandmod result the DOL converts to float in
+ * TUs without this header goes through the signed xoris 0x8000 sequence
+ * (e.g. CharModelLandDustCreate 0x8005F968), and tu_declarations.json records
+ * the same s32 contract for mdpartydll/stage.c. TUs that include this header
+ * and need the DOL's unsigned float conversion cast the result back to u32 at
+ * the use site (see actman.c/colman.c). */
+s32 frandmod(s32 modulus);
 
 #endif

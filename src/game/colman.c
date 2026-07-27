@@ -2571,8 +2571,8 @@ static int _BodyColNarrow(void)
             }
             VECSubtract(&col2.point, &col1.point, &colDelta);
             if(VECSquareMag(&colDelta) < 0.0001f) {
-                colDelta.x = (frandmod(20)-10.0f)*0.01f;
-                colDelta.z = (frandmod(20)-10.0f)*0.01f;
+                colDelta.x = ((u32)frandmod(20)-10.0f)*0.01f;
+                colDelta.z = ((u32)frandmod(20)-10.0f)*0.01f;
                 colDelta.y = 0.01f;
             }
             VECNormalize(&colDelta, &colDeltaNorm);
@@ -2838,7 +2838,7 @@ static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code
         bodyP->moveDir.x = 0;
         bodyP->moveDir.y = 0;
         bodyP->moveDir.z = 0;
-        VECScale(&point->normal, &bounce, bodyP->param.bounce*(0.3f+(frandmod(70)/100.0f)));
+        VECScale(&point->normal, &bounce, bodyP->param.bounce*(0.3f+((u32)frandmod(70)/100.0f)));
         VECScale(&bounce, &bounce, bodyP->param.radius);
         VECAdd(&bodyP->pos[posIdx], &bounce, &bodyP->pos[posIdx]);
         bodyP->oldPos = bodyP->pos[posIdx];
