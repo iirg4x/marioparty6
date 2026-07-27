@@ -3,7 +3,7 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "47bb57be44ec1adbdba4a67fb026bbe952126b44",
+      "validated_commit": "46cc571f4475736918b54a5f8501834c15912bae",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -17,7 +17,7 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "47bb57be44ec1adbdba4a67fb026bbe952126b44",
+      "validated_commit": "46cc571f4475736918b54a5f8501834c15912bae",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -31,7 +31,7 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "47bb57be44ec1adbdba4a67fb026bbe952126b44",
+      "validated_commit": "46cc571f4475736918b54a5f8501834c15912bae",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -46,7 +46,7 @@
     },
     "mdparty-local-audio-visibility": {
       "status": "active",
-      "validated_commit": "47bb57be44ec1adbdba4a67fb026bbe952126b44",
+      "validated_commit": "46cc571f4475736918b54a5f8501834c15912bae",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -61,7 +61,7 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "47bb57be44ec1adbdba4a67fb026bbe952126b44",
+      "validated_commit": "46cc571f4475736918b54a5f8501834c15912bae",
       "validated_at": "2026-07-27",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
