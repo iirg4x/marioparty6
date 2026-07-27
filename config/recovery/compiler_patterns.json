@@ -643,7 +643,8 @@
         ],
         "known_signatures": [
           "charman headers expose s16, u8, GX callback, and GW_CHARA_MAX contracts",
-          "different GW_PLAYER bitfield names retain the same byte offsets and widths"
+          "different GW_PLAYER bitfield names retain the same byte offsets and widths",
+          "a wide exported parameter can stay int at a call boundary while an explicit narrow cast is required only when comparing against s16-owned storage"
         ]
       },
       "rule": "Adopt mechanically corroborated ABI widths and layouts first; keep semantic names provisional until behavior, exports, maps, or assets authenticate them.",
@@ -656,19 +657,30 @@
         "compiler_wide": false,
         "project_wide": true,
         "owners": [],
-        "stable_ids": [],
-        "modules": [],
-        "owner_tags": []
+        "stable_ids": [
+          "mbTutorialModelKill"
+        ],
+        "modules": [
+          "main.dol"
+        ],
+        "owner_tags": [
+          "board",
+          "tutorial",
+          "abi_width"
+        ]
       },
       "examples": [
         "main:game/charman",
         "main:game/gamemes",
-        "main:game/mgdata"
+        "main:game/mgdata",
+        "mbTutorialModelKill int API with MBMODELID storage-domain comparison"
       ],
       "counterexamples": [],
       "related_exceptions": [],
       "evidence": [
-        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/reusable_owner_evidence"
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/reusable_owner_evidence",
+        "include/game/board/tutorial.h",
+        "src/board/tutorial.c"
       ]
     },
     {
