@@ -18,6 +18,8 @@ Within the main game flow at that snapshot:
 
 - `src/game/`: **57 / 57 owners matching**
 - `src/board/`: **15 / 40 owners matching**
+- One-time bulk board-source promotion: **182 newly strict-exact functions** across 16 partial owners, with zero exact-function regressions.
+- The promoted partial owners are `capevent`, `capmove`, `capselect`, `capspecial`, `capsule`, `dice`, `last5`, `mgcall`, `player`, `scroll`, `shopevent`, `single`, `snpc`, `telop`, `tutorial`, and `wipe`; they remain NonMatching until fully recovered.
 - Newly matching board owner: `src/board/board.c` (35 / 35 functions and 618 / 618 relocations exact)
 - Newly matching board owner: `src/board/audio.c` (49 / 49 functions and 444 / 444 relocations exact)
 - Newly strict-exact board sources: `src/board/gate.c` (11 / 11 functions, 168 / 168 relocations) and `src/board/roulette.c` (21 / 21 functions, 291 / 291 relocations)
