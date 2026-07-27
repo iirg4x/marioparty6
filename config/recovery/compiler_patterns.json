@@ -1182,14 +1182,16 @@
           "text is byte-identical while a target lbl_* relocation becomes source @NNN",
           "pool_data off does not suppress the synthesized conversion constant",
           "an equivalent weak named constant coexists with rather than absorbs the anonymous pool",
-          "restoring an authenticated preceding owner is expected to move the downstream pool naturally"
+          "restoring an authenticated preceding owner is expected to move the downstream pool naturally",
+          "multiple natural bodies become instruction-identical but all miss the same split named conversion owner"
         ]
       },
-      "rule": "Do not retain a text-exact function until its conversion-pool relocation owner is exact; restore authenticated source chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name.",
+      "rule": "Do not retain a text-exact function until its conversion-pool relocation owner is exact; restore authenticated source chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at the same named pool owner, stop per-function shaping and recover the owner-level data binding before re-enabling them together.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
         "test pool_data and named-constant controls only as bounded counterexamples",
+        "group repeated relocation-only failures by target pool owner before opening more body probes",
         "require organic source and linked consumer proof before retention"
       ],
       "applicability": {
@@ -1200,7 +1202,10 @@
         "modules": [
           "openingDll",
           "s02Dll",
-          "s03Dll"
+          "s03Dll",
+          "s01Dll",
+          "miraclebookdll",
+          "optionDll"
         ],
         "owner_tags": [
           "literal_pool",
@@ -1210,7 +1215,9 @@
       },
       "examples": [
         "s02Dll fn_1_4B8: 0x470 exact text, target lbl_1_rodata_60 versus source @373",
-        "s03Dll fn_1_1238: 536 exact text bytes, target lbl_1_rodata_A0 versus source @360"
+        "s03Dll fn_1_1238: 536 exact text bytes, target lbl_1_rodata_A0 versus source @360",
+        "miraclebookdll fn_1_479C and fn_1_4FD4: all instruction bytes exact, repeated local conversion relocations versus lbl_1_rodata_98",
+        "optionDll fn_1_7728: 844 exact instruction bytes, local @489 versus target lbl_1_rodata_1E8"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -1295,12 +1302,12 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Under the board GC/2.6 -O0,p profile, repeated reads of globals or bitfields can shorten or merge value lifetimes; source-authentic captures at distinct use boundaries can restore the target's saved-register and signed-comparison shape.",
+      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, or owner fields can shorten or merge value lifetimes; source-authentic captures at distinct use boundaries can restore the target's saved-register and signed-comparison shape.",
       "conditions": "Use only for a repeated owner-local mismatch family involving global or bitfield reads, saved registers, or signed comparisons; a convenient temporary by itself is not evidence.",
       "source_condition": {
         "change": "Capture a global or bitfield value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
         "requires": [
-          "GC/2.6 with the same -O0,p board profile",
+          "GC/2.6 with the same final -O0,p owner profile",
           "repeated target evidence for distinct value lifetimes",
           "before/after exact-function and relocation comparison",
           "natural source semantics without register-pressure shaping"
@@ -1340,15 +1347,20 @@
           "PlayerMetalOMExec",
           "mbev_PlayerColMasuAllSet",
           "mbPlayerMatClone",
-          "PlayerMoveOMExec"
+          "PlayerMoveOMExec",
+          "s01Dll:fn_1_F4",
+          "miraclebookdll:fn_1_7998"
         ],
         "modules": [
-          "main.dol"
+          "main.dol",
+          "s01Dll",
+          "miraclebookdll"
         ],
         "owner_tags": [
           "board",
           "value_lifetime",
-          "bitfield"
+          "bitfield",
+          "rel"
         ]
       },
       "examples": [
@@ -1356,7 +1368,9 @@
         "PlayerMetalOMExec",
         "mbev_PlayerColMasuAllSet",
         "mbPlayerMatClone",
-        "PlayerMoveOMExec"
+        "PlayerMoveOMExec",
+        "s01Dll fn_1_F4 board-number and model-ID captures",
+        "miraclebookdll fn_1_7998 amplitude capture across two model consumers"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -1375,7 +1389,7 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Under the board GC/2.6 -O0,p profile, helper definition order can change automatic inlining, while the natural expression tree and direct nesting determine call evaluation order and register lifetime across the same helper family.",
+      "summary": "Under GC/2.6 -O0,p owner profiles, helper definition order can change automatic inlining, while the natural expression tree and direct nesting determine call evaluation order and register lifetime across the same helper family.",
       "conditions": "Use for an authenticated owner-local helper family when target calls exist but the candidate inlines a helper, reverses call order, or introduces a cached local absent from the target.",
       "source_condition": {
         "change": "Restore helper definition visibility and the target-backed expression tree before introducing locals, prototypes, or inlining controls.",
@@ -1423,15 +1437,19 @@
           "CapSelectMasuListGet",
           "mbCapSelectMasuInit",
           "CapSelectMasuKill",
-          "CapUseDeleteKill"
+          "CapUseDeleteKill",
+          "endingdll:fn_1_27A0",
+          "endingdll:fn_1_B0A4"
         ],
         "modules": [
-          "main.dol"
+          "main.dol",
+          "endingdll"
         ],
         "owner_tags": [
           "board",
           "definition_visibility",
-          "call_evaluation"
+          "call_evaluation",
+          "rel"
         ]
       },
       "examples": [
@@ -1440,7 +1458,9 @@
         "CapUse work/result/workData declaration order",
         "mbCapSelectMasuInit int-to-s16 boundary",
         "CapSelectMasuKill check/kill/reset chronology",
-        "CapUseDeleteKill check/kill/reset chronology"
+        "CapUseDeleteKill check/kill/reset chronology",
+        "endingdll fn_1_27A0 direct product grouping",
+        "endingdll fn_1_B0A4 visible helper call and saved-register lifetime"
       ],
       "counterexamples": [
         "Forcing helper emission without an authentic caller is non-organic.",
@@ -1451,6 +1471,148 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_board_capsule_call_chronology.md"
+      ]
+    },
+    {
+      "id": "mwcc-explicit-narrow-return-promotion-preserves-normalization",
+      "title": "Preserve narrow-return normalization with an authenticated explicit promotion",
+      "classification": "confirmed_rule",
+      "category": "return_normalization_and_assignment_width",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "An explicit promotion of an s16-returning call to int before a narrow assignment can preserve MWCC's post-call extsh when a direct assignment treats the result as already normalized.",
+      "conditions": "Apply only when the producer return width is authenticated and independent target consumers show the same post-call sign-extension shape.",
+      "source_condition": {
+        "change": "Assign an s16-returning call directly to an s16 lifetime instead of preserving the historical explicit int promotion at the call site.",
+        "requires": [
+          "authenticated narrow producer return type",
+          "target post-call extsh evidence",
+          "independent same-game consumer confirmation",
+          "exact instruction and relocation comparison"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "post-call extsh retention or elimination",
+          "consumer register width",
+          "saved-register lifetime",
+          "downstream call argument normalization"
+        ],
+        "known_signatures": [
+          "direct narrow assignment omits a target extsh",
+          "an explicit `(int)narrow_call()` restores the target extension without changing the linked symbol",
+          "the eventual destination may remain s16 even though the call result is explicitly promoted first"
+        ]
+      },
+      "rule": "Authenticate the producer and consumer widths before testing an explicit promotion; retain `(int)narrow_call()` only when independent same-game consumers and the complete object/relocation stream confirm the post-call normalization.",
+      "safe_actions": [
+        "inspect the authoritative producer declaration and definition",
+        "compare direct assignment against one explicit-promotion control",
+        "search exact same-game consumers for the historical call form",
+        "require zero exact-function regressions and exact relocations"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "optionDll:fn_1_A0",
+          "fileseldll:ObjectSetup"
+        ],
+        "modules": [
+          "optionDll",
+          "fileseldll"
+        ],
+        "owner_tags": [
+          "return_width",
+          "normalization",
+          "rel"
+        ]
+      },
+      "examples": [
+        "optionDll fn_1_A0 lightId = (int)Hu3DGLightCreate(...) became strict exact",
+        "fileseldll ObjectSetup independently uses the same exact cast form"
+      ],
+      "counterexamples": [
+        "Do not change the authoritative Hu3DGLightCreate return type to int.",
+        "Do not add arbitrary casts to steer registers without an authenticated producer and independent consumer.",
+        "A lone extsh is not sufficient to infer the historical call form."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_narrow_return_promotion.md"
+      ]
+    },
+    {
+      "id": "mwcc-commutative-fmuls-source-swap-canonicalizes-neutral",
+      "title": "Stop commutative fmuls source swaps when MWCC canonicalizes them neutrally",
+      "classification": "contextual_heuristic",
+      "category": "floating_operand_order_negative_evidence",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "high",
+      "summary": "For exact-sized O0 functions that differ only in commutative fmuls register operands, reversing the source operands can compile identically; explicit captures may add frame or instruction debt instead of changing the multiply.",
+      "conditions": "Use as a bounded negative diagnostic after the function size, control flow, producers, and all non-fmuls instructions already agree.",
+      "source_condition": {
+        "change": "Reverse algebraically equivalent multiplication operands or add a local solely to change their registers.",
+        "requires": [
+          "one or more isolated fmuls operand-order mismatches",
+          "exact function size and otherwise aligned instructions",
+          "one direct source-reversal compiler control",
+          "producer and lifetime audit before any local capture"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no emitted change after a direct source swap",
+          "extra stack frame or instructions from an explicit capture",
+          "producer-lifetime changes only when the expression tree changes materially"
+        ],
+        "known_signatures": [
+          "source a*b and b*a produce the same fmuls operand order",
+          "an explicit temporary grows the function while leaving the original mismatch family",
+          "the remaining fix belongs to producer lifetime or definition/evaluation chronology, not algebraic spelling"
+        ]
+      },
+      "rule": "Run one direct commutative-operand reversal; if MWCC emits the same code, record the neutral result and stop algebraic swapping. Reopen only with authenticated producer-lifetime, definition-order, or expression-tree evidence.",
+      "safe_actions": [
+        "confirm the mismatch is isolated to commutative fmuls operands",
+        "compile one operand-reversal control under the exact profile",
+        "compare explicit capture size and frame effects once",
+        "preserve the unresolved body rather than add register-shaping locals"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "s01Dll:fn_1_1E70",
+          "s01Dll:fn_1_1EF8",
+          "staffdll:fn_1_44",
+          "staffdll:fn_1_118",
+          "staffdll:fn_1_200"
+        ],
+        "modules": [
+          "s01Dll",
+          "staffdll"
+        ],
+        "owner_tags": [
+          "floating_point",
+          "negative_evidence",
+          "operand_order"
+        ]
+      },
+      "examples": [
+        "s01Dll fn_1_1E70 and fn_1_1EF8 remained neutral after equivalent source reversals",
+        "staffdll fn_1_44, fn_1_118, and fn_1_200 each retained one fmuls operand mismatch after direct reversal"
+      ],
+      "counterexamples": [
+        "Do not add long-lived locals solely to force floating registers.",
+        "A changed source expression is not evidence when emitted instructions are unchanged.",
+        "This heuristic does not apply when calls, loads, conversions, or control flow also differ."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_commutative_fmuls_negative.md"
       ]
     }
   ]

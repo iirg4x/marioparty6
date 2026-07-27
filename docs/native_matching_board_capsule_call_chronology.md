@@ -51,3 +51,17 @@ identity-only candidates were also rejected. In particular, `mbCapNextGet`
 reached instruction-exact 1,132/1,132 bytes but retained six data/literal
 relocation-identity residuals; it is not call-chronology evidence and must wait
 for natural section-ownership changes.
+
+## Non-board GC/2.6 reinforcement
+
+`endingdll` independently confirmed that the same final compiler profile is
+the relevant boundary, rather than board ownership itself:
+
+- `fn_1_27A0` became strict exact when the natural direct product grouping was
+  restored, allowing MWCC to recover the retail call-evaluation chronology.
+- `fn_1_B0A4` became strict exact when helper definition visibility and the
+  saved-register lifetime were restored together.
+
+GC/1.3.2 evidence remains a separate candidate until it has enough independent
+support; these observations do not silently broaden this card across compiler
+families.

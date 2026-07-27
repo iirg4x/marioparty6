@@ -43,3 +43,19 @@ Use the heuristic only when repeated global or bitfield reads accompany a
 saved-register or signed-comparison mismatch. Test each capture independently,
 compare the complete exact-function set, and retain it only when strict
 relocations and natural source structure also improve.
+
+## REL reinforcement
+
+Two independent GC/2.6 REL owners reproduced the same bounded lifetime effect:
+
+- `s01Dll:fn_1_F4` became strict exact when the board-number read was restored
+  through the authenticated `MBBoardNoGet` inline boundary and the model-ID
+  pointer kept its persistent `s16` lifetime. Replacing that boundary with a
+  direct `GwSystem.boardNo` read scored only 97.726320.
+- `miraclebookdll:fn_1_7998` became strict exact when only the animation
+  amplitude was captured across its two model consumers. Broader speculative
+  captures did not reflect the target and were removed.
+
+These results broaden the evidence beyond `main.dol`, but not the permission:
+the capture still needs an authenticated value boundary, a matching final
+GC/2.6 owner profile, and exact instruction and relocation proof.

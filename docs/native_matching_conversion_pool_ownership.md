@@ -40,3 +40,24 @@ to rename the relocation target.
 The retained gate remains exact instructions, exact relocation ownership,
 organic source, and linked consumer proof. A text-only 100% score does not
 satisfy that gate.
+
+## Owner-level cluster evidence
+
+Later application-owner work reproduced the same failure at larger scale:
+
+- `miraclebookdll` functions `fn_1_3734`, `fn_1_479C`, `fn_1_4FD4`,
+  `fn_1_6B8C`, and `fn_1_8A78` converged on instruction-identical conversion
+  sequences while retaining relocation debt to the shared
+  `lbl_1_rodata_F0`/`lbl_1_rodata_98` owners.
+- `optionDll:fn_1_7728` reproduced all 844 instruction bytes, but its local
+  `@489` relocation did not bind the retail `lbl_1_rodata_1E8` owner.
+- `s01Dll:fn_1_590` reproduced all 748 instruction bytes with exact local
+  rodata placement at target offset `0x28`; its only residual was the
+  three-instruction signed-conversion relocation binding local `@365` instead
+  of `lbl_1_rodata_28`.
+
+When several natural bodies fail only at the same named pool owner, stop
+shaping the consumers independently. Recover the owner-level data binding and
+source chronology once, then re-enable the affected cluster together. Until
+that ownership proof is exact, the functions remain unresolved even when all
+ordinary instructions and literal values agree.
