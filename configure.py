@@ -678,7 +678,7 @@ config.libs = [
             Object(Matching, "game/kerent.c"),
             Object(Matching, "board/malloc.c"),
             Object(Matching, "board/comchoice.c"),
-            Object(NonMatching, "board/board.c"),
+            Object(Matching, "board/board.c"),
             Object(Matching, "board/exit.c"),
         ],
     },
