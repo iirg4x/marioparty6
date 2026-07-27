@@ -1349,7 +1349,9 @@
           "mbPlayerMatClone",
           "PlayerMoveOMExec",
           "s01Dll:fn_1_F4",
-          "miraclebookdll:fn_1_7998"
+          "miraclebookdll:fn_1_7998",
+          "mbMain",
+          "mbNextTime"
         ],
         "modules": [
           "main.dol",
@@ -1370,16 +1372,20 @@
         "mbPlayerMatClone",
         "PlayerMoveOMExec",
         "s01Dll fn_1_F4 board-number and model-ID captures",
-        "miraclebookdll fn_1_7998 amplitude capture across two model consumers"
+        "miraclebookdll fn_1_7998 amplitude capture across two model consumers",
+        "mbMain distinct party-state reads",
+        "mbNextTime turn-limit and turn-count captures"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
         "Capsule inline return-shape probes regressed and were reverted.",
-        "BiriQ relocation-identity residuals are not value-lifetime evidence."
+        "BiriQ relocation-identity residuals are not value-lifetime evidence.",
+        "mbObjectSetup capture variants only rotated its 20-register lifetime cycle and were reverted."
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/native_matching_board_player_value_lifetimes.md"
+        "docs/native_matching_board_player_value_lifetimes.md",
+        "src/board/board.c"
       ]
     },
     {

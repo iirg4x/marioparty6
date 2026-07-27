@@ -315,6 +315,7 @@
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_player_value_lifetimes.md",
+        "src/board/board.c",
         "src/board/player.c",
         "include/game/gamework.h",
         "configure.py"
