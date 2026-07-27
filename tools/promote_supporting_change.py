@@ -215,6 +215,19 @@ def supporting_branch_errors(branch: str) -> list[str]:
     return errors
 
 
+def supporting_message_errors(message: str) -> list[str]:
+    """The contamination scan applies to commit messages too: queue owner ids,
+    queue.json, coordination paths, and prompt references must not reach a
+    main-facing commit message any more than a promoted file."""
+    errors = message_errors(message)
+    errors.extend(
+        "commit message contains AI-workspace contamination: "
+        + match.group(0).strip()
+        for match in CONTAMINATION.finditer(message)
+    )
+    return errors
+
+
 def _queue_verification(
     root: Path, owner: str, source_commit: str, selected: Sequence[str]
 ) -> dict[str, Any]:
@@ -444,7 +457,7 @@ def audit_promotion(
         "--format=%B%x00",
         f"{base_commit}..{head_commit}",
     ).stdout
-    errors.extend(message_errors(messages))
+    errors.extend(supporting_message_errors(messages))
 
     source_commit = resolve_ref(root, source_ref) if source_ref else None
     file_results: list[dict[str, Any]] = []
@@ -515,7 +528,10 @@ def create_promotion(
     owner: str | None,
     allow_unverified: bool,
 ) -> dict[str, Any]:
-    policy_errors = [*supporting_branch_errors(branch), *message_errors(title)]
+    policy_errors = [
+        *supporting_branch_errors(branch),
+        *supporting_message_errors(title),
+    ]
     if policy_errors:
         raise PromotionError(
             "promotion metadata rejected:\n- " + "\n- ".join(policy_errors)

@@ -5,10 +5,12 @@
 This branch is the AI-forward recovery laboratory. It must never be merged,
 squashed, rebased, or cherry-picked wholesale into `main`.
 
-`main` is human-facing. Only verified recovered `src/**/*.c` blobs may be copied
-to a fresh `recovery/*` branch created directly from `main`.
+`main` is human-facing. Only verified content may be copied to fresh branches
+created directly from `main`: recovered `src/**/*.c` blobs to `recovery/*`
+branches, audited supporting changes to `project/*` branches.
 
-See `AI_WORKSPACE.md` and `docs/main_promotion.md`.
+See `AI_WORKSPACE.md`, `docs/main_promotion.md`, and
+`docs/supporting_change_promotion.md`.
 
 ## Queue and isolate one task
 
@@ -122,9 +124,10 @@ The command creates a branch from `main`, copies exact C blobs, and rejects:
 - AI/agent attribution in comments, branch names, or commit messages;
 - blobs that differ from the verified worker commit.
 
-If a header, symbol, split, or build change is required, recreate it from the
-clean `main` checkout and review it as a separate human-facing change. Never
-copy it automatically from this branch.
+If a header, symbol, split, or build change is required, promote it separately
+with `tools/promote_supporting_change.py` onto its own `project/*` branch and
+review it as a separate human-facing change (see
+`docs/supporting_change_promotion.md`). Never copy it to `main` by hand.
 
 In the promotion worktree, run:
 

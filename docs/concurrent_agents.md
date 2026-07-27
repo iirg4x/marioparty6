@@ -7,7 +7,8 @@ serialized.
 Pin `AI_BASE_COMMIT` to the selected commit of
 `agent/recovery-context-workflow` before adding a batch. Worker worktrees store
 that exact ref in their queue claim, and worker diff checks compare against it.
-`main` is reserved for clean C-only promotion worktrees.
+`main` is reserved for clean promotion worktrees created by the promotion
+tools: `recovery/*` for C, `project/*` for supporting changes.
 
 ## One-time setup
 

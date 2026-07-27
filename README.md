@@ -73,9 +73,12 @@ The promotion tool:
   messages;
 - verifies that the promotion diff contains only selected C files.
 
-Supporting header or build changes must be recreated and reviewed separately in
-the clean promotion worktree. See
-[`docs/main_promotion.md`](docs/main_promotion.md).
+Supporting header or build changes are promoted separately by
+`tools/promote_supporting_change.py` onto a `project/*` branch cut from `main`,
+with the same attribution and contamination gates plus explicit consumer
+re-verification. See
+[`docs/supporting_change_promotion.md`](docs/supporting_change_promotion.md)
+and [`docs/main_promotion.md`](docs/main_promotion.md).
 
 ## Recovery standard
 
@@ -93,7 +96,9 @@ Read:
 
 - [`AGENTS.md`](AGENTS.md): mandatory workspace rules
 - [`AI_WORKSPACE.md`](AI_WORKSPACE.md): permanent branch boundary
-- [`docs/main_promotion.md`](docs/main_promotion.md): clean C-only transfer
+- [`docs/main_promotion.md`](docs/main_promotion.md): clean C transfer
+- [`docs/supporting_change_promotion.md`](docs/supporting_change_promotion.md):
+  audited header/symbol/split/build transfer
 - [`docs/agent_quickstart.md`](docs/agent_quickstart.md): worker workflow
 - [`docs/concurrent_agents.md`](docs/concurrent_agents.md): Claude/Codex bulk work
 - [`docs/recovery_standard.md`](docs/recovery_standard.md): evidence and promotion

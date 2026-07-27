@@ -6,6 +6,7 @@ from pathlib import Path
 from tools.promote_recovered_c import (
     PromotionError,
     audit_promotion,
+    branch_errors,
     create_promotion,
     plan_promotion,
     source_ai_markers,
@@ -147,6 +148,22 @@ class PromotionTests(unittest.TestCase):
                 stderr=subprocess.PIPE,
             )
             temporary.cleanup()
+
+    def test_branch_names_with_ai_words_are_refused(self):
+        for branch in (
+            "recovery/agent-fix",
+            "recovery/ai-fix",
+            "recovery/agent_fix",
+            "recovery/fix-by-ai",
+            "recovery/claude-frand",
+        ):
+            self.assertTrue(
+                any("AI/agent" in error for error in branch_errors(branch)),
+                branch,
+            )
+        # "ai"/"agent" embedded inside larger words are not attribution.
+        self.assertEqual(branch_errors("recovery/maintain-repair"), [])
+        self.assertEqual(branch_errors("recovery/example"), [])
 
     def test_audit_rejects_non_c_and_ai_commit_messages(self):
         temporary, root, base = self.fixture()

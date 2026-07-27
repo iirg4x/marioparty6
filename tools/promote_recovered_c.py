@@ -51,6 +51,10 @@ AI_MARKER = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 COAUTHOR = re.compile(r"(?im)^\s*Co-authored-by\s*:")
+# Branch names are short identifiers, so unlike prose the bare words "ai" and
+# "agent" are attribution there (project/ai-fix, recovery/agent-fix).  The
+# lookarounds treat "_" as a separator, which plain \b would not.
+BRANCH_AI_WORDS = re.compile(r"(?i)(?<![a-z0-9])(?:ai|agent)(?![a-z0-9])")
 
 
 class PromotionError(ValueError):
@@ -253,7 +257,7 @@ def branch_errors(branch: str) -> list[str]:
         errors.append(
             "human-facing promotion branch cannot use an AI/agent branch prefix"
         )
-    if AI_MARKER.search(branch):
+    if AI_MARKER.search(branch) or BRANCH_AI_WORDS.search(branch):
         errors.append("promotion branch contains an AI/agent marker")
     return errors
 

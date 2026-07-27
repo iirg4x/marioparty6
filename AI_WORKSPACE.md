@@ -43,7 +43,7 @@ historical marker, not a merge candidate.
 
 ## Allowed transfer
 
-Only a verified recovered C blob may be transferred automatically:
+Only a verified recovered C blob may be transferred by the C promotion tool:
 
 ```text
 src/**/*.c
@@ -81,12 +81,15 @@ The tool rejects:
 ## Supporting changes
 
 A recovered C file may reveal that `main` needs a header, symbol, split, or build
-configuration update. Those changes are not imported from the AI branch and do
-not belong in the C promotion PR.
+configuration update. Those changes do not belong in the C promotion PR.
 
-Create a second branch directly from `main`, recreate the supporting change from
-target evidence, and review it as a separate human-facing PR. Merge that support
-first when necessary, then recreate/rebase and revalidate the C-only promotion.
+Promote them with `tools/promote_supporting_change.py`, which creates a second
+branch (`project/*`) directly from `main`, transfers only declared verified
+blobs, enforces the same attribution and contamination scans, and requires every
+affected Matching consumer to be re-verified
+(see `docs/supporting_change_promotion.md`). Review it as a separate
+human-facing PR. Merge that support first when necessary, then recreate/rebase
+and revalidate the C-only promotion.
 
 This prevents prompts, scaffolding, generated metadata, speculative names, and
 agent-specific structure from leaking into public history while keeping the C

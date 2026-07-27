@@ -10,6 +10,8 @@ from tools.promote_supporting_change import (
     contamination_findings,
     create_promotion,
     plan_promotion,
+    supporting_branch_errors,
+    supporting_message_errors,
 )
 
 CONFIGURE = """\
@@ -365,6 +367,96 @@ class SupportingPromotionTests(unittest.TestCase):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
+            temporary.cleanup()
+
+    def test_branch_names_with_ai_words_are_refused(self):
+        for branch in (
+            "project/agent-fix",
+            "project/ai-fix",
+            "project/agent_fix",
+            "project/claude-frand",
+            "project/codex-x",
+        ):
+            self.assertTrue(
+                any(
+                    "AI/agent marker" in error
+                    for error in supporting_branch_errors(branch)
+                ),
+                branch,
+            )
+        self.assertEqual(supporting_branch_errors("project/example-interface"), [])
+        # "ai"/"agent" embedded inside larger words are not attribution.
+        self.assertEqual(supporting_branch_errors("project/maintain-repair"), [])
+        temporary, root, base = self.fixture()
+        try:
+            with self.assertRaisesRegex(PromotionError, "AI/agent marker"):
+                create_promotion(
+                    root,
+                    base_ref=base,
+                    source_ref="HEAD",
+                    branch="project/agent-fix",
+                    worktree=Path(temporary.name) / "promotion",
+                    title="Correct Example seed signedness",
+                    paths=["include/game/example.h"],
+                    owner=None,
+                    allow_unverified=True,
+                )
+        finally:
+            temporary.cleanup()
+
+    def test_commit_message_contamination_is_refused(self):
+        self.assertTrue(
+            any(
+                "contamination" in error
+                for error in supporting_message_errors(
+                    "Correct main:game/example per queue.json task"
+                )
+            )
+        )
+        self.assertTrue(
+            any(
+                "contamination" in error
+                for error in supporting_message_errors(
+                    "Update per agent-coordination evidence"
+                )
+            )
+        )
+        self.assertEqual(
+            supporting_message_errors("Correct Example seed signedness"), []
+        )
+        temporary, root, base = self.fixture()
+        try:
+            with self.assertRaisesRegex(PromotionError, "contamination"):
+                create_promotion(
+                    root,
+                    base_ref=base,
+                    source_ref="HEAD",
+                    branch="project/example-interface",
+                    worktree=Path(temporary.name) / "promotion",
+                    title="Correct main:game/example per queue.json task",
+                    paths=["include/game/example.h"],
+                    owner=None,
+                    allow_unverified=True,
+                )
+            # The audit re-checks messages, so a contaminated title cannot be
+            # smuggled onto a project/* branch created outside the tool either.
+            run(root, "git", "checkout", "-qb", "project/smuggled", base)
+            (root / "include/game/example.h").write_text(
+                "#ifndef _EXAMPLE_H\n#define _EXAMPLE_H\n\ns32 Example(s32 seed);\n\n#endif\n",
+                encoding="utf-8",
+            )
+            run(root, "git", "add", "include/game/example.h")
+            run(root, "git", "commit", "-qm", "Track queue.json owner main:game/example")
+            result = audit_promotion(
+                root,
+                base_ref=base,
+                head_ref="HEAD",
+            )
+            self.assertFalse(result["clean_human_promotion"])
+            self.assertTrue(
+                any("contamination" in error for error in result["errors"])
+            )
+        finally:
             temporary.cleanup()
 
     def test_create_rejects_non_project_branch(self):
