@@ -838,8 +838,12 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [],
-        "modules": ["main"],
-        "owner_tags": ["board"]
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "board"
+        ]
       },
       "examples": [
         "main:board/gate",
@@ -972,8 +976,15 @@
           "s01Dll:fn_1_3610",
           "s01Dll:fn_1_363C"
         ],
-        "modules": ["w01Dll", "s01Dll", "w04Dll"],
-        "owner_tags": ["pooled_literals", "rel"]
+        "modules": [
+          "w01Dll",
+          "s01Dll",
+          "w04Dll"
+        ],
+        "owner_tags": [
+          "pooled_literals",
+          "rel"
+        ]
       },
       "examples": [
         "w01Dll world01 .text/.text.common/.text.after_common",
@@ -1036,8 +1047,15 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [],
-        "modules": ["w01Dll", "s01Dll", "w04Dll"],
-        "owner_tags": ["extern_inline", "literal_pool"]
+        "modules": [
+          "w01Dll",
+          "s01Dll",
+          "w04Dll"
+        ],
+        "owner_tags": [
+          "extern_inline",
+          "literal_pool"
+        ]
       },
       "examples": [
         "GC/2.7 math.h-only _half/_three emission control",
@@ -1097,8 +1115,15 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [],
-        "modules": ["w01Dll", "s01Dll", "w04Dll"],
-        "owner_tags": ["missing_header", "retail_triangulation"]
+        "modules": [
+          "w01Dll",
+          "s01Dll",
+          "w04Dll"
+        ],
+        "owner_tags": [
+          "missing_header",
+          "retail_triangulation"
+        ]
       },
       "examples": [
         "w01Dll/s01Dll/w04Dll 0x2344 common cluster and 0x10..0x77 prefix"
@@ -1156,8 +1181,13 @@
         "project_wide": true,
         "owners": [],
         "stable_ids": [],
-        "modules": ["w01Dll"],
-        "owner_tags": ["dtk_split", "rodata"]
+        "modules": [
+          "w01Dll"
+        ],
+        "owner_tags": [
+          "dtk_split",
+          "rodata"
+        ]
       },
       "examples": [
         "w01Dll world01/runtime 0x440 rodata boundary"
@@ -1660,6 +1690,73 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_commutative_fmuls_negative.md"
+      ]
+    },
+    {
+      "id": "mwcc-integer-signedness-decides-float-conversion-and-zero-compare",
+      "title": "Result signedness of an integer call decides xoris float conversion and cmplwi/cmpwi",
+      "classification": "confirmed_rule",
+      "category": "declaration_visibility",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "When a call result feeds a float context, MWCC emits the signed conversion (xoris 0x8000 with the 4330000080000000 magic) only if the result type is signed; an unsigned result emits no xoris with the 4330000000000000 magic. Zero equality tests emit cmplwi for unsigned and cmpwi for signed. A TU with no declaration in scope implicitly returns signed int, so header visibility, not the header text, decides the emitted form.",
+      "conditions": "Applies when deciding a shared prototype's integer signedness from target bytes, or when a Matching TU calls a function it never declares.",
+      "source_condition": {
+        "change": "Flip an integer function's declared signedness, or add/remove the declaration visible to a consuming TU.",
+        "requires": [
+          "a call result used in a float conversion or compared against zero",
+          "the exact build profile of the consuming TU",
+          "a byte-verified target site for each consuming TU, not only the defining TU"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "signed: xoris r,r,0x8000 plus 4330000080000000 magic before fsubs",
+          "unsigned: direct stw plus 4330000000000000 magic, no xoris",
+          "zero equality: cmplwi (0x28) for unsigned versus cmpwi (0x2C) for signed",
+          "no change in the defining TU when its internal arithmetic is already unsigned"
+        ],
+        "known_signatures": [
+          "frandmod: charman.c has no declaration in scope, so implicit int yields the signed xoris form at 0x8005FAB0-0x8005FABC inside CharModelLandDustCreate",
+          "actman.c/colman.c resolved the u32 header prototype and match only with unsigned conversions; under an s32 prototype a (u32) cast at the use site restores the retail bytes",
+          "eight single-byte 0x28 vs 0x2C DOL diffs from one inlined frandmod(1) != 0 compare when the signedness flipped without a cast"
+        ]
+      },
+      "rule": "Decide an integer prototype's signedness per consuming TU from target bytes: xoris/4330000080000000 or cmpwi proves signed in that TU; no-xoris/4330000000000000 or cmplwi proves unsigned. When one symbol shows both, the original program had mixed declaration visibility, and the shared header must be paired with width-preserving casts at the sites whose TUs prove the other signedness.",
+      "safe_actions": [
+        "preprocess the consuming TU with the exact build flags to learn which declaration is in scope",
+        "byte-verify one conversion or compare site per consuming TU before editing the shared header",
+        "preserve proven unsigned sites with a (u32) cast when the prototype becomes signed",
+        "rerun the full container checksum gate after any shared-prototype change"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "declaration_visibility",
+          "integer_conversion",
+          "shared_interface"
+        ]
+      },
+      "examples": [
+        "CharModelLandDustCreate 0x8005FAA8: li r3,4; bl frandmod; addi; neg; xoris 0x8000 proves the implicit signed contract in charman.c",
+        "SafeNormalize inlined into MgPlayerVecChase/MgActorVecChase/GetStickMtx/PlayerColHook/MgActorExec matched cmplwi only with the unsigned result in actman.c",
+        "frand.o stays byte-identical under either prototype because (frand_seed & 0x7FFFFFFF) % (u32)modulus already divides with divwu at 0x8003FD58"
+      ],
+      "counterexamples": [
+        "Width-preserving integer contexts (assignment, truncation to s16, integer addition) compile identically for u32 and s32 results and prove nothing.",
+        "The defining TU's body cannot decide the contract when its arithmetic is unsigned either way; only consumer sites can.",
+        "A passing container checksum under one header text does not prove that header was visible to every consumer."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/frandmod_signedness_evidence.md",
+        "config/GP6E01/tu_declarations.json"
       ]
     }
   ]

@@ -368,6 +368,21 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "mwcc-integer-signedness-decides-float-conversion-and-zero-compare": {
+      "status": "active",
+      "validated_commit": "1c5f576f4b720654cda1399b1635b1ddefc08bab",
+      "validated_at": "2026-07-27",
+      "watch_paths": [
+        "docs/frandmod_signedness_evidence.md",
+        "include/game/frand.h",
+        "src/game/frand.c",
+        "src/game/charman.c",
+        "src/game/actman.c",
+        "src/game/colman.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
