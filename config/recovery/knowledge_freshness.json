@@ -244,7 +244,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "181640970593b879b14953ad9b08987b9e65f73b",
+      "validated_commit": "9b46c730b34bd55bb22b60fbfe46c79abc6cdf6c",
       "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -387,7 +387,7 @@
     },
     "gc26-o0-definition-order-and-call-evaluation": {
       "status": "active",
-      "validated_commit": "181640970593b879b14953ad9b08987b9e65f73b",
+      "validated_commit": "9b46c730b34bd55bb22b60fbfe46c79abc6cdf6c",
       "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -551,7 +551,7 @@
     },
     "gc26-paired-single-huvecf-copy-spelling-negative": {
       "status": "active",
-      "validated_commit": "181640970593b879b14953ad9b08987b9e65f73b",
+      "validated_commit": "9b46c730b34bd55bb22b60fbfe46c79abc6cdf6c",
       "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
