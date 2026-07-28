@@ -564,7 +564,7 @@
     },
     "mwcc-cross-tu-extraction-requires-inline-consumer-closure": {
       "status": "active",
-      "validated_commit": "d14de0b492f971d88e80312f329577b54536c4d9",
+      "validated_commit": "1ad4c6e94e59b70d5ea6a1c2d4cacbf969809c27",
       "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
