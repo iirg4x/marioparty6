@@ -1,6 +1,7 @@
 #include "game/board/main.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
+#include "game/board/window.h"
 #include "game/data.h"
 #include "game/disp.h"
 #include "game/esprite.h"
@@ -16,6 +17,10 @@
 extern void *mbMalloc(s32 size);
 extern void *mbMallocFlush(s32 size);
 extern void *mbMallocFlushModel(s32 size);
+extern void mbNormPosto2D(HuVecF *src, HuVecF *dst);
+extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
+extern void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
+extern float mbSinDeg(float angle);
 
 typedef struct PausePanelWork_s {
     int modelId;              /* 0x00 */
@@ -40,8 +45,30 @@ typedef struct PausePanelWork_s {
     s16 animMaxTime;          /* 0x58 */
 } PAUSE_PANEL_WORK;
 
+typedef struct PausePadWork_s {
+    u8 unk00[8];
+    s32 unk08;
+    u8 unk0C[4];
+} PAUSE_PAD_WORK;
+
+typedef struct PauseWork_s {
+    s32 playerNo;
+    s32 cursorPos;
+    u8 unk08[0x14];
+    s32 padWinNo;
+    s32 helpWinNo;
+    u8 unk24[0x18];
+    s32 talkTime;
+    s32 prevTalkTime;
+    u8 unk44[0x1AC];
+    PAUSE_PAD_WORK padWork[GW_PLAYER_MAX];
+} PAUSE_WORK;
+
+static HuVecF playerPos;
+static PAUSE_WORK pauseWork;
 static BOOL playerDispF[GW_PLAYER_MAX];
 
+static HUPROCESS *configProc;
 static s32 configPadDisable;
 static HUPROCESS *pauseGuideProc;
 static PAUSE_PANEL_WORK *pausePanelWork;
@@ -49,11 +76,40 @@ static BOOL pauseGuideKillF;
 static s32 pauseDispCopyModelId;
 static s32 pauseDispCopyCounter;
 static void *pauseDispCopyFb;
+static s16 pausePlayer;
+static s32 configResult;
+static BOOL configDoneF;
 
+static void ConfigKill(void);
+static void ConfigMain(void);
+static void ConfigSettingRead(void);
+static void ConfigSettingWrite(void);
 static void PauseDispCopyDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void PauseGuideMain(void);
 static void PauseGuideDestroy(void);
 static BOOL GWStorySingleCheck(void);
+
+BOOL mbConfigExec(int playerNo, MBMODELID modelId)
+{
+    pausePlayer = modelId;
+    mbObjPosGet(pausePlayer, &playerPos);
+    configDoneF = FALSE;
+    configResult = FALSE;
+    memset(&pauseWork, 0, sizeof(PAUSE_WORK));
+    pauseWork.padWinNo = pauseWork.helpWinNo = -1;
+    pauseWork.playerNo = playerNo;
+    pauseWork.cursorPos = -1;
+    pauseWork.talkTime = pauseWork.prevTalkTime = 0;
+    ConfigSettingRead();
+    configProc = HuPrcChildCreate(ConfigMain, 0x2012, 0x3800, 0, mbMainProc);
+    HuPrcSetStat(configProc, HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+    HuPrcDestructorSet2(configProc, ConfigKill);
+    while (!configDoneF) {
+        HuPrcVSleep();
+    }
+    ConfigSettingWrite();
+    return configResult;
+}
 
 void mbPauseDispCopyCreate(void)
 {
@@ -157,6 +213,179 @@ void mbPauseGuideCreate(void)
     HuPrcDestructorSet2(pauseGuideProc, PauseGuideDestroy);
     HuPrcSetStat(pauseGuideProc,
         HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+}
+
+static void PauseGuideMain(void)
+{
+    int cameraNo;
+    int i;
+    HU3D_CAMERA *camera;
+    PAUSE_PANEL_WORK *work;
+    BOOL motionDone;
+    BOOL frontF;
+    float weight;
+    float ease;
+    float scale;
+    float sprScale;
+    float flipScale;
+    HuVecF rot;
+    HuVecF pos;
+    Mtx rotMtx;
+    Mtx invRotMtx;
+    Mtx lookAtMtx;
+
+    for (cameraNo = 0; cameraNo < HU3D_CAM_MAX; cameraNo++) {
+        if ((1 << cameraNo) & HU3D_CAM2) {
+            break;
+        }
+    }
+    camera = &Hu3DCamera[cameraNo];
+    while (!pauseGuideKillF) {
+        work = pausePanelWork;
+        for (i = 0; i < 20; i++, work++) {
+            if (work->modelId == 0) {
+                continue;
+            }
+            motionDone = FALSE;
+            work->time++;
+            if (work->delay != 0) {
+                weight = 0.0f;
+                if (work->time >= work->delay) {
+                    work->time = work->delay = 0;
+                    if (work->motion == 4) {
+                        mbAudFXPlay(0x34);
+                    } else if (work->motion == 5) {
+                        mbAudFXPlay(0x35);
+                    }
+                }
+            } else {
+                weight = 1.0f;
+                if (work->time < work->maxTime && work->maxTime > 0) {
+                    weight = work->time / (float)work->maxTime;
+                } else {
+                    work->maxTime = work->time = 0;
+                    motionDone = TRUE;
+                }
+                switch (work->motion) {
+                    case 4:
+                        mbObjRotGet(work->modelId, &pos);
+                        pos.y = -500.0f * (1.0f - weight);
+                        if (motionDone) {
+                            pos.y = 0.0f;
+                            if (work->batsuModelId != 0 && work->batsuF) {
+                                mbObjDispSet(work->batsuModelId, TRUE);
+                            }
+                        }
+                        mbObjRotSetV(work->modelId, &pos);
+                        mbObjDispSet(work->modelId, TRUE);
+                        if (work->sprId >= 0) {
+                            espDispOn(work->sprId);
+                        }
+                        break;
+
+                    case 5:
+                        mbObjRotGet(work->modelId, &pos);
+                        pos.y = 500.0f * weight;
+                        if (work->batsuModelId != 0) {
+                            mbObjDispSet(work->batsuModelId, FALSE);
+                        }
+                        if (motionDone) {
+                            pos.y = 0.0f;
+                            mbObjDispSet(work->modelId, FALSE);
+                            if (work->sprId >= 0) {
+                                espDispOff(work->sprId);
+                            }
+                        }
+                        work->scale = work->scaleStart = work->scaleTarget
+                            = mbCosDeg(90.0f * weight);
+                        mbObjRotSetV(work->modelId, &pos);
+                        break;
+                }
+            }
+            if (work->animMaxTime != 0) {
+                if (work->batsuModelId != 0) {
+                    mbObjDispSet(work->batsuModelId, FALSE);
+                }
+                mbObjRotGet(work->modelId, &pos);
+                work->animTime++;
+                if (work->animTime < work->animMaxTime && work->animMaxTime > 0) {
+                    pos.y = 180.0f * (work->animTime / (float)work->animMaxTime);
+                } else {
+                    work->animMaxTime = 0;
+                    work->animTime = 0;
+                    Hu3DAnmNoSet(work->animId[0], work->bank);
+                    pos.y = 0.0f;
+                    if (work->batsuModelId != 0 && work->batsuF) {
+                        mbObjDispSet(work->batsuModelId, TRUE);
+                    }
+                }
+                mbObjRotSetV(work->modelId, &pos);
+            }
+            if (motionDone) {
+                work->motion = 0;
+                work->pos = work->posTarget;
+                work->posStart = work->posTarget;
+                work->scale = work->scaleStart = work->scaleTarget;
+            } else {
+                ease = mbSinDeg(90.0f * weight);
+                PSVECSubtract(&work->posTarget, &work->posStart, &pos);
+                PSVECScale(&pos, &pos, ease);
+                PSVECAdd(&work->posStart, &pos, &work->pos);
+                work->scale = work->scaleStart
+                    + (ease * (work->scaleTarget - work->scaleStart));
+            }
+            frontF = work->scaleTarget >= 1.2f;
+            mbNormPosto3D(&work->pos, HU3D_CAM2, &pos);
+            mbObjPosSetV(work->modelId, &pos);
+            if (work->batsuModelId != 0) {
+                mbObjPosSetV(work->batsuModelId, &pos);
+            }
+            if (work->sprId >= 0) {
+                pos.y -= 100.0f * 0.3f * work->scale * work->scaleBase;
+                mbPos3DtoNorm(&pos, HU3D_CAM2, &pos);
+                mbNormPosto2D(&pos, &pos);
+                espPosSet(work->sprId, pos.x, pos.y);
+                espPriSet(work->sprId, frontF ? 99 : 100);
+            }
+            scale = work->scale * work->scaleBase;
+            mbObjScaleSet(work->modelId, 0.75f * scale, 0.75f * scale,
+                0.75f * scale);
+            if (work->batsuModelId != 0) {
+                mbObjScaleSet(work->batsuModelId,
+                    0.8f * (0.75f * scale), 0.8f * (0.75f * scale),
+                    0.75f * scale);
+            }
+            if (work->sprId >= 0) {
+                sprScale = 0.85f * scale;
+                if (work->animMaxTime == 0) {
+                    espScaleSet(work->sprId, sprScale, sprScale);
+                    espColorSet(work->sprId, 255, 255, 255);
+                } else {
+                    weight = work->animTime / (float)work->animMaxTime;
+                    flipScale = fabs(mbCosDeg(180.0f * weight));
+                    espScaleSet(work->sprId, sprScale, sprScale * flipScale);
+                    if (weight >= 0.5f) {
+                        espBankSet(work->sprId, work->bank);
+                    }
+                    flipScale = 255.0f * flipScale;
+                    espColorSet(work->sprId, flipScale, flipScale, flipScale);
+                }
+            }
+            mbObjRotGet(work->modelId, &rot);
+            mtxRot(rotMtx, rot.x, rot.y, rot.z);
+            PSMTXInverse(rotMtx, invRotMtx);
+            mbObjPosGet(work->modelId, &pos);
+            C_MTXLookAt(lookAtMtx, &camera->pos, &camera->up, &pos);
+            lookAtMtx[0][3] = lookAtMtx[1][3] = lookAtMtx[2][3] = 0.0f;
+            PSMTXInverse(lookAtMtx, lookAtMtx);
+            mbObjMtxSet(work->batsuModelId, &lookAtMtx);
+            PSMTXConcat(invRotMtx, lookAtMtx, lookAtMtx);
+            PSMTXConcat(lookAtMtx, rotMtx, lookAtMtx);
+            mbObjMtxSet(work->modelId, &lookAtMtx);
+        }
+        HuPrcVSleep();
+    }
+    HuPrcEnd();
 }
 
 static void PauseGuideDestroy(void)
