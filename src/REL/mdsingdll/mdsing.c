@@ -8,6 +8,8 @@
 
 extern const float lbl_1_rodata_5C;
 extern const float lbl_1_rodata_60;
+extern const u32 lbl_1_rodata_54[];
+extern HUPROCESS *lbl_1_bss_0;
 extern s16 lbl_1_bss_34;
 extern s16 lbl_1_bss_1308[][7];
 extern s16 lbl_1_bss_1340[];
@@ -20,6 +22,85 @@ extern char lbl_1_data_99F[];
 extern char lbl_1_data_9A3[];
 extern char lbl_1_data_9D3[];
 extern char lbl_1_data_A02[];
+extern u32 lbl_1_data_918[];
+extern char lbl_1_data_928[];
+
+typedef struct MdsingDirectoryPair {
+    u32 values[2];
+} MdsingDirectoryPair;
+
+void fn_1_3A0(void)
+{
+    MdsingDirectoryPair aramDirectory =
+        *(const MdsingDirectoryPair *)lbl_1_rodata_54;
+    s16 character[5];
+    s16 i;
+    s16 directory;
+    s32 motionStatus;
+    s32 dataStatus;
+
+    character[0] = lbl_1_bss_1308[0][4];
+    character[1] = lbl_1_bss_1308[1][4];
+    character[2] = 11;
+    character[3] = 12;
+    character[4] = 13;
+    for (i = 0; i < 5; i++) {
+        if ((void *)CharMotionAMemPGet(character[i]) == NULL) {
+            break;
+        }
+    }
+    if (i != 5) {
+        CharDataClose(-1);
+        for (i = 0; i < 5; i++) {
+            motionStatus = HuDataDirReadAsync(CharDataDirTbl[character[i]][4]);
+            if (motionStatus != -1) {
+                while (!HuDataGetAsyncStat(motionStatus)) {
+                    HuPrcVSleep();
+                }
+            }
+            CharMotionInit(character[i]);
+            HuDataDirClose(CharDataDirTbl[character[i]][4]);
+        }
+    }
+    for (directory = 0; directory < 2; directory++) {
+        dataStatus = HuDataDirReadAsync(aramDirectory.values[directory]);
+        if (dataStatus != -1) {
+            while (!HuDataGetAsyncStat(dataStatus)) {
+                HuPrcVSleep();
+            }
+        }
+        HuAR_MRAMtoARAM(aramDirectory.values[directory]);
+        while (HuARDMACheck() != 0) {
+            HuPrcVSleep();
+        }
+        HuDataDirClose(aramDirectory.values[directory]);
+    }
+    dataStatus = HuDataDirReadAsync(lbl_1_data_918[lbl_1_bss_1340[1]]);
+    if (dataStatus != -1) {
+        while (!HuDataGetAsyncStat(dataStatus)) {
+            HuPrcVSleep();
+        }
+    }
+    lbl_1_bss_34 = 1;
+    HuPrcEnd();
+    for (;;) {
+        HuPrcVSleep();
+    }
+}
+
+void fn_1_5E8(void)
+{
+    lbl_1_bss_34 = 0;
+    OSReport(lbl_1_data_928);
+    OSReport(lbl_1_data_95A, 0x21);
+    OSReport(lbl_1_data_96B, 0x24);
+    OSReport(lbl_1_data_97D, 0x9B);
+    OSReport(lbl_1_data_98F, 0xF2);
+    HuAMemDump();
+    OSReport(lbl_1_data_99D);
+    HuDataDirClose(0x9A0000);
+    HuPrcChildCreate(fn_1_3A0, 0x100, 0x4000, 0, lbl_1_bss_0);
+}
 
 void fn_1_6B4(void)
 {
