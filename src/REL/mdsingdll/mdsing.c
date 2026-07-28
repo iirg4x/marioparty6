@@ -1,6 +1,7 @@
 #include "dolphin/mtx.h"
 #include "dolphin/os.h"
 #include "game/armem.h"
+#include "game/audio.h"
 #include "game/charman.h"
 #include "game/data.h"
 #include "game/gamework.h"
@@ -10,6 +11,8 @@
 extern const float lbl_1_rodata_5C;
 extern const float lbl_1_rodata_60;
 extern const u32 lbl_1_rodata_54[];
+extern const s32 lbl_1_rodata_10;
+extern const s32 lbl_1_rodata_14[];
 extern HUPROCESS *lbl_1_bss_0;
 extern s16 lbl_1_bss_30;
 extern s16 lbl_1_bss_32;
@@ -20,6 +23,8 @@ extern char lbl_1_data_95A[];
 extern char lbl_1_data_96B[];
 extern char lbl_1_data_97D[];
 extern char lbl_1_data_98F[];
+extern u32 lbl_1_data_8EC;
+extern char lbl_1_data_8F0[];
 extern char lbl_1_data_99D[];
 extern char lbl_1_data_99F[];
 extern char lbl_1_data_9A3[];
@@ -32,6 +37,39 @@ extern char lbl_1_data_928[];
 typedef struct MdsingDirectoryPair {
     u32 values[2];
 } MdsingDirectoryPair;
+
+typedef struct MdsingSoundTable {
+    s32 values[16];
+} MdsingSoundTable;
+
+void fn_1_0(s32 unused, u32 sound, s16 slot)
+{
+    s32 soundMatch[1];
+    MdsingSoundTable soundTable;
+    s16 i;
+
+    soundMatch[0] = lbl_1_rodata_10;
+    soundTable = *(const MdsingSoundTable *)lbl_1_rodata_14;
+    slot--;
+    OSReport(lbl_1_data_8F0, slot);
+    if (lbl_1_data_8EC != sound) {
+        lbl_1_data_8EC = sound;
+        for (i = 0;; i++) {
+            if (soundMatch[i] == -1) {
+                HuAudFXPlay(soundTable.values[slot]);
+                break;
+            }
+            if (sound == (u32)soundMatch[i]) {
+                if (slot >= 8) {
+                    HuAudFXPlayPan(soundTable.values[slot], 0x50);
+                } else {
+                    HuAudFXPlayPan(soundTable.values[slot], 0x30);
+                }
+                break;
+            }
+        }
+    }
+}
 
 void fn_1_1A4(void)
 {
