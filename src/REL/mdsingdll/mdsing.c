@@ -9,7 +9,7 @@
 extern const float lbl_1_rodata_5C;
 extern const float lbl_1_rodata_60;
 extern s16 lbl_1_bss_34;
-extern s16 lbl_1_bss_1308[];
+extern s16 lbl_1_bss_1308[][7];
 extern s16 lbl_1_bss_1340[];
 extern char lbl_1_data_95A[];
 extern char lbl_1_data_96B[];
@@ -20,6 +20,57 @@ extern char lbl_1_data_99F[];
 extern char lbl_1_data_9A3[];
 extern char lbl_1_data_9D3[];
 extern char lbl_1_data_A02[];
+
+void fn_1_6B4(void)
+{
+    s16 character = 0;
+    s16 i;
+
+    character = lbl_1_bss_1308[0][4];
+    GwCommon.storyMgPack = lbl_1_bss_1340[3];
+    for (i = 0; i < 1; i++) {
+        GwPlayer[i].comF = 0;
+        GwPlayer[i].comDif = 0;
+        GwPlayer[i].charNo = lbl_1_bss_1308[i][4];
+        GwPlayer[i].padNo = 0;
+        GwPlayer[i].team = 0;
+    }
+    for (i = 1; i < 4; i++) {
+        GwPlayer[i].comF = 1;
+        GwPlayer[i].comDif = 0;
+        character++;
+        if (character >= 14) {
+            character -= 14;
+        }
+        GwPlayer[i].charNo = character;
+        GwPlayer[i].padNo = i;
+        GwPlayer[i].team = 0;
+    }
+    for (i = 0; i < 4; i++) {
+        GwPlayerConf[i].grpNo = 0;
+        GwPlayerConf[i].type = GwPlayer[i].comF;
+        GwPlayerConf[i].comDif = GwPlayer[i].comDif;
+        GwPlayerConf[i].charNo = GwPlayer[i].charNo;
+        GwPlayerConf[i].padNo = GwPlayer[i].padNo;
+        GwPlayerConf[i].grpNo = GwPlayer[i].team;
+    }
+    for (i = 0; i < 4; i++) {
+        OSReport(lbl_1_data_99F, GwPlayerConf[i].charNo);
+    }
+    GwCommon.confSingleDiff = lbl_1_bss_1340[2];
+    GwCommon.storyMgPack = lbl_1_bss_1340[3];
+    _ClearFlag(0x1000E);
+    GWSingleDataInit();
+    GWSingleMgRecordNumSet(0);
+    GWSingleMgWinNumSet(0);
+    GwSystem.turnPlayerNo = 0;
+    for (i = 0; i < 4; i++) {
+        GwCommon.singleMgWinNum[i] = 0;
+    }
+    mbSaveInit(lbl_1_bss_1340[1] + 6);
+    mbSaveStoryInit(lbl_1_bss_1308[1][4], lbl_1_bss_1340[3],
+        lbl_1_bss_1340[2]);
+}
 
 void fn_1_B34(void)
 {
@@ -47,7 +98,7 @@ void fn_1_B34(void)
         GwPlayerConf[i].padNo = GwPlayer[i].padNo;
         GwPlayerConf[i].grpNo = GwPlayer[i].team;
     }
-    lbl_1_bss_1308[11] = GwPlayer[1].charNo;
+    lbl_1_bss_1308[1][4] = GwPlayer[1].charNo;
     for (i = 0; i < 4; i++) {
         OSReport(lbl_1_data_99F, GwPlayerConf[i].charNo);
     }
@@ -64,7 +115,7 @@ void fn_1_EA0(void)
     } while (lbl_1_bss_34 == 0);
 
     history = omOvlHisGet(0);
-    omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[11]);
+    omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[1][4]);
     OSReport(lbl_1_data_9A3);
     OSReport(lbl_1_data_95A, 0x21);
     OSReport(lbl_1_data_96B, 0x24);
