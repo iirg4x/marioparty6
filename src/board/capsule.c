@@ -1,5 +1,6 @@
 #include "game/board/masu.h"
 #include "game/board/audio.h"
+#include "game/board/branch.h"
 #include "game/board/main.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
@@ -253,6 +254,28 @@ typedef struct CapUseWork_s {
     int capsuleNo;
 } CAP_USE_WORK;
 
+typedef struct CapsuleList_s {
+    s8 id;
+    s8 cost[3];
+    u8 unk04;
+    u8 unk05;
+    u8 unk06;
+    u8 unk07;
+    u8 unk08;
+    u8 unk09;
+    u8 unk0A;
+    u8 unk0B;
+    u8 unk0C;
+    u8 unk0D;
+    u8 unk0E;
+    u8 unk0F;
+} CAPSULE_LIST;
+
+typedef struct CapsuleListFile_s {
+    s32 boardNo;
+    s32 dataNo;
+} CAPSULE_LIST_FILE;
+
 typedef struct CapsuleData_s {
     u32 file;
     u32 objFile;
@@ -277,6 +300,17 @@ typedef struct CapsuleComChoice_s {
     int capsuleNo;
     int chance;
 } CAPSULE_COM_CHOICE;
+
+typedef struct CapsuleComChanceRank_s {
+    s16 chance;
+    s8 code;
+    s8 unk03;
+} CAPSULE_COM_CHANCE_RANK;
+
+typedef struct CapsuleComChance_s {
+    s16 capsuleNo;
+    CAPSULE_COM_CHANCE_RANK rank[11];
+} CAPSULE_COM_CHANCE;
 
 static HUPROCESS *capsulePlayerThrowProc;
 static CAPSULE_THROW_HOOK capsuleThrowHook;
@@ -359,6 +393,45 @@ static int capsuleBorderFileTbl[6] = {
 };
 static int capsuleThrowTbl[8] = { 10, 11, 12, 13, 25, 15, 16, 17 };
 static int capsuleTrapTbl[5] = { 20, 21, 22, 23, 24 };
+static CAPSULE_LIST_FILE capsuleListFileTbl[] = {
+    { 0, 0x000C004A },
+    { 1, 0x000C004B },
+    { 2, 0x000C004C },
+    { 3, 0x000C004D },
+    { 4, 0x000C004E },
+    { 5, 0x000C004F },
+    { 6, 0x000C0050 },
+    { 7, 0x000C0051 },
+    { 8, 0x000C0052 },
+    { 9, 0x000C0053 },
+    { 10, 0x000C0054 },
+    { -1, -1 },
+};
+static CAPSULE_COM_CHANCE capsuleComChanceTbl[] = {
+    { 0, { { 50, ' ' }, { 50, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 30, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' }, { 50, ' ' } } },
+    { 1, { { 50, '*' }, { 50, '*' }, { 10, '*' }, { 30, '*' }, { 30, ' ' }, { 30, '*' }, { 10, ' ' }, { 30, '*' }, { 30, ' ' }, { 30, ' ' }, { 30, '*' } } },
+    { 2, { { 5, 'b' }, { 5, 'b' }, { 10, 'b' }, { 10, 'b' }, { 10, ' ' }, { 5, 'a' }, { 10, ' ' }, { 5, 'a' }, { 30, ' ' }, { 10, ' ' }, { 5, 'a' } } },
+    { 3, { { 0, '*' }, { 0, '*' }, { 0, '*' }, { 0, '*' }, { 0, '*' }, { 0, '*' }, { 30, ' ' }, { 0, '*' }, { 0, '*' }, { 30, ' ' }, { 0, '*' } } },
+    { 4, { { 10, ' ' }, { 30, '*' }, { 30, '*' }, { 10, ' ' }, { 50, ' ' }, { 10, '*' }, { 50, ' ' }, { 50, '*' }, { 30, '*' }, { 50, ' ' }, { 30, '*' } } },
+    { 5, { { 30, ' ' }, { 30, '*' }, { 10, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, '*' }, { 50, ' ' }, { 10, ' ' }, { 10, '*' } } },
+    { 6, { { 30, '*' }, { 50, '*' }, { 30, '*' }, { 50, '*' }, { 30, '*' }, { 30, '*' }, { 10, ' ' }, { 50, '*' }, { 10, '*' }, { 10, '*' }, { 30, '*' } } },
+    { 10, { { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 30, ' ' } } },
+    { 11, { { 10, ' ' }, { 30, '*' }, { 30, '*' }, { 30, '*' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 30, '*' }, { 50, ' ' }, { 50, ' ' }, { 50, '*' } } },
+    { 12, { { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 30, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' }, { 30, ' ' } } },
+    { 13, { { 30, ' ' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, ' ' } } },
+    { 15, { { 10, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 50, ' ' }, { 10, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' } } },
+    { 16, { { 10, ' ' }, { 10, ' ' }, { 10, ' ' }, { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' }, { 10, ' ' }, { 10, ' ' } } },
+    { 17, { { 30, ' ' }, { 10, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' }, { 30, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, ' ' }, { 30, ' ' } } },
+    { 20, { { 50, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 50, ' ' }, { 10, ' ' }, { 10, ' ' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 50, ' ' } } },
+    { 21, { { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 50, ' ' } } },
+    { 22, { { 50, ' ' }, { 10, '*' }, { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 30, '*' }, { 10, ' ' }, { 10, '*' }, { 50, ' ' }, { 30, ' ' }, { 10, '*' } } },
+    { 23, { { 30, ' ' }, { 50, '*' }, { 10, '*' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 10, ' ' }, { 10, '*' }, { 30, ' ' }, { 30, ' ' }, { 10, '*' } } },
+    { 24, { { 30, ' ' }, { 30, ' ' }, { 10, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 10, ' ' }, { 30, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, ' ' } } },
+    { 25, { { 30, ' ' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 10, ' ' }, { 10, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 10, ' ' }, { 10, ' ' } } },
+    { 30, { { 30, '*' }, { 50, ' ' }, { 30, '*' }, { 30, ' ' }, { 30, '*' }, { 50, '*' }, { 10, ' ' }, { 50, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' } } },
+    { 31, { { 10, '*' }, { 50, ' ' }, { 30, '*' }, { 30, ' ' }, { 10, '*' }, { 30, '*' }, { 10, ' ' }, { 50, ' ' }, { 0, ' ' }, { 10, ' ' }, { 50, ' ' } } },
+    { -1, { { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' } } },
+};
 static int capsuleChanceTbl[3][4][5] = {
     {
         { 70, 15, 15 },
@@ -504,6 +577,7 @@ extern void mbev_CapEffColorSet(GXColor *color, int colorNo);
 extern void mbWipeDissolveFadeInTime(int time);
 extern void mbev_CapPlayerMotShiftWait(int playerNo, int motNo, u32 attr, BOOL waitF);
 extern void mbev_CapBonusCoinCall(int playerNo, int capsuleNo, int coinNum, BOOL waitF);
+extern BOOL mbev_CapMasuMoveCheck(int masuId);
 extern void mbWipeSpecialFadeOutCreate(int type, int time);
 extern void mbWipeSpecialFadeInCreate(int type, int time);
 
@@ -582,6 +656,7 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static int CapUseSelect(CAP_USE_WORK *work);
 static int CapUse(int playerNo, int capsuleNo);
 static BOOL CapSelectMasuCheck(int masuId);
+static BOOL CapCheckComPath(int playerNo, int max, int mode);
 static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId);
 static void CapSelectMasuListGet(
     s16 *masuFlag, s16 masuId, s16 frontMax, s16 backMax);
@@ -592,6 +667,8 @@ static HUPROCESS *capsuleUseEffProc[4];
 static int capsuleUseEffMode[4];
 static HuVecF capsuleUseEffPos[4];
 static s16 capsuleNum[33][2];
+static CAPSULE_LIST capsuleList[33];
+static BOOL capsuleSelectComBack;
 static CAPSULE_OBJ_COLOR capsuleObjColorData[CAPSULE_OBJ_COLOR_MAX];
 static s16 capsuleObjBorderId[6];
 static CAPSULE_OBJ_DATA capsuleObjData[8];
@@ -821,6 +898,15 @@ BOOL mbCapThrowColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
     return result;
 }
 
+static void CapColMdlIdGet(void)
+{
+    int boardNo = MBBoardNoGet();
+
+    if (capsuleColObjId != MB_MODEL_NONE) {
+        capsuleColMdlId = mbObjModelIDGet(capsuleColObjId);
+    }
+}
+
 static void CapColKill(void)
 {
     capsuleColMdlId = MB_MODEL_NONE;
@@ -1033,6 +1119,74 @@ void mbCapAutoThrowEnd(CAP_AUTO_THROW_WORK *work)
 {
 }
 
+void mbCapListInit(CAPSULE_LIST *list)
+{
+    int i;
+    int num;
+
+    for (i = 0, num = 0; i < 33; i++) {
+        if (list[i].id == -1) {
+            break;
+        }
+        if (mbCapListExcludeCheck(list[i].id)) {
+            capsuleList[num] = list[i];
+            num++;
+        }
+    }
+    capsuleList[num].id = -1;
+    if (!mbSaveNewF) {
+        memset(capsuleNum, 0, sizeof(capsuleNum));
+    }
+}
+
+void mbCapListRead(void)
+{
+    CAPSULE_LIST_FILE *file;
+    CAPSULE_LIST *listBase;
+    CAPSULE_LIST *list;
+    int i;
+    int num;
+    int boardNo;
+
+    file = capsuleListFileTbl;
+    i = 0;
+    for (; file->boardNo >= 0; i++, file++) {
+        boardNo = GwSystem.boardNo;
+        if (file->boardNo == boardNo) {
+            break;
+        }
+    }
+    listBase = HuDataSelHeapReadNum(file->dataNo, HU_MEMNUM_OVL, HEAP_MODEL);
+    list = listBase;
+    i = 0;
+    num = 0;
+    for (; i < 33; i++, list++) {
+        if (list->id == -1) {
+            break;
+        }
+        if (mbCapListExcludeCheck(list->id)) {
+            capsuleList[num] = *list;
+            num++;
+        }
+    }
+    capsuleList[num].id = -1;
+    HuMemDirectFree(listBase);
+    if (!mbSaveNewF) {
+        memset(capsuleNum, 0, sizeof(capsuleNum));
+    }
+}
+
+int mbCapListCopy(CAPSULE_LIST *list)
+{
+    int i;
+
+    for (i = 0; i < 32 && capsuleList[i].id != -1; i++) {
+        list[i] = capsuleList[i];
+    }
+    capsuleList[i].id = -1;
+    return i;
+}
+
 void mbCapNumInc(int capsuleNo, int mode)
 {
     capsuleNum[capsuleNo][mode]++;
@@ -1113,6 +1267,207 @@ void mbCapMasuPlayerTypeSet(s16 masuId, s16 capsuleNo, s16 playerNo)
 s16 mbCapMasuPlayerGet(s16 masuId)
 {
     return mbMasuCapsuleGet(masuId) >> 8;
+}
+
+int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
+{
+    CAPSULE_COM_CHANCE *data;
+    int chance;
+    int rank;
+    int step;
+    int step2;
+    int step3;
+    int i;
+    s8 code;
+
+    capsuleSelectComBack = FALSE;
+    for (data = capsuleComChanceTbl;
+         data->capsuleNo != -1 && data->capsuleNo != capsuleNo; data++) {
+    }
+    if (data->capsuleNo < 0) {
+        return -1;
+    }
+    rank = GwPlayer[playerNo].rank;
+    if (rank > 10) {
+        rank = 10;
+    }
+    chance = data->rank[rank].chance;
+    code = data->rank[rank].code;
+    step = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 7);
+    switch (capsuleNo) {
+        case 1:
+            if (code == '*' && CapCheckComPath(playerNo, 15, 0)) {
+                chance = 0;
+            }
+            break;
+        case 2:
+            step = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 3);
+            step2 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 5);
+            step3 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 4);
+            if ((step > 0 && step < 11) || (step2 > 0 && step2 < 11) ||
+                (step3 > 0 && step3 < 11)) {
+                if (code == 'a') {
+                    chance = 80;
+                } else if (code == 'b') {
+                    chance = 50;
+                }
+            }
+            break;
+        case 3:
+            if (code == '*' && CapCheckComPath(playerNo, 10, 1)) {
+                chance = 80;
+            }
+            break;
+        case 4:
+            if (code == '*') {
+                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                    if (i != playerNo &&
+                        GwPlayer[i].masuId == GwPlayer[playerNo].masuId) {
+                        break;
+                    }
+                }
+                if (i >= GW_PLAYER_MAX && !CapCheckComPath(playerNo, 10, 2)) {
+                    chance = 0;
+                }
+            }
+            if (step > 0 && step < 11) {
+                chance = 0;
+            }
+            break;
+        case 5:
+            if (code == '*') {
+                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                    if (i != playerNo) {
+                        step2 = mbMasuFind_TypeStepGet(GwPlayer[i].masuId, 7);
+                        if (step2 > 0 && step2 < 11) {
+                            break;
+                        }
+                    }
+                }
+                if (i < GW_PLAYER_MAX) {
+                    chance = 80;
+                }
+            }
+            break;
+        case 6:
+            if (code == '*' && mbPlayerCoinGet(playerNo) < 21) {
+                chance = 0;
+            }
+            break;
+        case 11:
+            if (code == '*' && mbPlayerCoinGet(playerNo) < 10) {
+                chance = 0;
+            }
+            break;
+        case 22:
+        case 23:
+            if (code == '*' && step >= 0 && step < 6 &&
+                mbCapSelectMasuBackNum(GwPlayer[playerNo].masuId) > 0) {
+                chance = 80;
+                capsuleSelectComBack = TRUE;
+            }
+            break;
+        case 30:
+        case 31:
+            if (code == '*' &&
+                mbPlayerCapsuleNumGet(playerNo) >= mbPlayerCapsuleMaxGet()) {
+                chance = 30;
+            }
+            if (mode == 0 &&
+                mbPlayerCapsuleNumGet(playerNo) < mbPlayerCapsuleMaxGet()) {
+                chance = 0;
+            }
+            if (mode == 2 &&
+                mbPlayerCapsuleNumGet(playerNo) < mbPlayerCapsuleMaxGet()) {
+                chance = 100;
+            }
+            break;
+    }
+    if (mode == 1) {
+        chance = data->rank[rank].chance;
+    } else if (mode == 2) {
+        chance = 100 - chance;
+    } else if (mode != 0) {
+        chance = 0;
+    }
+    return chance;
+}
+
+static BOOL CapCheckComPath(int playerNo, int max, int mode)
+{
+    s16 masuStack[32];
+    s16 maxStack[32];
+    u8 visited[256];
+    s16 startMasu;
+    s16 masuId;
+    s16 nextMasu;
+    int stackNum;
+    int linkNum;
+    int i;
+
+    startMasu = GwPlayer[playerNo].masuId;
+    masuId = startMasu;
+    stackNum = 0;
+    memset(visited, 0, sizeof(visited));
+    for (;;) {
+        visited[masuId] = TRUE;
+        if (masuId != startMasu &&
+            ((mbBranchAttrGet() & mbMasuAttrGet(masuId)) ||
+             (mbBranchMAttrGet() & mbMasuMAttrGet(masuId)))) {
+            max = 0;
+        } else {
+            if (mbMasuDispCheck(masuId)) {
+                max--;
+            }
+            if (masuId != startMasu) {
+                if (mode == 0) {
+                    if (mbCapMasuDispTypeGet(masuId) == 2 &&
+                        mbCapMasuTypeGet(masuId) == 23 &&
+                        mbCapMasuPlayerGet2(masuId) != playerNo) {
+                        return TRUE;
+                    }
+                } else if (mode == 1) {
+                    if (mbCapMasuDispTypeGet(masuId) == 2 &&
+                        mbCapMasuPlayerGet2(masuId) != playerNo) {
+                        return TRUE;
+                    }
+                } else if (mode == 2) {
+                    for (i = 0; i < GW_PLAYER_MAX; i++) {
+                        if (i != playerNo && GwPlayer[i].masuId == masuId) {
+                            return TRUE;
+                        }
+                    }
+                }
+            }
+            linkNum = mbMasuLinkNumGet(masuId);
+            if (linkNum > 0 && max > 0) {
+                for (i = 0; i < linkNum; i++) {
+                    nextMasu = mbMasuLinkGet(masuId, i);
+                    if (!visited[nextMasu]) {
+                        if (i < linkNum - 1) {
+                            masuStack[stackNum] = masuId;
+                            maxStack[stackNum] = max;
+                            stackNum++;
+                        }
+                        break;
+                    }
+                }
+                if (i < linkNum) {
+                    masuId = nextMasu;
+                    if (mbMasuLinkNumGet(masuId) < 1) {
+                        visited[masuId] = TRUE;
+                    }
+                    continue;
+                }
+            }
+        }
+        if (stackNum < 1) {
+            return FALSE;
+        }
+        stackNum--;
+        masuId = masuStack[stackNum];
+        max = maxStack[stackNum];
+    }
 }
 
 int mbCapSelectDeleteComGet(int playerNo, int *capsuleTbl, int capsuleNum)
@@ -1349,6 +1704,60 @@ static void CapSelectMasuListGet(
     }
 }
 
+static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max)
+{
+    s16 parent[10];
+    s16 parentNum;
+    s16 endF;
+    int i;
+    int num;
+
+    if (CapSelectMasuCheck(masuId)) {
+        masuFlag[masuId] = 1;
+    } else {
+        masuFlag[masuId] = 0x8000;
+    }
+    if (CapSelectMasuDispCheck(masuId) && mbev_CapMasuMoveCheck(masuId)) {
+        max = 0;
+    }
+    if (CapSelectMasuDispCheck(masuId) && !capsuleMasuSelectEndF) {
+        max--;
+    }
+    endF = capsuleMasuSelectEndF;
+    capsuleMasuSelectEndF = FALSE;
+    num = 0;
+    if (max > 0) {
+        parentNum = mbMasuLinkParentGet(masuId, parent);
+        for (i = 0; i < parentNum; i++) {
+            if (!mbev_CapMasuMoveCheck(parent[i]) || mbMasuDispCheck(parent[i])) {
+                CapSelectMasuAddBack(masuFlag, parent[i], max);
+                num++;
+            }
+        }
+    }
+    if (!endF && num < 1 && mbMasuTypeGet(masuId) == 0) {
+        CapSelectMasuLinkCheck(masuFlag, masuId);
+    }
+}
+
+static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId)
+{
+    s16 link[10];
+    s16 linkNum;
+    int i;
+
+    if (masuId > 0 &&
+        (linkNum = mbMasuLinkTblGet(masuId, link), masuFlag[masuId] != 0) &&
+        mbMasuTypeGet(masuId) == 0) {
+        masuFlag[masuId] = 0;
+        for (i = 0; i < linkNum; i++) {
+            if (!mbev_CapMasuMoveCheck(link[i])) {
+                CapSelectMasuLinkCheck(masuFlag, link[i]);
+            }
+        }
+    }
+}
+
 int mbCapFileGet(int capsuleNo)
 {
     capsuleNo = mbCapValueTypeGet(capsuleNo);
@@ -1403,6 +1812,28 @@ BOOL mbCapValidCheck(int capsuleNo)
         return FALSE;
     }
     return TRUE;
+}
+
+s16 mbCapMasuDispTypeGet(s16 masuId)
+{
+    s16 capsuleNo;
+    s16 value;
+
+    capsuleNo = mbMasuCapsuleGet(masuId);
+    capsuleNo = mbCapValueTypeGet(capsuleNo);
+    if (capsuleNo == 0xFF) {
+        return 0;
+    }
+    if (mbMasuTypeGet(masuId) != 1 && mbMasuTypeGet(masuId) != 2) {
+        return 0;
+    }
+    value = capsuleNo;
+    value = mbCapValueTypeGet(value);
+    value = capsuleData[value].useMode;
+    if (value == 1) {
+        return 1;
+    }
+    return 2;
 }
 
 int mbCapValidListGet(int *list)
@@ -1469,6 +1900,38 @@ int mbCapSelectMasuBackNum(int masuId)
     }
     HuMemDirectFree(masuFlag);
     return num;
+}
+
+void mbCapInit(void)
+{
+    int i;
+    int j;
+    int objId;
+    s16 *borderObjData;
+    CAPSULE_OBJ_COLOR *objColorData;
+    s16 *borderId;
+
+    objColorData = capsuleObjColorData;
+    memset(objColorData, 0, sizeof(capsuleObjColorData));
+    for (i = 0; i < 6; i++) {
+        capsuleObjBorderId[i] = MB_MODEL_NONE;
+    }
+    borderObjData = HuMemDirectMallocNum(HEAP_HEAP, 0x300, HU_MEMNUM_OVL);
+    capsuleBorderObjId = borderObjData;
+    borderId = borderObjData;
+    memset(capsuleBorderObjId, 0, 0x300);
+    for (i = 0; i < 6; i++) {
+        for (j = 0; j < 64; j++, borderId++) {
+            *borderId = MB_MODEL_NONE;
+        }
+    }
+    for (i = 0; i < 8; i++) {
+        capsuleObjData[i].objId = MB_MODEL_NONE;
+    }
+    objId = mbObjCreate(0x000C003D, NULL, TRUE);
+    mbObjDispSet(objId, FALSE);
+    objId = mbObjCreate(0x000C0043, NULL, TRUE);
+    mbObjDispSet(objId, FALSE);
 }
 
 
