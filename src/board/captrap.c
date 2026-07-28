@@ -1,6 +1,7 @@
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/flag.h"
+#include "game/charman.h"
 #include "game/object.h"
 #include "game/process.h"
 #include "game/board/audio.h"
@@ -14,6 +15,13 @@
 #include "math.h"
 
 #define CAP_WORK_MAX 64
+
+#define CAPTRAP_EFF_RAND_NEXT() \
+    do { \
+        if (++mbCapEffNum >= 1024) { \
+            mbCapEffNum = 0; \
+        } \
+    } while (0)
 
 typedef struct EvCapWork {
     int motId[CAP_WORK_MAX][GW_PLAYER_MAX];
@@ -100,6 +108,29 @@ extern void mbev_CapPlayerIdleWait(void);
 extern OMOBJ *mbev_CapEffExplodeCreate(void);
 extern void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *pos);
 extern int mbev_CapEffExplodeAnimGet(OMOBJ *obj);
+extern OMOBJ *mbev_CapEffRingHitCreate(void);
+extern OMOBJ *mbev_CapEffGlowFireCreate(void);
+extern OMOBJ *mbev_CapEffElectricCreate(void);
+extern int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
+    HuVecF *scale, int kind, int time, int bank, GXColor *color);
+extern int mbev_CapEffElectricAdd(OMOBJ *obj, HuVecF *pos, int time,
+    int bank);
+extern void mbev_CapEffElectricModelSet(OMOBJ *obj, MBMODELID modelId,
+    int effectId, HuVecF *offset);
+extern int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
+    int time, float scale, float gravity, float rotStep, GXColor *color);
+extern void mbev_CapEffColorSet(GXColor *color, int colorNo);
+extern int mbev_CapEffRingDispGet(OMOBJ *obj);
+extern int mbev_CapEffGlowDispGet(OMOBJ *obj);
+extern void mbev_CapEffRingKill(OMOBJ *obj);
+extern void mbev_CapEffGlowKill(OMOBJ *obj);
+extern void mbev_CapEffElectricKill(OMOBJ *obj);
+extern void mbev_CapPlayerMotShiftWait(int playerNo, int motionNo, int attr,
+    BOOL waitF);
+extern u32 mbCapEffNum;
+extern s16 *mbCapEffData;
+
+static HuVecF biriQEffectOfs = { 0.0f, 100.0f, 0.0f };
 
 void mbev_CapBobleMove(int playerNo);
 
@@ -222,6 +253,195 @@ void mbev_CapBiriQTrap(void *workP)
     } else {
         mbev_CapBiriQShockCreate(work->playerNo);
     }
+}
+
+void mbev_CapBiriQMetalShock(CAPWORK *work)
+{
+    OMOBJ *ringObj;
+    OMOBJ *glowObj;
+    OMOBJ *electricObj;
+    HuVecF playerPos;
+    HuVecF ringPos;
+    HuVecF ringRot;
+    HuVecF ringScale;
+    HuVecF electricPos;
+    HuVecF electricPos0;
+    HuVecF electricPos1;
+    HuVecF electricPos2;
+    HuVecF glowPos;
+    HuVecF glowVel;
+    GXColor color;
+    int motionId;
+    int effectId;
+    int coinNum;
+    int frame;
+    int i;
+    int time;
+    float randF;
+    float angleX;
+    float angleY;
+    float speed;
+    float glowRand;
+    float glowScaleRand;
+
+    motionId = -1;
+    ringObj = mbev_CapEffRingHitCreate();
+    HuPrcVSleep();
+    glowObj = mbev_CapEffGlowFireCreate();
+    HuPrcVSleep();
+    electricObj = mbev_CapEffElectricCreate();
+    HuPrcVSleep();
+    mbPlayerPosGet(work->playerNo, &playerPos);
+    HuPrcVSleep();
+
+    CAPTRAP_EFF_RAND_NEXT();
+    ringRot.x = 360.0f * ((float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f));
+    CAPTRAP_EFF_RAND_NEXT();
+    ringRot.y = 360.0f * ((float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f));
+    CAPTRAP_EFF_RAND_NEXT();
+    ringRot.z = 360.0f * ((float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f));
+    for (i = 0; i < 3; i++) {
+        ringPos = playerPos;
+        ringPos.y += 100.0f;
+        ringScale.x = 0.5f;
+        ringScale.y = 2.5f;
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        ringScale.z = 100.0f * (2.0f + (1.5f * randF));
+        CAPTRAP_EFF_RAND_NEXT();
+        mbev_CapEffColorSet(&color, mbCapEffData[mbCapEffNum]);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        time = 60.0f * (0.3f + (0.15f * randF));
+        mbev_CapEffRingAdd(ringObj, &ringPos, &ringRot, &ringScale,
+            1, time, i, &color);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        ringRot.x += 45.0f + (45.0f * randF);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        ringRot.y += 45.0f + (45.0f * randF);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        ringRot.z += 45.0f + (45.0f * randF);
+    }
+
+    PSVECAdd(&playerPos, &biriQEffectOfs, &electricPos);
+    electricPos0 = electricPos;
+    effectId = mbev_CapEffElectricAdd(electricObj, &electricPos0, 12, 1);
+    mbev_CapEffElectricModelSet(electricObj,
+        mbPlayerObjIDGet(work->playerNo), effectId, &biriQEffectOfs);
+    electricPos1 = electricPos;
+    effectId = mbev_CapEffElectricAdd(electricObj, &electricPos1, 15, 1);
+    mbev_CapEffElectricModelSet(electricObj,
+        mbPlayerObjIDGet(work->playerNo), effectId, &biriQEffectOfs);
+    electricPos2 = electricPos;
+    effectId = mbev_CapEffElectricAdd(electricObj, &electricPos2, 18, 1);
+    mbev_CapEffElectricModelSet(electricObj,
+        mbPlayerObjIDGet(work->playerNo), effectId, &biriQEffectOfs);
+    HuPrcVSleep();
+
+    for (frame = 0; frame < 128; frame++) {
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        angleX = (180.0f * randF) - 90.0f;
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        angleY = 360.0f * randF;
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        speed = 100.0f * 0.21f * randF;
+
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        glowPos.x = playerPos.x + (0.5f * 100.0f * (randF - 0.5f));
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        glowPos.y = playerPos.y + 100.0f
+            + (0.5f * 100.0f * (randF - 0.5f));
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        glowPos.z = playerPos.z + (0.5f * 100.0f * (randF - 0.5f));
+
+        glowVel.x = speed * mbSinDeg(angleY) * mbSinDeg(angleX);
+        glowVel.y = speed * mbCosDeg(angleX);
+        glowVel.z = speed * mbSinDeg(angleY) * mbCosDeg(angleX);
+
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        color.r = 64.0f + (63.0f * randF);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        color.g = 127.0f + (63.0f * randF);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        color.b = 192.0f + (63.0f * randF);
+        CAPTRAP_EFF_RAND_NEXT();
+        randF = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        color.a = 192.0f + (63.0f * randF);
+
+        CAPTRAP_EFF_RAND_NEXT();
+        glowRand = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        CAPTRAP_EFF_RAND_NEXT();
+        glowScaleRand = (float)mbCapEffData[mbCapEffNum] * (1.0f / 32767.0f);
+        time = 60.0f * (0.4f + (0.2f * glowRand));
+        mbev_CapEffGlowAdd(glowObj, &glowPos, &glowVel, time,
+            100.0f * (0.2f + (0.1f * glowScaleRand)),
+            3.0f * (-0.5f
+                + (3.725290298461914e-09f * mbRandMod(0x10000000))),
+            0.0f, &color);
+        if (frame == 64) {
+            HuPrcVSleep();
+        }
+    }
+
+    mbAudFXPlay(0x41D);
+    if (!GwPlayer[work->playerNo].metalF) {
+        mbCameraShakeSet(50.0f, 18);
+        HuPrcVSleep();
+        omVibrate((s16)work->playerNo, 20, 7, 3);
+        coinNum = mbPlayerCoinGet(work->playerNo);
+        if (coinNum > 5) {
+            coinNum = 5;
+        }
+        mbPlayerPosGet(work->playerNo, &glowPos);
+        glowPos.y += 250.0f;
+        mbCoinAddDispExec(work->playerNo, -coinNum, FALSE, TRUE);
+        mbCoinDispCreate(&glowPos, -coinNum, -1, TRUE);
+        HuPrcVSleep();
+        motionId = mbPlayerMotionCreate(work->playerNo, 0x93001E);
+        mbPlayerMotionShiftSet(work->playerNo, motionId, 50.0f, 8.0f, 0);
+        while (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->playerNo)) != -1) {
+            HuPrcVSleep();
+        }
+        while (!mbObjMotionEndCheck(mbPlayerObjIDGet(work->playerNo))) {
+            HuPrcVSleep();
+        }
+        mbev_CapPlayerMotShiftWait(work->playerNo, 1,
+            HU3D_MOTATTR_LOOP, TRUE);
+        CharMotionUpdateSet(GwPlayer[work->playerNo].charNo, 0x930018, TRUE);
+    }
+    while (mbev_CapEffRingDispGet(ringObj) != 0) {
+        HuPrcVSleep();
+    }
+    while (mbev_CapEffGlowDispGet(glowObj) != 0) {
+        HuPrcVSleep();
+    }
+    if (!work->flags._flag00) {
+        while (mbev_CapBiriQShockDelayGet(work->playerNo) > 0) {
+            HuPrcVSleep();
+        }
+    }
+    if (mbPlayerCoinGet(work->playerNo) <= 0
+        && GwPlayer[work->playerNo].biriQF) {
+        mbPlayerBiriQSet(work->playerNo, FALSE);
+    }
+    if (motionId != -1) {
+        mbPlayerMotionKill(work->playerNo, motionId);
+    }
+    mbev_CapEffRingKill(ringObj);
+    mbev_CapEffGlowKill(glowObj);
+    mbev_CapEffElectricKill(electricObj);
 }
 
 static int ev_CapMasuNumGet(int playerNo)
