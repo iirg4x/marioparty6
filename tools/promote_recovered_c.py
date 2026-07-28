@@ -274,9 +274,24 @@ def _queue_verification(
         and task.get("owner") == owner
         and task.get("status") in {"ready", "done"}
     ]
+    if len(candidates) > 1:
+        candidates = [
+            task
+            for task in candidates
+            if (
+                (
+                    task.get("verification")
+                    if isinstance(task.get("verification"), dict)
+                    else {}
+                ).get("verified_commit")
+                or task.get("last_verified_commit")
+            )
+            == source_commit
+        ]
     if len(candidates) != 1:
         raise PromotionError(
-            f"expected one ready/done queue task for {owner}; found {len(candidates)}"
+            f"expected one ready/done queue task for {owner} verified at "
+            f"{source_commit}; found {len(candidates)}"
         )
     task = candidates[0]
     verification = task.get("verification")

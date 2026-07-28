@@ -175,6 +175,32 @@ class SupportingPromotionTests(unittest.TestCase):
         finally:
             temporary.cleanup()
 
+    def test_plan_selects_requested_commit_for_repeated_owner(self):
+        temporary, root, base = self.fixture()
+        try:
+            source_commit = run(root, "git", "rev-parse", "HEAD")
+            self.queue(root, source_commit)
+            queue_path = root / ".git/agent-coordination/queue.json"
+            queue = json.loads(queue_path.read_text(encoding="utf-8"))
+            older = json.loads(json.dumps(queue["tasks"][0]))
+            older["id"] = "older-pass"
+            older["status"] = "done"
+            older["verification"]["verified_commit"] = base
+            queue["tasks"].insert(0, older)
+            queue_path.write_text(json.dumps(queue), encoding="utf-8")
+            value = plan_promotion(
+                root,
+                base_ref=base,
+                source_ref=source_commit,
+                paths=["include/game/example.h"],
+                owner="main:game/example-interface",
+            )
+            self.assertEqual(
+                value["queue_proof"]["verified_commit"], source_commit
+            )
+        finally:
+            temporary.cleanup()
+
     def test_recovered_c_is_refused_with_pointer(self):
         temporary, root, base = self.fixture()
         try:
