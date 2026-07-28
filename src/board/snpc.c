@@ -475,10 +475,11 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
     model = &Hu3DData[hu3DModelId];
     if (model->attr & HU3D_ATTR_LINK) {
         work = mbMallocNum(sizeof(*work), model->mallocNoLink);
+        model->hookData = work;
     } else {
         work = mbMallocNum(sizeof(*work), model->mallocNo);
+        model->hookData = work;
     }
-    model->hookData = work;
     work->magic = 0x4D425456;
     work->pos = *pos;
     work->alpha = 1.0f;
@@ -591,9 +592,9 @@ void mbObjFadeTexColorSet(MBMODELID modelId, u8 r, u8 g, u8 b, float alpha)
     hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     work = model->hookData;
-    work->color.r = r;
-    work->color.g = g;
-    work->color.b = b;
+    work->color.r = (int)r;
+    work->color.g = (int)g;
+    work->color.b = (int)b;
     work->alpha = alpha;
 }
 
@@ -609,10 +610,11 @@ void mbObjMetalCreate(MBMODELID modelId)
     model = &Hu3DData[hu3DModelId];
     if (model->attr & HU3D_ATTR_LINK) {
         work = mbMallocNum(sizeof(*work), model->mallocNoLink);
+        model->hookData = work;
     } else {
         work = mbMallocNum(sizeof(*work), model->mallocNo);
+        model->hookData = work;
     }
-    model->hookData = work;
     work->magic = 0x54563031;
     work->tpLvl = 1.0f;
     work->shadowColor.r = work->shadowColor.g = work->shadowColor.b = 255;
@@ -800,10 +802,11 @@ void mbObjBiriQCreate(MBMODELID modelId)
     model = &Hu3DData[hu3DModelId];
     if (model->attr & HU3D_ATTR_LINK) {
         work = mbMallocNum(sizeof(*work), model->mallocNoLink);
+        model->hookData = work;
     } else {
         work = mbMallocNum(sizeof(*work), model->mallocNo);
+        model->hookData = work;
     }
-    model->hookData = work;
     work->magic = 0x54563032;
     work->level = 0.0f;
     work->color.r = work->color.g = work->color.b = work->color.a = 255;
