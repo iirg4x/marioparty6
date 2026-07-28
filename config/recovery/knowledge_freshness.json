@@ -125,6 +125,9 @@
         "src/REL/mdsingdll/mdsing_tail3.c",
         "src/REL/mdsingdll/mdsing_tail4.c",
         "src/REL/mdsingdll/mdsing_tail5.c",
+        "src/REL/mdsingdll/mdsing_tail6.c",
+        "src/REL/mdsingdll/mdsing_tail7.c",
+        "src/REL/mdsingdll/mdsing_tail8.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ],
