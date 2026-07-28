@@ -36,6 +36,7 @@ comparison.
 | `mdpartydll:fn_1_44D48` | `mdsingdll:fn_1_331E0` | particle family teardown | 132 bytes |
 | `mdpartydll:fn_1_38F0` | `mdsingdll:fn_1_37DC` | window message and speed setup | 188 bytes |
 | `mdpartydll:fn_1_39AC` | `mdsingdll:fn_1_3898` | window inserted-message setup | 112 bytes |
+| `mdpartydll:fn_1_B748` | `mdsingdll:fn_1_9998` | recursive route resolution | 1,000 bytes |
 
 The first three retained clusters total 632 target text bytes.  A later bounded
 inventory found eight more analogues at a stable donor-to-target address delta
@@ -49,8 +50,10 @@ relocations.  A third feedback pass retained seven more exact helpers across
 five independently consumed objects, adding 1,384 target text bytes and 98
 physical relocations.  A window-message pass retained two more exact functions
 as one independently consumed object, adding 300 target text bytes and 19
-physical relocations.  Across all feedback batches, 26 mappings now account for
-4,248 exact target text bytes and 305 physical relocations.  Fresh active-object
+physical relocations.  A recursive route-resolution pass retained one more
+exact text-only object, adding 1,000 target text bytes and 11 physical
+relocations.  Across all feedback batches, 27 mappings now account for 5,248
+exact target text bytes and 316 physical relocations.  Fresh active-object
 reports showed exact instructions and zero
 relocation differences; the first three DTK physical-relocation counts were 4,
 45, and 9 respectively.  Each retained cluster was also
@@ -119,5 +122,6 @@ values outside the relocation-proven family.
 
 Evidence is retained in `src/REL/mdpartydll/stage.c`,
 `src/REL/mdpartydll/mdparty.c`, `src/REL/mdsingdll/mdsing_tail.c` through
-`mdsing_tail13.c`, `src/REL/mdsingdll/mdsing_tail19.c`, the `mdsingdll` split
-map, and their explicit matching-object registrations.
+`mdsing_tail13.c`, `src/REL/mdsingdll/mdsing_tail19.c`,
+`src/REL/mdsingdll/mdsing_tail20.c`, the `mdsingdll` split map, and their
+explicit matching-object registrations.

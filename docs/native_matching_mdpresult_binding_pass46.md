@@ -45,3 +45,23 @@ An exact scratch object proves function recovery, but it does not prove a safe
 translation-unit boundary. Before extracting an exact cluster from a combined
 owner, enumerate later callers that could see those definitions and require
 the entire exact consumer closure to remain instruction- and relocation-exact.
+
+## Pass 47: dependency-closed suffix recovery
+
+Pass 47 converted the negative into a bounded positive search. Instead of
+moving the full 37-function range, it kept the transitive window-helper chain
+in `mdpresult.c` and searched backward from the target-contiguous tail for a
+suffix with no compile-time visibility edge into the four protected exact
+consumers.
+
+The resulting `fn_1_2BF0` through `fn_1_3304` suffix is independently exact:
+10 functions, 1,908 text bytes, and 141 of 141 relocations, with no source
+`.rodata`. Both generated prelink and final link consume the new object at
+`0x2BF0` through `0x3364`. The four protected consumers remain exact, and the
+existing 64-byte `fn_1_5360` pool prefix remains byte-identical.
+
+The reusable search rule is therefore narrower than “move a smaller cluster”:
+build the definition-to-inline-consumer graph, preserve the full transitive
+helper chain in its current TU, and rank dependency-closed target-contiguous
+suffixes. Re-run every protected consumer and existing pool owner before
+accepting the new boundary.

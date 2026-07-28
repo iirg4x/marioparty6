@@ -472,7 +472,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Twenty-six mdsingdll functions totaling 4248 text bytes and 305 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
+      "summary": "Twenty-seven mdsingdll functions totaling 5248 text bytes and 316 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -536,6 +536,7 @@
           "mdpartydll:fn_1_44D48",
           "mdpartydll:fn_1_38F0",
           "mdpartydll:fn_1_39AC",
+          "mdpartydll:fn_1_B748",
           "mdsingdll:fn_1_2E68C",
           "mdsingdll:fn_1_2E6B8",
           "mdsingdll:fn_1_2EA9C",
@@ -561,7 +562,8 @@
           "mdsingdll:fn_1_32988",
           "mdsingdll:fn_1_331E0",
           "mdsingdll:fn_1_37DC",
-          "mdsingdll:fn_1_3898"
+          "mdsingdll:fn_1_3898",
+          "mdsingdll:fn_1_9998"
         ],
         "modules": [
           "mdpartydll",
@@ -582,7 +584,8 @@
         "A later eight-candidate inventory used stable delta -0x12410 and target-owned global/constant translations to recover five mdsing lifecycle functions in one coherent pass (752 target text bytes and 58 physical relocations).",
         "A following 18-candidate catalog used stable later-family delta -0x11B94 to recover seven mdsing particle-control functions in one eight-function attempt (1180 target text bytes and 72 physical relocations).",
         "The next later-family pass recovered seven more mdsing particle helpers across five independently consumed objects (1384 target text bytes and 98 physical relocations), bringing the feedback catalog to 24 exact mappings.",
-        "A window-message analogue pair in mdpartydll mdparty.c recovered mdsingdll fn_1_37DC/fn_1_3898 as one independently consumed 300-byte object with 19 physical relocations, bringing the catalog to 26 exact mappings."
+        "A window-message analogue pair in mdpartydll mdparty.c recovered mdsingdll fn_1_37DC/fn_1_3898 as one independently consumed 300-byte object with 19 physical relocations, bringing the catalog to 26 exact mappings.",
+        "mdpartydll fn_1_B748 recovered the recursive mdsingdll fn_1_9998 route-resolution helper as one independently consumed 1000-byte text-only object with 11 physical relocations, bringing the catalog to 27 exact mappings."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -613,6 +616,7 @@
         "src/REL/mdsingdll/mdsing_tail12.c",
         "src/REL/mdsingdll/mdsing_tail13.c",
         "src/REL/mdsingdll/mdsing_tail19.c",
+        "src/REL/mdsingdll/mdsing_tail20.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ]
@@ -2806,7 +2810,7 @@
       "category": "declaration_visibility_and_owner_binding",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner.",
+      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix can still be bound independently when the full transitive inline-helper chain stays in the original translation unit and every protected consumer remains exact.",
       "conditions": "Use when recovered functions are exact in a monolithic source owner and a proposed generated-object split moves their definitions into another translation unit while later exact callers remain behind.",
       "source_condition": {
         "change": "Extract an exact function cluster from a combined source owner into a separately compiled generated object.",
@@ -2814,7 +2818,8 @@
           "pinned compiler and flags for both the scratch and tracked objects",
           "complete instruction and relocation equality for the extracted cluster",
           "an inventory of every later independently exact caller whose compile-time visibility can change",
-          "before/after consumer-object comparison, not only extracted-object scoring"
+          "before/after consumer-object comparison, not only extracted-object scoring",
+          "a dependency graph that identifies suffixes with no compile-time visibility edge back into protected exact consumers"
         ]
       },
       "emitted_effect": {
@@ -2834,6 +2839,7 @@
       "safe_actions": [
         "enumerate later direct and transitive callers of every moved inline-capable definition",
         "compare all independently exact consumers after the tracked split",
+        "search backward from the target-contiguous tail for the largest suffix whose definitions are not required for automatic inlining in retained exact consumers",
         "expand the candidate owner boundary only when retail layout and source chronology authenticate it",
         "revert the split rather than duplicate definitions or add pragmas and compiler controls"
       ],
@@ -2846,7 +2852,8 @@
           "mdpresultdll:fn_1_102E4",
           "mdpresultdll:fn_1_105CC",
           "mdpresultdll:fn_1_10B34",
-          "mdpresultdll:fn_1_1295C"
+          "mdpresultdll:fn_1_1295C",
+          "mdpresultdll:fn_1_2BF0..fn_1_3304"
         ],
         "modules": [
           "mdpresultdll"
@@ -2860,7 +2867,8 @@
         ]
       },
       "examples": [
-        "mdpresultdll pass46 isolated fn_1_16C4..fn_1_3304 as 37/37 exact functions over 7328 text bytes with 600/600 relocations, but tracked extraction regressed four later exact consumers when the moved definitions were no longer visible."
+        "mdpresultdll pass46 isolated fn_1_16C4..fn_1_3304 as 37/37 exact functions over 7328 text bytes with 600/600 relocations, but tracked extraction regressed four later exact consumers when the moved definitions were no longer visible.",
+        "Pass47 kept the transitive window-helper chain in mdpresult.c and extracted only dependency-closed suffix fn_1_2BF0..fn_1_3304: 10/10 functions, 1908 bytes, and 141/141 relocations exact with no source rodata, while fn_1_102E4/fn_1_105CC/fn_1_10B34/fn_1_1295C and the fn_1_5360 pool prefix remained exact."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
