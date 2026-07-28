@@ -3,10 +3,11 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "660b2b05b1cc12312ff7f4ed068df7cc65fa718c",
-      "validated_at": "2026-07-27",
+      "validated_commit": "089ac04d664d7314c35f47130a969e92b84f1b98",
+      "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_wave103.md",
         "src/REL/mdpartydll/mdparty.c",
         "src/REL/mdpartydll/stage.c",
@@ -293,10 +294,11 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "660b2b05b1cc12312ff7f4ed068df7cc65fa718c",
-      "validated_at": "2026-07-27",
+      "validated_commit": "089ac04d664d7314c35f47130a969e92b84f1b98",
+      "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_conversion_pool_ownership.md",
         "docs/native_matching_s01_application.md",
         "src/REL/s01Dll/s01.c",
@@ -468,10 +470,11 @@
     },
     "mwcc-local-declaration-order-and-first-use-rotate-saved-registers": {
       "status": "active",
-      "validated_commit": "660b2b05b1cc12312ff7f4ed068df7cc65fa718c",
+      "validated_commit": "089ac04d664d7314c35f47130a969e92b84f1b98",
       "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_local_declaration_order_first_use.md",
         "src/REL/endingdll/ending.c",
         "src/REL/mdbankdll/mdbank.c",
@@ -482,10 +485,11 @@
     },
     "mwcc-pointer-truthiness-or-zero-literal-avoids-materialized-null": {
       "status": "active",
-      "validated_commit": "660b2b05b1cc12312ff7f4ed068df7cc65fa718c",
+      "validated_commit": "089ac04d664d7314c35f47130a969e92b84f1b98",
       "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_pointer_null_spelling.md",
         "src/REL/endingdll/ending.c",
         "src/REL/mdbankdll/mdbank.c"
