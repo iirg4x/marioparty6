@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "game/gamework.h"
 #include "game/charman.h"
 #include "game/flag.h"
@@ -832,29 +835,6 @@ static float baseST2[] = {
     0.0f, 1.0f,
 };
 static HuVecF viewRot = { -33.0f, 0.0f, 0.0f };
-static float charSize[][2] = {
-    { 100.0f, 175.0f },
-    { 100.0f, 200.0f },
-    { 110.0f, 220.0f },
-    { 100.0f, 175.0f },
-    { 175.0f, 175.0f },
-    { 110.0f, 220.0f },
-    { 200.0f, 260.0f },
-    { 100.0f, 150.0f },
-    { 175.0f, 175.0f },
-    { 150.0f, 125.0f },
-    { 100.0f, 150.0f },
-    { 150.0f, 125.0f },
-    { 150.0f, 125.0f },
-    { 150.0f, 125.0f },
-};
-static HuVecF pointEdge[] = {
-    { 0.0f, 0.0f, 0.0f },
-    { -1.0f, 2.0f, 0.0f },
-    { 1.0f, 2.0f, 0.0f },
-    { -1.0f, -1.0f, 0.0f },
-    { 1.0f, -1.0f, 0.0f },
-};
 static int chanceTbl[] = { 100, 60, 30, 10 };
 static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
     void (*hook)(void));
@@ -2251,6 +2231,29 @@ BOOL mbev_CapCullPlayerCheck(int playerNo)
 
 BOOL mbev_CapCullCheck(int playerNo, int masuId)
 {
+    static float charSize[][2] = {
+        { 100.0f, 175.0f },
+        { 100.0f, 200.0f },
+        { 110.0f, 220.0f },
+        { 100.0f, 175.0f },
+        { 175.0f, 175.0f },
+        { 110.0f, 220.0f },
+        { 200.0f, 260.0f },
+        { 100.0f, 150.0f },
+        { 175.0f, 175.0f },
+        { 150.0f, 125.0f },
+        { 100.0f, 150.0f },
+        { 150.0f, 125.0f },
+        { 150.0f, 125.0f },
+        { 150.0f, 125.0f },
+    };
+    static HuVecF pointEdge[] = {
+        { 0.0f, 0.0f, 0.0f },
+        { -1.0f, 2.0f, 0.0f },
+        { 1.0f, 2.0f, 0.0f },
+        { -1.0f, -1.0f, 0.0f },
+        { 1.0f, -1.0f, 0.0f },
+    };
     HuVecF pos;
     HuVecF edge;
     int charNo;
@@ -2498,11 +2501,13 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
         }
         HuPrcSleep(delay);
     }
-    do {
+    activeNum = 1;
+    while (activeNum > 0) {
         int objNo;
         CAPEFFCOINWORK *workP;
         int workNo;
 
+        HuPrcVSleep();
         activeNum = 0;
         for (objNo = 0; objNo < 8; objNo++) {
             if (ev_CapEffCoinOMObj[objNo] == obj) {
@@ -2515,10 +2520,7 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
                 activeNum++;
             }
         }
-        if (activeNum > 0) {
-            HuPrcVSleep();
-        }
-    } while (activeNum > 0);
+    }
     if (hook != NULL) {
         hookP = hook;
         hookP();
@@ -2955,55 +2957,8 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
     int j;
 
     workP = obj->data;
-    if (!mbExitCheck()
-        && ev_CapEffRingOMObj[workP->objIdx] != (OMOBJ *)-1) {
-        for (i = 0; i < 3; i++) {
-            if (workP->dispF <= 0) {
-                Hu3DModelAttrSet(workP->modelId[i], 1);
-            } else {
-                Hu3DModelAttrReset(workP->modelId[i], 1);
-                modelP = &Hu3DData[workP->modelId[i]];
-                particleSystemP = modelP->hookData;
-                particleSystemP->_unk20 = 0;
-                particleP = particleSystemP->data;
-                for (j = 0; j < particleSystemP->num; j++, particleP++) {
-                    if (particleP->_unk40 > 0.0f) {
-                        if (particleP->_unk00 == 1) {
-                            particleP->_unk02++;
-                            weight = mbSinDeg(90.0f
-                                * ((float)particleP->_unk02
-                                    / particleP->_unk18));
-                            particleP->_unk40 = particleP->_unk08.z
-                                * (1.0f + (weight
-                                    * (particleP->_unk08.y - 1.0f)));
-                            particleP->color.a = particleP->_unk1C
-                                * (1.0f - weight);
-                            if (weight >= 1.0f) {
-                                particleP->_unk40 = 0.0f;
-                                workP->dispF--;
-                            }
-                        } else if (particleP->_unk00 >= 0) {
-                            particleP->_unk02++;
-                            weight = mbSinDeg(90.0f
-                                * ((float)particleP->_unk02
-                                    / particleP->_unk14));
-                            particleP->_unk40 = particleP->_unk08.z
-                                * (particleP->_unk08.x
-                                    + (weight * (1.0f
-                                        - particleP->_unk08.x)));
-                            particleP->color.a = particleP->_unk1C * weight;
-                            if (weight >= 1.0f) {
-                                particleP->_unk40 = particleP->_unk08.z;
-                                particleP->color.a = particleP->_unk1C;
-                                particleP->_unk00++;
-                                particleP->_unk02 = 0;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
+    if (mbExitCheck()
+        || ev_CapEffRingOMObj[workP->objIdx] == (OMOBJ *)-1) {
         for (i = 0; i < 3; i++) {
             Hu3DModelKill(workP->modelId[i]);
             workP->modelId[i] = -1;
@@ -3014,6 +2969,53 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
         }
         ev_CapEffRingOMObj[workP->objIdx] = NULL;
         omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    for (i = 0; i < 3; i++) {
+        if (workP->dispF <= 0) {
+            Hu3DModelAttrSet(workP->modelId[i], 1);
+        } else {
+            Hu3DModelAttrReset(workP->modelId[i], 1);
+            modelP = &Hu3DData[workP->modelId[i]];
+            particleSystemP = modelP->hookData;
+            particleSystemP->_unk20 = 0;
+            particleP = particleSystemP->data;
+            for (j = 0; j < particleSystemP->num; j++, particleP++) {
+                if (particleP->_unk40 > 0.0f) {
+                    if (particleP->_unk00 == 1) {
+                        particleP->_unk02++;
+                        weight = mbSinDeg(90.0f
+                            * ((float)particleP->_unk02
+                                / particleP->_unk18));
+                        particleP->_unk40 = particleP->_unk08.z
+                            * (1.0f + (weight
+                                * (particleP->_unk08.y - 1.0f)));
+                        particleP->color.a = particleP->_unk1C
+                            * (1.0f - weight);
+                        if (weight >= 1.0f) {
+                            particleP->_unk40 = 0.0f;
+                            workP->dispF--;
+                        }
+                    } else if (particleP->_unk00 >= 0) {
+                        particleP->_unk02++;
+                        weight = mbSinDeg(90.0f
+                            * ((float)particleP->_unk02
+                                / particleP->_unk14));
+                        particleP->_unk40 = particleP->_unk08.z
+                            * (particleP->_unk08.x
+                                + (weight * (1.0f
+                                    - particleP->_unk08.x)));
+                        particleP->color.a = particleP->_unk1C * weight;
+                        if (weight >= 1.0f) {
+                            particleP->_unk40 = particleP->_unk08.z;
+                            particleP->color.a = particleP->_unk1C;
+                            particleP->_unk00++;
+                            particleP->_unk02 = 0;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -3150,69 +3152,69 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
     int i;
     int j;
 
-    if (!mbExitCheck()
-        && ev_CapEffElectricOMObj[work->objIdx] != (OMOBJ *)-1) {
-        particleSystem = Hu3DData[work->modelId].hookData;
-        particle = particleSystem->data;
-        part = work->part;
-        for (i = 0; i < 32; i++, part++, particle += 6) {
-            if (part->activeNo < 0 || ++part->time < part->timeMax) {
-                continue;
-            }
-            part->time = 0;
-            if (part->modelId < 0) {
-                end = part->pos0;
-            } else {
-                mbObjPosGet(part->modelId, &end);
-                PSVECAdd(&end, &part->modelPos, &end);
-                PSVECSubtract(&end, &part->pos2, &delta);
-                for (j = 0; j < 6; j++) {
-                    PSVECAdd(&particle[j].pos, &delta, &particle[j].pos);
-                }
-            }
-            end.x += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
-                * 40.0f;
-            end.y += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
-                * 40.0f;
-            end.z += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
-                * 40.0f;
-            part->pos2 = part->pos1;
-            part->pos1 = end;
-            for (j = 5; j > 0; j--) {
-                part->posHist[j] = part->posHist[j - 1];
-                particle[j] = particle[j - 1];
-            }
-            part->posHist[0] = part->pos2;
-            PSVECSubtract(&part->pos1, &part->pos2, &delta);
-            PSVECScale(&delta, &delta, 0.5f);
-            PSVECAdd(&part->pos2, &delta, &particle[0].pos);
-            PSVECSubtract(&part->pos1, &part->pos2, &delta);
-            horizontal = sqrt(delta.x * delta.x + delta.z * delta.z);
-            particle[0].rotX = 57.29578f * atan2(-delta.y, horizontal);
-            particle[0].rotY = 90.0f
-                + (57.29578f * atan2(delta.x, delta.z));
-            particle[0].angle = 0.0f;
-            particle[0].pat = mbRandMod(4);
-            particle[0].active = PSVECMag(&delta);
-            if (particle[0].active <= 0.0f) {
-                particle[0].active = 1.0f;
-            }
-            part->length = particle[0].active;
-            if (++part->phase >= part->phaseMax) {
-                part->activeNo = -1;
-                for (j = 0; j < 6; j++) {
-                    particle[j].active = 0.0f;
-                }
-                work->num--;
-            }
-        }
-    } else {
+    part = work->part;
+    if (mbExitCheck()
+        || ev_CapEffElectricOMObj[work->objIdx] == (OMOBJ *)-1) {
         Hu3DModelKill(work->modelId);
         work->modelId = -1;
         HuSprAnimKill(work->animP);
         work->animP = NULL;
         ev_CapEffElectricOMObj[work->objIdx] = NULL;
         omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    particleSystem = Hu3DData[work->modelId].hookData;
+    particle = particleSystem->data;
+    for (i = 0; i < 32; i++, part++, particle += 6) {
+        if (part->activeNo < 0 || ++part->time < part->timeMax) {
+            continue;
+        }
+        part->time = 0;
+        if (part->modelId < 0) {
+            end = part->pos0;
+        } else {
+            mbObjPosGet(part->modelId, &end);
+            PSVECAdd(&end, &part->modelPos, &end);
+            PSVECSubtract(&end, &part->pos2, &delta);
+            for (j = 0; j < 6; j++) {
+                PSVECAdd(&particle[j].pos, &delta, &particle[j].pos);
+            }
+        }
+        end.x += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
+            * 40.0f;
+        end.y += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
+            * 40.0f;
+        end.z += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
+            * 40.0f;
+        part->pos2 = part->pos1;
+        part->pos1 = end;
+        for (j = 5; j > 0; j--) {
+            part->posHist[j] = part->posHist[j - 1];
+            particle[j] = particle[j - 1];
+        }
+        part->posHist[0] = part->pos2;
+        PSVECSubtract(&part->pos1, &part->pos2, &delta);
+        PSVECScale(&delta, &delta, 0.5f);
+        PSVECAdd(&part->pos2, &delta, &particle[0].pos);
+        PSVECSubtract(&part->pos1, &part->pos2, &delta);
+        horizontal = sqrt(delta.x * delta.x + delta.z * delta.z);
+        particle[0].rotX = 57.29578f * atan2(-delta.y, horizontal);
+        particle[0].rotY = 90.0f
+            + (57.29578f * atan2(delta.x, delta.z));
+        particle[0].angle = 0.0f;
+        particle[0].pat = mbRandMod(4);
+        particle[0].active = PSVECMag(&delta);
+        if (particle[0].active <= 0.0f) {
+            particle[0].active = 1.0f;
+        }
+        part->length = particle[0].active;
+        if (++part->phase >= part->phaseMax) {
+            part->activeNo = -1;
+            for (j = 0; j < 6; j++) {
+                particle[j].active = 0.0f;
+            }
+            work->num--;
+        }
     }
 }
 
@@ -3234,10 +3236,21 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
     work = HuMemDirectMallocNum(HEAP_MODEL, sizeof(CAPEFFPARTICLESYSTEMWORK),
         model->mallocNo);
     model->hookData = work;
-    memset(work, 0, sizeof(CAPEFFPARTICLESYSTEMWORK));
     work->animP = animP;
     HuSprAnimLock(animP);
     work->num = max;
+    work->dispAttr = 0;
+    work->blendMode = 0;
+    work->_unk4C = 0;
+    work->_unk5C = 0;
+    work->_unk28 = 0;
+    work->_unk21 = 0;
+    work->_unk23[0] = 0;
+    work->_unk30 = 0;
+    work->phase = 0;
+    work->mode = 0;
+    work->grid = NULL;
+    work->_unk54 = 0;
     work->gridNum = 16;
 
     work->data = particle = HuMemDirectMallocNum(HEAP_MODEL,
@@ -3298,13 +3311,17 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
 
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
-    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *work = model->hookData;
+    HU3D_MODEL *model;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *work;
     HuVec2f *grid;
+    int mallocNo;
+    void *gridData;
+    HuVec2f *gridBase;
     float xStep;
     float yStep;
-    int x;
+    int gridNum;
     int y;
+    int x;
 
     if (xNum < 1) {
         xNum = 1;
@@ -3312,32 +3329,46 @@ static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
     if (yNum < 1) {
         yNum = 1;
     }
-    work->gridNum = xNum * yNum;
+    gridNum = xNum * yNum;
     xStep = 1.0f / (float)xNum;
     yStep = 1.0f / (float)yNum;
-    work->grid = grid = HuMemDirectMallocNum(HEAP_MODEL,
-        work->gridNum * 4 * sizeof(HuVec2f), model->mallocNo);
-    memset(grid, 0, work->gridNum * 4 * sizeof(HuVec2f));
+    model = &Hu3DData[modelId];
+    work = model->hookData;
+    work->gridNum = gridNum;
+    mallocNo = model->mallocNo;
+    gridData = HuMemDirectMallocNum(HEAP_MODEL,
+        gridNum * sizeof(HuVec2f) * 4, mallocNo);
+    gridBase = gridData;
+    work->grid = grid = gridBase;
+    memset(grid, 0, gridNum * sizeof(HuVec2f) * 4);
     for (y = 0; y < yNum; y++) {
-        for (x = 0; x < xNum; x++, grid += 4) {
+        for (x = 0; x < xNum; x++) {
             if (mode) {
-                grid[0].x = (float)y * xStep;
-                grid[0].y = (float)x * yStep;
-                grid[1].x = (float)(y + 1) * xStep;
-                grid[1].y = (float)x * yStep;
-                grid[2].x = (float)(y + 1) * xStep;
-                grid[2].y = (float)(x + 1) * yStep;
-                grid[3].x = (float)y * xStep;
-                grid[3].y = (float)(x + 1) * yStep;
+                grid->x = (float)y * xStep;
+                grid->y = (float)x * yStep;
+                grid++;
+                grid->x = (float)(y + 1) * xStep;
+                grid->y = (float)x * yStep;
+                grid++;
+                grid->x = (float)(y + 1) * xStep;
+                grid->y = (float)(x + 1) * yStep;
+                grid++;
+                grid->x = (float)y * xStep;
+                grid->y = (float)(x + 1) * yStep;
+                grid++;
             } else {
-                grid[0].x = (float)x * xStep;
-                grid[0].y = (float)y * yStep;
-                grid[1].x = (float)(x + 1) * xStep;
-                grid[1].y = (float)y * yStep;
-                grid[2].x = (float)(x + 1) * xStep;
-                grid[2].y = (float)(y + 1) * yStep;
-                grid[3].x = (float)x * xStep;
-                grid[3].y = (float)(y + 1) * yStep;
+                grid->x = (float)x * xStep;
+                grid->y = (float)y * yStep;
+                grid++;
+                grid->x = (float)(x + 1) * xStep;
+                grid->y = (float)y * yStep;
+                grid++;
+                grid->x = (float)(x + 1) * xStep;
+                grid->y = (float)(y + 1) * yStep;
+                grid++;
+                grid->x = (float)x * xStep;
+                grid->y = (float)(y + 1) * yStep;
+                grid++;
             }
         }
     }
