@@ -133,7 +133,6 @@ extern const float lbl_1_rodata_138;
 extern const float lbl_1_rodata_13C;
 extern const float lbl_1_rodata_140;
 extern const float lbl_1_rodata_144;
-extern const HuVecF lbl_1_rodata_148;
 extern const float lbl_1_rodata_154;
 extern const float lbl_1_rodata_158;
 extern const float lbl_1_rodata_15C;
@@ -941,17 +940,6 @@ void fn_1_2C54(OMOBJ *obj)
         omDelObjEx(lbl_1_bss_0, obj);
     }
     obj = NULL;
-}
-
-void fn_1_2CD8(s16 index, HuVecF *worldPos, float offsetX, float offsetY)
-{
-    HuVecF screenPos = lbl_1_rodata_148;
-
-    if (worldPos) {
-        Hu3D3Dto2D(worldPos, 1, &screenPos);
-    }
-    HuSprPosSet(lbl_1_bss_194E[1], index,
-        screenPos.x + offsetX, screenPos.y + offsetY);
 }
 
 void fn_1_2D70(s16 index)
