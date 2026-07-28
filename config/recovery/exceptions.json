@@ -166,6 +166,42 @@
       ]
     },
     {
+      "id": "capselect-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/capselect.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail capselect.o omits the weak sqrtf _half and _three local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, dice.c, and shopevent.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. In capselect.c the same boundary removes the 16-byte source-only prefix, aligns .sdata2, makes the stub seams mbCapMasuObjCreate and mbCapMasuExec exact, and preserves all 22 previously exact paired functions; the naturalized mbCapSelect remains nonexact.",
+      "evidence": [
+        "build/capselect-naturalized-final.json",
+        "src/board/gate.c",
+        "src/board/roulette.c",
+        "src/board/tutorial.c",
+        "src/board/dice.c",
+        "src/board/shopevent.c"
+      ]
+    },
+    {
+      "id": "scroll-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/board/scroll.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Retail scroll.o omits the weak sqrtf _half and _three local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, dice.c, and shopevent.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. In scroll.c the same boundary removes the 16-byte source-only prefix, aligns .sdata2, makes the stub seams mbev_StarScroll, ScrollExec, and MapViewExec exact, and preserves all 17 previously exact paired functions; MapSprCreate remains nonexact.",
+      "evidence": [
+        "build/scroll-final.json",
+        "src/board/gate.c",
+        "src/board/roulette.c",
+        "src/board/tutorial.c",
+        "src/board/dice.c",
+        "src/board/shopevent.c"
+      ]
+    },
+    {
       "id": "coin-effect-bank-table-retail-overread",
       "classification": "authenticated",
       "path": "src/board/coin.c",
