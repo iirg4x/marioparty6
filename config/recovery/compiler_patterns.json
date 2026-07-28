@@ -2291,6 +2291,76 @@
       "evidence": [
         "docs/native_matching_local_declaration_order_first_use.md"
       ]
+    },
+    {
+      "id": "mwcc-pointer-truthiness-or-zero-literal-avoids-materialized-null",
+      "title": "Test pointer truthiness or literal zero when typed NULL materializes a compare operand",
+      "classification": "confirmed_rule",
+      "category": "pointer_compare_lowering",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "Across MWCC O0 profiles, a natural pointer truth test or comparison with integer literal 0 can lower to a direct cmplwi, while an equivalent comparison with typed NULL can materialize zero in a register and emit li plus cmplw.",
+      "conditions": "Use when the target directly compares a proven pointer against immediate zero but the candidate materializes a null operand, or when the candidate is exactly four bytes larger for that reason.",
+      "source_condition": {
+        "change": "Spell one authenticated pointer guard as truthiness or comparison with literal 0 instead of typed NULL.",
+        "requires": [
+          "the expression is already authenticated as a pointer",
+          "identical null-test semantics",
+          "target and candidate compare instructions",
+          "exact control flow, relocations, and consumers after the change"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "direct cmplwi against zero",
+          "removal of li r0,0 plus cmplw",
+          "a four-byte function-size reduction",
+          "unchanged branch structure and relocation stream"
+        ],
+        "known_signatures": [
+          "`if (pointer)` matches cmplwi while `if (pointer != NULL)` emits li plus cmplw",
+          "`while (*entry != 0)` is four bytes shorter than `while (*entry != NULL)`",
+          "the mismatch is isolated to null materialization and compare operands"
+        ]
+      },
+      "rule": "Run one bounded truthiness/literal-zero versus typed-NULL spelling control for an authenticated pointer guard. Retain the natural form only with exact text, branches, relocations, and consumers; never cast integer handles to pointers or change a public type merely to obtain the compare shape.",
+      "safe_actions": [
+        "confirm the operand's pointer type from headers and consumers",
+        "compare the emitted cmplwi versus li/cmplw sequence",
+        "preserve the target branch sense and null semantics",
+        "revert the spelling change if codegen is neutral or other instructions regress"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mdbankdll:_epilog"
+        ],
+        "modules": [
+          "endingdll",
+          "mdbankdll"
+        ],
+        "owner_tags": [
+          "pointer_compare",
+          "null_spelling",
+          "source_form",
+          "rel"
+        ]
+      },
+      "examples": [
+        "Ending cleanup callbacks matched target direct cmplwi only with pointer truthiness under GC/2.6",
+        "mdbankdll _epilog matched 76 bytes under GC/1.3.2 with `*entry != 0`; typed NULL materialized zero and grew it to 80 bytes"
+      ],
+      "counterexamples": [
+        "An integer resource or handle is not a pointer guard; do not cast it to void* to select cmplw.",
+        "NULL spelling is not globally wrong; use the target compare and authenticated operand type at the specific consumer.",
+        "Do not rewrite unrelated condition structure when only the null operand spelling differs."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_pointer_null_spelling.md"
+      ]
     }
   ]
 }
