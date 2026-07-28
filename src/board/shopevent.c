@@ -785,7 +785,6 @@ static void ev_Shop(MBSHOPWORK *work)
         }
     }
 
-    mbMasuPosGet((s16)work->shopNo, &playerPos);
     if (!shopWork->pathF) {
         mbPlayerMasuMovePos(work->playerNo, &returnPos, TRUE);
     } else {
