@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "id": "REL:mdsingdll:application",
+  "module": "mdsingdll",
+  "source": "config/dll/rels/mdsingdll/symbols.txt",
+  "compiler": "GC/2.6",
+  "summary": "Catalog-authenticated non-minigame application owner with 287 target functions, an exact shared runtime boundary, partial stage-texture semantics, and source reconstruction still on assembly fallback.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "plausible",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "compiler-sensitive",
+    "texture-hooks",
+    "application-owner"
+  ],
+  "symbols": [
+    {
+      "symbol": "fn_1_2D170",
+      "stable_id": "mdsingdll:0x2D170"
+    },
+    {
+      "symbol": "fn_1_2D1DC",
+      "stable_id": "mdsingdll:0x2D1DC"
+    },
+    {
+      "symbol": "fn_1_2D850",
+      "stable_id": "mdsingdll:0x2D850"
+    },
+    {
+      "symbol": "lbl_1_bss_13B8",
+      "stable_id": "mdsingdll:bss:0x13B8"
+    },
+    {
+      "symbol": "lbl_1_bss_13BC",
+      "stable_id": "mdsingdll:bss:0x13BC"
+    },
+    {
+      "symbol": "lbl_1_bss_13C0",
+      "stable_id": "mdsingdll:bss:0x13C0"
+    },
+    {
+      "symbol": "lbl_1_bss_13C4",
+      "stable_id": "mdsingdll:bss:0x13C4"
+    },
+    {
+      "symbol": "lbl_1_bss_13C8",
+      "stable_id": "mdsingdll:bss:0x13C8"
+    },
+    {
+      "symbol": "lbl_1_bss_1428",
+      "stable_id": "mdsingdll:bss:0x1428"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Symbols define 287 application functions and 217856 text bytes before the exact 19-function shared runtime boundary at 0x35300; the audited stage-texture functions, callers, hook assignments, and global extents are target-backed.",
+      "reference": "docs/native_naming_mdsing_stage_texture_20260728.md"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "Hu3D hook assignments, omAddObjEx callbacks, GX texture-copy and indirect-texture APIs, model consumers, allocation/free paths, and complete bss extents independently establish the proposed operational roles.",
+      "reference": "docs/native_naming_mdsing_stage_texture_20260728.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": false,
+      "summary": "The 13-function natural stage-texture source cluster was reverted because normal headers emitted 16 bytes of unreferenced sqrtf constants; header suppression and pool pragmas are not accepted source recovery.",
+      "reference": "docs/native_naming_mdsing_stage_texture_20260728.md"
+    }
+  ],
+  "constraints": [],
+  "debt": [
+    {
+      "kind": "application_source",
+      "priority": "high",
+      "summary": "All 287 application functions remain on assembly fallback until exact natural C and authenticated split ownership are retained."
+    },
+    {
+      "kind": "header_visibility",
+      "priority": "high",
+      "summary": "The first stage-texture cluster is blocked by normal math-header sqrtf local constants; prohibited header suppression and pool pragmas were rejected."
+    },
+    {
+      "kind": "semantic_names",
+      "priority": "normal",
+      "summary": "Nine stage-texture names are proposed with high confidence but await accepted subsystem spelling or exported/debug evidence."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/mdsingdll/splits.txt",
+      "config/dll/rels/mdsingdll/symbols.txt",
+      "src/REL/mdsingdll/mdsing.c"
+    ],
+    "reports": [
+      "docs/native_naming_mdsing_stage_texture_20260728.md"
+    ]
+  }
+}

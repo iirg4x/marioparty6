@@ -36,6 +36,87 @@
       "status": "unresolved",
       "confidence": "unknown",
       "summary": "Control flow and signed return behavior are exact; semantic naming remains open."
+    },
+    {
+      "stable_id": "mdsingdll:0x2D170",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "fn_1_2D170",
+      "proposed_name": "MDSingStageTextureCopyLayerHook",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Assigned through Hu3DLayerHookSet by three target consumers and implements the GX texture-copy source, destination, and copy sequence for the stage capture buffer."
+    },
+    {
+      "stable_id": "mdsingdll:0x2D1DC",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "fn_1_2D1DC",
+      "proposed_name": "MDSingStageTextureMaterialHook",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Installed by Hu3DModelMatHookSet in fn_1_2D850 and configures the captured, indirect-warp, and blend texture stages for the stage model."
+    },
+    {
+      "stable_id": "mdsingdll:0x2D850",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "fn_1_2D850",
+      "proposed_name": "MDSingStageTextureObjectInit",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Passed as the object callback to omAddObjEx, allocates the capture texture and animations, creates the stage model, installs the material hook, and binds its work record."
+    },
+    {
+      "stable_id": "mdsingdll:bss:0x13B8",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "lbl_1_bss_13B8",
+      "proposed_name": "MDSingStageObjectManager",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Used as the owning OMOBJMAN argument for every authenticated stage-texture omAddObjEx creation path."
+    },
+    {
+      "stable_id": "mdsingdll:bss:0x13BC",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "lbl_1_bss_13BC",
+      "proposed_name": "MDSingStageTextureObject",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Stores the stage-texture OMOBJ returned by creation and is consumed by the model, effect-start, cleanup, and destroy paths."
+    },
+    {
+      "stable_id": "mdsingdll:bss:0x13C0",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "lbl_1_bss_13C0",
+      "proposed_name": "MDSingStageIndirectTextureAnim",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Loaded by HuSprAnimRead, bound to GX_TEXMAP2, and selected as the authenticated indirect-texture input for the stage material hook."
+    },
+    {
+      "stable_id": "mdsingdll:bss:0x13C4",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "lbl_1_bss_13C4",
+      "proposed_name": "MDSingStageBlendTextureAnim",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Loaded by HuSprAnimRead, bound to GX_TEXMAP3, and consumed by the final authenticated texture-combine stage in the material hook."
+    },
+    {
+      "stable_id": "mdsingdll:bss:0x13C8",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "lbl_1_bss_13C8",
+      "proposed_name": "MDSingStageCaptureTextureBuffer",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Allocated to the exact GX RGB565 copy-buffer size, written by GXCopyTex, sampled by the material hook, and freed by the stage-texture cleanup path."
+    },
+    {
+      "stable_id": "mdsingdll:bss:0x1428",
+      "owner": "REL:mdsingdll:application",
+      "current_symbol": "lbl_1_bss_1428",
+      "proposed_name": "MDSingStageTextureWork",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Target extent 0x50 and all consumers authenticate two 0x28 stage-texture work records covering the indirect matrix, color, offset, step, and remaining-time fields."
     }
   ]
 }
