@@ -46,21 +46,57 @@ typedef struct PausePanelWork_s {
 } PAUSE_PANEL_WORK;
 
 typedef struct PausePadWork_s {
-    u8 unk00[8];
-    s32 unk08;
-    u8 unk0C[4];
+    s32 padNo;
+    s32 port;
+    s32 playerNo;
+    BOOL activeF;
 } PAUSE_PAD_WORK;
+
+typedef struct ConfigMenuWork_s {
+    s32 value;
+    s32 valueMin;
+    s32 valueMax;
+    s16 panelId;
+    s16 labelPanelId;
+    BOOL enabled;
+    s32 initialValue;
+} CONFIG_MENU_WORK;
+
+typedef struct PauseCursorWork_s {
+    HuVecF pos;
+    HuVecF posStart;
+    HuVecF posDelta;
+    BOOL activeF;
+    s32 cursorNo;
+    s32 mask;
+    s32 cursorPos;
+    s32 moveTime;
+    s32 maxMoveTime;
+    float alpha[4];
+    s16 sprId[4];
+    s16 hiliteSprId[4];
+} PAUSE_CURSOR_WORK;
 
 typedef struct PauseWork_s {
     s32 playerNo;
     s32 cursorPos;
-    u8 unk08[0x14];
+    s32 state08;
+    s32 state0C;
+    s32 activeF;
+    s32 selectedRow;
+    s32 selectedColumn;
     s32 padWinNo;
     s32 helpWinNo;
-    u8 unk24[0x18];
+    s32 state24;
+    s32 state28;
+    s32 state2C;
+    s32 state30;
+    s32 state34;
+    s32 state38;
     s32 talkTime;
     s32 prevTalkTime;
-    u8 unk44[0x1AC];
+    CONFIG_MENU_WORK menu[14];
+    PAUSE_CURSOR_WORK cursor;
     PAUSE_PAD_WORK padWork[GW_PLAYER_MAX];
 } PAUSE_WORK;
 
