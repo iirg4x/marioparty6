@@ -2,7 +2,7 @@
 
 ## Confirmed MP6 evidence
 
-`src/REL/mdpartydll/stage.c` supplied natural same-game source hypotheses for
+`src/REL/mdpartydll/stage.c` and `src/REL/mdpartydll/mdparty.c` supplied natural same-game source hypotheses for
 independently exact `mdsingdll` clusters.  The owners are different, so
 the donor is evidence rather than merge authority; target globals, callbacks,
 types, literals, and split ownership were rebound to `mdsingdll` before each
@@ -34,6 +34,8 @@ comparison.
 | `mdpartydll:fn_1_44300` | `mdsingdll:fn_1_3276C` | particle family visibility | 180 bytes |
 | `mdpartydll:fn_1_4451C` | `mdsingdll:fn_1_32988` | particle family reset | 128 bytes |
 | `mdpartydll:fn_1_44D48` | `mdsingdll:fn_1_331E0` | particle family teardown | 132 bytes |
+| `mdpartydll:fn_1_38F0` | `mdsingdll:fn_1_37DC` | window message and speed setup | 188 bytes |
+| `mdpartydll:fn_1_39AC` | `mdsingdll:fn_1_3898` | window inserted-message setup | 112 bytes |
 
 The first three retained clusters total 632 target text bytes.  A later bounded
 inventory found eight more analogues at a stable donor-to-target address delta
@@ -45,8 +47,10 @@ donors at stable address delta `-0x11B94`, attempted eight lifecycle functions,
 and retained seven exact functions totaling 1,180 bytes and 72 physical
 relocations.  A third feedback pass retained seven more exact helpers across
 five independently consumed objects, adding 1,384 target text bytes and 98
-physical relocations.  Across all feedback batches, 24 mappings now account for
-3,948 exact target text bytes and 286 physical relocations.  Fresh active-object
+physical relocations.  A window-message pass retained two more exact functions
+as one independently consumed object, adding 300 target text bytes and 19
+physical relocations.  Across all feedback batches, 26 mappings now account for
+4,248 exact target text bytes and 305 physical relocations.  Fresh active-object
 reports showed exact instructions and zero
 relocation differences; the first three DTK physical-relocation counts were 4,
 45, and 9 respectively.  Each retained cluster was also
@@ -104,11 +108,16 @@ values outside the relocation-proven family.
   mismatch and was not reworked.
 - `fn_1_44B1C -> fn_1_32FB4` reached 99.748% text, but local-initializer and
   adjacent-rodata ownership prevented a retail-exact split object.
+- The adjacent `mdsingdll:fn_1_3908` window helper directly indexes a target
+  `HUWIN` stride of `0x200`.  It was excluded before compilation because the
+  authenticated public header closure emits unrelated weak-sqrtf constants and
+  a reduced local aggregate would require guessed padding.
 - Adding a split or source file is insufficient if `configure.py` does not emit
   a matching object into generated build and link inputs.
 - Exact subsets are valuable independently.  A failed neighbor does not justify
   reverting exact functions elsewhere in the cluster.
 
 Evidence is retained in `src/REL/mdpartydll/stage.c`,
-`src/REL/mdsingdll/mdsing_tail.c` through `mdsing_tail13.c`, the `mdsingdll`
-split map, and their explicit matching-object registrations.
+`src/REL/mdpartydll/mdparty.c`, `src/REL/mdsingdll/mdsing_tail.c` through
+`mdsing_tail13.c`, `src/REL/mdsingdll/mdsing_tail19.c`, the `mdsingdll` split
+map, and their explicit matching-object registrations.

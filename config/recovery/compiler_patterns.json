@@ -472,7 +472,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Twenty-four mdsingdll functions totaling 3948 text bytes and 286 physical relocations became independently exact from mdpartydll stage.c analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
+      "summary": "Twenty-six mdsingdll functions totaling 4248 text bytes and 305 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -534,6 +534,8 @@
           "mdpartydll:fn_1_44300",
           "mdpartydll:fn_1_4451C",
           "mdpartydll:fn_1_44D48",
+          "mdpartydll:fn_1_38F0",
+          "mdpartydll:fn_1_39AC",
           "mdsingdll:fn_1_2E68C",
           "mdsingdll:fn_1_2E6B8",
           "mdsingdll:fn_1_2EA9C",
@@ -557,7 +559,9 @@
           "mdsingdll:fn_1_32350",
           "mdsingdll:fn_1_3276C",
           "mdsingdll:fn_1_32988",
-          "mdsingdll:fn_1_331E0"
+          "mdsingdll:fn_1_331E0",
+          "mdsingdll:fn_1_37DC",
+          "mdsingdll:fn_1_3898"
         ],
         "modules": [
           "mdpartydll",
@@ -577,7 +581,8 @@
         "mdpartydll fn_1_40FEC authenticated the particle activation shape recovered exactly as mdsingdll fn_1_2EBDC (232 target text bytes and 9 physical relocations).",
         "A later eight-candidate inventory used stable delta -0x12410 and target-owned global/constant translations to recover five mdsing lifecycle functions in one coherent pass (752 target text bytes and 58 physical relocations).",
         "A following 18-candidate catalog used stable later-family delta -0x11B94 to recover seven mdsing particle-control functions in one eight-function attempt (1180 target text bytes and 72 physical relocations).",
-        "The next later-family pass recovered seven more mdsing particle helpers across five independently consumed objects (1384 target text bytes and 98 physical relocations), bringing the feedback catalog to 24 exact mappings."
+        "The next later-family pass recovered seven more mdsing particle helpers across five independently consumed objects (1384 target text bytes and 98 physical relocations), bringing the feedback catalog to 24 exact mappings.",
+        "A window-message analogue pair in mdpartydll mdparty.c recovered mdsingdll fn_1_37DC/fn_1_3898 as one independently consumed 300-byte object with 19 physical relocations, bringing the catalog to 26 exact mappings."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -588,12 +593,14 @@
         "mdpartydll fn_1_43F3C to mdsingdll fn_1_323A8 and fn_1_463E0 to fn_1_34958 were suppressed because target output depends on earlier TU-visible auto-inline bodies.",
         "mdpartydll fn_1_443B4 to mdsingdll fn_1_32820 repeated the known @190 byte-to-float pool mismatch and was not reworked.",
         "mdpartydll fn_1_44B1C to mdsingdll fn_1_32FB4 reached 99.748% text, but local-initializer and adjacent-rodata ownership prevented a retail-exact split object.",
+        "The adjacent mdsingdll fn_1_3908 window helper was excluded before compilation because target code directly indexes an authenticated 0x200-byte HUWIN stride, while the available public header closure emits unrelated weak-sqrtf constants and a reduced local aggregate would require guessed padding.",
         "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_cross_owner_analogue_harvesting.md",
         "src/REL/mdpartydll/stage.c",
+        "src/REL/mdpartydll/mdparty.c",
         "src/REL/mdsingdll/mdsing_tail.c",
         "src/REL/mdsingdll/mdsing_tail2.c",
         "src/REL/mdsingdll/mdsing_tail3.c",
@@ -605,6 +612,7 @@
         "src/REL/mdsingdll/mdsing_tail11.c",
         "src/REL/mdsingdll/mdsing_tail12.c",
         "src/REL/mdsingdll/mdsing_tail13.c",
+        "src/REL/mdsingdll/mdsing_tail19.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ]
