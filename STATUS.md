@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching owners |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.47% | 32.87% | 331 / 920 |
+| Entire project | 13.48% | 32.87% | 331 / 920 |
 | Main DOL | 48.28% | 74.87% | 296 / 396 |
-| REL modules | 6.09% | 6.26% | 35 / 524 |
+| REL modules | 6.10% | 6.26% | 35 / 524 |
 
 Within the main game flow at that snapshot:
 
@@ -25,7 +25,7 @@ Within the main game flow at that snapshot:
 - Newly strict-exact board sources: `src/board/gate.c` (11 / 11 functions, 168 / 168 relocations) and `src/board/roulette.c` (21 / 21 functions, 291 / 291 relocations)
 - Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, `s01Dll`, and `w01Dll`
 - Exact shared GC/2.6 runtime owners now cover 15 additional non-minigame RELs, including the results, ending, option, single-player, miracle-book, bank, opening, and staff modules.
-- `mdsingdll` now source-links five exact interpolation functions (1,052 text bytes) and the complete 128-byte named data owner; its remaining application code stays on retail fallback, and the configured REL remains byte-identical (`badae36c280f8f5943bedde8ead4acb09139417f`).
+- `mdsingdll` now source-links nine exact interpolation and transition functions (1,964 text bytes) and the complete 128-byte named data owner; its remaining application code stays on retail fallback, and the configured REL remains byte-identical (`badae36c280f8f5943bedde8ead4acb09139417f`).
 - `s01Dll` is source-linked and byte-identical to retail (`7f0cfdb2d2b0b2c50b92675e5bef55d72cf94dd7`), including all 44 application functions and 741 relocations.
 - `w01Dll` is source-linked and byte-identical to retail (`196d7075abbe6eec3031c9484d25216de9dc0889`).
 
