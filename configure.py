@@ -1217,6 +1217,7 @@ config.libs = [
     Rel(
         "mdsingdll",
         objects={
+            Object(Matching, "REL/mdsingdll/mdsing.c"),
             Object(
                 Matching,
                 "REL/mdsingdll/runtime.c",
