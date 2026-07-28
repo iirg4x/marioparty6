@@ -466,7 +466,7 @@ static void TelopLastTurnOMExec(OMOBJ *obj)
             break;
         case 1:
             weight = work->angle * (1.0f / 80.0f);
-            scale = fabsf(mbSinDeg(720.0f * weight));
+            scale = fabs(mbSinDeg(720.0f * weight));
             obj->trans.y = 1.0f + (0.5f * scale);
             if (work->lastTurn) {
                 HuSprGrpScaleSet(work->grpId, obj->trans.y, obj->trans.y);
@@ -595,7 +595,10 @@ s16 mbTelopTimeSprCreate(void)
     }
     languageNo = mbLanguageGet();
     grpId = HuSprGrpCreate(8);
-    timeNo = GwSystem.curTime ? 1 : 0;
+    timeNo = 0;
+    if (GwSystem.curTime) {
+        timeNo++;
+    }
     mbSprCreate(mbBoardDataNumGet(telopTimeBackFileTbl[timeNo]), 100, NULL, &sprId);
     HuSprGrpMemberSet(grpId, 0, sprId);
     HuSprTPLvlSet(grpId, 0, 0.6f);
@@ -635,31 +638,33 @@ void mbTelopTimeSprRotSet(s16 grpId, float rot)
 {
     HUSPR_GROUP *group;
     HUSPRITE *spr;
-    float firstWave;
     float phase;
-    float secondScale;
     float scale;
+    BOOL bankF;
     s32 i;
 
     group = &HuSprGrpData[grpId];
     for (i = 0; i < 3; i++) {
+        bankF = FALSE;
         spr = &HuSprData[group->sprId[i + 2]];
         if (spr->bank & 1) {
+            bankF = TRUE;
+        }
+        if (bankF) {
             HuSprTPLvlSet(grpId, i + 2, 0.8f);
             HuSprScaleSet(grpId, i + 2, 1.0f, 1.0f);
             HuSprZRotSet(grpId, i + 2, 0.0f);
             HuSprTPLvlSet(grpId, i + 5, 0.0f);
             HuSprScaleSet(grpId, i + 5, 0.0f, 0.0f);
         } else {
-            firstWave = fabsf(mbSinDeg(360.0f * rot));
-            scale = 1.0f + (0.2f * firstWave);
+            scale = 1.0f + (0.2f * fabs(mbSinDeg(360.0f * rot)));
             HuSprTPLvlSet(grpId, i + 2, 1.0f);
             HuSprScaleSet(grpId, i + 2, scale, scale);
             HuSprZRotSet(grpId, i + 2, 30.0f * mbSinDeg(360.0f * rot));
             phase = (float)fmod(2.0f * rot, 1.0f);
-            secondScale = 1.0f + fabsf(mbSinDeg(90.0f * phase));
+            scale = 1.0f + fabs(mbSinDeg(90.0f * phase));
             HuSprTPLvlSet(grpId, i + 5, 0.8f * (1.0f - phase));
-            HuSprScaleSet(grpId, i + 5, secondScale, secondScale);
+            HuSprScaleSet(grpId, i + 5, scale, scale);
             if (phase < 0.001) {
                 HuSprScaleSet(grpId, i + 5, 0.0f, 0.0f);
             }
@@ -981,7 +986,7 @@ void mbTelopTimeChangeCreate(void)
 
     starNum = 3 - starNum;
     for (i = 0; i < 3; i++) {
-        s16 bank = 0;
+        s32 bank = 0;
         if (GwSystem.curTime) {
             bank += 2;
         }
@@ -997,6 +1002,141 @@ void mbTelopTimeChangeCreate(void)
         espScaleSet(obj->mdlId[i + 5], 0.0f, 0.0f);
     }
     mbAudFXPlay(0x46C);
+}
+
+static void TelopTimeChangeOMExec(OMOBJ *obj)
+{
+    TELOP_TIME_CHANGE_WORK *work;
+    float weight;
+    float angle;
+    float scale;
+    float posY;
+    s32 languageNo;
+    s32 i;
+
+    work = omObjGetWork(obj, TELOP_TIME_CHANGE_WORK);
+    if (work->killF || mbExitCheck()) {
+        for (i = 0; i < 8; i++) {
+            espKill(obj->mdlId[i]);
+            obj->mdlId[i] = 0;
+        }
+        telopTimeChangeOMObj = NULL;
+        omDelObjEx(HuPrcCurrentGet(), obj);
+        return;
+    }
+    languageNo = mbLanguageGet();
+    work->time++;
+    if (work->time > work->maxTime) {
+        work->time = work->maxTime;
+    }
+    weight = (float)work->time / (float)work->maxTime;
+    switch (work->mode) {
+        case 0:
+            espTPLvlSet(obj->mdlId[0], weight);
+            espTPLvlSet(obj->mdlId[3], weight);
+            obj->trans.x = 288.0f;
+            obj->trans.y = 256.0f;
+            espPosSet(obj->mdlId[3], obj->trans.x, obj->trans.y);
+            espPosSet(obj->mdlId[4], obj->trans.x, obj->trans.y);
+            if (work->time >= work->maxTime) {
+                obj->trans.z = 2.0f;
+                work->time = 0;
+                work->maxTime = 40;
+                work->mode++;
+            }
+            break;
+        case 1:
+            angle = 90.0f * weight;
+            scale = 1.0f - (0.75f * weight);
+            espTPLvlSet(obj->mdlId[0], 1.0f - weight);
+            espTPLvlSet(obj->mdlId[3], 1.0f - weight);
+            posY = 720.0f - (480.0f * mbSinDeg(90.0f - angle));
+            espPosSet(obj->mdlId[0],
+                288.0f + (480.0f * mbCosDeg(90.0f - angle)), posY);
+            espZRotSet(obj->mdlId[0], 4.0f * angle);
+            espScaleSet(obj->mdlId[0], scale, scale);
+            scale = 1.0f - (0.75f * (1.0f - weight));
+            espTPLvlSet(obj->mdlId[1], weight);
+            posY = 720.0f - (480.0f * mbSinDeg(180.0f - angle));
+            espPosSet(obj->mdlId[1],
+                288.0f + (480.0f * mbCosDeg(180.0f - angle)), posY);
+            espZRotSet(obj->mdlId[1], 4.0f * (angle - 90.0f));
+            espScaleSet(obj->mdlId[1], scale, scale);
+            scale = 1.0f - (0.75f * weight);
+            espZRotSet(obj->mdlId[3], -angle);
+            obj->trans.z += 0.5f;
+            obj->trans.y += obj->trans.z;
+            espPosSet(obj->mdlId[3], obj->trans.x, obj->trans.y);
+            espScaleSet(obj->mdlId[3], scale, scale);
+            if (work->time + 12 > work->maxTime) {
+                float endWeight = (float)(work->maxTime - work->time) * (1.0f / 12.0f);
+
+                scale = 1.0f + (2.0f * endWeight);
+                espScaleSet(obj->mdlId[4], scale, scale);
+                espTPLvlSet(obj->mdlId[4], 1.0f - endWeight);
+            }
+            if (work->time >= work->maxTime) {
+                espAttrSet(obj->mdlId[2], HUSPR_ATTR_ADDCOL);
+                work->time = 0;
+                work->maxTime = 30;
+                work->mode++;
+            }
+            break;
+        case 2:
+            scale = 1.0f + (0.5f * weight);
+            espTPLvlSet(obj->mdlId[2], 1.0f - weight);
+            espScaleSet(obj->mdlId[2], scale, scale);
+            for (i = 0; i < 3; i++) {
+                espDispOn(obj->mdlId[i + 5]);
+            }
+            if (work->time >= work->maxTime) {
+                work->time = 0;
+                work->maxTime = 30;
+                work->mode++;
+            }
+            break;
+        case 3:
+            if (work->time >= work->maxTime) {
+                work->mode++;
+            }
+            break;
+        case 4:
+            work->completeF = TRUE;
+            if (WipeCheck()) {
+                work->time = 0;
+                work->maxTime = 30;
+                work->mode++;
+            }
+            break;
+        case 5:
+            if (WipeCheck() == 0) {
+                obj->trans.x = 504.0f;
+                obj->trans.y = 84.0f;
+                espPosSet(obj->mdlId[1], obj->trans.x, obj->trans.y);
+                espPosSet(obj->mdlId[4],
+                    obj->trans.x + (0.5f * telopTimeNewSprOfsTbl[languageNo].x),
+                    obj->trans.y + (0.5f * telopTimeNewSprOfsTbl[languageNo].y));
+                espScaleSet(obj->mdlId[1], 0.5f, 0.5f);
+                espScaleSet(obj->mdlId[4], 0.5f, 0.5f);
+                espTPLvlSet(obj->mdlId[1], 0.65f);
+                for (i = 0; i < 3; i++) {
+                    espPosSet(obj->mdlId[i + 5],
+                        obj->trans.x + (0.5f * telopTimeStarSprOfsTbl[languageNo][i].x),
+                        obj->trans.y + (0.5f * telopTimeStarSprOfsTbl[languageNo][i].y));
+                    espScaleSet(obj->mdlId[i + 5], 0.375f, 0.375f);
+                    espTPLvlSet(obj->mdlId[i + 5], 0.85f);
+                }
+            }
+            break;
+        case 10:
+            espTPLvlSet(obj->mdlId[1], 1.0f - weight);
+            espTPLvlSet(obj->mdlId[4], 1.0f - weight);
+            if (work->time >= work->maxTime) {
+                work->mode++;
+                work->killF = TRUE;
+            }
+            break;
+    }
 }
 
 void mbTelopTimeChangeKill(void)
