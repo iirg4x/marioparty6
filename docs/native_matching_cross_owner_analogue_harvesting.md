@@ -20,13 +20,25 @@ comparison.
 | `mdpartydll:fn_1_42060` | `mdsingdll:fn_1_2FC50` | particle group reset | 256 bytes |
 | `mdpartydll:fn_1_42160` | `mdsingdll:fn_1_2FD50` | particle model display disable | 44 bytes |
 | `mdpartydll:fn_1_4218C` | `mdsingdll:fn_1_2FD7C` | particle group create/configure | 204 bytes |
+| `mdpartydll:fn_1_42D2C` | `mdsingdll:fn_1_31198` | particle model enable | 124 bytes |
+| `mdpartydll:fn_1_42DA8` | `mdsingdll:fn_1_31214` | particle group data reset | 260 bytes |
+| `mdpartydll:fn_1_42EAC` | `mdsingdll:fn_1_31318` | particle group activation | 136 bytes |
+| `mdpartydll:fn_1_433AC` | `mdsingdll:fn_1_31818` | particle family reset | 364 bytes |
+| `mdpartydll:fn_1_43518` | `mdsingdll:fn_1_31984` | particle family teardown | 88 bytes |
+| `mdpartydll:fn_1_43570` | `mdsingdll:fn_1_319DC` | particle family position | 124 bytes |
+| `mdpartydll:fn_1_43724` | `mdsingdll:fn_1_31B90` | particle family disable | 84 bytes |
 
 The first three retained clusters total 632 target text bytes.  A later bounded
 inventory found eight more analogues at a stable donor-to-target address delta
 of `-0x12410`; one coherent six-function lifecycle attempt retained five exact
 functions totaling 752 bytes and 58 physical relocations.  Across both batches,
-ten mappings now account for 1,384 exact target text bytes and 116 physical
-relocations.  Fresh active-object reports showed exact instructions and zero
+ten mappings accounted for 1,384 exact target text bytes and 116 physical
+relocations.  A second feedback pass expanded the safe catalog to 18 later
+donors at stable address delta `-0x11B94`, attempted eight lifecycle functions,
+and retained seven exact functions totaling 1,180 bytes and 72 physical
+relocations.  Across all feedback batches, 17 mappings now account for 2,564
+exact target text bytes and 188 physical relocations.  Fresh active-object
+reports showed exact instructions and zero
 relocation differences; the first three DTK physical-relocation counts were 4,
 45, and 9 respectively.  Each retained cluster was also
 registered as `Object(Matching, ...)`, proved present in generated Ninja/link
@@ -74,6 +86,9 @@ values outside the relocation-proven family.
 - `fn_1_4161C -> fn_1_2F20C` reached exact size and 99.866070%, but three
   conversion relocations bound compiler-local `@166` instead of target
   `lbl_1_rodata_3F8`; it remains rejected pending named pool ownership.
+- `fn_1_435EC -> fn_1_31A58` reached 312/312 bytes and 99.423080%, but nine
+  relocation-only references bound compiler-local `@190` instead of target
+  `lbl_1_rodata_400`; it remains rejected pending named pool ownership.
 - Adding a split or source file is insufficient if `configure.py` does not emit
   a matching object into generated build and link inputs.
 - Exact subsets are valuable independently.  A failed neighbor does not justify
