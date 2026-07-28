@@ -30,6 +30,15 @@ REL/mdsingdll/mdsing_tail4.c:
 REL/mdsingdll/mdsing_tail5.c:
 	.text       start:0x0002FC50 end:0x0002FE48
 
+REL/mdsingdll/mdsing_tail6.c:
+	.text       start:0x00031198 end:0x000313A0
+
+REL/mdsingdll/mdsing_tail7.c:
+	.text       start:0x00031818 end:0x00031A58
+
+REL/mdsingdll/mdsing_tail8.c:
+	.text       start:0x00031B90 end:0x00031BE4
+
 REL/mdsingdll/runtime.c:
 	.text       start:0x00035300 end:0x00035D44
 	.rodata     start:0x00000520 end:0x00000538
