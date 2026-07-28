@@ -115,6 +115,24 @@ This checks committed, staged, unstaged, and untracked paths. It fails when the
 real Git diff escapes the claim or overlaps another agent’s paths. The managed
 pre-commit hook runs this automatically.
 
+## Base pins and stale defaults
+
+`AI_BASE_COMMIT` has no committed storage: it lives in each task's `base_ref`.
+A task added or claimed without an explicit `--base-ref` stores the symbolic
+default (`agent/recovery-context-workflow`), which resolves to the local
+integration branch pointer at every diff check. A worker lane rooted on
+commits beyond that pointer will therefore see already-landed commits flagged
+by `queue check-diff` and the managed pre-commit hook.
+
+- Pin every task to an exact commit at creation: `queue add ... --base-ref
+  <sha>` or `queue claim ... --base-ref <sha>`.
+- Correct an active mis-pinned claim with `queue update <owner> --base-ref
+  <ref>`. The ref must resolve and be an ancestor of the claimed branch, the
+  resolved commit is stored, and the pin is frozen once the task is `ready` or
+  has recorded verification.
+- `MP6_AGENT_BASE` overrides the base for a single hook run only. It is an
+  escape hatch for a wedged commit, not a substitute for repinning the claim.
+
 ## Worker loop
 
 ```sh

@@ -931,6 +931,7 @@ def update_task(
     remove_shared: Sequence[str] | None = None,
     note: str | None = None,
     agent: str | None = None,
+    base_ref: str | None = None,
     queue_file: str | Path | None = None,
     owners: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -945,6 +946,34 @@ def update_task(
             raise QueueError(
                 f"{owner} is assigned to {task.get('agent')}, not {agent}"
             )
+        if base_ref is not None:
+            if (
+                status == "ready"
+                or task.get("status") == "ready"
+                or task.get("verification")
+            ):
+                raise QueueError(
+                    "base_ref is frozen once verification is recorded"
+                )
+            branch = task.get("branch")
+            if not branch:
+                raise QueueError(
+                    "task has no claimed branch to validate base_ref against"
+                )
+            pinned = _commit(root, base_ref)
+            try:
+                tip = _commit(root, branch)
+            except QueueError as error:
+                raise QueueError(
+                    f"cannot resolve claimed branch {branch}: {error}"
+                ) from error
+            try:
+                _run(root, "git", "merge-base", "--is-ancestor", pinned, tip)
+            except QueueError as error:
+                raise QueueError(
+                    f"{base_ref} is not an ancestor of claimed branch {branch}"
+                ) from error
+            task["base_ref"] = pinned
         if status == "ready":
             proof_errors = _verification_errors(task, terminal=False)
             if proof_errors:
@@ -1229,6 +1258,7 @@ def add_queue_parser(subparsers: Any) -> argparse.ArgumentParser:
     update.add_argument("--status", choices=sorted(ACTIVE))
     update.add_argument("--add-shared", action="append", default=[])
     update.add_argument("--remove-shared", action="append", default=[])
+    update.add_argument("--base-ref")
     update.add_argument("--note")
 
     verify = actions.add_parser("verify")
@@ -1393,6 +1423,7 @@ def run_queue_command(
             remove_shared=args.remove_shared,
             note=args.note,
             agent=args.agent,
+            base_ref=args.base_ref,
             queue_file=args.queue_file,
             owners=owners,
         )

@@ -172,6 +172,64 @@ class AgentQueueTests(unittest.TestCase):
         with self.assertRaisesRegex(QueueError, "retail_gate"):
             release_task(self.claude, "a", agent="claude", status="done")
 
+    def test_base_ref_repin_stores_resolved_commit(self) -> None:
+        claim_task(self.claude, "a", agent="claude", source="src/a.c")
+        pinned = run(
+            self.claude, "git", "rev-parse", "agent/recovery-context-workflow"
+        )
+        task = update_task(
+            self.claude,
+            "a",
+            agent="claude",
+            base_ref="agent/recovery-context-workflow",
+        )
+        self.assertEqual(task["base_ref"], pinned)
+        with self.assertRaises(QueueError):
+            update_task(
+                self.claude, "a", agent="claude", base_ref="no-such-ref"
+            )
+
+    def test_base_ref_repin_clears_stale_default_base(self) -> None:
+        claim_task(self.claude, "a", agent="claude", source="src/a.c")
+        (self.claude / "src/b.c").write_text("int b = 2;\n", encoding="utf-8")
+        run(self.claude, "git", "add", "src/b.c")
+        run(self.claude, "git", "commit", "-qm", "landed by an earlier task")
+        result = check_diff_claim(self.claude, agent="claude")
+        self.assertTrue(
+            any("src/b.c" in error for error in result["errors"])
+        )
+        head = run(self.claude, "git", "rev-parse", "HEAD")
+        task = update_task(self.claude, "a", agent="claude", base_ref=head)
+        self.assertEqual(task["base_ref"], head)
+        result = check_diff_claim(self.claude, agent="claude")
+        self.assertEqual(result["errors"], [])
+
+    def test_base_ref_repin_requires_ancestor(self) -> None:
+        claim_task(self.claude, "a", agent="claude", source="src/a.c")
+        (self.codex / "src/b.c").write_text("int b = 3;\n", encoding="utf-8")
+        run(self.codex, "git", "add", "src/b.c")
+        run(self.codex, "git", "commit", "-qm", "divergent")
+        stray = run(self.codex, "git", "rev-parse", "HEAD")
+        with self.assertRaisesRegex(QueueError, "not an ancestor"):
+            update_task(self.claude, "a", agent="claude", base_ref=stray)
+
+    def test_base_ref_is_frozen_after_verification(self) -> None:
+        claim_task(
+            self.claude,
+            "a",
+            agent="claude",
+            source="src/a.c",
+            change_class="documentation",
+        )
+        (self.claude / "src/a.c").write_text("int a = 1;\n", encoding="utf-8")
+        run(self.claude, "git", "add", "src/a.c")
+        run(self.claude, "git", "commit", "-qm", "change")
+        record_verification(
+            self.claude, "a", agent="claude", public_gate="pass"
+        )
+        with self.assertRaisesRegex(QueueError, "frozen"):
+            update_task(self.claude, "a", agent="claude", base_ref="HEAD")
+
     def test_dependencies_and_claim_next(self) -> None:
         add_task(self.main, "a", source="src/a.c", priority="high")
         add_task(
