@@ -554,6 +554,159 @@
       ]
     },
     {
+      "id": "consumer-triangulation-before-opaque-aggregate-overlay",
+      "title": "Triangulate configured extent and public consumers before retaining an opaque overlay",
+      "classification": "confirmed_rule",
+      "category": "type_contracts",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "Independent staffdll and mdbankdll recoveries replaced misleading offset-only or first-word interpretations with natural aggregates after configured sizes, public field/stride types, callbacks, and state consumers were triangulated; exact text and relocations were preserved across both compiler profiles.",
+      "conditions": "Apply when an untyped target address or offset can be reproduced by an opaque overlay, pointer slot, or multiple plausible public aggregate fields.",
+      "source_condition": {
+        "change": "Choose a natural aggregate owner and typed field chain instead of retaining an offset-only overlay or first-word pointer interpretation.",
+        "requires": [
+          "configured symbol extent or independently bounded allocation size",
+          "typed offsets and strides from public or authenticated owner contracts",
+          "multiple independent read, write, callback, teardown, or state consumers",
+          "exact instructions, relocations, and retained consumers"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "correct base-versus-field address materialization",
+          "natural field offsets and array strides",
+          "removal of opaque casts or overlays without byte changes",
+          "different relocation ownership when the first word was misclassified as a pointer slot"
+        ],
+        "known_signatures": [
+          "one address is repeatedly loaded through several typed offsets larger than a pointer",
+          "configured size divided by repeated consumer count yields a stable natural element stride",
+          "a public hookData or owner field leads through public structs to the target offset",
+          "an opaque overlay matches bytes but conflicts with callback, teardown, or mutation consumers"
+        ]
+      },
+      "rule": "Treat an offset match as a lead, not ownership proof. Before keeping an overlay or pointer-slot type, triangulate configured extent, public field and stride contracts, and every independent consumer; retain the narrowest natural aggregate that makes those dimensions and exact relocations agree.",
+      "safe_actions": [
+        "list every configured extent and target relocation touching the candidate owner",
+        "trace public consumer types through the complete pointer and field chain",
+        "divide total extent by authenticated repeated-consumer count to test natural element stride",
+        "verify callbacks, initialization, mutation, and teardown against the same owner",
+        "remove temporary overlays once a public natural contract reproduces identical bytes"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "mdbankdll:fn_1_46C",
+          "mdbankdll:fn_1_4B8",
+          "mdbankdll:fn_1_1994",
+          "mdbankdll:fn_1_5550"
+        ],
+        "modules": [
+          "staffdll",
+          "mdbankdll"
+        ],
+        "owner_tags": [
+          "aggregate_ownership",
+          "consumer_triangulation",
+          "configured_extent",
+          "public_types",
+          "relocation_ownership",
+          "rel"
+        ]
+      },
+      "examples": [
+        "staffdll public HU3D_MODEL.hookData through HU3D_PARTICLE/HU3D_PARTICLE_DATA replaced temporary offset overlays while preserving 25 exact functions, 0x9BC text, and 125 physical relocations.",
+        "mdbankdll configured lbl_1_bss_1998 size 0x50 plus camera callbacks/state consumers authenticated one owner aggregate and added twelve exact functions, 1396 bytes, and 94 physical relocations.",
+        "mdbankdll configured extents divided by repeated consumer counts authenticated eight additional owner arrays and closed fn_1_1994/fn_1_5550 for 1312 bytes."
+      ],
+      "counterexamples": [
+        "Matching one field offset does not authenticate the semantic field or containing type.",
+        "Repeated high/low address materialization of the first word does not prove pointer-to-pointer ownership.",
+        "Do not keep an opaque overlay after a public consumer chain reproduces the layout naturally."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_dll_reinforcements_20260728.md"
+      ]
+    },
+    {
+      "id": "catalog-authenticated-fixed-arity-selects-natural-source-shape",
+      "title": "Use authenticated fixed arity to choose direct calls or a bounded workspace",
+      "classification": "contextual_heuristic",
+      "category": "control_flow_and_lifetime",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "A five-entry miraclebook resource catalog authenticated an exact direct-call sequence where a loop emitted 40 extra bytes, while a 16-entry s01 motion catalog authenticated an exact local permutation workspace where destructive pseudo-swaps failed. Fixed arity narrows natural source shape but does not prescribe one universal form.",
+      "conditions": "Apply when catalog, configured extent, or complete consumers authenticate a small fixed resource count and an otherwise natural loop, unrolled sequence, or shuffle differs structurally from target code.",
+      "source_condition": {
+        "change": "Express a catalog-proven fixed operation as direct calls or a bounded local ordering workspace according to target instruction shape.",
+        "requires": [
+          "authenticated fixed count and resource order domain",
+          "target control flow distinguishing loop control from direct calls",
+          "target index/load/store lifetime distinguishing a workspace from destructive table mutation",
+          "exact instructions, relocations, and consumers"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "removal of loop-control instructions for a small explicit call sequence",
+          "preservation of bounded index and shuffle lifetimes through a local permutation array",
+          "different callback or resource-call chronology",
+          "large structural drift when the wrong fixed-arity form is selected"
+        ],
+        "known_signatures": [
+          "target repeats a small call sequence with no induction variable or back edge",
+          "target retains bounded local index loads and stores around a randomized ordering",
+          "a loop is exact in calls but larger by only loop-control bytes",
+          "destructive pseudo-swaps lose a target local-workspace lifetime"
+        ]
+      },
+      "rule": "After authenticating a small fixed count, use target control and data-flow shape to choose a natural explicit call sequence or bounded local workspace. Test the coherent family once; never force unrolling, invent a table, or mutate shared data merely to remove a loop.",
+      "safe_actions": [
+        "pin the count from catalog, configured extent, or complete consumers",
+        "compare ordered calls, induction/back-edge instructions, and local index loads/stores",
+        "cluster the complete small fixed family in one source hypothesis",
+        "retain only exact subsets and revert destructive pseudo-swap or invented-table probes"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "miraclebookdll:fn_1_7998",
+          "s01Dll:fn_1_AFC"
+        ],
+        "modules": [
+          "miraclebookdll",
+          "s01Dll"
+        ],
+        "owner_tags": [
+          "fixed_arity",
+          "resource_catalog",
+          "explicit_calls",
+          "permutation_workspace",
+          "bulk_recovery",
+          "rel"
+        ]
+      },
+      "examples": [
+        "miraclebookdll fn_1_7998 became strict exact at 4212 bytes with five catalog-authenticated direct resource calls; the loop retained 40 target-absent bytes.",
+        "s01Dll fn_1_AFC became strict exact at 0x13C bytes with a natural 16-entry motion-order workspace; destructive pseudo-swaps scored 54.632910%."
+      ],
+      "counterexamples": [
+        "A constant count inferred only from one loop bound does not authenticate a resource catalog or order domain.",
+        "Fixed arity is not permission to add unroll pragmas, duplicate side effects, fabricate arrays, or hard-code unproven literals.",
+        "Use a direct sequence only when target loop control is absent; use a workspace only when target index and store chronology proves it."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "src/REL/s01Dll/s01.c"
+      ]
+    },
+    {
       "id": "configured-matching-needs-retail-replay",
       "title": "A configured Matching label is a claim until retail proof is replayed",
       "classification": "confirmed_rule",
@@ -568,6 +721,7 @@
           "fresh active-object build",
           "instruction and relocation comparison",
           "section ownership comparison",
+          "standalone and every retained inline-consumer replay for shared helper source",
           "linked retail checksum when integration is claimed"
         ]
       },
@@ -576,17 +730,20 @@
           "false exact-function count",
           "stale section match",
           "hidden relocation regression",
+          "regression in an exact standalone body or sibling inline expansion",
           "linked-output drift"
         ],
         "known_signatures": [
           "source blobs differ while both repositories label an owner Matching",
-          "no reproducible object or checksum artifact accompanies the label"
+          "no reproducible object or checksum artifact accompanies the label",
+          "one near-exact inline clone improves while an already exact helper or sibling clone changes"
         ]
       },
-      "rule": "Report configured status separately from freshly replayed retained-object, relocation, section, and linked-output results.",
+      "rule": "Report configured status separately from freshly replayed retained-object, relocation, section, consumer-context, and linked-output results. A shared helper source is exact only when its standalone body and every retained inline expansion remain exact.",
       "safe_actions": [
         "compile the active object in an isolated current worktree",
         "save a fresh relocation-aware objdiff report",
+        "diff every exact standalone and inline context reached by an edited helper",
         "run the serialized linked hash gate before integration completion"
       ],
       "applicability": {
@@ -598,12 +755,14 @@
         "owner_tags": []
       },
       "examples": [
-        "mariopartyrd-mp6-fcf0b69:54-configured-matching"
+        "mariopartyrd-mp6-fcf0b69:54-configured-matching",
+        "endingdll fn_1_A964 reached 99.984920 with only seven stack-slot differences, but candidate helper changes regressed exact fn_1_A6D8 or fn_1_A58C and were correctly reverted"
       ],
       "counterexamples": [],
       "related_exceptions": [],
       "evidence": [
-        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69"
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69",
+        "docs/native_matching_dll_reinforcements_20260728.md"
       ]
     },
     {
@@ -2331,20 +2490,21 @@
       "category": "local_lifetime_and_saved_register_coloring",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order or first semantic use changes, even when control flow, types, size, and relocations are otherwise identical.",
+      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, or first semantic use changes, even when control flow, types, size, and relocations are otherwise identical.",
       "conditions": "Use only for an exact-sized function whose remaining differences form a small same-width saved-register cycle after structural control flow, owner types, calls, and relocations already agree.",
       "source_condition": {
-        "change": "Restore the target-backed declaration order and first semantic use of adjacent natural locals.",
+        "change": "Restore the target-backed declaration order, initialization point, and first semantic use of adjacent natural locals.",
         "requires": [
           "authenticated local types and ownership",
           "exact function size and structural instruction sequence",
-          "a bounded declaration-order or first-use control",
+          "a bounded declaration-order, initialization-point, or first-use control",
           "exact relocations and zero regression of exact owner neighbors"
         ]
       },
       "emitted_effect": {
         "possible_changes": [
           "rotation of callee-saved GPR assignments",
+          "a later saved-register lifetime when declaration and assignment are separated naturally",
           "operand-field changes without instruction insertion or deletion",
           "unchanged frame size, calls, and relocation stream",
           "no emitted change when first-use chronology dominates the declarations"
@@ -2353,13 +2513,15 @@
           "two pointer locals exchange r30 and r31 after one natural declaration-order swap",
           "sequential same-type loop locals occupy descending saved registers in declaration/first-use order",
           "an exact-sized function retains only a two- or three-register ARG cycle",
+          "a declaration initializer begins an owner-pointer lifetime before a target cleanup call cluster",
           "legal scope or declaration movement is byte-neutral when it does not change first use"
         ]
       },
-      "rule": "Test one natural adjacent-local declaration order and one independently justified first-use chronology when the mismatch is a pure saved-register cycle. Retain the form only when typed semantics, complete text, relocations, and consumers are exact; if the bounded controls are neutral or leave a cycle, stop and record negative evidence rather than adding register-shaping locals.",
+      "rule": "Test one natural adjacent-local declaration order, one target-backed initialization point, and one independently justified first-use chronology when the mismatch is a pure saved-register cycle. Treat those as separate variables. Retain the form only when typed semantics, complete text, relocations, and consumers are exact; if the bounded controls are neutral or leave a cycle, stop and record negative evidence rather than adding register-shaping locals.",
       "safe_actions": [
         "authenticate widths and pointer depth before changing order",
-        "compare declaration order and first semantic use as separate variables",
+        "compare declaration order, initialization point, and first semantic use as separate variables",
+        "separate declaration from assignment only when target calls or stores prove the later lifetime boundary",
         "verify that no extsh, clrlwi, spill, frame, call, or relocation debt appears",
         "revert neutral or unresolved register-color probes"
       ],
@@ -2370,6 +2532,7 @@
         "stable_ids": [
           "endingdll:fn_1_12838",
           "mdbankdll:fn_1_13764",
+          "mdbankdll:fn_1_83CC",
           "meschkdll:fn_1_188",
           "mdpresultdll:fn_1_B178",
           "mdpresultdll:fn_1_C358"
@@ -2391,12 +2554,14 @@
       "examples": [
         "endingdll fn_1_12838 became strict exact when sequential same-type loop locals remained in one outer scope and declaration order produced indices in r31/r30/r29 plus group/model in r27/r28",
         "mdbankdll fn_1_13764 changed from 98.833336% to strict exact when natural HU3D_PARTICLE_DATA* data was declared before HU3D_PARTICLE* particle, rotating data/particle from r30/r31 to target r31/r30",
+        "mdbankdll fn_1_83CC became strict exact at 756 bytes when the authenticated camera pointer was declared normally but assigned after window/light cleanup, beginning its saved-register lifetime at the target point",
         "mdpresultdll fn_1_B178 became exact when the inner-loop index preceded the outer-loop index in natural declaration chronology"
       ],
       "counterexamples": [
         "meschkdll fn_1_188 improved to an exact-sized 99.893870 form, but legal declaration/scope controls could not break its final dirWin/nextMessNo r20/r22 cycle, so all nonexact probes were reverted.",
         "mdpresultdll fn_1_C358 reproduced the target save set after a separate second-loop index but retained a seven-row register-color cycle, so the function was fully reverted.",
         "Changing a local's width to steer allocation is not this rule; it introduces normalization differences and must be rejected.",
+        "Do not split a declaration initializer solely to choose a register when target call/store chronology does not prove a later semantic lifetime.",
         "Do not add redundant temporaries, fake scopes, volatile qualifiers, or register keywords solely to choose registers."
       ],
       "related_exceptions": [],

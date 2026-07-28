@@ -129,6 +129,33 @@
       "supersedes": [],
       "superseded_by": null
     },
+    "consumer-triangulation-before-opaque-aggregate-overlay": {
+      "status": "active",
+      "validated_commit": "a671819ca209a25c483607b6112c97cc0434452e",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "include/game/hu3d.h",
+        "src/REL/mdbankdll/mdbank.c",
+        "src/REL/staffdll/staff.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "catalog-authenticated-fixed-arity-selects-natural-source-shape": {
+      "status": "active",
+      "validated_commit": "a671819ca209a25c483607b6112c97cc0434452e",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "src/REL/miraclebookdll/miraclebook.c",
+        "src/REL/s01Dll/s01.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "configured-matching-needs-retail-replay": {
       "status": "active",
       "validated_commit": "66e4bd3313b384fb3c81351dca8c97e9ca60cfa1",
@@ -136,6 +163,7 @@
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
+        "docs/native_matching_dll_reinforcements_20260728.md",
         "config/GP6E01/build.sha1"
       ],
       "supersedes": [],

@@ -88,6 +88,75 @@ The reusable rule is therefore limited to target-proven call-spanning address
 lifetime and named relocation ownership; it does not authorize pointer locals
 as generic register-allocation controls.
 
+## Consumer triangulation closes natural aggregate ownership
+
+Under GC/2.6, staff commit
+`a7625189a25dcde90cf59a3d9f07195fe0f2b3bc` replaced temporary offset overlays
+with the public `HU3D_MODEL.hookData` -> `HU3D_PARTICLE` ->
+`HU3D_PARTICLE_DATA` consumer chain while preserving strict-exact bytes.  The
+pass retained 25 functions, 0x9BC text bytes, and 125 physical relocations; the
+initial offset-only HSF interpretation was rejected.
+
+Under GC/1.3.2, mdbank commit
+`b8534c38ea3641e08dade5dc455e82cb24c56d15` proved that configured
+`lbl_1_bss_1998` size 0x50 owns a camera aggregate rather than a pointer slot.
+Callbacks and state consumers authenticated center, rotation, zoom, callback,
+and state offsets; twelve new functions, 1,396 text bytes, and 94 physical
+relocations became exact.  Pass 7 commit
+`40babb7895ee0ed54a171e2017516f619d26e91b` independently used configured
+extent divided by repeated consumer count to bind eight more owner arrays and
+close two functions totaling 1,312 bytes.
+
+The cross-profile rule is to triangulate configured extent, public field/stride
+types, and every independent consumer before retaining an opaque overlay or a
+first-word pointer interpretation.  Matching one offset is not semantic or
+layout proof.
+
+## Catalog-authenticated fixed arity selects natural source shape
+
+Under GC/2.6, miraclebook commit
+`d6a793893a0ed411baa415c9f7fbee8d9e29fa6d` used the authenticated five-entry
+resource catalog to express five direct resource calls in `fn_1_7998`.  The
+loop form retained 40 bytes of loop control absent from retail; the direct
+sequence made the 4,212-byte function strict exact.  The same function's
+authenticated helper early return bound its inlined branch to the caller
+epilogue, whereas a rewritten switch `break` targeted the continuation.
+
+In the fully recovered `s01Dll`, commit
+`9ab7a158bd74541b0c72745def3d6f9686655be7` used an authenticated 16-entry
+motion-order workspace in `fn_1_AFC`.  That natural fixed permutation reproduced
+the 0x13C target body exactly; an earlier destructive pseudo-swap was only
+54.632910% and was reverted.
+
+The reusable diagnostic is not "always unroll."  First authenticate the small
+resource count from catalog, configured extent, or consumers.  Then follow the
+target shape: a direct call sequence explains absent loop control, while a
+bounded local permutation explains retained index/load/store shuffle lifetime.
+No pragma, fake table, or literal fabrication is authorized.
+
+## Initialization timing is distinct from declaration order
+
+Under GC/1.3.2, mdbank commit
+`75986189698d2131f54a7033c781f41e8c741a6f` made `fn_1_83CC` exact at 756
+bytes and 87 relocation-bearing instructions by declaring the authenticated
+camera pointer normally but assigning it only after window/light cleanup.  An
+initializer at the declaration was structurally and size exact yet scored
+97.8836% because it began the saved-register lifetime too early.  Declaration
+order and initialization/first-use position must therefore be tested as
+separate bounded variables when target calls/stores prove the later lifetime.
+
+## Retained inline source has multiple output contexts
+
+Ending pass 19 at clean head
+`bccac84672a5c8553cd012f6e6db389f105cf768` reproduced every opcode and
+relocation of `fn_1_A964` and reached 99.984920%, leaving seven stack-slot
+argument differences.  Natural declaration changes that improved those slots
+regressed independently exact `fn_1_A6D8`, while file-data/animation chronology
+changes regressed exact `fn_1_A58C`; all candidates were reverted.  A helper
+edit must therefore replay its standalone body and every retained inline
+consumer.  A higher score in one clone never outweighs an exact-context
+regression.
+
 ## Proof boundary
 
 The cited worker commits are clean, source-only partial-owner commits. Reports
