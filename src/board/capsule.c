@@ -1,3 +1,5 @@
+#define _MATH_H
+#include "dolphin/math.h"
 #include "game/board/masu.h"
 #include "game/board/audio.h"
 #include "game/board/branch.h"
@@ -1754,8 +1756,8 @@ void mbCapListRead(void)
             break;
         }
     }
-    listBase = HuDataSelHeapReadNum(file->dataNo, HU_MEMNUM_OVL, HEAP_MODEL);
-    list = listBase;
+    listBase = list = HuDataSelHeapReadNum(
+        file->dataNo, HU_MEMNUM_OVL, HEAP_MODEL);
     i = 0;
     num = 0;
     for (; i < 33; i++, list++) {
@@ -2344,7 +2346,7 @@ static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max)
     } else {
         masuFlag[masuId] = 0x8000;
     }
-    if (CapSelectMasuDispCheck(masuId) && mbev_CapMasuMoveCheck(masuId)) {
+    if (mbMasuDispCheck(masuId) && mbev_CapMasuMoveCheck(masuId)) {
         max = 0;
     }
     if (CapSelectMasuDispCheck(masuId) && !capsuleMasuSelectEndF) {
@@ -2362,7 +2364,7 @@ static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max)
             }
         }
     }
-    if (!endF && num < 1 && mbMasuTypeGet(masuId) == 0) {
+    if (!endF && num <= 0 && mbMasuTypeGet(masuId) == 0) {
         CapSelectMasuLinkCheck(masuFlag, masuId);
     }
 }
