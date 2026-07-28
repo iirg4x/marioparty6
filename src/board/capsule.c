@@ -2375,13 +2375,16 @@ static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId)
     s16 linkNum;
     int i;
 
-    if (masuId > 0 &&
-        (linkNum = mbMasuLinkTblGet(masuId, link), masuFlag[masuId] != 0) &&
-        mbMasuTypeGet(masuId) == 0) {
-        masuFlag[masuId] = 0;
-        for (i = 0; i < linkNum; i++) {
-            if (!mbev_CapMasuMoveCheck(link[i])) {
-                CapSelectMasuLinkCheck(masuFlag, link[i]);
+    if (masuId >= 1) {
+        linkNum = mbMasuLinkTblGet(masuId, link);
+        if (masuFlag[masuId] != 0) {
+            if (mbMasuTypeGet(masuId) == 0) {
+                masuFlag[masuId] = 0;
+                for (i = 0; i < linkNum; i++) {
+                    if (!mbev_CapMasuMoveCheck(link[i])) {
+                        CapSelectMasuLinkCheck(masuFlag, link[i]);
+                    }
+                }
             }
         }
     }
@@ -2583,9 +2586,16 @@ int mbCapObjColorCreate(int capsuleNo, BOOL createF)
 {
     CAPSULE_OBJ_COLOR *obj;
     int i;
+    int capValue;
+    u32 file;
+    s16 initialValue;
+    s16 capValueShort;
+    int objFile;
+    int fileNo;
 
     obj = capsuleObjColorData;
-    capsuleNo = (s16)capsuleNo & 0xFF;
+    initialValue = (s16)capsuleNo & 0xFF;
+    capsuleNo = initialValue;
     for (i = 0; i < CAPSULE_OBJ_COLOR_MAX; i++, obj++) {
         if (!obj->flag) {
             break;
@@ -2594,8 +2604,14 @@ int mbCapObjColorCreate(int capsuleNo, BOOL createF)
     if (i >= CAPSULE_OBJ_COLOR_MAX) {
         return -1;
     }
+    capValue = capsuleNo;
+    capValueShort = (s16)capValue & 0xFF;
+    capValue = capValueShort;
+    objFile = capsuleData[capValue].objFile;
+    fileNo = objFile;
+    file = fileNo;
     obj->flag = TRUE;
-    obj->mdlId = mbObjCreate(capsuleData[capsuleNo].objFile, NULL, createF);
+    obj->mdlId = mbObjCreate(file, NULL, createF);
     obj->layer = 4;
     obj->pos.x = obj->pos.y = obj->pos.z = 0.0f;
     obj->rot.x = obj->rot.y = obj->rot.z = 0.0f;
