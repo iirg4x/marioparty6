@@ -12,6 +12,9 @@ REL/mdbankdll/mdbank_tail3.c:
 REL/mdbankdll/mdbank_tail.c:
 	.text       start:0x00002CD8 end:0x00002D70
 
+REL/mdbankdll/mdbank_tail4.c:
+	.text       start:0x00002D98 end:0x00002EFC
+
 REL/mdbankdll/mdbank_tail2.c:
 	.text       start:0x00006F00 end:0x000070E4
 
