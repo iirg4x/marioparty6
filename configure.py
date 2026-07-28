@@ -1306,7 +1306,6 @@ config.libs = [
     Rel(
         "mdbankdll",
         objects={
-            Object(Matching, "REL/mdbankdll/mdbank_tail.c"),
             Object(
                 Matching,
                 "REL/mdbankdll/runtime.c",
