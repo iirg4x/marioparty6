@@ -471,7 +471,7 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
     HU3D_MODEL *model;
     int i;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     if (model->attr & HU3D_ATTR_LINK) {
         work = mbMallocNum(sizeof(*work), model->mallocNoLink);
@@ -500,7 +500,7 @@ void mbObjFadeKill(MBMODELID modelId)
     HU3D_MODEL *model;
     int i;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     work = model->hookData;
     Hu3DModelMatHookSet(hu3DModelId, NULL);
@@ -575,7 +575,7 @@ void mbObjFadeTexRotSet(MBMODELID modelId, HuVecF *pos, HuVecF *rot)
     MBOBJFADEWORK *work;
     HU3D_MODEL *model;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     work = model->hookData;
     work->pos = *pos;
@@ -588,7 +588,7 @@ void mbObjFadeTexColorSet(MBMODELID modelId, u8 r, u8 g, u8 b, float alpha)
     MBOBJFADEWORK *work;
     HU3D_MODEL *model;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     work = model->hookData;
     work->color.r = r;
@@ -605,7 +605,7 @@ void mbObjMetalCreate(MBMODELID modelId)
     HU3D_MODEL *model;
     int i;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     if (model->attr & HU3D_ATTR_LINK) {
         work = mbMallocNum(sizeof(*work), model->mallocNoLink);
@@ -642,7 +642,7 @@ BOOL mbObjMetalKill(MBMODELID modelId)
     HU3D_MODEL *model;
     int i;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     if (model->hookData == NULL) {
         return FALSE;
@@ -669,7 +669,7 @@ void mbObjMetalTPLvlSet(MBMODELID modelId, float tpLvl)
     MBOBJMETALWORK *work;
     HU3D_MODEL *model;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     work = model->hookData;
     work->tpLvl = tpLvl;
@@ -682,7 +682,7 @@ void mbObjMetalColorSet(MBMODELID modelId, GXColor shadowColor,
     MBOBJMETALWORK *work;
     HU3D_MODEL *model;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     work = model->hookData;
     work->shadowColor = shadowColor;
@@ -796,7 +796,7 @@ void mbObjBiriQCreate(MBMODELID modelId)
     HU3D_MODEL *model;
     int i;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     if (model->attr & HU3D_ATTR_LINK) {
         work = mbMallocNum(sizeof(*work), model->mallocNoLink);
@@ -822,7 +822,7 @@ BOOL mbObjBiriQKill(MBMODELID modelId)
     HU3D_MODEL *model;
     int i;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     if (model->hookData == NULL) {
         return FALSE;
@@ -848,7 +848,7 @@ void mbObjBiriQColorSet(MBMODELID modelId, BOOL mode, float level,
     MBOBJBIRIQWORK *work;
     HU3D_MODEL *model;
 
-    hu3DModelId = mbObjModelIDGet(modelId);
+    hu3DModelId = mbObjModelIDGet((int)modelId);
     model = &Hu3DData[hu3DModelId];
     if (model->hookData == NULL) {
         return;
