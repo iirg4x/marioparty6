@@ -472,7 +472,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Seventeen mdsingdll functions totaling 2564 text bytes and 188 physical relocations became independently exact from mdpartydll stage.c analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
+      "summary": "Twenty-four mdsingdll functions totaling 3948 text bytes and 286 physical relocations became independently exact from mdpartydll stage.c analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -527,6 +527,13 @@
           "mdpartydll:fn_1_43518",
           "mdpartydll:fn_1_43570",
           "mdpartydll:fn_1_43724",
+          "mdpartydll:fn_1_42B40",
+          "mdpartydll:fn_1_42CD4",
+          "mdpartydll:fn_1_43D78",
+          "mdpartydll:fn_1_43EE4",
+          "mdpartydll:fn_1_44300",
+          "mdpartydll:fn_1_4451C",
+          "mdpartydll:fn_1_44D48",
           "mdsingdll:fn_1_2E68C",
           "mdsingdll:fn_1_2E6B8",
           "mdsingdll:fn_1_2EA9C",
@@ -543,7 +550,14 @@
           "mdsingdll:fn_1_31818",
           "mdsingdll:fn_1_31984",
           "mdsingdll:fn_1_319DC",
-          "mdsingdll:fn_1_31B90"
+          "mdsingdll:fn_1_31B90",
+          "mdsingdll:fn_1_30730",
+          "mdsingdll:fn_1_308C4",
+          "mdsingdll:fn_1_321E4",
+          "mdsingdll:fn_1_32350",
+          "mdsingdll:fn_1_3276C",
+          "mdsingdll:fn_1_32988",
+          "mdsingdll:fn_1_331E0"
         ],
         "modules": [
           "mdpartydll",
@@ -562,7 +576,8 @@
         "mdpartydll fn_1_40EAC/fn_1_40FC0 authenticated the particle lifecycle pair recovered exactly as mdsingdll fn_1_2EA9C/fn_1_2EBB0 (320 target text bytes and 45 exact relocations).",
         "mdpartydll fn_1_40FEC authenticated the particle activation shape recovered exactly as mdsingdll fn_1_2EBDC (232 target text bytes and 9 physical relocations).",
         "A later eight-candidate inventory used stable delta -0x12410 and target-owned global/constant translations to recover five mdsing lifecycle functions in one coherent pass (752 target text bytes and 58 physical relocations).",
-        "A following 18-candidate catalog used stable later-family delta -0x11B94 to recover seven mdsing particle-control functions in one eight-function attempt (1180 target text bytes and 72 physical relocations)."
+        "A following 18-candidate catalog used stable later-family delta -0x11B94 to recover seven mdsing particle-control functions in one eight-function attempt (1180 target text bytes and 72 physical relocations).",
+        "The next later-family pass recovered seven more mdsing particle helpers across five independently consumed objects (1384 target text bytes and 98 physical relocations), bringing the feedback catalog to 24 exact mappings."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -570,6 +585,9 @@
         "mdpartydll fn_1_410D4/fn_1_418D4 callback analogues were excluded because target code requires earlier TU-visible auto-inline helpers.",
         "mdpartydll fn_1_4161C to mdsingdll fn_1_2F20C remained rejected at exact size and 99.866070% because three conversion relocations bound compiler-local @166 instead of target lbl_1_rodata_3F8.",
         "mdpartydll fn_1_435EC to mdsingdll fn_1_31A58 remained rejected at 312/312 bytes and 99.423080% because nine relocations bound compiler-local @190 instead of target lbl_1_rodata_400.",
+        "mdpartydll fn_1_43F3C to mdsingdll fn_1_323A8 and fn_1_463E0 to fn_1_34958 were suppressed because target output depends on earlier TU-visible auto-inline bodies.",
+        "mdpartydll fn_1_443B4 to mdsingdll fn_1_32820 repeated the known @190 byte-to-float pool mismatch and was not reworked.",
+        "mdpartydll fn_1_44B1C to mdsingdll fn_1_32FB4 reached 99.748% text, but local-initializer and adjacent-rodata ownership prevented a retail-exact split object.",
         "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
       ],
       "related_exceptions": [],
@@ -582,6 +600,11 @@
         "src/REL/mdsingdll/mdsing_tail6.c",
         "src/REL/mdsingdll/mdsing_tail7.c",
         "src/REL/mdsingdll/mdsing_tail8.c",
+        "src/REL/mdsingdll/mdsing_tail9.c",
+        "src/REL/mdsingdll/mdsing_tail10.c",
+        "src/REL/mdsingdll/mdsing_tail11.c",
+        "src/REL/mdsingdll/mdsing_tail12.c",
+        "src/REL/mdsingdll/mdsing_tail13.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ]
