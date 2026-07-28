@@ -36,6 +36,7 @@ extern int mbCapSelectDeleteComGet(int playerNo, int *capsuleTbl,
 extern int mbCapMasuNextGet(int playerNo);
 extern s16 mbCapDescWinCreate(int capsuleNo);
 extern int mbSingleCall(int mode, int arg);
+extern s8 mbPadStkXGet(s32 playerNo);
 extern void mbev_Scroll(int playerNo, BOOL mapF);
 extern OMOBJ *mbev_CapEffExplodeCreate(void);
 extern void mbev_CapEffDustExplodeAdd(OMOBJ *obj, HuVecF *pos);
@@ -122,6 +123,7 @@ int mbCapSelect(void)
 {
     CAPSELECTWORK *work;
     BOOL partyF;
+    CAPSELECTWORK *workData;
     int playerNo = GwSystem.turnPlayerNo;
     int objId;
     int result;
@@ -140,9 +142,10 @@ int mbCapSelect(void)
         while (!mbCapSelectShrinkCheck(playerNo)) {
             HuPrcVSleep();
         }
-        work = HuMemDirectMallocNum(HEAP_HEAP,
+        workData = HuMemDirectMallocNum(HEAP_HEAP,
             sizeof(CAPSELECTWORK),
             HU_MEMNUM_OVL);
+        work = workData;
         memset(work, 0, sizeof(CAPSELECTWORK));
         work->playerNo = playerNo;
         work->deleteF = FALSE;
@@ -200,70 +203,83 @@ cleanup:
 int mbCapDelete(int capsuleNo, BOOL repeatF)
 {
     CAPSELECTWORK *work;
+    int winId;
     HuVecF pos;
     HuVecF dustPos;
+    CAPSELECTWORK *workData;
     int playerNo = GwSystem.turnPlayerNo;
     int objId;
     int result;
     OMOBJ *effectObj;
-    int choice;
-    s16 winId;
+    HuVecF *dustPosP;
+    BOOL partyF;
 
     mbCapSelectResultSet(playerNo, -1, -1);
     ev_CapSelectMdlId = -1;
     do {
-        do {
-            while (!mbCapSelectShrinkCheck(playerNo)) {
-                HuPrcVSleep();
-            }
-            work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPSELECTWORK),
-                HU_MEMNUM_OVL);
-            memset(work, 0, sizeof(CAPSELECTWORK));
-            work->playerNo = playerNo;
-            work->deleteF = TRUE;
-            work->extraCapsule = capsuleNo;
-            CapSelectStoryFSet(FALSE);
-            CapSelectExtraCapsuleGet(playerNo, capsuleNo);
-            ev_CapSelectValue[playerNo] = -9;
-            CapSelect(work);
-            HuMemDirectFree(work);
-            while (!mbCapSelectShrinkCheck(playerNo)) {
-                HuPrcVSleep();
-            }
-            result = ev_CapSelectValue[playerNo];
-            if (result == -3) {
-                mbev_Scroll(playerNo, FALSE);
-            } else if (result == -4) {
-                mbev_Scroll(playerNo, TRUE);
-            } else if (result < 0) {
-                goto cleanup;
-            }
-        } while (result < 0);
-
-        winId = mbWinCreateChoice(3, 0x3A0002, -1, 0);
-        mbWinTopInsertMesSet(mbCapUseMesGet(result), 0);
-        if (GwPlayer[playerNo].comF) {
-            mbComChoiceLeftSet();
+retry:
+        while (!mbCapSelectShrinkCheck(playerNo)) {
+            HuPrcVSleep();
         }
-        mbWinWait(winId);
-        choice = mbWinTopChoiceGet();
-        if (choice == 1 || mbWinTopChoiceGet() == -1) {
-            ev_CapSelectValue[playerNo] = repeatF ? -9 : -1;
-        } else {
-            mbCapSelectResultGet(playerNo, &objId, &result);
-            mbObjPosGet(objId, &pos);
-            mbAudFXPlay(0x3FD);
-            effectObj = mbev_CapEffExplodeCreate();
-            dustPos = pos;
-            mbev_CapEffDustExplodeAdd(effectObj, &dustPos);
-            mbObjDispSet(objId, FALSE);
-            while (mbev_CapEffExplodeAnimGet(effectObj) > 0) {
-                HuPrcVSleep();
+        workData = HuMemDirectMallocNum(HEAP_HEAP,
+            sizeof(CAPSELECTWORK),
+            HU_MEMNUM_OVL);
+        work = workData;
+        memset(work, 0, sizeof(CAPSELECTWORK));
+        work->playerNo = playerNo;
+        work->deleteF = TRUE;
+        work->extraCapsule = capsuleNo;
+        CapSelectStoryFSet(FALSE);
+        CapSelectExtraCapsuleGet(playerNo, work->extraCapsule);
+        ev_CapSelectValue[playerNo] = -9;
+        CapSelect(work);
+        HuMemDirectFree(work);
+        while (!mbCapSelectShrinkCheck(playerNo)) {
+            HuPrcVSleep();
+        }
+        if (ev_CapSelectValue[playerNo] >= 0) {
+            winId = mbWinCreateChoice(3, 0x3A0002, -1, 0);
+            mbWinTopInsertMesSet(
+                mbCapUseMesGet(ev_CapSelectValue[playerNo]), 0);
+            if (GwPlayer[playerNo].comF) {
+                mbComChoiceLeftSet();
             }
-            mbev_CapEffExplodeKill(effectObj);
-            omVibrate(playerNo, 20, 4, 4);
-            if (!GwSystem.partyF) {
-                mbSingleCall(6, 0);
+            mbWinWait(winId);
+            if (mbWinTopChoiceGet() == 1 || mbWinTopChoiceGet() == -1) {
+                if (repeatF) {
+                    ev_CapSelectValue[playerNo] = -9;
+                } else {
+                    ev_CapSelectValue[playerNo] = -1;
+                }
+            } else {
+                mbCapSelectResultGet(playerNo, &objId, &result);
+                mbObjPosGet(objId, &pos);
+                mbAudFXPlay(0x3FD);
+                effectObj = mbev_CapEffExplodeCreate();
+                dustPos = pos;
+                dustPosP = &dustPos;
+                mbev_CapEffDustExplodeAdd(effectObj, dustPosP);
+                mbObjDispSet(objId, FALSE);
+                while (mbev_CapEffExplodeAnimGet(effectObj) > 0) {
+                    HuPrcVSleep();
+                }
+                mbev_CapEffExplodeKill(effectObj);
+                omVibrate(playerNo, 20, 4, 4);
+                partyF = GwSystem.partyF;
+                if (!partyF) {
+                    mbSingleCall(6, 0);
+                }
+            }
+        } else {
+            switch (ev_CapSelectValue[playerNo]) {
+            case -3:
+                mbev_Scroll(playerNo, FALSE);
+                goto retry;
+            case -4:
+                mbev_Scroll(playerNo, TRUE);
+                goto retry;
+            default:
+                goto cleanup;
             }
         }
     } while (ev_CapSelectValue[playerNo] == -9 && repeatF);
@@ -580,11 +596,14 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
 {
     int playerNo = work->playerNo;
     int move = 0;
-    int padNo;
+    u16 padNo;
     u16 button;
+    u16 buttonCopy;
+    u16 buttonDown;
+    BOOL partyF;
 
-    if (GwPlayerConf[playerNo].type == 0) {
-        padNo = GwPlayer[playerNo].padNo;
+    if (GwPlayerConf[work->playerNo].type == 0) {
+        padNo = GwPlayer[work->playerNo].padNo;
         button = HuPadBtnDown[padNo];
         if (mbPadStkXGet(padNo) < -20) {
             button |= PAD_BUTTON_LEFT;
@@ -595,46 +614,59 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
         button = 0;
         if (--work->comDelay == 0) {
             if (work->comSelectNo == -1) {
-                button = PAD_BUTTON_B;
+                button |= PAD_BUTTON_B;
             } else if (work->comSelectNo == work->selectNo) {
-                button = PAD_BUTTON_A;
+                button |= PAD_BUTTON_A;
             } else if (work->selectNo < work->comSelectNo) {
-                button = PAD_BUTTON_RIGHT;
+                button |= PAD_BUTTON_RIGHT;
             } else {
-                button = PAD_BUTTON_LEFT;
+                button |= PAD_BUTTON_LEFT;
             }
             work->comDelay = 20;
         }
     }
+    buttonCopy = button;
+    buttonDown = buttonCopy;
     if (mbPauseProcCheck()) {
-        return 0;
+        buttonDown = 0;
+        return move;
     }
-    if ((button & PAD_BUTTON_LEFT) && work->capsuleNum > 1) {
+    if ((buttonDown & PAD_BUTTON_LEFT) && work->capsuleNum > 1) {
         mbAudFXPlay(0);
         if (--work->selectNo < 0) {
             work->selectNo = work->capsuleNum - 1;
         }
         move = -1;
     }
-    if ((button & PAD_BUTTON_RIGHT) && work->capsuleNum > 1) {
+    if ((buttonDown & PAD_BUTTON_RIGHT) && work->capsuleNum > 1) {
         mbAudFXPlay(0);
         if (++work->selectNo >= work->capsuleNum) {
             work->selectNo = 0;
         }
         move = 1;
     }
-    if (button & PAD_BUTTON_A) {
+    if (buttonDown & PAD_BUTTON_A) {
         ev_CapSelectValue[playerNo] = -8;
         mbAudFXPlay(1);
-    } else if ((button & PAD_BUTTON_Y) && GwSystem.partyF) {
-        ev_CapSelectValue[playerNo] = -4;
-        mbAudFXPlay(1);
-    } else if (button & PAD_BUTTON_X) {
+        return move;
+    }
+    if (buttonDown & PAD_BUTTON_Y) {
+        partyF = GwSystem.partyF;
+        if (partyF) {
+            ev_CapSelectValue[playerNo] = -4;
+            mbAudFXPlay(1);
+            return move;
+        }
+    }
+    if (buttonDown & PAD_BUTTON_X) {
         ev_CapSelectValue[playerNo] = -3;
         mbAudFXPlay(1);
-    } else if (button & PAD_BUTTON_B) {
+        return move;
+    }
+    if (buttonDown & PAD_BUTTON_B) {
         ev_CapSelectValue[playerNo] = -7;
         mbAudFXPlay(3);
+        return move;
     }
     return move;
 }
@@ -1073,8 +1105,8 @@ void mbCapCapsuleGet(int playerNo, int capsuleNo)
     playerPos.y += 250.0f;
     mbObjPosSetV(objId, &playerPos);
     for (i = 0; i < 15.0f; i++) {
-        scale = i / 15.0f;
-        mbObjScaleSet(objId, scale, scale, scale);
+        time = i / 15.0f;
+        mbObjScaleSet(objId, time, time, time);
         HuPrcVSleep();
     }
     mbObjScaleSet(objId, 1.0f, 1.0f, 1.0f);
