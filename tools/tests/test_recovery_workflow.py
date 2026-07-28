@@ -198,6 +198,26 @@ class RecoveryWorkflowTests(unittest.TestCase):
             findings = quality_findings(data, full=True)
             self.assertEqual(findings[0]["rule"], "compiler_pragma")
 
+    def test_quality_ignores_sdk_pad_macros_but_flags_padding_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            source = root / "src/new.c"
+            source.write_text(
+                "int input = PAD_BUTTON_A | PAD_TRIGGER_R;\n"
+                "int pad_0;\n",
+                encoding="utf-8",
+            )
+            data = load(root)
+            data["owners"] = [
+                {**data["owners"][0], "source": "src/new.c"}
+            ]
+            findings = quality_findings(data, full=True)
+            self.assertEqual(
+                [(item["line"], item["rule"]) for item in findings],
+                [(2, "synthetic_padding")],
+            )
+
     def test_empty_exception_rules_do_not_blanket_suppress(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
