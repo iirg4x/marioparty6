@@ -182,9 +182,14 @@ typedef struct CapEffGlowParticleData {
     u8 _unk20[4];
     float gravity;
     float rotStep;
-    u8 _unk2C[0x14];
+    u8 _unk2C[0xC];
+    float alpha;
+    float alphaMax;
     float active;
-    u8 _unk44[0x10];
+    float sizeX;
+    float sizeY;
+    float rotX;
+    float rotY;
     float angle;
     HuVecF pos;
     GXColor color;
@@ -329,7 +334,37 @@ typedef struct CapEffGlowKinokoParticleSystemWork {
     s16 num;
     u8 _unk28[0x14];
     void *data;
+    u8 _unk40[0x10];
+    HuVec2f *grid;
+    u8 _unk54[4];
+    int gridNum;
+    u8 _unk5C[4];
 } CAPEFFGLOWKINOKOPARTICLESYSTEMWORK;
+
+typedef struct CapEffParticleSystemWork {
+    s16 mode;
+    s16 phase;
+    u8 _unk04[0x1C];
+    u8 dispAttr;
+    u8 _unk21;
+    u8 blendMode;
+    u8 _unk23[3];
+    s16 num;
+    int _unk28;
+    u8 _unk2C[4];
+    int _unk30;
+    u32 displayListSize;
+    ANIMDATA *animP;
+    CAPEFFGLOWPARTICLEWORK *data;
+    HuVecF *vertices;
+    HuVec2f *texCoords;
+    void *displayList;
+    int _unk4C;
+    HuVec2f *grid;
+    int _unk54;
+    int gridNum;
+    int _unk5C;
+} CAPEFFPARTICLESYSTEMWORK;
 
 typedef struct CapEffGlowKinokoParticleWork {
     s16 _unk00;
@@ -342,8 +377,14 @@ typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_NUM_ASSERT[
     (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, num) == 0x26) ? 1 : -1];
 typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_DATA_ASSERT[
     (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, data) == 0x3C) ? 1 : -1];
+typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_GRID_ASSERT[
+    (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, grid) == 0x50) ? 1 : -1];
+typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_GRIDNUM_ASSERT[
+    (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, gridNum) == 0x58) ? 1 : -1];
 typedef char CAPEFFGLOWKINOKOPARTICLEWORK_SIZE_ASSERT[
     (sizeof(CAPEFFGLOWKINOKOPARTICLEWORK) == 0x6C) ? 1 : -1];
+typedef char CAPEFFPARTICLESYSTEMWORK_SIZE_ASSERT[
+    (sizeof(CAPEFFPARTICLESYSTEMWORK) == 0x60) ? 1 : -1];
 
 typedef struct CapEffRingWork {
     int modelId[3];
@@ -819,6 +860,7 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
     void (*hook)(void));
 static void ev_CapComChoiceHook(void);
 static void ev_CapWorkOMExec(OMOBJ *obj);
+static void ev_CapWorkInit(EVCAPWORK *work, int bgId);
 static void ev_CapWorkClose(EVCAPWORK *work);
 static void ev_CapCall(CAPWORK *work, BOOL waitF);
 void mbev_CapWait(CAPWORK *work);
@@ -855,6 +897,7 @@ void mbCapObjColorPosSet(int id, float x, float y, float z);
 void mbCapObjColorScaleSet(int id, float x, float y, float z);
 void mbCapObjColorLayerSet(int id, u8 layer);
 void mbev_CapEffColorSet(GXColor *color, int colorNo);
+static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int zNum);
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot, HuVecF *scale,
     int unk10, int unk14, int unk18, GXColor *color);
@@ -862,6 +905,187 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max);
 OMOBJ *mbev_CapEffCoinCreate(void);
 void mbev_CapEffCoinKill(OMOBJ *obj);
 
+extern s16 mbCapValueTypeGet(s16 value);
+extern s16 mbCapValuePlayerGet(s16 value);
+extern s16 mbCapUseModeGet(s16 capsuleNo);
+extern EVCAPSULEDATA ev_CapsuleData[];
+void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C,
+    BOOL unk10);
+BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
+void mbev_CapMoveMasuSet(int playerNo, int masuId);
+void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
+
+int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
+{
+    CAPWORK work;
+    s16 masuId;
+    int targetPlayerNo;
+    int capsuleNo;
+    int cameraView;
+    void (*event)(CAPWORK *);
+
+    if (playerNo < 0 || playerNo >= GW_PLAYER_MAX) {
+        return FALSE;
+    }
+    masuId = GwPlayer[playerNo].masuId;
+    if (!moveF) {
+        if (!stopF) {
+            if (playerNo == capsuleEventPrevPlayer
+                && masuId == capsuleEventPrevMasu) {
+                capsuleEventPrevMasu = capsuleEventPrevPlayer = -1;
+                return FALSE;
+            }
+            capsuleEventPrevMasu = capsuleEventPrevPlayer = -1;
+        } else {
+            if (playerNo == capsuleEventPlayer && masuId == capsuleEventMasu) {
+                capsuleEventMasu = capsuleEventPlayer = -1;
+                return FALSE;
+            }
+            capsuleEventMasu = capsuleEventPlayer = -1;
+            if (playerNo == capsulePlayer && masuId == capsuleMasuId) {
+                capsuleValue = (capsuleMasuPlayer << 8) | capsuleMasuType;
+            }
+            capsuleMasuType = capsuleMasuId = capsulePlayer = capsuleMasuPlayer = -1;
+        }
+        if (mbMasuTypeGet(masuId) != 1 && mbMasuTypeGet(masuId) != 2) {
+            return FALSE;
+        }
+        capsuleValue = mbMasuCapsuleGet(masuId);
+    }
+    targetPlayerNo = mbCapValuePlayerGet((s16)capsuleValue);
+    capsuleNo = mbCapValueTypeGet((s16)capsuleValue);
+    if (!mbCapValidCheck(capsuleNo)) {
+        return FALSE;
+    }
+    if (!moveF) {
+        if ((!stopF && mbCapUseModeGet(capsuleNo) == 2)
+            || (stopF && mbCapUseModeGet(capsuleNo) != 2)) {
+            return FALSE;
+        }
+        if (mbev_CapPlayerCheck(targetPlayerNo, playerNo)) {
+            return TRUE;
+        }
+    }
+
+    omVibrate(playerNo, 20, 4, 4);
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = moveF ? -1 : targetPlayerNo;
+    work.capsuleNo = capsuleNo;
+    work.masuId = masuId;
+    work.masuIdNext = -1;
+    work._unk14 = moveF;
+    work._unk18 = 0;
+    work._unk1C = stopF;
+    cameraView = mbCameraPlayerViewNoGet();
+    mbAudFXPlay(1035);
+    if (!moveF && !stopF) {
+        mbev_CapEffOpenCreate(playerNo, masuId, TRUE, TRUE, TRUE);
+    }
+    event = (void (*)(CAPWORK *))ev_CapsuleData[capsuleNo].unk08;
+    if (event != NULL) {
+        ev_CapWorkInit(&work.objWork, -1);
+        event(&work);
+        ev_CapWorkClose(&work.objWork);
+    }
+    if (stopF && ev_CapsuleData[capsuleNo].unk18 != 0
+        && mbCapUseModeGet(capsuleNo) == 2) {
+        if ((capsuleNo == 22 || capsuleNo == 25)
+            && GwPlayer[playerNo].masuIdPrev < 2) {
+            mbev_CapMoveMasuSet(playerNo, GwPlayer[playerNo].masuId);
+        }
+        return TRUE;
+    }
+    mbPlayerRotateStart(playerNo, 0, 15);
+    ev_CapCall(&work, TRUE);
+    mbev_CapStatusDispSetAll(TRUE, TRUE);
+    mbCameraPlayerViewSet(playerNo, cameraView);
+    return FALSE;
+}
+
+void mbev_CapCallKettou(int playerNo, int masuId, BOOL stopF)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 41;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = masuId;
+    work.masuIdNext = -1;
+    work.flags._flag01 = stopF;
+    HuPrcSleep(10);
+    mbAudFXPlay(1104);
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapCallDonkey(int playerNo)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 44;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = GwPlayer[playerNo].masuId;
+    work.masuIdNext = -1;
+    omVibrate(playerNo, 20, 7, 3);
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapCallKoopa(int playerNo)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 43;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = GwPlayer[playerNo].masuId;
+    work.masuIdNext = -1;
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapCallTeresa(int playerNo, int masuId)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 46;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = masuId;
+    work.masuIdNext = -1;
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapCallMiracle(int playerNo, int masuId)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 42;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = masuId;
+    work.masuIdNext = -1;
+    ev_CapCall(&work, TRUE);
+}
 
 
 
@@ -932,6 +1156,37 @@ extern s16 mbCapMasuDispTypeGet(s16 masuId);
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C, BOOL unk10);
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
 
+BOOL mbev_CapCallTrap(int playerNo, int masuId, int masuIdNext)
+{
+    int targetPlayerNo;
+    CAPWORK work;
+
+    targetPlayerNo = mbCapValuePlayerGet(mbMasuCapsuleGet(masuIdNext));
+    if (mbCapMasuDispTypeGet(masuIdNext) != 2) {
+        return FALSE;
+    }
+    if (mbev_CapPlayerCheck(targetPlayerNo, playerNo)) {
+        return TRUE;
+    }
+    mbAudFXPlay(1035);
+    if (GwPlayer[playerNo].biriQF) {
+        biriQMasuNum = 60;
+    }
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = mbCapMasuTypeGet(masuIdNext);
+    work._unk14 = 1;
+    work._unk1C = 1;
+    work._unk18 = 0;
+    work.masuId = masuId;
+    work.masuIdNext = masuIdNext;
+    mbev_CapEffOpenCreate(work.playerNo, work.masuIdNext, TRUE, FALSE, FALSE);
+    if (ev_CapsuleData[work.capsuleNo].unk18 != 0) {
+        ev_CapCall(&work, FALSE);
+    }
+    return TRUE;
+}
 
 int mbev_CapBiriQShockDelayGet(int playerNo)
 {
@@ -1544,6 +1799,76 @@ BOOL mbev_CapBonusCoinCheck(int playerNo)
     }
 }
 
+void mbev_CapKettouEndCall(int playerNo)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 41;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = GwPlayer[playerNo].masuId;
+    work.masuIdNext = -1;
+    work.flags._flag02 = TRUE;
+    mbPlayerColSnapSet(TRUE);
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapDonkeyEndCall(int playerNo)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 44;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = GwPlayer[playerNo].masuId;
+    work.masuIdNext = -1;
+    work.flags._flag03 = TRUE;
+    mbPlayerColSnapSet(TRUE);
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapKoopaEndCall(int playerNo)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 43;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 0;
+    work.masuId = GwPlayer[playerNo].masuId;
+    work.masuIdNext = -1;
+    work.flags._flag04 = TRUE;
+    mbPlayerColSnapSet(TRUE);
+    ev_CapCall(&work, TRUE);
+}
+
+void mbev_CapKillerMoveCall(int playerNo)
+{
+    CAPWORK work;
+
+    memset(&work, 0, sizeof(CAPWORK));
+    work.playerNo = playerNo;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = 40;
+    work._unk14 = 0;
+    work._unk1C = 0;
+    work._unk18 = 1;
+    work.masuId = GwPlayer[playerNo].masuId;
+    work.masuIdNext = -1;
+    ev_CapCall(&work, TRUE);
+}
+
 
 
 
@@ -1871,6 +2196,31 @@ void mbev_CapPlayerSquishSet(int *playerNo, int masuId)
     mbev_CapPlayerSquishVoiceSet(playerNo, masuId, FALSE);
 }
 
+int mbev_CapPlayerSquishVoiceSet(int *out, int masuId, BOOL voiceF)
+{
+    int playerNoWork[GW_PLAYER_MAX];
+    int i;
+    int playerNum = 0;
+
+    if (out == NULL) {
+        out = playerNoWork;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        if (masuId == GwPlayer[i].masuId) {
+            out[playerNum++] = i;
+        }
+    }
+    for (i = 0; i < playerNum; i++) {
+        if (voiceF) {
+            CharMotionVoiceOnSet(GwPlayer[out[i]].charNo, 46, FALSE);
+        }
+        mbPlayerMotionSet(out[i], 10, 0);
+        mbPlayerMotionTimeSet(out[i], 20.0f);
+        mbPlayerMotionSpeedSet(out[i], 0.0f);
+    }
+    return playerNum;
+}
+
 
 
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2)
@@ -1897,6 +2247,31 @@ BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2)
 BOOL mbev_CapCullPlayerCheck(int playerNo)
 {
     return mbev_CapCullCheck(playerNo, 0);
+}
+
+BOOL mbev_CapCullCheck(int playerNo, int masuId)
+{
+    HuVecF pos;
+    HuVecF edge;
+    int charNo;
+    int i;
+
+    if (masuId <= 0) {
+        mbPlayerPosGet(playerNo, &pos);
+    } else {
+        mbMasuPosGet((s16)masuId, &pos);
+    }
+    charNo = GwPlayer[playerNo].charNo;
+    for (i = 0; i < 5; i++) {
+        edge.x = pointEdge[i].x * charSize[charNo][0];
+        edge.y = pointEdge[i].y * charSize[charNo][1];
+        edge.z = pointEdge[i].z * charSize[charNo][0];
+        PSVECAdd(&edge, &pos, &edge);
+        if (mbev_CapPointCullCheck(&edge)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 
@@ -2157,6 +2532,27 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
 int mbev_CapPlayerComSelGet(int playerNo, int selection)
 {
     return mbev_CapPlayerComSelSameGet(playerNo, selection, FALSE);
+}
+
+int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF)
+{
+    int playerList[4];
+    int i;
+    int playerNum;
+
+    for (i = 0, playerNum = 0; i < 4; i++) {
+        if ((int)GwSystem.tagF != FALSE && mbev_CapPlayerCheck(playerNo, i)) {
+            continue;
+        }
+        if (sameF) {
+            if (GwPlayer[playerNo].masuId != GwPlayer[i].masuId || i == playerNo) {
+                continue;
+            }
+        }
+        playerList[playerNum] = i;
+        playerNum++;
+    }
+    return mbev_CapPlayerComSelRandomGet(playerNo, selection, playerList, playerNum);
 }
 
 
@@ -2740,6 +3136,211 @@ OMOBJ *mbev_CapEffElectricCreate(void)
         partP->activeNo = -1;
     }
     return obj;
+}
+
+void mbev_CapEffElectricOMExec(OMOBJ *obj)
+{
+    CAPEFFELECTRICWORK *work = obj->data;
+    CAPEFFPARTICLESYSTEMWORK *particleSystem;
+    CAPEFFGLOWPARTICLEWORK *particle;
+    CAPEFFELECTRICPARTWORK *part;
+    HuVecF end;
+    HuVecF delta;
+    float horizontal;
+    int i;
+    int j;
+
+    if (!mbExitCheck()
+        && ev_CapEffElectricOMObj[work->objIdx] != (OMOBJ *)-1) {
+        particleSystem = Hu3DData[work->modelId].hookData;
+        particle = particleSystem->data;
+        part = work->part;
+        for (i = 0; i < 32; i++, part++, particle += 6) {
+            if (part->activeNo < 0 || ++part->time < part->timeMax) {
+                continue;
+            }
+            part->time = 0;
+            if (part->modelId < 0) {
+                end = part->pos0;
+            } else {
+                mbObjPosGet(part->modelId, &end);
+                PSVECAdd(&end, &part->modelPos, &end);
+                PSVECSubtract(&end, &part->pos2, &delta);
+                for (j = 0; j < 6; j++) {
+                    PSVECAdd(&particle[j].pos, &delta, &particle[j].pos);
+                }
+            }
+            end.x += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
+                * 40.0f;
+            end.y += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
+                * 40.0f;
+            end.z += (((float)mbRandMod(0x10000000) / 268435456.0f) - 0.5f)
+                * 40.0f;
+            part->pos2 = part->pos1;
+            part->pos1 = end;
+            for (j = 5; j > 0; j--) {
+                part->posHist[j] = part->posHist[j - 1];
+                particle[j] = particle[j - 1];
+            }
+            part->posHist[0] = part->pos2;
+            PSVECSubtract(&part->pos1, &part->pos2, &delta);
+            PSVECScale(&delta, &delta, 0.5f);
+            PSVECAdd(&part->pos2, &delta, &particle[0].pos);
+            PSVECSubtract(&part->pos1, &part->pos2, &delta);
+            horizontal = sqrt(delta.x * delta.x + delta.z * delta.z);
+            particle[0].rotX = 57.29578f * atan2(-delta.y, horizontal);
+            particle[0].rotY = 90.0f
+                + (57.29578f * atan2(delta.x, delta.z));
+            particle[0].angle = 0.0f;
+            particle[0].pat = mbRandMod(4);
+            particle[0].active = PSVECMag(&delta);
+            if (particle[0].active <= 0.0f) {
+                particle[0].active = 1.0f;
+            }
+            part->length = particle[0].active;
+            if (++part->phase >= part->phaseMax) {
+                part->activeNo = -1;
+                for (j = 0; j < 6; j++) {
+                    particle[j].active = 0.0f;
+                }
+                work->num--;
+            }
+        }
+    } else {
+        Hu3DModelKill(work->modelId);
+        work->modelId = -1;
+        HuSprAnimKill(work->animP);
+        work->animP = NULL;
+        ev_CapEffElectricOMObj[work->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+    }
+}
+
+static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
+{
+    s16 modelId;
+    HU3D_MODEL *model;
+    CAPEFFPARTICLESYSTEMWORK *work;
+    CAPEFFGLOWPARTICLEWORK *particle;
+    HuVecF *vertex;
+    HuVec2f *texCoord;
+    void *displayListBuffer;
+    int i;
+    int j;
+
+    modelId = Hu3DHookFuncCreate(ev_CapEffDraw);
+    Hu3DModelCameraSet(modelId, 1);
+    model = &Hu3DData[modelId];
+    work = HuMemDirectMallocNum(HEAP_MODEL, sizeof(CAPEFFPARTICLESYSTEMWORK),
+        model->mallocNo);
+    model->hookData = work;
+    memset(work, 0, sizeof(CAPEFFPARTICLESYSTEMWORK));
+    work->animP = animP;
+    HuSprAnimLock(animP);
+    work->num = max;
+    work->gridNum = 16;
+
+    work->data = particle = HuMemDirectMallocNum(HEAP_MODEL,
+        max * sizeof(CAPEFFGLOWPARTICLEWORK), model->mallocNo);
+    memset(particle, 0, max * sizeof(CAPEFFGLOWPARTICLEWORK));
+    for (i = 0; i < max; i++, particle++) {
+        particle->active = 0.0f;
+        particle->sizeX = 1.0f;
+        particle->sizeY = 1.0f;
+        particle->rotX = 0.0f;
+        particle->rotY = 0.0f;
+        particle->angle = 0.0f;
+        particle->alpha = 0.0f;
+        particle->alphaMax = 1.0f;
+        particle->pos.x = 0.0f;
+        particle->pos.y = 0.0f;
+        particle->pos.z = 0.0f;
+        particle->color.r = 255;
+        particle->color.g = 255;
+        particle->color.b = 255;
+        particle->color.a = 255;
+        particle->pat = 0;
+    }
+    work->vertices = vertex = HuMemDirectMallocNum(HEAP_MODEL,
+        max * 4 * sizeof(HuVecF), model->mallocNo);
+    for (i = 0; i < max * 4; i++, vertex++) {
+        vertex->x = vertex->y = vertex->z = 0.0f;
+    }
+    work->texCoords = texCoord = HuMemDirectMallocNum(HEAP_MODEL,
+        max * 4 * sizeof(HuVec2f), model->mallocNo);
+    for (i = 0; i < max; i++) {
+        for (j = 0; j < 4; j++, texCoord++) {
+            texCoord->x = baseST2[j * 2];
+            texCoord->y = baseST2[j * 2 + 1];
+        }
+    }
+
+    displayListBuffer = HuMemDirectMallocNum(HEAP_MODEL, 0x10000,
+        model->mallocNo);
+    DCFlushRange(displayListBuffer, 0x10000);
+    GXBeginDisplayList(displayListBuffer, 0x10000);
+    GXBegin(GX_QUADS, GX_VTXFMT0, max * 4);
+    for (i = 0; i < max; i++) {
+        for (j = 0; j < 4; j++) {
+            GXPosition1x16(i * 4 + j);
+            GXColor1x16(i);
+            GXTexCoord1x16(i * 4 + j);
+        }
+    }
+    work->displayListSize = GXEndDisplayList();
+    work->displayList = HuMemDirectMallocNum(HEAP_MODEL,
+        work->displayListSize, model->mallocNo);
+    memcpy(work->displayList, displayListBuffer, work->displayListSize);
+    DCFlushRange(work->displayList, work->displayListSize);
+    HuMemDirectFree(displayListBuffer);
+    return modelId;
+}
+
+static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
+{
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *work = model->hookData;
+    HuVec2f *grid;
+    float xStep;
+    float yStep;
+    int x;
+    int y;
+
+    if (xNum < 1) {
+        xNum = 1;
+    }
+    if (yNum < 1) {
+        yNum = 1;
+    }
+    work->gridNum = xNum * yNum;
+    xStep = 1.0f / (float)xNum;
+    yStep = 1.0f / (float)yNum;
+    work->grid = grid = HuMemDirectMallocNum(HEAP_MODEL,
+        work->gridNum * 4 * sizeof(HuVec2f), model->mallocNo);
+    memset(grid, 0, work->gridNum * 4 * sizeof(HuVec2f));
+    for (y = 0; y < yNum; y++) {
+        for (x = 0; x < xNum; x++, grid += 4) {
+            if (mode) {
+                grid[0].x = (float)y * xStep;
+                grid[0].y = (float)x * yStep;
+                grid[1].x = (float)(y + 1) * xStep;
+                grid[1].y = (float)x * yStep;
+                grid[2].x = (float)(y + 1) * xStep;
+                grid[2].y = (float)(x + 1) * yStep;
+                grid[3].x = (float)y * xStep;
+                grid[3].y = (float)(x + 1) * yStep;
+            } else {
+                grid[0].x = (float)x * xStep;
+                grid[0].y = (float)y * yStep;
+                grid[1].x = (float)(x + 1) * xStep;
+                grid[1].y = (float)y * yStep;
+                grid[2].x = (float)(x + 1) * xStep;
+                grid[2].y = (float)(y + 1) * yStep;
+                grid[3].x = (float)x * xStep;
+                grid[3].y = (float)(y + 1) * yStep;
+            }
+        }
+    }
 }
 
 
