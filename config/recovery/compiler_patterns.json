@@ -2389,6 +2389,79 @@
         "docs/native_matching_pointer_null_spelling.md",
         "docs/native_matching_dll_reinforcements_20260728.md"
       ]
+    },
+    {
+      "id": "mwcc-call-spanning-owner-pointer-capture-preserves-named-base",
+      "title": "Capture an authenticated owner pointer when its base must survive calls",
+      "classification": "confirmed_rule",
+      "category": "pointer_capture_and_named_base_lifetime",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "Across MWCC O0 profiles, a natural typed pointer to an authenticated global owner can keep one named base in a nonvolatile register across calls, while equivalent direct global field expressions may rematerialize the symbol and shorten or fragment the target address lifetime.",
+      "conditions": "Use only when target instructions and relocations show one owner base surviving one or more calls, but the candidate repeatedly reloads the same authenticated global symbol or omits the target saved-base lifetime.",
+      "source_condition": {
+        "change": "Capture the authenticated global owner or array base in one natural typed pointer before its call-spanning uses.",
+        "requires": [
+          "authenticated global identity, pointee type, and field or element ownership",
+          "target evidence for a call-spanning base lifetime or repeated candidate symbol reloads",
+          "unchanged control flow, call order, and consumer semantics",
+          "exact complete text and relocation stream after the bounded change"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "one named owner base retained in a callee-saved GPR",
+          "removal of repeated high/low symbol-address materialization",
+          "a matching nonvolatile-register save and restore lifetime",
+          "unchanged field offsets, calls, and owner identity"
+        ],
+        "known_signatures": [
+          "the candidate reloads one global symbol between calls while the target reuses a saved base",
+          "direct indexed access removes a target nonvolatile-register save",
+          "a typed local owner pointer closes both instruction and relocation differences without changing function size or control flow"
+        ]
+      },
+      "rule": "When an authenticated owner base visibly survives calls in the target, test one natural typed pointer capture at the first semantic use. Retain it only if complete text, saved-register lifetime, named relocations, and consumers become exact; if the target instead shortens the address lifetime, prefer direct access and record the counterexample.",
+      "safe_actions": [
+        "confirm that every captured field or element belongs to the same target owner",
+        "compare high/low symbol relocations and nonvolatile-register saves before and after the probe",
+        "keep the pointer's scope no wider than the authenticated call-spanning lifetime",
+        "revert the capture when direct access is target-exact or the pointer creates extra saved-register lifetime"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mdpresultdll:fn_1_17D94",
+          "mdbankdll:fn_1_1DDC",
+          "mdbankdll:fn_1_1EE8"
+        ],
+        "modules": [
+          "mdpresultdll",
+          "mdbankdll"
+        ],
+        "owner_tags": [
+          "pointer_lifetime",
+          "named_base",
+          "saved_registers",
+          "relocation_ownership",
+          "rel"
+        ]
+      },
+      "examples": [
+        "Under GC/2.6, mdpresultdll fn_1_17D94 required a natural HUSPR_GROUPID pointer capture so the named group base occupied the target saved-register lifetime across the call.",
+        "Under GC/1.3.2, mdbankdll fn_1_1DDC and fn_1_1EE8 became exact with one MDBANK_MOVE_WORK pointer whose base is reused across calls and field accesses; direct global fields rematerialized the owner symbol."
+      ],
+      "counterexamples": [
+        "mdpresultdll fn_1_CE60 required direct global access because a semantically equivalent local object capture extended a saved-register lifetime absent from the target.",
+        "Do not introduce a pointer merely to select registers when target relocations do not prove one stable owner base.",
+        "Do not widen a local capture across unrelated calls or use a cast to merge distinct owners."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_dll_reinforcements_20260728.md"
+      ]
     }
   ]
 }

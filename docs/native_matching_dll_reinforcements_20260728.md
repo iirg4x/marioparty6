@@ -62,6 +62,32 @@ real and 29 tracked relocation rows exact per side, and passed 99 public tests.
 This reinforces the existing pointer-guard spelling card; it does not imply
 that `NULL` is globally wrong or that integer handles may be cast to pointers.
 
+## Call-spanning owner pointer capture is a bounded cross-profile rule
+
+Under GC/2.6 `-O0,p`, mdpresult commit
+`495f99498e937df3a3bb936b1b74c89d8e039b90` made `fn_1_17D94` strict exact
+after one natural `HUSPR_GROUPID *` capture preserved the named group base in
+the target nonvolatile-register lifetime across its call. Direct indexed or
+scalar access shortened that lifetime and removed the target save. The pass
+retained 12 exact functions and 608 bytes and passed 99 public tests.
+
+Under GC/1.3.2 `-O0,p`, mdbank commit
+`c708b3c74d5cc3de1a924be08354553153d8f8ab` isolated the same mechanism in
+exact `fn_1_1DDC` and `fn_1_1EE8`. One authenticated `MDBANK_MOVE_WORK *`
+kept the owner base across calls and repeated field accesses; direct global
+field expressions rematerialized the symbol. The pass retained three exact
+functions and 932 bytes, preserved protected `.rodata` byte-for-byte, and
+passed 78 public tests. An earlier five-function GC/1.3.2 cluster at commit
+`6c447c4c1103570ad2a2cb99bd1e4a0660320630` independently supported stable
+owner-pointer reuse across calls and relocation-bearing accesses.
+
+The counterexample is GC/2.6 mdpresult `fn_1_CE60` at commit
+`92f135446bbb597e82b17341cdc1614c89827145`: a local object capture extended a
+saved-register lifetime absent from retail, and direct global access was exact.
+The reusable rule is therefore limited to target-proven call-spanning address
+lifetime and named relocation ownership; it does not authorize pointer locals
+as generic register-allocation controls.
+
 ## Proof boundary
 
 The cited worker commits are clean, source-only partial-owner commits. Reports
