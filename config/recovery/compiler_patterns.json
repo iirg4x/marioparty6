@@ -1204,15 +1204,15 @@
     },
     {
       "id": "mwcc-conversion-pool-relocation-ownership-before-text-retention",
-      "title": "Require conversion-pool relocation ownership before retaining exact text",
+      "title": "Require literal-pool relocation ownership before retaining exact text",
       "classification": "confirmed_rule",
       "category": "literal_pool_ownership",
-      "compiler": "GC/2.6",
+      "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "MWCC can reproduce every instruction byte in an integer-to-floating conversion function while binding its synthesized literal to a TU-local pool instead of the retail object's separate or preceding owner.",
-      "conditions": "Apply when function size and instructions are exact but one or more conversion-literal relocations name a compiler-local symbol instead of the target owner.",
+      "summary": "Across MWCC O0 profiles, the compiler can reproduce every instruction byte in a conversion or ordinary literal consumer while binding its constants to a TU-local pool instead of the retail object's separate, preceding, or configured owner.",
+      "conditions": "Apply when function size and instructions are exact but one or more literal relocations name compiler-local symbols instead of the target owners.",
       "source_condition": {
-        "change": "Recover a conversion consumer without the authenticated preceding literal owner or translation-unit chronology.",
+        "change": "Recover a literal consumer without the authenticated data owner or translation-unit chronology.",
         "requires": [
           "pinned compiler command and pool profile",
           "instruction and function-size identity",
@@ -1223,7 +1223,7 @@
       },
       "emitted_effect": {
         "possible_changes": [
-          "anonymous compiler-local conversion constants",
+          "anonymous compiler-local conversion or application constants",
           "correct instructions with incorrect relocation targets",
           "duplicated named and anonymous constants",
           "downstream pool offsets that depend on an earlier owner"
@@ -1234,10 +1234,11 @@
           "an equivalent weak named constant coexists with rather than absorbs the anonymous pool",
           "restoring an authenticated preceding owner is expected to move the downstream pool naturally",
           "multiple natural bodies become instruction-identical but all miss the same split named conversion owner",
-          "an intermediate source object names @NNN while a complete source-owned pool csect and final REL bind the same section offset exactly"
+          "an intermediate source object names @NNN while a complete source-owned pool csect and final REL bind the same section offset exactly",
+          "several byte-identical functions fail only because each anonymous literal relocation misses its configured lbl_1_rodata_* identity"
         ]
       },
-      "rule": "Do not retain a text-exact function until its conversion-pool relocation owner is exact; restore authenticated source chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at the same named pool owner, stop per-function shaping and recover the owner-level data binding before re-enabling them together. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
+      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
@@ -1253,7 +1254,12 @@
         "stable_ids": [
           "endingdll:fn_1_1049C",
           "endingdll:fn_1_1152C",
-          "endingdll:fn_1_B568"
+          "endingdll:fn_1_B568",
+          "mdbankdll:fn_1_CE4",
+          "mdbankdll:fn_1_1BD4",
+          "mdbankdll:fn_1_1C64",
+          "mdbankdll:fn_1_1CD8",
+          "mdbankdll:fn_1_1D68"
         ],
         "modules": [
           "openingDll",
@@ -1262,7 +1268,8 @@
           "s01Dll",
           "miraclebookdll",
           "optionDll",
-          "endingdll"
+          "endingdll",
+          "mdbankdll"
         ],
         "owner_tags": [
           "literal_pool",
@@ -1277,13 +1284,15 @@
         "optionDll fn_1_7728: 844 exact instruction bytes, local @489 versus target lbl_1_rodata_1E8",
         "s01Dll fn_1_590: local @365 at source .rodata+0x28 became exact after the complete 0x78 pool was source-owned and the linked REL matched retail byte-for-byte",
         "endingdll fn_1_1049C and fn_1_1152C: instruction-identical u8-to-float bodies still bound @743 instead of retail lbl_1_rodata_348",
-        "endingdll fn_1_B568: all 1448 instruction bytes matched, but three conversion relocations bound @582 instead of retail lbl_1_rodata_1A8"
+        "endingdll fn_1_B568: all 1448 instruction bytes matched, but three conversion relocations bound @582 instead of retail lbl_1_rodata_1A8",
+        "mdbankdll fn_1_CE4 and motion callbacks fn_1_1BD4/fn_1_1C64/fn_1_1CD8/fn_1_1D68: byte-identical GC/1.3.2 text remained unresolved because configured literal-owner relocations became value-correct anonymous constants"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
         "#pragma pool_data off did not suppress the openingDll conversion pool.",
         "A weak equivalent named constant emitted alongside the anonymous pool instead of absorbing it.",
-        "A local @NNN name without exact source-owned section bytes and final linked relocation proof remains unresolved."
+        "A local @NNN name without exact source-owned section bytes and final linked relocation proof remains unresolved.",
+        "Byte-identical instruction streams across repeated functions do not waive configured relocation identity in a partial owner."
       ],
       "related_exceptions": [],
       "evidence": [

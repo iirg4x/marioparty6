@@ -1,9 +1,9 @@
 # MWCC conversion-pool relocation ownership
 
 Instruction identity is not sufficient to retain a recovered function when the
-compiler binds an integer-to-floating conversion sequence to the wrong literal
-owner. Three independent `GC/2.6` REL recovery clusters exposed the same
-failure mode.
+compiler binds an integer-to-floating conversion sequence or ordinary
+application constant to the wrong literal owner. Independent `GC/2.6` and
+`GC/1.3.2` REL recovery clusters exposed the same failure mode.
 
 ## Authenticated observations
 
@@ -74,6 +74,24 @@ shaping the consumers independently. Recover the owner-level data binding and
 source chronology once, then re-enable the affected cluster together. Until
 that ownership proof is exact, the functions remain unresolved even when all
 ordinary instructions and literal values agree.
+
+## Cross-profile GC/1.3.2 confirmation
+
+The `mdbankdll` application owner independently reproduced the rule under the
+`GC/1.3.2 -O0,p` profile. `fn_1_CE4` compiled to byte-identical 552-byte text,
+but 36 configured literal relocations bound value-correct anonymous source
+constants instead of the target `lbl_1_rodata_*` owners. Four motion callbacks
+(`fn_1_1BD4`, `fn_1_1C64`, `fn_1_1CD8`, and `fn_1_1D68`) repeated the same
+result. All five functions were reverted while literal-free clusters remained
+independently exact at clean commits
+`08f9f1d5735c614063a0c51c7c94a1f6588c9abe` and
+`454889cc9701269fa3ac4d64756fab70fa05e8a4`.
+
+This is not permission to treat every intermediate `@NNN` spelling as fatal.
+It establishes the partial-owner gate: configured target identity remains
+unproven until the complete source-owned pool csect, linked relocation
+target/addend, consumers, and final REL are exact. Repeated byte-identical text
+does not substitute for that linked ownership proof.
 
 ## Linked-owner closure
 
