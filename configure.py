@@ -1310,6 +1310,7 @@ config.libs = [
         objects={
             Object(Matching, "REL/mdbankdll/mdbank_tail.c"),
             Object(Matching, "REL/mdbankdll/mdbank_tail2.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_tail3.c"),
             Object(
                 Matching,
                 "REL/mdbankdll/runtime.c",
