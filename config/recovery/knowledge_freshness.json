@@ -112,6 +112,23 @@
       "supersedes": [],
       "superseded_by": null
     },
+    "same-game-cross-owner-relocation-skeleton-harvesting": {
+      "status": "active",
+      "validated_commit": "da9e53ac6b775b48a23fc4e32c0641ddfea02861",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_cross_owner_analogue_harvesting.md",
+        "src/REL/mdpartydll/stage.c",
+        "src/REL/mdsingdll/mdsing_tail.c",
+        "src/REL/mdsingdll/mdsing_tail2.c",
+        "src/REL/mdsingdll/mdsing_tail3.c",
+        "config/dll/rels/mdsingdll/splits.txt",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "configured-matching-needs-retail-replay": {
       "status": "active",
       "validated_commit": "66e4bd3313b384fb3c81351dca8c97e9ca60cfa1",

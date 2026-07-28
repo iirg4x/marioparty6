@@ -466,6 +466,94 @@
       ]
     },
     {
+      "id": "same-game-cross-owner-relocation-skeleton-harvesting",
+      "title": "Mine cross-owner analogues by ordered relocation skeleton, then rebind target ownership",
+      "classification": "contextual_heuristic",
+      "category": "evidence_provenance",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "Five mdsingdll functions totaling 632 text bytes became independently exact from three mdpartydll stage.c analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
+      "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
+      "source_condition": {
+        "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
+        "requires": [
+          "stable donor and target identities",
+          "compatible ABI and ordered call or symbol-relocation skeleton",
+          "target-side proof for globals, callbacks, types, literals, and counts",
+          "explicit target split and generated matching-object consumption"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "multiple exact target functions from one coherent source family",
+          "correct call order and relocation ownership before local expression tuning",
+          "shared target declarations across a contiguous recovery cluster",
+          "false positives when only a common API set or semantic resemblance is compared"
+        ],
+        "known_signatures": [
+          "donor and target share the same ordered engine calls and compatible branch or loop shape",
+          "target relocations bind analogous calls to different owner-local globals or callbacks",
+          "a new split appears configured but generated Ninja or link inputs still consume retail fallback"
+        ]
+      },
+      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: fingerprint ordered relocations and control shape, cluster compatible targets, rebind every contract from target evidence, and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay.",
+      "safe_actions": [
+        "catalog eligible donor stable IDs with ordered external-call and symbol-relocation signatures",
+        "rank unclaimed targets by exact skeleton before looser API overlap",
+        "batch contiguous or shared-declaration candidates into one bounded multi-function compile probe",
+        "retain independently exact subsets and record compact negative fingerprints for rejected candidates",
+        "verify build.ninja and link inputs consume the generated object before accepting configured status"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "mdpartydll:fn_1_40A9C",
+          "mdpartydll:fn_1_40AC8",
+          "mdpartydll:fn_1_40EAC",
+          "mdpartydll:fn_1_40FC0",
+          "mdpartydll:fn_1_40FEC",
+          "mdsingdll:fn_1_2E68C",
+          "mdsingdll:fn_1_2E6B8",
+          "mdsingdll:fn_1_2EA9C",
+          "mdsingdll:fn_1_2EBB0",
+          "mdsingdll:fn_1_2EBDC"
+        ],
+        "modules": [
+          "mdpartydll",
+          "mdsingdll"
+        ],
+        "owner_tags": [
+          "same_game_analogue",
+          "relocation_skeleton",
+          "source_binding",
+          "bulk_recovery",
+          "rel"
+        ]
+      },
+      "examples": [
+        "mdpartydll fn_1_40A9C/fn_1_40AC8 authenticated the natural layer-hook pair recovered exactly as mdsingdll fn_1_2E68C/fn_1_2E6B8 (80 target text bytes and 4 physical relocations).",
+        "mdpartydll fn_1_40EAC/fn_1_40FC0 authenticated the particle lifecycle pair recovered exactly as mdsingdll fn_1_2EA9C/fn_1_2EBB0 (320 target text bytes and 45 exact relocations).",
+        "mdpartydll fn_1_40FEC authenticated the particle activation shape recovered exactly as mdsingdll fn_1_2EBDC (232 target text bytes and 9 physical relocations)."
+      ],
+      "counterexamples": [
+        "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
+        "Common engine setup and teardown API sets without compatible ordered relocations and control flow are weak leads, not source proof.",
+        "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_cross_owner_analogue_harvesting.md",
+        "src/REL/mdpartydll/stage.c",
+        "src/REL/mdsingdll/mdsing_tail.c",
+        "src/REL/mdsingdll/mdsing_tail2.c",
+        "src/REL/mdsingdll/mdsing_tail3.c",
+        "config/dll/rels/mdsingdll/splits.txt",
+        "configure.py"
+      ]
+    },
+    {
       "id": "configured-matching-needs-retail-replay",
       "title": "A configured Matching label is a claim until retail proof is replayed",
       "classification": "confirmed_rule",
