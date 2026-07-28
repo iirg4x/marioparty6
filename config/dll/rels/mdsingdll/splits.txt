@@ -15,6 +15,9 @@ REL/mdsingdll/mdsing.c:
 REL/mdsingdll/mdsing_linear.c:
 	.text       start:0x000016F0 end:0x00001734
 
+REL/mdsingdll/mdsing_tail14.c:
+	.text       start:0x0002D0FC end:0x0002D1DC
+
 REL/mdsingdll/mdsing_tail.c:
 	.text       start:0x0002E68C end:0x0002E6DC
 
