@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "id": "REL:w01Dll:world01",
+  "module": "w01Dll",
+  "source": "src/REL/w01Dll/world01.c",
+  "compiler": "GC/2.7",
+  "summary": "World 01 REL owner. Binary-exact and closed: the .rodata ordering gap that the campaign chased was resolved by #pragma section code_type with file-qualified ldscript selectors, not by any source-only construct. What remains is source-shape debt - the accepted shape relies on a compiler control - and an unresolved question about whether dtk reconstructs .rodata faithfully per translation unit.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "authenticated",
+    "semantics": "partial",
+    "naming": "address_only",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "compiler-sensitive",
+    "literal_pool",
+    "rodata",
+    "csect-order"
+  ],
+  "symbols": [],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "configure.py:1146 is Object(Matching, \"REL/w01Dll/world01.c\") with mw_version GC/2.7, and the exception w01-world01-exact-source-shape records the retained owner as byte-exact across .text, .rodata, .data, .bss and 5,673 relocations. The .rodata ordering defect described in the campaign write-up is therefore closed in this tree.",
+      "reference": "configure.py"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The accepted mechanism is #pragma section code_type \".text.common\" / \".text.after_common\" at src/REL/w01Dll/world01.c:399, :486 and :6411, paired with file-qualified ldscript selectors in configure.py:301 rel_ldscript_replacements[\"w01Dll\"], which name world01.o(.text), world01.o(.text.common) and world01.o(.text.after_common) ahead of *(.text).",
+      "reference": "src/REL/w01Dll/world01.c"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "high",
+      "accepted": false,
+      "summary": "REJECTED as the source shape: every source-only route probed for prefixing .rodata. An extern-inline function-local static under #pragma cplusplus on, and a plain unreferenced file-scope static const, both prefix .rodata at zero .text cost but are diagnostic levers with no owner evidence behind them; an uncalled static function prefixes the pool but is never dead-stripped, and the best whole-object source-only construction reached .rodata byte-identical at 1,088 while costing +308 bytes of .text. Compiler build, -inline and -str flag sweeps were eliminated as levers. Do not re-run these.",
+      "reference": "docs/w01dll_rodata_emission_model_evidence.md"
+    }
+  ],
+  "constraints": [
+    "w01-world01-exact-source-shape"
+  ],
+  "debt": [
+    {
+      "kind": "compiler_control_source_shape",
+      "priority": "normal",
+      "summary": "Binary identity is reached through a compiler control rather than a natural declaration order. No zero-.text-cost source-only arrangement was found that creates the 19 hot constants before the first function is code-generated, so whether the original source achieved this ordering without #pragma section is unresolved. The pragma is authenticated by w01-world01-exact-source-shape as the retained mechanism; it is not evidence that the original wrote one."
+    },
+    {
+      "kind": "tooling_uncertainty",
+      "priority": "normal",
+      "summary": "It is unconfirmed whether dtk reconstructs .rodata faithfully per translation unit. dtk splits the linked REL by address range, so a TU contributing .rodata but no .text would be invisible to the splitter and its constants attributed to the neighbouring object. The concrete tell: world01.o is the only one of 21 REL target objects whose first text->rodata reference (0x78) is not its lowest referenced offset (0x10). This figure is carried from the unpushed campaign branch and has not been re-derived here."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/REL/w01Dll/world01.c",
+      "config/dll/rels/w01Dll/splits.txt",
+      "config/dll/rels/w01Dll/symbols.txt"
+    ],
+    "reports": [
+      "docs/w01dll_rodata_emission_model_evidence.md",
+      "docs/native_matching_w01_inline_chronology.md"
+    ]
+  }
+}

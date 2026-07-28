@@ -398,6 +398,60 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "mwcc-rodata-is-one-region-in-creation-order": {
+      "status": "active",
+      "validated_commit": "4c2e66069ed8c95fdbda457d95d19869d6aa2229",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "config/recovery/compiler_patterns.json",
+        "configure.py",
+        "src/REL/w01Dll/world01.c",
+        "config/dll/rels/w01Dll/splits.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-text-identity-does-not-constrain-rodata-order": {
+      "status": "active",
+      "validated_commit": "4c2e66069ed8c95fdbda457d95d19869d6aa2229",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "config/recovery/compiler_patterns.json",
+        "configure.py",
+        "src/REL/w01Dll/world01.c",
+        "docs/native_matching_board_gap_ownership.md"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-o0-codegen-neutral-source-forms": {
+      "status": "active",
+      "validated_commit": "4c2e66069ed8c95fdbda457d95d19869d6aa2229",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "config/recovery/compiler_patterns.json",
+        "configure.py",
+        "docs/native_matching_commutative_fmuls_negative.md"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-o0-inline-expansion-frame-allocation": {
+      "status": "active",
+      "validated_commit": "4c2e66069ed8c95fdbda457d95d19869d6aa2229",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "config/recovery/compiler_patterns.json",
+        "configure.py",
+        "src/REL/w01Dll/world01.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

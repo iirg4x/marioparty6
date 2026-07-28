@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "main:board/coin",
+  "module": "main",
+  "source": "src/board/coin.c",
+  "compiler": "GC/2.6",
+  "summary": "Coin effect owner. Recorded to carry one authenticated retail construct that reads as a bug: the coin effect's bank index is drawn mod 32 against a 16-entry table and deliberately overreads into the adjacent table. The object is NonMatching; only that construct is authenticated, and only from retail bytes.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "plausible",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "main",
+    "board",
+    "retail-source-form",
+    "do-not-repair"
+  ],
+  "symbols": [
+    {
+      "symbol": "mbCoinEffCreate",
+      "stable_id": "main:board/coin:mbCoinEffCreate"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "mbCoinEffCreate at .text:0x8017C618 (size 0x4A0) loads r28 = 0x80247DE0, then at 0x8017C878 emits li r3,32; bl mbRandMod (0x8014D348); addi r4,r28,0x150; lbzx r0,r4,r3 - a 0..31 index against coinEffBankTbl at 0x80247F30, whose symbol size is 0x10. The neighbouring site at 0x8017C7DC uses li r3,16 against the equally sized coinEffColorNoTbl, so the 32 is specific to this one call and not a file idiom.",
+      "reference": "docs/retail_source_form_evidence.md"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "symbols.txt gives coinEffColorNoTbl = .data:0x80247F20, coinEffBankTbl = 0x80247F30 and coinEffBankTbl2 = 0x80247F40, each size 0x10, so coinEffBankTbl2 is immediately adjacent and supplies indices 16-31. Retail bytes at both addresses equal the two 16-entry arrays at src/board/coin.c:162 and :167.",
+      "reference": "config/GP6E01/symbols.txt"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "unknown",
+      "accepted": false,
+      "summary": "REJECTED as evidence: the object's own build status. configure.py:1033 is Object(NonMatching, \"board/coin.c\"), so nothing about this file's source shape is authenticated by its object. Every claim accepted above is read from the retail DOL and symbols.txt instead, and remains valid independently of when this object matches.",
+      "reference": "configure.py"
+    }
+  ],
+  "constraints": [
+    "coin-effect-bank-table-retail-overread"
+  ],
+  "debt": [
+    {
+      "kind": "binary_mismatch",
+      "priority": "normal",
+      "summary": "board/coin.c is NonMatching. The overread construct is authenticated from retail bytes, but the rest of the file's source shape is not. Do not treat the authenticated construct as evidence for any neighbouring form."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/board/coin.c",
+      "config/GP6E01/symbols.txt"
+    ],
+    "reports": [
+      "docs/retail_source_form_evidence.md"
+    ]
+  }
+}
