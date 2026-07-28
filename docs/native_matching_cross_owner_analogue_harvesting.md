@@ -15,13 +15,30 @@ comparison.
 | `mdpartydll:fn_1_40EAC` | `mdsingdll:fn_1_2EA9C` | particle create/configure | 276 bytes |
 | `mdpartydll:fn_1_40FC0` | `mdsingdll:fn_1_2EBB0` | particle destroy | 44 bytes |
 | `mdpartydll:fn_1_40FEC` | `mdsingdll:fn_1_2EBDC` | particle activation | 232 bytes |
+| `mdpartydll:fn_1_417DC` | `mdsingdll:fn_1_2F3CC` | particle display enable | 88 bytes |
+| `mdpartydll:fn_1_41834` | `mdsingdll:fn_1_2F424` | particle data reset | 160 bytes |
+| `mdpartydll:fn_1_42060` | `mdsingdll:fn_1_2FC50` | particle group reset | 256 bytes |
+| `mdpartydll:fn_1_42160` | `mdsingdll:fn_1_2FD50` | particle model display disable | 44 bytes |
+| `mdpartydll:fn_1_4218C` | `mdsingdll:fn_1_2FD7C` | particle group create/configure | 204 bytes |
 
-The three retained clusters total 632 target text bytes.  Fresh active-object
-reports showed exact instructions and zero relocation differences; their DTK
-physical-relocation counts were 4, 45, and 9 respectively.  Each cluster was also
+The first three retained clusters total 632 target text bytes.  A later bounded
+inventory found eight more analogues at a stable donor-to-target address delta
+of `-0x12410`; one coherent six-function lifecycle attempt retained five exact
+functions totaling 752 bytes and 58 physical relocations.  Across both batches,
+ten mappings now account for 1,384 exact target text bytes and 116 physical
+relocations.  Fresh active-object reports showed exact instructions and zero
+relocation differences; the first three DTK physical-relocation counts were 4,
+45, and 9 respectively.  Each retained cluster was also
 registered as `Object(Matching, ...)`, proved present in generated Ninja/link
 inputs, linked with the remaining retail fallback consumers, passed the public
 gate, and reproduced the retail REL in a serialized clean build.
+
+The later family also authenticated a reusable owner translation: donor bases
+`AE4`, `AE2`, `ADA`, and `B40` correspond to target objects at `bss_141E`,
+`bss_141C`, `bss_1414`, and `bss_1478`; donor constants 0, 1, 200, and 275
+correspond to target named objects at `rodata_398`, `rodata_3BC`, `rodata_438`,
+and `rodata_470`.  These mappings rank candidates but do not authorize names or
+values outside the relocation-proven family.
 
 ## Reusable search procedure
 
@@ -51,6 +68,12 @@ gate, and reproduced the retail REL in a serialized clean build.
   only a weak lead; common engine setup/teardown idioms create false positives.
 - A donor contract cannot authenticate a target symbol name, private layout,
   callback identity, array count, or constant without target-side evidence.
+- Large callback analogues may require earlier TU-visible auto-inline helpers;
+  the 1,352-byte `fn_1_410D4 -> fn_1_2ECC4` and 1,932-byte
+  `fn_1_418D4 -> fn_1_2F4C4` candidates were excluded rather than rewritten.
+- `fn_1_4161C -> fn_1_2F20C` reached exact size and 99.866070%, but three
+  conversion relocations bound compiler-local `@166` instead of target
+  `lbl_1_rodata_3F8`; it remains rejected pending named pool ownership.
 - Adding a split or source file is insufficient if `configure.py` does not emit
   a matching object into generated build and link inputs.
 - Exact subsets are valuable independently.  A failed neighbor does not justify
