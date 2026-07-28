@@ -10,7 +10,7 @@ REL/mdsingdll/mdsing_data.c:
 	.rodata     start:0x00000000 end:0x00000080
 
 REL/mdsingdll/mdsing.c:
-	.text       start:0x000003A0 end:0x00001608
+	.text       start:0x000001A4 end:0x00001608
 
 REL/mdsingdll/mdsing_linear.c:
 	.text       start:0x000016F0 end:0x00001734
