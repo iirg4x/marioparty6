@@ -2129,6 +2129,84 @@
       "evidence": [
         "docs/w01dll_rodata_emission_model_evidence.md"
       ]
+    },
+    {
+      "id": "mwcc-compound-assignment-consuming-condition-lifetime",
+      "title": "Keep compound assignments inside the consuming condition when the target reuses the updated value",
+      "classification": "confirmed_rule",
+      "category": "assignment_expression_and_value_lifetime",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "confirmed",
+      "summary": "Across MWCC O0 profiles, a compound or result assignment written inside its consuming condition can keep the produced value live through the store and comparison; separating the assignment may add a reload, grow the function, or rotate saved registers.",
+      "conditions": "Use when target instructions store an updated or returned value and immediately compare that same value, while an otherwise natural separated assignment differs only by a reload, size change, or register-lifetime cycle.",
+      "source_condition": {
+        "change": "Restore one target-backed compound/result assignment to the condition that immediately consumes it.",
+        "requires": [
+          "identical source semantics for the combined and separated forms",
+          "target instruction order proving immediate store and comparison",
+          "one bounded separated-versus-combined compiler control",
+          "exact relocations and no regression of exact owner neighbors"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "reuse of the updated FPR across a store and comparison",
+          "removal of a redundant reload",
+          "shorter function text",
+          "collapse of a saved-register lifetime cycle around an assigned call result"
+        ],
+        "known_signatures": [
+          "separated `x += step; if (x > limit)` reloads x while `(x += step) > limit` compares the produced value",
+          "the separated float form is four bytes larger than the target",
+          "an assigned call result written inside `if` removes a multi-register color cycle without changing calls or relocations",
+          "matching sibling functions repeat the compound-assignment condition naturally"
+        ]
+      },
+      "rule": "Test the natural assignment-consuming condition as one bounded source-shape variable when target order proves the lifetime; retain it only with exact text, relocations, and consumers, and never replace unrelated control flow with comma expressions or assignment side effects solely to shape registers.",
+      "safe_actions": [
+        "compare separated and compound forms once under the exact compiler profile",
+        "verify the target store precedes the immediate comparison",
+        "look for exact same-owner or same-game compound-assignment siblings",
+        "preserve ordinary separated statements when the target reloads or the condition is not the immediate consumer"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "endingdll:fn_1_193C",
+          "mdpartydll:fn_1_3BEA8",
+          "mdpartydll:fn_1_5324",
+          "mdpartydll:fn_1_6324",
+          "mdpartydll:fn_1_737C"
+        ],
+        "modules": [
+          "endingdll",
+          "mdpartydll"
+        ],
+        "owner_tags": [
+          "compound_assignment",
+          "value_lifetime",
+          "control_flow",
+          "rel"
+        ]
+      },
+      "examples": [
+        "endingdll fn_1_193C: `(work->time += step) > duration` is strict exact at 484 bytes; the separated form is 488 bytes and reloads the float",
+        "mdpartydll fn_1_5324, fn_1_6324, and fn_1_737C repeat exact compound float-update conditions under the GC/1.3.2 owner profile",
+        "mdpartydll fn_1_3BEA8 keeps an assigned call result inside the consuming equality and removes a three-way saved-register cycle"
+      ],
+      "counterexamples": [
+        "A semantically equivalent assignment form is not evidence unless the target store/compare or result lifetime agrees.",
+        "Do not introduce comma expressions, duplicate side effects, or assignment conditions solely to force registers.",
+        "Folded assignment conditions that are byte-neutral or worse should be reverted and recorded as negative evidence."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_compound_assignment_lifetime.md",
+        "docs/native_matching_wave81.md",
+        "docs/native_matching_wave96.md"
+      ]
     }
   ]
 }
