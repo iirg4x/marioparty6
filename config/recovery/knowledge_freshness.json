@@ -383,6 +383,21 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "folded-constant-arithmetic-pins-shared-macro-value": {
+      "status": "active",
+      "validated_commit": "f538fb2c97beab37640483f617dac94434aaa9b3",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/hu_disp_width_dol_evidence.md",
+        "include/game/disp.h",
+        "src/board/status.c",
+        "src/game/sprput.c",
+        "src/game/window.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

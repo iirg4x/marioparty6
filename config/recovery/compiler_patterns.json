@@ -1758,6 +1758,75 @@
         "docs/frandmod_signedness_evidence.md",
         "config/GP6E01/tu_declarations.json"
       ]
+    },
+    {
+      "id": "folded-constant-arithmetic-pins-shared-macro-value",
+      "title": "Folded constant arithmetic in retail data pins a shared macro's value",
+      "classification": "confirmed_rule",
+      "category": "shared_interface",
+      "compiler": "GC/2.7",
+      "confidence": "high",
+      "summary": "When a shared macro feeds initializers written as MACRO +/- k, the compiler folds them and retail .data stores the results. Each entry is an equation whose only unknown is the macro, so several entries over-determine its value independently of any float-pool read. This decides a claimed macro correction without trusting a disassembly of r2-relative operands, whose resolution depends on _SDA2_BASE_ and on decoding the pooled literal correctly.",
+      "conditions": "Applies when a report proposes changing a shared numeric macro on the strength of SDA2/SDA-relative constant loads, and at least one Matching TU initializes data from arithmetic on that macro.",
+      "source_condition": {
+        "change": "Change a numeric macro in a shared header.",
+        "requires": [
+          "the exact _SDA2_BASE_ from __init_registers, not an assumed base",
+          "the raw 4 bytes of each cited pool slot, decoded and printed as a float",
+          "at least one folded initializer in a Matching TU to solve for the macro",
+          "a full container checksum run before and after the proposed edit"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "pooled float literal changes in every Matching consumer's sdata2 slot",
+          "folded initializer results shift in .data by the same delta",
+          "container checksum drops by at least the DOL when any consumer is Matching",
+          "no change in TUs that include the header but use only unrelated macros"
+        ],
+        "known_signatures": [
+          "HU_DISP_WIDTH: statusPosOn/Off/OnTeam/OffTeam at 0x802481B0-0x8024820F fold to 462/674/436/700, four equations solving to 576 and excluding 768",
+          "576.0f (44100000) occurs 11 times in GP6E01 data sections; 768.0f (44400000) occurs 0 times",
+          "flipping the macro to 768.0f yields '136 files OK' with main.dol FAILED and exactly the cited slots 0x802C11D0/0x802C17B4 changing 44100000 -> 44400000"
+        ]
+      },
+      "rule": "Before editing a shared numeric macro on DOL evidence, solve for it from folded constant arithmetic in a Matching TU's initialized data. That solution outranks a reading of an r2-relative float load, because it depends only on retail bytes and the source expression, not on base resolution or literal decoding. If the folded results already agree with the current macro, the header is correct and the report is refuted; do not edit.",
+      "safe_actions": [
+        "resolve _SDA2_BASE_ from __init_registers and print each cited slot's raw bytes as a float",
+        "census the whole DOL for both the claimed and current constants before believing either",
+        "solve the macro from folded MACRO +/- k initializers in a Matching TU",
+        "run the proposed edit as a falsification experiment and revert it after recording the tally"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "shared_interface",
+          "constant_pool",
+          "evidence_discipline"
+        ]
+      },
+      "examples": [
+        "include/game/disp.h HU_DISP_WIDTH: retail 0x802C11D0 and 0x802C17B4 both hold 44100000 (576.0f); C_MTXOrtho at HuSprDispInit 0x80011138 and MesDispFunc 0x8004D91C therefore project a 576x480 space",
+        "the same functions set a 640x480 viewport and scissor from 0x802C11D8 = 640.0, so HU_DISP_WIDTH and HU_FB_WIDTH are correctly distinct constants",
+        "statusPosOffTeam[1].x = 700.0 at 0x80248208 equals HU_DISP_WIDTH+124 at 576, explaining the literal 700.0f park position in board/status.c"
+      ],
+      "counterexamples": [
+        "A correct _SDA2_BASE_ and correct operand addresses do not make the reported operand value correct; the pooled word must still be decoded from its bytes.",
+        "An off-canvas coordinate is not evidence of a wider canvas: hide paths park sprites past the edge deliberately, so it argues for the narrower space.",
+        "Macros used only by NonMatching TUs (here board/math.c, board/audio.c) cannot confirm or refute a value, since those objects are not linked."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/hu_disp_width_dol_evidence.md",
+        "include/game/disp.h",
+        "config/GP6E01/symbols.txt"
+      ]
     }
   ]
 }
