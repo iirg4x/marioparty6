@@ -101,7 +101,7 @@ static void MapViewCreate(void);
 static void MapViewKill(void);
 static BOOL MapViewExec(int playerNo);
 static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx);
-static void MapSprCreate(int type, int masuId, int layer);
+static void MapSprCreate(int type, s16 masuId, int layer);
 static void MapBaseSprCreate(void);
 static void MapSprPosCalc(MAPSPRWORK *work);
 static void MapSprPlayerPosCalc(int unused);
@@ -737,12 +737,20 @@ static BOOL MapViewExec(int playerNo)
     return result;
 }
 
-static void MapSprCreate(int type, int masuId, int layer)
+static inline s16 MapSprEntry(u32 dataNum, s16 prio)
+{
+    s16 sprId;
+
+    sprId = espEntry(mbBoardDataNumGet(dataNum), prio, 0);
+    espDrawNoSet(sprId, 64);
+    return sprId;
+}
+
+static void MapSprCreate(int type, s16 masuId, int layer)
 {
     MAPSPRWORK *work;
     int i;
     int j;
-    s16 sprId;
     u32 dataNum;
 
     work = scrollWorkP->mapSpr;
@@ -768,65 +776,43 @@ static void MapSprCreate(int type, int masuId, int layer)
     work->sprId[1] = -1;
     if (work->type >= 0 && work->type <= 15) {
         dataNum = mapCharFileTbl[work->type];
-        sprId = espEntry(mbBoardDataNumGet(dataNum), 2000, 0);
-        espDrawNoSet(sprId, 64);
-        work->sprId[0] = sprId;
-        sprId = espEntry(mbBoardDataNumGet(0x000500AF), 2300, 0);
-        espDrawNoSet(sprId, 64);
-        work->arrowSprId[0] = sprId;
+        work->sprId[0] = MapSprEntry(dataNum, 2000);
+        work->arrowSprId[0] = MapSprEntry(0x000500AF, 2300);
         espColorSet(work->arrowSprId[0], work->color.r, work->color.g, work->color.b);
     } else {
         switch (type) {
         case -1:
-            sprId = espEntry(mbBoardDataNumGet(0x000500A6), 2500, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
-            sprId = espEntry(mbBoardDataNumGet(0x000500A6), 2600, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[1] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500A6, 2500);
+            work->sprId[1] = MapSprEntry(0x000500A6, 2600);
             espScaleSet(work->sprId[0], 0.6f, 0.6f);
             espScaleSet(work->sprId[1], 0.6f, 0.6f);
             espTPLvlSet(work->sprId[1], 0.5f);
             break;
         case -2:
-            sprId = espEntry(mbBoardDataNumGet(0x000500A7), 2500, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
-            sprId = espEntry(mbBoardDataNumGet(0x000500A7), 2600, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[1] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500A7, 2500);
+            work->sprId[1] = MapSprEntry(0x000500A7, 2600);
             espScaleSet(work->sprId[0], 0.6f, 0.6f);
             espScaleSet(work->sprId[1], 0.6f, 0.6f);
             espTPLvlSet(work->sprId[1], 0.5f);
             break;
         case 19:
-            sprId = espEntry(mbBoardDataNumGet(0x000500AD), 2700, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500AD, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 16:
-            sprId = espEntry(mbBoardDataNumGet(0x000500AA), 2700, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500AA, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 17:
-            sprId = espEntry(mbBoardDataNumGet(0x000500AB), 2700, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500AB, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 18:
-            sprId = espEntry(mbBoardDataNumGet(0x000500AC), 2700, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500AC, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 20:
-            sprId = espEntry(mbBoardDataNumGet(0x000500AE), 2700, 0);
-            espDrawNoSet(sprId, 64);
-            work->sprId[0] = sprId;
+            work->sprId[0] = MapSprEntry(0x000500AE, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         }
@@ -1327,7 +1313,7 @@ void mbScrollHookSet(MBSCROLLHOOK hook)
     scrollHook = hook;
 }
 
-void mbMapSprAdd(int type, int id)
+void mbMapSprAdd(int type, s16 id)
 {
     if (type >= 16) {
         MapSprCreate(type, id, 0);
