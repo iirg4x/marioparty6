@@ -1,3 +1,5 @@
+#define _MATH_H
+#include "dolphin/math.h"
 #include "game/board/main.h"
 
 #include "game/board/audio.h"
@@ -241,6 +243,7 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
 {
     int mode;
     s8 padNo;
+    BOOL partyF;
     BOOL result;
     float stkX;
     float stkY;
@@ -281,9 +284,12 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
         if (btn & PAD_BUTTON_B) {
             break;
         }
-        if ((btn & PAD_BUTTON_Y) && GWPartyGet()) {
-            result = TRUE;
-            break;
+        if (btn & PAD_BUTTON_Y) {
+            partyF = GwSystem.partyF;
+            if (partyF) {
+                result = TRUE;
+                break;
+            }
         }
         switch (mode) {
         case 0:
@@ -657,9 +663,10 @@ static BOOL MapViewExec(int playerNo)
     float far;
     BOOL playerDisp[GW_PLAYER_MAX];
     HU3D_MODELID mapMdlId;
+    BOOL result;
     s16 winNo;
     s16 padNo;
-    BOOL result;
+    BOOL partyF;
     int i;
 
     if (mbWipeSpecialStatGet() == FALSE) {
@@ -696,7 +703,8 @@ static BOOL MapViewExec(int playerNo)
 
         if (btn & PAD_BUTTON_A) {
             scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
-            if (!GWPartyGet() && scrollWorkP->playerPosNo == 1) {
+            partyF = GwSystem.partyF;
+            if (!partyF && scrollWorkP->playerPosNo == 1) {
                 scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
             }
             MapSprPlayerPosCalc(scrollWorkP->playerPosNo);
