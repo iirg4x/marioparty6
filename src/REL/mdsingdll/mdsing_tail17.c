@@ -15,8 +15,6 @@ struct Lbl1Bss1348_s {
     float unk_34;
     float unk_38;
     LBL_1_BSS_1348_CALLBACK callback;
-    float unk_40;
-    u8 unk_44[0xC];
 };
 
 extern LBL_1_BSS_1348 lbl_1_bss_1348;

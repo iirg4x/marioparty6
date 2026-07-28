@@ -14,8 +14,6 @@ struct Lbl1Bss1348_s {
     float unk_34;
     float unk_38;
     void *unk_3C;
-    float unk_40;
-    u8 unk_44[0xC];
 };
 
 void fn_1_26FC(LBL_1_BSS_1348 *work)
