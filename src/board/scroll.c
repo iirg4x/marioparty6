@@ -987,7 +987,7 @@ static void MapSprPlayerPosCalc(int unused)
             espPosSet(work->arrowSprId[0], arrowPos.x, arrowPos.y);
             rot = (atan2(dir.x, -dir.y) / M_PI) * 180.0;
             espZRotSet(work->arrowSprId[0], rot);
-            scale = mag * 0.015625f;
+            scale = mag / 64.0f;
             espScaleSet(work->arrowSprId[0], 1.0f, scale);
         }
     }
