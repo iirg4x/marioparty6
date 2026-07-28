@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.53% | 32.87% | 339 / 935 |
+| Entire project | 13.54% | 32.87% | 344 / 945 |
 | Main DOL | 48.28% | 74.87% | 296 / 396 |
-| REL modules | 6.16% | 6.26% | 43 / 539 |
+| REL modules | 6.18% | 6.26% | 48 / 549 |
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
@@ -30,7 +30,7 @@ Within the main game flow at that snapshot:
 - Newly strict-exact board sources: `src/board/gate.c` (11 / 11 functions, 168 / 168 relocations) and `src/board/roulette.c` (21 / 21 functions, 291 / 291 relocations)
 - Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, `s01Dll`, and `w01Dll`
 - Exact shared GC/2.6 runtime owners now cover 15 additional non-minigame RELs, including the results, ending, option, single-player, miracle-book, bank, opening, and staff modules.
-- `mdsingdll` now source-links thirty-three exact functions (8,272 text bytes): `mdsing.c` owns the full contiguous `.text` prefix from `0x0` through `0x1608` (5,640 bytes), while `mdsing_tail.c` through `mdsing_tail5.c` retain the prior exact hook and particle families at `0x2E68C` through `0x2FE48`; the second card-driven bulk result links seven more particle-control functions through `mdsing_tail6.c` at `0x31198` through `0x313A0`, `mdsing_tail7.c` at `0x31818` through `0x31A58`, and `mdsing_tail8.c` at `0x31B90` through `0x31BE4`, alongside the complete 128-byte named data owner. Remaining unclaimed routines stay on retail fallback, and the configured REL remains byte-identical (`badae36c280f8f5943bedde8ead4acb09139417f`).
+- `mdsingdll` now source-links forty exact functions (9,656 text bytes): `mdsing.c` owns the full contiguous `.text` prefix from `0x0` through `0x1608` (5,640 bytes), while `mdsing_tail.c` through `mdsing_tail8.c` retain the prior exact hook and particle families. The third card-driven bulk result adds seven exact helpers through `mdsing_tail9.c` at `0x30730` through `0x3091C`, `mdsing_tail10.c` at `0x321E4` through `0x323A8`, `mdsing_tail11.c` at `0x3276C` through `0x32820`, `mdsing_tail12.c` at `0x32988` through `0x32A08`, and `mdsing_tail13.c` at `0x331E0` through `0x33264`, alongside the complete 128-byte named data owner. Remaining unclaimed routines stay on retail fallback, and the configured REL remains byte-identical (`badae36c280f8f5943bedde8ead4acb09139417f`).
 - `mdpresultdll` now retains 179 individually exact recovered application functions (41,596 text bytes) in `src/REL/mdpresultdll/mdpresult.c`. The noncontiguous application owner is not yet registered as a generated matching object, so the linked REL deliberately continues to use retail fallback for those application ranges and the progress snapshot does not credit them yet.
 - `s01Dll` is source-linked and byte-identical to retail (`7f0cfdb2d2b0b2c50b92675e5bef55d72cf94dd7`), including all 44 application functions and 741 relocations.
 - `w01Dll` is source-linked and byte-identical to retail (`196d7075abbe6eec3031c9484d25216de9dc0889`).
