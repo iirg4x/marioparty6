@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "id": "main:game/hsfdraw",
+  "module": "main",
+  "source": "src/game/hsfdraw.c",
+  "compiler": "GC/2.6",
+  "summary": "HSF draw owner. Recorded to carry the consumer half of a cross-translation-unit retail invariant: FaceDraw's && operand order is what keeps a deliberately uninitialized field in game/hsfmotion.c unreachable, so the expression's shape is load-bearing rather than stylistic.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "authenticated",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "main",
+    "game",
+    "retail-source-form",
+    "do-not-repair",
+    "cross-tu-constraint"
+  ],
+  "symbols": [
+    {
+      "symbol": "FaceDraw",
+      "stable_id": "main:game/hsfdraw:FaceDraw"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "configure.py:648 is Object(Matching, \"game/hsfdraw.c\"), so the emitted object authenticates this file's source shape, including the expression at src/game/hsfdraw.c:684-685. Reordering the && operands, un-nesting it into separate ifs, or sinking line 684 below the flag test each changes the object.",
+      "reference": "configure.py"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Line 684 forms texAnimP = &Hu3DTexAnimData[animWorkP->animId] by pointer arithmetic only and never loads through it; the sole dereference, texAnimP->attr, sits on the right of an && testing HU3D_ATTRANIM_ATTR_ANIM2D. SetObjAttrMotion in game/hsfmotion.c clears that bit while leaving animId uninitialized, so the short-circuit is the whole protection. bitMapPtr is protected identically under HU3D_ATTRANIM_ATTR_BMPANIM at line 690.",
+      "reference": "docs/retail_source_form_evidence.md"
+    }
+  ],
+  "constraints": [
+    "hsfdraw-facedraw-attr-anim-short-circuit-order"
+  ],
+  "debt": [
+    {
+      "kind": "cross_tu_invariant",
+      "priority": "normal",
+      "summary": "The reason this operand order matters lives in src/game/hsfmotion.c, not here, and no tool enforces the pairing. The producer-side constraint is hsfmotion-partial-attr-anim-init-guarded-by-short-circuit on the owner main:game/hsfmotion. An agent tidying this expression sees nothing locally wrong."
+    },
+    {
+      "kind": "unverified_behavior",
+      "priority": "low",
+      "summary": "This owner was created to carry one construct. The rest of the file's semantics, naming and data are not reviewed here; the authenticated status above covers the object's source shape, not a semantic recovery claim over the whole TU."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/game/hsfmotion.c",
+      "include/game/hu3d.h"
+    ],
+    "reports": [
+      "docs/retail_source_form_evidence.md"
+    ]
+  }
+}

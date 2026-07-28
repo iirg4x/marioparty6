@@ -171,7 +171,7 @@
       "path": "src/board/coin.c",
       "kind": "source_shape",
       "rules": [],
-      "rationale": "Retail indexes the 16-entry coinEffBankTbl with an unmasked mbRandMod(32), so indices 16-31 read the immediately adjacent coinEffBankTbl2. This is target-backed, not a decompilation error: mbCoinEffCreate at 0x8017C618 emits li r3,32; bl mbRandMod; addi r4,r28,0x150; lbzx r0,r4,r3 with r28 = 0x80247DE0, and symbols.txt gives coinEffBankTbl = .data:0x80247F30 size 0x10 with coinEffBankTbl2 at 0x80247F40. Both tables' retail bytes equal the source arrays. The adjacent in-range site uses li r3,16 against the equally sized coinEffColorNoTbl, proving the 32 is specific to this one call. Do not change the modulus to 16, mask or clamp the index, or merge the two tables.",
+      "rationale": "SCOPE: this record carries no rules, so it suppresses no source-quality finding - no entry in QUALITY_RULES (tools/recovery_core.py:194) covers an out-of-range table index. It reaches agents only as an owner constraint of main:board/coin. STATUS: configure.py:1033 is Object(NonMatching, \"board/coin.c\"), so this object does NOT authenticate its own source shape; the authentication below is read from retail bytes independently of the object's status. FINDING: retail indexes the 16-entry coinEffBankTbl with an unmasked mbRandMod(32), so indices 16-31 read the immediately adjacent coinEffBankTbl2. mbCoinEffCreate at 0x8017C618 emits li r3,32; bl mbRandMod; addi r4,r28,0x150; lbzx r0,r4,r3 with r28 = 0x80247DE0, and symbols.txt gives coinEffBankTbl = .data:0x80247F30 size 0x10 with coinEffBankTbl2 at 0x80247F40. Both tables' retail bytes equal the source arrays. The adjacent in-range site uses li r3,16 against the equally sized coinEffColorNoTbl, proving the 32 is specific to this one call. Do not change the modulus to 16, mask or clamp the index, or merge the two tables.",
       "evidence": [
         "docs/retail_source_form_evidence.md",
         "config/GP6E01/symbols.txt",
@@ -184,7 +184,20 @@
       "path": "src/game/hsfmotion.c",
       "kind": "source_shape",
       "rules": [],
-      "rationale": "SetObjAttrMotion initializes only attr, trans3D, rot and scale3D of a freshly allocated HU3D_ATTR_ANIM, leaving animId, texScrId, scale, trans, bitMapPtr and unk40 holding prior heap contents. Retail survives because the only dereference of Hu3DTexAnimData[animId] in hsfdraw.c FaceDraw sits on the right of an && whose left operand is the HU3D_ATTRANIM_ATTR_ANIM2D bit that this function clears; the preceding line takes the address only and never loads. Both game/hsfmotion.c and game/hsfdraw.c are Object(Matching), so both forms are retail-authenticated. Adding the missing initializers changes this object, and reordering or un-nesting FaceDraw's && changes that one.",
+      "rationale": "SCOPE: this record carries no rules, so it suppresses no source-quality finding - no entry in QUALITY_RULES (tools/recovery_core.py:194) covers a partially initialized struct. It reaches agents only as an owner constraint of main:game/hsfmotion, and it constrains THIS file alone; the matching constraint on the consumer is the separately scoped hsfdraw-facedraw-attr-anim-short-circuit-order. FINDING: SetObjAttrMotion (src/game/hsfmotion.c:1155) initializes only attr, trans3D, rot and scale3D of a freshly allocated HU3D_ATTR_ANIM, leaving animId, texScrId, scale, trans, bitMapPtr and unk40 (include/game/hu3d.h:251) holding prior heap contents. The allocation is not zeroed. This survives only because the sole dereference of Hu3DTexAnimData[animId] lives behind a short-circuit in a different TU. game/hsfmotion.c is Object(Matching) (configure.py:650), so this form is retail-authenticated. Do not add the missing initializers: that changes this object.",
+      "evidence": [
+        "docs/retail_source_form_evidence.md",
+        "src/game/hsfmotion.c",
+        "include/game/hu3d.h"
+      ]
+    },
+    {
+      "id": "hsfdraw-facedraw-attr-anim-short-circuit-order",
+      "classification": "authenticated",
+      "path": "src/game/hsfdraw.c",
+      "kind": "source_shape",
+      "rules": [],
+      "rationale": "SCOPE: this record carries no rules, so it suppresses no source-quality finding - no entry in QUALITY_RULES (tools/recovery_core.py:194) covers operand order in a boolean expression. It reaches agents only as an owner constraint of main:game/hsfdraw. FINDING: in FaceDraw, line 684 computes texAnimP = &Hu3DTexAnimData[animWorkP->animId] as pointer arithmetic only, and line 685 dereferences texAnimP->attr on the RIGHT of an && whose LEFT operand tests HU3D_ATTRANIM_ATTR_ANIM2D. SetObjAttrMotion in game/hsfmotion.c leaves animId uninitialized while clearing that bit, so the short-circuit is the only thing preventing a read through a garbage index; bitMapPtr is protected the same way under HU3D_ATTRANIM_ATTR_BMPANIM at line 690. The operand order of that && is load-bearing retail behaviour, not a style choice. game/hsfdraw.c is Object(Matching) (configure.py:648), so this form is retail-authenticated. Do not reorder the && operands, do not un-nest it into separate ifs, and do not sink line 684 below the flag test: each changes this object.",
       "evidence": [
         "docs/retail_source_form_evidence.md",
         "src/game/hsfdraw.c",

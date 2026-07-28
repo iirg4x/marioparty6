@@ -131,6 +131,14 @@ Two ways to break this while "improving" the code:
 
 The order of the two operands of that `&&` is load-bearing retail behaviour.
 
+Because that constraint lands on a *second* file, it is recorded twice, once per
+path: the exception `hsfmotion-partial-attr-anim-init-guarded-by-short-circuit`
+is scoped to `src/game/hsfmotion.c`, and
+`hsfdraw-facedraw-attr-anim-short-circuit-order` is scoped to
+`src/game/hsfdraw.c`. Both are reachable through their owners' `constraints`, so
+an agent editing either file sees the half that applies to it. A constraint
+written only into the other file's record would never be matched.
+
 ## 3. `board/telop.c`: `mbTelopCreate` is recovery debt, not a missing file
 
 `src/board/telop.c` exists and defines the telop *time/taunt/language/board-data*
@@ -147,7 +155,18 @@ src/board/opening.c:256      mbTelopCreate(-1, boardNo + 16, FALSE);
 src/board/opening.c:800      mbTelopCreate(-1, boardNo + 16, FALSE);
 ```
 
-`board/opening.c` is `Object(Matching)`; `board/telop.c` is `NonMatching`.
+**Both files are `NonMatching`**: `configure.py:1042` reads
+`Object(NonMatching, "board/opening.c")` and `configure.py:1061` reads
+`Object(NonMatching, "board/telop.c")`. The only `Matching` `opening.c` in the
+project is `REL/bootDll/opening.c` at `configure.py:1086`, a different
+translation unit.
+
+The three lines above were read from the committed `src/board/opening.c` and are
+quoted accurately, but a `NonMatching` object does not authenticate its own
+source text. The call sites are therefore **candidate source**, not an
+authenticated same-game consumer: they do not by themselves pin the
+three-argument signature or the `+16` base. The independent support for the
+`+16` base is the retail `telopFileTbl` layout below, not the call text.
 
 Retail facts, verified:
 
@@ -170,9 +189,12 @@ telopFileTbl      = .rodata:0x8021AF30 size 0x6C   scope:local
 0x8021AF90  0005004a 00050044 00050044
 ```
 
-Entry `[16]` is `0x00050044`, matching the `boardNo + 16` call sites in
-`opening.c`: board banners start at index 16, and indices 0..15 are the
-non-board telops.
+Entry `[16]` is `0x00050044`, and the retail table's first sixteen entries are a
+distinct run (`0x0005004d`..`0x00050059`) from the run that begins at `[16]`
+(`0x00050044`..). That boundary is read from the DOL and is what supports the
+"board banners start at index 16" reading. The `boardNo + 16` call text in
+`opening.c` is consistent with it but, coming from a `NonMatching` object, does
+not independently establish it.
 
 The three local functions and the table are the recoverable unit. Their
 behaviour — sprite entry and any scale/alpha ramp — has **not** been
@@ -182,6 +204,12 @@ sizes, scopes and table contents above are verified.
 ## Consequence
 
 Nothing is promoted to `main` from this investigation. The coin and hsf findings
-are recorded as scoped exceptions so that a later agent does not "repair" them;
-the telop finding is recorded as owner debt with its retail coordinates so the
+are recorded as path-scoped exceptions, each reached through the `constraints`
+list of an owner for that exact file — an exception no owner references is
+matched by nothing and reaches no agent. Note that none of the three carries a
+source-quality rule scope: no entry in `QUALITY_RULES`
+(`tools/recovery_core.py:194`) covers an out-of-range table index, a partially
+initialized struct, or an operand order, so these records constrain and inform
+but suppress no finding, and each says so in its own rationale.
+The telop finding is recorded as owner debt with its retail coordinates so the
 next attempt starts from addresses rather than from a search.

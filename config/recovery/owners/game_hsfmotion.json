@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "id": "main:game/hsfmotion",
+  "module": "main",
+  "source": "src/game/hsfmotion.c",
+  "compiler": "GC/2.6",
+  "summary": "HSF motion owner. Recorded to carry one authenticated retail construct that reads as a bug: SetObjAttrMotion leaves part of a freshly allocated HU3D_ATTR_ANIM uninitialized, and the program survives only because a consumer in another translation unit short-circuits before the sole dereference.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "authenticated",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "main",
+    "game",
+    "retail-source-form",
+    "do-not-repair",
+    "cross-tu-constraint"
+  ],
+  "symbols": [
+    {
+      "symbol": "SetObjAttrMotion",
+      "stable_id": "main:game/hsfmotion:SetObjAttrMotion"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "configure.py:650 is Object(Matching, \"game/hsfmotion.c\"), so the emitted object authenticates this file's source shape, including the partial initialization at src/game/hsfmotion.c:1187-1190. Adding the missing initializers would change the object.",
+      "reference": "configure.py"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The struct at include/game/hu3d.h:251 also declares animId, texScrId, scale, trans, bitMapPtr and unk40, none written by SetObjAttrMotion, and HuMemDirectMallocNum does not zero the block. The only consumer that dereferences through animId is FaceDraw in game/hsfdraw.c, which is also Object(Matching) (configure.py:648) and guards the read behind an ANIM2D short-circuit - so the uninitialized fields are unreachable rather than merely lucky.",
+      "reference": "docs/retail_source_form_evidence.md"
+    }
+  ],
+  "constraints": [
+    "hsfmotion-partial-attr-anim-init-guarded-by-short-circuit"
+  ],
+  "debt": [
+    {
+      "kind": "cross_tu_invariant",
+      "priority": "normal",
+      "summary": "This file's correctness depends on an invariant held in src/game/hsfdraw.c, which no tool enforces. The paired constraint is hsfdraw-facedraw-attr-anim-short-circuit-order on the owner main:game/hsfdraw. If either side is edited without the other, the fault is silent: no compiler diagnostic and no source-quality rule covers it."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/game/hsfdraw.c",
+      "include/game/hu3d.h"
+    ],
+    "reports": [
+      "docs/retail_source_form_evidence.md"
+    ]
+  }
+}

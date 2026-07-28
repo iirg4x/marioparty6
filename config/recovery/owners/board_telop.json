@@ -43,14 +43,14 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "telopFileTbl read from the retail DOL (sha1 b897e6ad) is 27 u32 file ids; entry [16] at 0x8021AF70 is 0x00050044, so board banners begin at index 16 and 0-15 are the non-board telops.",
+      "summary": "telopFileTbl read from the retail DOL (sha1 b897e6ad) is 27 u32 file ids. Entries [0..15] form one ascending run 0x0005004d..0x00050059 and entry [16] at 0x8021AF70 restarts at 0x00050044, beginning a second run; that boundary is read from retail bytes and is what supports board banners beginning at index 16 with 0-15 the non-board telops.",
       "reference": "docs/retail_source_form_evidence.md"
     },
     {
       "kind": "same_game_consumer",
-      "confidence": "confirmed",
-      "accepted": true,
-      "summary": "board/opening.c is Object(Matching) and declares mbTelopCreate as a file-local extern at line 46, calling it as mbTelopCreate(-1, boardNo + 16, FALSE) at lines 256 and 800, which pins the three-argument signature and the +16 board-banner base.",
+      "confidence": "low",
+      "accepted": false,
+      "summary": "REJECTED as authentication. src/board/opening.c declares mbTelopCreate as a file-local extern at line 46 and calls it as mbTelopCreate(-1, boardNo + 16, FALSE) at lines 256 and 800; those lines are quoted accurately from the committed tree. But configure.py:1042 is Object(NonMatching, \"board/opening.c\"), so the object does not authenticate its own source text and this is candidate source, not an authenticated consumer artifact. The only Matching opening.c is REL/bootDll/opening.c at configure.py:1086, a different TU. Nothing here derives the three-argument signature or the +16 base from retail bytes, so it cannot carry them; the +16 reading rests on the telopFileTbl run boundary in the target_binary entry above. Re-accept only after opening.c matches, or after mbTelopCreate's own prologue at 0x802035D0 is disassembled and its parameter registers read.",
       "reference": "src/board/opening.c"
     }
   ],
@@ -60,6 +60,11 @@
       "kind": "missing_functions",
       "priority": "high",
       "summary": "mbTelopCreate, TelopInitOMExec and TelopOMExec have no definition in src/. Only a file-local extern in board/opening.c declares the entry point, so board/telop.c cannot reach binary parity until the banner group and telopFileTbl are recovered at the addresses above."
+    },
+    {
+      "kind": "unverified_signature",
+      "priority": "normal",
+      "summary": "mbTelopCreate's parameter count and types are not established. The only declaration in src/ is a file-local extern in board/opening.c, which is NonMatching and therefore unauthenticated; no retail evidence for the signature has been read. Disassemble the prologue at 0x802035D0 and read which parameter registers are consumed before relying on the three-argument form."
     },
     {
       "kind": "unverified_behavior",
