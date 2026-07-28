@@ -8,6 +8,8 @@
 extern const float lbl_1_rodata_5C;
 extern const float lbl_1_rodata_60;
 extern s16 lbl_1_bss_34;
+extern s16 lbl_1_bss_1308[];
+extern s16 lbl_1_bss_1340[];
 extern char lbl_1_data_95A[];
 extern char lbl_1_data_96B[];
 extern char lbl_1_data_97D[];
@@ -16,6 +18,36 @@ extern char lbl_1_data_99D[];
 extern char lbl_1_data_9A3[];
 extern char lbl_1_data_9D3[];
 extern char lbl_1_data_A02[];
+
+void fn_1_EA0(void)
+{
+    OMOVLHIS *history;
+
+    do {
+        HuPrcVSleep();
+    } while (lbl_1_bss_34 == 0);
+
+    history = omOvlHisGet(0);
+    omOvlHisChg(0, history->ovl, 1, lbl_1_bss_1308[11]);
+    OSReport(lbl_1_data_9A3);
+    OSReport(lbl_1_data_95A, 0x21);
+    OSReport(lbl_1_data_96B, 0x24);
+    OSReport(lbl_1_data_97D, 0x9B);
+    OSReport(lbl_1_data_98F, 0xF2);
+    HuAMemDump();
+    OSReport(lbl_1_data_99D);
+    switch (lbl_1_bss_1340[1]) {
+        case 0:
+            omOvlCallEx(0x72, 1, 0, 0);
+            break;
+        case 1:
+            omOvlCallEx(0x73, 1, 0, 0);
+            break;
+        case 2:
+            omOvlCallEx(0x74, 1, 0, 0);
+            break;
+    }
+}
 
 void fn_1_FEC(void)
 {
