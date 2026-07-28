@@ -46,6 +46,9 @@ static TERESA_FADE_WORK *teresaFadeWork;
 
 extern void mbDiceObjHit(int playerNo);
 
+static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
+static void ev_CapTeresaFadeOMExec(OMOBJ *obj);
+
 void mbev_CapTeresaKill(void)
 {
 }
@@ -57,6 +60,44 @@ void mbev_CapTeresaStealSet(int mesId, int coinNum, TERESA_STEAL_BEGIN_HOOK begi
     teresaStealCoinNum = coinNum;
     teresaStealBeginHook = beginHook;
     teresaStealHook = hook;
+}
+
+void mbev_CapTeresaFadeCreate(int objectId)
+{
+    int modelId;
+    HU3D_MODEL *model;
+    HSF_DATA *hsf;
+    HSF_MATERIAL *material;
+    int i;
+
+    modelId = mbObjModelIDGet(objectId);
+    model = &Hu3DData[modelId];
+    hsf = model->hsf;
+    material = hsf->material;
+    Hu3DModelMatHookSet(modelId, ev_CapTeresaFadeMatHook);
+    for (i = 0; i < hsf->materialNum; i++, material++) {
+        material->flags |= HSF_MATERIAL_MATHOOK;
+    }
+
+    teresaFadeWork = HuMemDirectMallocNum(
+        HEAP_MODEL, sizeof(TERESA_FADE_WORK), model->mallocNo);
+    memset(teresaFadeWork, 0, sizeof(TERESA_FADE_WORK));
+    teresaFadeWork->activeF = TRUE;
+    teresaFadeWork->alpha = 255.0f;
+    teresaFadeWork->copyF = FALSE;
+    teresaFadeWork->screenWidth = 640;
+    teresaFadeWork->screenHeight = 480;
+    teresaFadeWork->textureWidth = 320;
+    teresaFadeWork->textureHeight = 240;
+    teresaFadeWork->object = omAddObjEx(
+        mbObjMan, -32768, 0, 0, OM_GRP_NONE, ev_CapTeresaFadeOMExec);
+    teresaFadeWork->textureSize = GXGetTexBufferSize(
+        teresaFadeWork->textureWidth, teresaFadeWork->textureHeight,
+        GX_TF_RGB565, GX_FALSE, 0);
+    teresaFadeWork->textureData = HuMemDirectMallocNum(
+        HEAP_MODEL, teresaFadeWork->textureSize, model->mallocNo);
+    memset(teresaFadeWork->textureData, 0, teresaFadeWork->textureSize);
+    DCFlushRange(teresaFadeWork->textureData, teresaFadeWork->textureSize);
 }
 
 void mbev_CapTeresaFadeKill(int objectId)
