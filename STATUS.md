@@ -25,7 +25,7 @@ Within the main game flow at that snapshot:
 - Newly strict-exact board sources: `src/board/gate.c` (11 / 11 functions, 168 / 168 relocations) and `src/board/roulette.c` (21 / 21 functions, 291 / 291 relocations)
 - Fully source-linked flow modules: `actmanDLL`, `bootDll`, `fileseldll`, `selmenuDll`, `sequencedll`, `mdseldll`, `mdpartydll`, `s01Dll`, and `w01Dll`
 - Exact shared GC/2.6 runtime owners now cover 15 additional non-minigame RELs, including the results, ending, option, single-player, miracle-book, bank, opening, and staff modules.
-- `mdsingdll` now source-links all sixteen configured exact functions (5,708 text bytes): `mdsing.c` owns the full contiguous `.text` prefix from `0x0` through `0x1608` (5,640 bytes), alongside the complete 128-byte named data owner; remaining unclaimed routines stay on retail fallback, and the configured REL remains byte-identical (`badae36c280f8f5943bedde8ead4acb09139417f`).
+- `mdsingdll` now source-links eighteen exact functions (5,788 text bytes): `mdsing.c` owns the full contiguous `.text` prefix from `0x0` through `0x1608` (5,640 bytes), and `mdsing_tail.c` owns the exact layer-hook pair at `0x2E68C` through `0x2E6DC`, alongside the complete 128-byte named data owner; remaining unclaimed routines stay on retail fallback, and the configured REL remains byte-identical (`badae36c280f8f5943bedde8ead4acb09139417f`).
 - `s01Dll` is source-linked and byte-identical to retail (`7f0cfdb2d2b0b2c50b92675e5bef55d72cf94dd7`), including all 44 application functions and 741 relocations.
 - `w01Dll` is source-linked and byte-identical to retail (`196d7075abbe6eec3031c9484d25216de9dc0889`).
 
