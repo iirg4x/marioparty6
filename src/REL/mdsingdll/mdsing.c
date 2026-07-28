@@ -2,6 +2,7 @@
 #include "dolphin/os.h"
 #include "game/armem.h"
 #include "game/charman.h"
+#include "game/data.h"
 #include "game/gamework.h"
 #include "game/object.h"
 #include "game/process.h"
@@ -10,6 +11,8 @@ extern const float lbl_1_rodata_5C;
 extern const float lbl_1_rodata_60;
 extern const u32 lbl_1_rodata_54[];
 extern HUPROCESS *lbl_1_bss_0;
+extern s16 lbl_1_bss_30;
+extern s16 lbl_1_bss_32;
 extern s16 lbl_1_bss_34;
 extern s16 lbl_1_bss_1308[][7];
 extern s16 lbl_1_bss_1340[];
@@ -23,11 +26,60 @@ extern char lbl_1_data_9A3[];
 extern char lbl_1_data_9D3[];
 extern char lbl_1_data_A02[];
 extern u32 lbl_1_data_918[];
+extern s16 lbl_1_data_912[];
 extern char lbl_1_data_928[];
 
 typedef struct MdsingDirectoryPair {
     u32 values[2];
 } MdsingDirectoryPair;
+
+void fn_1_1A4(void)
+{
+    lbl_1_bss_30 = 0;
+    lbl_1_bss_32 = 0;
+    if (GWBankFlagGet(2)) {
+        lbl_1_bss_30 = 1;
+    }
+    if (GWBankFlagGet(4)) {
+        lbl_1_bss_32 = 1;
+    }
+    lbl_1_data_912[0] = 1;
+    lbl_1_data_912[1] = 1;
+    lbl_1_data_912[2] = 1;
+}
+
+void fn_1_250(void)
+{
+    s16 character[5];
+    s16 i;
+    s32 status;
+
+    character[0] = lbl_1_bss_1308[0][4];
+    character[1] = lbl_1_bss_1308[1][4];
+    character[2] = 11;
+    character[3] = 12;
+    character[4] = 13;
+    for (i = 0; i < 5; i++) {
+        if ((void *)CharMotionAMemPGet(character[i]) == NULL) {
+            break;
+        }
+    }
+    if (i == 5) {
+        return;
+    }
+
+    CharDataClose(-1);
+    for (i = 0; i < 5; i++) {
+        status = HuDataDirReadAsync(CharDataDirTbl[character[i]][4]);
+        if (status != -1) {
+            while (!HuDataGetAsyncStat(status)) {
+                HuPrcVSleep();
+            }
+        }
+        CharMotionInit(character[i]);
+        HuDataDirClose(CharDataDirTbl[character[i]][4]);
+    }
+}
 
 void fn_1_3A0(void)
 {
