@@ -933,11 +933,8 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
     HuVecF dir;
     HuVecF outPos;
     HuVecF dotVec;
-    float mag;
-    int temp;
 
     quadF = FALSE;
-    temp = 0;
     if (capsuleColMdlId == HU3D_MODELID_NONE) {
         return FALSE;
     }
@@ -950,7 +947,6 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
         return FALSE;
     }
     PSVECNormalize(&dir, &dir);
-    mag = PSVECMag(&dir);
     for (i = 0; i < hsfP->faceNum; i++, faceBufP++) {
         faceP = faceBufP->data;
         for (j = 0; j < faceBufP->count; j++, faceP++) {
@@ -1194,8 +1190,6 @@ static void CapPlayerThrow(void)
     HuVecF dirOrig;
     HuVecF pos;
     HuVecF vel;
-    HuVecF playerPos;
-    HuVecF playerPosOrig;
     HuVecF capPos;
     HuVecF handPos;
     float x[3];
@@ -1215,9 +1209,6 @@ static void CapPlayerThrow(void)
     GXColor color;
     float magTemp;
     GXColor glowColor;
-    GXColor *glowColorP;
-    HuVecF *glowVelP;
-    HuVecF *glowPosP;
     char *hookName;
 
     work = HuPrcCurrentGet()->property;
@@ -1276,8 +1267,6 @@ static void CapPlayerThrow(void)
     if (work->yOfs > 700.0f) {
         work->yOfs = 700.0f;
     }
-    playerPosOrig = work->pos;
-    playerPos = playerPosOrig;
     x[0] = work->pos.x;
     y[0] = work->pos.y;
     z[0] = work->pos.z;
@@ -1415,17 +1404,14 @@ static void CapPlayerThrow(void)
             color.a = (u8)(192.0f + (63.0f * ((u32)mbRandMod(0x10000000)
                 * 3.725290298461914e-09f)));
             glowColor = color;
-            glowColorP = &glowColor;
             glowVel = vel;
-            glowVelP = &glowVel;
             glowPos = pos;
-            glowPosP = &glowPos;
-            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
+            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, &glowPos, &glowVel,
                 (int)(60.0f * (1.0f + ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f))),
                 1.5f * (0.2f + (0.025f * ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f))),
-                0.0f, 0.025f, glowColorP);
+                0.0f, 0.025f, &glowColor);
         }
         HuPrcVSleep();
     } while (work->time < work->maxTime);
@@ -1585,9 +1571,6 @@ static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
     HuVecF glowVel;
     HuVecF rot;
     HuVecF pos;
-    GXColor *glowColorP;
-    HuVecF *glowVelP;
-    HuVecF *glowPosP;
 
     if (capsuleThrowHook) {
         capsuleThrowHook(TRUE);
@@ -1670,18 +1653,15 @@ static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
                 + (63.0f * ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f)));
             glowColor = color;
-            glowColorP = &glowColor;
             glowVel = particleVel;
-            glowVelP = &glowVel;
             glowPos = particlePos;
-            glowPosP = &glowPos;
             glowScale = 100.0f
                 * (0.2f + (0.025f * ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f)));
-            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
+            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, &glowPos, &glowVel,
                 (int)(60.0f * (1.0f + ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f))), glowScale,
-                0.0f, 0.025f, glowColorP);
+                0.0f, 0.025f, &glowColor);
         }
         HuPrcVSleep();
     } while (time < work->maxTime);
@@ -2605,16 +2585,9 @@ int mbCapObjColorCreate(int capsuleNo, BOOL createF)
 {
     CAPSULE_OBJ_COLOR *obj;
     int i;
-    int capValue;
-    u32 file;
-    s16 initialValue;
-    s16 capValueShort;
-    int objFile;
-    int fileNo;
 
     obj = capsuleObjColorData;
-    initialValue = (s16)capsuleNo & 0xFF;
-    capsuleNo = initialValue;
+    capsuleNo = (s16)capsuleNo & 0xFF;
     for (i = 0; i < CAPSULE_OBJ_COLOR_MAX; i++, obj++) {
         if (!obj->flag) {
             break;
@@ -2623,14 +2596,8 @@ int mbCapObjColorCreate(int capsuleNo, BOOL createF)
     if (i >= CAPSULE_OBJ_COLOR_MAX) {
         return -1;
     }
-    capValue = capsuleNo;
-    capValueShort = (s16)capValue & 0xFF;
-    capValue = capValueShort;
-    objFile = capsuleData[capValue].objFile;
-    fileNo = objFile;
-    file = fileNo;
     obj->flag = TRUE;
-    obj->mdlId = mbObjCreate(file, NULL, createF);
+    obj->mdlId = mbObjCreate(capsuleData[capsuleNo].objFile, NULL, createF);
     obj->layer = 4;
     obj->pos.x = obj->pos.y = obj->pos.z = 0.0f;
     obj->rot.x = obj->rot.y = obj->rot.z = 0.0f;
