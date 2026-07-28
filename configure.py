@@ -1235,6 +1235,8 @@ config.libs = [
             Object(Matching, "REL/mdsingdll/mdsing_tail13.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail14.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail15.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail16.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail17.c"),
             Object(
                 Matching,
                 "REL/mdsingdll/runtime.c",
