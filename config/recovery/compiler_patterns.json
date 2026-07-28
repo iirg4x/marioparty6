@@ -1827,6 +1827,292 @@
         "include/game/disp.h",
         "config/GP6E01/symbols.txt"
       ]
+    },
+    {
+      "id": "mwcc-rodata-is-one-region-in-creation-order",
+      "title": "MWCC .rodata is a single region in strict creation order, not named objects then a literal pool",
+      "classification": "confirmed_rule",
+      "category": "literal_pool_and_code_layout",
+      "compiler": "GC/2.7",
+      "confidence": "confirmed",
+      "summary": "At -O0 the object's .rodata is one region emitted in strict creation order. Named const objects and pooled literals interleave freely; there is no named-objects-first region and no dedup between a named object and an equal pool literal. What differs between constructs is only WHEN a constant is created: a named object at its definition point, an expression literal at the codegen of the referencing function, a static inline body's constants at its FIRST EXPANSION, and an extern-inline function-local static under '#pragma cplusplus on' at PARSE of the inline body even when never called.",
+      "conditions": "Apply when a target and candidate hold the same .rodata contents in a different order, or when choosing a construct to place constants ahead of the first function's codegen.",
+      "source_condition": {
+        "change": "Move a const object, an inline definition, or a first-use site, or convert between static inline and extern inline.",
+        "requires": [
+          "the exact compiler build and flag profile of the owning TU",
+          "the section's creation-order reading, not a named-versus-pool split",
+          "identification of each constant's creating construct before predicting placement",
+          "a scratch object compiled outside the build tree"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "a named const object placed between two pooled literals",
+          "two copies of the same value, one named and one pooled",
+          "an inline body's constants appearing at the first expansion site rather than the definition",
+          "a weak function-local static prefixing .rodata at zero .text cost",
+          "no emission at all for an uncalled static inline or an unreferenced file-scope static const"
+        ],
+        "known_signatures": [
+          "probe p1: useLit's 7.5f at 0x00, namedTbl at 0x04, useLit2's 3.25f at 0x10 - the named object sits between two literals",
+          "probe p1: 7.5f appears twice, once pooled at 0x00 and once inside namedTbl at 0x0c",
+          "probe p4: pk (parse) 0x00, 7.5f 0x04, namedTbl 0x08, 3.25f 0x10, helper's 11.5f 0x14 - exactly creation order across all four construct classes",
+          "probe p3: 'pk$localstatic3$ei__Ff' emitted WEAK at .rodata 0x00 with .text 20 bytes, the uncalled extern inline contributing no text",
+          "probe p2b: the same idea written as static inline emits nothing"
+        ]
+      },
+      "rule": "Read a .rodata ordering difference as a creation-order difference and identify which construct creates each constant before proposing a source move. Do not model the section as named objects followed by a literal pool, and do not expect a named object to absorb an equal pooled literal.",
+      "safe_actions": [
+        "compile the candidate to a scratch object outside the build tree and read .rodata, .symtab and .rela.text directly",
+        "classify each differing constant by its creating construct before moving any declaration",
+        "prefer objdiff's data_diff over a hand-written ELF reader to see which bytes differ",
+        "treat an extern-inline local static as a diagnostic lever only, never as an authenticated source shape without owner evidence"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "w01Dll",
+          "s01Dll"
+        ],
+        "owner_tags": [
+          "literal_pool",
+          "rodata",
+          "declaration_visibility"
+        ]
+      },
+      "examples": [
+        "w01Dll world01.o: .text/.data/.bss byte-identical while .rodata is reordered and 4 bytes longer, the whole defect one contiguous 104-byte block of 19 hot constants the target creates before any function is code-generated",
+        "math.h's _half/_three appear in w01Dll only because sqrtf is actually expanded, matching the first-expansion rule",
+        "the extern-inline route is the only measured construct that prefixes .rodata at zero .text cost"
+      ],
+      "counterexamples": [
+        "REFUTED by measurement: 'named .rodata objects always precede the literal pool'. Probe p1 places a named object between two pooled literals, and probe p4 reproduces full creation order across four construct classes. Earlier write-ups asserting a two-region layout are wrong on this point.",
+        "Compiler build is not the lever: all eleven MWCC builds present produce w01Dll .rodata 1092 in the same order, and five of them also give byte-identical .text.",
+        "Flags are not the lever: -inline on/off/all and -str reuse,pool / pool,readonly leave the pool at 1092; -inline deferred reorders it but wrecks .text (85088 and 104196 against 91304).",
+        "An uncalled static function allocates its literals but is not dead-stripped, so it always costs .text; a dead store costs 72 bytes.",
+        "x * 1.0f folds to a copy and x / 2.0f strength-reduces to * 0.5f, so reciprocal tricks cannot seed the pool."
+      ],
+      "related_exceptions": [
+        "w01-world01-exact-source-shape"
+      ],
+      "evidence": [
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "configure.py"
+      ]
+    },
+    {
+      "id": "mwcc-text-identity-does-not-constrain-rodata-order",
+      "title": "Byte-identical .text places zero constraint on .rodata order; judge .rodata by prefix, not percentage",
+      "classification": "confirmed_rule",
+      "category": "verification",
+      "compiler": "GC/2.7",
+      "confidence": "confirmed",
+      "summary": "Pool references are relocations against a symbol with the instruction immediate left at zero, so permuting .rodata cannot change any .text byte. A 100%-text object with reordered .rodata is therefore a source-structure problem, never a codegen problem. Separately, objdiff's .rodata percentage is not a gate: the real criterion is an identical common prefix plus the direction of the size difference, because dtk's split rounds sections up with trailing zeros.",
+      "conditions": "Apply when an object's functions are all exact but its .rodata differs, or when a .rodata percentage below 100% is about to be treated as a failure.",
+      "source_condition": {
+        "change": "Judge or retain an object whose .text matches but whose .rodata differs in order or length.",
+        "requires": [
+          "the relocation table, not just the instruction bytes",
+          "both sections' raw bytes and both lengths",
+          "the common-prefix comparison and which side is longer",
+          "objdiff run with ppc_calculate_pool_relocations=true and function_reloc_diffs=none"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "identical .text across a completely reordered .rodata",
+          "a Matching object shipping with a .rodata percentage well below 100%",
+          "a REL size delta of a few bytes tracing to pool padding rather than content",
+          "objdiff reporting pool-symbol naming noise as a difference"
+        ],
+        "known_signatures": [
+          "probe p4 .rela.text: six ADDR16_HA/ADDR16_LO pairs against @8/@13/@18 with addend 0 and every instruction immediate field 0x0000",
+          "w01Dll: 2948 text->rodata relocations at the SAME text offsets on both sides, every one resolving to a byte-equal value - a pure permutation",
+          "12 of the 54 Matching objects that have .rodata score below 100%, as low as 85.7143% (sprman, hsfdraw, mtx/quat), all with byte-identical prefixes and a longer target padded with zeros",
+          "w01Dll is the only object where ours is longer (1092 against 1088) and reordered; built as Matching the .rel is 141252 against 141244",
+          "without ppc_calculate_pool_relocations w01Dll reported 98.890%/50-of-132 instead of the true 99.878%/130-of-132"
+        ]
+      },
+      "rule": "Never infer a codegen defect from a .rodata ordering difference when .text is byte-identical - look at declaration, inline and definition order instead. Never gate .rodata on a percentage: compare the common prefix and check which side is longer, since a longer target is split slop and a longer candidate means bytes the original does not emit.",
+      "safe_actions": [
+        "read the relocation table and confirm pool references carry no instruction immediate before theorising",
+        "compare both .rodata sections byte-for-byte and record both lengths",
+        "normalise @NNN versus lbl_1_rodata_NN pool-symbol naming away before counting differences",
+        "use dtk rel info and objdiff's data_diff instead of a hand-rolled ELF or REL parser"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "w01Dll",
+          "selmenuDll",
+          "mdseldll",
+          "main"
+        ],
+        "owner_tags": [
+          "rodata",
+          "literal_pool",
+          "verification"
+        ]
+      },
+      "examples": [
+        "selmenuDll ours=132 target=136 prefix(132) identical, tail 00000000",
+        "mdseldll ours=606 target=608 prefix(606) identical, tail 0000",
+        "main/game/sprman ours=12 target=16 prefix(12) identical, tail 00000000"
+      ],
+      "counterexamples": [
+        "A .rodata percentage below 100% is not evidence of a defect; twelve Matching objects ship that way in a passing build.",
+        "A 100% .text match is not evidence that pool ordering is correct, because the instruction bytes carry no pool offset at all.",
+        "Equal literal multisets do not prove equal order, and equal order does not prove equal relocation ownership."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "configure.py"
+      ]
+    },
+    {
+      "id": "mwcc-o0-codegen-neutral-source-forms",
+      "title": "Parentheses, register, const and compound assignment are -O0 no-ops; only real regrouping moves temporaries",
+      "classification": "confirmed_rule",
+      "category": "source_form_neutrality",
+      "compiler": "GC/2.7",
+      "confidence": "confirmed",
+      "summary": "At -O0 redundant parentheses, the register storage class, const on parameters and locals, and compound assignment are all codegen no-ops, as is a helper's definition position in the file. Float temporaries are numbered by expression-tree shape rather than liveness, so only a genuine change of tree shape moves a destination register - which is why parentheses that do not regroup change nothing.",
+      "conditions": "Apply before spending a search budget on cosmetic source variations, or when a same-operand different-destination-register difference needs explaining.",
+      "source_condition": {
+        "change": "Add or remove parentheses, register/const qualifiers, or compound-assignment forms, or regroup an expression.",
+        "requires": [
+          "byte comparison of the two candidate objects, not a match percentage",
+          "an instruction-stream alignment that separates structural from operand differences",
+          "the exact build profile of the owning TU"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no change at all for parentheses, register, const, or compound assignment",
+          "a different destination register when the expression tree's depth changes",
+          "no change in emitted code from moving a helper's definition in the file"
+        ],
+        "known_signatures": [
+          "probes p5a/p5b differ by redundant parentheses, register on a parameter and two locals, const on all parameters, and += versus = ... + : .text 64 bytes on both sides and byte-identical",
+          "probes p7a/p7c differ only by redundant parentheses: byte-identical",
+          "probes p7a/p7b, (a*b)*(c*d) versus ((a*b)*c)*d: same 16 bytes, different destinations - p7a fmuls f5,f1,f2 / f0,f3,f4 / f1,f5,f0 against p7b fmuls f0,f1,f2 / f0,f3,f0 / f1,f4,f0",
+          "a balanced tree needs a second live temporary where a left-leaning tree reuses f0"
+        ]
+      },
+      "rule": "Do not spend probe budget on parentheses, register, const, compound assignment, or helper file position - they are measured no-ops at -O0. When a destination register is wrong with correct operands, change the expression tree's shape, not its punctuation.",
+      "safe_actions": [
+        "compare candidate objects byte-for-byte rather than by match percentage",
+        "drive structural insert/delete differences to zero before reading operand differences",
+        "sweep commutative operand order, which does allocate temporaries differently",
+        "record eliminated axes so the next agent does not repeat them"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "w01Dll",
+          "s01Dll",
+          "main"
+        ],
+        "owner_tags": [
+          "source_form",
+          "expression_shape",
+          "probe_budget"
+        ]
+      },
+      "examples": [
+        "w01Dll fn_1_13CC: 361 function-scope declaration-order permutations never changed the structural count, while a swapped variable role took struct 8 -> 0",
+        "w01Dll fn_1_3214: reusing an existing accumulator instead of a fresh variable took struct 1 -> 0"
+      ],
+      "counterexamples": [
+        "Scalar locals are enregistered per live-range web; the register keyword does not decide which local wins a callee-saved register.",
+        "Commutative operand order is NOT neutral - (a*b) and (b*a) allocate temporaries differently and are worth a mechanical sweep.",
+        "Declared-but-never-referenced locals get no stack slot, so a leftover declaration is free and need not be deleted to match.",
+        "Helper file position is neutral for .text but has not been shown neutral for .rodata, where first-expansion timing decides pool order."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/w01dll_rodata_emission_model_evidence.md"
+      ]
+    },
+    {
+      "id": "mwcc-o0-inline-expansion-frame-allocation",
+      "title": "When only stack-slot numbers remain, the lever is an inline expansion, not a nested block",
+      "classification": "contextual_heuristic",
+      "category": "control_flow_and_lifetime",
+      "compiler": "GC/2.7",
+      "confidence": "high",
+      "summary": "A bounded diagnostic for a function whose instructions are all correct but whose r1 displacements are wrong. Locals are slotted in declaration order, descending, with compiler temporaries interleaved at their point of use. An inline expansion instead allocates the inlinee's locals ascending from the bottom of the frame, below everything the caller allocates, so a group of target locals sitting underneath the compiler temporaries indicates a static inline helper. Declaration order inside that helper is load-bearing, and a caller value kept in the caller's frame must be passed by pointer.",
+      "conditions": "Apply only when structural insert/delete differences are already zero and every remaining difference is a stack-slot number or an inlinee register assignment.",
+      "source_condition": {
+        "change": "Extract repeated code into a static inline helper, reorder an inline helper's locals, or change how a caller value reaches the inlinee.",
+        "requires": [
+          "structural differences already driven to zero",
+          "every r1 displacement dumped from both instruction streams and diffed",
+          "the inlinee's own declaration order treated as significant",
+          "byte comparison of the candidate object, not a match percentage"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "a whole group of stack slots moving together to the bottom of the frame",
+          "changed register or slot assignment inside the expansion from reordering the helper's locals",
+          "extra stores at expansion entry, and a shifted frame, when a value is passed by value",
+          "a two-level local group when one helper's call is nested inside another"
+        ],
+        "known_signatures": [
+          "probes p6a/p6b differ only in the declaration order of the helper's two locals: .text 152 bytes on both sides but four allocation fields differ (f29/f30 exchanged)",
+          "probes p6a/p6c: by-pointer 152 bytes against by-value 172 bytes, five extra instructions at expansion entry",
+          "w01Dll fn_1_13CC stalled at struct=0 with 46 differences that were all stack-slot numbers; the target held inner-loop locals at 0x008-0x018 and inlined-sqrtf temporaries at 0x068/0x06c while ours was inverted",
+          "extracting the Simpson integration and Newton solve into static inline helpers, the trapezoid helper called from inside the Newton helper, moved all 30 float slots into agreement at once"
+        ]
+      },
+      "rule": "Once structural differences are zero and only slot numbers remain, reach for a static inline helper rather than a nested block, pass caller-frame values by pointer, and treat the helper's declaration order as part of its identity. Two helpers differing only in declaration order are different functions and must not be merged.",
+      "safe_actions": [
+        "dump and diff every r1 displacement from both streams before editing",
+        "extract repeats as static inline helpers taking parameters rather than copying arguments into locals",
+        "nest one helper call inside another to reproduce a two-level local group",
+        "pass a value the caller must keep by pointer, which MWCC folds into an r1 displacement at no instruction cost"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "w01Dll",
+          "s01Dll"
+        ],
+        "owner_tags": [
+          "frame_layout",
+          "inline_expansion",
+          "control_flow_and_lifetime"
+        ]
+      },
+      "examples": [
+        "w01Dll fn_1_13CC closed on this lever after 361 declaration-order permutations and 719 inner-block permutations had failed",
+        "passing slopeValue by pointer put it at 0xa8 and pushed two other locals down accordingly"
+      ],
+      "counterexamples": [
+        "Plain nested blocks cannot produce the layout: a nested block's locals continue the enclosing block's descending run and compiler temporaries still land last. Measured on w01Dll, nesting made it worse in every ordering tried (46 -> 49..81).",
+        "Moving a local into an inner block was consistently worse when the original had it at function scope.",
+        "Passing the value by value instead of by pointer adds stores at expansion entry and shifts the whole frame.",
+        "The ascending-from-frame-bottom direction is carried from the w01Dll campaign and was not re-measured in the small probes here, where the inlinee's locals were enregistered rather than stack-homed."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/w01dll_rodata_emission_model_evidence.md"
+      ]
     }
   ]
 }

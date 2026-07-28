@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "id": "main:board/telop",
+  "module": "main",
+  "source": "src/board/telop.c",
+  "compiler": "GC/2.6",
+  "summary": "Telop owner carrying the recovered time/taunt/language/board-data group; the telop banner itself (mbTelopCreate and its two local OM executors) is not decompiled and is tracked here with its retail coordinates.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "plausible",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "main",
+    "recovery-debt",
+    "missing-functions"
+  ],
+  "symbols": [
+    {
+      "symbol": "mbTelopCreate",
+      "stable_id": "main:board/telop:mbTelopCreate"
+    },
+    {
+      "symbol": "TelopInitOMExec",
+      "stable_id": "main:board/telop:TelopInitOMExec"
+    },
+    {
+      "symbol": "TelopOMExec",
+      "stable_id": "main:board/telop:TelopOMExec"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "same_game_artifact",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "symbols.txt places mbTelopCreate at .text:0x802035D0 size 0x164, TelopInitOMExec at 0x8020399C size 0xC8 (local), TelopOMExec at 0x80203A64 size 0x330 (local), and telopFileTbl at .rodata:0x8021AF30 size 0x6C (local).",
+      "reference": "config/GP6E01/symbols.txt"
+    },
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "telopFileTbl read from the retail DOL (sha1 b897e6ad) is 27 u32 file ids; entry [16] at 0x8021AF70 is 0x00050044, so board banners begin at index 16 and 0-15 are the non-board telops.",
+      "reference": "docs/retail_source_form_evidence.md"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "board/opening.c is Object(Matching) and declares mbTelopCreate as a file-local extern at line 46, calling it as mbTelopCreate(-1, boardNo + 16, FALSE) at lines 256 and 800, which pins the three-argument signature and the +16 board-banner base.",
+      "reference": "src/board/opening.c"
+    }
+  ],
+  "constraints": [],
+  "debt": [
+    {
+      "kind": "missing_functions",
+      "priority": "high",
+      "summary": "mbTelopCreate, TelopInitOMExec and TelopOMExec have no definition in src/. Only a file-local extern in board/opening.c declares the entry point, so board/telop.c cannot reach binary parity until the banner group and telopFileTbl are recovered at the addresses above."
+    },
+    {
+      "kind": "unverified_behavior",
+      "priority": "normal",
+      "summary": "The banner's runtime behavior (sprite entry, any scale/alpha ramp, self-kill timing) has not been disassembled. Only addresses, sizes, scopes and telopFileTbl contents are verified; no behavioral description should be treated as fact until the three functions are read."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/board/opening.c",
+      "config/GP6E01/symbols.txt"
+    ],
+    "reports": [
+      "docs/retail_source_form_evidence.md"
+    ]
+  }
+}
