@@ -561,6 +561,18 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "mwcc-cross-tu-extraction-requires-inline-consumer-closure": {
+      "status": "stale",
+      "validated_commit": "124ba24b50cf5ec1cff75225dc7c8c4c16350bb5",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_mdpresult_binding_pass46.md",
+        "src/REL/mdpresultdll/mdpresult.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

@@ -2754,6 +2754,79 @@
       "evidence": [
         "docs/native_matching_dll_reinforcements_20260728.md"
       ]
+    },
+    {
+      "id": "mwcc-cross-tu-extraction-requires-inline-consumer-closure",
+      "title": "Prove downstream inline-consumer closure before extracting an exact cluster",
+      "classification": "contextual_heuristic",
+      "category": "declaration_visibility_and_owner_binding",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner.",
+      "conditions": "Use when recovered functions are exact in a monolithic source owner and a proposed generated-object split moves their definitions into another translation unit while later exact callers remain behind.",
+      "source_condition": {
+        "change": "Extract an exact function cluster from a combined source owner into a separately compiled generated object.",
+        "requires": [
+          "pinned compiler and flags for both the scratch and tracked objects",
+          "complete instruction and relocation equality for the extracted cluster",
+          "an inventory of every later independently exact caller whose compile-time visibility can change",
+          "before/after consumer-object comparison, not only extracted-object scoring"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "an extracted cluster remaining byte-exact",
+          "later callers replacing automatic inline expansions with calls",
+          "changed frames, saved-register lifetimes, and call relocations in untouched source bodies",
+          "a generated-object split regressing total exact coverage despite a perfect new object"
+        ],
+        "known_signatures": [
+          "scratch cluster text and relocations are exact but tracked owner-wide exact count falls",
+          "only consumers compiled after the moved definitions regress",
+          "restoring duplicate definitions would repair visibility but violate single-owner policy"
+        ]
+      },
+      "rule": "Treat generated-object extraction as a consumer-closure change. Bind the cluster only when every affected exact caller remains exact or authenticated original header/TU evidence naturally preserves definition visibility; otherwise retain the exact C unbound and record the split as blocked.",
+      "safe_actions": [
+        "enumerate later direct and transitive callers of every moved inline-capable definition",
+        "compare all independently exact consumers after the tracked split",
+        "expand the candidate owner boundary only when retail layout and source chronology authenticate it",
+        "revert the split rather than duplicate definitions or add pragmas and compiler controls"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mdpresultdll:fn_1_16C4..fn_1_3304",
+          "mdpresultdll:fn_1_102E4",
+          "mdpresultdll:fn_1_105CC",
+          "mdpresultdll:fn_1_10B34",
+          "mdpresultdll:fn_1_1295C"
+        ],
+        "modules": [
+          "mdpresultdll"
+        ],
+        "owner_tags": [
+          "translation_unit",
+          "inline_visibility",
+          "generated_object",
+          "consumer_closure",
+          "rel"
+        ]
+      },
+      "examples": [
+        "mdpresultdll pass46 isolated fn_1_16C4..fn_1_3304 as 37/37 exact functions over 7328 text bytes with 600/600 relocations, but tracked extraction regressed four later exact consumers when the moved definitions were no longer visible."
+      ],
+      "counterexamples": [
+        "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
+        "A perfect extracted-object score is not a counterexample unless the original owner and every previously exact consumer are also compared.",
+        "Do not preserve visibility with duplicate tracked definitions, forced-inline controls, pragmas, or fake storage."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_mdpresult_binding_pass46.md"
+      ]
     }
   ]
 }
