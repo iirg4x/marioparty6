@@ -522,7 +522,7 @@ static void ev_Shop(MBSHOPWORK *work)
         if (first != second) {
             swap = offer[first];
             offer[first] = offer[second];
-            offer[first] = swap;
+            offer[second] = swap;
         }
     }
     HuMemDirectFree(shopList);
