@@ -9,6 +9,9 @@ Sections:
 REL/mdbankdll/mdbank_tail.c:
 	.text       start:0x00002CD8 end:0x00002D70
 
+REL/mdbankdll/mdbank_tail2.c:
+	.text       start:0x00006F00 end:0x000070E4
+
 REL/mdbankdll/runtime.c:
 	.text       start:0x000137DC end:0x00014220
 	.rodata     start:0x000002C0 end:0x000002D8
