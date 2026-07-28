@@ -30,6 +30,9 @@ REL/mdsingdll/mdsing_tail19.c:
 REL/mdsingdll/mdsing_tail15.c:
 	.text       start:0x00008F64 end:0x00008FEC
 
+REL/mdsingdll/mdsing_tail20.c:
+	.text       start:0x00009998 end:0x00009D80
+
 REL/mdsingdll/mdsing_tail14.c:
 	.text       start:0x0002D0FC end:0x0002D1DC
 
