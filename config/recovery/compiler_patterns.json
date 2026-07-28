@@ -2683,6 +2683,88 @@
       ]
     },
     {
+      "id": "gc26-paired-single-huvecf-copy-spelling-negative",
+      "title": "Stop ordinary HuVecF copy spellings at a paired-single target",
+      "classification": "contextual_heuristic",
+      "category": "aggregate_copy_negative_evidence",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, or memcpy: aggregate assignment emits integer word copies, HuCopyVecF emits scalar float copies, and memcpy emits a call. These measured failures do not authenticate an intrinsic spelling.",
+      "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after one bounded aggregate-assignment, HuCopyVecF, and memcpy control has been measured under the pinned owner profile.",
+      "source_condition": {
+        "change": "Spell the same authenticated 12-byte vector transfer as aggregate assignment, HuCopyVecF, or memcpy in an attempt to reproduce paired-single target instructions.",
+        "requires": [
+          "target paired-single loads and stores for an authenticated HuVecF-shaped transfer",
+          "the pinned GC/2.6 owner command",
+          "strict function and relocation reports for each bounded spelling control",
+          "no authenticated intrinsic, helper, or historical header boundary already available"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "integer lwz/stw copies from aggregate assignment",
+          "scalar lfs/stfs copies from HuCopyVecF",
+          "an out-of-line memcpy call and a smaller but structurally wrong function",
+          "percentage movement without reproducing the target copy mechanism"
+        ],
+        "known_signatures": [
+          "the target uses psq_l plus lfs and psq_st plus stfs for one HuVecF transfer",
+          "aggregate assignment preserves semantics but lowers to three integer-word loads and stores",
+          "HuCopyVecF preserves semantics but lowers to three scalar floating loads and stores",
+          "memcpy can improve one aggregate percentage while introducing a target-absent call",
+          "the same three non-solutions recur in separate board owners"
+        ]
+      },
+      "rule": "Measure aggregate assignment, HuCopyVecF, and memcpy at most once for a proven paired-single HuVecF copy. If all three retain the wrong mechanism, record the negative result and stop until an authenticated intrinsic, helper, compiler contract, or historical header boundary is found; do not guess paired-single intrinsics, add cast tricks, or use inline assembly.",
+      "safe_actions": [
+        "confirm the target transfer width, offsets, and paired-single instruction sequence",
+        "retain strict size, score, instruction, and relocation results for each spelling",
+        "search authenticated same-game siblings and historical headers for the missing source boundary",
+        "leave the function honestly nonexact when no authenticated boundary exists",
+        "reopen the source only when new evidence explains why GC/2.6 selected paired-single operations"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "mbDiceSNpcNumPosSet",
+          "mbDiceSNpcNumOfsSet",
+          "mbDiceSNpcNumOfsGet",
+          "mbObjFadeCreate",
+          "mbObjFadeTexRotSet"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "board",
+          "paired_single",
+          "vector_copy",
+          "negative_evidence"
+        ]
+      },
+      "examples": [
+        "main:board/snpc mbObjFadeCreate: aggregate assignment is 332/300 bytes at 82.289154%, HuCopyVecF is 332/300 at 77.156624%, and memcpy is 332/292 at 84.409640%; only the target uses psq_l/psq_st",
+        "main:board/snpc mbObjFadeTexRotSet: aggregate assignment is 200/136 bytes at 52.340000%, HuCopyVecF is 200/136 at 54.420000%, and memcpy is 200/128 at 36.820000%; none reproduces either target paired-single vector transfer",
+        "main:board/dice mbDiceSNpcNumPosSet, mbDiceSNpcNumOfsSet, and mbDiceSNpcNumOfsGet each remain 20/28 bytes at 0% under the ordinary aggregate and HuCopyVecF controls",
+        "main:board/config repeated the aggregate-assignment, HuCopyVecF, and memcpy failures across three missing panel helpers"
+      ],
+      "counterexamples": [
+        "A higher percentage is not a successful copy-shape probe: memcpy raises mbObjFadeCreate from 82.289154% to 84.409640% while adding a target-absent call and shrinking the source farther from 332 bytes.",
+        "HuCopyVecF is a semantic convenience macro, not proof of historical spelling; it emits scalar lfs/stfs in these controls.",
+        "Do not generalize this heuristic to targets that use integer or scalar-float copies, or to structures whose 12-byte extent and field ownership are not authenticated.",
+        "Paired-single opcodes do not identify a source intrinsic by themselves; cast tricks, guessed builtins, forced alignment, volatile storage, and inline assembly remain unsupported.",
+        "mbObjFadeTexColorSet becomes exact through an independent argument-promotion correction, showing that neighboring SNPC material helpers are not all blocked by vector-copy spelling."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_snpc_vector_copy.md",
+        "docs/native_matching_wave65.md",
+        "docs/native_matching_wave93.md"
+      ]
+    },
+    {
       "id": "mwcc-call-spanning-owner-pointer-capture-preserves-named-base",
       "title": "Capture an authenticated owner pointer when its base must survive calls",
       "classification": "confirmed_rule",

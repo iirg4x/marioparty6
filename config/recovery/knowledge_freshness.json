@@ -549,6 +549,24 @@
       "supersedes": [],
       "superseded_by": null
     },
+    "gc26-paired-single-huvecf-copy-spelling-negative": {
+      "status": "active",
+      "validated_commit": "8161dca3c3f58f852f966877f5d32a5d68626a1d",
+      "validated_at": "2026-07-28",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_board_snpc_vector_copy.md",
+        "docs/native_matching_wave65.md",
+        "docs/native_matching_wave93.md",
+        "src/board/dice.c",
+        "src/board/config.c",
+        "src/board/snpc.c",
+        "include/humath.h",
+        "configure.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "mwcc-call-spanning-owner-pointer-capture-preserves-named-base": {
       "status": "active",
       "validated_commit": "d14de0b492f971d88e80312f329577b54536c4d9",
