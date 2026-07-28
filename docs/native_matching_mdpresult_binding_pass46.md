@@ -1,7 +1,7 @@
 # MDPResult pass 46: exact-cluster binding negative
 
-Date: 2026-07-28  
-Owner: `REL:mdpresultdll:application`  
+Date: 2026-07-28
+Owner: `REL:mdpresultdll:application`
 Compiler: `GC/2.6`
 
 ## Result
