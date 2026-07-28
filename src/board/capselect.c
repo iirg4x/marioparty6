@@ -122,7 +122,6 @@ int mbCapSelect(void)
 {
     CAPSELECTWORK *work;
     BOOL partyF;
-    CAPSELECTWORK *allocatedWork;
     int playerNo = GwSystem.turnPlayerNo;
     int objId;
     int result;
@@ -141,10 +140,9 @@ int mbCapSelect(void)
         while (!mbCapSelectShrinkCheck(playerNo)) {
             HuPrcVSleep();
         }
-        allocatedWork = HuMemDirectMallocNum(HEAP_HEAP,
+        work = HuMemDirectMallocNum(HEAP_HEAP,
             sizeof(CAPSELECTWORK),
             HU_MEMNUM_OVL);
-        work = allocatedWork;
         memset(work, 0, sizeof(CAPSELECTWORK));
         work->playerNo = playerNo;
         work->deleteF = FALSE;
