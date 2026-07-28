@@ -1,3 +1,4 @@
+#define _MATH_H
 #include "game/board/main.h"
 
 #include "game/board/audio.h"
@@ -17,7 +18,7 @@
 #include "game/pad.h"
 #include "game/wipe.h"
 
-#include "math.h"
+#include "dolphin/math.h"
 #include "string.h"
 
 #define M_PI 3.141592653589793
@@ -48,10 +49,10 @@ static int ev_CapSelectResult[4];
 static int ev_CapSelectExtra[4];
 static OMOBJ *ev_CapMasuOMObj[16];
 
-static BOOL ev_CapSelectStoryF;
-static BOOL ev_CapMasuDispF;
+static s8 ev_CapSelectValue[4];
 static int ev_CapSelectMdlId;
-static int ev_CapSelectValue;
+static BOOL ev_CapMasuDispF;
+static BOOL ev_CapSelectStoryF;
 
 typedef struct CapMasuWork_s {
     int objNo;
@@ -120,13 +121,17 @@ static void CapMasuOMExec(OMOBJ *obj);
 int mbCapSelect(void)
 {
     CAPSELECTWORK *work;
+    BOOL partyF;
+    CAPSELECTWORK *allocatedWork;
     int playerNo = GwSystem.turnPlayerNo;
     int objId;
     int result;
+    BOOL storyPartyF;
 
     mbCapSelectResultSet(playerNo, -1, -1);
-    ev_CapSelectObjId[0] = -1;
-    if (GwSystem.partyF) {
+    ev_CapSelectMdlId = -1;
+    partyF = GwSystem.partyF;
+    if (partyF) {
         mbStatusDispSetAll(FALSE);
         while (!mbStatusOffCheckAll()) {
             HuPrcVSleep();
@@ -136,40 +141,54 @@ int mbCapSelect(void)
         while (!mbCapSelectShrinkCheck(playerNo)) {
             HuPrcVSleep();
         }
-        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPSELECTWORK),
+        allocatedWork = HuMemDirectMallocNum(HEAP_HEAP,
+            sizeof(CAPSELECTWORK),
             HU_MEMNUM_OVL);
+        work = allocatedWork;
         memset(work, 0, sizeof(CAPSELECTWORK));
         work->playerNo = playerNo;
         work->deleteF = FALSE;
         work->extraCapsule = -1;
-        CapSelectStoryFSet(!GwSystem.partyF);
+        storyPartyF = GwSystem.partyF;
+        if (!storyPartyF) {
+            CapSelectStoryFSet(TRUE);
+        } else {
+            CapSelectStoryFSet(FALSE);
+        }
         CapSelectExtraCapsuleGet(playerNo, -1);
-        ev_CapSelectResult[playerNo] = -9;
+        ev_CapSelectValue[playerNo] = -9;
         CapSelect(work);
         HuMemDirectFree(work);
-        result = ev_CapSelectResult[playerNo];
-        if (result < 0) {
-            if (result == -3) {
-                mbev_Scroll(playerNo, FALSE);
-            } else if (result == -4) {
-                mbev_Scroll(playerNo, TRUE);
-            } else {
+        if (ev_CapSelectValue[playerNo] >= 0) {
+            if (mbCapUse(playerNo, ev_CapSelectValue[playerNo])) {
+                ev_CapSelectValue[playerNo] = -7;
+                if (_CheckFlag(0x1001D)) {
+                    return ev_CapSelectValue[playerNo];
+                }
+                if (mbPlayerBlackoutGet()) {
+                    mbCameraPlayerViewSetFast(playerNo, 0);
+                    mbCameraMoveWait();
+                    WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
+                    mbWipeWait();
+                    mbPlayerBlackoutSet(FALSE);
+                }
                 break;
             }
-        } else if (mbCapUse(playerNo, result)) {
-            ev_CapSelectResult[playerNo] = -7;
-            if (!_CheckFlag(0x1001D)
-                && mbPlayerBlackoutGet()) {
-                mbCameraPlayerViewSetFast(playerNo, 0);
-                mbCameraMoveWait();
-                WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
-                mbWipeWait();
-                mbPlayerBlackoutSet(FALSE);
+        } else {
+            switch (ev_CapSelectValue[playerNo]) {
+            case -3:
+                mbev_Scroll(playerNo, FALSE);
+                break;
+            case -4:
+                mbev_Scroll(playerNo, TRUE);
+                break;
+            default:
+                goto cleanup;
             }
-            break;
         }
         HuPrcVSleep();
     }
+cleanup:
     while (!mbCapSelectShrinkCheck(playerNo)) {
         HuPrcVSleep();
     }
@@ -177,7 +196,7 @@ int mbCapSelect(void)
     if (objId != -1 && result != -1) {
         mbCapObjKill(objId);
     }
-    return ev_CapSelectResult[playerNo];
+    return ev_CapSelectValue[playerNo];
 }
 
 int mbCapDelete(int capsuleNo, BOOL repeatF)
@@ -193,7 +212,7 @@ int mbCapDelete(int capsuleNo, BOOL repeatF)
     s16 winId;
 
     mbCapSelectResultSet(playerNo, -1, -1);
-    ev_CapSelectObjId[0] = -1;
+    ev_CapSelectMdlId = -1;
     do {
         do {
             while (!mbCapSelectShrinkCheck(playerNo)) {
@@ -207,13 +226,13 @@ int mbCapDelete(int capsuleNo, BOOL repeatF)
             work->extraCapsule = capsuleNo;
             CapSelectStoryFSet(FALSE);
             CapSelectExtraCapsuleGet(playerNo, capsuleNo);
-            ev_CapSelectResult[playerNo] = -9;
+            ev_CapSelectValue[playerNo] = -9;
             CapSelect(work);
             HuMemDirectFree(work);
             while (!mbCapSelectShrinkCheck(playerNo)) {
                 HuPrcVSleep();
             }
-            result = ev_CapSelectResult[playerNo];
+            result = ev_CapSelectValue[playerNo];
             if (result == -3) {
                 mbev_Scroll(playerNo, FALSE);
             } else if (result == -4) {
@@ -231,7 +250,7 @@ int mbCapDelete(int capsuleNo, BOOL repeatF)
         mbWinWait(winId);
         choice = mbWinTopChoiceGet();
         if (choice == 1 || mbWinTopChoiceGet() == -1) {
-            ev_CapSelectResult[playerNo] = repeatF ? -9 : -1;
+            ev_CapSelectValue[playerNo] = repeatF ? -9 : -1;
         } else {
             mbCapSelectResultGet(playerNo, &objId, &result);
             mbObjPosGet(objId, &pos);
@@ -249,14 +268,14 @@ int mbCapDelete(int capsuleNo, BOOL repeatF)
                 mbSingleCall(6, 0);
             }
         }
-    } while (ev_CapSelectResult[playerNo] == -9 && repeatF);
+    } while (ev_CapSelectValue[playerNo] == -9 && repeatF);
 
 cleanup:
     mbCapSelectResultGet(playerNo, &objId, &result);
     if (objId != -1 && result != -1) {
         mbCapObjKill(objId);
     }
-    return ev_CapSelectResult[playerNo];
+    return ev_CapSelectValue[playerNo];
 }
 
 static void CapSelect(CAPSELECTWORK *work)
@@ -376,9 +395,15 @@ static void CapSelect(CAPSELECTWORK *work)
         Hu3D3Dto2D(&end[i], 1, &screen[i]);
     }
     for (i = 0; i < 2; i++) {
-        espPosSet(work->arrowSprId[i],
-            screen[work->selectNo].x + (i == 0 ? -48.0f : 48.0f),
-            screen[work->selectNo].y);
+        if (i == 0) {
+            espPosSet(work->arrowSprId[i],
+                screen[work->selectNo].x - 48.0f,
+                screen[work->selectNo].y);
+        } else {
+            espPosSet(work->arrowSprId[i],
+                screen[work->selectNo].x + 48.0f,
+                screen[work->selectNo].y);
+        }
         if (work->capsuleNum > 1) {
             espDispOn(work->arrowSprId[i]);
         }
@@ -396,13 +421,13 @@ static void CapSelect(CAPSELECTWORK *work)
             work->comDelay = 30;
         }
         move = CapSelectPadExec(work);
-        resultNo = ev_CapSelectResult[playerNo];
+        resultNo = ev_CapSelectValue[playerNo];
         if (resultNo == -2 || resultNo == -1 || resultNo == -3
             || resultNo == -4 || resultNo == -5 || resultNo == -7) {
             break;
         }
         if (resultNo == -8) {
-            ev_CapSelectResult[playerNo] =
+            ev_CapSelectValue[playerNo] =
                 CapSelectCapsuleGet(playerNo, work->selectNo);
             break;
         }
@@ -415,8 +440,11 @@ static void CapSelect(CAPSELECTWORK *work)
             work->winId[work->descWinIndex + 1] =
                 mbCapDescWinCreate(capsuleNo);
             baseAngle = oldSelect * (360.0f / work->capsuleNum);
-            angleStep = (move < 1 ? -360.0f : 360.0f)
-                / work->capsuleNum;
+            if (move > 0) {
+                angleStep = 360.0f / work->capsuleNum;
+            } else {
+                angleStep = -(360.0f / work->capsuleNum);
+            }
             espDispOff(work->arrowSprId[0]);
             espDispOff(work->arrowSprId[1]);
             for (frame = 0; frame < 13; frame++) {
@@ -482,10 +510,10 @@ static void CapSelect(CAPSELECTWORK *work)
         }
         pulse = fabs(sin((M_PI * ((90.0f * work->pulseAngle) / 12.0f))
             / 180.0));
-        scale = work->scale[work->selectNo] * (1.0 + (0.2f * pulse));
+        scale = work->scale[work->selectNo] * (1.0 + (0.2 * pulse));
         mbObjScaleSet(work->objId[work->selectNo], scale, scale, scale);
         for (i = 0; i < 2; i++) {
-            scale = 0.5f + (0.1f * pulse);
+            scale = 0.5 + (0.1 * pulse);
             espScaleSet(work->arrowSprId[i], scale, scale);
         }
         work->pulseAngle++;
@@ -498,7 +526,7 @@ static void CapSelect(CAPSELECTWORK *work)
         mbObjPosGet(work->objId[i], &end[i]);
         start[i] = playerPos;
     }
-    if (ev_CapSelectResult[playerNo] < 0) {
+    if (ev_CapSelectValue[playerNo] < 0) {
         mbCapSelectResultSet(playerNo, -1, -1);
     } else {
         mbCapSelectResultSet(playerNo, work->objId[work->selectNo],
@@ -506,7 +534,7 @@ static void CapSelect(CAPSELECTWORK *work)
         start[work->selectNo].y += 150.0f;
     }
     mbCapSelectResultGet(playerNo, &resultObj, &resultNo);
-    ev_CapSelectObjId[0] = resultObj;
+    ev_CapSelectMdlId = resultObj;
     mbAudFXPlay(0x402);
     CapSelectShrinkCreate(playerNo, resultObj, work, start, end);
     for (i = 0; i < 3; i++) {
@@ -524,8 +552,8 @@ static void CapSelect(CAPSELECTWORK *work)
     if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
         mbTutorialCall(0x10);
     }
-    if (!work->deleteF && ev_CapSelectResult[playerNo] != -3
-        && ev_CapSelectResult[playerNo] != -4 && GwSystem.partyF) {
+    if (!work->deleteF && ev_CapSelectValue[playerNo] != -3
+        && ev_CapSelectValue[playerNo] != -4 && GwSystem.partyF) {
         mbStatusDispFocusSet(playerNo, FALSE);
     }
 }
@@ -539,7 +567,7 @@ float mbCapSelectGrow(HuVecF *start, HuVecF *end, MBMODELID modelId,
     pos.y = start->y + (scale * (end->y - start->y));
     pos.x = start->x + (weight * (end->x - start->x));
     pos.z = start->z + (weight * (end->z - start->z));
-    if (modelId != ev_CapSelectObjId[0]) {
+    if (modelId != ev_CapSelectMdlId) {
         scale = weight;
     } else {
         scale = 1.0f;
@@ -598,16 +626,16 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
         move = 1;
     }
     if (button & PAD_BUTTON_A) {
-        ev_CapSelectResult[playerNo] = -8;
+        ev_CapSelectValue[playerNo] = -8;
         mbAudFXPlay(1);
     } else if ((button & PAD_BUTTON_Y) && GwSystem.partyF) {
-        ev_CapSelectResult[playerNo] = -4;
+        ev_CapSelectValue[playerNo] = -4;
         mbAudFXPlay(1);
     } else if (button & PAD_BUTTON_X) {
-        ev_CapSelectResult[playerNo] = -3;
+        ev_CapSelectValue[playerNo] = -3;
         mbAudFXPlay(1);
     } else if (button & PAD_BUTTON_B) {
-        ev_CapSelectResult[playerNo] = -7;
+        ev_CapSelectValue[playerNo] = -7;
         mbAudFXPlay(3);
     }
     return move;
@@ -676,13 +704,13 @@ static void CapSelectShrink(void)
     int frame;
     int i;
 
-    if (ev_CapSelectObjId[0] == -1) {
+    if (ev_CapSelectMdlId == -1) {
         scaleDelta = 1.0f;
         startRot = 0.0f;
     } else {
-        mbObjScaleGet(ev_CapSelectObjId[0], &scale);
+        mbObjScaleGet(ev_CapSelectMdlId, &scale);
         scaleDelta = scale.x - 1.0f;
-        mbObjRotGet(ev_CapSelectObjId[0], &rot);
+        mbObjRotGet(ev_CapSelectMdlId, &rot);
         startRot = rot.y;
         if (startRot > 180.0f) {
             startRot -= 360.0f;
@@ -693,7 +721,7 @@ static void CapSelectShrink(void)
         invWeight = 1.0f - weight;
         selectedScale = 1.0f + (scaleDelta * invWeight);
         for (i = 0; i < work->count; i++) {
-            if (work->objIdTbl[i] == ev_CapSelectObjId[0]) {
+            if (work->objIdTbl[i] == ev_CapSelectMdlId) {
                 pos.y = work->start[i].y
                     + (sin((M_PI * (90.0f * invWeight)) / 180.0)
                     * (work->end[i].y - work->start[i].y));
@@ -701,7 +729,7 @@ static void CapSelectShrink(void)
                     + (invWeight * (work->end[i].x - work->start[i].x));
                 pos.z = work->start[i].z
                     + (invWeight * (work->end[i].z - work->start[i].z));
-                objScale = work->objIdTbl[i] == ev_CapSelectObjId[0]
+                objScale = work->objIdTbl[i] == ev_CapSelectMdlId
                     ? 1.0f : invWeight;
                 mbObjPosSetV(work->objIdTbl[i], &pos);
                 mbObjScaleSet(work->objIdTbl[i], objScale * selectedScale,
@@ -716,7 +744,7 @@ static void CapSelectShrink(void)
                     + (invWeight * (work->end[i].x - work->start[i].x));
                 pos.z = work->start[i].z
                     + (invWeight * (work->end[i].z - work->start[i].z));
-                objScale = work->objIdTbl[i] == ev_CapSelectObjId[0]
+                objScale = work->objIdTbl[i] == ev_CapSelectMdlId
                     ? 1.0f : invWeight;
                 mbObjPosSetV(work->objIdTbl[i], &pos);
                 mbObjScaleSet(work->objIdTbl[i], objScale * 0.75f,
@@ -830,12 +858,13 @@ void fn_8019A62C(void)
 
 void mbCapMasuExec(int playerNo, int masuId)
 {
-    CAPMASUWORK *work = NULL;
+    OMOBJ *obj;
+    CAPMASUWORK *work;
     int capsuleNo;
+    BOOL partyF;
     int capsuleMax;
-    int capsuleNum;
-    int deleteCapsuleNo = -1;
-    int deleteIndex = -1;
+    int deleteCapsuleNo;
+    int deleteIndex;
     int i;
     int winId;
     BOOL cameraChangedF = FALSE;
@@ -844,8 +873,9 @@ void mbCapMasuExec(int playerNo, int masuId)
         return;
     }
     for (i = 0; i < 16; i++) {
-        if (ev_CapMasuOMObj[i] != NULL) {
-            work = omObjGetDataAs(ev_CapMasuOMObj[i], CAPMASUWORK);
+        obj = ev_CapMasuOMObj[i];
+        if (obj != NULL) {
+            work = omObjGetDataAs(obj, CAPMASUWORK);
             if (work->masuId == masuId) {
                 break;
             }
@@ -863,6 +893,8 @@ void mbCapMasuExec(int playerNo, int masuId)
             capsuleNo = mbCapMasuNextGet(playerNo);
         }
     }
+    deleteCapsuleNo = -1;
+    deleteIndex = -1;
     mbMoveNumDispSet(playerNo, FALSE);
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, 0x40000001);
     mbPlayerRotateStart(playerNo, 0, 15);
@@ -870,12 +902,12 @@ void mbCapMasuExec(int playerNo, int masuId)
         HuPrcVSleep();
     }
     mbCapCapsuleGet(playerNo, capsuleNo);
-    if (!GwSystem.partyF) {
+    partyF = GwSystem.partyF;
+    if (!partyF) {
         mbSingleCall(5, capsuleNo);
     }
     capsuleMax = mbPlayerCapsuleMaxGet();
-    capsuleNum = mbPlayerCapsuleNumGet(playerNo);
-    if (capsuleNum >= capsuleMax) {
+    if (mbPlayerCapsuleNumGet(playerNo) >= capsuleMax) {
         winId = mbWinCreate(2, 0x3A0000, -1);
         mbWinTopInsertMesSet(mbCapUseMesGet(capsuleNo), 0);
         mbWinWait(winId);
@@ -886,33 +918,37 @@ void mbCapMasuExec(int playerNo, int masuId)
         mbWinWait(winId);
         do {
             deleteCapsuleNo = mbCapDelete(capsuleNo, TRUE);
-            if (deleteCapsuleNo == -4) {
-                mbev_Scroll(playerNo, TRUE);
-                deleteIndex = -1;
-            } else if (deleteCapsuleNo == -7) {
-                deleteIndex = -2;
-            } else if (deleteCapsuleNo == -3) {
+            switch (deleteCapsuleNo) {
+            default:
+                if (deleteCapsuleNo != capsuleNo) {
+                    for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
+                        if (deleteCapsuleNo
+                            == mbPlayerCapsuleGet(playerNo, i)) {
+                            deleteIndex = i;
+                        }
+                    }
+                    if (deleteIndex != -1) {
+                        mbPlayerCapsuleRemove(playerNo, deleteIndex);
+                    }
+                } else {
+                    deleteCapsuleNo = -1;
+                    deleteIndex = -2;
+                }
+                break;
+            case -3:
                 mbev_Scroll(playerNo, FALSE);
                 deleteIndex = -1;
-            } else if (deleteCapsuleNo == capsuleNo) {
-                deleteCapsuleNo = -1;
+                break;
+            case -4:
+                mbev_Scroll(playerNo, TRUE);
+                deleteIndex = -1;
+                break;
+            case -7:
                 deleteIndex = -2;
-            } else {
-                for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
-                    if (deleteCapsuleNo == mbPlayerCapsuleGet(playerNo, i)) {
-                        deleteIndex = i;
-                    }
-                }
-                if (deleteIndex != -1) {
-                    mbPlayerCapsuleRemove(playerNo, deleteIndex);
-                }
+                break;
             }
         } while (deleteIndex == -1);
-        if (deleteIndex < 0) {
-            winId = mbWinCreate(2, 0x3A0004, -1);
-            mbWinTopInsertMesSet(mbCapUseMesGet(capsuleNo), 0);
-            mbWinWait(winId);
-        } else {
+        if (deleteIndex >= 0) {
             mbPlayerCapsuleAdd(playerNo, capsuleNo);
             mbCapNumInc(capsuleNo, FALSE);
             mbPlayerWinLoseVoicePlay(playerNo, 12, 0x243);
@@ -920,6 +956,10 @@ void mbCapMasuExec(int playerNo, int masuId)
             winId = mbWinCreate(2, 0x3A0003, -1);
             mbWinTopInsertMesSet(mbCapUseMesGet(deleteCapsuleNo), 0);
             mbWinTopInsertMesSet(mbCapUseMesGet(capsuleNo), 1);
+            mbWinWait(winId);
+        } else {
+            winId = mbWinCreate(2, 0x3A0004, -1);
+            mbWinTopInsertMesSet(mbCapUseMesGet(capsuleNo), 0);
             mbWinWait(winId);
         }
     } else {
@@ -930,11 +970,8 @@ void mbCapMasuExec(int playerNo, int masuId)
         winId = mbWinCreate(2, 0x3A0000, -1);
         mbWinTopInsertMesSet(mbCapUseMesGet(capsuleNo), 0);
         mbWinWait(winId);
-        for (;;) {
-            if (mbPlayerMotionEndCheck(playerNo)
-                && mbObjMotionShiftIDGet(mbPlayerObjIDGet(playerNo)) == -1) {
-                break;
-            }
+        while (!mbPlayerMotionEndCheck(playerNo)
+            || mbObjMotionShiftIDGet(mbPlayerObjIDGet(playerNo)) != -1) {
             HuPrcVSleep();
         }
     }
