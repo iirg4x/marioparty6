@@ -2446,7 +2446,6 @@ BOOL mbCapValidCheck(int capsuleNo)
 s16 mbCapMasuDispTypeGet(s16 masuId)
 {
     s16 capsuleNo;
-    s16 value;
 
     capsuleNo = mbMasuCapsuleGet(masuId);
     capsuleNo = mbCapValueTypeGet(capsuleNo);
@@ -2456,10 +2455,7 @@ s16 mbCapMasuDispTypeGet(s16 masuId)
     if (mbMasuTypeGet(masuId) != 1 && mbMasuTypeGet(masuId) != 2) {
         return 0;
     }
-    value = capsuleNo;
-    value = mbCapValueTypeGet(value);
-    value = capsuleData[value].useMode;
-    if (value == 1) {
+    if (mbCapUseModeGet(capsuleNo) == 1) {
         return 1;
     }
     return 2;
