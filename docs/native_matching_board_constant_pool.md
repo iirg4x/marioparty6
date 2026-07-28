@@ -1,7 +1,7 @@
 # Board GC/2.6 transitive math-pool evidence
 
 Validated through AI integration commit
-`6edb65c3076abb1d90ed2ffa1419cd65f41ed3f0` with the pinned GC/2.6 owner
+`425930e25a518122939f718437d5595b34537347` with the pinned GC/2.6 owner
 commands and DTK `0.9.2` (`4d039140f2d2ed80572b1949b76a5ff9b3094e06`).
 
 ## Repeated signature
@@ -41,6 +41,18 @@ display functions without losing an exact neighbor. Dice rises from 39/68 to
 DiceNumObjReset. All retained exact-function relocations remain strict, both
 path-specific quality exceptions pass, and the 137-output retail gate remains
 exact.
+
+Two later Treetop sweeps reproduce the rule on separate translation units.
+Capselect rises from 22/32 to 26/32 strict functions, including exact
+`mbCapMasuObjCreate` and `mbCapMasuExec`; the redundant allocation alias was
+removed and `mbCapSelect` remains honestly nonexact at 93.17647%. Scroll rises
+from 17/31 to 27/31, including exact `mbev_StarScroll`, `ScrollExec`, and
+`MapViewExec`; `MapSprCreate` remains honestly nonexact. Both paths use reviewed
+path-specific exceptions, preserve every baseline exact function, pass 99/99
+public tests, produce the retail-identical main DOL SHA-1
+`b897e6ade6b3a0cd2f9907689f38a3b19c327e70`, and pass all 137 configured
+checks. These results extend the repeated signature without weakening the
+owner-local scope or authorizing the same header selection for unrelated files.
 
 The shared-header counterexample is equally important. Changing
 `include/math.h` itself from static to automatic locals improved gate and

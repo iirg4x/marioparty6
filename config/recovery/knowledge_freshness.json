@@ -241,8 +241,8 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "a2d489fc076f6887e6d3bc273fbef65c485baa36",
-      "validated_at": "2026-07-27",
+      "validated_commit": "ea5b49101c0517feec9c6142783ac3e5f2db1d67",
+      "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/exceptions.json",
@@ -255,6 +255,8 @@
         "src/board/dice.c",
         "src/board/tutorial.c",
         "src/board/opening.c",
+        "src/board/capselect.c",
+        "src/board/scroll.c",
         "configure.py"
       ],
       "supersedes": [],
@@ -381,9 +383,9 @@
       "superseded_by": null
     },
     "gc26-o0-definition-order-and-call-evaluation": {
-      "status": "stale",
-      "validated_commit": "a2d489fc076f6887e6d3bc273fbef65c485baa36",
-      "validated_at": "2026-07-27",
+      "status": "active",
+      "validated_commit": "ea5b49101c0517feec9c6142783ac3e5f2db1d67",
+      "validated_at": "2026-07-28",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_capsule_call_chronology.md",
