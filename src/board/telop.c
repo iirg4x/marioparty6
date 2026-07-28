@@ -49,6 +49,9 @@ typedef struct TelopTimeWork_s {
 typedef struct TelopTimeChangeWork_s {
     unsigned killF : 1;
     unsigned completeF : 1;
+    unsigned mode : 4;
+    s16 time;
+    s16 maxTime;
 } TELOP_TIME_CHANGE_WORK;
 
 static const u32 telopFileTbl[27] = {
@@ -207,6 +210,16 @@ static u32 telopTimeFileTbl[2] = {
     0x00050070,
 };
 
+static u32 telopTimeChangeBackFileTbl[2] = {
+    0x0005006D,
+    0x0005006E,
+};
+
+static u32 telopTimeChangeFileTbl[2] = {
+    0x0005006F,
+    0x00050070,
+};
+
 static OMOBJ *telopTimeChangeOMObj;
 static OMOBJ *tauntOMObj;
 static OMOBJ *telopTimeOMObj;
@@ -220,6 +233,7 @@ static void TelopLastTurnPauseHook(BOOL dispF);
 static void TelopTimeOMExec(OMOBJ *obj);
 static void TelopTimePauseHook(BOOL dispF);
 static void TauntOMExec(OMOBJ *obj);
+static void TelopTimeChangeOMExec(OMOBJ *obj);
 s32 mbLanguageGet(void);
 s16 mbTelopTimeSprCreate(void);
 void mbTelopTimeSprKill(s16 grpId);
@@ -854,6 +868,17 @@ static u32 boardDataDirTbl[6] = {
     DATA_board,
 };
 
+static HuVec2f telopTimeChangeSprOfsTbl[8] = {
+    { 0.0f, 0.0f },
+    { 0.0f, 0.0f },
+    { 0.0f, 0.0f },
+    { 0.0f, 16.0f },
+    { 0.0f, 16.0f },
+    { 0.0f, 0.0f },
+    { 0.0f, 0.0f },
+    { 0.0f, 0.0f },
+};
+
 static inline u32 BoardDataDirGet(s32 boardNo)
 {
     if (boardNo < 0) {
@@ -899,6 +924,79 @@ void mbBoardDataDirRead(void)
         while (HuARDMACheck()) {
         }
     }
+}
+
+void mbTelopTimeChangeCreate(void)
+{
+    s32 timeTurnMax;
+    s32 timeTurn;
+    s32 starNum;
+    s32 turnLeft;
+    s32 languageNo;
+    s32 i;
+    OMOBJ *obj;
+    TELOP_TIME_CHANGE_WORK *work;
+
+    telopTimeChangeOMObj = obj = omAddObj(
+        mbObjMan, 0, 8, 0, TelopTimeChangeOMExec);
+    omSetStatBit(obj, OM_STAT_MODELPAUSE);
+    work = omObjGetWork(obj, TELOP_TIME_CHANGE_WORK);
+    work->killF = FALSE;
+    work->mode = 0;
+    work->time = 0;
+    work->completeF = FALSE;
+    work->maxTime = 16;
+
+    languageNo = mbLanguageGet();
+    timeTurnMax = GwSystem.timeTurnMax;
+    starNum = timeTurnMax;
+    timeTurn = GwSystem.timeTurn;
+    starNum -= timeTurn;
+    turnLeft = GwSystem.turnMax - GwSystem.turnNo + 1;
+    if (turnLeft < starNum) {
+        starNum = turnLeft;
+    }
+    obj->trans.x = 1.0f;
+
+    obj->mdlId[0] = espEntry(
+        mbBoardDataNumGet(telopTimeChangeBackFileTbl[GwSystem.nextTime]), 101, 0);
+    obj->mdlId[1] = espEntry(
+        mbBoardDataNumGet(telopTimeChangeBackFileTbl[GwSystem.curTime]), 99, 0);
+    obj->mdlId[2] = espEntry(
+        mbBoardDataNumGet(telopTimeChangeBackFileTbl[GwSystem.curTime]), 97, 0);
+    obj->mdlId[3] = espEntry(
+        mbBoardDataNumGet(telopTimeChangeFileTbl[GwSystem.nextTime]), 100, 0);
+    obj->mdlId[4] = espEntry(
+        mbBoardDataNumGet(telopTimeChangeFileTbl[GwSystem.curTime]), 96, 0);
+    for (i = 0; i < 5; i++) {
+        espAttrSet(obj->mdlId[i], HUSPR_ATTR_LINEAR);
+        espPosSet(obj->mdlId[i], 288.0f + telopTimeChangeSprOfsTbl[i].x,
+            224.0f + telopTimeChangeSprOfsTbl[i].y);
+        espTPLvlSet(obj->mdlId[i], 1.0f);
+    }
+    espPosSet(obj->mdlId[3], 288.0f + telopTimeNewSprOfsTbl[languageNo].x,
+        224.0f + telopTimeNewSprOfsTbl[languageNo].y);
+    espPosSet(obj->mdlId[4], 288.0f + telopTimeNewSprOfsTbl[languageNo].x,
+        224.0f + telopTimeNewSprOfsTbl[languageNo].y);
+
+    starNum = 3 - starNum;
+    for (i = 0; i < 3; i++) {
+        s16 bank = 0;
+        if (GwSystem.curTime) {
+            bank += 2;
+        }
+        if (i < starNum) {
+            bank++;
+        }
+        obj->mdlId[i + 5] = espEntry(mbBoardDataNumGet(0x00050071), 98, bank);
+        espAttrSet(obj->mdlId[i + 5], HUSPR_ATTR_LINEAR);
+        espDispOff(obj->mdlId[i + 5]);
+        espPosSet(obj->mdlId[i + 5],
+            288.0f + telopTimeStarSprOfsTbl[languageNo][i].x,
+            224.0f + telopTimeStarSprOfsTbl[languageNo][i].y);
+        espScaleSet(obj->mdlId[i + 5], 0.0f, 0.0f);
+    }
+    mbAudFXPlay(0x46C);
 }
 
 void mbTelopTimeChangeKill(void)
