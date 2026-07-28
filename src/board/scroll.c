@@ -43,10 +43,37 @@ typedef struct ScrollWork_s {
 static HuVecF scrollPos;
 static HuVecF mapViewPos;
 static HuVecF mapViewRot;
-
+static u8 mapPathBit[0x100];
 static SCROLLWORK scrollWork;
 
 static SCROLLWORK *scrollWorkP = &scrollWork;
+static GXColor starCol = { 255, 255, 255, 255 };
+
+static GXColor charColorTbl[16] = {
+    { 227, 67, 67, 255 },
+    { 68, 67, 227, 255 },
+    { 241, 158, 220, 255 },
+    { 67, 228, 68, 255 },
+    { 138, 60, 180, 255 },
+    { 227, 228, 68, 255 },
+    { 192, 192, 192, 255 },
+    { 227, 227, 227, 255 },
+    { 40, 227, 227, 255 },
+    { 227, 139, 40, 255 },
+    { 180, 40, 40, 255 },
+    { 180, 40, 40, 255 },
+    { 40, 180, 40, 255 },
+    { 40, 40, 180, 255 },
+    { 40, 180, 40, 255 },
+    { 40, 40, 180, 255 },
+};
+
+static const int mapCharFileTbl[16] = {
+    0x00050036, 0x00050037, 0x00050038, 0x00050039,
+    0x0005003A, 0x0005003B, 0x0005003C, 0x0005003D,
+    0x0005003E, 0x0005003F, 0x00050040, 0x00050041,
+    0x00050042, 0x00050043, 0x000500A9, 0x000500A8,
+};
 
 static MBSCROLLHOOK mapHook;
 static ANIMDATA *pathAnim;
@@ -71,17 +98,22 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *en
 static void MapViewCreate(void);
 static void MapViewKill(void);
 static BOOL MapViewExec(int playerNo);
-static void MapSprCreate(int type, int id, int layer);
+static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx);
+static void MapSprCreate(int type, int masuId, int layer);
 static void MapBaseSprCreate(void);
+static void MapSprPosCalc(MAPSPRWORK *work);
+static void MapSprPlayerPosCalc(int unused);
 static BOOL MapSprPlayerCol(void);
 static void MapSprPlayerColAll(void);
 static void MapSprKill(void);
+static void MapPathDraw(s16 masuId, Mtx *mtx);
 
 extern void mbWipeDissolveFadeOut(void);
 extern void mbWipeDissolveFadeIn(void);
 extern BOOL mbWipeSpecialStatGet(void);
 extern void mbWipeSpecialFadeInCreate(int type, BOOL pauseF);
 extern void *mbMalloc(s32 size);
+extern float mbSinDeg(float angle);
 extern s8 mbPadStkXGet(int padNo);
 extern s8 mbPadStkYGet(int padNo);
 
@@ -619,6 +651,186 @@ static void MapViewKill(void)
     }
 }
 
+static BOOL MapViewExec(int playerNo)
+{
+    float near;
+    float far;
+    BOOL playerDisp[GW_PLAYER_MAX];
+    HU3D_MODELID mapMdlId;
+    s16 winNo;
+    s16 padNo;
+    BOOL result;
+    int i;
+
+    if (mbWipeSpecialStatGet() == FALSE) {
+        mbWipeSpecialFadeInCreate(4, TRUE);
+        mbStatusDispForceSetAll(FALSE);
+    }
+    mbCameraNearFarGet(&near, &far);
+    mbCameraNearFarSet(100.0f, 30000.0f);
+    mbCameraMovePos(&mapViewPos, &mapViewRot, NULL, mapViewZoom, -1.0f, -1);
+    mbCameraMoveWait();
+    memset(scrollWorkP, 0, sizeof(SCROLLWORK));
+    scrollWorkP->playerPosNo = 0;
+    MapBaseSprCreate();
+    if (mapHook) {
+        mapHook(TRUE);
+    }
+    MapSprPlayerPosCalc(scrollWorkP->playerPosNo);
+    mbMasuModelDispSet(FALSE);
+    mapMdlId = Hu3DHookFuncCreate(MapDraw);
+    Hu3DModelCameraSet(mapMdlId, 4);
+    Hu3DModelLayerSet(mapMdlId, 2);
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        playerDisp[i] = mbPlayerDispGet(i);
+        mbPlayerDispSet(i, FALSE);
+    }
+    mbEffFadeCreate(1, 128);
+    scrollWorkP->mapFrame = 0;
+    winNo = mbWinCreateHelp(0x00260006);
+    mbWinPosSet(winNo, 120, 408);
+    mbWipeSpecialFadeOutCreate(4, 30);
+    padNo = GwPlayer[playerNo].padNo;
+    while (TRUE) {
+        u16 btn = HuPadBtnDown[padNo];
+
+        if (btn & PAD_BUTTON_A) {
+            scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
+            if (!GWPartyGet() && scrollWorkP->playerPosNo == 1) {
+                scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
+            }
+            MapSprPlayerPosCalc(scrollWorkP->playerPosNo);
+        }
+        if (btn & PAD_BUTTON_B) {
+            result = FALSE;
+            break;
+        }
+        if (btn & PAD_BUTTON_X) {
+            result = TRUE;
+            break;
+        }
+        HuPrcVSleep();
+    }
+    mbWipeDissolveFadeOut();
+    mbWinKill(winNo);
+    mbMasuModelDispSet(TRUE);
+    if (mapMdlId >= 0) {
+        Hu3DModelKill(mapMdlId);
+    }
+    MapSprKill();
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        mbPlayerDispSet(i, playerDisp[i]);
+    }
+    mbEffFadeOutSet(1);
+    mbCameraNearFarSet(near, far);
+    if (mapHook) {
+        mapHook(FALSE);
+    }
+    return result;
+}
+
+static void MapSprCreate(int type, int masuId, int layer)
+{
+    MAPSPRWORK *work;
+    int i;
+    int j;
+    s16 sprId;
+    u32 dataNum;
+
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < 32; i++, work++) {
+        if (work->used == FALSE) {
+            break;
+        }
+    }
+    if (i >= 32) {
+        return;
+    }
+    if (type >= 0) {
+        work->color = charColorTbl[type];
+    } else {
+        work->color.r = work->color.g = work->color.b = 0;
+        work->color.a = 255;
+    }
+    work->used = TRUE;
+    work->dispF = TRUE;
+    work->type = type;
+    work->flags = layer;
+    work->masuId = masuId;
+    work->sprId[1] = -1;
+    if (work->type >= 0 && work->type <= 15) {
+        dataNum = mapCharFileTbl[work->type];
+        sprId = espEntry(mbBoardDataNumGet(dataNum), 2000, 0);
+        espDrawNoSet(sprId, 64);
+        work->sprId[0] = sprId;
+        sprId = espEntry(mbBoardDataNumGet(0x000500AF), 2300, 0);
+        espDrawNoSet(sprId, 64);
+        work->arrowSprId[0] = sprId;
+        espColorSet(work->arrowSprId[0], work->color.r, work->color.g, work->color.b);
+    } else {
+        switch (type) {
+        case -1:
+            sprId = espEntry(mbBoardDataNumGet(0x000500A6), 2500, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            sprId = espEntry(mbBoardDataNumGet(0x000500A6), 2600, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[1] = sprId;
+            espScaleSet(work->sprId[0], 0.6f, 0.6f);
+            espScaleSet(work->sprId[1], 0.6f, 0.6f);
+            espTPLvlSet(work->sprId[1], 0.5f);
+            break;
+        case -2:
+            sprId = espEntry(mbBoardDataNumGet(0x000500A7), 2500, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            sprId = espEntry(mbBoardDataNumGet(0x000500A7), 2600, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[1] = sprId;
+            espScaleSet(work->sprId[0], 0.6f, 0.6f);
+            espScaleSet(work->sprId[1], 0.6f, 0.6f);
+            espTPLvlSet(work->sprId[1], 0.5f);
+            break;
+        case 19:
+            sprId = espEntry(mbBoardDataNumGet(0x000500AD), 2700, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            espScaleSet(work->sprId[0], 0.5f, 0.5f);
+            break;
+        case 16:
+            sprId = espEntry(mbBoardDataNumGet(0x000500AA), 2700, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            espScaleSet(work->sprId[0], 0.5f, 0.5f);
+            break;
+        case 17:
+            sprId = espEntry(mbBoardDataNumGet(0x000500AB), 2700, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            espScaleSet(work->sprId[0], 0.5f, 0.5f);
+            break;
+        case 18:
+            sprId = espEntry(mbBoardDataNumGet(0x000500AC), 2700, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            espScaleSet(work->sprId[0], 0.5f, 0.5f);
+            break;
+        case 20:
+            sprId = espEntry(mbBoardDataNumGet(0x000500AE), 2700, 0);
+            espDrawNoSet(sprId, 64);
+            work->sprId[0] = sprId;
+            espScaleSet(work->sprId[0], 0.5f, 0.5f);
+            break;
+        }
+        for (j = 0; j < 1; j++) {
+            work->arrowSprId[j] = -1;
+        }
+    }
+    MapSprPosCalc(work);
+    work->pos = work->pos2D;
+    scrollWorkP->mapSprNum++;
+}
+
 static void MapBaseSprCreate(void)
 {
     s16 masuIdTbl[12];
@@ -646,6 +858,183 @@ static void MapBaseSprCreate(void)
     for (i = 0; i < masuNum; i++) {
         MapSprCreate(-2, masuIdTbl[i], 0);
     }
+}
+
+static void MapSprPosCalc(MAPSPRWORK *work)
+{
+    HuVecF masuPos;
+    float posY;
+
+    mbMasuPosGet(work->masuId, &masuPos);
+    Hu3D3Dto2D(&masuPos, 1, &work->pos2D);
+    if (work->type >= 0 && work->type <= 15) {
+        work->pos.x = work->pos2D.x;
+        if (work->pos2D.y > 240.0f) {
+            posY = work->pos2D.y - 64.0f;
+        } else {
+            posY = work->pos2D.y + 64.0f;
+        }
+        work->pos.y = posY;
+        work->pos.z = 0.0f;
+    } else {
+        work->pos = work->pos2D;
+    }
+}
+
+static void MapSprPlayerPosCalc(int unused)
+{
+    MAPSPRWORK *work;
+    HuVecF dir;
+    HuVecF arrowPos;
+    HuVecF masuPos;
+    float posY;
+    float mag;
+    float rot;
+    float scale;
+    int i;
+    int j;
+
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+        if (work->flags != 0) {
+            work->dispF = FALSE;
+            if (work->sprId[0] >= 0) {
+                espDispOff(work->sprId[0]);
+            }
+            if (work->sprId[1] >= 0) {
+                espDispOff(work->sprId[1]);
+            }
+            for (j = 0; j < 1; j++) {
+                if (work->arrowSprId[j] >= 0) {
+                    espDispOff(work->arrowSprId[j]);
+                }
+            }
+            mbMasuPosGet(work->masuId, &masuPos);
+            Hu3D3Dto2D(&masuPos, 1, &work->pos2D);
+            if (work->type >= 0 && work->type <= 15) {
+                work->pos.x = work->pos2D.x;
+                if (work->pos2D.y > 240.0f) {
+                    posY = work->pos2D.y - 64.0f;
+                } else {
+                    posY = work->pos2D.y + 64.0f;
+                }
+                work->pos.y = posY;
+                work->pos.z = 0.0f;
+            } else {
+                work->pos = work->pos2D;
+            }
+        }
+    }
+    switch (scrollWorkP->playerPosNo) {
+    case 0:
+        work = scrollWorkP->mapSpr;
+        for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+            if (work->flags & 1) {
+                work->dispF = TRUE;
+                if (work->sprId[0] >= 0) {
+                    espDispOn(work->sprId[0]);
+                }
+                if (work->sprId[1] >= 0) {
+                    espDispOn(work->sprId[1]);
+                }
+                for (j = 0; j < 1; j++) {
+                    if (work->arrowSprId[j] >= 0) {
+                        espDispOn(work->arrowSprId[j]);
+                    }
+                }
+            }
+        }
+        break;
+    case 1:
+        work = scrollWorkP->mapSpr;
+        for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+            if (work->flags & 4) {
+                work->dispF = TRUE;
+                if (work->sprId[0] >= 0) {
+                    espDispOn(work->sprId[0]);
+                }
+                if (work->sprId[1] >= 0) {
+                    espDispOn(work->sprId[1]);
+                }
+                for (j = 0; j < 1; j++) {
+                    if (work->arrowSprId[j] >= 0) {
+                        espDispOn(work->arrowSprId[j]);
+                    }
+                }
+            }
+        }
+        break;
+    }
+    MapSprPlayerColAll();
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+        espPosSet(work->sprId[0], work->pos.x, work->pos.y);
+        if (work->sprId[1] >= 0) {
+            espPosSet(work->sprId[1], work->pos.x, work->pos.y);
+        }
+        if (work->type >= 0 && work->type <= 15) {
+            dir.x = work->pos.x - work->pos2D.x;
+            dir.y = work->pos.y - work->pos2D.y;
+            dir.z = 0.0f;
+            mag = PSVECMag(&dir);
+            arrowPos.x = work->pos2D.x + (0.5f * dir.x);
+            arrowPos.y = work->pos2D.y + (0.5f * dir.y);
+            espPosSet(work->arrowSprId[0], arrowPos.x, arrowPos.y);
+            rot = (atan2(dir.x, -dir.y) / M_PI) * 180.0;
+            espZRotSet(work->arrowSprId[0], rot);
+            scale = mag * 0.015625f;
+            espScaleSet(work->arrowSprId[0], 1.0f, scale);
+        }
+    }
+}
+
+static BOOL MapSprPlayerCol(void)
+{
+    MAPSPRWORK *work;
+    MAPSPRWORK *work2;
+    HuVecF delta;
+    float deltaX;
+    BOOL result;
+    int i;
+    int j;
+
+    result = FALSE;
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+        work->colPos.x = work->colPos.y = work->colPos.z = 0.0f;
+    }
+    for (i = 0; i < scrollWorkP->mapSprNum - 1; i++) {
+        work = &scrollWorkP->mapSpr[i];
+        if (work->type >= 0 && work->type <= 15 && work->dispF) {
+            for (j = i + 1; j < scrollWorkP->mapSprNum; j++) {
+                work2 = &scrollWorkP->mapSpr[j];
+                if (work2->type >= 0 && work2->type <= 15 && work2->dispF) {
+                    PSVECSubtract(&work2->pos, &work->pos, &delta);
+                    if (fabs(delta.x) < 64.0f && fabs(delta.y) < 64.0f) {
+                        deltaX = 0.5f * (64.0f - fabs(delta.x));
+                        if (delta.x < 0.0f) {
+                            deltaX = -deltaX;
+                        }
+                        work->colPos.x += -deltaX;
+                        work2->colPos.x += deltaX;
+                        result = TRUE;
+                    }
+                }
+            }
+        }
+    }
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+        if (work->type >= 0 && work->type <= 15) {
+            work->pos.x += work->colPos.x;
+            if (work->pos.x < 48.0f) {
+                work->pos.x = 48.0f;
+            } else if (work->pos.x > 528.0f) {
+                work->pos.x = 528.0f;
+            }
+        }
+    }
+    return result;
 }
 
 static void MapSprPlayerColAll(void)
@@ -676,6 +1065,216 @@ static void MapSprKill(void)
         for (j = 0; j < 1; j++) {
             if (work->arrowSprId[j] >= 0) {
                 espKill(work->arrowSprId[j]);
+            }
+        }
+    }
+}
+
+static s16 masuPatTbl[11] = {
+    -1, 0, 1, 2, 6, 7, -2, 5, 8, -1, 9,
+};
+
+static void MapPathDraw(s16 masuId, Mtx *mtx)
+{
+    Mtx pathMtx;
+    Mtx startMtx;
+    HuVecF pos2D;
+    HuVecF endPos;
+    HuVecF pos;
+    HuVecF dir;
+    HuVecF posCamera;
+    HuVecF endPosCamera;
+    HU3D_CAMERA *camera;
+    float mag;
+    float y;
+    float x;
+    float pathScale;
+    int linkNum;
+    s16 linkMasuId;
+    u32 attr;
+    u32 mAttr;
+    int i;
+
+    mapPathBit[masuId] = TRUE;
+    mbMasuPosGet(masuId, &pos);
+    camera = &Hu3DCamera[0];
+    PSMTXMultVec(*mtx, &pos, &posCamera);
+    x = posCamera.z * (HuSin(camera->fov / 2.0f) / HuCos(camera->fov / 2.0f)) * 1.2f;
+    y = posCamera.z * (HuSin(camera->fov / 2.0f) / HuCos(camera->fov / 2.0f));
+    pos2D.x = 288.0f + (posCamera.x * (288.0f / -x));
+    pos2D.y = 240.0f + (posCamera.y * (240.0f / y));
+    pos2D.z = 0.0f;
+    PSMTXTrans(startMtx, pos2D.x, pos2D.y, 0.0f);
+    linkNum = mbMasuLinkNumGet(masuId);
+    for (i = 0; i < linkNum; i++) {
+        linkMasuId = mbMasuLinkGet(masuId, i);
+        attr = mbMasuAttrGet(linkMasuId);
+        mAttr = mbMasuMAttrGet(linkMasuId);
+        if ((attr & (u16)mbBranchAttrGet()) == 0 && (mAttr & mbBranchMAttrGet()) == 0) {
+            HU3D_CAMERA *camera2;
+            float endY;
+            float endX;
+
+            mbMasuPosGet(linkMasuId, &pos);
+            camera2 = &Hu3DCamera[0];
+            PSMTXMultVec(*mtx, &pos, &endPosCamera);
+            endX = endPosCamera.z * (HuSin(camera2->fov / 2.0f)
+                / HuCos(camera2->fov / 2.0f)) * 1.2f;
+            endY = endPosCamera.z * (HuSin(camera2->fov / 2.0f)
+                / HuCos(camera2->fov / 2.0f));
+            endPos.x = 288.0f + (endPosCamera.x * (288.0f / -endX));
+            endPos.y = 240.0f + (endPosCamera.y * (240.0f / endY));
+            endPos.z = 0.0f;
+            PSVECSubtract(&endPos, &pos2D, &dir);
+            dir.z = 0.0f;
+            mag = PSVECMag(&dir);
+            pathScale = mag / 16.0f;
+            pos.x = pos2D.x + (0.5f * dir.x);
+            pos.y = pos2D.y + (0.5f * dir.y);
+            mtxRot(pathMtx, 0.0f, 0.0f, (atan2(dir.x, -dir.y) / M_PI) * 180.0f);
+            mtxScaleCat(pathMtx, 1.0f, pathScale, 0.0f);
+            mtxTransCat(pathMtx, pos.x, pos.y, 0.0f);
+            GXLoadPosMtxImm(pathMtx, GX_PNMTX0);
+            GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+            GXPosition2f32(-4.0f, -8.0f);
+            GXTexCoord2f32(0.0f, scrollWorkP->mapPathScale);
+            GXPosition2f32(4.0f, -8.0f);
+            GXTexCoord2f32(1.0f, scrollWorkP->mapPathScale);
+            GXPosition2f32(4.0f, 8.0f);
+            GXTexCoord2f32(1.0f, scrollWorkP->mapPathScale + pathScale);
+            GXPosition2f32(-4.0f, 8.0f);
+            GXTexCoord2f32(0.0f, scrollWorkP->mapPathScale + pathScale);
+            GXEnd();
+            if (!mapPathBit[linkMasuId]) {
+                MapPathDraw(linkMasuId, mtx);
+            }
+        }
+    }
+}
+
+static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
+{
+    Mtx texMtx;
+    Mtx posMtx;
+    Mtx cameraMtx;
+    Mtx44 projection;
+    HuVecF pos;
+    HuVecF posCamera;
+    HU3D_CAMERA *camera;
+    MAPSPRWORK *work;
+    float texX;
+    float texY;
+    float y;
+    float x;
+    float weight;
+    float scale;
+    int masuNum;
+    s16 startMasuId;
+    u32 attr;
+    int masuType;
+    u32 mAttr;
+    int patNo;
+    BOOL dayF;
+
+    mbCameraLookAtGet(cameraMtx);
+    C_MTXOrtho(projection, 0.0f, 480.0f, 0.0f, 576.0f, 0.0f, 100.0f);
+    GXSetProjection(projection, GX_ORTHOGRAPHIC);
+    HuSprTexLoad(masuMapAnim, 0, GX_TEXMAP0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+    HuSprTexLoad(pathAnim, 0, GX_TEXMAP1, GX_CLAMP, GX_REPEAT, GX_LINEAR);
+    GXSetTevColor(GX_TEVREG0, starCol);
+    GXSetNumTexGens(1);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+        GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
+    GXSetNumTevStages(1);
+    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA);
+    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    GXSetNumChans(1);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG,
+        GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanAmbColor(GX_COLOR0A0, starCol);
+    GXSetChanMatColor(GX_COLOR0A0, starCol);
+    GXSetZCompLoc(GX_FALSE);
+    GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
+    GXSetCullMode(GX_CULL_NONE);
+    GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_F32, 0);
+    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    scrollWorkP->mapPathScale = (float)scrollWorkP->pathFrame++ / 30.0f;
+    if (scrollWorkP->pathFrame > 30U) {
+        scrollWorkP->pathFrame = 0;
+    }
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP1, GX_COLOR0A0);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+        GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
+    startMasuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    memset(mapPathBit, 0, sizeof(mapPathBit));
+    MapPathDraw(startMasuId, &cameraMtx);
+    if (mbMasuDispGet()) {
+        int i;
+
+        GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+        GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+            GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
+        masuNum = mbMasuNumGet();
+        for (i = 1; i < masuNum; i++) {
+            masuType = mbMasuTypeGet(i);
+            attr = mbMasuAttrGet(i);
+            mAttr = mbMasuMAttrGet(i);
+            if (masuType == 0 || (attr & ~0x10 & mbMasuDispAttrGet()) != 0
+                || (mAttr & mbMasuDispMAttrGet()) != 0) {
+                continue;
+            }
+            patNo = masuPatTbl[masuType];
+            if (patNo < 0) {
+                if (patNo == -1) {
+                    continue;
+                }
+                dayF = !GwSystem.curTime;
+                patNo = dayF ? 4 : 3;
+            }
+            texX = (patNo % 4) / 4.0f;
+            texY = (float)(patNo / 4) / 3.0f;
+            PSMTXScale(texMtx, 0.25f, 1.0f / 3.0f, 0.0f);
+            mtxTransCat(texMtx, texX, texY, 0.0f);
+            GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
+            mbMasuPosGet(i, &pos);
+            camera = &Hu3DCamera[0];
+            PSMTXMultVec(cameraMtx, &pos, &posCamera);
+            x = posCamera.z * (HuSin(camera->fov / 2.0f)
+                / HuCos(camera->fov / 2.0f)) * 1.2f;
+            y = posCamera.z * (HuSin(camera->fov / 2.0f)
+                / HuCos(camera->fov / 2.0f));
+            pos.x = 288.0f + (posCamera.x * (288.0f / -x));
+            pos.y = 240.0f + (posCamera.y * (240.0f / y));
+            pos.z = 0.0f;
+            PSMTXTrans(posMtx, pos.x, pos.y, 0.0f);
+            GXLoadPosMtxImm(posMtx, GX_PNMTX0);
+            GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+            GXPosition2f32(-8.0f, -8.0f);
+            GXTexCoord2f32(0.0f, 0.0f);
+            GXPosition2f32(8.0f, -8.0f);
+            GXTexCoord2f32(1.0f, 0.0f);
+            GXPosition2f32(8.0f, 8.0f);
+            GXTexCoord2f32(1.0f, 1.0f);
+            GXPosition2f32(-8.0f, 8.0f);
+            GXTexCoord2f32(0.0f, 1.0f);
+            GXEnd();
+        }
+        weight = (float)scrollWorkP->mapFrame++ / 24.0f;
+        if (scrollWorkP->mapFrame > 24U) {
+            scrollWorkP->mapFrame = 0;
+        }
+        scale = 0.6f + (0.2f * mbSinDeg(90.0f * weight));
+        work = scrollWorkP->mapSpr;
+        for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+            if (work->type < 0) {
+                espScaleSet(work->sprId[1], scale, scale);
             }
         }
     }
