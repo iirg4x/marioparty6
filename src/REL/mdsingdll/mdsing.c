@@ -2,6 +2,7 @@
 #include "dolphin/os.h"
 #include "game/armem.h"
 #include "game/charman.h"
+#include "game/gamework.h"
 #include "game/object.h"
 #include "game/process.h"
 
@@ -15,9 +16,44 @@ extern char lbl_1_data_96B[];
 extern char lbl_1_data_97D[];
 extern char lbl_1_data_98F[];
 extern char lbl_1_data_99D[];
+extern char lbl_1_data_99F[];
 extern char lbl_1_data_9A3[];
 extern char lbl_1_data_9D3[];
 extern char lbl_1_data_A02[];
+
+void fn_1_B34(void)
+{
+    s16 i;
+
+    for (i = 0; i < 1; i++) {
+        GwPlayer[i].comF = 1;
+        GwPlayer[i].comDif = 0;
+        GwPlayer[i].charNo = 0;
+        GwPlayer[i].padNo = 0;
+        GwPlayer[i].team = 0;
+    }
+    for (i = 1; i < 4; i++) {
+        GwPlayer[i].comF = 1;
+        GwPlayer[i].comDif = 0;
+        GwPlayer[i].charNo = i;
+        GwPlayer[i].padNo = i;
+        GwPlayer[i].team = 0;
+    }
+    for (i = 0; i < 4; i++) {
+        GwPlayerConf[i].grpNo = 0;
+        GwPlayerConf[i].type = GwPlayer[i].comF;
+        GwPlayerConf[i].comDif = GwPlayer[i].comDif;
+        GwPlayerConf[i].charNo = GwPlayer[i].charNo;
+        GwPlayerConf[i].padNo = GwPlayer[i].padNo;
+        GwPlayerConf[i].grpNo = GwPlayer[i].team;
+    }
+    lbl_1_bss_1308[11] = GwPlayer[1].charNo;
+    for (i = 0; i < 4; i++) {
+        OSReport(lbl_1_data_99F, GwPlayerConf[i].charNo);
+    }
+    lbl_1_bss_1340[1] = 3;
+    mbSaveInit(10);
+}
 
 void fn_1_EA0(void)
 {
