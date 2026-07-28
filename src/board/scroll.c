@@ -21,7 +21,7 @@ typedef struct MapSprWork_s {
     int used;
     int dispF;
     s16 sprId[2];
-    int flags;
+    u32 flags;
     int type;
     int masuId;
     GXColor color;
@@ -889,10 +889,9 @@ static void MapSprPlayerPosCalc(int unused)
     HuVecF masuPos;
     float posY;
     float mag;
-    float rot;
     float scale;
+    float rot;
     int i;
-    int j;
 
     work = scrollWorkP->mapSpr;
     for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
@@ -904,9 +903,13 @@ static void MapSprPlayerPosCalc(int unused)
             if (work->sprId[1] >= 0) {
                 espDispOff(work->sprId[1]);
             }
-            for (j = 0; j < 1; j++) {
-                if (work->arrowSprId[j] >= 0) {
-                    espDispOff(work->arrowSprId[j]);
+            {
+                int j;
+
+                for (j = 0; j < 1; j++) {
+                    if (work->arrowSprId[j] >= 0) {
+                        espDispOff(work->arrowSprId[j]);
+                    }
                 }
             }
             mbMasuPosGet(work->masuId, &masuPos);
@@ -937,9 +940,13 @@ static void MapSprPlayerPosCalc(int unused)
                 if (work->sprId[1] >= 0) {
                     espDispOn(work->sprId[1]);
                 }
-                for (j = 0; j < 1; j++) {
-                    if (work->arrowSprId[j] >= 0) {
-                        espDispOn(work->arrowSprId[j]);
+                {
+                    int j;
+
+                    for (j = 0; j < 1; j++) {
+                        if (work->arrowSprId[j] >= 0) {
+                            espDispOn(work->arrowSprId[j]);
+                        }
                     }
                 }
             }
@@ -956,9 +963,13 @@ static void MapSprPlayerPosCalc(int unused)
                 if (work->sprId[1] >= 0) {
                     espDispOn(work->sprId[1]);
                 }
-                for (j = 0; j < 1; j++) {
-                    if (work->arrowSprId[j] >= 0) {
-                        espDispOn(work->arrowSprId[j]);
+                {
+                    int j;
+
+                    for (j = 0; j < 1; j++) {
+                        if (work->arrowSprId[j] >= 0) {
+                            espDispOn(work->arrowSprId[j]);
+                        }
                     }
                 }
             }
