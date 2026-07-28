@@ -907,6 +907,132 @@ static void CapColMdlIdGet(void)
     }
 }
 
+static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
+{
+    HSF_FACE *faceP;
+    HSF_DATA *hsfP;
+    HSF_BUFFER *faceBufP;
+    HSF_BUFFER *vtxBufP;
+    BOOL quadF;
+    int i;
+    int j;
+    HU3D_MODEL *modelP;
+    float dot;
+    float dotEdge;
+    float dotA;
+    float dotB;
+    float invDotA;
+    float scale;
+    HuVecF faceVtx[4];
+    HuVecF faceNorm;
+    HuVecF faceCA;
+    HuVecF faceBA;
+    HuVecF faceBAQuad;
+    HuVecF faceCAQuad;
+    HuVecF faceNormQuad;
+    HuVecF dir;
+    HuVecF outPos;
+    HuVecF dotVec;
+    float mag;
+    int temp;
+
+    quadF = FALSE;
+    temp = 0;
+    if (capsuleColMdlId == HU3D_MODELID_NONE) {
+        return FALSE;
+    }
+    modelP = &Hu3DData[capsuleColMdlId];
+    hsfP = modelP->hsf;
+    faceBufP = hsfP->face;
+    vtxBufP = hsfP->vertex;
+    PSVECSubtract(posA, posB, &dir);
+    if (PSVECMag(&dir) <= 0.0f) {
+        return FALSE;
+    }
+    PSVECNormalize(&dir, &dir);
+    mag = PSVECMag(&dir);
+    for (i = 0; i < hsfP->faceNum; i++, faceBufP++) {
+        faceP = faceBufP->data;
+        for (j = 0; j < faceBufP->count; j++, faceP++) {
+            switch (faceP->type & HSF_FACE_MASK) {
+            case 0:
+                quadF = TRUE;
+                break;
+
+            case 1:
+                quadF = TRUE;
+                break;
+
+            case HSF_FACE_TRI:
+                quadF = FALSE;
+                faceVtx[0] =
+                    *((HuVecF *)vtxBufP->data + faceP->index[0].vertex);
+                faceVtx[1] =
+                    *((HuVecF *)vtxBufP->data + faceP->index[1].vertex);
+                faceVtx[2] =
+                    *((HuVecF *)vtxBufP->data + faceP->index[2].vertex);
+                break;
+
+            case HSF_FACE_QUAD:
+                quadF = TRUE;
+                break;
+
+            default:
+                break;
+            }
+            if (!quadF) {
+                PSVECSubtract(&faceVtx[1], &faceVtx[0], &faceBAQuad);
+                PSVECSubtract(&faceVtx[2], &faceVtx[0], &faceCAQuad);
+                PSVECCrossProduct(&faceBAQuad, &faceCAQuad, &faceNormQuad);
+                if (PSVECMag(&faceNormQuad) > 0.0f) {
+                    PSVECNormalize(&faceNormQuad, &faceNormQuad);
+                }
+                dot = -PSVECDotProduct(&faceNormQuad, &faceVtx[0]);
+                dotA = (faceNormQuad.x * posA->x)
+                    + (faceNormQuad.y * posA->y)
+                    + (faceNormQuad.z * posA->z) + dot;
+                dotB = (faceNormQuad.x * posB->x)
+                    + (faceNormQuad.y * posB->y)
+                    + (faceNormQuad.z * posB->z) + dot;
+                if (dotA * dotB > 0) {
+                    continue;
+                }
+                invDotA = -((faceNormQuad.x * posA->x)
+                    + (faceNormQuad.y * posA->y)
+                    + (faceNormQuad.z * posA->z) + dot);
+                dotEdge = (faceNormQuad.x * dir.x)
+                    + (faceNormQuad.y * dir.y)
+                    + (faceNormQuad.z * dir.z);
+                if (dotEdge != 0.0f) {
+                    scale = invDotA / dotEdge;
+                    PSVECScale(&dir, &outPos, scale);
+                    PSVECAdd(&outPos, posA, &outPos);
+                    *out = outPos;
+                    PSVECSubtract(&faceVtx[1], &faceVtx[0], &faceBA);
+                    PSVECSubtract(&outPos, &faceVtx[0], &faceCA);
+                    PSVECCrossProduct(&faceBA, &faceCA, &faceNorm);
+                    dotVec.x = PSVECDotProduct(&faceNormQuad, &faceNorm);
+                    PSVECSubtract(&faceVtx[2], &faceVtx[1], &faceBA);
+                    PSVECSubtract(&outPos, &faceVtx[1], &faceCA);
+                    PSVECCrossProduct(&faceBA, &faceCA, &faceNorm);
+                    dotVec.y = PSVECDotProduct(&faceNormQuad, &faceNorm);
+                    PSVECSubtract(&faceVtx[0], &faceVtx[2], &faceBA);
+                    PSVECSubtract(&outPos, &faceVtx[2], &faceCA);
+                    PSVECCrossProduct(&faceBA, &faceCA, &faceNorm);
+                    dotVec.z = PSVECDotProduct(&faceNormQuad, &faceNorm);
+                    if (dotVec.x > 0 && dotVec.y > 0 && dotVec.z > 0) {
+                        return TRUE;
+                    }
+                    if (dotVec.x < 0 && dotVec.y < 0 && dotVec.z < 0) {
+                        return TRUE;
+                    }
+                }
+            }
+        }
+    }
+    return FALSE;
+}
+
 static void CapColKill(void)
 {
     capsuleColMdlId = MB_MODEL_NONE;
@@ -978,6 +1104,28 @@ int mbCapUseCostGet(void)
     return 0;
 }
 
+BOOL mbCapEffUseCreate(int playerNo, int capsuleNo)
+{
+    CAP_EFF_USE_WORK *work;
+    CAP_EFF_USE_WORK *workData;
+
+    capsuleNo = mbCapValueTypeGet(capsuleNo);
+    capsuleUseEffProc[playerNo] =
+        HuPrcChildCreate(CapEffUse, 8196, 24576, 0, mbMainProc);
+    workData = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), HU_MEMNUM_OVL);
+    work = workData;
+    capsuleUseEffProc[playerNo]->property = work;
+    memset(work, 0, sizeof(CAP_EFF_USE_WORK));
+    work->playerNo = playerNo;
+    work->capsuleNo = capsuleNo;
+    capsuleUseEffMode[playerNo] = 0;
+    capsuleUseEffPos[playerNo].x = capsuleUseEffPos[playerNo].y =
+        capsuleUseEffPos[playerNo].z = 0.0f;
+    HuPrcDestructorSet2(capsuleUseEffProc[playerNo], CapEffUseKill);
+    return TRUE;
+}
+
 int mbCapEffUseModeGet(int playerNo)
 {
     return capsuleUseEffMode[playerNo];
@@ -1027,6 +1175,306 @@ BOOL mbCapPlayerThrowCheck(void)
     } else {
         return TRUE;
     }
+}
+
+static void CapPlayerThrow(void)
+{
+    CAP_PLAYER_THROW_WORK *work;
+    int seNo;
+    int playerObjId;
+    int capsuleSlot;
+    int handTime;
+    int playerModelId;
+    int coinNum;
+    int motionTime;
+    HuVecF effPos;
+    HuVecF playerRot;
+    HuVecF mdl2Pos;
+    HuVecF dir;
+    HuVecF dirOrig;
+    HuVecF pos;
+    HuVecF vel;
+    HuVecF playerPos;
+    HuVecF playerPosOrig;
+    HuVecF capPos;
+    HuVecF handPos;
+    float x[3];
+    float y[3];
+    float z[3];
+    HuVecF throwOut;
+    HuVecF glowPos;
+    HuVecF glowVel;
+    Mtx rotMtx;
+    Mtx objMtx;
+    Mtx handMtx;
+    float time;
+    float t;
+    float arc;
+    float scale;
+    float mag;
+    GXColor color;
+    float magTemp;
+    GXColor glowColor;
+    GXColor *glowColorP;
+    HuVecF *glowVelP;
+    HuVecF *glowPosP;
+    char *hookName;
+
+    work = HuPrcCurrentGet()->property;
+    if (capsuleThrowHook) {
+        capsuleThrowHook(TRUE);
+    }
+    CapEffThrowMasuCreate(work->masuId, work->capsuleNo);
+    work->jumpMotId =
+        mbPlayerMotionCreate(work->playerNo, CHARMOT_HSF_c000m1_431);
+    HuPrcVSleep();
+    if (capsuleObjId != MB_MODEL_NONE) {
+        work->capObjId0 = capsuleObjId;
+    } else {
+        work->capObjId0 =
+            mbObjCreate(mbCapFileGet(work->capsuleNo), NULL, FALSE);
+    }
+    mbPlayerPosGet(work->playerNo, &pos);
+    mbObjPosSet(work->capObjId0, pos.x, pos.y + 250.0f, pos.z);
+    mbObjScaleSet(work->capObjId0, 1.2f, 1.2f, 1.2f);
+    mbObjLayerSet(work->capObjId0, 4);
+    work->capObjId1 = mbObjCreate(mbCapFileGet(work->capsuleNo), NULL, FALSE);
+    mbObjDispSet(work->capObjId1, FALSE);
+    while (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->playerNo))
+        != MB_MODEL_NONE) {
+        HuPrcVSleep();
+    }
+    playerObjId = mbPlayerObjIDGet(work->playerNo);
+    playerModelId = mbObjModelIDGet(playerObjId);
+    motionTime = (int)mbObjMotionTimeGet(playerObjId);
+    mbPlayerRotGet(work->playerNo, &playerRot);
+    mbPlayerPosGet(work->playerNo, &work->pos);
+    mbMasuPosGet(work->masuId, &work->masuPos);
+    PSVECSubtract(&work->masuPos, &work->pos, &dir);
+    mbPlayerRotSet(work->playerNo, 0.0f,
+        (float)((atan2(dir.x, dir.z) / M_PI) * 180.0), 0.0f);
+    mbPlayerMotionSet(work->playerNo, work->jumpMotId, HU3D_MOTATTR_NONE);
+    mbPlayerMotionTimeSet(
+        work->playerNo, 0.35f * mbPlayerMotionMaxTimeGet(work->playerNo));
+    Hu3DMotionCalc(playerModelId);
+    hookName = CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0);
+    Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+        hookName, handMtx);
+    work->pos.x = handMtx[0][3];
+    work->pos.y = handMtx[1][3];
+    work->pos.z = handMtx[2][3];
+    mbPlayerMotionSet(work->playerNo, 1, 0x40000001);
+    mbObjMotionTimeSet(playerObjId, (float)motionTime);
+    mbPlayerRotSetV(work->playerNo, &playerRot);
+    Hu3DMotionCalc(playerModelId);
+    HuPrcVSleep();
+    mbMasuPosGet(work->masuId, &work->masuPos);
+    work->masuPos.y += 20.0f;
+    PSVECSubtract(&work->masuPos, &work->pos, &dir);
+    mag = PSVECMag(&dir);
+    work->yOfs = 50.0f + (0.1f * mag);
+    if (work->yOfs > 700.0f) {
+        work->yOfs = 700.0f;
+    }
+    playerPosOrig = work->pos;
+    playerPos = playerPosOrig;
+    x[0] = work->pos.x;
+    y[0] = work->pos.y;
+    z[0] = work->pos.z;
+    x[1] = work->pos.x;
+    y[1] = work->pos.y;
+    z[1] = work->pos.z;
+    x[2] = work->masuPos.x;
+    y[2] = work->masuPos.y;
+    z[2] = work->masuPos.z;
+    CapEffThrowCreate(
+        work->playerNo, x, y, z, work->yOfs, work->masuId);
+    if (!GwPlayer[work->playerNo].comF) {
+        mbWipeDissolveFadeInTime(15);
+    }
+    handTime = 45;
+    mbObjPosGet(work->capObjId0, &capPos);
+    Hu3DMotionCalc(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
+    hookName = CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0);
+    Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+        hookName, handMtx);
+    handPos.x = handMtx[0][3];
+    handPos.y = handMtx[1][3];
+    handPos.z = handMtx[2][3];
+    mbAudFXPlay(0x410);
+    for (time = 0.0f; time < handTime; time++) {
+        Hu3DMotionCalc(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
+        hookName = CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0);
+        Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+            hookName, handMtx);
+        handPos.x = handMtx[0][3];
+        handPos.y = handMtx[1][3];
+        handPos.z = handMtx[2][3];
+        t = sin((M_PI * (90.0f * (time / handTime))) / 180.0);
+        arc = 100.0f * sin((M_PI * (180.0f * t)) / 180.0);
+        pos.x = capPos.x + (t * (handPos.x - capPos.x))
+            + (arc * sin((M_PI * (180.0f - (270.0f * t))) / 180.0));
+        pos.y = capPos.y + (t * (handPos.y - capPos.y));
+        pos.z = capPos.z + (t * (handPos.z - capPos.z))
+            + (arc * cos((M_PI * (180.0f - (270.0f * t))) / 180.0));
+        scale = 0.35f + (0.85f * cos((M_PI * (90.0f * t)) / 180.0));
+        mbObjPosSetV(work->capObjId0, &pos);
+        mbObjScaleSet(work->capObjId0, scale, scale, scale);
+        HuPrcVSleep();
+    }
+    hookName = CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0);
+    mbObjHookSet(mbPlayerObjIDGet(work->playerNo), hookName, work->capObjId0);
+    mbPlayerRotateStart(work->playerNo,
+        (s16)((atan2(dir.x, dir.z) / M_PI) * 180.0), 15);
+    while (!mbPlayerRotateCheck(work->playerNo)) {
+        HuPrcVSleep();
+    }
+    do {
+        HuPrcVSleep();
+    } while (!CapEffThrowCheck(&pos, &work->maxTime));
+    CapEffThrowKill();
+    x[1] = pos.x;
+    y[1] = pos.y;
+    z[1] = pos.z;
+    work->time = 0;
+    mbPlayerMotionShiftSet(work->playerNo, work->jumpMotId, 0.0f, 8.0f,
+        HU3D_MOTATTR_NONE);
+    mbAudFXPlay(0x405);
+    while (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->playerNo))
+        != MB_MODEL_NONE) {
+        HuPrcVSleep();
+    }
+    time = mbPlayerMotionMaxTimeGet(work->playerNo);
+    while (mbPlayerMotionTimeGet(work->playerNo) <= (0.35f * time)) {
+        HuPrcVSleep();
+    }
+    Hu3DMotionCalc(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
+    hookName = CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0);
+    Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+        hookName, handMtx);
+    x[0] = work->pos.x = handMtx[0][3];
+    y[0] = work->pos.y = handMtx[1][3];
+    z[0] = work->pos.z = handMtx[2][3];
+    if (work->capObjId0 != MB_MODEL_NONE) {
+        hookName = CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0);
+        mbObjHookObjReset(mbPlayerObjIDGet(work->playerNo), hookName);
+        mbObjDispSet(work->capObjId0, FALSE);
+    }
+    capsuleObjId = MB_MODEL_NONE;
+    work->objColorId = mbCapObjColorCreate(work->capsuleNo, FALSE);
+    mbPlayerPosGet(work->playerNo, &pos);
+    mbCapObjColorPosSet(
+        work->objColorId, pos.x, pos.y + 1.5f, pos.z);
+    mbCapObjColorScaleSet(work->objColorId, 1.0f, 1.0f, 1.0f);
+    mbCapObjColorLayerSet(work->objColorId, 4);
+    CapEffTrailAdd(&work->pos, work->capsuleNo);
+    seNo = mbAudFXPlay(0x406);
+    do {
+        work->time++;
+        t = (float)work->time / (float)work->maxTime;
+        PSVECSubtract(&work->masuPos, &work->pos, &dir);
+        PSVECScale(&dir, &dir, t);
+        PSVECAdd(&work->pos, &dir, &effPos);
+        mdl2Pos = effPos;
+        CapThrowCameraCalc(t, x, y, z, &throwOut, 3);
+        effPos.x = throwOut.x;
+        effPos.y = throwOut.y;
+        effPos.z = throwOut.z;
+        PSVECSubtract(&effPos, &mdl2Pos, &pos);
+        PSVECScale(&pos, &pos, 0.75f);
+        PSVECAdd(&mdl2Pos, &pos, &mdl2Pos);
+        mbCapObjColorPosSet(
+            work->objColorId, effPos.x, effPos.y, effPos.z);
+        mbCapObjColorScaleSet(work->objColorId, 0.5f, 0.5f, 0.5f);
+        PSVECSubtract(&work->masuPos, &work->pos, &dir);
+        dirOrig = dir;
+        dir.x = dirOrig.z;
+        dir.y = 0.0f;
+        dir.z = -dirOrig.x;
+        if ((magTemp = PSVECMag(&dir)) <= 0.0f) {
+            dir.z = 1.0f;
+        }
+        PSMTXRotAxisRad(rotMtx, &dir, 0.1f);
+        mbCapObjColorMtxGet(work->objColorId, &objMtx);
+        PSMTXConcat(rotMtx, objMtx, objMtx);
+        mbCapObjColorMtxSet(work->objColorId, &objMtx);
+        CapEffTrailPosSet(&effPos);
+        mbObjPosSet(work->capObjId1, mdl2Pos.x, mdl2Pos.y, mdl2Pos.z);
+        mbObjDispSet(work->capObjId1, FALSE);
+        mbCameraFocusObjSet(work->capObjId1);
+        if (capsuleThrowGlowOMObj != NULL) {
+            pos.x = effPos.x + ((0.5f - ((u32)mbRandMod(0x10000000)
+                * 3.725290298461914e-09f)) * 1.5f * 0.75f);
+            pos.y = effPos.y + ((0.5f - ((u32)mbRandMod(0x10000000)
+                * 3.725290298461914e-09f)) * 1.5f * 0.75f);
+            pos.z = effPos.z + ((0.5f - ((u32)mbRandMod(0x10000000)
+                * 3.725290298461914e-09f)) * 1.5f * 0.75f);
+            vel.x = vel.y = vel.z = 0.0f;
+            color = capsulePlayerThrowColorTbl[
+                mbCapColorGet(work->capsuleNo)];
+            color.a = (u8)(192.0f + (63.0f * ((u32)mbRandMod(0x10000000)
+                * 3.725290298461914e-09f)));
+            glowColor = color;
+            glowColorP = &glowColor;
+            glowVel = vel;
+            glowVelP = &glowVel;
+            glowPos = pos;
+            glowPosP = &glowPos;
+            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
+                (int)(60.0f * (1.0f + ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f))),
+                1.5f * (0.2f + (0.025f * ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f))),
+                0.0f, 0.025f, glowColorP);
+        }
+        HuPrcVSleep();
+    } while (work->time < work->maxTime);
+    if (seNo != MSM_SENO_NONE) {
+        mbAudFXStop(seNo);
+        seNo = MSM_SENO_NONE;
+    }
+    mbAudFXPlay(0x407);
+    effPos = work->masuPos;
+    effPos.y -= 10000.0f;
+    CapEffTrailPosSet(&effPos);
+    mbObjDispSet(work->capObjId0, FALSE);
+    mbObjDispSet(work->capObjId1, FALSE);
+    mbCapObjColorDispSet(work->objColorId, FALSE);
+    omVibrate(work->playerNo, 20, 4, 4);
+    coinNum = CapEffThrowMasu(
+        work->masuId, work->capsuleNo, work->playerNo, TRUE);
+    CapEffThrowMasuWait(coinNum);
+    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        mbTutorialCall(18);
+    }
+    CapThrowEndWin(work->masuId, work->capsuleNo);
+    mbev_CapPlayerMotShiftWait(work->playerNo, 1, 0x40000001, TRUE);
+    mbPlayerRotateStart(work->playerNo, 0, 15);
+    while (!mbPlayerRotateCheck(work->playerNo)) {
+        HuPrcVSleep();
+    }
+    mbCameraFocusPlayerSet(work->playerNo);
+    mbCameraMoveOnSet(FALSE);
+    if (capsuleThrowHook) {
+        capsuleThrowHook(FALSE);
+    }
+    mbCameraMoveWait();
+    mbCameraMoveOnSet(TRUE);
+    mbev_CapBonusCoinCall(
+        work->playerNo, work->capsuleNo, coinNum, TRUE);
+    if (!capsuleUseRemoveOnF) {
+        mbPlayerCapsuleUseSet(work->capsuleNo);
+        capsuleSlot =
+            mbPlayerCapsuleFind(work->playerNo, work->capsuleNo);
+        if (capsuleSlot != -1) {
+            mbPlayerCapsuleRemove(work->playerNo, capsuleSlot);
+        }
+    }
+    if (work->jumpMotId != MB_MODEL_NONE && !mbExitCheck()) {
+        mbPlayerMotionKill(work->playerNo, work->jumpMotId);
+    }
+    work->jumpMotId = MB_MODEL_NONE;
+    HuPrcEnd();
 }
 
 static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime)
@@ -1113,6 +1561,176 @@ void mbCapAutoThrow(HuVecF *startPos, HuVecF *endPos, HuVecF *masuPos, int playe
     CapAutoThrow(work);
     mbCapAutoThrowEnd(work);
     HuMemDirectFree(work);
+}
+
+static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
+{
+    int capsuleNo;
+    int masuId;
+    int time;
+    int seNo;
+    int objColorId;
+    float t;
+    float glowScale;
+    GXColor color;
+    GXColor glowColor;
+    HuVecF effPos;
+    HuVecF particlePos;
+    HuVecF particleVel;
+    float x[3];
+    float y[3];
+    float z[3];
+    HuVecF throwOut;
+    HuVecF glowPos;
+    HuVecF glowVel;
+    HuVecF rot;
+    HuVecF pos;
+    GXColor *glowColorP;
+    HuVecF *glowVelP;
+    HuVecF *glowPosP;
+
+    if (capsuleThrowHook) {
+        capsuleThrowHook(TRUE);
+    }
+    capsuleNo = work->capsuleNo;
+    masuId = work->masuId;
+    if (masuId > 0) {
+        mbMasuPosGet((s16)masuId, &pos);
+        mbMasuRotGet((s16)masuId, &rot);
+    }
+    capsuleThrowGlowOMObj = mbev_CapEffGlowCreate();
+    capsuleThrowRingOMObj = mbev_CapEffRingCreate();
+    capsuleThrowRayOMObj = mbev_CapEffRayCreate(0.0f, 0.02f);
+    if (masuId > 0) {
+        mbev_CapEffRayTransformSet(capsuleThrowRayOMObj, &pos, &rot, NULL);
+    }
+    capsuleThrowMasuHitOMObj = mbev_CapEffMasuHitCreate();
+    if (masuId > 0) {
+        mbev_CapEffMasuHitTransformSet(
+            capsuleThrowMasuHitOMObj, &pos, &rot, NULL);
+    }
+    capsuleThrowMasuCoinOMObj = mbev_CapEffCoinCreate();
+    CapEffTrailCreate(capsuleNo);
+    CapEffCrackCreate();
+    x[0] = work->startPos.x;
+    x[1] = work->endPos.x;
+    x[2] = work->masuPos.x;
+    y[0] = work->startPos.y;
+    y[1] = work->endPos.y;
+    y[2] = work->masuPos.y;
+    z[0] = work->startPos.z;
+    z[1] = work->endPos.z;
+    z[2] = work->masuPos.z;
+    objColorId = mbCapObjColorCreate(work->capsuleNo, FALSE);
+    mbCapObjColorPosSetV(objColorId, &work->startPos);
+    mbCapObjColorScaleSet(objColorId, 1.0f, 1.0f, 1.0f);
+    mbCapObjColorLayerSet(objColorId, 4);
+    if (work->startT < 1.0f) {
+        mbCameraMoveMasu((s16)work->masuId, NULL, NULL, 1600.0f, -1.0f, -1);
+        mbCameraMoveWait();
+        mbWipeSpecialFadeOutCreate(1, 60);
+    }
+    if (work->startT < 1.0f) {
+        CapEffTrailAdd(&work->startPos, work->capsuleNo);
+    }
+    if (work->startT < 1.0f) {
+        seNo = mbAudFXPlay(0x406);
+    } else {
+        seNo = -1;
+    }
+    time = work->startT * work->maxTime;
+    do {
+        if (work->startT >= 1.0f) {
+            break;
+        }
+        time++;
+        t = (float)time / (float)work->maxTime;
+        CapThrowCameraCalc(t, x, y, z, &throwOut, 3);
+        effPos.x = throwOut.x;
+        effPos.y = throwOut.y;
+        effPos.z = throwOut.z;
+        mbCapObjColorPosSet(objColorId, effPos.x, effPos.y, effPos.z);
+        mbCapObjColorScaleSet(objColorId, 0.5f, 0.5f, 0.5f);
+        if (work->startT < 1.0f) {
+            CapEffTrailPosSet(&effPos);
+        }
+        if (capsuleThrowGlowOMObj != NULL) {
+            particlePos.x = effPos.x
+                + ((0.5f - ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f)) * 100.0f * 0.75f);
+            particlePos.y = effPos.y
+                + ((0.5f - ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f)) * 100.0f * 0.75f);
+            particlePos.z = effPos.z
+                + ((0.5f - ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f)) * 100.0f * 0.75f);
+            particleVel.x = particleVel.y = particleVel.z = 0.0f;
+            color = capsuleAutoThrowColorTbl[mbCapColorGet(work->capsuleNo)];
+            color.a = (u8)(192.0f
+                + (63.0f * ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f)));
+            glowColor = color;
+            glowColorP = &glowColor;
+            glowVel = particleVel;
+            glowVelP = &glowVel;
+            glowPos = particlePos;
+            glowPosP = &glowPos;
+            glowScale = 100.0f
+                * (0.2f + (0.025f * ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f)));
+            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
+                (int)(60.0f * (1.0f + ((u32)mbRandMod(0x10000000)
+                    * 3.725290298461914e-09f))), glowScale,
+                0.0f, 0.025f, glowColorP);
+        }
+        HuPrcVSleep();
+    } while (time < work->maxTime);
+    if (seNo != -1) {
+        mbAudFXStop(seNo);
+    }
+    seNo = -1;
+    mbAudFXPlay(0x407);
+    effPos = work->endPos;
+    effPos.y -= 10000.0f;
+    CapEffTrailPosSet(&effPos);
+    mbCapObjColorKill(objColorId);
+    if (work->startT < 1.0f) {
+        omVibrate(work->playerNo, 20, 7, 3);
+    }
+    CapEffThrowMasu(work->masuId, work->capsuleNo, work->playerNo, FALSE);
+    HuPrcSleep(18);
+    while (mbev_CapEffCoinNumGet(capsuleThrowMasuCoinOMObj) > 0) {
+        HuPrcVSleep();
+    }
+    while (mbev_CapEffGlowDispGet(capsuleThrowGlowOMObj) != 0) {
+        HuPrcVSleep();
+    }
+    if (capsuleThrowGlowOMObj != NULL) {
+        mbev_CapEffGlowKill(capsuleThrowGlowOMObj);
+    }
+    if (capsuleThrowRingOMObj != NULL) {
+        mbev_CapEffRingKill(capsuleThrowRingOMObj);
+    }
+    if (capsuleThrowRayOMObj != NULL) {
+        mbev_CapEffRayKill(capsuleThrowRayOMObj);
+    }
+    if (capsuleThrowMasuHitOMObj != NULL) {
+        mbev_CapEffMasuHitKill(capsuleThrowMasuHitOMObj);
+    }
+    if (capsuleThrowMasuCoinOMObj != NULL) {
+        mbev_CapEffCoinKill(capsuleThrowMasuCoinOMObj);
+    }
+    CapEffCrackKill();
+    CapEffTrailKill();
+    if (work->masuId > 0) {
+        CapThrowEndWin(work->masuId, work->capsuleNo);
+    }
+    if (work->startT < 1.0f) {
+        mbWipeSpecialFadeInCreate(1, 1);
+    }
+    if (capsuleThrowHook) {
+        capsuleThrowHook(FALSE);
+    }
 }
 
 void mbCapAutoThrowEnd(CAP_AUTO_THROW_WORK *work)
@@ -1704,6 +2322,35 @@ static void CapSelectMasuListGet(
     }
 }
 
+static void CapSelectMasuAddFront(s16 *masuFlag, s16 masuId, s16 max)
+{
+    s16 link[10];
+    s16 linkNum;
+    int i;
+
+    linkNum = mbMasuLinkTblGet(masuId, link);
+    if (CapSelectMasuCheck(masuId)) {
+        masuFlag[masuId] = 1;
+    } else {
+        masuFlag[masuId] = 0x8000;
+    }
+    if (CapSelectMasuDispCheck(masuId) && !capsuleMasuSelectEndF) {
+        max--;
+    }
+    capsuleMasuSelectEndF = FALSE;
+    if (max > 0) {
+        for (i = 0; i < linkNum; i++) {
+            if (mbev_CapMasuMoveCheck(link[i])) {
+                continue;
+            }
+            if (i == 0 && (mbMasuAttrGet(masuId) & MASU_FLAG_BATTAN)) {
+                continue;
+            }
+            CapSelectMasuAddFront(masuFlag, link[i], max);
+        }
+    }
+}
+
 static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max)
 {
     s16 parent[10];
@@ -1952,6 +2599,44 @@ static int CapObjColorSearch(int id)
     } else {
         return -1;
     }
+}
+
+int mbCapObjColorCreate(int capsuleNo, BOOL createF)
+{
+    CAPSULE_OBJ_COLOR *obj;
+    int i;
+    int capValue;
+    u32 file;
+    s16 initialValue;
+    s16 capValueShort;
+    int objFile;
+    int fileNo;
+
+    obj = capsuleObjColorData;
+    initialValue = (s16)capsuleNo & 0xFF;
+    capsuleNo = initialValue;
+    for (i = 0; i < CAPSULE_OBJ_COLOR_MAX; i++, obj++) {
+        if (!obj->flag) {
+            break;
+        }
+    }
+    if (i >= CAPSULE_OBJ_COLOR_MAX) {
+        return -1;
+    }
+    capValue = capsuleNo;
+    capValueShort = (s16)capValue & 0xFF;
+    capValue = capValueShort;
+    objFile = capsuleData[capValue].objFile;
+    fileNo = objFile;
+    file = fileNo;
+    obj->flag = TRUE;
+    obj->mdlId = mbObjCreate(file, NULL, createF);
+    obj->layer = 4;
+    obj->pos.x = obj->pos.y = obj->pos.z = 0.0f;
+    obj->rot.x = obj->rot.y = obj->rot.z = 0.0f;
+    obj->scale.x = obj->scale.y = obj->scale.z = 1.0f;
+    mbCapObjColorLayerSet(obj->mdlId, obj->layer);
+    return obj->mdlId;
 }
 
 void mbCapObjColorKill(int id)
