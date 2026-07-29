@@ -3308,7 +3308,7 @@
       "category": "aggregate_copy_negative_evidence",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms.",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A strict census of all 40 board objects and eight matching game objects with retained vector-copy source found no exact function containing any non-stack unquantized displacement psq_l or psq_st donor.",
       "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings, documented __memcpy intrinsic, and documented __vec2x32float__ type have been measured under the pinned owner profile.",
       "source_condition": {
         "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, or one staged __vec2x32float__ pair plus the remaining scalar in an attempt to reproduce the target instructions.",
@@ -3339,7 +3339,8 @@
           "memcpy can improve one aggregate percentage while introducing a target-absent call",
           "documented __memcpy inlines a constant 12-byte transfer but retains three integer-word loads and stores",
           "explicit __vec2x32float__ staging can reproduce the paired/scalar register count while retaining indexed forms and the wrong pointer lifetime",
-          "the ordinary non-solutions recur in separate board owners"
+          "the ordinary non-solutions recur in separate board owners",
+          "an exact-donor census can contain no non-stack unquantized displacement paired operation even when quantized fast-cast inline assembly is present"
         ]
       },
       "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, and one documented __vec2x32float__ staged-pair control at most once for a proven displacement-form paired-single HuVecF copy. If __memcpy retains integer word moves and the paired type selects indexed psq_lx/psq_stx rather than target psq_l/psq_st, record the negative result and stop until an authenticated displacement-form helper, compiler contract, or historical same-game header boundary is found; do not retain cast tricks, pragmas, volatile storage, or inline assembly.",
@@ -3350,7 +3351,8 @@
         "use the documented __vec2x32float__ type only as one bounded indexed-form control",
         "search authenticated same-game siblings and historical headers for the missing source boundary",
         "leave the function honestly nonexact when no authenticated boundary exists",
-        "reopen the source only when new evidence explains why GC/2.6 selected paired-single operations"
+        "reopen the source only when new evidence explains why GC/2.6 selected paired-single operations",
+        "treat a newly exact unquantized displacement donor as the minimum trigger for repeating donor archaeology"
       ],
       "applicability": {
         "compiler_wide": false,
@@ -3386,7 +3388,8 @@
         "main:board/config PauseGuideMain materializes two source/destination pointer pairs before displacement transfers for work->pos=work->posTarget and work->posStart=work->posTarget",
         "isolated GC/2.6 -O0,p __memcpy control: PairCopyIntrinsic is 28 text bytes and PairCopyMembers is 52 text bytes; both inline only lwz/stw word copies, object SHA-256 cf04677cf22b492dcdeb814422680618f058b07b37865f0e7ac55b5137671da5",
         "main:board/snpc mbObjFadeCreate: staged __vec2x32float__ plus scalar is 332/328 bytes at 92.277110% in data-value mode but emits indexed psq_lx/psq_stx instead of target displacement forms",
-        "main:board/snpc mbObjFadeTexRotSet: two staged __vec2x32float__ plus scalar transfers are 200/192 bytes at 74.140000% in data-value mode and retain the same indexed-form mismatch"
+        "main:board/snpc mbObjFadeTexRotSet: two staged __vec2x32float__ plus scalar transfers are 200/192 bytes at 74.140000% in data-value mode and retain the same indexed-form mismatch",
+        "MP6 exact-donor census at dec2764ce3e05513000e548be787241d7128e4a9: 48 owner objects, 2,552 target function symbols, and 1,936 strict-exact functions contain zero non-stack unquantized displacement psq_l or psq_st instructions"
       ],
       "counterexamples": [
         "A higher percentage is not a successful copy-shape probe: memcpy raises mbObjFadeCreate from 82.289154% to 84.409640% while adding a target-absent call and shrinking the source farther from 332 bytes.",
@@ -3395,7 +3398,8 @@
         "The official compiler manual authenticates __memcpy as an inline block move, but the measured constant-size control emits integer words rather than target paired-single displacement forms.",
         "The official compiler manual authenticates __vec2x32float__ and vec2x32float_align_4, but that does not authenticate a cast expression or displacement-form helper; the measured explicit assignment emits indexed forms.",
         "Paired-single opcodes do not identify a historical source spelling by themselves; cast tricks, forced alignment, volatile storage, and inline assembly remain unsupported.",
-        "mbObjFadeTexColorSet becomes exact through an independent argument-promotion correction, showing that neighboring SNPC material helpers are not all blocked by vector-copy spelling."
+        "mbObjFadeTexColorSet becomes exact through an independent argument-promotion correction, showing that neighboring SNPC material helpers are not all blocked by vector-copy spelling.",
+        "RouletteWait is not a HuVecF donor: its exact non-stack paired operations use W=1 and QR5 through OSFastCast inline assembly, so they authenticate only quantized integer/float conversion."
       ],
       "related_exceptions": [],
       "evidence": [
