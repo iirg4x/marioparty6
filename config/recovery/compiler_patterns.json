@@ -48,25 +48,30 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [
-        "mdbankdll:fn_1_281C",
-        "mdbankdll:fn_1_28B4",
-        "mdbankdll:fn_1_AC4",
-        "mdbankdll:fn_1_1200",
-        "mdbankdll:fn_1_3100",
-        "mdbankdll:fn_1_3164",
-        "mdbankdll:fn_1_111B0",
-        "mdbankdll:fn_1_111F8",
-        "mdbankdll:fn_1_1161C",
-        "mdbankdll:fn_1_11678"
+          "mdbankdll:fn_1_281C",
+          "mdbankdll:fn_1_28B4",
+          "mdbankdll:fn_1_AC4",
+          "mdbankdll:fn_1_1200",
+          "mdbankdll:fn_1_3100",
+          "mdbankdll:fn_1_3164",
+          "mdbankdll:fn_1_111B0",
+          "mdbankdll:fn_1_111F8",
+          "mdbankdll:fn_1_1161C",
+          "mdbankdll:fn_1_11678",
+          "mdsingdll:fn_1_E688",
+          "mdsingdll:fn_1_EA7C",
+          "mdsingdll:fn_1_F15C"
         ],
         "modules": [
-          "mdbankdll"
+          "mdbankdll",
+          "mdsingdll"
         ],
         "owner_tags": []
       },
       "examples": [
         "REL:mdpartydll:mdparty",
         "MDBank pass2 recovered four isolated chronology relations (fn_1_AC4 to fn_1_1200, fn_1_3100 to fn_1_3164, fn_1_111B0 to fn_1_111F8, and fn_1_1161C to fn_1_11678) with ordinary authenticated static-inline helper copies under the normal GC/1.3.2 auto-inline command. Ten text-only owners retained 12/12 functions, 2,780 text bytes, and 141 physical relocations; no source-only helper csect was emitted and the retail REL remained exact.",
+        "MDSing pass31 recovered fn_1_EA7C and fn_1_F15C with an authenticated depth-two static-inline selection updater. Specializing its fixed 5.0f donor interpolation to target-owned 4.0f/5.0f constants preserved MWCC constant folding with no helper csect, while fn_1_E688 remained the exact expanded body in the chain.",
         "mdbankdll fn_1_281C compiled exactly before fn_1_11900 was defined; later fn_1_28B4 expanded fn_1_281C but preserved the nested fn_1_11900 call relocation",
         "mode-select wave 68 proved several standalone-plus-expanded and depth-two helper relations from complete instruction copies and absent call relocations",
         "Ending pass4 bound a target-address-ordered lifecycle leaf set even where authenticated historical source placed neighboring definitions in a different order; nine text-only owners remained 12/12 exact, so source definition chronology and retail split order were treated as separate evidenced variables"
@@ -85,6 +90,9 @@
         "src/REL/mdbankdll/mdbank_pass2_111f8.c",
         "src/REL/mdbankdll/mdbank_pass2_11678.c",
         "config/dll/rels/mdbankdll/splits.txt",
+        "src/REL/mdsingdll/application_pass31_e688.c",
+        "src/REL/mdsingdll/application_pass31_ea7c.c",
+        "config/dll/rels/mdsingdll/splits.txt",
         "docs/native_matching_wave103.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_wave68.md",
@@ -583,7 +591,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Forty-eight mdsingdll functions totaling 10516 text bytes and 699 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can also restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools. A fast Gekko-aware decoder such as powerpc-rs can increase discovery throughput by fingerprinting opcode, branch, and relocation skeletons in bulk, but its output remains ranking evidence rather than ownership or exactness proof.",
+      "summary": "Fifty-two mdsingdll functions totaling 13,844 text bytes and 959 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can also restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools. A fast Gekko-aware decoder such as powerpc-rs can increase discovery throughput by fingerprinting opcode, branch, and relocation skeletons in bulk, but its output remains ranking evidence rather than ownership or exactness proof.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -710,7 +718,11 @@
           "mdsingdll:fn_1_35B0",
           "mdsingdll:fn_1_3B30",
           "mdsingdll:fn_1_3B8C",
-          "mdsingdll:fn_1_3DB4"
+          "mdsingdll:fn_1_3DB4",
+          "mdsingdll:fn_1_E688",
+          "mdsingdll:fn_1_EA7C",
+          "mdsingdll:fn_1_F15C",
+          "mdsingdll:fn_1_FCC8"
         ],
         "modules": [
           "mdpartydll",
@@ -736,7 +748,8 @@
         "The continuing mdpartydll-to-mdsingdll delta mapped fn_1_C158/fn_1_C200 to fn_1_A3A8/fn_1_A450; both animation-assignment helpers linked exactly as one 308-byte text-only object with 11 physical relocations, bringing the catalog to 29 exact mappings.",
         "The mdpartydll fn_1_D648-fn_1_D978 model-animation lifecycle family mapped to mdsingdll fn_1_B898-fn_1_BBC8; all six functions linked exactly for 1036 text bytes, 16 target-owned named aggregate bytes, and 67 physical relocations, bringing the catalog to 35 mappings.",
         "A six-function mdpartydll fn_1_5208-fn_1_5FB0 motion-family probe retained the dependency-closed exact mdsingdll perimeter fn_1_514C/fn_1_51F4/fn_1_57E4/fn_1_5EF4 as three consumed objects (832 text bytes and 71 physical relocations), bringing the catalog to 39 mappings while two blocked interiors were reverted.",
-        "Nine early camera and window helpers used authenticated mdpartydll bodies and target-owned declarations to recover five consumed mdsingdll objects (3092 text bytes and 234 physical relocations). For fn_1_1A9C/fn_1_1BDC and fn_1_279C, donor-definition chronology plus the target's absence of helper-call relocations authenticated natural static inline closure with zero source-only helper text, bringing the catalog to 48 mappings."
+        "Nine early camera and window helpers used authenticated mdpartydll bodies and target-owned declarations to recover five consumed mdsingdll objects (3092 text bytes and 234 physical relocations). For fn_1_1A9C/fn_1_1BDC and fn_1_279C, donor-definition chronology plus the target's absence of helper-call relocations authenticated natural static inline closure with zero source-only helper text, bringing the catalog to 48 mappings.",
+        "powerpc-rs opcode/control/def-use fingerprints ranked the pass31 selection-transition family; target-owned choice counts, field offsets, model bases, UI offsets, and inline constants then rebound four functions exactly across three text-only owners (3,328 text bytes, 260 physical relocations, 408 objdiff rows), bringing the catalog to 52 mappings."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -753,6 +766,7 @@
         "mdpartydll fn_1_5A18 to mdsingdll fn_1_595C reached exact 1432-byte size and 99.958100%, but three relocations selected compiler-local unsigned-conversion data instead of target lbl_1_rodata_170; the exact 24-byte motion-path aggregate copy was not the blocker, so this body was reverted pending natural pool ownership.",
         "The adjacent early mdsingdll fn_1_2A60 reached exact 1808-byte size and 99.867% text, but 12 relocation rows selected compiler-local unsigned-conversion data instead of target lbl_1_rodata_C0; the body was reverted pending authenticated pool ownership.",
         "optionDll fn_1_3BD8 and fileseldll fn_1_457C shared an exact 2912-byte structural skeleton and all 392 objdiff rows, but 30 conversion-pool rows bound compiler-local @169 instead of target-owned lbl_1_rodata_A8. The candidate was reverted: exact opcode/control shape from a bulk decoder is not exact relocation ownership.",
+        "MDSing pass31 targets fn_1_DE98, fn_1_F3C8, fn_1_FD5C, and fn_1_10744 retained exact sizes and high instruction scores after donor rebinding, but their synthesized 8/16-byte conversion pools did not bind target lbl_1_rodata_C0 or the related named scalar owners; all four bodies were reverted.",
         "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
       ],
       "related_exceptions": [],
@@ -783,6 +797,9 @@
         "src/REL/mdsingdll/application_pass30_3484.c",
         "src/REL/mdsingdll/application_pass30_3b30.c",
         "src/REL/mdsingdll/application_pass30_3db4.c",
+        "src/REL/mdsingdll/application_pass31_e688.c",
+        "src/REL/mdsingdll/application_pass31_ea7c.c",
+        "src/REL/mdsingdll/application_pass31_fcc8.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ]
@@ -1331,7 +1348,7 @@
       "category": "header_visibility",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. Option pass1 independently reproduced the mechanism in two text-only GC/1.3.2 objects: seven functions retained 1,724 exact text bytes, 95 physical relocations, and 172/172 objdiff rows after each source-only 16-byte pool was removed. Option pass2 then reproduced it in five more text-only owners covering 11 functions, 5,872 text bytes, 577 physical relocations, and 861 objdiff rows, while a sixth 216-byte owner without the transitive math include remained exact with no guard. Both batches restored retail SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
+      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. Option pass1 independently reproduced the mechanism in two text-only GC/1.3.2 objects: seven functions retained 1,724 exact text bytes, 95 physical relocations, and 172/172 objdiff rows after each source-only 16-byte pool was removed. Option pass2 then reproduced it in five more text-only owners covering 11 functions, 5,872 text bytes, 577 physical relocations, and 861 objdiff rows, while a sixth 216-byte owner without the transitive math include remained exact with no guard. Both batches restored retail SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec. Opening independently closed a nine-function, 6,968-byte text-only prefix with 832 physical relocations and 1,112 objdiff rows after removing only the same 16-byte source pool, restoring retail SHA-1 1de89dc139c7292294ad4c28536754617265a58a. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
       "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the owner-local header chronology. Require a reviewed path-specific exception, protected-consumer proof, and a whole-project retail build.",
       "source_condition": {
         "change": "A translation unit selects or suppresses generic `math.h` through an authenticated owner-local header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
@@ -1376,7 +1393,8 @@
         "modules": [
           "main",
           "mdpresultdll",
-          "optionDll"
+          "optionDll",
+          "openingDll"
         ],
         "owner_tags": [
           "header_visibility",
@@ -1394,7 +1412,8 @@
         "main:board/mgcall",
         "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)",
         "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)",
-        "optionDll pass2 prefix/lifecycle/message owners (GC/1.3.2, five guarded text-only owners, 11 functions, 5,872 exact text bytes, 577 physical relocations, 861 objdiff rows, retail REL hash restored)"
+        "optionDll pass2 prefix/lifecycle/message owners (GC/1.3.2, five guarded text-only owners, 11 functions, 5,872 exact text bytes, 577 physical relocations, 861 objdiff rows, retail REL hash restored)",
+        "openingDll:opening_prefix (GC/1.3.2, nine functions, 6,968 exact text bytes, 832 physical relocations, 1,112 objdiff rows, retail REL hash restored)"
       ],
       "counterexamples": [
         "optionDll application_pass2_messages_c324 includes dolphin.h and mgdata.h without a transitive generic math closure. It remains a text-only 216-byte, 8-relocation, 19-row exact owner without `_MATH_H`; adding the guard would be unnecessary and unauthenticated.",
@@ -1417,7 +1436,8 @@
         "option-pass2-lifecycle-fdc-no-generic-math-inline",
         "option-pass2-lifecycle-18d8-no-generic-math-inline",
         "option-pass2-messages-6504-no-generic-math-inline",
-        "option-pass2-messages-b02c-no-generic-math-inline"
+        "option-pass2-messages-b02c-no-generic-math-inline",
+        "opening-prefix-no-generic-math-inline"
       ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
@@ -1432,6 +1452,8 @@
         "src/REL/optionDll/application_pass2_messages_6504.c",
         "src/REL/optionDll/application_pass2_messages_b02c.c",
         "src/REL/optionDll/application_pass2_messages_c324.c",
+        "src/REL/openingDll/opening_prefix.c",
+        "config/dll/rels/openingDll/splits.txt",
         "config/dll/rels/optionDll/splits.txt",
         "src/game/sprman.c",
         "src/REL/mdpartydll/stage.c",
@@ -1957,7 +1979,11 @@
           "main:board/scroll:MapPathDraw",
           "main:board/scroll:MapDraw",
           "mdsingdll:fn_1_B998",
-          "mdsingdll:fn_1_842C"
+          "mdsingdll:fn_1_842C",
+          "mdsingdll:fn_1_DE98",
+          "mdsingdll:fn_1_F3C8",
+          "mdsingdll:fn_1_FD5C",
+          "mdsingdll:fn_1_10744"
         ],
         "modules": [
           "openingDll",
@@ -1996,7 +2022,8 @@
         "wave 42 seq: five target lbl_* relocations and source @591..@596 names resolve to the same retained constant addresses; the exact linked owner and final DOL establish effective ownership",
         "main:board/scroll: target-backed 30.000002f closed the preceding GC/2.6 pool bits; the exact same-game MBTimeDayGet inline boundary closed allocation; then extern-before-definition address-labelled 24.0f/0.2f/90.0f owners and their inline consumer closed MapPathDraw, MapDraw, all 900 text relocations, and the source-owned .sdata2 prefix through 0xD4, leaving only a four-byte target tail and no fake padding",
         "mdsingdll pass 27: fn_1_B998's anonymous local bitmap-name aggregate was object-exact but linked-invalid because fallback consumers required lbl_1_rodata_270; an authenticated global const BITMAP_NAME_TABLE plus natural local assignment preserved the exact stack-copy code, 16 data bytes, 67/67 island relocations, and the retail REL",
-        "mdsingdll pass 29: fn_1_842C reached 580/580 instruction bytes with its natural 8-byte unsigned-conversion pool, but binding that local pool left a retained fallback consumer unresolved against global lbl_1_rodata_C0. The body and local owner were reverted and exact literal-free fn_1_8670 was selected instead; the final 12-function batch remained retail-exact."
+        "mdsingdll pass 29: fn_1_842C reached 580/580 instruction bytes with its natural 8-byte unsigned-conversion pool, but binding that local pool left a retained fallback consumer unresolved against global lbl_1_rodata_C0. The body and local owner were reverted and exact literal-free fn_1_8670 was selected instead; the final 12-function batch remained retail-exact.",
+        "mdsingdll pass31 reverted fn_1_DE98/fn_1_F3C8/fn_1_FD5C/fn_1_10744 after exact sizes and high text scores because generated 8/16-byte conversion pools remained local instead of binding target lbl_1_rodata_C0 and related named scalar owners; four pool-free dependency-closed functions were retained."
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -2014,6 +2041,10 @@
       ],
       "related_exceptions": [],
       "evidence": [
+        "src/REL/mdpartydll/mdparty.c",
+        "src/REL/mdsingdll/application_pass31_ea7c.c",
+        "config/dll/rels/mdsingdll/symbols.txt",
+        "config/dll/rels/mdsingdll/splits.txt",
         "docs/native_matching_conversion_pool_ownership.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_wave23.md",
