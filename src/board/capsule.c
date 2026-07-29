@@ -1792,7 +1792,10 @@ int mbCapListCopy(CAPSULE_LIST *list)
 {
     int i;
 
-    for (i = 0; i < 32 && capsuleList[i].id != -1; i++) {
+    for (i = 0; i < 32; i++) {
+        if (capsuleList[i].id == -1) {
+            break;
+        }
         list[i] = capsuleList[i];
     }
     capsuleList[i].id = -1;
