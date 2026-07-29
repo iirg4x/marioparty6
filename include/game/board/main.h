@@ -14,6 +14,11 @@
 extern OMOBJMAN *mbObjMan;
 extern HUPROCESS *mbMainProc;
 
+static inline int MBBoardNoGet(void)
+{
+    return GwSystem.boardNo;
+}
+
 BOOL mbExitCheck(void);
 int mbBoardDataNumGet(int dataNum);
 u32 mbRandMod(u32 mod);
