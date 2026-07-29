@@ -387,6 +387,96 @@
       "status": "proposed",
       "confidence": "high",
       "summary": "Behavioral proposal only: registered as a camera-layer callback by fn_1_1084 and calls Hu3DZClear with the callback camera number. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0x9A8",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_9A8",
+      "proposed_name": "MDBankWindowShow",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: shows the primary window directly and opens secondary windows through the extended-window animation. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0xA18",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_A18",
+      "proposed_name": "MDBankWindowHide",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: hides the primary window directly and closes secondary windows through the extended-window animation. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0xA88",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_A88",
+      "proposed_name": "MDBankWindowMessageWait",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: waits for the selected bank window's message to finish. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0xB98",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_B98",
+      "proposed_name": "MDBankWindowMessageSet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: centers a selected bank window, sets its message and speed, and invalidates the cached message when it differs. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0xF68",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_F68",
+      "proposed_name": "MDBankWindowSelect",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: closes the previously active bank window, resets message state, and opens the requested window. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0x12F8",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_12F8",
+      "proposed_name": "MDBankWindowMessageDisplay",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: selects the bank window and updates its message when the cached message differs. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0xEEB8",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_EEB8",
+      "proposed_name": "MDBankChoiceUnlockCheck",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: validates the indexed bank choice against prerequisite state and minigame unlock flags, displaying the exact rejection message on failure. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0xF7C0",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_F7C0",
+      "proposed_name": "MDBankChoiceExecute",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: runs the selected bank choice, returns the authenticated route code for the first two choices, and toggles bank flag 60 for the third. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdbankdll:0x1050C",
+      "owner": "REL:mdbankdll:application",
+      "current_symbol": "fn_1_1050C",
+      "proposed_name": "MDBankChoiceMessageDisplay",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: displays and waits on the selected choice's completion message. No original-name provenance is known."
+    },
+    {
+      "stable_id": "miraclebookdll:0x7998",
+      "owner": "REL:miraclebookdll:application",
+      "current_symbol": "fn_1_7998",
+      "proposed_name": "MiracleBookTransitionUpdate",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: advances the post-selection model, particle, sound, and camera transition and raises the completion flag when transparency reaches zero. No original-name provenance is known."
     }
   ]
 }

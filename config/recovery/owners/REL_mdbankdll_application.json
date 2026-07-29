@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "id": "REL:mdbankdll:application",
+  "module": "mdbankdll",
+  "source": "config/dll/rels/mdbankdll/symbols.txt",
+  "compiler": "GC/1.3.2",
+  "summary": "Catalog-authenticated non-minigame Miracle Book bank application owner with 28 source-linked exact functions and 14,424 exact text bytes across 22 reconstruction partitions, partial window, choice, unlock, and character-reaction semantics, and unrecovered ranges still on retail fallback.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "miracle-book",
+    "bank-flow",
+    "application-owner",
+    "generated-object",
+    "compiler-sensitive"
+  ],
+  "symbols": [
+    { "symbol": "fn_1_9A8", "stable_id": "mdbankdll:0x9A8" },
+    { "symbol": "fn_1_A18", "stable_id": "mdbankdll:0xA18" },
+    { "symbol": "fn_1_A88", "stable_id": "mdbankdll:0xA88" },
+    { "symbol": "fn_1_B98", "stable_id": "mdbankdll:0xB98" },
+    { "symbol": "fn_1_F68", "stable_id": "mdbankdll:0xF68" },
+    { "symbol": "fn_1_11A0", "stable_id": "mdbankdll:0x11A0" },
+    { "symbol": "fn_1_12F8", "stable_id": "mdbankdll:0x12F8" },
+    { "symbol": "fn_1_1C64", "stable_id": "mdbankdll:0x1C64" },
+    { "symbol": "fn_1_1D68", "stable_id": "mdbankdll:0x1D68" },
+    { "symbol": "fn_1_EEB8", "stable_id": "mdbankdll:0xEEB8" },
+    { "symbol": "fn_1_F7C0", "stable_id": "mdbankdll:0xF7C0" },
+    { "symbol": "fn_1_1050C", "stable_id": "mdbankdll:0x1050C" }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Twenty-two configured application partitions cover 28 exact functions and 14,424 text bytes. The latest eight neutral address-bound partitions add 12 functions, 10,384 bytes, and 987 physical relocations; mdbankdll.rel remains byte-identical to retail.",
+      "reference": "config/dll/rels/mdbankdll/splits.txt"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "Exact window API calls authenticate show, hide, wait, message, and selection roles. Exact direct calls from the bank choice controller bind fn_1_EEB8, fn_1_F7C0, and fn_1_1050C as unlock validation, choice execution, and choice-message behavior without claiming original spellings.",
+      "reference": "src/REL/mdbankdll/application_eeb8.c"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Authenticated same-owner static-inline copies preserve the complete window and character-reaction auto-inline closure without emitting helper globals; every prior registered MDBank object and the linked retail REL remain exact.",
+      "reference": "src/REL/mdbankdll/application_12f8.c"
+    }
+  ],
+  "constraints": [],
+  "debt": [
+    {
+      "kind": "application_source",
+      "priority": "high",
+      "summary": "Application target ranges outside the 22 configured exact partitions remain on retail fallback."
+    },
+    {
+      "kind": "semantic_names",
+      "priority": "normal",
+      "summary": "Behavior-based names are proposals only; no original-name or debug-symbol provenance is available, so tracked source symbols remain address-derived."
+    },
+    {
+      "kind": "private_header",
+      "priority": "normal",
+      "summary": "Window state, window helper declarations, and the MDBANK_OBJECT prefix repeat across exact partitions, but a shared private header requires a separate declaration-chronology, fanout, and consumer proof."
+    },
+    {
+      "kind": "source_partition_names",
+      "priority": "normal",
+      "summary": "Historical pass/tail paths and current address-bound paths are reconstruction partitions, not authenticated Nintendo translation-unit filenames."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/mdbankdll/splits.txt",
+      "config/dll/rels/mdbankdll/symbols.txt",
+      "src/REL/mdbankdll/application_09a8.c",
+      "src/REL/mdbankdll/application_0b98.c",
+      "src/REL/mdbankdll/application_0f68.c",
+      "src/REL/mdbankdll/application_11a0.c",
+      "src/REL/mdbankdll/application_12f8.c",
+      "src/REL/mdbankdll/application_1c64.c",
+      "src/REL/mdbankdll/application_1d68.c",
+      "src/REL/mdbankdll/application_eeb8.c"
+    ],
+    "reports": []
+  }
+}
