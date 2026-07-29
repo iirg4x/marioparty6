@@ -1,5 +1,3 @@
-/* player.o has no weak sqrtf constants in .sdata2. */
-#define _MATH_H
 #include "dolphin/math.h"
 #include "dolphin/os.h"
 
