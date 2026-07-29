@@ -1,3 +1,4 @@
+#include "datadir_enum.h"
 #include "game/board/masu.h"
 #include "game/board/main.h"
 #include "game/board/audio.h"
@@ -13,8 +14,17 @@
 #include "game/hu3d.h"
 #include "game/mgdata.h"
 #include "game/sprite.h"
+#include "messdir_enum.h"
+#include "messnum/mg_name.h"
 
 #include <string.h>
+
+#define SINGLE_DATA_EFFECT_SLOT0 DATA_bsingle
+#define SINGLE_DATA_EFFECT_SLOT1 DATANUM(DATA_board, 99)
+#define SINGLE_DATA_EFFECT_SLOT2 DATANUM(DATA_board, 94)
+#define SINGLE_DATA_EFFECT_SLOT3 DATANUM(DATA_board, 102)
+#define SINGLE_MESS_KOOPA_MG_SKIP MESSNUM(MESS_BOARD_SINGLE, 7)
+#define SINGLE_PRIZE_FLAG_WORD_MASK ((1 << 5) - 1)
 
 extern void mbExitReq(void);
 extern void HuMCListenerKill(void);
@@ -85,7 +95,7 @@ static ANIMDATA *singleEffAnim[4];
 
 static int singleTeamChar = -1;
 static int mgKoopaCapsuleTbl[] = { 2, 7 };
-static u8 guideLast5MotTbl[] = { 12, 6, 0xFF };
+static u8 guideLast5MotTbl[] = { 12, 6, -1 };
 
 static int singleBoard;
 static int singleCancelF;
@@ -95,7 +105,7 @@ static int singleMicF;
 static int singleListenerCreateF;
 static int singleListenerOnF;
 static int singleMasuOrderNum;
-static u8 singleMasuOrder[0x100][2];
+static u8 singleMasuOrder[256][2];
 static u8 masuType[5];
 static u8 masuTypeNum;
 static int returnMode;
@@ -139,7 +149,12 @@ int mbSingleCall(int mode, int arg);
 
 void mbSingleInit(void)
 {
-    static int effFile[] = { 0x000A0000, 0x00050063, 0x0005005E, 0x00050066 };
+    static int effFile[] = {
+        SINGLE_DATA_EFFECT_SLOT0,
+        SINGLE_DATA_EFFECT_SLOT1,
+        SINGLE_DATA_EFFECT_SLOT2,
+        SINGLE_DATA_EFFECT_SLOT3,
+    };
     static int boardNo[] = {
         GW_BOARD_S01,
         GW_BOARD_S02,
@@ -200,7 +215,7 @@ void mbSingleInit(void)
     SingleMgSaveInit();
     singleEndF = FALSE;
     singleCancelF = FALSE;
-    HuDataDirClose(0x000A0000);
+    HuDataDirClose(DATA_bsingle);
 }
 
 void mbSingleClose(void)
@@ -421,15 +436,15 @@ int mbev_SingleMgEnd(int playerNo)
     }
     mbPlayerColSnapSet(TRUE);
     mbSingleCall(8, 0);
-    if (_CheckFlag(0x10002)) {
+    if (_CheckFlag(FLAG_BOARD_MG)) {
         ev_SingleMgEnd(playerNo);
-        _ClearFlag(0x10002);
-    } else if (_CheckFlag(0x10003)) {
+        _ClearFlag(FLAG_BOARD_MG);
+    } else if (_CheckFlag(FLAG_BOARD_MG_KOOPA)) {
         ev_SingleKoopaMgEnd(playerNo);
-        _ClearFlag(0x10003);
-    } else if (_CheckFlag(0x10005)) {
+        _ClearFlag(FLAG_BOARD_MG_KOOPA);
+    } else if (_CheckFlag(FLAG_BOARD_MG_KETTOU)) {
         ev_SingleMKoopaMgEnd(playerNo);
-        _ClearFlag(0x10005);
+        _ClearFlag(FLAG_BOARD_MG_KETTOU);
     }
     return TRUE;
 }
@@ -438,7 +453,7 @@ static void ev_SingleKoopaMgSkip(MBMODELID modelId)
 {
     s16 winId;
 
-    winId = mbWinCreate(2, 0x002B0007, 13);
+    winId = mbWinCreate(2, SINGLE_MESS_KOOPA_MG_SKIP, 13);
     mbWinWait(winId);
     mbWipeSpecialFadeInCreate(7, 30);
     mbWipeSpecialWait();
@@ -494,19 +509,67 @@ void mbSingleReturnWrite(void)
 }
 static int miniKoopaType;
 
-int mbSingleCall(int mode, int arg)
+void mbSinglePrizeFlagReset(int flag)
 {
-    SINGLE_SAVE_WORK *work = &singleSaveWork;
-    int playerNo = GwSystem.turnPlayerNo;
-    int candidates[6];
-    int candidateNum;
-    int historyNo;
-    int mgType;
-    int mgNo;
-    int i;
+    if (flag <= 63) {
+        GwSinglePrizeFlag[flag >> 5] &=
+            ~(1 << (flag & SINGLE_PRIZE_FLAG_WORD_MASK));
+    }
+}
+
+static inline BOOL SingleMgUnlockedCheck(int unlockMgNo)
+{
     BOOL unlocked;
 
-    if (GwSystem.partyF || _CheckFlag(0x1000E)) {
+    if (GWMgUnlockGet(unlockMgNo)
+        || mbSingleMgUnlockGet(unlockMgNo)) {
+        unlocked = TRUE;
+    } else {
+        unlocked = FALSE;
+    }
+    return unlocked;
+}
+
+static inline int SingleMgListGet(int mgType, u8 *list)
+{
+    int mgNo;
+    int listNum;
+
+    listNum = 0;
+    for (mgNo = 0; MgDataTbl[mgNo].ovl != (u16)-1; mgNo++) {
+        if ((mgType >= 0 && MgDataTbl[mgNo].type != mgType)
+            || MgDataTbl[mgNo].type == MG_TYPE_KUPA
+            || MgDataTbl[mgNo].type == MG_TYPE_DONKEY
+            || (!(MgDataTbl[mgNo].flag & MG_FLAG_RARE)
+                && !mbMgCallSingleOnCheck(MgDataTbl[mgNo].ovl))
+            || MgDataTbl[mgNo].nameMes == MG_NAME_M677) {
+            continue;
+        }
+        if (!SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE)) {
+            if (list) {
+                list[listNum] = mgNo;
+            }
+            listNum++;
+        }
+    }
+    return listNum;
+}
+
+int mbSingleCall(int mode, int arg)
+{
+    GW_PLAYER_COM_DIF storyComDif;
+    int listNum;
+    int mgType;
+    int candidateNum;
+    int result;
+    int i;
+    int playerNo = GwSystem.turnPlayerNo;
+    SINGLE_SAVE_WORK *work = &singleSaveWork;
+    u8 candidates[10];
+    u8 mgCandidates[128];
+    int historyNo;
+
+    if ((GWPartyGet() != FALSE) || _CheckFlag(FLAG_BOARD_TUTORIAL)) {
         return 0;
     }
     switch (mode) {
@@ -528,30 +591,28 @@ int mbSingleCall(int mode, int arg)
         singleListenerOnF = FALSE;
         return -1;
 
-    case 2:
+    case 2: {
         if (singleMicF && singleListenerCreateF) {
             HuMCListenerKill();
             singleListenerCreateF = FALSE;
         }
         singleListenerOnF = FALSE;
-        if (work->micResult < 0
-            || (GwPlayer[playerNo].capsule[0] & 0x3F) != 0) {
-            return -1;
-        }
-        if (work->micUseCount < 99) {
+        if (work->micResult >= 0 && GwPlayer[playerNo].diceMode == 0) {
             work->micUseCount++;
-        }
-        arg = work->micResult;
-        if (mbRandMod(100) < 50) {
-            candidateNum = 0;
-            for (i = 0; i < 6; i++) {
-                if (i != work->micResult) {
-                    candidates[candidateNum++] = i;
+            result = work->micResult;
+            if (mbRandMod(100) < 50) {
+                candidateNum = 0;
+                for (i = 0; i < 6; i++) {
+                    if (i != work->micResult) {
+                        candidates[candidateNum++] = i;
+                    }
                 }
+                result = candidates[mbRandMod(candidateNum)];
             }
-            arg = candidates[mbRandMod(candidateNum)];
+            return result;
         }
-        return arg;
+        return -1;
+    }
 
     case 3:
         if (work->mgPlayCount < 99) {
@@ -559,9 +620,8 @@ int mbSingleCall(int mode, int arg)
         }
         work->mgHistory[work->mgHistoryNo] = arg;
         if (!GWSinglePrizeFlagGet(12)) {
-            historyNo = work->mgHistoryNo;
-            for (i = 0; i < 2; i++) {
-                historyNo--;
+            historyNo = work->mgHistoryNo - 1;
+            for (i = 0; i < 2; i++, historyNo--) {
                 if (historyNo < 0) {
                     historyNo = 2;
                 }
@@ -571,7 +631,7 @@ int mbSingleCall(int mode, int arg)
             }
             if (i >= 2) {
                 GWSinglePrizeFlagSet(12);
-                GwSinglePrizeFlag[0] &= ~(1 << 11);
+                mbSinglePrizeFlagReset(11);
             } else if (i == 1) {
                 GWSinglePrizeFlagSet(11);
             }
@@ -582,12 +642,12 @@ int mbSingleCall(int mode, int arg)
             work->mgOddCount++;
         }
         work->mgValueTotal += arg;
-        if (++work->mgHistoryNo > 2) {
+        if (++work->mgHistoryNo >= 3) {
             work->mgHistoryNo = 0;
         }
         if (work->micResult < 0) {
             work->micFirstSuccess = TRUE;
-        } else if ((u32)(work->micResult + 1) == (u32)arg) {
+        } else if (work->micResult + 1 == arg) {
             work->micSuccessCount++;
         }
         break;
@@ -609,9 +669,8 @@ int mbSingleCall(int mode, int arg)
         }
         work->selectHistory[work->selectHistoryNo] = arg;
         if (!GWSinglePrizeFlagGet(26)) {
-            historyNo = work->selectHistoryNo;
-            for (i = 0; i < 2; i++) {
-                historyNo--;
+            historyNo = work->selectHistoryNo - 1;
+            for (i = 0; i < 2; i++, historyNo--) {
                 if (historyNo < 0) {
                     historyNo = 2;
                 }
@@ -621,12 +680,12 @@ int mbSingleCall(int mode, int arg)
             }
             if (i >= 2) {
                 GWSinglePrizeFlagSet(26);
-                GwSinglePrizeFlag[0] &= ~(1 << 25);
+                mbSinglePrizeFlagReset(25);
             } else if (i == 1) {
                 GWSinglePrizeFlagSet(25);
             }
         }
-        if (++work->selectHistoryNo > 2) {
+        if (++work->selectHistoryNo >= 3) {
             work->selectHistoryNo = 0;
         }
         break;
@@ -637,20 +696,28 @@ int mbSingleCall(int mode, int arg)
         }
         break;
 
-    case 7:
+    case 7: {
+        int masuType;
+
         if (mbMasuDispCheck(arg)) {
-            mgNo = arg - 1;
-            singleBoardFlagOld[(singleBoard * 2) + (mgNo >> 5)]
-                |= 1 << (mgNo & 0x1F);
+            u32 *boardFlag = &singleBoardFlagOld[singleBoard * 2] + 1;
+
+            i = arg - 1;
+            if (i >= 32) {
+                boardFlag--;
+                i -= 32;
+            }
+            *boardFlag |= 1 << i;
         }
-        mgType = mbMasuTypeGet(arg);
-        if (mgType == 7) {
+        masuType = mbMasuTypeGet(arg);
+        if (masuType == 7) {
             GWSinglePrizeFlagSet(39);
         }
-        if (work->masuTypeCount[mgType] < 99) {
-            work->masuTypeCount[mgType]++;
+        if (work->masuTypeCount[masuType] < 99) {
+            work->masuTypeCount[masuType]++;
         }
         break;
+    }
 
     case 8:
         if (work->mgEndCount < 99) {
@@ -658,72 +725,47 @@ int mbSingleCall(int mode, int arg)
         }
         break;
 
-    case 9:
+    case 9: {
         GWSinglePrizeFlagSet(6);
         GWSingleMgWinNumSet(GWSingleMgWinNumGet() + 1);
         mgType = MgDataTbl[arg].type;
-        candidateNum = 0;
-        for (mgNo = 0; MgDataTbl[mgNo].ovl != (u16)-1; mgNo++) {
-            if (MgDataTbl[mgNo].type != mgType
-                || MgDataTbl[mgNo].type == MG_TYPE_KUPA
-                || MgDataTbl[mgNo].type == MG_TYPE_DONKEY
-                || (!(MgDataTbl[mgNo].flag & MG_FLAG_RARE)
-                    && !mbMgCallSingleOnCheck(MgDataTbl[mgNo].ovl))
-                || MgDataTbl[mgNo].dataDir == 0x0005004C) {
-                continue;
-            }
-            unlocked = GWMgUnlockGet(mgNo + GW_MGNO_BASE)
-                || ((singleMgUnlock[mgNo >> 5]
-                    & (1 << (mgNo & 0x1F))) != 0);
-            if (!unlocked) {
-                candidateNum++;
-            }
-        }
-        if (candidateNum == 0) {
-            if (mgType == MG_TYPE_4P) {
+        listNum = SingleMgListGet(mgType, mgCandidates);
+        if (listNum == 0) {
+            switch (mgType) {
+            case MG_TYPE_4P:
                 GWSinglePrizeFlagSet(41);
-            } else if (mgType == MG_TYPE_1VS3) {
+                break;
+            case MG_TYPE_1VS3:
                 GWSinglePrizeFlagSet(42);
-            } else if (mgType == MG_TYPE_2VS2) {
+                break;
+            case MG_TYPE_2VS2:
                 GWSinglePrizeFlagSet(43);
-            } else if (mgType == MG_TYPE_BATTLE) {
+                break;
+            case MG_TYPE_BATTLE:
                 GWSinglePrizeFlagSet(44);
-            } else if (mgType == MG_TYPE_KETTOU) {
+                break;
+            case MG_TYPE_KETTOU:
                 GWSinglePrizeFlagSet(45);
+                break;
             }
         }
-        candidateNum = 0;
-        for (mgNo = 0; MgDataTbl[mgNo].ovl != (u16)-1; mgNo++) {
-            if (MgDataTbl[mgNo].type == MG_TYPE_KUPA
-                || MgDataTbl[mgNo].type == MG_TYPE_DONKEY
-                || (!(MgDataTbl[mgNo].flag & MG_FLAG_RARE)
-                    && !mbMgCallSingleOnCheck(MgDataTbl[mgNo].ovl))
-                || MgDataTbl[mgNo].dataDir == 0x0005004C) {
-                continue;
-            }
-            unlocked = GWMgUnlockGet(mgNo + GW_MGNO_BASE)
-                || ((singleMgUnlock[mgNo >> 5]
-                    & (1 << (mgNo & 0x1F))) != 0);
-            if (!unlocked) {
-                candidateNum++;
-            }
-        }
-        if (candidateNum == 0) {
+        listNum = SingleMgListGet(-1, NULL);
+        if (listNum == 0) {
             GWSinglePrizeFlagSet(47);
         }
         break;
+    }
 
     case 10:
-        if (GwCommon.singleMgWinNum[GwSystem.storyComDif] < 99) {
-            GwCommon.singleMgWinNum[GwSystem.storyComDif]++;
-        }
+        storyComDif = GWStoryComDifGet();
+        GWSingleMgWinInc(storyComDif);
         if (arg == 6) {
             work->miniKoopaWinFlags |= 1 << miniKoopaType;
         }
         break;
 
     case 11:
-        if (mbSingleStepGet() < 6 && mbMasuDispCheck(arg)) {
+        if (mbSingleStepGet() <= 5 && mbMasuDispCheck(arg)) {
             omVibrate(playerNo, 20, 4, 4);
         }
         break;
@@ -779,13 +821,6 @@ void mbSingleSaveFlush(int value)
     }
 }
 
-void mbSinglePrizeFlagReset(int flag)
-{
-    if (flag <= 63) {
-        GwSinglePrizeFlag[flag >> 5] &= ~(1 << (flag & 0x1F));
-    }
-}
-
 int mbSingleStepGet(void)
 {
     s16 masuId = GwPlayer[GwSystem.turnPlayerNo].masuId;
@@ -805,6 +840,11 @@ void mbSingleTeamCharSet(int character)
 int mbSingleTeamCharGet(void)
 {
     return singleTeamChar;
+}
+
+BOOL mbSingleMgUnlockCheck(void)
+{
+    return SingleMgListGet(-1, NULL) == 0;
 }
 
 static void SingleMgRecordPrizeInit(void)
