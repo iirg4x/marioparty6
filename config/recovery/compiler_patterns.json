@@ -2040,6 +2040,7 @@
         "s03Dll fn_1_1238: 536 exact text bytes, target lbl_1_rodata_A0 versus source @360",
         "miraclebookdll fn_1_479C and fn_1_4FD4: all instruction bytes exact, repeated local conversion relocations versus lbl_1_rodata_98",
         "optionDll fn_1_7728: 844 exact instruction bytes, local @489 versus target lbl_1_rodata_1E8",
+        "Option's 0x804..0x7A74 audit grouped ten functions that all require the same preceding named conversion-pool or jump-table ownership. Only pool-free fn_1_18B8 was retained; the other bodies were excluded without repeated expression-shaping probes.",
         "s01Dll fn_1_590: local @365 at source .rodata+0x28 became exact after the complete 0x78 pool was source-owned and the linked REL matched retail byte-for-byte",
         "endingdll fn_1_1049C and fn_1_1152C: instruction-identical u8-to-float bodies still bound @743 instead of retail lbl_1_rodata_348",
         "endingdll fn_1_B568: all 1448 instruction bytes matched, but three conversion relocations bound @582 instead of retail lbl_1_rodata_1A8",
@@ -2072,6 +2073,8 @@
       "related_exceptions": [],
       "evidence": [
         "src/REL/mdpartydll/mdparty.c",
+        "src/REL/optionDll/application_18b8.c",
+        "config/dll/rels/optionDll/splits.txt",
         "src/REL/mdsingdll/application_pass31_ea7c.c",
         "config/dll/rels/mdsingdll/symbols.txt",
         "config/dll/rels/mdsingdll/splits.txt",
@@ -3845,6 +3848,78 @@
         "src/REL/openingDll/application_2238.c",
         "src/REL/openingDll/application_4484.c",
         "config/dll/rels/openingDll/splits.txt"
+      ]
+    },
+    {
+      "id": "inventory-uncovered-target-intervals-not-recovery-ledgers",
+      "title": "Inventory uncovered target intervals instead of trusting recovery ledgers",
+      "classification": "confirmed_rule",
+      "category": "provenance_and_ownership",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "A function can already have exact recovered C while still being absent from the active split configuration. Historical function counts, recovery reports, and source-file presence therefore do not prove that a target interval is currently source-linked. The authoritative inventory is the target function extent set minus the union of registered source split intervals.",
+      "conditions": "Apply before ranking remaining functions in any partially source-linked DOL or REL owner, especially after several recovery batches or when generated fallback spans have been repeatedly subdivided.",
+      "source_condition": {
+        "change": "Build the remaining-work inventory or select a new exact source island.",
+        "requires": [
+          "target function starts and sizes from the pinned symbol/split catalog",
+          "the current registered source intervals from splits.txt",
+          "normalization of overlapping or adjacent configured intervals",
+          "confirmation that every candidate extent is not already covered by a source-linked object"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "discovery of an exact but unregistered source sliver",
+          "removal of already configured functions from the recovery queue",
+          "a corrected denominator when fallback spans are subdivided around the missing interval"
+        ],
+        "known_signatures": [
+          "a source definition and old exact report exist but no current splits.txt interval covers the function",
+          "two registered source intervals leave a target-function-sized gap between them",
+          "a recovery ledger count disagrees with configured object coverage"
+        ]
+      },
+      "rule": "Compute remaining work from target extents minus current source-linked split intervals. Treat source files and historical exact ledgers as evidence to inspect, not as configuration truth. Register a recovered gap only after its current object, relocations, consumers, and retail output are reverified.",
+      "safe_actions": [
+        "parse the pinned target symbols and current splits before scoring candidates",
+        "subtract complete half-open source intervals rather than matching filenames or pass numbers",
+        "flag exact-source/unregistered-target discrepancies as high-leverage integration candidates",
+        "re-run object and consumer proof because an old exact report can be stale",
+        "report fixed recovered bytes separately from the changing build-object denominator"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [
+          "REL:optionDll:application"
+        ],
+        "stable_ids": [
+          "optionDll:0x18B8"
+        ],
+        "modules": [
+          "optionDll"
+        ],
+        "owner_tags": [
+          "inventory",
+          "split_interval",
+          "fallback_island",
+          "generated_object"
+        ]
+      },
+      "examples": [
+        "optionDll fn_1_18B8 had exact recovered C in historical combined source but remained unregistered in the 0x18B8..0x18D8 gap between two configured owners. Interval subtraction found and source-linked the 32-byte callback with one exact relocation."
+      ],
+      "counterexamples": [
+        "A source file under src/ does not prove that its target range is linked by the active build.",
+        "A prior exact-function total is not an interval map and can silently omit or double-count ownership after later splits.",
+        "Do not infer original translation-unit boundaries from the generated intervals."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/dll/rels/optionDll/symbols.txt",
+        "config/dll/rels/optionDll/splits.txt",
+        "src/REL/optionDll/application_18b8.c"
       ]
     }
   ]

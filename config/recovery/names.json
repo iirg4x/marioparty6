@@ -378,6 +378,15 @@
       "status": "proposed",
       "confidence": "high",
       "summary": "Behavioral proposal only: hides all four Opening windows, shows one, sets or clears its message, and optionally sleeps. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x18B8",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_18B8",
+      "proposed_name": "OptionCameraZClearHook",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: registered as a camera-layer callback by fn_1_1084 and calls Hu3DZClear with the callback camera number. No original-name provenance is known."
     }
   ]
 }
