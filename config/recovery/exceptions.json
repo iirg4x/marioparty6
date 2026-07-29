@@ -253,7 +253,7 @@
       "rules": [
         "include_guard_override"
       ],
-      "rationale": "Retail telop.o omits the weak sqrtf _half and _three local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, dice.c, capselect.c, scroll.c, capevent.c, mgcall.c, and shopevent.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. Worker commit 7154b07fda06556558d3651f65f4fd817baf348b applies that boundary to telop.c and recovers nine strict-exact functions totaling 4,328 target text bytes and 198 non-R_PPC_NONE text relocations, including four corrected-ledger seams, while preserving all 17 baseline exact functions with zero regressions.",
+      "rationale": "Retail telop.o omits the weak sqrtf _half and _three local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, dice.c, capselect.c, scroll.c, capevent.c, mgcall.c, and shopevent.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. Worker commits f461587e and 37240ae apply that boundary and restore the authenticated player-banner wrapper in telop.c, recovering ten strict-exact functions totaling 4,688 target text bytes and 220 non-R_PPC_NONE text relocations, including five corrected-ledger seams, while preserving all 17 baseline exact functions with zero regressions.",
       "evidence": [
         "build/agent/telop-stub-bulk-062-retained-strict.json",
         "docs/native_matching_board_constant_pool.md",
