@@ -24,6 +24,7 @@ Within the main game flow at that snapshot:
 - `src/game/`: **57 / 57 owners matching**
 - `src/board/`: **15 / 40 owners matching**
 - One-time bulk board-source promotion: **182 newly strict-exact functions** across 16 partial owners, with zero exact-function regressions.
+- Corrected Towering Treetop stub ledger: **32 / 72 strict-exact seam implementations are now promoted to `main`**; 40 seams remain. These files are still partial owners, so the board-owner count remains 15 / 40.
 - The promoted partial owners are `capevent`, `capmove`, `capselect`, `capspecial`, `capsule`, `dice`, `last5`, `mgcall`, `player`, `scroll`, `shopevent`, `single`, `snpc`, `telop`, `tutorial`, and `wipe`; they remain NonMatching until fully recovered.
 - Newly matching board owner: `src/board/board.c` (35 / 35 functions and 618 / 618 relocations exact)
 - Newly matching board owner: `src/board/audio.c` (49 / 49 functions and 444 / 444 relocations exact)
