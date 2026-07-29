@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "id": "REL:s01Dll:application",
+  "id": "REL:s01Dll:s01",
   "module": "s01Dll",
   "source": "src/REL/s01Dll/s01.c",
   "compiler": "GC/2.6",
