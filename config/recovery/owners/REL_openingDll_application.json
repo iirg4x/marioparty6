@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "id": "REL:openingDll:application",
+  "module": "openingDll",
+  "source": "config/dll/rels/openingDll/symbols.txt",
+  "compiler": "GC/2.6",
+  "summary": "Catalog-authenticated non-minigame Opening application owner with 29 independently source-linked exact functions across six reconstruction partitions, natural guide and character helpers, behavior-based naming proposals, and unrecovered ranges still on retail fallback.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "opening-flow",
+    "application-owner",
+    "generated-object",
+    "private-layout"
+  ],
+  "symbols": [
+    { "symbol": "fn_1_2238", "stable_id": "openingDll:0x2238" },
+    { "symbol": "fn_1_2304", "stable_id": "openingDll:0x2304" },
+    { "symbol": "fn_1_257C", "stable_id": "openingDll:0x257C" },
+    { "symbol": "fn_1_37F0", "stable_id": "openingDll:0x37F0" },
+    { "symbol": "fn_1_4484", "stable_id": "openingDll:0x4484" },
+    { "symbol": "fn_1_45D4", "stable_id": "openingDll:0x45D4" },
+    { "symbol": "fn_1_46B4", "stable_id": "openingDll:0x46B4" },
+    { "symbol": "fn_1_470C", "stable_id": "openingDll:0x470C" },
+    { "symbol": "fn_1_4744", "stable_id": "openingDll:0x4744" },
+    { "symbol": "fn_1_47AC", "stable_id": "openingDll:0x47AC" }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Twenty-nine functions reproduce 12,744 text bytes and 1,209 physical relocations across six source objects; openingDll.rel and all 137 configured retail outputs remain byte-identical.",
+      "reference": "config/dll/rels/openingDll/splits.txt"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Exact Opening prefix callers authenticate the guide, character, animation, callback, and window-helper roles; fn_1_470C's target function-address relocation pair independently binds fn_1_4744 as its callback consumer.",
+      "reference": "src/REL/openingDll/opening_prefix.c"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "Canonical same-game HSF object, mesh, and transform ordering plus target field displacements support the owner-local semantic prefix through mesh.base position, rotation, and scale without authenticating the unseen suffix or a broad header closure.",
+      "reference": "src/REL/openingDll/application_2238.c"
+    }
+  ],
+  "constraints": [],
+  "debt": [
+    {
+      "kind": "application_source",
+      "priority": "high",
+      "summary": "Application ranges outside the six configured exact owners remain on retail fallback."
+    },
+    {
+      "kind": "semantic_names",
+      "priority": "normal",
+      "summary": "Ten behavior-based function names are proposed with no original-name or debug-symbol provenance, so tracked source symbols remain address-derived."
+    },
+    {
+      "kind": "private_header",
+      "priority": "normal",
+      "summary": "The minimal HSF semantic prefix repeats across two exact generated owners, but shared-header promotion is deferred until declaration chronology, complete consumer fanout, and section ownership are proven."
+    },
+    {
+      "kind": "source_partition_names",
+      "priority": "normal",
+      "summary": "The six configured C paths are reconstruction partitions, not evidence of original Nintendo translation-unit filenames."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/openingDll/splits.txt",
+      "config/dll/rels/openingDll/symbols.txt",
+      "src/REL/openingDll/opening_prefix.c",
+      "src/REL/openingDll/application_pass2_4068.c",
+      "src/REL/openingDll/application_pass2_4bd8.c",
+      "src/REL/openingDll/application_2238.c",
+      "src/REL/openingDll/application_37f0.c",
+      "src/REL/openingDll/application_4484.c"
+    ],
+    "reports": []
+  }
+}

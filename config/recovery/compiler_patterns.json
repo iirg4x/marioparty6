@@ -3580,7 +3580,8 @@
         "Ending pass3 isolated fn_1_2034 at 448 bytes instead of the 468-byte target after losing earlier-TU fn_1_0 auto-inline visibility. The target-proven motion==4/lbl_1_bss_26 guard and HuAudFXPlay body were expressed directly as natural C, restoring exact text and relocations while all 11 owner functions, callbacks, prior owners, runtime, and the retail REL stayed exact.",
         "MiracleBook pass3 bound the earliest 0x0..0xA30 prefix and the 0x4E94..0x4FD4 island as 10/10 functions, 2928 text bytes, and 420/420 relocation rows. Every outbound later call was prototype-only, the internal chain retained original declaration order, all seven prior generated consumers remained 41/41 exact, and the linked REL remained retail-identical.",
         "Ending pass4 bound 12 scattered lifecycle leaves across nine target-address-ordered text-only owners for 3468 exact bytes and 258/258 relocations. Every outgoing relation was a prototype-visible direct call or callback-address link-only edge; all prior Ending consumers and the retail REL remained exact.",
-        "Staff pass3 bound ten lifecycle functions across six text-only owners for 5,656 exact bytes and 550 physical relocations. The fn_1_54F0/fn_1_5A7C owner initially shrank from 1,420/1,436 target bytes to 1,160/1,176 and retained an fn_1_E20 REL24 even after fn_1_F68 expanded; ordinary authenticated local static-inline copies of both fn_1_E20 and fn_1_F68 restored the complete no-call target closure and retail-exact module."
+        "Staff pass3 bound ten lifecycle functions across six text-only owners for 5,656 exact bytes and 550 physical relocations. The fn_1_54F0/fn_1_5A7C owner initially shrank from 1,420/1,436 target bytes to 1,160/1,176 and retained an fn_1_E20 REL24 even after fn_1_F68 expanded; ordinary authenticated local static-inline copies of both fn_1_E20 and fn_1_F68 restored the complete no-call target closure and retail-exact module.",
+        "openingDll fn_1_470C passes fn_1_4744 as a callback to fn_1_4E34. The target's function-address relocation pair proves the callback consumer even though there is no REL24 call edge; all three Opening generated owners and the linked retail REL remained exact."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
@@ -3620,7 +3621,9 @@
         "src/REL/endingdll/ending_pass3_motion.c",
         "src/REL/endingdll/ending_pass4_lifecycle_4ab4.c",
         "src/REL/endingdll/ending_pass4_lifecycle_b244.c",
-        "config/dll/rels/endingdll/splits.txt"
+        "config/dll/rels/endingdll/splits.txt",
+        "src/REL/openingDll/application_4484.c",
+        "config/dll/rels/openingDll/splits.txt"
       ]
     },
     {
@@ -3738,7 +3741,8 @@
         "stable_ids": [
           "REL:mdpresultdll:application",
           "REL:s02Dll:application",
-          "REL:staffdll:application"
+          "REL:staffdll:application",
+          "REL:openingDll:application"
         ],
         "modules": [],
         "owner_tags": [
@@ -3750,7 +3754,8 @@
       },
       "examples": [
         "application_pass49.c binds an exact mdpresultdll island, but 49 comes only from recovery chronology and provides no evidence for an original source filename.",
-        "S02 and Staff exact islands are valid build partitions while neighboring ranges remain fallback-owned; their partition paths do not establish Nintendo's original TU layout."
+        "S02 and Staff exact islands are valid build partitions while neighboring ranges remain fallback-owned; their partition paths do not establish Nintendo's original TU layout.",
+        "Opening's later exact islands use neutral application_2238.c, application_37f0.c, and application_4484.c paths; those addresses identify reconstruction boundaries without claiming original filenames."
       ],
       "counterexamples": [
         "A filename preserved in a pinned original map, debug record, or authenticated same-game source blob is provenance and may be used with its confidence stated.",
@@ -3762,8 +3767,84 @@
         "config/dll/rels/mdpresultdll/splits.txt",
         "config/dll/rels/s02Dll/splits.txt",
         "config/dll/rels/staffdll/splits.txt",
+        "config/dll/rels/openingDll/splits.txt",
         "config/recovery/owners/REL_s02Dll_application.json",
-        "config/recovery/owners/REL_staffdll_application.json"
+        "config/recovery/owners/REL_staffdll_application.json",
+        "config/recovery/owners/REL_openingDll_application.json"
+      ]
+    },
+    {
+      "id": "smallest-semantic-aggregate-prefix-before-opaque-overlay",
+      "title": "Recover the smallest authenticated semantic aggregate prefix before using an opaque overlay",
+      "classification": "contextual_heuristic",
+      "category": "type_contracts",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "high",
+      "summary": "When an exact function reaches only early fields of a large private engine object, the target displacement and an authenticated same-game layout can justify a natural nested prefix through the last accessed field. This preserves semantic field access without importing a broad historically unproven header or inventing byte padding for the unseen suffix.",
+      "conditions": "Use when target instructions authenticate one or more early nested fields, a canonical same-game layout agrees on the prefix order and types, and the complete private structure or historical include closure is not yet proven.",
+      "source_condition": {
+        "change": "Replace an offset-only cast or incomplete opaque object view with the smallest natural aggregate prefix that reaches every target-accessed field.",
+        "requires": [
+          "target load/store widths and displacements for every accessed field",
+          "authenticated same-game type order and field types through the final accessed field",
+          "no invented padding, anonymous byte arrays, or claims about the unseen suffix",
+          "exact text, relocations, protected consumers, and linked retail output"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "natural nested field-address materialization",
+          "correct signedness and load/store width",
+          "no visibility from unrelated declarations in a broad public header"
+        ],
+        "known_signatures": [
+          "an offset-only access matches the address but obscures a stable nested position, rotation, or scale field",
+          "a broad header changes code generation or section ownership beyond the accessed fields",
+          "a minimal prefix reproduces the target displacement and keeps neighboring exact functions unchanged"
+        ]
+      },
+      "rule": "Prefer the smallest authenticated semantic prefix through the last accessed field over an opaque offset overlay. Keep the remaining suffix incomplete and private, and promote a shared header only after all consumers, declaration chronology, data ownership, and retail output prove the wider closure.",
+      "safe_actions": [
+        "derive each prefix boundary from target displacements and access widths",
+        "reuse canonical same-game public subtypes such as vectors and transforms",
+        "keep the prefix owner-local until independent consumers prove shared header closure",
+        "compare preprocessing and every protected consumer before broadening visibility",
+        "revert the type hypothesis if any field offset, relocation, or exact neighbor regresses"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [
+          "REL:openingDll:application"
+        ],
+        "stable_ids": [
+          "openingDll:0x2304",
+          "openingDll:0x257C",
+          "openingDll:0x45D4"
+        ],
+        "modules": [
+          "openingDll"
+        ],
+        "owner_tags": [
+          "private_layout",
+          "semantic_prefix",
+          "header_visibility",
+          "organicity"
+        ]
+      },
+      "examples": [
+        "Opening guide and character helpers reached HSF object mesh.base scale, rotation, and position fields through an owner-local HSF object/mesh/transform prefix. Ten functions, 2,612 text bytes, and 167 physical relocations became exact without opaque padding or a broad HSF header."
+      ],
+      "counterexamples": [
+        "One matching displacement does not authenticate the field name or the complete enclosing type.",
+        "Do not extend the prefix beyond the final target-accessed field merely to resemble a modern header.",
+        "Do not replace unknown suffix bytes with padding fields and call the resulting layout recovered."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/REL/openingDll/application_2238.c",
+        "src/REL/openingDll/application_4484.c",
+        "config/dll/rels/openingDll/splits.txt"
       ]
     }
   ]

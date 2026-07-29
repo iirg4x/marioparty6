@@ -288,6 +288,96 @@
       "status": "proposed",
       "confidence": "high",
       "summary": "Kills all five authenticated Staff particle-model groups, including the central singleton; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "openingDll:0x2238",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_2238",
+      "proposed_name": "OpeningGuideBlinkPair",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: alternates two guide-character animation frames for a bounded interval and restores their resting frames. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x2304",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_2304",
+      "proposed_name": "OpeningGuideFocusBlink",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: alternates one guide character's animation and mesh scale until its duration or stop flag completes. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x257C",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_257C",
+      "proposed_name": "OpeningGuideSwayProcess",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: counter-rotates two guide objects against the background and adds phased sine/cosine sway. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x37F0",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_37F0",
+      "proposed_name": "OpeningModelBobProcess",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: updates the authenticated Opening model's vertical bob motion each frame. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x4484",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_4484",
+      "proposed_name": "OpeningCharacterIdleProcess",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: schedules randomized idle animation changes across ten Opening characters for a bounded interval. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x45D4",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_45D4",
+      "proposed_name": "OpeningCharacterOrbitSet",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: places one named character object on a sine/cosine orbit of the authenticated radius. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x46B4",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_46B4",
+      "proposed_name": "OpeningAnimationFrameSet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: binds the selected Opening animation resource to the selected frame resource through Hu3DAnimAnimSet. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x470C",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_470C",
+      "proposed_name": "OpeningAnimationFrameSetAsync",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: schedules fn_1_4744 as a callback with animation and frame arguments. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x4744",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_4744",
+      "proposed_name": "OpeningAnimationFrameWorker",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: sleeps five frames and then binds the requested Opening animation/frame pair. No original-name provenance is known."
+    },
+    {
+      "stable_id": "openingDll:0x47AC",
+      "owner": "REL:openingDll:application",
+      "current_symbol": "fn_1_47AC",
+      "proposed_name": "OpeningWindowMessageDisplay",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: hides all four Opening windows, shows one, sets or clears its message, and optionally sleeps. No original-name provenance is known."
     }
   ]
 }
