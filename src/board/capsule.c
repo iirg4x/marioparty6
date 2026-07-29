@@ -2380,10 +2380,12 @@ static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId)
         if (masuFlag[masuId] != 0) {
             if (mbMasuTypeGet(masuId) == 0) {
                 masuFlag[masuId] = 0;
-                for (i = 0; i < linkNum; i++) {
-                    if (!mbev_CapMasuMoveCheck(link[i])) {
-                        CapSelectMasuLinkCheck(masuFlag, link[i]);
-                    }
+            } else {
+                return;
+            }
+            for (i = 0; i < linkNum; i++) {
+                if (!mbev_CapMasuMoveCheck(link[i])) {
+                    CapSelectMasuLinkCheck(masuFlag, link[i]);
                 }
             }
         }
