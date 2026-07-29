@@ -1597,9 +1597,9 @@
       "title": "Authenticate weak extern-inline local-static ownership before using it to explain a pool prefix",
       "classification": "confirmed_rule",
       "category": "literal_pool_ownership",
-      "compiler": "GC/2.7 and GC/1.3.2",
+      "compiler": "GC/2.7, GC/2.6, and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Under the pinned profiles, C++ extern-inline function-local static constants can emit weak inactive rodata at zero active-text cost. Under GC/1.3.2, a broad header closure can therefore add the 16-byte sqrtf _half/_three block even when the recovered function text is exact; an authenticated narrow type header can remove that block without changing text.",
+      "summary": "Under the pinned profiles, C++ extern-inline function-local static constants can emit weak inactive rodata at zero active-text cost. Under GC/1.3.2, a broad header closure can therefore add the 16-byte sqrtf _half/_three block even when the recovered function text is exact; an authenticated narrow type header can remove that block without changing text. Under GC/2.6, an authenticated Hu3D include closure can instead supply the target's exact retained 16-byte prefix without an explicit source-level sqrtf call.",
       "conditions": "Apply when a target literal prefix precedes every active reference, or when an otherwise exact object or REL has an unexplained 16-byte _half/_three rodata surplus after including a broad header closure.",
       "source_condition": {
         "change": "Expose or reorder an extern-inline body containing function-local static constants.",
@@ -1616,16 +1616,18 @@
           "first-copy retention across linked objects",
           "deduplication of later local-static copies",
           "literal-prefix placement before active consumers",
-          "a 16-byte GC/1.3.2 sqrtf _half/_three surplus from an unused broad-header inline body"
+          "a 16-byte GC/1.3.2 sqrtf _half/_three surplus from an unused broad-header inline body",
+          "an exact 16-byte GC/2.6 retained prefix from an authenticated Hu3D include closure"
         ],
         "known_signatures": [
           "control object has .text 0 and nonzero rodata with weak inactive constants",
           "linked sibling objects retain only the earliest compatible copy",
           "ordinary unused inline literals emit no corresponding block",
-          "exact text and relocations coexist with a REL that is exactly 16 bytes too large in rodata"
+          "exact text and relocations coexist with a REL that is exactly 16 bytes too large in rodata",
+          "a GC/2.6 owner object emits the target's exact 0x10 rodata prefix despite having no source-level sqrtf call"
         ]
       },
-      "rule": "Use weak extern-inline local-static emission as a pool-ownership explanation only after authenticating the real header or shared owner and replaying linked behavior. For a GC/1.3.2 +16-byte sqrtf surplus, minimize the include closure to the narrowest authenticated same-game type header before rewriting exact function C; a synthetic no-text seeder proves capability, not provenance.",
+      "rule": "Use weak extern-inline local-static emission as a pool-ownership explanation only after authenticating the real header or shared owner and replaying linked behavior. Test the exact authenticated include closure before rewriting exact function C: preserve it when it supplies the target-owned prefix, or minimize it to the narrowest authenticated same-game type header when it creates a surplus. A synthetic no-text seeder proves capability, not provenance.",
       "safe_actions": [
         "inspect weak symbols, active bits, csects, and relocations",
         "compile the real included inline header under the exact compiler profile",
@@ -1643,7 +1645,8 @@
           "s01Dll",
           "w04Dll",
           "mdsingdll",
-          "mdbankdll"
+          "mdbankdll",
+          "endingdll"
         ],
         "owner_tags": [
           "extern_inline",
@@ -1654,7 +1657,8 @@
         "GC/2.7 math.h-only _half/_three emission control",
         "w01Dll authenticated common-inline owner",
         "GC/1.3.2 mdsing pass20: eight exact-text candidates rejected because broad public headers emitted a 16-byte weak sqrtf block",
-        "GC/1.3.2 mdbank pass3: dolphin/mtx/GeoTypes.h preserved exact fn_1_2CD8 text and relocations while removing the broad-header 16-byte block and restoring the retail REL"
+        "GC/1.3.2 mdbank pass3: dolphin/mtx/GeoTypes.h preserved exact fn_1_2CD8 text and relocations while removing the broad-header 16-byte block and restoring the retail REL",
+        "GC/2.6 ending pass1: the authenticated game/hu3d.h closure emitted the exact 16-byte module prefix beside 9/9 exact owner functions without an explicit sqrtf call; the complete endingdll REL remained byte-identical to retail"
       ],
       "counterexamples": [
         "Ordinary unused inline literals emitted nothing under the same profile.",
@@ -1667,7 +1671,9 @@
         "docs/native_matching_w01_inline_chronology.md",
         "docs/native_matching_gc132_sqrtf_header_closure.md",
         "docs/native_matching_wave38.md",
-        "docs/native_matching_wave42.md"
+        "docs/native_matching_wave42.md",
+        "src/REL/endingdll/ending_pass1.c",
+        "config/dll/rels/endingdll/splits.txt"
       ]
     },
     {

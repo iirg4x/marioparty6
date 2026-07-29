@@ -363,7 +363,7 @@
     },
     "mwcc-extern-inline-static-local-comdat-ownership": {
       "status": "active",
-      "validated_commit": "de2ff2cb461db7ee586f2a926d445ce5f7eb4cac",
+      "validated_commit": "6af421a3f14d706b79d4902b13b89e0710dd612e",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -374,7 +374,9 @@
         "include/math.h",
         "configure.py",
         "docs/native_matching_wave38.md",
-        "docs/native_matching_wave42.md"
+        "docs/native_matching_wave42.md",
+        "src/REL/endingdll/ending_pass1.c",
+        "config/dll/rels/endingdll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
