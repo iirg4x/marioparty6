@@ -10,12 +10,18 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.54% | 32.77% | 502 / 1221 |
+| Entire project | 13.37% | 32.76% | 327 / 923 |
 | Main DOL | 47.76% | 74.60% | 295 / 396 |
-| REL modules | 7.50% | 6.26% | 207 / 825 |
+| REL modules | 6.08% | 6.25% | 32 / 527 |
 
 Current board recovery: **16 / 40 source owners matching** and **63 / 72
 Towering Treetop stub seams strict-exact and promoted**.
+
+REL recovery is stored under canonical application owners: **174 synthetic
+pass/tail/address-derived C files have been removed across nine DLLs**. Their
+compiled comparison objects retain **538 / 648 exact recovered functions**;
+incomplete application owners remain `NonMatching` as whole units until their
+full text, data, relocation, and consumer closure is exact.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one

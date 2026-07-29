@@ -18,18 +18,39 @@
 #include "math.h"
 #include "string.h"
 
-#pragma pool_data off
-
 extern s32 rand8(void);
 
 #define SM_PAGE_MAX 13
 #define SM_PAGE_SIZE 10
 #define SM_CHAR_MAX 11
 
-#define SM_KEY_LEFT 0x0004
-#define SM_KEY_RIGHT 0x0008
-#define SM_KEY_UP 0x0001
-#define SM_KEY_DOWN 0x0002
+#define SM_KEY_UP (1 << 0)
+#define SM_KEY_DOWN (1 << 1)
+#define SM_KEY_LEFT (1 << 2)
+#define SM_KEY_RIGHT (1 << 3)
+
+#define SM_PLAYER_CONF_COLUMN_MASK (1 << 0)
+#define SM_PLAYER_CONF_COLUMN_CLEAR_MASK ((u16)~SM_PLAYER_CONF_COLUMN_MASK)
+
+#define SM_FLAG_MG_INSTRUCTION_DISPLAY FLAGNUM(FLAG_GROUP_SAVE, 5)
+
+enum {
+    SM_CHAR_MARIO,
+    SM_CHAR_LUIGI,
+    SM_CHAR_PEACH,
+    SM_CHAR_YOSHI,
+    SM_CHAR_WARIO,
+    SM_CHAR_DAISY,
+    SM_CHAR_WALUIGI,
+    SM_CHAR_KINOPIO,
+    SM_CHAR_TERESA,
+    SM_CHAR_MINIKOOPA,
+    SM_CHAR_KINOPIKO,
+    SM_CHAR_MINIKOOPAR,
+    SM_CHAR_MINIKOOPAG,
+    SM_CHAR_MINIKOOPAB,
+    SM_CHAR_FILE_COUNT,
+};
 
 extern OMOVL GameMesOvlPrev;
 
@@ -310,7 +331,7 @@ void ObjectSetup(void)
     SetDefLight(&pos, &dir, 255, 255, 255, 64, 64, 64, 255, 255, 255);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 5);
     GwSystem.subGameNo = -1;
-    _ClearFlag(0x10000);
+    _ClearFlag(FLAG_BOARD_SAVEINIT);
     GwSystem.turnNo = 1;
     GwSystem.turnMax = 20;
     HuMemHeapDump(HuMemHeapPtrGet(HEAP_MODEL), -1);
@@ -566,14 +587,45 @@ static HU3D_MODELID smCharMdlId[SM_CHAR_MAX];
 static s16 smCharSelEndF[4];
 static s16 smCharOnF[SM_CHAR_MAX];
 
-static int smCharFileTbl[14] = {
-    0x00CC0000, 0x00CC0002, 0x00CC0004, 0x00CC0006, 0x00CC0008, 0x00CC000A, 0x00CC000C,
-    0x00CC000E, 0x00CC0010, 0x00CC0012, 0x00CC0014, 0x00CC0016, 0x00CC0018, 0x00CC001A,
+#define SM_CHAR_FILE_STRIDE 2
+#define SM_CHAR_MODEL_FILE_OFFSET 0
+#define SM_CHAR_MOTION_FILE_OFFSET 1
+#define SM_CHAR_FILE(charNo, offset) DATANUM(DATA_selmenu, ((charNo) * SM_CHAR_FILE_STRIDE) + (offset))
+#define SM_CHAR_MODEL_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MODEL_FILE_OFFSET)
+#define SM_CHAR_MOTION_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MOTION_FILE_OFFSET)
+
+static int smCharFileTbl[SM_CHAR_FILE_COUNT] = {
+    SM_CHAR_MODEL_FILE(SM_CHAR_MARIO),
+    SM_CHAR_MODEL_FILE(SM_CHAR_LUIGI),
+    SM_CHAR_MODEL_FILE(SM_CHAR_PEACH),
+    SM_CHAR_MODEL_FILE(SM_CHAR_YOSHI),
+    SM_CHAR_MODEL_FILE(SM_CHAR_WARIO),
+    SM_CHAR_MODEL_FILE(SM_CHAR_DAISY),
+    SM_CHAR_MODEL_FILE(SM_CHAR_WALUIGI),
+    SM_CHAR_MODEL_FILE(SM_CHAR_KINOPIO),
+    SM_CHAR_MODEL_FILE(SM_CHAR_TERESA),
+    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPA),
+    SM_CHAR_MODEL_FILE(SM_CHAR_KINOPIKO),
+    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPAR),
+    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPAG),
+    SM_CHAR_MODEL_FILE(SM_CHAR_MINIKOOPAB),
 };
 
-static int smCharMotFileTbl[14] = {
-    0x00CC0001, 0x00CC0003, 0x00CC0005, 0x00CC0007, 0x00CC0009, 0x00CC000B, 0x00CC000D,
-    0x00CC000F, 0x00CC0011, 0x00CC0013, 0x00CC0015, 0x00CC0017, 0x00CC0019, 0x00CC001B,
+static int smCharMotFileTbl[SM_CHAR_FILE_COUNT] = {
+    SM_CHAR_MOTION_FILE(SM_CHAR_MARIO),
+    SM_CHAR_MOTION_FILE(SM_CHAR_LUIGI),
+    SM_CHAR_MOTION_FILE(SM_CHAR_PEACH),
+    SM_CHAR_MOTION_FILE(SM_CHAR_YOSHI),
+    SM_CHAR_MOTION_FILE(SM_CHAR_WARIO),
+    SM_CHAR_MOTION_FILE(SM_CHAR_DAISY),
+    SM_CHAR_MOTION_FILE(SM_CHAR_WALUIGI),
+    SM_CHAR_MOTION_FILE(SM_CHAR_KINOPIO),
+    SM_CHAR_MOTION_FILE(SM_CHAR_TERESA),
+    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPA),
+    SM_CHAR_MOTION_FILE(SM_CHAR_KINOPIKO),
+    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAR),
+    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAG),
+    SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAB),
 };
 
 static s16 SMCharNoAdd(s16 playerNo, s16 num)
@@ -781,9 +833,9 @@ static void SMExit(OMOBJ *obj)
     mg = MgNoGet(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl);
     GwSystem.mgNo = mg;
     OSReport("mgNo=%d\n", mg);
-    _ClearFlag(0x1000E);
-    _ClearFlag(0x30002);
-    _SetFlag(0x5);
+    _ClearFlag(FLAG_BOARD_TUTORIAL);
+    _ClearFlag(FLAG_INST_DECA);
+    _SetFlag(SM_FLAG_MG_INSTRUCTION_DISPLAY);
     if (HuPadBtn[0] & PAD_BUTTON_A) {
         GwMgNightF = 1;
     }
@@ -883,13 +935,13 @@ static void SMPlayerConfMain(OMOBJ *obj)
     SMBtnRead();
     if (!smPlayerConfEditF) {
         if (smPadDStkDown & SM_KEY_LEFT) {
-            offset = ((smPlayerConfNo & 0x1) - 1) & 0x1;
-            smPlayerConfNo = (smPlayerConfNo & 0xFFFE) + offset;
+            offset = ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) - 1) & SM_PLAYER_CONF_COLUMN_MASK;
+            smPlayerConfNo = (smPlayerConfNo & SM_PLAYER_CONF_COLUMN_CLEAR_MASK) + offset;
         }
         else {
             if (smPadDStkDown & SM_KEY_RIGHT) {
-                offset = ((smPlayerConfNo & 0x1) + 1) & 0x1;
-                smPlayerConfNo = (smPlayerConfNo & 0xFFFE) + offset;
+                offset = ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) + 1) & SM_PLAYER_CONF_COLUMN_MASK;
+                smPlayerConfNo = (smPlayerConfNo & SM_PLAYER_CONF_COLUMN_CLEAR_MASK) + offset;
             }
             else if (smPadDStkDown & SM_KEY_DOWN) {
                 if ((smPlayerConfNo += 2) >= 4) {
