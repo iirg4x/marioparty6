@@ -10,7 +10,7 @@
     "source_shape": "evidence_backed",
     "semantics": "partial",
     "naming": "partially_semantic",
-    "data": "fallback"
+    "data": "raw"
   },
   "tags": [
     "rel",
@@ -47,17 +47,14 @@
       "reference": "src/REL/staffdll/application_pass4_964c.c"
     },
     {
-      "kind": "source_provenance",
+      "kind": "same_game_artifact",
       "confidence": "high",
       "accepted": true,
       "summary": "An exhaustive definition-to-symbol and split-range audit found no additional eligible authenticated definitions after the final four exact leaves, while explicitly excluding runtime, prolog, pool-bound, and target-only fallback ranges.",
       "reference": "config/recovery/compiler_patterns.json"
     }
   ],
-  "constraints": [
-    "mwcc-cross-tu-extraction-requires-inline-consumer-closure",
-    "recovery-shard-filenames-are-not-source-provenance"
-  ],
+  "constraints": [],
   "debt": [
     {
       "kind": "application_source",

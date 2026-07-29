@@ -10,7 +10,7 @@
     "source_shape": "evidence_backed",
     "semantics": "partial",
     "naming": "address_only",
-    "data": "fallback"
+    "data": "raw"
   },
   "tags": [
     "rel",
@@ -44,16 +44,14 @@
       "reference": "src/REL/s02Dll/application_pass2_lifecycle.c"
     },
     {
-      "kind": "source_provenance",
+      "kind": "same_game_artifact",
       "confidence": "high",
       "accepted": true,
       "summary": "The enumerated authenticated same-game definition set is exhausted, but generated partition filenames and unresolved target-only gaps are not evidence of the original Nintendo TU layout.",
       "reference": "config/recovery/compiler_patterns.json"
     }
   ],
-  "constraints": [
-    "recovery-shard-filenames-are-not-source-provenance"
-  ],
+  "constraints": [],
   "debt": [
     {
       "kind": "application_source",
