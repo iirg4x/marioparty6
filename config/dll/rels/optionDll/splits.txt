@@ -12,6 +12,9 @@ REL/optionDll/application_pass2_prefix.c:
 REL/optionDll/application_pass2_lifecycle_fdc.c:
 	.text       start:0x00000FDC end:0x000018B8
 
+REL/optionDll/application_18b8.c:
+	.text       start:0x000018B8 end:0x000018D8
+
 REL/optionDll/application_pass2_lifecycle_18d8.c:
 	.text       start:0x000018D8 end:0x000019E0
 
