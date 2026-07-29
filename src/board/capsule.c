@@ -18,6 +18,8 @@
 #include "game/memory.h"
 #include "game/object.h"
 #include "game/process.h"
+#include "game/pad.h"
+#include "game/printfunc.h"
 #include "game/sprite.h"
 
 #include "humath.h"
@@ -385,16 +387,6 @@ static CAPSULE_DATA capsuleData[] = {
     { 0, 0, 0, 0x00380022, 10, 0, 0, 'Z', 1, "0000", 0 },
 };
 
-static int capsuleBorderFileTbl[6] = {
-    0x000C0018,
-    0x000C0019,
-    0x000C001A,
-    0x000C001B,
-    0,
-    0,
-};
-static int capsuleThrowTbl[8] = { 10, 11, 12, 13, 25, 15, 16, 17 };
-static int capsuleTrapTbl[5] = { 20, 21, 22, 23, 24 };
 static CAPSULE_LIST_FILE capsuleListFileTbl[] = {
     { 0, 0x000C004A },
     { 1, 0x000C004B },
@@ -409,7 +401,7 @@ static CAPSULE_LIST_FILE capsuleListFileTbl[] = {
     { 10, 0x000C0054 },
     { -1, -1 },
 };
-static CAPSULE_COM_CHANCE capsuleComChanceTbl[] = {
+static CAPSULE_COM_CHANCE capsuleChanceTbl[] = {
     { 0, { { 50, ' ' }, { 50, ' ' }, { 30, ' ' }, { 50, ' ' }, { 10, ' ' }, { 30, ' ' }, { 30, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' }, { 50, ' ' } } },
     { 1, { { 50, '*' }, { 50, '*' }, { 10, '*' }, { 30, '*' }, { 30, ' ' }, { 30, '*' }, { 10, ' ' }, { 30, '*' }, { 30, ' ' }, { 30, ' ' }, { 30, '*' } } },
     { 2, { { 5, 'b' }, { 5, 'b' }, { 10, 'b' }, { 10, 'b' }, { 10, ' ' }, { 5, 'a' }, { 10, ' ' }, { 5, 'a' }, { 30, ' ' }, { 10, ' ' }, { 5, 'a' } } },
@@ -433,26 +425,6 @@ static CAPSULE_COM_CHANCE capsuleComChanceTbl[] = {
     { 30, { { 30, '*' }, { 50, ' ' }, { 30, '*' }, { 30, ' ' }, { 30, '*' }, { 50, '*' }, { 10, ' ' }, { 50, ' ' }, { 30, ' ' }, { 10, ' ' }, { 50, ' ' } } },
     { 31, { { 10, '*' }, { 50, ' ' }, { 30, '*' }, { 30, ' ' }, { 10, '*' }, { 30, '*' }, { 10, ' ' }, { 50, ' ' }, { 0, ' ' }, { 10, ' ' }, { 50, ' ' } } },
     { -1, { { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' } } },
-};
-static int capsuleChanceTbl[3][4][5] = {
-    {
-        { 70, 15, 15 },
-        { 70, 20, 10 },
-        { 70, 20, 0, 10 },
-        { 50, 30, 0, 20 },
-    },
-    {
-        { 40, 30, 30 },
-        { 30, 30, 20, 20 },
-        { 10, 40, 10, 30, 10 },
-        { 10, 40, 0, 30, 20 },
-    },
-    {
-        { 30, 30, 30, 10 },
-        { 20, 20, 20, 30, 10 },
-        { 10, 30, 0, 40, 20 },
-        { 10, 20, 0, 40, 30 },
-    },
 };
 static int capsuleMaxTurnTbl[9] = { 10, 15, 20, 25, 30, 35, 40, 45, 50 };
 static int capsuleTurnTbl[9][2] = {
@@ -590,6 +562,7 @@ int mbCapFileGet(int capsuleNo);
 int mbCapColorGet(int capsuleNo);
 int mbCapBonusCoinNumGet(int playerNo, int capsuleNo);
 int mbCapComChanceGet(int capsuleNo, int playerNo, int mode);
+char *mbCapDebugNameGet(int capsuleNo);
 int mbCapObjColorCreate(int capsuleNo, BOOL createF);
 void mbCapObjColorPosSet(int id, float x, float y, float z);
 void mbCapObjColorScaleSet(int id, float x, float y, float z);
@@ -1817,6 +1790,94 @@ void mbCapNumInc(int capsuleNo, int mode)
     capsuleNum[capsuleNo][mode]++;
 }
 
+static int capsuleListDefineTbl[24][2] = {
+    { 0, 0 },
+    { 1, 0 },
+    { 2, 0 },
+    { 3, 0 },
+    { 4, 0 },
+    { 5, 0 },
+    { 6, 0 },
+    { 10, 0 },
+    { 11, 0 },
+    { 12, 0 },
+    { 13, 0 },
+    { 25, 0 },
+    { 15, 0 },
+    { 16, 0 },
+    { 17, 0 },
+    { 20, 0 },
+    { 21, 0 },
+    { 22, 0 },
+    { 23, 0 },
+    { 24, 0 },
+    { 30, 0 },
+    { 31, 0 },
+    { 32, 0 },
+    { -1, 0 },
+};
+
+static int capsuleListColW[16] = {
+    108, 32, 32, 48,
+    32, 32, 32, 32,
+    32, 32, 32, 48,
+    32, 32, 32, 48,
+};
+
+static int capsuleNumColW[16] = {
+    108, 32, 32, 48,
+    32, 32, 32, 32,
+    32, 32, 32, 48,
+    32, 32, 32, 48,
+};
+
+void mbCapNumDebug(void)
+{
+    static GXColor winColor = { 0, 0, 144, 192 };
+    CAPSULE_LIST *list;
+    float x;
+    float y;
+    int color;
+    int i;
+    int prevColor;
+    int j;
+
+    do {
+        printWin(4, 96, 630, 270, &winColor);
+        x = 8.0f;
+        y = 100.0f;
+        prevColor = -1;
+        color = prevColor;
+        i = 0;
+        list = capsuleList;
+        for (; i < 15; i++, list++) {
+            x = 80.0f;
+            for (j = 0; j < 4; j++) {
+                if (color != prevColor) {
+                    fontcolor = color;
+                }
+                prevColor = color;
+                if (j == 0) {
+                    if (list->id != -1) {
+                        print8(x, y, 1.5f, "%s", mbCapDebugNameGet(list->id));
+                    } else {
+                        print8(x, y, 1.5f, "NULL");
+                    }
+                } else if (j == 3) {
+                    print8(x, y, 1.5f, "%02d",
+                        capsuleNum[list->id][0] + capsuleNum[list->id][1]);
+                } else {
+                    print8(x, y, 1.5f, "%02d", capsuleNum[list->id][j - 1]);
+                }
+                x += capsuleNumColW[j];
+            }
+            y += 16.0f;
+        }
+        HuPrcVSleep();
+    } while (!(HuPadBtn[0] & PAD_TRIGGER_R) ||
+        !(HuPadBtn[0] & PAD_TRIGGER_L));
+}
+
 static void CapEffCrackKill(void)
 {
     capEffCrackOMObj = NULL;
@@ -1902,12 +1963,19 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
     int step;
     int step2;
     int step3;
+    int step4;
     int i;
     s8 code;
 
+    data = capsuleChanceTbl;
     capsuleSelectComBack = FALSE;
-    for (data = capsuleComChanceTbl;
-         data->capsuleNo != -1 && data->capsuleNo != capsuleNo; data++) {
+    i = 0;
+    while (data->capsuleNo != -1) {
+        if (data->capsuleNo == capsuleNo) {
+            break;
+        }
+        i++;
+        data++;
     }
     if (data->capsuleNo < 0) {
         return -1;
@@ -1926,11 +1994,11 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             }
             break;
         case 2:
-            step = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 3);
-            step2 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 5);
-            step3 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 4);
-            if ((step >= 1 && step <= 10) || (step2 >= 1 && step2 <= 10) ||
-                (step3 >= 1 && step3 <= 10)) {
+            step2 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 3);
+            step3 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 5);
+            step4 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 4);
+            if ((step2 >= 1 && step2 <= 10) || (step3 >= 1 && step3 <= 10) ||
+                (step4 >= 1 && step4 <= 10)) {
                 if (code == 'a') {
                     chance = 80;
                 } else if (code == 'b') {
@@ -2038,6 +2106,37 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             return 0;
     }
 }
+
+static int capsuleThrowTbl[8] = { 10, 11, 12, 13, 25, 15, 16, 17 };
+static int capsuleTrapTbl[5] = { 20, 21, 22, 23, 24 };
+static int capsuleChanceWeightTbl[3][4][5] = {
+    {
+        { 70, 15, 15 },
+        { 70, 20, 10 },
+        { 70, 20, 0, 10 },
+        { 50, 30, 0, 20 },
+    },
+    {
+        { 40, 30, 30 },
+        { 30, 30, 20, 20 },
+        { 10, 40, 10, 30, 10 },
+        { 10, 40, 0, 30, 20 },
+    },
+    {
+        { 30, 30, 30, 10 },
+        { 20, 20, 20, 30, 10 },
+        { 10, 30, 0, 40, 20 },
+        { 10, 20, 0, 40, 30 },
+    },
+};
+static int capsuleBorderFileTbl[6] = {
+    0x000C0018,
+    0x000C0019,
+    0x000C001A,
+    0x000C001B,
+    0,
+    0,
+};
 
 static BOOL CapCheckComPath(int playerNo, int max, int mode)
 {
