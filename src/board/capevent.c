@@ -892,6 +892,8 @@ extern EVCAPSULEDATA ev_CapsuleData[];
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C,
     BOOL unk10);
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
+extern const float lbl_802C4688;
+extern const float lbl_802C47C8;
 void mbev_CapMoveMasuSet(int playerNo, int masuId);
 void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
 BOOL mbev_CapStatusDispCheck(int playerNo);
@@ -2268,8 +2270,8 @@ int mbev_CapPlayerSquishVoiceSet(int *out, int masuId, BOOL voiceF)
             CharMotionVoiceOnSet(GwPlayer[out[i]].charNo, 46, FALSE);
         }
         mbPlayerMotionSet(out[i], 10, 0);
-        mbPlayerMotionTimeSet(out[i], 20.0f);
-        mbPlayerMotionSpeedSet(out[i], 0.0f);
+        mbPlayerMotionTimeSet(out[i], lbl_802C47C8);
+        mbPlayerMotionSpeedSet(out[i], lbl_802C4688);
     }
     return playerNum;
 }
