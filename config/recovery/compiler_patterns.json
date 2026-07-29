@@ -565,7 +565,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Forty-eight mdsingdll functions totaling 10516 text bytes and 699 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can also restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools.",
+      "summary": "Forty-eight mdsingdll functions totaling 10516 text bytes and 699 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can also restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools. A fast Gekko-aware decoder such as powerpc-rs can increase discovery throughput by fingerprinting opcode, branch, and relocation skeletons in bulk, but its output remains ranking evidence rather than ownership or exactness proof.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -592,7 +592,7 @@
           "a new split appears configured but generated Ninja or link inputs still consume retail fallback"
         ]
       },
-      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: fingerprint ordered relocations and control shape, cluster compatible targets, rebind every contract from target evidence, and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay. When a target caller lacks a helper-call relocation, an authenticated donor helper may be reconstructed as a natural static inline above the caller only if the target object emits no source-only helper text and target-owned data bindings remain exact. After bounded probes, keep dependency-closed exact perimeter functions and revert pool-, scheduling-, or inline-blocked interiors instead of discarding the whole cluster.",
+      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: use a Gekko-aware decoder such as powerpc-rs to fingerprint ordered opcodes, branches, relocations, and control shape at catalog scale; cluster compatible targets; then rebind every contract from target evidence and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay. Decoder similarity is never ownership proof. When a target caller lacks a helper-call relocation, an authenticated donor helper may be reconstructed as a natural static inline above the caller only if the target object emits no source-only helper text and target-owned data bindings remain exact. After bounded probes, keep dependency-closed exact perimeter functions and revert pool-, scheduling-, or inline-blocked interiors instead of discarding the whole cluster.",
       "safe_actions": [
         "catalog eligible donor stable IDs with ordered external-call and symbol-relocation signatures",
         "rank unclaimed targets by exact skeleton before looser API overlap",
@@ -734,6 +734,7 @@
         "mdpartydll fn_1_5324 to mdsingdll fn_1_5268 reached exact 1404-byte size and 99.415955%, but one three-instruction divide/named-load scheduling permutation survived the bounded compiler probes; the exact neighboring perimeter was retained and this body was reverted.",
         "mdpartydll fn_1_5A18 to mdsingdll fn_1_595C reached exact 1432-byte size and 99.958100%, but three relocations selected compiler-local unsigned-conversion data instead of target lbl_1_rodata_170; the exact 24-byte motion-path aggregate copy was not the blocker, so this body was reverted pending natural pool ownership.",
         "The adjacent early mdsingdll fn_1_2A60 reached exact 1808-byte size and 99.867% text, but 12 relocation rows selected compiler-local unsigned-conversion data instead of target lbl_1_rodata_C0; the body was reverted pending authenticated pool ownership.",
+        "optionDll fn_1_3BD8 and fileseldll fn_1_457C shared an exact 2912-byte structural skeleton and all 392 objdiff rows, but 30 conversion-pool rows bound compiler-local @169 instead of target-owned lbl_1_rodata_A8. The candidate was reverted: exact opcode/control shape from a bulk decoder is not exact relocation ownership.",
         "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
       ],
       "related_exceptions": [],
@@ -1312,7 +1313,7 @@
       "category": "header_visibility",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
+      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. Option pass1 independently reproduced the mechanism in two text-only GC/1.3.2 objects: seven functions retained 1,724 exact text bytes, 95 physical relocations, and 172/172 objdiff rows after each source-only 16-byte pool was removed, restoring retail SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
       "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the owner-local header chronology. Require a reviewed path-specific exception, protected-consumer proof, and a whole-project retail build.",
       "source_condition": {
         "change": "A translation unit selects or suppresses generic `math.h` through an authenticated owner-local header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
@@ -1336,7 +1337,8 @@
           "candidate data contains 3fe0000000000000 followed by 4008000000000000 while retail assigns no owner there",
           "instructions and relocations remain exact while only the linked module size and hash differ by the 16-byte pool",
           "removing one direct math include is neutral because another header keeps the same transitive closure",
-          "mdpresultdll application_pass53.o changes from text plus 16-byte rodata to text-only at zero text and relocation cost"
+          "mdpresultdll application_pass53.o changes from text plus 16-byte rodata to text-only at zero text and relocation cost",
+          "optionDll application_pass1_e538.o and application_pass1_f1d8.o each change from text plus the same 16-byte rodata to text-only at zero text and relocation cost"
         ]
       },
       "rule": "Before tuning literals or declaration lifetimes, prove whether transitive sqrtf visibility introduced the `_half`/`_three` pool. Prefer a narrowly authenticated owner-local selection of the existing canonical header, reviewed through a path-specific quality exception; never fabricate constants, pad sections, or change the shared top-level header to solve one owner.",
@@ -1355,7 +1357,8 @@
         "stable_ids": [],
         "modules": [
           "main",
-          "mdpresultdll"
+          "mdpresultdll",
+          "optionDll"
         ],
         "owner_tags": [
           "header_visibility",
@@ -1371,7 +1374,8 @@
         "main:board/capselect",
         "main:board/scroll",
         "main:board/mgcall",
-        "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)"
+        "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)",
+        "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)"
       ],
       "counterexamples": [
         "Removing the direct humath include from main:board/dice was byte-neutral because transitive headers still exposed sqrtf.",
@@ -1386,13 +1390,18 @@
         "capselect-no-generic-math-inline",
         "scroll-no-generic-math-inline",
         "mgcall-no-generic-math-inline",
-        "mdpresult-pass53-no-generic-math-inline"
+        "mdpresult-pass53-no-generic-math-inline",
+        "option-pass1-e538-no-generic-math-inline",
+        "option-pass1-f1d8-no-generic-math-inline"
       ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
         "src/board/mgcall.c",
         "src/REL/mdpresultdll/application_pass53.c",
         "config/dll/rels/mdpresultdll/splits.txt",
+        "src/REL/optionDll/application_pass1_e538.c",
+        "src/REL/optionDll/application_pass1_f1d8.c",
+        "config/dll/rels/optionDll/splits.txt",
         "src/game/sprman.c",
         "src/REL/mdpartydll/stage.c",
         "src/REL/bootDll/opening.c"
@@ -3382,7 +3391,7 @@
       "category": "declaration_visibility_and_owner_binding",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "high",
-      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix, predecessor, or interior island can still be bound independently when every outgoing compile-time inline-consumer edge stays in the original translation unit and all protected consumers and pool owners remain exact. Function-address and callback assignments are link-only edges unless a direct compile-time call also exists. When the lost callee cannot be co-owned, a caller may naturally spell the target-proven guard and body directly, but only with authenticated semantics and complete object, consumer, and retail proof.",
+      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix, predecessor, or interior island can still be bound independently when every outgoing compile-time inline-consumer edge stays in the original translation unit and all protected consumers and pool owners remain exact. Function-address and callback assignments are link-only edges unless a direct compile-time call also exists. Conversely, absence of an incoming target call relocation does not prove that a helper has no consumer: MWCC can auto-inline the call and leave no REL24 edge. When the lost callee cannot be co-owned, a caller may naturally spell the target-proven guard and body directly, but only with authenticated semantics and complete object, consumer, and retail proof.",
       "conditions": "Use when recovered functions are exact in a monolithic source owner and a proposed generated-object split moves their definitions into another translation unit while later exact callers remain behind.",
       "source_condition": {
         "change": "Extract an exact function cluster from a combined source owner into a separately compiled generated object.",
@@ -3392,7 +3401,8 @@
           "an inventory of every later independently exact caller whose compile-time visibility can change",
           "before/after consumer-object comparison, not only extracted-object scoring",
           "a dependency graph that identifies candidate regions with no compile-time visibility edge back into protected exact consumers",
-          "classification of direct-call inline-visibility edges separately from function-address or callback link-only edges"
+          "classification of direct-call inline-visibility edges separately from function-address or callback link-only edges",
+          "authenticated source definition and call chronology plus target instruction-expansion evidence when an auto-inlined consumer has no incoming REL24"
         ]
       },
       "emitted_effect": {
@@ -3408,10 +3418,11 @@
           "only consumers compiled after the moved definitions regress",
           "restoring duplicate definitions would repair visibility but violate single-owner policy",
           "later source references exist only as function-address assignments, so the moved body still links but no one-pass inline expansion can change",
-          "the isolated caller loses one exact inlined call path while its natural direct guard/body expansion restores target size and relocations"
+          "the isolated caller loses one exact inlined call path while its natural direct guard/body expansion restores target size and relocations",
+          "a target helper has no incoming REL24, yet authenticated source chronology and the caller's target instructions identify the complete auto-inlined expansion"
         ]
       },
-      "rule": "Treat generated-object extraction as a consumer-closure change. Build a typed definition-to-consumer graph: direct compile-time calls to inline-capable definitions are visibility edges, while function-address and callback assignments are link-only edges unless a direct call also exists. Bind the cluster only when every affected exact caller remains exact, authenticated original header/TU evidence naturally preserves definition visibility, or the target-authenticated callee guard and body can be expressed directly as organic caller logic with complete object, consumer, and retail proof; otherwise retain the exact C unbound and record the split as blocked.",
+      "rule": "Treat generated-object extraction as a consumer-closure change. Build a typed definition-to-consumer graph: direct compile-time calls to inline-capable definitions are visibility edges, while function-address and callback assignments are link-only edges unless a direct call also exists. Never classify a target helper as consumer-free from the absence of incoming REL24 alone; combine authenticated source definition/call chronology with target instruction-expansion evidence to detect auto-inlined consumers. Bind the cluster only when every affected exact caller remains exact, authenticated original header/TU evidence naturally preserves definition visibility, or the target-authenticated callee guard and body can be expressed directly as organic caller logic with complete object, consumer, and retail proof; otherwise retain the exact C unbound and record the split as blocked.",
       "safe_actions": [
         "enumerate later direct and transitive callers of every moved inline-capable definition",
         "classify callback-address references separately and verify their final relocation targets without treating them as inline-visibility edges",
@@ -3438,12 +3449,23 @@
           "miraclebookdll:fn_1_427C",
           "miraclebookdll:fn_1_7998",
           "endingdll:fn_1_0",
-          "endingdll:fn_1_2034"
+          "endingdll:fn_1_2034",
+          "staffdll:fn_1_67C",
+          "staffdll:fn_1_F68",
+          "staffdll:fn_1_6C14",
+          "staffdll:fn_1_72A4",
+          "staffdll:fn_1_7C70",
+          "staffdll:fn_1_8BF8",
+          "staffdll:fn_1_94E0",
+          "staffdll:fn_1_54F0",
+          "staffdll:fn_1_5A7C",
+          "staffdll:fn_1_9D14"
         ],
         "modules": [
           "mdpresultdll",
           "miraclebookdll",
-          "endingdll"
+          "endingdll",
+          "staffdll"
         ],
         "owner_tags": [
           "translation_unit",
@@ -3454,6 +3476,7 @@
         ]
       },
       "examples": [
+        "Staff pass1 bound 12 functions across ten generated objects for 3,204 exact text bytes and 215/215 physical relocations. Although fn_1_F68, fn_1_72A4, fn_1_7C70, fn_1_8BF8, and fn_1_94E0 had no incoming target REL24 edges, authenticated definition/call chronology and target instruction expansions proved fn_1_F68 was auto-inlined into fallback fn_1_54F0/fn_1_5A7C and the other helpers into fallback fn_1_9D14; all three fallback consumers remained exact.",
         "mdpresultdll pass46 isolated fn_1_16C4..fn_1_3304 as 37/37 exact functions over 7328 text bytes with 600/600 relocations, but tracked extraction regressed four later exact consumers when the moved definitions were no longer visible.",
         "Pass47 kept the transitive window-helper chain in mdpresult.c and extracted only dependency-closed suffix fn_1_2BF0..fn_1_3304: 10/10 functions, 1908 bytes, and 141/141 relocations exact with no source rodata, while fn_1_102E4/fn_1_105CC/fn_1_10B34/fn_1_1295C and the fn_1_5360 pool prefix remained exact.",
         "Pass48 selected the dependency-closed predecessor island fn_1_16C4..fn_1_1C34 while leaving fn_1_1C70 onward and its transitive window chain in mdpresult.c: 11/11 functions, 1452 bytes, and 109/109 relocations exact with no source rodata, while both generated owners, all four protected consumers, and the 64-byte pool prefix remained exact.",
@@ -3474,6 +3497,17 @@
       ],
       "related_exceptions": [],
       "evidence": [
+        "src/REL/staffdll/staff_pass1_067c.c",
+        "src/REL/staffdll/staff_pass1_0f68.c",
+        "src/REL/staffdll/staff_pass1_6c14.c",
+        "src/REL/staffdll/staff_pass1_72a4.c",
+        "src/REL/staffdll/staff_pass1_7468.c",
+        "src/REL/staffdll/staff_pass1_7c70.c",
+        "src/REL/staffdll/staff_pass1_8410.c",
+        "src/REL/staffdll/staff_pass1_8bf8.c",
+        "src/REL/staffdll/staff_pass1_8dbc.c",
+        "src/REL/staffdll/staff_pass1_94e0.c",
+        "config/dll/rels/staffdll/splits.txt",
         "docs/native_matching_mdpresult_binding_pass46.md",
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave51.md",
