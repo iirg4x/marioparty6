@@ -32,15 +32,23 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "df6013babe2a39acb2ab822fbc1da8679ebc5918",
+      "validated_commit": "31c8d95a0e178510544c012761b23bbecea4b417",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_wave101.md",
         "docs/native_matching_wave103.md",
+        "docs/native_matching_wave79.md",
+        "docs/native_matching_wave82.md",
+        "docs/native_matching_wave93.md",
         "src/REL/mdpartydll/mdparty.c",
         "src/REL/mdpartydll/stage.c",
-        "include/game/audio.h"
+        "src/board/wipe.c",
+        "src/board/telop.c",
+        "include/game/audio.h",
+        "include/math.h",
+        "include/dolphin/math.h",
+        "include/stdlib.h"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -144,12 +152,17 @@
     },
     "consumer-triangulation-before-opaque-aggregate-overlay": {
       "status": "active",
-      "validated_commit": "df6013babe2a39acb2ab822fbc1da8679ebc5918",
+      "validated_commit": "31c8d95a0e178510544c012761b23bbecea4b417",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave95.md",
+        "docs/native_matching_wave98.md",
         "include/game/hu3d.h",
+        "include/game/mgdata.h",
+        "src/game/mgdata.c",
+        "src/REL/mdpartydll/mdparty.c",
         "src/REL/mdbankdll/mdbank.c",
         "src/REL/staffdll/staff.c"
       ],
@@ -275,18 +288,22 @@
     },
     "dtk-synthetic-gap-not-source-ownership": {
       "status": "active",
-      "validated_commit": "df6013babe2a39acb2ab822fbc1da8679ebc5918",
+      "validated_commit": "31c8d95a0e178510544c012761b23bbecea4b417",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_gap_ownership.md",
+        "docs/native_matching_wave95.md",
+        "docs/native_matching_wave98.md",
         "config/GP6E01/symbols.txt",
         "config/GP6E01/splits.txt",
         "config/GP6E01/build.sha1",
         "src/board/camera.c",
         "src/board/guide.c",
         "src/board/pause.c",
-        "src/board/window.c"
+        "src/board/window.c",
+        "src/game/mgdata.c",
+        "src/REL/mdpartydll/mdparty.c"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -533,29 +550,58 @@
     },
     "mwcc-local-declaration-order-and-first-use-rotate-saved-registers": {
       "status": "active",
-      "validated_commit": "df6013babe2a39acb2ab822fbc1da8679ebc5918",
+      "validated_commit": "31c8d95a0e178510544c012761b23bbecea4b417",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_local_declaration_order_first_use.md",
+        "docs/native_matching_wave77.md",
+        "docs/native_matching_wave79.md",
+        "docs/native_matching_wave94.md",
         "src/REL/endingdll/ending.c",
         "src/REL/mdbankdll/mdbank.c",
-        "src/REL/meschkdll/meschkdll.c"
+        "src/REL/meschkdll/meschkdll.c",
+        "src/board/opening.c",
+        "src/board/star.c",
+        "src/board/config.c",
+        "src/board/tutorial.c",
+        "src/board/masu.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-chained-assignment-reuses-rhs-and-orders-stores": {
+      "status": "active",
+      "validated_commit": "31c8d95a0e178510544c012761b23bbecea4b417",
+      "validated_at": "2026-07-29",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_wave76.md",
+        "docs/native_matching_wave78.md",
+        "docs/native_matching_wave84.md",
+        "docs/native_matching_wave85.md",
+        "src/board/star.c",
+        "src/board/opening.c",
+        "src/REL/mdpartydll/mdparty.c"
       ],
       "supersedes": [],
       "superseded_by": null
     },
     "mwcc-pointer-truthiness-or-zero-literal-avoids-materialized-null": {
       "status": "active",
-      "validated_commit": "df6013babe2a39acb2ab822fbc1da8679ebc5918",
+      "validated_commit": "31c8d95a0e178510544c012761b23bbecea4b417",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_pointer_null_spelling.md",
+        "docs/native_matching_wave99.md",
         "src/REL/endingdll/ending.c",
-        "src/REL/mdbankdll/mdbank.c"
+        "src/REL/mdbankdll/mdbank.c",
+        "src/REL/mdpartydll/mdparty.c",
+        "include/game/armem.h",
+        "include/game/charman.h"
       ],
       "supersedes": [],
       "superseded_by": null

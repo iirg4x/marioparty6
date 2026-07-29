@@ -130,15 +130,16 @@
       "title": "A broader correct header can still produce the wrong translation-unit output",
       "classification": "confirmed_rule",
       "category": "header_visibility",
-      "compiler": "GC/1.3.2",
+      "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Adding semantically correct declarations through a broad header can change emitted calls, temporary lifetimes, allocation, and inline behavior when the retail translation unit saw a narrower declaration set.",
-      "conditions": "Use as a compiler-wide diagnostic; local prototypes are acceptable only when symbol authority and an owner-specific visibility probe support them.",
+      "summary": "Across MWCC profiles, adding a semantically correct broad header can change declarations, macro expansion, inline bodies, header-owned local data, emitted calls, temporary lifetimes, allocation, and section prefixes when the retail translation unit saw a narrower include closure.",
+      "conditions": "Use as a compiler-wide diagnostic; local prototypes or narrower owner-local headers are acceptable only when symbol authority and an owner-specific visibility probe support them.",
       "source_condition": {
-        "change": "Replace target-visible local prototypes with a broad owner header or add declarations that were not visible in the retail translation unit.",
+        "change": "Replace the target-visible include closure or local prototypes with a broader header that exposes additional declarations, macros, inline bodies, or header-owned data.",
         "requires": [
           "authoritative signatures remain semantically compatible",
-          "the include changes the visible declaration set"
+          "the include changes the visible declaration, macro, inline-body, or local-data set",
+          "before-and-after object, relocation, and retained-section comparison"
         ]
       },
       "emitted_effect": {
@@ -147,18 +148,23 @@
           "temporary lifetime",
           "register allocation",
           "automatic inline eligibility",
-          "function size"
+          "function size",
+          "macro-selected call identity",
+          "header-owned literal or local-static section prefixes"
         ],
         "known_signatures": [
           "one exact caller becomes eight bytes shorter",
-          "several independently exact functions diverge after a header-only cleanup"
+          "several independently exact functions diverge after a header-only cleanup",
+          "a local macro changes an external call relocation to an internal helper",
+          "a header implementation adds target-absent local constants to `.sdata2`"
         ]
       },
-      "rule": "Do not treat broader modern header visibility as historically authentic merely because the declarations are correct; reproduce and test the retail translation-unit visibility.",
+      "rule": "Do not treat broader modern header visibility as historically authentic merely because its declarations and semantics are correct; reproduce and test the retail translation-unit declaration, macro, inline-body, and local-data visibility.",
       "safe_actions": [
-        "compare the preprocessed declaration set before and after the include",
+        "compare the complete preprocessed declaration and macro set before and after the include",
         "run an owner-local broad-header probe",
-        "retain narrow local declarations only with symbol authority and recorded evidence"
+        "compare call relocations and raw retained data prefixes",
+        "retain narrow local declarations or owner-local header selection only with symbol authority and recorded evidence"
       ],
       "applicability": {
         "compiler_wide": true,
@@ -170,12 +176,21 @@
         "stable_ids": [
           "mdpartydll:0x2F22C"
         ],
-        "modules": [],
-        "owner_tags": []
+        "modules": [
+          "main",
+          "mdpartydll"
+        ],
+        "owner_tags": [
+          "header_visibility",
+          "macro_expansion",
+          "local_data"
+        ]
       },
       "examples": [
         "mdpartydll:0x2F22C",
-        "REL:mdpartydll:stage"
+        "REL:mdpartydll:stage",
+        "main:board/wipe removed target-absent `_half` and `_three` objects by restoring the authenticated math-header closure",
+        "main:board/telop retained external `abs` relocations by avoiding a local stdlib macro expansion to `__abs`"
       ],
       "counterexamples": [],
       "related_exceptions": [
@@ -184,7 +199,10 @@
       ],
       "evidence": [
         "docs/native_matching_wave101.md",
-        "docs/native_matching_wave103.md"
+        "docs/native_matching_wave103.md",
+        "docs/native_matching_wave79.md",
+        "docs/native_matching_wave82.md",
+        "docs/native_matching_wave93.md"
       ]
     },
     {
@@ -687,7 +705,9 @@
       "examples": [
         "staffdll public HU3D_MODEL.hookData through HU3D_PARTICLE/HU3D_PARTICLE_DATA replaced temporary offset overlays while preserving 25 exact functions, 0x9BC text, and 125 physical relocations.",
         "mdbankdll configured lbl_1_bss_1998 size 0x50 plus camera callbacks/state consumers authenticated one owner aggregate and added twelve exact functions, 1396 bytes, and 94 physical relocations.",
-        "mdbankdll configured extents divided by repeated consumer counts authenticated eight additional owner arrays and closed fn_1_1994/fn_1_5550 for 1312 bytes."
+        "mdbankdll configured extents divided by repeated consumer counts authenticated eight additional owner arrays and closed fn_1_1994/fn_1_5550 for 1312 bytes.",
+        "main:game/mgdata replaced a byte-oriented 83-record overlay with natural MGDATA dimensions after archive catalogs, access widths, and five exact consumer owners agreed.",
+        "REL:mdpartydll:mdparty recovered 17 logical sprite-group counts, 58 typed descriptors, 67 HuVecF positions, and an 11-entry signed selection graph from target extents and independent consumers without inventing padding fields."
       ],
       "counterexamples": [
         "Matching one field offset does not authenticate the semantic field or containing type.",
@@ -696,7 +716,9 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/native_matching_dll_reinforcements_20260728.md"
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave95.md",
+        "docs/native_matching_wave98.md"
       ]
     },
     {
@@ -1247,7 +1269,9 @@
         "main:board/camera",
         "main:board/guide",
         "main:board/pause",
-        "main:board/window"
+        "main:board/window",
+        "main:game/mgdata natural alignment tails",
+        "REL:mdpartydll:mdparty `.data` tail and group-table alignment"
       ],
       "counterexamples": [
         "A size difference inside a named object, a nonexact effective relocation, or linked-output drift is meaningful and cannot be dismissed as a gap."
@@ -1255,6 +1279,8 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_board_gap_ownership.md",
+        "docs/native_matching_wave95.md",
+        "docs/native_matching_wave98.md",
         "config/GP6E01/build.sha1"
       ]
     },
@@ -2649,13 +2675,21 @@
           "mdbankdll:fn_1_83CC",
           "meschkdll:fn_1_188",
           "mdpresultdll:fn_1_B178",
-          "mdpresultdll:fn_1_C358"
+          "mdpresultdll:fn_1_C358",
+          "main:board/opening:OpeningSingleEffHook",
+          "main:board/star:StarMatHook",
+          "main:board/config:mbPausePanelCreate",
+          "main:board/tutorial:TutorialWatch",
+          "main:board/tutorial:mbTutorialWinMesExec",
+          "main:board/tutorial:mbTutorialWinCreate",
+          "main:board/tutorial:mbTutorialWinKeyWait"
         ],
         "modules": [
           "endingdll",
           "mdbankdll",
           "meschkdll",
-          "mdpresultdll"
+          "mdpresultdll",
+          "main"
         ],
         "owner_tags": [
           "declaration_order",
@@ -2669,11 +2703,17 @@
         "endingdll fn_1_12838 became strict exact when sequential same-type loop locals remained in one outer scope and declaration order produced indices in r31/r30/r29 plus group/model in r27/r28",
         "mdbankdll fn_1_13764 changed from 98.833336% to strict exact when natural HU3D_PARTICLE_DATA* data was declared before HU3D_PARTICLE* particle, rotating data/particle from r30/r31 to target r31/r30",
         "mdbankdll fn_1_83CC became strict exact at 756 bytes when the authenticated camera pointer was declared normally but assigned after window/light cleanup, beginning its saved-register lifetime at the target point",
-        "mdpresultdll fn_1_B178 became exact when the inner-loop index preceded the outer-loop index in natural declaration chronology"
+        "mdpresultdll fn_1_B178 became exact when the inner-loop index preceded the outer-loop index in natural declaration chronology",
+        "main:board/opening OpeningSingleEffHook became exact after restoring automatic-object and commutative-expression order",
+        "main:board/star StarMatHook became exact after restoring the target-proven four-byte and twelve-byte automatic-object order",
+        "main:board/config mbPausePanelCreate became exact after declaration-list order resolved its final saved-register swap",
+        "main:board/tutorial TutorialWatch and three guide-object call sites became exact after restoring block-scoped value and pointer lifetimes"
       ],
       "counterexamples": [
         "meschkdll fn_1_188 improved to an exact-sized 99.893870 form, but legal declaration/scope controls could not break its final dirWin/nextMessNo r20/r22 cycle, so all nonexact probes were reverted.",
         "mdpresultdll fn_1_C358 reproduced the target save set after a separate second-loop index but retained a seven-row register-color cycle, so the function was fully reverted.",
+        "main:board/masu mbMasuPlayerColorSet regressed when adjacent partyF and type declarations were swapped, so the probe was reverted.",
+        "A guessed initialized write-only Last Five local changed live-register allocation without producing the target stack word, and a ghost saved-GPR local in Wipe lacked source authentication.",
         "Changing a local's width to steer allocation is not this rule; it introduces normalization differences and must be rejected.",
         "Do not split a declaration initializer solely to choose a register when target call/store chronology does not prove a later semantic lifetime.",
         "Do not add redundant temporaries, fake scopes, volatile qualifiers, or register keywords solely to choose registers."
@@ -2681,7 +2721,89 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_local_declaration_order_first_use.md",
-        "docs/native_matching_dll_reinforcements_20260728.md"
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave77.md",
+        "docs/native_matching_wave79.md",
+        "docs/native_matching_wave94.md"
+      ]
+    },
+    {
+      "id": "mwcc-chained-assignment-reuses-rhs-and-orders-stores",
+      "title": "Use chained assignment when one RHS value feeds target-ordered stores",
+      "classification": "contextual_heuristic",
+      "category": "assignment_expression_and_store_chronology",
+      "compiler": "GC/2.6 and GC/1.3.2",
+      "confidence": "high",
+      "summary": "Repeated MWCC O0 recoveries show that a natural chained assignment can evaluate one authenticated right-hand value once and emit several stores in the target's right-to-left lvalue order, while equivalent independent statements can duplicate a load or immediate and change stack or reload chronology.",
+      "conditions": "Use only when target instructions prove one RHS evaluation or load, multiple stores of that value, and a specific store order that independent statements fail to reproduce.",
+      "source_condition": {
+        "change": "Express several assignments from one authenticated side-effect-free value as one chained assignment rather than independent statements.",
+        "requires": [
+          "identical assignment semantics and destination types",
+          "target evidence for one RHS evaluation and every destination store",
+          "target-backed right-to-left store chronology",
+          "one bounded chained-versus-independent compiler control",
+          "exact instructions, relocations, and consumers after the change"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "one shared immediate, call result, or interpolated value",
+          "right-to-left destination stores",
+          "removal of a duplicate load or immediate",
+          "different stack-object lifetime and reload placement"
+        ],
+        "known_signatures": [
+          "the target loads one constant once and stores it to adjacent fields in reverse textual destination order",
+          "independent statements emit a second li or reload and grow the function",
+          "a chained call-result assignment stores two vector components before one target reload",
+          "a chained interpolated-value assignment restores both stack layout and component store order"
+        ]
+      },
+      "rule": "When the target proves one side-effect-free RHS value feeding several ordered stores, test one natural chained assignment against independent statements. Retain it only when complete text, relocations, and consumers become exact; never chain unrelated side effects, calls with ambiguous evaluation order, or assignments with different conversion semantics merely to shape registers.",
+      "safe_actions": [
+        "confirm the RHS is evaluated once in the target",
+        "compare destination store order and conversion widths",
+        "measure one independent-statement control under the pinned owner profile",
+        "reject the chain if it changes side-effect order, narrowing, volatile access, or consumer semantics"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "main:board/star:mbStarObjCreate",
+          "mdpartydll:fn_1_1733C",
+          "mdpartydll:fn_1_B008"
+        ],
+        "modules": [
+          "main",
+          "mdpartydll"
+        ],
+        "owner_tags": [
+          "chained_assignment",
+          "store_order",
+          "value_lifetime",
+          "negative_evidence"
+        ]
+      },
+      "examples": [
+        "main:board/star mbStarObjCreate became exact with `work->masuId = work->playerNo = -1`, which emits one li and the target's playerNo-before-masuId stores.",
+        "mdpartydll fn_1_1733C chains one helper result into two vector components before the target reload.",
+        "mdpartydll fn_1_B008 directly chains one interpolated scale across three components, restoring target stack layout and store order.",
+        "main:board/opening exact closures independently retain target-backed chained zero and player-number assignments."
+      ],
+      "counterexamples": [
+        "Two independent mbStarObjCreate statements emitted a second li -1, grew the function, and regressed it to 96.666664%.",
+        "Do not chain volatile accesses, unrelated function calls, or expressions whose side-effect order is not target-authenticated.",
+        "Do not use a chain when destination conversions differ or the target evaluates the RHS more than once."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_wave76.md",
+        "docs/native_matching_wave78.md",
+        "docs/native_matching_wave84.md",
+        "docs/native_matching_wave85.md"
       ]
     },
     {
@@ -2691,35 +2813,39 @@
       "category": "pointer_compare_lowering",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across MWCC O0 profiles, a natural pointer truth test or comparison with integer literal 0 can lower to a direct cmplwi, while an equivalent comparison with typed NULL can materialize zero in a register and emit li plus cmplw.",
-      "conditions": "Use when the target directly compares a proven pointer against immediate zero but the candidate materializes a null operand, or when the candidate is exactly four bytes larger for that reason.",
+      "summary": "Across MWCC O0 profiles, a natural pointer truth test or comparison with integer literal 0 can lower to a direct cmplwi, while an equivalent comparison with typed NULL can materialize zero in a register and emit li plus cmplw. An authenticated integer typedef that carries an address can require a consumer-local pointer cast for the reverse transition without changing its public ABI.",
+      "conditions": "Use when the target directly compares a proven pointer against immediate zero but the candidate materializes a null operand, when the candidate is exactly four bytes larger for that reason, or when target and independent address-semantics evidence prove that an address-valued integer handle is consumed in the pointer-null domain.",
       "source_condition": {
-        "change": "Spell one authenticated pointer guard as truthiness or comparison with literal 0 instead of typed NULL.",
+        "change": "Select the authenticated integer-zero or pointer-null expression domain for one null guard without changing the producer's public type.",
         "requires": [
-          "the expression is already authenticated as a pointer",
+          "the expression is authenticated as a pointer or as an integer typedef carrying an address",
           "identical null-test semantics",
           "target and candidate compare instructions",
-          "exact control flow, relocations, and consumers after the change"
+          "exact control flow, relocations, and consumers after the change",
+          "independent sibling/header address semantics before casting an integer typedef"
         ]
       },
       "emitted_effect": {
         "possible_changes": [
           "direct cmplwi against zero",
           "removal of li r0,0 plus cmplw",
+          "introduction of the target li r0,0 plus cmplw for an authenticated address-handle consumer",
           "a four-byte function-size reduction",
           "unchanged branch structure and relocation stream"
         ],
         "known_signatures": [
           "`if (pointer)` matches cmplwi while `if (pointer != NULL)` emits li plus cmplw",
           "`while (*entry != 0)` is four bytes shorter than `while (*entry != NULL)`",
-          "the mismatch is isolated to null materialization and compare operands"
+          "the mismatch is isolated to null materialization and compare operands",
+          "integer 0 and 0L remain cmplwi while a consumer-local `(void *)addressHandle == NULL` produces li plus cmplw"
         ]
       },
-      "rule": "Run one bounded truthiness/literal-zero versus typed-NULL spelling control for an authenticated pointer guard. Retain the natural form only with exact text, branches, relocations, and consumers; never cast integer handles to pointers or change a public type merely to obtain the compare shape.",
+      "rule": "Run one bounded integer-zero versus pointer-null spelling control for an authenticated null guard. Retain the natural form only with exact text, branches, relocations, and consumers. Never cast opaque resource handles or change a public type merely to obtain the compare shape; a consumer-local cast is admissible only for an independently authenticated address-valued integer typedef whose target proves the pointer-domain comparison.",
       "safe_actions": [
-        "confirm the operand's pointer type from headers and consumers",
+        "confirm the operand's pointer or address-handle semantics from headers and independent consumers",
         "compare the emitted cmplwi versus li/cmplw sequence",
         "preserve the target branch sense and null semantics",
+        "keep an authenticated address-handle typedef and public ABI unchanged when testing a consumer-local cast",
         "revert the spelling change if codegen is neutral or other instructions regress"
       ],
       "applicability": {
@@ -2727,12 +2853,15 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [
-          "mdbankdll:_epilog"
+          "mdbankdll:_epilog",
+          "mdpartydll:fn_1_2B0",
+          "mdpartydll:fn_1_400"
         ],
         "modules": [
           "endingdll",
           "mdbankdll",
-          "mdpresultdll"
+          "mdpresultdll",
+          "mdpartydll"
         ],
         "owner_tags": [
           "pointer_compare",
@@ -2744,17 +2873,21 @@
       "examples": [
         "Ending cleanup callbacks matched target direct cmplwi only with pointer truthiness under GC/2.6",
         "mdbankdll _epilog matched 76 bytes under GC/1.3.2 with `*entry != 0`; typed NULL materialized zero and grew it to 80 bytes",
-        "mdpresultdll repeated destructor functions retained natural pointer truthiness plus a terminal local null assignment in a first-build-exact GC/2.6 cluster"
+        "mdpresultdll repeated destructor functions retained natural pointer truthiness plus a terminal local null assignment in a first-build-exact GC/2.6 cluster",
+        "mdpartydll fn_1_2B0 and its inline copy in fn_1_400 became exact when the address-valued AMEM_PTR result was cast at the consumer to `(void *)` before comparison with NULL; integer 0 and 0L controls remained cmplwi",
+        "Mario Party 4 commit 147b165a83187ac9e6cfdc3bf52f2e73437b1ffd stores a HuAR_DVDtoARAM AMEM_PTR result in a `void *` through an explicit cast in src/game/chrman.c, independently authenticating Hudson address-handle semantics."
       ],
       "counterexamples": [
-        "An integer resource or handle is not a pointer guard; do not cast it to void* to select cmplw.",
+        "An opaque integer resource or non-address handle is not a pointer guard; do not cast it to void* to select cmplw.",
+        "An address-sized integer alone is insufficient: require sibling/header consumer proof that the typedef carries an address before testing a cast.",
         "NULL spelling is not globally wrong; use the target compare and authenticated operand type at the specific consumer.",
         "Do not rewrite unrelated condition structure when only the null operand spelling differs."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_pointer_null_spelling.md",
-        "docs/native_matching_dll_reinforcements_20260728.md"
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave99.md"
       ]
     },
     {
