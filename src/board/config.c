@@ -23,26 +23,26 @@ extern void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
 extern float mbSinDeg(float angle);
 
 typedef struct PausePanelWork_s {
-    int modelId;              /* 0x00 */
-    int batsuModelId;         /* 0x04 */
-    int sprId;                /* 0x08 */
-    ANIMDATA *anim;           /* 0x0C */
-    HU3D_ANIMID animId[2];    /* 0x10 */
-    HuVecF pos;               /* 0x14 */
-    HuVecF posStart;          /* 0x20 */
-    HuVecF posTarget;         /* 0x2C */
-    BOOL batsuF;              /* 0x38 */
-    float scale;              /* 0x3C */
-    float scaleStart;         /* 0x40 */
-    float scaleTarget;        /* 0x44 */
-    float scaleBase;          /* 0x48 */
-    s16 bank;                 /* 0x4C */
-    s16 motion;               /* 0x4E */
-    s16 time;                 /* 0x50 */
-    s16 maxTime;              /* 0x52 */
-    s16 delay;                /* 0x54 */
-    s16 animTime;             /* 0x56 */
-    s16 animMaxTime;          /* 0x58 */
+int modelId;              /* offset 0 */
+int batsuModelId;         /* offset 4 */
+int sprId;                /* offset 8 */
+ANIMDATA *anim;           /* offset 12 */
+HU3D_ANIMID animId[2];    /* offset 16 */
+HuVecF pos;               /* offset 20 */
+HuVecF posStart;          /* offset 32 */
+HuVecF posTarget;         /* offset 44 */
+BOOL batsuF;              /* offset 56 */
+float scale;              /* offset 60 */
+float scaleStart;         /* offset 64 */
+float scaleTarget;        /* offset 68 */
+float scaleBase;          /* offset 72 */
+s16 bank;                 /* offset 76 */
+s16 motion;               /* offset 78 */
+s16 time;                 /* offset 80 */
+s16 maxTime;              /* offset 82 */
+s16 delay;                /* offset 84 */
+s16 animTime;             /* offset 86 */
+s16 animMaxTime;          /* offset 88 */
 } PAUSE_PANEL_WORK;
 
 typedef struct PausePadWork_s {
@@ -137,7 +137,7 @@ BOOL mbConfigExec(int playerNo, MBMODELID modelId)
     pauseWork.cursorPos = -1;
     pauseWork.talkTime = pauseWork.prevTalkTime = 0;
     ConfigSettingRead();
-    configProc = HuPrcChildCreate(ConfigMain, 0x2012, 0x3800, 0, mbMainProc);
+    configProc = HuPrcChildCreate(ConfigMain, 8210, 14336, 0, mbMainProc);
     HuPrcSetStat(configProc, HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
     HuPrcDestructorSet2(configProc, ConfigKill);
     while (!configDoneF) {
@@ -244,7 +244,7 @@ void mbPauseGuideCreate(void)
 {
     pausePanelWork = mbMalloc(sizeof(PAUSE_PANEL_WORK) * 20);
     pauseGuideKillF = FALSE;
-    pauseGuideProc = HuPrcChildCreate(PauseGuideMain, 0x2011, 0x2000, 0,
+    pauseGuideProc = HuPrcChildCreate(PauseGuideMain, 8209, 8192, 0,
         mbMainProc);
     HuPrcDestructorSet2(pauseGuideProc, PauseGuideDestroy);
     HuPrcSetStat(pauseGuideProc,
@@ -289,9 +289,9 @@ static void PauseGuideMain(void)
                 if (work->time >= work->delay) {
                     work->time = work->delay = 0;
                     if (work->motion == 4) {
-                        mbAudFXPlay(0x34);
+                        mbAudFXPlay(52);
                     } else if (work->motion == 5) {
-                        mbAudFXPlay(0x35);
+                        mbAudFXPlay(53);
                     }
                 }
             } else {
@@ -454,7 +454,7 @@ s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum)
     memset(work, 0, sizeof(PAUSE_PANEL_WORK));
     work->scale = work->scaleStart = work->scaleTarget = work->scaleBase = 1.0f;
     work->pos.z = work->posStart.z = work->posTarget.z = -500.0f;
-    work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_bpause6, 0x25)),
+    work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_bpause6, 37)),
         NULL, FALSE);
     mbObjCameraSet(work->modelId, 4);
     mbObjLayerSet(work->modelId, 4);
@@ -466,7 +466,7 @@ s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum)
     {
         MBMODELID modelId = work->modelId;
 
-        mbObjAttrSet(modelId, 0x00200000);
+        mbObjAttrSet(modelId, HU3D_ATTR_NOPAUSE);
     }
     mbObjDispSet(work->modelId, FALSE);
     work->anim = HuSprAnimRead(HuDataSelHeapReadNum(
@@ -482,13 +482,13 @@ s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum)
         Hu3DAnmNoSet(work->animId[i], 0);
     }
     work->batsuModelId = mbObjCreate(
-        mbBoardDataNumGet(DATANUM(DATA_bpause6, 0x24)), NULL, TRUE);
+        mbBoardDataNumGet(DATANUM(DATA_bpause6, 36)), NULL, TRUE);
     mbObjCameraSet(work->batsuModelId, 4);
     mbObjLayerSet(work->batsuModelId, 4);
     {
         MBMODELID modelId = work->batsuModelId;
 
-        mbObjAttrSet(modelId, 0x00200000);
+        mbObjAttrSet(modelId, HU3D_ATTR_NOPAUSE);
     }
     mbObjDispSet(work->batsuModelId, FALSE);
     work->sprId = -1;
