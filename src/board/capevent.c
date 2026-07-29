@@ -34,9 +34,32 @@ s8 mbPadStkYGet(int playerNo);
 
 #define CAPSULE_INVALID -99
 
+#define CAPEVENT_PROCESS_PRIORITY 8196
+#define CAPEVENT_PROCESS_STACK_SIZE 24576
+#define CAPEVENT_EFFECT_OBJ_PRIORITY ((s16)(1 << 15))
+#define CAPEVENT_EFFECT_RANDOM_COUNT 1024
+#define CAPEVENT_EFFECT_RANDOM_RANGE (1 << 15)
+#define CAPEVENT_EFFECT_RANDOM_MASK (CAPEVENT_EFFECT_RANDOM_RANGE - 1)
+#define CAPEVENT_EFFECT_RANDOM_DATA_SIZE (1 << 11)
+#define CAPEVENT_DISPLAY_LIST_SIZE (1 << 16)
+
+#define CAPEVENT_DATA_RING_PRIMARY DATANUM(DATA_capsule, 49)
+#define CAPEVENT_DATA_RING_SECONDARY DATANUM(DATA_capsule, 50)
+#define CAPEVENT_DATA_RING_TERTIARY DATANUM(DATA_capsule, 51)
+#define CAPEVENT_DATA_BOOST_EFFECT DATANUM(DATA_capsule, 53)
+#define CAPEVENT_DATA_ELECTRIC_EFFECT DATANUM(DATA_capsule, 55)
+#define CAPEVENT_DATA_RING_HIT_EFFECT DATANUM(DATA_capsule, 56)
+#define CAPEVENT_DATA_CAMERA_TARGET_MODEL DATANUM(DATA_capsule, 68)
+#define CAPEVENT_DATA_CAMERA_TARGET_SPRITE DATANUM(DATA_board, 1)
+
+#define CAPEVENT_MESS_BONUS_COIN MESSNUM(MESS_CAPSULE_EX99, 57)
+#define CAPEVENT_CAPSULE_VIEW_SPRITE_PRIORITY 2000
+#define CAPEVENT_RING_PARTICLE_DISP_ATTR 79
+#define CAPEVENT_ELECTRIC_PARTICLE_DISP_ATTR 93
+
 #define CAP_EFF_RAND_NEXT() \
     do { \
-        if (++mbCapEffNum >= 1024) { \
+        if (++mbCapEffNum >= CAPEVENT_EFFECT_RANDOM_COUNT) { \
             mbCapEffNum = 0; \
         } \
     } while (0)
@@ -94,9 +117,9 @@ typedef struct CapEffBoostParticleData {
     float alpha;
     u8 _unk18[4];
     float angleStep;
-    u8 _unk20[0x20];
+    u8 _unk20[32];
     float active;
-    u8 _unk44[0x10];
+    u8 _unk44[16];
     float angle;
     HuVecF pos;
     GXColor color;
@@ -139,7 +162,7 @@ typedef struct CapEffGlowParticleData {
     u8 _unk20[4];
     float gravity;
     float rotStep;
-    u8 _unk2C[0xC];
+    u8 _unk2C[12];
     float alpha;
     float alphaMax;
     float active;
@@ -162,9 +185,9 @@ typedef struct CapEffSnowParticleWork {
     float _unk10;
     float time;
     float timeStep;
-    u8 _unk1C[0x24];
+    u8 _unk1C[36];
     float active;
-    u8 _unk44[0x14];
+    u8 _unk44[20];
     HuVecF pos;
     GXColor color;
     u8 _unk68[4];
@@ -172,12 +195,12 @@ typedef struct CapEffSnowParticleWork {
 
 
 typedef struct CapEffExplodeParticleWork {
-    u8 _unk00[0x20];
+    u8 _unk00[32];
     u8 blendMode;
     u8 _unk21;
     u8 dispAttr;
     u8 _unk23;
-    u8 _unk24[0x14];
+    u8 _unk24[20];
     ANIMDATA *animP;
     void *data;
 } CAPEFFEXPLODEPARTWORK;
@@ -190,11 +213,11 @@ typedef struct CapEffExplodeParticleData {
     HuVecF vel;
     u8 _unk14[8];
     float angleStep;
-    u8 _unk20[0x18];
+    u8 _unk20[24];
     float fadeTime;
     float fadeStep;
     float active;
-    u8 _unk44[0x10];
+    u8 _unk44[16];
     float angle;
     HuVecF pos;
     GXColor color;
@@ -203,15 +226,15 @@ typedef struct CapEffExplodeParticleData {
 
 
 typedef struct CapEffBoostParticleWork {
-    u8 _unk00[0x20];
+    u8 _unk00[32];
     u8 blendMode;
 } CAPEFFBOOSTPARTWORK;
 
 typedef struct CapEffGlowParticleWork {
-    u8 _unk00[0x20];
+    u8 _unk00[32];
     u8 pat;
     u8 blendMode;
-    u8 _unk22[0x16];
+    u8 _unk22[22];
     ANIMDATA *animP;
 } CAPEFFGLOWPARTWORK;
 
@@ -221,13 +244,13 @@ typedef struct CapEffDispWork {
 } CAPEFFDISPWORK;
 
 typedef struct CapEffGlowKinokoParticleSystemWork {
-    u8 _unk00[0x20];
+    u8 _unk00[32];
     u8 _unk20;
     u8 _unk21[5];
     s16 num;
-    u8 _unk28[0x14];
+    u8 _unk28[20];
     void *data;
-    u8 _unk40[0x10];
+    u8 _unk40[16];
     HuVec2f *grid;
     u8 _unk54[4];
     int gridNum;
@@ -237,7 +260,7 @@ typedef struct CapEffGlowKinokoParticleSystemWork {
 typedef struct CapEffParticleSystemWork {
     s16 mode;
     s16 phase;
-    u8 _unk04[0x1C];
+    u8 _unk04[28];
     u8 dispAttr;
     u8 _unk21;
     u8 blendMode;
@@ -263,7 +286,7 @@ typedef struct CapEffGlowKinokoParticleWork {
     s16 _unk00;
     s16 _unk02;
     s16 _unk04;
-    u8 _unk06[0x66];
+    u8 _unk06[102];
 } CAPEFFGLOWKINOKOPARTICLEWORK;
 
 
@@ -283,7 +306,7 @@ typedef struct CapEffRingParticleWork {
     float _unk14;
     float _unk18;
     float _unk1C;
-    u8 _unk20[0x20];
+    u8 _unk20[32];
     float _unk40;
     u8 _unk44[8];
     HuVecF _unk4C;
@@ -303,9 +326,9 @@ typedef struct CapEffMasuHitParticleWork {
     HuVecF _unk20;
     float _unk2C;
     float _unk30;
-    u8 _unk34[0xC];
+    u8 _unk34[12];
     float _unk40;
-    u8 _unk44[0x10];
+    u8 _unk44[16];
     float _unk54;
     HuVecF _unk58;
     GXColor color;
@@ -314,7 +337,7 @@ typedef struct CapEffMasuHitParticleWork {
 
 
 typedef struct CapEffRingHitParticleWork {
-    u8 _unk00[0x20];
+    u8 _unk00[32];
     u8 blendMode;
     u8 _unk21;
     u8 dispAttr;
@@ -449,25 +472,25 @@ typedef struct CapEffOpenWork {
 typedef struct CapCoinManWork {
     u8 _unk00[4];
     int activeF;
-    u8 _unk08[0x34];
+    u8 _unk08[52];
 } CAPCOINMANWORK;
 
 typedef struct CapStarManWork {
     u8 _unk00[4];
     int activeF;
-    u8 _unk08[0x34];
+    u8 _unk08[52];
 } CAPSTARMANWORK;
 
 typedef struct CapEffCapLoseWork {
-    int objIdx;          /* 0x00; owner slot on entry zero */
-    int activeF;         /* 0x04 */
-    int colorObjId;      /* 0x08 */
-    int capsuleNo;       /* 0x0C */
-    int _unk10;          /* 0x10 */
-    int _unk14;          /* 0x14 */
-    int time;            /* 0x18 */
-    HuVecF pos;          /* 0x1C */
-    HuVecF vel;          /* 0x28 */
+    int objIdx;
+    int activeF;
+    int colorObjId;
+    int capsuleNo;
+    int _unk10;
+    int _unk14;
+    int time;
+    HuVecF pos;
+    HuVecF vel;
 } CAPEFFCAPLOSEWORK;
 
 
@@ -533,7 +556,7 @@ typedef struct CapWork {
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
     int _unkB6C;
-    u8 _unkB70[0x5C];
+    u8 _unkB70[92];
     int processNo;
     OMOBJ *explodeObj;
     OMOBJ *boostObj;
@@ -580,12 +603,12 @@ static GXColor ev_CapsuleRandomColorTbl[7] = {
 };
 static HuVecF ev_CapsuleViewOfs = { 0.0f, 100.0f, 0.0f };
 static int ev_CapEffRingFile[] = {
-    DATANUM(DATA_capsule, 0x31),
-    DATANUM(DATA_capsule, 0x32),
-    DATANUM(DATA_capsule, 0x33),
-    DATANUM(DATA_capsule, 0x31),
-    DATANUM(DATA_capsule, 0x38),
-    DATANUM(DATA_capsule, 0x38),
+    CAPEVENT_DATA_RING_PRIMARY,
+    CAPEVENT_DATA_RING_SECONDARY,
+    CAPEVENT_DATA_RING_TERTIARY,
+    CAPEVENT_DATA_RING_PRIMARY,
+    CAPEVENT_DATA_RING_HIT_EFFECT,
+    CAPEVENT_DATA_RING_HIT_EFFECT,
 };
 static GXColor ev_CapEffElectricColor[] = {
     { 192, 192, 255, 255 },
@@ -953,7 +976,8 @@ void mbev_CapBiriQShockCreate(int playerNo)
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     biriQMasuNum = 60;
-    obj = omAddObjEx(mbObjMan, 32768, 0, 0, -1, ev_CapBiriQShockOMExec);
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        ev_CapBiriQShockOMExec);
     mbev_CapBiriQMetalShock(&work);
     biriQMasuNum = 0;
 }
@@ -975,7 +999,9 @@ void mbev_CapBiriQMetalShockCreate(int playerNo)
     work.masuIdNext = -1;
     work.flags._flag07 = TRUE;
     biriQMasuNum = 0;
-    process = HuPrcChildCreate(ev_CapBiriQMetalShock, 8196, 24576, 0, mbMainProc);
+    process = HuPrcChildCreate(ev_CapBiriQMetalShock,
+        CAPEVENT_PROCESS_PRIORITY, CAPEVENT_PROCESS_STACK_SIZE, 0,
+        mbMainProc);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPWORK), HU_MEMNUM_OVL);
     process->property = workP;
     memcpy(process->property, &work, sizeof(CAPWORK));
@@ -1353,7 +1379,8 @@ void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL createF, BOOL mode,
 
     if (createF) {
         process = HuPrcChildCreate(
-            ev_CapEffOpen, 0x2004, 0x6000, 0, mbMainProc);
+            ev_CapEffOpen, CAPEVENT_PROCESS_PRIORITY,
+            CAPEVENT_PROCESS_STACK_SIZE, 0, mbMainProc);
         HuPrcDestructorSet2(process, ev_CapEffOpenKill);
         workData = HuMemDirectMallocNum(
             HEAP_HEAP, sizeof(CAPEFFOPENWORK), HU_MEMNUM_OVL);
@@ -1421,13 +1448,15 @@ static void ev_CapEffOpen(void)
         scale.x = 1.0f;
         scale.y = 2.0f;
         scale.z = 100.0f;
-        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffColorSet(&color,
+            mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
         mbev_CapEffRingAdd(
             ringObj, &pos, &rot, &scale, 1, 10, 0, &color);
         scale.x = 2.0f;
         scale.y = 2.5f;
         scale.z = 200.0f;
-        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffColorSet(&color,
+            mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
         mbev_CapEffRingAdd(
             ringObj, &pos, &rot, &scale, 3, 10, 1, &color);
 
@@ -1482,13 +1511,15 @@ static void ev_CapEffOpen(void)
         scale.x = 1.0f;
         scale.y = 2.0f;
         scale.z = 100.0f;
-        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffColorSet(&color,
+            mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
         mbev_CapEffRingAdd(
             ringObj, &pos, &rot, &scale, 1, 10, 0, &color);
         scale.x = 2.0f;
         scale.y = 2.5f;
         scale.z = 200.0f;
-        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffColorSet(&color,
+            mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
         mbev_CapEffRingAdd(
             ringObj, &pos, &rot, &scale, 3, 10, 1, &color);
 
@@ -1584,7 +1615,7 @@ void mbev_CapDebugCam(void)
     dispX = 32.0f;
     dispY = 50.0f;
     objId = mbev_CapObjCreate(&work->objWork,
-        DATANUM(DATA_capsule, 0x44), NULL, FALSE, 5, FALSE);
+        CAPEVENT_DATA_CAMERA_TARGET_MODEL, NULL, FALSE, 5, FALSE);
     mbObjPosSet(objId, center.x, center.y, center.z);
     mbObjDispSet(objId, FALSE);
     mbCameraFocusObjSet(objId);
@@ -1740,15 +1771,16 @@ void mbev_CapDebugWarp(void)
     masuId = GwPlayer[playerNo].masuId;
     mbPlayerPosGet(playerNo, &pos);
     objId = mbev_CapObjCreate(&work->objWork,
-        DATANUM(DATA_capsule, 0x44), NULL, FALSE, 5, FALSE);
+        CAPEVENT_DATA_CAMERA_TARGET_MODEL, NULL, FALSE, 5, FALSE);
     mbObjPosSet(objId, pos.x, pos.y, pos.z);
     mbObjDispSet(objId, FALSE);
     mbCameraMoveObj(objId, NULL, &ev_CapsuleViewOfs, 3000.0f, -1.0f, 1);
     sprId = mbev_CapSprCreate(&work->objWork,
-        mbBoardDataNumGet(DATANUM(DATA_board, 1)), 2000, 0);
+        mbBoardDataNumGet(CAPEVENT_DATA_CAMERA_TARGET_SPRITE),
+        CAPEVENT_CAPSULE_VIEW_SPRITE_PRIORITY, 0);
     espDispOn(sprId);
     espDrawNoSet(sprId, 0);
-    espAttrSet(sprId, 1);
+    espAttrSet(sprId, HUSPR_ATTR_NOANIM);
     espPosSet(sprId, 0.0f, 0.0f);
     espBankSet(sprId, 0);
     do {
@@ -1864,7 +1896,9 @@ void mbev_CapBonusCoin(int playerNo, int coinNum, BOOL waitF, BOOL highF)
     void *workData;
     CAPBONUSCOINWORK *workP;
 
-    process = ev_CapBonusCoinProc[playerNo] = HuPrcChildCreate(ev_CapBonusCoin, 8196, 24576, 0, mbMainProc);
+    process = ev_CapBonusCoinProc[playerNo] = HuPrcChildCreate(ev_CapBonusCoin,
+        CAPEVENT_PROCESS_PRIORITY, CAPEVENT_PROCESS_STACK_SIZE, 0,
+        mbMainProc);
     HuPrcDestructorSet2(process, ev_CapBonusCoinKill);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPBONUSCOINWORK), HU_MEMNUM_OVL);
     process->property = workData;
@@ -1914,7 +1948,7 @@ static void ev_CapBonusCoinKill(void)
 
 static void ev_CapBonusCoinWin(void)
 {
-    bonusCoinWinId = mbWinCreate(2, MESSNUM(MESS_CAPSULE_EX99, 0x39), -1);
+    bonusCoinWinId = mbWinCreate(2, CAPEVENT_MESS_BONUS_COIN, -1);
     sprintf(ev_CapBonusCoinMes, lbl_802BFE90, bonusCoinNum);
     mbWinTopInsertMesSet((u32)ev_CapBonusCoinMes, 0);
 }
@@ -2032,22 +2066,23 @@ void mbev_CapInit(void)
     mbCapThrowHookSet(NULL);
     mbev_CapTeresaStealSet(-1, 0, NULL, NULL);
     boostEffAnim = HuSprAnimRead(HuDataReadNum(
-        DATANUM(DATA_capsule, 0x35), HU_MEMNUM_OVL));
+        CAPEVENT_DATA_BOOST_EFFECT, HU_MEMNUM_OVL));
     HuSprAnimLock(boostEffAnim);
     ringHitEffAnim1 = HuSprAnimRead(HuDataReadNum(
-        DATANUM(DATA_capsule, 0x38), HU_MEMNUM_OVL));
+        CAPEVENT_DATA_RING_HIT_EFFECT, HU_MEMNUM_OVL));
     HuSprAnimLock(ringHitEffAnim1);
     ringHitEffAnim2 = HuSprAnimRead(HuDataReadNum(
-        DATANUM(DATA_capsule, 0x31), HU_MEMNUM_OVL));
+        CAPEVENT_DATA_RING_PRIMARY, HU_MEMNUM_OVL));
     HuSprAnimLock(ringHitEffAnim2);
     electricEffAnim = HuSprAnimRead(HuDataReadNum(
-        DATANUM(DATA_capsule, 0x37), HU_MEMNUM_OVL));
+        CAPEVENT_DATA_ELECTRIC_EFFECT, HU_MEMNUM_OVL));
     HuSprAnimLock(electricEffAnim);
     mbCapEffNum = 0;
-    dataP = HuMemDirectMallocNum(HEAP_HEAP, 0x800, HU_MEMNUM_OVL);
+    dataP = HuMemDirectMallocNum(HEAP_HEAP,
+        CAPEVENT_EFFECT_RANDOM_DATA_SIZE, HU_MEMNUM_OVL);
     mbCapEffData = dataP;
-    for (i = 0; i < 1024; i++) {
-        mbCapEffData[i] = frand() & 0x7FFF;
+    for (i = 0; i < CAPEVENT_EFFECT_RANDOM_COUNT; i++) {
+        mbCapEffData[i] = frand() & CAPEVENT_EFFECT_RANDOM_MASK;
     }
     capsuleMasuType = -1;
     capsuleMasuId = -1;
@@ -2361,7 +2396,8 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
     CAPEFFMOVEWORK *workP;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapPlayerMoveObjExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapPlayerMoveObjExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
@@ -2404,7 +2440,8 @@ void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
     CAPEFFMOVEWORK *workP;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapPlayerMoveObjExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapPlayerMoveObjExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
@@ -2436,7 +2473,8 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     HuVecF delta;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapPlayerMoveObjExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapPlayerMoveObjExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
@@ -3615,7 +3653,7 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
                 * MBCapsuleEffRandF()));
             gravity = 0.0f;
             rotStep = 0.0f;
-            if (mbRandMod(0x8000) & 1) {
+            if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
                 gravity *= -1.0f;
             }
             break;
@@ -3626,7 +3664,7 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
             gravity = 0.05f + (0.02f
                 * MBCapsuleEffRandF());
             rotStep = 0.0f;
-            if (mbRandMod(0x8000) & 1) {
+            if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
                 gravity *= -1.0f;
             }
             break;
@@ -3636,7 +3674,7 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
             gravity = 0.05f + (0.02f
                 * MBCapsuleEffRandF());
             rotStep = 0.08166666f;
-            if (mbRandMod(0x8000) & 1) {
+            if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
                 gravity *= -1.0f;
             }
             break;
@@ -3838,7 +3876,8 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
             break;
         }
     }
-    obj = omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffRayOMExec);
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        mbev_CapEffRayOMExec);
     ev_CapEffRayOMObj[objIdx] = obj;
     workP = obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFRAYWORK), HU_MEMNUM_OVL);
     memset(workP, 0, sizeof(CAPEFFRAYWORK));
@@ -3877,18 +3916,20 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
         }
         for (j = 0; j < 16; j++) {
             t = (float)j / 7.0f;
-            mbev_CapEffColorSet(&particleP->color[j], mbRandMod(0x8000));
+            mbev_CapEffColorSet(&particleP->color[j],
+                mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
             particleP->color[j].a =
                 255.0 * sin(3.141592653589793 * (180.0f * t) / 180.0);
         }
     }
     DCFlushRangeNoSync(workP->particleP, 128 * sizeof(CAPEFFRAYPARTICLEWORK));
     dlBufHeap = modelP->mallocNo;
-    dlBufData = HuMemDirectMallocNum(HEAP_MODEL, 0x10000, dlBufHeap);
+    dlBufData = HuMemDirectMallocNum(HEAP_MODEL, CAPEVENT_DISPLAY_LIST_SIZE,
+        dlBufHeap);
     dlBeginData = dlBufData;
     dlBegin = dlBuf = dlBeginData;
-    DCFlushRange(dlBuf, 0x10000);
-    GXBeginDisplayList(dlBegin, 0x10000);
+    DCFlushRange(dlBuf, CAPEVENT_DISPLAY_LIST_SIZE);
+    GXBeginDisplayList(dlBegin, CAPEVENT_DISPLAY_LIST_SIZE);
     GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 16);
     for (i = 0; i < 8; i++) {
         GXPosition1x16(i * 2);
@@ -3924,7 +3965,8 @@ OMOBJ *mbev_CapEffCoinCreate(void)
         }
     }
     obj = ev_CapEffCoinOMObj[objIdx] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffCoinOMExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffCoinOMExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, 128 * sizeof(CAPEFFCOINWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     workData = workP;
@@ -4759,7 +4801,8 @@ OMOBJ *mbev_CapEffRingCreate(void)
         }
     }
     obj = ev_CapEffRingOMObj[i] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffRingOMExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffRingOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFRINGWORK), HU_MEMNUM_OVL);
     obj->data = workData;
     workP = workData;
@@ -4775,7 +4818,7 @@ OMOBJ *mbev_CapEffRingCreate(void)
         modelP = &Hu3DData[modelId];
         particleP = modelP->hookData;
         particleP->blendMode = 1;
-        particleP->dispAttr = 0x4F;
+        particleP->dispAttr = CAPEVENT_RING_PARTICLE_DISP_ATTR;
     }
     return obj;
 }
@@ -4799,7 +4842,8 @@ OMOBJ *mbev_CapEffRingHitCreate(void)
         }
     }
     obj = ev_CapEffRingOMObj[i] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffRingOMExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffRingOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFRINGWORK), HU_MEMNUM_OVL);
     obj->data = workData;
     workP = workData;
@@ -4818,7 +4862,7 @@ OMOBJ *mbev_CapEffRingHitCreate(void)
         modelP = &Hu3DData[modelId];
         particleP = modelP->hookData;
         particleP->blendMode = 1;
-        particleP->dispAttr = 0x4F;
+        particleP->dispAttr = CAPEVENT_RING_PARTICLE_DISP_ATTR;
     }
     return obj;
 }
@@ -4996,7 +5040,8 @@ OMOBJ *mbev_CapEffElectricCreate(void)
         }
     }
     obj = ev_CapEffElectricOMObj[objIdx] =
-        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffElectricOMExec);
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffElectricOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFELECTRICWORK), HU_MEMNUM_OVL);
     obj->data = workData;
     workP = workData;
@@ -5007,7 +5052,7 @@ OMOBJ *mbev_CapEffElectricCreate(void)
     Hu3DModelLayerSet(workP->modelId, 5);
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 0x5D;
+    particleP->dispAttr = CAPEVENT_ELECTRIC_PARTICLE_DISP_ATTR;
     particleP->blendMode = 1;
     workP->num = 0;
     workP->objIdx = objIdx;
@@ -5088,10 +5133,11 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
         }
     }
 
-    displayListBuffer = HuMemDirectMallocNum(HEAP_MODEL, 0x10000,
+    displayListBuffer = HuMemDirectMallocNum(HEAP_MODEL,
+        CAPEVENT_DISPLAY_LIST_SIZE,
         model->mallocNo);
-    DCFlushRange(displayListBuffer, 0x10000);
-    GXBeginDisplayList(displayListBuffer, 0x10000);
+    DCFlushRange(displayListBuffer, CAPEVENT_DISPLAY_LIST_SIZE);
+    GXBeginDisplayList(displayListBuffer, CAPEVENT_DISPLAY_LIST_SIZE);
     GXBegin(GX_QUADS, GX_VTXFMT0, max * 4);
     for (i = 0; i < max; i++) {
         for (j = 0; j < 4; j++) {

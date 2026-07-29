@@ -2,6 +2,6 @@
 #define _BOARD_CAPSULE_H
 
 #define MBCapsuleEffRandF() \
-    (mbRandMod(0x10000000) * (1.0f / 0x10000000))
+    (mbRandMod(1 << 28) * (1.0f / (1 << 28)))
 
 #endif

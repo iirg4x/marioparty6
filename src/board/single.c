@@ -1,3 +1,4 @@
+#include "datadir_enum.h"
 #include "game/board/masu.h"
 #include "game/board/main.h"
 #include "game/board/audio.h"
@@ -13,8 +14,17 @@
 #include "game/hu3d.h"
 #include "game/mgdata.h"
 #include "game/sprite.h"
+#include "messdir_enum.h"
+#include "messnum/mg_name.h"
 
 #include <string.h>
+
+#define SINGLE_DATA_EFFECT_SLOT0 DATA_bsingle
+#define SINGLE_DATA_EFFECT_SLOT1 DATANUM(DATA_board, 99)
+#define SINGLE_DATA_EFFECT_SLOT2 DATANUM(DATA_board, 94)
+#define SINGLE_DATA_EFFECT_SLOT3 DATANUM(DATA_board, 102)
+#define SINGLE_MESS_KOOPA_MG_SKIP MESSNUM(MESS_BOARD_SINGLE, 7)
+#define SINGLE_PRIZE_FLAG_WORD_MASK ((1 << 5) - 1)
 
 extern void mbExitReq(void);
 extern void HuMCListenerKill(void);
@@ -85,7 +95,7 @@ static ANIMDATA *singleEffAnim[4];
 
 static int singleTeamChar = -1;
 static int mgKoopaCapsuleTbl[] = { 2, 7 };
-static u8 guideLast5MotTbl[] = { 12, 6, 0xFF };
+static u8 guideLast5MotTbl[] = { 12, 6, -1 };
 
 static int singleBoard;
 static int singleCancelF;
@@ -95,7 +105,7 @@ static int singleMicF;
 static int singleListenerCreateF;
 static int singleListenerOnF;
 static int singleMasuOrderNum;
-static u8 singleMasuOrder[0x100][2];
+static u8 singleMasuOrder[256][2];
 static u8 masuType[5];
 static u8 masuTypeNum;
 static int returnMode;
@@ -139,7 +149,12 @@ int mbSingleCall(int mode, int arg);
 
 void mbSingleInit(void)
 {
-    static int effFile[] = { 0x000A0000, 0x00050063, 0x0005005E, 0x00050066 };
+    static int effFile[] = {
+        SINGLE_DATA_EFFECT_SLOT0,
+        SINGLE_DATA_EFFECT_SLOT1,
+        SINGLE_DATA_EFFECT_SLOT2,
+        SINGLE_DATA_EFFECT_SLOT3,
+    };
     static int boardNo[] = {
         GW_BOARD_S01,
         GW_BOARD_S02,
@@ -200,7 +215,7 @@ void mbSingleInit(void)
     SingleMgSaveInit();
     singleEndF = FALSE;
     singleCancelF = FALSE;
-    HuDataDirClose(0x000A0000);
+    HuDataDirClose(DATA_bsingle);
 }
 
 void mbSingleClose(void)
@@ -421,15 +436,15 @@ int mbev_SingleMgEnd(int playerNo)
     }
     mbPlayerColSnapSet(TRUE);
     mbSingleCall(8, 0);
-    if (_CheckFlag(0x10002)) {
+    if (_CheckFlag(FLAG_BOARD_MG)) {
         ev_SingleMgEnd(playerNo);
-        _ClearFlag(0x10002);
-    } else if (_CheckFlag(0x10003)) {
+        _ClearFlag(FLAG_BOARD_MG);
+    } else if (_CheckFlag(FLAG_BOARD_MG_KOOPA)) {
         ev_SingleKoopaMgEnd(playerNo);
-        _ClearFlag(0x10003);
-    } else if (_CheckFlag(0x10005)) {
+        _ClearFlag(FLAG_BOARD_MG_KOOPA);
+    } else if (_CheckFlag(FLAG_BOARD_MG_KETTOU)) {
         ev_SingleMKoopaMgEnd(playerNo);
-        _ClearFlag(0x10005);
+        _ClearFlag(FLAG_BOARD_MG_KETTOU);
     }
     return TRUE;
 }
@@ -438,7 +453,7 @@ static void ev_SingleKoopaMgSkip(MBMODELID modelId)
 {
     s16 winId;
 
-    winId = mbWinCreate(2, 0x002B0007, 13);
+    winId = mbWinCreate(2, SINGLE_MESS_KOOPA_MG_SKIP, 13);
     mbWinWait(winId);
     mbWipeSpecialFadeInCreate(7, 30);
     mbWipeSpecialWait();
@@ -497,7 +512,8 @@ static int miniKoopaType;
 void mbSinglePrizeFlagReset(int flag)
 {
     if (flag <= 63) {
-        GwSinglePrizeFlag[flag >> 5] &= ~(1 << (flag & 0x1F));
+        GwSinglePrizeFlag[flag >> 5] &=
+            ~(1 << (flag & SINGLE_PRIZE_FLAG_WORD_MASK));
     }
 }
 
@@ -526,7 +542,7 @@ static inline int SingleMgListGet(int mgType, u8 *list)
             || MgDataTbl[mgNo].type == MG_TYPE_DONKEY
             || (!(MgDataTbl[mgNo].flag & MG_FLAG_RARE)
                 && !mbMgCallSingleOnCheck(MgDataTbl[mgNo].ovl))
-            || MgDataTbl[mgNo].nameMes == 0x0005004C) {
+            || MgDataTbl[mgNo].nameMes == MG_NAME_M677) {
             continue;
         }
         if (!SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE)) {
@@ -553,7 +569,7 @@ int mbSingleCall(int mode, int arg)
     u8 mgCandidates[128];
     int historyNo;
 
-    if ((GWPartyGet() != FALSE) || _CheckFlag(0x1000E)) {
+    if ((GWPartyGet() != FALSE) || _CheckFlag(FLAG_BOARD_TUTORIAL)) {
         return 0;
     }
     switch (mode) {
