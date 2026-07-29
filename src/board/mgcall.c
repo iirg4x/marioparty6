@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "game/board/window.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
@@ -173,19 +176,25 @@ void mbMgCallInit(void)
     memcpy(mgStatusPos2Vs2, statusPos2Vs2Base, sizeof(mgStatusPos2Vs2));
 }
 
-void mbev_MgCall(void)
+s32 mbev_MgCall(void)
 {
-    HuVecF statusPos;
+    MBCAMERA *cameraP;
     HuVecF pos;
+    HuVec2f statusPos;
     MGCALLWORK work;
+    MGCALLWORK *workP;
     int i;
     int spaceNo;
     int result;
+    BOOL battleF;
     float weight;
+    float scale;
     float scaleX;
     float scaleY;
 
-    mbCameraGet();
+    workP = &work;
+    battleF = FALSE;
+    cameraP = mbCameraGet();
     mbPauseDisableSet(TRUE);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
@@ -199,50 +208,52 @@ void mbev_MgCall(void)
         mbPlayerDispSet(i, FALSE);
     }
     if (!GwSystem.curTime) {
-        work.guideMdlId = mbObjCreate(0x110000, (int *)guideMotFileTbl[0], 0);
-        work.guideItemMdlId = -1;
+        workP->guideMdlId = mbObjCreate(0x110000, (int *)guideMotFileTbl[0], 0);
+        workP->guideItemMdlId = -1;
     } else {
-        work.guideMdlId = mbObjCreate(0x11001B, (int *)guideMotFileTbl[1], 0);
-        work.guideItemMdlId = mbObjCreate(0x110035, 0, 0);
-        mbObjHookSet(work.guideMdlId, lbl_8024BA18, work.guideItemMdlId);
+        workP->guideMdlId = mbObjCreate(0x11001B, (int *)guideMotFileTbl[1], 0);
+        workP->guideItemMdlId = mbObjCreate(0x110035, 0, 0);
+        mbObjHookSet(workP->guideMdlId, lbl_8024BA18, workP->guideItemMdlId);
     }
-    mbObjMotionSet(work.guideMdlId, 2, HU3D_MOTATTR_LOOP);
-    for (spaceNo = 1; spaceNo < mbMasuNumGet(); spaceNo++) {
-        if (mbMasuAttrGet(spaceNo) & 0x8000) {
+    mbObjMotionSet(workP->guideMdlId, 2, HU3D_MOTATTR_LOOP);
+    for (i = 1; i < mbMasuNumGet(); i++) {
+        if ((u16)mbMasuAttrGet((s16)i) & 0x8000) {
             break;
         }
     }
-    if (spaceNo >= mbMasuNumGet()) {
+    if (i < mbMasuNumGet()) {
+        spaceNo = i;
+    } else {
         spaceNo = 1;
     }
-    mbMasuPosGet(spaceNo, &pos);
+    mbMasuPosGet((s16)spaceNo, &pos);
     pos.y += 250.0f;
-    mbObjPosSet(work.guideMdlId, pos.x, pos.y, pos.z);
+    mbObjPosSet(workP->guideMdlId, pos.x, pos.y, pos.z);
     mbCameraMoveOnSet(FALSE);
-    mbCameraMoveObj(work.guideMdlId, 0, 0, 1800.0f, -1.0f, 21);
+    mbCameraMoveObj(workP->guideMdlId, 0, 0, 1800.0f, -1.0f, 21);
     mbCameraMoveWait();
     mbCameraFocusObjSet(-1);
     mbWipeFadeIn();
     mbAudFXPlay(0x457);
-    if (!GwSystem.tagF) {
+    if (!GWTeamFGet()) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
-            mbStatusPosOnGet(i, &statusPos);
-            mbStatusMoveSet(i, &statusPos, (HuVecF *)&statusPos4PBase[i], TRUE, 15);
+            mbStatusPosOnGet(i, (HuVecF *)&statusPos);
+            mbStatusMoveSet(i, (HuVecF *)&statusPos, (HuVecF *)&statusPos4PBase[i], TRUE, 15);
         }
     } else {
         for (i = 0; i < 2; i++) {
-            mbStatusPosOnGet(i, &statusPos);
-            mbStatusNoMoveSet(i, &statusPos, (HuVecF *)&statusPosKettouBase[i], TRUE, 15);
+            mbStatusPosOnGet(i, (HuVecF *)&statusPos);
+            mbStatusNoMoveSet(i, (HuVecF *)&statusPos, (HuVecF *)&statusPosKettouBase[i], TRUE, 15);
         }
     }
     while (!mbStatusOffCheckAll()) {
         HuPrcVSleep();
     }
-    work.type = SetupTeam(NULL);
-    mbObjMotionShiftSet(work.guideMdlId, 9, 0.0f, 8.0f, FALSE);
-    work.sprId[2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x8A)), 90, 0);
-    espPosSet(work.sprId[2], 288.0f, 240.0f);
-    espScaleSet(work.sprId[2], 0.5f, 0.5f);
+    workP->type = SetupTeam(NULL);
+    mbObjMotionShiftSet(workP->guideMdlId, 9, 0.0f, 8.0f, FALSE);
+    workP->sprId[2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x8A)), 90, 0);
+    espPosSet(workP->sprId[2], 288.0f, 240.0f);
+    espScaleSet(workP->sprId[2], 0.5f, 0.5f);
     mbAudFXPlay(0x458);
     for (i = 1; i <= 30; i++) {
         weight = i / 30.0f;
@@ -250,66 +261,71 @@ void mbev_MgCall(void)
             + (1.5f * sin((M_PI * (180.0f * weight)) / 180.0));
         scaleY = (0.5f * sin((M_PI * (90.0f * weight)) / 180.0))
             + (1.5f * fabs(sin((M_PI * (360.0f * weight)) / 180.0)));
-        espPosSet(work.sprId[2], 288.0f - (32.0f * (1.0f - weight)),
+        espPosSet(workP->sprId[2], 288.0f - (32.0f * (1.0f - weight)),
             240.0f + (64.0f * sin((M_PI * (180.0f * weight)) / 180.0)));
-        espScaleSet(work.sprId[2], scaleX, scaleY);
-        espZRotSet(work.sprId[2], 360.0f * -weight);
+        espScaleSet(workP->sprId[2], scaleX, scaleY);
+        espZRotSet(workP->sprId[2], 360.0f * -weight);
         HuPrcVSleep();
     }
     HuPrcSleep(15);
-    work.sprId[0] = espEntry(mbBoardDataNumGet(mgCallTypeFileTbl[work.type]), 95, 0);
-    espPosSet(work.sprId[0], 288.0f, -32.0f);
-    espDrawNoSet(work.sprId[0], 32);
-    espBankSet(work.sprId[0], work.type);
+    workP->sprId[0] = espEntry(mbBoardDataNumGet(mgCallTypeFileTbl[workP->type]), 95, 0);
+    espPosSet(workP->sprId[0], 288.0f, -32.0f);
+    espDrawNoSet(workP->sprId[0], 32);
+    espBankSet(workP->sprId[0], workP->type);
     for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
-        espPosSet(work.sprId[0], 288.0f,
+        espPosSet(workP->sprId[0], 288.0f,
             88.0f - (120.0f * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         HuPrcVSleep();
     }
-    if (work.type == MG_TYPE_4P && mbRandMod(100) < 10 && mbPlayerMaxCoinGet() >= 10) {
+    if (workP->type == MG_TYPE_4P && mbRandMod(100) < 10 && mbPlayerMaxCoinGet() >= 10) {
+        battleF = TRUE;
         for (i = 1; i <= 12u; i++) {
             weight = i / 12.0f;
-            scaleX = 0.5f * cos((M_PI * (90.0f * weight)) / 180.0);
-            espScaleSet(work.sprId[2], scaleX, scaleX);
+            scale = 0.5f * cos((M_PI * (90.0f * weight)) / 180.0);
+            espScaleSet(workP->sprId[2], scale, scale);
             HuPrcVSleep();
         }
         mbAudFXDelaySet(10);
         mbAudGuidePlay(0x3B4);
-        mbev_CapPlayerMotShiftSet(work.guideMdlId, 7, 0, TRUE);
-        mbObjMotionShiftSet(work.guideMdlId, 8, 0.0f, 8.0f, FALSE);
-        result = MgCallBattleExec(&work);
+        mbev_CapPlayerMotShiftSet(workP->guideMdlId, 7, 0, TRUE);
+        mbObjMotionShiftSet(workP->guideMdlId, 8, 0.0f, 8.0f, FALSE);
+        result = MgCallBattleExec(workP);
     } else {
         for (i = 1; i <= 12u; i++) {
             weight = i / 12.0f;
-            scaleX = 0.1f + (0.4f * cos((M_PI * (90.0f * weight)) / 180.0));
-            espScaleSet(work.sprId[2], scaleX, scaleX);
+            scale = 0.1f + (0.4f * cos((M_PI * (90.0f * weight)) / 180.0));
+            espScaleSet(workP->sprId[2], scale, scale);
             HuPrcVSleep();
         }
-        mbObjMotionShiftSet(work.guideMdlId, 4, 0.0f, 8.0f, FALSE);
+        mbObjMotionShiftSet(workP->guideMdlId, 4, 0.0f, 8.0f, FALSE);
         for (i = 0; i < GW_PLAYER_MAX; i++) {
-            mbStatusPosGet(i, &statusPos);
-            statusPos.x = statusPos.x >= 288.0f ? 704.0f : -128.0f;
+            mbStatusPosGet(i, (HuVecF *)&statusPos);
+            if (statusPos.x >= 288.0f) {
+                statusPos.x = 704.0f;
+            } else {
+                statusPos.x = -128.0f;
+            }
             if (statusPos.y > 272.0f) {
                 statusPos.y = 608.0f;
             } else if (statusPos.y < 208.0f) {
                 statusPos.y = -128.0f;
             }
-            mbStatusMoveSet(i, NULL, &statusPos, TRUE, 15);
+            mbStatusMoveSet(i, NULL, (HuVecF *)&statusPos, TRUE, 15);
         }
         mbAudFXPlay(0x459);
         MgCallVsEffCreate();
         MgCallVsEffPosSet(288.0f, 240.0f);
         for (i = 1; i <= 30u; i++) {
             weight = i / 30.0f;
-            scaleX = 0.1f + (3.0f * sin((M_PI * (90.0f * weight)) / 180.0));
-            espScaleSet(work.sprId[2], scaleX, scaleX);
-            espTPLvlSet(work.sprId[2], 1.0f - weight);
-            espZRotSet(work.sprId[2], 360.0f * sin((M_PI * (90.0f * weight)) / 180.0));
+            scale = 0.1f + (3.0f * sin((M_PI * (90.0f * weight)) / 180.0));
+            espScaleSet(workP->sprId[2], scale, scale);
+            espTPLvlSet(workP->sprId[2], 1.0f - weight);
+            espZRotSet(workP->sprId[2], 360.0f * sin((M_PI * (90.0f * weight)) / 180.0));
             HuPrcVSleep();
         }
-        espDispOff(work.sprId[2]);
-        mbObjMotionShiftSet(work.guideMdlId, 2, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        espDispOff(workP->sprId[2]);
+        mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
         while (MgCallVsEffNumGet() != 0) {
             HuPrcVSleep();
         }
@@ -317,12 +333,13 @@ void mbev_MgCall(void)
         while (!mbStatusOffCheckAll()) {
             HuPrcVSleep();
         }
-        result = MgRouletteExec(work.type, &work);
-        _SetFlag(FLAG_MG_CIRCUIT);
+        result = MgRouletteExec(workP->type, workP);
+        _SetFlag(FLAG_BOARD_MG);
     }
-    GwSystem.mgNo = -1;
-    MgCallCallMg(work.type, result);
-    MgRouletteKill(&work);
+    GwSystem.subGameNo = -1;
+    MgCallCallMg(workP->type, result);
+    MgRouletteKill(workP);
+    return 0;
 }
 
 static s16 MgNameColorGet(u32 nameMes)
@@ -417,28 +434,30 @@ void mbev_MgCallSingle(int playerNo)
 void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
 {
     int i;
+    int result;
     int no;
     int noNew;
     int temp;
-    int charNo;
     MGDATA *mgDataP;
     int sprId;
     int comDif;
     MGCALLWORK work;
+    MGCALLWORK *workP;
+    int charNo;
     int mgTbl[16];
     int charTbl[3];
     int mgNum;
     int mgCount;
-    int result;
     int type;
     MGCALLSINGLETYPE *singleType;
     float weight;
 
     mgDataP = MgDataTbl;
     singleType = mgCallSingleTypeTbl;
+    workP = &work;
     sprId = -1;
     charNo = -1;
-    MgRouletteCreate(&work);
+    MgRouletteCreate(workP);
     _SetFlag(FLAG_MG_CIRCUIT);
     mgCallSingleKoopaF = koopaF;
     for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -535,8 +554,8 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
                 mgNum = 3;
                 break;
         }
-        mgCount = 0;
-        for (i = 0; mgDataP->ovl != (u16)DLL_NONE; i++, mgDataP++) {
+        for (i = 0, mgCount = 0; mgDataP->ovl != (u16)DLL_NONE;
+             i++, mgDataP++) {
             if (mgDataP->flag & MG_FLAG_RARE) {
                 mgTbl[mgCount] = i;
                 mgCount++;
@@ -556,7 +575,7 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
         }
         mbPauseDisableSet(TRUE);
         sprId = espEntry(mbBoardDataNumGet(singleType->dataNum), 100, 0);
-        work.sprId[0] = sprId;
+        workP->sprId[0] = sprId;
         espPosSet(sprId, 288.0f, -32.0f);
         espBankSet(sprId, singleType->bank);
         for (i = 0; i < 30u; i++) {
@@ -567,7 +586,7 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
                         * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
             HuPrcVSleep();
         }
-        result = MgRouletteExec(singleType->type, &work);
+        result = MgRouletteExec(singleType->type, workP);
         type = singleType->type;
     }
     GwSystem.curTime = FALSE;
