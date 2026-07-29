@@ -1199,6 +1199,15 @@ config.libs = [
             Object(Matching, "REL/endingdll/ending_pass3_motion.c"),
             Object(Matching, "REL/endingdll/ending_pass1_35f4.c"),
             Object(Matching, "REL/endingdll/ending_pass1.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_4ab4.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_4dac.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_6ec4.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_951c.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_a58c.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_b244.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_bb10.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_d028.c"),
+            Object(Matching, "REL/endingdll/ending_pass4_lifecycle_12838.c"),
             Object(
                 Matching,
                 "REL/endingdll/runtime.c",
@@ -1348,8 +1357,10 @@ config.libs = [
     Rel(
         "miraclebookdll",
         objects={
+            Object(Matching, "REL/miraclebookdll/application_pass3_0000.c"),
             Object(Matching, "REL/miraclebookdll/application_pass2_2fcc.c"),
             Object(Matching, "REL/miraclebookdll/application_pass2_3e40.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass3_4e94.c"),
             Object(Matching, "REL/miraclebookdll/application_pass1_5904.c"),
             Object(Matching, "REL/miraclebookdll/application_pass2_7158.c"),
             Object(Matching, "REL/miraclebookdll/application_pass2_8a0c.c"),
