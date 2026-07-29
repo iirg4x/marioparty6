@@ -2751,10 +2751,10 @@
       "category": "aggregate_copy_negative_evidence",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, or memcpy: aggregate assignment emits integer word copies, HuCopyVecF emits scalar float copies, and memcpy emits a call. These measured failures do not authenticate an intrinsic spelling.",
-      "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after one bounded aggregate-assignment, HuCopyVecF, and memcpy control has been measured under the pinned owner profile.",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, memcpy, or a block-local pointer-mediated aggregate assignment: the two aggregate forms emit integer word copies, HuCopyVecF emits scalar float copies, and memcpy emits a call. These measured failures do not authenticate an intrinsic spelling.",
+      "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings have been measured under the pinned owner profile.",
       "source_condition": {
-        "change": "Spell the same authenticated 12-byte vector transfer as aggregate assignment, HuCopyVecF, or memcpy in an attempt to reproduce paired-single target instructions.",
+        "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, or memcpy in an attempt to reproduce paired-single target instructions.",
         "requires": [
           "target paired-single loads and stores for an authenticated HuVecF-shaped transfer",
           "the pinned GC/2.6 owner command",
@@ -2765,6 +2765,7 @@
       "emitted_effect": {
         "possible_changes": [
           "integer lwz/stw copies from aggregate assignment",
+          "the same integer lwz/stw copies after staging source and destination through block-local HuVecF pointers",
           "scalar lfs/stfs copies from HuCopyVecF",
           "an out-of-line memcpy call and a smaller but structurally wrong function",
           "percentage movement without reproducing the target copy mechanism"
@@ -2772,12 +2773,13 @@
         "known_signatures": [
           "the target uses psq_l plus lfs and psq_st plus stfs for one HuVecF transfer",
           "aggregate assignment preserves semantics but lowers to three integer-word loads and stores",
+          "block-local HuVecF pointers can change address-register and frame allocation while the dereferenced aggregate assignment still lowers to three integer-word loads and stores",
           "HuCopyVecF preserves semantics but lowers to three scalar floating loads and stores",
           "memcpy can improve one aggregate percentage while introducing a target-absent call",
-          "the same three non-solutions recur in separate board owners"
+          "the ordinary non-solutions recur in separate board owners"
         ]
       },
-      "rule": "Measure aggregate assignment, HuCopyVecF, and memcpy at most once for a proven paired-single HuVecF copy. If all three retain the wrong mechanism, record the negative result and stop until an authenticated intrinsic, helper, compiler contract, or historical header boundary is found; do not guess paired-single intrinsics, add cast tricks, or use inline assembly.",
+      "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, and memcpy at most once for a proven paired-single HuVecF copy. If the applicable ordinary spellings retain the wrong mechanism, record the negative result and stop until an authenticated intrinsic, helper, compiler contract, or historical header boundary is found; do not guess paired-single intrinsics, add cast tricks, or use inline assembly.",
       "safe_actions": [
         "confirm the target transfer width, offsets, and paired-single instruction sequence",
         "retain strict size, score, instruction, and relocation results for each spelling",
@@ -2793,6 +2795,7 @@
           "mbDiceSNpcNumPosSet",
           "mbDiceSNpcNumOfsSet",
           "mbDiceSNpcNumOfsGet",
+          "MoveNumOMExec",
           "mbObjFadeCreate",
           "mbObjFadeTexRotSet"
         ],
@@ -2810,7 +2813,8 @@
         "main:board/snpc mbObjFadeCreate: aggregate assignment is 332/300 bytes at 82.289154%, HuCopyVecF is 332/300 at 77.156624%, and memcpy is 332/292 at 84.409640%; only the target uses psq_l/psq_st",
         "main:board/snpc mbObjFadeTexRotSet: aggregate assignment is 200/136 bytes at 52.340000%, HuCopyVecF is 200/136 at 54.420000%, and memcpy is 200/128 at 36.820000%; none reproduces either target paired-single vector transfer",
         "main:board/dice mbDiceSNpcNumPosSet, mbDiceSNpcNumOfsSet, and mbDiceSNpcNumOfsGet each remain 20/28 bytes at 0% under the ordinary aggregate and HuCopyVecF controls",
-        "main:board/config repeated the aggregate-assignment, HuCopyVecF, and memcpy failures across three missing panel helpers"
+        "main:board/config repeated the aggregate-assignment, HuCopyVecF, and memcpy failures across three missing panel helpers",
+        "main:board/player MoveNumOMExec: block-local HuVecF pointers around `*posP = *posNormP` still emit three lwz/stw copies; target/source are 1152/1128 bytes at 93.996530% in `build/player-residual-closure-021/probe08-movenum-pointer-copy.json`"
       ],
       "counterexamples": [
         "A higher percentage is not a successful copy-shape probe: memcpy raises mbObjFadeCreate from 82.289154% to 84.409640% while adding a target-absent call and shrinking the source farther from 332 bytes.",

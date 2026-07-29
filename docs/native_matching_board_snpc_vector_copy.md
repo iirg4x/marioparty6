@@ -54,6 +54,18 @@ assignment, `HuCopyVecF`, and `memcpy` for the same paired-single reason. That
 historical run did not retain per-function scores, so this note does not invent
 them or elevate those temporary probes to recovered source.
 
+Player residual pass 021 measured a fourth ordinary spelling in
+`MoveNumOMExec`. Replacing the direct aggregate assignment with block-local
+`HuVecF` source and destination pointers followed by
+`*posP = *posNormP` still emitted three `lwz`/`stw` copies. The target/source
+pair was `1152/1128` bytes at `93.996530%`; the target alone retained the
+`psq_l`/`lfs` and `psq_st`/`stfs` transfer. The strict report is
+`build/player-residual-closure-021/probe08-movenum-pointer-copy.json` in the
+Player 021 recovery worktree, with SHA-256
+`795ffcec15119e3e43125b896f5918a9f225101dc50cd51ff313c839b677002c`.
+The probe was reverted. The analogous Player collision copy was not tested and
+is not evidence for this result.
+
 The SNPC batch also supplies a nearby counterexample to overgeneralization.
 `mbObjFadeTexColorSet` becomes exactly `148/148` bytes through an independent
 argument-promotion correction. The vector-copy negative therefore applies to a
@@ -62,11 +74,13 @@ consumer.
 
 ## Safe stopping rule
 
-For this signature, run at most one aggregate-assignment, `HuCopyVecF`, and
-`memcpy` control under the exact owner command. If all three select the measured
-non-target mechanisms, preserve the reports and stop. Reopen the function only
-when same-game source, a historical SDK/header, or a compiler-backed helper or
-intrinsic boundary authenticates why GC/2.6 selected paired-single operations.
+For this signature, run at most one direct aggregate-assignment, block-local
+pointer-mediated aggregate-assignment, `HuCopyVecF`, and `memcpy` control under
+the exact owner command. Once the applicable ordinary spellings select the
+measured non-target mechanisms, preserve the reports and stop. Reopen the
+function only when same-game source, a historical SDK/header, or a
+compiler-backed helper or intrinsic boundary authenticates why GC/2.6 selected
+paired-single operations.
 
 The target opcodes alone do not authenticate a builtin name or source spelling.
 Guessed intrinsics, cast or alignment tricks, fake storage, `volatile`, and
