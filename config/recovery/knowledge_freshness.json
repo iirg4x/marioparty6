@@ -513,7 +513,7 @@
     },
     "gc26-o0-definition-order-and-call-evaluation": {
       "status": "active",
-      "validated_commit": "18269898595d1065f75f085da264b65500ff4d32",
+      "validated_commit": "f6622c08be97c079c471c32c96738a70a5f0056d",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
