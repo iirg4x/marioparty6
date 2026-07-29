@@ -1247,8 +1247,13 @@ config.libs = [
             Object(Matching, "REL/mdpresultdll/application_pass49.c"),
             Object(Matching, "REL/mdpresultdll/application_pass50.c"),
             Object(Matching, "REL/mdpresultdll/application_pass51.c"),
+            Object(Matching, "REL/mdpresultdll/application_1109c.c"),
+            Object(Matching, "REL/mdpresultdll/application_12c80.c"),
+            Object(Matching, "REL/mdpresultdll/application_17cf4.c"),
             Object(Matching, "REL/mdpresultdll/application_pass52.c"),
             Object(Matching, "REL/mdpresultdll/application_pass53.c"),
+            Object(Matching, "REL/mdpresultdll/application_2001c.c"),
+            Object(Matching, "REL/mdpresultdll/application_22cbc.c"),
             Object(
                 Matching,
                 "REL/mdpresultdll/runtime.c",
