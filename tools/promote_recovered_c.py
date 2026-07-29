@@ -7,6 +7,8 @@ This tool enforces the repository's permanent branch boundary:
 * promotion starts from a fresh worktree created from ``main``;
 * only explicitly selected ``src/**/*.c`` blobs are copied;
 * AI/tooling attribution is rejected from promoted source and commit messages;
+* every promoted C file passes the complete-file source-quality gate;
+* synthetic REL pass/tail/extra/address shards are rejected;
 * the copied Git blobs must exactly match the verified worker commit;
 * headers and build/configuration changes are never imported automatically.
 
@@ -18,6 +20,7 @@ knowledge metadata, benchmarks, or workflow changes because it is based on
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
@@ -35,6 +38,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools import agent_queue
+from tools.recovery_core import QUALITY_RULES, _mask_c
 from tools.workspace_policy import DEFAULT_PROMOTION_BASE
 
 DEFAULT_BASE = DEFAULT_PROMOTION_BASE
@@ -55,6 +59,9 @@ COAUTHOR = re.compile(r"(?im)^\s*Co-authored-by\s*:")
 # "agent" are attribution there (project/ai-fix, recovery/agent-fix).  The
 # lookarounds treat "_" as a separator, which plain \b would not.
 BRANCH_AI_WORDS = re.compile(r"(?i)(?<![a-z0-9])(?:ai|agent)(?![a-z0-9])")
+SYNTHETIC_REL_SOURCE = re.compile(
+    r"(?i)(?:^|_)(?:pass\d*|tail\d*|extra)(?:_|\.|$)|^application_[0-9a-f]+\.c$"
+)
 
 
 class PromotionError(ValueError):
@@ -237,6 +244,49 @@ def source_ai_markers(text: str) -> list[str]:
     return findings
 
 
+def synthetic_rel_source(path: str) -> bool:
+    pure = PurePosixPath(path)
+    return (
+        len(pure.parts) >= 4
+        and pure.parts[:2] == ("src", "REL")
+        and SYNTHETIC_REL_SOURCE.search(pure.name) is not None
+    )
+
+
+def _authenticated_quality_rules(root: Path, path: str) -> set[str]:
+    exceptions_path = root / "config/recovery/exceptions.json"
+    if not exceptions_path.is_file():
+        return set()
+    try:
+        payload = json.loads(exceptions_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+    result: set[str] = set()
+    for item in payload.get("exceptions", []):
+        if not isinstance(item, dict) or item.get("classification") != "authenticated":
+            continue
+        if not fnmatch.fnmatch(path, str(item.get("path", ""))):
+            continue
+        result.update(str(rule) for rule in item.get("rules", []))
+    return result
+
+
+def source_quality_errors(root: Path, path: str, text: str) -> list[str]:
+    """Return full-file promotion findings, honoring only authenticated exceptions."""
+    authenticated = _authenticated_quality_rules(root, path)
+    masked = _mask_c(text, preserve_preprocessor=True)
+    findings: list[str] = []
+    for line, value in enumerate(masked.splitlines(), 1):
+        for rule, (message, pattern) in QUALITY_RULES.items():
+            if not pattern.search(value):
+                continue
+            # The project-wide numeric-domain ban has no owner exception.
+            if rule != "raw_hex_literal" and rule in authenticated:
+                continue
+            findings.append(f"line {line}: {rule}: {message}")
+    return findings
+
+
 def message_errors(message: str) -> list[str]:
     errors: list[str] = []
     if AI_MARKER.search(message):
@@ -349,6 +399,10 @@ def plan_promotion(
     files: list[PromotedFile] = []
     errors: list[str] = []
     for path in selected:
+        if synthetic_rel_source(path):
+            errors.append(
+                f"{path}: synthetic REL shard paths are not promotable; recover the authenticated canonical owner"
+            )
         data = _git_bytes(root, source_commit, path)
         try:
             text = data.decode("utf-8")
@@ -357,6 +411,10 @@ def plan_promotion(
             continue
         markers = source_ai_markers(text)
         errors.extend(f"{path}: {marker}" for marker in markers)
+        errors.extend(
+            f"{path}: {finding}"
+            for finding in source_quality_errors(root, path, text)
+        )
         source_blob = _blob(root, source_commit, path)
         if source_blob is None:
             errors.append(f"{path}: missing source blob")
@@ -384,6 +442,8 @@ def plan_promotion(
         "files": [item.as_dict() for item in files],
         "policy": {
             "allowed": "modified/added src/**/*.c only",
+            "source_quality": "the complete promoted file must pass; raw hexadecimal literals have no exception",
+            "rel_ownership": "synthetic pass/tail/extra/address shards are forbidden; use the authenticated canonical owner",
             "headers": "must be recreated and reviewed separately from main",
             "ai_attribution": "forbidden in promoted comments, branch and commit message",
             "workspace_merge": "forbidden",
@@ -471,8 +531,16 @@ def audit_promotion(
             continue
         data = _git_bytes(root, head_commit, path)
         text = data.decode("utf-8", errors="replace")
+        if synthetic_rel_source(path):
+            errors.append(
+                f"{path}: synthetic REL shard paths are not promotable; recover the authenticated canonical owner"
+            )
         markers = source_ai_markers(text)
         errors.extend(f"{path}: {marker}" for marker in markers)
+        errors.extend(
+            f"{path}: {finding}"
+            for finding in source_quality_errors(root, path, text)
+        )
         head_blob = _blob(root, head_commit, path)
         expected_blob = _blob(root, source_commit, path) if source_commit else None
         if source_commit and head_blob != expected_blob:

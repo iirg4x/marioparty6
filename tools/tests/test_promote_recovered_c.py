@@ -11,6 +11,8 @@ from tools.promote_recovered_c import (
     create_promotion,
     plan_promotion,
     source_ai_markers,
+    source_quality_errors,
+    synthetic_rel_source,
 )
 
 
@@ -153,6 +155,45 @@ class PromotionTests(unittest.TestCase):
                 )
         finally:
             temporary.cleanup()
+
+    def test_full_file_quality_rejects_historical_raw_hex(self):
+        temporary, root, base = self.fixture()
+        try:
+            (root / "src/game/example.c").write_text(
+                "int Existing(void) { return 0x2A; }\n"
+                "int Example(void) { return 1; }\n",
+                encoding="utf-8",
+            )
+            run(root, "git", "add", "src/game/example.c")
+            run(root, "git", "commit", "-qm", "Update another function")
+            with self.assertRaisesRegex(PromotionError, "raw_hex_literal"):
+                plan_promotion(
+                    root,
+                    base_ref=base,
+                    source_ref="HEAD",
+                    allow_unverified=True,
+                )
+        finally:
+            temporary.cleanup()
+
+    def test_quality_scan_ignores_comments_but_rejects_controls(self):
+        temporary, root, _ = self.fixture()
+        try:
+            findings = source_quality_errors(
+                root,
+                "src/game/example.c",
+                "// 0x2A volatile\nvolatile int value;\n",
+            )
+            self.assertEqual(len(findings), 1)
+            self.assertIn("volatile", findings[0])
+        finally:
+            temporary.cleanup()
+
+    def test_synthetic_rel_shard_paths_are_rejected(self):
+        self.assertTrue(synthetic_rel_source("src/REL/staffdll/application_pass5_0000.c"))
+        self.assertTrue(synthetic_rel_source("src/REL/mdsingdll/application_3116c.c"))
+        self.assertTrue(synthetic_rel_source("src/REL/mdsingdll/mdsing_tail8.c"))
+        self.assertFalse(synthetic_rel_source("src/REL/staffdll/staff.c"))
 
     def test_create_starts_from_main_and_copies_exact_blob(self):
         temporary, root, base = self.fixture()
