@@ -622,7 +622,7 @@
     },
     "mwcc-local-declaration-order-and-first-use-rotate-saved-registers": {
       "status": "active",
-      "validated_commit": "b6f079fa5760d0799976de761d00c71bec50f025",
+      "validated_commit": "dfbce4ca094c02719fb7ffdb5ee3a51c2fc48067",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
