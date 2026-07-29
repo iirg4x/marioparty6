@@ -1208,6 +1208,11 @@ config.libs = [
             Object(Matching, "REL/endingdll/ending_pass4_lifecycle_bb10.c"),
             Object(Matching, "REL/endingdll/ending_pass4_lifecycle_d028.c"),
             Object(Matching, "REL/endingdll/ending_pass4_lifecycle_12838.c"),
+            Object(Matching, "REL/endingdll/ending_pass5_particle_e0ec.c"),
+            Object(Matching, "REL/endingdll/ending_pass5_particle_ea8c.c"),
+            Object(Matching, "REL/endingdll/ending_pass5_particle_f03c.c"),
+            Object(Matching, "REL/endingdll/ending_pass5_particle_f11c.c"),
+            Object(Matching, "REL/endingdll/ending_pass5_particle_fc48.c"),
             Object(
                 Matching,
                 "REL/endingdll/runtime.c",
@@ -1225,6 +1230,7 @@ config.libs = [
             Object(Matching, "REL/mdpresultdll/application_pass50.c"),
             Object(Matching, "REL/mdpresultdll/application_pass51.c"),
             Object(Matching, "REL/mdpresultdll/application_pass52.c"),
+            Object(Matching, "REL/mdpresultdll/application_pass53.c"),
             Object(
                 Matching,
                 "REL/mdpresultdll/runtime.c",

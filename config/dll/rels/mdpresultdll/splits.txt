@@ -24,6 +24,9 @@ REL/mdpresultdll/application_pass51.c:
 REL/mdpresultdll/application_pass52.c:
 	.text       start:0x0001AA10 end:0x0001B194
 
+REL/mdpresultdll/application_pass53.c:
+	.text       start:0x0001F7FC end:0x0001FC94
+
 REL/mdpresultdll/runtime.c:
 	.text       start:0x00026FA4 end:0x000279E8
 	.rodata     start:0x00000FE0 end:0x00000FF8
