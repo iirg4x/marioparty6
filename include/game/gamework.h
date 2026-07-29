@@ -182,7 +182,7 @@ static inline GW_PLAYER *GWPlayerGet(int playerNo)
     return &GwPlayer[playerNo];
 }
 
-extern u32 GwSinglePrizeFlag[2];
+extern u32 GwSinglePrizeFlag[];
 extern s16 GwMgNightF;
 
 extern s16 GwLanguage;
