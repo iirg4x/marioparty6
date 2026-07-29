@@ -570,13 +570,13 @@ MBMODELID mbTutorialModelCreate(int dataNum, BOOL linkF)
     return modelId;
 }
 
-void mbTutorialModelKill(MBMODELID modelId)
+void mbTutorialModelKill(int modelId)
 {
     int i;
     int modelNo;
 
     for (i = 0; i < 32; i++) {
-        if (modelId == tutorialMdlId[i]) {
+        if ((MBMODELID)modelId == tutorialMdlId[i]) {
             break;
         }
     }
@@ -742,16 +742,10 @@ void mbTutorialWinMesMasuExec(int message, int masuId)
             break;
         }
     }
-    {
-        OMOBJ *guideObj = tutorialGuideObj;
-
-        mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    }
+    mbGuideMotionShiftSet(mbTutorialGuideGet(), 12, TRUE);
     sprId = mbTutorialSprDispOn(masuId);
     while (mbTutorialWinWait(winNo)) {
-        OMOBJ *guideObj = tutorialGuideObj;
-
-        mbGuideMotionShiftSet(guideObj, 12, TRUE);
+        mbGuideMotionShiftSet(mbTutorialGuideGet(), 12, TRUE);
     }
     mbWinWait(winNo);
     mbTutorialSprDispOff(sprId);
@@ -879,9 +873,9 @@ void mbTutorialMgCallExec(int type)
         TutorialMgCallSlideInSet(data->obj[i]);
     }
     tutorialMgCallCursorPos = -1;
-    do {
+    while (!TutorialMgCallSlideInCheck(data->obj[0])) {
         mbTutorialVSleep();
-    } while (!TutorialMgCallSlideInCheck(data->obj[0]));
+    }
 
     tutorialMgCallCursorPos = 0;
     result = mbRandMod(listNum);
