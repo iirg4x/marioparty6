@@ -3,7 +3,7 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -23,7 +23,7 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -37,7 +37,7 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -61,7 +61,7 @@
     },
     "mdparty-local-audio-visibility": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -76,7 +76,7 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -89,7 +89,7 @@
     },
     "gc132-helper-boundary-lifetime": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -103,7 +103,7 @@
     },
     "gc132-narrow-signed-contracts": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -117,7 +117,7 @@
     },
     "same-game-independent-source-provenance": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -128,7 +128,7 @@
     },
     "same-game-cross-owner-relocation-skeleton-harvesting": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -147,7 +147,7 @@
     },
     "consumer-triangulation-before-opaque-aggregate-overlay": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -174,7 +174,7 @@
     },
     "catalog-authenticated-fixed-arity-selects-natural-source-shape": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -187,7 +187,7 @@
     },
     "configured-matching-needs-retail-replay": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -210,7 +210,7 @@
     },
     "per-owner-final-compiler-profile": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -228,7 +228,7 @@
     },
     "same-address-api-alias-not-name-proof": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -240,7 +240,7 @@
     },
     "same-game-header-widths-separate-from-names": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -260,7 +260,7 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -279,8 +279,8 @@
       "superseded_by": null
     },
     "board-bulk-rename-is-mapping-provenance": {
-      "status": "stale",
-      "validated_commit": "60a0380b4203feeff6dc0bc767a4abb91e82f4fe",
+      "status": "active",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -293,7 +293,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -327,7 +327,7 @@
     },
     "dtk-synthetic-gap-not-source-ownership": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -350,7 +350,7 @@
     },
     "mwcc-source-chronology-csect-link-order": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -370,7 +370,7 @@
     },
     "mwcc-extern-inline-static-local-comdat-ownership": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -392,7 +392,7 @@
     },
     "retail-triangulation-for-missing-inline-owner": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -405,7 +405,7 @@
     },
     "dtk-rodata-boundary-multiset-before-resplit": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -420,7 +420,7 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -447,7 +447,7 @@
     },
     "mwcc-narrow-assignment-wide-lifetime-extension-scheduling": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -458,7 +458,7 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -473,7 +473,7 @@
     },
     "gc26-o0-definition-order-and-call-evaluation": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -491,7 +491,7 @@
     },
     "mwcc-explicit-narrow-return-promotion-preserves-normalization": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -504,7 +504,7 @@
     },
     "mwcc-commutative-fmuls-source-swap-canonicalizes-neutral": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -516,7 +516,7 @@
     },
     "mwcc-integer-signedness-decides-float-conversion-and-zero-compare": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "docs/frandmod_signedness_evidence.md",
@@ -531,7 +531,7 @@
     },
     "folded-constant-arithmetic-pins-shared-macro-value": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -546,7 +546,7 @@
     },
     "mwcc-rodata-is-one-region-in-creation-order": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "docs/w01dll_rodata_emission_model_evidence.md",
@@ -560,7 +560,7 @@
     },
     "mwcc-text-identity-does-not-constrain-rodata-order": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "docs/w01dll_rodata_emission_model_evidence.md",
@@ -574,7 +574,7 @@
     },
     "mwcc-o0-codegen-neutral-source-forms": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "docs/w01dll_rodata_emission_model_evidence.md",
@@ -592,7 +592,7 @@
     },
     "mwcc-o0-inline-expansion-frame-allocation": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "docs/w01dll_rodata_emission_model_evidence.md",
@@ -605,7 +605,7 @@
     },
     "mwcc-compound-assignment-consuming-condition-lifetime": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -618,7 +618,7 @@
     },
     "mwcc-local-declaration-order-and-first-use-rotate-saved-registers": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -643,7 +643,7 @@
     },
     "mwcc-chained-assignment-reuses-rhs-and-orders-stores": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -660,7 +660,7 @@
     },
     "mwcc-pointer-truthiness-or-zero-literal-avoids-materialized-null": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -678,7 +678,7 @@
     },
     "gc26-paired-single-huvecf-copy-spelling-negative": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -697,7 +697,7 @@
     },
     "mwcc-call-spanning-owner-pointer-capture-preserves-named-base": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -710,7 +710,7 @@
     },
     "mwcc-cross-tu-extraction-requires-inline-consumer-closure": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -733,7 +733,7 @@
     },
     "sibling-binary-parity-is-not-source-provenance": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -749,7 +749,7 @@
     },
     "mwcc-emitted-dead-csects-vs-linker-retained-closure": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -768,7 +768,7 @@
     },
     "gc26-o0-authenticated-initialized-local-preserves-stack-store": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -779,7 +779,7 @@
     },
     "recovery-shard-filenames-are-not-source-provenance": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -806,7 +806,7 @@
     },
     "smallest-semantic-aggregate-prefix-before-opaque-overlay": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -819,7 +819,7 @@
     },
     "inventory-uncovered-target-intervals-not-recovery-ledgers": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -833,7 +833,7 @@
     },
     "mp6-board-capsule-eff-rand-macro": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -846,7 +846,7 @@
     },
     "recovered-c-numeric-identifiers-require-named-domains": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -863,7 +863,7 @@
     },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
-      "validated_commit": "76821e64ac64d034ac1e5af15b1639d61d40a41f",
+      "validated_commit": "1e48cb9b32aedd27077236510c75bdb090b41a08",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
