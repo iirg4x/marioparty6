@@ -221,7 +221,7 @@ float mbAngleEaseOut(float angleStart, float angleEnd, float weight);
 void mbPlayerInit(BOOL noEventF)
 {
     MBPLAYERWORK *workP = &playerWork[0];
-    int motDataNum[16];
+    int motDataNum[20];
     int i;
     int j;
 
@@ -231,15 +231,16 @@ void mbPlayerInit(BOOL noEventF)
         GwSystem.turnPlayerNo = 0;
     }
     if (noEventF) {
-        s16 startMasu = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
+        int startMasu = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
         int grp;
+        int charNo;
 
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 GwPlayer[i].comF = TRUE;
                 GwPlayerConf[i].type = TRUE;
             }
-            if (GwSystem.partyF) {
+            if (GWPartyGet() != FALSE) {
                 _CheckFlag(FLAG_BOARD_TUTORIAL);
             } else if (i > 0) {
                 GwPlayerConf[i].charNo = singleCharNoTbl[i];
@@ -267,28 +268,29 @@ void mbPlayerInit(BOOL noEventF)
             mbPlayerMetalSet(i, FALSE);
             mbPlayerBiriQSet(i, FALSE);
         }
-        for (i = 0; i < CHARNO_MAX; i++) {
-            if (CharMotionAMemPGet(i)) {
-                if (!GwSystem.partyF && i == mbSingleTeamCharGet()) {
+        for (charNo = 0; charNo < CHARNO_MAX; charNo++) {
+            if (CharMotionAMemPGet(charNo)) {
+                if (GWPartyGet() == FALSE &&
+                    charNo == mbSingleTeamCharGet()) {
                     continue;
                 }
                 for (j = 0; j < GW_PLAYER_MAX; j++) {
-                    if (i == GwPlayer[j].charNo) {
+                    if (charNo == GwPlayer[j].charNo) {
                         break;
                     }
                 }
                 if (j >= GW_PLAYER_MAX) {
-                    CharDataClose(i);
+                    CharDataClose(charNo);
                 }
             }
         }
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (!CharMotionAMemPGet(GwPlayer[i].charNo)) {
-                CharMotionInit(GwPlayer[i].charNo);
+        for (charNo = 0; charNo < GW_PLAYER_MAX; charNo++) {
+            if (!CharMotionAMemPGet(GwPlayer[charNo].charNo)) {
+                CharMotionInit(GwPlayer[charNo].charNo);
             }
         }
-        if (!GwSystem.partyF) {
-            int charNo = mbSingleTeamCharGet();
+        if (GWPartyGet() == FALSE) {
+            charNo = mbSingleTeamCharGet();
 
             if (!CharMotionAMemPGet(charNo)) {
                 CharMotionInit(charNo);
@@ -297,10 +299,9 @@ void mbPlayerInit(BOOL noEventF)
         GwSystem.playerMode = 0;
     }
     for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
-        GW_PLAYER *playerP;
-        PLAYERCOLWORK *colWorkP;
-        int charNo;
         MBMODELID modelId;
+        GW_PLAYER *playerP;
+        int charNo;
 
         workP->startTurnHook = workP->endTurnHook = NULL;
         workP->rotateObj = workP->moveObj = workP->posFixObj = NULL;
@@ -324,26 +325,27 @@ void mbPlayerInit(BOOL noEventF)
         mbPlayerMotionVoiceOnSet(i, 13, FALSE);
         workP->colObj =
             omAddObjEx(mbObjMan, 0x100, 0, 0, -1, PlayerColOMExec);
-        colWorkP = omObjGetWork(workP->colObj, PLAYERCOLWORK);
-        colWorkP->playerNo = i;
-        colWorkP->killF = TRUE;
-        colWorkP->masuIdNext = GwPlayer[i].masuId;
+        omObjGetWork(workP->colObj, PLAYERCOLWORK)->playerNo = i;
+        omObjGetWork(workP->colObj, PLAYERCOLWORK)->killF = TRUE;
+        omObjGetWork(workP->colObj, PLAYERCOLWORK)->masuIdNext =
+            GwPlayer[i].masuId;
         mbPlayerMatClone(i);
         workP->motNo = 1;
         mbObjMotionSet(modelId, workP->motNo, HU3D_MOTATTR_LOOP);
         GwPlayer[i].dispLightF = TRUE;
         GwPlayer[i].masuIdPrev = -1;
-        mbPlayerWorkGet(i)->_unk10_3 = TRUE;
+        mbPlayerWorkGet(i)->moveEndF = TRUE;
         CharModelDataClose(charNo);
     }
     mbPlayerColSnapSet(FALSE);
-    if (GwSystem.partyF) {
+    if (GWPartyGet() != FALSE) {
         mbPlayerPosResetAll();
     } else {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (i > 0) {
-                GwPlayer[i].masuIdPrev =
-                    GwPlayer[i].masuIdNext = GwPlayer[i].masuId = 0;
+                GwPlayer[i].masuId = 0;
+                GwPlayer[i].masuIdNext = 0;
+                GwPlayer[i].masuIdPrev = 0;
                 mbPlayerDispSet(i, FALSE);
             } else {
                 mbPlayerPosReset(i);
@@ -642,19 +644,20 @@ int mbPlayerDiceTypeGet(int diceNo)
 static BOOL DiceRun(int playerNo)
 {
     BOOL killerF = FALSE;
-    BOOL capsuleSkipF = FALSE;
     int capsuleNum;
+    BOOL capsuleSkipF = FALSE;
     int result;
+    int value;
 
     GwPlayer[playerNo].diceNum = 1;
+repeat:
     capsuleNum = mbPlayerCapsuleNumGet(playerNo);
-    if (!GwSystem.partyF) {
+    if (GWPartyGet() == FALSE) {
         capsuleNum = 1;
         if (GwSystem.turnNo <= 1) {
             capsuleNum = 0;
         }
     }
-repeat:
     if (GwPlayer[playerNo].capsuleUse == -1 && !capsuleSkipF &&
         capsuleNum != 0) {
         GwSystem.playerMode = 0;
@@ -669,11 +672,10 @@ repeat:
         }
         GwSystem.playerMode = 2;
         if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            int tutorialVal[3];
+            int tutorialVal[4];
+            int i;
             int diceType;
             int diceMax;
-            int value;
-            int i;
 
             diceType = mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode);
             diceMax = mbDiceMaxGet(diceType);
@@ -693,37 +695,37 @@ repeat:
             }
             mbTutorialCall(6);
         } else {
-            int tutorialVal = -1;
+            value = -1;
 
-            if (!GwSystem.partyF) {
-                tutorialVal = mbSingleCall(0, -1);
+            if (GWPartyGet() == FALSE) {
+                value = mbSingleCall(0, -1);
             } else if (GwPlayer[playerNo].comF &&
                 mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode) == 14) {
-                tutorialVal = mbMasuPKinokoValueGet(
+                value = mbMasuPKinokoValueGet(
                     playerNo, GwPlayer[playerNo].masuId);
             }
             result = mbDiceExec(playerNo,
                 mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode), NULL,
-                tutorialVal, TRUE, TRUE, NULL, 0);
+                value, TRUE, TRUE, NULL, 0);
         }
     }
     switch (result) {
         case -3:
-            if (!GwSystem.partyF && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
             mbDiceKill(playerNo);
             mbev_Scroll(playerNo, FALSE);
             break;
         case -4:
-            if (!GwSystem.partyF && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
             mbDiceKill(playerNo);
             mbev_Scroll(playerNo, TRUE);
             break;
         case -6:
-            if (!GwSystem.partyF && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
             capsuleSkipF = FALSE;
@@ -748,7 +750,7 @@ repeat:
     GwPlayer[playerNo].moveNum = result;
     mbMoveNumCreate(playerNo, TRUE);
     mbDiceNumKill(playerNo);
-    if (!GwSystem.partyF) {
+    if (GWPartyGet() == FALSE) {
         mbSingleCall(3, result);
     }
     return killerF;
@@ -2672,25 +2674,25 @@ static void MetalEffectCreate(OMOBJ *objP)
 static void MetalEffectHook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
-    OMOBJ *objP = particleP->hookData;
-    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
-    HSF_DATA *hsfP;
     HSF_OBJECT *objectP = NULL;
+    OMOBJ *objP = particleP->hookData;
+    int i;
+    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+    int objectNo = -1;
+    HSF_DATA *hsfP;
     MBPARTICLEDATA *dataP;
     Mtx modelMtx;
-    HuVecF cameraPos;
-    HuVecF pos;
     HuVecF dir;
+    HuVecF pos;
+    HuVecF cameraPos;
     s16 *groupP;
     s16 *countP;
-    s16 (*vertexNoP)[8];
+    s16 *vertexNoP;
     int groupNo;
     int randomNo;
-    int i;
-    BOOL firstF = FALSE;
     BOOL posF;
+    BOOL firstF = FALSE;
     float weight;
-    float mag;
 
     if (!particleP->initF) {
         dataP = particleP->data;
@@ -2726,10 +2728,11 @@ static void MetalEffectHook(
             dataP->time++;
             groupP = objP->data;
             countP = groupP + 125;
-            vertexNoP = (s16 (*)[8])(countP + 125);
+            vertexNoP = countP + 125;
             groupNo = groupP[mbRandMod(workP->_unk08)];
             randomNo = mbRandMod(countP[groupNo]);
-            dataP->vertexNo = vertexNoP[groupNo][randomNo];
+            groupNo = vertexNoP[(groupNo * 8) + randomNo];
+            dataP->vertexNo = groupNo;
             dataP->color.r = mbRandMod(120) + 120;
             dataP->color.g = mbRandMod(120) + 120;
             dataP->color.b = mbRandMod(120) + 120;
@@ -2768,9 +2771,9 @@ static void MetalEffectHook(
                 &((HuVecF *)objectP->mesh.vertex->data)[dataP->vertexNo],
                 &pos);
             VECSubtract(&cameraPos, &pos, &dir);
-            mag = VECMag(&dir);
-            if (mag > 0.0f) {
-                VECScale(&dir, &dir, 200.0f / mag);
+            weight = VECMag(&dir);
+            if (weight > 0.0f) {
+                VECScale(&dir, &dir, 200.0f / weight);
             }
             VECAdd(&pos, &dir, &dataP->pos);
         }
@@ -2999,25 +3002,25 @@ static void BiriQEffectCreate(OMOBJ *objP)
 static void BiriQEffect1Hook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
-    OMOBJ *objP = particleP->hookData;
-    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
-    HSF_DATA *hsfP;
     HSF_OBJECT *objectP = NULL;
+    OMOBJ *objP = particleP->hookData;
+    int i;
+    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+    int objectNo = -1;
+    HSF_DATA *hsfP;
     MBPARTICLEDATA *dataP;
     Mtx modelMtx;
-    HuVecF cameraPos;
-    HuVecF pos;
     HuVecF dir;
+    HuVecF pos;
+    HuVecF cameraPos;
     s16 *groupP;
     s16 *countP;
-    s16 (*vertexNoP)[8];
+    s16 *vertexNoP;
     int groupNo;
     int randomNo;
-    int i;
     BOOL firstF = FALSE;
     BOOL posF;
     float weight;
-    float mag;
 
     if (particleP->mode == 0) {
         dataP = particleP->data;
@@ -3046,10 +3049,11 @@ static void BiriQEffect1Hook(
             dataP->time++;
             groupP = objP->data;
             countP = groupP + 125;
-            vertexNoP = (s16 (*)[8])(countP + 125);
+            vertexNoP = countP + 125;
             groupNo = groupP[mbRandMod(workP->_unk08)];
             randomNo = mbRandMod(countP[groupNo]);
-            dataP->vertexNo = vertexNoP[groupNo][randomNo];
+            groupNo = vertexNoP[(groupNo * 8) + randomNo];
+            dataP->vertexNo = groupNo;
             dataP->color.r = mbRandMod(40) + 30;
             dataP->color.g = mbRandMod(40) + 90;
             dataP->color.b = mbRandMod(40) + 180;
@@ -3089,9 +3093,9 @@ static void BiriQEffect1Hook(
                 &((HuVecF *)objectP->mesh.vertex->data)[dataP->vertexNo],
                 &pos);
             VECSubtract(&cameraPos, &pos, &dir);
-            mag = VECMag(&dir);
-            if (mag > 0.0f) {
-                VECScale(&dir, &dir, 18.0f / mag);
+            weight = VECMag(&dir);
+            if (weight > 0.0f) {
+                VECScale(&dir, &dir, 18.0f / weight);
             }
             VECAdd(&pos, &dir, &dataP->pos);
         }
