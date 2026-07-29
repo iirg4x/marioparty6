@@ -647,6 +647,16 @@ typedef struct CapEffMasuHitWork {
     ANIMDATA *animP;
 } CAPEFFMASUHITWORK;
 
+typedef struct CapEffOpenWork {
+    int masuId;
+    int timeMax;
+    int mode;
+    HuVecF pos;
+} CAPEFFOPENWORK;
+
+typedef char CAPEFFOPENWORK_SIZE_ASSERT[
+    (sizeof(CAPEFFOPENWORK) == 0x18) ? 1 : -1];
+
 typedef struct CapCoinManWork {
     u8 _unk00[4];
     int activeF;
@@ -868,6 +878,8 @@ void mbev_CapEffBoostKill(OMOBJ *obj);
 void mbev_CapEffSnowKill(OMOBJ *obj);
 void mbev_CapEffGlowKill(OMOBJ *obj);
 void mbev_CapEffRingKill(OMOBJ *obj);
+void mbev_CapEffRayKill(OMOBJ *obj);
+void mbev_CapEffMasuHitKill(OMOBJ *obj);
 void mbev_CapCoinManKill(OMOBJ *obj);
 void mbev_CapStarManKill(OMOBJ *obj);
 void mbev_CapEffCapLoseKill(OMOBJ *obj);
@@ -881,6 +893,14 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int zNum);
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot, HuVecF *scale,
     int unk10, int unk14, int unk18, GXColor *color);
+OMOBJ *mbev_CapEffRingCreate(void);
+OMOBJ *mbev_CapEffRayCreate(float scale, float speed);
+OMOBJ *mbev_CapEffMasuHitCreate(void);
+int mbev_CapEffRayAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA, HuVecF *rotB,
+    int time, float scale);
+void mbev_CapEffRayAlphaSet(OMOBJ *obj, float alpha);
+int mbev_CapEffMasuHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA,
+    HuVecF *rotB, float scale, float scaleY, int time);
 static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max);
 OMOBJ *mbev_CapEffCoinCreate(void);
 void mbev_CapEffCoinKill(OMOBJ *obj);
@@ -891,6 +911,8 @@ extern s16 mbCapUseModeGet(s16 capsuleNo);
 extern EVCAPSULEDATA ev_CapsuleData[];
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C,
     BOOL unk10);
+static void ev_CapEffOpen(void);
+static void ev_CapEffOpenKill(void);
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
 extern const float lbl_802C4688;
 extern const float lbl_802C47C8;
@@ -1548,6 +1570,240 @@ void mbev_CapMallocClose(EVCAPWORK *work, void *ptr)
             work->mem[i] = NULL;
         }
     }
+}
+
+void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL createF, BOOL mode,
+    BOOL keepCapsuleF)
+{
+    HUPROCESS *process;
+    void *workData;
+    CAPEFFOPENWORK *workP;
+    int capsuleValue;
+
+    if (createF) {
+        process = HuPrcChildCreate(
+            ev_CapEffOpen, 0x2004, 0x6000, 0, mbMainProc);
+        HuPrcDestructorSet2(process, ev_CapEffOpenKill);
+        workData = HuMemDirectMallocNum(
+            HEAP_HEAP, sizeof(CAPEFFOPENWORK), HU_MEMNUM_OVL);
+        workP = workData;
+        process->property = workP;
+        memset(workP, 0, sizeof(CAPEFFOPENWORK));
+        workP->masuId = masuId;
+        workP->timeMax = 25;
+        workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
+        if (!mode) {
+            workP->pos.y += 100.0f;
+            workP->mode = 0;
+        } else {
+            workP->mode = 1;
+        }
+    }
+    if (mode) {
+        if (!keepCapsuleF) {
+            mbMasuCapsuleSet((s16)masuId, -1);
+        }
+    } else {
+        capsuleValue = mbMasuCapsuleGet((s16)masuId);
+        capsuleMasuType = mbCapValueTypeGet((s16)capsuleValue);
+        capsuleMasuId = masuId;
+        capsulePlayer = playerNo;
+        capsuleMasuPlayer = mbCapValuePlayerGet((s16)capsuleValue);
+        mbMasuCapsuleSet((s16)masuId, -1);
+    }
+}
+
+static void ev_CapEffOpen(void)
+{
+    HUPROCESS *process;
+    CAPEFFOPENWORK *workP;
+    OMOBJ *rayObj;
+    OMOBJ *ringObj;
+    OMOBJ *masuHitObj;
+    HuVecF pos;
+    HuVecF rot;
+    HuVecF vel;
+    HuVecF scale;
+    HuVecF particlePos;
+    GXColor color;
+    int i;
+    int j;
+    int time;
+    float weight;
+    float particleScale;
+    float particleScaleY;
+
+    process = HuPrcCurrentGet();
+    workP = process->property;
+    rayObj = mbev_CapEffRayCreate(1.0f, 0.0f);
+    ringObj = mbev_CapEffRingCreate();
+    masuHitObj = mbev_CapEffMasuHitCreate();
+    mbMasuPosGet((s16)workP->masuId, &pos);
+    PSVECAdd(&pos, &workP->pos, &pos);
+    scale.x = scale.z = 0.0f;
+    scale.y = 5.0f;
+    PSVECAdd(&pos, &scale, &pos);
+
+    if (workP->mode != 0) {
+        rot.x = -90.0f;
+        rot.y = rot.z = 0.0f;
+        scale.x = 1.0f;
+        scale.y = 2.0f;
+        scale.z = 100.0f;
+        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffRingAdd(
+            ringObj, &pos, &rot, &scale, 1, 10, 0, &color);
+        scale.x = 2.0f;
+        scale.y = 2.5f;
+        scale.z = 200.0f;
+        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffRingAdd(
+            ringObj, &pos, &rot, &scale, 3, 10, 1, &color);
+
+        for (i = 0; i <= workP->timeMax; i++) {
+            weight = cos((M_PI * (90.0f
+                * ((float)i / (float)workP->timeMax))) / 180.0);
+            mbMasuPosGet((s16)workP->masuId, &pos);
+            PSVECAdd(&pos, &workP->pos, &pos);
+            for (j = 0; j < 3; j++) {
+                particlePos = pos;
+                rot.x = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                rot.y = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                rot.z = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.x = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.y = rot.y + (60.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.z = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                time = 10.0f + (5.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                particleScale = 200.0f * (1.0f
+                    + (0.25f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000))));
+                mbev_CapEffRayAdd(rayObj, &particlePos, &rot, &vel, time,
+                    particleScale);
+            }
+            mbev_CapEffRayAlphaSet(rayObj, weight);
+            for (j = 0; (float)j < 5.0f * weight; j++) {
+                particlePos = pos;
+                rot.x = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                rot.y = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                rot.z = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.x = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.y = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                vel.z = 180.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                time = 10.0f + (5.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                particleScaleY = weight * (50.0f * (1.0f
+                    + (0.5f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)))));
+                particleScale = 100.0f * (2.0f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                mbev_CapEffMasuHitAdd(masuHitObj, &particlePos, &rot, &vel,
+                    particleScale, particleScaleY, time);
+            }
+            HuPrcVSleep();
+        }
+    } else {
+        mbCameraRotGet(&rot);
+        scale.x = 1.0f;
+        scale.y = 2.0f;
+        scale.z = 100.0f;
+        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffRingAdd(
+            ringObj, &pos, &rot, &scale, 1, 10, 0, &color);
+        scale.x = 2.0f;
+        scale.y = 2.5f;
+        scale.z = 200.0f;
+        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        mbev_CapEffRingAdd(
+            ringObj, &pos, &rot, &scale, 3, 10, 1, &color);
+
+        for (i = 0; i <= workP->timeMax; i++) {
+            weight = cos((M_PI * (90.0f
+                * ((float)i / (float)workP->timeMax))) / 180.0);
+            mbMasuPosGet((s16)workP->masuId, &pos);
+            PSVECAdd(&pos, &workP->pos, &pos);
+            for (j = 0; j < 3; j++) {
+                particlePos = pos;
+                rot.x = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                rot.y = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                rot.z = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                vel.x = rot.x + (60.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000))));
+                vel.y = rot.y + (60.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000))));
+                vel.z = rot.z + (60.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000))));
+                time = 10.0f + (5.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                particleScale = 200.0f * (1.0f
+                    + (0.25f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000))));
+                mbev_CapEffRayAdd(rayObj, &particlePos, &rot, &vel, time,
+                    particleScale);
+            }
+            mbev_CapEffRayAlphaSet(rayObj, weight);
+            for (j = 0; (float)j < 5.0f * weight; j++) {
+                particlePos = pos;
+                rot.x = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                rot.y = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                rot.z = 360.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000));
+                vel.x = 360.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.y = 360.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                vel.z = 360.0f * (-0.5f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                time = 10.0f + (5.0f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                particleScaleY = weight * (50.0f * (1.0f
+                    + (0.5f * (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)))));
+                particleScale = 100.0f * (2.0f
+                    + (3.725290298461914e-09f
+                    * (float)mbRandMod(0x10000000)));
+                mbev_CapEffMasuHitAdd(masuHitObj, &particlePos, &rot, &vel,
+                    particleScale, particleScaleY, time);
+            }
+            HuPrcVSleep();
+        }
+    }
+    mbev_CapEffRayKill(rayObj);
+    mbev_CapEffRingKill(ringObj);
+    mbev_CapEffMasuHitKill(masuHitObj);
+    HuPrcEnd();
 }
 
 void mbev_CapNullKill(void)
