@@ -1581,16 +1581,18 @@
           "restoring an authenticated preceding owner is expected to move the downstream pool naturally",
           "multiple natural bodies become instruction-identical but all miss the same split named conversion owner",
           "an intermediate source object names @NNN while a complete source-owned pool csect and final REL bind the same section offset exactly",
-          "several byte-identical functions fail only because each anonymous literal relocation misses its configured lbl_1_rodata_* identity"
+          "several byte-identical functions fail only because each anonymous literal relocation misses its configured lbl_1_rodata_* identity",
+          "an anonymous local aggregate is object-exact but linked fallback consumers still require the target named owner; initializing the local copy from an authenticated global const aggregate preserves code shape and closes the linked relocations"
         ]
       },
-      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
+      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. When a natural local aggregate copy is already exact but other linked consumers require a named target owner, test an authenticated global const aggregate as that owner and initialize the local copy from it; retain only if code, data, relocations, all consumers, and the final REL remain exact. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
         "test pool_data and named-constant controls only as bounded counterexamples",
         "group repeated relocation-only failures by target pool owner before opening more body probes",
         "compare final linked section offsets and relocation addends before assuming a local source symbol name is fatal",
+        "when consumer evidence authenticates the named aggregate owner, test a global const owner plus natural local-copy initialization and replay every linked consumer",
         "require organic source and linked consumer proof before retention"
       ],
       "applicability": {
@@ -1611,7 +1613,8 @@
           "mdbankdll:fn_1_6810",
           "mdbankdll:fn_1_2750",
           "mdbankdll:fn_1_12354",
-          "mdbankdll:fn_1_131C8"
+          "mdbankdll:fn_1_131C8",
+          "mdsingdll:fn_1_B998"
         ],
         "modules": [
           "openingDll",
@@ -1622,7 +1625,8 @@
           "optionDll",
           "endingdll",
           "mdbankdll",
-          "mdpresultdll"
+          "mdpresultdll",
+          "mdsingdll"
         ],
         "owner_tags": [
           "literal_pool",
@@ -1642,7 +1646,8 @@
         "mdpresultdll pass 2: an authenticated named owner-local block closed six relocation-bound GC/2.6 consumers without changing their instruction text",
         "mdbankdll fn_1_12354/fn_1_131C8: natural GC/1.3.2 conversion consumers bound compiler-local @992/@977 instead of distinct target owners lbl_1_rodata_290/lbl_1_rodata_2A0",
         "mdbankdll fn_1_780/fn_1_8F0: natural aggregate initializers bound compiler-owned locals where retail required named objects; memcpy changed the code shape",
-        "mdbankdll passes 4-5: fn_1_6810 emitted an eight-byte TU-local unsigned-conversion pool instead of retail lbl_1_rodata_128; fn_1_2750 consumes the same named owner, so it was excluded before redundant C probing"
+        "mdbankdll passes 4-5: fn_1_6810 emitted an eight-byte TU-local unsigned-conversion pool instead of retail lbl_1_rodata_128; fn_1_2750 consumes the same named owner, so it was excluded before redundant C probing",
+        "mdsingdll pass 27: fn_1_B998's anonymous local bitmap-name aggregate was object-exact but linked-invalid because fallback consumers required lbl_1_rodata_270; an authenticated global const BITMAP_NAME_TABLE plus natural local assignment preserved the exact stack-copy code, 16 data bytes, 67/67 island relocations, and the retail REL"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -1651,7 +1656,8 @@
         "A local @NNN name without exact source-owned section bytes and final linked relocation proof remains unresolved.",
         "Byte-identical instruction streams across repeated functions do not waive configured relocation identity in a partial owner.",
         "Replacing a natural aggregate initializer with memcpy does not prove named target ownership and can introduce a non-retail call shape.",
-        "A second function consuming the same unresolved named pool is not an independent body-shaping opportunity; recover the shared owner or exclude the family."
+        "A second function consuming the same unresolved named pool is not an independent body-shaping opportunity; recover the shared owner or exclude the family.",
+        "An object-exact anonymous aggregate is not sufficient when linked fallback consumers require a named owner; the final REL and every consumer remain mandatory."
       ],
       "related_exceptions": [],
       "evidence": [
