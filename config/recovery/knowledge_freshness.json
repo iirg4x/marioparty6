@@ -827,7 +827,7 @@
     },
     "gc26-o0-authenticated-initialized-local-preserves-stack-store": {
       "status": "active",
-      "validated_commit": "18269898595d1065f75f085da264b65500ff4d32",
+      "validated_commit": "7a46aa6a7a78755169e491ea2ade2c5d2cbfca63",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -894,7 +894,7 @@
     },
     "mp6-board-capsule-eff-rand-macro": {
       "status": "active",
-      "validated_commit": "18269898595d1065f75f085da264b65500ff4d32",
+      "validated_commit": "7a46aa6a7a78755169e491ea2ade2c5d2cbfca63",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
