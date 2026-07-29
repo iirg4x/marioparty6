@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "id": "REL:optionDll:application",
+  "module": "optionDll",
+  "source": "config/dll/rels/optionDll/symbols.txt",
+  "compiler": "GC/1.3.2",
+  "summary": "Catalog-authenticated non-minigame option application owner with 19 independently source-linked exact functions, partial menu and record semantics, behavior-based naming proposals, and unrecovered application ranges still on retail fallback.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "plausible",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "option-menu",
+    "compiler-sensitive",
+    "application-owner"
+  ],
+  "symbols": [
+    {
+      "symbol": "fn_1_A0",
+      "stable_id": "optionDll:0xA0"
+    },
+    {
+      "symbol": "fn_1_FDC",
+      "stable_id": "optionDll:0xFDC"
+    },
+    {
+      "symbol": "fn_1_1044",
+      "stable_id": "optionDll:0x1044"
+    },
+    {
+      "symbol": "fn_1_1084",
+      "stable_id": "optionDll:0x1084"
+    },
+    {
+      "symbol": "fn_1_18D8",
+      "stable_id": "optionDll:0x18D8"
+    },
+    {
+      "symbol": "fn_1_19B8",
+      "stable_id": "optionDll:0x19B8"
+    },
+    {
+      "symbol": "fn_1_6504",
+      "stable_id": "optionDll:0x6504"
+    },
+    {
+      "symbol": "fn_1_6590",
+      "stable_id": "optionDll:0x6590"
+    },
+    {
+      "symbol": "fn_1_B02C",
+      "stable_id": "optionDll:0xB02C"
+    },
+    {
+      "symbol": "fn_1_C324",
+      "stable_id": "optionDll:0xC324"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Passes 1 and 2 source-link 19 exact functions across eight consumed objects for 7,812 text bytes and 680 physical relocations; optionDll.rel remains byte-identical with SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec.",
+      "reference": "config/dll/rels/optionDll/splits.txt"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "The exact prolog, child-process creation, model and window setup, prize rows, consecutive-record rows, and MgDataTbl filtering paths establish the proposed operational roles without claiming original spellings.",
+      "reference": "src/REL/optionDll/application_pass2_prefix.c"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Five pass2 owners require the authenticated translation-unit math boundary to suppress only the unused weak sqrtf pool, while fn_1_C324 is an exact unguarded negative control with no transitive generic math closure.",
+      "reference": "src/REL/optionDll/application_pass2_messages_c324.c"
+    }
+  ],
+  "constraints": [
+    "option-pass1-e538-no-generic-math-inline",
+    "option-pass1-f1d8-no-generic-math-inline",
+    "option-pass2-prefix-no-generic-math-inline",
+    "option-pass2-lifecycle-fdc-no-generic-math-inline",
+    "option-pass2-lifecycle-18d8-no-generic-math-inline",
+    "option-pass2-messages-6504-no-generic-math-inline",
+    "option-pass2-messages-b02c-no-generic-math-inline"
+  ],
+  "debt": [
+    {
+      "kind": "application_source",
+      "priority": "high",
+      "summary": "Application ranges outside the eight configured exact owners remain on retail fallback."
+    },
+    {
+      "kind": "semantic_names",
+      "priority": "normal",
+      "summary": "Ten behavior-based function names are proposed at medium confidence; no original-name or debug-symbol provenance is available, so source symbols remain address-derived."
+    },
+    {
+      "kind": "shared_private_layout",
+      "priority": "normal",
+      "summary": "OptionWork and OptionDecaRecord repeat across four exact owners and OptionAnimPair repeats across two, but a private header still requires a separate fanout and pool-ownership audit."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/optionDll/splits.txt",
+      "config/dll/rels/optionDll/symbols.txt",
+      "src/REL/optionDll/application_pass2_prefix.c",
+      "src/REL/optionDll/application_pass2_lifecycle_fdc.c",
+      "src/REL/optionDll/application_pass2_messages_6504.c",
+      "src/REL/optionDll/application_pass2_messages_b02c.c",
+      "src/REL/optionDll/application_pass2_messages_c324.c"
+    ],
+    "reports": []
+  }
+}
