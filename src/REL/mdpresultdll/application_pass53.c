@@ -1,3 +1,5 @@
+#define _MATH_H
+
 #include "game/sprite.h"
 #include "humath.h"
 
