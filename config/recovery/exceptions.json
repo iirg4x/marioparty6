@@ -323,6 +323,42 @@
         "src/REL/bootDll/opening.c",
         "config/dll/rels/mdpresultdll/splits.txt"
       ]
+    },
+    {
+      "id": "option-pass1-e538-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass1_e538.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll island 0xE538..0xE6F8 is text-only. Its two natural functions reproduce all 448 text bytes and target relocations, while the retained window/sprite closure otherwise emits only the unused weak sqrtf doubles 0.5 and 3.0 as a 16-byte source-only data section. Defining _MATH_H at this translation-unit boundary removes only that section. Exact same-game non-board translation units and the independently retail-exact mdpresultdll application_pass53 owner authenticate the same narrow chronology.",
+      "evidence": [
+        "src/REL/optionDll/application_pass1_e538.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "src/game/sprman.c",
+        "src/REL/mdpartydll/stage.c",
+        "src/REL/bootDll/opening.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
+    },
+    {
+      "id": "option-pass1-f1d8-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass1_f1d8.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll island 0xF1D8..0xF6D4 is text-only. Its five natural functions reproduce all 1,276 text bytes and target relocations, while the retained window/sprite/Hu3D closure otherwise emits only the unused weak sqrtf doubles 0.5 and 3.0 as a 16-byte source-only data section. Defining _MATH_H at this translation-unit boundary removes only that section. Exact same-game non-board translation units and the independently retail-exact mdpresultdll application_pass53 owner authenticate the same narrow chronology.",
+      "evidence": [
+        "src/REL/optionDll/application_pass1_f1d8.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "src/game/sprman.c",
+        "src/REL/mdpartydll/stage.c",
+        "src/REL/bootDll/opening.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
     }
   ]
 }
