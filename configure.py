@@ -1089,7 +1089,12 @@ config.libs = [
     Rel(
         "selmenuDll",
         objects={
-            Object(Matching, "REL/selmenuDll/selmenu.c", mw_version=config.linker_version),
+            Object(
+                Matching,
+                "REL/selmenuDll/selmenu.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+            ),
             Object(
                 Matching,
                 "REL/selmenuDll/runtime.c",
