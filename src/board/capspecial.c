@@ -1,5 +1,7 @@
 #include "math.h"
 #include "dolphin/pad.h"
+#include "datadir_enum.h"
+#include "datanum/charmot.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
 #include "game/board/capsule.h"
@@ -17,6 +19,7 @@
 #include "game/object.h"
 #include "game/pad.h"
 #include "game/process.h"
+#include "messdir_enum.h"
 
 typedef int (*TERESA_STEAL_HOOK)(int);
 typedef void (*TERESA_STEAL_BEGIN_HOOK)(int, int);
@@ -128,19 +131,27 @@ static HuVecF teresaCameraOfs = { 0.0f, 100.0f, 0.0f };
 static HuVecF teresaLightPos = { 0.0f, 0.0f, 0.0f };
 static HuVecF teresaLightDir = { 0.0f, 1.0f, -1.0f };
 static u32 MiracleGuideMotTbl[2][16] = {
-    { 0x00110001, 0x00110004, 0x00110005, 0x00110015, 0x00110007, 0x0011000B,
-        0x0011000C, 0x0011000D, 0x00110013, 0xFFFFFFFF },
-    { 0x0011001C, 0x0011001F, 0x00110020, 0x0011002F, 0x00110022, 0x00110025,
-        0x00110026, 0x00110027, 0x0011002D, 0xFFFFFFFF },
+    { DATANUM(DATA_capsulechar4, 0x01), DATANUM(DATA_capsulechar4, 0x04),
+        DATANUM(DATA_capsulechar4, 0x05), DATANUM(DATA_capsulechar4, 0x15),
+        DATANUM(DATA_capsulechar4, 0x07), DATANUM(DATA_capsulechar4, 0x0B),
+        DATANUM(DATA_capsulechar4, 0x0C), DATANUM(DATA_capsulechar4, 0x0D),
+        DATANUM(DATA_capsulechar4, 0x13), 0xFFFFFFFF },
+    { DATANUM(DATA_capsulechar4, 0x1C), DATANUM(DATA_capsulechar4, 0x1F),
+        DATANUM(DATA_capsulechar4, 0x20), DATANUM(DATA_capsulechar4, 0x2F),
+        DATANUM(DATA_capsulechar4, 0x22), DATANUM(DATA_capsulechar4, 0x25),
+        DATANUM(DATA_capsulechar4, 0x26), DATANUM(DATA_capsulechar4, 0x27),
+        DATANUM(DATA_capsulechar4, 0x2D), 0xFFFFFFFF },
 };
 static int miracleTradeFileTbl[6] = {
-    0x0011003B, 0x0011003C, 0x0011003D, 0x0011003E, 0x0011003F, 0x00110040,
+    DATANUM(DATA_capsulechar4, 0x3B), DATANUM(DATA_capsulechar4, 0x3C),
+    DATANUM(DATA_capsulechar4, 0x3D), DATANUM(DATA_capsulechar4, 0x3E),
+    DATANUM(DATA_capsulechar4, 0x3F), DATANUM(DATA_capsulechar4, 0x40),
 };
 
 static int koopaMdlId = -1;
 static int teresaStealMesId = -1;
 static GXColor teresaLightColor = { 0xFF, 0xBE, 0xFF, 0xFF };
-static int miracleBackFile = 0x0011003A;
+static int miracleBackFile = DATANUM(DATA_capsulechar4, 0x3A);
 static int mgResultData[4];
 static int kettouMotId[12];
 static int diceHitTimer;
@@ -201,7 +212,12 @@ void mbev_CapTeresa(void)
     HuVecF coinVel;
     Mtx hookMtx;
     GXColor lightColors[HU3D_GLIGHT_MAX];
-    int motionFiles[] = { 0x00130009, 0x0013000B, 0x0013000A, -1 };
+    int motionFiles[] = {
+        DATANUM(DATA_capsuleshop, 0x09),
+        DATANUM(DATA_capsuleshop, 0x0B),
+        DATANUM(DATA_capsuleshop, 0x0A),
+        -1,
+    };
     int targetPlayers[GW_PLAYER_MAX - 1];
     int enabledPlayers[GW_PLAYER_MAX - 1];
     char customMes[16];
@@ -243,8 +259,8 @@ void mbev_CapTeresa(void)
 
     mbev_CapWait(work);
     if (!GwSystem.curTime) {
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, 0x40000001);
-        mbWinCreate(2, 0x003B0000, 10);
+        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x00), 10);
         mbWinTopWait();
         HuPrcEnd();
         return;
@@ -271,9 +287,10 @@ void mbev_CapTeresa(void)
         objectPos.z -= 200.0f;
     }
     PSVECSubtract(&objectPos, &playerPos, &direction);
-    objectId = mbev_CapObjCreate(&work->objWork, 0x00130008, motionFiles,
+    objectId = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsuleshop, 0x08), motionFiles,
         FALSE, 5, FALSE);
-    mbObjMotionSet(objectId, 1, 0x40000001);
+    mbObjMotionSet(objectId, 1, HU3D_MOTATTR_LOOP);
     mbObjLayerSet(objectId, 4);
     mbObjScaleSet(objectId, 2.0f, 2.0f, 2.0f);
     mbObjPosSetV(objectId, &objectPos);
@@ -299,11 +316,11 @@ void mbev_CapTeresa(void)
 
     if (!GwSystem.curTime) {
         mbAudFXPlay(0x39D);
-        mbWinCreate(2, 0x003B0000, 10);
+        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x00), 10);
         mbWinTopWait();
     } else if (mbPlayerCoinGet(playerNo) < 5) {
         mbAudFXPlay(0x39D);
-        mbWinCreate(2, 0x003B0001, 10);
+        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x01), 10);
         mbWinTopWait();
     } else {
         coinTargetNum = 0;
@@ -341,22 +358,24 @@ void mbev_CapTeresa(void)
         if (coinTargetNum <= 0 && starTargetNum <= 0
             && mbPlayerCoinGet(playerNo) < 40 && enabledNum >= 1) {
             mbAudFXPlay(0x39D);
-            mbWinCreate(2, 0x003B0001, 10);
+            mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x01), 10);
             mbWinTopWait();
         } else if (coinTargetNum <= 0 && starTargetNum <= 0) {
             mbAudFXPlay(0x39D);
-            mbWinCreate(2, 0x003B0002, 10);
+            mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x02), 10);
             mbWinTopWait();
         } else {
             mbAudFXPlay(0x39D);
             mbWinCreate(2, teresaStealMesId == -1
-                    ? 0x003B0003 : 0x003B0004,
+                ? MESSNUM(MESS_TERESA_MASU, 0x03)
+                : MESSNUM(MESS_TERESA_MASU, 0x04),
                 10);
             mbWinTopWait();
 
             for (;;) {
                 if (teresaStealMesId == -1) {
-                    mbWinCreateChoice(1, 0x003B0005, 10, 0);
+                    mbWinCreateChoice(1, MESSNUM(MESS_TERESA_MASU, 0x05),
+                        10, 0);
                     if (coinTargetNum == 0) {
                         mbWinTopChoiceDisable(0);
                     }
@@ -370,13 +389,14 @@ void mbev_CapTeresa(void)
                     mbWinTopWait();
                     stealType = mbWinTopChoiceGet();
                     if (stealType == 2 || stealType == -1) {
-                        mbWinCreate(2, 0x003B000F, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0F), 10);
                         mbWinTopWait();
                         stealType = -1;
                         break;
                     }
                 } else {
-                    mbWinCreateChoice(1, 0x003B0006, 10, 0);
+                    mbWinCreateChoice(1, MESSNUM(MESS_TERESA_MASU, 0x06),
+                        10, 0);
                     sprintf(customMes, "%d", teresaStealCoinNum);
                     mbWinTopInsertMesSet(teresaStealMesId, 0);
                     mbWinTopInsertMesSet((u32)customMes, 1);
@@ -396,7 +416,7 @@ void mbev_CapTeresa(void)
                     mbWinTopWait();
                     stealType = mbWinTopChoiceGet();
                     if (stealType == 3 || stealType == -1) {
-                        mbWinCreate(2, 0x003B000F, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0F), 10);
                         mbWinTopWait();
                         stealType = -1;
                         break;
@@ -406,7 +426,8 @@ void mbev_CapTeresa(void)
                     }
                 }
 
-                mbWinCreateChoice(1, 0x003B0007, 10, 0);
+                mbWinCreateChoice(1, MESSNUM(MESS_TERESA_MASU, 0x07), 10,
+                    0);
                 for (i = 0; i < targetNum; i++) {
                     mbWinTopInsertMesSet(
                         mbPlayerNameMesGet(targetPlayers[i]), i);
@@ -460,7 +481,7 @@ void mbev_CapTeresa(void)
                     mbCoinAddExec(playerNo, -40);
                 }
                 mbAudFXPlay(0x39D);
-                mbWinCreate(2, 0x003B0008, 10);
+                mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x08), 10);
                 mbWinTopWait();
 
                 i = 1;
@@ -512,15 +533,15 @@ void mbev_CapTeresa(void)
                     mbObjDispSet(objectId, FALSE);
 
                     idleMotion = mbev_CapPlayerMotionCreate(&work->objWork,
-                        targetPlayer, 0x00930017);
+                        targetPlayer, CHARMOT_HSF_c000m1_323);
                     stealMotion = mbev_CapPlayerMotionCreate(&work->objWork,
-                        targetPlayer, 0x00930022);
+                        targetPlayer, CHARMOT_HSF_c000m1_344);
                     starMotion = mbev_CapPlayerMotionCreate(&work->objWork,
-                        targetPlayer, 0x0093006E);
+                        targetPlayer, CHARMOT_HSF_c000m1_457);
                     mbPlayerMotionShiftSet(targetPlayer, idleMotion, 0.0f,
-                        8.0f, 0x40000001);
+                        8.0f, HU3D_MOTATTR_LOOP);
                     itemObjectId = mbev_CapObjCreate(&work->objWork,
-                        0x000C0049, NULL, FALSE, 0, FALSE);
+                        DATANUM(DATA_capsule, 0x49), NULL, FALSE, 0, FALSE);
                     hookName = CharModelItemHookGet(
                         GwPlayer[targetPlayer].charNo, 4, 0);
                     mbObjHookSet(mbPlayerObjIDGet(targetPlayer), hookName,
@@ -540,7 +561,7 @@ void mbev_CapTeresa(void)
                     mbWipeDissolveFadeIn();
 
                     if (capsuleIndex != -1) {
-                        mbWinCreate(2, 0x003B000A, -1);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0A), -1);
                         mbWinTopInsertMesSet(
                             mbPlayerNameMesGet(targetPlayer), 0);
                         mbWinTopPlayerDisable(targetPlayer);
@@ -604,13 +625,13 @@ void mbev_CapTeresa(void)
                             lightId, objectPos.x, objectPos.y, objectPos.z,
                             -45.0f, 0.0f);
                         mbObjMotionShiftSet(objectId, 3, 0.0f, 8.0f,
-                            0x40000001);
+                            HU3D_MOTATTR_LOOP);
                         HuPrcSleep(180);
                         mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
                         musicChanged = TRUE;
                         stealType = -1;
                     } else if (stealType == 0) {
-                        mbWinCreate(2, 0x003B0009, -1);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x09), -1);
                         mbWinTopInsertMesSet(
                             mbPlayerNameMesGet(targetPlayer), 0);
                         mbWinTopPlayerDisable(targetPlayer);
@@ -628,10 +649,11 @@ void mbev_CapTeresa(void)
                         }
                         mbev_CapTeresaFadeSet(255.0f);
                         mbPlayerMotionShiftSet(targetPlayer, stealMotion,
-                            0.0f, 8.0f, 0x40000001);
+                            0.0f, 8.0f, HU3D_MOTATTR_LOOP);
                         mbObjMotionShiftSet(objectId, 2, 0.0f, 8.0f,
-                            0x40000001);
-                        helpWin = mbWinCreateHelp(0x003B0011);
+                            HU3D_MOTATTR_LOOP);
+                        helpWin = mbWinCreateHelp(
+                            MESSNUM(MESS_TERESA_MASU, 0x11));
                         mbPlayerColSnapPlayerSet(targetPlayer, FALSE);
                         for (i = 0; (float)i < 30.0f; i++) {
                             weight = (float)i / 30.0f;
@@ -703,10 +725,10 @@ void mbev_CapTeresa(void)
                             HuPrcVSleep();
                         }
                         mbPlayerMotionShiftSet(targetPlayer, 6, 0.0f,
-                            8.0f, 0x40000001);
+                            8.0f, HU3D_MOTATTR_LOOP);
                         mbPlayerColSnapPlayerSet(targetPlayer, TRUE);
                         mbObjMotionShiftSet(objectId, 1, 0.0f, 8.0f,
-                            0x40000001);
+                            HU3D_MOTATTR_LOOP);
                         if (GwSystem.turnNo <= 10) {
                             turnCoinMax = 20;
                         } else if (GwSystem.turnNo <= 20) {
@@ -769,7 +791,7 @@ void mbev_CapTeresa(void)
                             HuPrcVSleep();
                         }
                     } else {
-                        mbWinCreate(2, 0x003B000A, -1);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0A), -1);
                         mbWinTopInsertMesSet(
                             mbPlayerNameMesGet(targetPlayer), 0);
                         mbWinTopPlayerDisable(targetPlayer);
@@ -789,9 +811,9 @@ void mbev_CapTeresa(void)
                         starObjectId = mbStarObjCreate();
                         mbStarObjDispSet(starObjectId, FALSE);
                         mbPlayerMotionShiftSet(targetPlayer, stealMotion,
-                            0.0f, 8.0f, 0x40000001);
+                            0.0f, 8.0f, HU3D_MOTATTR_LOOP);
                         mbObjMotionShiftSet(objectId, 2, 0.0f, 8.0f,
-                            0x40000001);
+                            HU3D_MOTATTR_LOOP);
                         mbPlayerColSnapPlayerSet(targetPlayer, FALSE);
                         for (i = 0; (float)i < 30.0f; i++) {
                             weight = (float)i / 30.0f;
@@ -829,7 +851,7 @@ void mbev_CapTeresa(void)
                             HuPrcVSleep();
                         }
                         mbPlayerMotionShiftSet(targetPlayer, 6, 0.0f,
-                            8.0f, 0x40000001);
+                            8.0f, HU3D_MOTATTR_LOOP);
                         mbPlayerColSnapPlayerSet(targetPlayer, TRUE);
                         mbPlayerStarAdd(targetPlayer, -1);
                         omVibrate(targetPlayer, 20, 20, 0);
@@ -888,11 +910,11 @@ void mbev_CapTeresa(void)
                     mbObjDispSet(itemObjectId, FALSE);
                     mbPlayerPosSetV(targetPlayer, &targetStartPos);
                     mbPlayerRotSet(targetPlayer, 0.0f, 0.0f, 0.0f);
-                    mbPlayerMotionSet(targetPlayer, 1, 0x40000001);
+                    mbPlayerMotionSet(targetPlayer, 1, HU3D_MOTATTR_LOOP);
                 }
 
                 mbObjMotionShiftSet(objectId, 1, 0.0f, 8.0f,
-                    0x40000001);
+                    HU3D_MOTATTR_LOOP);
                 PSVECSubtract(&objectPos, &playerPos, &direction);
                 mbObjPosSetV(objectId, &objectPos);
                 mbObjRotSet(objectId, 0.0f,
@@ -939,7 +961,7 @@ void mbev_CapTeresa(void)
                 switch (stealType) {
                     case 0:
                         mbAudFXPlay(0x39D);
-                        mbWinCreate(2, 0x003B000B, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0B), 10);
                         mbWinTopWait();
                         mbPlayerRotateStart(playerNo,
                             (s16)(180.0 + (180.0
@@ -951,12 +973,12 @@ void mbev_CapTeresa(void)
                         mbev_CapCoinAdd(
                             work->coinObj, playerNo, coinNum, TRUE);
                         mbAudFXPlay(0x39D);
-                        mbWinCreate(2, 0x003B000D, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0D), 10);
                         mbWinTopWait();
                         break;
                     case 1:
                         mbAudFXPlay(0x39D);
-                        mbWinCreate(2, 0x003B000C, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0C), 10);
                         mbWinTopWait();
                         mbMusFadeOutSpeed(1, 1000);
                         while (mbMusCheck(1)) {
@@ -971,21 +993,21 @@ void mbev_CapTeresa(void)
                         }
                         mbStarGetExec(playerNo);
                         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
-                            0x40000001);
+                            HU3D_MOTATTR_LOOP);
                         mbMusBoardPlay();
                         musicChanged = TRUE;
                         mbAudFXPlay(0x39D);
-                        mbWinCreate(2, 0x003B000D, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0D), 10);
                         mbWinTopWait();
                         break;
                     case 2:
                         mbAudFXPlay(0x39D);
-                        mbWinCreate(2, 0x003B000E, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x0E), 10);
                         mbWinTopWait();
                         break;
                     default:
                         mbAudFXPlay(0x39E);
-                        mbWinCreate(2, 0x003B0010, 10);
+                        mbWinCreate(2, MESSNUM(MESS_TERESA_MASU, 0x10), 10);
                         mbWinTopWait();
                         mbPlayerRotateStart(playerNo,
                             (s16)(180.0 + (180.0
@@ -1008,7 +1030,7 @@ void mbev_CapTeresa(void)
     mbObjDispSet(objectId, FALSE);
     mbev_CapTeresaFadeKill(objectId);
     mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
-    mbPlayerMotionSet(playerNo, 1, 0x40000001);
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
     if (!mbMasuDispCheck(GwPlayer[playerNo].masuId)
         || GwPlayer[playerNo].moveNum > 1) {
         mbCameraPlayerViewSetFast(playerNo, 2);
@@ -1019,7 +1041,7 @@ void mbev_CapTeresa(void)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerDispSet(i, TRUE);
     }
-    HuDataDirClose(0x00130000);
+    HuDataDirClose(DATA_capsuleshop);
     HuPrcEnd();
 }
 
