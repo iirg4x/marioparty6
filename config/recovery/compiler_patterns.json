@@ -3031,7 +3031,7 @@
       "category": "local_lifetime_and_saved_register_coloring",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, or first semantic use changes, even when control flow, types, size, and relocations are otherwise identical. MWCC's stack allocator orders spilled locals by size class then declaration list, while graph coloring selects the lowest available register, so a pure cycle is evidence of an earlier lifetime/AST difference rather than authority to force a register.",
+      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, first semantic use, or static use count changes, even when control flow, types, size, and relocations are otherwise identical. Under the measured GC/2.6 -O0,p path, source FPR locals are assigned before PCode graph coloring: allocate_local_FPRs repeatedly selects the highest VarInfo.usage value, resolves ties by local-list traversal, and assigns descending nonvolatile FPRs. Graph coloring then handles compiler temporaries. A pure cycle is therefore evidence of an earlier source-local ranking or AST difference, not authority to force a register.",
       "conditions": "Use only for an exact-sized function whose remaining differences form a small same-width saved-register cycle after structural control flow, owner types, calls, and relocations already agree.",
       "source_condition": {
         "change": "Restore the target-backed declaration order, initialization point, and first semantic use of adjacent natural locals.",
@@ -3056,7 +3056,8 @@
           "an exact-sized function retains only a two- or three-register ARG cycle",
           "a declaration initializer begins an owner-pointer lifetime before a target cleanup call cluster",
           "legal scope or declaration movement is byte-neutral when it does not change first use",
-          "two exact-sized functions close after declaration-order changes remove complete inverse four- and eight-operand saved-register cycles"
+          "two exact-sized functions close after declaration-order changes remove complete inverse four- and eight-operand saved-register cycles",
+          "a GC/2.6 -O0,p FPR cycle follows descending source-local VarInfo.usage before temporary graph coloring"
         ]
       },
       "rule": "Test one natural adjacent-local declaration order, one target-backed initialization point, and one independently justified first-use chronology when the mismatch is a pure saved-register cycle. Treat those as separate variables. Retain the form only when typed semantics, complete text, relocations, and consumers are exact; if the bounded controls are neutral or leave a cycle, stop and record negative evidence rather than adding register-shaping locals.",
@@ -3084,7 +3085,8 @@
           "main:board/tutorial:TutorialWatch",
           "main:board/tutorial:mbTutorialWinMesExec",
           "main:board/tutorial:mbTutorialWinCreate",
-          "main:board/tutorial:mbTutorialWinKeyWait"
+          "main:board/tutorial:mbTutorialWinKeyWait",
+          "main:board/telop:mbTelopTimeSprRotSet"
         ],
         "modules": [
           "endingdll",
@@ -3096,6 +3098,7 @@
         "owner_tags": [
           "declaration_order",
           "first_use",
+          "usage_ranking",
           "saved_registers",
           "negative_evidence",
           "rel"
@@ -3110,7 +3113,8 @@
         "main:board/star StarMatHook became exact after restoring the target-proven four-byte and twelve-byte automatic-object order",
         "main:board/config mbPausePanelCreate became exact after declaration-list order resolved its final saved-register swap",
         "main:board/tutorial TutorialWatch and three guide-object call sites became exact after restoring block-scoped value and pointer lifetimes",
-        "wave 75 mbev_Scroll and ScrollMain became 100% after declaration-list order removed complete inverse r28/r29 and r30/r31 cycles without changing size, control flow, or relocations"
+        "wave 75 mbev_Scroll and ScrollMain became 100% after declaration-list order removed complete inverse r28/r29 and r30/r31 cycles without changing size, control flow, or relocations",
+        "main:board/telop mbTelopTimeSprRotSet proved the GC/2.6 O0 FPR ranking boundary: measured first-sine/second-sine/shared-scale usage 4/4/9 produced the source f29/f30/f31 order, while a diagnostic-only 11/10/9 control produced strict-exact retail f31/f30/f29 at 664 bytes"
       ],
       "counterexamples": [
         "meschkdll fn_1_188 improved to an exact-sized 99.893870 form, but legal declaration/scope controls could not break its final dirWin/nextMessNo r20/r22 cycle, so all nonexact probes were reverted.",
@@ -3120,7 +3124,8 @@
         "A guessed initialized write-only Last Five local changed live-register allocation without producing the target stack word, and a ghost saved-GPR local in Wipe lacked source authentication.",
         "Changing a local's width to steer allocation is not this rule; it introduces normalization differences and must be rejected.",
         "Do not split a declaration initializer solely to choose a register when target call/store chronology does not prove a later semantic lifetime.",
-        "Do not add redundant temporaries, fake scopes, volatile qualifiers, or register keywords solely to choose registers."
+        "Do not add redundant temporaries, fake scopes, volatile qualifiers, register keywords, or discarded reads solely to choose registers.",
+        "mbTelopTimeSprRotSet reached strict exact only under a discarded-read use-count diagnostic; that proved VarInfo.usage ownership but was rejected and reverted because no authenticated natural source justified those reads."
       ],
       "related_exceptions": [],
       "evidence": [

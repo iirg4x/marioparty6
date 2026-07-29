@@ -27,6 +27,29 @@ These examples use different compilers and different aggregate families, so
 the reusable mechanism is local lifetime chronology rather than an
 owner-specific typedef or helper.
 
+## GC/2.6 O0 source-local FPR ranking
+
+`main:board/telop:mbTelopTimeSprRotSet` isolates the mechanism more precisely
+for `GC/2.6 -O0,p`. The exact-sized 664-byte candidate had twelve operand-only
+differences: retail used the first sine, second sine, and shared scale
+lifetimes in `f31`, `f30`, and `f29`, while source used `f29`, `f30`, and
+`f31`.
+
+Native compiler inspection after frontend optimization measured the source
+locals' `VarInfo.usage` values as 4 for the first sine, 4 for the second sine,
+and 9 for the shared scale. This agrees with MWCC's non-optimizing
+`allocate_local_FPRs` path: it repeatedly chooses the highest-usage eligible
+source local, resolves ties by local-list traversal, and assigns descending
+nonvolatile FPRs before PCode graph coloring handles compiler temporaries.
+
+A diagnostic-only control raised those static use counts to 11, 10, and 9
+without emitting instructions. The result was strict exact at 664 bytes with
+zero differences, proving that source-local usage ranking owned the cycle.
+The discarded-read control was then reverted because it was register shaping,
+not recovered source. `register` was byte-neutral, the authenticated `HuAbs`
+macro emitted branches, and inline absolute-value helpers grew the frame, so
+none was retained.
+
 ## Bounded negative evidence
 
 `meschkdll:fn_1_188` demonstrates the stop condition. Legal block-start
@@ -50,6 +73,7 @@ independently justified first-use chronology, then require exact text,
 relocations, consumers, and exact-neighbor preservation.
 
 Never retain redundant locals, fake scopes, volatile qualifiers, register
-keywords, or width changes merely to choose registers. If the bounded natural
-controls do not close the cycle, revert them and preserve the negative
-evidence.
+keywords, discarded reads, or width changes merely to choose registers. A
+no-code use-count control may diagnose which local owns a cycle, but it is not
+promotable source. If the bounded natural controls do not close the cycle,
+revert them and preserve the negative evidence.
