@@ -78,3 +78,17 @@ not authorize generic expression rewriting.
 GC/1.3.2 evidence remains a separate candidate until it has enough independent
 support; these observations do not silently broaden this card across compiler
 families.
+
+## Chained allocation-result lifetime
+
+`mbCapInit` supplies an exact GC/2.6 boundary for assignment-chain length. The
+natural two-destination form
+`capsuleBorderObjId = borderObjData = HuMemDirectMallocNum(...)` compiles to the
+312-byte target with zero instruction or relocation differences. Keeping the
+later traversal alias as the separate statement `borderId = borderObjData`
+preserves the target allocation result in `r25`.
+
+Extending the chain through `borderId` is not equivalent compiler evidence: it
+changes the saved-register and spill lifetime and scores 96.474360%. The rule is
+therefore to recover the target-backed chain boundary, not to chain every alias
+of a common result.

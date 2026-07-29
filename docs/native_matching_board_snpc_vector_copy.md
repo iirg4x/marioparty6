@@ -124,3 +124,36 @@ after this control selects indexed forms, stop until same-game source, a
 historical header, or a compiler-backed helper authenticates the target
 displacement-form boundary. Do not retain a cast, pragma, `volatile`, or inline
 assembly merely because it exposes paired-single opcodes.
+
+## Shared displacement-boundary archaeology
+
+The same displacement-form boundary occurs in three active seams. `mbev_Last5`
+materializes three source/destination pointer pairs for two
+`statusTarget = statusPos` copies and `playerPos = masuPos`. `PauseGuideMain`
+materializes two pairs for `work->pos = work->posTarget` and
+`work->posStart = work->posTarget`. `mbObjFadeCreate` materializes one pair for
+`work->pos = *pos`. Each target then uses `psq_l`/`lfs` and
+`psq_st`/`stfs`.
+
+CodeWarrior manual section 20.4.8 supplies a genuine compiler-backed candidate
+not covered by the ordinary `memcpy` call: `__memcpy`, documented as inline
+access to the code generator's block move. An isolated GC/2.6 `-O0,p`
+translation unit tested a constant-size vector copy and two member copies. The
+single copy was 28 text bytes, the double copy was 52 text bytes, and every
+transfer used three `lwz`/`stw` word pairs. The 80-byte text object has SHA-256
+`cf04677cf22b492dcdeb814422680618f058b07b37865f0e7ac55b5137671da5`.
+Thus `__memcpy` closes as another integer-copy counterexample, not the missing
+paired-single boundary.
+
+Authenticated Mario Party 4 and 5 headers and their retained history expose
+only the memberwise scalar `HuCopyVecF`; retained Dolphin SDK headers expose no
+vector-copy macro for this boundary. The SDK's direct `psq_l` and `psq_st`
+examples are assembly function bodies, not C declarations or helpers. The
+pinned `powerpc-rs` ISA table independently distinguishes displacement
+`psq_l`/`psq_st` operands from indexed `psq_lx`/`psq_stx` operands. An m2c
+sanity pass loses the paired transfer and preserves only the third scalar
+component, so it supplies no source-type or helper evidence.
+
+No authenticated C declaration, type, or helper recovered the displacement
+form. Reopen these seams only when new same-game source or a compiler-backed
+boundary appears; do not repeat the controls above.
