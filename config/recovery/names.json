@@ -477,6 +477,105 @@
       "status": "proposed",
       "confidence": "medium",
       "summary": "Behavioral proposal only: advances the post-selection model, particle, sound, and camera transition and raises the completion flag when transparency reaches zero. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x12C80",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_12C80",
+      "proposed_name": "ResultTieMaskGet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: returns the player bit mask for every score tied with the selected player. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x1109C",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_1109C",
+      "proposed_name": "ResultWinnerMaskGet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: returns the player bit mask for the authenticated winning rank. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x17CF4",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_17CF4",
+      "proposed_name": "ResultGroupBankSet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: sets one sprite bank across every member of the selected results group. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x17D94",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_17D94",
+      "proposed_name": "ResultGroupHide",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: applies the display-off attribute to every member of the selected results sprite group. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x17DCC",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_17DCC",
+      "proposed_name": "ResultGroupCreate",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: creates and initializes the authenticated results sprite group and its members. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x2001C",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_2001C",
+      "proposed_name": "ResultModelScreenPosSet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: combines optional screen-space offsets, converts them through camera zero, and positions the selected model in world space. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x20108",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_20108",
+      "proposed_name": "ResultSpriteGroupAttrSetAll",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: sets the supplied sprite attribute on every member of the selected group. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x20188",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_20188",
+      "proposed_name": "ResultSpriteGroupAttrResetAll",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: clears the supplied sprite attribute on every member of the selected group. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x20208",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_20208",
+      "proposed_name": "ResultThreeDigitBankSetBlankHundreds",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: renders three decimal digit banks, using the authenticated blank bank for a zero hundreds digit and hiding a zero leading tens digit. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x2035C",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_2035C",
+      "proposed_name": "ResultThreeDigitBankSetHideLeading",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: renders three decimal digit banks and hides both leading zero positions. No original-name provenance is known."
+    },
+    {
+      "stable_id": "mdpresultdll:0x22CBC",
+      "owner": "REL:mdpresultdll:application",
+      "current_symbol": "fn_1_22CBC",
+      "proposed_name": "ResultTrailUpdateFade",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: advances the trail points, fades alpha toward its endpoint, and hides the owning model after fade-out. No original-name provenance is known."
     }
   ]
 }
