@@ -4,7 +4,7 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **July 28, 2026**
+Last published full-project snapshot: **July 29, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
@@ -25,6 +25,7 @@ Within the main game flow at that snapshot:
 - `src/board/`: **15 / 40 owners matching**
 - One-time bulk board-source promotion: **182 newly strict-exact functions** across 16 partial owners, with zero exact-function regressions.
 - Corrected Towering Treetop stub ledger: **34 / 72 strict-exact seam implementations are now promoted to `main`**; 38 seams remain. These files are still partial owners, so the board-owner count remains 15 / 40.
+- `src/board/player.c` is now **154 / 165 strict-exact functions** with **35,400 exact text bytes** and **2,663 relocation-bearing instructions inside exact functions**. The latest bulk pass added 11 exact functions and 6,868 exact text bytes with zero exact regressions; Player remains a partial owner, so the 15 / 40 owner count and 34 / 72 Treetop ledger are unchanged.
 - The promoted partial owners are `capevent`, `capmove`, `capselect`, `capspecial`, `capsule`, `dice`, `last5`, `mgcall`, `player`, `scroll`, `shopevent`, `single`, `snpc`, `telop`, `tutorial`, and `wipe`; they remain NonMatching until fully recovered.
 - Newly matching board owner: `src/board/board.c` (35 / 35 functions and 618 / 618 relocations exact)
 - Newly matching board owner: `src/board/audio.c` (49 / 49 functions and 444 / 444 relocations exact)
