@@ -23,6 +23,8 @@
 #include "game/process.h"
 #include "game/msm.h"
 
+#include "messdir_enum.h"
+
 #include "string.h"
 
 enum {
@@ -40,6 +42,16 @@ enum {
     MESS_CHARANAME_MINIKOOPAR,
     MESS_CHARANAME_MINIKOOPAG,
     MESS_CHARANAME_MINIKOOPAB
+};
+
+enum {
+    PLAYER_OBJ_PRIORITY = 256,
+    PLAYER_MOVE_NUM_OBJ_PRIORITY = 32258,
+    PLAYER_MOVE_PROCESS_PRIORITY = 8205,
+    PLAYER_MOVE_PROCESS_STACK_SIZE = 24576,
+    PLAYER_MOVE_COUNT_SFX = 1006,
+    PLAYER_COIN_GAIN_SFX = 1101,
+    PLAYER_COIN_LOSS_SFX = 1102
 };
 
 #define FLAG_BOARD_WALKDONE FLAGNUM(FLAG_GROUP_COMMON, 16)
@@ -324,7 +336,8 @@ void mbPlayerInit(BOOL noEventF)
         mbPlayerMotionVoiceOnSet(i, 8, FALSE);
         mbPlayerMotionVoiceOnSet(i, 13, FALSE);
         workP->colObj =
-            omAddObjEx(mbObjMan, 0x100, 0, 0, -1, PlayerColOMExec);
+            omAddObjEx(mbObjMan, PLAYER_OBJ_PRIORITY, 0, 0, -1,
+                PlayerColOMExec);
         omObjGetWork(workP->colObj, PLAYERCOLWORK)->playerNo = i;
         omObjGetWork(workP->colObj, PLAYERCOLWORK)->killF = TRUE;
         omObjGetWork(workP->colObj, PLAYERCOLWORK)->masuIdNext =
@@ -762,7 +775,8 @@ static void PlayerMoveCall(int playerNo)
 
     mbPlayerColSnapSet(TRUE);
     workP->moveProc =
-        HuPrcChildCreate(PlayerMove, 0x200D, 0x6000, 0, mbMainProc);
+        HuPrcChildCreate(PlayerMove, PLAYER_MOVE_PROCESS_PRIORITY,
+            PLAYER_MOVE_PROCESS_STACK_SIZE, 0, mbMainProc);
     workP->moveProc->property = workP;
     HuPrcDestructorSet2(workP->moveProc, PlayerMoveDestroy);
     while (workP->moveProc) {
@@ -827,7 +841,7 @@ repeat:
         if (!mbev_MasuMove(playerNo, masuIdNext)) {
             hiddenF = !mbMasuDispCheck(masuIdNext);
             if (!hiddenF) {
-                mbAudFXPlay(0x3EE);
+                mbAudFXPlay(PLAYER_MOVE_COUNT_SFX);
                 GwPlayer[playerNo].moveNum--;
                 if (GwPlayer[playerNo].moveNum < 0) {
                     GwPlayer[playerNo].moveNum = 0;
@@ -955,8 +969,8 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
     float motSpeed, u32 motAttr, s16 maxTime, HuVecF *rot, BOOL waitF)
 {
     BOOL setAngle = FALSE;
-    OMOBJ *objP = playerWork[playerNo].moveObj = omAddObjEx(mbObjMan, 0x100,
-        0, 0, -1, PlayerMoveOMExec);
+    OMOBJ *objP = playerWork[playerNo].moveObj = omAddObjEx(mbObjMan,
+        PLAYER_OBJ_PRIORITY, 0, 0, -1, PlayerMoveOMExec);
     PLAYERMOVEWORK *workP = omObjGetWork(objP, PLAYERMOVEWORK);
     int mode;
     HuVecF moveDir;
@@ -1179,8 +1193,8 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
     if (playerWork[playerNo].rotateObj) {
         objP = playerWork[playerNo].rotateObj;
     } else {
-        playerWork[playerNo].rotateObj = objP = omAddObjEx(mbObjMan, 0x100,
-            0, 0, -1, PlayerRotateOMExec);
+        playerWork[playerNo].rotateObj = objP = omAddObjEx(mbObjMan,
+            PLAYER_OBJ_PRIORITY, 0, 0, -1, PlayerRotateOMExec);
     }
     workP = omObjGetWork(objP, PLAYERROTATEWORK);
     workP->killF = FALSE;
@@ -1291,8 +1305,8 @@ void mbMoveNumCreateColor(int playerNo, BOOL carF, int color)
     if (playerWork[playerNo].moveNumObj) {
         return;
     }
-    playerWork[playerNo].moveNumObj = objP = omAddObjEx(mbObjMan, 0x7E02,
-        20, 0, -1, MoveNumOMExec);
+    playerWork[playerNo].moveNumObj = objP = omAddObjEx(mbObjMan,
+        PLAYER_MOVE_NUM_OBJ_PRIORITY, 20, 0, -1, MoveNumOMExec);
     omSetStatBit(objP, OM_STAT_MODELPAUSE);
     workP = omObjGetWork(objP, MOVENUMWORK);
     workP->dispF = TRUE;
@@ -2370,7 +2384,7 @@ void mbPlayerMetalSet(int playerNo, BOOL metalF)
         objP = playerWork[playerNo].metalObj;
         if (objP == NULL) {
             objP = playerWork[playerNo].metalObj = omAddObjEx(mbObjMan,
-                0x100, 1, 0, -1, PlayerMetalOMExec);
+                PLAYER_OBJ_PRIORITY, 1, 0, -1, PlayerMetalOMExec);
             omSetStatBit(objP, OM_STAT_MODELPAUSE);
             mbObjMetalCreate(mbPlayerObjIDGet(playerNo));
             mbObjMetalTPLvlSet(mbPlayerObjIDGet(playerNo), 0.0f);
@@ -2879,7 +2893,7 @@ void mbPlayerBiriQSet(int playerNo, BOOL biriQF)
             GXColor color = { 255, 255, 255, 255 };
 
             objP = playerWork[playerNo].biriQObj = omAddObjEx(mbObjMan,
-                0x100, 2, 0, -1, PlayerBiriQOMExec);
+                PLAYER_OBJ_PRIORITY, 2, 0, -1, PlayerBiriQOMExec);
             omSetStatBit(objP, OM_STAT_MODELPAUSE);
             objP->mdlId[0] = objP->mdlId[1] = MB_MODEL_NONE;
             mbObjBiriQCreate(mbPlayerObjIDGet(playerNo));
@@ -3235,9 +3249,9 @@ u32 mbPlayerTagNameMesGet(int teamNo)
     tagId = tagIdTbl[(charNo1 * 11) + charNo2];
     OSReport("%d:%d->%d\n", charNo1, charNo2, tagId);
     if (tagId == -1) {
-        return 0x30037;
+        return MESSNUM(MESS_TAG_NAME, 55);
     }
-    return 0x30000 + tagId;
+    return MESSNUM(MESS_TAG_NAME, 0) + tagId;
 }
 
 void mbPlayerAmbSet(int playerNo, float ambR, float ambG, float ambB)
@@ -4008,9 +4022,9 @@ static void MasuCoinExec(int playerNo, int coinNum)
     mbPlayerPosGet(playerNo, &pos);
     pos.y += 250.0f;
     if (coinNum >= 0) {
-        mbAudFXPlay(0x44D);
+        mbAudFXPlay(PLAYER_COIN_GAIN_SFX);
     } else {
-        mbAudFXPlay(0x44E);
+        mbAudFXPlay(PLAYER_COIN_LOSS_SFX);
     }
     dispId = mbCoinDispMasuCreate(&pos, coinNum, FALSE);
     while (!mbPlayerRotateCheck(playerNo)) {
