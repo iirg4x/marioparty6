@@ -9,6 +9,11 @@
 #include "game/mg/seqman.h"
 #include "humath.h"
 
+enum {
+    SEQUENCE_JINGLE_WIN = MSM_STREAM_MGMUS_17,
+    SEQUENCE_JINGLE_DRAW = MSM_STREAM_FILESEL,
+};
+
 static void SeqModeInit(s16 mode, s16 frameNo);
 static void SeqModeFadeIn(s16 mode, s16 frameNo);
 static void SeqModeMain(s16 mode, s16 frameNo);
@@ -142,10 +147,10 @@ static void SeqModeWin(s16 mode, s16 frameNo)
     if(frameNo == 0) {
         if(jumpNum >= 10) {
             CharMotionShiftSet(charNo, charMotId[3], 0, 8, HU3D_MOTATTR_NONE);
-            HuAudJinglePlay(0x43);
+            HuAudJinglePlay(SEQUENCE_JINGLE_WIN);
         } else {
             CharMotionShiftSet(charNo, charMotId[4], 0, 8, HU3D_MOTATTR_NONE);
-            HuAudJinglePlay(0x45);
+            HuAudJinglePlay(SEQUENCE_JINGLE_DRAW);
         }
     }
 }
