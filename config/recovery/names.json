@@ -117,6 +117,96 @@
       "status": "proposed",
       "confidence": "high",
       "summary": "Target extent 0x50 and all consumers authenticate two 0x28 stage-texture work records covering the indirect matrix, color, offset, step, and remaining-time fields."
+    },
+    {
+      "stable_id": "optionDll:0xA0",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_A0",
+      "proposed_name": "OptionSceneInitialize",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: called from _prolog, initializes the object manager, cameras, lighting, shadow, option save-state mirrors, prize and minigame catalogs, and BGM. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0xFDC",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_FDC",
+      "proposed_name": "OptionExitProcess",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: fades streams, wipes out, destroys 3D and sprite state, executes save mode, returns the overlay, and then sleeps forever. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x1044",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_1044",
+      "proposed_name": "OptionExitProcessCreate",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: creates fn_1_FDC as a child process under the option object manager. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x1084",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_1084",
+      "proposed_name": "OptionMenuSceneSetup",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: configures option models, animations, processes, the 105-member sprite group, windows, and the camera-layer hook. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x18D8",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_18D8",
+      "proposed_name": "OptionBackgroundRotationProcess",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: creates two animations on the background model and continuously wraps its Z rotation once per vertical sleep. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x19B8",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_19B8",
+      "proposed_name": "OptionMainProcessPropertySet",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: writes the supplied integer value to the authenticated main option process property field. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x6504",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_6504",
+      "proposed_name": "OptionPrizeDescriptionSet",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: selects the locked-prize message or the recovered prize-description message for the primary option window. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0x6590",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_6590",
+      "proposed_name": "OptionPrizeRowsSet",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: populates seven prize-name and prize-ID window rows, substituting locked messages and masked ID text where required. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0xB02C",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_B02C",
+      "proposed_name": "OptionConsecutiveRecordRowsSet",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: fills or clears five ranked rows from the consecutive-minigame record and resolves each entry through MgDataTbl. No original-name provenance is known."
+    },
+    {
+      "stable_id": "optionDll:0xC324",
+      "owner": "REL:optionDll:application",
+      "current_symbol": "fn_1_C324",
+      "proposed_name": "OptionMinigameListBuild",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral candidate only: filters MgDataTbl by flag and type, writes either locked or minigame-name messages into the option list, and returns the selected count. No original-name provenance is known."
     }
   ]
 }
