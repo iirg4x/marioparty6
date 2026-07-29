@@ -12,6 +12,12 @@ REL/staffdll/staff_pass1_067c.c:
 REL/staffdll/staff_pass1_0f68.c:
 	.text       start:0x00000F68 end:0x000010B8
 
+REL/staffdll/application_pass2_3140.c:
+	.text       start:0x00003140 end:0x00003568
+
+REL/staffdll/application_pass2_389c.c:
+	.text       start:0x0000389C end:0x00003E2C
+
 REL/staffdll/staff_pass1_6c14.c:
 	.text       start:0x00006C14 end:0x00006E1C
 
