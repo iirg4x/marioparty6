@@ -14,6 +14,47 @@
 #include "game/process.h"
 
 #define LAST5_COIN_NUM 40
+#define LAST5_MESS_DIRECTORY 46
+#define LAST5_MESS_ID(file) \
+    ((u32)((LAST5_MESS_DIRECTORY << 16) | (file)))
+
+#define LAST5_MUSIC 33
+#define LAST5_GUIDE_VOICE_INTRO 950
+#define LAST5_GUIDE_VOICE_EXPLAIN 952
+#define LAST5_KOOPA_EXIT_SFX 976
+#define LAST5_DICE_RESULT_SFX 1019
+
+#define LAST5_KOOPA_DATA_MODEL DATANUM(DATA_capsulechar1, 0)
+#define LAST5_KOOPA_DATA_MOTION_IDLE DATANUM(DATA_capsulechar1, 1)
+#define LAST5_KOOPA_DATA_MOTION_APPEAR DATANUM(DATA_capsulechar1, 3)
+#define LAST5_KOOPA_DATA_MOTION_TALK DATANUM(DATA_capsulechar1, 4)
+#define LAST5_KOOPA_DATA_MOTION_EXIT DATANUM(DATA_capsulechar1, 5)
+
+#define LAST5_MESS_INTRO LAST5_MESS_ID(0)
+#define LAST5_MESS_RANK_FIRST LAST5_MESS_ID(2)
+#define LAST5_MESS_RANK_SECOND LAST5_MESS_ID(4)
+#define LAST5_MESS_RANK_THIRD LAST5_MESS_ID(6)
+#define LAST5_MESS_RANK_FOURTH LAST5_MESS_ID(8)
+#define LAST5_MESS_ROULETTE_INTRO LAST5_MESS_ID(10)
+#define LAST5_MESS_PLAYER_CALL LAST5_MESS_ID(12)
+#define LAST5_MESS_DICE_PROMPT LAST5_MESS_ID(14)
+#define LAST5_MESS_EFFECT_NO_RED_SPACES LAST5_MESS_ID(16)
+#define LAST5_MESS_EFFECT_COINS LAST5_MESS_ID(18)
+#define LAST5_MESS_EFFECT_CAPSULES LAST5_MESS_ID(20)
+#define LAST5_MESS_EFFECT_KOOPA LAST5_MESS_ID(22)
+#define LAST5_MESS_KOOPA_REVEAL LAST5_MESS_ID(24)
+#define LAST5_MESS_EFFECT_NO_RED_SPACES_EXPLAIN LAST5_MESS_ID(26)
+#define LAST5_MESS_EFFECT_COINS_EXPLAIN LAST5_MESS_ID(28)
+#define LAST5_MESS_NO_RED_SPACES_CONFIRM LAST5_MESS_ID(30)
+#define LAST5_MESS_EFFECT_CAPSULES_EXPLAIN LAST5_MESS_ID(32)
+#define LAST5_MESS_EFFECT_KOOPA_EXPLAIN LAST5_MESS_ID(34)
+#define LAST5_MESS_EFFECT_WRAPUP LAST5_MESS_ID(42)
+#define LAST5_MESS_EFFECT_RULES LAST5_MESS_ID(44)
+#define LAST5_MESS_KOOPA_INTRO LAST5_MESS_ID(46)
+#define LAST5_MESS_EFFECT_START LAST5_MESS_ID(47)
+#define LAST5_MESS_KOOPA_EXIT LAST5_MESS_ID(49)
+#define LAST5_MESS_TEAM_RANK_FIRST LAST5_MESS_ID(50)
+#define LAST5_MESS_TEAM_RANK_SECOND LAST5_MESS_ID(52)
 
 typedef struct Last5CoinWork_s {
     s16 delay;
@@ -60,10 +101,10 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
 static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj, int modelId);
 
 static int koopaMotTbl[4] = {
-    0x000E0001,
-    0x000E0003,
-    0x000E0004,
-    0x000E0005,
+    LAST5_KOOPA_DATA_MOTION_IDLE,
+    LAST5_KOOPA_DATA_MOTION_APPEAR,
+    LAST5_KOOPA_DATA_MOTION_TALK,
+    LAST5_KOOPA_DATA_MOTION_EXIT,
 };
 
 static HuVec2f statusPosTbl[GW_PLAYER_MAX][2] = {
@@ -79,31 +120,31 @@ static HuVec2f statusTeamPosTbl[2][2] = {
 };
 
 static int rankMesTbl[4] = {
-    0x002E0002,
-    0x002E0004,
-    0x002E0006,
-    0x002E0008,
+    LAST5_MESS_RANK_FIRST,
+    LAST5_MESS_RANK_SECOND,
+    LAST5_MESS_RANK_THIRD,
+    LAST5_MESS_RANK_FOURTH,
 };
 
 static int teamRankMesTbl[4] = {
-    0x002E0032,
-    0x002E0034,
-    0x002E0006,
-    0x002E0008,
+    LAST5_MESS_TEAM_RANK_FIRST,
+    LAST5_MESS_TEAM_RANK_SECOND,
+    LAST5_MESS_RANK_THIRD,
+    LAST5_MESS_RANK_FOURTH,
 };
 
 static int last5EffMesTbl[4] = {
-    0x002E0010,
-    0x002E0012,
-    0x002E0014,
-    0x002E0016,
+    LAST5_MESS_EFFECT_NO_RED_SPACES,
+    LAST5_MESS_EFFECT_COINS,
+    LAST5_MESS_EFFECT_CAPSULES,
+    LAST5_MESS_EFFECT_KOOPA,
 };
 
 static int last5EffMes2Tbl[4] = {
-    0x002E001A,
-    0x002E001C,
-    0x002E0020,
-    0x002E0022,
+    LAST5_MESS_EFFECT_NO_RED_SPACES_EXPLAIN,
+    LAST5_MESS_EFFECT_COINS_EXPLAIN,
+    LAST5_MESS_EFFECT_CAPSULES_EXPLAIN,
+    LAST5_MESS_EFFECT_KOOPA_EXPLAIN,
 };
 
 static s8 guideMotTbl[7] = {
@@ -136,7 +177,7 @@ void mbev_Last5(void)
     OMOBJ *guideObj;
     MBMODELID guideModelId;
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(MASU_NULL, MASU_FLAG_START);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerDispSet(i, FALSE);
     }
@@ -150,7 +191,7 @@ void mbev_Last5(void)
     mbCameraRotSet(-20.0f, 0.0f, 0.0f);
     mbCameraZoomSet(mbCameraPlayerViewZoomGet(0) - 200.0f);
     mbCameraMoveOnSet(FALSE);
-    mbMusPlay(0, 0x21, 0x7F, 0);
+    mbMusPlay(MB_MUS_CHAN_BG, LAST5_MUSIC, MSM_VOL_MAX, 0);
     HuDataDirClose(DATANUM(DATA_blast5, 0));
     mbWipeFadeIn();
 
@@ -163,8 +204,8 @@ void mbev_Last5(void)
     messageOffset = GwSystem.curTime ? 1 : 0;
 
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    mbAudGuidePlay(0x3B6);
-    winId = mbWinCreate(2, 0x002E0000 + messageOffset,
+    mbAudGuidePlay(LAST5_GUIDE_VOICE_INTRO);
+    winId = mbWinCreate(2, LAST5_MESS_INTRO + messageOffset,
         mbGuideSpeakerNoGet());
     mbWinPlayerDisable(winId, -1);
     mbWinWait(winId);
@@ -218,8 +259,8 @@ void mbev_Last5(void)
     }
 
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    mbAudGuidePlay(0x3B8);
-    winId = mbWinCreate(2, 0x002E000A + messageOffset,
+    mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
+    winId = mbWinCreate(2, LAST5_MESS_ROULETTE_INTRO + messageOffset,
         mbGuideSpeakerNoGet());
     mbWinPlayerDisable(winId, -1);
     mbWinWait(winId);
@@ -247,7 +288,7 @@ void mbev_Last5(void)
     }
 
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    winId = mbWinCreate(2, 0x002E000C + messageOffset,
+    winId = mbWinCreate(2, LAST5_MESS_PLAYER_CALL + messageOffset,
         mbGuideSpeakerNoGet());
     mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
     mbWinPlayerDisable(winId, playerNo);
@@ -276,8 +317,8 @@ void mbev_Last5(void)
     mbPlayerMotIdleSet(playerNo);
 
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    mbAudGuidePlay(0x3B8);
-    winId = mbWinCreate(2, 0x002E000E + messageOffset,
+    mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
+    winId = mbWinCreate(2, LAST5_MESS_DICE_PROMPT + messageOffset,
         mbGuideSpeakerNoGet());
     mbWinPlayerDisable(winId, playerNo);
     mbWinWait(winId);
@@ -290,7 +331,7 @@ void mbev_Last5(void)
     result = omObjGetWork(rouletteObj, LAST5ROULETTEWORK)->result;
     if (result == 3) {
         mbGuideMotionShiftSet(guideObj, 8, TRUE);
-        mbAudGuidePlay(0x3B8);
+        mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
         mbGuideMotionNextSet(guideObj, 11);
         winId = mbWinCreate(2, last5EffMesTbl[result] + messageOffset,
             mbGuideSpeakerNoGet());
@@ -299,7 +340,7 @@ void mbev_Last5(void)
         while (!mbGuideMotionCheck(guideObj)) {
             HuPrcVSleep();
         }
-        winId = mbWinCreate(2, 0x002E0018 + messageOffset,
+        winId = mbWinCreate(2, LAST5_MESS_KOOPA_REVEAL + messageOffset,
             mbGuideSpeakerNoGet());
         mbWinPlayerDisable(winId, playerNo);
         mbObjPosGet(guideModelId, &masuPos);
@@ -308,18 +349,18 @@ void mbev_Last5(void)
         guideObj = NULL;
         mbWinWait(winId);
         HuPrcSleep(2);
-        koopaModelId = mbObjCreate(0x000E0000, koopaMotTbl, TRUE);
+        koopaModelId = mbObjCreate(LAST5_KOOPA_DATA_MODEL, koopaMotTbl, TRUE);
         mbObjLayerSet(koopaModelId, 3);
         mbObjDispSet(koopaModelId, FALSE);
         mbObjPosSetV(koopaModelId, &masuPos);
         ev_Last5Koopa(playerNo, rouletteObj, koopaModelId);
-        winId = mbWinCreate(2, 0x002E002E, 13);
+        winId = mbWinCreate(2, LAST5_MESS_KOOPA_INTRO, 13);
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
         mbObjMotionShiftSet(koopaModelId, 2, 0.0f, 12.0f,
             HU3D_MOTATTR_NONE);
-        mbAudFXPlay(0x3D0);
-        winId = mbWinCreate(2, 0x002E0031, 13);
+        mbAudFXPlay(LAST5_KOOPA_EXIT_SFX);
+        winId = mbWinCreate(2, LAST5_MESS_KOOPA_EXIT, 13);
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
     } else {
@@ -329,7 +370,7 @@ void mbev_Last5(void)
         mbWinPlayerDisable(winId, playerNo);
         mbWinWait(winId);
         mbGuideMotionShiftSet(guideObj, 12, TRUE);
-        mbAudGuidePlay(0x3B8);
+        mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
         winId = mbWinCreate(2, last5EffMes2Tbl[result] + messageOffset,
             mbGuideSpeakerNoGet());
         mbWinPlayerDisable(winId, playerNo);
@@ -343,8 +384,9 @@ void mbev_Last5(void)
             mbGuideMotionShiftSet(guideObj, 6, TRUE);
             mbGuideMotionStop(guideObj);
             HuPrcSleep(30);
-            mbAudGuidePlay(0x3B6);
-            winId = mbWinCreate(2, 0x002E001E + messageOffset,
+            mbAudGuidePlay(LAST5_GUIDE_VOICE_INTRO);
+            winId = mbWinCreate(2,
+                LAST5_MESS_NO_RED_SPACES_CONFIRM + messageOffset,
                 mbGuideSpeakerNoGet());
             mbWinPlayerDisable(winId, playerNo);
             mbWinWait(winId);
@@ -353,19 +395,19 @@ void mbev_Last5(void)
             ev_Last5CapsuleAdd5(playerNo, rouletteObj, guideObj);
         }
         mbGuideMotionShiftSet(guideObj, 12, TRUE);
-        winId = mbWinCreate(2, 0x002E002A + messageOffset,
+        winId = mbWinCreate(2, LAST5_MESS_EFFECT_WRAPUP + messageOffset,
             mbGuideSpeakerNoGet());
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
         mbGuideMotionSet(guideObj, 12, TRUE);
-        mbAudGuidePlay(0x3B8);
-        winId = mbWinCreate(2, 0x002E002C + messageOffset,
+        mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
+        winId = mbWinCreate(2, LAST5_MESS_EFFECT_RULES + messageOffset,
             mbGuideSpeakerNoGet());
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
         mbGuideMotionSet(guideObj, 7, TRUE);
-        mbAudGuidePlay(0x3B6);
-        winId = mbWinCreate(2, 0x002E002F + messageOffset,
+        mbAudGuidePlay(LAST5_GUIDE_VOICE_INTRO);
+        winId = mbWinCreate(2, LAST5_MESS_EFFECT_START + messageOffset,
             mbGuideSpeakerNoGet());
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
@@ -476,7 +518,7 @@ static void ev_Last5Dice(int playerNo)
     while (!mbDiceKillCheck(playerNo)) {
         HuPrcVSleep();
     }
-    mbAudFXPlay(0x3FB);
+    mbAudFXPlay(LAST5_DICE_RESULT_SFX);
 }
 
 static void ev_Last5SDiceMotHook(int playerNo)
