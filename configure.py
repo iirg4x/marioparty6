@@ -1195,6 +1195,8 @@ config.libs = [
     Rel(
         "endingdll",
         objects={
+            Object(Matching, "REL/endingdll/ending_pass2_scene.c"),
+            Object(Matching, "REL/endingdll/ending_pass3_motion.c"),
             Object(Matching, "REL/endingdll/ending_pass1_35f4.c"),
             Object(Matching, "REL/endingdll/ending_pass1.c"),
             Object(
@@ -1346,6 +1348,12 @@ config.libs = [
     Rel(
         "miraclebookdll",
         objects={
+            Object(Matching, "REL/miraclebookdll/application_pass2_2fcc.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass2_3e40.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass1_5904.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass2_7158.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass2_8a0c.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass1.c"),
             Object(
                 Matching,
                 "REL/miraclebookdll/runtime.c",
