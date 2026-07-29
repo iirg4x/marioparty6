@@ -86,8 +86,6 @@ static ANIMDATA *singleEffAnim[4];
 static int singleTeamChar = -1;
 static int mgKoopaCapsuleTbl[] = { 2, 7 };
 static u8 guideLast5MotTbl[] = { 12, 6, 0xFF };
-static int effFile[] = { 0x000A0000, 0x00050063, 0x0005005E, 0x00050066 };
-static int boardNo[] = { 6, 7, 8, 10 };
 
 static int singleBoard;
 static int singleCancelF;
@@ -141,9 +139,15 @@ int mbSingleCall(int mode, int arg);
 
 void mbSingleInit(void)
 {
+    static int effFile[] = { 0x000A0000, 0x00050063, 0x0005005E, 0x00050066 };
+    static int boardNo[] = {
+        GW_BOARD_S01,
+        GW_BOARD_S02,
+        GW_BOARD_S03,
+        GW_BOARD_W11,
+    };
     s16 list[12];
     int listNum;
-    int board;
     int i;
 
     singleMicF = FALSE;
@@ -152,8 +156,7 @@ void mbSingleInit(void)
     singleMicContext = -1;
     SingleMicCreate();
     for (i = 0; i < 4; i++) {
-        board = GwSystem.boardNo;
-        if (boardNo[i] == board) {
+        if (boardNo[i] == MBBoardNoGet()) {
             break;
         }
     }
