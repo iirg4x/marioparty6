@@ -9,6 +9,7 @@
 #include "game/sprite.h"
 #include "game/window.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
 
 typedef struct MdbankAnimSet {
     s16 model[2];
@@ -24,6 +25,27 @@ typedef union MdbankItem {
         s32 message;
     } choice;
 } MDBANK_ITEM;
+
+enum MdbankUnlockMinigame {
+    MDBANK_UNLOCK_MINIGAME_M678 = 678,
+    MDBANK_UNLOCK_MINIGAME_M679 = 679,
+};
+
+enum MdbankItemMessage {
+    MDBANK_ITEM_MESSAGE_INITIAL_UNLOCK_REQUIRED =
+        MESSNUM(MESS_SBANK_ITEM, 71),
+    MDBANK_ITEM_MESSAGE_M678_UNLOCK_REQUIRED =
+        MESSNUM(MESS_SBANK_ITEM, 65),
+    MDBANK_ITEM_MESSAGE_M679_UNLOCK_REQUIRED =
+        MESSNUM(MESS_SBANK_ITEM, 114),
+    MDBANK_ITEM_MESSAGE_BANK_FLAG_ENABLE_CONFIRM =
+        MESSNUM(MESS_SBANK_ITEM, 66),
+    MDBANK_ITEM_MESSAGE_BANK_FLAG_DISABLE_CONFIRM =
+        MESSNUM(MESS_SBANK_ITEM, 67),
+    MDBANK_ITEM_MESSAGE_STATE_ONE_NOTICE = MESSNUM(MESS_SBANK_ITEM, 56),
+    MDBANK_ITEM_MESSAGE_STATE_TWO_NOTICE = MESSNUM(MESS_SBANK_ITEM, 61),
+    MDBANK_ITEM_MESSAGE_STATE_THREE_NOTICE = MESSNUM(MESS_SBANK_ITEM, 68),
+};
 
 typedef struct MdbankSpriteConfig {
     s16 group;
@@ -1168,25 +1190,25 @@ s32 fn_1_EEB8(s16 index)
     if (lbl_1_data_22C[index].value[0] == 1) {
         if (lbl_1_data_22C[0].value[10] == 0) {
             fn_1_1C64();
-            fn_1_12F8(3, 0x70047, 1);
+            fn_1_12F8(3, MDBANK_ITEM_MESSAGE_INITIAL_UNLOCK_REQUIRED, 1);
             fn_1_11A0();
             return 0;
         }
         return 1;
     }
     if (lbl_1_data_22C[index].value[0] == 2) {
-        if (GWMgUnlockGet(0x2A6) == 0) {
+        if (GWMgUnlockGet(MDBANK_UNLOCK_MINIGAME_M678) == 0) {
             fn_1_1C64();
-            fn_1_12F8(3, 0x70041, 1);
+            fn_1_12F8(3, MDBANK_ITEM_MESSAGE_M678_UNLOCK_REQUIRED, 1);
             fn_1_11A0();
             return 0;
         }
         return 1;
     }
     if (lbl_1_data_22C[index].value[0] == 3) {
-        if (GWMgUnlockGet(0x2A7) == 0) {
+        if (GWMgUnlockGet(MDBANK_UNLOCK_MINIGAME_M679) == 0) {
             fn_1_1C64();
-            fn_1_12F8(3, 0x70072, 1);
+            fn_1_12F8(3, MDBANK_ITEM_MESSAGE_M679_UNLOCK_REQUIRED, 1);
             fn_1_11A0();
             return 0;
         }
@@ -1216,13 +1238,13 @@ s32 fn_1_F7C0(s16 index)
     if (lbl_1_data_22C[index].value[1] == 3) {
         if (GWBankFlagGet(60) == 0) {
             fn_1_1D68();
-            fn_1_12F8(2, 0x70042, 1);
+            fn_1_12F8(2, MDBANK_ITEM_MESSAGE_BANK_FLAG_ENABLE_CONFIRM, 1);
             if (fn_1_1200(2) == 0) {
                 GWBankFlagSet(60);
             }
         } else {
             fn_1_1D68();
-            fn_1_12F8(2, 0x70043, 1);
+            fn_1_12F8(2, MDBANK_ITEM_MESSAGE_BANK_FLAG_DISABLE_CONFIRM, 1);
             if (fn_1_1200(2) == 0) {
                 GWBankFlagReset(60);
             }
@@ -1236,15 +1258,15 @@ void fn_1_1050C(s16 index)
 {
     if (lbl_1_data_22C[index].value[1] == 1) {
         fn_1_1D68();
-        fn_1_12F8(2, 0x70038, 1);
+        fn_1_12F8(2, MDBANK_ITEM_MESSAGE_STATE_ONE_NOTICE, 1);
         fn_1_11A0();
     } else if (lbl_1_data_22C[index].value[1] == 2) {
         fn_1_1D68();
-        fn_1_12F8(2, 0x7003D, 1);
+        fn_1_12F8(2, MDBANK_ITEM_MESSAGE_STATE_TWO_NOTICE, 1);
         fn_1_11A0();
     } else if (lbl_1_data_22C[index].value[1] == 3) {
         fn_1_1D68();
-        fn_1_12F8(2, 0x70044, 1);
+        fn_1_12F8(2, MDBANK_ITEM_MESSAGE_STATE_THREE_NOTICE, 1);
         fn_1_11A0();
     } else {
         fn_1_1D68();
