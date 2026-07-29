@@ -118,6 +118,14 @@ extern void *mbMalloc(s32 size);
 extern float mbSinDeg(float angle);
 extern s8 mbPadStkXGet(int padNo);
 extern s8 mbPadStkYGet(int padNo);
+extern const float lbl_802C3550;
+extern const float lbl_802C3554;
+extern const float lbl_802C3558;
+
+static inline BOOL MBTimeDayGet(void)
+{
+    return GwSystem.curTime == 0;
+}
 
 void mbScrollInit(int dataNum)
 {
@@ -293,7 +301,7 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
         }
         switch (mode) {
         case 0:
-            maxSpeed = 30.0f;
+            maxSpeed = 30.000002f;
             if (HuPadBtn[padNo] & PAD_BUTTON_A) {
                 maxSpeed *= 2.0f;
             }
@@ -1079,6 +1087,30 @@ static s16 masuPatTbl[11] = {
     -1, 0, 1, 2, 6, 7, -2, 5, 8, -1, 9,
 };
 
+static inline void MapSprScaleSet(void)
+{
+    MAPSPRWORK *work;
+    float weight;
+    float scale;
+    int i;
+
+    weight = (float)scrollWorkP->mapFrame++ / lbl_802C3550;
+    if (scrollWorkP->mapFrame > 24U) {
+        scrollWorkP->mapFrame = 0;
+    }
+    scale = 0.6f + (lbl_802C3554 * mbSinDeg(lbl_802C3558 * weight));
+    work = scrollWorkP->mapSpr;
+    for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
+        if (work->type < 0) {
+            espScaleSet(work->sprId[1], scale, scale);
+        }
+    }
+}
+
+const float lbl_802C3550 = 24.0f;
+const float lbl_802C3554 = 0.2f;
+const float lbl_802C3558 = 90.0f;
+
 static void MapPathDraw(s16 masuId, Mtx *mtx)
 {
     Mtx pathMtx;
@@ -1166,20 +1198,16 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
     HuVecF pos;
     HuVecF posCamera;
     HU3D_CAMERA *camera;
-    MAPSPRWORK *work;
     float texX;
     float texY;
     float y;
     float x;
-    float weight;
-    float scale;
     int masuNum;
     s16 startMasuId;
     u32 attr;
     int masuType;
     u32 mAttr;
     int patNo;
-    BOOL dayF;
 
     mbCameraLookAtGet(cameraMtx);
     C_MTXOrtho(projection, 0.0f, 480.0f, 0.0f, 576.0f, 0.0f, 100.0f);
@@ -1221,67 +1249,58 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
     memset(mapPathBit, 0, sizeof(mapPathBit));
     MapPathDraw(startMasuId, &cameraMtx);
     if (mbMasuDispGet()) {
-        int i;
-
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
         GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
             GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
-        masuNum = mbMasuNumGet();
-        for (i = 1; i < masuNum; i++) {
-            masuType = mbMasuTypeGet(i);
-            attr = mbMasuAttrGet(i);
-            mAttr = mbMasuMAttrGet(i);
-            if (masuType == 0 || (attr & ~0x10 & mbMasuDispAttrGet()) != 0
-                || (mAttr & mbMasuDispMAttrGet()) != 0) {
-                continue;
-            }
-            patNo = masuPatTbl[masuType];
-            if (patNo < 0) {
-                if (patNo == -1) {
+        {
+            int i;
+
+            masuNum = mbMasuNumGet();
+            for (i = 1; i < masuNum; i++) {
+                masuType = mbMasuTypeGet(i);
+                attr = mbMasuAttrGet(i);
+                mAttr = mbMasuMAttrGet(i);
+                if (masuType == 0 || (attr & ~0x10 & mbMasuDispAttrGet()) != 0
+                    || (mAttr & mbMasuDispMAttrGet()) != 0) {
                     continue;
                 }
-                dayF = !GwSystem.curTime;
-                patNo = dayF ? 4 : 3;
-            }
-            texX = (patNo % 4) / 4.0f;
-            texY = (float)(patNo / 4) / 3.0f;
-            PSMTXScale(texMtx, 0.25f, 1.0f / 3.0f, 0.0f);
-            mtxTransCat(texMtx, texX, texY, 0.0f);
-            GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
-            mbMasuPosGet(i, &pos);
-            camera = &Hu3DCamera[0];
-            PSMTXMultVec(cameraMtx, &pos, &posCamera);
-            x = posCamera.z * (HuSin(camera->fov / 2.0f)
-                / HuCos(camera->fov / 2.0f)) * 1.2f;
-            y = posCamera.z * (HuSin(camera->fov / 2.0f)
-                / HuCos(camera->fov / 2.0f));
-            pos.x = 288.0f + (posCamera.x * (288.0f / -x));
-            pos.y = 240.0f + (posCamera.y * (240.0f / y));
-            pos.z = 0.0f;
-            PSMTXTrans(posMtx, pos.x, pos.y, 0.0f);
-            GXLoadPosMtxImm(posMtx, GX_PNMTX0);
-            GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-            GXPosition2f32(-8.0f, -8.0f);
-            GXTexCoord2f32(0.0f, 0.0f);
-            GXPosition2f32(8.0f, -8.0f);
-            GXTexCoord2f32(1.0f, 0.0f);
-            GXPosition2f32(8.0f, 8.0f);
-            GXTexCoord2f32(1.0f, 1.0f);
-            GXPosition2f32(-8.0f, 8.0f);
-            GXTexCoord2f32(0.0f, 1.0f);
-            GXEnd();
-        }
-        weight = (float)scrollWorkP->mapFrame++ / 24.0f;
-        if (scrollWorkP->mapFrame > 24U) {
-            scrollWorkP->mapFrame = 0;
-        }
-        scale = 0.6f + (0.2f * mbSinDeg(90.0f * weight));
-        work = scrollWorkP->mapSpr;
-        for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
-            if (work->type < 0) {
-                espScaleSet(work->sprId[1], scale, scale);
+                patNo = masuPatTbl[masuType];
+                if (patNo < 0) {
+                    if (patNo == -1) {
+                        continue;
+                    }
+                    patNo = MBTimeDayGet() ? 4 : 3;
+                }
+                texX = (patNo % 4) / 4.0f;
+                texY = (float)(patNo / 4) / 3.0f;
+                PSMTXScale(texMtx, 0.25f, 1.0f / 3.0f, 0.0f);
+                mtxTransCat(texMtx, texX, texY, 0.0f);
+                GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
+                mbMasuPosGet(i, &pos);
+                camera = &Hu3DCamera[0];
+                PSMTXMultVec(cameraMtx, &pos, &posCamera);
+                x = posCamera.z * (HuSin(camera->fov / 2.0f)
+                    / HuCos(camera->fov / 2.0f)) * 1.2f;
+                y = posCamera.z * (HuSin(camera->fov / 2.0f)
+                    / HuCos(camera->fov / 2.0f));
+                pos.x = 288.0f + (posCamera.x * (288.0f / -x));
+                pos.y = 240.0f + (posCamera.y * (240.0f / y));
+                pos.z = 0.0f;
+                PSMTXTrans(posMtx, pos.x, pos.y, 0.0f);
+                GXLoadPosMtxImm(posMtx, GX_PNMTX0);
+                GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+                GXPosition2f32(-8.0f, -8.0f);
+                GXTexCoord2f32(0.0f, 0.0f);
+                GXPosition2f32(8.0f, -8.0f);
+                GXTexCoord2f32(1.0f, 0.0f);
+                GXPosition2f32(8.0f, 8.0f);
+                GXTexCoord2f32(1.0f, 1.0f);
+                GXPosition2f32(-8.0f, 8.0f);
+                GXTexCoord2f32(0.0f, 1.0f);
+                GXEnd();
             }
         }
+        MapSprScaleSet();
     }
 }
 
