@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.60% | 32.87% | 358 / 972 |
+| Entire project | 13.64% | 32.87% | 360 / 977 |
 | Main DOL | 48.28% | 74.87% | 296 / 396 |
-| REL modules | 6.25% | 6.26% | 62 / 576 |
+| REL modules | 6.29% | 6.26% | 64 / 581 |
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
