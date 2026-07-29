@@ -296,8 +296,8 @@
       "superseded_by": null
     },
     "gc26-board-transitive-sqrtf-pool": {
-      "status": "stale",
-      "validated_commit": "de2ff2cb461db7ee586f2a926d445ce5f7eb4cac",
+      "status": "active",
+      "validated_commit": "e91ca44fb4f2aaab0c98aedaa23269f6abd598f7",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -313,6 +313,7 @@
         "src/board/opening.c",
         "src/board/capselect.c",
         "src/board/scroll.c",
+        "src/board/mgcall.c",
         "configure.py"
       ],
       "supersedes": [],
