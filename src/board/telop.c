@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "game/board/main.h"
 #include "game/board/audio.h"
 #include "game/board/pause.h"
@@ -264,40 +267,16 @@ void mbTelopCreate(int playerNo, int telopNo, BOOL waitF)
     if (telopNo < 16) {
         mbAudFXPlay(0x3F3);
     }
-    if (waitF == FALSE) {
-        return;
-    }
-    while (telopOMObj) {
-        HuPrcVSleep();
+    if (waitF) {
+        while (telopOMObj) {
+            HuPrcVSleep();
+        }
     }
 }
 
 void mbTelopPlayerCreate(int playerNo)
 {
-    TELOP_WORK *work;
-    int telopNo;
-
-    telopNo = GwPlayer[playerNo].charNo;
-    telopOMObj = omAddObj(mbObjMan, 0x106, 1, 0, TelopInitOMExec);
-    omSetStatBit(telopOMObj, OM_STAT_MODELPAUSE);
-    work = omObjGetWork(telopOMObj, TELOP_WORK);
-    work->killF = FALSE;
-    work->playerNo = playerNo;
-    work->mode = 0;
-    work->telopNo = telopNo;
-    if ((playerNo >= 0 && GwPlayer[playerNo].comF) || playerNo < 0) {
-        work->comDelay = 30;
-    } else {
-        work->comDelay = 0;
-    }
-    telopOMObj->mdlId[0] = espEntry(mbBoardDataNumGet(telopFileTbl[telopNo]), 100, 0);
-    espDrawNoSet(telopOMObj->mdlId[0], 32);
-    if (telopNo < 16) {
-        mbAudFXPlay(0x3F3);
-    }
-    while (telopOMObj) {
-        HuPrcVSleep();
-    }
+    mbTelopCreate(playerNo, GwPlayer[playerNo].charNo, TRUE);
 }
 
 void mbTelopPlayerSkipCreate(int playerNo)
@@ -441,6 +420,7 @@ static void TelopLastTurnOMExec(OMOBJ *obj)
 {
     TELOP_LAST_TURN_WORK *work;
     float scale;
+    float sinValue;
     float weight;
 
     work = omObjGetWork(obj, TELOP_LAST_TURN_WORK);
@@ -466,7 +446,9 @@ static void TelopLastTurnOMExec(OMOBJ *obj)
             break;
         case 1:
             weight = work->angle * (1.0f / 80.0f);
-            scale = fabs(mbSinDeg(720.0f * weight));
+            sinValue = mbSinDeg(720.0f * weight);
+            sinValue = __fabsf(sinValue);
+            scale = sinValue;
             obj->trans.y = 1.0f + (0.5f * scale);
             if (work->lastTurn) {
                 HuSprGrpScaleSet(work->grpId, obj->trans.y, obj->trans.y);
@@ -575,12 +557,12 @@ static void TelopTimePauseHook(BOOL dispF)
 
 s16 mbTelopTimeSprCreate(void)
 {
+    s32 starNum;
     s32 timeTurnMax;
     s32 timeTurn;
-    s32 starNum;
+    s32 starLeft;
     s32 turnLeft;
     s32 languageNo;
-    s32 timeNo;
     s32 i;
     s16 grpId;
     s16 sprId;
@@ -588,21 +570,21 @@ s16 mbTelopTimeSprCreate(void)
     timeTurnMax = GwSystem.timeTurnMax;
     starNum = timeTurnMax;
     timeTurn = GwSystem.timeTurn;
-    starNum -= timeTurn;
+    starLeft = starNum - timeTurn;
     turnLeft = GwSystem.turnMax - GwSystem.turnNo + 1;
-    if (turnLeft < starNum) {
-        starNum = turnLeft;
+    if (turnLeft < starLeft) {
+        starLeft = turnLeft;
     }
     languageNo = mbLanguageGet();
     grpId = HuSprGrpCreate(8);
-    timeNo = 0;
+    i = 0;
     if (GwSystem.curTime) {
-        timeNo++;
+        i++;
     }
-    mbSprCreate(mbBoardDataNumGet(telopTimeBackFileTbl[timeNo]), 100, NULL, &sprId);
+    mbSprCreate(mbBoardDataNumGet(telopTimeBackFileTbl[i]), 100, NULL, &sprId);
     HuSprGrpMemberSet(grpId, 0, sprId);
     HuSprTPLvlSet(grpId, 0, 0.6f);
-    mbSprCreate(mbBoardDataNumGet(telopTimeFileTbl[timeNo]), 99, NULL, &sprId);
+    mbSprCreate(mbBoardDataNumGet(telopTimeFileTbl[i]), 99, NULL, &sprId);
     HuSprGrpMemberSet(grpId, 1, sprId);
     for (i = 0; i < 3; i++) {
         mbSprCreate(mbBoardDataNumGet(0x00050071), 98, NULL, &sprId);
@@ -624,7 +606,7 @@ s16 mbTelopTimeSprCreate(void)
         HuSprPosSet(grpId, i + 5, telopTimeStarSprOfsTbl[languageNo][i].x,
             telopTimeStarSprOfsTbl[languageNo][i].y);
     }
-    mbTelopTimeStarSet(grpId, starNum);
+    mbTelopTimeStarSet(grpId, starLeft);
     mbTelopTimeTPLvlSet(grpId, 1.0f);
     return grpId;
 }

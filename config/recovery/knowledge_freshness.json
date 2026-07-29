@@ -324,6 +324,7 @@
         "src/board/capselect.c",
         "src/board/scroll.c",
         "src/board/mgcall.c",
+        "src/board/telop.c",
         "configure.py"
       ],
       "supersedes": [],
