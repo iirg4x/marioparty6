@@ -1268,7 +1268,7 @@
       "category": "asset_provenance",
       "compiler": null,
       "confidence": "high",
-      "summary": "The independent MP6 repository preserves motion, message, minigame, and sound catalogs, but their numeric domains remain target-specific and require archive or table verification before use.",
+      "summary": "The independent MP6 repository preserves motion, message, minigame, and sound catalogs, but their numeric domains remain target-specific and require archive or table verification before use. Once the same-game directory or message domain is proven, spell packed identifiers through `DATANUM`, `MESSNUM`, or an existing leaf enum instead of retaining a raw combined word.",
       "conditions": "Apply when naming or generating datanum, message, sound, movie, DLL, or resource constants.",
       "source_condition": {
         "change": "Adopt a numeric asset, message, sound, or datanum constant from a retained catalog.",
@@ -1294,6 +1294,8 @@
       "safe_actions": [
         "record catalog path, blob, owning archive/table, count, and verification method",
         "generate rather than manually transcribe repetitive enums",
+        "replace a verified packed resource or message word with its same-game `DATANUM` or `MESSNUM` construction",
+        "prefer an existing same-game leaf enum such as a `CHARMOT_*` symbol over reconstructing its packed value at the call site",
         "reject an index inferred only from a filename suffix"
       ],
       "applicability": {
@@ -1307,12 +1309,19 @@
       "examples": [
         "include/datanum/mariomot.h",
         "include/mgdata.inc",
-        "include/msm_se.h"
+        "include/msm_se.h",
+        "src/board/capspecial.c replaces raw Teresa messages, capsule archives, character motions, and loop attributes with same-game constructors or existing symbols while preserving all 18 exact functions and 81 relocations"
       ],
       "counterexamples": [],
       "related_exceptions": [],
       "evidence": [
-        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/target_specific_catalogs"
+        "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/target_specific_catalogs",
+        "include/datadir_enum.h",
+        "include/datadir_table.h",
+        "include/messdir_enum.h",
+        "include/messdir_table.h",
+        "include/datanum/charmot.h",
+        "src/board/capspecial.c"
       ]
     },
     {
