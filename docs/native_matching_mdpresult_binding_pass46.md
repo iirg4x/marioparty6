@@ -84,3 +84,27 @@ target-contiguous prefix, suffix, or interior island is eligible when its
 definition-to-inline-consumer graph has no outgoing edge into retained exact
 source, and all existing generated owners, consumers, and pool prefixes are
 re-proved after extraction.
+
+## Pass 49: callback-only interior island
+
+Pass 49 refined what counts as an outgoing consumer edge. The maximal exact
+region from `fn_1_4694` through `fn_1_52C4` has later references to moved
+`fn_1_4A9C` and `fn_1_4BB8`, but every reference is a function-address or
+callback assignment. No retained source body directly calls either function,
+so moving their definitions cannot remove a one-pass inline expansion. Those
+references are link-only edges and are verified through their relocation
+targets rather than by expanding the compile-time closure.
+
+The resulting interior island is independently exact: 12 functions, 3,276
+text bytes, 186 of 186 relocations, and no source `.rodata`. All 146 retained
+exact functions remain instruction- and relocation-exact, including the
+window chain and four protected consumers. Both earlier generated owners, the
+64-byte `fn_1_5360` pool prefix, prelink/final-link outputs, and retail
+`mdpresultdll.rel` also remain exact at worker commit
+`4aab4b6b93bf931ddb50caefddde3edb194a5ed1`.
+
+Therefore classify graph edges before choosing a boundary. A direct call to an
+inline-capable definition is a compile-time visibility edge. Merely storing
+the function address in a callback slot is a link-time relocation edge unless
+an independent direct call also exists. This distinction can expose large
+safe interior islands without duplicating definitions or widening the owner.

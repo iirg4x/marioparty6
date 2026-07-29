@@ -2823,7 +2823,7 @@
       "category": "declaration_visibility_and_owner_binding",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix or predecessor island can still be bound independently when every outgoing inline-consumer edge stays in the original translation unit and all protected consumers and pool owners remain exact.",
+      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix, predecessor, or interior island can still be bound independently when every outgoing compile-time inline-consumer edge stays in the original translation unit and all protected consumers and pool owners remain exact. Function-address and callback assignments are link-only edges unless a direct compile-time call also exists.",
       "conditions": "Use when recovered functions are exact in a monolithic source owner and a proposed generated-object split moves their definitions into another translation unit while later exact callers remain behind.",
       "source_condition": {
         "change": "Extract an exact function cluster from a combined source owner into a separately compiled generated object.",
@@ -2832,7 +2832,8 @@
           "complete instruction and relocation equality for the extracted cluster",
           "an inventory of every later independently exact caller whose compile-time visibility can change",
           "before/after consumer-object comparison, not only extracted-object scoring",
-          "a dependency graph that identifies suffixes with no compile-time visibility edge back into protected exact consumers"
+          "a dependency graph that identifies candidate regions with no compile-time visibility edge back into protected exact consumers",
+          "classification of direct-call inline-visibility edges separately from function-address or callback link-only edges"
         ]
       },
       "emitted_effect": {
@@ -2845,12 +2846,14 @@
         "known_signatures": [
           "scratch cluster text and relocations are exact but tracked owner-wide exact count falls",
           "only consumers compiled after the moved definitions regress",
-          "restoring duplicate definitions would repair visibility but violate single-owner policy"
+          "restoring duplicate definitions would repair visibility but violate single-owner policy",
+          "later source references exist only as function-address assignments, so the moved body still links but no one-pass inline expansion can change"
         ]
       },
-      "rule": "Treat generated-object extraction as a consumer-closure change. Bind the cluster only when every affected exact caller remains exact or authenticated original header/TU evidence naturally preserves definition visibility; otherwise retain the exact C unbound and record the split as blocked.",
+      "rule": "Treat generated-object extraction as a consumer-closure change. Build a typed definition-to-consumer graph: direct compile-time calls to inline-capable definitions are visibility edges, while function-address and callback assignments are link-only edges unless a direct call also exists. Bind the cluster only when every affected exact caller remains exact or authenticated original header/TU evidence naturally preserves definition visibility; otherwise retain the exact C unbound and record the split as blocked.",
       "safe_actions": [
         "enumerate later direct and transitive callers of every moved inline-capable definition",
+        "classify callback-address references separately and verify their final relocation targets without treating them as inline-visibility edges",
         "compare all independently exact consumers after the tracked split",
         "search target-contiguous prefixes, suffixes, and interior islands for the largest region with no outgoing definition-to-inline-consumer edge into retained exact code",
         "expand the candidate owner boundary only when retail layout and source chronology authenticate it",
@@ -2866,7 +2869,8 @@
           "mdpresultdll:fn_1_105CC",
           "mdpresultdll:fn_1_10B34",
           "mdpresultdll:fn_1_1295C",
-          "mdpresultdll:fn_1_2BF0..fn_1_3304"
+          "mdpresultdll:fn_1_2BF0..fn_1_3304",
+          "mdpresultdll:fn_1_4694..fn_1_52C4"
         ],
         "modules": [
           "mdpresultdll"
@@ -2882,12 +2886,14 @@
       "examples": [
         "mdpresultdll pass46 isolated fn_1_16C4..fn_1_3304 as 37/37 exact functions over 7328 text bytes with 600/600 relocations, but tracked extraction regressed four later exact consumers when the moved definitions were no longer visible.",
         "Pass47 kept the transitive window-helper chain in mdpresult.c and extracted only dependency-closed suffix fn_1_2BF0..fn_1_3304: 10/10 functions, 1908 bytes, and 141/141 relocations exact with no source rodata, while fn_1_102E4/fn_1_105CC/fn_1_10B34/fn_1_1295C and the fn_1_5360 pool prefix remained exact.",
-        "Pass48 selected the dependency-closed predecessor island fn_1_16C4..fn_1_1C34 while leaving fn_1_1C70 onward and its transitive window chain in mdpresult.c: 11/11 functions, 1452 bytes, and 109/109 relocations exact with no source rodata, while both generated owners, all four protected consumers, and the 64-byte pool prefix remained exact."
+        "Pass48 selected the dependency-closed predecessor island fn_1_16C4..fn_1_1C34 while leaving fn_1_1C70 onward and its transitive window chain in mdpresult.c: 11/11 functions, 1452 bytes, and 109/109 relocations exact with no source rodata, while both generated owners, all four protected consumers, and the 64-byte pool prefix remained exact.",
+        "Pass49 bound the interior callback-only island fn_1_4694..fn_1_52C4: 12/12 functions, 3276 bytes, and 186/186 relocations exact with no source rodata. Later references to moved fn_1_4A9C/fn_1_4BB8 were function-address assignments rather than direct calls, so they remained link-only edges; all 146 retained exact functions, both prior generated owners, protected consumers, pool prefix, and retail REL remained exact."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
         "A perfect extracted-object score is not a counterexample unless the original owner and every previously exact consumer are also compared.",
-        "Do not preserve visibility with duplicate tracked definitions, forced-inline controls, pragmas, or fake storage."
+        "Do not preserve visibility with duplicate tracked definitions, forced-inline controls, pragmas, or fake storage.",
+        "A callback-address reference is not evidence of a compile-time inline edge; require a direct call or emitted inline expansion before expanding the closure."
       ],
       "related_exceptions": [],
       "evidence": [
