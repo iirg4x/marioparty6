@@ -2943,6 +2943,9 @@ static void BiriQEffectCreate(OMOBJ *objP)
 {
     PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
     MBPARTICLE *particleP;
+    HU3D_MODELID modelId;
+    HU3D_MODELID modelId2;
+    HU3D_MODELID sourceModelId;
     int effectCount[2];
     float radius;
     int particleNum;
@@ -2962,21 +2965,32 @@ static void BiriQEffectCreate(OMOBJ *objP)
     Hu3DModelLayerSet(objP->mdlId[0], 3);
     Hu3DModelLayerSet(objP->mdlId[1], 3);
     {
-        HU3D_MODELID modelId = objP->mdlId[0];
+        void *hookData;
+        MBPARTICLE *modelParticleP;
 
-        particleP = (MBPARTICLE *)Hu3DData[modelId].hookData;
+        modelId = objP->mdlId[0];
+        hookData = Hu3DData[modelId].hookData;
+        modelParticleP = hookData;
+        particleP = modelParticleP;
         particleP->hookData = objP;
         particleP->mode = 0;
     }
     {
-        HU3D_MODELID modelId = objP->mdlId[1];
+        void *hookData2;
+        MBPARTICLE *modelParticleP2;
 
-        particleP = (MBPARTICLE *)Hu3DData[modelId].hookData;
+        modelId2 = objP->mdlId[1];
+        hookData2 = Hu3DData[modelId2].hookData;
+        modelParticleP2 = hookData2;
+        particleP = modelParticleP2;
         {
-            HU3D_MODELID sourceModelId = objP->mdlId[0];
+            void *sourceHookData;
+            MBPARTICLE *sourceParticleP;
 
-            particleP->hookData =
-                (MBPARTICLE *)Hu3DData[sourceModelId].hookData;
+            sourceModelId = objP->mdlId[0];
+            sourceHookData = Hu3DData[sourceModelId].hookData;
+            sourceParticleP = sourceHookData;
+            particleP->hookData = sourceParticleP;
         }
         particleP->mode = 0;
     }
