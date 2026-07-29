@@ -56,7 +56,8 @@
       "examples": [
         "REL:mdpartydll:mdparty",
         "mdbankdll fn_1_281C compiled exactly before fn_1_11900 was defined; later fn_1_28B4 expanded fn_1_281C but preserved the nested fn_1_11900 call relocation",
-        "mode-select wave 68 proved several standalone-plus-expanded and depth-two helper relations from complete instruction copies and absent call relocations"
+        "mode-select wave 68 proved several standalone-plus-expanded and depth-two helper relations from complete instruction copies and absent call relocations",
+        "Ending pass4 bound a target-address-ordered lifecycle leaf set even where authenticated historical source placed neighboring definitions in a different order; nine text-only owners remained 12/12 exact, so source definition chronology and retail split order were treated as separate evidenced variables"
       ],
       "counterexamples": [
         "REL:mdpartydll:stage",
@@ -68,7 +69,9 @@
       "evidence": [
         "docs/native_matching_wave103.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
-        "docs/native_matching_wave68.md"
+        "docs/native_matching_wave68.md",
+        "src/REL/endingdll/ending_pass4_lifecycle_951c.c",
+        "config/dll/rels/endingdll/splits.txt"
       ]
     },
     {
@@ -3434,7 +3437,8 @@
         "Pass51 bound the zero-incoming-edge island fn_1_C9A0..fn_1_D40C as 9/9 functions, 2796 bytes, and 190/190 relocations exact on the first natural-C compile. All nine outbound local calls had prototype-only visibility to later or unbound definitions, and all retained source, five generated owners, protected consumers, pool prefix, and retail REL stayed exact.",
         "MiracleBook pass1 rejected the otherwise exact 0x7158 island because isolated fn_1_7998 shrank from the 4212-byte target to 2928 bytes after losing earlier-TU fn_1_427C auto-inline visibility; two dependency-closed 5-function islands were bound instead for 7504 exact text bytes and a retail-identical REL.",
         "Ending pass3 isolated fn_1_2034 at 448 bytes instead of the 468-byte target after losing earlier-TU fn_1_0 auto-inline visibility. The target-proven motion==4/lbl_1_bss_26 guard and HuAudFXPlay body were expressed directly as natural C, restoring exact text and relocations while all 11 owner functions, callbacks, prior owners, runtime, and the retail REL stayed exact.",
-        "MiracleBook pass3 bound the earliest 0x0..0xA30 prefix and the 0x4E94..0x4FD4 island as 10/10 functions, 2928 text bytes, and 420/420 relocation rows. Every outbound later call was prototype-only, the internal chain retained original declaration order, all seven prior generated consumers remained 41/41 exact, and the linked REL remained retail-identical."
+        "MiracleBook pass3 bound the earliest 0x0..0xA30 prefix and the 0x4E94..0x4FD4 island as 10/10 functions, 2928 text bytes, and 420/420 relocation rows. Every outbound later call was prototype-only, the internal chain retained original declaration order, all seven prior generated consumers remained 41/41 exact, and the linked REL remained retail-identical.",
+        "Ending pass4 bound 12 scattered lifecycle leaves across nine target-address-ordered text-only owners for 3468 exact bytes and 258/258 relocations. Every outgoing relation was a prototype-visible direct call or callback-address link-only edge; all prior Ending consumers and the retail REL remained exact."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
@@ -3459,6 +3463,8 @@
         "config/dll/rels/miraclebookdll/splits.txt",
         "src/REL/endingdll/ending.c",
         "src/REL/endingdll/ending_pass3_motion.c",
+        "src/REL/endingdll/ending_pass4_lifecycle_4ab4.c",
+        "src/REL/endingdll/ending_pass4_lifecycle_b244.c",
         "config/dll/rels/endingdll/splits.txt"
       ]
     },
