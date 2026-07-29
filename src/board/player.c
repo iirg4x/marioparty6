@@ -221,7 +221,7 @@ float mbAngleEaseOut(float angleStart, float angleEnd, float weight);
 void mbPlayerInit(BOOL noEventF)
 {
     MBPLAYERWORK *workP = &playerWork[0];
-    int motDataNum[16];
+    int motDataNum[20];
     int i;
     int j;
 
@@ -231,15 +231,16 @@ void mbPlayerInit(BOOL noEventF)
         GwSystem.turnPlayerNo = 0;
     }
     if (noEventF) {
-        s16 startMasu = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
+        int startMasu = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
         int grp;
+        int charNo;
 
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 GwPlayer[i].comF = TRUE;
                 GwPlayerConf[i].type = TRUE;
             }
-            if (GwSystem.partyF) {
+            if (GWPartyGet() != FALSE) {
                 _CheckFlag(FLAG_BOARD_TUTORIAL);
             } else if (i > 0) {
                 GwPlayerConf[i].charNo = singleCharNoTbl[i];
@@ -267,28 +268,29 @@ void mbPlayerInit(BOOL noEventF)
             mbPlayerMetalSet(i, FALSE);
             mbPlayerBiriQSet(i, FALSE);
         }
-        for (i = 0; i < CHARNO_MAX; i++) {
-            if (CharMotionAMemPGet(i)) {
-                if (!GwSystem.partyF && i == mbSingleTeamCharGet()) {
+        for (charNo = 0; charNo < CHARNO_MAX; charNo++) {
+            if (CharMotionAMemPGet(charNo)) {
+                if (GWPartyGet() == FALSE &&
+                    charNo == mbSingleTeamCharGet()) {
                     continue;
                 }
                 for (j = 0; j < GW_PLAYER_MAX; j++) {
-                    if (i == GwPlayer[j].charNo) {
+                    if (charNo == GwPlayer[j].charNo) {
                         break;
                     }
                 }
                 if (j >= GW_PLAYER_MAX) {
-                    CharDataClose(i);
+                    CharDataClose(charNo);
                 }
             }
         }
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (!CharMotionAMemPGet(GwPlayer[i].charNo)) {
-                CharMotionInit(GwPlayer[i].charNo);
+        for (charNo = 0; charNo < GW_PLAYER_MAX; charNo++) {
+            if (!CharMotionAMemPGet(GwPlayer[charNo].charNo)) {
+                CharMotionInit(GwPlayer[charNo].charNo);
             }
         }
-        if (!GwSystem.partyF) {
-            int charNo = mbSingleTeamCharGet();
+        if (GWPartyGet() == FALSE) {
+            charNo = mbSingleTeamCharGet();
 
             if (!CharMotionAMemPGet(charNo)) {
                 CharMotionInit(charNo);
@@ -297,10 +299,9 @@ void mbPlayerInit(BOOL noEventF)
         GwSystem.playerMode = 0;
     }
     for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
-        GW_PLAYER *playerP;
-        PLAYERCOLWORK *colWorkP;
-        int charNo;
         MBMODELID modelId;
+        GW_PLAYER *playerP;
+        int charNo;
 
         workP->startTurnHook = workP->endTurnHook = NULL;
         workP->rotateObj = workP->moveObj = workP->posFixObj = NULL;
@@ -324,26 +325,27 @@ void mbPlayerInit(BOOL noEventF)
         mbPlayerMotionVoiceOnSet(i, 13, FALSE);
         workP->colObj =
             omAddObjEx(mbObjMan, 0x100, 0, 0, -1, PlayerColOMExec);
-        colWorkP = omObjGetWork(workP->colObj, PLAYERCOLWORK);
-        colWorkP->playerNo = i;
-        colWorkP->killF = TRUE;
-        colWorkP->masuIdNext = GwPlayer[i].masuId;
+        omObjGetWork(workP->colObj, PLAYERCOLWORK)->playerNo = i;
+        omObjGetWork(workP->colObj, PLAYERCOLWORK)->killF = TRUE;
+        omObjGetWork(workP->colObj, PLAYERCOLWORK)->masuIdNext =
+            GwPlayer[i].masuId;
         mbPlayerMatClone(i);
         workP->motNo = 1;
         mbObjMotionSet(modelId, workP->motNo, HU3D_MOTATTR_LOOP);
         GwPlayer[i].dispLightF = TRUE;
         GwPlayer[i].masuIdPrev = -1;
-        mbPlayerWorkGet(i)->_unk10_3 = TRUE;
+        mbPlayerWorkGet(i)->moveEndF = TRUE;
         CharModelDataClose(charNo);
     }
     mbPlayerColSnapSet(FALSE);
-    if (GwSystem.partyF) {
+    if (GWPartyGet() != FALSE) {
         mbPlayerPosResetAll();
     } else {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (i > 0) {
-                GwPlayer[i].masuIdPrev =
-                    GwPlayer[i].masuIdNext = GwPlayer[i].masuId = 0;
+                GwPlayer[i].masuId = 0;
+                GwPlayer[i].masuIdNext = 0;
+                GwPlayer[i].masuIdPrev = 0;
                 mbPlayerDispSet(i, FALSE);
             } else {
                 mbPlayerPosReset(i);
