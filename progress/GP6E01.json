@@ -5,9 +5,9 @@
     "all": {
       "label": "Code",
       "code": {
-        "matched": 1725492,
+        "matched": 1728584,
         "total": 12427492,
-        "percent": 13.884475
+        "percent": 13.909355
       },
       "data": {
         "matched": 606057,
@@ -31,9 +31,9 @@
     "modules": {
       "label": "DLLs",
       "code": {
-        "matched": 687136,
+        "matched": 690228,
         "total": 10253524,
-        "percent": 6.701462
+        "percent": 6.731617
       },
       "data": {
         "matched": 70887,
