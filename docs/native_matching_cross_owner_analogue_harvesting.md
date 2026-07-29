@@ -39,6 +39,16 @@ comparison.
 | `mdpartydll:fn_1_B748` | `mdsingdll:fn_1_9998` | recursive route resolution | 1,000 bytes |
 | `mdpartydll:fn_1_C158` | `mdsingdll:fn_1_A3A8` | animation assignment | 168 bytes |
 | `mdpartydll:fn_1_C200` | `mdsingdll:fn_1_A450` | animation assignment | 140 bytes |
+| `mdpartydll:fn_1_D648` | `mdsingdll:fn_1_B898` | lifecycle state set | 24 bytes |
+| `mdpartydll:fn_1_D660` | `mdsingdll:fn_1_B8B0` | lifecycle state get | 24 bytes |
+| `mdpartydll:fn_1_D678` | `mdsingdll:fn_1_B8C8` | lifecycle completion query | 56 bytes |
+| `mdpartydll:fn_1_D6B0` | `mdsingdll:fn_1_B900` | lifecycle callback handoff | 152 bytes |
+| `mdpartydll:fn_1_D748` | `mdsingdll:fn_1_B998` | model-animation family create | 560 bytes |
+| `mdpartydll:fn_1_D978` | `mdsingdll:fn_1_BBC8` | model-animation family teardown | 220 bytes |
+| `mdpartydll:fn_1_5208` | `mdsingdll:fn_1_514C` | motion lifecycle callback | 168 bytes |
+| `mdpartydll:fn_1_52B0` | `mdsingdll:fn_1_51F4` | motion lifecycle setup | 116 bytes |
+| `mdpartydll:fn_1_58A0` | `mdsingdll:fn_1_57E4` | motion lifecycle transition | 376 bytes |
+| `mdpartydll:fn_1_5FB0` | `mdsingdll:fn_1_5EF4` | motion lifecycle query | 172 bytes |
 
 The first three retained clusters total 632 target text bytes.  A later bounded
 inventory found eight more analogues at a stable donor-to-target address delta
@@ -55,8 +65,12 @@ as one independently consumed object, adding 300 target text bytes and 19
 physical relocations.  A recursive route-resolution pass retained one more
 exact text-only object, adding 1,000 target text bytes and 11 physical
 relocations.  The next contiguous analogue pass retained two animation helpers,
-adding 308 target text bytes and 11 physical relocations.  Across all feedback
-batches, 29 mappings now account for 5,556 exact target text bytes and 327
+adding 308 target text bytes and 11 physical relocations.  A model-animation
+lifecycle pass then retained six functions, adding 1,036 text bytes, 16 named
+aggregate bytes, and 67 physical relocations.  The following motion-family pass
+retained four dependency-closed perimeter functions around two blocked
+interiors, adding 832 text bytes and 71 physical relocations.  Across all feedback
+batches, 39 mappings now account for 7,424 exact target text bytes and 465
 physical relocations.  Fresh active-object
 reports showed exact instructions and zero
 relocation differences; the first three DTK physical-relocation counts were 4,
@@ -90,6 +104,9 @@ values outside the relocation-proven family.
 5. Compile once for the coherent hypothesis.  Retain any independently exact
    subset and revert unresolved speculative C.  Save compact negative evidence
    for false candidates so later inventory passes can suppress them.
+   When a scheduling-, pool-, or inline-blocked interior separates exact
+   functions, split and retain the dependency-closed perimeter if generated
+   order and ownership remain exact.
 6. Before integration, prove exact instructions and relocations, prove the
    generated object is actually consumed rather than silently replaced by
    fallback, replay linked consumers, and run the serialized retail gate.
@@ -123,6 +140,12 @@ values outside the relocation-proven family.
   earlier interpolation-helper and conversion-pool chronology. Combining
   discontiguous ranges caused an interleaved DTK link-order cycle; explicit
   inline control and a broad header were rejected.
+- `fn_1_5324 -> fn_1_5268` reached exact 1,404-byte size and 99.415955%, but
+  retained one divide/load scheduling permutation after bounded probes.
+- `fn_1_5A18 -> fn_1_595C` reached exact 1,432-byte size and 99.958100%, but
+  three relocations used compiler-generated unsigned-conversion data instead
+  of target `lbl_1_rodata_170`. The exact named 24-byte path aggregate was not
+  the blocker.
 - Adding a split or source file is insufficient if `configure.py` does not emit
   a matching object into generated build and link inputs.
 - Exact subsets are valuable independently.  A failed neighbor does not justify
@@ -131,5 +154,6 @@ values outside the relocation-proven family.
 Evidence is retained in `src/REL/mdpartydll/stage.c`,
 `src/REL/mdpartydll/mdparty.c`, `src/REL/mdsingdll/mdsing_tail.c` through
 `mdsing_tail13.c`, `src/REL/mdsingdll/mdsing_tail19.c`,
-`src/REL/mdsingdll/mdsing_tail20.c`, `src/REL/mdsingdll/mdsing_tail21.c`, the
+`src/REL/mdsingdll/mdsing_tail20.c`, `src/REL/mdsingdll/mdsing_tail21.c`,
+`src/REL/mdsingdll/mdsing_tail22.c` through `mdsing_tail25.c`, the
 `mdsingdll` split map, and their explicit matching-object registrations.

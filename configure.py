@@ -1209,6 +1209,8 @@ config.libs = [
             Object(Matching, "REL/mdpresultdll/application_16c4.c"),
             Object(Matching, "REL/mdpresultdll/application_2bf0.c"),
             Object(Matching, "REL/mdpresultdll/application_pass49.c"),
+            Object(Matching, "REL/mdpresultdll/application_pass50.c"),
+            Object(Matching, "REL/mdpresultdll/application_pass51.c"),
             Object(
                 Matching,
                 "REL/mdpresultdll/runtime.c",
@@ -1245,6 +1247,9 @@ config.libs = [
             Object(Matching, "REL/mdsingdll/mdsing_tail20.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail21.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail22.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail23.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail24.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail25.c"),
             Object(
                 Matching,
                 "REL/mdsingdll/runtime.c",
