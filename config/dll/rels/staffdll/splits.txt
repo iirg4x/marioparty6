@@ -9,14 +9,32 @@ Sections:
 REL/staffdll/staff_pass1_067c.c:
 	.text       start:0x0000067C end:0x00000884
 
+REL/staffdll/application_pass3_0e20.c:
+	.text       start:0x00000E20 end:0x00000F44
+
 REL/staffdll/staff_pass1_0f68.c:
 	.text       start:0x00000F68 end:0x000010B8
+
+REL/staffdll/application_pass3_1684.c:
+	.text       start:0x00001684 end:0x00001758
+
+REL/staffdll/application_pass3_2b94.c:
+	.text       start:0x00002B94 end:0x00002BD4
 
 REL/staffdll/application_pass2_3140.c:
 	.text       start:0x00003140 end:0x00003568
 
 REL/staffdll/application_pass2_389c.c:
 	.text       start:0x0000389C end:0x00003E2C
+
+REL/staffdll/application_pass3_4af4.c:
+	.text       start:0x00004AF4 end:0x00005148
+
+REL/staffdll/application_pass3_528c.c:
+	.text       start:0x0000528C end:0x000054F0
+
+REL/staffdll/application_pass3_54f0.c:
+	.text       start:0x000054F0 end:0x00006018
 
 REL/staffdll/staff_pass1_6c14.c:
 	.text       start:0x00006C14 end:0x00006E1C
