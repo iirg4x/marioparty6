@@ -591,7 +591,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Fifty-two mdsingdll functions totaling 13,844 text bytes and 959 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can also restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools. A fast Gekko-aware decoder such as powerpc-rs can increase discovery throughput by fingerprinting opcode, branch, and relocation skeletons in bulk, but its output remains ranking evidence rather than ownership or exactness proof.",
+      "summary": "Sixty-four eligible REL target functions totaling 15,908 text bytes and 1,081 physical relocations became independently exact across mdsingdll and endingdll when candidates were selected by ordered calls, control shape, and relocations, then rebound to target-owned symbols and types and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Authenticated historical C is source-shape evidence rather than function-boundary authority: target symbol extents, relocations, and multiple independent donor fingerprints delimit any adjacent historical tail. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools. A fast Gekko-aware decoder such as powerpc-rs can increase discovery throughput by fingerprinting opcode, branch, and relocation skeletons in bulk, but its output remains ranking evidence rather than ownership or exactness proof.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -615,17 +615,19 @@
           "target relocations bind analogous calls to different owner-local globals or callbacks",
           "several donor and target stable IDs share one address delta plus a consistent named-global and named-constant translation",
           "an authenticated donor helper body precedes its caller while the target caller has no helper-call relocation and the generated target object emits no source-only helper text",
-          "a new split appears configured but generated Ninja or link inputs still consume retail fallback"
+          "a new split appears configured but generated Ninja or link inputs still consume retail fallback",
+          "historical C continues into a neighboring initializer beyond the target function extent while exact donor fingerprints stop at the target boundary"
         ]
       },
-      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: use a Gekko-aware decoder such as powerpc-rs to fingerprint ordered opcodes, branches, relocations, and control shape at catalog scale; cluster compatible targets; then rebind every contract from target evidence and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay. Decoder similarity is never ownership proof. When a target caller lacks a helper-call relocation, an authenticated donor helper may be reconstructed as a natural static inline above the caller only if the target object emits no source-only helper text and target-owned data bindings remain exact. After bounded probes, keep dependency-closed exact perimeter functions and revert pool-, scheduling-, or inline-blocked interiors instead of discarding the whole cluster.",
+      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: use a Gekko-aware decoder such as powerpc-rs to fingerprint ordered opcodes, branches, relocations, and control shape at catalog scale; cluster compatible targets; then rebind every contract from target evidence and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay. Decoder similarity is never ownership proof, and historical source adjacency is never target function-boundary proof. When a target caller lacks a helper-call relocation, an authenticated donor helper may be reconstructed as a natural static inline above the caller only if the target object emits no source-only helper text and target-owned data bindings remain exact. After bounded probes, keep dependency-closed exact perimeter functions and revert pool-, scheduling-, inline-, or boundary-blocked interiors instead of discarding the whole cluster.",
       "safe_actions": [
         "catalog eligible donor stable IDs with ordered external-call and symbol-relocation signatures",
         "rank unclaimed targets by exact skeleton before looser API overlap",
         "batch contiguous or shared-declaration candidates into one bounded multi-function compile probe",
         "retain independently exact subsets and record compact negative fingerprints for rejected candidates",
         "split an exact dependency-closed perimeter away from a blocked interior when target order and generated ownership remain provable",
-        "verify build.ninja and link inputs consume the generated object before accepting configured status"
+        "verify build.ninja and link inputs consume the generated object before accepting configured status",
+        "slice authenticated historical C at exact target symbol extents and require target relocations plus independent fingerprints before retaining an adjacent tail"
       ],
       "applicability": {
         "compiler_wide": false,
@@ -722,11 +724,24 @@
           "mdsingdll:fn_1_E688",
           "mdsingdll:fn_1_EA7C",
           "mdsingdll:fn_1_F15C",
-          "mdsingdll:fn_1_FCC8"
+          "mdsingdll:fn_1_FCC8",
+          "endingdll:fn_1_DF18",
+          "endingdll:fn_1_DF60",
+          "endingdll:fn_1_1025C",
+          "endingdll:fn_1_103C8",
+          "endingdll:fn_1_10420",
+          "endingdll:fn_1_105D4",
+          "endingdll:fn_1_10C28",
+          "endingdll:fn_1_10D94",
+          "endingdll:fn_1_1144C",
+          "endingdll:fn_1_11478",
+          "endingdll:fn_1_11694",
+          "endingdll:fn_1_11EB0"
         ],
         "modules": [
           "mdpartydll",
-          "mdsingdll"
+          "mdsingdll",
+          "endingdll"
         ],
         "owner_tags": [
           "same_game_analogue",
@@ -749,7 +764,8 @@
         "The mdpartydll fn_1_D648-fn_1_D978 model-animation lifecycle family mapped to mdsingdll fn_1_B898-fn_1_BBC8; all six functions linked exactly for 1036 text bytes, 16 target-owned named aggregate bytes, and 67 physical relocations, bringing the catalog to 35 mappings.",
         "A six-function mdpartydll fn_1_5208-fn_1_5FB0 motion-family probe retained the dependency-closed exact mdsingdll perimeter fn_1_514C/fn_1_51F4/fn_1_57E4/fn_1_5EF4 as three consumed objects (832 text bytes and 71 physical relocations), bringing the catalog to 39 mappings while two blocked interiors were reverted.",
         "Nine early camera and window helpers used authenticated mdpartydll bodies and target-owned declarations to recover five consumed mdsingdll objects (3092 text bytes and 234 physical relocations). For fn_1_1A9C/fn_1_1BDC and fn_1_279C, donor-definition chronology plus the target's absence of helper-call relocations authenticated natural static inline closure with zero source-only helper text, bringing the catalog to 48 mappings.",
-        "powerpc-rs opcode/control/def-use fingerprints ranked the pass31 selection-transition family; target-owned choice counts, field offsets, model bases, UI offsets, and inline constants then rebound four functions exactly across three text-only owners (3,328 text bytes, 260 physical relocations, 408 objdiff rows), bringing the catalog to 52 mappings."
+        "powerpc-rs opcode/control/def-use fingerprints ranked the pass31 selection-transition family; target-owned choice counts, field offsets, model bases, UI offsets, and inline constants then rebound four functions exactly across three text-only owners (3,328 text bytes, 260 physical relocations, 408 objdiff rows), bringing the catalog to 52 mappings.",
+        "Ending pass6 recovered 12 functions across seven text-only owners (2,064 text bytes and 122 physical relocations). Authenticated historical fn_1_10C28 included a neighboring 200-byte lbl_1_bss_1E1C initializer after the 364-byte target body; exact target extents plus matching mdpartydll fingerprints proved the tail extraneous, improving the isolated candidate from 564 bytes and 45.05% to 364 bytes and exact."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -801,6 +817,14 @@
         "src/REL/mdsingdll/application_pass31_ea7c.c",
         "src/REL/mdsingdll/application_pass31_fcc8.c",
         "config/dll/rels/mdsingdll/splits.txt",
+        "src/REL/endingdll/application_pass6_df18.c",
+        "src/REL/endingdll/application_pass6_1025c.c",
+        "src/REL/endingdll/application_pass6_105d4.c",
+        "src/REL/endingdll/application_pass6_10c28.c",
+        "src/REL/endingdll/application_pass6_1144c.c",
+        "src/REL/endingdll/application_pass6_11694.c",
+        "src/REL/endingdll/application_pass6_11eb0.c",
+        "config/dll/rels/endingdll/splits.txt",
         "configure.py"
       ]
     },
