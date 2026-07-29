@@ -3301,8 +3301,8 @@ void mbCapInit(void)
     int i;
     int j;
     int objId;
-    s16 *borderObjData;
     CAPSULE_OBJ_COLOR *objColorData;
+    s16 *borderObjData;
     s16 *borderId;
 
     objColorData = capsuleObjColorData;
@@ -3310,8 +3310,8 @@ void mbCapInit(void)
     for (i = 0; i < 6; i++) {
         capsuleObjBorderId[i] = MB_MODEL_NONE;
     }
-    borderObjData = HuMemDirectMallocNum(HEAP_HEAP, 768, HU_MEMNUM_OVL);
-    capsuleBorderObjId = borderObjData;
+    capsuleBorderObjId = borderObjData = HuMemDirectMallocNum(
+        HEAP_HEAP, 768, HU_MEMNUM_OVL);
     borderId = borderObjData;
     memset(capsuleBorderObjId, 0, 768);
     for (i = 0; i < 6; i++) {
