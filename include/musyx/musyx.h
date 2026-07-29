@@ -4,7 +4,9 @@
 #include "musyx/platform.h"
 #include "musyx/version.h"
 
+#ifndef _DOLPHIN_MATH
 #include <math.h>
+#endif
 #include <stddef.h>
 
 #ifdef __cplusplus

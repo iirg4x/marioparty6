@@ -1,7 +1,9 @@
 #ifndef _HU_MATH_H
 #define _HU_MATH_H
 
+#ifndef _DOLPHIN_MATH
 #include "math.h"
+#endif
 #include "dolphin/mtx.h"
 
 typedef Vec HuVecF;
