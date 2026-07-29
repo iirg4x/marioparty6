@@ -1636,6 +1636,7 @@ void mbev_PlayerColCircleAdd(
 
 void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
 {
+    BOOL circleF;
     HuVecF pos;
     int i;
     int j;
@@ -1643,16 +1644,15 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         s8 orderNo;
         int cornerNo;
-        PLAYERCOLWORK *workP;
-        u8 circleF;
 
         if (masuId != GwPlayer[i].masuId || i == playerNo) {
             continue;
         }
         if (playerWork[i].colObj) {
-            workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-            workP->masuIdNext = GwPlayer[i].masuIdNext;
-            if (workP->restF || !workP->snapF) {
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
+                GwPlayer[i].masuIdNext;
+            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF ||
+                !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
                 continue;
             }
         }
@@ -1672,9 +1672,9 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
         } else {
             mbMasuPosGet(masuId, &pos);
         }
-        workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-        circleF = workP->circleF;
-        workP->circleF = FALSE;
+        circleF =
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (snapF) {
             mbPlayerPosSetV(i, &pos);
             PlayerColCornerSnap(i, masuId, cornerNo);
@@ -1759,6 +1759,7 @@ void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL waitF)
 
 static void PlayerColCornerSet(int playerNo, int masuIdNext)
 {
+    BOOL circleF;
     int masuIdFix[GW_PLAYER_MAX];
     int i;
     int j;
@@ -1772,21 +1773,19 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
     }
     masuIdFix[playerNo] = masuIdNext;
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        PLAYERCOLWORK *workP;
-        u8 circleF;
-
         if (playerWork[i].colObj == NULL) {
             continue;
         }
         if (GwPlayer[i].masuId == 0) {
             continue;
         }
-        workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-        workP->masuIdNext = GwPlayer[i].masuIdNext;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
+            GwPlayer[i].masuIdNext;
         if (i == playerNo) {
             continue;
         }
-        if (workP->restF || !workP->snapF) {
+        if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF ||
+            !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
             continue;
         }
         masuId = GwPlayer[i].masuId;
@@ -1809,8 +1808,9 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
         } else {
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
-        circleF = workP->circleF;
-        workP->circleF = FALSE;
+        circleF =
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (cornerNo != mbPlayerMasuCornerGet(i) || circleF) {
             PlayerColInit(i, masuId, cornerNo);
         }
@@ -2033,8 +2033,8 @@ void mbev_PlayerColSet(int playerNo, int masuId)
     int i;
     int cornerNo;
     HuVecF pos;
-    Mtx masuMtx;
     Mtx masuMtxInv;
+    Mtx masuMtx;
     HuVecF posPlayer;
 
     if (!playerColSnapF) {
@@ -2070,9 +2070,9 @@ void mbev_PlayerColSet(int playerNo, int masuId)
         mbMasuMtxGet(workP->masuId, masuMtx);
         MTXInverse(masuMtx, masuMtxInv);
         mbPlayerPosGet(i, &posPlayer);
-        MTXMultVec(masuMtxInv, &posPlayer, &playerWorkP->_unk3C);
+        MTXMultVec(masuMtxInv, &posPlayer, &playerWork[i]._unk3C);
         MTXMultVec(
-            masuMtxInv, &posPlayer, &playerWorkP->colObj->trans);
+            masuMtxInv, &posPlayer, &playerWork[i].colObj->trans);
         mbPlayerRotYSet(i, 0.0f);
         workP->rotYStart = 0.0f;
         GwPlayer[i].moveF = FALSE;
