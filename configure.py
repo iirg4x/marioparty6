@@ -1296,6 +1296,7 @@ config.libs = [
     Rel(
         "openingDll",
         objects={
+            Object(Matching, "REL/openingDll/opening_prefix.c"),
             Object(
                 Matching,
                 "REL/openingDll/runtime.c",
