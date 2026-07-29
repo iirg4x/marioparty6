@@ -1304,6 +1304,8 @@ config.libs = [
     Rel(
         "optionDll",
         objects={
+            Object(Matching, "REL/optionDll/application_pass1_e538.c"),
+            Object(Matching, "REL/optionDll/application_pass1_f1d8.c"),
             Object(
                 Matching,
                 "REL/optionDll/runtime.c",
@@ -1387,6 +1389,16 @@ config.libs = [
     Rel(
         "staffdll",
         objects={
+            Object(Matching, "REL/staffdll/staff_pass1_067c.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_0f68.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_6c14.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_72a4.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_7468.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_7c70.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_8410.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_8bf8.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_8dbc.c"),
+            Object(Matching, "REL/staffdll/staff_pass1_94e0.c"),
             Object(
                 Matching,
                 "REL/staffdll/runtime.c",
