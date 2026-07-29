@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:mdsingdll:application",
+  "id": "REL:mdsingdll:mdsing",
   "module": "mdsingdll",
-  "source": "config/dll/rels/mdsingdll/symbols.txt",
+  "source": "src/REL/mdsingdll/mdsing.c",
   "compiler": "GC/2.6",
-  "summary": "Catalog-authenticated non-minigame application owner with 287 target functions, an exact shared runtime boundary, partial stage-texture semantics, and source reconstruction still on assembly fallback.",
+  "summary": "Canonical non-minigame single-player flow owner. The consolidated file contains 92 target-mapped functions plus natural helpers; 72 target functions currently compare exact for 15,236 text bytes. Remaining code and data stay on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "plausible",
@@ -84,7 +84,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "All 287 application functions remain on assembly fallback until exact natural C and authenticated split ownership are retained."
+      "summary": "Two hundred fifteen target functions are absent from, or not exact in, the canonical owner and remain on retail fallback."
     },
     {
       "kind": "header_visibility",

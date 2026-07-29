@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:optionDll:application",
+  "id": "REL:optionDll:option",
   "module": "optionDll",
-  "source": "config/dll/rels/optionDll/symbols.txt",
+  "source": "src/REL/optionDll/option.c",
   "compiler": "GC/1.3.2",
-  "summary": "Catalog-authenticated non-minigame option application owner with 20 independently source-linked exact functions across nine reconstruction partitions, partial menu and record semantics, behavior-based naming proposals, and unrecovered application ranges still on retail fallback.",
+  "summary": "Canonical non-minigame option owner. All 20 functions defined in the consolidated file compare exact for 7,844 text bytes; 22 other target functions and the application data sections remain on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "plausible",
@@ -69,7 +69,7 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "Twenty functions source-link across nine reconstruction objects for 7,844 text bytes and 681 physical relocations; optionDll.rel remains byte-identical with SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec.",
+      "summary": "All 20 canonical source functions compare exact for 7,844 text bytes; the serialized project build and direct retail comparison remain exact while the whole owner is NonMatching.",
       "reference": "config/dll/rels/optionDll/splits.txt"
     },
     {
@@ -77,30 +77,22 @@
       "confidence": "high",
       "accepted": true,
       "summary": "The exact prolog, child-process creation, model and window setup, prize rows, consecutive-record rows, MgDataTbl filtering, and camera-layer callback binding establish the proposed operational roles without claiming original spellings. fn_1_1084's HA/LO function-address relocations authenticate fn_1_18B8 as the camera Z-clear hook.",
-      "reference": "src/REL/optionDll/application_18b8.c"
+      "reference": "src/REL/optionDll/option.c"
     },
     {
       "kind": "compiler_probe",
       "confidence": "confirmed",
       "accepted": true,
       "summary": "Five pass2 owners require the authenticated translation-unit math boundary to suppress only the unused weak sqrtf pool, while fn_1_C324 is an exact unguarded negative control with no transitive generic math closure.",
-      "reference": "src/REL/optionDll/application_pass2_messages_c324.c"
+      "reference": "src/REL/optionDll/option.c"
     }
   ],
-  "constraints": [
-    "option-pass1-e538-no-generic-math-inline",
-    "option-pass1-f1d8-no-generic-math-inline",
-    "option-pass2-prefix-no-generic-math-inline",
-    "option-pass2-lifecycle-fdc-no-generic-math-inline",
-    "option-pass2-lifecycle-18d8-no-generic-math-inline",
-    "option-pass2-messages-6504-no-generic-math-inline",
-    "option-pass2-messages-b02c-no-generic-math-inline"
-  ],
+  "constraints": [],
   "debt": [
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Application ranges outside the nine configured exact owners remain on retail fallback."
+      "summary": "Twenty-two target functions are absent from the canonical owner and remain on retail fallback."
     },
     {
       "kind": "semantic_names",
@@ -117,12 +109,7 @@
     "priority_files": [
       "config/dll/rels/optionDll/splits.txt",
       "config/dll/rels/optionDll/symbols.txt",
-      "src/REL/optionDll/application_pass2_prefix.c",
-      "src/REL/optionDll/application_18b8.c",
-      "src/REL/optionDll/application_pass2_lifecycle_fdc.c",
-      "src/REL/optionDll/application_pass2_messages_6504.c",
-      "src/REL/optionDll/application_pass2_messages_b02c.c",
-      "src/REL/optionDll/application_pass2_messages_c324.c"
+      "src/REL/optionDll/option.c"
     ],
     "reports": []
   }

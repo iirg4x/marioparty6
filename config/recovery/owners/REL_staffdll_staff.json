@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:staffdll:application",
+  "id": "REL:staffdll:staff",
   "module": "staffdll",
-  "source": "config/dll/rels/staffdll/symbols.txt",
+  "source": "src/REL/staffdll/staff.c",
   "compiler": "GC/2.6",
-  "summary": "Catalog-authenticated non-minigame Staff application owner with all 48 independently authenticated same-game definitions source-linked exactly across 32 generated build partitions; unresolved target-only ranges remain on retail fallback.",
+  "summary": "Canonical non-minigame Staff owner. The consolidated file defines 50 target functions; 46 currently compare exact for 11,340 text bytes. Remaining code and application data stay on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
@@ -36,7 +36,7 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "Forty-eight functions reproduce 14,456 text bytes and 1,232 physical relocations across 32 generated objects; staffdll.rel and all 137 configured retail outputs remain byte-identical.",
+      "summary": "The canonical owner comparison retains 46 exact target functions and 11,340 exact text bytes; the serialized project build and direct retail comparison remain exact while the whole owner is NonMatching.",
       "reference": "config/dll/rels/staffdll/splits.txt"
     },
     {
@@ -44,7 +44,7 @@
       "confidence": "confirmed",
       "accepted": true,
       "summary": "Multiple exact consumers require authenticated same-owner depth-two auto-inline closures; ordinary local static-inline bodies preserve those closures without duplicate helper csects or forced-inline controls.",
-      "reference": "src/REL/staffdll/application_pass4_964c.c"
+      "reference": "src/REL/staffdll/staff.c"
     },
     {
       "kind": "same_game_artifact",
@@ -59,12 +59,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Target-only application ranges outside the exhausted authenticated same-game definition set remain on retail fallback."
-    },
-    {
-      "kind": "source_partition_names",
-      "priority": "normal",
-      "summary": "Generated owner paths record exact build islands, not original source filenames; neutralize or consolidate them only with complete compiler and consumer proof."
+      "summary": "Thirty-two target functions are absent from, or not exact in, the canonical owner and remain on retail fallback."
     },
     {
       "kind": "semantic_names",
@@ -76,10 +71,7 @@
     "priority_files": [
       "config/dll/rels/staffdll/splits.txt",
       "config/dll/rels/staffdll/symbols.txt",
-      "src/REL/staffdll/application_pass3_54f0.c",
-      "src/REL/staffdll/application_pass4_8300.c",
-      "src/REL/staffdll/application_pass4_964c.c",
-      "src/REL/staffdll/application_pass5_0000.c"
+      "src/REL/staffdll/staff.c"
     ],
     "reports": []
   }

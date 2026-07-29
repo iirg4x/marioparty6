@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:s02Dll:application",
+  "id": "REL:s02Dll:s02",
   "module": "s02Dll",
-  "source": "config/dll/rels/s02Dll/symbols.txt",
+  "source": "src/REL/s02Dll/s02.c",
   "compiler": "GC/1.3.2",
-  "summary": "Catalog-authenticated non-minigame S02 application owner with all 19 independently authenticated same-game definitions source-linked exactly across six generated build partitions; other target-only ranges remain on retail fallback.",
+  "summary": "Canonical S02 owner. All 19 functions defined in the consolidated file compare exact for 3,328 text bytes; four other target functions and the application data sections remain on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
@@ -41,13 +41,13 @@
       "confidence": "confirmed",
       "accepted": true,
       "summary": "REL lifecycle exports authenticate _prolog and _epilog, pass1 fn_1_454 calls fn_1_1C0C directly, and callback-address relocations authenticate the pass1 setup leaves.",
-      "reference": "src/REL/s02Dll/application_pass2_lifecycle.c"
+      "reference": "src/REL/s02Dll/s02.c"
     },
     {
       "kind": "same_game_artifact",
       "confidence": "high",
       "accepted": true,
-      "summary": "The enumerated authenticated same-game definition set is exhausted, but generated partition filenames and unresolved target-only gaps are not evidence of the original Nintendo TU layout.",
+      "summary": "The authenticated same-game definition set is exhausted; unresolved target-only gaps are not evidence for inventing additional source.",
       "reference": "config/recovery/compiler_patterns.json"
     }
   ],
@@ -56,12 +56,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Target-only application ranges not present in the authenticated same-game definition set remain on retail fallback."
-    },
-    {
-      "kind": "source_partition_names",
-      "priority": "normal",
-      "summary": "Current generated owner paths are recovery partitions, not original source filenames; neutralize or consolidate them only with a clean retail-verification batch."
+      "summary": "Four target functions absent from the canonical owner remain on retail fallback."
     },
     {
       "kind": "private_header",
@@ -73,10 +68,7 @@
     "priority_files": [
       "config/dll/rels/s02Dll/splits.txt",
       "config/dll/rels/s02Dll/symbols.txt",
-      "src/REL/s02Dll/application_pass1_268.c",
-      "src/REL/s02Dll/application_pass1_928.c",
-      "src/REL/s02Dll/application_pass2_1c0c.c",
-      "src/REL/s02Dll/application_pass2_lifecycle.c"
+      "src/REL/s02Dll/s02.c"
     ],
     "reports": []
   }

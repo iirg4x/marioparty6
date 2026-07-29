@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:miraclebookdll:application",
+  "id": "REL:miraclebookdll:miraclebook",
   "module": "miraclebookdll",
-  "source": "config/dll/rels/miraclebookdll/symbols.txt",
+  "source": "src/REL/miraclebookdll/miraclebook.c",
   "compiler": "GC/1.3.2",
-  "summary": "Catalog-authenticated non-minigame Miracle Book application owner with 31 source-linked exact functions and 21,156 exact text bytes across nine reconstruction partitions, partial scene, window, model-transition, particle, and camera semantics, and unrecovered ranges still on retail fallback.",
+  "summary": "Canonical non-minigame Miracle Book owner. The consolidated file defines 33 target functions; 31 currently compare exact for 18,900 text bytes. Remaining code and application data stay on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
@@ -31,7 +31,7 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "Nine configured application partitions cover 31 exact functions and 21,156 text bytes. The latest neutral application_7998.c owner adds one exact 4,212-byte function and 569 physical relocations; miraclebookdll.rel remains byte-identical to retail.",
+      "summary": "The canonical owner comparison retains 31 exact target functions and 18,900 exact text bytes; the serialized project build and direct retail comparison remain exact while the whole owner is NonMatching.",
       "reference": "config/dll/rels/miraclebookdll/splits.txt"
     },
     {
@@ -39,14 +39,14 @@
       "confidence": "confirmed",
       "accepted": true,
       "summary": "fn_1_7998 recovered target size and relocations only when authenticated earlier same-owner definitions fn_1_427C and fn_1_7158 were visible as ordinary static-inline bodies. Prototype-only extraction had shrunk the function by 1,284 bytes.",
-      "reference": "src/REL/miraclebookdll/application_7998.c"
+      "reference": "src/REL/miraclebookdll/miraclebook.c"
     },
     {
       "kind": "same_game_consumer",
       "confidence": "high",
       "accepted": true,
       "summary": "The exact state machine kills scene windows, animates the selected model and shared model, expires particle managers, triggers the transition effect and sound, moves the camera, and raises the completion flag; this supports a transition-update role without claiming an original symbol spelling.",
-      "reference": "src/REL/miraclebookdll/application_7998.c"
+      "reference": "src/REL/miraclebookdll/miraclebook.c"
     }
   ],
   "constraints": [],
@@ -54,7 +54,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Application target ranges outside the nine configured exact partitions remain on retail fallback."
+      "summary": "Eight target functions are absent from, or not exact in, the canonical owner and remain on retail fallback."
     },
     {
       "kind": "semantic_names",
@@ -67,18 +67,16 @@
       "summary": "Scene state, window arrays, transition constants, and helper declarations repeat across exact partitions, but a private header requires a separate include-chronology and pool-ownership audit."
     },
     {
-      "kind": "source_partition_names",
-      "priority": "normal",
-      "summary": "Historical pass paths and current address-bound paths are reconstruction partitions, not authenticated Nintendo translation-unit filenames."
+      "kind": "data_ownership",
+      "priority": "high",
+      "summary": "The canonical owner still imports application rodata, data, and bss; recover them only from typed target and consumer evidence."
     }
   ],
   "context": {
     "priority_files": [
       "config/dll/rels/miraclebookdll/splits.txt",
       "config/dll/rels/miraclebookdll/symbols.txt",
-      "src/REL/miraclebookdll/application_7998.c",
-      "src/REL/miraclebookdll/application_pass2_7158.c",
-      "src/REL/miraclebookdll/application_pass2_8a0c.c"
+      "src/REL/miraclebookdll/miraclebook.c"
     ],
     "reports": []
   }

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:openingDll:application",
+  "id": "REL:openingDll:opening",
   "module": "openingDll",
-  "source": "config/dll/rels/openingDll/symbols.txt",
+  "source": "src/REL/openingDll/opening.c",
   "compiler": "GC/2.6",
-  "summary": "Catalog-authenticated non-minigame Opening application owner with 29 independently source-linked exact functions across six reconstruction partitions, natural guide and character helpers, behavior-based naming proposals, and unrecovered ranges still on retail fallback.",
+  "summary": "Canonical non-minigame Opening owner. The consolidated file defines 31 target functions; 27 currently compare exact for 9,784 text bytes. Remaining code and application data stay on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
@@ -36,7 +36,7 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "Twenty-nine functions reproduce 12,744 text bytes and 1,209 physical relocations across six source objects; openingDll.rel and all 137 configured retail outputs remain byte-identical.",
+      "summary": "The canonical owner comparison retains 27 exact target functions and 9,784 exact text bytes; the serialized project build and direct retail comparison remain exact while the whole owner is NonMatching.",
       "reference": "config/dll/rels/openingDll/splits.txt"
     },
     {
@@ -44,14 +44,14 @@
       "confidence": "confirmed",
       "accepted": true,
       "summary": "Exact Opening prefix callers authenticate the guide, character, animation, callback, and window-helper roles; fn_1_470C's target function-address relocation pair independently binds fn_1_4744 as its callback consumer.",
-      "reference": "src/REL/openingDll/opening_prefix.c"
+      "reference": "src/REL/openingDll/opening.c"
     },
     {
       "kind": "same_game_artifact",
       "confidence": "high",
       "accepted": true,
       "summary": "Canonical same-game HSF object, mesh, and transform ordering plus target field displacements support the owner-local semantic prefix through mesh.base position, rotation, and scale without authenticating the unseen suffix or a broad header closure.",
-      "reference": "src/REL/openingDll/application_2238.c"
+      "reference": "src/REL/openingDll/opening.c"
     }
   ],
   "constraints": [],
@@ -59,7 +59,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Application ranges outside the six configured exact owners remain on retail fallback."
+      "summary": "Fourteen target functions are absent from, or not exact in, the canonical owner and remain on retail fallback."
     },
     {
       "kind": "semantic_names",
@@ -72,21 +72,16 @@
       "summary": "The minimal HSF semantic prefix repeats across two exact generated owners, but shared-header promotion is deferred until declaration chronology, complete consumer fanout, and section ownership are proven."
     },
     {
-      "kind": "source_partition_names",
-      "priority": "normal",
-      "summary": "The six configured C paths are reconstruction partitions, not evidence of original Nintendo translation-unit filenames."
+      "kind": "data_ownership",
+      "priority": "high",
+      "summary": "The canonical owner still imports application rodata, data, and bss; recover them only from typed target and consumer evidence."
     }
   ],
   "context": {
     "priority_files": [
       "config/dll/rels/openingDll/splits.txt",
       "config/dll/rels/openingDll/symbols.txt",
-      "src/REL/openingDll/opening_prefix.c",
-      "src/REL/openingDll/application_pass2_4068.c",
-      "src/REL/openingDll/application_pass2_4bd8.c",
-      "src/REL/openingDll/application_2238.c",
-      "src/REL/openingDll/application_37f0.c",
-      "src/REL/openingDll/application_4484.c"
+      "src/REL/openingDll/opening.c"
     ],
     "reports": []
   }

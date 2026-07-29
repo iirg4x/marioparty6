@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "id": "REL:endingdll:application",
+  "id": "REL:endingdll:ending",
   "module": "endingdll",
-  "source": "config/dll/rels/endingdll/symbols.txt",
+  "source": "src/REL/endingdll/ending.c",
   "compiler": "GC/1.3.2",
-  "summary": "Catalog-authenticated non-minigame Ending application owner with 81 source-linked exact functions, 28,844 exact text bytes across 36 reconstruction partitions, partial lifecycle, motion, particle, window, and scene semantics, and unrecovered ranges still on retail fallback.",
+  "summary": "Canonical non-minigame Ending owner. The consolidated file defines 108 target functions; 98 currently compare exact for 25,612 text bytes. Remaining code and application data stay on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
@@ -38,7 +38,7 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "Current registered application intervals cover 81 exact target functions and 28,844 text bytes across 36 source-linked reconstruction objects. The latest 12-function batch contributes 11,688 text bytes and 1,152 physical relocations; endingdll.rel remains byte-identical with SHA-1 305f3f2a81df64f0e7362d6befc663361fdba168.",
+      "summary": "The canonical owner comparison retains 98 exact target functions and 25,612 exact text bytes; the serialized project build and direct retail comparison remain exact while the whole owner is NonMatching.",
       "reference": "config/dll/rels/endingdll/splits.txt"
     },
     {
@@ -46,14 +46,14 @@
       "confidence": "confirmed",
       "accepted": true,
       "summary": "Exact REL24 consumers bind fn_1_11F34 from fn_1_4E5C, fn_1_52D8, and _prolog; target function-address relocations bind fn_1_193C from fn_1_23D8; fn_1_DD14 directly calls fn_1_C7DC. No consumer role is invented for the remaining leaves.",
-      "reference": "src/REL/endingdll/application_4e5c.c"
+      "reference": "src/REL/endingdll/ending.c"
     },
     {
       "kind": "compiler_probe",
       "confidence": "confirmed",
       "accepted": true,
       "summary": "Replacing an unused concrete EndingWinWarning body with an incomplete forward declaration preserved fn_1_4E5C/fn_1_52D8 at 2,312 exact bytes and 247 exact relocations while removing an opaque, unauthenticated private layout.",
-      "reference": "src/REL/endingdll/application_4e5c.c"
+      "reference": "src/REL/endingdll/ending.c"
     }
   ],
   "constraints": [],
@@ -61,7 +61,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Application target intervals outside the 36 configured exact owners remain on retail fallback."
+      "summary": "Forty-two target functions are absent from, or not exact in, the canonical owner and remain on retail fallback."
     },
     {
       "kind": "semantic_names",
@@ -74,26 +74,16 @@
       "summary": "OMOBJ-related Ending motion work, window state, and GwCommon-prefix contracts repeat across exact owners, but a shared private header requires declaration-chronology, fanout, pool-ownership, and consumer proof before promotion."
     },
     {
-      "kind": "source_partition_names",
-      "priority": "normal",
-      "summary": "Historical pass-named paths and current address-bound paths are reconstruction partitions, not authenticated Nintendo translation-unit filenames."
+      "kind": "data_ownership",
+      "priority": "high",
+      "summary": "The canonical owner still imports its application rodata, data, and bss; recover them only from typed target and consumer evidence."
     }
   ],
   "context": {
     "priority_files": [
       "config/dll/rels/endingdll/splits.txt",
       "config/dll/rels/endingdll/symbols.txt",
-      "src/REL/endingdll/application_193c.c",
-      "src/REL/endingdll/application_31fc.c",
-      "src/REL/endingdll/application_4e5c.c",
-      "src/REL/endingdll/application_8cfc.c",
-      "src/REL/endingdll/application_a6d8.c",
-      "src/REL/endingdll/application_b0a4.c",
-      "src/REL/endingdll/application_c4f0.c",
-      "src/REL/endingdll/application_c7dc.c",
-      "src/REL/endingdll/application_f9b8.c",
-      "src/REL/endingdll/application_11c94.c",
-      "src/REL/endingdll/application_11f34.c"
+      "src/REL/endingdll/ending.c"
     ],
     "reports": []
   }

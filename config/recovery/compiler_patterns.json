@@ -886,7 +886,7 @@
         "docs/native_matching_wave95.md",
         "docs/native_matching_wave98.md",
         "src/REL/mdpresultdll/mdpresult.c",
-        "config/recovery/owners/REL_mdpresultdll_application.json"
+        "config/recovery/owners/REL_mdpresultdll_mdpresult.json"
       ]
     },
     {
@@ -1436,16 +1436,7 @@
         "dice-no-generic-math-inline",
         "capselect-no-generic-math-inline",
         "scroll-no-generic-math-inline",
-        "mgcall-no-generic-math-inline",
-        "mdpresult-pass53-no-generic-math-inline",
-        "option-pass1-e538-no-generic-math-inline",
-        "option-pass1-f1d8-no-generic-math-inline",
-        "option-pass2-prefix-no-generic-math-inline",
-        "option-pass2-lifecycle-fdc-no-generic-math-inline",
-        "option-pass2-lifecycle-18d8-no-generic-math-inline",
-        "option-pass2-messages-6504-no-generic-math-inline",
-        "option-pass2-messages-b02c-no-generic-math-inline",
-        "opening-prefix-no-generic-math-inline"
+        "mgcall-no-generic-math-inline"
       ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
@@ -3594,7 +3585,7 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave51.md",
         "src/REL/mdpresultdll/mdpresult.c",
-        "config/recovery/owners/REL_mdpresultdll_application.json",
+        "config/recovery/owners/REL_mdpresultdll_mdpresult.json",
         "src/REL/miraclebookdll/miraclebook.c",
         "config/dll/rels/miraclebookdll/splits.txt",
         "src/REL/endingdll/ending.c",
@@ -3721,15 +3712,15 @@
         "project_wide": true,
         "owners": [],
         "stable_ids": [
-          "REL:mdpresultdll:application",
-          "REL:mdbankdll:application",
-          "REL:miraclebookdll:application",
-          "REL:s02Dll:application",
-          "REL:staffdll:application",
-          "REL:openingDll:application",
-          "REL:mdsingdll:application",
-          "REL:endingdll:application",
-          "REL:optionDll:application"
+          "REL:mdpresultdll:mdpresult",
+          "REL:mdbankdll:mdbank",
+          "REL:miraclebookdll:miraclebook",
+          "REL:s02Dll:s02",
+          "REL:staffdll:staff",
+          "REL:openingDll:opening",
+          "REL:mdsingdll:mdsing",
+          "REL:endingdll:ending",
+          "REL:optionDll:option"
         ],
         "modules": [],
         "owner_tags": [
@@ -3814,7 +3805,7 @@
         "compiler_wide": false,
         "project_wide": true,
         "owners": [
-          "REL:openingDll:application"
+          "REL:openingDll:opening"
         ],
         "stable_ids": [
           "openingDll:0x2304",
@@ -3887,7 +3878,7 @@
         "compiler_wide": true,
         "project_wide": true,
         "owners": [
-          "REL:optionDll:application"
+          "REL:optionDll:option"
         ],
         "stable_ids": [
           "optionDll:0x18B8"
@@ -4039,8 +4030,8 @@
         "project_wide": true,
         "owners": [],
         "stable_ids": [
-          "REL:mdbankdll:application",
-          "REL:miraclebookdll:application"
+          "REL:mdbankdll:mdbank",
+          "REL:miraclebookdll:miraclebook"
         ],
         "modules": [],
         "owner_tags": [
