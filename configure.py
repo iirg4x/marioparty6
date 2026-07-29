@@ -1346,6 +1346,8 @@ config.libs = [
     Rel(
         "miraclebookdll",
         objects={
+            Object(Matching, "REL/miraclebookdll/application_pass1_5904.c"),
+            Object(Matching, "REL/miraclebookdll/application_pass1.c"),
             Object(
                 Matching,
                 "REL/miraclebookdll/runtime.c",
