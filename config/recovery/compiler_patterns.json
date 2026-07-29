@@ -3921,6 +3921,84 @@
         "config/dll/rels/optionDll/splits.txt",
         "src/REL/optionDll/application_18b8.c"
       ]
+    },
+    {
+      "id": "mp6-board-capsule-eff-rand-macro",
+      "title": "Use the recovered capsule-effect random-float macro instead of its exponent-literal expansion",
+      "classification": "confirmed_rule",
+      "category": "shared_interface",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "MP6 board capsule effects normalize `mbRandMod(0x10000000)` by 2^-28 through the shared `MBCapsuleEffRandF()` source macro. The bound and scaling are target-authenticated, but spelling the result repeatedly as `3.725290298461914e-09f` is compiler/decompiler-shaped rather than credible authored source. The macro name and source role continue the direct MP5 capsule-header interface, while MP6 changes the underlying generator from the MP5 mask-based expression to `mbRandMod`.",
+      "conditions": "Apply only to MP6 board capsule-effect consumers whose target calls `mbRandMod` with 0x10000000 and multiplies the converted result by 2^-28. The current proof covers Capevent and Capspecial under GC/2.6; prove additional consumers independently before widening the header fan-out.",
+      "source_condition": {
+        "change": "Replace a complete `mbRandMod(0x10000000)` times 2^-28 expansion with `MBCapsuleEffRandF()` from `game/board/capsule.h`.",
+        "requires": [
+          "the target call argument 0x10000000",
+          "the target float constant 2^-28 and matching integer-to-float conversion",
+          "unchanged call count and evaluation order",
+          "byte-identical source-object instruction, section, and relocation reports before and after the macro recovery",
+          "a consumer-specific check before adding the shared header to another translation unit"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no object change when the macro replaces the complete authenticated expansion",
+          "different random distribution if incorrectly replaced with `frandf()`",
+          "different floating operand or pool chronology if only part of the expansion is rewritten"
+        ],
+        "known_signatures": [
+          "materialize 0x10000000 as the `mbRandMod` argument",
+          "call relocation to `mbRandMod`",
+          "integer-to-float conversion followed by an `lfs` of 2^-28 and `fmuls`",
+          "Capevent and Capspecial relocation-aware objdiff JSON remains byte-for-byte identical across 122 converted call sites"
+        ]
+      },
+      "rule": "Use `MBCapsuleEffRandF()` for the authenticated MP6 capsule-effect normalization instead of retaining the expanded exponent literal. Do not substitute `frandf()`, do not infer this macro from an arbitrary 0..1 random expression, and do not claim the macro in another owner until its full object and relocation stream is unchanged.",
+      "safe_actions": [
+        "match the complete call-plus-normalization signature before replacing it",
+        "include the narrow recovered `game/board/capsule.h` interface",
+        "compare complete relocation-aware reports before and after the source-form cleanup",
+        "preserve expression evaluation order around every macro call",
+        "extend the card's owner scope only after another consumer reproduces the byte-neutral result"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "main:board/capevent:MBCapsuleEffRandF",
+          "main:board/capspecial:MBCapsuleEffRandF"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "board",
+          "capsule_effect",
+          "macro_expansion",
+          "random_normalization",
+          "organicity",
+          "shared_interface"
+        ]
+      },
+      "examples": [
+        "Capevent converted 118 complete expansions to `MBCapsuleEffRandF()` while its full relocation-aware report stayed SHA-256 6052b0c2ad53f418164f3fe9af2de0fb98c2db47a6734bc93ae962cbf8700d8b before and after; all 160 strict-exact functions and 33,500 exact bytes were preserved.",
+        "Capspecial converted four complete expansions while its full relocation-aware report stayed SHA-256 eab8958fe84da8db3ee13f03793d196b73829b1643f7f6fd8d6696b0d41e0290 before and after; all 18 strict-exact functions were preserved.",
+        "Mario Party 5 commit e246f9d9850ff53ac684b971068fbf87fdcf6acb defines the direct predecessor `MBCapsuleEffRandF()` interface in `include/game/board/capsule.h`; MP6 retains the MBCapsule family but authenticates a different mbRandMod-based expansion."
+      ],
+      "counterexamples": [
+        "`frandf()` also returns a float near [0,1), but it uses a different bit mapping and is not interchangeable with the target's `mbRandMod(0x10000000)` call.",
+        "A long exponent literal can describe the emitted float value, but target bytes cannot prove that literal was present in authored source.",
+        "Do not use the MP5 mask-and-127 macro body in MP6; only the interface name and capsule-effect role carry across titles, while the MP6 target proves the new body."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "include/game/board/capsule.h",
+        "src/board/capevent.c",
+        "src/board/capspecial.c",
+        "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/game/board/capsule.h"
+      ]
     }
   ]
 }

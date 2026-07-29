@@ -10,6 +10,7 @@
 #include "game/printfunc.h"
 #include "game/board/branch.h"
 #include "game/board/camera.h"
+#include "game/board/capsule.h"
 #include "game/board/coin.h"
 #include "game/board/object.h"
 #include "game/board/masu.h"
@@ -1696,26 +1697,18 @@ static void ev_CapEffOpen(void)
             for (j = 0; j < 3; j++) {
                 particlePos = pos;
                 rot.x = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                rot.y = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
+                    + MBCapsuleEffRandF());
+                rot.y = 360.0f * MBCapsuleEffRandF();
                 rot.z = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
                 vel.x = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                vel.y = rot.y + (60.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
+                vel.y = rot.y + (60.0f * MBCapsuleEffRandF());
                 vel.z = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                time = 10.0f + (5.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
+                time = 10.0f + (5.0f * MBCapsuleEffRandF());
                 particleScale = 200.0f * (1.0f
-                    + (0.25f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000))));
+                    + (0.25f * MBCapsuleEffRandF()));
                 mbev_CapEffRayAdd(rayObj, &particlePos, &rot, &vel, time,
                     particleScale);
             }
@@ -1723,29 +1716,20 @@ static void ev_CapEffOpen(void)
             for (j = 0; (float)j < 5.0f * weight; j++) {
                 particlePos = pos;
                 rot.x = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                rot.y = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
+                    + MBCapsuleEffRandF());
+                rot.y = 360.0f * MBCapsuleEffRandF();
                 rot.z = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
                 vel.x = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                vel.y = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
+                    + MBCapsuleEffRandF());
+                vel.y = 360.0f * MBCapsuleEffRandF();
                 vel.z = 180.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                time = 10.0f + (5.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
+                time = 10.0f + (5.0f * MBCapsuleEffRandF());
                 particleScaleY = weight * (50.0f * (1.0f
-                    + (0.5f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)))));
+                    + (0.5f * MBCapsuleEffRandF())));
                 particleScale = 100.0f * (2.0f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
                 mbev_CapEffMasuHitAdd(masuHitObj, &particlePos, &rot, &vel,
                     particleScale, particleScaleY, time);
             }
@@ -1773,55 +1757,38 @@ static void ev_CapEffOpen(void)
             PSVECAdd(&pos, &workP->pos, &pos);
             for (j = 0; j < 3; j++) {
                 particlePos = pos;
-                rot.x = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
-                rot.y = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
-                rot.z = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
+                rot.x = 360.0f * MBCapsuleEffRandF();
+                rot.y = 360.0f * MBCapsuleEffRandF();
+                rot.z = 360.0f * MBCapsuleEffRandF();
                 vel.x = rot.x + (60.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000))));
+                    + MBCapsuleEffRandF()));
                 vel.y = rot.y + (60.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000))));
+                    + MBCapsuleEffRandF()));
                 vel.z = rot.z + (60.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000))));
-                time = 10.0f + (5.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF()));
+                time = 10.0f + (5.0f * MBCapsuleEffRandF());
                 particleScale = 200.0f * (1.0f
-                    + (0.25f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000))));
+                    + (0.25f * MBCapsuleEffRandF()));
                 mbev_CapEffRayAdd(rayObj, &particlePos, &rot, &vel, time,
                     particleScale);
             }
             mbev_CapEffRayAlphaSet(rayObj, weight);
             for (j = 0; (float)j < 5.0f * weight; j++) {
                 particlePos = pos;
-                rot.x = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
-                rot.y = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
-                rot.z = 360.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000));
+                rot.x = 360.0f * MBCapsuleEffRandF();
+                rot.y = 360.0f * MBCapsuleEffRandF();
+                rot.z = 360.0f * MBCapsuleEffRandF();
                 vel.x = 360.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
                 vel.y = 360.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
                 vel.z = 360.0f * (-0.5f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
-                time = 10.0f + (5.0f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
+                time = 10.0f + (5.0f * MBCapsuleEffRandF());
                 particleScaleY = weight * (50.0f * (1.0f
-                    + (0.5f * (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)))));
+                    + (0.5f * MBCapsuleEffRandF())));
                 particleScale = 100.0f * (2.0f
-                    + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                    + MBCapsuleEffRandF());
                 mbev_CapEffMasuHitAdd(masuHitObj, &particlePos, &rot, &vel,
                     particleScale, particleScaleY, time);
             }
@@ -2748,7 +2715,7 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     workP->moveTime = moveTime;
     workP->time = 0;
     workP->rotSpeed = 2.0f * (-0.5f
-        + (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+        + MBCapsuleEffRandF());
     mbPlayerRotGet(playerNo, &workP->rot);
     mbPlayerMotionSet(playerNo, workP->motNo, 0);
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
@@ -3265,23 +3232,23 @@ void mbev_CapEffExplodeCircleAdd(OMOBJ *obj, HuVecF *posP, float radius,
     posBase.y = posP->y + 50.0f;
     posBase.z = posP->z + (radius * (scale * mbSinDeg(angle)));
     value = 100.0f * (0.005f + (0.04f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        MBCapsuleEffRandF()));
     velBase.x = value * mbCosDeg(angle);
     velBase.y = value * mbSinDeg(angle);
     velBase.z = 0.0f;
-    randF = 3.725290298461914e-09f * (float)mbRandMod(0x10000000);
+    randF = MBCapsuleEffRandF();
     colorTemp.r = 64.0f + (32.0f * randF);
     colorTemp.g = 64.0f + (32.0f * randF);
     colorTemp.b = 64.0f + (32.0f * randF);
     colorTemp.a = 64.0f + (63.0f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+        MBCapsuleEffRandF());
     color = colorTemp;
     fadeStep = 0.33f + (0.2f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+        MBCapsuleEffRandF());
     distance = 100.0f * (0.5f + (0.5f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        MBCapsuleEffRandF()));
     active = 100.0f * (1.0f + (0.5f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        MBCapsuleEffRandF()));
     pos = posBase;
     vel = velBase;
     dir.x = vel.z;
@@ -3339,30 +3306,30 @@ void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *posP)
     for (i = 0; i < 32; i++) {
         angle = 11.25f * (float)i;
         radius = 0.75f * (100.0f * (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         posBase.x = posP->x + (radius * mbCosDeg(angle));
         posBase.y = 100.0f + (posP->y + (radius * mbSinDeg(angle)));
         posBase.z = 50.0f + posP->z;
         value = 100.0f * (0.005f + (0.04f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         velBase.x = value * mbCosDeg(angle);
         velBase.y = value * mbSinDeg(angle);
         velBase.z = 0.0f;
-        randF = 3.725290298461914e-09f * (float)mbRandMod(0x10000000);
+        randF = MBCapsuleEffRandF();
         colorTemp.r = 32.0f + (32.0f * randF);
         colorTemp.g = 32.0f + (32.0f * randF);
         colorTemp.b = 32.0f + (32.0f * randF);
         colorTemp.a = 128.0f + (63.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         color = colorTemp;
         fadeStep = 0.33f + (0.66f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         distance = 100.0f * (0.5f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         angleStep = -0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+            + MBCapsuleEffRandF();
         active = 100.0f * (1.5f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         pos = posBase;
         vel = velBase;
         dir.x = vel.z;
@@ -3392,35 +3359,35 @@ void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *posP)
 
     for (i = 0; i < 32; i++) {
         angle = 360.0f
-            * (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+            * MBCapsuleEffRandF();
         radius = 0.33f * (100.0f * (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         posBase.x = posP->x + (1.25f * (100.0f * (-0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000)))));
+            + MBCapsuleEffRandF())));
         posBase.y = posP->y + (1.25f * (100.0f * (-0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000)))));
+            + MBCapsuleEffRandF())));
         posBase.z = posP->z + (50.0f
-            * (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            * MBCapsuleEffRandF());
         value = 100.0f * (0.005f + (0.04f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         velBase.x = value * mbCosDeg(angle);
         velBase.y = value * mbSinDeg(angle);
         velBase.z = 0.0f;
-        randF = 3.725290298461914e-09f * (float)mbRandMod(0x10000000);
+        randF = MBCapsuleEffRandF();
         colorTemp.r = 192.0f + (32.0f * randF);
         colorTemp.g = 192.0f + (32.0f * randF);
         colorTemp.b = 192.0f + (32.0f * randF);
         colorTemp.a = 128.0f + (63.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         color = colorTemp;
         fadeStep = 0.33f + (0.66f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         distance = 100.0f * (0.5f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         angleStep = -0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+            + MBCapsuleEffRandF();
         active = 100.0f * (1.5f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         pos = posBase;
         vel = velBase;
         dir.x = vel.z;
@@ -3489,37 +3456,37 @@ void mbev_CapEffDustExplodeAdd(OMOBJ *obj, HuVecF *posP)
     for (i = 0; i < 32; i++) {
         angle = 11.25f * (float)i;
         value = 0.33f * (100.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         posCos = mbCosDeg(angle);
         posBase.x = posP->x + (value * posCos);
         posSin = mbSinDeg(angle);
         posBase.y = 100.0f + (posP->y + (value * posSin));
         posBase.z = 50.0f + posP->z;
         value = 100.0f * (0.005f + (0.04f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         velCos = mbCosDeg(angle);
         velBase.x = value * velCos;
         velSin = mbSinDeg(angle);
         velBase.y = value * velSin;
         velBase.z = 0.0f;
-        value = 3.725290298461914e-09f * (float)mbRandMod(0x10000000);
+        value = MBCapsuleEffRandF();
         colorTemp.r = 192.0f + (32.0f * value);
         colorTemp.g = 192.0f + (32.0f * value);
         colorTemp.b = 192.0f + (32.0f * value);
         colorTemp.a = 192.0f + (63.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         color.r = colorTemp.r;
         color.g = colorTemp.g;
         color.b = colorTemp.b;
         color.a = colorTemp.a;
         fadeStep = 0.33f + (0.66f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         distance = 100.0f * (0.5f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         angleStep = -0.5f +
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+            MBCapsuleEffRandF();
         active = 100.0f * (1.0f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         vel = velBase;
         pos = posBase;
         dir.x = vel.z;
@@ -3600,40 +3567,40 @@ void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *posP)
     for (i = 0; i < 32; i++) {
         angle = 22.5f * (float)i;
         angle += 20.0f * (-0.5f +
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         value = 0.33f * (100.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         posCos = mbCosDeg(angle);
         posBase.x = posP->x + (value * posCos);
         posBase.y = 50.0f + posP->y;
         posSin = mbSinDeg(angle);
         posBase.z = posP->z + (value * posSin);
         value = 100.0f * (0.03f + (0.06f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         velCos = mbCosDeg(angle);
         velBase.x = value * velCos;
         velBase.y = 0.01f * (100.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         velSin = mbSinDeg(angle);
         velBase.z = value * velSin;
-        value = 3.725290298461914e-09f * (float)mbRandMod(0x10000000);
+        value = MBCapsuleEffRandF();
         colorTemp.r = 192.0f + (63.0f * value);
         colorTemp.g = 192.0f + (63.0f * value);
         colorTemp.b = 192.0f + (63.0f * value);
         colorTemp.a = 64.0f + (63.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         color.r = colorTemp.r;
         color.g = colorTemp.g;
         color.b = colorTemp.b;
         color.a = colorTemp.a;
         fadeStep = 0.33f + (0.66f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         distance = 100.0f * (0.5f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         angleStep = -0.5f +
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+            MBCapsuleEffRandF();
         active = 100.0f * (1.0f + (0.5f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         vel = velBase;
         pos = posBase;
         dir.x = vel.z;
@@ -3695,22 +3662,22 @@ void mbev_CapEffDustMultiAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP, int num)
         sinAngle = mbSinDeg((float)angle);
         vel.x = 0.075f * (100.0f * sinAngle)
             * (0.9f + (0.1f *
-                (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+                MBCapsuleEffRandF()));
         vel.y = 0.0f;
         cosAngle = mbCosDeg((float)angle);
         vel.z = 0.075f * (100.0f * cosAngle)
             * (0.9f + (0.1f *
-                (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+                MBCapsuleEffRandF()));
         PSMTXMultVec(mtx, &vel, &vel);
         colorBase = 63.0f
-            * (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+            * MBCapsuleEffRandF();
         colorTemp.r = colorTemp.g = colorTemp.b = colorBase + 192;
         colorTemp.a = 192.0f + (63.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         color = colorTemp;
         mbev_CapEffExplodeAdd(obj, &pos, &vel, 200.0f,
             0.5f * (-0.5f +
-                (3.725290298461914e-09f * (float)mbRandMod(0x10000000))),
+                MBCapsuleEffRandF()),
             0.33f, &color);
     }
 }
@@ -3752,7 +3719,7 @@ int mbev_CapEffBoostAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     particleWorkP->angleStep = angleStep;
     particleWorkP->active = active;
     particleWorkP->angle = 360.0f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+        MBCapsuleEffRandF();
     particleWorkP->pos.x = pos->x;
     particleWorkP->pos.y = pos->y;
     particleWorkP->pos.z = pos->z;
@@ -3795,16 +3762,16 @@ int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time)
     }
     particleWorkP->pos = *pos;
     particleWorkP->xAmplitude = 0.5f * (1.5f + (0.2f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        MBCapsuleEffRandF()));
     particleWorkP->_unk10 = 1.5f + (0.2f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+        MBCapsuleEffRandF());
     particleWorkP->yVelocity = 2.0f * -(1.5f + (0.2f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        MBCapsuleEffRandF()));
     particleWorkP->time = 1.0f;
     particleWorkP->timeStep = 1.0f / (float)time;
     particleWorkP->angle = mbRandMod(360);
     particleWorkP->active = 15.000000953674316f * (1.0f + (0.25f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        MBCapsuleEffRandF()));
     particleWorkP->color.r = particleWorkP->color.g = particleWorkP->color.b =
         particleWorkP->color.a = 255;
     workP->num++;
@@ -3862,7 +3829,7 @@ int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, int time, float sca
     particleWorkP->color.b = color->b;
     particleWorkP->color.a = color->a;
     particleWorkP->angle = 360.0f *
-        (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+        MBCapsuleEffRandF();
     particleWorkP->pat = 0;
     particleWorkP->mode = 0;
     workP->num++;
@@ -3887,17 +3854,17 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
         }
     }
     pos.x = posP->x + (xRange * (-0.5f
-        + (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        + MBCapsuleEffRandF()));
     pos.y = posP->y + (yRange * (-0.5f
-        + (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+        + MBCapsuleEffRandF()));
     pos.z = posP->z + (zRange
-        * (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+        * MBCapsuleEffRandF());
     vel.x = 0.0f;
     vel.z = 0.0f;
     switch (type) {
         case 1:
             vel.y = -(1.0f + (0.2f
-                * (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+                * MBCapsuleEffRandF()));
             gravity = 0.0f;
             rotStep = 0.0f;
             if (mbRandMod(0x8000) & 1) {
@@ -3907,9 +3874,9 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
 
         case 2:
             vel.y = 1.0f + (0.2f
-                * (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+                * MBCapsuleEffRandF());
             gravity = 0.05f + (0.02f
-                * (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+                * MBCapsuleEffRandF());
             rotStep = 0.0f;
             if (mbRandMod(0x8000) & 1) {
                 gravity *= -1.0f;
@@ -3919,7 +3886,7 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
         case 3:
             vel.y = 0.0f;
             gravity = 0.05f + (0.02f
-                * (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+                * MBCapsuleEffRandF());
             rotStep = 0.08166666f;
             if (mbRandMod(0x8000) & 1) {
                 gravity *= -1.0f;
@@ -3935,12 +3902,12 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
     if (colorP != NULL) {
         color = *colorP;
     } else {
-        randF = 3.725290298461914e-09f * (float)mbRandMod(0x10000000);
+        randF = MBCapsuleEffRandF();
         colorTemp.r = 192.0f + (63.0f * randF);
         colorTemp.g = 192.0f + (63.0f * randF);
         colorTemp.b = 192.0f + (63.0f * randF);
         colorTemp.a = 192.0f + (63.0f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         color = colorTemp;
     }
     return mbev_CapEffGlowAdd(obj, &pos, &vel, time, scale, gravity, rotStep,
@@ -3976,16 +3943,16 @@ void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
     }
     for (i = 0; i < 16; i++) {
         angle = (45.0f * (float)i) + (10.0f * (-0.5f +
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         if (i & 1) {
             direction = 10.0f *
-                (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+                MBCapsuleEffRandF();
         } else {
             direction = -10.0f *
-                (3.725290298461914e-09f * (float)mbRandMod(0x10000000));
+                MBCapsuleEffRandF();
         }
         scale = 5.0f * (0.5f +
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000)));
+            MBCapsuleEffRandF());
         sinAngle = mbSinDeg(angle);
         cosDirection = mbCosDeg(direction);
         velTemp.x = scale * (cosDirection * sinAngle);
@@ -4009,10 +3976,10 @@ void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
         pos = *posP;
         posLocalP = &pos;
         timeScale = 60.0f * (0.5f + (0.25f *
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         mbev_CapEffGlowAdd(obj, posLocalP, velP,
             (int)(100.0f * (0.5f + (0.3f *
-                (3.725290298461914e-09f * (float)mbRandMod(0x10000000))))),
+                MBCapsuleEffRandF()))),
             timeScale, 0.0f, 0.16333334f, colorP);
     }
 }
@@ -4058,11 +4025,11 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
             }
         }
         end.x += 2.5f * (100.0f * (-0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            + MBCapsuleEffRandF()));
         end.y += 2.5f * (100.0f * (-0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            + MBCapsuleEffRandF()));
         end.z += 2.5f * (100.0f * (-0.5f
-            + (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            + MBCapsuleEffRandF()));
         part->pos2 = part->pos1;
         part->pos1 = end;
         for (j = 5; j > 0; j--) {
@@ -4290,30 +4257,24 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
         if (workP->_unk0C == 3 && workP->glowObj != NULL) {
             angle = 0.0f;
             for (j = 0; j < 16; j++) {
-                angle += 360.0f * (0.5f + (3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000)));
+                angle += 360.0f * (0.5f + MBCapsuleEffRandF());
                 pos = workP->_unk2C;
-                randF = 3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000);
+                randF = MBCapsuleEffRandF();
                 speed = 50.0f * (1.0f + (0.2f * randF));
-                randF = 3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000);
+                randF = MBCapsuleEffRandF();
                 angleX = -(75.0f + (15.0f * randF));
                 vel.x = speed * (mbSinDeg(angle) * mbCosDeg(angleX));
                 vel.z = speed * (mbCosDeg(angle) * mbCosDeg(angleX));
                 vel.y = speed * mbSinDeg(angleX);
-                randF = 3.725290298461914e-09f
-                    * (float)mbRandMod(0x10000000);
+                randF = MBCapsuleEffRandF();
                 color.r = 192.0f + (63.0f * randF);
                 color.g = 192.0f + (63.0f * randF);
                 color.b = 128.0f + (63.0f * randF);
                 color.a = 192.0f + (63.0f *
-                    (3.725290298461914e-09f
-                        * (float)mbRandMod(0x10000000)));
+                    MBCapsuleEffRandF());
                 mbev_CapEffGlowAdd(workP->glowObj, &pos, &vel, 6,
                     100.0f * (0.5f + (0.3f *
-                        (3.725290298461914e-09f
-                            * (float)mbRandMod(0x10000000)))),
+                        MBCapsuleEffRandF())),
                     0.0f, 3.2666667f, &color);
             }
         } else if (workP->_unk0C == 4) {
@@ -4357,12 +4318,12 @@ int mbev_CapEffCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale,
     workP->_unk24 = 1.0f;
     workP->_unk28 = 1.0f / (float)time;
     workP->_unk2C = *pos;
-    workP->_unk38.y = 360.0f * ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
-    workP->_unk38.x = 30.0f * (-0.5f + ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+    workP->_unk38.y = 360.0f * MBCapsuleEffRandF();
+    workP->_unk38.x = 30.0f * (-0.5f + MBCapsuleEffRandF());
     workP->_unk38.z = 0.0f;
     workP->_unk44.x = workP->_unk44.y = workP->_unk44.z = scale;
     workP->_unk50 = *vel;
-    workP->_unk18 = 10.0f * (-0.5f + ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+    workP->_unk18 = 10.0f * (-0.5f + MBCapsuleEffRandF());
     workP->modelId = mbCoinCreate2();
     mbCoinObjPosSetV(workP->modelId, &workP->_unk2C);
     mbCoinObjRotSetV(workP->modelId, &workP->_unk38);
@@ -4451,7 +4412,7 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
             pos.y += 300.0f;
         }
         pos.x += 0.5f * (100.0f * (-0.5f +
-            (3.725290298461914e-09f * (float)mbRandMod(0x10000000))));
+            MBCapsuleEffRandF()));
         vel.x = vel.y = vel.z = 0.0f;
         coinNo = mbev_CapEffCoinAdd(obj, &pos, &vel, 0.75f, 4.9f, 30, 4);
         if (coinNo >= 0) {

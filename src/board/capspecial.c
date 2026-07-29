@@ -2,6 +2,7 @@
 #include "dolphin/pad.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
+#include "game/board/capsule.h"
 #include "game/board/comchoice.h"
 #include "game/board/coin.h"
 #include "game/board/main.h"
@@ -720,8 +721,7 @@ void mbev_CapTeresa(void)
                         if (!GwPlayer[targetPlayer].comF) {
                             stealRate = 1.0f - (pressNum * 0.03125f);
                         } else {
-                            randomValue = (float)mbRandMod(0x10000000)
-                                * 3.7252903e-9f;
+                            randomValue = MBCapsuleEffRandF();
                             stealRate = 1.0f
                                 - (0.1f + (GwPlayer[targetPlayer].comDif
                                     * (0.2f + (0.1f * randomValue))));
@@ -739,17 +739,13 @@ void mbev_CapTeresa(void)
                         mbMasuPosGet(GwPlayer[targetPlayer].masuId,
                             &objectPos);
                         for (i = 0; i < coinNum; i++) {
-                            launchAngle = 360.0f
-                                * ((float)mbRandMod(0x10000000)
-                                    * 3.7252903e-9f);
+                            launchAngle = 360.0f * MBCapsuleEffRandF();
                             coinPos = objectPos;
                             coinPos.y += 100.0f;
                             launchElevation = 70.0f
-                                + (15.0f * ((float)mbRandMod(0x10000000)
-                                    * 3.7252903e-9f));
+                                + (15.0f * MBCapsuleEffRandF());
                             launchScale = 0.8f
-                                + (0.3f * ((float)mbRandMod(0x10000000)
-                                    * 3.7252903e-9f));
+                                + (0.3f * MBCapsuleEffRandF());
                             coinVel.x = (float)(65.0f * launchScale
                                 * sin((M_PI * launchAngle) / 180.0)
                                 * cos((M_PI * launchElevation) / 180.0));
