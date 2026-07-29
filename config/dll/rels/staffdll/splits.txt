@@ -6,6 +6,12 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/staffdll/application_pass5_0000.c:
+	.text       start:0x00000000 end:0x00000044
+
+REL/staffdll/application_pass5_0610.c:
+	.text       start:0x00000610 end:0x00000620
+
 REL/staffdll/application_pass4_0620.c:
 	.text       start:0x00000620 end:0x0000067C
 
@@ -14,6 +20,9 @@ REL/staffdll/staff_pass1_067c.c:
 
 REL/staffdll/application_pass3_0e20.c:
 	.text       start:0x00000E20 end:0x00000F44
+
+REL/staffdll/application_pass5_0f44.c:
+	.text       start:0x00000F44 end:0x00000F68
 
 REL/staffdll/staff_pass1_0f68.c:
 	.text       start:0x00000F68 end:0x000010B8
@@ -65,6 +74,9 @@ REL/staffdll/application_pass4_7ddc.c:
 
 REL/staffdll/application_pass4_8300.c:
 	.text       start:0x00008300 end:0x000083E4
+
+REL/staffdll/application_pass5_83e4.c:
+	.text       start:0x000083E4 end:0x00008410
 
 REL/staffdll/staff_pass1_8410.c:
 	.text       start:0x00008410 end:0x0000848C
