@@ -54,14 +54,7 @@ typedef struct EndingWinChoice {
     s16 y;
 } EndingWinChoice;
 
-typedef struct EndingWinWarning {
-    HUWINID window;
-    u8 unk_02[4];
-    s16 scaleTimer[2];
-    ANIMDATA *glowAnim;
-    ANIMDATA *bgAnim[2];
-    HUPROCESS *process;
-} EndingWinWarning;
+typedef struct EndingWinWarning EndingWinWarning;
 
 typedef struct EndingWindow {
     u8 stat;
