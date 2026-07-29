@@ -6,6 +6,9 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/mdpresultdll/application_16c4.c:
+	.text       start:0x000016C4 end:0x00001C70
+
 REL/mdpresultdll/application_2bf0.c:
 	.text       start:0x00002BF0 end:0x00003364
 
