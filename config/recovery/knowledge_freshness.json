@@ -823,7 +823,7 @@
     },
     "recovery-shard-filenames-are-not-source-provenance": {
       "status": "active",
-      "validated_commit": "b798a07895b705e8a46cfbb9307befa903e089fe",
+      "validated_commit": "ac1e570bef6ef55a65fcb75e9ddefb4d21acc83a",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
