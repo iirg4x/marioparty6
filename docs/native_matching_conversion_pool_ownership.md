@@ -147,3 +147,19 @@ spelling. Use the form only when target symbols and external consumers
 authenticate the owner, the natural local assignment preserves code shape,
 and the complete data section, relocation graph, consumers, and final REL all
 remain exact.
+
+## Exact local pool rejected by a global fallback consumer
+
+`mdsingdll` pass 29 proves the opposite boundary. `fn_1_842C` reproduced all
+580 instruction bytes and naturally emitted the expected eight-byte unsigned
+conversion pool, but the tracked text-plus-data split still failed the linked
+owner graph: a retained fallback function relocated to the retail global
+`lbl_1_rodata_C0`, not the new local pool. Replacing or duplicating the global
+solely to keep the body would have changed authenticated ownership.
+
+The function and its pool were therefore reverted, and exact literal-free
+`fn_1_8670` filled the bounded batch instead. The final pass retained 12 exact
+functions, 2,588 text bytes, and 146/146 relocations while preserving the
+retail REL. This is the selection shortcut: local text and pool equality are
+still insufficient when the complete linked consumer graph requires a
+different owner.

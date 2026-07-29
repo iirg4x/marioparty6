@@ -1874,7 +1874,8 @@
           "main:board/scroll:ScrollExec",
           "main:board/scroll:MapPathDraw",
           "main:board/scroll:MapDraw",
-          "mdsingdll:fn_1_B998"
+          "mdsingdll:fn_1_B998",
+          "mdsingdll:fn_1_842C"
         ],
         "modules": [
           "openingDll",
@@ -1912,7 +1913,8 @@
         "wave 28 s_atan: target and source instructions, literal data, effective relocation targets, linked owner range, and final DOL all match despite 14 compiler-local split/pool symbol annotations",
         "wave 42 seq: five target lbl_* relocations and source @591..@596 names resolve to the same retained constant addresses; the exact linked owner and final DOL establish effective ownership",
         "main:board/scroll: target-backed 30.000002f closed the preceding GC/2.6 pool bits; the exact same-game MBTimeDayGet inline boundary closed allocation; then extern-before-definition address-labelled 24.0f/0.2f/90.0f owners and their inline consumer closed MapPathDraw, MapDraw, all 900 text relocations, and the source-owned .sdata2 prefix through 0xD4, leaving only a four-byte target tail and no fake padding",
-        "mdsingdll pass 27: fn_1_B998's anonymous local bitmap-name aggregate was object-exact but linked-invalid because fallback consumers required lbl_1_rodata_270; an authenticated global const BITMAP_NAME_TABLE plus natural local assignment preserved the exact stack-copy code, 16 data bytes, 67/67 island relocations, and the retail REL"
+        "mdsingdll pass 27: fn_1_B998's anonymous local bitmap-name aggregate was object-exact but linked-invalid because fallback consumers required lbl_1_rodata_270; an authenticated global const BITMAP_NAME_TABLE plus natural local assignment preserved the exact stack-copy code, 16 data bytes, 67/67 island relocations, and the retail REL",
+        "mdsingdll pass 29: fn_1_842C reached 580/580 instruction bytes with its natural 8-byte unsigned-conversion pool, but binding that local pool left a retained fallback consumer unresolved against global lbl_1_rodata_C0. The body and local owner were reverted and exact literal-free fn_1_8670 was selected instead; the final 12-function batch remained retail-exact."
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -1925,7 +1927,8 @@
         "Matching values or offsets alone do not authorize invented semantic symbols or explicit padding; retain honest address identities and let proven alignment or target-only tails remain non-owned.",
         "wave 23 msmSysInit had identical instruction words and relocation types/addends but only a target split-label versus compiler-pool identity; no fake split global was introduced while the owner remained incomplete.",
         "wave 27 had seven exact-sized, instruction-identical board-space functions whose compiler-local pool/static identities remained unresolved in the incomplete owner; they were not counted exact from values alone.",
-        "An object-exact anonymous aggregate is not sufficient when linked fallback consumers require a named owner; the final REL and every consumer remain mandatory."
+        "An object-exact anonymous aggregate is not sufficient when linked fallback consumers require a named owner; the final REL and every consumer remain mandatory.",
+        "An instruction-exact body plus an exact local conversion-pool csect still fails ownership when any linked fallback consumer relocates to the target global owner; do not replace the global merely to retain the new body."
       ],
       "related_exceptions": [],
       "evidence": [
