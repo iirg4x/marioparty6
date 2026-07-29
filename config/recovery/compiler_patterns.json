@@ -562,7 +562,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Twenty-seven mdsingdll functions totaling 5248 text bytes and 316 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
+      "summary": "Twenty-nine mdsingdll functions totaling 5556 text bytes and 327 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -627,6 +627,8 @@
           "mdpartydll:fn_1_38F0",
           "mdpartydll:fn_1_39AC",
           "mdpartydll:fn_1_B748",
+          "mdpartydll:fn_1_C158",
+          "mdpartydll:fn_1_C200",
           "mdsingdll:fn_1_2E68C",
           "mdsingdll:fn_1_2E6B8",
           "mdsingdll:fn_1_2EA9C",
@@ -653,7 +655,9 @@
           "mdsingdll:fn_1_331E0",
           "mdsingdll:fn_1_37DC",
           "mdsingdll:fn_1_3898",
-          "mdsingdll:fn_1_9998"
+          "mdsingdll:fn_1_9998",
+          "mdsingdll:fn_1_A3A8",
+          "mdsingdll:fn_1_A450"
         ],
         "modules": [
           "mdpartydll",
@@ -675,7 +679,8 @@
         "A following 18-candidate catalog used stable later-family delta -0x11B94 to recover seven mdsing particle-control functions in one eight-function attempt (1180 target text bytes and 72 physical relocations).",
         "The next later-family pass recovered seven more mdsing particle helpers across five independently consumed objects (1384 target text bytes and 98 physical relocations), bringing the feedback catalog to 24 exact mappings.",
         "A window-message analogue pair in mdpartydll mdparty.c recovered mdsingdll fn_1_37DC/fn_1_3898 as one independently consumed 300-byte object with 19 physical relocations, bringing the catalog to 26 exact mappings.",
-        "mdpartydll fn_1_B748 recovered the recursive mdsingdll fn_1_9998 route-resolution helper as one independently consumed 1000-byte text-only object with 11 physical relocations, bringing the catalog to 27 exact mappings."
+        "mdpartydll fn_1_B748 recovered the recursive mdsingdll fn_1_9998 route-resolution helper as one independently consumed 1000-byte text-only object with 11 physical relocations, bringing the catalog to 27 exact mappings.",
+        "The continuing mdpartydll-to-mdsingdll delta mapped fn_1_C158/fn_1_C200 to fn_1_A3A8/fn_1_A450; both animation-assignment helpers linked exactly as one 308-byte text-only object with 11 physical relocations, bringing the catalog to 29 exact mappings."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -687,6 +692,7 @@
         "mdpartydll fn_1_443B4 to mdsingdll fn_1_32820 repeated the known @190 byte-to-float pool mismatch and was not reworked.",
         "mdpartydll fn_1_44B1C to mdsingdll fn_1_32FB4 reached 99.748% text, but local-initializer and adjacent-rodata ownership prevented a retail-exact split object.",
         "The adjacent mdsingdll fn_1_3908 window helper was excluded before compilation because target code directly indexes an authenticated 0x200-byte HUWIN stride, while the available public header closure emits unrelated weak-sqrtf constants and a reduced local aggregate would require guessed padding.",
+        "The neighboring mdsingdll fn_1_A4DC/fn_1_A8E8/fn_1_ACB8 family requires earlier interpolation-helper and conversion-pool chronology; a discontiguous combined split caused an interleaved DTK link-order cycle, so explicit inline control and broad-header work were rejected.",
         "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
       ],
       "related_exceptions": [],
@@ -707,6 +713,7 @@
         "src/REL/mdsingdll/mdsing_tail13.c",
         "src/REL/mdsingdll/mdsing_tail19.c",
         "src/REL/mdsingdll/mdsing_tail20.c",
+        "src/REL/mdsingdll/mdsing_tail21.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ]
@@ -1800,10 +1807,11 @@
           "an intermediate source object names @NNN while a complete source-owned pool csect and final REL bind the same section offset exactly",
           "several byte-identical functions fail only because each anonymous literal relocation misses its configured lbl_1_rodata_* identity",
           "one target-backed near-literal changes a preceding pool word by one ULP and makes the remaining apparent ownership shift disappear",
-          "address-labelled const objects, their natural alignment gap, all consumer relocations, and the source-owned raw section prefix close together while only a target-side tail remains"
+          "address-labelled const objects, their natural alignment gap, all consumer relocations, and the source-owned raw section prefix close together while only a target-side tail remains",
+          "an anonymous local aggregate is object-exact but linked fallback consumers still require the target named owner; initializing the local copy from an authenticated global const aggregate preserves code shape and closes the linked relocations"
         ]
       },
-      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
+      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. When a natural local aggregate copy is already exact but other linked consumers require a named target owner, test an authenticated global const aggregate as that owner and initialize the local copy from it; retain only if code, data, relocations, all consumers, and the final REL remain exact. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
@@ -1812,6 +1820,7 @@
         "compare final linked section offsets and relocation addends before assuming a local source symbol name is fatal",
         "verify the exact bits of every preceding literal and resolve authenticated accessor or lifetime mismatches before assigning a residual pool owner",
         "accept address-only storage without semantic names only after raw section bytes, natural alignment, every consumer relocation, and the linked tail boundary agree",
+        "when consumer evidence authenticates the named aggregate owner, test a global const owner plus natural local-copy initialization and replay every linked consumer",
         "require organic source and linked consumer proof before retention"
       ],
       "applicability": {
@@ -1835,7 +1844,8 @@
           "mdbankdll:fn_1_131C8",
           "main:board/scroll:ScrollExec",
           "main:board/scroll:MapPathDraw",
-          "main:board/scroll:MapDraw"
+          "main:board/scroll:MapDraw",
+          "mdsingdll:fn_1_B998"
         ],
         "modules": [
           "openingDll",
@@ -1847,7 +1857,8 @@
           "endingdll",
           "mdbankdll",
           "mdpresultdll",
-          "main.dol"
+          "main.dol",
+          "mdsingdll"
         ],
         "owner_tags": [
           "literal_pool",
@@ -1871,7 +1882,8 @@
         "mdbankdll passes 4-5: fn_1_6810 emitted an eight-byte TU-local unsigned-conversion pool instead of retail lbl_1_rodata_128; fn_1_2750 consumes the same named owner, so it was excluded before redundant C probing",
         "wave 28 s_atan: target and source instructions, literal data, effective relocation targets, linked owner range, and final DOL all match despite 14 compiler-local split/pool symbol annotations",
         "wave 42 seq: five target lbl_* relocations and source @591..@596 names resolve to the same retained constant addresses; the exact linked owner and final DOL establish effective ownership",
-        "main:board/scroll: target-backed 30.000002f closed the preceding GC/2.6 pool bits; the exact same-game MBTimeDayGet inline boundary closed allocation; then extern-before-definition address-labelled 24.0f/0.2f/90.0f owners and their inline consumer closed MapPathDraw, MapDraw, all 900 text relocations, and the source-owned .sdata2 prefix through 0xD4, leaving only a four-byte target tail and no fake padding"
+        "main:board/scroll: target-backed 30.000002f closed the preceding GC/2.6 pool bits; the exact same-game MBTimeDayGet inline boundary closed allocation; then extern-before-definition address-labelled 24.0f/0.2f/90.0f owners and their inline consumer closed MapPathDraw, MapDraw, all 900 text relocations, and the source-owned .sdata2 prefix through 0xD4, leaving only a four-byte target tail and no fake padding",
+        "mdsingdll pass 27: fn_1_B998's anonymous local bitmap-name aggregate was object-exact but linked-invalid because fallback consumers required lbl_1_rodata_270; an authenticated global const BITMAP_NAME_TABLE plus natural local assignment preserved the exact stack-copy code, 16 data bytes, 67/67 island relocations, and the retail REL"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -1883,7 +1895,8 @@
         "A second function consuming the same unresolved named pool is not an independent body-shaping opportunity; recover the shared owner or exclude the family.",
         "Matching values or offsets alone do not authorize invented semantic symbols or explicit padding; retain honest address identities and let proven alignment or target-only tails remain non-owned.",
         "wave 23 msmSysInit had identical instruction words and relocation types/addends but only a target split-label versus compiler-pool identity; no fake split global was introduced while the owner remained incomplete.",
-        "wave 27 had seven exact-sized, instruction-identical board-space functions whose compiler-local pool/static identities remained unresolved in the incomplete owner; they were not counted exact from values alone."
+        "wave 27 had seven exact-sized, instruction-identical board-space functions whose compiler-local pool/static identities remained unresolved in the incomplete owner; they were not counted exact from values alone.",
+        "An object-exact anonymous aggregate is not sufficient when linked fallback consumers require a named owner; the final REL and every consumer remain mandatory."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -3292,7 +3305,7 @@
       "category": "declaration_visibility_and_owner_binding",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix can still be bound independently when the full transitive inline-helper chain stays in the original translation unit and every protected consumer remains exact.",
+      "summary": "A source cluster can compile instruction- and relocation-exact in isolation yet be unsafe to bind as a new translation unit: moving its definitions can remove one-pass inline visibility from later callers that were already exact in the original combined source owner. A dependency-closed suffix, predecessor, or interior island can still be bound independently when every outgoing compile-time inline-consumer edge stays in the original translation unit and all protected consumers and pool owners remain exact. Function-address and callback assignments are link-only edges unless a direct compile-time call also exists.",
       "conditions": "Use when recovered functions are exact in a monolithic source owner and a proposed generated-object split moves their definitions into another translation unit while later exact callers remain behind.",
       "source_condition": {
         "change": "Extract an exact function cluster from a combined source owner into a separately compiled generated object.",
@@ -3301,7 +3314,8 @@
           "complete instruction and relocation equality for the extracted cluster",
           "an inventory of every later independently exact caller whose compile-time visibility can change",
           "before/after consumer-object comparison, not only extracted-object scoring",
-          "a dependency graph that identifies suffixes with no compile-time visibility edge back into protected exact consumers"
+          "a dependency graph that identifies candidate regions with no compile-time visibility edge back into protected exact consumers",
+          "classification of direct-call inline-visibility edges separately from function-address or callback link-only edges"
         ]
       },
       "emitted_effect": {
@@ -3314,14 +3328,16 @@
         "known_signatures": [
           "scratch cluster text and relocations are exact but tracked owner-wide exact count falls",
           "only consumers compiled after the moved definitions regress",
-          "restoring duplicate definitions would repair visibility but violate single-owner policy"
+          "restoring duplicate definitions would repair visibility but violate single-owner policy",
+          "later source references exist only as function-address assignments, so the moved body still links but no one-pass inline expansion can change"
         ]
       },
-      "rule": "Treat generated-object extraction as a consumer-closure change. Bind the cluster only when every affected exact caller remains exact or authenticated original header/TU evidence naturally preserves definition visibility; otherwise retain the exact C unbound and record the split as blocked.",
+      "rule": "Treat generated-object extraction as a consumer-closure change. Build a typed definition-to-consumer graph: direct compile-time calls to inline-capable definitions are visibility edges, while function-address and callback assignments are link-only edges unless a direct call also exists. Bind the cluster only when every affected exact caller remains exact or authenticated original header/TU evidence naturally preserves definition visibility; otherwise retain the exact C unbound and record the split as blocked.",
       "safe_actions": [
         "enumerate later direct and transitive callers of every moved inline-capable definition",
+        "classify callback-address references separately and verify their final relocation targets without treating them as inline-visibility edges",
         "compare all independently exact consumers after the tracked split",
-        "search backward from the target-contiguous tail for the largest suffix whose definitions are not required for automatic inlining in retained exact consumers",
+        "search target-contiguous prefixes, suffixes, and interior islands for the largest region with no outgoing definition-to-inline-consumer edge into retained exact code",
         "expand the candidate owner boundary only when retail layout and source chronology authenticate it",
         "revert the split rather than duplicate definitions or add pragmas and compiler controls"
       ],
@@ -3335,7 +3351,8 @@
           "mdpresultdll:fn_1_105CC",
           "mdpresultdll:fn_1_10B34",
           "mdpresultdll:fn_1_1295C",
-          "mdpresultdll:fn_1_2BF0..fn_1_3304"
+          "mdpresultdll:fn_1_2BF0..fn_1_3304",
+          "mdpresultdll:fn_1_4694..fn_1_52C4"
         ],
         "modules": [
           "mdpresultdll"
@@ -3350,12 +3367,15 @@
       },
       "examples": [
         "mdpresultdll pass46 isolated fn_1_16C4..fn_1_3304 as 37/37 exact functions over 7328 text bytes with 600/600 relocations, but tracked extraction regressed four later exact consumers when the moved definitions were no longer visible.",
-        "Pass47 kept the transitive window-helper chain in mdpresult.c and extracted only dependency-closed suffix fn_1_2BF0..fn_1_3304: 10/10 functions, 1908 bytes, and 141/141 relocations exact with no source rodata, while fn_1_102E4/fn_1_105CC/fn_1_10B34/fn_1_1295C and the fn_1_5360 pool prefix remained exact."
+        "Pass47 kept the transitive window-helper chain in mdpresult.c and extracted only dependency-closed suffix fn_1_2BF0..fn_1_3304: 10/10 functions, 1908 bytes, and 141/141 relocations exact with no source rodata, while fn_1_102E4/fn_1_105CC/fn_1_10B34/fn_1_1295C and the fn_1_5360 pool prefix remained exact.",
+        "Pass48 selected the dependency-closed predecessor island fn_1_16C4..fn_1_1C34 while leaving fn_1_1C70 onward and its transitive window chain in mdpresult.c: 11/11 functions, 1452 bytes, and 109/109 relocations exact with no source rodata, while both generated owners, all four protected consumers, and the 64-byte pool prefix remained exact.",
+        "Pass49 bound the interior callback-only island fn_1_4694..fn_1_52C4: 12/12 functions, 3276 bytes, and 186/186 relocations exact with no source rodata. Later references to moved fn_1_4A9C/fn_1_4BB8 were function-address assignments rather than direct calls, so they remained link-only edges; all 146 retained exact functions, both prior generated owners, protected consumers, pool prefix, and retail REL remained exact."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
         "A perfect extracted-object score is not a counterexample unless the original owner and every previously exact consumer are also compared.",
-        "Do not preserve visibility with duplicate tracked definitions, forced-inline controls, pragmas, or fake storage."
+        "Do not preserve visibility with duplicate tracked definitions, forced-inline controls, pragmas, or fake storage.",
+        "A callback-address reference is not evidence of a compile-time inline edge; require a direct call or emitted inline expansion before expanding the closure."
       ],
       "related_exceptions": [],
       "evidence": [

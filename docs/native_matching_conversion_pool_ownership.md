@@ -124,3 +124,26 @@ Therefore intermediate symbol spelling is diagnostic, not the final ownership
 gate. A local name is acceptable only when complete section bytes, linked target
 section/addend, all consumers, and the final REL are exact. Without that full
 linked proof, the earlier rejection rule still applies.
+
+## Named aggregate closure with fallback consumers
+
+`mdsingdll` pass 27 provides the complementary positive case. The natural
+`fn_1_B998` body copies a four-pointer bitmap-name table to the stack before
+creating model animations. An anonymous local aggregate reproduced the source
+object exactly, but the linked REL was invalid because retained fallback
+consumers still relocated against the retail named owner
+`lbl_1_rodata_270`.
+
+Consumer evidence authenticated that global owner. Defining it as a global
+`const BITMAP_NAME_TABLE` and initializing the function's local copy from that
+object preserved the same exact stack-copy instructions while giving every
+linked consumer the required named target. The resulting six-function island
+reproduced 1,036 text bytes, 16 data bytes, and 67/67 physical relocations, and
+`mdsingdll.rel` compared byte-identical with retail at worker commit
+`4b8ccc23b94563b1fd4f981c468a438ae6f8cc70`.
+
+This is not permission to introduce a named object merely to change relocation
+spelling. Use the form only when target symbols and external consumers
+authenticate the owner, the natural local assignment preserves code shape,
+and the complete data section, relocation graph, consumers, and final REL all
+remain exact.

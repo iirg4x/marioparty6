@@ -1,3 +1,4 @@
+import json
 import subprocess
 import tempfile
 import unittest
@@ -64,6 +65,55 @@ class PromotionTests(unittest.TestCase):
             self.assertEqual(
                 [item["path"] for item in value["files"]],
                 ["src/game/example.c"],
+            )
+        finally:
+            temporary.cleanup()
+
+    def test_plan_selects_requested_commit_for_repeated_owner(self):
+        temporary, root, base = self.fixture()
+        try:
+            source_commit = run(root, "git", "rev-parse", "HEAD")
+            owner = "REL:example:application"
+            queue_path = root / ".git/agent-coordination/queue.json"
+            queue_path.parent.mkdir(parents=True, exist_ok=True)
+            queue_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "tasks": [
+                            {
+                                "id": "older-pass",
+                                "owner": owner,
+                                "status": "done",
+                                "verification": {
+                                    "public_gate": "pass",
+                                    "verified_commit": base,
+                                },
+                            },
+                            {
+                                "id": "current-pass",
+                                "owner": owner,
+                                "status": "done",
+                                "verification": {
+                                    "public_gate": "pass",
+                                    "verified_commit": source_commit,
+                                },
+                            },
+                        ],
+                        "resources": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            value = plan_promotion(
+                root,
+                base_ref=base,
+                source_ref=source_commit,
+                paths=["src/game/example.c"],
+                owner=owner,
+            )
+            self.assertEqual(
+                value["queue_proof"]["verified_commit"], source_commit
             )
         finally:
             temporary.cleanup()

@@ -145,6 +145,7 @@
         "src/REL/mdsingdll/mdsing_tail13.c",
         "src/REL/mdsingdll/mdsing_tail19.c",
         "src/REL/mdsingdll/mdsing_tail20.c",
+        "src/REL/mdsingdll/mdsing_tail21.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ],
@@ -178,8 +179,8 @@
     },
     "catalog-authenticated-fixed-arity-selects-natural-source-shape": {
       "status": "active",
-      "validated_commit": "c9232f2da47c88604c0250190a95980d7540e305",
-      "validated_at": "2026-07-28",
+      "validated_commit": "6c2197ba8b60b9a31319c9fc53fed106f85ce109",
+      "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
@@ -338,8 +339,8 @@
     },
     "mwcc-source-chronology-csect-link-order": {
       "status": "active",
-      "validated_commit": "c9232f2da47c88604c0250190a95980d7540e305",
-      "validated_at": "2026-07-28",
+      "validated_commit": "6c2197ba8b60b9a31319c9fc53fed106f85ce109",
+      "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_w01_inline_chronology.md",
@@ -349,14 +350,16 @@
         "configure.py",
         "docs/native_matching_s01_application.md",
         "src/REL/s01Dll/s01.c",
-        "config/dll/rels/s01Dll/splits.txt"
+        "config/dll/rels/s01Dll/splits.txt",
+        "src/REL/mdsingdll/mdsing_tail22.c",
+        "config/dll/rels/mdsingdll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
     },
     "mwcc-extern-inline-static-local-comdat-ownership": {
       "status": "active",
-      "validated_commit": "c9232f2da47c88604c0250190a95980d7540e305",
+      "validated_commit": "6c2197ba8b60b9a31319c9fc53fed106f85ce109",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -693,7 +696,9 @@
         "src/REL/mdpresultdll/mdpresult.c",
         "src/REL/mdpresultdll/application_2bf0.c",
         "docs/native_matching_wave38.md",
-        "docs/native_matching_wave51.md"
+        "docs/native_matching_wave51.md",
+        "src/REL/mdpresultdll/application_16c4.c",
+        "src/REL/mdpresultdll/application_pass49.c"
       ],
       "supersedes": [],
       "superseded_by": null
