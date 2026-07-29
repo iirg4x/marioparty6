@@ -560,6 +560,7 @@ s16 mbCapMasuDispTypeGet(s16 masuId);
 int mbCapObjCreate(int capsuleNo, BOOL flag);
 int mbCapFileGet(int capsuleNo);
 int mbCapColorGet(int capsuleNo);
+int mbCapUseMesGet(int capsuleNo);
 int mbCapBonusCoinNumGet(int playerNo, int capsuleNo);
 int mbCapComChanceGet(int capsuleNo, int playerNo, int mode);
 char *mbCapDebugNameGet(int capsuleNo);
@@ -575,12 +576,9 @@ void mbCapSelectResultSet(int playerNo, int objId, int result);
 extern float mbSinDeg(float angle);
 extern float mbCosDeg(float angle);
 extern BOOL mbSaveNewF;
-extern const float lbl_802C44F8;
-extern const float lbl_802C44C0;
-
 static inline void CapObjUnitScaleSet(CAPSULE_OBJ_COLOR *obj)
 {
-    obj->scale.x = obj->scale.y = obj->scale.z = lbl_802C44C0;
+    obj->scale.x = obj->scale.y = obj->scale.z = 1.0f;
 }
 
 extern const float lbl_802C4514;
@@ -599,6 +597,7 @@ extern s16 *mbCapEffData;
     } while (0)
 
 static void CapComKeyHook(void);
+static void CapComChoiceSet(int choice);
 static void CapEffUse(void);
 static void CapEffUseKill(void);
 static void CapPlayerThrow(void);
@@ -736,6 +735,106 @@ static int CapUse(int playerNo, int capsuleNo)
     return result;
 }
 
+static int CapUseSelect(CAP_USE_WORK *work)
+{
+    HuVecF playerPos;
+    HuVecF capPos;
+    int capObjId;
+    int oldObjId;
+    int result;
+    int time;
+    int capsuleSlot;
+    float t;
+    float scale;
+
+    mbCapSelectResultGet(work->playerNo, &oldObjId, &result);
+    mbCapSelectResultReset(work->playerNo);
+    if (oldObjId != MB_MODEL_NONE) {
+        capObjId = oldObjId;
+    } else {
+        capObjId = mbCapObjCreate(work->capsuleNo, FALSE);
+    }
+    mbPlayerPosGet(work->playerNo, &playerPos);
+    capPos = playerPos;
+    capPos.y += 250.0f;
+    if (oldObjId != MB_MODEL_NONE) {
+        mbObjPosGet(capObjId, &capPos);
+        capPos.x = playerPos.x;
+    }
+    mbObjPosSet(capObjId, capPos.x, capPos.y, capPos.z);
+    mbObjLayerSet(capObjId, 4);
+    mbObjAttrSet(capObjId, 0x40000001);
+    if (oldObjId == MB_MODEL_NONE) {
+        mbObjDispSet(capObjId, TRUE);
+        time = 0;
+        do {
+            time++;
+            t = (float)time / 18.0f;
+            if (t > 1.0f) {
+                t = 1.0f;
+            }
+            mbPlayerPosGet(work->playerNo, &capPos);
+            capPos.y += 100.0 + (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
+            mbObjPosSetV(capObjId, &capPos);
+            scale = 1.2000000476837158 *
+                sin((M_PI * (90.0f * t)) / 180.0);
+            mbObjScaleSet(capObjId, scale, scale, scale);
+            HuPrcVSleep();
+        } while (!mbCameraMoveCheck() || t < 1.0f);
+    }
+    if (!GwPlayer[work->playerNo].comF) {
+        mbWinCreateChoice(MBWIN_TYPE_EVENT, 0x00370027, -1, 0);
+        mbWinTopInsertMesSet(mbCapUseMesGet(work->capsuleNo), 0);
+        if (GwPlayer[work->playerNo].comF) {
+            CapComChoiceSet(0);
+        }
+        mbWinTopWait();
+        if (mbWinTopChoiceGet() != 0 || mbWinTopChoiceGet() == -1) {
+            if (oldObjId == MB_MODEL_NONE) {
+                time = 0;
+                for (;;) {
+                    t = (float)time / 18.0f;
+                    if (t >= 1.0f) {
+                        break;
+                    }
+                    t = 1.0f - t;
+                    if (t < 0.0f) {
+                        t = 0.0f;
+                    }
+                    mbPlayerPosGet(work->playerNo, &capPos);
+                    capPos.y += 100.0 +
+                        (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
+                    mbObjPosSetV(capObjId, &capPos);
+                    scale = 1.2000000476837158 *
+                        sin((M_PI * (90.0f * t)) / 180.0);
+                    mbObjScaleSet(capObjId, scale, scale, scale);
+                    HuPrcVSleep();
+                    time++;
+                }
+            } else {
+                mbCapSelectResultSet(work->playerNo, oldObjId, result);
+                capObjId = MB_MODEL_NONE;
+            }
+            if (capObjId != MB_MODEL_NONE) {
+                mbCapObjKill(capObjId);
+            }
+            return FALSE;
+        }
+    }
+    if (!capsuleUseRemoveOnF) {
+        mbPlayerCapsuleUseSet(work->capsuleNo);
+        capsuleSlot = mbPlayerCapsuleFind(work->playerNo, work->capsuleNo);
+        if (capsuleSlot != -1) {
+            mbPlayerCapsuleRemove(work->playerNo, capsuleSlot);
+        }
+    }
+    if (result == -1) {
+        result = 0;
+    }
+    mbCapSelectResultSet(work->playerNo, capObjId, result);
+    return TRUE;
+}
+
 static BOOL CapSelectMasuDispCheck(int masuId)
 {
     return mbMasuDispCheck(masuId);
@@ -812,16 +911,6 @@ char lbl_802BFE51[] = "center";
 static GXColor capsuleCrackEffColor = { 255, 255, 128, 64 };
 static GXColor capsuleCrackEffAmbColor = { 255, 255, 255, 255 };
 static GXColor capsuleCrackEffMatColor = { 255, 255, 255, 255 };
-
-const float lbl_802C44B8 = 250.0f;
-const float lbl_802C44BC = 18.0f;
-const float lbl_802C44C0 = 1.0f;
-const double lbl_802C44C8 = 100.0;
-const double lbl_802C44D0 = 150.0;
-const double lbl_802C44D8 = M_PI;
-const float lbl_802C44E0 = 90.0f;
-const double lbl_802C44E8 = 180.0;
-const double lbl_802C44F0 = 1.2000000476837158203125;
 
 static void CapComChoiceSet(int choice)
 {
@@ -1121,6 +1210,180 @@ BOOL mbCapEffUsePosGet(int playerNo, HuVecF *pos)
     }
     *pos = capsuleUseEffPos[playerNo];
     return TRUE;
+}
+
+static void CapEffUse(void)
+{
+    CAP_EFF_USE_WORK *work = HuPrcCurrentGet()->property;
+    OMOBJ *rayObj;
+    OMOBJ *masuHitObj;
+    OMOBJ *glowObj;
+    HuVecF playerPos;
+    HuVecF capPos;
+    HuVecF pos;
+    HuVecF rot;
+    HuVecF rot2;
+    HuVecF vel;
+    GXColor color;
+    GXColor glowColor;
+    Mtx mtx;
+    int capObjId;
+    int oldObjId;
+    int result;
+    int time;
+    int i;
+    int j;
+    float t;
+    float scale;
+    float alpha;
+    float angle;
+    float radius;
+    float randF;
+
+    rayObj = mbev_CapEffRayCreate(0.0f, 0.02f);
+    masuHitObj = mbev_CapEffMasuHitCreate();
+    glowObj = mbev_CapEffGlowCreate();
+    mbCapSelectResultGet(work->playerNo, &oldObjId, &result);
+    mbCapSelectResultReset(work->playerNo);
+    if (oldObjId != MB_MODEL_NONE) {
+        capObjId = oldObjId;
+    } else {
+        capObjId = mbCapObjCreate(work->capsuleNo, FALSE);
+    }
+    mbPlayerPosGet(work->playerNo, &playerPos);
+    capPos = playerPos;
+    capPos.y += 250.0f;
+    if (oldObjId != MB_MODEL_NONE) {
+        mbObjPosGet(capObjId, &capPos);
+        capPos.x = playerPos.x;
+    }
+    mbObjPosSet(capObjId, capPos.x, capPos.y, capPos.z);
+    mbObjLayerSet(capObjId, 4);
+    mbObjAttrSet(capObjId, 0x40000001);
+    mbev_CapEffRayTransformSet(rayObj, &capPos, NULL, NULL);
+    mbev_CapEffMasuHitTransformSet(masuHitObj, &capPos, NULL, NULL);
+    if (oldObjId == MB_MODEL_NONE) {
+        mbObjDispSet(capObjId, TRUE);
+        time = 0;
+        do {
+            time++;
+            t = (float)time / 18.0f;
+            if (t > 1.0f) {
+                t = 1.0f;
+            }
+            mbPlayerPosGet(work->playerNo, &pos);
+            pos.y += 100.0 + (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
+            mbObjPosSetV(capObjId, &pos);
+            scale = 1.2000000476837158 *
+                sin((M_PI * (90.0f * t)) / 180.0);
+            mbObjScaleSet(capObjId, scale, scale, scale);
+            HuPrcVSleep();
+        } while (!mbCameraMoveCheck() || t < 1.0f);
+    }
+    capsuleUseEffMode[work->playerNo] = 1;
+    capsuleUseEffPos[work->playerNo] = capPos;
+    mbAudFXPlay(0x40A);
+    time = 0;
+    while ((float)time < 30.0f) {
+        alpha = cos((M_PI * (90.0f * ((float)time / 30.0f))) / 180.0);
+        for (j = 0; j < 3; j++) {
+            pos.x = pos.y = pos.z = 0.0f;
+            rot.x = 360.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+            rot.y = 360.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+            rot.z = 360.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+            rot2.x = rot.x + (45.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            rot2.y = rot.y + (45.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            rot2.z = rot.z + (45.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            scale = 200.0f * (1.0f + (0.25f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            i = (int)(15.0f + (5.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            mbev_CapEffRayAdd(rayObj, &pos, &rot, &rot2, i, scale);
+        }
+        mbev_CapEffRayAlphaSet(rayObj, alpha);
+        for (j = 0; j < 5; j++) {
+            pos.x = pos.y = pos.z = 0.0f;
+            rot.x = 360.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+            rot.y = 360.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+            rot.z = 360.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+            rot2.x = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot2.y = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot2.z = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            scale = 100.0f * alpha * (1.5f +
+                (3.725290298461914e-09f * (u32)mbRandMod(0x10000000)));
+            randF = 25.0f * alpha * (1.0f + (0.5f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            i = (int)(20.0f + (10.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            mbev_CapEffMasuHitAdd(
+                masuHitObj, &pos, &rot, &rot2, scale, randF, i);
+        }
+        HuPrcVSleep();
+        time++;
+    }
+    mtxRot(mtx, 0.0f, 0.0f, 20.0f);
+    for (i = 0; i < 256; i++) {
+        pos.x = capPos.x + (75.0f * (-0.5f +
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+        pos.y = capPos.y + (75.0f * (-0.5f +
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+        pos.z = capPos.z + 30.000001907348633f;
+        angle = 360.0f *
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f);
+        radius = 5.0f * (0.5f +
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+        rot.x = radius * sin((M_PI * angle) / 180.0);
+        rot.y = radius * (0.3f * (-0.5f +
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+        rot.z = radius * cos((M_PI * angle) / 180.0);
+        PSMTXMultVec(mtx, &rot, &rot);
+        mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+        glowColor = color;
+        vel = rot;
+        scale = 5.0f * (-0.5f +
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+        randF = 0.3f;
+        time = (int)(60.0f * (0.4f + (0.5f *
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f))));
+        randF = 100.0f * (randF + (0.2f *
+            ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+        mbev_CapEffGlowAdd(
+            glowObj, &pos, &vel, time, randF, scale, 0.0f, &glowColor);
+        if (i == 128) {
+            HuPrcVSleep();
+        }
+    }
+    capsuleUseEffMode[work->playerNo] = 2;
+    capsuleUseEffPos[work->playerNo] = capPos;
+    mbObjDispSet(capObjId, FALSE);
+    for (time = 0; time < 20; time++) {
+        scale = cos((M_PI * (90.0f * ((float)time / 20.0f))) / 180.0);
+        mbObjScaleSet(capObjId, scale, scale, scale);
+        HuPrcVSleep();
+    }
+    capsuleObjId = MB_MODEL_NONE;
+    while (mbev_CapEffGlowDispGet(glowObj)) {
+        HuPrcVSleep();
+    }
+    if (capObjId != MB_MODEL_NONE) {
+        mbCapObjKill(capObjId);
+    }
+    mbev_CapEffRayKill(rayObj);
+    mbev_CapEffMasuHitKill(masuHitObj);
+    mbev_CapEffGlowKill(glowObj);
+    HuPrcEnd();
 }
 
 BOOL mbCapPlayerThrowCheck(void);
@@ -1452,6 +1715,259 @@ static void CapPlayerThrow(void)
     }
     work->jumpMotId = MB_MODEL_NONE;
     HuPrcEnd();
+}
+
+static void CapEffThrowHook(HU3D_MODEL *modelP, Mtx *mtx)
+{
+    CAP_EFF_THROW_WORK *work = modelP->hookData;
+    CAP_PLAYER_THROW_FRAME *frame;
+    HuVecF pos;
+    HuVecF dir;
+    HuVecF offset;
+    HuVecF hitPos;
+    float mag;
+    float mag2;
+    float angle;
+
+    if (work->endF) {
+        return;
+    }
+    if (!work->initF) {
+        frame = &capsulePlayerThrowFrameTbl[work->no];
+        PSVECSubtract(&work->endPos, &work->startPos, &pos);
+        PSVECScale(&pos, &pos, frame->speed);
+        PSVECAdd(&pos, &work->startPos, &pos);
+        if (pos.y < work->startPos.y) {
+            pos.y = work->startPos.y;
+        } else if (pos.y < work->endPos.y) {
+            pos.y = work->endPos.y;
+        }
+        pos.y += work->yOfs + frame->yOfs;
+        if (frame->radius != 0.0f) {
+            PSVECSubtract(&work->endPos, &work->startPos, &dir);
+            if (PSVECMag(&dir) > 0.0f) {
+                PSVECNormalize(&dir, &dir);
+            }
+            angle = (float)(90.0 +
+                (180.0 * (atan2(dir.x, dir.z) / M_PI)));
+            offset.x = frame->radius * sin((M_PI * angle) / 180.0);
+            offset.y = 0.0f;
+            offset.z = frame->radius * cos((M_PI * angle) / 180.0);
+            pos.x += offset.x;
+            pos.z += offset.z;
+        } else if (frame->dir != 0) {
+            PSVECSubtract(&work->endPos, &work->startPos, &dir);
+            mag = PSVECMag(&dir);
+            if (PSVECMag(&dir) > 0.0f) {
+                PSVECNormalize(&dir, &dir);
+            }
+            offset.x = dir.z * mag * frame->dir;
+            offset.y = 0.0f;
+            offset.z = dir.x * mag * frame->dir;
+            pos.x += offset.z;
+            pos.z += offset.x;
+        }
+        work->x[0] = pos.x;
+        work->y[0] = pos.y;
+        work->z[0] = pos.z;
+        CapThrowCameraSet(work->x, work->y, work->z, 3);
+        PSVECSubtract(&pos, &work->startPos, &dir);
+        mag = PSVECMag(&dir);
+        PSVECSubtract(&work->endPos, &pos, &dir);
+        mag2 = PSVECMag(&dir);
+        work->maxTime = (int)((mag + mag2) / 25.0f);
+        if ((float)work->maxTime < 24.0f) {
+            work->maxTime = 24;
+        }
+        work->pos = work->startPos;
+        work->initF = 1;
+    }
+    work->tick = OSGetTick();
+    while ((float)work->initF < (0.5f * (float)work->maxTime)) {
+        CapThrowCameraCalc((float)work->initF /
+            (0.5f * (float)work->maxTime),
+            work->x, work->y, work->z, &pos, 3);
+        if (!CapColCheck(&work->pos, &pos, &hitPos) &&
+            (work->playerNo == -2 ||
+             !CapColExec(work->playerNo, &work->pos, &pos, &hitPos))) {
+            work->pos = pos;
+            work->initF++;
+            if (OSGetTick() - work->tick <= work->delay) {
+                continue;
+            }
+        }
+        break;
+    }
+    if ((float)work->initF >= (0.5f * (float)work->maxTime)) {
+        work->endF = TRUE;
+        return;
+    }
+    work->initF = 0;
+    work->no++;
+    if (work->no >= 48) {
+        if (work->playerNo != -2) {
+            work->no = 0;
+            work->playerNo = -2;
+            return;
+        }
+        work->no = 0;
+        work->endF = TRUE;
+    }
+}
+
+static int CapEffThrowMasu(int masuId, int capsuleNo, int playerNo, BOOL bonusF)
+{
+    HuVecF pos;
+    HuVecF rot;
+    HuVecF vel;
+    HuVecF rot2;
+    GXColor color;
+    GXColor ringColor;
+    int coinNum;
+    int coinLeft;
+    int coinDelay;
+    int time;
+    int i;
+    int life;
+    float alpha;
+    float scale;
+    float scaleY;
+    float randF;
+
+    if (!bonusF || _CheckFlag(0x1000E)) {
+        coinNum = -1;
+    } else {
+        coinNum = mbCapBonusCoinNumGet(playerNo, capsuleNo);
+    }
+    coinLeft = coinNum;
+    coinDelay = 30;
+    vel.x = vel.y = vel.z = 0.0f;
+    mbMasuPosGet(masuId, &pos);
+    mbMasuRotGet(masuId, &rot);
+    CapEffCrackAdd(&pos, &rot);
+    mbMasuPosGet(masuId, &pos);
+    rot.x = -90.0f;
+    rot.y = rot.z = 0.0f;
+    vel.x = 2.0f;
+    vel.y = 4.0f;
+    vel.z = 100.0f * (1.0f + (0.25f *
+        ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+    mbev_CapEffColorSet(&color, mbRandMod(0x8000));
+    ringColor = color;
+    mbev_CapEffRingAdd(capsuleThrowRingOMObj, &pos, &rot, &vel,
+        3, 15, 1, &ringColor);
+    for (time = 0; coinLeft > 0 || time <= 60; time++) {
+        if (time > 60) {
+            time = 60;
+        }
+        if (time == 20) {
+            mbCapMasuCapsuleSet(masuId, capsuleNo, playerNo);
+            mbAudFXPlay(0x408);
+        }
+        if (time == 10 || time == 20) {
+            mbMasuPosGet(masuId, &pos);
+            rot.x = -90.0f;
+            rot.y = rot.z = 0.0f;
+            vel.x = 2.0f;
+            vel.y = 6.0f;
+            randF = 3.0518509447574615e-05f *
+                (s16)mbCapEffData[mbCapEffNum++];
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            vel.z = 100.0f * (1.0f + (0.25f * randF));
+            mbev_CapEffColorSet(&color,
+                (u16)mbCapEffData[mbCapEffNum++]);
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            ringColor = color;
+            mbev_CapEffRingAdd(capsuleThrowRingOMObj, &pos, &rot, &vel,
+                3, 10, 2, &ringColor);
+        }
+        coinDelay--;
+        if (coinDelay <= 0 && coinLeft > 0) {
+            mbMasuPosGet(masuId, &pos);
+            mbev_CapEffCoinMultiAdd(capsuleThrowMasuCoinOMObj, &pos, 1);
+            coinLeft--;
+            randF = 3.0518509447574615e-05f *
+                (s16)mbCapEffData[mbCapEffNum++];
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            coinDelay = (int)(3.0f * randF);
+        }
+        if (masuId > 0) {
+            mbMasuPosGet(masuId, &pos);
+            mbMasuRotGet(masuId, &rot);
+            mbev_CapEffRayTransformSet(
+                capsuleThrowRayOMObj, &pos, &rot, NULL);
+            mbev_CapEffMasuHitTransformSet(
+                capsuleThrowMasuHitOMObj, &pos, &rot, NULL);
+        }
+        alpha = cos((M_PI * (90.0f * ((float)time / 60.0f))) / 180.0);
+        for (i = 0; (float)i < (2.0f * alpha); i++) {
+            pos.x = pos.y = pos.z = 0.0f;
+            rot.x = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot.y = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot.z = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot2.x = rot.x + (45.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            rot2.y = rot.y + (45.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            rot2.z = rot.z + (45.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            life = (int)(20.0f + (5.0f *
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f)));
+            scale = 200.0f * (1.0f +
+                (3.0518509447574615e-05f * (s16)mbCapEffData[mbCapEffNum++]));
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            mbev_CapEffRayAdd(capsuleThrowRayOMObj,
+                &pos, &rot, &rot2, life, scale);
+        }
+        mbev_CapEffRayAlphaSet(capsuleThrowRayOMObj, alpha);
+        for (i = 0; (float)i < (5.0f * alpha); i++) {
+            pos.x = pos.y = pos.z = 0.0f;
+            rot.x = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot.y = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot.z = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot2.x = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot2.y = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            rot2.z = 360.0f * (-0.5f +
+                ((u32)mbRandMod(0x10000000) * 3.725290298461914e-09f));
+            scale = 100.0f * alpha * (1.5f +
+                (3.0518509447574615e-05f * (s16)mbCapEffData[mbCapEffNum++]));
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            scaleY = 25.0f * alpha * (1.0f + (0.5f *
+                (3.0518509447574615e-05f *
+                 (s16)mbCapEffData[mbCapEffNum++])));
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            life = (int)(20.0f + (10.0f *
+                (3.0518509447574615e-05f *
+                 (s16)mbCapEffData[mbCapEffNum++])));
+            if (mbCapEffNum >= 1024) {
+                mbCapEffNum = 0;
+            }
+            mbev_CapEffMasuHitAdd(capsuleThrowMasuHitOMObj,
+                &pos, &rot, &rot2, scale, scaleY, life);
+        }
+        HuPrcVSleep();
+    }
+    return coinNum;
 }
 
 static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime)
