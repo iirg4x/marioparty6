@@ -3785,9 +3785,10 @@ static s8 *PlayerCapsulePtrGet(int playerNo, int index)
                 }
             }
         }
-        if (j < GW_PLAYER_MAX) {
-            return &GwPlayer[j].capsule[index - (memberNo * 3)];
+        if (j >= GW_PLAYER_MAX) {
+            return NULL;
         }
+        return &GwPlayer[j].capsule[index - (memberNo * 3)];
     }
 }
 
