@@ -240,6 +240,28 @@ class RecoveryWorkflowTests(unittest.TestCase):
             findings = quality_findings(data, full=True)
             self.assertEqual(findings[0]["classification"], "unreviewed")
 
+    def test_quality_flags_raw_hex_literals_but_ignores_comments_and_strings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            source = root / "src/new.c"
+            source.write_text(
+                "enum { NAMED_VALUE = 42 };\n"
+                "int raw = 0x2A;\n"
+                "const char *text = \"0x2A\";\n"
+                "// 0x2A\n",
+                encoding="utf-8",
+            )
+            data = load(root)
+            data["owners"] = [
+                {**data["owners"][0], "source": "src/new.c"}
+            ]
+            findings = quality_findings(data, full=True)
+            self.assertEqual(
+                [(item["line"], item["rule"]) for item in findings],
+                [(2, "raw_hex_literal")],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

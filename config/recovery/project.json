@@ -199,6 +199,7 @@
     "Consult automatically selected knowledge cards, freshness state, symptoms, and counterexamples before starting a compiler probe.",
     "Compiler experiments may justify source shape; they do not prove semantic names.",
     "Do not invent names, types, padding, globals, branches, or literal domains.",
+    "Raw numeric hexadecimal literals are forbidden in recovered C; use behavior- or catalog-authenticated named constants, and do not disguise an unknown value by converting it to anonymous decimal.",
     "Do not regress independently exact functions or consumers.",
     "Every unusual source construct must be authenticated, temporary debt, or rejected.",
     "Blind benchmarks must freeze candidates before reveal and score assembly, retained-source fidelity, organicity, and reproducibility separately."

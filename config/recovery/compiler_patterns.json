@@ -4017,6 +4017,76 @@
         "src/board/capspecial.c",
         "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/game/board/capsule.h"
       ]
+    },
+    {
+      "id": "recovered-c-numeric-identifiers-require-named-domains",
+      "title": "Name numeric identifier domains before emitting recovered C",
+      "classification": "confirmed_rule",
+      "category": "provenance_and_ownership",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "Raw numeric hexadecimal literals are forbidden in recovered C. Message IDs, sound IDs, unlock IDs, flags, attributes, and similar target values must be expressed through behavior- or catalog-authenticated named constants. Converting an unexplained hexadecimal value to anonymous decimal only hides the same semantic debt and is not a valid recovery.",
+      "conditions": "Apply whenever recovered C would pass a numeric identifier, bit mask, resource index, message number, sound number, unlock number, or protocol value that was previously written as a hexadecimal literal.",
+      "source_condition": {
+        "change": "Replace a raw numeric target value with an existing named interface constant or a narrowly scoped named enum/macro whose domain and role are authenticated.",
+        "requires": [
+          "target instruction and relocation proof for the emitted numeric value",
+          "consumer, resource-catalog, message-catalog, flag, or same-game interface evidence for the constant's domain",
+          "a name no more specific than the proven behavior",
+          "exact object, relocation, protected-consumer, and retail output after the source-form change"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no emitted change when the named integral constant has the same type and value",
+          "changed promotion or compare behavior if an enum's type or signedness is wrong",
+          "a false appearance of semantic recovery if only the number base changes"
+        ],
+        "known_signatures": [
+          "a raw 0x-prefixed token appears in a changed recovered C line",
+          "the target value belongs to a repeated API argument domain such as message, sound, unlock, flag, or attribute",
+          "an exact named enum initializer emits the same immediate and relocation stream"
+        ]
+      },
+      "rule": "Do not commit raw hexadecimal literals in recovered C. Prefer an authenticated existing header symbol; otherwise use the narrowest behavior- or catalog-backed local named constant with a non-hex initializer. Do not convert to anonymous decimal, do not invent a semantic name beyond the evidence, and leave the function blocked when the value's domain cannot be established.",
+      "safe_actions": [
+        "search catalogs, sibling consumers, and existing headers for the exact value and API domain",
+        "name local enum constants from the proven role when no shared interface is authenticated",
+        "keep the constant owner-local until header fanout and include chronology are proven",
+        "run the changed-line source-quality gate and an explicit raw-hex scan before READY",
+        "recompare every exact object and linked retail consumer after replacing the literal"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "REL:mdbankdll:application",
+          "REL:miraclebookdll:application"
+        ],
+        "modules": [],
+        "owner_tags": [
+          "numeric_identifier",
+          "semantic_domain",
+          "organicity",
+          "source_quality"
+        ]
+      },
+      "examples": [
+        "For MDBank message, unlock, and flag-choice values, derive names from their exact API consumers and choice branches rather than retaining raw hexadecimal literals.",
+        "For MiracleBook transition sound values, derive names from the exact transition states that consume them; the names remain behavioral proposals, not original symbol claims."
+      ],
+      "counterexamples": [
+        "Address-derived symbols and evidence reports may use hexadecimal addresses because they are identity/provenance records, not authored recovered C values.",
+        "An existing SDK or authenticated game header constant is preferred and does not become raw merely because its definition is ultimately numeric.",
+        "Do not give an unknown number a confident semantic name solely to pass the gate."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/REL/mdbankdll/application_eeb8.c",
+        "src/REL/miraclebookdll/application_7998.c",
+        "tools/recovery_core.py"
+      ]
     }
   ]
 }
