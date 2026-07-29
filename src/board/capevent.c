@@ -773,7 +773,7 @@ typedef char CAPWORK_SIZE_ASSERT[(sizeof(CAPWORK) == 0xBF4) ? 1 : -1];
 typedef struct EvCapsuleData {
     void (*main)(void);
     void (*unk04)(void);
-    int unk08;
+    void (*unk08)(CAPWORK *);
     int unk0C;
     int unk10;
     int bgDataNum;
@@ -894,53 +894,84 @@ void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C,
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
 void mbev_CapMoveMasuSet(int playerNo, int masuId);
 void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
+BOOL mbev_CapStatusDispCheck(int playerNo);
+void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF);
 
 int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
 {
     CAPWORK work;
-    s16 masuId;
+    int masuId;
     int targetPlayerNo;
-    int capsuleNo;
     int cameraView;
-    void (*event)(CAPWORK *);
+    BOOL moveNumDispF = FALSE;
 
-    if (playerNo < 0 || playerNo >= GW_PLAYER_MAX) {
-        return FALSE;
-    }
     masuId = GwPlayer[playerNo].masuId;
-    if (!moveF) {
-        if (!stopF) {
-            if (playerNo == capsuleEventPrevPlayer
-                && masuId == capsuleEventPrevMasu) {
-                capsuleEventPrevMasu = capsuleEventPrevPlayer = -1;
-                return FALSE;
-            }
-            capsuleEventPrevMasu = capsuleEventPrevPlayer = -1;
-        } else {
-            if (playerNo == capsuleEventPlayer && masuId == capsuleEventMasu) {
-                capsuleEventMasu = capsuleEventPlayer = -1;
-                return FALSE;
-            }
-            capsuleEventMasu = capsuleEventPlayer = -1;
-            if (playerNo == capsulePlayer && masuId == capsuleMasuId) {
-                capsuleValue = (capsuleMasuPlayer << 8) | capsuleMasuType;
-            }
-            capsuleMasuType = capsuleMasuId = capsulePlayer = capsuleMasuPlayer = -1;
-        }
-        if (mbMasuTypeGet(masuId) != 1 && mbMasuTypeGet(masuId) != 2) {
+    if (moveF) {
+        targetPlayerNo = mbCapValuePlayerGet((s16)capsuleValue);
+        capsuleValue = mbCapValueTypeGet((s16)capsuleValue);
+        if (!mbCapValidCheck(capsuleValue)) {
             return FALSE;
         }
-        capsuleValue = mbMasuCapsuleGet(masuId);
-    }
-    targetPlayerNo = mbCapValuePlayerGet((s16)capsuleValue);
-    capsuleNo = mbCapValueTypeGet((s16)capsuleValue);
-    if (!mbCapValidCheck(capsuleNo)) {
-        return FALSE;
-    }
-    if (!moveF) {
-        if ((!stopF && mbCapUseModeGet(capsuleNo) == 2)
-            || (stopF && mbCapUseModeGet(capsuleNo) != 2)) {
+    } else if (stopF) {
+        if (playerNo == capsuleEventPlayer
+            && capsuleEventMasu == GwPlayer[playerNo].masuId) {
+            capsuleEventMasu = -1;
+            capsuleEventPlayer = -1;
             return FALSE;
+        }
+        capsuleEventMasu = -1;
+        capsuleEventPlayer = -1;
+        if (playerNo == capsulePlayer
+            && capsuleMasuId == GwPlayer[playerNo].masuId) {
+            capsuleValue = (capsuleMasuPlayer << 8) | capsuleMasuType;
+        }
+        capsuleMasuType = -1;
+        capsuleMasuId = -1;
+        capsulePlayer = -1;
+        capsuleMasuPlayer = -1;
+        if (mbMasuTypeGet((s16)masuId) != 1
+            && mbMasuTypeGet((s16)masuId) != 2) {
+            return FALSE;
+        }
+        targetPlayerNo = mbCapValuePlayerGet((s16)capsuleValue);
+        capsuleValue = mbCapValueTypeGet((s16)capsuleValue);
+        if (playerNo < 0 || playerNo >= GW_PLAYER_MAX
+            || !mbCapValidCheck(capsuleValue)) {
+            return FALSE;
+        }
+        if (mbCapUseModeGet(capsuleValue) != 2) {
+            return FALSE;
+        }
+        if (mbev_CapPlayerCheck(targetPlayerNo, playerNo)) {
+            return TRUE;
+        }
+    } else {
+        if (playerNo == capsuleEventPrevPlayer
+            && capsuleEventPrevMasu == GwPlayer[playerNo].masuId) {
+            capsuleEventPrevMasu = -1;
+            capsuleEventPrevPlayer = -1;
+            return FALSE;
+        }
+        capsuleEventPrevMasu = -1;
+        capsuleEventPrevPlayer = -1;
+        if (mbMasuTypeGet((s16)masuId) != 1
+            && mbMasuTypeGet((s16)masuId) != 2) {
+            return FALSE;
+        }
+        targetPlayerNo = mbCapValuePlayerGet((s16)capsuleValue);
+        capsuleValue = mbCapValueTypeGet((s16)capsuleValue);
+        if (playerNo < 0 || playerNo >= GW_PLAYER_MAX
+            || !mbCapValidCheck(capsuleValue)) {
+            return FALSE;
+        }
+        if (mbCapUseModeGet(capsuleValue) == 2) {
+            return FALSE;
+        }
+        if (!moveF && !stopF && mbCapValidCheck(capsuleValue)) {
+            GwPlayer[playerNo].capsuleMasuNum++;
+            if (GwPlayer[playerNo].capsuleMasuNum > 99) {
+                GwPlayer[playerNo].capsuleMasuNum = 99;
+            }
         }
         if (mbev_CapPlayerCheck(targetPlayerNo, playerNo)) {
             return TRUE;
@@ -950,36 +981,77 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
     omVibrate(playerNo, 20, 4, 4);
     memset(&work, 0, sizeof(CAPWORK));
     work.playerNo = playerNo;
-    work.targetPlayerNo = moveF ? -1 : targetPlayerNo;
-    work.capsuleNo = capsuleNo;
-    work.masuId = masuId;
-    work.masuIdNext = -1;
+    work.targetPlayerNo = -1;
+    work.capsuleNo = capsuleValue;
     work._unk14 = moveF;
-    work._unk18 = 0;
-    work._unk1C = stopF;
+    work._unk1C = 0;
+    work._unk18 = stopF;
+    work.masuId = GwPlayer[work.playerNo].masuId;
+    work.masuIdNext = -1;
+    if (!moveF) {
+        work.targetPlayerNo = targetPlayerNo;
+    }
+    memset(&work.flags, 0, sizeof(CAPWORKFLAG));
+    masuId = GwPlayer[work.playerNo].masuId;
     cameraView = mbCameraPlayerViewNoGet();
     mbAudFXPlay(1035);
     if (!moveF && !stopF) {
-        mbev_CapEffOpenCreate(playerNo, masuId, TRUE, TRUE, TRUE);
+        mbev_CapEffOpenCreate(work.playerNo, work.masuId, TRUE, TRUE, TRUE);
     }
-    event = (void (*)(CAPWORK *))ev_CapsuleData[capsuleNo].unk08;
-    if (event != NULL) {
+    if (ev_CapsuleData[capsuleValue].unk08 != NULL) {
         ev_CapWorkInit(&work.objWork, -1);
-        event(&work);
+        ev_CapsuleData[capsuleValue].unk08(&work);
         ev_CapWorkClose(&work.objWork);
     }
-    if (stopF && ev_CapsuleData[capsuleNo].unk18 != 0
-        && mbCapUseModeGet(capsuleNo) == 2) {
-        if ((capsuleNo == 22 || capsuleNo == 25)
-            && GwPlayer[playerNo].masuIdPrev < 2) {
+    if (stopF && ev_CapsuleData[work.capsuleNo].unk18 != 0
+        && mbCapUseModeGet(capsuleValue) == 2) {
+        if ((capsuleValue == 22 || capsuleValue == 25)
+            && GwPlayer[playerNo].moveNum <= 1) {
             mbev_CapMoveMasuSet(playerNo, GwPlayer[playerNo].masuId);
         }
         return TRUE;
     }
-    mbPlayerRotateStart(playerNo, 0, 15);
+    switch (ev_CapsuleData[work.capsuleNo].unk10) {
+        case 1:
+            mbCameraPlayerViewSet(work.playerNo, 0);
+            break;
+        case 2:
+            mbCameraPlayerViewSet(work.playerNo, 1);
+            break;
+    }
+    switch (ev_CapsuleData[work.capsuleNo].unk0C) {
+        case 0:
+            if (!mbev_CapStatusDispCheck(work.playerNo)) {
+                mbev_CapStatusDispSetAll(FALSE, TRUE);
+                mbStatusDispFocusSet(work.playerNo, TRUE);
+                while (!mbStatusMoveCheck(work.playerNo)) {
+                    HuPrcVSleep();
+                }
+            }
+            break;
+        case 1:
+            mbev_CapStatusDispSetAll(TRUE, FALSE);
+            break;
+        case 2:
+            mbev_CapStatusDispSetAll(FALSE, FALSE);
+            break;
+    }
+    mbPlayerRotateStart(work.playerNo, 0, 15);
     ev_CapCall(&work, TRUE);
+    if (moveNumDispF) {
+        mbMoveNumDispSet(work.playerNo, TRUE);
+    }
     mbev_CapStatusDispSetAll(TRUE, TRUE);
-    mbCameraPlayerViewSet(playerNo, cameraView);
+    if (!stopF) {
+        mbev_CapCameraViewSet(work.playerNo, cameraView, stopF);
+    } else if (GwPlayer[work.playerNo].moveNum > 1) {
+        mbCameraPlayerViewSet(work.playerNo, 2);
+    } else {
+        mbCameraPlayerViewSet(work.playerNo, 0);
+    }
+    if (masuId != GwPlayer[work.playerNo].masuId || work.flags._flag00) {
+        return FALSE;
+    }
     return FALSE;
 }
 
@@ -1693,6 +1765,7 @@ void mbev_CapRandomBonusCoin(int playerNo, int capsuleNo, BOOL waitF)
 void mbev_CapBonusCoinCall(int playerNo, int capsuleNo, int coinNum,
     BOOL waitF)
 {
+    int unk = 0;
     int coinNumWork = 0;
     BOOL partyF = GwSystem.partyF;
 
