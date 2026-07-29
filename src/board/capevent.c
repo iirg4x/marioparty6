@@ -4830,6 +4830,8 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
     CAPEFFRINGPARTICLEWORK *particleP;
     HU3D_MODEL *modelP;
     float weight;
+    float easedIn;
+    float easedOut;
     int i;
     int j;
 
@@ -4855,41 +4857,40 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
             Hu3DModelAttrReset(workP->modelId[i], 1);
             modelP = &Hu3DData[workP->modelId[i]];
             particleSystemP = modelP->hookData;
-            particleSystemP->_unk20 = 0;
             particleP = particleSystemP->data;
+            particleSystemP->_unk21[2] = 0;
             for (j = 0; j < particleSystemP->num; j++, particleP++) {
-                if (particleP->_unk40 > 0.0f) {
-                    if (particleP->_unk00 == 1) {
-                        particleP->_unk02++;
-                        weight = mbSinDeg(90.0f
-                            * ((float)particleP->_unk02
-                                / particleP->_unk18));
-                        particleP->_unk40 = particleP->_unk08.z
-                            * (1.0f + (weight
-                                * (particleP->_unk08.y - 1.0f)));
-                        particleP->color.a = particleP->_unk1C
-                            * (1.0f - weight);
-                        if (weight >= 1.0f) {
-                            particleP->_unk40 = 0.0f;
-                            workP->dispF--;
-                        }
-                    } else if (particleP->_unk00 >= 0) {
-                        particleP->_unk02++;
-                        weight = mbSinDeg(90.0f
-                            * ((float)particleP->_unk02
-                                / particleP->_unk14));
-                        particleP->_unk40 = particleP->_unk08.z
-                            * (particleP->_unk08.x
-                                + (weight * (1.0f
-                                    - particleP->_unk08.x)));
-                        particleP->color.a = particleP->_unk1C * weight;
-                        if (weight >= 1.0f) {
-                            particleP->_unk40 = particleP->_unk08.z;
-                            particleP->color.a = particleP->_unk1C;
-                            particleP->_unk00++;
-                            particleP->_unk02 = 0;
-                        }
+                if (particleP->_unk40 <= 0.0f) {
+                    continue;
+                }
+                switch (particleP->_unk00) {
+                case 0:
+                    weight = (float)++particleP->_unk02 / particleP->_unk14;
+                    easedIn = mbSinDeg(90.0f * weight);
+                    weight = easedIn;
+                    particleP->_unk40 = particleP->_unk08.z
+                        * (particleP->_unk08.x
+                            + weight * (1.0f - particleP->_unk08.x));
+                    particleP->color.a = particleP->_unk1C * weight;
+                    if (weight >= 1.0f) {
+                        particleP->_unk40 = particleP->_unk08.z;
+                        particleP->color.a = particleP->_unk1C;
+                        particleP->_unk00++;
+                        particleP->_unk02 = 0;
                     }
+                    break;
+                case 1:
+                    weight = (float)++particleP->_unk02 / particleP->_unk18;
+                    easedOut = mbSinDeg(90.0f * weight);
+                    weight = easedOut;
+                    particleP->_unk40 = particleP->_unk08.z
+                        * (1.0f + weight * (particleP->_unk08.y - 1.0f));
+                    particleP->color.a = particleP->_unk1C * (1.0f - weight);
+                    if (weight >= 1.0f) {
+                        particleP->_unk40 = 0.0f;
+                        workP->dispF--;
+                    }
+                    break;
                 }
             }
         }
