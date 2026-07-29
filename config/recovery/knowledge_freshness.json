@@ -698,7 +698,7 @@
     },
     "mwcc-cross-tu-extraction-requires-inline-consumer-closure": {
       "status": "active",
-      "validated_commit": "ec9745aff83cca33f36d12455128dda3df769d7b",
+      "validated_commit": "6d940e7827c94444630d39d15059ea5335d41143",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -714,7 +714,10 @@
         "src/REL/miraclebookdll/miraclebook.c",
         "src/REL/miraclebookdll/application_pass1.c",
         "src/REL/miraclebookdll/application_pass1_5904.c",
-        "config/dll/rels/miraclebookdll/splits.txt"
+        "config/dll/rels/miraclebookdll/splits.txt",
+        "src/REL/endingdll/ending.c",
+        "src/REL/endingdll/ending_pass3_motion.c",
+        "config/dll/rels/endingdll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
