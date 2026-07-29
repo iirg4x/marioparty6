@@ -1778,7 +1778,7 @@
       "title": "Triangulate a missing inline owner from complete sibling retail chronology",
       "classification": "contextual_heuristic",
       "category": "evidence_provenance",
-      "compiler": "GC/2.7",
+      "compiler": "GC/2.6 and GC/2.7",
       "confidence": "high",
       "summary": "When a historical inline header is absent, a complete byte-identical function cluster plus the same literal prefix and chronology in multiple same-game retail RELs can authenticate shared ownership more strongly than a value-only match.",
       "conditions": "Use only when no surviving same-game source/header authenticates the owner and at least two independent retail modules provide complete code, size-sequence, literal-prefix, and chronology agreement.",
@@ -2874,10 +2874,10 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.7",
       "confidence": "high",
-      "summary": "A bounded diagnostic for a function whose instructions are all correct but whose r1 displacements are wrong. Locals are slotted in declaration order, descending, with compiler temporaries interleaved at their point of use. An inline expansion instead allocates the inlinee's locals ascending from the bottom of the frame, below everything the caller allocates, so a group of target locals sitting underneath the compiler temporaries indicates a static inline helper - that direction is carried from the campaign, not measured here. What is measured here: declaration order inside the helper is load-bearing when the declarations are independent, a helper must be defined above its caller to be auto-expanded at all, and passing a caller value by pointer is cheaper than by value.",
+      "summary": "A bounded diagnostic for a function whose instructions are all correct but whose r1 displacements are wrong. Locals are slotted in declaration order, descending, with compiler temporaries interleaved at their point of use. An inline expansion instead allocates the inlinee's locals or return temporary from the bottom of the caller frame. GC/2.6 now confirms the return-value boundary directly: a visible zero-argument scalar getter creates the target low-frame store/load temporary, while assigning that getter directly to the final destination avoids the extra caller-local store/load bridge. Declaration order inside a helper remains load-bearing when declarations are independent, and the helper must be defined above its caller for automatic expansion.",
       "conditions": "Apply only when structural insert/delete differences are already zero and every remaining difference is a stack-slot number or an inlinee register assignment.",
       "source_condition": {
-        "change": "Extract repeated code into a static inline helper, reorder an inline helper's locals, or change how a caller value reaches the inlinee.",
+        "change": "Extract repeated code into a static inline helper, reorder an inline helper's locals, change how a caller value reaches the inlinee, or replace a caller intermediate with a direct assignment from a visible scalar getter.",
         "requires": [
           "structural differences already driven to zero",
           "every r1 displacement dumped from both instruction streams and diffed",
@@ -2890,53 +2890,63 @@
           "a whole group of stack slots moving together to the bottom of the frame",
           "changed register or slot assignment inside the expansion from reordering the helper's locals",
           "extra stores at expansion entry, and a shifted frame, when a value is passed by value",
-          "a two-level local group when one helper's call is nested inside another"
+          "a two-level local group when one helper's call is nested inside another",
+          "one low-frame store/load return temporary per expanded scalar getter, without a caller-local copy bridge when the result is assigned directly"
         ],
         "known_signatures": [
           "probes p6d/p6e differ only in the declaration order of the helper's two INDEPENDENT locals: .text 152 bytes on both sides but three allocation fields differ, f28 and f29 exchanged (fmuls f28,f31,f30 -> f29,f31,f30; fadds f29,f0,f30 -> f28,f0,f30; fmuls f27,f28,f29 -> f27,f29,f28)",
           "probes p6a/p6b are the boundary case: when the helper's second local DEPENDS on the first, exchanging the declarations is byte-identical at 140 bytes, so this lever only bites on independent declarations",
           "probes p6a/p6c: by-pointer 140 bytes against by-value-plus-out-pointer 164 bytes; p6c also adds a term, so 24 bytes is an upper bound on the by-value cost rather than an isolated measurement",
           "probes p8a/p8b: a helper defined above the caller is auto-expanded (.text 148) while the same helper defined below behind a prototype is called (.text 112), and .rodata order reverses with it",
-          "CAMPAIGN, NOT REPRODUCIBLE HERE (branch codex/w01dll-match 7d0876c9 is unpushed; needs a full build): w01Dll fn_1_13CC stalled at struct=0 with 46 differences that were all stack-slot numbers, the target holding inner-loop locals at 0x008-0x018 and inlined-sqrtf temporaries at 0x068/0x06c while ours was inverted; extracting two numeric helpers, one nested inside the other, moved all 30 float slots into agreement at once. Treat as unverified."
+          "CAMPAIGN, NOT REPRODUCIBLE HERE (branch codex/w01dll-match 7d0876c9 is unpushed; needs a full build): w01Dll fn_1_13CC stalled at struct=0 with 46 differences that were all stack-slot numbers, the target holding inner-loop locals at 0x008-0x018 and inlined-sqrtf temporaries at 0x068/0x06c while ours was inverted; extracting two numeric helpers, one nested inside the other, moved all 30 float slots into agreement at once. Treat as unverified.",
+          "GC/2.6 main:board/telop mbTelopTimeChangeCreate: direct scalar locals were exact-sized at 2432 bytes but left 137 argument/slot differences; two visible zero-argument getters plus direct destination assignment produced the target low-frame slots and a strict 2432/2432-byte, zero-difference function. Keeping caller intermediates with the same getters instead emitted 2448 bytes and four inserted bridge instructions."
         ]
       },
-      "rule": "Once structural differences are zero and only slot numbers remain, reach for a static inline helper rather than a nested block, define it above its caller so -inline auto can expand it, pass caller-frame values by pointer, and treat the helper's declaration order as part of its identity when its locals are independent. Two such helpers differing only in declaration order are different functions and must not be merged.",
+      "rule": "Once structural differences are zero and only slot numbers remain, reach for a static inline helper rather than a nested block and define it above its caller so -inline auto can expand it. If the target shows a field load followed by a low-frame store/load before the final assignment or arithmetic, test a zero-argument scalar getter and assign its result directly; do not preserve a caller intermediate that adds a second store/load bridge. Pass caller-frame values by pointer for multi-output helpers, and treat independent declaration order as part of the helper's identity.",
       "safe_actions": [
         "dump and diff every r1 displacement from both streams before editing",
         "extract repeats as static inline helpers taking parameters rather than copying arguments into locals",
         "nest one helper call inside another to reproduce a two-level local group",
-        "pass a value the caller must keep by pointer, which MWCC folds into an r1 displacement at no instruction cost"
+        "pass a value the caller must keep by pointer, which MWCC folds into an r1 displacement at no instruction cost",
+        "for a single scalar result, compare direct assignment from a visible getter against exactly one caller-intermediate control"
       ],
       "applicability": {
         "compiler_wide": false,
         "project_wide": false,
         "owners": [],
-        "stable_ids": [],
+        "stable_ids": [
+          "mbTelopTimeChangeCreate"
+        ],
         "modules": [
+          "main",
           "w01Dll",
           "s01Dll"
         ],
         "owner_tags": [
           "frame_layout",
           "inline_expansion",
-          "control_flow_and_lifetime"
+          "control_flow_and_lifetime",
+          "board"
         ]
       },
       "examples": [
         "probes p6d/p6e: exchanging two independent declarations inside the helper moves three allocation fields at identical size, so the helper's declaration order is part of its identity",
         "probes p8a/p8b: the same helper is expanded or called purely on whether its definition precedes the caller",
-        "CAMPAIGN, NOT REPRODUCIBLE HERE: w01Dll fn_1_13CC closed on this lever after 361 declaration-order permutations and 719 inner-block permutations had failed, and passing one value by pointer put it at frame offset 0xa8 with two other locals pushed down. Treat as unverified."
+        "CAMPAIGN, NOT REPRODUCIBLE HERE: w01Dll fn_1_13CC closed on this lever after 361 declaration-order permutations and 719 inner-block permutations had failed, and passing one value by pointer put it at frame offset 0xa8 with two other locals pushed down. Treat as unverified.",
+        "main:board/telop mbTelopTimeChangeCreate uses two visible scalar getters assigned directly to starNum and the subtraction expression; their expanded return temporaries land at r1+0x24 and r1+0x20 and the function is strict-exact at 2432 bytes."
       ],
       "counterexamples": [
         "The lever does not always bite: probes p6a/p6b exchange the helper's two declarations and emit byte-identical code, because the second local depends on the first. Only INDEPENDENT declarations reorder the allocation, so a null result here does not refute the inline hypothesis.",
         "Defining the helper below its caller silently removes the lever entirely - it is then a real call, not an expansion (probes p8a/p8b). Check visibility before concluding the helper shape is wrong.",
         "Passing the value by value instead of by pointer adds work at expansion entry and shifts the frame (probes p6a/p6c, 140 against 164 bytes).",
+        "For scalar getters, assigning through a caller intermediate is not neutral: the mbTelopTimeChangeCreate control grew from the target 2432 bytes to 2448 bytes by adding a second store/load bridge for each getter result.",
         "CAMPAIGN, NOT REPRODUCIBLE HERE: plain nested blocks were reported unable to produce the layout - a nested block's locals continue the enclosing block's descending run - and nesting made w01Dll worse in every ordering tried (46 -> 49..81). Treat as unverified.",
         "The ascending-from-frame-bottom direction is carried from the w01Dll campaign and was not re-measured in the small probes here, where the inlinee's locals were enregistered rather than stack-homed."
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/w01dll_rodata_emission_model_evidence.md"
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "src/board/telop.c"
       ]
     },
     {
