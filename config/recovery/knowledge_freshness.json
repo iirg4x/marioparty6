@@ -150,6 +150,11 @@
         "src/REL/mdsingdll/mdsing_tail23.c",
         "src/REL/mdsingdll/mdsing_tail24.c",
         "src/REL/mdsingdll/mdsing_tail25.c",
+        "src/REL/mdsingdll/application_pass30_1a9c.c",
+        "src/REL/mdsingdll/application_pass30_279c.c",
+        "src/REL/mdsingdll/application_pass30_3484.c",
+        "src/REL/mdsingdll/application_pass30_3b30.c",
+        "src/REL/mdsingdll/application_pass30_3db4.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ],
@@ -497,7 +502,8 @@
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
-        "docs/native_matching_commutative_fmuls_negative.md"
+        "docs/native_matching_commutative_fmuls_negative.md",
+        "src/REL/mdsingdll/mdsing.c"
       ],
       "supersedes": [],
       "superseded_by": null
