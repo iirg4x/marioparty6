@@ -13,6 +13,11 @@ typedef struct MiracleBookCameraView {
 
 #define HU3D_PARMAN_ATTR_TIMEUP (1 << 0)
 
+enum MiracleBookSequenceSound {
+    MIRACLE_BOOK_SFX_STATE_ADVANCE = 1163,
+    MIRACLE_BOOK_SFX_THRESHOLD_EFFECT = 1164,
+};
+
 double sin(double value);
 int HuAudFXPlay(int soundId);
 void Hu3DModelPosSet(HU3D_MODELID modelId, float x, float y, float z);
@@ -157,7 +162,7 @@ void fn_1_7998(void)
             lbl_1_bss_78.x = lbl_1_bss_78.y = lbl_1_bss_78.z =
                 lbl_1_rodata_30;
             lbl_1_bss_88 = lbl_1_rodata_C0;
-            HuAudFXPlay(0x48B);
+            HuAudFXPlay(MIRACLE_BOOK_SFX_STATE_ADVANCE);
             break;
 
         case 1:
@@ -259,7 +264,7 @@ void fn_1_7998(void)
             if (lbl_1_rodata_250 == lbl_1_bss_78.x) {
                 pos = lbl_1_rodata_200;
                 fn_1_9130(0, &pos);
-                HuAudFXPlay(0x48C);
+                HuAudFXPlay(MIRACLE_BOOK_SFX_THRESHOLD_EFFECT);
             }
             if (lbl_1_rodata_90 == lbl_1_bss_78.x) {
                 lbl_1_bss_1A4.zoom = lbl_1_rodata_54;
