@@ -1664,7 +1664,8 @@
         "GC/1.3.2 mdsing pass20: eight exact-text candidates rejected because broad public headers emitted a 16-byte weak sqrtf block",
         "GC/1.3.2 mdbank pass3: dolphin/mtx/GeoTypes.h preserved exact fn_1_2CD8 text and relocations while removing the broad-header 16-byte block and restoring the retail REL",
         "GC/2.6 ending pass1: the authenticated game/hu3d.h closure emitted the exact 16-byte module prefix beside 9/9 exact owner functions without an explicit sqrtf call; the complete endingdll REL remained byte-identical to retail",
-        "GC/1.3.2 MiracleBook pass1: the first generated owner retained the exact target 16-byte prefix, a later owner emitted the compatible targetless weak pair, and the linker discarded the later copy while preserving 10/10 exact functions and the retail-identical REL"
+        "GC/1.3.2 MiracleBook pass1: the first generated owner retained the exact target 16-byte prefix, a later owner emitted the compatible targetless weak pair, and the linker discarded the later copy while preserving 10/10 exact functions and the retail-identical REL",
+        "GC/1.3.2 MiracleBook pass3: moving the retained 16-byte sqrtf prefix from the former 0x2FCC owner to the newly bound earliest 0x0 prefix owner preserved all seven downstream generated consumers and the retail-identical REL, confirming that sequential first-copy ownership follows final link order"
       ],
       "counterexamples": [
         "Ordinary unused inline literals emitted nothing under the same profile.",
@@ -1682,6 +1683,7 @@
         "config/dll/rels/endingdll/splits.txt",
         "src/REL/miraclebookdll/application_pass1.c",
         "src/REL/miraclebookdll/application_pass1_5904.c",
+        "src/REL/miraclebookdll/application_pass3_0000.c",
         "config/dll/rels/miraclebookdll/splits.txt"
       ]
     },
@@ -3431,7 +3433,8 @@
         "Pass50 bound fn_1_A85C..fn_1_B454 as 10/10 functions, 3252 bytes, and 161/161 relocations exact with no source rodata. Its sole internal function-address edge remained link-only; retained source, earlier owners, protected consumers, pool prefix, and retail REL stayed exact.",
         "Pass51 bound the zero-incoming-edge island fn_1_C9A0..fn_1_D40C as 9/9 functions, 2796 bytes, and 190/190 relocations exact on the first natural-C compile. All nine outbound local calls had prototype-only visibility to later or unbound definitions, and all retained source, five generated owners, protected consumers, pool prefix, and retail REL stayed exact.",
         "MiracleBook pass1 rejected the otherwise exact 0x7158 island because isolated fn_1_7998 shrank from the 4212-byte target to 2928 bytes after losing earlier-TU fn_1_427C auto-inline visibility; two dependency-closed 5-function islands were bound instead for 7504 exact text bytes and a retail-identical REL.",
-        "Ending pass3 isolated fn_1_2034 at 448 bytes instead of the 468-byte target after losing earlier-TU fn_1_0 auto-inline visibility. The target-proven motion==4/lbl_1_bss_26 guard and HuAudFXPlay body were expressed directly as natural C, restoring exact text and relocations while all 11 owner functions, callbacks, prior owners, runtime, and the retail REL stayed exact."
+        "Ending pass3 isolated fn_1_2034 at 448 bytes instead of the 468-byte target after losing earlier-TU fn_1_0 auto-inline visibility. The target-proven motion==4/lbl_1_bss_26 guard and HuAudFXPlay body were expressed directly as natural C, restoring exact text and relocations while all 11 owner functions, callbacks, prior owners, runtime, and the retail REL stayed exact.",
+        "MiracleBook pass3 bound the earliest 0x0..0xA30 prefix and the 0x4E94..0x4FD4 island as 10/10 functions, 2928 text bytes, and 420/420 relocation rows. Every outbound later call was prototype-only, the internal chain retained original declaration order, all seven prior generated consumers remained 41/41 exact, and the linked REL remained retail-identical."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
@@ -3451,6 +3454,8 @@
         "src/REL/miraclebookdll/miraclebook.c",
         "src/REL/miraclebookdll/application_pass1.c",
         "src/REL/miraclebookdll/application_pass1_5904.c",
+        "src/REL/miraclebookdll/application_pass3_0000.c",
+        "src/REL/miraclebookdll/application_pass3_4e94.c",
         "config/dll/rels/miraclebookdll/splits.txt",
         "src/REL/endingdll/ending.c",
         "src/REL/endingdll/ending_pass3_motion.c",
