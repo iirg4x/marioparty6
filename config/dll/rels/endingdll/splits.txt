@@ -19,6 +19,33 @@ REL/endingdll/ending_pass1.c:
 	.text       start:0x000039AC end:0x000045C0
 	.rodata     start:0x00000000 end:0x00000010
 
+REL/endingdll/ending_pass4_lifecycle_4ab4.c:
+	.text       start:0x00004AB4 end:0x00004BC8
+
+REL/endingdll/ending_pass4_lifecycle_4dac.c:
+	.text       start:0x00004DAC end:0x00004E5C
+
+REL/endingdll/ending_pass4_lifecycle_6ec4.c:
+	.text       start:0x00006EC4 end:0x0000702C
+
+REL/endingdll/ending_pass4_lifecycle_951c.c:
+	.text       start:0x0000951C end:0x000095C0
+
+REL/endingdll/ending_pass4_lifecycle_a58c.c:
+	.text       start:0x0000A58C end:0x0000A6D8
+
+REL/endingdll/ending_pass4_lifecycle_b244.c:
+	.text       start:0x0000B244 end:0x0000B568
+
+REL/endingdll/ending_pass4_lifecycle_bb10.c:
+	.text       start:0x0000BB10 end:0x0000BE30
+
+REL/endingdll/ending_pass4_lifecycle_d028.c:
+	.text       start:0x0000D028 end:0x0000D104
+
+REL/endingdll/ending_pass4_lifecycle_12838.c:
+	.text       start:0x00012838 end:0x00012988
+
 REL/endingdll/runtime.c:
 	.text       start:0x00012CE4 end:0x00013728
 	.rodata     start:0x000003B8 end:0x000003D0
