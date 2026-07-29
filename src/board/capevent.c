@@ -5065,93 +5065,138 @@ OMOBJ *mbev_CapEffElectricCreate(void)
 
 static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
 {
+    CAPEFFPARTICLESYSTEMWORK *workP;
+    CAPEFFGLOWPARTICLEWORK *particleP;
+    s16 i;
+    HuVec2f *st;
+    HU3D_MODEL *modelP;
+    HuVecF *vtx;
     s16 modelId;
-    HU3D_MODEL *model;
-    CAPEFFPARTICLESYSTEMWORK *work;
-    CAPEFFGLOWPARTICLEWORK *particle;
-    HuVecF *vertex;
-    HuVec2f *texCoord;
-    void *displayListBuffer;
-    int i;
-    int j;
+    void *dlBuf;
+    void *dlBegin;
+    u32 workHeap;
+    u32 particleHeap;
+    u32 vertexHeap;
+    u32 stHeap;
+    u32 dlBufHeap;
+    int dlSizeData;
+    u32 dlDataHeap;
+    void *workData;
+    void *workBase;
+    void *particleData;
+    void *particleBase;
+    void *vertexData;
+    void *vertexBase;
+    void *stData;
+    void *stBase;
+    void *dlBufData;
+    void *dlBufBase;
+    void *dlData;
+    void *dlBase;
 
     modelId = Hu3DHookFuncCreate(ev_CapEffDraw);
-    Hu3DModelCameraSet(modelId, 1);
-    model = &Hu3DData[modelId];
-    work = HuMemDirectMallocNum(HEAP_MODEL, sizeof(CAPEFFPARTICLESYSTEMWORK),
-        model->mallocNo);
-    model->hookData = work;
-    work->animP = animP;
+    Hu3DModelCameraSet(modelId, HU3D_CAM0);
+    modelP = &Hu3DData[modelId];
+    workHeap = modelP->mallocNo;
+    workData = HuMemDirectMallocNum(HEAP_MODEL,
+        sizeof(CAPEFFPARTICLESYSTEMWORK), workHeap);
+    workBase = workData;
+    modelP->hookData = workP = workBase;
+    workP->animP = animP;
     HuSprAnimLock(animP);
-    work->num = max;
-    work->dispAttr = 0;
-    work->blendMode = 0;
-    work->_unk4C = 0;
-    work->_unk5C = 0;
-    work->_unk28 = 0;
-    work->_unk21 = 0;
-    work->_unk23[0] = 0;
-    work->_unk30 = 0;
-    work->phase = 0;
-    work->mode = 0;
-    work->grid = NULL;
-    work->_unk54 = 0;
-    work->gridNum = 16;
+    workP->num = max;
+    workP->dispAttr = 0;
+    workP->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
+    workP->_unk4C = 0;
+    workP->_unk5C = 0;
+    workP->_unk28 = 0;
+    workP->_unk21 = 0;
+    workP->_unk23[0] = 0;
+    workP->_unk30 = 0;
+    workP->mode = workP->phase = 0;
+    workP->grid = NULL;
+    workP->_unk54 = 0;
+    workP->gridNum = 16;
 
-    work->data = particle = HuMemDirectMallocNum(HEAP_MODEL,
-        max * sizeof(CAPEFFGLOWPARTICLEWORK), model->mallocNo);
-    memset(particle, 0, max * sizeof(CAPEFFGLOWPARTICLEWORK));
-    for (i = 0; i < max; i++, particle++) {
-        particle->active = 0.0f;
-        particle->sizeX = 1.0f;
-        particle->sizeY = 1.0f;
-        particle->rotX = 0.0f;
-        particle->rotY = 0.0f;
-        particle->angle = 0.0f;
-        particle->alpha = 0.0f;
-        particle->alphaMax = 1.0f;
-        particle->pos.x = 0.0f;
-        particle->pos.y = 0.0f;
-        particle->pos.z = 0.0f;
-        particle->color.r = 255;
-        particle->color.g = 255;
-        particle->color.b = 255;
-        particle->color.a = 255;
-        particle->pat = 0;
+    particleHeap = modelP->mallocNo;
+    particleData = HuMemDirectMallocNum(HEAP_MODEL,
+        max * sizeof(CAPEFFGLOWPARTICLEWORK), particleHeap);
+    particleBase = particleData;
+    workP->data = particleP = particleBase;
+    memset(particleP, 0, max * sizeof(CAPEFFGLOWPARTICLEWORK));
+    for (i = 0; i < max; i++, particleP++) {
+        particleP->active = 0.0f;
+        particleP->sizeX = particleP->sizeY = 1.0f;
+        particleP->rotX = particleP->rotY = particleP->angle = 0.0f;
+        particleP->alpha = 0.0f;
+        particleP->alphaMax = 1.0f;
+        particleP->pos.x = 0.0f;
+        particleP->pos.y = 0.0f;
+        particleP->pos.z = 0.0f;
+        particleP->color.r = particleP->color.g = particleP->color.b =
+            particleP->color.a = 255;
+        particleP->pat = 0;
     }
-    work->vertices = vertex = HuMemDirectMallocNum(HEAP_MODEL,
-        max * 4 * sizeof(HuVecF), model->mallocNo);
-    for (i = 0; i < max * 4; i++, vertex++) {
-        vertex->x = vertex->y = vertex->z = 0.0f;
+    vertexHeap = modelP->mallocNo;
+    vertexData = HuMemDirectMallocNum(HEAP_MODEL,
+        max * sizeof(HuVecF) * 4, vertexHeap);
+    vertexBase = vertexData;
+    workP->vertices = vtx = vertexBase;
+    for (i = 0; i < max * 4; i++, vtx++) {
+        vtx->x = vtx->y = vtx->z = 0.0f;
     }
-    work->texCoords = texCoord = HuMemDirectMallocNum(HEAP_MODEL,
-        max * 4 * sizeof(HuVec2f), model->mallocNo);
+    stHeap = modelP->mallocNo;
+    stData = HuMemDirectMallocNum(HEAP_MODEL,
+        max * sizeof(HuVec2f) * 4, stHeap);
+    stBase = stData;
+    workP->texCoords = st = stBase;
     for (i = 0; i < max; i++) {
-        for (j = 0; j < 4; j++, texCoord++) {
-            texCoord->x = baseST2[j * 2];
-            texCoord->y = baseST2[j * 2 + 1];
-        }
+        st->x = 0.0f;
+        st->y = 0.0f;
+        st++;
+        st->x = 1.0f;
+        st->y = 0.0f;
+        st++;
+        st->x = 1.0f;
+        st->y = 1.0f;
+        st++;
+        st->x = 0.0f;
+        st->y = 1.0f;
+        st++;
     }
 
-    displayListBuffer = HuMemDirectMallocNum(HEAP_MODEL,
-        CAPEVENT_DISPLAY_LIST_SIZE,
-        model->mallocNo);
-    DCFlushRange(displayListBuffer, CAPEVENT_DISPLAY_LIST_SIZE);
-    GXBeginDisplayList(displayListBuffer, CAPEVENT_DISPLAY_LIST_SIZE);
+    dlBufHeap = modelP->mallocNo;
+    dlBufData = HuMemDirectMallocNum(HEAP_MODEL,
+        CAPEVENT_DISPLAY_LIST_SIZE, dlBufHeap);
+    dlBufBase = dlBufData;
+    dlBegin = dlBuf = dlBufBase;
+    DCFlushRange(dlBuf, CAPEVENT_DISPLAY_LIST_SIZE);
+    GXBeginDisplayList(dlBegin, CAPEVENT_DISPLAY_LIST_SIZE);
     GXBegin(GX_QUADS, GX_VTXFMT0, max * 4);
     for (i = 0; i < max; i++) {
-        for (j = 0; j < 4; j++) {
-            GXPosition1x16(i * 4 + j);
-            GXColor1x16(i);
-            GXTexCoord1x16(i * 4 + j);
-        }
+        GXPosition1x16(i * 4);
+        GXColor1x16(i);
+        GXTexCoord1x16(i * 4);
+        GXPosition1x16((i * 4) + 1);
+        GXColor1x16(i);
+        GXTexCoord1x16((i * 4) + 1);
+        GXPosition1x16((i * 4) + 2);
+        GXColor1x16(i);
+        GXTexCoord1x16((i * 4) + 2);
+        GXPosition1x16((i * 4) + 3);
+        GXColor1x16(i);
+        GXTexCoord1x16((i * 4) + 3);
     }
-    work->displayListSize = GXEndDisplayList();
-    work->displayList = HuMemDirectMallocNum(HEAP_MODEL,
-        work->displayListSize, model->mallocNo);
-    memcpy(work->displayList, displayListBuffer, work->displayListSize);
-    DCFlushRange(work->displayList, work->displayListSize);
-    HuMemDirectFree(displayListBuffer);
+    GXEnd();
+    workP->displayListSize = GXEndDisplayList();
+    dlDataHeap = modelP->mallocNo;
+    dlSizeData = workP->displayListSize;
+    dlData = HuMemDirectMallocNum(HEAP_MODEL, dlSizeData, dlDataHeap);
+    dlBase = dlData;
+    workP->displayList = dlBase;
+    memcpy(workP->displayList, dlBuf, workP->displayListSize);
+    DCFlushRange(workP->displayList, workP->displayListSize);
+    HuMemDirectFree(dlBuf);
     return modelId;
 }
 
