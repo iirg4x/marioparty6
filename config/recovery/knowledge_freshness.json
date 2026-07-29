@@ -3,8 +3,8 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "6cf45fe5f079383a8613f94b60ec6b0b9ccc11fe",
-      "validated_at": "2026-07-28",
+      "validated_commit": "6c2197ba8b60b9a31319c9fc53fed106f85ce109",
+      "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
@@ -305,7 +305,9 @@
         "configure.py",
         "docs/native_matching_s01_application.md",
         "src/REL/s01Dll/s01.c",
-        "config/dll/rels/s01Dll/splits.txt"
+        "config/dll/rels/s01Dll/splits.txt",
+        "src/REL/mdsingdll/mdsing_tail22.c",
+        "config/dll/rels/mdsingdll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -355,8 +357,8 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "6cf45fe5f079383a8613f94b60ec6b0b9ccc11fe",
-      "validated_at": "2026-07-28",
+      "validated_commit": "6c2197ba8b60b9a31319c9fc53fed106f85ce109",
+      "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
@@ -580,7 +582,8 @@
         "docs/native_matching_mdpresult_binding_pass46.md",
         "src/REL/mdpresultdll/mdpresult.c",
         "src/REL/mdpresultdll/application_2bf0.c",
-        "src/REL/mdpresultdll/application_16c4.c"
+        "src/REL/mdpresultdll/application_16c4.c",
+        "src/REL/mdpresultdll/application_pass49.c"
       ],
       "supersedes": [],
       "superseded_by": null
