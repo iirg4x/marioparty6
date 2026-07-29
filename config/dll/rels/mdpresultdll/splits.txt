@@ -21,11 +21,26 @@ REL/mdpresultdll/application_pass50.c:
 REL/mdpresultdll/application_pass51.c:
 	.text       start:0x0000C9A0 end:0x0000D48C
 
+REL/mdpresultdll/application_1109c.c:
+	.text       start:0x0001109C end:0x00011208
+
+REL/mdpresultdll/application_12c80.c:
+	.text       start:0x00012C80 end:0x00012D7C
+
+REL/mdpresultdll/application_17cf4.c:
+	.text       start:0x00017CF4 end:0x00017F78
+
 REL/mdpresultdll/application_pass52.c:
 	.text       start:0x0001AA10 end:0x0001B194
 
 REL/mdpresultdll/application_pass53.c:
 	.text       start:0x0001F7FC end:0x0001FC94
+
+REL/mdpresultdll/application_2001c.c:
+	.text       start:0x0002001C end:0x000204B0
+
+REL/mdpresultdll/application_22cbc.c:
+	.text       start:0x00022CBC end:0x00022E48
 
 REL/mdpresultdll/runtime.c:
 	.text       start:0x00026FA4 end:0x000279E8
