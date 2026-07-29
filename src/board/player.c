@@ -642,19 +642,20 @@ int mbPlayerDiceTypeGet(int diceNo)
 static BOOL DiceRun(int playerNo)
 {
     BOOL killerF = FALSE;
-    BOOL capsuleSkipF = FALSE;
     int capsuleNum;
+    BOOL capsuleSkipF = FALSE;
     int result;
+    int value;
 
     GwPlayer[playerNo].diceNum = 1;
+repeat:
     capsuleNum = mbPlayerCapsuleNumGet(playerNo);
-    if (!GwSystem.partyF) {
+    if (GWPartyGet() == FALSE) {
         capsuleNum = 1;
         if (GwSystem.turnNo <= 1) {
             capsuleNum = 0;
         }
     }
-repeat:
     if (GwPlayer[playerNo].capsuleUse == -1 && !capsuleSkipF &&
         capsuleNum != 0) {
         GwSystem.playerMode = 0;
@@ -669,11 +670,10 @@ repeat:
         }
         GwSystem.playerMode = 2;
         if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            int tutorialVal[3];
+            int tutorialVal[4];
+            int i;
             int diceType;
             int diceMax;
-            int value;
-            int i;
 
             diceType = mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode);
             diceMax = mbDiceMaxGet(diceType);
@@ -693,37 +693,37 @@ repeat:
             }
             mbTutorialCall(6);
         } else {
-            int tutorialVal = -1;
+            value = -1;
 
-            if (!GwSystem.partyF) {
-                tutorialVal = mbSingleCall(0, -1);
+            if (GWPartyGet() == FALSE) {
+                value = mbSingleCall(0, -1);
             } else if (GwPlayer[playerNo].comF &&
                 mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode) == 14) {
-                tutorialVal = mbMasuPKinokoValueGet(
+                value = mbMasuPKinokoValueGet(
                     playerNo, GwPlayer[playerNo].masuId);
             }
             result = mbDiceExec(playerNo,
                 mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode), NULL,
-                tutorialVal, TRUE, TRUE, NULL, 0);
+                value, TRUE, TRUE, NULL, 0);
         }
     }
     switch (result) {
         case -3:
-            if (!GwSystem.partyF && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
             mbDiceKill(playerNo);
             mbev_Scroll(playerNo, FALSE);
             break;
         case -4:
-            if (!GwSystem.partyF && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
             mbDiceKill(playerNo);
             mbev_Scroll(playerNo, TRUE);
             break;
         case -6:
-            if (!GwSystem.partyF && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
             capsuleSkipF = FALSE;
@@ -748,7 +748,7 @@ repeat:
     GwPlayer[playerNo].moveNum = result;
     mbMoveNumCreate(playerNo, TRUE);
     mbDiceNumKill(playerNo);
-    if (!GwSystem.partyF) {
+    if (GWPartyGet() == FALSE) {
         mbSingleCall(3, result);
     }
     return killerF;
