@@ -10,11 +10,6 @@
 
 typedef void (*VoidFunc)(void);
 
-static inline int MBBoardNoGet(void)
-{
-    return GwSystem.boardNo;
-}
-
 typedef struct S01Marker {
     s16 modelId;
     s16 masuId;
