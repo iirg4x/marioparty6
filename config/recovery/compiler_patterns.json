@@ -30,7 +30,8 @@
         "known_signatures": [
           "a semantics-preserving reorder regresses many exact functions",
           "section extent changes without an intentional data-layout change",
-          "a standalone helper compiled with prototype-only visibility remains call-bearing inside a later exact auto-inline expansion"
+          "a standalone helper compiled with prototype-only visibility remains call-bearing inside a later exact auto-inline expansion",
+          "complete copied bodies and absent call relocations prove a depth-two inline chain whose result changes when one definition moves"
         ]
       },
       "rule": "Treat declaration chronology as a testable compiler variable; do not modernize definition placement or copy a tail-definition layout without owner-local proof.",
@@ -54,17 +55,20 @@
       },
       "examples": [
         "REL:mdpartydll:mdparty",
-        "mdbankdll fn_1_281C compiled exactly before fn_1_11900 was defined; later fn_1_28B4 expanded fn_1_281C but preserved the nested fn_1_11900 call relocation"
+        "mdbankdll fn_1_281C compiled exactly before fn_1_11900 was defined; later fn_1_28B4 expanded fn_1_281C but preserved the nested fn_1_11900 call relocation",
+        "mode-select wave 68 proved several standalone-plus-expanded and depth-two helper relations from complete instruction copies and absent call relocations"
       ],
       "counterexamples": [
-        "REL:mdpartydll:stage"
+        "REL:mdpartydll:stage",
+        "Moving one mode-select definition into final emission order caused an unwanted expansion, while blanket dont_inline also suppressed an authentic nested expansion; chronology must be solved across the complete helper closure."
       ],
       "related_exceptions": [
         "mdparty-late-owner-definitions"
       ],
       "evidence": [
         "docs/native_matching_wave103.md",
-        "docs/native_matching_dll_reinforcements_20260728.md"
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave68.md"
       ]
     },
     {
@@ -484,6 +488,74 @@
       ]
     },
     {
+      "id": "sibling-binary-parity-is-not-source-provenance",
+      "title": "Use sibling binary parity as a boundary check, not source provenance",
+      "classification": "contextual_heuristic",
+      "category": "evidence_provenance",
+      "compiler": null,
+      "confidence": "high",
+      "summary": "A matching MP4, MP5, or MP7 retail binary can independently corroborate an MP6 instruction pattern, layout boundary, or access sequence, but a binary supplies no original C tokens and cannot authenticate a source expression, helper boundary, local lifetime, or semantic name.",
+      "conditions": "Apply when another shipped Mario Party binary shares code or data with MP6 but no pinned matching source blob authenticates the candidate source form.",
+      "source_condition": {
+        "change": "Promote a sibling-binary match from corroborating target evidence to original-source authority.",
+        "requires": [
+          "pinned sibling game, region, binary, address, and compared byte range",
+          "independent MP6 instruction, relocation, data, or consumer proof",
+          "separate source provenance before asserting C spelling or semantic names"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "higher confidence in a machine-level control or access pattern",
+          "a bounded layout or owner-shape cross-check",
+          "no additional confidence in source tokens or compiler-generated temporary structure"
+        ],
+        "known_signatures": [
+          "MP7 reproduces an MP6 instruction stream or stack rotation but no source donor exists",
+          "matching MP5 source and MP7 binary parity agree, while MP6 target evidence still decides the retained adaptation",
+          "a same-binary map supplies names only and no recoverable source body"
+        ]
+      },
+      "rule": "Record sibling retail parity as independent binary evidence. Do not file it under same-game independent source provenance, and do not use it alone to claim source spelling, helper extraction, local temporaries, or semantic names.",
+      "safe_actions": [
+        "record the exact sibling binary range and the MP6 dimension it corroborates",
+        "use parity to bound control flow, access widths, stack shape, or layout",
+        "require a pinned source blob or direct MP6 compiler recovery before asserting source form",
+        "retain fn_/lbl_ or established names when parity is the only naming evidence"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "main.dol"
+        ],
+        "owner_tags": [
+          "binary_parity",
+          "provenance",
+          "negative_evidence"
+        ]
+      },
+      "examples": [
+        "MP7 parity corroborated the GSSDK gender session/reset access pattern, while MP6 target recovery supplied the source and types.",
+        "MP7 parity corroborated several board and speech-owner machine-level shapes alongside independent MP6 consumer evidence."
+      ],
+      "counterexamples": [
+        "MP7 reproduced board/audio's four-local stack rotation, but no authenticated expression recreated the compiler-generated first temporary, so no synthetic helper or register-forcing source was admitted.",
+        "A same-binary symbol map can suggest a name but is not a source donor."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_wave34.md",
+        "docs/native_matching_wave36.md",
+        "docs/native_matching_wave37.md",
+        "docs/native_matching_wave38.md",
+        "docs/native_matching_wave49.md",
+        "docs/native_matching_wave57.md"
+      ]
+    },
+    {
       "id": "same-game-cross-owner-relocation-skeleton-harvesting",
       "title": "Mine cross-owner analogues by ordered relocation skeleton, then rebind target ownership",
       "classification": "contextual_heuristic",
@@ -707,7 +779,9 @@
         "mdbankdll configured lbl_1_bss_1998 size 0x50 plus camera callbacks/state consumers authenticated one owner aggregate and added twelve exact functions, 1396 bytes, and 94 physical relocations.",
         "mdbankdll configured extents divided by repeated consumer counts authenticated eight additional owner arrays and closed fn_1_1994/fn_1_5550 for 1312 bytes.",
         "main:game/mgdata replaced a byte-oriented 83-record overlay with natural MGDATA dimensions after archive catalogs, access widths, and five exact consumer owners agreed.",
-        "REL:mdpartydll:mdparty recovered 17 logical sprite-group counts, 58 typed descriptors, 67 HuVecF positions, and an 11-entry signed selection graph from target extents and independent consumers without inventing padding fields."
+        "REL:mdpartydll:mdparty recovered 17 logical sprite-group counts, 58 typed descriptors, 67 HuVecF positions, and an 11-entry signed selection graph from target extents and independent consumers without inventing padding fields.",
+        "Waves 31-37 recover GSSDK state, handle, serialized-data, table, and signal-processing layouts only where MP6 allocation sizes, access widths, callbacks, relocations, or public consumers independently bound them.",
+        "wave 72 retained two adjacent 16-entry effect arrays because MP6 deliberately indexes 32 entries from the first; consumer behavior proved adjacency without inventing a combined declaration."
       ],
       "counterexamples": [
         "Matching one field offset does not authenticate the semantic field or containing type.",
@@ -717,6 +791,12 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave31.md",
+        "docs/native_matching_wave32.md",
+        "docs/native_matching_wave34.md",
+        "docs/native_matching_wave36.md",
+        "docs/native_matching_wave37.md",
+        "docs/native_matching_wave72.md",
         "docs/native_matching_wave95.md",
         "docs/native_matching_wave98.md"
       ]
@@ -846,13 +926,24 @@
       },
       "examples": [
         "mariopartyrd-mp6-fcf0b69:54-configured-matching",
-        "endingdll fn_1_A964 reached 99.984920 with only seven stack-slot differences, but candidate helper changes regressed exact fn_1_A6D8 or fn_1_A58C and were correctly reverted"
+        "endingdll fn_1_A964 reached 99.984920 with only seven stack-slot differences, but candidate helper changes regressed exact fn_1_A6D8 or fn_1_A58C and were correctly reverted",
+        "Waves 20-22 and 28-30 accepted or rejected authenticated sibling owners only after active-object, effective-relocation, retained-range, and final-container replay."
       ],
       "counterexamples": [],
       "related_exceptions": [],
       "evidence": [
         "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69",
-        "docs/native_matching_dll_reinforcements_20260728.md"
+        "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave20.md",
+        "docs/native_matching_wave21.md",
+        "docs/native_matching_wave22.md",
+        "docs/native_matching_wave28.md",
+        "docs/native_matching_wave29.md",
+        "docs/native_matching_wave30.md",
+        "docs/native_matching_wave38.md",
+        "docs/native_matching_wave42.md",
+        "docs/native_matching_wave51.md",
+        "docs/native_matching_wave52.md"
       ]
     },
     {
@@ -862,14 +953,15 @@
       "category": "toolchain_profile",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "MP6 uses multiple MWCC versions and layered flag profiles; the same nominal compiler family can emit under different terminal optimization, pooling, small-data, and ABI options.",
+      "summary": "MP6 uses multiple MWCC versions and layered flag profiles; the same nominal compiler family can emit under different terminal optimization, pooling, small-data, ABI, contraction, and string settings. DTK may synthesize extracted-object .comment metadata from the split configuration, so that diagnostic field is not an independent compiler fingerprint.",
       "conditions": "Apply before source-shape tuning, donor comparison, or any claim that a compiler probe represents retail.",
       "source_condition": {
         "change": "Infer a translation unit's effective compiler flags from a base profile, sibling owner, or earlier duplicate option instead of its final generated command.",
         "requires": [
           "exact owner and object class",
           "generated command with later options resolved",
-          "compiler and linker executable hashes"
+          "compiler and linker executable hashes",
+          "target instruction, size, relocation, and final-container fingerprints independent of extracted .comment metadata"
         ]
       },
       "emitted_effect": {
@@ -878,18 +970,25 @@
           "register scheduling",
           "stack frames",
           "constant pooling",
-          "small-data relocations"
+          "small-data relocations",
+          "floating-point contraction",
+          "string pooling and section size"
         ],
         "known_signatures": [
           "O0 and O4 controls change vector helpers from compact inlined bodies to much larger output",
-          "GC/1.3.2 REL owners require sdata, sdata2, and pool controls absent from game owners"
+          "GC/1.3.2 REL owners require sdata, sdata2, and pool controls absent from game owners",
+          "DTK reports the compiler comment configured for a split even when target-led instruction fingerprints select another compiler",
+          "one compiler family changes prologues or indirect-call shape while another reproduces the retained owner bytes",
+          "disabling floating-point contraction preserves separate target multiply/add instructions"
         ]
       },
-      "rule": "Pin and report compiler bundle, executable hash, owner class, complete generated command, final duplicate-option semantics, linker, and region before interpreting a source mismatch.",
+      "rule": "Pin and report compiler bundle, executable hash, owner class, complete generated command, final duplicate-option semantics, linker, and region before interpreting a source mismatch. Treat DTK-generated .comment as diagnostic only; the final generated command and target/output fingerprints decide the effective profile.",
       "safe_actions": [
         "inspect the exact Ninja command for the active object",
         "run one untouched-source compiler control when the brief and generated command conflict",
-        "reject a compiler profile that regresses independently exact functions"
+        "compare characteristic prologues, call lowering, instruction contraction, sizes, and relocations across bounded profile controls",
+        "reject a compiler profile that regresses independently exact functions",
+        "confirm the selected profile with the linked retail gate"
       ],
       "applicability": {
         "compiler_wide": false,
@@ -904,11 +1003,21 @@
         "GC/1.3.2 standard REL",
         "GC/1.2.5n Dolphin SDK"
       ],
-      "counterexamples": [],
+      "counterexamples": [
+        "wave 21 explicitly rejects reading GC/1.3 from the target object's unlinked .comment; the selection is established by emitted owner bytes and the linked-container gate.",
+        "wave 31 shows DTK synthesizing .comment from split configuration, so inherited GC/2.6 metadata could not override the GC/1.2.5n prologue and indirect-call fingerprint.",
+        "wave 54's metadata-motivated EXIBios GC/2.6 probe expanded .text from 0x2100 to 0x3BA0, added 150 relocations, lost eleven pairings, and made nothing exact."
+      ],
       "related_exceptions": [],
       "evidence": [
         "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/toolchain",
-        "https://github.com/mariopartyrd/marioparty6/blob/fcf0b69092d6a2642c07a19818dcd847e5d6c0f3/configure.py"
+        "https://github.com/mariopartyrd/marioparty6/blob/fcf0b69092d6a2642c07a19818dcd847e5d6c0f3/configure.py",
+        "docs/native_matching_wave20.md",
+        "docs/native_matching_wave21.md",
+        "docs/native_matching_wave31.md",
+        "docs/native_matching_wave32.md",
+        "docs/native_matching_wave54.md",
+        "docs/native_matching_wave60.md"
       ]
     },
     {
@@ -1019,14 +1128,20 @@
         "main:game/charman",
         "main:game/gamemes",
         "main:game/mgdata",
-        "mbTutorialModelKill int API with MBMODELID storage-domain comparison"
+        "mbTutorialModelKill int API with MBMODELID storage-domain comparison",
+        "wave 38 restored TRK file-support u8 parameters from authenticated headers and MP6 clrlwi consumers",
+        "waves 73-74 retained int model indices and u32 handles where target consumers omitted narrowing masks or used unsigned guards"
       ],
       "counterexamples": [],
       "related_exceptions": [],
       "evidence": [
         "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69/reusable_owner_evidence",
         "include/game/board/tutorial.h",
-        "src/board/tutorial.c"
+        "src/board/tutorial.c",
+        "docs/native_matching_wave25.md",
+        "docs/native_matching_wave38.md",
+        "docs/native_matching_wave73.md",
+        "docs/native_matching_wave74.md"
       ]
     },
     {
@@ -1246,7 +1361,8 @@
         "known_signatures": [
           "target-only `.hidden gap_*` symbol covers the residual bytes",
           "a final DTK symbol extent runs beyond the authenticated source type while all uses and linked bytes are exact",
-          "source-only header constants have no target symbol or effective relocation and are discarded at link"
+          "source-only header constants have no target symbol or effective relocation and are discarded at link",
+          "zero-filled sections compare byte-for-byte while named globals occupy different offsets and therefore produce wrong effective relocations after link"
         ]
       },
       "rule": "Classify ownership at named-object and effective-relocation boundaries; never add padding, widen a real declaration, or retain targetless constants solely to equalize raw section extents.",
@@ -1274,14 +1390,94 @@
         "REL:mdpartydll:mdparty `.data` tail and group-table alignment"
       ],
       "counterexamples": [
-        "A size difference inside a named object, a nonexact effective relocation, or linked-output drift is meaningful and cannot be dismissed as a gap."
+        "A size difference inside a named object, a nonexact effective relocation, or linked-output drift is meaningful and cannot be dismissed as a gap.",
+        "board/object initially reported 100% raw zero-filled .sbss bytes, yet the full build stopped at 136 files OK because its six globals occupied the wrong symbol offsets; declaration order had to restore the target addresses."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_board_gap_ownership.md",
+        "docs/native_matching_wave26.md",
         "docs/native_matching_wave95.md",
         "docs/native_matching_wave98.md",
         "config/GP6E01/build.sha1"
+      ]
+    },
+    {
+      "id": "mwcc-emitted-dead-csects-vs-linker-retained-closure",
+      "title": "Separate MWCC-emitted dead csects from the linker-retained owner closure",
+      "classification": "confirmed_rule",
+      "category": "section_ownership",
+      "compiler": "GC/1.2.5n, GC/1.3, GC/1.3.2, and GC/2.6",
+      "confidence": "confirmed",
+      "summary": "Authenticated source can emit extra out-of-line inline copies, unused helpers, weak constants, or donor-only routines in the source object while the retail linker discards those csects. Source-object size equality is therefore not required, but every target-retained function, effective relocation, data owner, linked owner range, and final container must still close exactly.",
+      "conditions": "Apply when an authenticated source object is larger than the target object because named source-only functions or constants have no retained target counterpart.",
+      "source_condition": {
+        "change": "Delete authentic helpers, add suppression tricks, or reject an owner solely to equalize raw source-object section sizes.",
+        "requires": [
+          "symbol-by-symbol inventory of target-retained and source-only csects",
+          "exact retained instructions and effective relocations",
+          "proof that each surplus csect is unreferenced or discarded from the final owner range",
+          "exact linked owner range and final retail container"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "larger source-object text or constant sections",
+          "extra source-object relocations belonging only to discarded csects",
+          "out-of-line copies whose bodies also expand into retained callers",
+          "no change in the final linked owner range"
+        ],
+        "known_signatures": [
+          "all retained target functions and relocations pair while source .text contains named surplus helpers",
+          "the same helper bodies are visible inside retained callers but their standalone copies are absent from the linked range",
+          "source-only constants are referenced only by discarded helpers",
+          "a candidate with many exact retained functions still fails the link because donor-only external symbols remain unresolved"
+        ]
+      },
+      "rule": "Compare source-object emission and final-link retention as separate phases. Permit authenticated surplus csects only when their complete reference closure is linker-discarded and every retained owner dimension plus the final container is exact; do not delete authentic source or add codegen controls merely to make raw object sizes equal.",
+      "safe_actions": [
+        "inventory surplus functions, constants, and relocations by csect and reference edge",
+        "verify retained callers independently when surplus helpers are also auto-inlined",
+        "compare the final linked owner range rather than assuming raw object size is the acceptance gate",
+        "reject the owner if any surplus csect references a missing symbol or changes a retained address",
+        "keep fallback status when the retained function or data closure itself remains divergent"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "main.dol"
+        ],
+        "owner_tags": [
+          "dead_csect",
+          "linker_stripping",
+          "source_object",
+          "retained_closure"
+        ]
+      },
+      "examples": [
+        "wave 22 Chorus and CheapReverb retain exact linked owners while one or four authenticated helper csects and their private constants are stripped.",
+        "wave 29 OdemuExi2 emits six authenticated unused helpers and Runtime ptmf emits two donor-only bodies; the linked owner ranges remain exact.",
+        "wave 30 dolphin_trk emits two out-of-line vector-copy helpers whose logic is already expanded into exact __TRK_reset; both copies are stripped.",
+        "wave 38 targimpl emits eight extra helpers also represented by exact retained inline copies, and wave 42 seq emits source-only note helpers plus weak sqrtf constants; both final owners and containers are byte-identical."
+      ],
+      "counterexamples": [
+        "wave 22 hw_dolphin had 15/17 exact retained functions and a known source-only surplus, but the full link still referenced four donor-only symbols; it was rejected rather than excused as dead code.",
+        "wave 22 seq had 16/18 raw-exact retained functions but unresolved donor-only synthTrackVolume references, so source-object similarity and potential stripping did not satisfy the owner gate.",
+        "wave 25 string removed donor-only strrchr and strstr because the recovered MP6 owner/source boundary did not authenticate their inclusion; linker stripping is not permission to import arbitrary sibling closure.",
+        "wave 41 retained authentic source candidates but promoted no owner whose retained or unpaired closure still diverged."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_wave22.md",
+        "docs/native_matching_wave25.md",
+        "docs/native_matching_wave29.md",
+        "docs/native_matching_wave30.md",
+        "docs/native_matching_wave38.md",
+        "docs/native_matching_wave41.md",
+        "docs/native_matching_wave42.md"
       ]
     },
     {
@@ -1433,7 +1629,9 @@
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_w01_inline_chronology.md",
-        "docs/native_matching_gc132_sqrtf_header_closure.md"
+        "docs/native_matching_gc132_sqrtf_header_closure.md",
+        "docs/native_matching_wave38.md",
+        "docs/native_matching_wave42.md"
       ]
     },
     {
@@ -1671,6 +1869,8 @@
         "mdbankdll fn_1_12354/fn_1_131C8: natural GC/1.3.2 conversion consumers bound compiler-local @992/@977 instead of distinct target owners lbl_1_rodata_290/lbl_1_rodata_2A0",
         "mdbankdll fn_1_780/fn_1_8F0: natural aggregate initializers bound compiler-owned locals where retail required named objects; memcpy changed the code shape",
         "mdbankdll passes 4-5: fn_1_6810 emitted an eight-byte TU-local unsigned-conversion pool instead of retail lbl_1_rodata_128; fn_1_2750 consumes the same named owner, so it was excluded before redundant C probing",
+        "wave 28 s_atan: target and source instructions, literal data, effective relocation targets, linked owner range, and final DOL all match despite 14 compiler-local split/pool symbol annotations",
+        "wave 42 seq: five target lbl_* relocations and source @591..@596 names resolve to the same retained constant addresses; the exact linked owner and final DOL establish effective ownership",
         "main:board/scroll: target-backed 30.000002f closed the preceding GC/2.6 pool bits; the exact same-game MBTimeDayGet inline boundary closed allocation; then extern-before-definition address-labelled 24.0f/0.2f/90.0f owners and their inline consumer closed MapPathDraw, MapDraw, all 900 text relocations, and the source-owned .sdata2 prefix through 0xD4, leaving only a four-byte target tail and no fake padding"
       ],
       "counterexamples": [
@@ -1681,12 +1881,18 @@
         "Byte-identical instruction streams across repeated functions do not waive configured relocation identity in a partial owner.",
         "Replacing a natural aggregate initializer with memcpy does not prove named target ownership and can introduce a non-retail call shape.",
         "A second function consuming the same unresolved named pool is not an independent body-shaping opportunity; recover the shared owner or exclude the family.",
-        "Matching values or offsets alone do not authorize invented semantic symbols or explicit padding; retain honest address identities and let proven alignment or target-only tails remain non-owned."
+        "Matching values or offsets alone do not authorize invented semantic symbols or explicit padding; retain honest address identities and let proven alignment or target-only tails remain non-owned.",
+        "wave 23 msmSysInit had identical instruction words and relocation types/addends but only a target split-label versus compiler-pool identity; no fake split global was introduced while the owner remained incomplete.",
+        "wave 27 had seven exact-sized, instruction-identical board-space functions whose compiler-local pool/static identities remained unresolved in the incomplete owner; they were not counted exact from values alone."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_conversion_pool_ownership.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave23.md",
+        "docs/native_matching_wave27.md",
+        "docs/native_matching_wave28.md",
+        "docs/native_matching_wave42.md",
         "src/board/scroll.c",
         "src/REL/w01Dll/world01.c"
       ]
@@ -1875,7 +2081,7 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Under GC/2.6 -O0,p owner profiles, helper definition order can change automatic inlining, while the natural expression tree and direct nesting determine call evaluation order and register lifetime across the same helper family.",
+      "summary": "Under GC/2.6 -O0,p owner profiles, helper definition order can change automatic inlining, while the natural expression tree and direct nesting determine call evaluation order and register lifetime across the same helper family. Inline constraints are non-local across a nested expansion closure: suppressing one helper can also suppress an authentic child expansion.",
       "conditions": "Use for an authenticated owner-local helper family when target calls exist but the candidate inlines a helper, reverses call order, or introduces a cached local absent from the target.",
       "source_condition": {
         "change": "Restore helper definition visibility and the target-backed expression tree before introducing locals, prototypes, or inlining controls.",
@@ -1900,14 +2106,17 @@
           "a cached link or work local changes an otherwise target-backed call tree",
           "an int lifetime narrows only at an authenticated s16 call boundary",
           "cleanup work checks, object kills, pointer resets, and state stores retain target call/store chronology",
-          "a preceding exact scalar or teardown helper can automatically expand at several natural call sites without an inline specifier"
+          "a preceding exact scalar or teardown helper can automatically expand at several natural call sites without an inline specifier",
+          "complete copied bodies and absent call relocations establish nested expansion depth more reliably than register sweeping",
+          "moving one helper definition can introduce an unwanted parent expansion while blanket dont_inline removes an authentic nested child expansion"
         ]
       },
-      "rule": "Treat definition order and expression-tree evaluation as one bounded owner-local variable; retain a form only when the complete helper family, relocations, and existing exact neighbors agree, without pragmas or forced linkage.",
+      "rule": "Treat definition order and expression-tree evaluation as one bounded owner-local variable; retain a form only when the complete transitive helper family, relocations, and existing exact neighbors agree, without blanket pragmas or forced linkage. Under GC/1.3.2, apply the corresponding gc132-declaration-chronology rule rather than widening this GC/2.6 card.",
       "safe_actions": [
         "compare caller placement relative to helper definitions",
         "inspect emitted call order instead of assuming source operand order",
         "test direct nesting against one authenticated local lifetime",
+        "prove nested inline edges from complete copied bodies and absent call relocations",
         "preserve target-backed calls whose result is not subsequently consumed",
         "escalate shared return-width conflicts instead of adding local prototypes"
       ],
@@ -1951,18 +2160,26 @@
         "endingdll fn_1_27A0 direct product grouping",
         "endingdll fn_1_B0A4 visible helper call and saved-register lifetime",
         "endingdll fn_1_DF60 natural calls to the preceding exact scalar helper fn_1_DF18 expand three times into 396 exact bytes",
-        "endingdll fn_1_8CFC natural calls to preceding exact teardown helpers fn_1_26D4, fn_1_3CD4, and fn_1_3F20 expand into a 644-byte exact coordinator"
+        "endingdll fn_1_8CFC natural calls to preceding exact teardown helpers fn_1_26D4, fn_1_3CD4, and fn_1_3F20 expand into a 644-byte exact coordinator",
+        "wave 72 mbWipeSpecialWait became exact with the definition-order auto-inlined check helper and retained target pointer load inside the loop condition",
+        "wave 73 Shop wrappers stayed out of line because target symbol order placed mbev_ShopExObjHookSet after them"
       ],
       "counterexamples": [
         "Forcing helper emission without an authentic caller is non-organic.",
         "A local prototype cannot resolve the rejected mbCapUse shared return-width contract.",
         "Literal or BSS identity-only residuals are not call-evaluation evidence.",
         "mbCapNextGet is instruction-exact but its six data/literal relocation identities are not call-chronology evidence.",
-        "endingdll fn_1_DE3C operand-order and capture probes did not reproduce the target and were reverted."
+        "endingdll fn_1_DE3C operand-order and capture probes did not reproduce the target and were reverted.",
+        "wave 57 used owner-local dont_inline only where target order and a retained direct call proved no expansion; it is not a blanket helper-family fix.",
+        "wave 68 moved fn_1_F790 and triggered an unwanted expansion into fn_1_A5D4, while blanket dont_inline also suppressed the authentic nested fn_1_F4E4 expansion."
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/native_matching_board_capsule_call_chronology.md"
+        "docs/native_matching_board_capsule_call_chronology.md",
+        "docs/native_matching_wave57.md",
+        "docs/native_matching_wave68.md",
+        "docs/native_matching_wave72.md",
+        "docs/native_matching_wave73.md"
       ]
     },
     {
@@ -2409,10 +2626,10 @@
       "category": "source_form_neutrality",
       "compiler": "GC/2.7",
       "confidence": "confirmed",
-      "summary": "At -O0 redundant parentheses, the register storage class, const on parameters and locals, and compound assignment are all codegen no-ops, and so are declared-but-never-referenced locals. Float temporaries are numbered by expression-tree shape rather than liveness, so only a genuine change of tree shape moves a destination register - which is why parentheses that do not regroup change nothing. A helper's definition position is NOT in this list: it is measured non-neutral and belongs to the inlining cards.",
+      "summary": "Under the measured GC/2.7 -O0 controls, redundant parentheses, the register storage class, const on parameters and locals, and compound assignment are codegen no-ops, and so are declared-but-never-referenced locals. Float temporaries are numbered by expression-tree shape rather than liveness, so only a genuine operator or tree-shape change moves code generation. Equality-operand reversal was also measured neutral in two GC/2.6 board/audio campaigns. A helper's definition position and an arithmetic rewrite such as division to reciprocal multiplication are NOT cosmetic forms.",
       "conditions": "Apply before spending a search budget on cosmetic source variations, or when a same-operand different-destination-register difference needs explaining.",
       "source_condition": {
-        "change": "Add or remove parentheses, register/const qualifiers, or compound-assignment forms, or regroup an expression.",
+        "change": "Add or remove parentheses, register/const qualifiers, compound-assignment forms, equality-operand order, or an arithmetic regrouping/rewrite.",
         "requires": [
           "byte comparison of the two candidate objects, not a match percentage",
           "an instruction-stream alignment that separates structural from operand differences",
@@ -2423,8 +2640,10 @@
         "possible_changes": [
           "no change at all for parentheses, register, const, or compound assignment",
           "no change at all for a declared-but-never-referenced local",
+          "no change in the measured GC/2.6 board/audio comparisons after reversing equality operands",
           "a different destination register when the expression tree's depth changes",
-          "the same destinations with swapped fmuls A/C operand fields when a commutative operand pair is reversed"
+          "the same destinations with swapped fmuls A/C operand fields when a commutative operand pair is reversed",
+          "different load or operand order when division by 2 is rewritten as multiplication by 0.5"
         ],
         "known_signatures": [
           "probes p5a/p5b differ by redundant parentheses, register on a parameter and two locals, const on all parameters, and += versus = ... + : .text 60 bytes on both sides and byte-identical",
@@ -2432,14 +2651,18 @@
           "probes p7a/p7b, (a*b)*(c*d) versus ((a*b)*c)*d: same 16 bytes, different destinations - p7a fmuls f5,f1,f2 / f0,f3,f4 / f1,f5,f0 against p7b fmuls f0,f1,f2 / f0,f3,f0 / f1,f4,f0",
           "a balanced tree needs a second live temporary where a left-leaning tree reuses f0",
           "probes p7a/p7d, (a*b)*(c*d) versus (b*a)*(d*c): destinations IDENTICAL (f5, f0, f1), only the leaf operand fields swap - p7d fmuls f5,f2,f1 / f0,f4,f3 / f1,f5,f0",
-          "probes p12a/p12b differ by two unused float locals: byte-identical at .text 36 bytes with no .rodata"
+          "probes p12a/p12b differ by two unused float locals: byte-identical at .text 36 bytes with no .rodata",
+          "waves 18 and 26 reversed equality operands in board/audio but MWCC retained the same cmplw operand order",
+          "waves 49 and 68 independently show division by 2.0 versus multiplication by 0.5 changing target operand or load order"
         ]
       },
-      "rule": "Do not spend probe budget on parentheses, register, const, compound assignment, or leftover unused locals - they are measured no-ops at -O0. When a destination register is wrong with correct operands, change the expression tree's shape, not its punctuation. A helper's file position is NOT a no-op and is out of scope for this card.",
+      "rule": "Under the exact measured profile, do not repeat bounded-neutral probes for parentheses, register, const, compound assignment, leftover unused locals, or the board/audio equality reversal. When a destination register is wrong with correct operands, test one target-backed operator or expression-tree shape, not punctuation. A helper's file position and `/ 2` versus `* 0.5` are real code-generation changes and are outside the neutral set.",
       "safe_actions": [
         "compare candidate objects byte-for-byte rather than by match percentage",
         "drive structural insert/delete differences to zero before reading operand differences",
-        "record eliminated axes so the next agent does not repeat them"
+        "record eliminated axes so the next agent does not repeat them",
+        "preserve the target-authenticated arithmetic operator instead of normalizing division into reciprocal multiplication",
+        "re-measure before carrying any neutral-form result to another compiler profile"
       ],
       "applicability": {
         "compiler_wide": true,
@@ -2459,18 +2682,26 @@
       },
       "examples": [
         "probes p5a/p5b: four cosmetic axes changed at once (parentheses, register, const, compound assignment) still produce byte-identical .text",
-        "probes p12a/p12b: two never-referenced float locals cost nothing, so a leftover declaration need not be deleted to match"
+        "probes p12a/p12b: two never-referenced float locals cost nothing, so a leftover declaration need not be deleted to match",
+        "waves 18 and 26: swapping the equality operands in mbMusBoardPlay and MusBoardFade was byte-neutral and did not reverse the emitted cmplw"
       ],
       "counterexamples": [
         "REFUTED by measurement: 'a helper's definition position is an -O0 no-op'. Probes p8a/p8b differ only in whether the static helper is defined above the caller or below it behind a prototype: .text 148 bytes against 112, AND .rodata order reversed, because -inline auto expands the helper only when it is already visible. Helper position is a real lever - see gc26-o0-definition-order-and-call-evaluation and mwcc-o0-inline-expansion-frame-allocation.",
         "NOT a sweep axis: commuting a commutative pair does change bytes, but not the way an earlier revision of this card claimed. Probes p7a/p7d show destination registers UNCHANGED (f5, f0, f1) with only the fmuls A/C operand fields swapping - it reallocates nothing. The bounded protocol in mwcc-commutative-fmuls-source-swap-canonicalizes-neutral governs: run ONE direct reversal for an isolated operand-order mismatch, record the result, and stop. Do not sweep.",
+        "NOT neutral: wave 49 LogAdd became exact only with natural difference / 2.0 instead of difference * 0.5, and wave 68 independently observed the same load-order distinction for fn_1_8EC8.",
+        "NOT a universal rewrite: wave 54's signed timeout / 2 probe emitted extra signed rounding and extension code and was reverted.",
         "Scalar locals are enregistered per live-range web; the register keyword does not decide which local wins a callee-saved register. Carried from the campaign, not isolated by these probes - p5a/p5b only show that adding register changes nothing.",
         "Neutrality here is about .text. It says nothing about .rodata order, which follows creation order - see mwcc-rodata-is-one-region-in-creation-order."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/w01dll_rodata_emission_model_evidence.md",
-        "docs/native_matching_commutative_fmuls_negative.md"
+        "docs/native_matching_commutative_fmuls_negative.md",
+        "docs/native_matching_wave18.md",
+        "docs/native_matching_wave26.md",
+        "docs/native_matching_wave49.md",
+        "docs/native_matching_wave54.md",
+        "docs/native_matching_wave68.md"
       ]
     },
     {
@@ -2630,7 +2861,7 @@
       "category": "local_lifetime_and_saved_register_coloring",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, or first semantic use changes, even when control flow, types, size, and relocations are otherwise identical.",
+      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, or first semantic use changes, even when control flow, types, size, and relocations are otherwise identical. MWCC's stack allocator orders spilled locals by size class then declaration list, while graph coloring selects the lowest available register, so a pure cycle is evidence of an earlier lifetime/AST difference rather than authority to force a register.",
       "conditions": "Use only for an exact-sized function whose remaining differences form a small same-width saved-register cycle after structural control flow, owner types, calls, and relocations already agree.",
       "source_condition": {
         "change": "Restore the target-backed declaration order, initialization point, and first semantic use of adjacent natural locals.",
@@ -2654,7 +2885,8 @@
           "sequential same-type loop locals occupy descending saved registers in declaration/first-use order",
           "an exact-sized function retains only a two- or three-register ARG cycle",
           "a declaration initializer begins an owner-pointer lifetime before a target cleanup call cluster",
-          "legal scope or declaration movement is byte-neutral when it does not change first use"
+          "legal scope or declaration movement is byte-neutral when it does not change first use",
+          "two exact-sized functions close after declaration-order changes remove complete inverse four- and eight-operand saved-register cycles"
         ]
       },
       "rule": "Test one natural adjacent-local declaration order, one target-backed initialization point, and one independently justified first-use chronology when the mismatch is a pure saved-register cycle. Treat those as separate variables. Retain the form only when typed semantics, complete text, relocations, and consumers are exact; if the bounded controls are neutral or leave a cycle, stop and record negative evidence rather than adding register-shaping locals.",
@@ -2707,12 +2939,14 @@
         "main:board/opening OpeningSingleEffHook became exact after restoring automatic-object and commutative-expression order",
         "main:board/star StarMatHook became exact after restoring the target-proven four-byte and twelve-byte automatic-object order",
         "main:board/config mbPausePanelCreate became exact after declaration-list order resolved its final saved-register swap",
-        "main:board/tutorial TutorialWatch and three guide-object call sites became exact after restoring block-scoped value and pointer lifetimes"
+        "main:board/tutorial TutorialWatch and three guide-object call sites became exact after restoring block-scoped value and pointer lifetimes",
+        "wave 75 mbev_Scroll and ScrollMain became 100% after declaration-list order removed complete inverse r28/r29 and r30/r31 cycles without changing size, control flow, or relocations"
       ],
       "counterexamples": [
         "meschkdll fn_1_188 improved to an exact-sized 99.893870 form, but legal declaration/scope controls could not break its final dirWin/nextMessNo r20/r22 cycle, so all nonexact probes were reverted.",
         "mdpresultdll fn_1_C358 reproduced the target save set after a separate second-loop index but retained a seven-row register-color cycle, so the function was fully reverted.",
         "main:board/masu mbMasuPlayerColorSet regressed when adjacent partyF and type declarations were swapped, so the probe was reverted.",
+        "wave 75 allocation-temporary and narrower-scope declaration probes were byte-neutral, while moving mbMasuPlayerColorSet dayF ahead of type regressed two operand differences to seven; all were reverted.",
         "A guessed initialized write-only Last Five local changed live-register allocation without producing the target stack word, and a ghost saved-GPR local in Wipe lacked source authentication.",
         "Changing a local's width to steer allocation is not this rule; it introduces normalization differences and must be rejected.",
         "Do not split a declaration initializer solely to choose a register when target call/store chronology does not prove a later semantic lifetime.",
@@ -2722,6 +2956,8 @@
       "evidence": [
         "docs/native_matching_local_declaration_order_first_use.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
+        "docs/native_matching_wave73.md",
+        "docs/native_matching_wave75.md",
         "docs/native_matching_wave77.md",
         "docs/native_matching_wave79.md",
         "docs/native_matching_wave94.md"
@@ -3123,7 +3359,9 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/native_matching_mdpresult_binding_pass46.md"
+        "docs/native_matching_mdpresult_binding_pass46.md",
+        "docs/native_matching_wave38.md",
+        "docs/native_matching_wave51.md"
       ]
     }
   ]
