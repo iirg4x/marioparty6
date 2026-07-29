@@ -2618,13 +2618,38 @@ int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF)
     int playerNum;
 
     for (i = 0, playerNum = 0; i < 4; i++) {
-        if ((int)GwSystem.tagF != FALSE && mbev_CapPlayerCheck(playerNo, i)) {
-            continue;
-        }
-        if (sameF) {
-            if (GwPlayer[playerNo].masuId != GwPlayer[i].masuId || i == playerNo) {
+        if ((int)GwSystem.tagF != FALSE) {
+            BOOL playerCheckF;
+
+            if ((int)GwSystem.tagF == FALSE) {
+                if (playerNo == i) {
+                    playerCheckF = TRUE;
+                } else {
+                    playerCheckF = FALSE;
+                }
+            } else {
+                BOOL team1;
+                BOOL team2;
+
+                team1 = GwPlayer[i].team;
+                team2 = GwPlayer[playerNo].team;
+                if (team2 == team1) {
+                    playerCheckF = TRUE;
+                } else {
+                    playerCheckF = FALSE;
+                }
+            }
+            if (playerCheckF) {
                 continue;
             }
+        }
+        if (sameF) {
+            if (GwPlayer[playerNo].masuId != GwPlayer[i].masuId) {
+                continue;
+            }
+        }
+        if (i == playerNo) {
+            continue;
         }
         playerList[playerNum] = i;
         playerNum++;
