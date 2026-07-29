@@ -1304,7 +1304,10 @@ config.libs = [
         "openingDll",
         objects={
             Object(Matching, "REL/openingDll/opening_prefix.c"),
+            Object(Matching, "REL/openingDll/application_2238.c"),
+            Object(Matching, "REL/openingDll/application_37f0.c"),
             Object(Matching, "REL/openingDll/application_pass2_4068.c"),
+            Object(Matching, "REL/openingDll/application_4484.c"),
             Object(Matching, "REL/openingDll/application_pass2_4bd8.c"),
             Object(
                 Matching,
