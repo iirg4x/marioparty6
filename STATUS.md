@@ -16,6 +16,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 Current board recovery: **16 / 40 source owners matching** and **65 / 72
 Towering Treetop stub seams strict-exact and promoted**.
+Recovered `src/board/last5.c` is zero-hex and remains a partial **4 / 10**
+strict-exact owner, so neither board count changes.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
