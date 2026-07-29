@@ -1409,6 +1409,8 @@ config.libs = [
     Rel(
         "staffdll",
         objects={
+            Object(Matching, "REL/staffdll/application_pass2_3140.c"),
+            Object(Matching, "REL/staffdll/application_pass2_389c.c"),
             Object(Matching, "REL/staffdll/staff_pass1_067c.c"),
             Object(Matching, "REL/staffdll/staff_pass1_0f68.c"),
             Object(Matching, "REL/staffdll/staff_pass1_6c14.c"),
