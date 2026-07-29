@@ -1304,6 +1304,12 @@ config.libs = [
     Rel(
         "optionDll",
         objects={
+            Object(Matching, "REL/optionDll/application_pass2_prefix.c"),
+            Object(Matching, "REL/optionDll/application_pass2_lifecycle_fdc.c"),
+            Object(Matching, "REL/optionDll/application_pass2_lifecycle_18d8.c"),
+            Object(Matching, "REL/optionDll/application_pass2_messages_6504.c"),
+            Object(Matching, "REL/optionDll/application_pass2_messages_b02c.c"),
+            Object(Matching, "REL/optionDll/application_pass2_messages_c324.c"),
             Object(Matching, "REL/optionDll/application_pass1_e538.c"),
             Object(Matching, "REL/optionDll/application_pass1_f1d8.c"),
             Object(

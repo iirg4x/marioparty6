@@ -343,6 +343,86 @@
       ]
     },
     {
+      "id": "option-pass2-prefix-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass2_prefix.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll prefix 0x0..0x804 is text-only. Its three natural functions reproduce all 2,052 text bytes and target relocations, while the authenticated include closure otherwise emits only the unused weak sqrtf doubles 0.5 and 3.0 as a 16-byte source-only data section. The translation-unit-local _MATH_H boundary removes only that section and preserves exact text.",
+      "evidence": [
+        "src/REL/optionDll/application_pass2_prefix.c",
+        "src/REL/optionDll/application_pass1_e538.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
+    },
+    {
+      "id": "option-pass2-lifecycle-fdc-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass2_lifecycle_fdc.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll island 0xFDC..0x18B8 is text-only. Its three natural functions reproduce all 2,268 text bytes and target relocations, while the authenticated include closure otherwise emits only the unused weak sqrtf 16-byte data block. The translation-unit-local _MATH_H boundary removes only that source-only block and preserves exact text.",
+      "evidence": [
+        "src/REL/optionDll/application_pass2_lifecycle_fdc.c",
+        "src/REL/optionDll/application_pass1_f1d8.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
+    },
+    {
+      "id": "option-pass2-lifecycle-18d8-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass2_lifecycle_18d8.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll island 0x18D8..0x19E0 is text-only. Its two natural functions reproduce all 264 text bytes and target relocations, while the authenticated include closure otherwise emits only the unused weak sqrtf 16-byte data block. The translation-unit-local _MATH_H boundary removes only that source-only block and preserves exact text.",
+      "evidence": [
+        "src/REL/optionDll/application_pass2_lifecycle_18d8.c",
+        "src/REL/optionDll/application_pass1_e538.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
+    },
+    {
+      "id": "option-pass2-messages-6504-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass2_messages_6504.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll message island 0x6504..0x6898 is text-only. Its two natural functions reproduce all 916 text bytes and target relocations, while the authenticated window include closure otherwise emits only the unused weak sqrtf 16-byte data block. The translation-unit-local _MATH_H boundary removes only that source-only block and preserves exact text.",
+      "evidence": [
+        "src/REL/optionDll/application_pass2_messages_6504.c",
+        "src/REL/optionDll/application_pass1_e538.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
+    },
+    {
+      "id": "option-pass2-messages-b02c-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/optionDll/application_pass2_messages_b02c.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail optionDll message island 0xB02C..0xB1A0 is text-only. Its natural function reproduces all 372 text bytes and target relocations, while the authenticated window include closure otherwise emits only the unused weak sqrtf 16-byte data block. The translation-unit-local _MATH_H boundary removes only that source-only block and preserves exact text.",
+      "evidence": [
+        "src/REL/optionDll/application_pass2_messages_b02c.c",
+        "src/REL/optionDll/application_pass1_f1d8.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "config/dll/rels/optionDll/splits.txt"
+      ]
+    },
+    {
       "id": "option-pass1-f1d8-no-generic-math-inline",
       "classification": "authenticated",
       "path": "src/REL/optionDll/application_pass1_f1d8.c",
