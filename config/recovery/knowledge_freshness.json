@@ -146,6 +146,10 @@
         "src/REL/mdsingdll/mdsing_tail19.c",
         "src/REL/mdsingdll/mdsing_tail20.c",
         "src/REL/mdsingdll/mdsing_tail21.c",
+        "src/REL/mdsingdll/mdsing_tail22.c",
+        "src/REL/mdsingdll/mdsing_tail23.c",
+        "src/REL/mdsingdll/mdsing_tail24.c",
+        "src/REL/mdsingdll/mdsing_tail25.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ],
@@ -698,7 +702,9 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave51.md",
         "src/REL/mdpresultdll/application_16c4.c",
-        "src/REL/mdpresultdll/application_pass49.c"
+        "src/REL/mdpresultdll/application_pass49.c",
+        "src/REL/mdpresultdll/application_pass50.c",
+        "src/REL/mdpresultdll/application_pass51.c"
       ],
       "supersedes": [],
       "superseded_by": null
