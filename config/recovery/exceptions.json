@@ -455,6 +455,23 @@
         "src/REL/bootDll/opening.c",
         "config/dll/rels/optionDll/splits.txt"
       ]
+    },
+    {
+      "id": "board-capsule-header-guard",
+      "classification": "authenticated",
+      "path": "include/game/board/capsule.h",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "This is a recovered shared header, not a C translation-unit attempt to suppress another header. The direct Mario Party 5 predecessor uses `_BOARD_CAPSULE_H` for the capsule interface, and surviving MP6 `MBCapsule*` names support the same family boundary. In MP6, adding the narrow guarded header and replacing 122 expanded random-normalization expressions with `MBCapsuleEffRandF()` leaves the complete Capevent and Capspecial relocation-aware reports byte-for-byte identical, with no new section, instruction, relocation, or exact-function change.",
+      "evidence": [
+        "include/game/board/capsule.h",
+        "src/board/capevent.c",
+        "src/board/capspecial.c",
+        "config/recovery/compiler_patterns.json",
+        "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/game/board/capsule.h"
+      ]
     }
   ]
 }
