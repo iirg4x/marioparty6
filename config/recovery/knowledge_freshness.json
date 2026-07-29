@@ -297,7 +297,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "f42198cbf0459f8258534083487caab3c4ec6425",
+      "validated_commit": "bb3cca4db2c3589e2ee2ac82256530f194abbf18",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
