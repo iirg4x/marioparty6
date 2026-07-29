@@ -1211,6 +1211,9 @@ static void CapPlayerThrow(void)
     GXColor color;
     float magTemp;
     GXColor glowColor;
+    GXColor *glowColorP;
+    HuVecF *glowVelP;
+    HuVecF *glowPosP;
     char *hookName;
 
     work = HuPrcCurrentGet()->property;
@@ -1406,14 +1409,17 @@ static void CapPlayerThrow(void)
             color.a = (u8)(192.0f + (63.0f * ((u32)mbRandMod(0x10000000)
                 * 3.725290298461914e-09f)));
             glowColor = color;
+            glowColorP = &glowColor;
             glowVel = vel;
+            glowVelP = &glowVel;
             glowPos = pos;
-            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, &glowPos, &glowVel,
+            glowPosP = &glowPos;
+            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
                 (int)(60.0f * (1.0f + ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f))),
                 1.5f * (0.2f + (0.025f * ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f))),
-                0.0f, 0.025f, &glowColor);
+                0.0f, 0.025f, glowColorP);
         }
         HuPrcVSleep();
     } while (work->time < work->maxTime);
@@ -1573,6 +1579,9 @@ static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
     HuVecF glowVel;
     HuVecF rot;
     HuVecF pos;
+    GXColor *glowColorP;
+    HuVecF *glowVelP;
+    HuVecF *glowPosP;
 
     if (capsuleThrowHook) {
         capsuleThrowHook(TRUE);
@@ -1655,15 +1664,18 @@ static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
                 + (63.0f * ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f)));
             glowColor = color;
+            glowColorP = &glowColor;
             glowVel = particleVel;
+            glowVelP = &glowVel;
             glowPos = particlePos;
+            glowPosP = &glowPos;
             glowScale = 100.0f
                 * (0.2f + (0.025f * ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f)));
-            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, &glowPos, &glowVel,
+            mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
                 (int)(60.0f * (1.0f + ((u32)mbRandMod(0x10000000)
                     * 3.725290298461914e-09f))), glowScale,
-                0.0f, 0.025f, &glowColor);
+                0.0f, 0.025f, glowColorP);
         }
         HuPrcVSleep();
     } while (time < work->maxTime);
@@ -1887,7 +1899,7 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
     if (data->capsuleNo < 0) {
         return -1;
     }
-    rank = GwPlayer[playerNo].rank;
+    rank = GwPlayer[playerNo].charNo;
     if (rank > 10) {
         rank = 10;
     }
@@ -1904,8 +1916,8 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             step = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 3);
             step2 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 5);
             step3 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 4);
-            if ((step > 0 && step < 11) || (step2 > 0 && step2 < 11) ||
-                (step3 > 0 && step3 < 11)) {
+            if ((step >= 1 && step <= 10) || (step2 >= 1 && step2 <= 10) ||
+                (step3 >= 1 && step3 <= 10)) {
                 if (code == 'a') {
                     chance = 80;
                 } else if (code == 'b') {
@@ -1930,7 +1942,7 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
                     chance = 0;
                 }
             }
-            if (step > 0 && step < 11) {
+            if (step >= 1 && step <= 10) {
                 chance = 0;
             }
             break;
@@ -1939,7 +1951,7 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
                 for (i = 0; i < GW_PLAYER_MAX; i++) {
                     if (i != playerNo) {
                         step2 = mbMasuFind_TypeStepGet(GwPlayer[i].masuId, 7);
-                        if (step2 > 0 && step2 < 11) {
+                        if (step2 >= 1 && step2 <= 10) {
                             break;
                         }
                     }
@@ -1950,7 +1962,7 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             }
             break;
         case 6:
-            if (code == '*' && mbPlayerCoinGet(playerNo) < 21) {
+            if (code == '*' && mbPlayerCoinGet(playerNo) <= 20) {
                 chance = 0;
             }
             break;
@@ -1960,14 +1972,33 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             }
             break;
         case 22:
+            if (code == '*' && step >= 0 && step <= 5 &&
+                mbCapSelectMasuBackNum(GwPlayer[playerNo].masuId) > 0) {
+                chance = 80;
+                capsuleSelectComBack = TRUE;
+            }
+            break;
         case 23:
-            if (code == '*' && step >= 0 && step < 6 &&
+            if (code == '*' && step >= 0 && step <= 5 &&
                 mbCapSelectMasuBackNum(GwPlayer[playerNo].masuId) > 0) {
                 chance = 80;
                 capsuleSelectComBack = TRUE;
             }
             break;
         case 30:
+            if (code == '*' &&
+                mbPlayerCapsuleNumGet(playerNo) >= mbPlayerCapsuleMaxGet()) {
+                chance = 30;
+            }
+            if (mode == 0 &&
+                mbPlayerCapsuleNumGet(playerNo) < mbPlayerCapsuleMaxGet()) {
+                chance = 0;
+            }
+            if (mode == 2 &&
+                mbPlayerCapsuleNumGet(playerNo) < mbPlayerCapsuleMaxGet()) {
+                chance = 100;
+            }
+            break;
         case 31:
             if (code == '*' &&
                 mbPlayerCapsuleNumGet(playerNo) >= mbPlayerCapsuleMaxGet()) {
@@ -1983,14 +2014,16 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             }
             break;
     }
-    if (mode == 1) {
-        chance = data->rank[rank].chance;
-    } else if (mode == 2) {
-        chance = 100 - chance;
-    } else if (mode != 0) {
-        chance = 0;
+    switch (mode) {
+        case 0:
+            return chance;
+        case 1:
+            return data->rank[rank].chance;
+        case 2:
+            return 100 - chance;
+        default:
+            return 0;
     }
-    return chance;
 }
 
 static BOOL CapCheckComPath(int playerNo, int max, int mode)
@@ -2380,10 +2413,12 @@ static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId)
         if (masuFlag[masuId] != 0) {
             if (mbMasuTypeGet(masuId) == 0) {
                 masuFlag[masuId] = 0;
-                for (i = 0; i < linkNum; i++) {
-                    if (!mbev_CapMasuMoveCheck(link[i])) {
-                        CapSelectMasuLinkCheck(masuFlag, link[i]);
-                    }
+            } else {
+                return;
+            }
+            for (i = 0; i < linkNum; i++) {
+                if (!mbev_CapMasuMoveCheck(link[i])) {
+                    CapSelectMasuLinkCheck(masuFlag, link[i]);
                 }
             }
         }

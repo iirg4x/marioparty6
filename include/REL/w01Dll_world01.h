@@ -9,11 +9,6 @@ extern BOOL mbSaveNewF;
 
 typedef void (*W01_MBHOOK)(void);
 
-static inline int MBBoardNoGet(void)
-{
-    return GwSystem.boardNo;
-}
-
 void mbObjectSetup(s32 boardNo, W01_MBHOOK init, W01_MBHOOK close);
 void mbLightFuncSet(W01_MBHOOK setHook, W01_MBHOOK resetHook);
 void mbev_NextTimeSet(W01_MBHOOK hook);
