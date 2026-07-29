@@ -776,11 +776,11 @@ static void PlayerMove(void)
     s16 masuIdNext;
     BOOL hiddenF;
 
-    playerWork[playerNo]._unk0C = 0;
-    playerWork[playerNo]._unk10_3 = TRUE;
+    mbPlayerWorkGet(playerNo)->_unk0C = 0;
+    mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
     workP->moveHook = NULL;
-    GwPlayer[playerNo].masuIdPrev = GwPlayer[playerNo].masuId;
 repeat:
+    GwPlayer[playerNo].masuIdPrev = GwPlayer[playerNo].masuId;
     if (!_CheckFlag(FLAG_BOARD_DEBUG) ||
         _CheckFlag(FLAG_BOARD_TUTORIAL)) {
         if (mbev_Branch(playerNo, &masuIdNext)) {
@@ -794,9 +794,9 @@ repeat:
     masuIdNext = mbev_GateMasu(
         playerNo, GwPlayer[playerNo].masuId, masuIdNext);
     GwPlayer[playerNo].masuIdNext = masuIdNext;
-    playerWork[playerNo]._unk08 = -1;
+    mbPlayerWorkGet(playerNo)->_unk08 = -1;
     workP->_unk06 = masuIdNext;
-    if (workP->_unk10_3) {
+    if (workP->moveF) {
         HuPrcSleep(-1);
     }
     PlayerColKill(playerNo);
@@ -804,15 +804,15 @@ repeat:
         playerNo, GwPlayer[playerNo].masuId, masuIdNext);
     mbev_MasuMasuEnd(masuIdNext);
     if (workP->moveHook) {
-        playerWork[playerNo]._unk0C = 4;
+        mbPlayerWorkGet(playerNo)->_unk0C = 4;
         workP->moveHook(playerNo);
         workP->moveHook = NULL;
     } else {
         mbPlayerMasuMove(playerNo, TRUE);
     }
-    playerWork[playerNo]._unk0C = 0;
-    playerWork[playerNo]._unk10_3 = TRUE;
-    playerWork[playerNo].masuMoveF = FALSE;
+    mbPlayerWorkGet(playerNo)->_unk0C = 0;
+    mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
+    mbPlayerWorkGet(playerNo)->masuMoveF = FALSE;
     GwPlayer[playerNo].masuId = masuIdNext;
     mbTutorialCall(8);
     hiddenF = !mbMasuDispCheck(masuIdNext);
@@ -822,20 +822,22 @@ repeat:
     }
     if (!mbev_MasuMasuStart(playerNo)) {
         masuIdNext = GwPlayer[playerNo].masuId;
-        if (!mbev_MasuMove(playerNo, masuIdNext) &&
-            mbMasuDispCheck(masuIdNext)) {
-            mbAudFXPlay(0x3EE);
-            GwPlayer[playerNo].moveNum--;
-            if (GwPlayer[playerNo].moveNum < 0) {
-                GwPlayer[playerNo].moveNum = 0;
-            }
-            if (GwPlayer[playerNo].moveNum == 0) {
-                mbMoveNumKill(playerNo);
+        if (!mbev_MasuMove(playerNo, masuIdNext)) {
+            hiddenF = !mbMasuDispCheck(masuIdNext);
+            if (!hiddenF) {
+                mbAudFXPlay(0x3EE);
+                GwPlayer[playerNo].moveNum--;
+                if (GwPlayer[playerNo].moveNum < 0) {
+                    GwPlayer[playerNo].moveNum = 0;
+                }
+                if (GwPlayer[playerNo].moveNum == 0) {
+                    mbMoveNumKill(playerNo);
+                }
             }
         }
     }
-    if (workP->_unk10_3) {
-        workP->moveEndF = TRUE;
+    if (workP->moveF) {
+        workP->_unk10_3 = TRUE;
         HuPrcSleep(-1);
     }
     mbTutorialCall(9);
@@ -845,9 +847,9 @@ repeat:
 end:
     workP->moveHook = NULL;
     mbMoveNumKill(playerNo);
-    playerWork[playerNo]._unk0C = 0;
-    playerWork[playerNo]._unk10_3 = TRUE;
-    if (workP->_unk10_3) {
+    mbPlayerWorkGet(playerNo)->_unk0C = 0;
+    mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
+    if (workP->moveF) {
         mbPlayerRotateStart(playerNo, 0, 15);
         while (!mbPlayerRotateCheck(playerNo)) {
             HuPrcVSleep();
@@ -1498,15 +1500,17 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
 
 void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
 {
+    HuVecF pos;
     int orderNo[GW_PLAYER_MAX];
     int playerNoTbl[GW_PLAYER_MAX];
-    HuVecF pos;
+    BOOL circleF;
     int num = 0;
     int i;
     int j;
+    int temp;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (i != playerNo) {
+        if (playerNo != i) {
             if (GwPlayer[i].masuId == 0) {
                 continue;
             }
@@ -1515,7 +1519,7 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
             }
         }
         orderNo[num] = GwPlayer[i].orderNo;
-        if (i == playerNo) {
+        if (playerNo == i) {
             orderNo[num] = -1;
         }
         playerNoTbl[num] = i;
@@ -1526,8 +1530,7 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                int temp = orderNo[i];
-
+                temp = orderNo[i];
                 orderNo[i] = orderNo[j];
                 orderNo[j] = temp;
                 temp = playerNoTbl[i];
@@ -1536,45 +1539,42 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
             }
         }
     }
-    for (i = 0; i < num; i++) {
-        int playerNoSet = playerNoTbl[i];
-        int cornerNo = i;
-        PLAYERCOLWORK *workP;
-        u8 circleF;
+    for (j = 0; j < num; j++) {
+        i = playerNoTbl[j];
+        temp = j;
 
-        if (cornerNo != 0) {
-            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
+        if (temp != 0) {
+            mbMasuCornerRotPosGet(masuId, temp - 1, &pos);
         } else {
             mbMasuPosGet(masuId, &pos);
         }
-        workP = omObjGetWork(playerWork[playerNoSet].colObj, PLAYERCOLWORK);
-        circleF = workP->circleF;
-        workP->circleF = FALSE;
+        circleF =
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (snapF) {
-            mbPlayerPosSetV(playerNoSet, &pos);
-            PlayerColCornerSnap(playerNoSet, masuId, cornerNo);
-        } else if (cornerNo != mbPlayerMasuCornerGet(playerNoSet) || circleF) {
-            PlayerColInit(playerNoSet, masuId, cornerNo);
+            mbPlayerPosSetV(i, &pos);
+            PlayerColCornerSnap(i, masuId, temp);
+        } else if (temp != mbPlayerMasuCornerGet(i) || circleF) {
+            PlayerColInit(i, masuId, temp);
         }
-        mbPlayerMasuCornerSet(playerNoSet, cornerNo);
+        mbPlayerMasuCornerSet(i, temp);
     }
 }
 
 void mbev_PlayerColCircleAdd(
     int playerNo, int masuId, BOOL snapF, float radius)
 {
+    HuVecF posCenter;
+    HuVecF pos;
     int orderNo[GW_PLAYER_MAX];
     int playerNoTbl[GW_PLAYER_MAX];
-    HuVecF pos;
-    HuVecF posCenter;
     int num = 0;
     int i;
     int j;
+    int temp;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        PLAYERCOLWORK *workP;
-
-        if (i != playerNo) {
+        if (playerNo != i) {
             if (GwPlayer[i].masuId == 0) {
                 continue;
             }
@@ -1582,11 +1582,10 @@ void mbev_PlayerColCircleAdd(
                 continue;
             }
         }
-        workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-        workP->circleF = TRUE;
-        workP->radius = radius;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = TRUE;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->radius = radius;
         orderNo[num] = GwPlayer[i].orderNo;
-        if (i == playerNo) {
+        if (playerNo == i) {
             orderNo[num] = -1;
         }
         playerNoTbl[num] = i;
@@ -1597,8 +1596,7 @@ void mbev_PlayerColCircleAdd(
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                int temp = orderNo[i];
-
+                temp = orderNo[i];
                 orderNo[i] = orderNo[j];
                 orderNo[j] = temp;
                 temp = playerNoTbl[i];
@@ -1607,35 +1605,36 @@ void mbev_PlayerColCircleAdd(
             }
         }
     }
-    for (i = 0; i < num; i++) {
-        int playerNoSet = playerNoTbl[i];
-        int cornerNo = i;
+    for (j = 0; j < num; j++) {
+        i = playerNoTbl[j];
+        temp = j;
 
-        if (playerNo < 0 && cornerNo == 0) {
-            cornerNo = num;
+        if (playerNo < 0 && temp == 0) {
+            temp = num;
         }
         mbMasuPosGet(masuId, &posCenter);
-        if (cornerNo != 0) {
+        if (temp != 0) {
             float scale;
 
-            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
+            mbMasuCornerRotPosGet(masuId, temp - 1, &pos);
             VECSubtract(&pos, &posCenter, &pos);
             scale = radius / VECMag(&pos);
             VECScale(&pos, &pos, scale);
             VECAdd(&posCenter, &pos, &posCenter);
         }
         if (snapF) {
-            mbPlayerPosSetV(playerNoSet, &posCenter);
-            PlayerColCornerSnap(playerNoSet, masuId, cornerNo);
+            mbPlayerPosSetV(i, &posCenter);
+            PlayerColCornerSnap(i, masuId, temp);
         } else {
-            PlayerColInit(playerNoSet, masuId, cornerNo);
+            PlayerColInit(i, masuId, temp);
         }
-        mbPlayerMasuCornerSet(playerNoSet, cornerNo);
+        mbPlayerMasuCornerSet(i, temp);
     }
 }
 
 void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
 {
+    BOOL circleF;
     HuVecF pos;
     int i;
     int j;
@@ -1643,16 +1642,15 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         s8 orderNo;
         int cornerNo;
-        PLAYERCOLWORK *workP;
-        u8 circleF;
 
         if (masuId != GwPlayer[i].masuId || i == playerNo) {
             continue;
         }
         if (playerWork[i].colObj) {
-            workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-            workP->masuIdNext = GwPlayer[i].masuIdNext;
-            if (workP->restF || !workP->snapF) {
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
+                GwPlayer[i].masuIdNext;
+            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF ||
+                !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
                 continue;
             }
         }
@@ -1672,9 +1670,9 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
         } else {
             mbMasuPosGet(masuId, &pos);
         }
-        workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-        circleF = workP->circleF;
-        workP->circleF = FALSE;
+        circleF =
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (snapF) {
             mbPlayerPosSetV(i, &pos);
             PlayerColCornerSnap(i, masuId, cornerNo);
@@ -1759,6 +1757,7 @@ void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL waitF)
 
 static void PlayerColCornerSet(int playerNo, int masuIdNext)
 {
+    BOOL circleF;
     int masuIdFix[GW_PLAYER_MAX];
     int i;
     int j;
@@ -1772,21 +1771,19 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
     }
     masuIdFix[playerNo] = masuIdNext;
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        PLAYERCOLWORK *workP;
-        u8 circleF;
-
         if (playerWork[i].colObj == NULL) {
             continue;
         }
         if (GwPlayer[i].masuId == 0) {
             continue;
         }
-        workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-        workP->masuIdNext = GwPlayer[i].masuIdNext;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
+            GwPlayer[i].masuIdNext;
         if (i == playerNo) {
             continue;
         }
-        if (workP->restF || !workP->snapF) {
+        if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF ||
+            !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
             continue;
         }
         masuId = GwPlayer[i].masuId;
@@ -1809,8 +1806,9 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
         } else {
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
-        circleF = workP->circleF;
-        workP->circleF = FALSE;
+        circleF =
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (cornerNo != mbPlayerMasuCornerGet(i) || circleF) {
             PlayerColInit(i, masuId, cornerNo);
         }
@@ -2033,8 +2031,8 @@ void mbev_PlayerColSet(int playerNo, int masuId)
     int i;
     int cornerNo;
     HuVecF pos;
-    Mtx masuMtx;
     Mtx masuMtxInv;
+    Mtx masuMtx;
     HuVecF posPlayer;
 
     if (!playerColSnapF) {
@@ -2070,9 +2068,9 @@ void mbev_PlayerColSet(int playerNo, int masuId)
         mbMasuMtxGet(workP->masuId, masuMtx);
         MTXInverse(masuMtx, masuMtxInv);
         mbPlayerPosGet(i, &posPlayer);
-        MTXMultVec(masuMtxInv, &posPlayer, &playerWorkP->_unk3C);
+        MTXMultVec(masuMtxInv, &posPlayer, &playerWork[i]._unk3C);
         MTXMultVec(
-            masuMtxInv, &posPlayer, &playerWorkP->colObj->trans);
+            masuMtxInv, &posPlayer, &playerWork[i].colObj->trans);
         mbPlayerRotYSet(i, 0.0f);
         workP->rotYStart = 0.0f;
         GwPlayer[i].moveF = FALSE;
@@ -2945,6 +2943,9 @@ static void BiriQEffectCreate(OMOBJ *objP)
 {
     PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
     MBPARTICLE *particleP;
+    HU3D_MODELID modelId;
+    HU3D_MODELID modelId2;
+    HU3D_MODELID sourceModelId;
     int effectCount[2];
     float radius;
     int particleNum;
@@ -2964,21 +2965,32 @@ static void BiriQEffectCreate(OMOBJ *objP)
     Hu3DModelLayerSet(objP->mdlId[0], 3);
     Hu3DModelLayerSet(objP->mdlId[1], 3);
     {
-        HU3D_MODELID modelId = objP->mdlId[0];
+        void *hookData;
+        MBPARTICLE *modelParticleP;
 
-        particleP = (MBPARTICLE *)Hu3DData[modelId].hookData;
+        modelId = objP->mdlId[0];
+        hookData = Hu3DData[modelId].hookData;
+        modelParticleP = hookData;
+        particleP = modelParticleP;
         particleP->hookData = objP;
         particleP->mode = 0;
     }
     {
-        HU3D_MODELID modelId = objP->mdlId[1];
+        void *hookData2;
+        MBPARTICLE *modelParticleP2;
 
-        particleP = (MBPARTICLE *)Hu3DData[modelId].hookData;
+        modelId2 = objP->mdlId[1];
+        hookData2 = Hu3DData[modelId2].hookData;
+        modelParticleP2 = hookData2;
+        particleP = modelParticleP2;
         {
-            HU3D_MODELID sourceModelId = objP->mdlId[0];
+            void *sourceHookData;
+            MBPARTICLE *sourceParticleP;
 
-            particleP->hookData =
-                (MBPARTICLE *)Hu3DData[sourceModelId].hookData;
+            sourceModelId = objP->mdlId[0];
+            sourceHookData = Hu3DData[sourceModelId].hookData;
+            sourceParticleP = sourceHookData;
+            particleP->hookData = sourceParticleP;
         }
         particleP->mode = 0;
     }
@@ -3785,9 +3797,10 @@ static s8 *PlayerCapsulePtrGet(int playerNo, int index)
                 }
             }
         }
-        if (j < GW_PLAYER_MAX) {
-            return &GwPlayer[j].capsule[index - (memberNo * 3)];
+        if (j >= GW_PLAYER_MAX) {
+            return NULL;
         }
+        return &GwPlayer[j].capsule[index - (memberNo * 3)];
     }
 }
 
