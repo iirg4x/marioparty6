@@ -1396,10 +1396,17 @@ config.libs = [
         "mdbankdll",
         objects={
             Object(Matching, "REL/mdbankdll/mdbank_pass2_04b8.c"),
+            Object(Matching, "REL/mdbankdll/application_09a8.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_0ac4.c"),
+            Object(Matching, "REL/mdbankdll/application_0b98.c"),
+            Object(Matching, "REL/mdbankdll/application_0f68.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_10e4.c"),
+            Object(Matching, "REL/mdbankdll/application_11a0.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_1200.c"),
+            Object(Matching, "REL/mdbankdll/application_12f8.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_18e8.c"),
+            Object(Matching, "REL/mdbankdll/application_1c64.c"),
+            Object(Matching, "REL/mdbankdll/application_1d68.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_21e4.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_26b0.c"),
             Object(Matching, "REL/mdbankdll/mdbank_pass2_3164.c"),
@@ -1409,6 +1416,7 @@ config.libs = [
             Object(Matching, "REL/mdbankdll/mdbank_tail2.c"),
             Object(Matching, "REL/mdbankdll/mdbank_tail3.c"),
             Object(Matching, "REL/mdbankdll/mdbank_tail4.c"),
+            Object(Matching, "REL/mdbankdll/application_eeb8.c"),
             Object(
                 Matching,
                 "REL/mdbankdll/runtime.c",
@@ -1426,6 +1434,7 @@ config.libs = [
             Object(Matching, "REL/miraclebookdll/application_pass3_4e94.c"),
             Object(Matching, "REL/miraclebookdll/application_pass1_5904.c"),
             Object(Matching, "REL/miraclebookdll/application_pass2_7158.c"),
+            Object(Matching, "REL/miraclebookdll/application_7998.c"),
             Object(Matching, "REL/miraclebookdll/application_pass2_8a0c.c"),
             Object(Matching, "REL/miraclebookdll/application_pass1.c"),
             Object(
