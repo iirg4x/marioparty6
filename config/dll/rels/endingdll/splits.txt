@@ -43,6 +43,9 @@ REL/endingdll/ending_pass4_lifecycle_bb10.c:
 REL/endingdll/ending_pass4_lifecycle_d028.c:
 	.text       start:0x0000D028 end:0x0000D104
 
+REL/endingdll/application_pass6_df18.c:
+	.text       start:0x0000DF18 end:0x0000E0EC
+
 REL/endingdll/ending_pass5_particle_e0ec.c:
 	.text       start:0x0000E0EC end:0x0000E270
 
@@ -57,6 +60,24 @@ REL/endingdll/ending_pass5_particle_f11c.c:
 
 REL/endingdll/ending_pass5_particle_fc48.c:
 	.text       start:0x0000FC48 end:0x0000FDD4
+
+REL/endingdll/application_pass6_1025c.c:
+	.text       start:0x0001025C end:0x0001049C
+
+REL/endingdll/application_pass6_105d4.c:
+	.text       start:0x000105D4 end:0x00010628
+
+REL/endingdll/application_pass6_10c28.c:
+	.text       start:0x00010C28 end:0x00010DEC
+
+REL/endingdll/application_pass6_1144c.c:
+	.text       start:0x0001144C end:0x0001152C
+
+REL/endingdll/application_pass6_11694.c:
+	.text       start:0x00011694 end:0x00011714
+
+REL/endingdll/application_pass6_11eb0.c:
+	.text       start:0x00011EB0 end:0x00011F34
 
 REL/endingdll/ending_pass4_lifecycle_12838.c:
 	.text       start:0x00012838 end:0x00012988
