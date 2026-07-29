@@ -15,8 +15,8 @@
         "requires": [
           "same compiler version and flags",
           "same symbol ownership and types",
-        "before/after object and relocation comparison",
-        "target proof that the helper expansion is present while a duplicate helper csect and call relocation are absent"
+          "before/after object and relocation comparison",
+          "target proof that the helper expansion is present while a duplicate helper csect and call relocation are absent"
         ]
       },
       "emitted_effect": {
@@ -32,8 +32,8 @@
           "a semantics-preserving reorder regresses many exact functions",
           "section extent changes without an intentional data-layout change",
           "a standalone helper compiled with prototype-only visibility remains call-bearing inside a later exact auto-inline expansion",
-        "complete copied bodies and absent call relocations prove a depth-two inline chain whose result changes when one definition moves",
-        "an isolated caller becomes exact with an authenticated local static-inline helper while the generated object emits no second helper csect"
+          "complete copied bodies and absent call relocations prove a depth-two inline chain whose result changes when one definition moves",
+          "an isolated caller becomes exact with an authenticated local static-inline helper while the generated object emits no second helper csect"
         ]
       },
       "rule": "Treat declaration chronology as a testable compiler variable; do not modernize definition placement or copy a tail-definition layout without owner-local proof. During extraction, a fallback-owned helper may be represented by an authenticated ordinary local static-inline body only when target instructions prove the expansion, target relocations prove the missing call, generated sections prove no duplicate helper emission, and all fallback and direct consumers remain exact.",
@@ -84,19 +84,14 @@
         "mdparty-late-owner-definitions"
       ],
       "evidence": [
-        "src/REL/mdbankdll/mdbank_pass2_0ac4.c",
-        "src/REL/mdbankdll/mdbank_pass2_1200.c",
-        "src/REL/mdbankdll/mdbank_pass2_3164.c",
-        "src/REL/mdbankdll/mdbank_pass2_111f8.c",
-        "src/REL/mdbankdll/mdbank_pass2_11678.c",
+        "src/REL/mdbankdll/mdbank.c",
         "config/dll/rels/mdbankdll/splits.txt",
-        "src/REL/mdsingdll/application_pass31_e688.c",
-        "src/REL/mdsingdll/application_pass31_ea7c.c",
+        "src/REL/mdsingdll/mdsing.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "docs/native_matching_wave103.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_wave68.md",
-        "src/REL/endingdll/ending_pass4_lifecycle_951c.c",
+        "src/REL/endingdll/ending.c",
         "config/dll/rels/endingdll/splits.txt"
       ]
     },
@@ -790,40 +785,9 @@
         "docs/native_matching_cross_owner_analogue_harvesting.md",
         "src/REL/mdpartydll/stage.c",
         "src/REL/mdpartydll/mdparty.c",
-        "src/REL/mdsingdll/mdsing_tail.c",
-        "src/REL/mdsingdll/mdsing_tail2.c",
-        "src/REL/mdsingdll/mdsing_tail3.c",
-        "src/REL/mdsingdll/mdsing_tail6.c",
-        "src/REL/mdsingdll/mdsing_tail7.c",
-        "src/REL/mdsingdll/mdsing_tail8.c",
-        "src/REL/mdsingdll/mdsing_tail9.c",
-        "src/REL/mdsingdll/mdsing_tail10.c",
-        "src/REL/mdsingdll/mdsing_tail11.c",
-        "src/REL/mdsingdll/mdsing_tail12.c",
-        "src/REL/mdsingdll/mdsing_tail13.c",
-        "src/REL/mdsingdll/mdsing_tail19.c",
-        "src/REL/mdsingdll/mdsing_tail20.c",
-        "src/REL/mdsingdll/mdsing_tail21.c",
-        "src/REL/mdsingdll/mdsing_tail22.c",
-        "src/REL/mdsingdll/mdsing_tail23.c",
-        "src/REL/mdsingdll/mdsing_tail24.c",
-        "src/REL/mdsingdll/mdsing_tail25.c",
-        "src/REL/mdsingdll/application_pass30_1a9c.c",
-        "src/REL/mdsingdll/application_pass30_279c.c",
-        "src/REL/mdsingdll/application_pass30_3484.c",
-        "src/REL/mdsingdll/application_pass30_3b30.c",
-        "src/REL/mdsingdll/application_pass30_3db4.c",
-        "src/REL/mdsingdll/application_pass31_e688.c",
-        "src/REL/mdsingdll/application_pass31_ea7c.c",
-        "src/REL/mdsingdll/application_pass31_fcc8.c",
+        "src/REL/mdsingdll/mdsing.c",
         "config/dll/rels/mdsingdll/splits.txt",
-        "src/REL/endingdll/application_pass6_df18.c",
-        "src/REL/endingdll/application_pass6_1025c.c",
-        "src/REL/endingdll/application_pass6_105d4.c",
-        "src/REL/endingdll/application_pass6_10c28.c",
-        "src/REL/endingdll/application_pass6_1144c.c",
-        "src/REL/endingdll/application_pass6_11694.c",
-        "src/REL/endingdll/application_pass6_11eb0.c",
+        "src/REL/endingdll/ending.c",
         "config/dll/rels/endingdll/splits.txt",
         "configure.py"
       ]
@@ -921,7 +885,7 @@
         "docs/native_matching_wave72.md",
         "docs/native_matching_wave95.md",
         "docs/native_matching_wave98.md",
-        "src/REL/mdpresultdll/application_2001c.c",
+        "src/REL/mdpresultdll/mdpresult.c",
         "config/recovery/owners/REL_mdpresultdll_application.json"
       ]
     },
@@ -1486,19 +1450,10 @@
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
         "src/board/mgcall.c",
-        "src/REL/mdpresultdll/application_pass53.c",
+        "src/REL/mdpresultdll/mdpresult.c",
         "config/dll/rels/mdpresultdll/splits.txt",
-        "src/REL/optionDll/application_pass1_e538.c",
-        "src/REL/optionDll/application_pass1_f1d8.c",
-        "src/REL/optionDll/application_pass2_prefix.c",
-        "src/REL/optionDll/application_pass2_lifecycle_fdc.c",
-        "src/REL/optionDll/application_pass2_lifecycle_18d8.c",
-        "src/REL/optionDll/application_pass2_messages_6504.c",
-        "src/REL/optionDll/application_pass2_messages_b02c.c",
-        "src/REL/optionDll/application_pass2_messages_c324.c",
-        "src/REL/openingDll/opening_prefix.c",
-        "src/REL/openingDll/application_pass2_4068.c",
-        "src/REL/openingDll/application_pass2_4bd8.c",
+        "src/REL/optionDll/option.c",
+        "src/REL/openingDll/opening.c",
         "config/dll/rels/openingDll/splits.txt",
         "config/dll/rels/optionDll/splits.txt",
         "src/game/sprman.c",
@@ -1812,11 +1767,9 @@
         "docs/native_matching_gc132_sqrtf_header_closure.md",
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave42.md",
-        "src/REL/endingdll/ending_pass1.c",
+        "src/REL/endingdll/ending.c",
         "config/dll/rels/endingdll/splits.txt",
-        "src/REL/miraclebookdll/application_pass1.c",
-        "src/REL/miraclebookdll/application_pass1_5904.c",
-        "src/REL/miraclebookdll/application_pass3_0000.c",
+        "src/REL/miraclebookdll/miraclebook.c",
         "config/dll/rels/miraclebookdll/splits.txt"
       ]
     },
@@ -2089,9 +2042,9 @@
       "related_exceptions": [],
       "evidence": [
         "src/REL/mdpartydll/mdparty.c",
-        "src/REL/optionDll/application_18b8.c",
+        "src/REL/optionDll/option.c",
         "config/dll/rels/optionDll/splits.txt",
-        "src/REL/mdsingdll/application_pass31_ea7c.c",
+        "src/REL/mdsingdll/mdsing.c",
         "config/dll/rels/mdsingdll/symbols.txt",
         "config/dll/rels/mdsingdll/splits.txt",
         "docs/native_matching_conversion_pool_ownership.md",
@@ -3625,39 +3578,18 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "src/REL/staffdll/staff_pass1_067c.c",
-        "src/REL/staffdll/staff_pass1_0f68.c",
-        "src/REL/staffdll/staff_pass1_6c14.c",
-        "src/REL/staffdll/staff_pass1_72a4.c",
-        "src/REL/staffdll/staff_pass1_7468.c",
-        "src/REL/staffdll/staff_pass1_7c70.c",
-        "src/REL/staffdll/staff_pass1_8410.c",
-        "src/REL/staffdll/staff_pass1_8bf8.c",
-        "src/REL/staffdll/staff_pass1_8dbc.c",
-        "src/REL/staffdll/staff_pass1_94e0.c",
-        "src/REL/staffdll/application_pass3_0e20.c",
-        "src/REL/staffdll/application_pass3_54f0.c",
+        "src/REL/staffdll/staff.c",
         "config/dll/rels/staffdll/splits.txt",
         "docs/native_matching_mdpresult_binding_pass46.md",
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave51.md",
-        "src/REL/mdpresultdll/application_pass49.c",
-        "src/REL/mdpresultdll/application_pass50.c",
-        "src/REL/mdpresultdll/application_pass51.c",
+        "src/REL/mdpresultdll/mdpresult.c",
         "config/recovery/owners/REL_mdpresultdll_application.json",
         "src/REL/miraclebookdll/miraclebook.c",
-        "src/REL/miraclebookdll/application_pass1.c",
-        "src/REL/miraclebookdll/application_pass1_5904.c",
-        "src/REL/miraclebookdll/application_pass3_0000.c",
-        "src/REL/miraclebookdll/application_pass3_4e94.c",
-        "src/REL/miraclebookdll/application_7998.c",
         "config/dll/rels/miraclebookdll/splits.txt",
         "src/REL/endingdll/ending.c",
-        "src/REL/endingdll/ending_pass3_motion.c",
-        "src/REL/endingdll/ending_pass4_lifecycle_4ab4.c",
-        "src/REL/endingdll/ending_pass4_lifecycle_b244.c",
         "config/dll/rels/endingdll/splits.txt",
-        "src/REL/openingDll/application_4484.c",
+        "src/REL/openingDll/opening.c",
         "config/dll/rels/openingDll/splits.txt"
       ]
     },
@@ -3738,7 +3670,7 @@
       "category": "provenance_and_ownership",
       "compiler": "all",
       "confidence": "confirmed",
-      "summary": "A source file created to bind an exact fallback island is a reconstruction partition, not evidence of Nintendo's original translation-unit filename. Pass, tail, extra, and address-derived files may preserve historical proof, but new recovery must land in an authenticated canonical owner and synthetic shards are not promotable to main.",
+      "summary": "A source file created to bind an exact fallback island is a reconstruction partition, not evidence of Nintendo's original translation-unit filename. Pass, tail, extra, and address-derived files belong only in ignored evidence. Recovered C stays in an authenticated canonical owner; while that owner is incomplete, its configured application object may remain NonMatching and exact source subsets must be reported separately from source-linked ownership.",
       "conditions": "Apply whenever exact source covers only a prefix, suffix, or noncontiguous island while adjacent target ranges remain on autogenerated retail fallback.",
       "source_condition": {
         "change": "Recover, consolidate, or promote C that replaces part of a DTK fallback span.",
@@ -3753,6 +3685,7 @@
         "possible_changes": [
           "build-object subdivision around a source-linked island",
           "an increased build-object denominator without new original owners",
+          "a reduced matching-object count after synthetic islands are collapsed without losing recovered source or exact-function evidence",
           "one canonical MWCC text csect concatenating recovered functions that the target separates with fallback gaps",
           "repository path churn with no target-binary evidence"
         ],
@@ -3763,13 +3696,14 @@
           "renaming the source path leaves compiled and linked retail bytes unchanged"
         ]
       },
-      "rule": "Use recovery pass numbers and address islands only in ignored evidence and queue metadata. Do not add or promote pass, tail, extra, or address-derived C shard paths. Recover into an authenticated canonical owner and promote only when its complete compiler, data, consumer, and retail closure is exact; otherwise preserve the result as blocked evidence rather than source-tree fragmentation.",
+      "rule": "Use recovery pass numbers and address islands only in ignored evidence and queue metadata. Do not add or promote pass, tail, extra, or address-derived C shard paths. Consolidate recovered C into an authenticated canonical owner. If the translation unit is incomplete, configure the whole application owner as NonMatching, retain relocation-aware exact-subset evidence without calling it source-linked, and require a byte-identical retail build; mark the owner Matching only after its complete compiler, data, relocation, and consumer closure is exact.",
       "safe_actions": [
         "keep partial-island probes under ignored build evidence rather than tracked source",
         "record the semantic owner and temporary build partition as separate evidence fields",
         "retain address-derived function symbols until naming evidence exists",
         "restore or extend the authenticated canonical owner only after declaration chronology, inline closure, data ownership, and retail output remain exact",
         "treat consolidation of historical shards as a verified ownership change, not a cosmetic bulk rename",
+        "keep exact-function counts independent from configured build-object counts when an incomplete canonical owner uses whole-owner fallback",
         "run the complete-file promotion gate before READY"
       ],
       "applicability": {
@@ -3783,11 +3717,11 @@
           "REL:s02Dll:application",
           "REL:staffdll:application",
           "REL:openingDll:application",
-          "REL:mdsingdll:application"
+          "REL:mdsingdll:application",
+          "REL:endingdll:application",
+          "REL:optionDll:application"
         ],
-        "modules": [
-          "mdsingdll"
-        ],
+        "modules": [],
         "owner_tags": [
           "generated_object",
           "source_provenance",
@@ -3797,8 +3731,8 @@
       },
       "examples": [
         "Existing pass, tail, and application_<address> files record earlier build partitioning only. They are migration debt, not original filename evidence and not templates for new recovery.",
-        "Staff's historical canonical staff.c provides a candidate owner boundary; restoring it still requires complete TU, data, consumer, source-quality, and retail proof before the synthetic shards can be removed.",
-        "A locally exact discontiguous MDSing island remains blocked evidence when mdsing.c cannot absorb it without breaking the configured retail-identical REL."
+        "A repository-wide consolidation removed 174 synthetic C files across endingdll, mdbankdll, mdpresultdll, mdsingdll, miraclebookdll, openingDll, optionDll, s02Dll, and staffdll. Their authenticated canonical owners retained 538 of 648 exact source functions while all 137 retail outputs remained byte-identical.",
+        "An incomplete canonical application owner stays NonMatching as one unit. Exact functions in its compiled comparison object remain recovery evidence, but they do not inflate the configured matching-object count."
       ],
       "counterexamples": [
         "A filename preserved in a pinned original map, debug record, or authenticated same-game source blob is provenance and may be used with its confidence stated.",
@@ -3807,20 +3741,25 @@
       ],
       "related_exceptions": [],
       "evidence": [
+        "configure.py",
+        "config/dll/rels/endingdll/splits.txt",
+        "config/dll/rels/mdbankdll/splits.txt",
         "config/dll/rels/mdpresultdll/splits.txt",
+        "config/dll/rels/mdsingdll/splits.txt",
+        "config/dll/rels/miraclebookdll/splits.txt",
+        "config/dll/rels/openingDll/splits.txt",
+        "config/dll/rels/optionDll/splits.txt",
         "config/dll/rels/s02Dll/splits.txt",
         "config/dll/rels/staffdll/splits.txt",
-        "config/dll/rels/openingDll/splits.txt",
-        "config/dll/rels/mdbankdll/splits.txt",
-        "config/dll/rels/miraclebookdll/splits.txt",
-        "config/recovery/owners/REL_s02Dll_application.json",
-        "config/recovery/owners/REL_staffdll_application.json",
-        "config/recovery/owners/REL_openingDll_application.json",
-        "config/recovery/owners/REL_mdbankdll_application.json",
-        "config/recovery/owners/REL_miraclebookdll_application.json",
-        "config/recovery/owners/REL_mdpresultdll_application.json",
-        "config/dll/rels/mdsingdll/splits.txt",
-        "src/REL/mdsingdll/mdsing.c"
+        "src/REL/endingdll/ending.c",
+        "src/REL/mdbankdll/mdbank.c",
+        "src/REL/mdpresultdll/mdpresult.c",
+        "src/REL/mdsingdll/mdsing.c",
+        "src/REL/miraclebookdll/miraclebook.c",
+        "src/REL/openingDll/opening.c",
+        "src/REL/optionDll/option.c",
+        "src/REL/s02Dll/s02.c",
+        "src/REL/staffdll/staff.c"
       ]
     },
     {
@@ -3892,8 +3831,7 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "src/REL/openingDll/application_2238.c",
-        "src/REL/openingDll/application_4484.c",
+        "src/REL/openingDll/opening.c",
         "config/dll/rels/openingDll/splits.txt"
       ]
     },
@@ -3966,7 +3904,7 @@
       "evidence": [
         "config/dll/rels/optionDll/symbols.txt",
         "config/dll/rels/optionDll/splits.txt",
-        "src/REL/optionDll/application_18b8.c"
+        "src/REL/optionDll/option.c"
       ]
     },
     {
@@ -4113,9 +4051,8 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "src/REL/mdbankdll/application_eeb8.c",
         "src/REL/mdbankdll/mdbank.c",
-        "src/REL/miraclebookdll/application_7998.c",
+        "src/REL/miraclebookdll/miraclebook.c",
         "tools/recovery_core.py",
         "tools/promote_recovered_c.py"
       ]
