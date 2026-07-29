@@ -65,3 +65,22 @@ build the definition-to-inline-consumer graph, preserve the full transitive
 helper chain in its current TU, and rank dependency-closed target-contiguous
 suffixes. Re-run every protected consumer and existing pool owner before
 accepting the new boundary.
+
+## Pass 48: dependency-closed predecessor island
+
+Pass 48 applied the same graph to the range before the retained window chain.
+The maximal closed region was `fn_1_16C4` through `fn_1_1C34`, ending at
+`0x1C70`. None of its camera/light definitions has a later source consumer.
+Starting at `fn_1_1C70`, the remaining helpers form a transitive chain into the
+same four protected exact consumers, so that chain stayed in `mdpresult.c`.
+
+The predecessor island is independently exact: 11 functions, 1,452 text
+bytes, 109 of 109 relocations, and no source `.rodata`. Both generated owners,
+all four protected consumers, and the 64-byte `fn_1_5360` pool prefix remain
+exact in the linked REL.
+
+Therefore the reusable boundary search is not restricted to suffixes. A
+target-contiguous prefix, suffix, or interior island is eligible when its
+definition-to-inline-consumer graph has no outgoing edge into retained exact
+source, and all existing generated owners, consumers, and pool prefixes are
+re-proved after extraction.
