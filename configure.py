@@ -1196,6 +1196,7 @@ config.libs = [
         "endingdll",
         objects={
             Object(Matching, "REL/endingdll/ending_pass2_scene.c"),
+            Object(Matching, "REL/endingdll/ending_pass3_motion.c"),
             Object(Matching, "REL/endingdll/ending_pass1_35f4.c"),
             Object(Matching, "REL/endingdll/ending_pass1.c"),
             Object(
