@@ -93,6 +93,23 @@ unproven until the complete source-owned pool csect, linked relocation
 target/addend, consumers, and final REL are exact. Repeated byte-identical text
 does not substitute for that linked ownership proof.
 
+### Repeated MDBank owner barrier
+
+MDBank passes 4 and 5 turned the rule into a selection shortcut. A natural
+source probe for `fn_1_6810` emitted an eight-byte TU-local unsigned-conversion
+pool instead of independently owning retail `lbl_1_rodata_128`. The function
+was reverted even though its ordinary structure was viable. The next inventory
+then showed `fn_1_2750` consuming that same named target owner. Because the
+shared ownership debt was already authenticated, pass 5 rejected `fn_1_2750`
+before spending another body-shaping probe and selected the literal-free exact
+`fn_1_226C` family instead.
+
+This is the compounding use of the card: once two candidates bind the same
+unresolved named pool, classify the pool as an owner-level barrier, suppress
+additional isolated consumer probes, and rank literal-free or independently
+owned clusters first. Resume the family only when the shared data owner or
+translation-unit chronology can be recovered naturally.
+
 ## Linked-owner closure
 
 The completed `s01Dll` owner establishes an important boundary on the rule.
