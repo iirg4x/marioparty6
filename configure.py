@@ -1195,6 +1195,8 @@ config.libs = [
     Rel(
         "endingdll",
         objects={
+            Object(Matching, "REL/endingdll/ending_pass1_35f4.c"),
+            Object(Matching, "REL/endingdll/ending_pass1.c"),
             Object(
                 Matching,
                 "REL/endingdll/runtime.c",
