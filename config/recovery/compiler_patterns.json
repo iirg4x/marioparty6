@@ -1307,19 +1307,19 @@
     },
     {
       "id": "gc26-board-transitive-sqrtf-pool",
-      "title": "Select the authenticated owner-local GC/2.6 sqrtf header before changing board literals",
+      "title": "Select the authenticated translation-unit math boundary before changing weak sqrtf pools",
       "classification": "confirmed_rule",
       "category": "header_visibility",
-      "compiler": "GC/2.6",
+      "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "For a GC/2.6 board owner whose generic math closure emits source-only `_half` and `_three` sqrtf statics, an authenticated translation-unit selection of the canonical `dolphin/math.h` implementation can remove the 16-byte `.sdata2` prefix and close otherwise instruction-identical SDA21 relocation rows. Gate and roulette close completely; tutorial and dice gain five strict functions each; capselect rises 22/32 to 26/32, scroll rises 17/31 to 27/31, and mgcall rises 14/16 to 15/16 while closing the 2,404-byte main event. Star proves the signature is diagnostic rather than universally corrective, and changing the shared top-level header is unsafe because it regresses exact REL consumers.",
-      "conditions": "Use only for a main-board owner under its pinned GC/2.6 command when strict objdiff rows differ at SDA21 literals, value-aware bytes and resolved addresses agree, raw `.sdata2` shows exactly the source-only `_half`/`_three` prefix, and same-game exact translation units authenticate the owner-local header chronology. Require the public quality gate and a whole-project retail build.",
+      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
+      "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the owner-local header chronology. Require a reviewed path-specific exception, protected-consumer proof, and a whole-project retail build.",
       "source_condition": {
-        "change": "A translation unit selects generic `math.h` or the canonical `dolphin/math.h` sqrtf implementation, changing whether weak function-local `_half` and `_three` statics own the first 16 bytes of `.sdata2`.",
+        "change": "A translation unit selects or suppresses generic `math.h` through an authenticated owner-local header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
         "requires": [
           "pinned owner compiler command",
-          "strict and data-value objdiff reports",
-          "raw `.sdata2` prefix comparison",
+          "strict instruction and relocation reports",
+          "raw `.sdata2` or `.rodata` comparison",
           "preprocessor/include-closure inspection",
           "authenticated same-game owner-local header chronology",
           "whole-project retail checksum"
@@ -1327,28 +1327,22 @@
       },
       "emitted_effect": {
         "possible_changes": [
-          "16-byte `.sdata2` prefix insertion or removal",
+          "16-byte `.sdata2` or `.rodata` insertion or removal",
           "later constant-pool offsets and anonymous relocation identities",
           "strict match percentages without instruction or resolved-value changes",
           "unrelated exact REL regressions if the shared top-level header is changed globally"
         ],
         "known_signatures": [
-          "candidate `.sdata2` begins with 8-byte `_half` and 8-byte `_three` local statics absent from retail",
-          "SDA21 mismatches resolve to identical float or double bytes under data-value comparison",
+          "candidate data contains 3fe0000000000000 followed by 4008000000000000 while retail assigns no owner there",
+          "instructions and relocations remain exact while only the linked module size and hash differ by the 16-byte pool",
           "removing one direct math include is neutral because another header keeps the same transitive closure",
-          "gate closes 7/11 to 11/11 and 168/168 relocations after authenticated owner-local header selection",
-          "roulette closes 12/21 to 21/21 and 291/291 relocations after the same owner-local selection",
-          "tutorial rises 39/55 to 44/55 strict functions with zero exact losses",
-          "dice rises 39/68 to 44/68 strict functions with zero exact losses",
-          "capselect rises 22/32 to 26/32, including exact Treetop seams mbCapMasuObjCreate and mbCapMasuExec, while naturalized mbCapSelect remains honestly nonexact",
-          "scroll rises 17/31 to 27/31, including exact Treetop seams mbev_StarScroll, ScrollExec, and MapViewExec, while MapSprCreate remains honestly nonexact",
-          "mgcall rises 14/16 to 15/16 and mbev_MgCall closes at 2404/2404 bytes with 204/204 physical relocation records, while mbev_MgCallSingleKoopa remains honestly nonexact"
+          "mdpresultdll application_pass53.o changes from text plus 16-byte rodata to text-only at zero text and relocation cost"
         ]
       },
       "rule": "Before tuning literals or declaration lifetimes, prove whether transitive sqrtf visibility introduced the `_half`/`_three` pool. Prefer a narrowly authenticated owner-local selection of the existing canonical header, reviewed through a path-specific quality exception; never fabricate constants, pad sections, or change the shared top-level header to solve one owner.",
       "safe_actions": [
         "compare strict and data-value relocation reports",
-        "inspect the preprocessed include closure and raw `.sdata2` prefix",
+        "inspect the preprocessed include closure and raw `.sdata2` or `.rodata` bytes",
         "test only an authenticated owner-local include chronology change",
         "require a path-specific reviewed quality exception for an include-guard override",
         "run every configured retail output after any shared-header diagnostic",
@@ -1356,14 +1350,17 @@
       ],
       "applicability": {
         "compiler_wide": false,
-        "project_wide": false,
+        "project_wide": true,
         "owners": [],
         "stable_ids": [],
         "modules": [
-          "main"
+          "main",
+          "mdpresultdll"
         ],
         "owner_tags": [
-          "board"
+          "header_visibility",
+          "weak_sqrtf_pool",
+          "rel"
         ]
       },
       "examples": [
@@ -1373,7 +1370,8 @@
         "main:board/dice",
         "main:board/capselect",
         "main:board/scroll",
-        "main:board/mgcall"
+        "main:board/mgcall",
+        "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)"
       ],
       "counterexamples": [
         "Removing the direct humath include from main:board/dice was byte-neutral because transitive headers still exposed sqrtf.",
@@ -1387,11 +1385,17 @@
         "dice-no-generic-math-inline",
         "capselect-no-generic-math-inline",
         "scroll-no-generic-math-inline",
-        "mgcall-no-generic-math-inline"
+        "mgcall-no-generic-math-inline",
+        "mdpresult-pass53-no-generic-math-inline"
       ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
-        "src/board/mgcall.c"
+        "src/board/mgcall.c",
+        "src/REL/mdpresultdll/application_pass53.c",
+        "config/dll/rels/mdpresultdll/splits.txt",
+        "src/game/sprman.c",
+        "src/REL/mdpartydll/stage.c",
+        "src/REL/bootDll/opening.c"
       ]
     },
     {
