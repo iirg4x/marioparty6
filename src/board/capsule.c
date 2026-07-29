@@ -604,6 +604,12 @@ extern float mbCosDeg(float angle);
 extern BOOL mbSaveNewF;
 extern const float lbl_802C44F8;
 extern const float lbl_802C44C0;
+
+static inline void CapObjUnitScaleSet(CAPSULE_OBJ_COLOR *obj)
+{
+    obj->scale.x = obj->scale.y = obj->scale.z = lbl_802C44C0;
+}
+
 extern const float lbl_802C4514;
 extern const float lbl_802C4524;
 extern const float lbl_802C45C0;
@@ -834,15 +840,15 @@ static GXColor capsuleCrackEffColor = { 255, 255, 128, 64 };
 static GXColor capsuleCrackEffAmbColor = { 255, 255, 255, 255 };
 static GXColor capsuleCrackEffMatColor = { 255, 255, 255, 255 };
 
-const float lbl_802C44F8 = 0.0f;
+const float lbl_802C44B8 = 250.0f;
+const float lbl_802C44BC = 18.0f;
 const float lbl_802C44C0 = 1.0f;
-const float lbl_802C4514 = 3.725290298461914e-09f;
-const float lbl_802C4524 = 0.25f;
-const float lbl_802C45C0 = 2.0f;
-const float lbl_802C4570 = 50.0f;
-const float lbl_802C4544 = 10.0f;
-const float lbl_802C466C = 120.0f;
-const float lbl_802C4670 = 12.0f;
+const double lbl_802C44C8 = 100.0;
+const double lbl_802C44D0 = 150.0;
+const double lbl_802C44D8 = M_PI;
+const float lbl_802C44E0 = 90.0f;
+const double lbl_802C44E8 = 180.0;
+const double lbl_802C44F0 = 1.2000000476837158203125;
 
 static void CapComChoiceSet(int choice)
 {
@@ -935,8 +941,11 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
     HuVecF dir;
     HuVecF outPos;
     HuVecF dotVec;
+    float mag;
+    int temp;
 
     quadF = FALSE;
+    temp = 0;
     if (capsuleColMdlId == HU3D_MODELID_NONE) {
         return FALSE;
     }
@@ -949,6 +958,7 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
         return FALSE;
     }
     PSVECNormalize(&dir, &dir);
+    mag = PSVECMag(&dir);
     for (i = 0; i < hsfP->faceNum; i++, faceBufP++) {
         faceP = faceBufP->data;
         for (j = 0; j < faceBufP->count; j++, faceP++) {
@@ -2601,8 +2611,6 @@ void mbCapInit(void)
 }
 
 
-const float lbl_802C4598 = 8.0f;
-
 static int CapObjColorSearch(int id)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -2653,7 +2661,7 @@ int mbCapObjColorCreate(int capsuleNo, BOOL createF)
     obj->layer = 4;
     obj->pos.x = obj->pos.y = obj->pos.z = 0.0f;
     obj->rot.x = obj->rot.y = obj->rot.z = 0.0f;
-    obj->scale.x = obj->scale.y = obj->scale.z = 1.0f;
+    CapObjUnitScaleSet(obj);
     mbCapObjColorLayerSet(obj->mdlId, obj->layer);
     return obj->mdlId;
 }
