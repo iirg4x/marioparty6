@@ -116,6 +116,7 @@ static void SingleEffKill(s16 effNo);
 static void SingleMasuTypeReset(void);
 static void SingleMasuOrderSet(void);
 static void SingleMgRecordBackup(void);
+static void SingleMgRecordPrizeInit(void);
 static void SingleMicCreate(void);
 static void SingleMicListener(u16 *response);
 static void SingleEffInit(void);
@@ -123,9 +124,9 @@ static void SingleMasuOrderInit(void);
 static void SingleMgSaveInit(void);
 static void SingleFlagFlush(void);
 static void SingleLast5(void);
-static void ev_SingleMg(int playerNo, int masuId);
-static void ev_SingleKoopaMg(int playerNo, int masuId);
-static void ev_SingleMKoopaMg(int playerNo, int masuId);
+static void ev_SingleMg(int playerNo, s16 masuId);
+static void ev_SingleKoopaMg(int playerNo, s16 masuId);
+static void ev_SingleMKoopaMg(int playerNo, s16 masuId);
 static void ev_SingleMgEnd(int playerNo);
 static void ev_SingleKoopaMgEnd(int playerNo);
 static void ev_SingleMKoopaMgEnd(int playerNo);
@@ -222,6 +223,31 @@ void mbSingleClose(void)
     SingleMicKill();
 }
 
+void mbSingleSaveInit(int teamChar, int mgPack, int storyComDif)
+{
+    int i;
+
+    GWPartySet(FALSE);
+    GwSystem.tagF = FALSE;
+    GwSystem.storyComDif = storyComDif;
+    GWBonusStarSet(FALSE);
+    GwSystem.mgPack = mgPack;
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        GwPlayer[i].handicap = 0;
+    }
+    GwSystem.turnMax = 50;
+    memset(&GwPlayer[0], 0, GW_PLAYER_MAX * sizeof(GW_PLAYER));
+    singleTeamChar = teamChar;
+    _ClearFlag(0);
+    _ClearFlag(1);
+    _ClearFlag(2);
+    _SetFlag(FLAG_BOARD_INIT);
+    _ClearFlag(FLAG_BOARD_TUTORIAL);
+    _SetFlag(5);
+    _ClearFlag(FLAG_INST_DECA);
+    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 13));
+}
+
 static void SingleMicKill(void)
 {
     if (singleMicF) {
@@ -256,46 +282,75 @@ static void SingleMasuOrderSet(void)
     }
 }
 
-static void SingleMgRecordBackup(void)
+void mbSingleMgUnlockInit(void)
 {
-    int i;
-
-    for (i = 0; i < GW_RECORD_MAX; i++) {
-        singleMgRecordOld[i] = GwCommon.record[i];
-    }
+    memset(singleMgUnlock, 0, sizeof(singleMgUnlock));
 }
 
-static void SingleMgRecordRestore(void)
+void mbSingleMgUnlockWrite(void)
 {
-    int i;
+    int word;
+    int bit;
 
-    for (i = 0; i < GW_RECORD_MAX; i++) {
-        GwCommon.record[i] = singleMgRecordOld[i];
-    }
-}
-
-static void SingleMgRecordPrizeInit(void)
-{
-    int i;
-
-    for (i = 0; i < GW_RECORD_MAX; i++) {
-        singleMgRecordPrize[i] = GwCommon.record[i];
-    }
-}
-
-static void SingleMgRecordPrizeSet(void)
-{
-    int i;
-
-    for (i = 0; i < GW_RECORD_MAX; i++) {
-        if (GwCommon.record[i] != singleMgRecordPrize[i]) {
-            break;
+    for (word = 0; word < 4; word++) {
+        for (bit = 0; bit < 32; bit++) {
+            if (singleMgUnlock[word] & (1 << bit)) {
+                GWMgUnlockSet(GW_MGNO_BASE + (word << 5) + bit);
+            }
         }
     }
-    if (i < GW_RECORD_MAX) {
-        GWSinglePrizeFlagSet(5);
-        GWSingleMgRecordNumSet(GWSingleMgRecordNumGet() + 1);
+}
+
+void mbSingleMgUnlockSet(int mgNo)
+{
+    mgNo -= GW_MGNO_BASE;
+    singleMgUnlock[mgNo >> 5] |= (1 << (mgNo % 32));
+}
+
+void mbSingleMgUnlockReset(int mgNo)
+{
+    mgNo -= GW_MGNO_BASE;
+    singleMgUnlock[mgNo >> 5] &= ~(1 << (mgNo % 32));
+}
+
+BOOL mbSingleMgUnlockGet(int mgNo)
+{
+    mgNo -= GW_MGNO_BASE;
+    return (singleMgUnlock[mgNo >> 5] & (1 << (mgNo % 32))) != 0;
+}
+
+BOOL mbSingleMgUnlockCheckAny(void)
+{
+    int word;
+
+    for (word = 0; word < 4; word++) {
+        if (singleMgUnlock[word]) {
+            return TRUE;
+        }
     }
+    return FALSE;
+}
+
+int mbSingleMgUnlockNumGet(void)
+{
+    int num = 0;
+    int word;
+    int bit;
+
+    for (word = 0; word < 4; word++) {
+        for (bit = 0; bit < 32; bit++) {
+            if (singleMgUnlock[word] & (1 << bit)) {
+                num++;
+            }
+        }
+    }
+    return num;
+}
+
+static void SingleMasuTypeReset(void)
+{
+    masuTypeNum = 0;
+    memset(masuType, 0, sizeof(masuType));
 }
 
 static void SingleEffClose(void)
@@ -323,7 +378,7 @@ static void SingleEffKill(s16 effNo)
     }
 }
 
-void mbev_SingleMg(int playerNo, int masuId)
+void mbev_SingleMg(int playerNo, s16 masuId)
 {
     int masuType;
     int i;
@@ -339,16 +394,19 @@ void mbev_SingleMg(int playerNo, int masuId)
         mgUnlockOld[i] = GwCommon.mgUnlock[i];
     }
     SingleMgRecordPrizeInit();
-    if (masuType < 9) {
-        if (masuType == 6) {
-            ev_SingleKoopaMg(playerNo, masuId);
-            return;
-        }
-    } else if (masuType < 12) {
+    switch (masuType) {
+    case 6:
+        ev_SingleKoopaMg(playerNo, masuId);
+        break;
+    case 9:
+    case 10:
+    case 11:
         ev_SingleMKoopaMg(playerNo, masuId);
-        return;
+        break;
+    default:
+        ev_SingleMg(playerNo, masuId);
+        break;
     }
-    ev_SingleMg(playerNo, masuId);
 }
 
 int mbev_SingleMgEnd(int playerNo)
@@ -432,134 +490,6 @@ void mbSingleReturnWrite(void)
     HuPrcSleep(-1);
 }
 static int miniKoopaType;
-
-void mbSingleSaveInit(int teamChar, int mgPack, int storyComDif)
-{
-    int i;
-
-    GWPartySet(FALSE);
-    GwSystem.tagF = FALSE;
-    GwSystem.storyComDif = storyComDif;
-    GWBonusStarSet(FALSE);
-    GwSystem.mgPack = mgPack;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        GwPlayer[i].handicap = 0;
-    }
-    GwSystem.turnMax = 50;
-    memset(&GwPlayer[0], 0, GW_PLAYER_MAX * sizeof(GW_PLAYER));
-    singleTeamChar = teamChar;
-    _ClearFlag(0);
-    _ClearFlag(1);
-    _ClearFlag(2);
-    _SetFlag(FLAG_BOARD_INIT);
-    _ClearFlag(FLAG_BOARD_TUTORIAL);
-    _SetFlag(5);
-    _ClearFlag(FLAG_INST_DECA);
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 13));
-}
-
-void mbSingleMgUnlockInit(void)
-{
-    memset(singleMgUnlock, 0, sizeof(singleMgUnlock));
-}
-
-void mbSingleMgUnlockWrite(void)
-{
-    int word;
-    int bit;
-
-    for (word = 0; word < 4; word++) {
-        for (bit = 0; bit < 32; bit++) {
-            if (singleMgUnlock[word] & (1 << bit)) {
-                GWMgUnlockSet((word << 5) + bit + GW_MGNO_BASE);
-            }
-        }
-    }
-}
-
-void mbSingleMgUnlockSet(int mgNo)
-{
-    mgNo -= GW_MGNO_BASE;
-    singleMgUnlock[mgNo >> 5] |= (1 << (mgNo % 32));
-}
-
-void mbSingleMgUnlockReset(int mgNo)
-{
-    mgNo -= GW_MGNO_BASE;
-    singleMgUnlock[mgNo >> 5] &= ~(1 << (mgNo % 32));
-}
-
-void mbSingleSaveFlush(int value)
-{
-    int playerNo = GwSystem.turnPlayerNo;
-    int word;
-    int bit;
-
-    if (value == 0) {
-        if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            GwPlayer[playerNo].mgCoinBonus = 0;
-        }
-    } else if (value < 0) {
-        if (value > -2) {
-            SingleMgRecordRestore();
-            if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-                GwPlayer[playerNo].mgCoinBonus = -1;
-            }
-        }
-    } else if (value < 2) {
-        for (word = 0; word < 4; word++) {
-            for (bit = 0; bit < 32; bit++) {
-                if (singleMgUnlock[word] & (1 << bit)) {
-                    GWMgUnlockSet((word << 5) + bit + GW_MGNO_BASE);
-                }
-            }
-        }
-        SingleFlagFlush();
-        if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            GwPlayer[playerNo].mgCoinBonus = 1;
-        }
-    }
-}
-
-BOOL mbSingleMgUnlockGet(int mgNo)
-{
-    mgNo -= GW_MGNO_BASE;
-    return (singleMgUnlock[mgNo >> 5] & (1 << (mgNo % 32))) != 0;
-}
-
-BOOL mbSingleMgUnlockCheckAny(void)
-{
-    int word;
-
-    for (word = 0; word < 4; word++) {
-        if (singleMgUnlock[word]) {
-            return TRUE;
-        }
-    }
-    return FALSE;
-}
-
-int mbSingleMgUnlockNumGet(void)
-{
-    int num = 0;
-    int word;
-    int bit;
-
-    for (word = 0; word < 4; word++) {
-        for (bit = 0; bit < 32; bit++) {
-            if (singleMgUnlock[word] & (1 << bit)) {
-                num++;
-            }
-        }
-    }
-    return num;
-}
-
-static void SingleMasuTypeReset(void)
-{
-    masuTypeNum = 0;
-    memset(masuType, 0, sizeof(masuType));
-}
 
 int mbSingleCall(int mode, int arg)
 {
@@ -802,6 +732,50 @@ int mbSingleCall(int mode, int arg)
     return 0;
 }
 
+static void SingleMgRecordBackup(void)
+{
+    int i;
+
+    for (i = 0; i < GW_RECORD_MAX; i++) {
+        singleMgRecordOld[i] = GwCommon.record[i];
+    }
+}
+
+static void SingleMgRecordRestore(void)
+{
+    int i;
+
+    for (i = 0; i < GW_RECORD_MAX; i++) {
+        GwCommon.record[i] = singleMgRecordOld[i];
+    }
+}
+
+void mbSingleSaveFlush(int value)
+{
+    int playerNo = GwSystem.turnPlayerNo;
+
+    switch (value) {
+    case -1:
+        SingleMgRecordRestore();
+        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+            GwPlayer[playerNo].mgCoinBonus = -1;
+        }
+        break;
+    case 0:
+        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+            GwPlayer[playerNo].mgCoinBonus = 0;
+        }
+        break;
+    case 1:
+        mbSingleMgUnlockWrite();
+        SingleFlagFlush();
+        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+            GwPlayer[playerNo].mgCoinBonus = 1;
+        }
+        break;
+    }
+}
+
 void mbSinglePrizeFlagReset(int flag)
 {
     if (flag <= 63) {
@@ -828,4 +802,28 @@ void mbSingleTeamCharSet(int character)
 int mbSingleTeamCharGet(void)
 {
     return singleTeamChar;
+}
+
+static void SingleMgRecordPrizeInit(void)
+{
+    int i;
+
+    for (i = 0; i < GW_RECORD_MAX; i++) {
+        singleMgRecordPrize[i] = GwCommon.record[i];
+    }
+}
+
+static void SingleMgRecordPrizeSet(void)
+{
+    int i;
+
+    for (i = 0; i < GW_RECORD_MAX; i++) {
+        if (GwCommon.record[i] != singleMgRecordPrize[i]) {
+            break;
+        }
+    }
+    if (i < GW_RECORD_MAX) {
+        GWSinglePrizeFlagSet(5);
+        GWSingleMgRecordNumSet(GWSingleMgRecordNumGet() + 1);
+    }
 }
