@@ -1355,6 +1355,16 @@ config.libs = [
     Rel(
         "mdbankdll",
         objects={
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_04b8.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_0ac4.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_10e4.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_1200.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_18e8.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_21e4.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_26b0.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_3164.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_111f8.c"),
+            Object(Matching, "REL/mdbankdll/mdbank_pass2_11678.c"),
             Object(Matching, "REL/mdbankdll/mdbank_tail.c"),
             Object(Matching, "REL/mdbankdll/mdbank_tail2.c"),
             Object(Matching, "REL/mdbankdll/mdbank_tail3.c"),
