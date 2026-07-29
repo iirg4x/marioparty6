@@ -927,6 +927,20 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "gc26-pooldata-mode-controls-relocations-and-bss": {
+      "status": "active",
+      "validated_commit": "fb668001d086383762d5180dc0f525b263b06951",
+      "validated_at": "2026-07-29",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "configure.py",
+        "src/REL/selmenuDll/selmenu.c",
+        "config/dll/rels/selmenuDll/splits.txt",
+        "config/dll/rels/selmenuDll/symbols.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

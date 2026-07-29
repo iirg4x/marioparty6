@@ -4110,6 +4110,81 @@
         "tools/recovery_core.py",
         "tools/promote_recovered_c.py"
       ]
+    },
+    {
+      "id": "gc26-pooldata-mode-controls-relocations-and-bss",
+      "title": "Treat GC/2.6 pool-data mode as a translation-unit ownership profile",
+      "classification": "confirmed_rule",
+      "category": "toolchain_profile",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "Selmenu proves that pool-data mode controls far more than visible literal pooling. Removing pool_data off shrank text, nearly halved relocations, reordered BSS, and regressed constant-free functions; the equivalent final compiler option restored the complete target object without retaining a source pragma.",
+      "conditions": "Apply when a GC/2.6 owner uses pool_data off, removing a pooling control changes apparently unrelated functions or uninitialized data, or a natural source cleanup needs to move a compiler-mode declaration out of C.",
+      "source_condition": {
+        "change": "Remove a source pool_data pragma or change the final pooldata option for one translation unit.",
+        "requires": [
+          "the exact final compiler command for the owner",
+          "whole-object text, data, rodata, BSS, and relocation comparison",
+          "protected constant-free functions as controls",
+          "linked retail output after moving the mode into the owner profile"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "automatic constant propagation across function boundaries",
+          "large text-size and relocation-count changes",
+          "BSS size and symbol-order changes",
+          "regressions in functions that contain no visible pooled literal"
+        ],
+        "known_signatures": [
+          "pool_data removal changes many direct loads into folded immediates",
+          "relocation volume drops globally rather than only near literal users",
+          "BSS symbols reorder or change extent under the alternate mode",
+          "the configured -pooldata off option restores every affected section and relocation"
+        ]
+      },
+      "rule": "Treat pool-data mode as part of the translation unit's authenticated compiler profile, not as a local literal-formatting preference. When target evidence requires pooldata off, record it in the owner's final compile command rather than recovered C, then reverify the complete object and linked retail container.",
+      "safe_actions": [
+        "compare the exact configured command with and without the final pooldata option",
+        "include constant-free protected functions in the control set",
+        "compare BSS symbol order and physical relocation counts, not only text",
+        "move the mode to the narrowest Object extra_cflags entry",
+        "reject a project-wide flag change when only one owner is authenticated"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "REL:selmenuDll:selmenu"
+        ],
+        "modules": [
+          "selmenuDll"
+        ],
+        "owner_tags": [
+          "compiler_profile",
+          "pooldata",
+          "bss_ownership",
+          "relocation_ownership",
+          "rel"
+        ]
+      },
+      "examples": [
+        "For selmenu.c, removing pool_data off changed text from 20,524 to 17,312 bytes, physical relocations from 1,851 to 971, and BSS from 176 to 174 bytes while regressing 14 functions. Adding -pooldata off to that Object restored 25/25 exact functions, every section, all 1,851 relocations, and the retail-identical REL."
+      ],
+      "counterexamples": [
+        "This owner-specific proof does not justify enabling pooldata off for every GC/2.6 object.",
+        "A function with no obvious literals is not a valid control by itself because the mode can change cross-function data ownership and propagation.",
+        "Do not retain a source pragma merely because text bytes match when an authenticated owner-local compiler profile reproduces the complete object."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "configure.py",
+        "src/REL/selmenuDll/selmenu.c",
+        "config/dll/rels/selmenuDll/splits.txt",
+        "config/dll/rels/selmenuDll/symbols.txt",
+        "build/selmenu_support_pooloff.json"
+      ]
     }
   ]
 }
