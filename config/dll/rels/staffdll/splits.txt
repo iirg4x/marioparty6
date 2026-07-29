@@ -6,6 +6,9 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/staffdll/application_pass4_0620.c:
+	.text       start:0x00000620 end:0x0000067C
+
 REL/staffdll/staff_pass1_067c.c:
 	.text       start:0x0000067C end:0x00000884
 
@@ -14,6 +17,9 @@ REL/staffdll/application_pass3_0e20.c:
 
 REL/staffdll/staff_pass1_0f68.c:
 	.text       start:0x00000F68 end:0x000010B8
+
+REL/staffdll/application_pass4_10b8.c:
+	.text       start:0x000010B8 end:0x00001110
 
 REL/staffdll/application_pass3_1684.c:
 	.text       start:0x00001684 end:0x00001758
@@ -39,26 +45,50 @@ REL/staffdll/application_pass3_54f0.c:
 REL/staffdll/staff_pass1_6c14.c:
 	.text       start:0x00006C14 end:0x00006E1C
 
+REL/staffdll/application_pass4_7410.c:
+	.text       start:0x00007410 end:0x00007468
+
 REL/staffdll/staff_pass1_72a4.c:
 	.text       start:0x000072A4 end:0x00007410
 
 REL/staffdll/staff_pass1_7468.c:
 	.text       start:0x00007468 end:0x000074E4
 
+REL/staffdll/application_pass4_761c.c:
+	.text       start:0x0000761C end:0x00007670
+
 REL/staffdll/staff_pass1_7c70.c:
 	.text       start:0x00007C70 end:0x00007DDC
+
+REL/staffdll/application_pass4_7ddc.c:
+	.text       start:0x00007DDC end:0x00007E34
+
+REL/staffdll/application_pass4_8300.c:
+	.text       start:0x00008300 end:0x000083E4
 
 REL/staffdll/staff_pass1_8410.c:
 	.text       start:0x00008410 end:0x0000848C
 
+REL/staffdll/application_pass4_85c4.c:
+	.text       start:0x000085C4 end:0x00008618
+
 REL/staffdll/staff_pass1_8bf8.c:
 	.text       start:0x00008BF8 end:0x00008D64
+
+REL/staffdll/application_pass4_8d64.c:
+	.text       start:0x00008D64 end:0x00008DBC
 
 REL/staffdll/staff_pass1_8dbc.c:
 	.text       start:0x00008DBC end:0x00008E38
 
+REL/staffdll/application_pass4_8f70.c:
+	.text       start:0x00008F70 end:0x00008FC4
+
 REL/staffdll/staff_pass1_94e0.c:
 	.text       start:0x000094E0 end:0x0000964C
+
+REL/staffdll/application_pass4_964c.c:
+	.text       start:0x0000964C end:0x00009E30
 
 REL/staffdll/runtime.c:
 	.text       start:0x0000A674 end:0x0000B0B8
