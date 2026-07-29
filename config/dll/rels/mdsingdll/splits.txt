@@ -15,17 +15,32 @@ REL/mdsingdll/mdsing.c:
 REL/mdsingdll/mdsing_linear.c:
 	.text       start:0x000016F0 end:0x00001734
 
+REL/mdsingdll/application_pass30_1a9c.c:
+	.text       start:0x00001A9C end:0x0000205C
+
 REL/mdsingdll/mdsing_tail16.c:
 	.text       start:0x000026FC end:0x0000279C
 
+REL/mdsingdll/application_pass30_279c.c:
+	.text       start:0x0000279C end:0x00002A60
+
 REL/mdsingdll/mdsing_tail17.c:
 	.text       start:0x00003170 end:0x0000328C
+
+REL/mdsingdll/application_pass30_3484.c:
+	.text       start:0x00003484 end:0x000035EC
 
 REL/mdsingdll/mdsing_tail18.c:
 	.text       start:0x000035EC end:0x000037DC
 
 REL/mdsingdll/mdsing_tail19.c:
 	.text       start:0x000037DC end:0x00003908
+
+REL/mdsingdll/application_pass30_3b30.c:
+	.text       start:0x00003B30 end:0x00003CF8
+
+REL/mdsingdll/application_pass30_3db4.c:
+	.text       start:0x00003DB4 end:0x00003E14
 
 REL/mdsingdll/mdsing_tail26.c:
 	.text       start:0x000047F0 end:0x00004B44
