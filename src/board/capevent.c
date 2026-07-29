@@ -3776,11 +3776,12 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
     CAPEFFPARTICLESYSTEMWORK *particleSystem;
     CAPEFFGLOWPARTICLEWORK *particle;
     CAPEFFELECTRICPARTWORK *part;
+    HU3D_MODEL *model;
     HuVecF end;
     HuVecF delta;
+    HuVecF moveDelta;
     float horizontal;
     int i;
-    int j;
 
     part = work->part;
     if (mbExitCheck()
@@ -3793,7 +3794,8 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
         omDelObjEx(mbObjMan, obj);
         return;
     }
-    particleSystem = Hu3DData[work->modelId].hookData;
+    model = &Hu3DData[work->modelId];
+    particleSystem = model->hookData;
     particle = particleSystem->data;
     for (i = 0; i < 32; i++, part++, particle += 6) {
         if (part->activeNo < 0 || ++part->time < part->timeMax) {
@@ -3805,9 +3807,9 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
         } else {
             mbObjPosGet(part->modelId, &end);
             PSVECAdd(&end, &part->modelPos, &end);
-            PSVECSubtract(&end, &part->pos2, &delta);
-            for (j = 0; j < 6; j++) {
-                PSVECAdd(&particle[j].pos, &delta, &particle[j].pos);
+            PSVECSubtract(&end, &part->pos2, &moveDelta);
+            for (i = 0; i < 6; i++) {
+                PSVECAdd(&particle[i].pos, &moveDelta, &particle[i].pos);
             }
         }
         end.x += 2.5f * (100.0f * (-0.5f
@@ -3818,30 +3820,31 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
             + MBCapsuleEffRandF()));
         part->pos2 = part->pos1;
         part->pos1 = end;
-        for (j = 5; j > 0; j--) {
-            part->posHist[j] = part->posHist[j - 1];
-            particle[j] = particle[j - 1];
+        for (i = 0; i < 5; i++) {
+            part->posHist[i + 1] = part->posHist[i];
         }
-        part->posHist[0] = part->pos2;
+        for (i = 0; i < 5; i++) {
+            particle[i + 1] = particle[i];
+        }
         PSVECSubtract(&part->pos1, &part->pos2, &delta);
         PSVECScale(&delta, &delta, 0.5f);
         PSVECAdd(&part->pos2, &delta, &particle[0].pos);
         PSVECSubtract(&part->pos1, &part->pos2, &delta);
-        horizontal = sqrt(delta.x * delta.x + delta.z * delta.z);
+        horizontal = sqrtf(delta.x * delta.x + delta.z * delta.z);
         particle[0].rotX = 180.0 * (atan2(-delta.y, horizontal) / M_PI);
         particle[0].rotY = 90.0
             + (180.0 * (atan2(delta.x, delta.z) / M_PI));
         particle[0].angle = 0.0f;
         particle[0].pat = mbRandMod(4);
-        particle[0].active = PSVECMag(&delta);
-        if (particle[0].active <= 0.0f) {
-            particle[0].active = 1.0f;
+        horizontal = PSVECMag(&delta);
+        if (horizontal <= 0.0f) {
+            horizontal = 0.01f;
         }
-        part->length = particle[0].active;
+        particle[0].active = horizontal;
         if (++part->phase >= part->phaseMax) {
             part->activeNo = -1;
-            for (j = 0; j < 6; j++) {
-                particle[j].active = 0.0f;
+            for (i = 0; i < 6; i++) {
+                particle[i].active = 0.0f;
             }
             work->num--;
         }
