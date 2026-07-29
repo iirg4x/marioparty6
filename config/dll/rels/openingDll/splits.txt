@@ -6,23 +6,11 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
-REL/openingDll/opening_prefix.c:
-	.text       start:0x000000A0 end:0x00001BD8
-
-REL/openingDll/application_2238.c:
-	.text       start:0x00002238 end:0x00002708
-
-REL/openingDll/application_37f0.c:
-	.text       start:0x000037F0 end:0x0000392C
-
-REL/openingDll/application_pass2_4068.c:
-	.text       start:0x00004068 end:0x00004264
-
-REL/openingDll/application_4484.c:
-	.text       start:0x00004484 end:0x000048AC
-
-REL/openingDll/application_pass2_4bd8.c:
-	.text       start:0x00004BD8 end:0x00005638
+REL/openingDll/opening.c:
+	.text       start:0x00000000 end:0x00005638
+	.rodata     start:0x00000000 end:0x000001E0
+	.data       start:0x00000000 end:0x00000390
+	.bss        start:0x00000000 end:0x000001E8
 
 REL/openingDll/runtime.c:
 	.text       start:0x00005638 end:0x0000607C

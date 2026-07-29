@@ -6,71 +6,11 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
-REL/mdbankdll/mdbank_pass2_04b8.c:
-	.text       start:0x000004B8 end:0x00000588
-
-REL/mdbankdll/application_09a8.c:
-	.text       start:0x000009A8 end:0x00000AC4
-
-REL/mdbankdll/mdbank_pass2_0ac4.c:
-	.text       start:0x00000AC4 end:0x00000B98
-
-REL/mdbankdll/application_0b98.c:
-	.text       start:0x00000B98 end:0x00000C54
-
-REL/mdbankdll/application_0f68.c:
-	.text       start:0x00000F68 end:0x000010E4
-
-REL/mdbankdll/mdbank_pass2_10e4.c:
-	.text       start:0x000010E4 end:0x000011A0
-
-REL/mdbankdll/application_11a0.c:
-	.text       start:0x000011A0 end:0x00001200
-
-REL/mdbankdll/mdbank_pass2_1200.c:
-	.text       start:0x00001200 end:0x000012F8
-
-REL/mdbankdll/application_12f8.c:
-	.text       start:0x000012F8 end:0x00001540
-
-REL/mdbankdll/mdbank_pass2_18e8.c:
-	.text       start:0x000018E8 end:0x00001994
-
-REL/mdbankdll/application_1c64.c:
-	.text       start:0x00001C64 end:0x00001CD8
-
-REL/mdbankdll/application_1d68.c:
-	.text       start:0x00001D68 end:0x00001DDC
-
-REL/mdbankdll/mdbank_pass2_21e4.c:
-	.text       start:0x000021E4 end:0x0000226C
-
-REL/mdbankdll/mdbank_tail3.c:
-	.text       start:0x0000226C end:0x00002378
-
-REL/mdbankdll/mdbank_pass2_26b0.c:
-	.text       start:0x000026B0 end:0x00002750
-
-REL/mdbankdll/mdbank_tail.c:
-	.text       start:0x00002CD8 end:0x00002D70
-
-REL/mdbankdll/mdbank_tail4.c:
-	.text       start:0x00002D98 end:0x00002EFC
-
-REL/mdbankdll/mdbank_pass2_3164.c:
-	.text       start:0x00003164 end:0x00003280
-
-REL/mdbankdll/mdbank_tail2.c:
-	.text       start:0x00006F00 end:0x000070E4
-
-REL/mdbankdll/application_eeb8.c:
-	.text       start:0x0000EEB8 end:0x00011064
-
-REL/mdbankdll/mdbank_pass2_111f8.c:
-	.text       start:0x000111F8 end:0x00011384
-
-REL/mdbankdll/mdbank_pass2_11678.c:
-	.text       start:0x00011678 end:0x00011980
+REL/mdbankdll/mdbank.c:
+	.text       start:0x00000000 end:0x000137DC
+	.rodata     start:0x00000000 end:0x000002C0
+	.data       start:0x00000000 end:0x00000A28
+	.bss        start:0x00000000 end:0x000019F8
 
 REL/mdbankdll/runtime.c:
 	.text       start:0x000137DC end:0x00014220

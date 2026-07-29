@@ -6,114 +6,11 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
-REL/endingdll/ending_pass2_scene.c:
-	.text       start:0x00000924 end:0x00001798
-
-REL/endingdll/application_193c.c:
-	.text       start:0x0000193C end:0x00001B20
-
-REL/endingdll/ending_pass3_motion.c:
-	.text       start:0x00001E3C end:0x00002A04
-
-REL/endingdll/application_31fc.c:
-	.text       start:0x000031FC end:0x000035F4
-
-REL/endingdll/ending_pass1_35f4.c:
-	.text       start:0x000035F4 end:0x000036E0
-
-REL/endingdll/ending_pass1.c:
-	.text       start:0x000039AC end:0x000045C0
-	.rodata     start:0x00000000 end:0x00000010
-
-REL/endingdll/ending_pass4_lifecycle_4ab4.c:
-	.text       start:0x00004AB4 end:0x00004BC8
-
-REL/endingdll/ending_pass4_lifecycle_4dac.c:
-	.text       start:0x00004DAC end:0x00004E5C
-
-REL/endingdll/application_4e5c.c:
-	.text       start:0x00004E5C end:0x00005764
-
-REL/endingdll/ending_pass4_lifecycle_6ec4.c:
-	.text       start:0x00006EC4 end:0x0000702C
-
-REL/endingdll/application_8cfc.c:
-	.text       start:0x00008CFC end:0x00008F80
-
-REL/endingdll/ending_pass4_lifecycle_951c.c:
-	.text       start:0x0000951C end:0x000095C0
-
-REL/endingdll/ending_pass4_lifecycle_a58c.c:
-	.text       start:0x0000A58C end:0x0000A6D8
-
-REL/endingdll/application_a6d8.c:
-	.text       start:0x0000A6D8 end:0x0000A964
-
-REL/endingdll/application_b0a4.c:
-	.text       start:0x0000B0A4 end:0x0000B244
-
-REL/endingdll/ending_pass4_lifecycle_b244.c:
-	.text       start:0x0000B244 end:0x0000B568
-
-REL/endingdll/ending_pass4_lifecycle_bb10.c:
-	.text       start:0x0000BB10 end:0x0000BE30
-
-REL/endingdll/application_c4f0.c:
-	.text       start:0x0000C4F0 end:0x0000C7DC
-
-REL/endingdll/application_c7dc.c:
-	.text       start:0x0000C7DC end:0x0000D028
-
-REL/endingdll/ending_pass4_lifecycle_d028.c:
-	.text       start:0x0000D028 end:0x0000D104
-
-REL/endingdll/application_pass6_df18.c:
-	.text       start:0x0000DF18 end:0x0000E0EC
-
-REL/endingdll/ending_pass5_particle_e0ec.c:
-	.text       start:0x0000E0EC end:0x0000E270
-
-REL/endingdll/ending_pass5_particle_ea8c.c:
-	.text       start:0x0000EA8C end:0x0000EBCC
-
-REL/endingdll/ending_pass5_particle_f03c.c:
-	.text       start:0x0000F03C end:0x0000F068
-
-REL/endingdll/ending_pass5_particle_f11c.c:
-	.text       start:0x0000F11C end:0x0000F2CC
-
-REL/endingdll/application_f9b8.c:
-	.text       start:0x0000F9B8 end:0x0000FB74
-
-REL/endingdll/ending_pass5_particle_fc48.c:
-	.text       start:0x0000FC48 end:0x0000FDD4
-
-REL/endingdll/application_pass6_1025c.c:
-	.text       start:0x0001025C end:0x0001049C
-
-REL/endingdll/application_pass6_105d4.c:
-	.text       start:0x000105D4 end:0x00010628
-
-REL/endingdll/application_pass6_10c28.c:
-	.text       start:0x00010C28 end:0x00010DEC
-
-REL/endingdll/application_pass6_1144c.c:
-	.text       start:0x0001144C end:0x0001152C
-
-REL/endingdll/application_pass6_11694.c:
-	.text       start:0x00011694 end:0x00011714
-
-REL/endingdll/application_11c94.c:
-	.text       start:0x00011C94 end:0x00011EB0
-
-REL/endingdll/application_pass6_11eb0.c:
-	.text       start:0x00011EB0 end:0x00011F34
-
-REL/endingdll/application_11f34.c:
-	.text       start:0x00011F34 end:0x00012838
-
-REL/endingdll/ending_pass4_lifecycle_12838.c:
-	.text       start:0x00012838 end:0x00012988
+REL/endingdll/ending.c:
+	.text       start:0x00000000 end:0x00012CE4
+	.rodata     start:0x00000000 end:0x000003B8
+	.data       start:0x00000000 end:0x00000134
+	.bss        start:0x00000000 end:0x00001E3C
 
 REL/endingdll/runtime.c:
 	.text       start:0x00012CE4 end:0x00013728

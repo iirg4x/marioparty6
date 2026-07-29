@@ -25,12 +25,171 @@
 #include "game/process.h"
 #include "game/sprite.h"
 #include "game/wipe.h"
+#include "datanum/charmot.h"
+#include "messdir_enum.h"
 #include "string.h"
 
 void mbWipeDissolveFadeOut(void);
 void mbWipeDissolveFadeIn(void);
 
 #define MBNO_WORLD_1 0
+
+enum {
+    W01_PATH_UNKNOWN_BYTE_COUNT = 18,
+    W01_OBJECT_NAME_CAPACITY = 16,
+    W01_EFFECT_OBJECT_NAME_CAPACITY = 18,
+    W01_STAR_WORK_CLEAR_SIZE = 16,
+    W01_OBJECT_PRIORITY = 8204,
+    W01_EVENT_PROCESS_PRIORITY = 8199,
+    W01_EVENT_PROCESS_STACK_SIZE = 32 * 1024,
+    W01_SMALL_DISPLAY_LIST_SIZE = 4 * 1024,
+    W01_LARGE_DISPLAY_LIST_SIZE = 8 * 1024,
+    W01_GAME_MESSAGE_DRAW_NO = 32,
+};
+
+enum {
+    W01_FILE_MASU_LAYER = 1,
+    W01_FILE_B01_H000 = 2,
+    W01_FILE_B01_H100 = 3,
+    W01_FILE_B01_M000 = 4,
+    W01_FILE_B01_M001 = 5,
+    W01_FILE_INDEX_06 = 6,
+    W01_FILE_INDEX_07 = 7,
+    W01_FILE_B01_M020 = 8,
+    W01_FILE_B01_M021 = 9,
+    W01_FILE_B01_M030 = 10,
+    W01_FILE_B01_M031 = 11,
+    W01_FILE_B01_M040 = 12,
+    W01_FILE_B01_M041 = 13,
+    W01_FILE_B01_M050 = 14,
+    W01_FILE_B01_M060 = 15,
+    W01_FILE_B01_M061 = 16,
+    W01_FILE_B01_M62 = 17,
+    W01_FILE_INDEX_18 = 18,
+    W01_FILE_INDEX_19 = 19,
+    W01_FILE_INDEX_20 = 20,
+    W01_FILE_INDEX_21 = 21,
+    W01_FILE_B01_M080 = 22,
+    W01_FILE_B01_M081 = 23,
+    W01_FILE_B01_M082 = 24,
+    W01_FILE_B01_M083 = 25,
+    W01_FILE_B01_M084 = 26,
+    W01_FILE_B01_M200 = 27,
+    W01_FILE_B01_M201 = 28,
+    W01_FILE_B01_M202 = 29,
+    W01_FILE_B01_M203 = 30,
+    W01_FILE_B01_M205 = 31,
+    W01_FILE_B01_M210 = 32,
+    W01_FILE_B01_M210_AUX = 33,
+    W01_FILE_INDEX_34 = 34,
+    W01_FILE_B01_M222 = 35,
+    W01_FILE_B01_M222_AUX = 36,
+    W01_FILE_B01_M224 = 37,
+    W01_FILE_B01_M227 = 38,
+    W01_FILE_B01_M228 = 39,
+    W01_FILE_B01_M229 = 40,
+    W01_FILE_B01_M230 = 41,
+    W01_FILE_B01_M231 = 42,
+    W01_FILE_B01_M240 = 43,
+    W01_FILE_B01_M241 = 44,
+    W01_FILE_B01_M242 = 45,
+    W01_FILE_B01_M243 = 46,
+    W01_FILE_B01_M244 = 47,
+    W01_FILE_B01_M245 = 48,
+    W01_FILE_INDEX_49 = 49,
+    W01_FILE_INDEX_50 = 50,
+    W01_FILE_INDEX_51 = 51,
+    W01_FILE_INDEX_52 = 52,
+    W01_FILE_INDEX_53 = 53,
+    W01_FILE_INDEX_54 = 54,
+};
+
+enum {
+    W01_BOARD_FILE_COIN = 4,
+    W01_BOARD_FILE_INDEX_94 = 94,
+    W01_BOARD_FILE_INDEX_99 = 99,
+    W01_CAPSULESHOP_FILE_INDEX_0 = 0,
+    W01_CAPSULESHOP_FILE_INDEX_1 = 1,
+    W01_CAPSULESHOP_FILE_INDEX_4 = 4,
+    W01_CAPSULESHOP_FILE_INDEX_5 = 5,
+    W01_CAPSULESHOP_FILE_INDEX_6 = 6,
+    W01_CAPSULESHOP_FILE_INDEX_7 = 7,
+    W01_CAPSULESHOP_FILE_INDEX_8 = 8,
+};
+
+enum {
+    W01_MESS_00 = MESSNUM(MESS_BOARD_W01, 0),
+    W01_MESS_01 = MESSNUM(MESS_BOARD_W01, 1),
+    W01_MESS_02 = MESSNUM(MESS_BOARD_W01, 2),
+    W01_MESS_03 = MESSNUM(MESS_BOARD_W01, 3),
+    W01_MESS_04 = MESSNUM(MESS_BOARD_W01, 4),
+    W01_MESS_05 = MESSNUM(MESS_BOARD_W01, 5),
+    W01_MESS_06 = MESSNUM(MESS_BOARD_W01, 6),
+    W01_MESS_07 = MESSNUM(MESS_BOARD_W01, 7),
+    W01_MESS_08 = MESSNUM(MESS_BOARD_W01, 8),
+    W01_MESS_09 = MESSNUM(MESS_BOARD_W01, 9),
+    W01_MESS_10 = MESSNUM(MESS_BOARD_W01, 10),
+    W01_MESS_11 = MESSNUM(MESS_BOARD_W01, 11),
+    W01_MESS_15 = MESSNUM(MESS_BOARD_W01, 15),
+    W01_MESS_16 = MESSNUM(MESS_BOARD_W01, 16),
+    W01_MESS_17 = MESSNUM(MESS_BOARD_W01, 17),
+    W01_MESS_18 = MESSNUM(MESS_BOARD_W01, 18),
+    W01_MESS_19 = MESSNUM(MESS_BOARD_W01, 19),
+    W01_MESS_20 = MESSNUM(MESS_BOARD_W01, 20),
+    W01_MESS_21 = MESSNUM(MESS_BOARD_W01, 21),
+    W01_MESS_22 = MESSNUM(MESS_BOARD_W01, 22),
+    W01_MESS_23 = MESSNUM(MESS_BOARD_W01, 23),
+    W01_MESS_24 = MESSNUM(MESS_BOARD_W01, 24),
+    W01_BOARD_OPENING_MESS_12 = MESSNUM(MESS_BOARD_OPE, 12),
+};
+
+enum {
+    W01_SE_BRD01_203 = 1424,
+    W01_SE_BRD01_204,
+    W01_SE_BRD01_205,
+    W01_SE_BRD01_206,
+    W01_SE_BRD01_207,
+    W01_SE_BRD01_208,
+    W01_SE_BRD01_209,
+    W01_SE_BRD01_210,
+    W01_SE_BRD01_211,
+    W01_SE_BRD01_212,
+    W01_SE_BRD01_213,
+    W01_CHAR_SE_18 = MSM_SE_CHAR_MARIO + 18,
+    W01_CHARVOICE_SE_03 = MSM_SE_CHARVOICE_MARIO + 3,
+    W01_CHARVOICE_SE_06 = MSM_SE_CHARVOICE_MARIO + 6,
+    W01_CHARVOICE_SE_11 = MSM_SE_CHARVOICE_MARIO + 11,
+};
+
+#define W01_MASU_GROUP_MASK (3 << 16)
+#define W01_MASU_EVENT_BIT_3 (1 << 3)
+#define W01_MASU_EVENT_BIT_6 (1 << 6)
+#define W01_MASU_EVENT_BIT_8 (1 << 8)
+#define W01_MASU_EVENT_BIT_14 (1 << 14)
+#define W01_MASU_EVENT_BIT_15 (1 << 15)
+#define W01_MASU_EVENT_BIT_18 (1 << 18)
+#define W01_MASU_EVENT_DAY (1 << 22)
+#define W01_MASU_EVENT_NIGHT (1 << 20)
+#define W01_MASU_EVENT_GATE (1 << 24)
+#define W01_MASU_EVENT_BIT_29 (1 << 29)
+#define W01_MASU_PATH_START (1 << 4)
+#define W01_MASU_PATH_END (1 << 5)
+#define W01_MASU_SPRING_START (1 << 8)
+#define W01_MASU_SPRING_END (1 << 9)
+#define W01_MASU_FLOAT_MASK (7 << 10)
+#define W01_MASU_LINK_FLAG (1 << 13)
+#define W01_MASU_DAY_ROUTE_B (1 << 23)
+#define W01_MASU_DAY_ROUTE_C (1 << 26)
+#define W01_MASU_NIGHT_ROUTE_B (1 << 21)
+#define W01_MASU_NIGHT_ROUTE_C (1 << 25)
+#define W01_MASU_ROUTE_GROUP_MASK (7U << 29)
+#define W01_STAR_MASU_FLAG (1 << 7)
+
+#define W01_RGBA8(red, green, blue, alpha) \
+    (((u32)(red) << 24) | ((u32)(green) << 16) | ((u32)(blue) << 8) \
+        | (u32)(alpha))
+#define W01_DISPLAY_COLOR_A W01_RGBA8(104, 87, 71, 255)
+#define W01_DISPLAY_COLOR_B W01_RGBA8(190, 176, 149, 255)
 
 static inline BOOL MBTimeDayGet(void)
 {
@@ -74,7 +233,7 @@ typedef struct W01PathWork {
     BOOL initF;
     W01_PATH_MARKER marker[6];
     s16 modelId[7];
-    u8 unk5E[0x12];
+    u8 unk5E[W01_PATH_UNKNOWN_BYTE_COUNT];
     HuVecF endPoint[2];
     s16 lastMasuId;
     u8 unk8A[2];
@@ -96,7 +255,7 @@ typedef struct W01MasuMotionWork {
     MBMODELID modelId;
     s16 masuId;
     HU3D_MODELID effectModelId[2];
-    char objName[0x10];
+    char objName[W01_OBJECT_NAME_CAPACITY];
 } W01_MASU_MOTION_WORK;
 
 typedef struct W01MasuModelWork {
@@ -105,7 +264,7 @@ typedef struct W01MasuModelWork {
     MBMODELID modelId;
     s16 masuId;
     s16 linkMasuId[2];
-    char objName[0x10];
+    char objName[W01_OBJECT_NAME_CAPACITY];
 } W01_MASU_MODEL_WORK;
 
 typedef struct W01WhParticle {
@@ -122,7 +281,7 @@ typedef struct W01WhParticle {
 
 typedef struct W01WhEffectWork {
     MBMODELID modelId;
-    char objName[0x12];
+    char objName[W01_EFFECT_OBJECT_NAME_CAPACITY];
     W01_WH_PARTICLE *particle;
     s32 particleCount;
     s32 state;
@@ -1029,31 +1188,34 @@ void MB1_Create(void)
     int time;
     int i;
 
-    HuAudSndGrpSetSet(0x16);
+    HuAudSndGrpSetSet(MSM_GRP_BRD01);
     lbl_1_bss_1618 = (W01_STAR_MASU_WORK *)GwSystem.boardWork;
-    mbObjDirSet(0xD70000, 0xD80000);
-    mbMasuInit(MBTimeDayGet() ? 0xD70000 : 0xD80000);
-    modelId[0] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 4, 0, FALSE);
-    mbObjAttrSet(modelId[0], 0x40000001);
+    mbObjDirSet(DATA_w01, DATA_w01n);
+    mbMasuInit(MBTimeDayGet() ? DATA_w01 : DATA_w01n);
+    modelId[0] = mbObjCreate((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+            | W01_FILE_B01_M000,
+        0, FALSE);
+    mbObjAttrSet(modelId[0], HU3D_MOTATTR_LOOP);
     time = MBTimeDayGet() ? 0 : 1;
     for (i = 0; lbl_1_data_3F4[time][i] != 0; i++) {
         (&modelId[1])[i] = mbObjCreate(
-            (lbl_1_data_3F4[time][i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+            FILENUM(lbl_1_data_3F4[time][i])
+                | (MBTimeDayGet() ? DATA_w01 : DATA_w01n),
             0, FALSE);
-        mbObjAttrSet((&modelId[1])[i], 0x40000001);
+        mbObjAttrSet((&modelId[1])[i], HU3D_MOTATTR_LOOP);
     }
-    (&modelId[1])[i] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 5, 0, FALSE);
+    (&modelId[1])[i] = mbObjCreate((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+            | W01_FILE_B01_M001,
+        0, FALSE);
     mbObjLayerSet((&modelId[1])[i], 1);
     i++;
-    mbScrollInit((MBTimeDayGet() ? 0xD70000 : 0xD80000) | 2);
-    mbCapThrowColCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 3);
+    mbScrollInit((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+        | W01_FILE_B01_H000);
+    mbCapThrowColCreate((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+        | W01_FILE_B01_H100);
     mbLightFuncSet(MB1_LightSet, MB1_LightReset);
     if (mbSaveNewF) {
-        memset(lbl_1_bss_1618, 0, 0x10);
+        memset(lbl_1_bss_1618, 0, W01_STAR_WORK_CLEAR_SIZE);
         fn_1_139F8();
     }
     mbPlayerTurnInitHookSet(fn_1_914);
@@ -1062,10 +1224,11 @@ void MB1_Create(void)
     mbOpeningInstHookSet(fn_1_644);
     mbOpeningStarInstHookSet(0);
     mbOpeningViewSet(&lbl_1_data_408, &lbl_1_data_414, 10000.0f);
-    mbev_ShopExInit(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x16, fn_1_9F4);
-    mbev_ShopBackCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x1A,
+    mbev_ShopExInit((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+            | W01_FILE_B01_M080,
+        fn_1_9F4);
+    mbev_ShopBackCreate((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+            | W01_FILE_B01_M084,
         -1, -1, TRUE);
     mbev_MasuMoveEndSet(fn_1_760);
     mbev_MasuMoveStartSet(fn_1_734);
@@ -1074,7 +1237,7 @@ void MB1_Create(void)
     mbMapCameraSet(0, &lbl_1_data_3FC, 18500.0f);
     mbMapHookSet(fn_1_AC4);
     mbev_NextTimeSet(fn_1_B68);
-    omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_6D4);
+    omAddObjEx(mbObjMan, W01_OBJECT_PRIORITY, 0, 0, -1, fn_1_6D4);
     fn_1_10A0();
     fn_1_2A1C();
     fn_1_45A0();
@@ -1089,7 +1252,7 @@ void MB1_Create(void)
     fn_1_10AA8();
     fn_1_12A4C();
     fn_1_13D04();
-    HuDataDirClose(MBTimeDayGet() ? 0xD70000 : 0xD80000);
+    HuDataDirClose(MBTimeDayGet() ? DATA_w01 : DATA_w01n);
 }
 
 void MB1_Kill(void)
@@ -1107,11 +1270,11 @@ void fn_1_644(void)
 {
     s16 winNo;
 
-    winNo = mbWinCreate(2, 0x2F0016, mbGuideSpeakerNoGet());
+    winNo = mbWinCreate(2, W01_MESS_22, mbGuideSpeakerNoGet());
     mbWinWait(winNo);
-    winNo = mbWinCreate(2, 0x2F0017, mbGuideSpeakerNoGet());
+    winNo = mbWinCreate(2, W01_MESS_23, mbGuideSpeakerNoGet());
     mbWinWait(winNo);
-    winNo = mbWinCreate(2, 0x2F0018, mbGuideSpeakerNoGet());
+    winNo = mbWinCreate(2, W01_MESS_24, mbGuideSpeakerNoGet());
     mbWinWait(winNo);
 }
 
@@ -1141,22 +1304,22 @@ int fn_1_760(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & 0x00030000) {
-        fn_1_7B70(mbev_MasuBitGet(mAttr, 0x00030000) - 1);
+    if (mAttr & W01_MASU_GROUP_MASK) {
+        fn_1_7B70(mbev_MasuBitGet(mAttr, W01_MASU_GROUP_MASK) - 1);
     }
-    if (mAttr & 0x00000100) {
+    if (mAttr & W01_MASU_EVENT_BIT_8) {
         mbPlayerMoveHookSet(playerNo, fn_1_2D08);
     }
-    if (mAttr & 0x00004000) {
+    if (mAttr & W01_MASU_EVENT_BIT_14) {
         mbPlayerMoveHookSet(playerNo, fn_1_4F94);
     }
-    if ((mAttr & 0x00400000) || (mAttr & 0x00100000)) {
+    if ((mAttr & W01_MASU_EVENT_DAY) || (mAttr & W01_MASU_EVENT_NIGHT)) {
         mbPlayerMoveHookSet(playerNo, fn_1_8860);
     }
-    if (mAttr & 0x00040000) {
+    if (mAttr & W01_MASU_EVENT_BIT_18) {
         mbPlayerMoveHookSet(playerNo, fn_1_E234);
     }
-    if (mAttr & 0x01000000) {
+    if (mAttr & W01_MASU_EVENT_GATE) {
         fn_1_126EC(playerNo, id);
     }
     return 0;
@@ -1166,17 +1329,17 @@ int MB1Ev_MasuHatena(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & 0x00000008) {
+    if (mAttr & W01_MASU_EVENT_BIT_3) {
         fn_1_5FB4(playerNo, id);
         return 0;
     }
-    if (mAttr & 0x20000000) {
+    if (mAttr & W01_MASU_EVENT_BIT_29) {
         fn_1_9AEC(playerNo, id);
     }
-    if (mAttr & 0x00000040) {
+    if (mAttr & W01_MASU_EVENT_BIT_6) {
         fn_1_F1F4(playerNo, id);
     }
-    if (mAttr & 0x00008000) {
+    if (mAttr & W01_MASU_EVENT_BIT_15) {
         fn_1_10CB8(playerNo, id);
     }
     return 1;
@@ -1216,8 +1379,10 @@ void fn_1_9F4(int modelId, int shopNo)
     BOOL dayF = (GwSystem.curTime == 0);
     s16 objId;
 
-    objId = mbObjCreate((dayF ? 0xD70000 : 0xD80000) | 0x17, NULL, TRUE);
-    mbObjAttrSet(objId, 0x40000001);
+    objId = mbObjCreate((dayF ? DATA_w01 : DATA_w01n)
+            | W01_FILE_B01_M081,
+        NULL, TRUE);
+    mbObjAttrSet(objId, HU3D_MOTATTR_LOOP);
     mbObjHookSet((s16)modelId, lbl_1_data_420, objId);
     mbObjCullRadiusSet((s16)modelId, 400.0f);
     mbObjCullRadiusSet(objId, 400.0f);
@@ -1251,24 +1416,27 @@ void fn_1_B68(void)
     }
     memset(work, 0, sizeof(*work));
     if (GwSystem.curTime == 0) {
-        work->modelId = mbObjCreate(0xD70025, NULL, FALSE);
+        work->modelId = mbObjCreate(
+            DATANUM(DATA_w01, W01_FILE_B01_M224), NULL, FALSE);
     } else {
-        work->modelId = mbObjCreate(0xD80028, NULL, FALSE);
+        work->modelId = mbObjCreate(
+            DATANUM(DATA_w01n, W01_FILE_B01_M229), NULL, FALSE);
     }
     mbObjMotionSpeedSet(work->modelId, 0.0f);
     mbObjMotionShapeSpeedSet(work->modelId, 0.0f);
     fn_1_950C(FALSE);
-    process = HuPrcChildCreate(fn_1_DD0, 0x2007, 0x8000, 0, mbMainProc);
+    process = HuPrcChildCreate(fn_1_DD0, W01_EVENT_PROCESS_PRIORITY,
+        W01_EVENT_PROCESS_STACK_SIZE, 0, mbMainProc);
     winNo = -1;
     do {
         if (work->active != FALSE) {
             if (winNo < 0) {
-                winNo = mbWinCreateHelp(0x26000C);
+                winNo = mbWinCreateHelp(W01_BOARD_OPENING_MESS_12);
                 mbWinPosSet(winNo, 228, 408);
             }
             for (i = 0; i < GW_PLAYER_MAX; i++) {
                 if (GwPlayer[i].comF == FALSE
-                    && (HuPadBtnDown[GwPlayer[i].padNo] & 0x1000)) {
+                    && (HuPadBtnDown[GwPlayer[i].padNo] & PAD_BUTTON_START)) {
                     HuPrcKill(process);
                     work->forceEnd = TRUE;
                     break;
@@ -1288,7 +1456,7 @@ void fn_1_B68(void)
         mbPlayerDispSet(i, TRUE);
     }
     dayF = (GwSystem.curTime == 0);
-    HuDataDirClose(dayF ? 0xD70000 : 0xD80000);
+    HuDataDirClose(dayF ? DATA_w01 : DATA_w01n);
 }
 
 void fn_1_DD0(void)
@@ -1309,10 +1477,10 @@ void fn_1_DD0(void)
     mbWipeFadeOut();
     work->active = TRUE;
     if (GwSystem.curTime == 0) {
-        masuId = mbMasuFind_MAttrIdGet(-1, 0x00400000);
+        masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_EVENT_DAY);
         time = 0;
     } else {
-        masuId = mbMasuFind_MAttrIdGet(-1, 0x00100000);
+        masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_EVENT_NIGHT);
         time = 1;
     }
     mbMasuPosGet(masuId, &pos);
@@ -1329,7 +1497,7 @@ void fn_1_DD0(void)
     mbObjMotionShapeSpeedSet(work->modelId, 1.0f);
     HuPrcSleep(120);
     mbWipeFadeOut();
-    masuId = mbMasuFind_MAttrIdGet(-1, 0x8);
+    masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_EVENT_BIT_3);
     mbMasuPosGet(masuId, &pos);
     pos.y -= 500.0f;
     mbCameraMovePos(&pos, &lbl_1_data_45C[time][0], NULL,
@@ -1358,11 +1526,11 @@ void fn_1_10A0(void)
     work->startPos.x = -1123.03f;
     work->startPos.y = 3430.0f;
     work->startPos.z = -152.14f;
-    work->startMasuId = mbMasuFind_MAttrIdGet(-1, 0x10);
+    work->startMasuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_PATH_START);
     work->endPos.x = 1090.968f;
     work->endPos.y = 3430.0f;
     work->endPos.z = 68.8458f;
-    work->endMasuId = mbMasuFind_MAttrIdGet(-1, 0x20);
+    work->endMasuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_PATH_END);
     PSVECSubtract(&work->endPos, &work->startPos, &work->delta);
     work->length = PSVECMag(&work->delta);
     work->angle = (float)((atan2(-work->delta.x, -work->delta.z) / M_PI)
@@ -1371,7 +1539,8 @@ void fn_1_10A0(void)
     for (i = 0; i < 6; i++, marker++) {
         dayF = (GwSystem.curTime == 0);
         marker->modelId = mbObjCreate(
-            (dayF ? 0xD70000 : 0xD80000) | 0x8, NULL, TRUE);
+            (dayF ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M020, NULL,
+            TRUE);
         mbObjRotYSet(marker->modelId, work->angle);
         attr = mbev_MasuAttrGet(i + 1, 7);
         marker->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 7);
@@ -1389,7 +1558,8 @@ void fn_1_10A0(void)
     for (i = 0; i < 7; i++) {
         dayF2 = (GwSystem.curTime == 0);
         work->modelId[i] = mbObjCreate(
-            (dayF2 ? 0xD70000 : 0xD80000) | 0x9, NULL, TRUE);
+            (dayF2 ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M021, NULL,
+            TRUE);
     }
     work->initF = TRUE;
 }
@@ -1589,7 +1759,7 @@ void fn_1_13CC(void)
         work->lastMasuId = GwPlayer[playerNo].masuId;
     }
     if (masuId >= 0 && work->lastMasuId != masuId) {
-        mbAudFXPlay(0x594);
+        mbAudFXPlay(W01_SE_BRD01_207);
         work->lastMasuId = playerMasuId;
     }
     halfLength = work->halfLength;
@@ -1718,11 +1888,11 @@ void fn_1_2A1C(void)
     work->startPos.x = 747.0f;
     work->startPos.y = 4993.0f;
     work->startPos.z = -1309.0f;
-    work->startMasuId = mbMasuFind_MAttrIdGet(-1, 0x100);
+    work->startMasuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_SPRING_START);
     work->endPos.x = 2708.0f;
     work->endPos.y = 4037.0f;
     work->endPos.z = 18.0f;
-    work->endMasuId = mbMasuFind_MAttrIdGet(-1, 0x200);
+    work->endMasuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_SPRING_END);
     PSVECSubtract(&work->endPos, &work->startPos, &work->dir);
     work->length = PSVECMag(&work->dir);
     work->angle = HuAtan(-work->dir.x, -work->dir.z);
@@ -1730,31 +1900,34 @@ void fn_1_2A1C(void)
     for (i = 0; i < 16; i++) {
         dayF1 = !GwSystem.curTime;
         if (dayF1 != FALSE) {
-            dataDir1 = 0xD70000;
+            dataDir1 = DATA_w01;
         } else {
-            dataDir1 = 0xD80000;
+            dataDir1 = DATA_w01n;
         }
-        work->pathModelId[i] = mbObjCreate(dataDir1 | 0xA, NULL, TRUE);
+        work->pathModelId[i] = mbObjCreate(
+            dataDir1 | W01_FILE_B01_M030, NULL, TRUE);
         mbObjRotYSet(work->pathModelId[i], work->angle);
     }
     dayF2 = !GwSystem.curTime;
     if (dayF2 != FALSE) {
-        dataDir2 = 0xD70000;
+        dataDir2 = DATA_w01;
     } else {
-        dataDir2 = 0xD80000;
+        dataDir2 = DATA_w01n;
     }
-    work->mainModelId = mbObjCreate(dataDir2 | 0xB, NULL, TRUE);
+    work->mainModelId = mbObjCreate(dataDir2 | W01_FILE_B01_M031, NULL,
+        TRUE);
     mbObjRotYSet(work->mainModelId, work->angle);
     fn_1_3214(0.05f);
     mbObjPosGet(work->mainModelId, &pos);
     for (i = 0; i < 4; i++, segment++) {
         dayF3 = !GwSystem.curTime;
         if (dayF3 != FALSE) {
-            dataDir3 = 0xD70000;
+            dataDir3 = DATA_w01;
         } else {
-            dataDir3 = 0xD80000;
+            dataDir3 = DATA_w01n;
         }
-        segment->modelId = mbObjCreate(dataDir3 | 0xA, NULL, TRUE);
+        segment->modelId = mbObjCreate(dataDir3 | W01_FILE_B01_M030, NULL,
+            TRUE);
         mbObjScaleSet(segment->modelId, 0.7f, 0.7f, 0.5f);
         segment->pos.x = pos.x;
         segment->pos.y = pos.y - (50.0f * (i + 1));
@@ -1783,7 +1956,7 @@ void fn_1_2D08(int playerNo)
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
     mbObjPosGet(work->segment[3].modelId, &targetPos);
     targetPos.y += lbl_1_rodata_F8[GwPlayer[playerNo].charNo];
-    motionId = mbPlayerMotionCreate(playerNo, 0x930063);
+    motionId = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_436);
     mbPlayerPosGet(playerNo, &playerPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
     angle = HuAtan(work->dir.x, work->dir.z);
@@ -1802,11 +1975,11 @@ void fn_1_2D08(int playerNo)
         HuPrcVSleep();
     }
     work->state = playerNo;
-    mbAudFXPlay(0x594);
+    mbAudFXPlay(W01_SE_BRD01_207);
     for (time = 3; time < 54; time++) {
         weight = (float)(s32)time / 59.0f;
         if (time == 12) {
-            CharFXPlay(GwPlayer[playerNo].charNo, 0x243);
+            CharFXPlay(GwPlayer[playerNo].charNo, W01_CHARVOICE_SE_06);
         }
         fn_1_3214(weight);
         if ((((s32)time - 3) % 30) == 0) {
@@ -2022,15 +2195,17 @@ void fn_1_45A0(void)
     lbl_1_bss_148C = work;
     for (i = 0; i < lbl_1_bss_1490; i++, work++) {
         work->modelId = mbObjCreate(
-            (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0xE, NULL, TRUE);
+            (MBTimeDayGet() ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M050,
+            NULL, TRUE);
         mbObjAttrSet(work->modelId, HU3D_MOTATTR_LOOP);
         work->pos.x = lbl_1_data_48C[i].x;
         work->pos.y = 1000.0f + lbl_1_data_48C[i].y;
         work->pos.z = lbl_1_data_48C[i].z;
         mbObjPosSet(work->modelId, work->pos.x, work->pos.y - 1000.0f,
             work->pos.z);
-        attr = mbev_MasuAttrGet(i + 1, 0x1C00);
-        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 0x1C00);
+        attr = mbev_MasuAttrGet(i + 1, W01_MASU_FLOAT_MASK);
+        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr,
+            W01_MASU_FLOAT_MASK);
         work->maxTime = 240;
         work->time = mbRandMod(work->maxTime);
         work->speed = 1.0f;
@@ -2144,9 +2319,9 @@ void fn_1_4D88(void)
     s32 j;
 
     work = lbl_1_bss_1438;
-    lbl_1_bss_1436 = mbMasuFind_MAttrIdGet(-1, 0x4000);
+    lbl_1_bss_1436 = mbMasuFind_MAttrIdGet(-1, W01_MASU_EVENT_BIT_14);
     mbMasuPosGet(lbl_1_bss_1436, &lbl_1_bss_1428);
-    lbl_1_bss_1434 = mbMasuFind_MAttrIdGet(-1, 0x2000);
+    lbl_1_bss_1434 = mbMasuFind_MAttrIdGet(-1, W01_MASU_LINK_FLAG);
     mbMasuPosGet(lbl_1_bss_1434, &lbl_1_bss_141C);
     PSVECSubtract(&lbl_1_bss_141C, &lbl_1_bss_1428, &lbl_1_bss_1410);
     for (i = 0; i < 1; i++, work++) {
@@ -2155,11 +2330,13 @@ void fn_1_4D88(void)
         for (j = 0; j < 2; j++) {
             dayF1 = !GwSystem.curTime;
             work->modelId[j] = mbObjCreate(
-                (dayF1 ? 0xD70000 : 0xD80000) | 0xC, NULL, TRUE);
+                (dayF1 ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M040,
+                NULL, TRUE);
         }
         dayF2 = !GwSystem.curTime;
         work->modelId[2] = mbObjCreate(
-            (dayF2 ? 0xD70000 : 0xD80000) | 0xD, NULL, TRUE);
+            (dayF2 ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M041,
+            NULL, TRUE);
         work->unk1C = 1.0f;
         work->unk20 = 20.0f;
         work->unk0C[0] = work->unk0C[1] = 0.0f;
@@ -2196,7 +2373,7 @@ void fn_1_4F94(int playerNo)
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
     GwPlayer[playerNo].masuIdNext = lbl_1_bss_1434;
-    motionId = mbPlayerMotionCreate(playerNo, 0x930063);
+    motionId = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_436);
     hook = CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, FALSE);
     mbPlayerPosGet(playerNo, &playerPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
@@ -2222,13 +2399,13 @@ void fn_1_4F94(int playerNo)
     work->unk1C = 20.0f;
     work->unk0C[2] = 2.0f;
     work->unk00 = playerNo;
-    mbAudFXPlay(0x594);
+    mbAudFXPlay(W01_SE_BRD01_207);
     for (time = 0; time < 120; time++) {
         HuPrcVSleep();
     }
     work->unk1C = 1.0f;
     work->unk00 = -1;
-    mbAudFXPlay(0x594);
+    mbAudFXPlay(W01_SE_BRD01_207);
     mbMasuPosGet(lbl_1_bss_1434, &targetPos);
     angle = (float)((atan2(delta.x, delta.z) / M_PI) * 180.0);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, FALSE);
@@ -2393,12 +2570,13 @@ void fn_1_5C7C(void)
     }
     dayF2 = !GwSystem.curTime;
     if (dayF2 != FALSE) {
-        dataDir = 0xD70000;
+        dataDir = DATA_w01;
     } else {
-        dataDir = 0xD80000;
+        dataDir = DATA_w01n;
     }
-    work->modelId = mbObjCreate(dataDir | 0x20, lbl_1_data_4FC[time], FALSE);
-    mbObjMotionSet(work->modelId, 0, 0x40000001);
+    work->modelId = mbObjCreate(dataDir | W01_FILE_B01_M210,
+        lbl_1_data_4FC[time], FALSE);
+    mbObjMotionSet(work->modelId, 0, HU3D_MOTATTR_LOOP);
     mbObjPosSet(work->modelId, 0.0f, 4300.0f, -1350.0f);
 
     if (!GwSystem.curTime) {
@@ -2423,16 +2601,21 @@ void fn_1_5C7C(void)
             data->modelId = mbCoinCreate2();
             mbCoinObjDispSet(data->modelId, FALSE);
         } else {
-            data->modelId = mbObjCreate(0xD80022, NULL, TRUE);
+            data->modelId = mbObjCreate(
+                DATANUM(DATA_w01n, W01_FILE_INDEX_34), NULL, TRUE);
             mbObjDispSet(data->modelId, FALSE);
         }
     }
 
     lbl_1_bss_13D0[0] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x50063), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, W01_BOARD_FILE_INDEX_99)),
+        HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_13D0[0]);
     lbl_1_bss_13D0[1] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x5005E), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, W01_BOARD_FILE_INDEX_94)),
+        HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_13D0[1]);
 }
 
@@ -2538,12 +2721,12 @@ void fn_1_5FB4(s32 playerNo, s16 id)
         }
         data->state = 0;
     }
-    motionId = mbPlayerMotionCreate(playerNo, 0x93001E);
+    motionId = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_333);
     for (i = 0; i < 4; i++) {
-        work->playerMotion[i] = mbPlayerMotionCreate(i, 0x930019);
+        work->playerMotion[i] = mbPlayerMotionCreate(i, CHARMOT_HSF_c000m1_325);
     }
     mbPlayerPosGet(playerNo, &playerPos);
-    linkMasuId = mbMasuAttrFindLink(id, 0x2000);
+    linkMasuId = mbMasuAttrFindLink(id, W01_MASU_LINK_FLAG);
     mbMasuPosGet(linkMasuId, &linkPos);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     mbPlayerPosGet(playerNo, &startPos);
@@ -2578,9 +2761,9 @@ void fn_1_5FB4(s32 playerNo, s16 id)
         -1.0f, 30);
     mbCameraMoveWait();
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0000, 17);
+        winId = mbWinCreate(2, W01_MESS_00, 17);
     } else {
-        winId = mbWinCreate(2, 0x2F0002, 18);
+        winId = mbWinCreate(2, W01_MESS_02, 18);
     }
     mbWinWait(winId);
     HuPrcSleep(30);
@@ -2588,7 +2771,7 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     HuPrcSleep(30);
     mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 2.0f, 0);
     mbCameraShakeSet(30, 200.0f);
-    mbAudFXPlay(0x596);
+    mbAudFXPlay(W01_SE_BRD01_209);
     for (i = 0; i < 4; i++) {
         omVibrate(i, 20, 20, 0);
     }
@@ -2726,9 +2909,9 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     mbWipeFadeIn();
     HuMemDirectFree(dataOrder);
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0001, 17);
+        winId = mbWinCreate(2, W01_MESS_01, 17);
     } else {
-        winId = mbWinCreate(2, 0x2F0003, 18);
+        winId = mbWinCreate(2, W01_MESS_03, 18);
     }
     mbWinWait(winId);
 }
@@ -2834,8 +3017,9 @@ s32 fn_1_6D98(void)
                                 work->coinCount[teamNo2]--;
                             }
                         }
-                        mbAudFXPlay(0x597);
-                        CharFXPlay(GwPlayer[data->playerNo].charNo, 0x248);
+                        mbAudFXPlay(W01_SE_BRD01_210);
+                        CharFXPlay(GwPlayer[data->playerNo].charNo,
+                            W01_CHARVOICE_SE_11);
                     }
                 }
                 break;
@@ -2959,17 +3143,18 @@ void fn_1_7944(void)
     s32 i;
 
     work = lbl_1_bss_137C;
-    lbl_1_bss_1378 = HuSprAnimDataRead(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x32);
+    lbl_1_bss_1378 = HuSprAnimDataRead((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+        | W01_FILE_INDEX_50);
     HuSprAnimLock(lbl_1_bss_1378);
     for (i = 0; i < 3; i++, work++) {
         work->modelId = mbObjCreate(
-            (lbl_1_data_550[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+            FILENUM(lbl_1_data_550[i])
+                | (MBTimeDayGet() ? DATA_w01 : DATA_w01n),
             NULL, FALSE);
         mbObjMotionSpeedSet(work->modelId, 0.0f);
-        attr = mbev_MasuAttrGet(i + 1, 0x00030000);
-        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 0x00030000);
+        attr = mbev_MasuAttrGet(i + 1, W01_MASU_GROUP_MASK);
+        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr,
+            W01_MASU_GROUP_MASK);
         strcpy(work->objName, lbl_1_data_56C[i]);
 
         work->effectModelId[0] = mbParticleCreate(lbl_1_bss_1378, 20);
@@ -3002,7 +3187,7 @@ void fn_1_7B70(s32 index)
     mbMasuPosGet(work->masuId, &pos);
     pos.y -= 100.0f;
     fn_1_7D14(work, &pos);
-    mbAudFXPlay(0x590);
+    mbAudFXPlay(W01_SE_BRD01_203);
     work->active = TRUE;
 }
 
@@ -3166,11 +3351,11 @@ void fn_1_8474(void)
         }
         dayF2 = !GwSystem.curTime;
         if (dayF2 != FALSE) {
-            dataDir = 0xD70000;
+            dataDir = DATA_w01;
         } else {
-            dataDir = 0xD80000;
+            dataDir = DATA_w01n;
         }
-        work->modelId = mbObjCreate((dataNum & 0xFFFF) | dataDir, NULL,
+        work->modelId = mbObjCreate(FILENUM(dataNum) | dataDir, NULL,
             FALSE);
         mbObjMotionSet(work->modelId, 0, 0);
         mbObjMotionSpeedSet(work->modelId, 0.0f);
@@ -3209,7 +3394,9 @@ void fn_1_8474(void)
     }
 
     lbl_1_bss_1334 = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x50063), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, W01_BOARD_FILE_INDEX_99)),
+        HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_1334);
 }
 
@@ -3264,7 +3451,7 @@ void fn_1_8860(int playerNo)
     float srcRotY;
 
     masuId = GwPlayer[playerNo].masuId;
-    if (mbMasuMAttrGet(masuId) & 0x00400000) {
+    if (mbMasuMAttrGet(masuId) & W01_MASU_EVENT_DAY) {
         workNo = 0;
     } else {
         workNo = 1;
@@ -3285,7 +3472,7 @@ void fn_1_8860(int playerNo)
         mbObjMotionShapeTimeSet(work->modelId, 0.0f);
         mbObjMotionShapeSpeedSet(work->modelId, 1.0f);
         modelId = mbObjModelIDGet(work->modelId);
-        mbAudFXPlay(0x591);
+        mbAudFXPlay(W01_SE_BRD01_204);
         for (i = 0; (u32)i < 60; i++) {
             if ((u32)i == 30) {
                 mbPlayerScaleSet(playerNo, 1.0f, 0.5f, 1.0f);
@@ -3294,7 +3481,7 @@ void fn_1_8860(int playerNo)
             mbPlayerPosSetV(playerNo, &pos);
             HuPrcVSleep();
         }
-        mbAudFXPlay(0x592);
+        mbAudFXPlay(W01_SE_BRD01_205);
         mbPlayerPosGet(playerNo, &playerPos);
         mbMasuPosGet(work->linkMasuId[0], &masuPos);
         PSVECSubtract(&masuPos, &playerPos, &delta);
@@ -3334,7 +3521,7 @@ void fn_1_8860(int playerNo)
         mbObjMotionShapeSpeedSet(work->modelId, 0.0f);
         GwPlayer[playerNo].masuId = work->linkMasuId[0];
     } else {
-        mbAudFXPlay(0x593);
+        mbAudFXPlay(W01_SE_BRD01_206);
         mbObjMotionTimeSet(work->modelId, 5.0f);
         mbObjMotionSpeedSet(work->modelId, 1.0f);
         mbObjMotionShapeTimeSet(work->modelId, 5.0f);
@@ -3369,7 +3556,7 @@ void fn_1_8860(int playerNo)
             mbPlayerWorkGet(playerNo)->_unk08 = time;
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
+        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
         GwPlayer[playerNo].masuId = work->linkMasuId[1];
     }
     GwPlayer[playerNo].moveF = FALSE;
@@ -3457,19 +3644,25 @@ void fn_1_9574(void)
     work = lbl_1_bss_1240.work;
     modelIdP = lbl_1_bss_1238;
     modelIdP[0] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x1B, NULL, FALSE);
-    mbObjAttrSet(modelIdP[0], 0x40000002);
+        (MBTimeDayGet() ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M200,
+        NULL, FALSE);
+    mbObjAttrSet(modelIdP[0], HU3D_MOTATTR_PAUSE);
     mbObjPosSet(modelIdP[0], 410.0f, 1900.0f, 1137.0f);
 
     modelIdP[1] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x1F, NULL, FALSE);
-    mbObjAttrSet(modelIdP[1], 0x40000001);
+        (MBTimeDayGet() ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M205,
+        NULL, FALSE);
+    mbObjAttrSet(modelIdP[1], HU3D_MOTATTR_LOOP);
     mbObjHookSet(modelIdP[0], lbl_1_data_638, modelIdP[1]);
 
     if (MBTimeDayGet()) {
-        modelIdP[2] = mbObjCreate(0x130005, lbl_1_data_5D4, FALSE);
+        modelIdP[2] = mbObjCreate(
+            DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_5),
+            lbl_1_data_5D4, FALSE);
     } else {
-        modelIdP[2] = mbObjCreate(0x130000, lbl_1_data_5E4, FALSE);
+        modelIdP[2] = mbObjCreate(
+            DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_0),
+            lbl_1_data_5E4, FALSE);
     }
     if (!MBTimeDayGet()) {
         modelIdP[3] = Hu3DLLightCreateV(
@@ -3480,33 +3673,35 @@ void fn_1_9574(void)
         Hu3DLLightInfinitytSet(
             mbObjModelIDGet(modelIdP[2]), modelIdP[3]);
     }
-    mbObjMotionSet(modelIdP[2], 1, 0x40000001);
+    mbObjMotionSet(modelIdP[2], 1, HU3D_MOTATTR_LOOP);
     mbObjDispSet(modelIdP[2], FALSE);
     mbObjPosGet(modelIdP[0], &pos);
     mbObjPosSetV(modelIdP[2], &pos);
 
     for (i = 0; i < 3; i++, work++) {
         work->modelId = mbObjCreate(
-            (lbl_1_data_5F4[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+            FILENUM(lbl_1_data_5F4[i])
+                | (MBTimeDayGet() ? DATA_w01 : DATA_w01n),
             NULL, FALSE);
         strcpy(work->objName, lbl_1_data_610[i]);
         mbObjDispSet(work->modelId, FALSE);
         work->particleCount = fn_1_B434(&work->particle);
         work->state = 1;
-        work->object = omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_ACDC);
+        work->object = omAddObjEx(mbObjMan, W01_OBJECT_PRIORITY, 0, 0, -1,
+            fn_1_ACDC);
         work->object->work[0] = i;
         work->playerNo = -1;
     }
 
     for (i = 0; i < 4; i++) {
-        attr = mbev_MasuAttrGet(i + 2, 0xE0000000);
+        attr = mbev_MasuAttrGet(i + 2, W01_MASU_ROUTE_GROUP_MASK);
         lbl_1_bss_1230[i] =
-            mbMasuFind_MAttrMatchIdGet(-1, attr, 0xE0000000);
+            mbMasuFind_MAttrMatchIdGet(-1, attr,
+                W01_MASU_ROUTE_GROUP_MASK);
     }
 
     lbl_1_bss_121C = HuSprAnimRead(HuDataSelHeapReadNum(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x33,
+        (MBTimeDayGet() ? DATA_w01 : DATA_w01n) | W01_FILE_INDEX_51,
         HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_121C);
     lbl_1_bss_120C[0] = fn_1_C7DC(&lbl_1_bss_1214[0]);
@@ -3518,7 +3713,7 @@ void fn_1_9574(void)
     lbl_1_bss_1224.x = 12000.0f;
     lbl_1_bss_1224.y = 3000.0f;
     lbl_1_bss_1224.z = 2400.0f;
-    HuDataDirClose(0x130000);
+    HuDataDirClose(DATA_capsuleshop);
 }
 
 void fn_1_99E4(void)
@@ -3585,26 +3780,26 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     modelIdP = lbl_1_bss_1238;
     mbObjMotionSpeedSet(modelIdP[0], 1.0f);
     modelId = modelIdP[0];
-    mbObjAttrReset(modelId, 0x40000002);
+    mbObjAttrReset(modelId, HU3D_MOTATTR_PAUSE);
     mbObjDispSet(modelIdP[2], TRUE);
     mbObjMotionSet(modelIdP[2], 1, HU3D_MOTATTR_LOOP);
     mbPlayerRotateStart(playerNo, 180, 15);
-    linkMasuId = mbMasuAttrFindLink(id, 0x2000);
+    linkMasuId = mbMasuAttrFindLink(id, W01_MASU_LINK_FLAG);
     mbMasuPosGet(linkMasuId, &linkPos);
     if (MBTimeDayGet()) {
-        winId = mbWinCreate(2, 0x2F0004, 8);
+        winId = mbWinCreate(2, W01_MESS_04, 8);
         mbAudFXDelaySet(30);
         mbAudFXPlay(987);
     } else {
-        winId = mbWinCreate(2, 0x2F0009, 9);
+        winId = mbWinCreate(2, W01_MESS_09, 9);
         mbAudFXDelaySet(30);
         mbAudFXPlay(961);
     }
     mbWinWait(winId);
     if (MBTimeDayGet()) {
-        winId = mbWinCreateChoice(2, 0x2F0005, 8, 0);
+        winId = mbWinCreateChoice(2, W01_MESS_05, 8, 0);
     } else {
-        winId = mbWinCreateChoice(2, 0x2F000A, 9, 0);
+        winId = mbWinCreateChoice(2, W01_MESS_10, 9, 0);
     }
     mbWinChoiceGet(winId);
     if (GwPlayer[playerNo].comF) {
@@ -3643,9 +3838,9 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     mbCameraMoveWait();
     mbObjMotionShiftSet(modelIdP[2], 2, 0.0f, 4.0f, 0);
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0006, 8);
+        winId = mbWinCreate(2, W01_MESS_06, 8);
     } else {
-        winId = mbWinCreate(2, 0x2F000B, 9);
+        winId = mbWinCreate(2, W01_MESS_11, 9);
     }
     for (i = 0; i < 3; i++, work++) {
         fn_1_B7D8(i);
@@ -3667,8 +3862,8 @@ void fn_1_9AEC(s32 playerNo, s16 id)
         HuPrcVSleep();
     }
     mbWinWait(winId);
-    motionId = mbPlayerMotionCreate(playerNo, 0x930063);
-    helpWinId = mbWinCreateHelp(0x2F0008);
+    motionId = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_436);
+    helpWinId = mbWinCreateHelp(W01_MESS_08);
     mbWinPosSet(helpWinId, 216, 384);
     for (i = 0; i < 4; i++) {
         dataOrder[i] = i;
@@ -3703,9 +3898,9 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     fn_1_AFD4(choice, playerNo);
     mbWinKill(helpWinId);
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0007, 8);
+        winId = mbWinCreate(2, W01_MESS_07, 8);
     } else {
-        winId = mbWinCreate(2, 0x2F0007, 9);
+        winId = mbWinCreate(2, W01_MESS_07, 9);
     }
     mbWinWait(winId);
     mbObjMotionShiftSet(modelIdP[2], 3, 0.0f, 4.0f, HU3D_MOTATTR_LOOP);
@@ -3766,7 +3961,7 @@ void fn_1_9AEC(s32 playerNo, s16 id)
         Hu3DModelAttrSet(lbl_1_bss_1220, 1);
     }
     GwPlayer[playerNo].masuId = masuId;
-    mbObjAttrSet(modelIdP[0], 0x40000002);
+    mbObjAttrSet(modelIdP[0], HU3D_MOTATTR_PAUSE);
     mbObjMotionTimeSet(modelIdP[0], 0.0f);
     mbObjDispSet(modelIdP[2], FALSE);
 }
@@ -4397,12 +4592,13 @@ s32 fn_1_C7DC(void **displayList)
     void *list;
     u32 size;
 
-    colorA = 0x685747FF;
-    colorB = 0xBEB095FF;
-    allocation = HuMemDirectMallocNum(HEAP_HEAP, 0x1000, HU_MEMNUM_OVL);
+    colorA = W01_DISPLAY_COLOR_A;
+    colorB = W01_DISPLAY_COLOR_B;
+    allocation = HuMemDirectMallocNum(HEAP_HEAP,
+        W01_SMALL_DISPLAY_LIST_SIZE, HU_MEMNUM_OVL);
     listBuffer = allocation;
-    DCInvalidateRange(listBuffer, 0x1000);
-    GXBeginDisplayList(listBuffer, 0x1000);
+    DCInvalidateRange(listBuffer, W01_SMALL_DISPLAY_LIST_SIZE);
+    GXBeginDisplayList(listBuffer, W01_SMALL_DISPLAY_LIST_SIZE);
     fn_1_C694(lbl_1_rodata_30C, colorA);
     fn_1_C694(lbl_1_rodata_348, colorB);
     size = GXEndDisplayList();
@@ -4421,10 +4617,11 @@ s32 fn_1_CAA4(void **displayList)
     void *list;
     u32 size;
 
-    buffer = HuMemDirectMallocNum(HEAP_HEAP, 0x1000, HU_MEMNUM_OVL);
+    buffer = HuMemDirectMallocNum(HEAP_HEAP, W01_SMALL_DISPLAY_LIST_SIZE,
+        HU_MEMNUM_OVL);
     listBuffer = buffer;
-    DCInvalidateRange(listBuffer, 0x1000);
-    GXBeginDisplayList(listBuffer, 0x1000);
+    DCInvalidateRange(listBuffer, W01_SMALL_DISPLAY_LIST_SIZE);
+    GXBeginDisplayList(listBuffer, W01_SMALL_DISPLAY_LIST_SIZE);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-35.0f, 35.0f, 0.0f);
     GXTexCoord2f32(0.0f, 0.0f);
@@ -4798,7 +4995,7 @@ void fn_1_E234(int playerNo)
     GwPlayer[playerNo].moveF = TRUE;
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    motionId = mbPlayerMotionCreate(playerNo, 0x93000A);
+    motionId = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_310);
     mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 8.0f, FALSE);
     masuId = GwPlayer[playerNo].masuId;
     linkMasuId = mbMasuLinkGet(masuId, 0);
@@ -4906,11 +5103,11 @@ void fn_1_ED00(void)
     entry = work->entry;
     dayF = !GwSystem.curTime;
     if (dayF != FALSE) {
-        dataDir = 0xD70000;
+        dataDir = DATA_w01;
     } else {
-        dataDir = 0xD80000;
+        dataDir = DATA_w01n;
     }
-    work->modelId = mbObjCreate(dataDir | 0x29, NULL, FALSE);
+    work->modelId = mbObjCreate(dataDir | W01_FILE_B01_M230, NULL, FALSE);
     work->pos.x = 1871.0f;
     work->pos.y = 2479.0f;
     work->pos.z = 1078.0f;
@@ -4926,13 +5123,14 @@ void fn_1_ED00(void)
         memset(entry, 0, sizeof(W01_BIRI_ENTRY));
         entryDayF = !GwSystem.curTime;
         if (entryDayF != FALSE) {
-            entryDataDir = 0xD70000;
+            entryDataDir = DATA_w01;
         } else {
-            entryDataDir = 0xD80000;
+            entryDataDir = DATA_w01n;
         }
-        entry->modelId = mbObjCreate(entryDataDir | 0x2A, NULL, TRUE);
+        entry->modelId = mbObjCreate(entryDataDir | W01_FILE_B01_M231,
+            NULL, TRUE);
         mbObjBiriQCreate((s16)(entry->modelId + 0));
-        mbObjAttrSet(entry->modelId, 0x40000001);
+        mbObjAttrSet(entry->modelId, HU3D_MOTATTR_LOOP);
         angle = 360.0f * frandf();
         entry->angle = angle;
         radius = 100.0f * (1.6f * frandf());
@@ -5006,12 +5204,12 @@ void fn_1_F1F4(s32 playerNo, s16 id)
 
     work = &lbl_1_bss_EFC;
     entry = work->entry;
-    motionId[0] = mbPlayerMotionCreate(playerNo, 0x930017);
-    motionId[1] = mbPlayerMotionCreate(playerNo, 0x930062);
+    motionId[0] = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_323);
+    motionId[1] = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_435);
     mbCameraPlayerViewSet(playerNo, 1);
     mbPlayerMotionShiftSet(playerNo, motionId[0], 0.0f, 4.0f, 0);
     work->state = 1;
-    audNo = mbAudFXPlay(0x595);
+    audNo = mbAudFXPlay(W01_SE_BRD01_208);
     HuPrcSleep(30);
     mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 4.0f, 0);
     rotY = mbPlayerRotYGet(playerNo);
@@ -5024,7 +5222,7 @@ void fn_1_F1F4(s32 playerNo, s16 id)
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerNo, motionId[1], 0.0f, 8.0f,
-        0x40000001);
+        HU3D_MOTATTR_LOOP);
     work->state = 2;
     padNo = GwPlayer[playerNo].padNo;
     lbl_1_bss_EF8 = -1;
@@ -5039,9 +5237,9 @@ void fn_1_F1F4(s32 playerNo, s16 id)
         HuPrcVSleep();
     }
     fn_1_10900();
-    mbPlayerMotionShiftSet(playerNo, 15, 0.0f, 4.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 15, 0.0f, 4.0f, HU3D_MOTATTR_LOOP);
     omVibrate(playerNo, 20, 7, 3);
-    CharFXPlay(GwPlayer[playerNo].charNo, 0x240);
+    CharFXPlay(GwPlayer[playerNo].charNo, W01_CHARVOICE_SE_03);
     coinPos.x = playerPos.x;
     coinPos.y = playerPos.y + 100.0f;
     coinPos.z = playerPos.z;
@@ -5073,12 +5271,19 @@ void fn_1_F1F4(s32 playerNo, s16 id)
 }
 
 u32 lbl_1_data_3CC[6] = {
-    0x00D70006, 0x00D70007, 0x00D70012,
-    0x00D70013, 0x00D70014, 0,
+    DATANUM(DATA_w01, W01_FILE_INDEX_06),
+    DATANUM(DATA_w01, W01_FILE_INDEX_07),
+    DATANUM(DATA_w01, W01_FILE_INDEX_18),
+    DATANUM(DATA_w01, W01_FILE_INDEX_19),
+    DATANUM(DATA_w01, W01_FILE_INDEX_20),
+    0,
 };
 
 u32 lbl_1_data_3E4[4] = {
-    0x00D70006, 0x00D70007, 0x00D70015, 0,
+    DATANUM(DATA_w01, W01_FILE_INDEX_06),
+    DATANUM(DATA_w01, W01_FILE_INDEX_07),
+    DATANUM(DATA_w01, W01_FILE_INDEX_21),
+    0,
 };
 
 u32 *lbl_1_data_3F4[2] = {
@@ -5126,8 +5331,12 @@ HuVecF lbl_1_data_4E0[1] = {
     { -1314.0f, 3120.0f, 1251.0f },
 };
 
-int lbl_1_data_4EC[2] = { 0x00D70021, -1 };
-int lbl_1_data_4F4[2] = { 0x00D80021, -1 };
+int lbl_1_data_4EC[2] = {
+    DATANUM(DATA_w01, W01_FILE_B01_M210_AUX), -1
+};
+int lbl_1_data_4F4[2] = {
+    DATANUM(DATA_w01n, W01_FILE_B01_M210_AUX), -1
+};
 int *lbl_1_data_4FC[2] = { lbl_1_data_4EC, lbl_1_data_4F4 };
 char lbl_1_data_504[9] = "b01_m210";
 char lbl_1_data_50D[11] = "b01_m210n";
@@ -5136,18 +5345,29 @@ HuVecF lbl_1_data_518 = { -19.0f, 0.0f, 0.0f };
 HuVecF lbl_1_data_524 = { 0.0f, 400.0f, 0.0f };
 s32 lbl_1_data_530[4] = { 6, 8, 10, 12 };
 s32 lbl_1_data_540[4] = { 5, 4, 3, 2 };
-u32 lbl_1_data_550[3] = { 0x00D7000F, 0x00D70010, 0x00D70011 };
+u32 lbl_1_data_550[3] = {
+    DATANUM(DATA_w01, W01_FILE_B01_M060),
+    DATANUM(DATA_w01, W01_FILE_B01_M061),
+    DATANUM(DATA_w01, W01_FILE_B01_M62),
+};
 char lbl_1_data_55C[5] = "k_h1";
 char lbl_1_data_561[5] = "k_h2";
 char lbl_1_data_566[6] = "k_h3";
 char *lbl_1_data_56C[3] = {
     lbl_1_data_55C, lbl_1_data_561, lbl_1_data_566,
 };
-u32 lbl_1_data_578[2] = { 0x00D70023, 0x00D70026 };
-u32 lbl_1_data_580[2] = { 0x00D70024, 0x00D70027 };
+u32 lbl_1_data_578[2] = {
+    DATANUM(DATA_w01, W01_FILE_B01_M222),
+    DATANUM(DATA_w01, W01_FILE_B01_M227),
+};
+u32 lbl_1_data_580[2] = {
+    DATANUM(DATA_w01, W01_FILE_B01_M222_AUX),
+    DATANUM(DATA_w01, W01_FILE_B01_M228),
+};
 u32 lbl_1_data_588[2][3] = {
-    { 0x00400000, 0x00800000, 0x04000000 },
-    { 0x00100000, 0x00200000, 0x02000000 },
+    { W01_MASU_EVENT_DAY, W01_MASU_DAY_ROUTE_B, W01_MASU_DAY_ROUTE_C },
+    { W01_MASU_EVENT_NIGHT, W01_MASU_NIGHT_ROUTE_B,
+        W01_MASU_NIGHT_ROUTE_C },
 };
 char lbl_1_data_5A0[5] = "sf_h";
 char lbl_1_data_5A5[7] = "mf_h";
@@ -5157,12 +5377,22 @@ HuVecF *lbl_1_data_5B4[4] = {
 };
 s32 lbl_1_data_5C4[4] = { 12, 12, 12, 12 };
 int lbl_1_data_5D4[4] = {
-    0x00130006, 0x00130006, 0x00130007, -1,
+    DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_6),
+    DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_6),
+    DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_7),
+    -1,
 };
 int lbl_1_data_5E4[4] = {
-    0x00130001, 0x00130001, 0x00130004, -1,
+    DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_1),
+    DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_1),
+    DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_4),
+    -1,
 };
-u32 lbl_1_data_5F4[3] = { 0x00D7001C, 0x00D7001D, 0x00D7001E };
+u32 lbl_1_data_5F4[3] = {
+    DATANUM(DATA_w01, W01_FILE_B01_M201),
+    DATANUM(DATA_w01, W01_FILE_B01_M202),
+    DATANUM(DATA_w01, W01_FILE_B01_M203),
+};
 char lbl_1_data_600[5] = "w_h1";
 char lbl_1_data_605[5] = "w_h2";
 char lbl_1_data_60A[6] = "w_h3";
@@ -5488,22 +5718,24 @@ void fn_1_10AA8(void)
 
     for (i = 0; i < 5; i++) {
         work->modelId[i] = mbObjCreate(
-            (lbl_1_data_7A8[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+            FILENUM(lbl_1_data_7A8[i])
+                | (MBTimeDayGet() ? DATA_w01 : DATA_w01n),
             NULL, FALSE);
         if (i != 0) {
             mbObjDispSet(work->modelId[i], FALSE);
         }
     }
-    work->modelId[5] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x30, NULL, FALSE);
+    work->modelId[5] = mbObjCreate((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+            | W01_FILE_B01_M245,
+        NULL, FALSE);
     mbObjDispSet(work->modelId[5], FALSE);
     layer = mbMasuLayerGet();
     mbMasuLayerSet(1);
-    mbMasuDataRead((MBTimeDayGet() ? 0xD70000 : 0xD80000) | 1);
+    mbMasuDataRead((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+        | W01_FILE_MASU_LAYER);
     mbMasuLayerSet(layer);
-    lbl_1_bss_EE4 = HuSprAnimDataRead(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x31);
+    lbl_1_bss_EE4 = HuSprAnimDataRead((MBTimeDayGet() ? DATA_w01 : DATA_w01n)
+        | W01_FILE_INDEX_49);
     HuSprAnimLock(lbl_1_bss_EE4);
 }
 
@@ -5566,9 +5798,9 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     inputF = 0;
     soundId = -1;
     work = &lbl_1_bss_EE8;
-    motionId = mbPlayerMotionCreate(playerNo, 0x930064);
+    motionId = mbPlayerMotionCreate(playerNo, CHARMOT_HSF_c000m1_437);
     mbPlayerPosGet(playerNo, &initialPos);
-    firstMasuId = mbMasuAttrFindLink(id, 0x2000);
+    firstMasuId = mbMasuAttrFindLink(id, W01_MASU_LINK_FLAG);
     mbMasuPosGet(firstMasuId, &firstTarget);
     PSVECSubtract(&firstTarget, &initialPos, &direction);
     targetAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
@@ -5596,7 +5828,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbPlayerWorkGet(playerNo)->_unk08 = firstCountdown;
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
 
     secondMasuId = mbMasuLinkGet(firstMasuId, 0);
     mbMasuPosGet(secondMasuId, &secondTarget);
@@ -5627,13 +5859,13 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbPlayerWorkGet(playerNo)->_unk08 = secondCountdown;
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
 
     mbCameraMovePos(&lbl_1_data_7BC, &lbl_1_data_7C8, &lbl_1_data_7D4,
         4500.0f, -1.0f, 30);
     mbCameraMoveWait();
     HuPrcSleep(12);
-    winNo = mbWinCreate(2, 0x2F000F, -1);
+    winNo = mbWinCreate(2, W01_MESS_15, -1);
     mbWinWait(winNo);
 
     motionTime = (s32)mbPlayerMotionTimeGet(playerNo);
@@ -5642,7 +5874,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     Hu3DMotionCalc(mbPlayerModelIDGet(playerNo));
     Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(playerNo)),
         CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, 0), hookMtx);
-    mbPlayerMotionSet(playerNo, 1, 0x40000001);
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
     mbPlayerMotionTimeSet(playerNo, (float)motionTime);
     Hu3DMotionCalc(mbPlayerModelIDGet(playerNo));
     mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 30.0f, 0);
@@ -5663,29 +5895,30 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, 0),
         work->modelId[5]);
 
-    helpWinNo = mbWinCreateHelp(0x2F0014);
+    helpWinNo = mbWinCreateHelp(W01_MESS_20);
     mbWinPosSet(helpWinNo, 192, 336);
     padNo = GwPlayer[playerNo].padNo;
     mashCount = 0;
     {
         idleTime = 0;
         motionSpeed = 0.0f;
-        mbObjAttrSet(mbPlayerObjIDGet(playerNo), 0x40000001);
+        mbObjAttrSet(mbPlayerObjIDGet(playerNo), HU3D_MOTATTR_LOOP);
         transitionF = 0;
         gameMesId = GameMesCreate(1, 5, -1, -1);
-        HuSprGrpDrawNoSet(GameMesGet(gameMesId)->grpId[0], 0x20);
+        HuSprGrpDrawNoSet(GameMesGet(gameMesId)->grpId[0],
+            W01_GAME_MESSAGE_DRAW_NO);
         timer = 300;
         for (i = 0; (u32)i <= 300; i++) {
             if (GwPlayer[playerNo].comF) {
                 if (frandf() < 0.2f) {
-                    buttons = 0x100;
+                    buttons = PAD_BUTTON_A;
                 } else {
                     buttons = 0;
                 }
             } else {
                 buttons = HuPadBtnDown[padNo];
             }
-            if (buttons & 0x100) {
+            if (buttons & PAD_BUTTON_A) {
                 if (mbObjMotionEndCheck(work->modelId[1])) {
                     if (mashCount == 0) {
                         mbObjDispSet(work->modelId[0], FALSE);
@@ -5720,7 +5953,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
             }
             if (inputF) {
                 if (soundTime == 0) {
-                    mbAudFXPlay(0x598);
+                    mbAudFXPlay(W01_SE_BRD01_211);
                     soundTime = 12;
                 }
                 inputF = 0;
@@ -5737,7 +5970,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     mbStatusDispForceSetAll(FALSE);
     mbCameraMovePos(NULL, NULL, NULL, 3200.0f, -1.0f, -1);
     mbCameraMoveWait();
-    mbPlayerMotionSet(playerNo, 1, 0x40000001);
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
     mbPlayerPosReset(playerNo);
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
     mbObjHookReset(mbPlayerObjIDGet(playerNo));
@@ -5746,14 +5979,14 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbObjDispSet(work->modelId[i], FALSE);
     }
     mbObjDispSet(work->modelId[2], TRUE);
-    mbObjAttrSet(work->modelId[2], 0x40000041);
+    mbObjAttrSet(work->modelId[2], (HU3D_MOTATTR_LOOP | HU3D_MOTATTR_SHAPE_LOOP));
     mbObjMotionTimeSet(work->modelId[2], 0.0f);
     mbObjMotionSpeedSet(work->modelId[2], 1.0f);
     mbObjMotionShapeTimeSet(work->modelId[2], 0.0f);
     mbObjMotionShapeSpeedSet(work->modelId[2], 1.0f);
     mbWipeDissolveFadeIn();
-    soundId = mbAudFXPlay(0x599);
-    winNo = mbWinCreate(2, 0x2F0010, -1);
+    soundId = mbAudFXPlay(W01_SE_BRD01_212);
+    winNo = mbWinCreate(2, W01_MESS_16, -1);
     mbWinWait(winNo);
 
     mbMasuLayerSet(1);
@@ -5775,11 +6008,11 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbObjMotionShapeSpeedSet(work->modelId[3], 1.0f);
         mbCameraShakeSet(30, 500.0f);
         mbAudFXStop(soundId);
-        mbAudFXPlay(0x59A);
+        mbAudFXPlay(W01_SE_BRD01_213);
         for (i = 0; i < 4; i++) {
             omVibrate((s16)i, 20, 20, 0);
         }
-        winNo = mbWinCreate(2, 0x2F0011, -1);
+        winNo = mbWinCreate(2, W01_MESS_17, -1);
         HuPrcSleep(17);
         fn_1_11C14(&lbl_1_data_7E0);
         mbWinWait(winNo);
@@ -5793,10 +6026,10 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbCameraMovePos(&lbl_1_data_7BC, &lbl_1_data_7C8, &lbl_1_data_7D4,
             4500.0f, -1.0f, -1);
         mbWipeDissolveFadeIn();
-        winNo = mbWinCreate(2, 0x2F0013, -1);
+        winNo = mbWinCreate(2, W01_MESS_19, -1);
         mbWinWait(winNo);
     } else {
-        mbObjAttrReset(work->modelId[2], 0x40000041);
+        mbObjAttrReset(work->modelId[2], (HU3D_MOTATTR_LOOP | HU3D_MOTATTR_SHAPE_LOOP));
         while (!mbObjMotionEndCheck(work->modelId[2])) {
             HuPrcVSleep();
         }
@@ -5807,21 +6040,29 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbObjMotionSpeedSet(work->modelId[4], 1.0f);
         mbObjMotionShapeTimeSet(work->modelId[4], 0.0f);
         mbObjMotionShapeSpeedSet(work->modelId[4], 1.0f);
-        winNo = mbWinCreate(2, 0x2F0012, -1);
+        winNo = mbWinCreate(2, W01_MESS_18, -1);
         mbWinWait(winNo);
     }
     mbPlayerMotionKill(playerNo, motionId);
 }
 
 u32 lbl_1_data_7A8[5] = {
-    0x00D7002B, 0x00D7002C, 0x00D7002D, 0x00D7002E, 0x00D7002F,
+    DATANUM(DATA_w01, W01_FILE_B01_M240),
+    DATANUM(DATA_w01, W01_FILE_B01_M241),
+    DATANUM(DATA_w01, W01_FILE_B01_M242),
+    DATANUM(DATA_w01, W01_FILE_B01_M243),
+    DATANUM(DATA_w01, W01_FILE_B01_M244),
 };
 HuVecF lbl_1_data_7BC = { 0.0f, 950.0f, 3000.0f };
 HuVecF lbl_1_data_7C8 = { -19.0f, 0.0f, 0.0f };
 HuVecF lbl_1_data_7D4 = { 0.0f, 250.0f, 0.0f };
 HuVecF lbl_1_data_7E0 = { 0.0f, 900.0f, 2500.0f };
 char lbl_1_data_7EC[12] = "b01_m082";
-u32 lbl_1_data_7F8[3] = { 0x00D70034, 0x00D70035, 0x00D70036 };
+u32 lbl_1_data_7F8[3] = {
+    DATANUM(DATA_w01, W01_FILE_INDEX_52),
+    DATANUM(DATA_w01, W01_FILE_INDEX_53),
+    DATANUM(DATA_w01, W01_FILE_INDEX_54),
+};
 
 void fn_1_11C14(HuVecF *pos)
 {
@@ -5909,8 +6150,10 @@ void fn_1_12090(void)
     mbMasuLayerSet(0);
     for (playerNo = 0; playerNo < 4; playerNo++) {
         if (nextMasuId[playerNo] != 0) {
-            motionId[0] = mbPlayerMotionCreate(playerNo, 0x930012);
-            motionId[1] = mbPlayerMotionCreate(playerNo, 0x930013);
+            motionId[0] = mbPlayerMotionCreate(playerNo,
+                CHARMOT_HSF_c000m1_318);
+            motionId[1] = mbPlayerMotionCreate(playerNo,
+                CHARMOT_HSF_c000m1_319);
             mbCameraPlayerViewSetFast(playerNo, 2);
             mbCameraShakeSet(30, 500.0f);
             mbWipeDissolveFadeIn();
@@ -5933,13 +6176,13 @@ void fn_1_12090(void)
                 mbPlayerPosSetV(playerNo, &pos);
                 HuPrcVSleep();
             }
-            CharFXPlay(GwPlayer[playerNo].charNo, 0xC3);
+            CharFXPlay(GwPlayer[playerNo].charNo, W01_CHAR_SE_18);
             omVibrate(playerNo, 20, 7, 3);
             mbPlayerMotionShiftSet(playerNo, motionId[1], 0.0f, 4.0f, 0);
             HuPrcSleep(30);
             mbWipeDissolveFadeOut();
             mbPlayerRotYSet(playerNo, 0.0f);
-            mbPlayerMotionSet(playerNo, 1, 0x40000001);
+            mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
             mbPlayerColSnapPlayerSet(playerNo, TRUE);
             mbPlayerMotionKill(playerNo, motionId[0]);
             mbPlayerMotionKill(playerNo, motionId[1]);
@@ -5967,20 +6210,24 @@ void fn_1_124C8(void)
     W01_GATE_WORK *work = &lbl_1_bss_EB4;
     s16 linkMasuId;
 
-    work->baseModelId = mbObjCreate(0x130008, NULL, FALSE);
+    work->baseModelId = mbObjCreate(
+        DATANUM(DATA_capsuleshop, W01_CAPSULESHOP_FILE_INDEX_8), NULL,
+        FALSE);
     mbObjDispSet(work->baseModelId, FALSE);
     mbObjLayerSet(work->baseModelId, 3);
     mbObjScaleSet(work->baseModelId, 2.0f, 2.0f, 2.0f);
     work->hookModelId = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x18, NULL, FALSE);
-    mbObjAttrSet(work->hookModelId, 0x40000002);
+        (MBTimeDayGet() ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M082,
+        NULL, FALSE);
+    mbObjAttrSet(work->hookModelId, HU3D_MOTATTR_PAUSE);
     work->hookChildModelId = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x19, NULL, FALSE);
-    mbObjAttrSet(work->hookChildModelId, 0x40000001);
+        (MBTimeDayGet() ? DATA_w01 : DATA_w01n) | W01_FILE_B01_M083,
+        NULL, FALSE);
+    mbObjAttrSet(work->hookChildModelId, HU3D_MOTATTR_LOOP);
     mbObjHookSet(work->hookModelId, lbl_1_data_7EC, work->hookChildModelId);
-    work->masuId = mbMasuFind_MAttrIdGet(-1, 0x01000000);
+    work->masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_EVENT_GATE);
     mbMasuPosGet(work->masuId, &work->masuPos);
-    linkMasuId = mbMasuAttrFindLink(work->masuId, 0x2000);
+    linkMasuId = mbMasuAttrFindLink(work->masuId, W01_MASU_LINK_FLAG);
     mbMasuPosGet(linkMasuId, &work->linkPos);
     PSVECSubtract(&work->masuPos, &work->linkPos, &work->direction);
     work->rotY = (float)((atan2(work->direction.x, work->direction.z) / M_PI)
@@ -5988,7 +6235,7 @@ void fn_1_124C8(void)
     mbObjRotSet(work->baseModelId, 0.0f, work->rotY, 0.0f);
     mbObjRotSet(work->hookModelId, 0.0f, work->rotY, 0.0f);
     mbObjPosSetV(work->hookModelId, &work->linkPos);
-    HuDataDirClose(0x130000);
+    HuDataDirClose(DATA_capsuleshop);
 }
 
 void fn_1_126EC(s32 playerNo, s16 id)
@@ -6005,7 +6252,7 @@ void fn_1_126EC(s32 playerNo, s16 id)
 
     if (MBTimeDayGet()) {
         mbPlayerMotIdleSet(playerNo);
-        winNo = mbWinCreate(2, 0x2F0015, -1);
+        winNo = mbWinCreate(2, W01_MESS_21, -1);
         mbWinWait(winNo);
         return;
     }
@@ -6015,7 +6262,7 @@ void fn_1_126EC(s32 playerNo, s16 id)
     mbObjDispSet(work->baseModelId, TRUE);
     mbev_CapTeresaFadeCreate(work->baseModelId);
     hookModelId = work->hookModelId;
-    mbObjAttrReset(hookModelId, 0x40000002);
+    mbObjAttrReset(hookModelId, HU3D_MOTATTR_PAUSE);
     omVibrate(playerNo, 20, 7, 3);
     target.x = work->linkPos.x + (0.6f * work->direction.x);
     target.y = work->linkPos.y + (0.6f * work->direction.y);
@@ -6048,7 +6295,7 @@ void fn_1_126EC(s32 playerNo, s16 id)
     mbObjDispSet(work->baseModelId, FALSE);
     mbev_CapCallTeresa(playerNo, work->masuId);
     mbObjMotionTimeSet(work->hookModelId, 0.0f);
-    mbObjAttrSet(work->hookModelId, 0x40000002);
+    mbObjAttrSet(work->hookModelId, HU3D_MOTATTR_PAUSE);
     mbMoveNumDispSet(playerNo, TRUE);
     mbWipeDissolveFadeIn();
 }
@@ -6070,8 +6317,8 @@ void fn_1_12A4C(void)
     }
     for (i = 0; i < 3; i++) {
         lbl_1_bss_4A4[i] = HuSprAnimRead(HuDataSelHeapReadNum(
-            (lbl_1_data_7F8[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+            FILENUM(lbl_1_data_7F8[i])
+                | (MBTimeDayGet() ? DATA_w01 : DATA_w01n),
             HU_MEMNUM_OVL, HEAP_MODEL));
         HuSprAnimLock(lbl_1_bss_4A4[i]);
     }
@@ -6168,10 +6415,11 @@ u32 fn_1_130C4(void **displayList)
     void *list;
     u32 size;
 
-    buffer = HuMemDirectMallocNum(HEAP_HEAP, 0x2000, HU_MEMNUM_OVL);
+    buffer = HuMemDirectMallocNum(HEAP_HEAP, W01_LARGE_DISPLAY_LIST_SIZE,
+        HU_MEMNUM_OVL);
     listBuffer = buffer;
-    DCInvalidateRange(listBuffer, 0x2000);
-    GXBeginDisplayList(listBuffer, 0x2000);
+    DCInvalidateRange(listBuffer, W01_LARGE_DISPLAY_LIST_SIZE);
+    GXBeginDisplayList(listBuffer, W01_LARGE_DISPLAY_LIST_SIZE);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-25.0f, 0.0f, 25.0f);
     GXTexCoord2f32(1.0f, 0.0f);
@@ -6293,7 +6541,7 @@ void fn_1_139F8(void)
     u8 value;
 
     lbl_1_bss_1618->index = 0;
-    lbl_1_bss_1618->count = mbMasuMAttrListGet(0x80, NULL);
+    lbl_1_bss_1618->count = mbMasuMAttrListGet(W01_STAR_MASU_FLAG, NULL);
     for (i = 0; i < lbl_1_bss_1618->count; i++) {
         lbl_1_bss_1618->order[i] = i;
     }
@@ -6311,7 +6559,7 @@ void fn_1_13B38(void)
     s32 count;
     s16 masuList[8];
 
-    count = mbMasuMAttrListGet(0x80, masuList);
+    count = mbMasuMAttrListGet(W01_STAR_MASU_FLAG, masuList);
     lbl_1_bss_1616 = masuList[lbl_1_bss_1618->order[lbl_1_bss_1618->index]];
     mbMasuTypeSet(lbl_1_bss_1616, 7);
     mbStarMasuNextSet(lbl_1_bss_1616);
@@ -6326,7 +6574,7 @@ void fn_1_13BC4(void)
     mbMasuPosGet(lbl_1_bss_1616, &pos);
     mbMasuTypeSet(lbl_1_bss_1616, 1);
     lbl_1_bss_1618->index = (lbl_1_bss_1618->index + 1) % lbl_1_bss_1618->count;
-    count = mbMasuMAttrListGet(0x80, masuList);
+    count = mbMasuMAttrListGet(W01_STAR_MASU_FLAG, masuList);
     lbl_1_bss_1616 = masuList[lbl_1_bss_1618->order[lbl_1_bss_1618->index]];
     mbMasuTypeSet(lbl_1_bss_1616, 7);
     mbStarMasuNextSet(lbl_1_bss_1616);
@@ -6344,7 +6592,9 @@ void fn_1_13D04(void)
     s16 modelId;
 
     for (effect = lbl_1_bss_0, i = 0; i < 32; i++, effect++) {
-        modelId = mbObjCreate(mbBoardDataNumGet(0x50004), NULL, TRUE);
+        modelId = mbObjCreate(
+            mbBoardDataNumGet(DATANUM(DATA_board, W01_BOARD_FILE_COIN)),
+            NULL, TRUE);
         effect->modelId = modelId;
         effect->active = FALSE;
         mbObjDispSet(effect->modelId, FALSE);
