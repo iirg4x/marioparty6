@@ -27,6 +27,31 @@ extern void mbWipeSpecialFadeInCreate(int type, int time);
 extern void mbWipeSpecialWait(void);
 extern void mbWipeFadeOutTime(int time);
 extern void mbWipeSpecialKill(void);
+extern BOOL mbMgCallSingleOnCheck(u16 ovl);
+extern BOOL mbSaveNewF;
+
+typedef struct SingleSaveWork_s {
+    u8 miniKoopaWinFlags;
+    u8 mgEndCount;
+    u8 micUseCount;
+    s8 micResult;
+    u8 micFirstSuccess;
+    u8 micSuccessCount;
+    u8 mgPlayCount;
+    u8 mgEvenCount;
+    u8 mgOddCount;
+    u16 mgValueTotal;
+    u8 mgHistory[3];
+    u8 mgHistoryNo;
+    u8 capsulePlayCount;
+    u8 selectPlayCount;
+    u8 selectHistory[3];
+    u8 selectHistoryNo;
+    u8 capsuleOtherF;
+    u8 capsuleTwoF;
+    u8 killerPlayCount;
+    u8 masuTypeCount[13];
+} SINGLE_SAVE_WORK;
 
 typedef struct SingleEffData_s {
     int active;
@@ -55,11 +80,14 @@ typedef struct SingleEffData_s {
 } SINGLE_EFF_DATA;
 
 static u32 singleMgUnlock[4];
+static u32 mgUnlockOld[4];
 static ANIMDATA *singleEffAnim[4];
 
 static int singleTeamChar = -1;
 static int mgKoopaCapsuleTbl[] = { 2, 7 };
 static u8 guideLast5MotTbl[] = { 12, 6, 0xFF };
+static int effFile[] = { 0x000A0000, 0x00050063, 0x0005005E, 0x00050066 };
+static int boardNo[] = { 6, 7, 8, 10 };
 
 static int singleBoard;
 static int singleCancelF;
@@ -75,6 +103,7 @@ static u8 masuTypeNum;
 static int returnMode;
 static int mgRareSeNo;
 static int miniKoopaMgType;
+static SINGLE_SAVE_WORK singleSaveWork;
 static u32 singleBoardFlagOld[6];
 static u32 singleMgRecordOld[GW_RECORD_MAX];
 static u32 singleMgRecordPrize[GW_RECORD_MAX];
@@ -87,10 +116,88 @@ static void SingleEffKill(s16 effNo);
 static void SingleMasuTypeReset(void);
 static void SingleMasuOrderSet(void);
 static void SingleMgRecordBackup(void);
+static void SingleMicCreate(void);
+static void SingleMicListener(u16 *response);
+static void SingleEffInit(void);
+static void SingleMasuOrderInit(void);
+static void SingleMgSaveInit(void);
+static void SingleFlagFlush(void);
+static void SingleLast5(void);
+static void ev_SingleMg(int playerNo, int masuId);
+static void ev_SingleKoopaMg(int playerNo, int masuId);
+static void ev_SingleMKoopaMg(int playerNo, int masuId);
+static void ev_SingleMgEnd(int playerNo);
+static void ev_SingleKoopaMgEnd(int playerNo);
+static void ev_SingleMKoopaMgEnd(int playerNo);
+
+extern void HuMCListenerCreate(
+    s16 context, void (*callback)(u16 *response), u8 property);
 
 void mbSingleMgUnlockInit(void);
 void mbSingleTeamCharSet(int character);
 int mbSingleTeamCharGet(void);
+int mbSingleCall(int mode, int arg);
+
+void mbSingleInit(void)
+{
+    s16 list[12];
+    int listNum;
+    int board;
+    int i;
+
+    singleMicF = FALSE;
+    singleListenerCreateF = FALSE;
+    singleListenerOnF = FALSE;
+    singleMicContext = -1;
+    SingleMicCreate();
+    for (i = 0; i < 4; i++) {
+        board = GwSystem.boardNo;
+        if (boardNo[i] == board) {
+            break;
+        }
+    }
+    singleBoard = i;
+    if (singleTeamChar < 0) {
+        mbSingleTeamCharSet(7);
+    }
+    if (GwPlayer[GwSystem.turnPlayerNo].charNo == mbSingleTeamCharGet()) {
+        if (GwPlayer[GwSystem.turnPlayerNo].charNo != 7) {
+            mbSingleTeamCharSet(7);
+        } else {
+            mbSingleTeamCharSet(10);
+        }
+    }
+    listNum = mbMasuTypeListGet(9, list);
+    if (mbSaveNewF) {
+        for (i = 0; i < 4; i++) {
+            mbPlayerCoinSet(i, 0);
+        }
+        mbSingleMgUnlockInit();
+        SingleMasuTypeReset();
+        SingleMgRecordBackup();
+        for (i = 0; i < listNum; i++) {
+            mbMasuCapsuleSet(list[i], i);
+        }
+    }
+    for (i = 0; i < listNum; i++) {
+        mbMasuTypeSet(list[i], mbMasuCapsuleGet(list[i]) + 9);
+    }
+    if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (mbSaveNewF) {
+            SingleMasuOrderInit();
+        }
+        SingleMasuOrderSet();
+    }
+    for (i = 0; i < 4; i++) {
+        singleEffAnim[i] = HuSprAnimDataRead(mbBoardDataNumGet(effFile[i]));
+        HuSprAnimLock(singleEffAnim[i]);
+    }
+    SingleEffInit();
+    SingleMgSaveInit();
+    singleEndF = FALSE;
+    singleCancelF = FALSE;
+    HuDataDirClose(0x000A0000);
+}
 
 void mbSingleClose(void)
 {
@@ -216,6 +323,56 @@ static void SingleEffKill(s16 effNo)
     }
 }
 
+void mbev_SingleMg(int playerNo, int masuId)
+{
+    int masuType;
+    int i;
+
+    mbCameraPlayerViewSet(playerNo, 0);
+    mbCameraMoveWait();
+    masuType = mbMasuTypeGet(masuId);
+    mbPlayerRotateStart(playerNo, 0, 15);
+    while (!mbPlayerRotateCheck(playerNo)) {
+        HuPrcVSleep();
+    }
+    for (i = 0; i < 4; i++) {
+        mgUnlockOld[i] = GwCommon.mgUnlock[i];
+    }
+    SingleMgRecordPrizeInit();
+    if (masuType < 9) {
+        if (masuType == 6) {
+            ev_SingleKoopaMg(playerNo, masuId);
+            return;
+        }
+    } else if (masuType < 12) {
+        ev_SingleMKoopaMg(playerNo, masuId);
+        return;
+    }
+    ev_SingleMg(playerNo, masuId);
+}
+
+int mbev_SingleMgEnd(int playerNo)
+{
+    int mgNo = GwSystem.mgNo;
+
+    if ((mgUnlockOld[mgNo >> 5] & (1 << (mgNo % 32))) == 0) {
+        GwCommon.mgUnlock[mgNo >> 5] &= ~(1 << (mgNo % 32));
+    }
+    mbPlayerColSnapSet(TRUE);
+    mbSingleCall(8, 0);
+    if (_CheckFlag(0x10002)) {
+        ev_SingleMgEnd(playerNo);
+        _ClearFlag(0x10002);
+    } else if (_CheckFlag(0x10003)) {
+        ev_SingleKoopaMgEnd(playerNo);
+        _ClearFlag(0x10003);
+    } else if (_CheckFlag(0x10005)) {
+        ev_SingleMKoopaMgEnd(playerNo);
+        _ClearFlag(0x10005);
+    }
+    return TRUE;
+}
+
 static void ev_SingleKoopaMgSkip(MBMODELID modelId)
 {
     s16 winId;
@@ -332,6 +489,38 @@ void mbSingleMgUnlockReset(int mgNo)
     singleMgUnlock[mgNo >> 5] &= ~(1 << (mgNo % 32));
 }
 
+void mbSingleSaveFlush(int value)
+{
+    int playerNo = GwSystem.turnPlayerNo;
+    int word;
+    int bit;
+
+    if (value == 0) {
+        if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            GwPlayer[playerNo].mgCoinBonus = 0;
+        }
+    } else if (value < 0) {
+        if (value > -2) {
+            SingleMgRecordRestore();
+            if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+                GwPlayer[playerNo].mgCoinBonus = -1;
+            }
+        }
+    } else if (value < 2) {
+        for (word = 0; word < 4; word++) {
+            for (bit = 0; bit < 32; bit++) {
+                if (singleMgUnlock[word] & (1 << bit)) {
+                    GWMgUnlockSet((word << 5) + bit + GW_MGNO_BASE);
+                }
+            }
+        }
+        SingleFlagFlush();
+        if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            GwPlayer[playerNo].mgCoinBonus = 1;
+        }
+    }
+}
+
 BOOL mbSingleMgUnlockGet(int mgNo)
 {
     mgNo -= GW_MGNO_BASE;
@@ -370,6 +559,247 @@ static void SingleMasuTypeReset(void)
 {
     masuTypeNum = 0;
     memset(masuType, 0, sizeof(masuType));
+}
+
+int mbSingleCall(int mode, int arg)
+{
+    SINGLE_SAVE_WORK *work = &singleSaveWork;
+    int playerNo = GwSystem.turnPlayerNo;
+    int candidates[6];
+    int candidateNum;
+    int historyNo;
+    int mgType;
+    int mgNo;
+    int i;
+    BOOL unlocked;
+
+    if (GwSystem.partyF || _CheckFlag(0x1000E)) {
+        return 0;
+    }
+    switch (mode) {
+    case 0:
+        work->micResult = -1;
+        singleListenerOnF = TRUE;
+        if (singleMicF && !singleListenerCreateF) {
+            HuMCListenerCreate(singleMicContext, SingleMicListener, FALSE);
+            singleListenerCreateF = TRUE;
+        }
+        return -1;
+
+    case 1:
+        if (singleMicF && singleListenerCreateF) {
+            HuMCListenerKill();
+            singleListenerCreateF = FALSE;
+        }
+        work->micResult = -1;
+        singleListenerOnF = FALSE;
+        return -1;
+
+    case 2:
+        if (singleMicF && singleListenerCreateF) {
+            HuMCListenerKill();
+            singleListenerCreateF = FALSE;
+        }
+        singleListenerOnF = FALSE;
+        if (work->micResult < 0
+            || (GwPlayer[playerNo].capsule[0] & 0x3F) != 0) {
+            return -1;
+        }
+        if (work->micUseCount < 99) {
+            work->micUseCount++;
+        }
+        arg = work->micResult;
+        if (mbRandMod(100) < 50) {
+            candidateNum = 0;
+            for (i = 0; i < 6; i++) {
+                if (i != work->micResult) {
+                    candidates[candidateNum++] = i;
+                }
+            }
+            arg = candidates[mbRandMod(candidateNum)];
+        }
+        return arg;
+
+    case 3:
+        if (work->mgPlayCount < 99) {
+            work->mgPlayCount++;
+        }
+        work->mgHistory[work->mgHistoryNo] = arg;
+        if (!GWSinglePrizeFlagGet(12)) {
+            historyNo = work->mgHistoryNo;
+            for (i = 0; i < 2; i++) {
+                historyNo--;
+                if (historyNo < 0) {
+                    historyNo = 2;
+                }
+                if (work->mgHistory[historyNo] != arg) {
+                    break;
+                }
+            }
+            if (i >= 2) {
+                GWSinglePrizeFlagSet(12);
+                GwSinglePrizeFlag[0] &= ~(1 << 11);
+            } else if (i == 1) {
+                GWSinglePrizeFlagSet(11);
+            }
+        }
+        if ((arg & 1) == 0) {
+            work->mgEvenCount++;
+        } else {
+            work->mgOddCount++;
+        }
+        work->mgValueTotal += arg;
+        if (++work->mgHistoryNo > 2) {
+            work->mgHistoryNo = 0;
+        }
+        if (work->micResult < 0) {
+            work->micFirstSuccess = TRUE;
+        } else if ((u32)(work->micResult + 1) == (u32)arg) {
+            work->micSuccessCount++;
+        }
+        break;
+
+    case 4:
+        if (work->capsulePlayCount < 99) {
+            work->capsulePlayCount++;
+        }
+        if (arg == 2) {
+            work->capsuleTwoF = TRUE;
+        } else {
+            work->capsuleOtherF = TRUE;
+        }
+        break;
+
+    case 5:
+        if (work->selectPlayCount < 99) {
+            work->selectPlayCount++;
+        }
+        work->selectHistory[work->selectHistoryNo] = arg;
+        if (!GWSinglePrizeFlagGet(26)) {
+            historyNo = work->selectHistoryNo;
+            for (i = 0; i < 2; i++) {
+                historyNo--;
+                if (historyNo < 0) {
+                    historyNo = 2;
+                }
+                if (work->selectHistory[historyNo] != arg) {
+                    break;
+                }
+            }
+            if (i >= 2) {
+                GWSinglePrizeFlagSet(26);
+                GwSinglePrizeFlag[0] &= ~(1 << 25);
+            } else if (i == 1) {
+                GWSinglePrizeFlagSet(25);
+            }
+        }
+        if (++work->selectHistoryNo > 2) {
+            work->selectHistoryNo = 0;
+        }
+        break;
+
+    case 6:
+        if (work->killerPlayCount < 99) {
+            work->killerPlayCount++;
+        }
+        break;
+
+    case 7:
+        if (mbMasuDispCheck(arg)) {
+            mgNo = arg - 1;
+            singleBoardFlagOld[(singleBoard * 2) + (mgNo >> 5)]
+                |= 1 << (mgNo & 0x1F);
+        }
+        mgType = mbMasuTypeGet(arg);
+        if (mgType == 7) {
+            GWSinglePrizeFlagSet(39);
+        }
+        if (work->masuTypeCount[mgType] < 99) {
+            work->masuTypeCount[mgType]++;
+        }
+        break;
+
+    case 8:
+        if (work->mgEndCount < 99) {
+            work->mgEndCount++;
+        }
+        break;
+
+    case 9:
+        GWSinglePrizeFlagSet(6);
+        GWSingleMgWinNumSet(GWSingleMgWinNumGet() + 1);
+        mgType = MgDataTbl[arg].type;
+        candidateNum = 0;
+        for (mgNo = 0; MgDataTbl[mgNo].ovl != (u16)-1; mgNo++) {
+            if (MgDataTbl[mgNo].type != mgType
+                || MgDataTbl[mgNo].type == MG_TYPE_KUPA
+                || MgDataTbl[mgNo].type == MG_TYPE_DONKEY
+                || (!(MgDataTbl[mgNo].flag & MG_FLAG_RARE)
+                    && !mbMgCallSingleOnCheck(MgDataTbl[mgNo].ovl))
+                || MgDataTbl[mgNo].dataDir == 0x0005004C) {
+                continue;
+            }
+            unlocked = GWMgUnlockGet(mgNo + GW_MGNO_BASE)
+                || ((singleMgUnlock[mgNo >> 5]
+                    & (1 << (mgNo & 0x1F))) != 0);
+            if (!unlocked) {
+                candidateNum++;
+            }
+        }
+        if (candidateNum == 0) {
+            if (mgType == MG_TYPE_4P) {
+                GWSinglePrizeFlagSet(41);
+            } else if (mgType == MG_TYPE_1VS3) {
+                GWSinglePrizeFlagSet(42);
+            } else if (mgType == MG_TYPE_2VS2) {
+                GWSinglePrizeFlagSet(43);
+            } else if (mgType == MG_TYPE_BATTLE) {
+                GWSinglePrizeFlagSet(44);
+            } else if (mgType == MG_TYPE_KETTOU) {
+                GWSinglePrizeFlagSet(45);
+            }
+        }
+        candidateNum = 0;
+        for (mgNo = 0; MgDataTbl[mgNo].ovl != (u16)-1; mgNo++) {
+            if (MgDataTbl[mgNo].type == MG_TYPE_KUPA
+                || MgDataTbl[mgNo].type == MG_TYPE_DONKEY
+                || (!(MgDataTbl[mgNo].flag & MG_FLAG_RARE)
+                    && !mbMgCallSingleOnCheck(MgDataTbl[mgNo].ovl))
+                || MgDataTbl[mgNo].dataDir == 0x0005004C) {
+                continue;
+            }
+            unlocked = GWMgUnlockGet(mgNo + GW_MGNO_BASE)
+                || ((singleMgUnlock[mgNo >> 5]
+                    & (1 << (mgNo & 0x1F))) != 0);
+            if (!unlocked) {
+                candidateNum++;
+            }
+        }
+        if (candidateNum == 0) {
+            GWSinglePrizeFlagSet(47);
+        }
+        break;
+
+    case 10:
+        if (GwCommon.singleMgWinNum[GwSystem.storyComDif] < 99) {
+            GwCommon.singleMgWinNum[GwSystem.storyComDif]++;
+        }
+        if (arg == 6) {
+            work->miniKoopaWinFlags |= 1 << miniKoopaType;
+        }
+        break;
+
+    case 11:
+        if (mbSingleStepGet() < 6 && mbMasuDispCheck(arg)) {
+            omVibrate(playerNo, 20, 4, 4);
+        }
+        break;
+
+    case 12:
+        SingleLast5();
+        break;
+    }
+    return 0;
 }
 
 void mbSinglePrizeFlagReset(int flag)
