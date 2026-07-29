@@ -682,7 +682,7 @@
     },
     "gc26-paired-single-huvecf-copy-spelling-negative": {
       "status": "active",
-      "validated_commit": "dec2764ce3e05513000e548be787241d7128e4a9",
+      "validated_commit": "5a392a7279532ce052e8c3fe3a2fced81363917f",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
