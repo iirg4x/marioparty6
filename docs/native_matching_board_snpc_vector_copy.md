@@ -85,3 +85,42 @@ paired-single operations.
 The target opcodes alone do not authenticate a builtin name or source spelling.
 Guessed intrinsics, cast or alignment tricks, fake storage, `volatile`, and
 inline assembly are not supported solutions.
+
+## Authenticated paired type and indexed-form control
+
+The CodeWarrior Power Architecture Build Tools Reference Manual documents the
+compiler type `__vec2x32float__` in section 36.4.32 and the associated
+`#pragma vec2x32float_align_4 on | off | reset`. The manual states that the
+pragma changes the type's alignment from its default to a four-byte boundary.
+The contemporaneous CodeWarrior for Nintendo GameCube product sheet also
+states that the compiler supports vectorized paired singles through C
+intrinsics. These primary sources authenticate the type and alignment control,
+but not a displacement-form load/store helper or a historical SNPC spelling:
+
+- <https://www.nxp.com/docs/en/reference-manual/CWMCUPABTR.pdf>
+- <https://www.nxp.com/docs/en/data-sheet/950-00116.pdf>
+
+Pinned GC/2.6 probes then measured the authenticated type directly. Explicit
+`__vec2x32float__` memory assignment selected `psq_lx`/`psq_stx`, both at the
+owner's `-O0,p` profile and at `-O4,p`. Changing
+`vec2x32float_align_4`, `gprfloatcopy`, or peephole optimization did not select
+the target `psq_l`/`psq_st` displacement forms.
+
+Staging each SNPC transfer as one `__vec2x32float__` pair plus its remaining
+scalar reproduced the target floating-register count but remained nonexact:
+
+| Function | Target/source bytes | Data-value score | Candidate transfer |
+| --- | ---: | ---: | --- |
+| `mbObjFadeCreate` | `332/328` | `92.277110%` | `psq_lx`, `lfs`, `psq_stx`, `stfs` |
+| `mbObjFadeTexRotSet` | `200/192` | `74.140000%` | two indexed paired/scalar transfers |
+
+The data-value report is
+`build/snpc-fade-two-exact-104/probe-vec2-staged-zerohex-value.json` with
+SHA-256
+`19fa4ff48b34f2fddb918f4ee9ff90c2eefb9ccad3b5be3af432e275f00822bd`.
+The probe caused no exact-function regression and was reverted. Authentication
+of `__vec2x32float__` therefore narrows the search rather than closing it:
+after this control selects indexed forms, stop until same-game source, a
+historical header, or a compiler-backed helper authenticates the target
+displacement-form boundary. Do not retain a cast, pragma, `volatile`, or inline
+assembly merely because it exposes paired-single opcodes.

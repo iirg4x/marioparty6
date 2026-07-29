@@ -11,7 +11,14 @@
 
 #include "humath.h"
 
-#define SNPC_MAGIC 0x534E5043
+#define SNPC_MAGIC 'SNPC'
+#define MBOBJ_FADE_WORK_MAGIC 'MBTV'
+#define MBOBJ_METAL_WORK_MAGIC 'TV01'
+#define MBOBJ_BIRIQ_WORK_MAGIC 'TV02'
+
+#define SNPC_DATA_FADE_TEXTURE DATANUM(DATA_board, 103)
+#define SNPC_DATA_METAL_TEXMAP4 DATANUM(DATA_board, 105)
+#define SNPC_DATA_METAL_TEXMAP5 DATANUM(DATA_board, 104)
 
 typedef struct MBSNPCSAVEWORK {
     u8 flags;
@@ -484,7 +491,7 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
         work = mbMallocNum(sizeof(*work), model->mallocNo);
         model->hookData = work;
     }
-    work->magic = 0x4D425456;
+    work->magic = MBOBJ_FADE_WORK_MAGIC;
     work->pos = *pos;
     work->alpha = 1.0f;
     work->color.r = work->color.g = work->color.b = 255;
@@ -494,7 +501,7 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
         hsf->material[i].flags |= HSF_MATERIAL_MATHOOK;
     }
     work->anim = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x00050067), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(SNPC_DATA_FADE_TEXTURE), HU_MEMNUM_OVL, HEAP_MODEL));
 }
 
 void mbObjFadeKill(MBMODELID modelId)
@@ -619,7 +626,7 @@ void mbObjMetalCreate(MBMODELID modelId)
         work = mbMallocNum(sizeof(*work), model->mallocNo);
         model->hookData = work;
     }
-    work->magic = 0x54563031;
+    work->magic = MBOBJ_METAL_WORK_MAGIC;
     work->tpLvl = lbl_802C32EC;
     work->shadowColor.r = work->shadowColor.g = work->shadowColor.b = 255;
     work->hiliteColor.r = work->hiliteColor.g = work->hiliteColor.b = 255;
@@ -635,9 +642,9 @@ void mbObjMetalCreate(MBMODELID modelId)
         hsf->material[i].flags |= HSF_MATERIAL_MATHOOK;
     }
     work->anim[0] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x00050069), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP4), HU_MEMNUM_OVL, HEAP_MODEL));
     work->anim[1] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x00050068), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP5), HU_MEMNUM_OVL, HEAP_MODEL));
 }
 
 BOOL mbObjMetalKill(MBMODELID modelId)
@@ -654,7 +661,7 @@ BOOL mbObjMetalKill(MBMODELID modelId)
         return FALSE;
     }
     work = model->hookData;
-    if (work->magic != 0x54563031) {
+    if (work->magic != MBOBJ_METAL_WORK_MAGIC) {
         return FALSE;
     }
     Hu3DModelMatHookSet(hu3DModelId, NULL);
@@ -811,7 +818,7 @@ void mbObjBiriQCreate(MBMODELID modelId)
         work = mbMallocNum(sizeof(*work), model->mallocNo);
         model->hookData = work;
     }
-    work->magic = 0x54563032;
+    work->magic = MBOBJ_BIRIQ_WORK_MAGIC;
     work->level = lbl_802C3290;
     work->color.r = work->color.g = work->color.b = work->color.a = 255;
     Hu3DModelMatHookSet(hu3DModelId, BiriQMatHook);
@@ -835,7 +842,7 @@ BOOL mbObjBiriQKill(MBMODELID modelId)
         return FALSE;
     }
     work = model->hookData;
-    if (work->magic != 0x54563032) {
+    if (work->magic != MBOBJ_BIRIQ_WORK_MAGIC) {
         return FALSE;
     }
     Hu3DModelMatHookSet(hu3DModelId, NULL);
@@ -861,7 +868,7 @@ void mbObjBiriQColorSet(MBMODELID modelId, BOOL mode, float level,
         return;
     }
     work = model->hookData;
-    if (work->magic != 0x54563032) {
+    if (work->magic != MBOBJ_BIRIQ_WORK_MAGIC) {
         return;
     }
     work->mode = mode;

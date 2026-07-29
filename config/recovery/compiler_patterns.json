@@ -3338,20 +3338,21 @@
     },
     {
       "id": "gc26-paired-single-huvecf-copy-spelling-negative",
-      "title": "Stop ordinary HuVecF copy spellings at a paired-single target",
+      "title": "Stop ordinary and indexed paired HuVecF spellings at a displacement-form target",
       "classification": "contextual_heuristic",
       "category": "aggregate_copy_negative_evidence",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, memcpy, or a block-local pointer-mediated aggregate assignment: the two aggregate forms emit integer word copies, HuCopyVecF emits scalar float copies, and memcpy emits a call. These measured failures do not authenticate an intrinsic spelling.",
-      "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings have been measured under the pinned owner profile.",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, memcpy, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: the aggregate forms emit integer word copies, HuCopyVecF emits scalar float copies, memcpy emits a call, and the authenticated paired type emits indexed psq_lx/psq_stx forms.",
+      "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings and documented __vec2x32float__ type have been measured under the pinned owner profile.",
       "source_condition": {
-        "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, or memcpy in an attempt to reproduce paired-single target instructions.",
+        "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, memcpy, or one staged __vec2x32float__ pair plus the remaining scalar in an attempt to reproduce the target instructions.",
         "requires": [
           "target paired-single loads and stores for an authenticated HuVecF-shaped transfer",
           "the pinned GC/2.6 owner command",
           "strict function and relocation reports for each bounded spelling control",
-          "no authenticated intrinsic, helper, or historical header boundary already available"
+          "the documented __vec2x32float__ type and vec2x32float_align_4 alignment control when testing the paired-type boundary",
+          "no authenticated displacement-form helper or historical same-game header boundary already available"
         ]
       },
       "emitted_effect": {
@@ -3360,6 +3361,7 @@
           "the same integer lwz/stw copies after staging source and destination through block-local HuVecF pointers",
           "scalar lfs/stfs copies from HuCopyVecF",
           "an out-of-line memcpy call and a smaller but structurally wrong function",
+          "indexed psq_lx/psq_stx copies from explicit __vec2x32float__ assignment",
           "percentage movement without reproducing the target copy mechanism"
         ],
         "known_signatures": [
@@ -3368,13 +3370,15 @@
           "block-local HuVecF pointers can change address-register and frame allocation while the dereferenced aggregate assignment still lowers to three integer-word loads and stores",
           "HuCopyVecF preserves semantics but lowers to three scalar floating loads and stores",
           "memcpy can improve one aggregate percentage while introducing a target-absent call",
+          "explicit __vec2x32float__ staging can reproduce the paired/scalar register count while retaining indexed forms and the wrong pointer lifetime",
           "the ordinary non-solutions recur in separate board owners"
         ]
       },
-      "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, and memcpy at most once for a proven paired-single HuVecF copy. If the applicable ordinary spellings retain the wrong mechanism, record the negative result and stop until an authenticated intrinsic, helper, compiler contract, or historical header boundary is found; do not guess paired-single intrinsics, add cast tricks, or use inline assembly.",
+      "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, memcpy, and one documented __vec2x32float__ staged-pair control at most once for a proven displacement-form paired-single HuVecF copy. If the paired type selects indexed psq_lx/psq_stx rather than target psq_l/psq_st, record the negative result and stop until an authenticated displacement-form helper, compiler contract, or historical same-game header boundary is found; do not retain cast tricks, pragmas, volatile storage, or inline assembly.",
       "safe_actions": [
         "confirm the target transfer width, offsets, and paired-single instruction sequence",
         "retain strict size, score, instruction, and relocation results for each spelling",
+        "use the documented __vec2x32float__ type only as one bounded indexed-form control",
         "search authenticated same-game siblings and historical headers for the missing source boundary",
         "leave the function honestly nonexact when no authenticated boundary exists",
         "reopen the source only when new evidence explains why GC/2.6 selected paired-single operations"
@@ -3406,20 +3410,25 @@
         "main:board/snpc mbObjFadeTexRotSet: aggregate assignment is 200/136 bytes at 52.340000%, HuCopyVecF is 200/136 at 54.420000%, and memcpy is 200/128 at 36.820000%; none reproduces either target paired-single vector transfer",
         "main:board/dice mbDiceSNpcNumPosSet, mbDiceSNpcNumOfsSet, and mbDiceSNpcNumOfsGet each remain 20/28 bytes at 0% under the ordinary aggregate and HuCopyVecF controls",
         "main:board/config repeated the aggregate-assignment, HuCopyVecF, and memcpy failures across three missing panel helpers",
-        "main:board/player MoveNumOMExec: block-local HuVecF pointers around `*posP = *posNormP` still emit three lwz/stw copies; target/source are 1152/1128 bytes at 93.996530% in `build/player-residual-closure-021/probe08-movenum-pointer-copy.json`"
+        "main:board/player MoveNumOMExec: block-local HuVecF pointers around `*posP = *posNormP` still emit three lwz/stw copies; target/source are 1152/1128 bytes at 93.996530% in `build/player-residual-closure-021/probe08-movenum-pointer-copy.json`",
+        "main:board/snpc mbObjFadeCreate: staged __vec2x32float__ plus scalar is 332/328 bytes at 92.277110% in data-value mode but emits indexed psq_lx/psq_stx instead of target displacement forms",
+        "main:board/snpc mbObjFadeTexRotSet: two staged __vec2x32float__ plus scalar transfers are 200/192 bytes at 74.140000% in data-value mode and retain the same indexed-form mismatch"
       ],
       "counterexamples": [
         "A higher percentage is not a successful copy-shape probe: memcpy raises mbObjFadeCreate from 82.289154% to 84.409640% while adding a target-absent call and shrinking the source farther from 332 bytes.",
         "HuCopyVecF is a semantic convenience macro, not proof of historical spelling; it emits scalar lfs/stfs in these controls.",
         "Do not generalize this heuristic to targets that use integer or scalar-float copies, or to structures whose 12-byte extent and field ownership are not authenticated.",
-        "Paired-single opcodes do not identify a source intrinsic by themselves; cast tricks, guessed builtins, forced alignment, volatile storage, and inline assembly remain unsupported.",
+        "The official compiler manual authenticates __vec2x32float__ and vec2x32float_align_4, but that does not authenticate a cast expression or displacement-form helper; the measured explicit assignment emits indexed forms.",
+        "Paired-single opcodes do not identify a historical source spelling by themselves; cast tricks, forced alignment, volatile storage, and inline assembly remain unsupported.",
         "mbObjFadeTexColorSet becomes exact through an independent argument-promotion correction, showing that neighboring SNPC material helpers are not all blocked by vector-copy spelling."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_board_snpc_vector_copy.md",
         "docs/native_matching_wave65.md",
-        "docs/native_matching_wave93.md"
+        "docs/native_matching_wave93.md",
+        "https://www.nxp.com/docs/en/reference-manual/CWMCUPABTR.pdf",
+        "https://www.nxp.com/docs/en/data-sheet/950-00116.pdf"
       ]
     },
     {
