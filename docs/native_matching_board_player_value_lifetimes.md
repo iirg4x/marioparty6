@@ -1,9 +1,9 @@
 # GC/2.6 board player value-lifetime evidence
 
 `src/board/player.c` is compiled with GC/2.6 using the board profile's final
-`-O0,p` options. Five independently non-matching functions became strict exact
-without pragmas or code-generation controls when the source restored explicit
-value captures at the target's apparent use boundaries.
+`-O0,p` options. An initial five independently non-matching functions became
+strict exact without pragmas or code-generation controls when the source
+restored explicit value captures at the target's apparent use boundaries.
 
 ## Confirmed local results
 
@@ -28,21 +28,62 @@ value captures at the target's apparent use boundaries.
   relocation-bearing target instructions while preserving all 138 prior exact
   functions, for 4,012 newly exact text bytes.
 
-The integrated object reports 143/165 strict functions. Public recovery checks
-pass 78/78, all 137 retail outputs pass DTK checksum, and `main.dol` remains
-byte-identical with SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
+At that initial validation point, the integrated object reported 143/165 strict
+functions. Public recovery checks passed 78/78, all 137 retail outputs passed
+DTK checksum, and `main.dol` remained byte-identical with SHA-1
+`b897e6ade6b3a0cd2f9907689f38a3b19c327e70`.
+
+## Player pass #019 reinforcement
+
+The exact Player pass integrated at
+`784bf01cfef0ee49ac01d59b7c329603ae425fbb` adds seven independent positive
+cases for this same bounded heuristic:
+
+- `PlayerMove` moved from 89.704865% at 1,152/1,152 bytes to strict exact at
+  1,152 bytes. Repeated `mbPlayerWorkGet` accesses, movement-state reads at
+  their use boundaries, and the loop-local `masuIdPrev` update restored the
+  target's saved-register and branch lifetimes.
+- `mbev_PlayerColMasu` and `mbev_PlayerColCircleAdd` moved from
+  93.521736% and 93.752750% to strict exact at 644 and 728 bytes. Hoisting the
+  shared sort temporary, restoring declaration order and loop-variable reuse,
+  and reloading collision work at each semantic use boundary closed the broad
+  register-allocation cycles.
+- `mbev_PlayerColMasuAdd`, `PlayerColCornerSet`, and `mbev_PlayerColSet` moved
+  from 85.032260%, 85.017440%, and 93.151260% to strict exact at 620, 688, and
+  476 bytes. Removing broad cached work pointers, retaining a function-lifetime
+  `BOOL` capture, and restoring matrix declaration order reproduced the target
+  reload and stack-allocation shape.
+- `BiriQEffectCreate` moved from 94.905660% at 404/424 bytes to strict exact at
+  424 bytes. Function-scope model IDs followed by block-scoped raw `hookData`
+  and typed `MBPARTICLE *` stages recreated the target's three distinct chained
+  lookup lifetimes without casts, pragmas, or fake operations.
+
+These were not isolated compiler micro-probes. `PlayerMove` also restored
+target-backed movement-field meanings and branch grouping, while the collision
+functions restored compare spelling and loop source shape. They reinforce the
+heuristic only where those semantic corrections expose the target's distinct
+lifetimes; they do not prove that adding captures alone is sufficient.
+
+The final object report is 154/165 strict and 155/165 data-value exact, with
+1,639 verified object relocations out of 2,214 target relocations after
+excluding `R_PPC_NONE` symbol-binding rows, and no exact regressions. Integration
+used DTK 0.9.2, objdiff 3.7.2, and MWCC GC/2.6; 99/99 tests, the serialized
+137/137 build and DTK checks, and the retail `main.dol` SHA-1 all passed.
 
 ## Boundary and counterexamples
 
 This evidence is an owner-local contextual heuristic, not a general instruction
 to introduce temporaries. Capsule return-shape probes and an
 `mbPlayerMoveMain` lifetime simplification regressed output and were reverted.
-Literal-pool-only BiriQ residuals were deliberately left untouched.
+The remaining BiriQ literal- or relocation-identity residuals are still not
+value-lifetime evidence; the positive BiriQ result is limited to the
+instruction- and relocation-exact `BiriQEffectCreate` staging sequence.
 
-Use the heuristic only when repeated global or bitfield reads accompany a
-saved-register or signed-comparison mismatch. Test each capture independently,
-compare the complete exact-function set, and retain it only when strict
-relocations and natural source structure also improve.
+Use the heuristic only when repeated global, bitfield, owner-field, accessor, or
+staged-pointer lifetimes accompany a saved-register or signed-comparison
+mismatch. Test each capture independently, compare the complete exact-function
+set, and retain it only when strict relocations and natural source structure
+also improve.
 
 ## REL reinforcement
 

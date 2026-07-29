@@ -1725,10 +1725,10 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, or owner fields can shorten or merge value lifetimes; source-authentic captures at distinct use boundaries can restore the target's saved-register and signed-comparison shape.",
-      "conditions": "Use only for a repeated owner-local mismatch family involving global or bitfield reads, saved registers, or signed comparisons; a convenient temporary by itself is not evidence.",
+      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, owner fields, or accessor-backed pointers can shorten or merge value lifetimes; source-authentic captures and reloads at distinct use boundaries, including staged raw-to-typed pointer ownership, can restore the target's saved-register and signed-comparison shape.",
+      "conditions": "Use only for a repeated owner-local mismatch family involving global, bitfield, owner-field, accessor, or staged-pointer lifetimes with saved-register or signed-comparison evidence; a convenient temporary by itself is not evidence.",
       "source_condition": {
-        "change": "Capture a global or bitfield value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
+        "change": "Capture a global, bitfield, accessor result, or raw-to-typed pointer value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
         "requires": [
           "GC/2.6 with the same final -O0,p owner profile",
           "repeated target evidence for distinct value lifetimes",
@@ -1750,6 +1750,8 @@
           "explicit pointer truthiness restores the target compare sequence",
           "removing a broad cached work pointer restores target-local allocation",
           "separate raw-allocation and typed-pointer stages restore target lifetime boundaries",
+          "per-use owner or work accessors restore target reloads that one broad cached pointer suppresses",
+          "function-scope model IDs plus block-scoped raw and typed hook-data stages restore chained particle lookup lifetimes",
           "distinct state-read and state-write captures preserve separate register lifetimes around one transition",
           "an authenticated inline accessor boundary can preserve a narrow global lifetime that a direct read collapses",
           "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error"
@@ -1772,6 +1774,13 @@
           "mbev_PlayerColMasuAllSet",
           "mbPlayerMatClone",
           "PlayerMoveOMExec",
+          "PlayerMove",
+          "mbev_PlayerColMasu",
+          "mbev_PlayerColCircleAdd",
+          "mbev_PlayerColMasuAdd",
+          "PlayerColCornerSet",
+          "mbev_PlayerColSet",
+          "BiriQEffectCreate",
           "s01Dll:fn_1_F4",
           "miraclebookdll:fn_1_7998",
           "mbMain",
@@ -1797,6 +1806,10 @@
         "mbev_PlayerColMasuAllSet",
         "mbPlayerMatClone",
         "PlayerMoveOMExec",
+        "PlayerMove repeated mbPlayerWorkGet captures and movement-state boundary reloads",
+        "mbev_PlayerColMasu and mbev_PlayerColCircleAdd declaration-order, sort-index, and per-use collision-work lifetimes",
+        "mbev_PlayerColMasuAdd, PlayerColCornerSet, and mbev_PlayerColSet per-use work reload and matrix declaration lifetimes",
+        "BiriQEffectCreate function-scope model IDs with block-scoped raw and typed hook-data stages",
         "s01Dll fn_1_F4 board-number and model-ID captures",
         "miraclebookdll fn_1_7998 amplitude capture across two model consumers",
         "mbMain distinct party-state reads",
@@ -1806,13 +1819,14 @@
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
         "Capsule inline return-shape probes regressed and were reverted.",
-        "BiriQ relocation-identity residuals are not value-lifetime evidence.",
+        "The remaining BiriQ literal or relocation-identity residuals are not value-lifetime evidence; only the strict-exact BiriQEffectCreate staging result is positive evidence.",
         "mbObjectSetup capture variants only rotated its 20-register lifetime cycle and were reverted."
       ],
       "related_exceptions": [],
       "evidence": [
         "docs/native_matching_board_player_value_lifetimes.md",
-        "src/board/board.c"
+        "src/board/board.c",
+        "src/board/player.c"
       ]
     },
     {
