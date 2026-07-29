@@ -1331,7 +1331,7 @@
       "category": "header_visibility",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. Option pass1 independently reproduced the mechanism in two text-only GC/1.3.2 objects: seven functions retained 1,724 exact text bytes, 95 physical relocations, and 172/172 objdiff rows after each source-only 16-byte pool was removed, restoring retail SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
+      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary removes exactly 16 bytes from `.sdata2` or `.rodata` without changing exact text or relocations. MDPResult pass53 proves the REL form: its eight functions stayed 1,176/1,176 bytes with 48/48 objdiff rows while the linked module shrank from 250,204 to the retail 250,188 bytes and recovered SHA-1 1ebd831bd8e3ca6c15808287df6c820e1384306c. Option pass1 independently reproduced the mechanism in two text-only GC/1.3.2 objects: seven functions retained 1,724 exact text bytes, 95 physical relocations, and 172/172 objdiff rows after each source-only 16-byte pool was removed. Option pass2 then reproduced it in five more text-only owners covering 11 functions, 5,872 text bytes, 577 physical relocations, and 861 objdiff rows, while a sixth 216-byte owner without the transitive math include remained exact with no guard. Both batches restored retail SHA-1 9a22952d087a80920ca844c0cd2b22bf620489ec. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
       "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the owner-local header chronology. Require a reviewed path-specific exception, protected-consumer proof, and a whole-project retail build.",
       "source_condition": {
         "change": "A translation unit selects or suppresses generic `math.h` through an authenticated owner-local header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
@@ -1393,9 +1393,11 @@
         "main:board/scroll",
         "main:board/mgcall",
         "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)",
-        "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)"
+        "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)",
+        "optionDll pass2 prefix/lifecycle/message owners (GC/1.3.2, five guarded text-only owners, 11 functions, 5,872 exact text bytes, 577 physical relocations, 861 objdiff rows, retail REL hash restored)"
       ],
       "counterexamples": [
+        "optionDll application_pass2_messages_c324 includes dolphin.h and mgdata.h without a transitive generic math closure. It remains a text-only 216-byte, 8-relocation, 19-row exact owner without `_MATH_H`; adding the guard would be unnecessary and unauthenticated.",
         "Removing the direct humath include from main:board/dice was byte-neutral because transitive headers still exposed sqrtf.",
         "Changing shared include/math.h from static to automatic locals improved gate and roulette but regressed seven exact REL outputs, so the global change was reverted.",
         "The authenticated owner-local header selection was byte-neutral for main:board/star at 60/90 strict functions; its early SignMdlTbl chronology and map-view frame mismatch are independent."
@@ -1410,7 +1412,12 @@
         "mgcall-no-generic-math-inline",
         "mdpresult-pass53-no-generic-math-inline",
         "option-pass1-e538-no-generic-math-inline",
-        "option-pass1-f1d8-no-generic-math-inline"
+        "option-pass1-f1d8-no-generic-math-inline",
+        "option-pass2-prefix-no-generic-math-inline",
+        "option-pass2-lifecycle-fdc-no-generic-math-inline",
+        "option-pass2-lifecycle-18d8-no-generic-math-inline",
+        "option-pass2-messages-6504-no-generic-math-inline",
+        "option-pass2-messages-b02c-no-generic-math-inline"
       ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
@@ -1419,6 +1426,12 @@
         "config/dll/rels/mdpresultdll/splits.txt",
         "src/REL/optionDll/application_pass1_e538.c",
         "src/REL/optionDll/application_pass1_f1d8.c",
+        "src/REL/optionDll/application_pass2_prefix.c",
+        "src/REL/optionDll/application_pass2_lifecycle_fdc.c",
+        "src/REL/optionDll/application_pass2_lifecycle_18d8.c",
+        "src/REL/optionDll/application_pass2_messages_6504.c",
+        "src/REL/optionDll/application_pass2_messages_b02c.c",
+        "src/REL/optionDll/application_pass2_messages_c324.c",
         "config/dll/rels/optionDll/splits.txt",
         "src/game/sprman.c",
         "src/REL/mdpartydll/stage.c",
