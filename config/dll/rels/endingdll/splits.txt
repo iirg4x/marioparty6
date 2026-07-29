@@ -6,6 +6,9 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/endingdll/ending_pass2_scene.c:
+	.text       start:0x00000924 end:0x00001798
+
 REL/endingdll/ending_pass1_35f4.c:
 	.text       start:0x000035F4 end:0x000036E0
 
