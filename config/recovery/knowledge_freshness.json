@@ -381,7 +381,7 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "784bf01cfef0ee49ac01d59b7c329603ae425fbb",
+      "validated_commit": "c31bc25fdd66d030741e5eaeeba6c6ca621f3ef2",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
