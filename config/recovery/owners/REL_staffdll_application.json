@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "id": "REL:staffdll:application",
+  "module": "staffdll",
+  "source": "config/dll/rels/staffdll/symbols.txt",
+  "compiler": "GC/2.6",
+  "summary": "Catalog-authenticated non-minigame Staff application owner with all 48 independently authenticated same-game definitions source-linked exactly across 32 generated build partitions; unresolved target-only ranges remain on retail fallback.",
+  "status": {
+    "binary": "fallback",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "fallback"
+  },
+  "tags": [
+    "rel",
+    "ending-flow",
+    "application-owner",
+    "generated-object",
+    "inline-visibility",
+    "owner-complete-authenticated-set"
+  ],
+  "symbols": [
+    { "symbol": "fn_1_0", "stable_id": "staffdll:0x0" },
+    { "symbol": "fn_1_610", "stable_id": "staffdll:0x610" },
+    { "symbol": "fn_1_620", "stable_id": "staffdll:0x620" },
+    { "symbol": "fn_1_F44", "stable_id": "staffdll:0xF44" },
+    { "symbol": "fn_1_10B8", "stable_id": "staffdll:0x10B8" },
+    { "symbol": "fn_1_8300", "stable_id": "staffdll:0x8300" },
+    { "symbol": "fn_1_83E4", "stable_id": "staffdll:0x83E4" },
+    { "symbol": "fn_1_96A4", "stable_id": "staffdll:0x96A4" },
+    { "symbol": "fn_1_9D14", "stable_id": "staffdll:0x9D14" }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Forty-eight functions reproduce 14,456 text bytes and 1,232 physical relocations across 32 generated objects; staffdll.rel and all 137 configured retail outputs remain byte-identical.",
+      "reference": "config/dll/rels/staffdll/splits.txt"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Multiple exact consumers require authenticated same-owner depth-two auto-inline closures; ordinary local static-inline bodies preserve those closures without duplicate helper csects or forced-inline controls.",
+      "reference": "src/REL/staffdll/application_pass4_964c.c"
+    },
+    {
+      "kind": "source_provenance",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "An exhaustive definition-to-symbol and split-range audit found no additional eligible authenticated definitions after the final four exact leaves, while explicitly excluding runtime, prolog, pool-bound, and target-only fallback ranges.",
+      "reference": "config/recovery/compiler_patterns.json"
+    }
+  ],
+  "constraints": [
+    "mwcc-cross-tu-extraction-requires-inline-consumer-closure",
+    "recovery-shard-filenames-are-not-source-provenance"
+  ],
+  "debt": [
+    {
+      "kind": "application_source",
+      "priority": "high",
+      "summary": "Target-only application ranges outside the exhausted authenticated same-game definition set remain on retail fallback."
+    },
+    {
+      "kind": "source_partition_names",
+      "priority": "normal",
+      "summary": "Generated owner paths record exact build islands, not original source filenames; neutralize or consolidate them only with complete compiler and consumer proof."
+    },
+    {
+      "kind": "semantic_names",
+      "priority": "normal",
+      "summary": "Nine behavior-backed names are proposed; none is claimed as an original debug symbol."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/staffdll/splits.txt",
+      "config/dll/rels/staffdll/symbols.txt",
+      "src/REL/staffdll/application_pass3_54f0.c",
+      "src/REL/staffdll/application_pass4_8300.c",
+      "src/REL/staffdll/application_pass4_964c.c",
+      "src/REL/staffdll/application_pass5_0000.c"
+    ],
+    "reports": []
+  }
+}

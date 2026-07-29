@@ -820,6 +820,21 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "recovery-shard-filenames-are-not-source-provenance": {
+      "status": "active",
+      "validated_commit": "4902c8b6eca367c140850da21c19671e108785a2",
+      "validated_at": "2026-07-29",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/owners/REL_s02Dll_application.json",
+        "config/recovery/owners/REL_staffdll_application.json",
+        "config/dll/rels/mdpresultdll/splits.txt",
+        "config/dll/rels/s02Dll/splits.txt",
+        "config/dll/rels/staffdll/splits.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

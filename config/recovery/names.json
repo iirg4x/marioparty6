@@ -207,6 +207,87 @@
       "status": "proposed",
       "confidence": "medium",
       "summary": "Behavioral candidate only: filters MgDataTbl by flag and type, writes either locked or minigame-name messages into the option list, and returns the selected count. No original-name provenance is known."
+    },
+    {
+      "stable_id": "staffdll:0x0",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_0",
+      "proposed_name": "StaffLerpClamped",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Returns the start value before time zero, the end value at or beyond duration, and linear interpolation between them; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x610",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_610",
+      "proposed_name": "StaffVecSet",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Writes the supplied X, Y, and Z values into one Vec; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x620",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_620",
+      "proposed_name": "StaffQuadraticBezierComponent",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Evaluates one scalar component of a quadratic Bezier curve from three control values and t; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0xF44",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_F44",
+      "proposed_name": "StaffCameraDestroy",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Destroys camera bit 1 through Hu3DCameraKill; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x10B8",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_10B8",
+      "proposed_name": "StaffLightsDestroy",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Kills both Staff-owned global light IDs through Hu3DGLightKill; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x8300",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_8300",
+      "proposed_name": "StaffCentralParticleCreate",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Creates the single 0x100-particle central model, initializes its transform and layer, and installs its particle hook and blend mode; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x83E4",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_83E4",
+      "proposed_name": "StaffCentralParticleDestroy",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Kills the Staff-owned central particle model stored at lbl_1_bss_3E; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x96A4",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_96A4",
+      "proposed_name": "StaffParticleSystemsInit",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Loads both particle animations and initializes all five authenticated Staff particle-model groups; this is a behavioral proposal, not an original-name claim."
+    },
+    {
+      "stable_id": "staffdll:0x9D14",
+      "owner": "REL:staffdll:application",
+      "current_symbol": "fn_1_9D14",
+      "proposed_name": "StaffParticleSystemsDestroy",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Kills all five authenticated Staff particle-model groups, including the central singleton; this is a behavioral proposal, not an original-name claim."
     }
   ]
 }
