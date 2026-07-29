@@ -1352,10 +1352,10 @@
       "category": "header_visibility",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. An authenticated translation-unit-local `_MATH_H` boundary can remove exactly 16 bytes from `.sdata2` or `.rodata`, but pool removal is valid only when the translation unit retains every target-authenticated declaration and ABI surface. MDPResult pass53, Option passes 1 and 2, and Opening prefix prove the zero-text-cost form. Opening pass2 proves the declaration-surface counterexample: `_MATH_H` alone removed the pool but also hid authentic double sin/cos prototypes, changing call ABI, growing two functions, and emitting an 8-byte conversion pool. Targeted GX/MTX/process/memory includes plus authenticated double prototypes restored exact text with no data. The signature is diagnostic rather than universally corrective, and changing the shared top-level header remains unsafe.",
-      "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the owner-local header chronology. Require a reviewed path-specific exception, protected-consumer proof, and a whole-project retail build.",
+      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. Suppressing that closure removes exactly 16 bytes from `.sdata2` or `.rodata`, but success requires retaining every target-authenticated declaration and ABI surface. MDPResult pass53, Option passes 1 and 2, and Opening prefix prove zero-text-cost owner-local forms. Telop proves the reusable shared-header form: when `dolphin/math.h` is already active, `humath.h` and `musyx/musyx.h` can skip their second generic `math.h` include, preserving exact codegen without a recovered-C header-guard override. Opening pass2 remains the declaration-surface counterexample: blind suppression hid authentic double sin/cos prototypes, changed call ABI, grew two functions, and emitted an 8-byte conversion pool. The signature is diagnostic rather than universally corrective.",
+      "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the math-header chronology. Prefer a normal header-coexistence condition when `dolphin/math.h` is already active; require protected-consumer proof and a whole-project retail build for any shared-header change.",
       "source_condition": {
-        "change": "A translation unit selects or suppresses generic `math.h` through an authenticated owner-local header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
+        "change": "A translation unit selects generic `math.h` or an already-active `dolphin/math.h` through an authenticated header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
         "requires": [
           "pinned owner compiler command",
           "strict instruction and relocation reports",
@@ -1376,18 +1376,20 @@
           "candidate data contains 3fe0000000000000 followed by 4008000000000000 while retail assigns no owner there",
           "instructions and relocations remain exact while only the linked module size and hash differ by the 16-byte pool",
           "removing one direct math include is neutral because another header keeps the same transitive closure",
+          "an already-active `dolphin/math.h` followed by an unconditional generic `math.h` include either fails on duplicate definitions or introduces the generic sqrtf pool",
           "mdpresultdll application_pass53.o changes from text plus 16-byte rodata to text-only at zero text and relocation cost",
           "optionDll application_pass1_e538.o and application_pass1_f1d8.o each change from text plus the same 16-byte rodata to text-only at zero text and relocation cost",
           "a bare `_MATH_H` probe removes the weak pool but also turns target double sin/cos calls into implicit-call ABI, growing exact functions and emitting a new conversion pool"
         ]
       },
-      "rule": "Before tuning literals or declaration lifetimes, prove whether transitive sqrtf visibility introduced the `_half`/`_three` pool. Preserve the complete target-authenticated declaration surface while narrowing includes: exact pool removal is not success if an implicit declaration changes call ABI, instruction shape, or conversion-pool ownership. Prefer narrowly authenticated owner-local headers and prototypes; never fabricate constants, pad sections, or change the shared top-level header to solve one owner.",
+      "rule": "Before tuning literals or declaration lifetimes, prove whether transitive sqrtf visibility introduced the `_half`/`_three` pool. Preserve the complete target-authenticated declaration surface while narrowing includes: exact pool removal is not success if an implicit declaration changes call ABI, instruction shape, or conversion-pool ownership. Never define a library header guard in recovered C. When `dolphin/math.h` is already active, prefer a reviewed header-coexistence condition that prevents a second generic math implementation from being included, then reverify every Matching consumer and the complete retail build.",
       "safe_actions": [
         "compare strict and data-value relocation reports",
         "inspect the preprocessed include closure and raw `.sdata2` or `.rodata` bytes",
         "compare preprocessed function prototypes before and after pool suppression and reject any implicit-call ABI drift",
-        "test only an authenticated owner-local include chronology change",
-        "require a path-specific reviewed quality exception for an include-guard override",
+        "test only an authenticated include chronology or math-header coexistence change",
+        "reject recovered-C definitions of `_MATH_H`, `_DOLPHIN_MATH`, or any other library header guard",
+        "enumerate and reverify every affected Matching consumer after a shared-header change",
         "run every configured retail output after any shared-header diagnostic",
         "record a value-resolved function honestly when relocation spelling alone remains"
       ],
@@ -1416,6 +1418,7 @@
         "main:board/capselect",
         "main:board/scroll",
         "main:board/mgcall",
+        "main:board/telop (GC/2.6, mbTelopTimeChangeCreate 2,432 exact text bytes and 82/82 non-R_PPC_NONE relocations; 137/137 retail hashes pass with clean math-header coexistence)",
         "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)",
         "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)",
         "optionDll pass2 prefix/lifecycle/message owners (GC/1.3.2, five guarded text-only owners, 11 functions, 5,872 exact text bytes, 577 physical relocations, 861 objdiff rows, retail REL hash restored)",
@@ -1449,7 +1452,10 @@
         "config/dll/rels/optionDll/splits.txt",
         "src/game/sprman.c",
         "src/REL/mdpartydll/stage.c",
-        "src/REL/bootDll/opening.c"
+        "src/REL/bootDll/opening.c",
+        "src/board/telop.c",
+        "include/humath.h",
+        "include/musyx/musyx.h"
       ]
     },
     {
