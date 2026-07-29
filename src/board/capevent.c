@@ -23,7 +23,7 @@
 #include "game/board/window.h"
 
 #include "humath.h"
-#include "stddef.h"
+#include "messdir_enum.h"
 
 float mbSinDeg(float deg);
 float mbCosDeg(float deg);
@@ -85,16 +85,6 @@ typedef struct CapEffBoostWork {
     ANIMDATA *animP;
 } CAPEFFBOOSTWORK;
 
-typedef char CAPEFFBOOSTWORK_MODEL_ASSERT[
-    (offsetof(CAPEFFBOOSTWORK, modelId) == 0x0) ? 1 : -1];
-typedef char CAPEFFBOOSTWORK_TIME_ASSERT[
-    (offsetof(CAPEFFBOOSTWORK, time) == 0x4) ? 1 : -1];
-typedef char CAPEFFBOOSTWORK_OBJIDX_ASSERT[
-    (offsetof(CAPEFFBOOSTWORK, objIdx) == 0x8) ? 1 : -1];
-typedef char CAPEFFBOOSTWORK_ANIM_ASSERT[
-    (offsetof(CAPEFFBOOSTWORK, animP) == 0xC) ? 1 : -1];
-typedef char CAPEFFBOOSTWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFBOOSTWORK) == 0x10) ? 1 : -1];
 
 typedef struct CapEffBoostParticleData {
     s16 time;
@@ -113,28 +103,6 @@ typedef struct CapEffBoostParticleData {
     int pat;
 } CAPEFFBOOSTPARTICLEWORK;
 
-typedef char CAPEFFBOOSTPARTICLEWORK_TIME_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, time) == 0x0) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_TOTAL_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, timeTotal) == 0x2) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_VEL_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, vel) == 0x8) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_ALPHA_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, alpha) == 0x14) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_STEP_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, angleStep) == 0x1C) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_ACTIVE_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, active) == 0x40) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_ANGLE_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, angle) == 0x54) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_POS_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, pos) == 0x58) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_COLOR_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, color) == 0x64) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_PAT_ASSERT[
-    (offsetof(CAPEFFBOOSTPARTICLEWORK, pat) == 0x68) ? 1 : -1];
-typedef char CAPEFFBOOSTPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFBOOSTPARTICLEWORK) == 0x6C) ? 1 : -1];
 
 typedef struct CapEffExplodeWork {
     int modelId;
@@ -150,16 +118,6 @@ typedef struct CapEffSnowWork {
     ANIMDATA *animP;
 } CAPEFFSNOWWORK;
 
-typedef char CAPEFFSNOWWORK_MODEL_ASSERT[
-    (offsetof(CAPEFFSNOWWORK, modelId) == 0x0) ? 1 : -1];
-typedef char CAPEFFSNOWWORK_NUM_ASSERT[
-    (offsetof(CAPEFFSNOWWORK, num) == 0x4) ? 1 : -1];
-typedef char CAPEFFSNOWWORK_OBJIDX_ASSERT[
-    (offsetof(CAPEFFSNOWWORK, objIdx) == 0x8) ? 1 : -1];
-typedef char CAPEFFSNOWWORK_ANIM_ASSERT[
-    (offsetof(CAPEFFSNOWWORK, animP) == 0xC) ? 1 : -1];
-typedef char CAPEFFSNOWWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFSNOWWORK) == 0x10) ? 1 : -1];
 
 typedef struct CapEffGlowWork {
     int modelId;
@@ -168,16 +126,6 @@ typedef struct CapEffGlowWork {
     ANIMDATA *animP;
 } CAPEFFGLOWWORK;
 
-typedef char CAPEFFGLOWWORK_MODEL_ASSERT[
-    (offsetof(CAPEFFGLOWWORK, modelId) == 0x0) ? 1 : -1];
-typedef char CAPEFFGLOWWORK_NUM_ASSERT[
-    (offsetof(CAPEFFGLOWWORK, num) == 0x4) ? 1 : -1];
-typedef char CAPEFFGLOWWORK_OBJIDX_ASSERT[
-    (offsetof(CAPEFFGLOWWORK, objIdx) == 0x8) ? 1 : -1];
-typedef char CAPEFFGLOWWORK_ANIM_ASSERT[
-    (offsetof(CAPEFFGLOWWORK, animP) == 0xC) ? 1 : -1];
-typedef char CAPEFFGLOWWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFGLOWWORK) == 0x10) ? 1 : -1];
 
 typedef struct CapEffGlowParticleData {
     s16 mode;
@@ -205,28 +153,6 @@ typedef struct CapEffGlowParticleData {
     int pat;
 } CAPEFFGLOWPARTICLEWORK;
 
-typedef char CAPEFFGLOWPARTICLEWORK_VEL_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, vel) == 0x8) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_SCALE_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, scale) == 0x14) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_TIME_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, time) == 0x18) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_STEP_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, timeStep) == 0x1C) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_GRAVITY_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, gravity) == 0x24) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_ACTIVE_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, active) == 0x40) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_ANGLE_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, angle) == 0x54) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_POS_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, pos) == 0x58) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_COLOR_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, color) == 0x64) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_PAT_ASSERT[
-    (offsetof(CAPEFFGLOWPARTICLEWORK, pat) == 0x68) ? 1 : -1];
-typedef char CAPEFFGLOWPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFGLOWPARTICLEWORK) == 0x6C) ? 1 : -1];
 
 typedef struct CapEffSnowParticleWork {
     s16 angle;
@@ -244,24 +170,6 @@ typedef struct CapEffSnowParticleWork {
     u8 _unk68[4];
 } CAPEFFSNOWPARTWORK;
 
-typedef char CAPEFFSNOWPARTWORK_ANGLE_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, angle) == 0x0) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_XAMP_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, xAmplitude) == 0x8) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_YVEL_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, yVelocity) == 0xC) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_TIME_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, time) == 0x14) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_STEP_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, timeStep) == 0x18) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_ACTIVE_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, active) == 0x40) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_POS_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, pos) == 0x58) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_COLOR_ASSERT[
-    (offsetof(CAPEFFSNOWPARTWORK, color) == 0x64) ? 1 : -1];
-typedef char CAPEFFSNOWPARTWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFSNOWPARTWORK) == 0x6C) ? 1 : -1];
 
 typedef struct CapEffExplodeParticleWork {
     u8 _unk00[0x20];
@@ -274,8 +182,6 @@ typedef struct CapEffExplodeParticleWork {
     void *data;
 } CAPEFFEXPLODEPARTWORK;
 
-typedef char CAPEFFEXPLODEPARTWORK_ANIM_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTWORK, animP) == 0x38) ? 1 : -1];
 
 typedef struct CapEffExplodeParticleData {
     s16 mode;
@@ -295,28 +201,6 @@ typedef struct CapEffExplodeParticleData {
     int pat;
 } CAPEFFEXPLODEPARTICLEWORK;
 
-typedef char CAPEFFEXPLODEPARTICLEWORK_MODE_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, mode) == 0x0) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_VEL_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, vel) == 0x8) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_STEP_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, angleStep) == 0x1C) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_FADE_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, fadeTime) == 0x38) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_FADESTEP_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, fadeStep) == 0x3C) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_ACTIVE_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, active) == 0x40) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_ANGLE_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, angle) == 0x54) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_POS_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, pos) == 0x58) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_COLOR_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, color) == 0x64) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_PAT_ASSERT[
-    (offsetof(CAPEFFEXPLODEPARTICLEWORK, pat) == 0x68) ? 1 : -1];
-typedef char CAPEFFEXPLODEPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFEXPLODEPARTICLEWORK) == 0x6C) ? 1 : -1];
 
 typedef struct CapEffBoostParticleWork {
     u8 _unk00[0x20];
@@ -382,18 +266,6 @@ typedef struct CapEffGlowKinokoParticleWork {
     u8 _unk06[0x66];
 } CAPEFFGLOWKINOKOPARTICLEWORK;
 
-typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_NUM_ASSERT[
-    (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, num) == 0x26) ? 1 : -1];
-typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_DATA_ASSERT[
-    (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, data) == 0x3C) ? 1 : -1];
-typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_GRID_ASSERT[
-    (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, grid) == 0x50) ? 1 : -1];
-typedef char CAPEFFGLOWKINOKOPARTICLESYSTEMWORK_GRIDNUM_ASSERT[
-    (offsetof(CAPEFFGLOWKINOKOPARTICLESYSTEMWORK, gridNum) == 0x58) ? 1 : -1];
-typedef char CAPEFFGLOWKINOKOPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFGLOWKINOKOPARTICLEWORK) == 0x6C) ? 1 : -1];
-typedef char CAPEFFPARTICLESYSTEMWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFPARTICLESYSTEMWORK) == 0x60) ? 1 : -1];
 
 typedef struct CapEffRingWork {
     int modelId[3];
@@ -402,8 +274,6 @@ typedef struct CapEffRingWork {
     ANIMDATA *animP[3];
 } CAPEFFRINGWORK;
 
-typedef char CAPEFFRINGWORK_ANIM_ASSERT[
-    (offsetof(CAPEFFRINGWORK, animP) == 0x14) ? 1 : -1];
 
 typedef struct CapEffRingParticleWork {
     s16 _unk00;
@@ -422,18 +292,6 @@ typedef struct CapEffRingParticleWork {
     int _unk68;
 } CAPEFFRINGPARTICLEWORK;
 
-typedef char CAPEFFRINGPARTICLEWORK_08_ASSERT[
-    (offsetof(CAPEFFRINGPARTICLEWORK, _unk08) == 0x08) ? 1 : -1];
-typedef char CAPEFFRINGPARTICLEWORK_40_ASSERT[
-    (offsetof(CAPEFFRINGPARTICLEWORK, _unk40) == 0x40) ? 1 : -1];
-typedef char CAPEFFRINGPARTICLEWORK_4C_ASSERT[
-    (offsetof(CAPEFFRINGPARTICLEWORK, _unk4C) == 0x4C) ? 1 : -1];
-typedef char CAPEFFRINGPARTICLEWORK_58_ASSERT[
-    (offsetof(CAPEFFRINGPARTICLEWORK, _unk58) == 0x58) ? 1 : -1];
-typedef char CAPEFFRINGPARTICLEWORK_COLOR_ASSERT[
-    (offsetof(CAPEFFRINGPARTICLEWORK, color) == 0x64) ? 1 : -1];
-typedef char CAPEFFRINGPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFRINGPARTICLEWORK) == 0x6C) ? 1 : -1];
 
 typedef struct CapEffMasuHitParticleWork {
     s16 _unk00;
@@ -454,14 +312,6 @@ typedef struct CapEffMasuHitParticleWork {
     int _unk68;
 } CAPEFFMASUHITPARTICLEWORK;
 
-typedef char CAPEFFMASUHITPARTICLEWORK_40_ASSERT[
-    (offsetof(CAPEFFMASUHITPARTICLEWORK, _unk40) == 0x40) ? 1 : -1];
-typedef char CAPEFFMASUHITPARTICLEWORK_58_ASSERT[
-    (offsetof(CAPEFFMASUHITPARTICLEWORK, _unk58) == 0x58) ? 1 : -1];
-typedef char CAPEFFMASUHITPARTICLEWORK_COLOR_ASSERT[
-    (offsetof(CAPEFFMASUHITPARTICLEWORK, color) == 0x64) ? 1 : -1];
-typedef char CAPEFFMASUHITPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFMASUHITPARTICLEWORK) == 0x6C) ? 1 : -1];
 
 typedef struct CapEffRingHitParticleWork {
     u8 _unk00[0x20];
@@ -470,8 +320,6 @@ typedef struct CapEffRingHitParticleWork {
     u8 dispAttr;
 } CAPEFFRINGHITPARTWORK;
 
-typedef char CAPEFFRINGHITPARTWORK_DISP_ASSERT[
-    (offsetof(CAPEFFRINGHITPARTWORK, dispAttr) == 0x22) ? 1 : -1];
 
 typedef struct CapEffRayParticleWork {
     int index;
@@ -490,14 +338,6 @@ typedef struct CapEffRayParticleWork {
     GXColor colorLerp[8];
 } CAPEFFRAYPARTICLEWORK;
 
-typedef char CAPEFFRAYPARTICLEWORK_18_ASSERT[
-    (offsetof(CAPEFFRAYPARTICLEWORK, _unk18) == 0x18) ? 1 : -1];
-typedef char CAPEFFRAYPARTICLEWORK_24_ASSERT[
-    (offsetof(CAPEFFRAYPARTICLEWORK, _unk24) == 0x24) ? 1 : -1];
-typedef char CAPEFFRAYPARTICLEWORK_30_ASSERT[
-    (offsetof(CAPEFFRAYPARTICLEWORK, _unk30) == 0x30) ? 1 : -1];
-typedef char CAPEFFRAYPARTICLEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFRAYPARTICLEWORK) == 0x228) ? 1 : -1];
 
 typedef struct CapEffCoinWork {
     int modelId;
@@ -518,16 +358,6 @@ typedef struct CapEffCoinWork {
     OMOBJ *glowObj;
 } CAPEFFCOINWORK;
 
-typedef char CAPEFFCOINWORK_MAXY_ASSERT[
-    (offsetof(CAPEFFCOINWORK, maxY) == 0x20) ? 1 : -1];
-typedef char CAPEFFCOINWORK_2C_ASSERT[
-    (offsetof(CAPEFFCOINWORK, _unk2C) == 0x2C) ? 1 : -1];
-typedef char CAPEFFCOINWORK_50_ASSERT[
-    (offsetof(CAPEFFCOINWORK, _unk50) == 0x50) ? 1 : -1];
-typedef char CAPEFFCOINWORK_GLOW_ASSERT[
-    (offsetof(CAPEFFCOINWORK, glowObj) == 0x5C) ? 1 : -1];
-typedef char CAPEFFCOINWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFCOINWORK) == 0x60) ? 1 : -1];
 
 typedef struct CapEffMoveWork {
     int playerNo;
@@ -550,14 +380,6 @@ typedef struct CapEffMoveWork {
     float rotSpeed;
 } CAPEFFMOVEWORK;
 
-typedef char CAPEFFMOVEWORK_POS_ASSERT[
-    (offsetof(CAPEFFMOVEWORK, pos) == 0x24) ? 1 : -1];
-typedef char CAPEFFMOVEWORK_VELOCITY_ASSERT[
-    (offsetof(CAPEFFMOVEWORK, velocity) == 0x30) ? 1 : -1];
-typedef char CAPEFFMOVEWORK_DIR_ASSERT[
-    (offsetof(CAPEFFMOVEWORK, moveDir) == 0x54) ? 1 : -1];
-typedef char CAPEFFMOVEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFMOVEWORK) == 0x78) ? 1 : -1];
 
 typedef struct CapObjMotionWork {
     int _unk00;
@@ -571,22 +393,6 @@ typedef struct CapObjMotionWork {
     u32 nextAttr;
 } CAPOBJMOTIONWORK;
 
-typedef char CAPOBJMOTIONWORK_MODEL_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, modelId) == 0x4) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_TIME_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, time) == 0x8) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_MOT_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, motNo) == 0xC) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_NEXT_MOT_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, nextMotNo) == 0x10) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_ATTR_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, attr) == 0x14) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_SHIFT_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, shiftF) == 0x1C) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_NEXT_ATTR_ASSERT[
-    (offsetof(CAPOBJMOTIONWORK, nextAttr) == 0x20) ? 1 : -1];
-typedef char CAPOBJMOTIONWORK_SIZE_ASSERT[
-    (sizeof(CAPOBJMOTIONWORK) == 0x24) ? 1 : -1];
 
 typedef struct CapEffElectricPartWork {
     int activeNo;
@@ -605,32 +411,6 @@ typedef struct CapEffElectricPartWork {
     HuVecF modelPos;
 } CAPEFFELECTRICPARTWORK;
 
-typedef char CAPEFFELECTRICPART_ACTIVE_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, activeNo) == 0x0) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_PHASE_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, phase) == 0x4) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_PHASEMAX_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, phaseMax) == 0x8) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_TIME_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, time) == 0xC) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_TIMEMAX_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, timeMax) == 0x10) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_POS0_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, pos0) == 0x14) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_POS1_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, pos1) == 0x20) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_POS2_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, pos2) == 0x2C) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_LENGTH_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, length) == 0x40) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_HIST_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, posHist) == 0x44) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_MODEL_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, modelId) == 0x8C) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_MODELPOS_ASSERT[
-    (offsetof(CAPEFFELECTRICPARTWORK, modelPos) == 0x90) ? 1 : -1];
-typedef char CAPEFFELECTRICPART_SIZE_ASSERT[
-    (sizeof(CAPEFFELECTRICPARTWORK) == 0x9C) ? 1 : -1];
 
 typedef struct CapEffElectricWork {
     int modelId;
@@ -640,18 +420,6 @@ typedef struct CapEffElectricWork {
     CAPEFFELECTRICPARTWORK part[32];
 } CAPEFFELECTRICWORK;
 
-typedef char CAPEFFELECTRICWORK_MODEL_ASSERT[
-    (offsetof(CAPEFFELECTRICWORK, modelId) == 0x0) ? 1 : -1];
-typedef char CAPEFFELECTRICWORK_NUM_ASSERT[
-    (offsetof(CAPEFFELECTRICWORK, num) == 0x4) ? 1 : -1];
-typedef char CAPEFFELECTRICWORK_OBJIDX_ASSERT[
-    (offsetof(CAPEFFELECTRICWORK, objIdx) == 0x8) ? 1 : -1];
-typedef char CAPEFFELECTRICWORK_ANIM_ASSERT[
-    (offsetof(CAPEFFELECTRICWORK, animP) == 0xC) ? 1 : -1];
-typedef char CAPEFFELECTRICWORK_PART_ASSERT[
-    (offsetof(CAPEFFELECTRICWORK, part) == 0x10) ? 1 : -1];
-typedef char CAPEFFELECTRICWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFELECTRICWORK) == 0x1390) ? 1 : -1];
 
 typedef struct CapEffRayWork {
     int modelId;
@@ -662,8 +430,6 @@ typedef struct CapEffRayWork {
     CAPEFFRAYPARTICLEWORK *particleP;
 } CAPEFFRAYWORK;
 
-typedef char CAPEFFRAYWORK_PARTICLE_ASSERT[
-    (offsetof(CAPEFFRAYWORK, particleP) == 0x14) ? 1 : -1];
 
 typedef struct CapEffMasuHitWork {
     int modelId;
@@ -679,8 +445,6 @@ typedef struct CapEffOpenWork {
     HuVecF pos;
 } CAPEFFOPENWORK;
 
-typedef char CAPEFFOPENWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFOPENWORK) == 0x18) ? 1 : -1];
 
 typedef struct CapCoinManWork {
     u8 _unk00[4];
@@ -706,14 +470,6 @@ typedef struct CapEffCapLoseWork {
     HuVecF vel;          /* 0x28 */
 } CAPEFFCAPLOSEWORK;
 
-typedef char CAPEFFCAPLOSEWORK_ACTIVE_ASSERT[
-    (offsetof(CAPEFFCAPLOSEWORK, activeF) == 0x04) ? 1 : -1];
-typedef char CAPEFFCAPLOSEWORK_POS_ASSERT[
-    (offsetof(CAPEFFCAPLOSEWORK, pos) == 0x1C) ? 1 : -1];
-typedef char CAPEFFCAPLOSEWORK_VEL_ASSERT[
-    (offsetof(CAPEFFCAPLOSEWORK, vel) == 0x28) ? 1 : -1];
-typedef char CAPEFFCAPLOSEWORK_SIZE_ASSERT[
-    (sizeof(CAPEFFCAPLOSEWORK) == 0x34) ? 1 : -1];
 
 #define CAP_WORK_MAX 64
 
@@ -790,20 +546,6 @@ typedef struct CapWork {
     OMOBJ *capLoseObj;
 } CAPWORK;
 
-typedef char EVCAPWORK_SIZE_ASSERT[(sizeof(EVCAPWORK) == 0xB48) ? 1 : -1];
-typedef char CAPWORK_OBJWORK_ASSERT[(offsetof(CAPWORK, objWork) == 0x20) ? 1 : -1];
-typedef char CAPWORK_FLAGS_ASSERT[(offsetof(CAPWORK, flags) == 0xB68) ? 1 : -1];
-typedef char CAPWORK_PROCNO_ASSERT[(offsetof(CAPWORK, processNo) == 0xBCC) ? 1 : -1];
-typedef char CAPWORK_TAIL_ASSERT[(offsetof(CAPWORK, explodeObj) == 0xBD0) ? 1 : -1];
-typedef char CAPWORK_BOOST_ASSERT[(offsetof(CAPWORK, boostObj) == 0xBD4) ? 1 : -1];
-typedef char CAPWORK_SNOW_ASSERT[(offsetof(CAPWORK, snowObj) == 0xBD8) ? 1 : -1];
-typedef char CAPWORK_GLOW_ASSERT[(offsetof(CAPWORK, glowObj) == 0xBDC) ? 1 : -1];
-typedef char CAPWORK_RING_ASSERT[(offsetof(CAPWORK, ringObj) == 0xBE0) ? 1 : -1];
-typedef char CAPWORK_COIN_ASSERT[(offsetof(CAPWORK, coinObj) == 0xBE4) ? 1 : -1];
-typedef char CAPWORK_COINMAN_ASSERT[(offsetof(CAPWORK, coinManObj) == 0xBE8) ? 1 : -1];
-typedef char CAPWORK_STARMAN_ASSERT[(offsetof(CAPWORK, starManObj) == 0xBEC) ? 1 : -1];
-typedef char CAPWORK_CAPLOSE_ASSERT[(offsetof(CAPWORK, capLoseObj) == 0xBF0) ? 1 : -1];
-typedef char CAPWORK_SIZE_ASSERT[(sizeof(CAPWORK) == 0xBF4) ? 1 : -1];
 
 typedef struct EvCapsuleData {
     void (*main)(void);
@@ -838,12 +580,12 @@ static GXColor ev_CapsuleRandomColorTbl[7] = {
 };
 static HuVecF ev_CapsuleViewOfs = { 0.0f, 100.0f, 0.0f };
 static int ev_CapEffRingFile[] = {
-    0x000C0031,
-    0x000C0032,
-    0x000C0033,
-    0x000C0031,
-    0x000C0038,
-    0x000C0038,
+    DATANUM(DATA_capsule, 0x31),
+    DATANUM(DATA_capsule, 0x32),
+    DATANUM(DATA_capsule, 0x33),
+    DATANUM(DATA_capsule, 0x31),
+    DATANUM(DATA_capsule, 0x38),
+    DATANUM(DATA_capsule, 0x38),
 };
 static GXColor ev_CapEffElectricColor[] = {
     { 192, 192, 255, 255 },
@@ -1211,7 +953,7 @@ void mbev_CapBiriQShockCreate(int playerNo)
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     biriQMasuNum = 60;
-    obj = omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, ev_CapBiriQShockOMExec);
+    obj = omAddObjEx(mbObjMan, 32768, 0, 0, -1, ev_CapBiriQShockOMExec);
     mbev_CapBiriQMetalShock(&work);
     biriQMasuNum = 0;
 }
@@ -1841,7 +1583,8 @@ void mbev_CapDebugCam(void)
     objDispF = FALSE;
     dispX = 32.0f;
     dispY = 50.0f;
-    objId = mbev_CapObjCreate(&work->objWork, 0xC0044, NULL, FALSE, 5, FALSE);
+    objId = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsule, 0x44), NULL, FALSE, 5, FALSE);
     mbObjPosSet(objId, center.x, center.y, center.z);
     mbObjDispSet(objId, FALSE);
     mbCameraFocusObjSet(objId);
@@ -1996,12 +1739,13 @@ void mbev_CapDebugWarp(void)
     }
     masuId = GwPlayer[playerNo].masuId;
     mbPlayerPosGet(playerNo, &pos);
-    objId = mbev_CapObjCreate(&work->objWork, 0xC0044, NULL, FALSE, 5, FALSE);
+    objId = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsule, 0x44), NULL, FALSE, 5, FALSE);
     mbObjPosSet(objId, pos.x, pos.y, pos.z);
     mbObjDispSet(objId, FALSE);
     mbCameraMoveObj(objId, NULL, &ev_CapsuleViewOfs, 3000.0f, -1.0f, 1);
     sprId = mbev_CapSprCreate(&work->objWork,
-        mbBoardDataNumGet(0x50001), 2000, 0);
+        mbBoardDataNumGet(DATANUM(DATA_board, 1)), 2000, 0);
     espDispOn(sprId);
     espDrawNoSet(sprId, 0);
     espAttrSet(sprId, 1);
@@ -2170,7 +1914,7 @@ static void ev_CapBonusCoinKill(void)
 
 static void ev_CapBonusCoinWin(void)
 {
-    bonusCoinWinId = mbWinCreate(2, 0x00370039, -1);
+    bonusCoinWinId = mbWinCreate(2, MESSNUM(MESS_CAPSULE_EX99, 0x39), -1);
     sprintf(ev_CapBonusCoinMes, lbl_802BFE90, bonusCoinNum);
     mbWinTopInsertMesSet((u32)ev_CapBonusCoinMes, 0);
 }
@@ -2287,13 +2031,17 @@ void mbev_CapInit(void)
     mbCapThrowColCreate(-1);
     mbCapThrowHookSet(NULL);
     mbev_CapTeresaStealSet(-1, 0, NULL, NULL);
-    boostEffAnim = HuSprAnimRead(HuDataReadNum(0xC0035, HU_MEMNUM_OVL));
+    boostEffAnim = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 0x35), HU_MEMNUM_OVL));
     HuSprAnimLock(boostEffAnim);
-    ringHitEffAnim1 = HuSprAnimRead(HuDataReadNum(0xC0038, HU_MEMNUM_OVL));
+    ringHitEffAnim1 = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 0x38), HU_MEMNUM_OVL));
     HuSprAnimLock(ringHitEffAnim1);
-    ringHitEffAnim2 = HuSprAnimRead(HuDataReadNum(0xC0031, HU_MEMNUM_OVL));
+    ringHitEffAnim2 = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 0x31), HU_MEMNUM_OVL));
     HuSprAnimLock(ringHitEffAnim2);
-    electricEffAnim = HuSprAnimRead(HuDataReadNum(0xC0037, HU_MEMNUM_OVL));
+    electricEffAnim = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 0x37), HU_MEMNUM_OVL));
     HuSprAnimLock(electricEffAnim);
     mbCapEffNum = 0;
     dataP = HuMemDirectMallocNum(HEAP_HEAP, 0x800, HU_MEMNUM_OVL);
@@ -2328,12 +2076,12 @@ static void ev_CapKill(void)
             hook();
         }
     }
-    HuDataDirClose(0x130000);
-    HuDataDirClose(0xD0000);
-    HuDataDirClose(0xE0000);
-    HuDataDirClose(0xF0000);
-    HuDataDirClose(0x100000);
-    HuDataDirClose(0x110000);
+    HuDataDirClose(DATA_capsuleshop);
+    HuDataDirClose(DATA_capsulechar0);
+    HuDataDirClose(DATA_capsulechar1);
+    HuDataDirClose(DATA_capsulechar2);
+    HuDataDirClose(DATA_capsulechar3);
+    HuDataDirClose(DATA_capsulechar4);
     lbl_802C0FD8 = 0;
     ev_CapWorkClose(&workP->objWork);
     if (mbExitCheck() == FALSE) {
@@ -2366,7 +2114,7 @@ static void ev_CapKill(void)
         }
     }
     ev_CapMainProc[workP->processNo] = NULL;
-    _ClearFlag(0x10022);
+    _ClearFlag(FLAG_BOARD_STAR_RESET);
     HuMemDirectFree(workP);
 }
 
@@ -2613,7 +2361,7 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
     CAPEFFMOVEWORK *workP;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapPlayerMoveObjExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapPlayerMoveObjExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
@@ -2656,7 +2404,7 @@ void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
     CAPEFFMOVEWORK *workP;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapPlayerMoveObjExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapPlayerMoveObjExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
@@ -2688,7 +2436,7 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     HuVecF delta;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapPlayerMoveObjExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapPlayerMoveObjExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
@@ -4090,7 +3838,7 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
             break;
         }
     }
-    obj = omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapEffRayOMExec);
+    obj = omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffRayOMExec);
     ev_CapEffRayOMObj[objIdx] = obj;
     workP = obj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFRAYWORK), HU_MEMNUM_OVL);
     memset(workP, 0, sizeof(CAPEFFRAYWORK));
@@ -4176,7 +3924,7 @@ OMOBJ *mbev_CapEffCoinCreate(void)
         }
     }
     obj = ev_CapEffCoinOMObj[objIdx] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapEffCoinOMExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffCoinOMExec);
     workP = HuMemDirectMallocNum(HEAP_HEAP, 128 * sizeof(CAPEFFCOINWORK), HU_MEMNUM_OVL);
     obj->data = workP;
     workData = workP;
@@ -5011,7 +4759,7 @@ OMOBJ *mbev_CapEffRingCreate(void)
         }
     }
     obj = ev_CapEffRingOMObj[i] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapEffRingOMExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffRingOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFRINGWORK), HU_MEMNUM_OVL);
     obj->data = workData;
     workP = workData;
@@ -5051,7 +4799,7 @@ OMOBJ *mbev_CapEffRingHitCreate(void)
         }
     }
     obj = ev_CapEffRingOMObj[i] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapEffRingOMExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffRingOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFRINGWORK), HU_MEMNUM_OVL);
     obj->data = workData;
     workP = workData;
@@ -5247,7 +4995,7 @@ OMOBJ *mbev_CapEffElectricCreate(void)
         }
     }
     obj = ev_CapEffElectricOMObj[objIdx] =
-        omAddObjEx(mbObjMan, 0x8000, 0, 0, -1, mbev_CapEffElectricOMExec);
+        omAddObjEx(mbObjMan, 32768, 0, 0, -1, mbev_CapEffElectricOMExec);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFELECTRICWORK), HU_MEMNUM_OVL);
     obj->data = workData;
     workP = workData;
@@ -5636,7 +5384,7 @@ int mbev_CapEffCapLoseObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale, 
     workP->activeF = 1;
     workP->colorObjId = mbCapObjColorCreate(capsuleNo, TRUE);
     colorModelId = (MBMODELID)workP->colorObjId;
-    mbObjAttrSet(colorModelId, 0x40000001);
+    mbObjAttrSet(colorModelId, HU3D_MOTATTR_LOOP);
     workP->capsuleNo = capsuleNo;
     workP->_unk10 = -1;
     workP->_unk14 = 0;
@@ -5870,6 +5618,6 @@ static void ev_CapComChoiceHook(void)
         key[padNo] = keyValue;
         HuWinComKeyWait(key[0], key[1], key[2], key[3], delay);
     }
-    key[padNo] = 0x100;
+    key[padNo] = PAD_BUTTON_A;
     HuWinComKeyWait(key[0], key[1], key[2], key[3], delay);
 }
