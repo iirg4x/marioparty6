@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.49% | 32.88% | 488 / 1201 |
+| Entire project | 14.61% | 32.88% | 497 / 1211 |
 | Main DOL | 48.28% | 74.87% | 295 / 396 |
-| REL modules | 7.33% | 6.26% | 193 / 805 |
+| REL modules | 7.47% | 6.26% | 202 / 815 |
 
 Current board recovery: **16 / 40 source owners matching** and **54 / 72
 Towering Treetop stub seams strict-exact and promoted**.
