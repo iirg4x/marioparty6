@@ -6,6 +6,9 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/openingDll/opening_prefix.c:
+	.text       start:0x000000A0 end:0x00001BD8
+
 REL/openingDll/runtime.c:
 	.text       start:0x00005638 end:0x0000607C
 	.rodata     start:0x000001E0 end:0x000001F8

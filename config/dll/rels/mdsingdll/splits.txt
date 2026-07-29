@@ -85,6 +85,15 @@ REL/mdsingdll/mdsing_tail22.c:
 	.text       start:0x0000B898 end:0x0000BCA4
 	.rodata     start:0x00000270 end:0x00000280
 
+REL/mdsingdll/application_pass31_e688.c:
+	.text       start:0x0000E688 end:0x0000E9A8
+
+REL/mdsingdll/application_pass31_ea7c.c:
+	.text       start:0x0000EA7C end:0x0000F3C8
+
+REL/mdsingdll/application_pass31_fcc8.c:
+	.text       start:0x0000FCC8 end:0x0000FD5C
+
 REL/mdsingdll/mdsing_tail14.c:
 	.text       start:0x0002D0FC end:0x0002D1DC
 

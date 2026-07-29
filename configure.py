@@ -1250,6 +1250,9 @@ config.libs = [
             Object(Matching, "REL/mdsingdll/application_pass30_3484.c"),
             Object(Matching, "REL/mdsingdll/application_pass30_3b30.c"),
             Object(Matching, "REL/mdsingdll/application_pass30_3db4.c"),
+            Object(Matching, "REL/mdsingdll/application_pass31_e688.c"),
+            Object(Matching, "REL/mdsingdll/application_pass31_ea7c.c"),
+            Object(Matching, "REL/mdsingdll/application_pass31_fcc8.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail2.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail3.c"),
@@ -1293,6 +1296,7 @@ config.libs = [
     Rel(
         "openingDll",
         objects={
+            Object(Matching, "REL/openingDll/opening_prefix.c"),
             Object(
                 Matching,
                 "REL/openingDll/runtime.c",
