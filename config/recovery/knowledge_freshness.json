@@ -33,7 +33,7 @@
     },
     "gc132-broad-header-visibility": {
       "status": "active",
-      "validated_commit": "8db6128c8a0c46f5fea098a8c9428b00a14218f1",
+      "validated_commit": "f42198cbf0459f8258534083487caab3c4ec6425",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -297,7 +297,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "8db6128c8a0c46f5fea098a8c9428b00a14218f1",
+      "validated_commit": "f42198cbf0459f8258534083487caab3c4ec6425",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -314,6 +314,7 @@
         "src/board/capselect.c",
         "src/board/scroll.c",
         "src/board/mgcall.c",
+        "src/board/telop.c",
         "configure.py"
       ],
       "supersedes": [],
