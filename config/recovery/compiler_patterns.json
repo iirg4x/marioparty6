@@ -8,14 +8,15 @@
       "category": "declaration_visibility",
       "compiler": "GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Moving file-scope definitions earlier can change one-pass visibility, register allocation, section extents, and relocations even when the C declarations appear equivalent.",
+      "summary": "Moving file-scope definitions earlier can change one-pass visibility, register allocation, section extents, and relocations even when the C declarations appear equivalent. MDBank pass2 proves the inverse extraction case: when authenticated source chronology makes a helper body visible to a selected caller but the helper must remain fallback-owned, an ordinary local `static inline` copy can preserve the original auto-inline expansion without emitting a second helper symbol or using force-inline controls.",
       "conditions": "Apply as a compiler-wide diagnostic under GC/1.3.2; probe each owner locally because stage.c is a counterexample to the mdparty tail-definition requirement.",
       "source_condition": {
         "change": "Move file-scope object definitions earlier or otherwise alter declaration/definition chronology while retaining nominally equivalent declarations.",
         "requires": [
           "same compiler version and flags",
           "same symbol ownership and types",
-          "before/after object and relocation comparison"
+        "before/after object and relocation comparison",
+        "target proof that the helper expansion is present while a duplicate helper csect and call relocation are absent"
         ]
       },
       "emitted_effect": {
@@ -31,22 +32,32 @@
           "a semantics-preserving reorder regresses many exact functions",
           "section extent changes without an intentional data-layout change",
           "a standalone helper compiled with prototype-only visibility remains call-bearing inside a later exact auto-inline expansion",
-          "complete copied bodies and absent call relocations prove a depth-two inline chain whose result changes when one definition moves"
+        "complete copied bodies and absent call relocations prove a depth-two inline chain whose result changes when one definition moves",
+        "an isolated caller becomes exact with an authenticated local static-inline helper while the generated object emits no second helper csect"
         ]
       },
-      "rule": "Treat declaration chronology as a testable compiler variable; do not modernize definition placement or copy a tail-definition layout without owner-local proof.",
+      "rule": "Treat declaration chronology as a testable compiler variable; do not modernize definition placement or copy a tail-definition layout without owner-local proof. During extraction, a fallback-owned helper may be represented by an authenticated ordinary local static-inline body only when target instructions prove the expansion, target relocations prove the missing call, generated sections prove no duplicate helper emission, and all fallback and direct consumers remain exact.",
       "safe_actions": [
         "make a bounded owner-local chronology probe",
         "compare every independently exact function and affected data section",
-        "record both positive and negative owner results"
+        "record both positive and negative owner results",
+        "for a source-extracted caller, compare a normal static-inline local helper under the pinned auto-inline command before considering any compiler control"
       ],
       "applicability": {
         "compiler_wide": true,
         "project_wide": false,
         "owners": [],
         "stable_ids": [
-          "mdbankdll:fn_1_281C",
-          "mdbankdll:fn_1_28B4"
+        "mdbankdll:fn_1_281C",
+        "mdbankdll:fn_1_28B4",
+        "mdbankdll:fn_1_AC4",
+        "mdbankdll:fn_1_1200",
+        "mdbankdll:fn_1_3100",
+        "mdbankdll:fn_1_3164",
+        "mdbankdll:fn_1_111B0",
+        "mdbankdll:fn_1_111F8",
+        "mdbankdll:fn_1_1161C",
+        "mdbankdll:fn_1_11678"
         ],
         "modules": [
           "mdbankdll"
@@ -55,6 +66,7 @@
       },
       "examples": [
         "REL:mdpartydll:mdparty",
+        "MDBank pass2 recovered four isolated chronology relations (fn_1_AC4 to fn_1_1200, fn_1_3100 to fn_1_3164, fn_1_111B0 to fn_1_111F8, and fn_1_1161C to fn_1_11678) with ordinary authenticated static-inline helper copies under the normal GC/1.3.2 auto-inline command. Ten text-only owners retained 12/12 functions, 2,780 text bytes, and 141 physical relocations; no source-only helper csect was emitted and the retail REL remained exact.",
         "mdbankdll fn_1_281C compiled exactly before fn_1_11900 was defined; later fn_1_28B4 expanded fn_1_281C but preserved the nested fn_1_11900 call relocation",
         "mode-select wave 68 proved several standalone-plus-expanded and depth-two helper relations from complete instruction copies and absent call relocations",
         "Ending pass4 bound a target-address-ordered lifecycle leaf set even where authenticated historical source placed neighboring definitions in a different order; nine text-only owners remained 12/12 exact, so source definition chronology and retail split order were treated as separate evidenced variables"
@@ -67,6 +79,12 @@
         "mdparty-late-owner-definitions"
       ],
       "evidence": [
+        "src/REL/mdbankdll/mdbank_pass2_0ac4.c",
+        "src/REL/mdbankdll/mdbank_pass2_1200.c",
+        "src/REL/mdbankdll/mdbank_pass2_3164.c",
+        "src/REL/mdbankdll/mdbank_pass2_111f8.c",
+        "src/REL/mdbankdll/mdbank_pass2_11678.c",
+        "config/dll/rels/mdbankdll/splits.txt",
         "docs/native_matching_wave103.md",
         "docs/native_matching_dll_reinforcements_20260728.md",
         "docs/native_matching_wave68.md",
