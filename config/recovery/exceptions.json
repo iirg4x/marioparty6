@@ -306,6 +306,23 @@
         "src/game/hsfdraw.c",
         "include/game/hu3d.h"
       ]
+    },
+    {
+      "id": "mdpresult-pass53-no-generic-math-inline",
+      "classification": "authenticated",
+      "path": "src/REL/mdpresultdll/application_pass53.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "The GC/1.3.2 retail mdpresultdll range 0x1F7FC..0x1FC94 contains 1,176 exact text bytes and no data owner. The retained game/sprite.h closure otherwise brings in generic math.h and emits the unused weak sqrtf doubles 0.5 and 3.0 as a 16-byte source-only .rodata section: linked mdpresultdll.rel grows from the retail 250,188 bytes to 250,204 bytes while text and all 48 objdiff rows remain exact. Defining _MATH_H at the translation-unit boundary removes only that section, leaves all eight functions and the three protected generated consumers exact, and restores the retail REL hash 1ebd831bd8e3ca6c15808287df6c820e1384306c. Exact same-game non-board translation units including game/sprman.c, mdpartydll/stage.c, and bootDll/opening.c authenticate this narrow header chronology.",
+      "evidence": [
+        "src/REL/mdpresultdll/application_pass53.c",
+        "src/game/sprman.c",
+        "src/REL/mdpartydll/stage.c",
+        "src/REL/bootDll/opening.c",
+        "config/dll/rels/mdpresultdll/splits.txt"
+      ]
     }
   ]
 }
