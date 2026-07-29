@@ -14,7 +14,7 @@ This snapshot was generated from a verified full-project retail build with `tool
 | Main DOL | 48.28% | 74.87% | 295 / 396 |
 | REL modules | 6.89% | 6.26% | 137 / 722 |
 
-Current board recovery: **16 / 40 source owners matching** and **48 / 72
+Current board recovery: **16 / 40 source owners matching** and **50 / 72
 Towering Treetop stub seams strict-exact and promoted**.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
