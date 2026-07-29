@@ -276,30 +276,7 @@ void mbTelopCreate(int playerNo, int telopNo, BOOL waitF)
 
 void mbTelopPlayerCreate(int playerNo)
 {
-    TELOP_WORK *work;
-    int telopNo;
-
-    telopNo = GwPlayer[playerNo].charNo;
-    telopOMObj = omAddObj(mbObjMan, 0x106, 1, 0, TelopInitOMExec);
-    omSetStatBit(telopOMObj, OM_STAT_MODELPAUSE);
-    work = omObjGetWork(telopOMObj, TELOP_WORK);
-    work->killF = FALSE;
-    work->playerNo = playerNo;
-    work->mode = 0;
-    work->telopNo = telopNo;
-    if ((playerNo >= 0 && GwPlayer[playerNo].comF) || playerNo < 0) {
-        work->comDelay = 30;
-    } else {
-        work->comDelay = 0;
-    }
-    telopOMObj->mdlId[0] = espEntry(mbBoardDataNumGet(telopFileTbl[telopNo]), 100, 0);
-    espDrawNoSet(telopOMObj->mdlId[0], 32);
-    if (telopNo < 16) {
-        mbAudFXPlay(0x3F3);
-    }
-    while (telopOMObj) {
-        HuPrcVSleep();
-    }
+    mbTelopCreate(playerNo, GwPlayer[playerNo].charNo, TRUE);
 }
 
 void mbTelopPlayerSkipCreate(int playerNo)
