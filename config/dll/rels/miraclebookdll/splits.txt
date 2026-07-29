@@ -25,6 +25,9 @@ REL/miraclebookdll/application_pass1_5904.c:
 REL/miraclebookdll/application_pass2_7158.c:
 	.text       start:0x00007158 end:0x00007998
 
+REL/miraclebookdll/application_7998.c:
+	.text       start:0x00007998 end:0x00008A0C
+
 REL/miraclebookdll/application_pass2_8a0c.c:
 	.text       start:0x00008A0C end:0x00008A78
 
