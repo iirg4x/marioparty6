@@ -14,7 +14,7 @@ This snapshot was generated from a verified full-project retail build with `tool
 | Main DOL | 47.76% | 74.60% | 295 / 396 |
 | REL modules | 6.08% | 6.25% | 32 / 527 |
 
-Current board recovery: **16 / 40 source owners matching** and **64 / 72
+Current board recovery: **16 / 40 source owners matching** and **65 / 72
 Towering Treetop stub seams strict-exact and promoted**.
 
 REL recovery is stored under canonical application owners: **174 synthetic
