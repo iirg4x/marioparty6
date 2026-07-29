@@ -27,6 +27,36 @@ REL/mdsingdll/mdsing_tail18.c:
 REL/mdsingdll/mdsing_tail19.c:
 	.text       start:0x000037DC end:0x00003908
 
+REL/mdsingdll/mdsing_tail26.c:
+	.text       start:0x000047F0 end:0x00004B44
+
+REL/mdsingdll/mdsing_tail23.c:
+	.text       start:0x0000514C end:0x00005268
+
+REL/mdsingdll/mdsing_tail24.c:
+	.text       start:0x000057E4 end:0x0000595C
+
+REL/mdsingdll/mdsing_tail25.c:
+	.text       start:0x00005EF4 end:0x00005FA0
+
+REL/mdsingdll/mdsing_tail27.c:
+	.text       start:0x000068C0 end:0x00006A7C
+
+REL/mdsingdll/mdsing_tail28.c:
+	.text       start:0x00006C48 end:0x00006E94
+
+REL/mdsingdll/mdsing_tail29.c:
+	.text       start:0x000079D0 end:0x00007A60
+
+REL/mdsingdll/mdsing_tail30.c:
+	.text       start:0x00007B64 end:0x00007BF4
+
+REL/mdsingdll/mdsing_tail31.c:
+	.text       start:0x00007E3C end:0x00007EE0
+
+REL/mdsingdll/mdsing_tail32.c:
+	.text       start:0x00008670 end:0x0000876C
+
 REL/mdsingdll/mdsing_tail15.c:
 	.text       start:0x00008F64 end:0x00008FEC
 

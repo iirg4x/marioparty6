@@ -1027,7 +1027,7 @@ config.libs = [
             Object(NonMatching, "board/snpc.c"),
             Object(Matching, "board/object.c"),
             Object(Matching, "board/window.c"),
-            Object(Matching, "board/audio.c"),
+            Object(NonMatching, "board/audio.c"),
             Object(NonMatching, "board/scroll.c"),
             Object(NonMatching, "board/masu.c"),
             Object(NonMatching, "board/coin.c"),
@@ -1167,6 +1167,23 @@ config.libs = [
                 mw_version=config.linker_version,
                 extra_cflags=["-pooldata off"],
             ),
+        },
+    ),
+    Rel(
+        "actmanDLL",
+        objects={
+            Object(Matching, "REL/actmanDLL/actman.c", mw_version=config.linker_version),
+        },
+    ),
+    Rel(
+        "meschkdll",
+        objects={
+            Object(
+                NonMatching,
+                "REL/meschkdll/meschkdll.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off"],
+            ),
             Object(
                 Matching,
                 "REL/meschkdll/runtime.c",
@@ -1178,6 +1195,8 @@ config.libs = [
     Rel(
         "endingdll",
         objects={
+            Object(Matching, "REL/endingdll/ending_pass1_35f4.c"),
+            Object(Matching, "REL/endingdll/ending_pass1.c"),
             Object(
                 Matching,
                 "REL/endingdll/runtime.c",
@@ -1192,6 +1211,9 @@ config.libs = [
             Object(Matching, "REL/mdpresultdll/application_16c4.c"),
             Object(Matching, "REL/mdpresultdll/application_2bf0.c"),
             Object(Matching, "REL/mdpresultdll/application_pass49.c"),
+            Object(Matching, "REL/mdpresultdll/application_pass50.c"),
+            Object(Matching, "REL/mdpresultdll/application_pass51.c"),
+            Object(Matching, "REL/mdpresultdll/application_pass52.c"),
             Object(
                 Matching,
                 "REL/mdpresultdll/runtime.c",
@@ -1228,6 +1250,16 @@ config.libs = [
             Object(Matching, "REL/mdsingdll/mdsing_tail20.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail21.c"),
             Object(Matching, "REL/mdsingdll/mdsing_tail22.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail23.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail24.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail25.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail26.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail27.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail28.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail29.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail30.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail31.c"),
+            Object(Matching, "REL/mdsingdll/mdsing_tail32.c"),
             Object(
                 Matching,
                 "REL/mdsingdll/runtime.c",
@@ -1293,23 +1325,6 @@ config.libs = [
                 "REL/s03Dll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
-            ),
-        },
-    ),
-    Rel(
-        "actmanDLL",
-        objects={
-            Object(Matching, "REL/actmanDLL/actman.c", mw_version=config.linker_version),
-        },
-    ),
-    Rel(
-        "meschkdll",
-        objects={
-            Object(
-                NonMatching,
-                "REL/meschkdll/meschkdll.c",
-                mw_version=config.linker_version,
-                extra_cflags=["-pooldata off"],
             ),
         },
     ),
