@@ -1646,7 +1646,8 @@
           "w04Dll",
           "mdsingdll",
           "mdbankdll",
-          "endingdll"
+          "endingdll",
+          "miraclebookdll"
         ],
         "owner_tags": [
           "extern_inline",
@@ -1658,7 +1659,8 @@
         "w01Dll authenticated common-inline owner",
         "GC/1.3.2 mdsing pass20: eight exact-text candidates rejected because broad public headers emitted a 16-byte weak sqrtf block",
         "GC/1.3.2 mdbank pass3: dolphin/mtx/GeoTypes.h preserved exact fn_1_2CD8 text and relocations while removing the broad-header 16-byte block and restoring the retail REL",
-        "GC/2.6 ending pass1: the authenticated game/hu3d.h closure emitted the exact 16-byte module prefix beside 9/9 exact owner functions without an explicit sqrtf call; the complete endingdll REL remained byte-identical to retail"
+        "GC/2.6 ending pass1: the authenticated game/hu3d.h closure emitted the exact 16-byte module prefix beside 9/9 exact owner functions without an explicit sqrtf call; the complete endingdll REL remained byte-identical to retail",
+        "GC/1.3.2 MiracleBook pass1: the first generated owner retained the exact target 16-byte prefix, a later owner emitted the compatible targetless weak pair, and the linker discarded the later copy while preserving 10/10 exact functions and the retail-identical REL"
       ],
       "counterexamples": [
         "Ordinary unused inline literals emitted nothing under the same profile.",
@@ -1673,7 +1675,10 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave42.md",
         "src/REL/endingdll/ending_pass1.c",
-        "config/dll/rels/endingdll/splits.txt"
+        "config/dll/rels/endingdll/splits.txt",
+        "src/REL/miraclebookdll/application_pass1.c",
+        "src/REL/miraclebookdll/application_pass1_5904.c",
+        "config/dll/rels/miraclebookdll/splits.txt"
       ]
     },
     {
@@ -3392,10 +3397,13 @@
           "mdpresultdll:fn_1_2BF0..fn_1_3304",
           "mdpresultdll:fn_1_4694..fn_1_52C4",
           "mdpresultdll:fn_1_A85C..fn_1_B454",
-          "mdpresultdll:fn_1_C9A0..fn_1_D40C"
+          "mdpresultdll:fn_1_C9A0..fn_1_D40C",
+          "miraclebookdll:fn_1_427C",
+          "miraclebookdll:fn_1_7998"
         ],
         "modules": [
-          "mdpresultdll"
+          "mdpresultdll",
+          "miraclebookdll"
         ],
         "owner_tags": [
           "translation_unit",
@@ -3411,7 +3419,8 @@
         "Pass48 selected the dependency-closed predecessor island fn_1_16C4..fn_1_1C34 while leaving fn_1_1C70 onward and its transitive window chain in mdpresult.c: 11/11 functions, 1452 bytes, and 109/109 relocations exact with no source rodata, while both generated owners, all four protected consumers, and the 64-byte pool prefix remained exact.",
         "Pass49 bound the interior callback-only island fn_1_4694..fn_1_52C4: 12/12 functions, 3276 bytes, and 186/186 relocations exact with no source rodata. Later references to moved fn_1_4A9C/fn_1_4BB8 were function-address assignments rather than direct calls, so they remained link-only edges; all 146 retained exact functions, both prior generated owners, protected consumers, pool prefix, and retail REL remained exact.",
         "Pass50 bound fn_1_A85C..fn_1_B454 as 10/10 functions, 3252 bytes, and 161/161 relocations exact with no source rodata. Its sole internal function-address edge remained link-only; retained source, earlier owners, protected consumers, pool prefix, and retail REL stayed exact.",
-        "Pass51 bound the zero-incoming-edge island fn_1_C9A0..fn_1_D40C as 9/9 functions, 2796 bytes, and 190/190 relocations exact on the first natural-C compile. All nine outbound local calls had prototype-only visibility to later or unbound definitions, and all retained source, five generated owners, protected consumers, pool prefix, and retail REL stayed exact."
+        "Pass51 bound the zero-incoming-edge island fn_1_C9A0..fn_1_D40C as 9/9 functions, 2796 bytes, and 190/190 relocations exact on the first natural-C compile. All nine outbound local calls had prototype-only visibility to later or unbound definitions, and all retained source, five generated owners, protected consumers, pool prefix, and retail REL stayed exact.",
+        "MiracleBook pass1 rejected the otherwise exact 0x7158 island because isolated fn_1_7998 shrank from the 4212-byte target to 2928 bytes after losing earlier-TU fn_1_427C auto-inline visibility; two dependency-closed 5-function islands were bound instead for 7504 exact text bytes and a retail-identical REL."
       ],
       "counterexamples": [
         "A split is safe when moved functions are not inline-capable at later exact call sites or every affected consumer remains instruction- and relocation-exact.",
@@ -3426,7 +3435,11 @@
         "docs/native_matching_wave51.md",
         "src/REL/mdpresultdll/application_pass49.c",
         "src/REL/mdpresultdll/application_pass50.c",
-        "src/REL/mdpresultdll/application_pass51.c"
+        "src/REL/mdpresultdll/application_pass51.c",
+        "src/REL/miraclebookdll/miraclebook.c",
+        "src/REL/miraclebookdll/application_pass1.c",
+        "src/REL/miraclebookdll/application_pass1_5904.c",
+        "config/dll/rels/miraclebookdll/splits.txt"
       ]
     },
     {

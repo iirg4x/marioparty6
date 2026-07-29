@@ -363,7 +363,7 @@
     },
     "mwcc-extern-inline-static-local-comdat-ownership": {
       "status": "active",
-      "validated_commit": "6af421a3f14d706b79d4902b13b89e0710dd612e",
+      "validated_commit": "f9b30cf0a52ec1b5ef891508c28a58e4281c5de2",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -376,7 +376,10 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave42.md",
         "src/REL/endingdll/ending_pass1.c",
-        "config/dll/rels/endingdll/splits.txt"
+        "config/dll/rels/endingdll/splits.txt",
+        "src/REL/miraclebookdll/application_pass1.c",
+        "src/REL/miraclebookdll/application_pass1_5904.c",
+        "config/dll/rels/miraclebookdll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -694,7 +697,7 @@
     },
     "mwcc-cross-tu-extraction-requires-inline-consumer-closure": {
       "status": "active",
-      "validated_commit": "de2ff2cb461db7ee586f2a926d445ce5f7eb4cac",
+      "validated_commit": "f9b30cf0a52ec1b5ef891508c28a58e4281c5de2",
       "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -706,7 +709,11 @@
         "src/REL/mdpresultdll/application_16c4.c",
         "src/REL/mdpresultdll/application_pass49.c",
         "src/REL/mdpresultdll/application_pass50.c",
-        "src/REL/mdpresultdll/application_pass51.c"
+        "src/REL/mdpresultdll/application_pass51.c",
+        "src/REL/miraclebookdll/miraclebook.c",
+        "src/REL/miraclebookdll/application_pass1.c",
+        "src/REL/miraclebookdll/application_pass1_5904.c",
+        "config/dll/rels/miraclebookdll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
