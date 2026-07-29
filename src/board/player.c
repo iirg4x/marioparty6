@@ -776,11 +776,11 @@ static void PlayerMove(void)
     s16 masuIdNext;
     BOOL hiddenF;
 
-    playerWork[playerNo]._unk0C = 0;
-    playerWork[playerNo]._unk10_3 = TRUE;
+    mbPlayerWorkGet(playerNo)->_unk0C = 0;
+    mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
     workP->moveHook = NULL;
-    GwPlayer[playerNo].masuIdPrev = GwPlayer[playerNo].masuId;
 repeat:
+    GwPlayer[playerNo].masuIdPrev = GwPlayer[playerNo].masuId;
     if (!_CheckFlag(FLAG_BOARD_DEBUG) ||
         _CheckFlag(FLAG_BOARD_TUTORIAL)) {
         if (mbev_Branch(playerNo, &masuIdNext)) {
@@ -794,9 +794,9 @@ repeat:
     masuIdNext = mbev_GateMasu(
         playerNo, GwPlayer[playerNo].masuId, masuIdNext);
     GwPlayer[playerNo].masuIdNext = masuIdNext;
-    playerWork[playerNo]._unk08 = -1;
+    mbPlayerWorkGet(playerNo)->_unk08 = -1;
     workP->_unk06 = masuIdNext;
-    if (workP->_unk10_3) {
+    if (workP->moveF) {
         HuPrcSleep(-1);
     }
     PlayerColKill(playerNo);
@@ -804,15 +804,15 @@ repeat:
         playerNo, GwPlayer[playerNo].masuId, masuIdNext);
     mbev_MasuMasuEnd(masuIdNext);
     if (workP->moveHook) {
-        playerWork[playerNo]._unk0C = 4;
+        mbPlayerWorkGet(playerNo)->_unk0C = 4;
         workP->moveHook(playerNo);
         workP->moveHook = NULL;
     } else {
         mbPlayerMasuMove(playerNo, TRUE);
     }
-    playerWork[playerNo]._unk0C = 0;
-    playerWork[playerNo]._unk10_3 = TRUE;
-    playerWork[playerNo].masuMoveF = FALSE;
+    mbPlayerWorkGet(playerNo)->_unk0C = 0;
+    mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
+    mbPlayerWorkGet(playerNo)->masuMoveF = FALSE;
     GwPlayer[playerNo].masuId = masuIdNext;
     mbTutorialCall(8);
     hiddenF = !mbMasuDispCheck(masuIdNext);
@@ -822,20 +822,22 @@ repeat:
     }
     if (!mbev_MasuMasuStart(playerNo)) {
         masuIdNext = GwPlayer[playerNo].masuId;
-        if (!mbev_MasuMove(playerNo, masuIdNext) &&
-            mbMasuDispCheck(masuIdNext)) {
-            mbAudFXPlay(0x3EE);
-            GwPlayer[playerNo].moveNum--;
-            if (GwPlayer[playerNo].moveNum < 0) {
-                GwPlayer[playerNo].moveNum = 0;
-            }
-            if (GwPlayer[playerNo].moveNum == 0) {
-                mbMoveNumKill(playerNo);
+        if (!mbev_MasuMove(playerNo, masuIdNext)) {
+            hiddenF = !mbMasuDispCheck(masuIdNext);
+            if (!hiddenF) {
+                mbAudFXPlay(0x3EE);
+                GwPlayer[playerNo].moveNum--;
+                if (GwPlayer[playerNo].moveNum < 0) {
+                    GwPlayer[playerNo].moveNum = 0;
+                }
+                if (GwPlayer[playerNo].moveNum == 0) {
+                    mbMoveNumKill(playerNo);
+                }
             }
         }
     }
-    if (workP->_unk10_3) {
-        workP->moveEndF = TRUE;
+    if (workP->moveF) {
+        workP->_unk10_3 = TRUE;
         HuPrcSleep(-1);
     }
     mbTutorialCall(9);
@@ -845,9 +847,9 @@ repeat:
 end:
     workP->moveHook = NULL;
     mbMoveNumKill(playerNo);
-    playerWork[playerNo]._unk0C = 0;
-    playerWork[playerNo]._unk10_3 = TRUE;
-    if (workP->_unk10_3) {
+    mbPlayerWorkGet(playerNo)->_unk0C = 0;
+    mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
+    if (workP->moveF) {
         mbPlayerRotateStart(playerNo, 0, 15);
         while (!mbPlayerRotateCheck(playerNo)) {
             HuPrcVSleep();
