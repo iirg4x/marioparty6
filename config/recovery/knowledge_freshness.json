@@ -737,6 +737,17 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "gc26-o0-authenticated-initialized-local-preserves-stack-store": {
+      "status": "active",
+      "validated_commit": "6a47d8bbe15797c71a20257928d5c8e087070188",
+      "validated_at": "2026-07-29",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "src/board/capevent.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

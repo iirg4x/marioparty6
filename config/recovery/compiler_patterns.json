@@ -3383,6 +3383,76 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave51.md"
       ]
+    },
+    {
+      "id": "gc26-o0-authenticated-initialized-local-preserves-stack-store",
+      "title": "Use an authenticated initialized local only for a target-proven O0 stack store",
+      "classification": "contextual_heuristic",
+      "category": "control_flow_and_lifetime",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "A GC/2.6 -O0 function can retain an initialized scalar whose value is never referenced later, emitting a real prologue stack store while the function's working accumulator remains in a saved register. This is distinct from a declared-but-never-referenced local, which is codegen-neutral in the measured controls, and it is not permission to invent padding or dead storage.",
+      "conditions": "Use only when an otherwise natural, exact-sized candidate has one unexplained target stack store to a bounded frame slot and authenticated same-game evidence supports an adjacent initialized scalar declaration.",
+      "source_condition": {
+        "change": "Test one naturally placed initialized scalar adjacent to the authenticated working locals.",
+        "requires": [
+          "the pinned GC/2.6 -O0 owner command",
+          "raw target instructions and a target stack map",
+          "authenticated same-game source or consumer evidence for the scalar declaration",
+          "an otherwise exact control-flow and saved-register shape",
+          "strict text, relocation, neighbor-regression, and organicity checks"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "one immediate store to a real frame slot",
+          "no replacement of the saved-register-resident working accumulator",
+          "a shifted frame map if the declaration is placed in the wrong scope or chronology"
+        ],
+        "known_signatures": [
+          "the target has one unexplained li/stw zero initialization while the value used by later calls remains in a saved register",
+          "adding one adjacent initialized scalar closes the stack store without changing calls, branches, relocations, or exact neighbors",
+          "a merely declared never-referenced local emits no store and therefore cannot explain the target"
+        ]
+      },
+      "rule": "Treat an unexplained O0 stack store as declaration evidence only after target stack mapping and authenticated same-game evidence identify a plausible initialized scalar. Test one natural declaration and retain it only when complete text, relocations, consumers, and organicity become exact; never label it padding or generalize the result into a dead-local sweep.",
+      "safe_actions": [
+        "map the target frame slot from raw PPC before editing source",
+        "use m2c stack output only as a hypothesis and replay it against raw instructions",
+        "test one authenticated declaration, initialization value, scope, and chronology at a time",
+        "require zero loss from the owner's existing exact-function set",
+        "revert immediately when the store, frame map, or semantic evidence does not close together"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "main:board/capevent:mbev_CapBonusCoinCall"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "stack_frame",
+          "initialized_local",
+          "o0",
+          "organicity",
+          "board"
+        ]
+      },
+      "examples": [
+        "main:board/capevent mbev_CapBonusCoinCall closed at 204/204 bytes and 8/8 relocations when one authenticated adjacent zero-initialized scalar reproduced the target stack store while coinNumWork remained saved-register resident."
+      ],
+      "counterexamples": [
+        "A declared-but-never-referenced local is codegen-neutral in the measured controls and cannot explain an emitted store.",
+        "Do not add an initialized local solely because it improves match percentage when same-game evidence and the target frame map do not support it.",
+        "Do not use volatile, padding names, dummy arrays, fake reads, or dead branches to retain a store."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/capevent.c"
+      ]
     }
   ]
 }
