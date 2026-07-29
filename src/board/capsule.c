@@ -1,4 +1,3 @@
-#define _MATH_H
 #include "dolphin/math.h"
 #include "game/board/masu.h"
 #include "game/board/audio.h"
