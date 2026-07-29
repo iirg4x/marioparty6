@@ -381,8 +381,8 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "c9232f2da47c88604c0250190a95980d7540e305",
-      "validated_at": "2026-07-28",
+      "validated_commit": "c31bc25fdd66d030741e5eaeeba6c6ca621f3ef2",
+      "validated_at": "2026-07-29",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_player_value_lifetimes.md",
