@@ -6,6 +6,15 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/s02Dll/application_pass1_a0.c:
+	.text       start:0x000000A0 end:0x000000F4
+
+REL/s02Dll/application_pass1_268.c:
+	.text       start:0x00000268 end:0x000004B8
+
+REL/s02Dll/application_pass1_928.c:
+	.text       start:0x00000928 end:0x00001120
+
 REL/s02Dll/runtime.c:
 	.text       start:0x000022D0 end:0x00002D14
 	.rodata     start:0x00000118 end:0x00000130

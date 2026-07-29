@@ -1352,6 +1352,9 @@ config.libs = [
     Rel(
         "s02Dll",
         objects={
+            Object(Matching, "REL/s02Dll/application_pass1_a0.c"),
+            Object(Matching, "REL/s02Dll/application_pass1_268.c"),
+            Object(Matching, "REL/s02Dll/application_pass1_928.c"),
             Object(
                 Matching,
                 "REL/s02Dll/runtime.c",
@@ -1418,7 +1421,9 @@ config.libs = [
     Rel(
         "staffdll",
         objects={
+            Object(Matching, "REL/staffdll/application_pass4_0620.c"),
             Object(Matching, "REL/staffdll/application_pass3_0e20.c"),
+            Object(Matching, "REL/staffdll/application_pass4_10b8.c"),
             Object(Matching, "REL/staffdll/application_pass3_1684.c"),
             Object(Matching, "REL/staffdll/application_pass3_2b94.c"),
             Object(Matching, "REL/staffdll/application_pass2_3140.c"),
@@ -1429,13 +1434,21 @@ config.libs = [
             Object(Matching, "REL/staffdll/staff_pass1_067c.c"),
             Object(Matching, "REL/staffdll/staff_pass1_0f68.c"),
             Object(Matching, "REL/staffdll/staff_pass1_6c14.c"),
+            Object(Matching, "REL/staffdll/application_pass4_7410.c"),
             Object(Matching, "REL/staffdll/staff_pass1_72a4.c"),
             Object(Matching, "REL/staffdll/staff_pass1_7468.c"),
+            Object(Matching, "REL/staffdll/application_pass4_761c.c"),
             Object(Matching, "REL/staffdll/staff_pass1_7c70.c"),
+            Object(Matching, "REL/staffdll/application_pass4_7ddc.c"),
+            Object(Matching, "REL/staffdll/application_pass4_8300.c"),
             Object(Matching, "REL/staffdll/staff_pass1_8410.c"),
+            Object(Matching, "REL/staffdll/application_pass4_85c4.c"),
             Object(Matching, "REL/staffdll/staff_pass1_8bf8.c"),
+            Object(Matching, "REL/staffdll/application_pass4_8d64.c"),
             Object(Matching, "REL/staffdll/staff_pass1_8dbc.c"),
+            Object(Matching, "REL/staffdll/application_pass4_8f70.c"),
             Object(Matching, "REL/staffdll/staff_pass1_94e0.c"),
+            Object(Matching, "REL/staffdll/application_pass4_964c.c"),
             Object(
                 Matching,
                 "REL/staffdll/runtime.c",
