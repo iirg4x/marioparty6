@@ -2674,25 +2674,25 @@ static void MetalEffectCreate(OMOBJ *objP)
 static void MetalEffectHook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
-    OMOBJ *objP = particleP->hookData;
-    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
-    HSF_DATA *hsfP;
     HSF_OBJECT *objectP = NULL;
+    OMOBJ *objP = particleP->hookData;
+    int i;
+    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+    int objectNo = -1;
+    HSF_DATA *hsfP;
     MBPARTICLEDATA *dataP;
     Mtx modelMtx;
-    HuVecF cameraPos;
-    HuVecF pos;
     HuVecF dir;
+    HuVecF pos;
+    HuVecF cameraPos;
     s16 *groupP;
     s16 *countP;
-    s16 (*vertexNoP)[8];
+    s16 *vertexNoP;
     int groupNo;
     int randomNo;
-    int i;
-    BOOL firstF = FALSE;
     BOOL posF;
+    BOOL firstF = FALSE;
     float weight;
-    float mag;
 
     if (!particleP->initF) {
         dataP = particleP->data;
@@ -2728,10 +2728,11 @@ static void MetalEffectHook(
             dataP->time++;
             groupP = objP->data;
             countP = groupP + 125;
-            vertexNoP = (s16 (*)[8])(countP + 125);
+            vertexNoP = countP + 125;
             groupNo = groupP[mbRandMod(workP->_unk08)];
             randomNo = mbRandMod(countP[groupNo]);
-            dataP->vertexNo = vertexNoP[groupNo][randomNo];
+            groupNo = vertexNoP[(groupNo * 8) + randomNo];
+            dataP->vertexNo = groupNo;
             dataP->color.r = mbRandMod(120) + 120;
             dataP->color.g = mbRandMod(120) + 120;
             dataP->color.b = mbRandMod(120) + 120;
@@ -2770,9 +2771,9 @@ static void MetalEffectHook(
                 &((HuVecF *)objectP->mesh.vertex->data)[dataP->vertexNo],
                 &pos);
             VECSubtract(&cameraPos, &pos, &dir);
-            mag = VECMag(&dir);
-            if (mag > 0.0f) {
-                VECScale(&dir, &dir, 200.0f / mag);
+            weight = VECMag(&dir);
+            if (weight > 0.0f) {
+                VECScale(&dir, &dir, 200.0f / weight);
             }
             VECAdd(&pos, &dir, &dataP->pos);
         }
@@ -3001,25 +3002,25 @@ static void BiriQEffectCreate(OMOBJ *objP)
 static void BiriQEffect1Hook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
-    OMOBJ *objP = particleP->hookData;
-    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
-    HSF_DATA *hsfP;
     HSF_OBJECT *objectP = NULL;
+    OMOBJ *objP = particleP->hookData;
+    int i;
+    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+    int objectNo = -1;
+    HSF_DATA *hsfP;
     MBPARTICLEDATA *dataP;
     Mtx modelMtx;
-    HuVecF cameraPos;
-    HuVecF pos;
     HuVecF dir;
+    HuVecF pos;
+    HuVecF cameraPos;
     s16 *groupP;
     s16 *countP;
-    s16 (*vertexNoP)[8];
+    s16 *vertexNoP;
     int groupNo;
     int randomNo;
-    int i;
     BOOL firstF = FALSE;
     BOOL posF;
     float weight;
-    float mag;
 
     if (particleP->mode == 0) {
         dataP = particleP->data;
@@ -3048,10 +3049,11 @@ static void BiriQEffect1Hook(
             dataP->time++;
             groupP = objP->data;
             countP = groupP + 125;
-            vertexNoP = (s16 (*)[8])(countP + 125);
+            vertexNoP = countP + 125;
             groupNo = groupP[mbRandMod(workP->_unk08)];
             randomNo = mbRandMod(countP[groupNo]);
-            dataP->vertexNo = vertexNoP[groupNo][randomNo];
+            groupNo = vertexNoP[(groupNo * 8) + randomNo];
+            dataP->vertexNo = groupNo;
             dataP->color.r = mbRandMod(40) + 30;
             dataP->color.g = mbRandMod(40) + 90;
             dataP->color.b = mbRandMod(40) + 180;
@@ -3091,9 +3093,9 @@ static void BiriQEffect1Hook(
                 &((HuVecF *)objectP->mesh.vertex->data)[dataP->vertexNo],
                 &pos);
             VECSubtract(&cameraPos, &pos, &dir);
-            mag = VECMag(&dir);
-            if (mag > 0.0f) {
-                VECScale(&dir, &dir, 18.0f / mag);
+            weight = VECMag(&dir);
+            if (weight > 0.0f) {
+                VECScale(&dir, &dir, 18.0f / weight);
             }
             VECAdd(&pos, &dir, &dataP->pos);
         }
