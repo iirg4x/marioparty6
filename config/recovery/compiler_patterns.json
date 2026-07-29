@@ -565,7 +565,7 @@
       "category": "evidence_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "Thirty-nine mdsingdll functions totaling 7424 text bytes and 465 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools.",
+      "summary": "Forty-eight mdsingdll functions totaling 10516 text bytes and 699 physical relocations became independently exact from mdpartydll analogue clusters when candidates were selected by ordered calls and relocations, rebound to target-owned symbols and types, and verified as consumed generated objects through the retail REL. Authenticated donor helper bodies can also restore target auto-inline closure at zero source-only helper text when target call relocations prove the helper was not emitted. Exact perimeter functions remain independently valuable when an interior analogue is blocked by inline chronology, scheduling, or compiler-owned conversion pools.",
       "conditions": "Apply when an eligible non-board, non-minigame target has unclaimed functions and authenticated same-game source from another owner contains a compatible ordered external-call and relocation skeleton.",
       "source_condition": {
         "change": "Use a same-game function from a different owner as a natural-C hypothesis for one or more unclaimed target functions.",
@@ -573,6 +573,7 @@
           "stable donor and target identities",
           "compatible ABI and ordered call or symbol-relocation skeleton",
           "target-side proof for globals, callbacks, types, literals, and counts",
+          "target absence of a helper-call relocation before transplanting a donor helper as static inline",
           "explicit target split and generated matching-object consumption"
         ]
       },
@@ -587,10 +588,11 @@
           "donor and target share the same ordered engine calls and compatible branch or loop shape",
           "target relocations bind analogous calls to different owner-local globals or callbacks",
           "several donor and target stable IDs share one address delta plus a consistent named-global and named-constant translation",
+          "an authenticated donor helper body precedes its caller while the target caller has no helper-call relocation and the generated target object emits no source-only helper text",
           "a new split appears configured but generated Ninja or link inputs still consume retail fallback"
         ]
       },
-      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: fingerprint ordered relocations and control shape, cluster compatible targets, rebind every contract from target evidence, and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay. After bounded probes, keep dependency-closed exact perimeter functions and revert pool-, scheduling-, or inline-blocked interiors instead of discarding the whole cluster.",
+      "rule": "Treat cross-owner same-game source as a ranked hypothesis generator: fingerprint ordered relocations and control shape, cluster compatible targets, rebind every contract from target evidence, and retain only subsets with exact instructions, relocations, generated-object consumption, consumers, and retail replay. When a target caller lacks a helper-call relocation, an authenticated donor helper may be reconstructed as a natural static inline above the caller only if the target object emits no source-only helper text and target-owned data bindings remain exact. After bounded probes, keep dependency-closed exact perimeter functions and revert pool-, scheduling-, or inline-blocked interiors instead of discarding the whole cluster.",
       "safe_actions": [
         "catalog eligible donor stable IDs with ordered external-call and symbol-relocation signatures",
         "rank unclaimed targets by exact skeleton before looser API overlap",
@@ -681,7 +683,16 @@
           "mdsingdll:fn_1_514C",
           "mdsingdll:fn_1_51F4",
           "mdsingdll:fn_1_57E4",
-          "mdsingdll:fn_1_5EF4"
+          "mdsingdll:fn_1_5EF4",
+          "mdsingdll:fn_1_1A9C",
+          "mdsingdll:fn_1_1BDC",
+          "mdsingdll:fn_1_279C",
+          "mdsingdll:fn_1_2A50",
+          "mdsingdll:fn_1_3484",
+          "mdsingdll:fn_1_35B0",
+          "mdsingdll:fn_1_3B30",
+          "mdsingdll:fn_1_3B8C",
+          "mdsingdll:fn_1_3DB4"
         ],
         "modules": [
           "mdpartydll",
@@ -706,7 +717,8 @@
         "mdpartydll fn_1_B748 recovered the recursive mdsingdll fn_1_9998 route-resolution helper as one independently consumed 1000-byte text-only object with 11 physical relocations, bringing the catalog to 27 exact mappings.",
         "The continuing mdpartydll-to-mdsingdll delta mapped fn_1_C158/fn_1_C200 to fn_1_A3A8/fn_1_A450; both animation-assignment helpers linked exactly as one 308-byte text-only object with 11 physical relocations, bringing the catalog to 29 exact mappings.",
         "The mdpartydll fn_1_D648-fn_1_D978 model-animation lifecycle family mapped to mdsingdll fn_1_B898-fn_1_BBC8; all six functions linked exactly for 1036 text bytes, 16 target-owned named aggregate bytes, and 67 physical relocations, bringing the catalog to 35 mappings.",
-        "A six-function mdpartydll fn_1_5208-fn_1_5FB0 motion-family probe retained the dependency-closed exact mdsingdll perimeter fn_1_514C/fn_1_51F4/fn_1_57E4/fn_1_5EF4 as three consumed objects (832 text bytes and 71 physical relocations), bringing the catalog to 39 mappings while two blocked interiors were reverted."
+        "A six-function mdpartydll fn_1_5208-fn_1_5FB0 motion-family probe retained the dependency-closed exact mdsingdll perimeter fn_1_514C/fn_1_51F4/fn_1_57E4/fn_1_5EF4 as three consumed objects (832 text bytes and 71 physical relocations), bringing the catalog to 39 mappings while two blocked interiors were reverted.",
+        "Nine early camera and window helpers used authenticated mdpartydll bodies and target-owned declarations to recover five consumed mdsingdll objects (3092 text bytes and 234 physical relocations). For fn_1_1A9C/fn_1_1BDC and fn_1_279C, donor-definition chronology plus the target's absence of helper-call relocations authenticated natural static inline closure with zero source-only helper text, bringing the catalog to 48 mappings."
       ],
       "counterexamples": [
         "Do not infer target semantic names, private layouts, callbacks, array counts, or literals from donor resemblance.",
@@ -721,6 +733,7 @@
         "The neighboring mdsingdll fn_1_A4DC/fn_1_A8E8/fn_1_ACB8 family requires earlier interpolation-helper and conversion-pool chronology; a discontiguous combined split caused an interleaved DTK link-order cycle, so explicit inline control and broad-header work were rejected.",
         "mdpartydll fn_1_5324 to mdsingdll fn_1_5268 reached exact 1404-byte size and 99.415955%, but one three-instruction divide/named-load scheduling permutation survived the bounded compiler probes; the exact neighboring perimeter was retained and this body was reverted.",
         "mdpartydll fn_1_5A18 to mdsingdll fn_1_595C reached exact 1432-byte size and 99.958100%, but three relocations selected compiler-local unsigned-conversion data instead of target lbl_1_rodata_170; the exact 24-byte motion-path aggregate copy was not the blocker, so this body was reverted pending natural pool ownership.",
+        "The adjacent early mdsingdll fn_1_2A60 reached exact 1808-byte size and 99.867% text, but 12 relocation rows selected compiler-local unsigned-conversion data instead of target lbl_1_rodata_C0; the body was reverted pending authenticated pool ownership.",
         "A split and source file do not establish ownership if generated build or link inputs still select retail fallback."
       ],
       "related_exceptions": [],
@@ -746,6 +759,11 @@
         "src/REL/mdsingdll/mdsing_tail23.c",
         "src/REL/mdsingdll/mdsing_tail24.c",
         "src/REL/mdsingdll/mdsing_tail25.c",
+        "src/REL/mdsingdll/application_pass30_1a9c.c",
+        "src/REL/mdsingdll/application_pass30_279c.c",
+        "src/REL/mdsingdll/application_pass30_3484.c",
+        "src/REL/mdsingdll/application_pass30_3b30.c",
+        "src/REL/mdsingdll/application_pass30_3db4.c",
         "config/dll/rels/mdsingdll/splits.txt",
         "configure.py"
       ]
@@ -2363,11 +2381,13 @@
           "s01Dll:fn_1_1EF8",
           "staffdll:fn_1_44",
           "staffdll:fn_1_118",
-          "staffdll:fn_1_200"
+          "staffdll:fn_1_200",
+          "mdsingdll:fn_1_2154"
         ],
         "modules": [
           "s01Dll",
-          "staffdll"
+          "staffdll",
+          "mdsingdll"
         ],
         "owner_tags": [
           "floating_point",
@@ -2377,7 +2397,8 @@
       },
       "examples": [
         "s01Dll fn_1_1E70 and fn_1_1EF8 remained neutral after equivalent source reversals",
-        "staffdll fn_1_44, fn_1_118, and fn_1_200 each retained one fmuls operand mismatch after direct reversal"
+        "staffdll fn_1_44, fn_1_118, and fn_1_200 each retained one fmuls operand mismatch after direct reversal",
+        "mdsingdll fn_1_2154 remained exact-sized with 13 matching relocations and one commutative fmuls mismatch; a direct source reversal was byte-neutral, so the speculative body was reverted"
       ],
       "counterexamples": [
         "Do not add long-lived locals solely to force floating registers.",
