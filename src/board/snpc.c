@@ -113,6 +113,8 @@ static void BiriQMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
 
 extern void *mbMallocNum(s32 size, u32 num);
 extern void mbMtxRot(Mtx mtx, float x, float y, float z);
+extern const float lbl_802C3290;
+extern const float lbl_802C32EC;
 
 void mbSNpcInit(void)
 {
@@ -618,7 +620,7 @@ void mbObjMetalCreate(MBMODELID modelId)
         model->hookData = work;
     }
     work->magic = 0x54563031;
-    work->tpLvl = 1.0f;
+    work->tpLvl = lbl_802C32EC;
     work->shadowColor.r = work->shadowColor.g = work->shadowColor.b = 255;
     work->hiliteColor.r = work->hiliteColor.g = work->hiliteColor.b = 255;
     work->shadowColor.r = 129;
@@ -810,7 +812,7 @@ void mbObjBiriQCreate(MBMODELID modelId)
         model->hookData = work;
     }
     work->magic = 0x54563032;
-    work->level = 0.0f;
+    work->level = lbl_802C3290;
     work->color.r = work->color.g = work->color.b = work->color.a = 255;
     Hu3DModelMatHookSet(hu3DModelId, BiriQMatHook);
     hsf = model->hsf;
