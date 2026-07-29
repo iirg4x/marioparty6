@@ -1500,15 +1500,17 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
 
 void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
 {
+    HuVecF pos;
     int orderNo[GW_PLAYER_MAX];
     int playerNoTbl[GW_PLAYER_MAX];
-    HuVecF pos;
+    BOOL circleF;
     int num = 0;
     int i;
     int j;
+    int temp;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (i != playerNo) {
+        if (playerNo != i) {
             if (GwPlayer[i].masuId == 0) {
                 continue;
             }
@@ -1517,7 +1519,7 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
             }
         }
         orderNo[num] = GwPlayer[i].orderNo;
-        if (i == playerNo) {
+        if (playerNo == i) {
             orderNo[num] = -1;
         }
         playerNoTbl[num] = i;
@@ -1528,8 +1530,7 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                int temp = orderNo[i];
-
+                temp = orderNo[i];
                 orderNo[i] = orderNo[j];
                 orderNo[j] = temp;
                 temp = playerNoTbl[i];
@@ -1538,45 +1539,42 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
             }
         }
     }
-    for (i = 0; i < num; i++) {
-        int playerNoSet = playerNoTbl[i];
-        int cornerNo = i;
-        PLAYERCOLWORK *workP;
-        u8 circleF;
+    for (j = 0; j < num; j++) {
+        i = playerNoTbl[j];
+        temp = j;
 
-        if (cornerNo != 0) {
-            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
+        if (temp != 0) {
+            mbMasuCornerRotPosGet(masuId, temp - 1, &pos);
         } else {
             mbMasuPosGet(masuId, &pos);
         }
-        workP = omObjGetWork(playerWork[playerNoSet].colObj, PLAYERCOLWORK);
-        circleF = workP->circleF;
-        workP->circleF = FALSE;
+        circleF =
+            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (snapF) {
-            mbPlayerPosSetV(playerNoSet, &pos);
-            PlayerColCornerSnap(playerNoSet, masuId, cornerNo);
-        } else if (cornerNo != mbPlayerMasuCornerGet(playerNoSet) || circleF) {
-            PlayerColInit(playerNoSet, masuId, cornerNo);
+            mbPlayerPosSetV(i, &pos);
+            PlayerColCornerSnap(i, masuId, temp);
+        } else if (temp != mbPlayerMasuCornerGet(i) || circleF) {
+            PlayerColInit(i, masuId, temp);
         }
-        mbPlayerMasuCornerSet(playerNoSet, cornerNo);
+        mbPlayerMasuCornerSet(i, temp);
     }
 }
 
 void mbev_PlayerColCircleAdd(
     int playerNo, int masuId, BOOL snapF, float radius)
 {
+    HuVecF posCenter;
+    HuVecF pos;
     int orderNo[GW_PLAYER_MAX];
     int playerNoTbl[GW_PLAYER_MAX];
-    HuVecF pos;
-    HuVecF posCenter;
     int num = 0;
     int i;
     int j;
+    int temp;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        PLAYERCOLWORK *workP;
-
-        if (i != playerNo) {
+        if (playerNo != i) {
             if (GwPlayer[i].masuId == 0) {
                 continue;
             }
@@ -1584,11 +1582,10 @@ void mbev_PlayerColCircleAdd(
                 continue;
             }
         }
-        workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
-        workP->circleF = TRUE;
-        workP->radius = radius;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = TRUE;
+        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->radius = radius;
         orderNo[num] = GwPlayer[i].orderNo;
-        if (i == playerNo) {
+        if (playerNo == i) {
             orderNo[num] = -1;
         }
         playerNoTbl[num] = i;
@@ -1599,8 +1596,7 @@ void mbev_PlayerColCircleAdd(
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                int temp = orderNo[i];
-
+                temp = orderNo[i];
                 orderNo[i] = orderNo[j];
                 orderNo[j] = temp;
                 temp = playerNoTbl[i];
@@ -1609,30 +1605,30 @@ void mbev_PlayerColCircleAdd(
             }
         }
     }
-    for (i = 0; i < num; i++) {
-        int playerNoSet = playerNoTbl[i];
-        int cornerNo = i;
+    for (j = 0; j < num; j++) {
+        i = playerNoTbl[j];
+        temp = j;
 
-        if (playerNo < 0 && cornerNo == 0) {
-            cornerNo = num;
+        if (playerNo < 0 && temp == 0) {
+            temp = num;
         }
         mbMasuPosGet(masuId, &posCenter);
-        if (cornerNo != 0) {
+        if (temp != 0) {
             float scale;
 
-            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
+            mbMasuCornerRotPosGet(masuId, temp - 1, &pos);
             VECSubtract(&pos, &posCenter, &pos);
             scale = radius / VECMag(&pos);
             VECScale(&pos, &pos, scale);
             VECAdd(&posCenter, &pos, &posCenter);
         }
         if (snapF) {
-            mbPlayerPosSetV(playerNoSet, &posCenter);
-            PlayerColCornerSnap(playerNoSet, masuId, cornerNo);
+            mbPlayerPosSetV(i, &posCenter);
+            PlayerColCornerSnap(i, masuId, temp);
         } else {
-            PlayerColInit(playerNoSet, masuId, cornerNo);
+            PlayerColInit(i, masuId, temp);
         }
-        mbPlayerMasuCornerSet(playerNoSet, cornerNo);
+        mbPlayerMasuCornerSet(i, temp);
     }
 }
 
