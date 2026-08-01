@@ -3313,7 +3313,7 @@
       "category": "aggregate_copy_negative_evidence",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A strict census of all 40 board objects and eight matching game objects with retained vector-copy source found no exact function containing any non-stack unquantized displacement psq_l or psq_st donor.",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A powerpc-rs ISA-driven census of the current 508-object source corpus found no board or game object containing a non-stack unquantized displacement psq_l or psq_st instruction; all 908 such instructions were confined to 12 Dolphin or MusyX runtime objects.",
       "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings, documented __memcpy intrinsic, and documented __vec2x32float__ type have been measured under the pinned owner profile.",
       "source_condition": {
         "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, or one staged __vec2x32float__ pair plus the remaining scalar in an attempt to reproduce the target instructions.",
@@ -3345,7 +3345,8 @@
           "documented __memcpy inlines a constant 12-byte transfer but retains three integer-word loads and stores",
           "explicit __vec2x32float__ staging can reproduce the paired/scalar register count while retaining indexed forms and the wrong pointer lifetime",
           "the ordinary non-solutions recur in separate board owners",
-          "an exact-donor census can contain no non-stack unquantized displacement paired operation even when quantized fast-cast inline assembly is present"
+          "an exact-donor census can contain no non-stack unquantized displacement paired operation even when quantized fast-cast inline assembly is present",
+          "the closest exact legal C control, C_VECHalfAngle's `*half = ab`, retains three integer-word loads and stores while other paired operations in the same runtime translation unit come from assembly"
         ]
       },
       "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, and one documented __vec2x32float__ staged-pair control at most once for a proven displacement-form paired-single HuVecF copy. If __memcpy retains integer word moves and the paired type selects indexed psq_lx/psq_stx rather than target psq_l/psq_st, record the negative result and stop until an authenticated displacement-form helper, compiler contract, or historical same-game header boundary is found; do not retain cast tricks, pragmas, volatile storage, or inline assembly.",
@@ -3394,7 +3395,10 @@
         "isolated GC/2.6 -O0,p __memcpy control: PairCopyIntrinsic is 28 text bytes and PairCopyMembers is 52 text bytes; both inline only lwz/stw word copies, object SHA-256 cf04677cf22b492dcdeb814422680618f058b07b37865f0e7ac55b5137671da5",
         "main:board/snpc mbObjFadeCreate: staged __vec2x32float__ plus scalar is 332/328 bytes at 92.277110% in data-value mode but emits indexed psq_lx/psq_stx instead of target displacement forms",
         "main:board/snpc mbObjFadeTexRotSet: two staged __vec2x32float__ plus scalar transfers are 200/192 bytes at 74.140000% in data-value mode and retain the same indexed-form mismatch",
-        "MP6 exact-donor census at dec2764ce3e05513000e548be787241d7128e4a9: 48 owner objects, 2,552 target function symbols, and 1,936 strict-exact functions contain zero non-stack unquantized displacement psq_l or psq_st instructions"
+        "MP6 exact-donor census at dec2764ce3e05513000e548be787241d7128e4a9: 48 owner objects, 2,552 target function symbols, and 1,936 strict-exact functions contain zero non-stack unquantized displacement psq_l or psq_st instructions",
+        "powerpc-rs ISA census at main eb2a42d5031ea9778e04ded6eee7f24d39d19d79: 508 current source objects and 2,140,052 text bytes contain 662 non-stack unquantized displacement psq_l and 246 psq_st instructions, all in 12 Dolphin or MusyX runtime objects and none in src/board or src/game; census SHA-256 0f2c9abfac608e6fb23a5f6fd424e47c0edc8eae48e87d274fb7a7e3a470f749",
+        "src/dolphin/mtx/vec.c C_VECHalfAngle uses the legal aggregate spelling `*half = ab`; the exact source object emits three lwz/stw transfers for that assignment rather than paired-single displacement operations",
+        "Mario Party 4, 5, 6, and 7 sibling headers consistently define HuVecF as Vec and Vec as three f32 fields, weakening an alternate-wrapper typedef hypothesis without proving the unavailable original MP6 header provenance"
       ],
       "counterexamples": [
         "A higher percentage is not a successful copy-shape probe: memcpy raises mbObjFadeCreate from 82.289154% to 84.409640% while adding a target-absent call and shrinking the source farther from 332 bytes.",
@@ -3411,6 +3415,9 @@
         "docs/native_matching_board_snpc_vector_copy.md",
         "docs/native_matching_wave65.md",
         "docs/native_matching_wave93.md",
+        "include/humath.h",
+        "include/dolphin/mtx/GeoTypes.h",
+        "src/dolphin/mtx/vec.c",
         "https://www.nxp.com/docs/en/reference-manual/CWMCUPABTR.pdf",
         "https://www.nxp.com/docs/en/data-sheet/950-00116.pdf",
         "https://github.com/encounter/powerpc-rs/blob/4643ee0fd3275e3a89dee709185c37968acca83b/isa.yaml"

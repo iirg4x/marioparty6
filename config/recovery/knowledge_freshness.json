@@ -699,7 +699,9 @@
         "src/game/charman.c",
         "src/game/actman.c",
         "include/humath.h",
+        "include/dolphin/mtx/GeoTypes.h",
         "include/dolphin/os/OSFastCast.h",
+        "src/dolphin/mtx/vec.c",
         "configure.py"
       ],
       "supersedes": [],
