@@ -188,3 +188,19 @@ This census closes exact same-game donor harvesting for the currently recovered
 MP6 board and vector-copy game owners. Reopen donor harvesting only when a newly
 exact owner or independently authenticated Hudson/compiler declaration adds a
 previously absent unquantized displacement boundary.
+
+## Retained-history scaffold rejection
+
+A retained-history search found the exact displacement-form transfer at commit
+`750233b07d108cd63e07d4bf7d0da5e4a27f6e83`, but only inside inline assembly
+guarded by `MP6_NATIVE_PORT` in `src/board/snpc.c`. That block deliberately
+forces the desired instructions and therefore cannot authenticate the original
+C spelling. The same history contains no organic C helper or recovered header
+that explains the displacement-form boundary.
+
+This closes history-level source-shape archaeology as well as the ordinary C,
+intrinsic, paired-type, and compiled-donor probes above. Do not reopen these
+seams for another spelling permutation, an exact port scaffold, or an isolated
+opcode donor. The remaining useful trigger is a provenance-bearing Hudson or
+MP6 GC/2.6 helper/header package together with its matching object, so the
+source boundary and emitted instructions can be authenticated as one artifact.
