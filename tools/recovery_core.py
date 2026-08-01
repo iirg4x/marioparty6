@@ -198,10 +198,14 @@ QUALITY_RULES: dict[str, tuple[str, re.Pattern[str]]] = {
     "forced_inline": ("forced inline/no-inline requires evidence", re.compile(r"\b(?:NOINLINE|FORCEINLINE|FORCE_INLINE|never_inline|always_inline)\b", re.I)),
     "inline_asm": ("inline assembly requires original-assembly or target evidence", re.compile(r"\b(?:asm|__asm__)\s*(?:\(|\{)")),
     "include_guard_override": ("defining another header guard in C is a source-quality smell", re.compile(r"^\s*#\s*define\s+_[A-Z0-9_]+_H\b")),
+    "self_assignment": (
+        "self-assignment requires source-shape evidence",
+        re.compile(r"(?<![A-Za-z0-9_.>])([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\1\s*;"),
+    ),
     "synthetic_padding": (
         "named padding should be natural unless target-backed",
         re.compile(
-            r"\b(?!(?-i:PAD_[A-Z0-9_]+\b))(?:pad|padding|align|reserved)(?:_|\d)",
+            r"(?<![A-Za-z0-9])(?!(?-i:(?:PAD|PADDING|ALIGN|RESERVED)_[A-Z0-9_]+\b))(?:pad|padding|align|reserved)(?:_|\d)",
             re.I,
         ),
     ),

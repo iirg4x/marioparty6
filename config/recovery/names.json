@@ -576,6 +576,96 @@
       "status": "proposed",
       "confidence": "high",
       "summary": "Behavioral proposal only: advances the trail points, fades alpha toward its endpoint, and hides the owning model after fade-out. No original-name provenance is known."
+    },
+    {
+      "stable_id": "fileseldll:data:0x218",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_data_218",
+      "proposed_name": "keyboardMain",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned Mario Party 5 predecessor uses keyboardMain for the equivalent primary name-entry key table; MP6 target extent and every exact consumer agree, but this is not claimed as direct MP6 debug-symbol proof."
+    },
+    {
+      "stable_id": "fileseldll:data:0x386",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_data_386",
+      "proposed_name": "keyboardNumSpc",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned Mario Party 5 predecessor uses keyboardNumSpc for the equivalent numeric/symbol key table; MP6 target extent and exact consumers agree."
+    },
+    {
+      "stable_id": "fileseldll:data:0x47C",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_data_47C",
+      "proposed_name": "keyboardTbl",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned predecessor uses keyboardTbl for the page-table role, and the MP6 object contains the exact pointer table consumed by name-entry page selection."
+    },
+    {
+      "stable_id": "fileseldll:data:0x48C",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_data_48C",
+      "proposed_name": "nameSpriteConfig",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: all 18 exact records provide the resource, bank, priority, and position used to create the name-entry sprite group. No original-name provenance is known."
+    },
+    {
+      "stable_id": "fileseldll:bss:0x348",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_bss_348",
+      "proposed_name": "keyboard",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The exact MP6 consumers use this pointer as the active keyboard page; the pinned predecessor uses keyboard for the same role inside NameEnterMain."
+    },
+    {
+      "stable_id": "fileseldll:bss:0x34C",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_bss_34C",
+      "proposed_name": "nameMes",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned predecessor uses nameMes for the same 50-byte editable name buffer, and the MP6 consumers reproduce that role exactly."
+    },
+    {
+      "stable_id": "fileseldll:bss:0x37E",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_bss_37E",
+      "proposed_name": "nameCharNo",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned predecessor uses nameCharNo for the editable character count; MP6 increments, decrements, and bounds the same exact state."
+    },
+    {
+      "stable_id": "fileseldll:bss:0x380",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_bss_380",
+      "proposed_name": "nameMesTemp",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned predecessor uses nameMesTemp for the same 22-element wide-character staging buffer, matching MP6 target extent and consumers."
+    },
+    {
+      "stable_id": "fileseldll:bss:0x3B2",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_bss_3B2",
+      "proposed_name": "nameDefault",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned predecessor uses nameDefault for the seven fallback names, matching MP6 initialization, selection behavior, and exact target extent."
+    },
+    {
+      "stable_id": "fileseldll:bss:0x42C",
+      "owner": "REL:fileseldll:filename",
+      "current_symbol": "lbl_1_bss_42C",
+      "proposed_name": "nameKeyboardNum",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The pinned predecessor uses nameKeyboardNum for the available keyboard-page count, and MP6 exact consumers use this state for page wraparound."
     }
   ]
 }

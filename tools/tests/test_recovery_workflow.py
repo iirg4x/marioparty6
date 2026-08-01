@@ -205,7 +205,9 @@ class RecoveryWorkflowTests(unittest.TestCase):
             source = root / "src/new.c"
             source.write_text(
                 "int input = PAD_BUTTON_A | PAD_TRIGGER_R;\n"
-                "int pad_0;\n",
+                "int align = HUWIN_ATTR_ALIGN_CENTER;\n"
+                "int pad_0;\n"
+                "int filesel_bss_pad_338;\n",
                 encoding="utf-8",
             )
             data = load(root)
@@ -215,7 +217,31 @@ class RecoveryWorkflowTests(unittest.TestCase):
             findings = quality_findings(data, full=True)
             self.assertEqual(
                 [(item["line"], item["rule"]) for item in findings],
-                [(2, "synthetic_padding")],
+                [
+                    (3, "synthetic_padding"),
+                    (4, "synthetic_padding"),
+                ],
+            )
+
+    def test_quality_flags_self_assignment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            source = root / "src/new.c"
+            source.write_text(
+                "int i;\n"
+                "i = i;\n"
+                "point->x = x;\n",
+                encoding="utf-8",
+            )
+            data = load(root)
+            data["owners"] = [
+                {**data["owners"][0], "source": "src/new.c"}
+            ]
+            findings = quality_findings(data, full=True)
+            self.assertEqual(
+                [(item["line"], item["rule"]) for item in findings],
+                [(2, "self_assignment")],
             )
 
     def test_empty_exception_rules_do_not_blanket_suppress(self):

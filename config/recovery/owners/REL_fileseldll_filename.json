@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "id": "REL:fileseldll:filename",
+  "module": "fileseldll",
+  "source": "src/REL/fileseldll/filename.c",
+  "compiler": "GC/2.6",
+  "summary": "Canonical save-name-entry owner. All seven functions reproduce 10,784 text bytes and 810 semantic relocations; their data declarations are typed, and the linked fileseldll REL remains retail-identical. The compilation-unit report also contains explicitly unowned data and BSS tails that are not part of this exactness claim.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "file-select",
+    "canonical-owner",
+    "name-entry",
+    "compiler-sensitive"
+  ],
+  "symbols": [
+    { "symbol": "NameEnterInit", "stable_id": "fileseldll:0x8B94" },
+    { "symbol": "fn_1_8F34", "stable_id": "fileseldll:0x8F34" },
+    { "symbol": "NameEnterMain", "stable_id": "fileseldll:0x916C" },
+    { "symbol": "fn_1_AAEC", "stable_id": "fileseldll:0xAAEC" },
+    { "symbol": "fn_1_ABF8", "stable_id": "fileseldll:0xABF8" },
+    { "symbol": "fn_1_B234", "stable_id": "fileseldll:0xB234" },
+    { "symbol": "NameEnterClose", "stable_id": "fileseldll:0xB530" }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "All seven functions reproduce 10,784 text bytes, and target and source contain 810 semantically identical relocations. The configured REL and main DOL remain byte-identical to retail. This function-owner proof excludes the compilation-unit tails: source .data is 844 bytes versus the target's 848 bytes, with one expected four-byte unowned target tail and two section-level relocation differences; .bss is 232 bytes on both sides but has a 99.56896 aggregate match.",
+      "reference": "build/GP6E01/fileseldll/filename_owner_final.json; config/dll/rels/fileseldll/splits.txt"
+    },
+    {
+      "kind": "sibling_source",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "The pinned Mario Party 5 predecessor authenticates the filename.c owner boundary, public header, keyboard table roles, and the retained high-confidence name proposals. MP6 target extents and consumers independently confirm their types and ownership.",
+      "reference": "mariopartyrd/marioparty5@e246f9d9850ff53ac684b971068fbf87fdcf6acb:include/REL/fileseldll.h; mariopartyrd/marioparty5@e246f9d9850ff53ac684b971068fbf87fdcf6acb:src/REL/fileseldll/filename.c"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The owner-local GC/2.6 -pooldata off profile replaces the historical source pragma while preserving all seven protected functions, their .text and .rodata bytes, all 810 semantic relocations, and both linked consumers. It does not claim exactness for the unowned data or BSS tails retained in the compilation-unit report.",
+      "reference": "configure.py; src/REL/fileseldll/filename.c"
+    }
+  ],
+  "constraints": [],
+  "debt": [
+    {
+      "kind": "unowned_data",
+      "priority": "normal",
+      "summary": "Exactness is scoped to the seven listed functions, 10,784 .text bytes, 128 .rodata bytes, and 810 semantic relocations. The four-byte target .data tail and the remaining aggregate .bss topology are outside this owner and are not claimed exact."
+    },
+    {
+      "kind": "shared_header",
+      "priority": "high",
+      "summary": "Five cross-owner globals retain their target-derived names because canonical filesel.c and saveload.c cleanup remains blocked by truthful SLCurBoxNoSet prototype visibility; no alias or false declaration is introduced."
+    },
+    {
+      "kind": "naming",
+      "priority": "normal",
+      "summary": "nameSpriteConfig is a medium-confidence behavioral proposal rather than an original-name claim."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "src/REL/fileseldll/filename.c",
+      "include/REL/fileseldll.h",
+      "config/dll/rels/fileseldll/symbols.txt"
+    ],
+    "reports": [
+      "build/GP6E01/fileseldll/filename_owner_final.json"
+    ]
+  }
+}

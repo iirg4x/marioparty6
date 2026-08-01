@@ -323,6 +323,21 @@
         "config/recovery/compiler_patterns.json",
         "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/game/board/capsule.h"
       ]
+    },
+    {
+      "id": "filesel-interface-header-guard",
+      "classification": "authenticated",
+      "path": "include/REL/fileseldll.h",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "This is the recovered fileseldll interface header, not a translation-unit attempt to suppress another header. The direct Mario Party 5 predecessor uses the same `_FILESELDLL_H` guard and the same canonical owner boundary. Rebuilding the MP6 filename consumer through this header preserves all seven functions, all 10,784 text bytes, and all 810 semantic relocations exactly.",
+      "evidence": [
+        "include/REL/fileseldll.h",
+        "build/GP6E01/fileseldll/filename_owner_final.json",
+        "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/REL/fileseldll.h"
+      ]
     }
   ]
 }
