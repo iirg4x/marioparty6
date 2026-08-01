@@ -871,6 +871,20 @@
       "supersedes": [],
       "superseded_by": null
     },
+    "gc26-o0-complete-void-prototype-visibility-restores-regalloc": {
+      "status": "active",
+      "validated_commit": "10c4101212add53cdffd33e158c7fe25ea28da38",
+      "validated_at": "2026-08-01",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "src/board/shopevent.c",
+        "include/game/board/capsule.h",
+        "include/game/board/player.h",
+        "include/game/board/status.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
       "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",

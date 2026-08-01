@@ -4090,6 +4090,83 @@
       ]
     },
     {
+      "id": "gc26-o0-complete-void-prototype-visibility-restores-regalloc",
+      "title": "Probe complete truthful void-prototype visibility as one register-allocation set",
+      "classification": "contextual_heuristic",
+      "category": "header_visibility",
+      "compiler": "GC/2.6",
+      "confidence": "high",
+      "summary": "Under GC/2.6 at O0,p, a translation unit can retain the right control flow and call identities yet miss register allocation across a large function when target-called void functions are implicit or otherwise lack their authenticated visible prototypes. Shop proves that restoring the complete declaration set can close the function even when partial subsets are neutral or regress.",
+      "conditions": "Use when a large GC/2.6 function has mostly aligned control flow and relocations, the residuals cluster around call-result handling or live ranges, and one or more called void functions lack visible authoritative declarations. Treat the declarations as a coordinated translation-unit variable rather than assuming each prototype has an independent local effect.",
+      "source_condition": {
+        "change": "Restore the complete authenticated visible prototypes or narrow headers for target-called void functions, preserving the retail translation unit's macro and inline-body visibility.",
+        "requires": [
+          "authoritative same-game signatures for every restored function",
+          "a call inventory proving which declarations are absent, implicit, or conflicting",
+          "a bounded partial-versus-complete declaration-set matrix",
+          "full function instruction and relocation comparison",
+          "protected exact-function checks for the complete owner"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "suppression of implicit integer return handling",
+          "call-adjacent temporary lifetimes",
+          "GPR and FPR allocation across later basic blocks",
+          "function size without changing call identities",
+          "whole-function closure only after the final declaration joins the set"
+        ],
+        "known_signatures": [
+          "control-flow and relocation topology are already close while register assignments remain widespread",
+          "individual truthful prototypes produce small, neutral, or negative changes",
+          "the complete truthful set removes all instruction differences",
+          "broad headers risk unrelated macro, inline-body, or local-data visibility changes"
+        ]
+      },
+      "rule": "Inventory and restore all authenticated void-call prototypes as a set before reshaping source around residual register differences. Prefer the narrowest historically plausible headers plus truthful local declarations, test partial and complete sets, and retain only the complete source form that preserves every protected function. Never misdeclare a return type, preserve an implicit declaration, or add fake uses to force allocation.",
+      "safe_actions": [
+        "enumerate calls whose visible declaration is absent or conflicts with symbol authority",
+        "recover signatures from authoritative same-game headers and sibling consumers",
+        "toggle declaration groups in a bounded matrix under the pinned compiler command",
+        "compare target/source bytes, instruction rows, and non-R_PPC_NONE relocations",
+        "re-run the full owner report because header visibility can affect neighboring exact functions"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "main:board/shopevent:ev_Shop"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "board",
+          "header_visibility",
+          "prototype_visibility",
+          "register_allocation"
+        ]
+      },
+      "examples": [
+        "For ev_Shop, preliminary truthful layer/camera declarations reached 96.589516%. A 256-combination matrix over eight declaration toggles covering nine additional real void functions closed only with the complete set: 5,876/5,876 bytes, 1,469/1,469 instructions, and 384/384 non-R_PPC_NONE text relocations.",
+        "The near-complete add-127 subset remained 98.546630%, demonstrating that a strong partial result did not identify the final declaration independently.",
+        "The completed shopevent owner report retained all prior exact functions and advanced from 11/13 to 12/13 strict-exact functions; only ev_ShopSelect remains unpaired."
+      ],
+      "counterexamples": [
+        "Do not infer that a broad modern header was visible in retail merely because all of its declarations are correct; gc132-broad-header-visibility records owner-local regressions from excess visibility.",
+        "Do not keep an implicit declaration because it happens to improve a score; the positive result requires the truthful complete prototype set.",
+        "One exact owner establishes this as a contextual probe, not a compiler-wide guarantee that adding void prototypes always improves output."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/shopevent.c",
+        "include/game/board/capsule.h",
+        "include/game/board/player.h",
+        "include/game/board/status.h"
+      ]
+    },
+    {
       "id": "gc26-pooldata-mode-controls-relocations-and-bss",
       "title": "Treat GC/2.6 pool-data mode as a translation-unit ownership profile",
       "classification": "confirmed_rule",
