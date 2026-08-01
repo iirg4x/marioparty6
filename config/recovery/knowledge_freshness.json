@@ -699,8 +699,11 @@
         "src/game/charman.c",
         "src/game/actman.c",
         "include/humath.h",
+        "include/PowerPC_EABI_Support/Runtime/MWCPlusLib.h",
+        "include/dolphin/mtx.h",
         "include/dolphin/mtx/GeoTypes.h",
         "include/dolphin/os/OSFastCast.h",
+        "src/dolphin/mtx/mtx.c",
         "src/dolphin/mtx/vec.c",
         "configure.py"
       ],

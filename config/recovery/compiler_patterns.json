@@ -3313,7 +3313,7 @@
       "category": "aggregate_copy_negative_evidence",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A powerpc-rs ISA-driven census of the current 508-object source corpus found no board or game object containing a non-stack unquantized displacement psq_l or psq_st instruction; all 908 such instructions were confined to 12 Dolphin or MusyX runtime objects. Retained-history archaeology found the matching displacement sequence only inside an MP6_NATIVE_PORT inline-assembly scaffold, not in an organic C helper or historical header.",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A powerpc-rs ISA-driven census of the current 508-object source corpus found no board or game object containing a non-stack unquantized displacement psq_l or psq_st instruction; all 908 such instructions were confined to 12 Dolphin or MusyX runtime objects. Retained-history archaeology found the matching displacement sequence only inside an MP6_NATIVE_PORT inline-assembly scaffold, not in an organic C helper or historical header. An authenticated boundary audit also excludes SDK PSMTXCopy, which is an explicit-assembly 48-byte matrix routine, and MWCC runtime __copy, which is a called helper for odd-aligned or odd-sized C++ default-copy arrays; neither can explain the inline 12-byte C transfers.",
       "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings, documented __memcpy intrinsic, and documented __vec2x32float__ type have been measured under the pinned owner profile.",
       "source_condition": {
         "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, or one staged __vec2x32float__ pair plus the remaining scalar in an attempt to reproduce the target instructions.",
@@ -3347,10 +3347,12 @@
           "explicit __vec2x32float__ staging can reproduce the paired/scalar register count while retaining indexed forms and the wrong pointer lifetime",
           "the ordinary non-solutions recur in separate board owners",
           "an exact-donor census can contain no non-stack unquantized displacement paired operation even when quantized fast-cast inline assembly is present",
-          "the closest exact legal C control, C_VECHalfAngle's `*half = ab`, retains three integer-word loads and stores while other paired operations in the same runtime translation unit come from assembly"
+          "the closest exact legal C control, C_VECHalfAngle's `*half = ab`, retains three integer-word loads and stores while other paired operations in the same runtime translation unit come from assembly",
+          "PSMTXCopy is a 48-byte explicit-assembly matrix boundary rather than an inline 12-byte vector-copy lowering",
+          "MWCC runtime __copy is emitted as a call for odd-aligned or odd-sized C++ default-copy arrays, while the affected C functions contain inline psq_l/lfs/psq_st/stfs islands with no helper call"
         ]
       },
-      "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, and one documented __vec2x32float__ staged-pair control at most once for a proven displacement-form paired-single HuVecF copy. If __memcpy retains integer word moves and the paired type selects indexed psq_lx/psq_stx rather than target psq_l/psq_st, record the negative result and stop; reopen only for a provenance-bearing Hudson or MP6 GC/2.6 helper/header package whose matching object reproduces the boundary. Do not treat port scaffolds as historical source evidence, and do not retain cast tricks, pragmas, volatile storage, or inline assembly.",
+      "rule": "Measure direct aggregate assignment, block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, and one documented __vec2x32float__ staged-pair control at most once for a proven displacement-form paired-single HuVecF copy. If __memcpy retains integer word moves and the paired type selects indexed psq_lx/psq_stx rather than target psq_l/psq_st, record the negative result and stop; do not substitute PSMTXCopy or runtime __copy because their authenticated width, language, and call boundaries contradict the target. Reopen only for a provenance-bearing original MP6-era Hudson humath/type/header or source package whose GC/2.6 matching object reproduces the 12-byte lowering. Do not treat port scaffolds as historical source evidence, and do not retain cast tricks, pragmas, volatile storage, or inline assembly.",
       "safe_actions": [
         "confirm the target transfer width, offsets, and paired-single instruction sequence",
         "retain strict size, score, instruction, and relocation results for each spelling",
@@ -3360,7 +3362,8 @@
         "leave the function honestly nonexact when no authenticated boundary exists",
         "reopen the source only when provenance-bearing Hudson or MP6 GC/2.6 helper/header source and its matching object explain why the compiler selected paired-single operations",
         "treat a newly exact unquantized displacement donor as a lead, not enough by itself to repeat source-shape probes",
-        "reject exact-form history hits that exist only in MP6_NATIVE_PORT inline assembly as port scaffolding rather than recovered source"
+        "reject exact-form history hits that exist only in MP6_NATIVE_PORT inline assembly as port scaffolding rather than recovered source",
+        "exclude PSMTXCopy and runtime __copy after confirming their authenticated width, language, and call boundaries instead of spending compiler probes on them"
       ],
       "applicability": {
         "compiler_wide": false,
@@ -3401,7 +3404,8 @@
         "powerpc-rs ISA census at main eb2a42d5031ea9778e04ded6eee7f24d39d19d79: 508 current source objects and 2,140,052 text bytes contain 662 non-stack unquantized displacement psq_l and 246 psq_st instructions, all in 12 Dolphin or MusyX runtime objects and none in src/board or src/game; census SHA-256 0f2c9abfac608e6fb23a5f6fd424e47c0edc8eae48e87d274fb7a7e3a470f749",
         "src/dolphin/mtx/vec.c C_VECHalfAngle uses the legal aggregate spelling `*half = ab`; the exact source object emits three lwz/stw transfers for that assignment rather than paired-single displacement operations",
         "Mario Party 4, 5, 6, and 7 sibling headers consistently define HuVecF as Vec and Vec as three f32 fields, weakening an alternate-wrapper typedef hypothesis without proving the unavailable original MP6 header provenance",
-        "retained-history search at commit 750233b07d108cd63e07d4bf7d0da5e4a27f6e83 finds the exact displacement-form sequence only in MP6_NATIVE_PORT inline assembly in src/board/snpc.c; no organic C helper or recovered header in that history authenticates the spelling"
+        "retained-history search at commit 750233b07d108cd63e07d4bf7d0da5e4a27f6e83 finds the exact displacement-form sequence only in MP6_NATIVE_PORT inline assembly in src/board/snpc.c; no organic C helper or recovered header in that history authenticates the spelling",
+        "DTK 0.9.2 confirms inline displacement-form psq_l/lfs/psq_st/stfs islands with no helper call in PauseGuideMain, mbev_Last5, mbObjFadeCreate, and mbObjFadeTexRotSet under compiler 2.4.7.1; SDK PSMTXCopy and MWCC runtime __copy therefore fail the observed boundary before any source probe"
       ],
       "counterexamples": [
         "A higher percentage is not a successful copy-shape probe: memcpy raises mbObjFadeCreate from 82.289154% to 84.409640% while adding a target-absent call and shrinking the source farther from 332 bytes.",
@@ -3409,6 +3413,8 @@
         "Do not generalize this heuristic to targets that use integer or scalar-float copies, or to structures whose 12-byte extent and field ownership are not authenticated.",
         "The official compiler manual authenticates __memcpy as an inline block move, but the measured constant-size control emits integer words rather than target paired-single displacement forms.",
         "The official compiler manual authenticates __vec2x32float__ and vec2x32float_align_4, but that does not authenticate a cast expression or displacement-form helper; the measured explicit assignment emits indexed forms.",
+        "PSMTXCopy cannot serve as a HuVecF donor: its authenticated SDK implementation is an explicit-assembly 48-byte matrix copy, not an inline 12-byte C transfer.",
+        "Runtime __copy cannot serve as this boundary: MWCC uses it as a called helper for odd-aligned or odd-sized arrays in C++ default copy constructors, while all four affected owners are C and have no call at the target island.",
         "Paired-single opcodes do not identify a historical source spelling by themselves; cast tricks, forced alignment, volatile storage, and inline assembly remain unsupported.",
         "mbObjFadeTexColorSet becomes exact through an independent argument-promotion correction, showing that neighboring SNPC material helpers are not all blocked by vector-copy spelling.",
         "RouletteWait is not a HuVecF donor: its exact non-stack paired operations use W=1 and QR5 through OSFastCast inline assembly, so they authenticate only quantized integer/float conversion.",
@@ -3420,7 +3426,10 @@
         "docs/native_matching_wave65.md",
         "docs/native_matching_wave93.md",
         "include/humath.h",
+        "include/PowerPC_EABI_Support/Runtime/MWCPlusLib.h",
+        "include/dolphin/mtx.h",
         "include/dolphin/mtx/GeoTypes.h",
+        "src/dolphin/mtx/mtx.c",
         "src/dolphin/mtx/vec.c",
         "https://www.nxp.com/docs/en/reference-manual/CWMCUPABTR.pdf",
         "https://www.nxp.com/docs/en/data-sheet/950-00116.pdf",
