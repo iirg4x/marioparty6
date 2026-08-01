@@ -5,6 +5,7 @@
 #include "game/process.h"
 #include "game/window.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
 
 typedef void (*VoidFunc)(void);
 
@@ -44,9 +45,9 @@ void _epilog(void)
 void ObjectSetup(void)
 {
     OSReport("******* Message Checker *********\n");
-    objman = omInitObjMan(50, 0x2000);
+    objman = omInitObjMan(50, 8192);
     HuWinInit(0);
-    HuPrcChildCreate(fn_1_110, 1000, 0x3000, 0, objman);
+    HuPrcChildCreate(fn_1_110, 1000, 12288, 0, objman);
 }
 
 /* Writable: the checker normalizes '_' and strips any filename suffix in place. */
@@ -130,12 +131,12 @@ char *lbl_1_data_494[] = {
 };
 
 u32 lbl_1_data_5C4[] = {
-    0x00480001,
-    0x00480001,
-    0x00480004,
-    0x00480007,
-    0x0048000A,
-    0x0048000D,
+    MESSNUM(MESS_LANGUAGE, 1),
+    MESSNUM(MESS_LANGUAGE, 1),
+    MESSNUM(MESS_LANGUAGE, 4),
+    MESSNUM(MESS_LANGUAGE, 7),
+    MESSNUM(MESS_LANGUAGE, 10),
+    MESSNUM(MESS_LANGUAGE, 13),
 };
 
 static void fn_1_110(void)
@@ -192,16 +193,16 @@ static void fn_1_188(void)
         }
     }
 
-    titleWin = HuWinCreate(478.0f, 32.0f, 0x52, 0x2A, 0);
+    titleWin = HuWinCreate(478.0f, 32.0f, 82, 42, 0);
     HuWinAttrSet(titleWin, HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSpeedSet(titleWin, 0);
     HuWinScaleSet(titleWin, 0.8f, 0.8f);
 
-    dirWin = HuWinCreate(24.0f, 32.0f, 0x20A, 0x2A, 0);
+    dirWin = HuWinCreate(24.0f, 32.0f, 522, 42, 0);
     HuWinMesSpeedSet(dirWin, 0);
     HuWinScaleSet(dirWin, 0.8f, 0.8f);
 
-    langWin = HuWinCreate(350.0f, 32.0f, 0x15A, 0x2A, 0);
+    langWin = HuWinCreate(350.0f, 32.0f, 346, 42, 0);
     HuWinMesSpeedSet(langWin, 0);
     HuWinScaleSet(langWin, 0.8f, 0.8f);
     HuWinBGTPLvlSet(langWin, 0.0f);
@@ -230,9 +231,9 @@ static void fn_1_188(void)
                 HuWinMesMaxSizeGet(1, &size, messNum);
             } else {
                 dimension = size.x;
-                size.x = (dimension * 21 + 31) & 0xFFF0;
+                size.x = (dimension * 21 + 31) & 65520;
                 dimension = size.y;
-                size.y = (dimension * 26 + 31) & 0xFFF0;
+                size.y = (dimension * 26 + 31) & 65520;
             }
 
             messWin = HuWinCreate(HUWIN_POS_CENTER, 200.0f, size.x, size.y, 0);
@@ -241,7 +242,7 @@ static void fn_1_188(void)
             hasControl = FALSE;
             name = HuWinMesPtrGet(messNum);
             while (*name != '\0') {
-                if (*name == 0xFF) {
+                if (*name == 255) {
                     hasControl = TRUE;
                 }
                 name++;
@@ -324,7 +325,7 @@ static void fn_1_188(void)
 static void fn_1_828(u32 messNum, HuVec2f *size)
 {
     u32 dirNo = messNum >> 16;
-    u32 entryNo = messNum & 0xFFFF;
+    u32 entryNo = messNum & 65535;
     u32 *data = messDataPtr;
 
     if (dirNo >= data[0]) {
@@ -340,5 +341,5 @@ static void fn_1_828(u32 messNum, HuVec2f *size)
     data += data[entryNo] >> 2;
 
     size->x = (float)(data[0] >> 16);
-    size->y = (float)(data[0] & 0xFFFF);
+    size->y = (float)(data[0] & 65535);
 }
