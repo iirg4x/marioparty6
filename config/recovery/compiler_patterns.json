@@ -3125,7 +3125,8 @@
         "Changing a local's width to steer allocation is not this rule; it introduces normalization differences and must be rejected.",
         "Do not split a declaration initializer solely to choose a register when target call/store chronology does not prove a later semantic lifetime.",
         "Do not add redundant temporaries, fake scopes, volatile qualifiers, register keywords, or discarded reads solely to choose registers.",
-        "mbTelopTimeSprRotSet reached strict exact only under a discarded-read use-count diagnostic; that proved VarInfo.usage ownership but was rejected and reverted because no authenticated natural source justified those reads."
+        "mbTelopTimeSprRotSet reached strict exact only under a discarded-read use-count diagnostic; that proved VarInfo.usage ownership but was rejected and reverted because no authenticated natural source justified those reads.",
+        "Splitting mbTelopTimeSprRotSet's shared scale lifetime into natural scale, rotation, and phase locals grew the source from 664 to 696 bytes, added saved f22/f23 lifetimes, and regressed strict matching to 94.27109%; the probe was reverted, so do not repeat that allocator axis."
       ],
       "related_exceptions": [],
       "evidence": [
