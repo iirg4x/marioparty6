@@ -667,14 +667,17 @@ void mbTelopTimeSprKill(s16 grpId)
 
 void mbTelopTimeSprRotSet(s16 grpId, float rot)
 {
-    HUSPR_GROUP *group;
-    HUSPRITE *spr;
-    float phase;
-    float scale;
-    BOOL bankF;
     s32 i;
+    HUSPRITE *spr;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    BOOL bankF;
+    float sinSecond;
+    float sinFirst;
+    float sinAbsFirst;
+    float sinAbsSecond;
+    float scaleSecond;
+    float time;
 
-    group = &HuSprGrpData[grpId];
     for (i = 0; i < 3; i++) {
         bankF = FALSE;
         spr = &HuSprData[group->sprId[i + 2]];
@@ -688,16 +691,27 @@ void mbTelopTimeSprRotSet(s16 grpId, float rot)
             HuSprTPLvlSet(grpId, i + 5, 0.0f);
             HuSprScaleSet(grpId, i + 5, 0.0f, 0.0f);
         } else {
-            scale = 1.0f + (0.2f * fabs(mbSinDeg(360.0f * rot)));
-            HuSprTPLvlSet(grpId, i + 2, 1.0f);
-            HuSprScaleSet(grpId, i + 2, scale, scale);
-            HuSprZRotSet(grpId, i + 2, 30.0f * mbSinDeg(360.0f * rot));
-            phase = (float)fmod(2.0f * rot, 1.0f);
-            scale = 1.0f + fabs(mbSinDeg(90.0f * phase));
-            HuSprTPLvlSet(grpId, i + 5, 0.8f * (1.0f - phase));
-            HuSprScaleSet(grpId, i + 5, scale, scale);
-            if (phase < 0.001) {
-                HuSprScaleSet(grpId, i + 5, 0.0f, 0.0f);
+            sinFirst = mbSinDeg(360.0f * rot);
+            sinFirst = __fabsf(sinFirst);
+            sinAbsFirst = sinFirst;
+            {
+                float scale = 1.0f + (0.2f * sinAbsFirst);
+
+                HuSprTPLvlSet(grpId, i + 2, 1.0f);
+                HuSprScaleSet(grpId, i + 2, scale, scale);
+                scale = 30.0f * mbSinDeg(360.0f * rot);
+                HuSprZRotSet(grpId, i + 2, scale);
+                time = fmod(2.0f * rot, 1.0f);
+                scale = time;
+                sinSecond = mbSinDeg(90.0f * scale);
+                sinSecond = __fabsf(sinSecond);
+                sinAbsSecond = sinSecond;
+                scaleSecond = 1.0f + sinAbsSecond;
+                HuSprTPLvlSet(grpId, i + 5, 0.8f * (1.0f - scale));
+                HuSprScaleSet(grpId, i + 5, scaleSecond, scaleSecond);
+                if (scale < 0.001) {
+                    HuSprScaleSet(grpId, i + 5, 0.0f, 0.0f);
+                }
             }
         }
     }

@@ -162,17 +162,19 @@ void mbev_Last5(void)
     int playerOrder[GW_PLAYER_MAX];
     int teamOrder[2];
     int teamPlayers[2];
-    HuVecF masuPos;
-    HuVecF statusPos;
-    HuVecF statusTarget;
+    int firstTeamNo = 0;
+    int secondTeamNo = 1;
+    HuVecF pos;
+    HuVecF target;
     int masuId;
-    int playerNo;
+    int otherPlayerNo = 0;
+    int playerNo = 3;
     int messageOffset;
     int result;
     int koopaModelId = -1;
     int i;
     int j;
-    s16 winId;
+    int winId;
     OMOBJ *rouletteObj;
     OMOBJ *guideObj;
     MBMODELID guideModelId;
@@ -184,8 +186,8 @@ void mbev_Last5(void)
     mbSNpcDispSet(FALSE);
     last5RouletteOMObj = rouletteObj = Last5RouletteCreate(masuId);
 
-    mbMasuPosGet(masuId, &masuPos);
-    masuPos.y += 100.0f;
+    mbMasuPosGet(masuId, &pos);
+    pos.y += 100.0f;
     mbCameraFocusMasuSet(masuId);
     mbCameraOffsetSet(0.0f, 100.0f, 0.0f);
     mbCameraRotSet(-20.0f, 0.0f, 0.0f);
@@ -195,13 +197,16 @@ void mbev_Last5(void)
     HuDataDirClose(DATANUM(DATA_blast5, 0));
     mbWipeFadeIn();
 
-    mbMasuPosGet(masuId, &masuPos);
-    masuPos.x += 200.0f;
-    masuPos.z += 100.0f;
-    guideObj = mbGuideCreateFlag(&masuPos, guideMotTbl, FALSE, TRUE, TRUE);
+    mbMasuPosGet(masuId, &pos);
+    pos.x += 200.0f;
+    pos.z += 100.0f;
+    guideObj = mbGuideCreateFlag(&pos, guideMotTbl, FALSE, TRUE, TRUE);
     mbGuideMotionNextSet(guideObj, 1);
     guideModelId = mbGuideModelGet(guideObj);
-    messageOffset = GwSystem.curTime ? 1 : 0;
+    messageOffset = 0;
+    if (GwSystem.curTime) {
+        messageOffset++;
+    }
 
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
     mbAudGuidePlay(LAST5_GUIDE_VOICE_INTRO);
@@ -213,8 +218,9 @@ void mbev_Last5(void)
         mbStatusCapsuleDispSet(i, FALSE);
     }
 
-    if (!GwSystem.tagF) {
+    if (!GWTeamFGet()) {
         Last5PlayerOrderGet(playerOrder, GW_PLAYER_MAX);
+        otherPlayerNo = playerOrder[0];
         playerNo = playerOrder[GW_PLAYER_MAX - 1];
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             mbGuideMotionShiftSet(guideObj, 12, TRUE);
@@ -233,12 +239,20 @@ void mbev_Last5(void)
         }
     } else {
         Last5PlayerOrderGet(teamOrder, 2);
-        for (j = 0; j < 2; j++) {
-            teamPlayers[j] = mbPlayerTeamFindPlayer(teamOrder[1], j);
-        }
-        playerNo = teamPlayers[mbRandMod(2)];
-        if (GwPlayer[playerNo].comF) {
-            playerNo = mbPlayerTeamFind(playerNo);
+        firstTeamNo = teamOrder[0];
+        secondTeamNo = teamOrder[1];
+        for (i = 0; i < 2; i++) {
+            for (j = 0; j < 2; j++) {
+                teamPlayers[j] = mbPlayerTeamFindPlayer(teamOrder[i], j);
+            }
+            if (i == 1) {
+                playerNo = teamPlayers[mbRandMod(2)];
+                if (GwPlayer[playerNo].comF) {
+                    playerNo = mbPlayerTeamFind(playerNo);
+                }
+            } else if (i == 0) {
+                otherPlayerNo = teamPlayers[mbRandMod(2)];
+            }
         }
         for (i = 0; i < 2; i++) {
             mbGuideMotionShiftSet(guideObj, 12, TRUE);
@@ -265,19 +279,19 @@ void mbev_Last5(void)
     mbWinPlayerDisable(winId, -1);
     mbWinWait(winId);
 
-    if (!GwSystem.tagF) {
+    if (!GWTeamFGet()) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
-            mbStatusPosGet(i, &statusPos);
-            statusTarget = statusPos;
-            statusTarget.x = statusPosTbl[0][0].x;
-            mbStatusMoveSet(i, &statusPos, &statusTarget, TRUE, 15);
+            mbStatusPosGet(i, &pos);
+            target = pos;
+            target.x = statusPosTbl[0][0].x;
+            mbStatusMoveSet(i, &pos, &target, TRUE, 15);
         }
     } else {
         for (i = 0; i < 2; i++) {
-            mbStatusNoPosGet(i, &statusPos);
-            statusTarget = statusPos;
-            statusTarget.x = statusTeamPosTbl[0][0].x;
-            mbStatusNoMoveSet(i, &statusPos, &statusTarget, TRUE, 15);
+            mbStatusNoPosGet(i, &pos);
+            target = pos;
+            target.x = statusTeamPosTbl[0][0].x;
+            mbStatusNoMoveSet(i, &pos, &target, TRUE, 15);
         }
     }
     while (!mbStatusOffCheckAll()) {
@@ -294,21 +308,28 @@ void mbev_Last5(void)
     mbWinPlayerDisable(winId, playerNo);
     mbWinWait(winId);
 
-    mbMasuPosGet(masuId, &masuPos);
-    masuPos.x -= 200.0f;
-    masuPos.z += 100.0f;
-    mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
-    mbPlayerMotionSet(playerNo, 6, HU3D_MOTATTR_LOOP);
-    HuPrcVSleep();
-    mbPlayerDispSet(playerNo, TRUE);
-    for (i = 0; i <= 30; i++) {
-        HuVecF playerPos = masuPos;
-        float weight = (float)(30 - i) / 30.0f;
+    mbMasuPosGet(masuId, &pos);
+    pos.x -= 200.0f;
+    pos.z += 100.0f;
+    {
+        int moveTime;
 
-        playerPos.y += 100.0f * (6.0f * mbSinDeg(80.0f * weight));
-        mbPlayerPosSetV(playerNo, &playerPos);
+        target = pos;
+        mbPlayerColSnapPlayerSet(playerNo, FALSE);
+        mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
+        mbPlayerMotionSet(playerNo, 6, HU3D_MOTATTR_LOOP);
         HuPrcVSleep();
+        mbPlayerDispSet(playerNo, TRUE);
+        moveTime = 30;
+        for (i = 0; i <= moveTime; i++) {
+            float arcOffset;
+
+            arcOffset = 100.0f * (6.0f * mbSinDeg(
+                80.0f * ((float)(moveTime - i) / (float)moveTime)));
+            target.y = pos.y + arcOffset;
+            mbPlayerPosSetV(playerNo, &target);
+            HuPrcVSleep();
+        }
     }
     omVibrate(playerNo, 20, 7, 3);
     for (i = 0; i < 60; i++) {
@@ -329,41 +350,7 @@ void mbev_Last5(void)
 
     ev_Last5Dice(playerNo);
     result = omObjGetWork(rouletteObj, LAST5ROULETTEWORK)->result;
-    if (result == 3) {
-        mbGuideMotionShiftSet(guideObj, 8, TRUE);
-        mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
-        mbGuideMotionNextSet(guideObj, 11);
-        winId = mbWinCreate(2, last5EffMesTbl[result] + messageOffset,
-            mbGuideSpeakerNoGet());
-        mbWinPlayerDisable(winId, playerNo);
-        mbWinWait(winId);
-        while (!mbGuideMotionCheck(guideObj)) {
-            HuPrcVSleep();
-        }
-        winId = mbWinCreate(2, LAST5_MESS_KOOPA_REVEAL + messageOffset,
-            mbGuideSpeakerNoGet());
-        mbWinPlayerDisable(winId, playerNo);
-        mbObjPosGet(guideModelId, &masuPos);
-        mbPlayerRotateStart(playerNo, 90, 15);
-        mbGuideEnd(guideObj);
-        guideObj = NULL;
-        mbWinWait(winId);
-        HuPrcSleep(2);
-        koopaModelId = mbObjCreate(LAST5_KOOPA_DATA_MODEL, koopaMotTbl, TRUE);
-        mbObjLayerSet(koopaModelId, 3);
-        mbObjDispSet(koopaModelId, FALSE);
-        mbObjPosSetV(koopaModelId, &masuPos);
-        ev_Last5Koopa(playerNo, rouletteObj, koopaModelId);
-        winId = mbWinCreate(2, LAST5_MESS_KOOPA_INTRO, 13);
-        mbWinPlayerDisable(winId, -1);
-        mbWinWait(winId);
-        mbObjMotionShiftSet(koopaModelId, 2, 0.0f, 12.0f,
-            HU3D_MOTATTR_NONE);
-        mbAudFXPlay(LAST5_KOOPA_EXIT_SFX);
-        winId = mbWinCreate(2, LAST5_MESS_KOOPA_EXIT, 13);
-        mbWinPlayerDisable(winId, -1);
-        mbWinWait(winId);
-    } else {
+    if (result != 3) {
         mbGuideMotionShiftSet(guideObj, 12, TRUE);
         winId = mbWinCreate(2, last5EffMesTbl[result] + messageOffset,
             mbGuideSpeakerNoGet());
@@ -378,9 +365,8 @@ void mbev_Last5(void)
             mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
         }
         mbWinWait(winId);
-        if (result == 1) {
-            ev_Last5Coin40(playerNo, guideObj);
-        } else if (result == 0) {
+        switch (result) {
+        case 0:
             mbGuideMotionShiftSet(guideObj, 6, TRUE);
             mbGuideMotionStop(guideObj);
             HuPrcSleep(30);
@@ -391,8 +377,13 @@ void mbev_Last5(void)
             mbWinPlayerDisable(winId, playerNo);
             mbWinWait(winId);
             GwSystem.last5Effect = 1;
-        } else if (result == 2) {
+            break;
+        case 1:
+            ev_Last5Coin40(playerNo, guideObj);
+            break;
+        case 2:
             ev_Last5CapsuleAdd5(playerNo, rouletteObj, guideObj);
+            break;
         }
         mbGuideMotionShiftSet(guideObj, 12, TRUE);
         winId = mbWinCreate(2, LAST5_MESS_EFFECT_WRAPUP + messageOffset,
@@ -411,6 +402,40 @@ void mbev_Last5(void)
             mbGuideSpeakerNoGet());
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
+    } else {
+        mbGuideMotionShiftSet(guideObj, 8, TRUE);
+        mbAudGuidePlay(LAST5_GUIDE_VOICE_EXPLAIN);
+        mbGuideMotionNextSet(guideObj, 11);
+        winId = mbWinCreate(2, last5EffMesTbl[result] + messageOffset,
+            mbGuideSpeakerNoGet());
+        mbWinPlayerDisable(winId, playerNo);
+        mbWinWait(winId);
+        while (!mbGuideMotionCheck(guideObj)) {
+            HuPrcVSleep();
+        }
+        winId = mbWinCreate(2, LAST5_MESS_KOOPA_REVEAL + messageOffset,
+            mbGuideSpeakerNoGet());
+        mbWinPlayerDisable(winId, playerNo);
+        mbObjPosGet(guideModelId, &pos);
+        mbPlayerRotateStart(playerNo, 90, 15);
+        mbGuideEnd(guideObj, TRUE);
+        guideObj = NULL;
+        mbWinWait(winId);
+        HuPrcSleep(2);
+        koopaModelId = mbObjCreate(LAST5_KOOPA_DATA_MODEL, koopaMotTbl, TRUE);
+        mbObjLayerSet(koopaModelId, 3);
+        mbObjDispSet(koopaModelId, FALSE);
+        mbObjPosSetV(koopaModelId, &pos);
+        ev_Last5Koopa(playerNo, rouletteObj, koopaModelId);
+        winId = mbWinCreate(2, LAST5_MESS_KOOPA_INTRO, 13);
+        mbWinPlayerDisable(winId, -1);
+        mbWinWait(winId);
+        mbObjMotionShiftSet(koopaModelId, 2, 0.0f, 12.0f,
+            HU3D_MOTATTR_NONE);
+        mbAudFXPlay(LAST5_KOOPA_EXIT_SFX);
+        winId = mbWinCreate(2, LAST5_MESS_KOOPA_EXIT, 13);
+        mbWinPlayerDisable(winId, -1);
+        mbWinWait(winId);
     }
 
     mbMusFadeOutSpeed(0, 1000);
@@ -427,9 +452,11 @@ void mbev_Last5(void)
     last5RouletteOMObj = NULL;
     if (guideObj) {
         mbGuideKill(guideObj);
+        guideObj = NULL;
     }
     if (koopaModelId >= 0) {
         mbObjKill(koopaModelId);
+        koopaModelId = -1;
     }
     HuPrcVSleep();
 }

@@ -34,7 +34,7 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
 OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BOOL layerF);
 OMOBJ *mbGuideCreateIn(void);
 void mbGuideKill(OMOBJ *obj);
-void mbGuideEnd(OMOBJ *obj);
+void mbGuideEnd(OMOBJ *obj, BOOL endF);
 void mbGuideFadeIn(OMOBJ *obj);
 void mbGuideFadeOut(OMOBJ *obj);
 int mbGuideModelGet(OMOBJ *obj);

@@ -21,6 +21,7 @@ extern void mbNormPosto2D(HuVecF *src, HuVecF *dst);
 extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
 extern void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
 extern float mbSinDeg(float angle);
+extern float mbCosDeg(float angle);
 
 typedef struct PausePanelWork_s {
 int modelId;              /* offset 0 */
@@ -264,11 +265,12 @@ static void PauseGuideMain(void)
     float scale;
     float sprScale;
     float flipScale;
-    HuVecF rot;
+    float animWeight;
     HuVecF pos;
+    HuVecF rot;
+    Mtx lookAtMtx;
     Mtx rotMtx;
     Mtx invRotMtx;
-    Mtx lookAtMtx;
 
     for (cameraNo = 0; cameraNo < HU3D_CAM_MAX; cameraNo++) {
         if ((1 << cameraNo) & HU3D_CAM2) {
@@ -303,6 +305,11 @@ static void PauseGuideMain(void)
                     motionDone = TRUE;
                 }
                 switch (work->motion) {
+                    case 0:
+                    case 1:
+                    case 2:
+                        break;
+
                     case 4:
                         mbObjRotGet(work->modelId, &pos);
                         pos.y = -500.0f * (1.0f - weight);
@@ -332,8 +339,8 @@ static void PauseGuideMain(void)
                                 espDispOff(work->sprId);
                             }
                         }
-                        work->scale = work->scaleStart = work->scaleTarget
-                            = mbCosDeg(90.0f * weight);
+                        work->scale = mbCosDeg(90.0f * weight);
+                        work->scaleTarget = work->scaleStart = work->scale;
                         mbObjRotSetV(work->modelId, &pos);
                         break;
                 }
@@ -345,10 +352,10 @@ static void PauseGuideMain(void)
                 mbObjRotGet(work->modelId, &pos);
                 work->animTime++;
                 if (work->animTime < work->animMaxTime && work->animMaxTime > 0) {
-                    pos.y = 180.0f * (work->animTime / (float)work->animMaxTime);
+                    animWeight = work->animTime / (float)work->animMaxTime;
+                    pos.y = 180.0f * animWeight;
                 } else {
-                    work->animMaxTime = 0;
-                    work->animTime = 0;
+                    work->animTime = work->animMaxTime = 0;
                     Hu3DAnmNoSet(work->animId[0], work->bank);
                     pos.y = 0.0f;
                     if (work->batsuModelId != 0 && work->batsuF) {
@@ -361,7 +368,7 @@ static void PauseGuideMain(void)
                 work->motion = 0;
                 work->pos = work->posTarget;
                 work->posStart = work->posTarget;
-                work->scale = work->scaleStart = work->scaleTarget;
+                work->scaleStart = work->scale = work->scaleTarget;
             } else {
                 ease = mbSinDeg(90.0f * weight);
                 PSVECSubtract(&work->posTarget, &work->posStart, &pos);
@@ -370,18 +377,26 @@ static void PauseGuideMain(void)
                 work->scale = work->scaleStart
                     + (ease * (work->scaleTarget - work->scaleStart));
             }
-            frontF = work->scaleTarget >= 1.2f;
+            frontF = FALSE;
+            if (work->scaleTarget >= 1.2f) {
+                frontF = TRUE;
+            }
             mbNormPosto3D(&work->pos, HU3D_CAM2, &pos);
             mbObjPosSetV(work->modelId, &pos);
             if (work->batsuModelId != 0) {
                 mbObjPosSetV(work->batsuModelId, &pos);
             }
             if (work->sprId >= 0) {
-                pos.y -= 100.0f * 0.3f * work->scale * work->scaleBase;
+                pos.y -= 0.3f
+                    * (100.0f * (work->scale * work->scaleBase));
                 mbPos3DtoNorm(&pos, HU3D_CAM2, &pos);
                 mbNormPosto2D(&pos, &pos);
                 espPosSet(work->sprId, pos.x, pos.y);
-                espPriSet(work->sprId, frontF ? 99 : 100);
+                if (frontF) {
+                    espPriSet(work->sprId, 99);
+                } else {
+                    espPriSet(work->sprId, 100);
+                }
             }
             scale = work->scale * work->scaleBase;
             mbObjScaleSet(work->modelId, 0.75f * scale, 0.75f * scale,
@@ -393,18 +408,18 @@ static void PauseGuideMain(void)
             }
             if (work->sprId >= 0) {
                 sprScale = 0.85f * scale;
-                if (work->animMaxTime == 0) {
-                    espScaleSet(work->sprId, sprScale, sprScale);
-                    espColorSet(work->sprId, 255, 255, 255);
-                } else {
+                if (work->animMaxTime != 0) {
                     weight = work->animTime / (float)work->animMaxTime;
-                    flipScale = fabs(mbCosDeg(180.0f * weight));
+                    flipScale = fabsf(mbCosDeg(180.0f * weight));
                     espScaleSet(work->sprId, sprScale, sprScale * flipScale);
                     if (weight >= 0.5f) {
                         espBankSet(work->sprId, work->bank);
                     }
                     flipScale = 255.0f * flipScale;
                     espColorSet(work->sprId, flipScale, flipScale, flipScale);
+                } else {
+                    espScaleSet(work->sprId, sprScale, sprScale);
+                    espColorSet(work->sprId, 255, 255, 255);
                 }
             }
             mbObjRotGet(work->modelId, &rot);

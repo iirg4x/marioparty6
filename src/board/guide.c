@@ -161,7 +161,7 @@ void mbGuideKill(OMOBJ *obj)
     }
 }
 
-void mbGuideEnd(OMOBJ *obj)
+void mbGuideEnd(OMOBJ *obj, BOOL endF)
 {
     GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
     work->mode = 3;
