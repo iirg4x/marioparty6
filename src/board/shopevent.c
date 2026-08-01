@@ -4,16 +4,56 @@
 
 #include "game/board/main.h"
 #include "game/board/audio.h"
+#include "game/board/capsule.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
+#include "game/board/status.h"
+#include "game/board/tutorial.h"
+#include "game/board/window.h"
+#include "game/flag.h"
 #include "game/memory.h"
 
 #include "humath.h"
+#include "messdir_enum.h"
 #include "string.h"
 
 typedef void (*MBSHOPOBJHOOK)(int modelId, int shopNo);
+
+enum {
+    SHOP_SPRITE_FILE = 38,
+    SHOP_EMPTY_SPRITE_FILE = 35,
+    SHOP_MASU_ATTR_PATH_LINK = 1 << 5,
+    SHOP_LIST_ENTRY_COUNT = 33,
+    SHOP_LIST_ENTRY_SIZE = 16,
+    SHOP_TUTORIAL_ENTRY = 19,
+    SHOP_TUTORIAL_SELECT = 20,
+    SHOP_SFX_NIGHT_SUCCESS = 960,
+    SHOP_SFX_NIGHT_PROMPT = 961,
+    SHOP_SFX_NIGHT_UNAVAILABLE = 962,
+    SHOP_SFX_DAY_SUCCESS = 986,
+    SHOP_SFX_DAY_PROMPT = 987,
+    SHOP_SFX_DAY_UNAVAILABLE = 988,
+    SHOP_SFX_OPEN = 1143,
+    SHOP_SFX_CLOSE = 1144,
+    SHOP_DATA_NIGHT_MODEL = DATANUM(DATA_capsuleshop, 0),
+    SHOP_DATA_NIGHT_MOTION = DATANUM(DATA_capsuleshop, 1),
+    SHOP_DATA_NIGHT_MOTION_CLOSE = DATANUM(DATA_capsuleshop, 4),
+    SHOP_DATA_DAY_MODEL = DATANUM(DATA_capsuleshop, 5),
+    SHOP_DATA_DAY_MOTION = DATANUM(DATA_capsuleshop, 6),
+    SHOP_DATA_DAY_MOTION_CLOSE = DATANUM(DATA_capsuleshop, 7),
+    SHOP_MESSAGE_ENTER_CHOICE = MESSNUM(MESS_SHOP_EVENT, 0),
+    SHOP_MESSAGE_NOT_ENOUGH_COINS = MESSNUM(MESS_SHOP_EVENT, 1),
+    SHOP_MESSAGE_GREETING = MESSNUM(MESS_SHOP_EVENT, 2),
+    SHOP_MESSAGE_NO_OFFERS = MESSNUM(MESS_SHOP_EVENT, 3),
+    SHOP_MESSAGE_PURCHASED = MESSNUM(MESS_SHOP_EVENT, 7),
+    SHOP_MESSAGE_THANK_YOU = MESSNUM(MESS_SHOP_EVENT, 8),
+    SHOP_MESSAGE_DISCARD_CHOICE = MESSNUM(MESS_SHOP_EVENT, 9),
+    SHOP_MESSAGE_REPLACED = MESSNUM(MESS_SHOP_EVENT, 10),
+    SHOP_MESSAGE_LAST_TURN = MESSNUM(MESS_SHOP_EVENT, 11),
+    SHOP_MESSAGE_NIGHT_RESTRICTION = MESSNUM(MESS_SHOP_EVENT, 13),
+};
 
 typedef struct MBSHOPWORK {
     int playerNo;
@@ -40,6 +80,13 @@ typedef struct MBSHOPOMWORK {
     HuVecF shopPos;
 } MBSHOPOMWORK;
 
+typedef struct ShopOffer_s {
+    int capsuleNo;
+    int cost;
+    int messageId;
+    char costText[16];
+} SHOP_OFFER;
+
 static HuVecF ev_ShopCapsulePlayer[3][3] = {
     {
         { 0.0f, 0.0f, 0.0f },
@@ -61,10 +108,10 @@ static HuVecF ev_ShopCapsulePlayer[3][3] = {
 static HuVecF ev_ShopLightPos = { -10000.0f, 10000.0f, -10000.0f };
 static HuVecF ev_ShopLightDir = { 1.0f, -1.0f, -1.0f };
 static int ev_ShopSprFileTbl[4] = {
-    DATANUM(DATA_board, 0x26),
-    DATANUM(DATA_board, 0x23),
-    DATANUM(DATA_board, 0x23),
-    DATANUM(DATA_board, 0x23),
+    DATANUM(DATA_board, SHOP_SPRITE_FILE),
+    DATANUM(DATA_board, SHOP_EMPTY_SPRITE_FILE),
+    DATANUM(DATA_board, SHOP_EMPTY_SPRITE_FILE),
+    DATANUM(DATA_board, SHOP_EMPTY_SPRITE_FILE),
 };
 static HuVecF ev_ShopWinPos = { 288.0f, 176.0f, 0.0f };
 static HuVecF ev_ShopCapsulePos[3][3] = {
@@ -90,9 +137,30 @@ static GXColor ev_ShopLightColor = { 255, 255, 255, 255 };
 
 void mbev_ShopCreate(int dataNum, int motDataNum);
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, char *hookName);
+extern s32 mbBGRead(s32 dataNum);
+extern void mbBGReadWait(s32 statId);
+extern int mbCapUseMesGet(int capsuleNo);
+extern int mbCapBuyCostGet(s16 capsuleNo, s16 playerNo);
+extern int mbCapShopListGet(int playerNo, s8 *shopList);
+extern int mbCapDelete(int capsuleNo, BOOL repeatF);
+extern void mbCapNumInc(int capsuleNo, int mode);
+extern int mbCapObjColorCreate(int capsuleNo, BOOL createF);
+extern void mbCapObjColorLayerSet(int id, int layer);
+extern void mbCapObjColorPosSetV(int id, HuVecF *pos);
+extern void mbCapCapsuleGet(int playerNo, int capsuleNo);
+extern void mbCapObjColorKill(int id);
+void mbCapObjColorScaleSet(int id, float x, float y, float z);
+extern int mbCoinAddExec(int playerNo, int coinNum);
+extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF,
+    BOOL fastF);
+extern void mbCameraPlayerViewSet(int playerNo, int viewNo);
+extern void mbComChoiceLeftSet(void);
+extern void mbComChoiceRightSet(void);
+extern void mbev_Scroll(int playerNo, BOOL mapF);
 static void ev_ShopOMExec(OMOBJ *obj);
 static void ev_ShopOpenSet(int shopNo, BOOL openF);
-void ev_Shop(MBSHOPWORK *work);
+static void ev_Shop(MBSHOPWORK *work);
+static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum, int winType);
 static int ev_ShopMesGet(int messNo);
 void mbev_ShopExObjHookSet(MBSHOPOBJHOOK hook);
 
@@ -146,11 +214,11 @@ void mbev_ShopCreate(int dataNum, int motDataNum)
         if (mbMasuTypeGet(masuId) != 9) {
             continue;
         }
-        linkMasuId = mbMasuAttrFindLink(masuId, 0x20);
+        linkMasuId = mbMasuAttrFindLink(masuId, SHOP_MASU_ATTR_PATH_LINK);
         if (linkMasuId < 0) {
             break;
         }
-        nextMasuId = mbMasuAttrFindLink(linkMasuId, 0x20);
+        nextMasuId = mbMasuAttrFindLink(linkMasuId, SHOP_MASU_ATTR_PATH_LINK);
         work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBSHOPOMWORK), HU_MEMNUM_OVL);
         memset(work, 0, sizeof(MBSHOPOMWORK));
         shopMasuId = masuId;
@@ -162,7 +230,8 @@ void mbev_ShopCreate(int dataNum, int motDataNum)
             masuTbl[0] = shopMasuId;
             masuTbl[1] = shopLinkMasuId;
             masuTbl[2] = nextMasuId;
-            while ((nextMasuId = mbMasuAttrFindLink(masuTbl[2], 0x20)) > 0) {
+        while ((nextMasuId = mbMasuAttrFindLink(masuTbl[2],
+            SHOP_MASU_ATTR_PATH_LINK)) > 0) {
                 masuTbl[0] = masuTbl[1];
                 masuTbl[1] = masuTbl[2];
                 masuTbl[2] = nextMasuId;
@@ -353,7 +422,7 @@ static void ev_ShopOpenSet(int shopNo, BOOL openF)
     work->motionExecF = TRUE;
     work->openF = openF;
     if (work->openF) {
-        mbAudFXPlay(0x477);
+        mbAudFXPlay(SHOP_SFX_OPEN);
         mbObjMotionSet(work->modelId, 0, 0);
         mbObjMotionSpeedSet(work->modelId, 1.0f);
         for (i = 0; i < 8; i++) {
@@ -375,7 +444,7 @@ static void ev_ShopOpenSet(int shopNo, BOOL openF)
             }
         }
     } else {
-        mbAudFXPlay(0x478);
+        mbAudFXPlay(SHOP_SFX_CLOSE);
         if (work->modelMotionF) {
             mbObjMotionSet(work->modelId, 1, 0);
             mbObjMotionSpeedSet(work->modelId, 1.0f);
@@ -418,6 +487,586 @@ int mbev_Shop(int playerNo, int shopNo)
     mbPauseDisableSet(FALSE);
     mbMoveNumDispSet(playerNo, TRUE);
     return 0;
+}
+
+static inline s8 *ev_ShopListAlloc(void)
+{
+    return HuMemDirectMallocNum(HEAP_HEAP,
+        SHOP_LIST_ENTRY_COUNT * SHOP_LIST_ENTRY_SIZE, HU_MEMNUM_OVL);
+}
+
+static inline int ev_ShopMasuEndGet(int shopNo, OMOBJ **shopObj,
+    MBSHOPOMWORK **shopWork)
+{
+    *shopObj = ev_ShopOMObj[shopNo];
+    *shopWork = (*shopObj)->data;
+
+    return (*shopWork)->masuEndId;
+}
+
+static void ev_Shop(MBSHOPWORK *work)
+{
+    int motionDataNum[16];
+    SHOP_OFFER offer[3];
+    SHOP_OFFER swap;
+    SHOP_OFFER *offerP;
+    HuVecF playerPos;
+    HuVecF masuPos;
+    HuVecF pos;
+    HuVecF direction;
+    HuVecF shopPos;
+    HuVecF returnPos;
+    HuVecF capsulePlayer;
+    s8 *shopList;
+    int first;
+    int capsuleObjId[3];
+    int second;
+    BOOL doneF;
+    int coinAddResult;
+    int deleteCapsuleNo;
+    int shopListNum;
+    int readStat;
+    int selection;
+    int shopNo;
+    int lightId;
+    int pathNum;
+    int shopIndex;
+    int offerNum;
+    int winType;
+    int masuId;
+    int i;
+    int shopModelId;
+    int capsuleModelId;
+    int currentMasuId;
+    BOOL comDeclineF;
+    float angle;
+
+    if (!ev_ShopEnableF) {
+        return;
+    }
+    shopModelId = capsuleModelId = lightId = -1;
+    for (i = 0; i < 3; i++) {
+        capsuleObjId[i] = -1;
+    }
+    if (!GwSystem.curTime) {
+        winType = 8;
+    } else {
+        winType = 9;
+    }
+    readStat = mbBGRead(SHOP_DATA_NIGHT_MODEL);
+    mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+        HU3D_MOTATTR_LOOP);
+    {
+        int foundShopNo;
+        OMOBJ *shopObj;
+        MBSHOPOMWORK *findWork;
+        int shopMasuId;
+
+        shopMasuId = work->shopNo;
+        for (shopIndex = 0; shopIndex < ev_ShopNum; shopIndex++) {
+            shopObj = ev_ShopOMObj[shopIndex];
+            findWork = shopObj->data;
+
+            if (findWork->masuId == shopMasuId) {
+                foundShopNo = shopIndex;
+                goto shop_found;
+            }
+        }
+        foundShopNo = -1;
+
+shop_found:
+        shopNo = foundShopNo;
+    }
+    {
+        shopList = ev_ShopListAlloc();
+        shopListNum = mbCapShopListGet(work->playerNo, shopList);
+
+        offerP = offer;
+        for (i = 0, offerNum = 0;
+            i < 3 && i < shopListNum;
+            i++, offerP++) {
+            offerP->capsuleNo = shopList[i * SHOP_LIST_ENTRY_SIZE];
+            offerP->cost = mbCapBuyCostGet((s16)offerP->capsuleNo,
+                (s16)work->playerNo);
+            offerP->messageId = mbCapUseMesGet(offerP->capsuleNo);
+            sprintf(offerP->costText, "%d", offerP->cost);
+            offerNum++;
+        }
+        for (i = 0, offerP = offer; i < offerNum; i++, offerP++) {
+            if (offerP->cost > mbPlayerCoinGet(work->playerNo)) {
+                offerP->capsuleNo = 0;
+                offerP->cost = mbCapBuyCostGet((s16)offerP->capsuleNo,
+                    (s16)work->playerNo);
+                offerP->messageId = mbCapUseMesGet(offerP->capsuleNo);
+                sprintf(offerP->costText, "%d", offerP->cost);
+            }
+        }
+        for (i = 0, offerP = offer; i < offerNum; i++, offerP++) {
+            mbCapNumInc(offerP->capsuleNo, 1);
+        }
+        for (i = 0; i < 64 && offerNum >= 2; i++) {
+            first = mbRandMod(offerNum);
+            second = mbRandMod(offerNum);
+
+            if (first != second) {
+                swap = offer[first];
+                offer[first] = offer[second];
+                offer[first] = swap;
+            }
+        }
+        HuMemDirectFree(shopList);
+    }
+    HuPrcVSleep();
+
+    if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (GwSystem.turnNo >= GwSystem.turnMax) {
+            if (!GwSystem.curTime) {
+                mbAudFXPlay(SHOP_SFX_DAY_PROMPT);
+            } else {
+                mbAudFXPlay(SHOP_SFX_NIGHT_PROMPT);
+            }
+            mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_LAST_TURN), winType);
+            mbWinTopWait();
+            goto cleanup;
+        }
+        if (mbPlayerCoinGet(work->playerNo) > 4) {
+            mbWinCreateChoice(2, ev_ShopMesGet(SHOP_MESSAGE_ENTER_CHOICE),
+                -1, 0);
+            if (GwPlayer[work->playerNo].comF) {
+                comDeclineF = FALSE;
+                if (mbMasuFind_TypeStepGet((s16)work->shopNo, 7)
+                    < GwPlayer[work->playerNo].moveNum) {
+                    comDeclineF = TRUE;
+                }
+                if (mbMasuFind_TypeStepGet((s16)work->shopNo, 7) < 20
+                    && mbPlayerCoinGet(work->playerNo) < 25
+                    && mbPlayerCoinGet(work->playerNo) >= 20) {
+                    comDeclineF = TRUE;
+                }
+                if (GWTeamFGet()
+                    && mbPlayerCoinGet(work->playerNo) < 25
+                    && mbPlayerCoinGet(work->playerNo) >= 20) {
+                    comDeclineF = TRUE;
+                }
+                if (MBCapsuleEffRandF() < 0.7f
+                    && !comDeclineF
+                    && mbPlayerCapsuleNumGet(work->playerNo)
+                        < mbPlayerCapsuleMaxGet()) {
+                    mbComChoiceLeftSet();
+                } else {
+                    mbComChoiceRightSet();
+                }
+            }
+            mbWinTopWait();
+            if (mbWinTopChoiceGet() == 0 && mbWinTopChoiceGet() != -1) {
+                goto enter_shop;
+            }
+        } else {
+            if (!GwSystem.curTime) {
+                mbAudFXPlay(SHOP_SFX_DAY_UNAVAILABLE);
+            } else {
+                mbAudFXPlay(SHOP_SFX_NIGHT_UNAVAILABLE);
+            }
+            mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NOT_ENOUGH_COINS),
+                winType);
+            mbWinTopWait();
+        }
+        goto cleanup;
+    } else {
+        if (mbTutorialCall(SHOP_TUTORIAL_ENTRY) == 1) {
+            goto enter_shop;
+        }
+        goto cleanup;
+    }
+
+enter_shop:
+    for (i = 0; i < offerNum; i++) {
+        capsuleObjId[i] = mbCapObjColorCreate(offer[i].capsuleNo, 0);
+        mbCapObjColorLayerSet(capsuleObjId[i], 4);
+        {
+            OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+            MBSHOPOMWORK *localShopWork = shopObj->data;
+
+            masuPos = localShopWork->masuPos;
+        }
+        {
+            OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+            MBSHOPOMWORK *localShopWork = shopObj->data;
+
+            shopPos = localShopWork->shopPos;
+        }
+        PSVECSubtract(&masuPos, &shopPos, &direction);
+        pos = masuPos;
+        pos.y += 100.0f;
+        capsulePlayer = ev_ShopCapsulePlayer[offerNum - 1][i];
+        pos.x += capsulePlayer.y
+            * sin((M_PI * (capsulePlayer.x
+                + (180.0 * (atan2(direction.x, direction.z) / M_PI))))
+                / 180.0);
+        pos.z += capsulePlayer.y
+            * cos((M_PI * (capsulePlayer.x
+                + (180.0 * (atan2(direction.x, direction.z) / M_PI))))
+                / 180.0);
+        mbCapObjColorPosSetV(capsuleObjId[i], &pos);
+        mbCapObjColorScaleSet(capsuleObjId[i], 0.5f, 0.5f, 0.5f);
+        HuPrcVSleep();
+    }
+    if (readStat != -1) {
+        mbBGReadWait(readStat);
+    }
+    if (!GwSystem.curTime) {
+        motionDataNum[0] = SHOP_DATA_DAY_MOTION;
+        motionDataNum[1] = SHOP_DATA_DAY_MOTION;
+        motionDataNum[2] = SHOP_DATA_DAY_MOTION_CLOSE;
+        motionDataNum[3] = -1;
+        shopModelId = mbObjCreate(SHOP_DATA_DAY_MODEL, motionDataNum, FALSE);
+    } else {
+        motionDataNum[0] = SHOP_DATA_NIGHT_MOTION;
+        motionDataNum[1] = SHOP_DATA_NIGHT_MOTION;
+        motionDataNum[2] = SHOP_DATA_NIGHT_MOTION_CLOSE;
+        motionDataNum[3] = -1;
+        shopModelId = mbObjCreate(SHOP_DATA_NIGHT_MODEL, motionDataNum, FALSE);
+    }
+    lightId = Hu3DLLightCreateV(mbObjModelIDGet(shopModelId),
+        &ev_ShopLightPos, &ev_ShopLightDir, &ev_ShopLightColor);
+    Hu3DLLightStaticSet(mbObjModelIDGet(shopModelId), lightId, TRUE);
+    Hu3DLLightInfinitytSet(mbObjModelIDGet(shopModelId), lightId);
+
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        masuPos = localShopWork->masuPos;
+    }
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        shopPos = localShopWork->shopPos;
+    }
+    mbMasuPosGet((s16)work->shopNo, &playerPos);
+    PSVECSubtract(&masuPos, &shopPos, &direction);
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        pos = localShopWork->capsulePos;
+    }
+    mbObjPosSetV(shopModelId, &pos);
+    mbObjRotSet(shopModelId, 0.0f,
+        (float)(180.0 + ((atan2(direction.x, direction.z) / M_PI) * 180.0)),
+        0.0f);
+    mbObjMotionSet(shopModelId, 1, HU3D_MOTATTR_LOOP);
+    ev_ShopOpenSet(shopNo, TRUE);
+    omVibrate((s16)work->playerNo, 20, 7, 3);
+
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        masuPos = localShopWork->masuPos;
+    }
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        shopPos = localShopWork->shopPos;
+    }
+    mbMasuPosGet((s16)work->shopNo, &playerPos);
+    PSVECSubtract(&shopPos, &playerPos, &direction);
+    angle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
+    mbPlayerRotateStart(work->playerNo, angle, 15);
+    while (!mbPlayerRotateCheck(work->playerNo)) {
+        HuPrcVSleep();
+    }
+    {
+        OMOBJ *shopObj;
+        MBSHOPOMWORK *localShopWork;
+
+        while ((shopObj = ev_ShopOMObj[shopNo]),
+            (localShopWork = shopObj->data),
+            localShopWork->motionExecF != FALSE) {
+            HuPrcVSleep();
+        }
+    }
+    returnPos = playerPos;
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        shopPos = localShopWork->shopPos;
+    }
+    {
+        int path[16];
+
+        mbStatusDispSetAll(FALSE);
+        mbCameraPlayerViewSet(work->playerNo, 0);
+        mbPlayerColSnapPlayerSet(work->playerNo, FALSE);
+        {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        if (localShopWork->pathF) {
+            pathNum = 1;
+            path[0] = currentMasuId = GwPlayer[work->playerNo].masuId;
+            {
+                OMOBJ *shopObj;
+                MBSHOPOMWORK *localShopWork;
+
+                while (currentMasuId != ev_ShopMasuEndGet(shopNo,
+                    &shopObj, &localShopWork)) {
+                    mbMasuPosGet(
+                        (masuId = mbMasuAttrFindLink((s16)currentMasuId,
+                            SHOP_MASU_ATTR_PATH_LINK)), &pos);
+                    GwPlayer[work->playerNo].masuIdNext = masuId;
+                    mbPlayerMasuMovePos(work->playerNo, &pos, TRUE);
+                    GwPlayer[work->playerNo].masuId = masuId;
+                    path[pathNum] = currentMasuId = masuId;
+                    pathNum++;
+                }
+            }
+        } else {
+            mbPlayerMasuMovePos(work->playerNo, &shopPos, TRUE);
+        }
+    }
+    PSVECSubtract(&masuPos, &shopPos, &direction);
+    mbPlayerRotateStart(work->playerNo,
+        (atan2(direction.x, direction.z) / M_PI) * 180.0, 15);
+    while (!mbPlayerRotateCheck(work->playerNo)) {
+        HuPrcVSleep();
+    }
+        mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+            HU3D_MOTATTR_LOOP);
+
+    if (GwPlayer[work->playerNo].comF) {
+        for (i = 0; i < offerNum; i++) {
+            if (offer[i].cost <= mbPlayerCoinGet(work->playerNo)) {
+                break;
+            }
+        }
+        if (i < offerNum) {
+            if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+                selection = mbTutorialCall(SHOP_TUTORIAL_SELECT);
+
+                if (selection >= 0) {
+                    offer[i].capsuleNo = selection;
+                    offer[i].cost = mbCapBuyCostGet((s16)selection,
+                        (s16)work->playerNo);
+                    offer[i].messageId = mbCapUseMesGet(selection);
+                }
+            }
+            selection = i;
+            coinAddResult = mbCoinAddProcExec(work->playerNo,
+                -offer[selection].cost, -1, TRUE);
+            mbCapCapsuleGet(work->playerNo, offer[selection].capsuleNo);
+            mbPlayerCapsuleAdd(work->playerNo, offer[selection].capsuleNo);
+            mbPlayerWinLoseVoicePlay(work->playerNo, 12, CHARVOICEID(6));
+            mbPlayerMotionShiftSet(work->playerNo, 12, 0.0f, 4.0f, 0);
+            mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
+            mbWinTopInsertMesSet(offer[selection].messageId, 0);
+            mbWinTopWait();
+            while (!mbPlayerMotionEndCheck(work->playerNo)) {
+                HuPrcVSleep();
+            }
+            mbPlayerMotIdleSet(work->playerNo);
+            mbObjMotionShiftSet(shopModelId, 3, 0.0f, 8.0f,
+                HU3D_MOTATTR_LOOP);
+        }
+    } else {
+        while (!mbStatusOffCheckAll()) {
+            HuPrcVSleep();
+        }
+        mbStatusDispFocusSet(work->playerNo, TRUE);
+        if (!GwSystem.curTime) {
+            mbAudFXPlay(SHOP_SFX_DAY_PROMPT);
+        } else {
+            mbAudFXPlay(SHOP_SFX_NIGHT_PROMPT);
+        }
+        mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_GREETING), winType);
+        mbWinTopWait();
+        if (GwSystem.curTime && GwPlayer[work->playerNo].rank >= 2) {
+            if (!GwSystem.curTime) {
+                mbAudFXPlay(SHOP_SFX_DAY_SUCCESS);
+            } else {
+                mbAudFXPlay(SHOP_SFX_NIGHT_SUCCESS);
+            }
+            mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NIGHT_RESTRICTION),
+                winType);
+            mbWinTopWait();
+        }
+        selection = -1;
+        doneF = FALSE;
+        do {
+            switch (offerNum) {
+            case 1:
+            case 2:
+            case 3:
+                selection = ev_ShopSelect(work, offer, offerNum, winType);
+                break;
+            default:
+                if (!GwSystem.curTime) {
+                    mbAudFXPlay(SHOP_SFX_DAY_UNAVAILABLE);
+                } else {
+                    mbAudFXPlay(SHOP_SFX_NIGHT_UNAVAILABLE);
+                }
+                mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NO_OFFERS), winType);
+                mbWinTopWait();
+                doneF = TRUE;
+                selection = -1;
+                break;
+            }
+
+        if (selection >= offerNum || selection == -1) {
+            doneF = TRUE;
+        } else {
+            int deleteIndex;
+
+            deleteCapsuleNo = -1;
+                deleteIndex = -1;
+                if (mbPlayerCapsuleNumGet(work->playerNo)
+                    >= mbPlayerCapsuleMaxGet()) {
+                    mbWinCreateChoice(2,
+                        ev_ShopMesGet(SHOP_MESSAGE_DISCARD_CHOICE), winType, 0);
+                    if (GwPlayer[work->playerNo].comF) {
+                        mbComChoiceLeftSet();
+                    }
+                    mbWinTopWait();
+                    if (mbWinTopChoiceGet() != 0) {
+                        continue;
+                    }
+                    do {
+                        deleteCapsuleNo = mbCapDelete(-1, TRUE);
+                        switch (deleteCapsuleNo) {
+                            default:
+                                for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
+                                    if (deleteCapsuleNo
+                                        == mbPlayerCapsuleGet(work->playerNo, i)) {
+                                        deleteIndex = i;
+                                    }
+                                }
+                                if (deleteIndex != -1) {
+                                    mbPlayerCapsuleRemove(work->playerNo,
+                                        deleteIndex);
+                                }
+                                break;
+                            case -3:
+                                mbev_Scroll(work->playerNo, FALSE);
+                                deleteIndex = -1;
+                                break;
+                            case -7:
+                                deleteIndex = -2;
+                                break;
+                            }
+                    } while (deleteIndex == -1);
+                    if (deleteIndex == -2) {
+                        continue;
+                    }
+                }
+                coinAddResult = mbCoinAddExec(work->playerNo,
+                    -offer[selection].cost);
+                mbCapCapsuleGet(work->playerNo, offer[selection].capsuleNo);
+                mbPlayerCapsuleAdd(work->playerNo, offer[selection].capsuleNo);
+                mbPlayerWinLoseVoicePlay(work->playerNo, 12, CHARVOICEID(6));
+                mbPlayerMotionShiftSet(work->playerNo, 12, 0.0f, 4.0f, 0);
+                if (deleteIndex == -1) {
+                    mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
+                    mbWinTopInsertMesSet(offer[selection].messageId, 0);
+                } else {
+                    mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_REPLACED), -1);
+                    mbWinTopInsertMesSet(mbCapUseMesGet(deleteCapsuleNo), 0);
+                    mbWinTopInsertMesSet(offer[selection].messageId, 1);
+                }
+                mbWinTopWait();
+                while (!mbPlayerMotionEndCheck(work->playerNo)) {
+                    HuPrcVSleep();
+                }
+                mbPlayerMotIdleSet(work->playerNo);
+                mbObjMotionShiftSet(shopModelId, 3, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                if (!GwSystem.curTime) {
+                    mbAudFXPlay(SHOP_SFX_DAY_SUCCESS);
+                } else {
+                    mbAudFXPlay(SHOP_SFX_NIGHT_SUCCESS);
+                }
+                mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_THANK_YOU), winType);
+                mbWinTopWait();
+                doneF = TRUE;
+            }
+        } while (!doneF);
+        mbStatusDispFocusSet(work->playerNo, FALSE);
+    }
+
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        shopPos = localShopWork->shopPos;
+    }
+    mbMasuPosGet((s16)work->shopNo, &playerPos);
+    PSVECSubtract(&playerPos, &shopPos, &direction);
+    angle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        if (localShopWork->pathF) {
+            for (i = 1; i < pathNum; i++) {
+                masuId = path[pathNum - (i + 1)];
+
+                GwPlayer[work->playerNo].masuIdNext = masuId;
+                mbMasuPosGet(masuId, &shopPos);
+                mbPlayerMasuMovePos(work->playerNo, &shopPos, TRUE);
+                GwPlayer[work->playerNo].masuId = masuId;
+            }
+        } else {
+            mbPlayerMasuMovePos(work->playerNo, &playerPos, TRUE);
+        }
+        }
+    }
+    mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
+    mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+        HU3D_MOTATTR_LOOP);
+    while (!mbStatusOffCheckAll()) {
+        HuPrcVSleep();
+    }
+    mbStatusDispSetAll(TRUE);
+    {
+        OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+        MBSHOPOMWORK *localShopWork = shopObj->data;
+
+        if (localShopWork->openF) {
+            ev_ShopOpenSet(shopNo, FALSE);
+        }
+    }
+    {
+        OMOBJ *shopObj;
+        MBSHOPOMWORK *localShopWork;
+
+        while ((shopObj = ev_ShopOMObj[shopNo]),
+            (localShopWork = shopObj->data),
+            localShopWork->motionExecF != FALSE) {
+            HuPrcVSleep();
+        }
+    }
+    mbCameraPlayerViewSet(work->playerNo, 2);
+
+cleanup:
+    mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
+    if (shopModelId != -1) {
+        if (lightId != -1) {
+            Hu3DLLightKill(mbObjModelIDGet(shopModelId), lightId);
+        }
+        mbObjKill(shopModelId);
+    }
+    if (capsuleModelId != -1) {
+        mbObjKill(capsuleModelId);
+    }
+    for (i = 0; i < offerNum; i++) {
+        if (capsuleObjId[i] != -1) {
+            mbCapObjColorKill(capsuleObjId[i]);
+        }
+    }
+    HuDataDirClose(SHOP_DATA_NIGHT_MODEL);
 }
 
 static int ev_ShopMesGet(int messNo)
