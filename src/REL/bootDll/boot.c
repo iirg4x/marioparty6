@@ -2,6 +2,7 @@
 #include "dolphin/os/OSReset.h"
 #include "game/audio.h"
 #include "game/data.h"
+#include "datanum/title.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/init.h"
@@ -31,17 +32,6 @@ extern OMOBJMAN *BootObjMan;
 extern OMOBJ *OutViewObj;
 
 enum {
-    NINTENDO_SPRITE_DATA = DATANUM(DATA_title, 0x01),
-    PROGRESSIVE_MSG_SPRITE_DATA = DATANUM(DATA_title, 0x06),
-    PROGRESSIVE_ON_SPRITE_DATA = DATANUM(DATA_title, 0x07),
-    PROGRESSIVE_OFF_SPRITE_DATA = DATANUM(DATA_title, 0x08),
-    OPENING_WAIT_SPRITE_DATA = DATANUM(DATA_title, 0x09),
-    PROGRESSIVE_CURSOR_SPRITE_DATA = DATANUM(DATA_title, 0x0A),
-    PROGRESSIVE_CURSOR_SEL_SPRITE_DATA = DATANUM(DATA_title, 0x0B),
-    TITLE_HSF_PARTY = DATANUM(DATA_title, 0x13),
-    TITLE_HSF_STAR = DATANUM(DATA_title, 0x14),
-    TITLE_HSF_SIX = DATANUM(DATA_title, 0x15),
-
     WARNING_SPRITE_MEMBER = 0,
     PRESS_START_SPRITE_MEMBER = 1,
     WARNING_SPRITE_MEMBER_COUNT = 2,
@@ -50,13 +40,15 @@ enum {
     WARNING_SPRITE_BANK = 0,
     TITLE_WIPE_FRAMES = 30,
     TITLE_STREAM_DELAY_FRAMES = 10,
-    TITLE_INPUT_WAIT_FRAMES = 0x834,
+    TITLE_INPUT_WAIT_FRAMES = 2100,
     TITLE_CONFIRM_WAIT_FRAMES = 20,
-    TITLE_CONFIRM_SE = 0x49C,
+    TITLE_CONFIRM_SE = 1180,
     INITIAL_WAIT_FRAMES = 90,
-    MAX_INPUT_WAIT_FRAMES = 0xDB6,
+    MAX_INPUT_WAIT_FRAMES = 3510,
     BLINK_PERIOD_FRAMES = 30,
-    BOOT_PAD_SKIP_MASK = 0x1100,
+    BOOT_PAD_SKIP_MASK = PAD_BUTTON_A | PAD_BUTTON_START,
+    CAMERA_OUT_VIEW_PRIORITY = 32730,
+    SUBSTICK_INPUT_MASK = 248,
 };
 
 void BootExec(void);
@@ -113,7 +105,7 @@ void ObjectSetup(void)
     Hu3DCameraPerspectiveSet(1, 45.0f, 20.0f, 15000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     HuPrcCreate(BootExec, 100, 12288, 0);
-    OutViewObj = omAddObjEx(BootObjMan, 0x7FDA, 0, 0, OM_GRP_NONE, CameraOutView);
+    OutViewObj = omAddObjEx(BootObjMan, CAMERA_OUT_VIEW_PRIORITY, 0, 0, OM_GRP_NONE, CameraOutView);
     omAddObjEx(BootObjMan, 0, 32, 32, OM_GRP_NONE, CameraMove);
     BootLightId[0] = Hu3DGLightCreate(0.0f, 10.0f, 1000.0f,
                                       0.0f, -0.01f, -1.0f,
@@ -598,7 +590,7 @@ void CameraMove(OMOBJ *object)
     PSVECCrossProduct(&up, &delta, &delta);
     PSVECNormalize(&delta, &delta);
 
-    subStick = HuPadSubStkX[0] & 0xF8;
+    subStick = HuPadSubStkX[0] & SUBSTICK_INPUT_MASK;
     if (subStick != 0) {
         BootCameraCenter[0].x += (delta.x * (float)subStick) * 0.05f;
         BootCameraCenter[0].y += (delta.y * (float)subStick) * 0.05f;
@@ -607,7 +599,7 @@ void CameraMove(OMOBJ *object)
 
     PSVECNormalize(&roll, &delta);
 
-    subStick = -(HuPadSubStkY[0] & 0xF8);
+    subStick = -(HuPadSubStkY[0] & SUBSTICK_INPUT_MASK);
     if (subStick != 0) {
         BootCameraCenter[0].x += (delta.x * (float)subStick) * 0.05f;
         BootCameraCenter[0].y += (delta.y * (float)subStick) * 0.05f;

@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "id": "REL:bootDll:boot",
+  "module": "bootDll",
+  "source": "src/REL/bootDll/boot.c",
+  "compiler": "GC/2.6",
+  "summary": "Canonical bootDll boot owner after a bounded numeric-domain cleanup. Existing title resource identifiers are carried into a claimed title catalog header; timing, input, out-view priority, and substick values retain narrow behavior-backed names. The rebuilt boot object is exact for text, rodata, and all 1,069 relocations, its source-owned data is the exact target prefix, and the linked REL is retail-identical.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "plausible",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed_partial"
+  },
+  "tags": [
+    "rel",
+    "boot-flow",
+    "numeric-domain",
+    "title-catalog",
+    "consumer-sensitive"
+  ],
+  "symbols": [
+    { "symbol": "_prolog", "stable_id": "bootDll:0x0" },
+    { "symbol": "_epilog", "stable_id": "bootDll:0x54" },
+    { "symbol": "ObjectSetup", "stable_id": "bootDll:0xA0" },
+    { "symbol": "BootExec", "stable_id": "bootDll:0x3F8" },
+    { "symbol": "BootProgExec", "stable_id": "bootDll:0xCF4" },
+    { "symbol": "CameraOutView", "stable_id": "bootDll:0x1428" },
+    { "symbol": "CameraMove", "stable_id": "bootDll:0x17DC" },
+    { "symbol": "BootTitleCreate", "stable_id": "bootDll:0x2364" },
+    { "symbol": "BootTitleExec", "stable_id": "bootDll:0x243C" },
+    { "symbol": "NintendoDataDecode", "stable_id": "bootDll:0x28E0" },
+    { "symbol": "WarningDataDecode", "stable_id": "bootDll:0x2964" },
+    { "symbol": "BootWarningExec", "stable_id": "bootDll:0x29E4" }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The configured GP6E01 object hash, bootDll section extents, and symbol starts establish the target owner boundary and compiler contract. A fresh GC/2.6 build reproduces all 11,684 text bytes, all 208 rodata bytes, and all 1,069 ordered relocations exactly. The 54-byte source data equals the target prefix; the remaining ten target bytes are a zero-filled configured tail gap.",
+      "reference": "config/GP6E01/config.yml; config/GP6E01/build.sha1; config/dll/rels/bootDll/splits.txt; config/dll/rels/bootDll/symbols.txt"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The rebuilt 94,772-byte bootDll.rel is byte-identical to the supplied retail REL. Both files have SHA-1 c2903001e92092befe2c84ebb389d10126f42064 and SHA-256 00236137982857b393649797fc8cd0151f18ea48b5ae833f2244517080af6977.",
+      "reference": "build/GP6E01/bootDll/bootDll.rel; orig/GP6E01/files/dll/bootDll.rel"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "The claimed title header expresses the existing boot.c DATA_title identifiers through the same-game DATANUM domain without changing their source-level names or values.",
+      "reference": "include/datanum/title.h; include/datadir_enum.h; src/REL/bootDll/boot.c"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The same-owner opening consumer uses BootLightId[0] and BootLightId[1], while same-game pad, object, stream, and camera consumers establish the input-mask, object-priority, and stick-quantization roles used by this owner. The consumer source remains unedited and the complete linked REL is exact. Its standalone source object retains two pre-existing OpeningBgUpdate relocation-ownership differences that resolve identically at link time.",
+      "reference": "src/REL/bootDll/opening.c; include/dolphin/pad.h; include/game/object.h; include/msm_stream.h"
+    },
+    {
+      "kind": "sibling_source",
+      "confidence": "medium",
+      "accepted": false,
+      "summary": "The pinned Mario Party 5 title catalog and boot source support catalog naming and formatting style only. They do not authenticate Mario Party 6 archive indices, sound IDs, or original identifiers.",
+      "reference": "MP5 e246f9d; include/datanum/title.h; src/REL/bootDll/boot.c"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "low",
+      "accepted": false,
+      "summary": "No GP6E01 title archive or owning catalog table is present in this checkout, so each DATA_title index has not been independently verified against the retail archive. The header entries remain blocked for that catalog-proof step.",
+      "reference": "config/GP6E01/config.yml; config/dll/rels/bootDll/splits.txt"
+    }
+  ],
+  "numeric_domains": [
+    { "name": "NINTENDO_SPRITE_DATA", "original_literal": "0x01", "value": 1, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "PROGRESSIVE_MSG_SPRITE_DATA", "original_literal": "0x06", "value": 6, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "PROGRESSIVE_ON_SPRITE_DATA", "original_literal": "0x07", "value": 7, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "PROGRESSIVE_OFF_SPRITE_DATA", "original_literal": "0x08", "value": 8, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "OPENING_WAIT_SPRITE_DATA", "original_literal": "0x09", "value": 9, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "PROGRESSIVE_CURSOR_SPRITE_DATA", "original_literal": "0x0A", "value": 10, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "PROGRESSIVE_CURSOR_SEL_SPRITE_DATA", "original_literal": "0x0B", "value": 11, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "TITLE_HSF_PARTY", "original_literal": "0x13", "value": 19, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "TITLE_HSF_STAR", "original_literal": "0x14", "value": 20, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "TITLE_HSF_SIX", "original_literal": "0x15", "value": 21, "domain": "DATANUM(DATA_title, file)", "status": "archive_verification_debt" },
+    { "name": "TITLE_INPUT_WAIT_FRAMES", "original_literal": "0x834", "value": 2100, "domain": "title timing frame count", "status": "behavior_backed" },
+    { "name": "TITLE_CONFIRM_SE", "original_literal": "0x49C", "value": 1180, "domain": "title confirmation sound ID", "status": "behavior_backed_sound_catalog_debt" },
+    { "name": "MAX_INPUT_WAIT_FRAMES", "original_literal": "0xDB6", "value": 3510, "domain": "title timing frame count", "status": "behavior_backed" },
+    { "name": "BOOT_PAD_SKIP_MASK", "original_literal": "0x1100", "value": 4352, "domain": "PAD_BUTTON_A | PAD_BUTTON_START", "status": "interface_backed" },
+    { "name": "CAMERA_OUT_VIEW_PRIORITY", "original_literal": "0x7FDA", "value": 32730, "domain": "CameraOutView object priority", "status": "same_game_consumer_debt" },
+    { "name": "SUBSTICK_INPUT_MASK", "original_literal": "0xF8", "value": 248, "occurrences": 2, "domain": "substick quantization mask", "status": "same_game_consumer_debt" }
+  ],
+  "change_budget": {
+    "structural_type_changes": 0,
+    "declaration_include_changes": 2,
+    "compiler_reconciliation_probes": 0,
+    "literal_occurrences_removed": 17
+  },
+  "constraints": [],
+  "debt": [
+    {
+      "kind": "title_catalog",
+      "priority": "high",
+      "summary": "The DATA_title archive/table is unavailable, so the ten header entries are source-preserving domain recovery but not independently authenticated catalog names or indices. Keep the owner blocked until GP6E01 archive evidence verifies every entry."
+    },
+    {
+      "kind": "sound_domain",
+      "priority": "high",
+      "summary": "The current MP6 msm_se.h does not expose a target-backed symbol for the title confirmation value 1180. TITLE_CONFIRM_SE remains the existing behavior name with a decimal initializer; do not replace it with the MP5 MSM_SE_MENU_40 name or value."
+    },
+    {
+      "kind": "address_derived_globals",
+      "priority": "normal",
+      "summary": "The local moveF$486 BSS symbol has no target-backed original name; retain it as an address-derived local."
+    },
+    {
+      "kind": "address_derived_globals",
+      "priority": "normal",
+      "summary": "The owner-local lbl_1_bss_4 BSS symbol has no target-backed original name or consumer use; retain the placeholder and do not infer a cross-REL meaning."
+    },
+    {
+      "kind": "source_quality",
+      "priority": "normal",
+      "summary": "The cleanup changes one include/catalog declaration group and one local constant group; no structural ABI/type change or compiler-reconciliation probe was used. Source-quality, public, exact object-relocation, and retail REL gates pass."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/bootDll/splits.txt",
+      "config/dll/rels/bootDll/symbols.txt",
+      "config/GP6E01/config.yml",
+      "config/GP6E01/build.sha1",
+      "include/datanum/title.h",
+      "src/REL/bootDll/opening.c"
+    ],
+    "reports": [
+      "build/verify-boot"
+    ]
+  }
+}
