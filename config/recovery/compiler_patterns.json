@@ -2294,7 +2294,8 @@
           "endingdll:fn_1_27A0",
           "endingdll:fn_1_B0A4",
           "endingdll:fn_1_DF60",
-          "endingdll:fn_1_8CFC"
+          "endingdll:fn_1_8CFC",
+          "main:board/captrap:mbev_CapBiriQMetalShock"
         ],
         "modules": [
           "main.dol",
@@ -2328,7 +2329,10 @@
         "mbCapNextGet is instruction-exact but its six data/literal relocation identities are not call-chronology evidence.",
         "endingdll fn_1_DE3C operand-order and capture probes did not reproduce the target and were reverted.",
         "wave 57 used owner-local dont_inline only where target order and a retained direct call proved no expansion; it is not a blanket helper-family fix.",
-        "wave 68 moved fn_1_F790 and triggered an unwanted expansion into fn_1_A5D4, while blanket dont_inline also suppressed the authentic nested fn_1_F4E4 expansion."
+        "wave 68 moved fn_1_F790 and triggered an unwanted expansion into fn_1_A5D4, while blanket dont_inline also suppressed the authentic nested fn_1_F4E4 expansion.",
+        "main:board/captrap mbev_CapBiriQMetalShock target m2c output correctly exposes separate sine-result stack lifetimes, but it is not source-evaluation authority: the natural separated C form stays exact-sized at 4148 bytes while MWCC preloads the far multiplicand and leaves eight instruction-order or operand differences instead of the retained six-difference form.",
+        "Explicit final -schedule off does not repair that captrap ordering, and -sym on is text-identical while only adding a debug section; neither explains the two target post-mbSinDeg reloads.",
+        "Collapsing the captrap trig block into direct nested calls shrinks the function from 4148 to 4092 bytes and introduces an f17 call-result lifetime, while reversing only the inner commutative product remains 4148 bytes but preserves the wrong far-operand preload. All forms were reverted."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -2336,7 +2340,8 @@
         "docs/native_matching_wave57.md",
         "docs/native_matching_wave68.md",
         "docs/native_matching_wave72.md",
-        "docs/native_matching_wave73.md"
+        "docs/native_matching_wave73.md",
+        "src/board/captrap.c"
       ]
     },
     {
@@ -3126,7 +3131,8 @@
         "Do not split a declaration initializer solely to choose a register when target call/store chronology does not prove a later semantic lifetime.",
         "Do not add redundant temporaries, fake scopes, volatile qualifiers, register keywords, or discarded reads solely to choose registers.",
         "mbTelopTimeSprRotSet reached strict exact only under a discarded-read use-count diagnostic; that proved VarInfo.usage ownership but was rejected and reverted because no authenticated natural source justified those reads.",
-        "Splitting mbTelopTimeSprRotSet's shared scale lifetime into natural scale, rotation, and phase locals grew the source from 664 to 696 bytes, added saved f22/f23 lifetimes, and regressed strict matching to 94.27109%; natural chained assignments for the two absolute-value copies were byte-neutral and retained the same twelve f29/f31 operand differences. Both probes were reverted, so do not repeat those allocator axes."
+        "Splitting mbTelopTimeSprRotSet's shared scale lifetime into natural scale, rotation, and phase locals grew the source from 664 to 696 bytes, added saved f22/f23 lifetimes, and regressed strict matching to 94.27109%; natural chained assignments for the two absolute-value copies were byte-neutral and retained the same twelve f29/f31 operand differences. Both probes were reverted, so do not repeat those allocator axes.",
+        "Further mbTelopTimeSprRotSet controls were all negative and reverted: -sym on was text-neutral with the same twelve f29/f31 differences, nested raw-result assignments shrank 664 to 624 bytes, HuAbs grew it to 744 bytes, and standard fabsf grew it to 728 bytes."
       ],
       "related_exceptions": [],
       "evidence": [
