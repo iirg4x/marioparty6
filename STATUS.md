@@ -4,7 +4,7 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **July 29, 2026**
+Last published full-project snapshot: **August 1, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
@@ -17,7 +17,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 Current board recovery: **16 / 40 source owners matching** and **65 / 72
 Towering Treetop stub seams strict-exact and promoted**.
 Recovered `src/board/last5.c` is zero-hex and remains a partial **4 / 10**
-strict-exact owner, so neither board count changes.
+strict-exact owner. Recovered `src/board/player.c` is zero-hex and guard-clean;
+it remains a partial **158 / 165** strict-exact owner with **41,664** exact text
+bytes and **1,967** exact-function relocations, so neither board count changes.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
