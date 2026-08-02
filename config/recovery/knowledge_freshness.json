@@ -934,6 +934,20 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "gc26-owner-profile-noauto-replaces-dont-inline-regions": {
+      "status": "active",
+      "validated_commit": "54986d5fdebd8b7949acd4586c57b85f5f03832b",
+      "validated_at": "2026-08-02",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "configure.py",
+        "src/REL/fileseldll/saveload.c",
+        "config/dll/rels/fileseldll/splits.txt",
+        "config/dll/rels/fileseldll/symbols.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
