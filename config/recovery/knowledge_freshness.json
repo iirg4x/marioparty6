@@ -940,7 +940,7 @@
     },
     "target-symbol-inventory-before-seam-recovery": {
       "status": "active",
-      "validated_commit": "99a135a8d9150f9fb4d52717d050e827379cf63a",
+      "validated_commit": "e2446fbb11e622ea6207a05c4d79c3c9c0d4e3fc",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
