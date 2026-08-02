@@ -1119,7 +1119,12 @@ config.libs = [
                 mw_version=config.linker_version,
                 extra_cflags=["-pooldata off"],
             ),
-            Object(Matching, "REL/fileseldll/saveload.c", mw_version=config.linker_version),
+            Object(
+                Matching,
+                "REL/fileseldll/saveload.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-pooldata off", "-inline noauto"],
+            ),
             Object(
                 Matching,
                 "REL/fileseldll/runtime.c",

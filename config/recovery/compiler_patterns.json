@@ -1296,6 +1296,83 @@
       ]
     },
     {
+      "id": "mp6-msm-tables-authenticate-sound-id-ranges",
+      "title": "Derive MP6 sound-ID ranges from the retail MSM tables",
+      "classification": "confirmed_rule",
+      "category": "asset_provenance",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "The big-endian GP6E01 sound container exposes its group and sound-effect tables through `MSM_HEADER`. A `MSM_GRP_*` enum value selects an `MSM_GRP_INFO` row; that row's MusyX `gid` identifies the corresponding `MSM_SE` entries. Their table indices authenticate the game-facing sound IDs and their group-relative ordinal names without guessing effect semantics. Retail validation authenticates six shared ranges: CMN index 1 / `gid` 0 at IDs 0-56, GUIDE index 6 / `gid` 13 at IDs 925-1004, BRD00 index 7 / `gid` 1 at IDs 1005-1150, FILESEL index 8 / `gid` 184 at IDs 1151-1167, MENU index 9 / `gid` 176 at IDs 1168-1207, and SBRD index 29 / `gid` 10 at IDs 1542-1558.",
+      "conditions": "Apply when a GP6E01 consumer passes an unexplained sound ID and the C-local retail `MP6_SND.msm` plus the checked-in MSM layouts are available.",
+      "source_condition": {
+        "change": "Replace an unexplained numeric sound ID with a group-relative `MSM_SE_<GROUP>_<ORDINAL>` symbol.",
+        "requires": [
+          "the `MSM_GRP_*` index used by the owning module or same-game audio table",
+          "a successfully decoded big-endian `MSM_HEADER` with bounded group and SE table offsets",
+          "the selected `MSM_GRP_INFO.gid` and every matching `MSM_SE.gid` row",
+          "an ordinal derived from table order rather than effect semantics",
+          "unchanged consumer object, relocations, and retail output"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no instruction or relocation change for an enum alias",
+          "shared sound-enum coverage",
+          "removal of raw numeric sound identifiers"
+        ],
+        "known_signatures": [
+          "the owning module first loads a named `MSM_GRP_*` group",
+          "several consecutive sound IDs share one retail `MSM_SE.gid`",
+          "the retail `MSM_SE.fxId` sequence is independent of the game-facing table index"
+        ]
+      },
+      "rule": "Use the MSM table index as the sound ID and the matched group run to recover only a group-relative ordinal name. Do not infer a descriptive effect name, equate `MSM_GRP_INFO.gid` with the group-table index, or treat `MSM_SE.fxId` as the game-facing sound ID.",
+      "safe_actions": [
+        "validate the `GSND` magic, version, table bounds, and record-size divisibility before reading rows",
+        "select the group through the repository's `MSM_GRP_*` enum and then match its retail MusyX `gid`",
+        "enumerate every matching SE row in table order and retain sparse header coverage only when the full range is authenticated",
+        "name only the ordinal when the retail container provides no semantic effect label",
+        "rebuild every changed consumer and compare the complete REL plus the DTK checksum"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "audio",
+          "REL"
+        ],
+        "owner_tags": [
+          "sound_catalog"
+        ]
+      },
+      "examples": [
+        "`MSM_GRP_CMN`, `MSM_GRP_GUIDE`, `MSM_GRP_BRD00`, and `MSM_GRP_MENU` select group-table rows 1, 6, 7, and 9; their retail `gid` joins authenticate the complete CMN_01-57, GUIDE_01-80, BRD00_01-146, and MENU_01-40 ordinal ranges",
+        "`MSM_GRP_FILESEL` is group-table index 8; its retail `gid` 184 covers IDs 1151-1167, so FILESEL consumers at IDs 1155-1167 map exactly to ordinal entries 05-17",
+        "`MSM_GRP_SBRD` is group-table index 29; its retail `gid` 10 covers IDs 1542-1558, so S01's IDs 1549, 1550, and 1551 are ordinal entries 08, 09, and 10",
+        "`include/msm_se.h` exposes the authenticated ranges while individual owners use only proven consumers; the mdsel catalog conversion preserved 113/113 exact functions, 65,552 text bytes, and 5,029 physical relocations"
+      ],
+      "counterexamples": [
+        "A printable-string scan of `MP6_SND.msm` produces false positives and does not authenticate a sound name.",
+        "Consecutive numeric IDs alone do not prove group ownership; the `MSM_GRP_INFO.gid` to `MSM_SE.gid` join is required.",
+        "The S01 animation makes the three sounds look like movement effects, but the retail tables prove only SBRD ordinals, not descriptive names."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/owners/REL_mdseldll_mdsel.json",
+        "config/recovery/owners/REL_s01Dll_s01.json",
+        "include/game/msm_data.h",
+        "include/msm_grp.h",
+        "include/msm_se.h",
+        "src/msm/msmse.c",
+        "src/msm/msmsys.c",
+        "src/REL/fileseldll/filesel.c",
+        "src/REL/mdseldll/mdsel.c",
+        "src/REL/s01Dll/s01.c"
+      ]
+    },
+    {
       "id": "board-bulk-rename-is-mapping-provenance",
       "title": "Treat the upstream board bulk rename as mapping provenance, not semantic proof",
       "classification": "contextual_heuristic",
@@ -1400,6 +1477,7 @@
         "stable_ids": [],
         "modules": [
           "main",
+          "fileseldll",
           "mdpresultdll",
           "optionDll",
           "openingDll"
@@ -1423,7 +1501,8 @@
         "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)",
         "optionDll pass2 prefix/lifecycle/message owners (GC/1.3.2, five guarded text-only owners, 11 functions, 5,872 exact text bytes, 577 physical relocations, 861 objdiff rows, retail REL hash restored)",
         "openingDll:opening_prefix (GC/1.3.2, nine functions, 6,968 exact text bytes, 832 physical relocations, 1,112 objdiff rows, retail REL hash restored)",
-        "openingDll:application_pass2_4bd8 (GC/1.3.2, seven functions, 2,656 exact text bytes, 201 physical relocations; targeted header closure suppresses the weak pool while preserving authenticated double sin/cos prototypes)"
+        "openingDll:application_pass2_4bd8 (GC/1.3.2, seven functions, 2,656 exact text bytes, 201 physical relocations; targeted header closure suppresses the weak pool while preserving authenticated double sin/cos prototypes)",
+        "fileseldll saveload.c selects dolphin/math.h before Filesel and MusyX-facing headers, eliminating the forbidden _MATH_H override while preserving 23/23 functions, 11,856 text bytes, 831 relocations, every owned section, and the retail-identical REL."
       ],
       "counterexamples": [
         "optionDll application_pass2_messages_c324 includes dolphin.h and mgdata.h without a transitive generic math closure. It remains a text-only 216-byte, 8-relocation, 19-row exact owner without `_MATH_H`; adding the guard would be unnecessary and unauthenticated.",
@@ -1453,6 +1532,9 @@
         "src/game/sprman.c",
         "src/REL/mdpartydll/stage.c",
         "src/REL/bootDll/opening.c",
+        "src/REL/fileseldll/saveload.c",
+        "configure.py",
+        "build/saveload_clean_final_objdiff.json",
         "src/board/telop.c",
         "include/humath.h",
         "include/musyx/musyx.h"
@@ -4280,11 +4362,13 @@
         "owners": [],
         "stable_ids": [
           "REL:bootDll:opening",
-          "REL:selmenuDll:selmenu"
+          "REL:selmenuDll:selmenu",
+          "REL:fileseldll:saveload"
         ],
         "modules": [
           "bootDll",
-          "selmenuDll"
+          "selmenuDll",
+          "fileseldll"
         ],
         "owner_tags": [
           "compiler_profile",
@@ -4296,7 +4380,8 @@
       },
       "examples": [
         "For selmenu.c, removing pool_data off changed text from 20,524 to 17,312 bytes, physical relocations from 1,851 to 971, and BSS from 176 to 174 bytes while regressing 14 functions. Adding -pooldata off to that Object restored 25/25 exact functions, every section, all 1,851 relocations, and the retail-identical REL.",
-        "For bootDll opening.c, removing the source pragma without an owner flag left rodata, data, and BSS exact but reduced text to 82.831894% with only 19/37 functions exact. Moving -pooldata off to the opening Object restored 37/37 functions, all four owned sections, 1,928 physical relocations, and retail-identical bootDll.rel and main.dol outputs while raising source organicity from 83 to 97."
+        "For bootDll opening.c, removing the source pragma without an owner flag left rodata, data, and BSS exact but reduced text to 82.831894% with only 19/37 functions exact. Moving -pooldata off to the opening Object restored 37/37 functions, all four owned sections, 1,928 physical relocations, and retail-identical bootDll.rel and main.dol outputs while raising source organicity from 83 to 97.",
+        "For fileseldll saveload.c, moving pool_data off into the Object profile preserved all 23 functions, 11,856 text bytes, 831 relocations, and every owned section while contributing to a source-organicity increase from 40 to 96; all 137 retail outputs remained exact."
       ],
       "counterexamples": [
         "This owner-specific proof does not justify enabling pooldata off for every GC/2.6 object.",
@@ -4311,6 +4396,8 @@
         "config/dll/rels/bootDll/symbols.txt",
         "build/opening_profile_objdiff.json",
         "src/REL/selmenuDll/selmenu.c",
+        "src/REL/fileseldll/saveload.c",
+        "build/saveload_clean_final_objdiff.json",
         "config/dll/rels/selmenuDll/splits.txt",
         "config/dll/rels/selmenuDll/symbols.txt",
         "build/selmenu_support_pooloff.json"
@@ -4388,6 +4475,78 @@
         "config/GP6E01/symbols.txt",
         "config/GP6E01/splits.txt",
         "src/board/last5.c"
+      ]
+    },
+    {
+      "id": "gc26-owner-profile-noauto-replaces-dont-inline-regions",
+      "title": "Move proven owner-wide no-auto-inline policy out of recovered C",
+      "classification": "confirmed_rule",
+      "category": "toolchain_profile",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "A GC/2.6 owner whose target contains no automatic helper expansion can express that compilation policy once as the final Object option instead of surrounding recovered functions with source dont_inline pragmas. Filesel saveload proves that -inline noauto removes the pragma region at zero instruction, section, or relocation cost.",
+      "conditions": "Apply only when removing source dont_inline controls changes automatic expansion and a final owner-local -inline noauto option restores the complete object without suppressing any target-authenticated inline closure.",
+      "source_condition": {
+        "change": "Remove one or more source dont_inline pragma regions and set the final auto-inline mode for exactly one translation unit.",
+        "requires": [
+          "the exact final compiler command",
+          "whole-object function, section, and relocation comparison",
+          "an inventory of helper-call relocations and expanded helper bodies",
+          "a linked retail build covering every configured output"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "small helpers remain calls instead of automatic expansions",
+          "caller frame and register allocation remain stable when the target has no auto-inline closure",
+          "broad regressions when any target caller requires an automatic expansion"
+        ],
+        "known_signatures": [
+          "removing a local dont_inline region alone expands one or more helpers",
+          "the final -inline noauto option restores every target call relocation and owned section",
+          "explicit SDK inline bodies remain governed separately from automatic function selection"
+        ]
+      },
+      "rule": "Prefer the narrowest verified Object compiler profile over recovered-C dont_inline pragmas when the policy is owner-wide. Reject the profile immediately if any target-authenticated automatic expansion, function byte, section byte, or relocation regresses.",
+      "safe_actions": [
+        "compare the owner with pragmas, without pragmas, and with the final noauto profile",
+        "inspect every changed call edge rather than checking only the pragma-adjacent function",
+        "record the final option after the ordinary owner flags so its precedence is explicit",
+        "keep the source control when the target requires mixed automatic-inline behavior and no natural chronology is proven"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "FileCardMount"
+        ],
+        "modules": [
+          "fileseldll"
+        ],
+        "owner_tags": [
+          "compiler_profile",
+          "auto_inline",
+          "source_quality",
+          "relocation_ownership",
+          "rel"
+        ]
+      },
+      "examples": [
+        "fileseldll saveload.c removed its dont_inline region and compiled with final -inline noauto while retaining 23/23 exact functions, 11,856 text bytes, 831 relocations, exact rodata/data, and the retail-identical fileseldll.rel."
+      ],
+      "counterexamples": [
+        "Mode-select chronology includes a target-authenticated nested automatic expansion; blanket dont_inline suppresses it, so an owner-wide noauto profile is invalid there.",
+        "Do not infer an owner-wide policy from one exact leaf function or from unchanged text size alone."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "configure.py",
+        "src/REL/fileseldll/saveload.c",
+        "config/dll/rels/fileseldll/splits.txt",
+        "config/dll/rels/fileseldll/symbols.txt",
+        "build/saveload_clean_final_objdiff.json",
+        "config/GP6E01/build.sha1"
       ]
     }
   ]

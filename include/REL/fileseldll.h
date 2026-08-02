@@ -6,7 +6,6 @@
 #include "game/sprite.h"
 #include "game/gamework.h"
 #include "game/card.h"
-#include "game/saveload.h"
 #include "game/process.h"
 
 #include "datanum/filesel.h"
