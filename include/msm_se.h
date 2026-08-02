@@ -2,7 +2,10 @@
 #define MSM_SE_H
 
 enum MSM_SE_ID {
+    MSM_SE_CMN_01 = 0,
+    MSM_SE_CMN_02 = 1,
     MSM_SE_CMN_03 = 2,
+    MSM_SE_CMN_04 = 3,
     MSM_SE_CMN_25 = 24,
     
     MSM_SE_CHAR_DAISY = 57,
