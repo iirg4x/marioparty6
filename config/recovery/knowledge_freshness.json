@@ -262,8 +262,8 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",
-      "validated_at": "2026-07-29",
+      "validated_commit": "6ae62394c4f65449f57d785fb1e5604124973b8f",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -869,8 +869,8 @@
     },
     "recovered-c-numeric-identifiers-require-named-domains": {
       "status": "active",
-      "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",
-      "validated_at": "2026-07-29",
+      "validated_commit": "6ae62394c4f65449f57d785fb1e5604124973b8f",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/project.json",
@@ -886,7 +886,7 @@
     },
     "mp6-msm-tables-authenticate-sound-id-ranges": {
       "status": "active",
-      "validated_commit": "b277d238e255d7ad41538b7e8de951df4ce600cf",
+      "validated_commit": "6ae62394c4f65449f57d785fb1e5604124973b8f",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
