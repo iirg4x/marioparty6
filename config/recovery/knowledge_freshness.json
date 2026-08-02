@@ -262,7 +262,7 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "e33d655887a9cdcbcf0b4f4e3635f0286cca7f3a",
+      "validated_commit": "e18bae625e8ba62c53656bb4279bccfc506e9188",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -897,6 +897,7 @@
         "include/msm_se.h",
         "src/msm/msmse.c",
         "src/msm/msmsys.c",
+        "src/REL/fileseldll/filesel.c",
         "src/REL/mdseldll/mdsel.c",
         "src/REL/s01Dll/s01.c"
       ],

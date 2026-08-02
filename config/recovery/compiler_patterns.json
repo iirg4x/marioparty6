@@ -1302,7 +1302,7 @@
       "category": "asset_provenance",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "The big-endian GP6E01 sound container exposes its group and sound-effect tables through `MSM_HEADER`. A `MSM_GRP_*` enum value selects an `MSM_GRP_INFO` row; that row's MusyX `gid` identifies the corresponding `MSM_SE` entries. Their table indices authenticate the game-facing sound IDs and their group-relative ordinal names without guessing effect semantics. Retail validation authenticates five shared ranges: CMN index 1 / `gid` 0 at IDs 0-56, GUIDE index 6 / `gid` 13 at IDs 925-1004, BRD00 index 7 / `gid` 1 at IDs 1005-1150, MENU index 9 / `gid` 176 at IDs 1168-1207, and SBRD index 29 / `gid` 10 at IDs 1542-1558.",
+      "summary": "The big-endian GP6E01 sound container exposes its group and sound-effect tables through `MSM_HEADER`. A `MSM_GRP_*` enum value selects an `MSM_GRP_INFO` row; that row's MusyX `gid` identifies the corresponding `MSM_SE` entries. Their table indices authenticate the game-facing sound IDs and their group-relative ordinal names without guessing effect semantics. Retail validation authenticates six shared ranges: CMN index 1 / `gid` 0 at IDs 0-56, GUIDE index 6 / `gid` 13 at IDs 925-1004, BRD00 index 7 / `gid` 1 at IDs 1005-1150, FILESEL index 8 / `gid` 184 at IDs 1151-1167, MENU index 9 / `gid` 176 at IDs 1168-1207, and SBRD index 29 / `gid` 10 at IDs 1542-1558.",
       "conditions": "Apply when a GP6E01 consumer passes an unexplained sound ID and the C-local retail `MP6_SND.msm` plus the checked-in MSM layouts are available.",
       "source_condition": {
         "change": "Replace an unexplained numeric sound ID with a group-relative `MSM_SE_<GROUP>_<ORDINAL>` symbol.",
@@ -1349,6 +1349,7 @@
       },
       "examples": [
         "`MSM_GRP_CMN`, `MSM_GRP_GUIDE`, `MSM_GRP_BRD00`, and `MSM_GRP_MENU` select group-table rows 1, 6, 7, and 9; their retail `gid` joins authenticate the complete CMN_01-57, GUIDE_01-80, BRD00_01-146, and MENU_01-40 ordinal ranges",
+        "`MSM_GRP_FILESEL` is group-table index 8; its retail `gid` 184 covers IDs 1151-1167, so FILESEL consumers at IDs 1155-1167 map exactly to ordinal entries 05-17",
         "`MSM_GRP_SBRD` is group-table index 29; its retail `gid` 10 covers IDs 1542-1558, so S01's IDs 1549, 1550, and 1551 are ordinal entries 08, 09, and 10",
         "`include/msm_se.h` exposes the authenticated ranges while individual owners use only proven consumers; the mdsel catalog conversion preserved 113/113 exact functions, 65,552 text bytes, and 5,029 physical relocations"
       ],
@@ -1366,6 +1367,7 @@
         "include/msm_se.h",
         "src/msm/msmse.c",
         "src/msm/msmsys.c",
+        "src/REL/fileseldll/filesel.c",
         "src/REL/mdseldll/mdsel.c",
         "src/REL/s01Dll/s01.c"
       ]
