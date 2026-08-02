@@ -1516,7 +1516,8 @@
       ],
       "counterexamples": [
         "A size difference inside a named object, a nonexact effective relocation, or linked-output drift is meaningful and cannot be dismissed as a gap.",
-        "board/object initially reported 100% raw zero-filled .sbss bytes, yet the full build stopped at 136 files OK because its six globals occupied the wrong symbol offsets; declaration order had to restore the target addresses."
+        "board/object initially reported 100% raw zero-filled .sbss bytes, yet the full build stopped at 136 files OK because its six globals occupied the wrong symbol offsets; declaration order had to restore the target addresses.",
+        "board/tutorial had every named section and all 55 functions at 100%, but its seven .sbss scalars occupied reversed offsets and changed 46 linked DOL bytes. Reversing only their declarations restored the target symbol addresses and the retail main.dol hash while the target-only four-byte tail remained an honest DTK gap."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -1524,6 +1525,7 @@
         "docs/native_matching_wave26.md",
         "docs/native_matching_wave95.md",
         "docs/native_matching_wave98.md",
+        "src/board/tutorial.c",
         "config/GP6E01/build.sha1"
       ]
     },
@@ -3706,7 +3708,8 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [
-          "main:board/capevent:mbev_CapBonusCoinCall"
+          "main:board/capevent:mbev_CapBonusCoinCall",
+          "main:board/tutorial:mbTutorialMgCallExec"
         ],
         "modules": [
           "main"
@@ -3720,7 +3723,8 @@
         ]
       },
       "examples": [
-        "main:board/capevent mbev_CapBonusCoinCall closed at 204/204 bytes and 8/8 relocations when one authenticated adjacent zero-initialized scalar reproduced the target stack store while coinNumWork remained saved-register resident."
+        "main:board/capevent mbev_CapBonusCoinCall closed at 204/204 bytes and 8/8 relocations when one authenticated adjacent zero-initialized scalar reproduced the target stack store while coinNumWork remained saved-register resident.",
+        "main:board/tutorial mbTutorialMgCallExec closed at 1688/1688 bytes when the homologous mgcall.c loop authenticated an adjacent BOOL initialized to FALSE at the exact target-only li/stw point; all 55 functions, 671 relocations, initialized sections, and the linked retail DOL then matched."
       ],
       "counterexamples": [
         "A declared-but-never-referenced local is codegen-neutral in the measured controls and cannot explain an emitted store.",
@@ -3729,7 +3733,9 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "src/board/capevent.c"
+        "src/board/capevent.c",
+        "src/board/mgcall.c",
+        "src/board/tutorial.c"
       ]
     },
     {

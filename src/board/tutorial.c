@@ -67,13 +67,13 @@ static s16 tutorialMdlId[32];
 static TUTORIALCALLWORK tutorialCallWork;
 static TUTORIALWINDATA tutorialWinData[HUWIN_MAX];
 static TUTORIALMGCALLDATA tutorialMgCallData;
-static OMOBJ *tutorialGuideObj;
-static TUTORIALMAINFUNC tutorialMain;
-static s16 tutorialMgCallCursorPos;
-static BOOL tutorialExitOnF;
-static BOOL tutorialExitReqF;
-static HUPROCESS *tutorialMainProc;
 static HUPROCESS *tutorialWatchProc;
+static HUPROCESS *tutorialMainProc;
+static BOOL tutorialExitReqF;
+static BOOL tutorialExitOnF;
+static s16 tutorialMgCallCursorPos;
+static TUTORIALMAINFUNC tutorialMain;
+static OMOBJ *tutorialGuideObj;
 
 static TUTORIALGUIDEDATA tutorialGuideTbl[] = {
     { 0x002A0000, 0x3B6 },
@@ -822,6 +822,7 @@ void mbTutorialMgCallExec(int type)
     int result;
     int speed;
     MGDATA *mgData;
+    BOOL unlocked;
     int i;
     float weight;
 
@@ -836,21 +837,21 @@ void mbTutorialMgCallExec(int type)
     TutorialMgCallListGet(type, listNum, list);
 
     data->espId[0] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x87)), 100, 0);
-    espPosSet(data->espId[0], 288.0f, 230.0f);
+    espPosSet(data->espId[0], 288.0f, 230.4f);
     espDrawNoSet(data->espId[0], 32);
     data->espId[1] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x88)), 102, 0);
-    espPosSet(data->espId[1], 288.0f, 238.0f);
+    espPosSet(data->espId[1], 288.0f, 238.4f);
     espDrawNoSet(data->espId[1], 32);
     espTPLvlSet(data->espId[1], 0.5f);
     data->espId[2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x89)), 101, 0);
-    espPosSet(data->espId[2], 288.0f, 246.0f);
+    espPosSet(data->espId[2], 288.0f, 246.4f);
     espDrawNoSet(data->espId[2], 32);
     espTPLvlSet(data->espId[2], 0.5f);
     espDispOff(data->espId[2]);
     for (i = 1; i <= 30; i++) {
         weight = 1.0f - (i / 30.0f);
-        espPosSet(data->espId[0], 288.0f, 230.0f + (480.0f * weight));
-        espPosSet(data->espId[1], 288.0f, 238.0f + (480.0f * weight));
+        espPosSet(data->espId[0], 288.0f, 230.4f + (480.0f * weight));
+        espPosSet(data->espId[1], 288.0f, 238.4f + (480.0f * weight));
         mbTutorialVSleep();
     }
 
@@ -864,6 +865,7 @@ void mbTutorialMgCallExec(int type)
         work->dispF = TRUE;
         work->cursorNo = i;
         data->obj[i]->trans.y = mgCallWinYOfsTbl[listNum][i];
+        unlocked = FALSE;
         work->winNo = mbWinCreateHelp(0x002A003D);
         work->message = -1;
         if (mgData) {

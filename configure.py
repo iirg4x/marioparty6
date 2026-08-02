@@ -1041,7 +1041,7 @@ config.libs = [
             Object(Matching, "board/status.c"),
             Object(NonMatching, "board/opening.c"),
             Object(Matching, "board/pause.c"),
-            Object(NonMatching, "board/tutorial.c"),
+            Object(Matching, "board/tutorial.c"),
             Object(Matching, "board/roulette.c"),
             Object(NonMatching, "board/capselect.c"),
             Object(NonMatching, "board/capmove.c"),
