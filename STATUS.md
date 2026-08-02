@@ -26,11 +26,12 @@ compiled comparison objects retain **538 / 648 exact recovered functions**;
 incomplete application owners remain `NonMatching` as whole units until their
 full text, data, relocation, and consumer closure is exact.
 
-The canonical `fileseldll` save owner is strict-exact at **23 / 23 functions**,
-**11,856 text bytes**, and **831 relocations**, with `.text`, `.rodata`, and
-`.data` exact. Its source now uses the shared Filesel/save interfaces and an
-owner compiler profile instead of raw hexadecimal domains, local code-generation
-pragmas, or an include-guard override; the complete REL remains retail-identical.
+The canonical `fileseldll` application owner is strict-exact at **39 / 39
+functions**, **35,732 text bytes**, and **2,900 relocations**. Its source has no
+raw hexadecimal domains or synthetic padding, uses target-backed resource and
+message names, and scores **94 / 100** on the source-organicity review. The save
+owner remains strict-exact at **23 / 23 functions**, **11,856 text bytes**, and
+**831 relocations**. The complete REL remains retail-identical.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
