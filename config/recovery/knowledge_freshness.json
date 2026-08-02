@@ -294,9 +294,9 @@
       "superseded_by": null
     },
     "gc26-board-transitive-sqrtf-pool": {
-      "status": "stale",
-      "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",
-      "validated_at": "2026-07-29",
+      "status": "active",
+      "validated_commit": "8cb628ab60c62fbf9f89c7a0c9ab2d00c998a681",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/exceptions.json",
@@ -314,6 +314,8 @@
         "src/game/sprman.c",
         "src/REL/mdpartydll/stage.c",
         "src/REL/bootDll/opening.c",
+        "src/REL/fileseldll/saveload.c",
+        "configure.py",
         "src/board/gate.c",
         "src/board/roulette.c",
         "src/board/star.c",
@@ -920,7 +922,7 @@
     },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "8cb628ab60c62fbf9f89c7a0c9ab2d00c998a681",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -929,6 +931,7 @@
         "config/dll/rels/bootDll/splits.txt",
         "config/dll/rels/bootDll/symbols.txt",
         "src/REL/selmenuDll/selmenu.c",
+        "src/REL/fileseldll/saveload.c",
         "config/dll/rels/selmenuDll/splits.txt",
         "config/dll/rels/selmenuDll/symbols.txt"
       ],
@@ -937,7 +940,7 @@
     },
     "gc26-owner-profile-noauto-replaces-dont-inline-regions": {
       "status": "active",
-      "validated_commit": "54986d5fdebd8b7949acd4586c57b85f5f03832b",
+      "validated_commit": "8cb628ab60c62fbf9f89c7a0c9ab2d00c998a681",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
