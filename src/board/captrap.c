@@ -1,3 +1,4 @@
+#include "dolphin/math.h"
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/flag.h"
@@ -13,14 +14,21 @@
 #include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
+#include "msm_se.h"
 
-#include "math.h"
 
 #define CAP_WORK_MAX 64
 
 enum {
     CAPTRAP_DATA_BOBLE = 61,
+    CAPTRAP_DATA_TUMUJIKUN_MODEL = 63,
+    CAPTRAP_DATA_TUMUJIKUN_MOTION_A = 64,
+    CAPTRAP_DATA_TUMUJIKUN_MOTION_B = 65,
+    CAPTRAP_DATA_TUMUJIKUN_EFFECT = 66,
+    CAPTRAP_DATA_BIRIQ = 67,
+    CAPTRAP_DATA_CAMERA_TARGET_MODEL = 68,
     CAPTRAP_SE_BOBLE = 1047,
+    CAPTRAP_RANDOM_MODULUS = 32768,
     CAPTRAP_BOBLE_OBJ_PRIORITY = -32768,
 };
 
@@ -91,7 +99,7 @@ typedef struct CapWork {
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
     int _unkB6C;
-    u8 _unkB70[0x5C];
+    u8 _unkB70[92];
     int processNo;
     OMOBJ *explodeObj;
     OMOBJ *boostObj;
@@ -107,12 +115,12 @@ typedef struct CapWork {
 typedef struct CapBobleWork {
     int playerNo;
     int bobleNo;
-    MBMODELID modelId;
+    int modelId;
     int state;
     int time;
     float arcHeight;
     float angle;
-    BOOL comF;
+    BOOL metalF;
     BOOL finishedF;
     HuVecF pos;
     HuVecF startPos;
@@ -163,6 +171,293 @@ static void ev_CapBobleOMExec(OMOBJ *obj);
 
 void mbev_CapBobleMove(int playerNo);
 
+void mbev_CapBoble(void)
+{
+    CAPWORK *work = HuPrcCurrentGet()->property;
+    OMOBJ *obj[3];
+    CAPBOBLEWORK *boble;
+    OMOBJ *bobleObj;
+    HuVecF masuPos;
+    HuVecF pos;
+    HuVecF vel;
+    HuVecF rot;
+    int modelId[3];
+    HuVecF glowPosArg;
+    HuVecF glowVelArg;
+    GXColor color;
+    GXColor glowColorArg;
+    int frame;
+    int i;
+    int bobleNo;
+    int masuNumPrev;
+    int masuNumCur;
+    MBMODELID model;
+    GXColor *glowColorP;
+    HuVecF *glowVelP;
+    HuVecF *glowPosP;
+    float angle;
+    float radius;
+    float masuNum;
+    float baseAngle;
+    float time;
+    float sinAngle;
+    float cosAngle;
+    float sinYResult;
+    float sinY;
+    float sinX;
+    float cosX;
+    float cosYResult;
+    float cosY;
+    float sinX2;
+
+    work->glowObj = mbev_CapEffGlowFireCreate();
+    HuPrcVSleep();
+    mbMasuPosGet(work->masuIdNext, &masuPos);
+    baseAngle = 0.0f;
+    for (i = 0; i < 3; i++) {
+        modelId[i] = mbev_CapObjCreate(&work->objWork,
+            DATANUM(DATA_capsule, CAPTRAP_DATA_BOBLE), NULL,
+            TRUE, FALSE, FALSE);
+        mbObjLayerSet(modelId[i], 3);
+        model = modelId[i];
+        mbObjAttrSet(model, HU3D_MOTATTR_LOOP);
+        mbObjDispSet(modelId[i], FALSE);
+        angle = baseAngle + 120.0f * (float)i;
+        bobleObj = obj[i] = omAddObjEx(mbObjMan, CAPTRAP_BOBLE_OBJ_PRIORITY,
+            0, 0, OM_GRP_NONE, ev_CapBobleOMExec);
+        boble = bobleObj->data =
+            HuMemDirectMallocNum(HEAP_HEAP, sizeof(*boble), HU_MEMNUM_OVL);
+        memset(boble, 0, sizeof(*boble));
+        boble->playerNo = work->playerNo;
+        boble->bobleNo = i;
+        boble->modelId = modelId[i];
+        boble->state = 0;
+        boble->time = 0;
+        boble->metalF = GwPlayer[work->playerNo].metalF;
+        boble->finishedF = FALSE;
+        boble->arcHeight = 100.0f * (2.0f + MBCapsuleEffRandF());
+        boble->angle = angle;
+        boble->pos.x = masuPos.x
+            + 2.0 * (100.0 * sin((M_PI * angle) / 180.0f));
+        boble->pos.y = masuPos.y + 100.0f;
+        boble->pos.z = masuPos.z
+            + 2.0 * (100.0 * cos((M_PI * angle) / 180.0f));
+        boble->startPos = boble->pos;
+        boble->endPos.x = masuPos.x + 50.0f * (-0.5f + MBCapsuleEffRandF());
+        boble->endPos.y = masuPos.y + 100.0f;
+        boble->endPos.z = masuPos.z + 50.0f * (-0.5f + MBCapsuleEffRandF());
+        boble->objP = &obj[i];
+        HuPrcVSleep();
+    }
+    while (ev_CapMasuNumGet(work->playerNo) < 0 || ev_CapMasuNumGet(work->playerNo) > 60) {
+        HuPrcVSleep();
+    }
+    bobleNo = frame = 0;
+    do {
+        HuPrcVSleep();
+        if (++frame > 1 && bobleNo < 3) {
+            mbAudFXPlay(CAPTRAP_SE_BOBLE);
+            boble = obj[bobleNo]->data;
+            boble->state++;
+            frame = 0;
+            bobleNo++;
+        }
+        masuNumPrev = ev_CapMasuNumGet(work->playerNo);
+    } while (masuNumPrev < 0 || masuNumPrev > 20 || bobleNo < 3);
+
+    masuNum = (float)ev_CapMasuNumGet(work->playerNo);
+    if (masuNum <= 0.0f) {
+        masuNum = 1.0f;
+    }
+    bobleNo = frame = 0;
+    do {
+        time = 1.0f
+            - ((float)(ev_CapMasuNumGet(work->playerNo) - 1) / masuNum);
+        masuNumCur = ev_CapMasuNumGet(work->playerNo);
+        if (++frame > 1 && bobleNo < 3) {
+            boble = obj[bobleNo]->data;
+            boble->state++;
+            frame = 0;
+            bobleNo++;
+        }
+        HuPrcVSleep();
+    } while (time < 1.0f && ev_CapMasuNumGet(work->playerNo) <= masuNumCur);
+
+    for (i = 0; i < 128; i++) {
+        rot.x = 45.0f * MBCapsuleEffRandF();
+        rot.y = 360.0f * MBCapsuleEffRandF();
+        radius = 100.0f * ((0.3f * 0.7f) * MBCapsuleEffRandF());
+        pos.x = masuPos.x
+            + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
+        pos.y = masuPos.y
+            + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()))
+            + 100.0f;
+        pos.z = masuPos.z
+            + 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
+        sinAngle = rot.y;
+        sinYResult = mbSinDeg(sinAngle);
+        sinY = sinYResult;
+        sinX = mbSinDeg(rot.x);
+        vel.x = (radius * sinX) * sinY;
+        cosX = mbCosDeg(rot.x);
+        vel.y = radius * cosX;
+        cosAngle = rot.y;
+        cosYResult = mbCosDeg(cosAngle);
+        cosY = cosYResult;
+        sinX2 = mbSinDeg(rot.x);
+        vel.z = (radius * sinX2) * cosY;
+        color.r = (u8)(128.0f + 127.0f * MBCapsuleEffRandF());
+        color.g = (u8)(64.0f + 63.0f * MBCapsuleEffRandF());
+        color.b = 32;
+        color.a = (u8)(192.0f + 63.0f * MBCapsuleEffRandF());
+        glowColorArg = color;
+        glowColorP = &glowColorArg;
+        glowVelArg = vel;
+        glowVelP = &glowVelArg;
+        glowPosArg = pos;
+        glowPosP = &glowPosArg;
+        mbev_CapEffGlowAdd(work->glowObj, glowPosP, glowVelP,
+            (int)(60.0f * (0.8f + 0.3f * MBCapsuleEffRandF())),
+            100.0f * (0.2f + 0.1f * MBCapsuleEffRandF()),
+            3.0f * (-0.5f + MBCapsuleEffRandF()),
+            0.8166667f, glowColorP);
+        if (i == 64) {
+            HuPrcVSleep();
+        }
+    }
+    while (bobleNo < 3) {
+        if (++frame > 1 && bobleNo < 3) {
+            boble = obj[bobleNo]->data;
+            boble->state++;
+            frame = 0;
+            bobleNo++;
+        }
+        HuPrcVSleep();
+    }
+    do {
+        for (i = 0; i < 3; i++) {
+            if (obj[i] != NULL) {
+                break;
+            }
+        }
+        HuPrcVSleep();
+    } while (i < 3);
+    HuPrcEnd();
+}
+
+void mbev_CapBobleKill(void)
+{
+}
+
+void mbev_CapBobleTrap(void *workP)
+{
+    CAPWORK *work = workP;
+    HuVecF pos;
+    HuVecF rot;
+    HuVecF movePos;
+    int coinNum;
+    int frame;
+    float time;
+
+    if (!GwPlayer[work->playerNo].metalF) {
+        mbPlayerMoveHookSet(work->playerNo, mbev_CapBobleMove);
+        coinNum = mbPlayerCoinGet(work->playerNo);
+        if (coinNum > 10) {
+            coinNum = 10;
+        }
+        mbCoinAddDispExec(work->playerNo, -coinNum, FALSE, TRUE);
+        mbPlayerPosGet(work->playerNo, &pos);
+        pos.y += 250.0f;
+        if (coinNum != 0) {
+            mbCoinDispCapsuleCreate(&pos, -coinNum);
+        }
+        omVibrate((s16)work->playerNo, 20, 20, 0);
+        if (GwPlayer[work->playerNo].moveNum <= 1 && !_CheckFlag(FLAG_BOARD_DEBUG)) {
+            mbPlayerMotionShiftSet(work->playerNo, 15, 0.0f, 8.0f, 0);
+            mbPlayerColSnapPlayerSet(work->playerNo, FALSE);
+            mbMoveNumDispSet(work->playerNo, FALSE);
+            mbPlayerRotGet(work->playerNo, &rot);
+            for (frame = 1; (float)frame <= 36.0f; frame++) {
+                time = (float)frame / 36.0f;
+                mbMasuPosGet(GwPlayer[work->playerNo].masuId, &pos);
+                movePos.x = pos.x;
+                movePos.y = pos.y + 3.0f * (100.0f *
+                    sin((M_PI * (180.0f * time)) / 180.0f));
+                movePos.z = pos.z;
+                mbPlayerPosSetV(work->playerNo, &movePos);
+                mbPlayerRotSet(work->playerNo, 0.0f,
+                    rot.y + 720.0f * time, 0.0f);
+                HuPrcVSleep();
+            }
+            mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
+            mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+                HU3D_MOTATTR_LOOP);
+        }
+    }
+}
+
+void mbev_CapBobleMove(int playerNo)
+{
+    HuVecF posStart;
+    HuVecF posEnd;
+    HuVecF pos;
+    HuVecF rot;
+    HuVecF rotStart;
+    HuVecF focusPos;
+    HuVecF dir;
+    int masuId;
+    int masuIdNext;
+    int frame;
+    int focusObj;
+    int frameMax;
+    float time;
+    float dirMagnitude;
+
+    frameMax = 1.75f * mbPlayerWalkSpeedGet();
+    masuId = GwPlayer[playerNo].masuId;
+    masuIdNext = GwPlayer[playerNo].masuIdNext;
+    mbPlayerPosGet(playerNo, &posStart);
+    mbMasuPosGet(masuIdNext, &posEnd);
+    PSVECSubtract(&posEnd, &posStart, &dir);
+    rot.y = 180.0 * (atan2(dir.x, dir.z) / M_PI);
+    rot.x = rot.z = 0.0f;
+    rotStart = rot;
+    dirMagnitude = PSVECMag(&dir);
+    focusObj = mbObjCreate(
+        DATANUM(DATA_capsule, CAPTRAP_DATA_CAMERA_TARGET_MODEL), NULL, FALSE);
+    focusPos = posStart;
+    focusPos.y += 100.0f;
+    mbObjPosSetV(focusObj, &focusPos);
+    mbObjDispSet(focusObj, FALSE);
+    mbCameraFocusObjSet(focusObj);
+    mbPlayerMotionSet(playerNo, 15, HU3D_MOTATTR_LOOP);
+    mbPlayerColSnapPlayerSet(playerNo, FALSE);
+    mbAudFXPlay(MSM_SE_BRD00_20);
+    for (frame = 1; frame < frameMax; frame++) {
+        time = (float)frame / (float)frameMax;
+        mbMasuPosGet(masuIdNext, &posEnd);
+        pos.x = posStart.x + time * (posEnd.x - posStart.x);
+        pos.y = posStart.y + time * (posEnd.y - posStart.y)
+            + 300.0 * sin((M_PI * (180.0f * time)) / 180.0f);
+        pos.z = posStart.z + time * (posEnd.z - posStart.z);
+        mbPlayerPosSetV(playerNo, &pos);
+        mbPlayerRotSetV(playerNo, &rot);
+        mbPlayerWorkGet(playerNo)->_unk08 = frameMax - frame;
+        focusPos.x = posStart.x + time * (posEnd.x - posStart.x);
+        focusPos.y = posStart.y + time * (posEnd.y - posStart.y) + 100.0f;
+        focusPos.z = posStart.z + time * (posEnd.z - posStart.z);
+        mbObjPosSetV(focusObj, &focusPos);
+        HuPrcVSleep();
+    }
+    pos = posEnd;
+    rot = rot;
+    mbPlayerPosSetV(playerNo, &pos);
+    mbPlayerRotSetV(playerNo, &rot);
+    mbPlayerWorkGet(playerNo)->_unk08 = 0;
+    mbCameraFocusPlayerSet(playerNo);
+    mbObjKill(focusObj);
+}
+
 static void ev_CapBobleOMExec(OMOBJ *obj)
 {
     CAPBOBLEWORK *work = obj->data;
@@ -198,8 +493,8 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
             work->time++;
             time = (float)work->time / 15.0f;
             mbPlayerPosGet(work->playerNo, &work->endPos);
-            work->endPos.x += 100.0f * 0.5f * sin((M_PI * work->angle) / 180.0f);
-            work->endPos.z += 100.0f * 0.5f * cos((M_PI * work->angle) / 180.0f);
+            work->endPos.x += 100.0 * 0.5 * sin((M_PI * work->angle) / 180.0f);
+            work->endPos.z += 100.0 * 0.5 * cos((M_PI * work->angle) / 180.0f);
             work->pos.x = work->startPos.x + time * (work->endPos.x - work->startPos.x);
             work->pos.y = work->startPos.y + time * (work->endPos.y - work->startPos.y)
                 + work->arcHeight * mbSinDeg(180.0f * time);
@@ -207,7 +502,7 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
             mbObjPosSetV(work->modelId, &work->pos);
             mbObjScaleSet(work->modelId, 1.0f, 1.0f, 1.0f);
             if (time >= 1.0f) {
-                if (!work->comF) {
+                if (!work->metalF) {
                     if (work->bobleNo == 0) {
                         work->state++;
                     } else {
@@ -225,8 +520,8 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
 
         case 4:
             mbPlayerPosGet(work->playerNo, &work->endPos);
-            work->endPos.x += 100.0f * 0.5f * sin((M_PI * work->angle) / 180.0f);
-            work->endPos.z += 100.0f * 0.5f * cos((M_PI * work->angle) / 180.0f);
+            work->endPos.x += 100.0 * 0.5 * sin((M_PI * work->angle) / 180.0f);
+            work->endPos.z += 100.0 * 0.5 * cos((M_PI * work->angle) / 180.0f);
             mbObjPosSetV(work->modelId, &work->endPos);
             work->time++;
             time = (float)work->time / 10.0f;
@@ -241,12 +536,12 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
 
         case 5:
             mbPlayerPosGet(work->playerNo, &work->endPos);
-            work->endPos.x += 100.0f * 0.5f * sin((M_PI * work->angle) / 180.0f);
-            work->endPos.z += 100.0f * 0.5f * cos((M_PI * work->angle) / 180.0f);
+            work->endPos.x += 100.0 * 0.5 * sin((M_PI * work->angle) / 180.0f);
+            work->endPos.z += 100.0 * 0.5 * cos((M_PI * work->angle) / 180.0f);
             mbObjPosSetV(work->modelId, &work->endPos);
             work->time++;
             time = (float)work->time / 30.0f;
-            scale = 2.0f * cos((M_PI * (90.0f * time)) / 180.0f);
+            scale = 2.0 * cos((M_PI * (90.0f * time)) / 180.0f);
             mbObjScaleSet(work->modelId, scale, scale, scale);
             if (time >= 1.0f) {
                 mbObjDispSet(work->modelId, FALSE);
@@ -280,231 +575,142 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
     }
 }
 
-void mbev_CapBoble(void)
+void mbev_CapBiriQ(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
-    OMOBJ *obj[3];
-    MBMODELID modelId[3];
+    HuVecF pos[3];
+    HuVecF vel[3];
     HuVecF masuPos;
-    HuVecF pos;
-    HuVecF vel;
-    HuVecF scale;
-    GXColor color;
+    HuVecF rot;
+    int modelId[3];
+    float angle[3];
+    int masuNum;
+    int masuNumPrev;
     int frame;
     int i;
-    int bobleNo;
-    int masuNumPrev;
-    float masuNum;
+    float shrinkScale;
+    float masuNumF;
+    float approachScale;
+    float angleCur;
     float time;
+    float metalValue;
 
-    work->glowObj = mbev_CapEffGlowFireCreate();
-    HuPrcVSleep();
-    mbMasuPosGet(work->masuId, &masuPos);
     for (i = 0; i < 3; i++) {
-        CAPBOBLEWORK *boble;
+        MBMODELID model;
 
         modelId[i] = mbev_CapObjCreate(&work->objWork,
-            DATANUM(DATA_capsule, CAPTRAP_DATA_BOBLE), NULL,
+            DATANUM(DATA_capsule, CAPTRAP_DATA_BIRIQ), NULL,
             TRUE, FALSE, FALSE);
-        mbObjLayerSet(modelId[i], 3);
-        mbObjAttrSet(modelId[i], HU3D_MOTATTR_LOOP);
         mbObjDispSet(modelId[i], FALSE);
-        obj[i] = omAddObjEx(mbObjMan, CAPTRAP_BOBLE_OBJ_PRIORITY, 0, 0, OM_GRP_NONE,
-            ev_CapBobleOMExec);
-        boble = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*boble), HU_MEMNUM_OVL);
-        memset(boble, 0, sizeof(*boble));
-        obj[i]->data = boble;
-        boble->playerNo = work->playerNo;
-        boble->bobleNo = i;
-        boble->modelId = modelId[i];
-        boble->comF = GwPlayer[work->playerNo].comF;
-        boble->arcHeight = 100.0f * (2.0f + MBCapsuleEffRandF());
-        boble->angle = 120.0f * (float)i;
-        boble->pos.x = masuPos.x + 200.0f * sin((M_PI * boble->angle) / 180.0f);
-        boble->pos.y = masuPos.y + 100.0f;
-        boble->pos.z = masuPos.z + 200.0f * cos((M_PI * boble->angle) / 180.0f);
-        boble->startPos = boble->pos;
-        boble->endPos.x = masuPos.x + 50.0f * (-0.5f + MBCapsuleEffRandF());
-        boble->endPos.y = masuPos.y + 100.0f;
-        boble->endPos.z = masuPos.z + 50.0f * (-0.5f + MBCapsuleEffRandF());
-        boble->objP = &obj[i];
-        HuPrcVSleep();
+        model = modelId[i];
+        mbObjAttrSet(model, HU3D_MOTATTR_LOOP);
+        mbObjLayerSet(modelId[i], 3);
     }
-    while (ev_CapMasuNumGet(work->playerNo) < 0 || ev_CapMasuNumGet(work->playerNo) > 60) {
-        HuPrcVSleep();
-    }
-    frame = 0;
-    bobleNo = 0;
+    mbMasuPosGet(GwPlayer[work->playerNo].masuIdNext, &masuPos);
     do {
         HuPrcVSleep();
-        if (++frame > 1 && bobleNo < 3) {
-            mbAudFXPlay(CAPTRAP_SE_BOBLE);
-            ((CAPBOBLEWORK *)obj[bobleNo]->data)->state++;
-            frame = 0;
-            bobleNo++;
-        }
-    } while (ev_CapMasuNumGet(work->playerNo) < 0 || ev_CapMasuNumGet(work->playerNo) > 20 || bobleNo < 3);
+        masuNum = ev_CapMasuNumGet(work->playerNo);
+    } while (masuNum < 0 || masuNum > 20);
 
-    masuNum = (float)ev_CapMasuNumGet(work->playerNo);
-    if (masuNum <= 0.0f) {
-        masuNum = 1.0f;
+    angleCur = 360.0f * MBCapsuleEffRandF();
+    for (i = 0; i < 3; i++) {
+        angle[i] = angleCur + 120.0f * (float)i;
     }
-    frame = 0;
-    bobleNo = 0;
+    masuNumF = (float)ev_CapMasuNumGet(work->playerNo);
+    if (masuNumF <= 0.0f) {
+        masuNumF = 1.0f;
+    }
     do {
+        time = 1.0f
+            - (float)(ev_CapMasuNumGet(work->playerNo) - 1) / masuNumF;
         masuNumPrev = ev_CapMasuNumGet(work->playerNo);
-        time = 1.0f - ((float)(masuNumPrev - 1) / masuNum);
-        if (++frame > 1 && bobleNo < 3) {
-            ((CAPBOBLEWORK *)obj[bobleNo]->data)->state++;
-            frame = 0;
-            bobleNo++;
+        for (i = 0; i < 3; i++) {
+            angleCur = (angle[i] += 6.0f);
+            pos[i].x = masuPos.x
+                + (100.0f + 2.0f * (100.0f * (1.0f - time)))
+                    * sin((M_PI * angleCur) / 180.0f);
+            pos[i].y = masuPos.y + 100.0f
+                + 2.0f * (100.0f * (1.0f - time));
+            pos[i].z = masuPos.z
+                + (100.0f + 2.0f * (100.0f * (1.0f - time)))
+                    * cos((M_PI * angleCur) / 180.0f);
+            approachScale = time;
+            mbObjPosSetV(modelId[i], &pos[i]);
+            mbObjScaleSet(modelId[i], approachScale, approachScale, approachScale);
+            mbObjDispSet(modelId[i], TRUE);
         }
         HuPrcVSleep();
-    } while (time < 1.0f && ev_CapMasuNumGet(work->playerNo) <= masuNumPrev);
+    } while (time < 1.0f
+        && ev_CapMasuNumGet(work->playerNo) <= masuNumPrev);
 
-    for (i = 0; i < 128; i++) {
-        float radius = 100.0f * 0.21f * MBCapsuleEffRandF();
-        float pitch = 45.0f * MBCapsuleEffRandF();
-        float yaw = 360.0f * MBCapsuleEffRandF();
-
-        vel.x = radius * mbSinDeg(pitch) * mbSinDeg(yaw);
-        vel.y = radius * mbCosDeg(pitch);
-        vel.z = radius * mbSinDeg(pitch) * mbCosDeg(yaw);
-        pos.x = masuPos.x + 100.0f * 0.5f * (-0.5f + MBCapsuleEffRandF());
-        pos.y = masuPos.y + 100.0f + 100.0f * 0.5f * (-0.5f + MBCapsuleEffRandF());
-        pos.z = masuPos.z + 100.0f * 0.5f * (-0.5f + MBCapsuleEffRandF());
-        scale.x = scale.y = scale.z = 100.0f * (0.2f + (0.1f * MBCapsuleEffRandF()));
-        color.r = (u8)(128.0f + 127.0f * MBCapsuleEffRandF());
-        color.g = (u8)(64.0f + 63.0f * MBCapsuleEffRandF());
-        color.b = 32;
-        color.a = (u8)(192.0f + 63.0f * MBCapsuleEffRandF());
-        mbev_CapEffGlowAdd(work->glowObj, &pos, &vel,
-            (int)(60.0f * (0.3f + 0.8f * MBCapsuleEffRandF())),
-            scale.x, 3.0f * (-0.5f + MBCapsuleEffRandF()),
-            0.8166667f, &color);
-        if (i == 64) {
+    if (!GwPlayer[work->playerNo].metalF) {
+        for (frame = 1; frame <= 30; frame++) {
+            time = (float)frame / 30.0f;
+            for (i = 0; i < 3; i++) {
+                angleCur = (angle[i] += 6.0f);
+                mbPlayerPosGet(work->playerNo, &masuPos);
+                pos[i].x = masuPos.x
+                    + 100.0f * sin((M_PI * angleCur) / 180.0f);
+                pos[i].y = masuPos.y + 100.0f;
+                pos[i].z = masuPos.z
+                    + 100.0f * cos((M_PI * angleCur) / 180.0f);
+                mbObjPosSetV(modelId[i], &pos[i]);
+            }
+            HuPrcVSleep();
+        }
+        for (frame = 1; frame <= 20; frame++) {
+            time = (float)frame / 20.0f;
+            shrinkScale = cos((M_PI * (90.0f * time)) / 180.0f);
+            for (i = 0; i < 3; i++) {
+                angleCur = (angle[i] += 6.0f);
+                mbPlayerPosGet(work->playerNo, &masuPos);
+                pos[i].x = masuPos.x
+                    + 100.0f
+                        * (sin((M_PI * angleCur) / 180.0f)
+                            * cos((M_PI * (90.0f * time)) / 180.0f));
+                pos[i].y = masuPos.y + 100.0f;
+                pos[i].z = masuPos.z
+                    + 100.0f
+                        * (cos((M_PI * angleCur) / 180.0f)
+                            * cos((M_PI * (90.0f * time)) / 180.0f));
+                mbObjPosSetV(modelId[i], &pos[i]);
+                mbObjScaleSet(modelId[i], shrinkScale, shrinkScale, shrinkScale);
+            }
+            HuPrcVSleep();
+        }
+    } else {
+        for (i = 0; i < 3; i++) {
+            angleCur = angle[i];
+            rot.x = 20.0f + 15.0f * MBCapsuleEffRandF();
+            rot.y = angleCur;
+            metalValue = 100.0f * ((0.4f * 0.4f) * MBCapsuleEffRandF());
+            if (GwPlayer[work->playerNo].metalF) {
+                2.0f * metalValue;
+            }
+            vel[i].x = metalValue * sin((M_PI * rot.x) / 180.0f)
+                * sin((M_PI * rot.y) / 180.0f);
+            vel[i].y = metalValue * cos((M_PI * rot.x) / 180.0f);
+            vel[i].z = metalValue * sin((M_PI * rot.x) / 180.0f)
+                * cos((M_PI * rot.y) / 180.0f);
+        }
+        for (frame = 0; (float)frame < 60.0f; frame++) {
+            metalValue = (float)frame / 60.0f;
+            for (i = 0; i < 3; i++) {
+                PSVECAdd(&pos[i], &vel[i], &pos[i]);
+                vel[i].y -= 0.40833336f;
+                vel[i].y *= 0.98f;
+                mbObjPosSetV(modelId[i], &pos[i]);
+                if (GwPlayer[work->playerNo].metalF) {
+                    mbObjRotGet(modelId[i], &rot);
+                    rot.z = metalValue * (180.0f * -(0.25f * vel[i].x));
+                    mbObjRotSetV(modelId[i], &rot);
+                }
+                mbObjAlphaSet(modelId[i], 255.0f * (1.0f - metalValue));
+            }
             HuPrcVSleep();
         }
     }
-    frame = 0;
-    bobleNo = 0;
-    while (bobleNo < 3) {
-        if (++frame > 1 && bobleNo < 3) {
-            ((CAPBOBLEWORK *)obj[bobleNo]->data)->state++;
-            frame = 0;
-            bobleNo++;
-        }
-        HuPrcVSleep();
-    }
-    do {
-        for (i = 0; i < 3 && obj[i] == NULL; i++) {
-        }
-        HuPrcVSleep();
-    } while (i < 3);
     HuPrcEnd();
-}
-
-void mbev_CapBobleKill(void)
-{
-}
-
-void mbev_CapBobleTrap(CAPWORK *work)
-{
-    HuVecF pos;
-    HuVecF movePos;
-    HuVecF rot;
-    int coinNum;
-    int frame;
-    float time;
-
-    if (!GwPlayer[work->playerNo].metalF) {
-        mbPlayerMoveHookSet(work->playerNo, mbev_CapBobleMove);
-        coinNum = mbPlayerCoinGet(work->playerNo);
-        if (coinNum > 10) {
-            coinNum = 10;
-        }
-        mbCoinAddDispExec(work->playerNo, -coinNum, FALSE, TRUE);
-        mbPlayerPosGet(work->playerNo, &pos);
-        pos.y += 250.0f;
-        if (coinNum != 0) {
-            mbCoinDispCapsuleCreate(&pos, -coinNum);
-        }
-        omVibrate((s16)work->playerNo, 20, 20, 0);
-        if (GwPlayer[work->playerNo].moveNum < 2 && !_CheckFlag(0x20001)) {
-            mbPlayerMotionShiftSet(work->playerNo, 15, 0.0f, 8.0f, 0);
-            mbPlayerColSnapPlayerSet(work->playerNo, FALSE);
-            mbMoveNumDispSet(work->playerNo, FALSE);
-            mbPlayerRotGet(work->playerNo, &rot);
-            for (frame = 1; (float)frame <= 36.0f; frame++) {
-                time = (float)frame / 36.0f;
-                mbMasuPosGet(GwPlayer[work->playerNo].masuId, &pos);
-                movePos.x = pos.x;
-                movePos.y = pos.y + 3 * 100 *
-                    sin((M_PI * (180.0f * time)) / 180.0f);
-                movePos.z = pos.z;
-                mbPlayerPosSetV(work->playerNo, &movePos);
-                mbPlayerRotSet(work->playerNo, 0.0f,
-                    rot.y + 720.0f * time, 0.0f);
-                HuPrcVSleep();
-            }
-            mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
-            mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
-                HU3D_MOTATTR_LOOP);
-        }
-    }
-}
-
-void mbev_CapBobleMove(int playerNo)
-{
-    HuVecF posStart;
-    HuVecF posEnd;
-    HuVecF pos;
-    HuVecF rot;
-    HuVecF dir;
-    HuVecF focusPos;
-    MBMODELID focusObj;
-    int frame;
-    int frameMax;
-    float time;
-
-    frameMax = 1.75f * mbPlayerWalkSpeedGet();
-    mbPlayerPosGet(playerNo, &posStart);
-    mbMasuPosGet(GwPlayer[playerNo].masuId, &posEnd);
-    PSVECSubtract(&posEnd, &posStart, &dir);
-    rot.x = 0.0f;
-    rot.y = 180.0 * (atan2(dir.x, dir.z) / M_PI);
-    rot.z = 0.0f;
-    PSVECMag(&dir);
-    focusObj = mbObjCreate(0xC0044, NULL, FALSE);
-    focusPos = posStart;
-    focusPos.y += 100.0f;
-    mbObjPosSetV(focusObj, &focusPos);
-    mbObjDispSet(focusObj, FALSE);
-    mbCameraFocusObjSet(focusObj);
-    mbPlayerMotionSet(playerNo, 15, HU3D_MOTATTR_LOOP);
-    mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbAudFXPlay(0x400);
-    for (frame = 1; frame < frameMax; frame++) {
-        time = (float)frame / (float)frameMax;
-        mbMasuPosGet(GwPlayer[playerNo].masuId, &posEnd);
-        pos.x = posStart.x + time * (posEnd.x - posStart.x);
-        pos.y = posStart.y + time * (posEnd.y - posStart.y)
-            + 300.0f * sin((M_PI * (180.0f * time)) / 180.0f);
-        pos.z = posStart.z + time * (posEnd.z - posStart.z);
-        mbPlayerPosSetV(playerNo, &pos);
-        mbPlayerRotSetV(playerNo, &rot);
-        mbPlayerWorkGet(playerNo)->_unk08 = frameMax - frame;
-        focusPos.x = posStart.x + time * (posEnd.x - posStart.x);
-        focusPos.y = posStart.y + 100.0f + time * (posEnd.y - posStart.y);
-        focusPos.z = posStart.z + time * (posEnd.z - posStart.z);
-        mbObjPosSetV(focusObj, &focusPos);
-        HuPrcVSleep();
-    }
-    mbPlayerPosSetV(playerNo, &posEnd);
-    mbPlayerRotSetV(playerNo, &rot);
-    mbPlayerWorkGet(playerNo)->_unk08 = 0;
-    mbCameraFocusPlayerSet(playerNo);
-    mbObjKill(focusObj);
 }
 
 void mbev_CapBiriQKill(void)
@@ -830,7 +1036,11 @@ static int ev_CapMasuNumGet(int playerNo)
 void mbev_CapTumujikun(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
-    int motFile[] = { 0xC0040, 0xC0041, -1 };
+    int motFile[] = {
+        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MOTION_A),
+        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MOTION_B),
+        -1,
+    };
     HuVecF pos;
     HuVecF posTop;
     HuVecF effectPos;
@@ -845,11 +1055,13 @@ void mbev_CapTumujikun(void)
     float masuNumStart;
 
     playerNo = work->playerNo;
-    capObj = mbev_CapObjCreate(&work->objWork, 0xC003F, motFile,
+    capObj = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MODEL), motFile,
         FALSE, 0, FALSE);
     mbObjDispSet(capObj, FALSE);
     mbObjLayerSet(capObj, 3);
-    effectObj = mbev_CapObjCreate(&work->objWork, 0xC0042, NULL,
+    effectObj = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_EFFECT), NULL,
         FALSE, 5, FALSE);
     mbObjDispSet(effectObj, FALSE);
     mbObjLayerSet(effectObj, 3);
@@ -860,7 +1072,7 @@ void mbev_CapTumujikun(void)
         HuPrcVSleep();
         masuNum = ev_CapMasuNumGet(playerNo);
     } while (masuNum < 0 || masuNum > 20);
-    mbAudFXPlay(0x437);
+    mbAudFXPlay(MSM_SE_BRD00_75);
     mbObjMotionTimeSet(effectObj, 0.0f);
     mbObjMotionSpeedSet(effectObj, 0.5f);
     mbObjPosSetV(effectObj, &pos);
@@ -880,7 +1092,7 @@ void mbev_CapTumujikun(void)
             break;
         }
     } while (ev_CapMasuNumGet(playerNo) <= masuNumPrev);
-    soundId = mbAudFXPlay(0x437);
+    soundId = mbAudFXPlay(MSM_SE_BRD00_75);
     mbObjMotionSet(capObj, 1, HU3D_MOTATTR_LOOP);
     mbObjPosSetV(capObj, &pos);
     mbObjDispSet(capObj, TRUE);
@@ -892,7 +1104,7 @@ void mbev_CapTumujikun(void)
     }
     if (!GwPlayer[playerNo].metalF) {
         HuPrcSleep(30);
-        mbAudFXPlay(0x439);
+        mbAudFXPlay(MSM_SE_BRD00_77);
         for (frame = 0; frame < 60; frame++) {
             time = (float)frame / 60.0f;
             time = sin((M_PI * (90.0f * time)) / 180.0f);
@@ -921,7 +1133,7 @@ void mbev_CapTumujikun(void)
         if (soundId != -1) {
             mbAudFXStop(soundId);
         }
-        mbAudFXPlay(0x43A);
+        mbAudFXPlay(MSM_SE_BRD00_78);
         while (mbev_CapEffExplodeAnimGet(work->explodeObj) > 0) {
             HuPrcVSleep();
         }
@@ -989,8 +1201,10 @@ void mbev_CapBomheiMove(int playerNo)
     rot.y = 180.0 * (atan2(dir.x, dir.z) / M_PI);
     rot.z = 0.0f;
     PSVECMag(&dir);
-    spinDir = (mbRandMod(0x8000) & 1) ? 1.0f : -1.0f;
-    focusObj = mbObjCreate(0xC0044, NULL, FALSE);
+    spinDir = (mbRandMod(CAPTRAP_RANDOM_MODULUS) & 1) ? 1.0f : -1.0f;
+    focusObj = mbObjCreate(
+        DATANUM(DATA_capsule, CAPTRAP_DATA_CAMERA_TARGET_MODEL), NULL,
+        FALSE);
     focusPos = posStart;
     focusPos.y += 100.0f;
     mbObjPosSetV(focusObj, &focusPos);
@@ -1018,7 +1232,7 @@ void mbev_CapBomheiMove(int playerNo)
     mbPlayerPosSetV(playerNo, &posEnd);
     mbPlayerRotSetV(playerNo, &rot);
     mbPlayerWorkGet(playerNo)->_unk08 = 0;
-    if (GwPlayer[playerNo].moveNum > 1 || _CheckFlag(0x20001)) {
+    if (GwPlayer[playerNo].moveNum > 1 || _CheckFlag(FLAG_BOARD_DEBUG)) {
         mbMoveNumDispSet(playerNo, TRUE);
     }
     if (!mbMasuDispCheck(GwPlayer[playerNo].masuId)) {
