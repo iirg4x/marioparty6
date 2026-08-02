@@ -1,6 +1,8 @@
 #include <string.h>
 
 #include "datadir_enum.h"
+#include "messdir_enum.h"
+#include "msm_se.h"
 
 #include "dolphin/os.h"
 
@@ -31,14 +33,16 @@ typedef void (*MDCAMERA_CALLBACK)(OMOBJ *obj, MDCAMERA_WORK *camera);
 struct MdCameraWork_s {
     OMOBJ *obj;
     HuVecF center;
-    HuVecF unk_10;
+    HuVecF targetCenter;
     HuVecF rot;
-    HuVecF unk_28;
+    HuVecF targetRot;
     float zoom;
-    float unk_38;
+    float targetZoom;
     MDCAMERA_CALLBACK callback;
-    float unk_40;
-    u8 unk_44[0xC];
+    float transitionTime;
+    u32 unk_44;
+    u32 unk_48;
+    u32 unk_4C;
 };
 
 typedef struct MdSprInfo_s {
@@ -53,8 +57,8 @@ typedef struct MdSprInfo_s {
 } MDSPR_INFO;
 
 typedef struct Lbl1DataE12Entry {
-    s16 unk_0[8];
-    s16 unk_10;
+    s16 neighbors[8];
+    s16 inUse;
 } LBL_1_DATA_E12_ENTRY;
 
 typedef struct Lbl1Bss288Entry {
@@ -65,7 +69,12 @@ typedef struct Lbl1Bss288Entry {
     HuVecF rot;
     HuVecF scale;
     s16 unk_30;
-    u8 unk_32[6];
+    u8 unk_32;
+    u8 unk_33;
+    u8 unk_34;
+    u8 unk_35;
+    u8 unk_36;
+    u8 unk_37;
 } LBL_1_BSS_288_ENTRY;
 
 typedef struct Lbl1Bss1C {
@@ -112,9 +121,8 @@ typedef struct Lbl1Bss9F4 {
     s16 unk_A;
     s16 unk_C;
     s16 unk_E;
-    s32 unk_10[2];
+    u32 tagNameMessNum[2];
     s16 unk_18;
-    s16 unk_1A;
 } LBL_1_BSS_9F4;
 
 #include "REL/mdpartyDll_globals.h"
@@ -273,10 +281,18 @@ s16 fn_1_3BEA8(void);
 void fn_1_3CA70(void);
 void fn_1_0(HUWINID winId, u32 mess, s16 index)
 {
-    s32 messNum[3] = { 0xD0000, 0xD0025, -1 };
+    s32 messNum[3] = {
+        MESSNUM(MESS_PARTY_SETTING, 0),
+        MESSNUM(MESS_PARTY_SETTING, 37),
+        -1,
+    };
     s32 fxNum[16] = {
-        0x3B5, 0x3B6, 0x3B7, 0x3B8, 0x3B9, 0x3BA, 0x3BB, -1,
-        0x3AD, 0x3AE, 0x3AF, 0x3B0, 0x3B1, 0x3B2, 0x3B3, -1,
+        MSM_SE_GUIDE_25, MSM_SE_GUIDE_26, MSM_SE_GUIDE_27,
+        MSM_SE_GUIDE_28, MSM_SE_GUIDE_29, MSM_SE_GUIDE_30,
+        MSM_SE_GUIDE_31, -1,
+        MSM_SE_GUIDE_17, MSM_SE_GUIDE_18, MSM_SE_GUIDE_19,
+        MSM_SE_GUIDE_20, MSM_SE_GUIDE_21, MSM_SE_GUIDE_22,
+        MSM_SE_GUIDE_23, -1,
     };
     s16 i;
 
@@ -291,9 +307,9 @@ void fn_1_0(HUWINID winId, u32 mess, s16 index)
             }
             if (mess == messNum[i]) {
                 if (index >= 8) {
-                    HuAudFXPlayPan(fxNum[index], 0x50);
+                    HuAudFXPlayPan(fxNum[index], 80);
                 } else {
-                    HuAudFXPlayPan(fxNum[index], 0x30);
+                    HuAudFXPlayPan(fxNum[index], 48);
                 }
                 break;
             }
@@ -317,7 +333,7 @@ void fn_1_1B4(void)
     lbl_1_data_BEE[3] = TRUE;
     lbl_1_data_BEE[4] = TRUE;
     lbl_1_data_BEE[5] = FALSE;
-    if (GWBankFlagGet(0x33)) {
+    if (GWBankFlagGet(51)) {
         lbl_1_data_BEE[5] = TRUE;
     }
 }
@@ -389,14 +405,14 @@ void fn_1_64C(void)
 {
     lbl_1_bss_2E = FALSE;
     OSReport(lbl_1_data_C34);
-    OSReport(lbl_1_data_C66, 0x21);
-    OSReport(lbl_1_data_C77, 0x24);
-    OSReport(lbl_1_data_C89, 0x9B);
-    OSReport(lbl_1_data_C9B, 0xF2);
+    OSReport(lbl_1_data_C66, _effect);
+    OSReport(lbl_1_data_C77, _gamemes);
+    OSReport(lbl_1_data_C89, _mgconst);
+    OSReport(lbl_1_data_C9B, _win);
     HuAMemDump();
     OSReport(lbl_1_data_CA9);
     HuDataDirClose(DATA_mdparty);
-    HuPrcChildCreate(fn_1_400, 0x100, 0x4000, 0, lbl_1_bss_0);
+    HuPrcChildCreate(fn_1_400, 256, 16384, 0, lbl_1_bss_0);
 }
 
 inline void fn_1_64C(void);
@@ -498,10 +514,10 @@ void fn_1_109C(s16 arg0)
         HuPrcVSleep();
     } while (!lbl_1_bss_2E);
     OSReport(lbl_1_data_CAB);
-    OSReport(lbl_1_data_C66, 0x21);
-    OSReport(lbl_1_data_C77, 0x24);
-    OSReport(lbl_1_data_C89, 0x9B);
-    OSReport(lbl_1_data_C9B, 0xF2);
+    OSReport(lbl_1_data_C66, _effect);
+    OSReport(lbl_1_data_C77, _gamemes);
+    OSReport(lbl_1_data_C89, _mgconst);
+    OSReport(lbl_1_data_C9B, _win);
     HuAMemDump();
     OSReport(lbl_1_data_CA9);
 
@@ -534,10 +550,10 @@ void fn_1_1248(void)
     HuARDirFree(DATA_board_us);
     HuARDirFree(DATA_capsule);
     OSReport(lbl_1_data_CDC);
-    OSReport(lbl_1_data_C66, 0x21);
-    OSReport(lbl_1_data_C77, 0x24);
-    OSReport(lbl_1_data_C89, 0x9B);
-    OSReport(lbl_1_data_C9B, 0xF2);
+    OSReport(lbl_1_data_C66, _effect);
+    OSReport(lbl_1_data_C77, _gamemes);
+    OSReport(lbl_1_data_C89, _mgconst);
+    OSReport(lbl_1_data_C9B, _win);
     HuAMemDump();
     OSReport(lbl_1_data_CA9);
 }
@@ -549,10 +565,10 @@ void fn_1_12F8(void)
     HuARDirFree(DATA_board_us);
     HuARDirFree(DATA_capsule);
     OSReport(lbl_1_data_D0C);
-    OSReport(lbl_1_data_C66, 0x21);
-    OSReport(lbl_1_data_C77, 0x24);
-    OSReport(lbl_1_data_C89, 0x9B);
-    OSReport(lbl_1_data_C9B, 0xF2);
+    OSReport(lbl_1_data_C66, _effect);
+    OSReport(lbl_1_data_C77, _gamemes);
+    OSReport(lbl_1_data_C89, _mgconst);
+    OSReport(lbl_1_data_C9B, _win);
     HuAMemDump();
     OSReport(lbl_1_data_CA9);
 }
@@ -769,27 +785,27 @@ inline void fn_1_275C(void);
 
 void fn_1_2810(MDCAMERA_WORK *camera)
 {
-    memcpy(&camera->center, &camera->unk_10, sizeof(HuVecF));
-    memcpy(&camera->rot, &camera->unk_28, sizeof(HuVecF));
-    camera->zoom = camera->unk_38;
+    memcpy(&camera->center, &camera->targetCenter, sizeof(HuVecF));
+    memcpy(&camera->rot, &camera->targetRot, sizeof(HuVecF));
+    camera->zoom = camera->targetZoom;
 }
 
 inline void fn_1_2810(MDCAMERA_WORK *camera);
 
 void fn_1_2860(MDCAMERA_WORK *camera)
 {
-    memcpy(&camera->unk_10, &camera->center, sizeof(HuVecF));
-    memcpy(&camera->unk_28, &camera->rot, sizeof(HuVecF));
-    camera->unk_38 = camera->zoom;
+    memcpy(&camera->targetCenter, &camera->center, sizeof(HuVecF));
+    memcpy(&camera->targetRot, &camera->rot, sizeof(HuVecF));
+    camera->targetZoom = camera->zoom;
 }
 
 inline void fn_1_2860(MDCAMERA_WORK *camera);
 
 void fn_1_28B0(MDCAMERA_WORK *camera, float weight)
 {
-    fn_1_163C(&camera->center, &camera->unk_10, weight);
-    fn_1_163C(&camera->rot, &camera->unk_28, weight);
-    camera->zoom = fn_1_160C(camera->zoom, camera->unk_38, weight);
+    fn_1_163C(&camera->center, &camera->targetCenter, weight);
+    fn_1_163C(&camera->rot, &camera->targetRot, weight);
+    camera->zoom = fn_1_160C(camera->zoom, camera->targetZoom, weight);
 }
 
 inline void fn_1_28B0(MDCAMERA_WORK *camera, float weight);
@@ -811,29 +827,29 @@ void fn_1_2B74(OMOBJ *obj, MDCAMERA_WORK *camera)
 
     subStick.y = -HuPadSubStkY[0];
     subStick.x = HuPadSubStkX[0];
-    camera->unk_28.x += 0.02f * subStick.y;
-    if (camera->unk_28.x > 85.0f) {
-        camera->unk_28.x = 85.0f;
+    camera->targetRot.x += 0.02f * subStick.y;
+    if (camera->targetRot.x > 85.0f) {
+        camera->targetRot.x = 85.0f;
     }
-    if (camera->unk_28.x < -85.0f) {
-        camera->unk_28.x = -85.0f;
+    if (camera->targetRot.x < -85.0f) {
+        camera->targetRot.x = -85.0f;
     }
-    camera->unk_28.y += 0.02f * subStick.x;
+    camera->targetRot.y += 0.02f * subStick.x;
 
     if (HuPadBtn[0] & PAD_TRIGGER_L) {
-        camera->unk_10.y -= 0.25f * stickY;
+        camera->targetCenter.y -= 0.25f * stickY;
     } else if (HuPadBtn[0] & PAD_TRIGGER_R) {
-        camera->unk_38 += 0.25f * stickY;
-        if (camera->unk_38 < 5.0f) {
-            camera->unk_38 = 5.0f;
+        camera->targetZoom += 0.25f * stickY;
+        if (camera->targetZoom < 5.0f) {
+            camera->targetZoom = 5.0f;
         }
     } else {
         moveX = stickX * sind(90.0f + camera->rot.y)
             + stickY * sind(camera->rot.y);
         moveZ = stickX * cosd(90.0f + camera->rot.y)
             + stickY * cosd(camera->rot.y);
-        camera->unk_10.x += 0.25f * moveX;
-        camera->unk_10.z += 0.25f * moveZ;
+        camera->targetCenter.x += 0.25f * moveX;
+        camera->targetCenter.z += 0.25f * moveZ;
     }
     fn_1_28B0(camera, 15.0f);
 
@@ -891,7 +907,7 @@ void fn_1_33A0(MDCAMERA_CALLBACK callback)
         camera->zoom = 2150.0f;
     }
     camera->obj =
-        omAddObjEx(lbl_1_bss_0, 0x7FDA, 0, 0, -1, fn_1_32D0);
+        omAddObjEx(lbl_1_bss_0, 32730, 0, 0, -1, fn_1_32D0);
 }
 
 inline void fn_1_33A0(MDCAMERA_CALLBACK callback);
@@ -1004,19 +1020,19 @@ void fn_1_3A1C(void)
 
     HuWinInit(1);
     lbl_1_bss_A60[0] =
-        HuWinExCreateFrame(16.0f, 337.0f, 0x220, 0x2A, -1, 0);
+        HuWinExCreateFrame(16.0f, 337.0f, 544, 42, -1, 0);
     HuWinDispOff(lbl_1_bss_A60[0]);
     HuWinBGTPLvlSet(lbl_1_bss_A60[0], 0.0f);
     lbl_1_bss_A60[1] =
-        HuWinExCreateFrame(16.0f, 372.0f, 0x220, 0x44, -1, 5);
+        HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 5);
     HuWinDispOff(lbl_1_bss_A60[1]);
     HuWinBGTPLvlSet(lbl_1_bss_A60[1], 0.9f);
     lbl_1_bss_A60[2] =
-        HuWinExCreateFrame(16.0f, 372.0f, 0x220, 0x44, -1, 3);
+        HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 3);
     HuWinDispOff(lbl_1_bss_A60[2]);
     HuWinBGTPLvlSet(lbl_1_bss_A60[2], 0.9f);
     lbl_1_bss_A60[3] =
-        HuWinExCreateFrame(16.0f, 372.0f, 0x220, 0x44, -1, 4);
+        HuWinExCreateFrame(16.0f, 372.0f, 544, 68, -1, 4);
     HuWinDispOff(lbl_1_bss_A60[3]);
     HuWinBGTPLvlSet(lbl_1_bss_A60[3], 0.9f);
 
@@ -1279,10 +1295,10 @@ void fn_1_4FE8(void)
     Hu3DMotionShiftSet(lbl_1_bss_10->mdlId[0], lbl_1_bss_10->mtnId[4],
         0.0f, 5.0f, 0);
     lbl_1_bss_30 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_4EDC);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_4EDC);
     lbl_1_bss_30->work[0] = 0;
-    HuAudFXPlay(0x49F);
-    HuAudFXPlay(0x4A0);
+    HuAudFXPlay(MSM_SE_MENU_16);
+    HuAudFXPlay(MSM_SE_MENU_17);
 }
 
 inline void fn_1_4FE8(void);
@@ -1386,7 +1402,7 @@ void fn_1_58A0(void)
     work->unk_1C.z = -1000.0f;
     Hu3DMotionShiftSet(
         obj->mdlId[0], obj->mtnId[2], 0.0f, 0.0f, 0);
-    lbl_1_bss_A6C[0] = HuAudFXPlay(0x47E);
+    lbl_1_bss_A6C[0] = HuAudFXPlay(MSM_SE_BRD00_146);
     obj->objFunc = fn_1_5324;
 }
 
@@ -1433,19 +1449,19 @@ void fn_1_605C(OMOBJ *obj)
 {
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     obj->mdlId[0] = Hu3DModelCreate(
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x4F), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 79), HU_MEMNUM_OVL));
     obj->mtnId[0] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x50), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 80), HU_MEMNUM_OVL));
     obj->mtnId[1] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x51), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 81), HU_MEMNUM_OVL));
     obj->mtnId[2] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x52), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 82), HU_MEMNUM_OVL));
     obj->mtnId[3] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x53), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 83), HU_MEMNUM_OVL));
     obj->mtnId[4] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x54), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 84), HU_MEMNUM_OVL));
     obj->mtnId[5] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x55), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 85), HU_MEMNUM_OVL));
     Hu3DModelPosSet(obj->mdlId[0], -100.0f, 0.0f, 0.0f);
     Hu3DModelRotSet(obj->mdlId[0], 0.0f, 0.0f, 0.0f);
     Hu3DModelScaleSet(obj->mdlId[0], 1.25f, 1.25f, 1.25f);
@@ -1526,7 +1542,7 @@ void fn_1_68A4(void)
     work->unk_1C.z = -1000.0f;
     Hu3DMotionShiftSet(
         obj->mdlId[0], obj->mtnId[2], 0.0f, 0.0f, 0);
-    lbl_1_bss_A6C[1] = HuAudFXPlay(0x47C);
+    lbl_1_bss_A6C[1] = HuAudFXPlay(MSM_SE_BRD00_144);
     obj->objFunc = fn_1_6324;
 }
 
@@ -1573,21 +1589,21 @@ void fn_1_7064(OMOBJ *obj)
 {
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     obj->mdlId[0] = Hu3DModelCreate(
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x56), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 86), HU_MEMNUM_OVL));
     obj->mdlId[1] = Hu3DModelCreate(
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x57), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 87), HU_MEMNUM_OVL));
     obj->mtnId[0] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x58), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 88), HU_MEMNUM_OVL));
     obj->mtnId[1] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x59), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 89), HU_MEMNUM_OVL));
     obj->mtnId[2] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x5A), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 90), HU_MEMNUM_OVL));
     obj->mtnId[3] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x5B), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 91), HU_MEMNUM_OVL));
     obj->mtnId[4] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x5C), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 92), HU_MEMNUM_OVL));
     obj->mtnId[5] = Hu3DJointMotion(obj->mdlId[0],
-        HuDataReadNum(DATANUM(DATA_mdparty, 0x5D), HU_MEMNUM_OVL));
+        HuDataReadNum(DATANUM(DATA_mdparty, 93), HU_MEMNUM_OVL));
     Hu3DModelHookSet(obj->mdlId[0], lbl_1_data_DC6, obj->mdlId[1]);
     Hu3DModelPosSet(obj->mdlId[0], 100.0f, 0.0f, 0.0f);
     Hu3DModelRotSet(obj->mdlId[0], 0.0f, 0.0f, 0.0f);
@@ -1679,7 +1695,7 @@ void fn_1_7900(void)
             obj->mtnId[(2 * desc->chrSel) + 1], 0.0f, 10.0f,
             HU3D_MOTATTR_LOOP);
     }
-    HuAudFXPlay(0x4A2);
+    HuAudFXPlay(MSM_SE_MENU_19);
     obj->objFunc = fn_1_737C;
 }
 
@@ -1727,7 +1743,7 @@ void fn_1_7C88(void)
     obj->work[1] = 15;
     obj->objFunc = fn_1_7ABC;
     HuPrcSleep(15);
-    HuAudFXPlay(0x4A1);
+    HuAudFXPlay(MSM_SE_MENU_18);
     for (i = 0, desc = &lbl_1_bss_9BC[i]; i < 4; i++, desc++) {
         Hu3DModelPosGet(lbl_1_bss_288[desc->chrSel].modelId, &pos);
         if (desc->unk_4 != 0) {
@@ -1745,11 +1761,11 @@ void fn_1_7ED4(OMOBJ *obj)
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     for (i = 0; i < 11; i++) {
         obj->mdlId[i] =
-            Hu3DModelCreateData(DATANUM(DATA_mdparty, 0x5E) + i);
+            Hu3DModelCreateData(DATANUM(DATA_mdparty, 94) + i);
         obj->mtnId[2 * i] = Hu3DJointMotionData(
-            obj->mdlId[i], DATANUM(DATA_mdparty, 0x69) + i);
+            obj->mdlId[i], DATANUM(DATA_mdparty, 105) + i);
         obj->mtnId[(2 * i) + 1] = Hu3DJointMotionData(
-            obj->mdlId[i], DATANUM(DATA_mdparty, 0x74) + i);
+            obj->mdlId[i], DATANUM(DATA_mdparty, 116) + i);
         Hu3DModelAttrSet(obj->mdlId[i], HU3D_ATTR_DISPOFF);
         Hu3DModelLayerSet(obj->mdlId[i], 1);
         Hu3DMotionShiftSet(obj->mdlId[i], obj->mtnId[2 * i],
@@ -2060,9 +2076,9 @@ u32 fn_1_9558(s16 charNo1, s16 charNo2)
         }
     }
     if (i == 55) {
-        return 0x30037;
+        return MESSNUM(MESS_TAG_NAME, 55);
     }
-    return 0x30000 + i;
+    return MESSNUM(MESS_TAG_NAME, 0) + i;
 }
 
 inline u32 fn_1_9558(s16 charNo1, s16 charNo2);
@@ -2328,7 +2344,7 @@ void fn_1_AAF0(s16 memberNo)
 {
     lbl_1_bss_38[memberNo] = 2.0f;
     if (lbl_1_data_DE6[memberNo] == 1) {
-        HuAudFXPlay(0);
+        HuAudFXPlay(MSM_SE_CMN_01);
     }
 }
 
@@ -2433,7 +2449,7 @@ void fn_1_B4C8(OMOBJ *obj)
         if (i == 0) {
             obj->mdlId[i] = Hu3DModelCreate(
                 HuDataSelHeapReadNum(
-                    DATANUM(DATA_mdparty, 0x1A), HU_MEMNUM_OVL,
+                    DATANUM(DATA_mdparty, 26), HU_MEMNUM_OVL,
                     HEAP_MODEL));
             obj->mtnId[i] = Hu3DMotionIDGet(obj->mdlId[0]);
         } else {
@@ -2476,7 +2492,7 @@ s16 fn_1_B748(s16 arg0, s16 arg1, s16 arg2, s16 arg3,
     if (arg1 == -1) {
         return -1;
     }
-    result = arg4[arg0].unk_0[arg1];
+    result = arg4[arg0].neighbors[arg1];
     if (result == -1) {
         s16 routed;
 
@@ -2485,13 +2501,13 @@ s16 fn_1_B748(s16 arg0, s16 arg1, s16 arg2, s16 arg3,
         } else {
             s16 next;
 
-            next = arg4[arg0].unk_0[arg2];
+            next = arg4[arg0].neighbors[arg2];
             if (next == -1) {
                 next = fn_1_B748(
                     arg0, arg3, -1, -1, arg4, arg5);
             }
             for (i = 0; i < arg5; i++) {
-                if (arg0 != i && arg4[i].unk_10 != -1
+                if (arg0 != i && arg4[i].inUse != -1
                     && next == i) {
                     next = fn_1_B748(
                         next, arg2, arg3, -1, arg4, arg5);
@@ -2507,7 +2523,7 @@ s16 fn_1_B748(s16 arg0, s16 arg1, s16 arg2, s16 arg3,
     }
 
     for (j = 0; j < arg5; j++) {
-        if (arg0 != j && arg4[j].unk_10 != -1 && result == j) {
+        if (arg0 != j && arg4[j].inUse != -1 && result == j) {
             s16 routed;
 
             if (arg1 == -1) {
@@ -2515,13 +2531,13 @@ s16 fn_1_B748(s16 arg0, s16 arg1, s16 arg2, s16 arg3,
             } else {
                 s16 next;
 
-                next = arg4[result].unk_0[arg1];
+                next = arg4[result].neighbors[arg1];
                 if (next == -1) {
                     next = fn_1_B748(
                         result, arg2, arg3, -1, arg4, arg5);
                 }
                 for (k = 0; k < arg5; k++) {
-                    if (result != k && arg4[k].unk_10 != -1
+                    if (result != k && arg4[k].inUse != -1
                         && next == k) {
                         next = fn_1_B748(
                             next, arg1, arg2, arg3, arg4, arg5);
@@ -2542,13 +2558,13 @@ s16 fn_1_B748(s16 arg0, s16 arg1, s16 arg2, s16 arg3,
                 } else {
                     s16 next;
 
-                    next = arg4[arg0].unk_0[arg2];
+                    next = arg4[arg0].neighbors[arg2];
                     if (next == -1) {
                         next = fn_1_B748(
                             arg0, arg3, -1, -1, arg4, arg5);
                     }
                     for (l = 0; l < arg5; l++) {
-                        if (arg0 != l && arg4[l].unk_10 != -1
+                        if (arg0 != l && arg4[l].inUse != -1
                             && next == l) {
                             next = fn_1_B748(
                                 next, arg2, arg3, -1, arg4, arg5);
@@ -2654,10 +2670,10 @@ s16 fn_1_BBD8(s16 padNo, s16 *current,
     }
 
     if ((next = fn_1_BB30(*current, entries, directionNo, count)) != -1) {
-        entries[*current].unk_10 = -1;
+        entries[*current].inUse = -1;
         *current = next;
-        entries[*current].unk_10 = 1;
-        HuAudFXPlay(0);
+        entries[*current].inUse = 1;
+        HuAudFXPlay(MSM_SE_CMN_01);
         return TRUE;
     }
     return FALSE;
@@ -2692,7 +2708,7 @@ void fn_1_C28C(
 
     if (time == 0) {
         if (lbl_1_bss_34 == 0) {
-            HuAudFXPlay(0x34);
+            HuAudFXPlay(MSM_SE_CMN_53);
             lbl_1_bss_34 = 1;
         }
         Hu3DModelPosSet(entry->modelId, pos->x, pos->y, pos->z);
@@ -2718,7 +2734,7 @@ void fn_1_C698(s16 modelNo, s16 time, s16 duration)
 
     if (time == 0) {
         if (lbl_1_bss_34 == 0) {
-            HuAudFXPlay(0x35);
+            HuAudFXPlay(MSM_SE_CMN_54);
             lbl_1_bss_34 = 1;
         }
         Hu3DModelPosGet(entry->modelId, &entry->pos);
@@ -2866,7 +2882,8 @@ void fn_1_D748(void)
         memset(&lbl_1_bss_288[i], 0, sizeof(LBL_1_BSS_288_ENTRY));
         if (i == 0) {
             lbl_1_bss_288[i].modelId = Hu3DModelCreate(
-                HuDataSelHeapReadNum(0x970024, HU_MEMNUM_OVL, HEAP_MODEL));
+                HuDataSelHeapReadNum(
+                    DATANUM(DATA_mdparty, 36), HU_MEMNUM_OVL, HEAP_MODEL));
         } else {
             lbl_1_bss_288[i].modelId =
                 Hu3DModelLink(lbl_1_bss_288[0].modelId);
@@ -2881,7 +2898,7 @@ void fn_1_D748(void)
             lbl_1_bss_288[i].modelId, HU3D_ATTR_DISPOFF);
     }
     lbl_1_bss_24 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, NULL);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, NULL);
 }
 
 inline void fn_1_D748(void);
@@ -3092,7 +3109,7 @@ void fn_1_11EAC(OMOBJ *obj)
         entry = &lbl_1_bss_288[(s16)(i + 17)];
         if (time == 0) {
             if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(0x35);
+                HuAudFXPlay(MSM_SE_CMN_54);
                 lbl_1_bss_34 = 1;
             }
             Hu3DModelPosGet(entry->modelId, &entry->pos);
@@ -3156,10 +3173,10 @@ void fn_1_12364(OMOBJ *obj)
                     } else if (HuPadBtnDown[entry->unk_A]
                         & PAD_BUTTON_A) {
                         if (lbl_1_bss_2A == 0 && entry->chrSel == 10) {
-                            HuAudFXPlay(4);
+                            HuAudFXPlay(MSM_SE_CMN_05);
                             continue;
                         }
-                        CharFXPlay(entry->chrSel, 0x24B);
+                        CharFXPlay(entry->chrSel, MSM_SE_CHARVOICE_MARIO + 14);
                         entry->unk_0 = 1;
                         fn_1_AF70(i);
                         fn_1_9A7C(i, entry->unk_A);
@@ -3173,7 +3190,7 @@ void fn_1_12364(OMOBJ *obj)
                     }
                 }
             } else if (HuPadBtnDown[entry->unk_A] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 entry->unk_0 = 0;
                 fn_1_AD9C(i, &lbl_1_data_8A4[entry->chrSel + 14],
                     entry->unk_A);
@@ -3208,7 +3225,7 @@ void fn_1_12B18(OMOBJ *obj)
 
     for (i = 0, entry = lbl_1_bss_9BC; i < 4; i++, entry++) {
         if (entry->unk_4 == 0 && entry->unk_0 == 0) {
-            lbl_1_data_E12[entry->chrSel].unk_10 = 1;
+            lbl_1_data_E12[entry->chrSel].inUse = 1;
             fn_1_AD9C(
                 i, &lbl_1_data_8A4[entry->chrSel + 14], entry->unk_A);
         }
@@ -3265,10 +3282,10 @@ void fn_1_12FD8(OMOBJ *obj)
                         obj->work[0] = 0;
                     } else if (HuPadBtnDown[0] & PAD_BUTTON_A) {
                         if (lbl_1_bss_2A == 0 && entry->chrSel == 10) {
-                            HuAudFXPlay(4);
+                            HuAudFXPlay(MSM_SE_CMN_05);
                             break;
                         }
-                        CharFXPlay(entry->chrSel, 0x24B);
+                        CharFXPlay(entry->chrSel, MSM_SE_CHARVOICE_MARIO + 14);
                         entry->unk_0 = 1;
                         entry->unk_6 = 1;
                         fn_1_AF70(i);
@@ -3284,8 +3301,8 @@ void fn_1_12FD8(OMOBJ *obj)
                         fn_1_45C40(i,
                             &lbl_1_data_8A4[entry->chrSel + 14], 4);
                     } else if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                        HuAudFXPlay(3);
-                        lbl_1_data_E12[entry->chrSel].unk_10 = -1;
+                        HuAudFXPlay(MSM_SE_CMN_04);
+                        lbl_1_data_E12[entry->chrSel].inUse = -1;
                         fn_1_AF70(i);
                         for (j = 3; j >= 0; j--) {
                             if (lbl_1_bss_9BC[j].unk_4 == 1
@@ -3293,7 +3310,7 @@ void fn_1_12FD8(OMOBJ *obj)
                                 lbl_1_bss_9BC[j].unk_0 = 0;
                                 lbl_1_data_E12[
                                     lbl_1_bss_9BC[j].chrSel]
-                                    .unk_10 = -1;
+                                    .inUse = -1;
                                 fn_1_9B68(j);
                                 fn_1_C158((s16)lbl_1_bss_9BC[j].chrSel, 0,
                                     (s16)lbl_1_bss_9BC[j].chrSel, 0);
@@ -3336,7 +3353,7 @@ void fn_1_12FD8(OMOBJ *obj)
                         obj->work[0] = 0;
                         fn_1_AAF0(5);
                     } else if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                        HuAudFXPlay(1);
+                        HuAudFXPlay(MSM_SE_CMN_02);
                         entry->unk_0 = 2;
                         fn_1_AA94(4);
                         fn_1_AA94(5);
@@ -3352,7 +3369,7 @@ void fn_1_12FD8(OMOBJ *obj)
                             obj->objFunc = NULL;
                         }
                     } else if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                        HuAudFXPlay(3);
+                        HuAudFXPlay(MSM_SE_CMN_04);
                         entry->unk_0 = 0;
                         fn_1_AA94(4);
                         fn_1_AA94(5);
@@ -3390,9 +3407,9 @@ void fn_1_13EC0(OMOBJ *obj)
         if (entry->unk_4 == 1) {
             if (entry->unk_0 == 0) {
                 for (j = 0; j < 11; j++) {
-                    if (lbl_1_data_E12[j].unk_10 == -1) {
+                    if (lbl_1_data_E12[j].inUse == -1) {
                         entry->chrSel = j;
-                        lbl_1_data_E12[j].unk_10 = 1;
+                        lbl_1_data_E12[j].inUse = 1;
                         break;
                     }
                 }
@@ -3421,7 +3438,7 @@ void fn_1_14344(OMOBJ *obj)
     for (i = 0, entry = lbl_1_bss_9BC; i < 4; i++, entry++) {
         if (entry->unk_4 == 1) {
             if (entry->unk_0 == 0) {
-                lbl_1_data_E12[entry->chrSel].unk_10 = -1;
+                lbl_1_data_E12[entry->chrSel].inUse = -1;
                 fn_1_AF70(i);
                 break;
             } else if (entry->unk_0 == 1) {
@@ -3455,10 +3472,10 @@ void fn_1_14510(OMOBJ *obj)
                         obj->work[0] = 0;
                     } else if (HuPadBtnDown[0] & PAD_BUTTON_A) {
                         if (lbl_1_bss_2A == 0 && entry->chrSel == 10) {
-                            HuAudFXPlay(4);
+                            HuAudFXPlay(MSM_SE_CMN_05);
                             break;
                         }
-                        CharFXPlay(entry->chrSel, 0x24B);
+                        CharFXPlay(entry->chrSel, MSM_SE_CHARVOICE_MARIO + 14);
                         entry->unk_0 = 1;
                         entry->unk_6 = 1;
                         fn_1_AF70(i);
@@ -3481,8 +3498,8 @@ void fn_1_14510(OMOBJ *obj)
                             obj->objFunc = NULL;
                         }
                     } else if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                        HuAudFXPlay(3);
-                        lbl_1_data_E12[entry->chrSel].unk_10 = -1;
+                        HuAudFXPlay(MSM_SE_CMN_04);
+                        lbl_1_data_E12[entry->chrSel].inUse = -1;
                         fn_1_AF70(i);
                         for (j = 3; j >= 0; j--) {
                             if (lbl_1_bss_9BC[j].unk_4 == 1
@@ -3490,7 +3507,7 @@ void fn_1_14510(OMOBJ *obj)
                                 lbl_1_bss_9BC[j].unk_0 = 0;
                                 lbl_1_data_E12[
                                     lbl_1_bss_9BC[j].chrSel]
-                                    .unk_10 = -1;
+                                    .inUse = -1;
                                 fn_1_9B68(j);
                                 fn_1_C158((s16)lbl_1_bss_9BC[j].chrSel, 0,
                                     (s16)lbl_1_bss_9BC[j].chrSel, 0);
@@ -3528,9 +3545,9 @@ void fn_1_14CC0(OMOBJ *obj)
     for (i = 0, entry = lbl_1_bss_9BC; i < 4; i++, entry++) {
         if (entry->unk_4 == 1 && entry->unk_0 == 0) {
             for (j = 0; j < 11; j++) {
-                if (lbl_1_data_E12[j].unk_10 == -1) {
+                if (lbl_1_data_E12[j].inUse == -1) {
                     entry->chrSel = j;
-                    lbl_1_data_E12[j].unk_10 = 1;
+                    lbl_1_data_E12[j].inUse = 1;
                     break;
                 }
             }
@@ -3551,7 +3568,7 @@ void fn_1_14F64(OMOBJ *obj)
 
     for (i = 0, entry = lbl_1_bss_9BC; i < 4; i++, entry++) {
         if (entry->unk_4 == 1 && entry->unk_0 == 0) {
-            lbl_1_data_E12[entry->chrSel].unk_10 = -1;
+            lbl_1_data_E12[entry->chrSel].inUse = -1;
             fn_1_AF70(i);
             break;
         }
@@ -3581,7 +3598,7 @@ void fn_1_150D0(OMOBJ *obj)
             fn_1_C200(i, i);
             fn_1_C158(i, 1, i, 2);
             fn_1_C158(i, 3, i, 2);
-            lbl_1_data_E12[i].unk_10 = -1;
+            lbl_1_data_E12[i].inUse = -1;
         }
         if (lbl_1_bss_2A == 0) {
             fn_1_C200(10, 11);
@@ -3600,7 +3617,7 @@ void fn_1_150D0(OMOBJ *obj)
         entry = &lbl_1_bss_288[i];
         if (time == 0) {
             if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(0x34);
+                HuAudFXPlay(MSM_SE_CMN_53);
                 lbl_1_bss_34 = 1;
             }
             Hu3DModelPosSet(entry->modelId,
@@ -3700,7 +3717,7 @@ void fn_1_16A8C(OMOBJ *obj)
         entry = &lbl_1_bss_288[modelNo];
         if (time == 0) {
             if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(0x35);
+                HuAudFXPlay(MSM_SE_CMN_54);
                 lbl_1_bss_34 = 1;
             }
             Hu3DModelPosGet(entry->modelId, &entry->pos);
@@ -3752,7 +3769,7 @@ void fn_1_16E84(OMOBJ *obj)
         entry = &lbl_1_bss_288[i];
         if (time == 0) {
             if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(0x35);
+                HuAudFXPlay(MSM_SE_CMN_54);
                 lbl_1_bss_34 = 1;
             }
             Hu3DModelPosGet(entry->modelId, &entry->pos);
@@ -3836,7 +3853,7 @@ void fn_1_17730(OMOBJ *obj)
             workObj->work[3] = 0;
             lbl_1_bss_38[0] = 2.0f;
             if (lbl_1_data_DE6[0] == 1) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_01);
             }
         } else if (HuPadDStkRep[0] & PAD_BUTTON_RIGHT) {
             OMOBJ *workObj;
@@ -3859,7 +3876,7 @@ void fn_1_17730(OMOBJ *obj)
             workObj->work[3] = 0;
             lbl_1_bss_38[1] = 2.0f;
             if (lbl_1_data_DE6[1] == 1) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_01);
             }
         }
     }
@@ -3975,7 +3992,7 @@ void fn_1_18AA4(OMOBJ *obj)
     if (obj->work[0] == 20) {
         Hu3DLayerHookReset(2);
         fn_1_45A48(&lbl_1_data_8A4[13]);
-        HuAudFXPlay(0x49E);
+        HuAudFXPlay(MSM_SE_MENU_15);
         fn_1_8C28(lbl_1_bss_9F4.unk_4);
         Hu3DModelAttrSet(
             lbl_1_bss_288[lbl_1_bss_9F4.unk_4 + 11].modelId,
@@ -4005,7 +4022,7 @@ void fn_1_1948C(OMOBJ *obj)
         entry = &lbl_1_bss_288[(s16)(i + 11)];
         if (time == 0) {
             if (lbl_1_bss_34 == 0) {
-                HuAudFXPlay(0x35);
+                HuAudFXPlay(MSM_SE_CMN_54);
                 lbl_1_bss_34 = 1;
             }
             Hu3DModelPosGet(entry->modelId, &entry->pos);
@@ -4493,8 +4510,8 @@ void fn_1_21C9C(OMOBJ *obj)
     s16 i;
 
     lbl_1_bss_9F4.unk_E = 0;
-    lbl_1_bss_9F4.unk_10[0] = 0x30037;
-    lbl_1_bss_9F4.unk_10[1] = 0x30037;
+    lbl_1_bss_9F4.tagNameMessNum[0] = MESSNUM(MESS_TAG_NAME, 55);
+    lbl_1_bss_9F4.tagNameMessNum[1] = MESSNUM(MESS_TAG_NAME, 55);
     if (obj->work[0] == 0) {
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[i];
@@ -4504,7 +4521,7 @@ void fn_1_21C9C(OMOBJ *obj)
             fn_1_C158(entry->chrSel, 3, entry->chrSel, 1);
         }
         fn_1_96E4(
-            lbl_1_bss_9F4.unk_10[0], lbl_1_bss_9F4.unk_10[1]);
+            lbl_1_bss_9F4.tagNameMessNum[0], lbl_1_bss_9F4.tagNameMessNum[1]);
         fn_1_9E9C();
     }
     if (obj->work[0]++ > 10) {
@@ -4518,16 +4535,16 @@ void fn_1_22010(OMOBJ *obj)
     LBL_1_BSS_9BC_ENTRY *entry;
     s16 i;
 
-    lbl_1_bss_9F4.unk_10[0] = 0x30037;
-    lbl_1_bss_9F4.unk_10[1] = 0x30037;
+    lbl_1_bss_9F4.tagNameMessNum[0] = MESSNUM(MESS_TAG_NAME, 55);
+    lbl_1_bss_9F4.tagNameMessNum[1] = MESSNUM(MESS_TAG_NAME, 55);
     if (obj->work[0] == 0) {
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[i];
             fn_1_C158(entry->chrSel, 0, entry->chrSel, 1);
             fn_1_C158(entry->chrSel, 2, entry->chrSel, 1);
         }
-        fn_1_9658(0, lbl_1_bss_9F4.unk_10[0]);
-        fn_1_9658(1, lbl_1_bss_9F4.unk_10[1]);
+        fn_1_9658(0, lbl_1_bss_9F4.tagNameMessNum[0]);
+        fn_1_9658(1, lbl_1_bss_9F4.tagNameMessNum[1]);
     }
     if (obj->work[0]++ > 10) {
         obj->objFunc = NULL;
@@ -4541,18 +4558,18 @@ void fn_1_221F4(OMOBJ *obj)
     LBL_1_BSS_9BC_ENTRY *entry;
 
     if (obj->work[0] == 0) {
-        lbl_1_bss_9F4.unk_10[0] = fn_1_9558(
+        lbl_1_bss_9F4.tagNameMessNum[0] = fn_1_9558(
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][0]].chrSel,
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][1]].chrSel);
-        lbl_1_bss_9F4.unk_10[1] = fn_1_9558(
+        lbl_1_bss_9F4.tagNameMessNum[1] = fn_1_9558(
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][2]].chrSel,
             lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][3]].chrSel);
-        fn_1_9658(0, lbl_1_bss_9F4.unk_10[0]);
-        fn_1_9658(1, lbl_1_bss_9F4.unk_10[1]);
+        fn_1_9658(0, lbl_1_bss_9F4.tagNameMessNum[0]);
+        fn_1_9658(1, lbl_1_bss_9F4.tagNameMessNum[1]);
         for (i = 0; i < 4; i++) {
             entry = &lbl_1_bss_9BC[
                 lbl_1_data_4[lbl_1_bss_9F4.unk_E][i]];
@@ -4639,7 +4656,7 @@ void fn_1_228E8(OMOBJ *obj)
                     fn_1_AAF0(5);
                     fn_1_9B90(entry->unk_A, entry->unk_6 + 5);
                 } else if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                    HuAudFXPlay(1);
+                    HuAudFXPlay(MSM_SE_CMN_02);
                     entry->unk_0 = 2;
                     fn_1_AA94(4);
                     fn_1_AA94(5);
@@ -4662,7 +4679,7 @@ void fn_1_228E8(OMOBJ *obj)
                         obj->objFunc = NULL;
                     }
                 } else if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                    HuAudFXPlay(3);
+                    HuAudFXPlay(MSM_SE_CMN_04);
                     entry->unk_0 = 1;
                     fn_1_AA94(4);
                     fn_1_AA94(5);
@@ -4773,7 +4790,7 @@ void fn_1_232A0(OMOBJ *obj)
     }
     if (obj->work[0]++ >= 10) {
         fn_1_96E4(
-            lbl_1_bss_9F4.unk_10[0], lbl_1_bss_9F4.unk_10[1]);
+            lbl_1_bss_9F4.tagNameMessNum[0], lbl_1_bss_9F4.tagNameMessNum[1]);
         for (i = 0; i < 4; i++) {
             player = &lbl_1_bss_9BC[i];
             if (player->unk_4 == 1) {
@@ -5389,7 +5406,7 @@ void fn_1_2CE00(void)
 
 void fn_1_2D1D4(void)
 {
-    lbl_1_bss_0 = omInitObjMan(27, 0x2000);
+    lbl_1_bss_0 = omInitObjMan(27, 8192);
     omGameSysInit(lbl_1_bss_0);
     fn_1_33A0(fn_1_2DFD4);
     fn_1_3598();
@@ -5399,20 +5416,20 @@ void fn_1_2D1D4(void)
     fn_1_D748();
     fn_1_44DCC(lbl_1_bss_0);
     lbl_1_bss_4 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_861C);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_861C);
     lbl_1_bss_8 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_9218);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_9218);
     lbl_1_bss_C =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_605C);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_605C);
     lbl_1_bss_10 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_7064);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_7064);
     lbl_1_bss_14 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x20, -1, fn_1_7ED4);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 32, -1, fn_1_7ED4);
     lbl_1_bss_18 =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_A5D8);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_A5D8);
     lbl_1_bss_1C.obj =
-        omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1, fn_1_B4C8);
-    HuPrcChildCreate(fn_1_2CE00, 0x3000, 0x3000, 0, lbl_1_bss_0);
+        omAddObjEx(lbl_1_bss_0, 4096, 16, 16, -1, fn_1_B4C8);
+    HuPrcChildCreate(fn_1_2CE00, 12288, 12288, 0, lbl_1_bss_0);
 }
 
 void fn_1_2DD38(void)
@@ -5426,7 +5443,7 @@ void ObjectSetup(void)
     fn_1_2DD38();
     fn_1_1248();
     _ClearFlag(FLAG_BOARD_INIT);
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 0x23));
+    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 35));
     lbl_1_bss_2A = FALSE;
     lbl_1_bss_2C = FALSE;
     if (GWBankFlagGet(2)) {
@@ -5441,7 +5458,7 @@ void ObjectSetup(void)
     lbl_1_data_BEE[3] = TRUE;
     lbl_1_data_BEE[4] = TRUE;
     lbl_1_data_BEE[5] = FALSE;
-    if (GWBankFlagGet(0x33)) {
+    if (GWBankFlagGet(51)) {
         lbl_1_data_BEE[5] = TRUE;
     }
     lbl_1_bss_28 = omovlevtno;
@@ -5472,30 +5489,33 @@ void _epilog(void)
 
 void fn_1_2DFD4(OMOBJ *obj, MDCAMERA_WORK *camera)
 {
-    camera->unk_10.x = 0.0f;
-    camera->unk_10.y = 65.0f;
-    camera->unk_10.z = -800.0f;
-    camera->unk_28.x = -7.25f;
-    camera->unk_28.y = 0.0f;
-    camera->unk_28.z = 0.0f;
-    camera->unk_38 = 2150.0f;
+    camera->targetCenter.x = 0.0f;
+    camera->targetCenter.y = 65.0f;
+    camera->targetCenter.z = -800.0f;
+    camera->targetRot.x = -7.25f;
+    camera->targetRot.y = 0.0f;
+    camera->targetRot.z = 0.0f;
+    camera->targetZoom = 2150.0f;
     fn_1_28B0(camera, 15.0f);
 }
 
 void fn_1_2E338(OMOBJ *obj, MDCAMERA_WORK *camera)
 {
     camera->center.y =
-        fn_1_1868(camera->unk_10.y, 275.0f, camera->unk_40, 60.0f);
+        fn_1_1868(camera->targetCenter.y, 275.0f, camera->transitionTime,
+            60.0f);
     camera->center.z =
-        fn_1_1868(camera->unk_10.z, -2900.0f, camera->unk_40, 60.0f);
+        fn_1_1868(camera->targetCenter.z, -2900.0f,
+            camera->transitionTime, 60.0f);
     camera->rot.x =
-        fn_1_1868(camera->unk_28.x, 0.0f, camera->unk_40, 60.0f);
-    camera->unk_40 += 1.0f;
+        fn_1_1868(camera->targetRot.x, 0.0f, camera->transitionTime,
+            60.0f);
+    camera->transitionTime += 1.0f;
 }
 
 void fn_1_2E560(OMOBJ *obj, MDCAMERA_WORK *camera)
 {
-    camera->unk_40 = 0.0f;
+    camera->transitionTime = 0.0f;
     fn_1_2810(camera);
     fn_1_2B64(fn_1_2E338);
 }
@@ -5519,10 +5539,10 @@ s16 fn_1_2E638(void)
 
     fn_1_5194();
     fn_1_52B0();
-    fn_1_4020(1, 0xD0000, 1);
+    fn_1_4020(1, MESSNUM(MESS_PARTY_SETTING, 0), 1);
     fn_1_3EC8();
     fn_1_5194();
-    fn_1_4020(3, 0xD0001, 1);
+    fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 1), 1);
     fn_1_3EC8();
     obj = lbl_1_bss_4;
     obj->work[0] = 0;
@@ -5554,7 +5574,7 @@ inline s16 fn_1_2EBEC(void);
 s16 fn_1_2EF24(void)
 {
     fn_1_52B0();
-    fn_1_4020(2, 0xD0008, 1);
+    fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 8), 1);
     return fn_1_3F28(2);
 }
 
@@ -5581,15 +5601,15 @@ s16 fn_1_2F22C(void)
         while (TRUE) {
             HuPrcVSleep();
             fn_1_52B0();
-            fn_1_4020(2, 0xD0002, 1);
+            fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 2), 1);
             result = fn_1_3F28(0);
             if (result == 0) {
-                _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 0x23));
+                _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 35));
                 fn_1_8318();
                 fn_1_D6B0(fn_1_EB74);
                 fn_1_3E0C();
                 fn_1_64C();
-                HuAudFXPlay(0x4A2);
+                HuAudFXPlay(MSM_SE_MENU_19);
                 fn_1_58A0();
                 fn_1_68A4();
                 HuPrcSleep(10);
@@ -5598,7 +5618,7 @@ s16 fn_1_2F22C(void)
                     HuAudSStreamFadeOut(lbl_1_data_0, 3000);
                     lbl_1_data_0 = -1;
                 }
-                HuAudFXPlay(0x4A3);
+                HuAudFXPlay(MSM_SE_MENU_20);
                 HuPrcSleep(90);
                 fn_1_2B64(fn_1_2E338);
                 HuPrcSleep(60);
@@ -5612,7 +5632,7 @@ s16 fn_1_2F22C(void)
             }
             while (TRUE) {
                 HuPrcVSleep();
-                fn_1_4020(2, 0xD0026, 1);
+                fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 38), 1);
                 result = fn_1_3F28(0);
                 if (result != -1) {
                     break;
@@ -5639,7 +5659,7 @@ s16 fn_1_30B4C(void)
     while (TRUE) {
         HuPrcVSleep();
         fn_1_52B0();
-        fn_1_4020(2, 0xD0004, 1);
+        fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 4), 1);
         result = fn_1_3F28(0);
         if (result != -1) {
             if (result == 0) {
@@ -5661,7 +5681,7 @@ s16 fn_1_31508(void)
 {
     fn_1_2EBEC();
     fn_1_5194();
-    fn_1_4020(3, 0xD0005, 1);
+    fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 5), 1);
     fn_1_3EC8();
     return TRUE;
 }
@@ -5673,29 +5693,29 @@ s16 fn_1_31AC0(s16 arg0)
     while (TRUE) {
         HuPrcVSleep();
         fn_1_D6B0(fn_1_114C4);
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_52B0();
-        fn_1_4020(2, 0xD0009 + lbl_1_bss_9F4.unk_2, 0);
+        fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 9) + lbl_1_bss_9F4.unk_2, 0);
         while (TRUE) {
             HuPrcVSleep();
-            fn_1_444C(0x1000A);
-            fn_1_4020(2, 0xD0009 + lbl_1_bss_9F4.unk_2, 0);
+            fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
+            fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 9) + lbl_1_bss_9F4.unk_2, 0);
             if (!fn_1_D678()) {
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_03);
                 fn_1_275C();
                 result = 0;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -5746,13 +5766,13 @@ s16 fn_1_329A4(s16 arg0)
     }
     while (TRUE) {
         HuPrcVSleep();
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_5194();
-        fn_1_4020(3, 0xD000E, 0);
+        fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 14), 0);
         fn_1_D6B0(fn_1_12B18);
         while (TRUE) {
             HuPrcVSleep();
-            fn_1_4020(3, 0xD000E, 0);
+            fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 14), 0);
             result = fn_1_32904();
             if (!fn_1_D678()) {
                 continue;
@@ -5762,12 +5782,12 @@ s16 fn_1_329A4(s16 arg0)
                 break;
             }
             if (result == 1 && (HuPadBtnDown[0] & PAD_BUTTON_B)) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -5826,22 +5846,22 @@ s16 fn_1_33724(s16 arg0)
     count = fn_1_335F0(&activeNo, &firstNo, &maxNo);
     while (TRUE) {
         HuPrcVSleep();
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_5194();
         if (lbl_1_bss_9BC[activeNo].unk_0 == 0) {
-            fn_1_4258(3, 0xD0013 - (count - 1), 0);
-            fn_1_4020(3, 0xD000F, 0);
+            fn_1_4258(3, MESSNUM(MESS_PARTY_SETTING, 19) - (count - 1), 0);
+            fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 15), 0);
         } else {
-            fn_1_4020(3, 0xD0014, 0);
+            fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 20), 0);
         }
         fn_1_D6B0(fn_1_13EC0);
         while (TRUE) {
             HuPrcVSleep();
             if (lbl_1_bss_9BC[activeNo].unk_0 == 0) {
-                fn_1_4258(3, 0xD0013 - (count - 1), 0);
-                fn_1_4020(3, 0xD000F, 0);
+                fn_1_4258(3, MESSNUM(MESS_PARTY_SETTING, 19) - (count - 1), 0);
+                fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 15), 0);
             } else {
-                fn_1_4020(3, 0xD0014, 0);
+                fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 20), 0);
             }
             if (!fn_1_D678()) {
                 continue;
@@ -5854,12 +5874,12 @@ s16 fn_1_33724(s16 arg0)
             if (firstNo == activeNo
                 && lbl_1_bss_9BC[activeNo].unk_0 == 0
                 && (HuPadBtnDown[0] & PAD_BUTTON_B)) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -5959,15 +5979,15 @@ s16 fn_1_350F8(s16 arg0)
     count = fn_1_335F0(&activeNo, &firstNo, &maxNo);
     while (TRUE) {
         HuPrcVSleep();
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_5194();
-        fn_1_4258(3, 0xD0013 - (count - 1), 0);
-        fn_1_4020(3, 0xD000F, 0);
+        fn_1_4258(3, MESSNUM(MESS_PARTY_SETTING, 19) - (count - 1), 0);
+        fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 15), 0);
         fn_1_D6B0(fn_1_14CC0);
         while (TRUE) {
             HuPrcVSleep();
-            fn_1_4258(3, 0xD0013 - (count - 1), 0);
-            fn_1_4020(3, 0xD000F, 0);
+            fn_1_4258(3, MESSNUM(MESS_PARTY_SETTING, 19) - (count - 1), 0);
+            fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 15), 0);
             if (!fn_1_D678()) {
                 continue;
             }
@@ -5979,12 +5999,12 @@ s16 fn_1_350F8(s16 arg0)
             if (firstNo == activeNo
                 && lbl_1_bss_9BC[activeNo].unk_0 == 0
                 && (HuPadBtnDown[0] & PAD_BUTTON_B)) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6055,27 +6075,27 @@ s16 fn_1_36518(s16 arg0)
     while (TRUE) {
         HuPrcVSleep();
         fn_1_D6B0(fn_1_219C8);
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_5194();
-        fn_1_4020(3, 0xD0015, 0);
+        fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 21), 0);
         while (TRUE) {
             HuPrcVSleep();
-            fn_1_4020(3, 0xD0015, 0);
+            fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 21), 0);
             if (!fn_1_D678()) {
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_03);
                 result = 0;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6135,7 +6155,7 @@ s16 fn_1_3736C(s16 arg0)
         if (arg0 == 0) {
             return 0;
         }
-        fn_1_96E4(lbl_1_bss_9F4.unk_10[0], lbl_1_bss_9F4.unk_10[1]);
+        fn_1_96E4(lbl_1_bss_9F4.tagNameMessNum[0], lbl_1_bss_9F4.tagNameMessNum[1]);
         return 1;
     }
     if (arg0 == 0) {
@@ -6145,13 +6165,13 @@ s16 fn_1_3736C(s16 arg0)
     }
     while (TRUE) {
         HuPrcVSleep();
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_5194();
-        fn_1_4020(3, 0xD0014, 0);
+        fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 20), 0);
         fn_1_D6B0(fn_1_22EB8);
         while (TRUE) {
             HuPrcVSleep();
-            fn_1_4020(3, 0xD0014, 0);
+            fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 20), 0);
             if (!fn_1_D678()) {
                 continue;
             }
@@ -6163,12 +6183,12 @@ s16 fn_1_3736C(s16 arg0)
             if (activeNo == firstNo
                 && lbl_1_bss_9BC[activeNo].unk_0 == 1
                 && (HuPadBtnDown[0] & PAD_BUTTON_B)) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6194,9 +6214,9 @@ s16 fn_1_3736C(s16 arg0)
 s16 fn_1_38314(void)
 {
     fn_1_5194();
-    fn_1_4258(3, lbl_1_bss_9F4.unk_10[0], 0);
-    fn_1_4258(3, lbl_1_bss_9F4.unk_10[1], 1);
-    fn_1_4020(3, 0xD0016, 1);
+    fn_1_4258(3, lbl_1_bss_9F4.tagNameMessNum[0], 0);
+    fn_1_4258(3, lbl_1_bss_9F4.tagNameMessNum[1], 1);
+    fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 22), 1);
     fn_1_3EC8();
     fn_1_9804();
     fn_1_D6B0(fn_1_23AC0);
@@ -6213,39 +6233,39 @@ s16 fn_1_38A3C(s16 arg0)
     while (TRUE) {
         HuPrcVSleep();
         fn_1_D6B0(fn_1_17E10);
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_52B0();
         if (lbl_1_data_BEE[lbl_1_bss_9F4.unk_4] == 1) {
-            fn_1_4020(2, lbl_1_bss_9F4.unk_4 + 0x20009, 0);
+            fn_1_4020(2, lbl_1_bss_9F4.unk_4 + MESSNUM(MESS_MAP_NAME, 9), 0);
         } else {
-            fn_1_4020(2, 0x110017, 0);
+            fn_1_4020(2, MESSNUM(MESS_MGM_MAIN_MENU, 23), 0);
         }
         while (TRUE) {
             HuPrcVSleep();
             if (lbl_1_data_BEE[lbl_1_bss_9F4.unk_4] == 1) {
-                fn_1_4020(2, lbl_1_bss_9F4.unk_4 + 0x20009, 0);
+                fn_1_4020(2, lbl_1_bss_9F4.unk_4 + MESSNUM(MESS_MAP_NAME, 9), 0);
             } else {
-                fn_1_4020(2, 0x110017, 0);
+                fn_1_4020(2, MESSNUM(MESS_MGM_MAIN_MENU, 23), 0);
             }
             if (!fn_1_D678()) {
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
                 if (lbl_1_data_BEE[lbl_1_bss_9F4.unk_4] == 0) {
-                    HuAudFXPlay(4);
+                    HuAudFXPlay(MSM_SE_CMN_05);
                     continue;
                 }
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_03);
                 result = 0;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6280,31 +6300,31 @@ s16 fn_1_39C60(s16 arg0)
     while (TRUE) {
         HuPrcVSleep();
         fn_1_D6B0(fn_1_19D24);
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_52B0();
         fn_1_4258(2,
             lbl_1_bss_9BC[lbl_1_bss_9F4.unk_C].chrSel, 0);
-        fn_1_4020(2, 0xD0022, 0);
+        fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 34), 0);
         while (TRUE) {
             HuPrcVSleep();
             fn_1_4258(2,
                 lbl_1_bss_9BC[lbl_1_bss_9F4.unk_C].chrSel, 0);
-            fn_1_4020(2, 0xD0022, 0);
+            fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 34), 0);
             if (!fn_1_D678()) {
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_03);
                 result = 0;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6339,31 +6359,31 @@ s16 fn_1_3AD84(s16 arg0)
     while (TRUE) {
         HuPrcVSleep();
         fn_1_D6B0(fn_1_2457C);
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         fn_1_52B0();
         fn_1_4258(2,
-            lbl_1_bss_9F4.unk_10[lbl_1_bss_9F4.unk_C], 0);
-        fn_1_4020(2, 0xD0027, 0);
+            lbl_1_bss_9F4.tagNameMessNum[lbl_1_bss_9F4.unk_C], 0);
+        fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 39), 0);
         while (TRUE) {
             HuPrcVSleep();
             fn_1_4258(2,
-                lbl_1_bss_9F4.unk_10[lbl_1_bss_9F4.unk_C], 0);
-            fn_1_4020(2, 0xD0027, 0);
+                lbl_1_bss_9F4.tagNameMessNum[lbl_1_bss_9F4.unk_C], 0);
+            fn_1_4020(2, MESSNUM(MESS_PARTY_SETTING, 39), 0);
             if (!fn_1_D678()) {
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_03);
                 result = 0;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6393,9 +6413,9 @@ s16 fn_1_3BEA8(void)
     fn_1_D6B0(fn_1_1B9E8);
     HuPrcVSleep();
     fn_1_5194();
-    fn_1_4020(3, 0xD0023, 1);
+    fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 35), 1);
     if ((result = fn_1_3F28(2)) == 0) {
-        fn_1_4020(1, 0xD0025, 1);
+        fn_1_4020(1, MESSNUM(MESS_PARTY_SETTING, 37), 1);
         HuPrcSleep(60);
         fn_1_4FE8();
         HuPrcSleep(60);
@@ -6404,7 +6424,7 @@ s16 fn_1_3BEA8(void)
         result = 0;
     } else {
         fn_1_5194();
-        fn_1_4020(3, 0xD0024, 1);
+        fn_1_4020(3, MESSNUM(MESS_PARTY_SETTING, 36), 1);
         if ((result = fn_1_3F28(2)) == 0) {
             fn_1_D6B0(fn_1_1E7F8);
             result = 1;
@@ -6430,7 +6450,7 @@ void fn_1_3CA70(void)
         HuAudSStreamFadeOut(lbl_1_data_0, 3000);
         lbl_1_data_0 = -1;
     }
-    HuAudFXPlay(0x4A3);
+    HuAudFXPlay(MSM_SE_MENU_20);
     HuPrcSleep(90);
     lbl_1_bss_A10.callback = fn_1_2E338;
     HuPrcSleep(60);
@@ -6449,19 +6469,19 @@ s16 fn_1_3CFE4(s16 arg0)
         HuPrcVSleep();
         fn_1_D6B0(fn_1_28044);
         fn_1_5194();
-        fn_1_444C(0x1000A);
+        fn_1_444C(MESSNUM(MESS_SYS_GUIDE, 10));
         switch (lbl_1_bss_9F4.unk_18) {
             case 0:
-                fn_1_4020(3, lbl_1_bss_9F4.unk_0 + 0xD0006, 0);
+                fn_1_4020(3, lbl_1_bss_9F4.unk_0 + MESSNUM(MESS_PARTY_SETTING, 6), 0);
                 break;
             case 1:
-                fn_1_4020(3, lbl_1_bss_9F4.unk_6 + 0xD0017, 0);
+                fn_1_4020(3, lbl_1_bss_9F4.unk_6 + MESSNUM(MESS_PARTY_SETTING, 23), 0);
                 break;
             case 2:
-                fn_1_4020(3, lbl_1_bss_9F4.unk_8 + 0x40000, 0);
+                fn_1_4020(3, lbl_1_bss_9F4.unk_8 + MESSNUM(MESS_MGPACK_NAME, 0), 0);
                 break;
             case 3:
-                fn_1_4020(3, lbl_1_bss_9F4.unk_A + 0xD0020, 0);
+                fn_1_4020(3, lbl_1_bss_9F4.unk_A + MESSNUM(MESS_PARTY_SETTING, 32), 0);
                 break;
         }
         while (TRUE) {
@@ -6469,36 +6489,36 @@ s16 fn_1_3CFE4(s16 arg0)
             switch (lbl_1_bss_9F4.unk_18) {
                 case 0:
                     fn_1_4020(3,
-                        lbl_1_bss_9F4.unk_0 + 0xD0006, 0);
+                        lbl_1_bss_9F4.unk_0 + MESSNUM(MESS_PARTY_SETTING, 6), 0);
                     break;
                 case 1:
                     fn_1_4020(3,
-                        lbl_1_bss_9F4.unk_6 + 0xD0017, 0);
+                        lbl_1_bss_9F4.unk_6 + MESSNUM(MESS_PARTY_SETTING, 23), 0);
                     break;
                 case 2:
                     fn_1_4020(3,
-                        lbl_1_bss_9F4.unk_8 + 0x40000, 0);
+                        lbl_1_bss_9F4.unk_8 + MESSNUM(MESS_MGPACK_NAME, 0), 0);
                     break;
                 case 3:
                     fn_1_4020(3,
-                        lbl_1_bss_9F4.unk_A + 0xD0020, 0);
+                        lbl_1_bss_9F4.unk_A + MESSNUM(MESS_PARTY_SETTING, 32), 0);
                     break;
             }
             if (!fn_1_D678()) {
                 continue;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-                HuAudFXPlay(2);
+                HuAudFXPlay(MSM_SE_CMN_03);
                 result = 0;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = 1;
                 break;
             }
             if (HuPadBtnDown[0] & PAD_BUTTON_X) {
-                HuAudFXPlay(3);
+                HuAudFXPlay(MSM_SE_CMN_04);
                 result = -1;
                 break;
             }
@@ -6694,38 +6714,38 @@ s16 lbl_1_data_4[3][4] = {
     { 0, 3, 1, 2 },
 };
 u32 lbl_1_data_1C[32] = {
-    DATANUM(DATA_mdparty, 0x1C),
-    DATANUM(DATA_mdparty, 0x04),
-    DATANUM(DATA_mdparty, 0x05),
-    DATANUM(DATA_mdparty, 0x06),
-    DATANUM(DATA_mdparty, 0x07),
-    DATANUM(DATA_mdparty, 0x08),
-    DATANUM(DATA_mdparty, 0x09),
-    DATANUM(DATA_mdparty, 0x0A),
-    DATANUM(DATA_mdparty, 0x0B),
-    DATANUM(DATA_mdparty, 0x0C),
-    DATANUM(DATA_mdparty, 0x0D),
-    DATANUM(DATA_mdparty, 0x0E),
-    DATANUM(DATA_mdparty, 0x0F),
-    DATANUM(DATA_mdparty, 0x10),
-    DATANUM(DATA_mdparty, 0x11),
-    DATANUM(DATA_mdparty, 0x1E),
-    DATANUM(DATA_mdparty, 0x1F),
-    DATANUM(DATA_mdparty, 0x20),
-    DATANUM(DATA_mdparty, 0x21),
-    DATANUM(DATA_mdparty, 0x22),
-    DATANUM(DATA_mdparty, 0x23),
-    DATANUM(DATA_mdparty, 0x1B),
-    DATANUM(DATA_mdparty, 0x15),
-    DATANUM(DATA_mdparty, 0x14),
-    DATANUM(DATA_mdparty, 0x16),
-    DATANUM(DATA_mdparty, 0x17),
-    DATANUM(DATA_mdparty, 0x12),
-    DATANUM(DATA_mdparty, 0x13),
-    DATANUM(DATA_mdparty, 0x18),
-    DATANUM(DATA_mdparty, 0x19),
-    DATANUM(DATA_mdparty, 0x4E),
-    DATANUM(DATA_mdparty, 0x1D),
+    DATANUM(DATA_mdparty, 28),
+    DATANUM(DATA_mdparty, 4),
+    DATANUM(DATA_mdparty, 5),
+    DATANUM(DATA_mdparty, 6),
+    DATANUM(DATA_mdparty, 7),
+    DATANUM(DATA_mdparty, 8),
+    DATANUM(DATA_mdparty, 9),
+    DATANUM(DATA_mdparty, 10),
+    DATANUM(DATA_mdparty, 11),
+    DATANUM(DATA_mdparty, 12),
+    DATANUM(DATA_mdparty, 13),
+    DATANUM(DATA_mdparty, 14),
+    DATANUM(DATA_mdparty, 15),
+    DATANUM(DATA_mdparty, 16),
+    DATANUM(DATA_mdparty, 17),
+    DATANUM(DATA_mdparty, 30),
+    DATANUM(DATA_mdparty, 31),
+    DATANUM(DATA_mdparty, 32),
+    DATANUM(DATA_mdparty, 33),
+    DATANUM(DATA_mdparty, 34),
+    DATANUM(DATA_mdparty, 35),
+    DATANUM(DATA_mdparty, 27),
+    DATANUM(DATA_mdparty, 21),
+    DATANUM(DATA_mdparty, 20),
+    DATANUM(DATA_mdparty, 22),
+    DATANUM(DATA_mdparty, 23),
+    DATANUM(DATA_mdparty, 18),
+    DATANUM(DATA_mdparty, 19),
+    DATANUM(DATA_mdparty, 24),
+    DATANUM(DATA_mdparty, 25),
+    DATANUM(DATA_mdparty, 78),
+    DATANUM(DATA_mdparty, 29),
 };
 s16 lbl_1_data_9C[17] = {
     2, 6, 6, 4, 2, 2, 2, 2, 4, 4, 4, 4, 5, 2, 4, 4, 1,
@@ -6791,47 +6811,47 @@ MDSPR_INFO lbl_1_data_C0[58] = {
     { 0, 1, 31, 0, 0, { 0.0f, 0.0f }, { 1.0f, 1.0f }, 0.0f },
 };
 u32 lbl_1_data_800[41] = {
-    DATANUM(DATA_mdparty, 0x27),
-    DATANUM(DATA_mdparty, 0x28),
-    DATANUM(DATA_mdparty, 0x29),
-    DATANUM(DATA_mdparty, 0x2A),
-    DATANUM(DATA_mdparty, 0x2B),
-    DATANUM(DATA_mdparty, 0x2C),
-    DATANUM(DATA_mdparty, 0x2D),
-    DATANUM(DATA_mdparty, 0x2E),
-    DATANUM(DATA_mdparty, 0x2F),
-    DATANUM(DATA_mdparty, 0x30),
-    DATANUM(DATA_mdparty, 0x31),
-    DATANUM(DATA_mdparty, 0x32),
-    DATANUM(DATA_mdparty, 0x33),
-    DATANUM(DATA_mdparty, 0x34),
-    DATANUM(DATA_mdparty, 0x35),
-    DATANUM(DATA_mdparty, 0x36),
-    DATANUM(DATA_mdparty, 0x37),
-    DATANUM(DATA_mdparty, 0x38),
-    DATANUM(DATA_mdparty, 0x25),
-    DATANUM(DATA_mdparty, 0x26),
-    DATANUM(DATA_mdparty, 0x39),
-    DATANUM(DATA_mdparty, 0x3A),
-    DATANUM(DATA_mdparty, 0x3B),
-    DATANUM(DATA_mdparty, 0x3C),
-    DATANUM(DATA_mdparty, 0x3D),
-    DATANUM(DATA_mdparty, 0x3E),
-    DATANUM(DATA_mdparty, 0x3F),
-    DATANUM(DATA_mdparty, 0x40),
-    DATANUM(DATA_mdparty, 0x41),
-    DATANUM(DATA_mdparty, 0x42),
-    DATANUM(DATA_mdparty, 0x43),
-    DATANUM(DATA_mdparty, 0x44),
-    DATANUM(DATA_mdparty, 0x45),
-    DATANUM(DATA_mdparty, 0x46),
-    DATANUM(DATA_mdparty, 0x47),
-    DATANUM(DATA_mdparty, 0x48),
-    DATANUM(DATA_mdparty, 0x49),
-    DATANUM(DATA_mdparty, 0x4A),
-    DATANUM(DATA_mdparty, 0x4B),
-    DATANUM(DATA_mdparty, 0x4C),
-    DATANUM(DATA_mdparty, 0x4D),
+    DATANUM(DATA_mdparty, 39),
+    DATANUM(DATA_mdparty, 40),
+    DATANUM(DATA_mdparty, 41),
+    DATANUM(DATA_mdparty, 42),
+    DATANUM(DATA_mdparty, 43),
+    DATANUM(DATA_mdparty, 44),
+    DATANUM(DATA_mdparty, 45),
+    DATANUM(DATA_mdparty, 46),
+    DATANUM(DATA_mdparty, 47),
+    DATANUM(DATA_mdparty, 48),
+    DATANUM(DATA_mdparty, 49),
+    DATANUM(DATA_mdparty, 50),
+    DATANUM(DATA_mdparty, 51),
+    DATANUM(DATA_mdparty, 52),
+    DATANUM(DATA_mdparty, 53),
+    DATANUM(DATA_mdparty, 54),
+    DATANUM(DATA_mdparty, 55),
+    DATANUM(DATA_mdparty, 56),
+    DATANUM(DATA_mdparty, 37),
+    DATANUM(DATA_mdparty, 38),
+    DATANUM(DATA_mdparty, 57),
+    DATANUM(DATA_mdparty, 58),
+    DATANUM(DATA_mdparty, 59),
+    DATANUM(DATA_mdparty, 60),
+    DATANUM(DATA_mdparty, 61),
+    DATANUM(DATA_mdparty, 62),
+    DATANUM(DATA_mdparty, 63),
+    DATANUM(DATA_mdparty, 64),
+    DATANUM(DATA_mdparty, 65),
+    DATANUM(DATA_mdparty, 66),
+    DATANUM(DATA_mdparty, 67),
+    DATANUM(DATA_mdparty, 68),
+    DATANUM(DATA_mdparty, 69),
+    DATANUM(DATA_mdparty, 70),
+    DATANUM(DATA_mdparty, 71),
+    DATANUM(DATA_mdparty, 72),
+    DATANUM(DATA_mdparty, 73),
+    DATANUM(DATA_mdparty, 74),
+    DATANUM(DATA_mdparty, 75),
+    DATANUM(DATA_mdparty, 76),
+    DATANUM(DATA_mdparty, 77),
 };
 HuVecF lbl_1_data_8A4[67] = {
     { 0.0f, 275.0f, 0.0f },

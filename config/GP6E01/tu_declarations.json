@@ -23,6 +23,8 @@
       "allowed_includes": [
         "string.h",
         "datadir_enum.h",
+        "messdir_enum.h",
+        "msm_se.h",
         "dolphin/os.h",
         "REL/mdpartyDll.h",
         "game/armem.h",
