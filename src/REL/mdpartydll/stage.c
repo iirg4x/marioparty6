@@ -1,8 +1,5 @@
-/* Use the SDK math inline bodies without math.h's reconstructed weak-local
- * sqrtf constants; this object was compiled with literal pooling disabled. */
-#define _MATH_H
+/* Select the SDK math inline bodies before headers that also expose math. */
 #include "dolphin/math.h"
-#pragma pool_data off
 
 #include <string.h>
 
@@ -19,6 +16,12 @@
 #define sind(x) sin((M_PI * (x)) / 180.0)
 #define cosd(x) cos((M_PI * (x)) / 180.0)
 
+enum {
+    MDPARTY_STAGE_OBJECT_PRIORITY = 4096,
+    MDPARTY_STAGE_PARTICLE_TARGET_COUNT = 5,
+    MDPARTY_COLOR_COMPONENT_MASK = 255,
+};
+
 typedef struct MdpartyStageTextureWork {
     HuVecF unk_00;
     HuVecF unk_0C;
@@ -28,16 +31,21 @@ typedef struct MdpartyStageTextureWork {
     float unk_24;
 } MDPARTY_STAGE_TEXTURE_WORK;
 
+typedef struct MdpartyStageParticleTarget {
+    u8 scale;
+    u8 alpha;
+} MDPARTY_STAGE_PARTICLE_TARGET;
+
 u32 lbl_1_data_F10[9] = {
-    DATANUM(DATA_mdparty, 0x82),
-    DATANUM(DATA_mdparty, 0x83),
-    DATANUM(DATA_mdparty, 0x81),
-    DATANUM(DATA_mdparty, 0x84),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
-    DATANUM(DATA_mdparty, 0x89),
+    DATANUM(DATA_mdparty, 130),
+    DATANUM(DATA_mdparty, 131),
+    DATANUM(DATA_mdparty, 129),
+    DATANUM(DATA_mdparty, 132),
+    DATANUM(DATA_mdparty, 137),
+    DATANUM(DATA_mdparty, 137),
+    DATANUM(DATA_mdparty, 137),
+    DATANUM(DATA_mdparty, 137),
+    DATANUM(DATA_mdparty, 137),
 };
 
 ANIMDATA *lbl_1_bss_B40[9];
@@ -143,9 +151,9 @@ void fn_1_3F5EC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     PSMTXConcat(invMtx, drawObj->matrix, tmpMtx);
     PSMTXConcat(lightMtx, Hu3DCameraMtx, texMtx);
     PSMTXConcat(texMtx, tmpMtx, texMtx);
-    GXLoadTexMtxImm(texMtx, 0x21, GX_MTX3x4);
+    GXLoadTexMtxImm(texMtx, GX_TEXMTX1, GX_MTX3x4);
     GXSetTexCoordGen2(
-        GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, 0x21, GX_FALSE,
+        GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1, GX_FALSE,
         GX_PTIDENTITY);
 
     PSMTXTrans(
@@ -240,17 +248,17 @@ void fn_1_3FC60(OMOBJ *obj)
 {
     HU3D_MODEL *model = NULL;
 
-    omSetStatBit(obj, 0x100);
+    omSetStatBit(obj, OM_STAT_MODELPAUSE);
     lbl_1_bss_A88 = HuSprAnimRead(
-        HuDataSelHeapReadNum(0x00970080, HU_MEMNUM_OVL, HEAP_MODEL));
+        HuDataSelHeapReadNum(DATANUM(DATA_mdparty, 128), HU_MEMNUM_OVL, HEAP_MODEL));
     lbl_1_bss_A8C = HuSprAnimRead(
-        HuDataSelHeapReadNum(0x00970080, HU_MEMNUM_OVL, HEAP_MODEL));
+        HuDataSelHeapReadNum(DATANUM(DATA_mdparty, 128), HU_MEMNUM_OVL, HEAP_MODEL));
     lbl_1_bss_A90 = HuMemDirectMallocNum(
         HEAP_MODEL,
         GXGetTexBufferSize(320, 240, GX_TF_RGB565, GX_FALSE, 0),
         HU_MEMNUM_OVL);
     obj->mdlId[0] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(0x0097007F, HU_MEMNUM_OVL, HEAP_MODEL));
+        HuDataSelHeapReadNum(DATANUM(DATA_mdparty, 127), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelPosSet(obj->mdlId[0], 0.0f, 0.0f, 0.0f);
     Hu3DModelRotSet(obj->mdlId[0], 90.0f, 0.0f, 0.0f);
     Hu3DModelScaleSet(obj->mdlId[0], 6.0f, 6.0f, 6.0f);
@@ -285,7 +293,8 @@ inline void fn_1_3FE44(OMOBJ *obj);
 void fn_1_3FEF4(void)
 {
     lbl_1_bss_A84 =
-        omAddObjEx(lbl_1_bss_A80, 0x1000, 1, 0, -1, fn_1_3FC60);
+        omAddObjEx(lbl_1_bss_A80, MDPARTY_STAGE_OBJECT_PRIORITY, 1, 0, -1,
+            fn_1_3FC60);
 }
 
 void fn_1_3FF44(void)
@@ -622,13 +631,13 @@ void fn_1_418D4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             if (data->time == 0) {
                 if (spawnCount < 7) {
                     color = rand8() + 128;
-                    color &= 0xFF;
+                    color &= MDPARTY_COLOR_COMPONENT_MASK;
                     data->color.r = 255;
                     color = rand8() + 128;
-                    color &= 0xFF;
+                    color &= MDPARTY_COLOR_COMPONENT_MASK;
                     data->color.g = 255;
                     color = rand8() % 204;
-                    color &= 0xFF;
+                    color &= MDPARTY_COLOR_COMPONENT_MASK;
                     data->color.b = color;
                     if ((i % 4) == 0) {
                         data->color.b = 255;
@@ -728,13 +737,13 @@ void fn_1_42258(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             data->vel.y = direction.y * speed;
             data->vel.z = direction.z * speed;
             color = rand8() + 128;
-            color &= 0xFF;
+            color &= MDPARTY_COLOR_COMPONENT_MASK;
             data->color.r = color;
             color = rand8() + 128;
-            color &= 0xFF;
+            color &= MDPARTY_COLOR_COMPONENT_MASK;
             data->color.g = color;
             color = rand8() % 128;
-            color &= 0xFF;
+            color &= MDPARTY_COLOR_COMPONENT_MASK;
             data->color.b = color;
             data->color.a = 204;
             data->pos.x = data->accel.x = frandmod(4) - 2;
@@ -849,12 +858,13 @@ void fn_1_42EAC(s16 arg0)
 
 void fn_1_42F34(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
-    u8 dataTbl[5][2] = {
-        { 0x10, 0xFF },
-        { 0x10, 0xFF },
-        { 0x30, 0x80 },
-        { 0x80, 0x40 },
-        { 0xFF, 0x20 },
+    MDPARTY_STAGE_PARTICLE_TARGET particleTarget[
+        MDPARTY_STAGE_PARTICLE_TARGET_COUNT] = {
+        { 16, 255 },
+        { 16, 255 },
+        { 48, 128 },
+        { 128, 64 },
+        { 255, 32 },
     };
     HU3D_PARTICLE_DATA *data;
     float velX1;
@@ -873,8 +883,10 @@ void fn_1_42F34(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             data->pos.x = 0.0f;
             data->pos.y = 0.0f;
             data->pos.z = 0.0f;
-            data->vel.x = dataTbl[i % 5][1];
-            data->vel.y = dataTbl[i % 5][0];
+            data->vel.x =
+                particleTarget[i % MDPARTY_STAGE_PARTICLE_TARGET_COUNT].alpha;
+            data->vel.y =
+                particleTarget[i % MDPARTY_STAGE_PARTICLE_TARGET_COUNT].scale;
             velX1 = data->vel.x;
             data->color.a =
                 fn_1_3F550(data->color.a, velX1, 10.0f);
