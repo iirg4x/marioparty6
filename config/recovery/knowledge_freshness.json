@@ -784,13 +784,18 @@
     },
     "gc26-o0-authenticated-initialized-local-preserves-stack-store": {
       "status": "active",
-      "validated_commit": "f602445798880149aa403387f55e399788c1ab6a",
+      "validated_commit": "6de7e47d30bb13e6615fd25307ce9bfac422095a",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "config/recovery/owners/REL_bootDll_opening.json",
         "src/board/capevent.c",
         "src/board/mgcall.c",
-        "src/board/tutorial.c"
+        "src/board/tutorial.c",
+        "src/REL/bootDll/opening.c",
+        "config/dll/rels/bootDll/symbols.txt",
+        "src/REL/openingDll/opening.c",
+        "config/dll/rels/openingDll/symbols.txt"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -895,7 +900,7 @@
     },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
-      "validated_commit": "1090d0b7e6d7cb030ee9104293d5f245763e3426",
+      "validated_commit": "d7c04afd5cd5a729be79872c17d385c6f1512fd0",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
