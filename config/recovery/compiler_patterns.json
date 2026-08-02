@@ -3711,10 +3711,14 @@
         "owners": [],
         "stable_ids": [
           "main:board/capevent:mbev_CapBonusCoinCall",
-          "main:board/tutorial:mbTutorialMgCallExec"
+          "main:board/tutorial:mbTutorialMgCallExec",
+          "REL:bootDll:opening:SwapAnimFrameEvent",
+          "openingDll:0x4744"
         ],
         "modules": [
-          "main"
+          "main",
+          "bootDll",
+          "openingDll"
         ],
         "owner_tags": [
           "stack_frame",
@@ -3731,13 +3735,18 @@
       "counterexamples": [
         "A declared-but-never-referenced local is codegen-neutral in the measured controls and cannot explain an emitted store.",
         "Do not add an initialized local solely because it improves match percentage when same-game evidence and the target frame map do not support it.",
-        "Do not use volatile, padding names, dummy arrays, fake reads, or dead branches to retain a store."
+        "Do not use volatile, padding names, dummy arrays, fake reads, or dead branches to retain a store.",
+        "bootDll SwapAnimFrameEvent and openingDll fn_1_4744 have the same 104-byte target instruction template, including a zero initialization stored as 16 bits at stack offset 16. That duplication supports the initialized-slot source shape, but it cannot authenticate signedness, an original local name, or semantics because both retained C spellings were recovery-created."
       ],
       "related_exceptions": [],
       "evidence": [
         "src/board/capevent.c",
         "src/board/mgcall.c",
-        "src/board/tutorial.c"
+        "src/board/tutorial.c",
+        "config/dll/rels/bootDll/symbols.txt",
+        "config/dll/rels/openingDll/symbols.txt",
+        "src/REL/bootDll/opening.c",
+        "src/REL/openingDll/opening.c"
       ]
     },
     {

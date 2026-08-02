@@ -36,7 +36,6 @@ enum {
     GUIDE_FOCUS_SELECTOR_CHAR_MASK = 255,
     GUIDE_FOCUS_SELECTOR_ALT = 32768,
     GUIDE_FOCUS_CHAR_A = 10,
-    GUIDE_FOCUS_CHAR_B = 11,
 
     POSTDRAW_COPY_X = 0,
     POSTDRAW_COPY_Y = 80,
@@ -44,20 +43,9 @@ enum {
     POSTDRAW_COPY_H = 320,
     POSTDRAW_COPY_MIPMAP = 0,
 
-    OPENING_DATA_ID_BASE = 13959168,
-    OPENING_BOOK_TEMP_SIZE = 1048576,
-    OPENING_PROCESS_PRIORITY = 256,
-    OPENING_BOOK_PROCESS_STACK_SIZE = 4096,
-    OPENING_EVENT_PROCESS_STACK_SIZE = 12288,
-    OPENING_WINDOW_FRAME_WIDTH = 544,
-    OPENING_WINDOW_FRAME_HEIGHT = 68,
-    OPENING_WINDOW_MESSAGE_HEIGHT = 42,
-    OPENING_WINDOW_MESSAGE_ID = 65541,
-    OPENING_PROMPT_FRAME = 250,
-    OPENING_ROTATE_GUIDE_FRAME_COUNT = 1050,
-    OPENING_CHAR_WAIT_FRAME_COUNT = 990,
-    OPENING_BLINK_GUIDE_FRAME_COUNT = 1010,
+    OPENING_PROMPT_MESSAGE = 65541,
     OPENING_MESSAGE_BASE = 720896,
+
     OPENING_CHAR_ANIM_FRAME_BASE = 14,
     OPENING_CHAR_ANIM_FRAME_STEP = 7,
     OPENING_GUIDE_ANIM_FRAME_BASE = 70,
@@ -66,6 +54,7 @@ enum {
     OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE = 76,
     OPENING_SWAP_ANIM_FRAME_BASE = 11,
     OPENING_SWAP_ANIM_FRAME_GUIDE_BASE = 57,
+
     OPENING_FX_ID_0 = 1200,
     OPENING_FX_ID_1 = 1201,
     OPENING_FX_ID_2 = 1202,
@@ -165,41 +154,49 @@ void OpeningCreate(void)
     void *temp;
     s16 i;
 
-    OpeningMdlId[0] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 22, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[0] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 22), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[0], 1);
     Hu3DMotionSpeedSet(OpeningMdlId[0], 0.015f);
     Hu3DModelPosSet(OpeningMdlId[0], 0.0f, 0.0f, -4500.f);
 
-    OpeningMdlId[1] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 23, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[1] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 23), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[1], 1);
     Hu3DMotionSpeedSet(OpeningMdlId[1], 0.5f);
     Hu3DMotionClusterSpeedSet(OpeningMdlId[1], 0, 0.5f);
     Hu3DModelPosSet(OpeningMdlId[1], 0.0f, 0.0f, -2000.f);
     Hu3DModelRotSet(OpeningMdlId[1], -20.f, -30.f, 30.f);
 
-    OpeningMdlId[2] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 24, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[2] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 24), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[2], 0);
     Hu3DModelPosSet(OpeningMdlId[2], 0.0f, -330.f, 0.0f);
 
-    OpeningMdlId[3] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 25, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[3] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 25), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[3], 1);
 
-    OpeningMdlId[4] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 26, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[4] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 26), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[4], 1);
 
-    OpeningMdlId[5] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 28, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[5] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 28), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[5], 1);
 
-    OpeningMdlId[6] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 29, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[6] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 29), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[6], 1);
     Hu3DModelAttrSet(OpeningMdlId[6], HU3D_MOTATTR_LOOP);
 
-    OpeningMdlId[7] = Hu3DModelCreate(HuDataSelHeapReadNum(OPENING_DATA_ID_BASE + 27, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[7] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 27), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[7], 1);
     Hu3DMotionSpeedSet(OpeningMdlId[7], 2.0f);
     Hu3DModelScaleSet(OpeningMdlId[7], 2.0f, 2.0f, 2.0f);
 
-    temp = HuMemDirectMallocNum(HEAP_DVD, OPENING_BOOK_TEMP_SIZE, HU_MEMNUM_OVL);
+    temp = HuMemDirectMallocNum(HEAP_DVD, 1048576, HU_MEMNUM_OVL);
     BookFrameBuf[0] = HuMemDirectMallocNum(
         HEAP_DVD,
         GXGetTexBufferSize(POSTDRAW_COPY_W, POSTDRAW_COPY_H, GX_TF_RGBA8, POSTDRAW_COPY_MIPMAP, 0),
@@ -231,11 +228,7 @@ void OpeningCreate(void)
         OpeningCharAnimId[i] = Hu3DAnimCreate(OpeningCharAnim[0], OpeningMdlId[2], OpeningCharTexNameTbl[i]);
     }
 
-    HuPrcChildCreate(BookExec,
-                     OPENING_PROCESS_PRIORITY,
-                     OPENING_BOOK_PROCESS_STACK_SIZE,
-                     0,
-                     HuPrcCurrentGet());
+    HuPrcChildCreate(BookExec, 256, 4096, 0, HuPrcCurrentGet());
 
     BookOfs.x = BookOfs.y = BookOfs.z = 0.0f;
     BookPos = BookDefPos;
@@ -312,8 +305,8 @@ void OpeningExec(s32 enablePrompt)
         OpeningWinId[i] = HuWinExCreateFrame(
             -10000.f,
             364.0f,
-            OPENING_WINDOW_FRAME_WIDTH,
-            OPENING_WINDOW_FRAME_HEIGHT,
+            544,
+            68,
             -1,
             WinFrameTypeTbl[i]);
         HuWinAttrSet(OpeningWinId[i], HUWIN_ATTR_ALIGN_CENTER);
@@ -324,13 +317,12 @@ void OpeningExec(s32 enablePrompt)
     SetStarDist(10, GuideDist.x);
     SetStarDist(11, GuideDist.y);
 
-    messageWinId = HuWinCreate(
-        16.0f, 326.0f, OPENING_WINDOW_FRAME_WIDTH, OPENING_WINDOW_MESSAGE_HEIGHT, 0);
+    messageWinId = HuWinCreate(16.0f, 326.0f, 544, 42, 0);
     HuWinAttrSet(messageWinId, HUWIN_ATTR_ALIGN_CENTER);
     HuWinPriSet(messageWinId, 100);
     HuWinBGTPLvlSet(messageWinId, 0.0f);
     HuWinMesSpeedSet(messageWinId, 0);
-    HuWinMesSet(messageWinId, OPENING_WINDOW_MESSAGE_ID);
+    HuWinMesSet(messageWinId, OPENING_PROMPT_MESSAGE);
     HuWinDispOff(messageWinId);
 
     Hu3DGLightPosSet(BootLightId[0],
@@ -346,17 +338,12 @@ void OpeningExec(s32 enablePrompt)
     }
 
     OpeningEndF = 0;
-    eventProcess = HuPrcChildCreate(
-        OpeningEventExec,
-        OPENING_PROCESS_PRIORITY,
-        OPENING_EVENT_PROCESS_STACK_SIZE,
-        0,
-        HuPrcCurrentGet());
+    eventProcess = HuPrcChildCreate(OpeningEventExec, 256, 12288, 0, HuPrcCurrentGet());
 
     frame = 0;
     while (OpeningEndF == 0) {
         if (enablePrompt != 0) {
-            if (frame > OPENING_PROMPT_FRAME && omcurovl != 1) {
+            if (frame > 250 && omcurovl != 1) {
                 HuWinDispOn(messageWinId);
             }
 
@@ -397,9 +384,9 @@ void OpeningEventExec(void)
 {
     OpeningBgState = 0;
     EventCreate(OpeningBgUpdate, 0, 0);
-    EventCreate((void (*)(void))RotateGuide, OPENING_ROTATE_GUIDE_FRAME_COUNT, 0);
-    EventCreate((void (*)(void))CharWaitEvent, OPENING_CHAR_WAIT_FRAME_COUNT, 0);
-    EventCreate((void (*)(void))BlinkGuide, OPENING_BLINK_GUIDE_FRAME_COUNT, 0);
+    EventCreate((void (*)(void))RotateGuide, 1050, 0);
+    EventCreate((void (*)(void))CharWaitEvent, 990, 0);
+    EventCreate((void (*)(void))BlinkGuide, 1010, 0);
     EventCreate(ObjStarExec, 0, 0);
     BookOpen();
 
@@ -418,7 +405,7 @@ void OpeningEventExec(void)
     }
 
     OpeningBgState = 2;
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_B, 60);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 60);
     EventCreate(CharFocusRight, 0, 0);
     MessStart(0, OPENING_MESSAGE_BASE + 4, 80);
     EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
@@ -426,7 +413,7 @@ void OpeningEventExec(void)
 
     OpeningBgState = 3;
     MessStart(0, OPENING_MESSAGE_BASE + 5, 70);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_B, 40);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 40);
     EventCreate(CharFocusRight, 0, 0);
 
     OpeningBgState = 4;
@@ -436,7 +423,7 @@ void OpeningEventExec(void)
 
     OpeningBgState = 3;
     MessStart(0, OPENING_MESSAGE_BASE + 7, 60);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_B, 40);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 40);
     EventCreate(CharFocusRight, 0, 0);
 
     OpeningBgState = 4;
@@ -452,7 +439,7 @@ void OpeningEventExec(void)
                 GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A,
                 10000);
     EventCreate((void (*)(void))GuideCharFocus,
-                GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_B,
+                GUIDE_FOCUS_SELECTOR_ALT | 11,
                 10000);
     EventCreate((void (*)(void))CharFocusRandom, 600, 0);
     MessStart(0, OPENING_MESSAGE_BASE + 8, 240);
@@ -488,7 +475,7 @@ void OpeningEventExec(void)
 
     CharLightFocusF = CharFocusCancelF = 0;
     EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 20);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_B, 20);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 20);
     HuPrcSleep(170);
 
     MessStart(0, OPENING_MESSAGE_BASE + 12, 240);
@@ -1076,7 +1063,7 @@ static void ObjStarEnd(void)
 
     for (i = 1; i <= 30; i++) {
         if (i == 5) {
-    HuAudFXPlay(OPENING_FX_ID_3);
+            HuAudFXPlay(OPENING_FX_ID_3);
         }
         rot = 720. *
               (1.0 -
@@ -1099,7 +1086,7 @@ static void ObjStarEnd(void)
 
     for (i = 1; i <= 60; i++) {
         if (i == 5) {
-    HuAudFXPlay(OPENING_FX_ID_4);
+            HuAudFXPlay(OPENING_FX_ID_4);
         }
         rot = (float)i / 60.f;
         PSVECSubtract(&target, &pos, &vec);
@@ -1267,7 +1254,7 @@ static void SwapAnimFrame(s16 animIndex, s16 frameIndex)
 
 static void SwapAnimFrameEvent(s32 animIndex, s32 frameIndex)
 {
-    s16 scratch = 0;
+    s16 unused = 0;
     HuPrcSleep(5);
     Hu3DAnimAnimSet(OpeningCharAnimId[animIndex], OpeningCharAnim[frameIndex]);
 }
@@ -1388,12 +1375,7 @@ static void EventCreate(void (*callback)(void), s32 arg0, s32 arg1)
     HUPROCESS *process;
     s32 *work;
 
-    process = HuPrcChildCreate(
-        EventExec,
-        OPENING_PROCESS_PRIORITY,
-        OPENING_EVENT_PROCESS_STACK_SIZE,
-        0,
-        HuPrcCurrentGet());
+    process = HuPrcChildCreate(EventExec, 256, 12288, 0, HuPrcCurrentGet());
     work = HuMemDirectMalloc(HEAP_HEAP, sizeof(*work) * 3);
     process->property = work;
     HuPrcDestructorSet2(process, EventDestroy);
@@ -1518,46 +1500,46 @@ s16 WinFrameTypeTbl[4] = {
 };
 
 u32 OpeningCharFileTbl[80] = {
-    OPENING_DATA_ID_BASE + 30, OPENING_DATA_ID_BASE + 32,
-    OPENING_DATA_ID_BASE + 34, OPENING_DATA_ID_BASE + 33,
-    OPENING_DATA_ID_BASE + 34, OPENING_DATA_ID_BASE + 35,
-    OPENING_DATA_ID_BASE + 36, OPENING_DATA_ID_BASE + 38,
-    OPENING_DATA_ID_BASE + 39, OPENING_DATA_ID_BASE + 40,
-    OPENING_DATA_ID_BASE + 41, OPENING_DATA_ID_BASE + 42,
-    OPENING_DATA_ID_BASE + 43, OPENING_DATA_ID_BASE + 44,
-    OPENING_DATA_ID_BASE + 45, OPENING_DATA_ID_BASE + 46,
-    OPENING_DATA_ID_BASE + 47, OPENING_DATA_ID_BASE + 48,
-    OPENING_DATA_ID_BASE + 49, OPENING_DATA_ID_BASE + 50,
-    OPENING_DATA_ID_BASE + 51, OPENING_DATA_ID_BASE + 52,
-    OPENING_DATA_ID_BASE + 53, OPENING_DATA_ID_BASE + 54,
-    OPENING_DATA_ID_BASE + 55, OPENING_DATA_ID_BASE + 56,
-    OPENING_DATA_ID_BASE + 57, OPENING_DATA_ID_BASE + 58,
-    OPENING_DATA_ID_BASE + 59, OPENING_DATA_ID_BASE + 60,
-    OPENING_DATA_ID_BASE + 61, OPENING_DATA_ID_BASE + 62,
-    OPENING_DATA_ID_BASE + 63, OPENING_DATA_ID_BASE + 64,
-    OPENING_DATA_ID_BASE + 65, OPENING_DATA_ID_BASE + 66,
-    OPENING_DATA_ID_BASE + 67, OPENING_DATA_ID_BASE + 68,
-    OPENING_DATA_ID_BASE + 69, OPENING_DATA_ID_BASE + 70,
-    OPENING_DATA_ID_BASE + 71, OPENING_DATA_ID_BASE + 72,
-    OPENING_DATA_ID_BASE + 73, OPENING_DATA_ID_BASE + 74,
-    OPENING_DATA_ID_BASE + 75, OPENING_DATA_ID_BASE + 76,
-    OPENING_DATA_ID_BASE + 77, OPENING_DATA_ID_BASE + 78,
-    OPENING_DATA_ID_BASE + 79, OPENING_DATA_ID_BASE + 80,
-    OPENING_DATA_ID_BASE + 81, OPENING_DATA_ID_BASE + 82,
-    OPENING_DATA_ID_BASE + 83, OPENING_DATA_ID_BASE + 84,
-    OPENING_DATA_ID_BASE + 85, OPENING_DATA_ID_BASE + 86,
-    OPENING_DATA_ID_BASE + 87, OPENING_DATA_ID_BASE + 88,
-    OPENING_DATA_ID_BASE + 89, OPENING_DATA_ID_BASE + 90,
-    OPENING_DATA_ID_BASE + 91, OPENING_DATA_ID_BASE + 92,
-    OPENING_DATA_ID_BASE + 93, OPENING_DATA_ID_BASE + 94,
-    OPENING_DATA_ID_BASE + 95, OPENING_DATA_ID_BASE + 96,
-    OPENING_DATA_ID_BASE + 97, OPENING_DATA_ID_BASE + 98,
-    OPENING_DATA_ID_BASE + 99, OPENING_DATA_ID_BASE + 100,
-    OPENING_DATA_ID_BASE + 105, OPENING_DATA_ID_BASE + 106,
-    OPENING_DATA_ID_BASE + 107, OPENING_DATA_ID_BASE + 108,
-    OPENING_DATA_ID_BASE + 101, OPENING_DATA_ID_BASE + 102,
-    OPENING_DATA_ID_BASE + 103, OPENING_DATA_ID_BASE + 104,
-    OPENING_DATA_ID_BASE + 37, HU_DATANUM_NONE,
+    DATANUM(DATA_title, 30), DATANUM(DATA_title, 32),
+    DATANUM(DATA_title, 34), DATANUM(DATA_title, 33),
+    DATANUM(DATA_title, 34), DATANUM(DATA_title, 35),
+    DATANUM(DATA_title, 36), DATANUM(DATA_title, 38),
+    DATANUM(DATA_title, 39), DATANUM(DATA_title, 40),
+    DATANUM(DATA_title, 41), DATANUM(DATA_title, 42),
+    DATANUM(DATA_title, 43), DATANUM(DATA_title, 44),
+    DATANUM(DATA_title, 45), DATANUM(DATA_title, 46),
+    DATANUM(DATA_title, 47), DATANUM(DATA_title, 48),
+    DATANUM(DATA_title, 49), DATANUM(DATA_title, 50),
+    DATANUM(DATA_title, 51), DATANUM(DATA_title, 52),
+    DATANUM(DATA_title, 53), DATANUM(DATA_title, 54),
+    DATANUM(DATA_title, 55), DATANUM(DATA_title, 56),
+    DATANUM(DATA_title, 57), DATANUM(DATA_title, 58),
+    DATANUM(DATA_title, 59), DATANUM(DATA_title, 60),
+    DATANUM(DATA_title, 61), DATANUM(DATA_title, 62),
+    DATANUM(DATA_title, 63), DATANUM(DATA_title, 64),
+    DATANUM(DATA_title, 65), DATANUM(DATA_title, 66),
+    DATANUM(DATA_title, 67), DATANUM(DATA_title, 68),
+    DATANUM(DATA_title, 69), DATANUM(DATA_title, 70),
+    DATANUM(DATA_title, 71), DATANUM(DATA_title, 72),
+    DATANUM(DATA_title, 73), DATANUM(DATA_title, 74),
+    DATANUM(DATA_title, 75), DATANUM(DATA_title, 76),
+    DATANUM(DATA_title, 77), DATANUM(DATA_title, 78),
+    DATANUM(DATA_title, 79), DATANUM(DATA_title, 80),
+    DATANUM(DATA_title, 81), DATANUM(DATA_title, 82),
+    DATANUM(DATA_title, 83), DATANUM(DATA_title, 84),
+    DATANUM(DATA_title, 85), DATANUM(DATA_title, 86),
+    DATANUM(DATA_title, 87), DATANUM(DATA_title, 88),
+    DATANUM(DATA_title, 89), DATANUM(DATA_title, 90),
+    DATANUM(DATA_title, 91), DATANUM(DATA_title, 92),
+    DATANUM(DATA_title, 93), DATANUM(DATA_title, 94),
+    DATANUM(DATA_title, 95), DATANUM(DATA_title, 96),
+    DATANUM(DATA_title, 97), DATANUM(DATA_title, 98),
+    DATANUM(DATA_title, 99), DATANUM(DATA_title, 100),
+    DATANUM(DATA_title, 105), DATANUM(DATA_title, 106),
+    DATANUM(DATA_title, 107), DATANUM(DATA_title, 108),
+    DATANUM(DATA_title, 101), DATANUM(DATA_title, 102),
+    DATANUM(DATA_title, 103), DATANUM(DATA_title, 104),
+    DATANUM(DATA_title, 37), HU_DATANUM_NONE,
 };
 
 char *OpeningCharTexNameTbl[12] = {

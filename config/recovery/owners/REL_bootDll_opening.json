@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "id": "REL:bootDll:opening",
+  "module": "bootDll",
+  "source": "src/REL/bootDll/opening.c",
+  "compiler": "GC/2.6",
+  "summary": "Canonical boot opening owner. All 37 functions, 21,272 text bytes, four owned sections, and 1,928 relocations are exact; the linked boot REL and main DOL are retail-identical. One duplicated 16-bit initialized stack slot is target-backed, while its original name, signedness, and semantics remain unknown.",
+  "status": {
+    "binary": "exact",
+    "source_shape": "evidence_backed",
+    "semantics": "partial",
+    "naming": "partially_semantic",
+    "data": "typed"
+  },
+  "tags": [
+    "rel",
+    "boot-flow",
+    "opening-flow",
+    "exact-owner",
+    "stack-frame",
+    "compiler-profile"
+  ],
+  "symbols": [
+    {
+      "symbol": "SwapAnimFrameEvent",
+      "stable_id": "bootDll:0x71C8"
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The relocation-aware owner comparison reports 37 of 37 exact functions, 21,272 exact text bytes, 448 exact rodata bytes, 873 exact data bytes, 478 exact BSS bytes, and all 1,928 target relocations.",
+      "reference": "build/opening_profile_objdiff.json; config/dll/rels/bootDll/splits.txt; config/dll/rels/bootDll/symbols.txt"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The serialized build reproduces retail bootDll.rel and main.dol byte-for-byte, and the DTK project checksum validates all configured outputs.",
+      "reference": "build/GP6E01/bootDll/bootDll.rel; build/GP6E01/main.dol; config/GP6E01/build.sha1"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "Retail SwapAnimFrameEvent and openingDll fn_1_4744 are the same 104-byte instruction template apart from owner-specific relocation targets. Both spill two 32-bit arguments, initialize one otherwise unread 16-bit slot at stack offset 16, sleep five frames, and install the indexed animation. This authenticates the initialized-slot shape but not its signedness, name, or purpose.",
+      "reference": "config/dll/rels/bootDll/symbols.txt; config/dll/rels/openingDll/symbols.txt"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "SwapAnimFrame passes only the animation and frame indices through EventCreate. The directed owner graph and direct target calls expose no third value or consumer that could authenticate semantics for the initialized slot.",
+      "reference": "src/REL/bootDll/opening.c; src/REL/bootDll/graphify-out/graph.json"
+    },
+    {
+      "kind": "readability_hypothesis",
+      "confidence": "confirmed",
+      "accepted": false,
+      "summary": "The scratch spelling and prior volatile qualifier were introduced by recovery commits, and openingDll's matching scratch spelling was also recovery-created. They are not original-name or type provenance.",
+      "reference": "33145e2; 9415331; 9bbc6ed"
+    }
+  ],
+  "constraints": [],
+  "numeric_domains": [
+    {
+      "name": "OPENING_MESSAGE_BASE",
+      "value": 720896,
+      "domain": "contiguous opening message identifiers consumed by MessStart",
+      "status": "behavior_backed"
+    },
+    {
+      "name": "OPENING_PROMPT_MESSAGE",
+      "value": 65541,
+      "domain": "opening prompt message identifier consumed by HuWinMesSet",
+      "status": "behavior_backed"
+    },
+    {
+      "name": "OPENING_FX_ID_0 through OPENING_FX_ID_4",
+      "value": "1200 through 1204",
+      "domain": "opening sound-effect identifiers consumed by HuAudFXPlay",
+      "status": "behavior_backed_catalog_debt"
+    },
+    {
+      "name": "opening animation frame constants",
+      "value": "11 through 77",
+      "domain": "indices passed to SetCharAnimFrame and SwapAnimFrame",
+      "status": "behavior_backed"
+    }
+  ],
+  "debt": [
+    {
+      "kind": "local_name",
+      "priority": "normal",
+      "summary": "The target proves an initialized 16-bit slot but cannot recover its original identifier. The source uses the explicitly non-semantic name unused rather than inventing a role."
+    },
+    {
+      "kind": "local_type",
+      "priority": "normal",
+      "summary": "The emitted store proves 16-bit width only. Signedness is not observable because the value is never read; retain that uncertainty instead of treating the current typedef as semantic evidence."
+    },
+    {
+      "kind": "compiler_profile",
+      "priority": "normal",
+      "summary": "The owner requires pool data to be disabled in its narrow configure.py object profile. Removing that mode regresses text and function exactness despite leaving literal sections exact."
+    },
+    {
+      "kind": "catalog_names",
+      "priority": "normal",
+      "summary": "DATA_title ownership is authenticated, but archive-entry and sound-catalog names are unavailable. Resource indices use DATANUM(DATA_title, index), while message, animation, and sound constants remain deliberately generic and owner-local."
+    }
+  ],
+  "context": {
+    "priority_files": [
+      "config/dll/rels/bootDll/splits.txt",
+      "config/dll/rels/bootDll/symbols.txt",
+      "src/REL/bootDll/opening.c",
+      "src/REL/openingDll/opening.c"
+    ],
+    "reports": [
+      "build/opening_profile_objdiff.json"
+    ]
+  }
+}
