@@ -262,7 +262,7 @@
     },
     "same-game-catalogs-require-archive-verification": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "e33d655887a9cdcbcf0b4f4e3635f0286cca7f3a",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -886,16 +886,18 @@
     },
     "mp6-msm-tables-authenticate-sound-id-ranges": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "e33d655887a9cdcbcf0b4f4e3635f0286cca7f3a",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
+        "config/recovery/owners/REL_mdseldll_mdsel.json",
         "config/recovery/owners/REL_s01Dll_s01.json",
         "include/game/msm_data.h",
         "include/msm_grp.h",
         "include/msm_se.h",
         "src/msm/msmse.c",
         "src/msm/msmsys.c",
+        "src/REL/mdseldll/mdsel.c",
         "src/REL/s01Dll/s01.c"
       ],
       "supersedes": [],
