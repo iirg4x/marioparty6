@@ -884,6 +884,23 @@
       "supersedes": [],
       "superseded_by": null
     },
+    "mp6-msm-tables-authenticate-sound-id-ranges": {
+      "status": "active",
+      "validated_commit": "b277d238e255d7ad41538b7e8de951df4ce600cf",
+      "validated_at": "2026-08-02",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/owners/REL_s01Dll_s01.json",
+        "include/game/msm_data.h",
+        "include/msm_grp.h",
+        "include/msm_se.h",
+        "src/msm/msmse.c",
+        "src/msm/msmsys.c",
+        "src/REL/s01Dll/s01.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "gc26-o0-complete-void-prototype-visibility-restores-regalloc": {
       "status": "active",
       "validated_commit": "10c4101212add53cdffd33e158c7fe25ea28da38",

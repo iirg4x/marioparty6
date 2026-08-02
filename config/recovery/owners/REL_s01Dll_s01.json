@@ -16,7 +16,8 @@
     "rel",
     "compiler-sensitive",
     "csect-order",
-    "literal-pool"
+    "literal-pool",
+    "sound-catalog"
   ],
   "symbols": [
     {
@@ -53,6 +54,13 @@
       "accepted": true,
       "summary": "The final s01Dll.rel, all 137 retail outputs, main.dol, and w01Dll.rel compare byte-for-byte.",
       "reference": "config/GP6E01/build.sha1"
+    },
+    {
+      "kind": "same_game_artifact",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The big-endian GP6E01 MP6_SND.msm tables bind MSM_GRP_SBRD index 29 to MusyX gid 10 and sound IDs 1542-1558. This authenticates the shared ordinal symbols MSM_SE_SBRD_01 through MSM_SE_SBRD_17; S01 consumes entries 08, 09, and 10 without claiming unproven descriptive effect names.",
+      "reference": "include/msm_se.h"
     }
   ],
   "constraints": [

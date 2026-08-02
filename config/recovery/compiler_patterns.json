@@ -1296,6 +1296,78 @@
       ]
     },
     {
+      "id": "mp6-msm-tables-authenticate-sound-id-ranges",
+      "title": "Derive MP6 sound-ID ranges from the retail MSM tables",
+      "classification": "confirmed_rule",
+      "category": "asset_provenance",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "The big-endian GP6E01 sound container exposes its group and sound-effect tables through `MSM_HEADER`. A `MSM_GRP_*` enum value selects an `MSM_GRP_INFO` row; that row's MusyX `gid` identifies the corresponding `MSM_SE` entries. Their table indices authenticate the game-facing sound IDs and their group-relative ordinal names without guessing effect semantics. For `MSM_GRP_SBRD` index 29, retail group `gid` 10 occupies sound IDs 1542 through 1558, which authenticates `MSM_SE_SBRD_01` through `MSM_SE_SBRD_17`.",
+      "conditions": "Apply when a GP6E01 consumer passes an unexplained sound ID and the C-local retail `MP6_SND.msm` plus the checked-in MSM layouts are available.",
+      "source_condition": {
+        "change": "Replace an unexplained numeric sound ID with a group-relative `MSM_SE_<GROUP>_<ORDINAL>` symbol.",
+        "requires": [
+          "the `MSM_GRP_*` index used by the owning module or same-game audio table",
+          "a successfully decoded big-endian `MSM_HEADER` with bounded group and SE table offsets",
+          "the selected `MSM_GRP_INFO.gid` and every matching `MSM_SE.gid` row",
+          "an ordinal derived from table order rather than effect semantics",
+          "unchanged consumer object, relocations, and retail output"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no instruction or relocation change for an enum alias",
+          "shared sound-enum coverage",
+          "removal of raw numeric sound identifiers"
+        ],
+        "known_signatures": [
+          "the owning module first loads a named `MSM_GRP_*` group",
+          "several consecutive sound IDs share one retail `MSM_SE.gid`",
+          "the retail `MSM_SE.fxId` sequence is independent of the game-facing table index"
+        ]
+      },
+      "rule": "Use the MSM table index as the sound ID and the matched group run to recover only a group-relative ordinal name. Do not infer a descriptive effect name, equate `MSM_GRP_INFO.gid` with the group-table index, or treat `MSM_SE.fxId` as the game-facing sound ID.",
+      "safe_actions": [
+        "validate the `GSND` magic, version, table bounds, and record-size divisibility before reading rows",
+        "select the group through the repository's `MSM_GRP_*` enum and then match its retail MusyX `gid`",
+        "enumerate every matching SE row in table order and retain sparse header coverage only when the full range is authenticated",
+        "name only the ordinal when the retail container provides no semantic effect label",
+        "rebuild every changed consumer and compare the complete REL plus the DTK checksum"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "audio",
+          "REL"
+        ],
+        "owner_tags": [
+          "sound_catalog"
+        ]
+      },
+      "examples": [
+        "`MSM_GRP_SBRD` is group-table index 29; its retail `gid` 10 covers IDs 1542-1558, so S01's IDs 1549, 1550, and 1551 are ordinal entries 08, 09, and 10",
+        "`include/msm_se.h` exposes all 17 authenticated SBRD ordinals while `src/REL/s01Dll/s01.c` uses only the three proven consumers"
+      ],
+      "counterexamples": [
+        "A printable-string scan of `MP6_SND.msm` produces false positives and does not authenticate a sound name.",
+        "Consecutive numeric IDs alone do not prove group ownership; the `MSM_GRP_INFO.gid` to `MSM_SE.gid` join is required.",
+        "The S01 animation makes the three sounds look like movement effects, but the retail tables prove only SBRD ordinals, not descriptive names."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/owners/REL_s01Dll_s01.json",
+        "include/game/msm_data.h",
+        "include/msm_grp.h",
+        "include/msm_se.h",
+        "src/msm/msmse.c",
+        "src/msm/msmsys.c",
+        "src/REL/s01Dll/s01.c"
+      ]
+    },
+    {
       "id": "board-bulk-rename-is-mapping-provenance",
       "title": "Treat the upstream board bulk rename as mapping provenance, not semantic proof",
       "classification": "contextual_heuristic",
