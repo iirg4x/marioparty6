@@ -1151,7 +1151,11 @@ config.libs = [
         "mdpartydll",
         objects={
             Object(Matching, "REL/mdpartydll/mdparty.c"),
-            Object(Matching, "REL/mdpartydll/stage.c"),
+            Object(
+                Matching,
+                "REL/mdpartydll/stage.c",
+                extra_cflags=["-pooldata off"],
+            ),
             Object(
                 Matching,
                 "REL/mdpartydll/runtime.c",
