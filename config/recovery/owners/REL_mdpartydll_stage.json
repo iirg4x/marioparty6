@@ -4,7 +4,7 @@
   "module": "mdpartydll",
   "source": "src/REL/mdpartydll/stage.c",
   "compiler": "GC/1.3.2",
-  "summary": "Exact stage owner whose natural owner-local data placement is accepted, while broad random-function headers are rejected because their visibility changes five target functions.",
+  "summary": "Exact canonical stage owner with typed particle targets and named constant domains. Its authenticated pool-data mode lives in the owner compiler profile, while broad random-function headers remain rejected because their visibility changes five target functions.",
   "status": {
     "binary": "exact",
     "source_shape": "evidence_backed",
@@ -38,6 +38,13 @@
       "accepted": false,
       "summary": "Broad random-function headers change five functions; the two target-visible signed prototypes remain local and policy-backed.",
       "reference": "docs/native_matching_wave103.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Removing pool-data mode left only 34 of 57 functions exact; the owner-local -pooldata off compiler flag restores every function and section without a source pragma.",
+      "reference": "config/recovery/compiler_patterns.json#gc26-pooldata-mode-controls-relocations-and-bss"
     }
   ],
   "constraints": [
@@ -59,7 +66,8 @@
     "reports": [
       "build/GP6E01/mdpartydll/stage_objdiff_wave103_ownership.json",
       "build/GP6E01/mdpartydll/stage_objdiff_wave103_header_early.json",
-      "build/GP6E01/mdpartydll/stage_objdiff_wave103_header.json"
+      "build/GP6E01/mdpartydll/stage_objdiff_wave103_header.json",
+      "build/GP6E01/mdpartydll/stage_objdiff_cleanup_637db22.json"
     ]
   }
 }

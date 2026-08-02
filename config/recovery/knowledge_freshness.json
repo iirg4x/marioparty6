@@ -3,7 +3,7 @@
   "cards": {
     "gc132-declaration-chronology": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "b8c4154a5df8d0db34c8aa9048ba83dc4621ddd8",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -23,7 +23,7 @@
     },
     "mdparty-tail-definition-chronology": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "b8c4154a5df8d0db34c8aa9048ba83dc4621ddd8",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -78,7 +78,7 @@
     },
     "stage-local-random-visibility": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "b8c4154a5df8d0db34c8aa9048ba83dc4621ddd8",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -212,7 +212,7 @@
     },
     "per-owner-final-compiler-profile": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
+      "validated_commit": "b8c4154a5df8d0db34c8aa9048ba83dc4621ddd8",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -295,7 +295,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "a370387755a9dc45fe026fbf0eebfd9565105bc7",
+      "validated_commit": "b8c4154a5df8d0db34c8aa9048ba83dc4621ddd8",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -922,7 +922,7 @@
     },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
-      "validated_commit": "a370387755a9dc45fe026fbf0eebfd9565105bc7",
+      "validated_commit": "b8c4154a5df8d0db34c8aa9048ba83dc4621ddd8",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -932,6 +932,8 @@
         "config/dll/rels/bootDll/symbols.txt",
         "src/REL/selmenuDll/selmenu.c",
         "src/REL/fileseldll/saveload.c",
+        "src/REL/mdpartydll/stage.c",
+        "config/dll/rels/mdpartydll/splits.txt",
         "config/dll/rels/selmenuDll/splits.txt",
         "config/dll/rels/selmenuDll/symbols.txt"
       ],
