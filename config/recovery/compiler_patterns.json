@@ -4218,7 +4218,7 @@
       "category": "toolchain_profile",
       "compiler": "GC/2.6",
       "confidence": "confirmed",
-      "summary": "Selmenu proves that pool-data mode controls far more than visible literal pooling. Removing pool_data off shrank text, nearly halved relocations, reordered BSS, and regressed constant-free functions; the equivalent final compiler option restored the complete target object without retaining a source pragma.",
+      "summary": "Selmenu and boot opening prove that pool-data mode controls far more than visible literal pooling. Removing pool_data off can broadly regress text, relocations, and BSS while leaving literal data unchanged; the equivalent final compiler option restores the complete target object without retaining a source pragma.",
       "conditions": "Apply when a GC/2.6 owner uses pool_data off, removing a pooling control changes apparently unrelated functions or uninitialized data, or a natural source cleanup needs to move a compiler-mode declaration out of C.",
       "source_condition": {
         "change": "Remove a source pool_data pragma or change the final pooldata option for one translation unit.",
@@ -4256,9 +4256,11 @@
         "project_wide": false,
         "owners": [],
         "stable_ids": [
+          "REL:bootDll:opening",
           "REL:selmenuDll:selmenu"
         ],
         "modules": [
+          "bootDll",
           "selmenuDll"
         ],
         "owner_tags": [
@@ -4270,7 +4272,8 @@
         ]
       },
       "examples": [
-        "For selmenu.c, removing pool_data off changed text from 20,524 to 17,312 bytes, physical relocations from 1,851 to 971, and BSS from 176 to 174 bytes while regressing 14 functions. Adding -pooldata off to that Object restored 25/25 exact functions, every section, all 1,851 relocations, and the retail-identical REL."
+        "For selmenu.c, removing pool_data off changed text from 20,524 to 17,312 bytes, physical relocations from 1,851 to 971, and BSS from 176 to 174 bytes while regressing 14 functions. Adding -pooldata off to that Object restored 25/25 exact functions, every section, all 1,851 relocations, and the retail-identical REL.",
+        "For bootDll opening.c, removing the source pragma without an owner flag left rodata, data, and BSS exact but reduced text to 82.831894% with only 19/37 functions exact. Moving -pooldata off to the opening Object restored 37/37 functions, all four owned sections, 1,928 physical relocations, and retail-identical bootDll.rel and main.dol outputs while raising source organicity from 83 to 97."
       ],
       "counterexamples": [
         "This owner-specific proof does not justify enabling pooldata off for every GC/2.6 object.",
@@ -4280,6 +4283,10 @@
       "related_exceptions": [],
       "evidence": [
         "configure.py",
+        "src/REL/bootDll/opening.c",
+        "config/dll/rels/bootDll/splits.txt",
+        "config/dll/rels/bootDll/symbols.txt",
+        "build/opening_profile_objdiff.json",
         "src/REL/selmenuDll/selmenu.c",
         "config/dll/rels/selmenuDll/splits.txt",
         "config/dll/rels/selmenuDll/symbols.txt",

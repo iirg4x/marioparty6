@@ -895,11 +895,14 @@
     },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
-      "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",
-      "validated_at": "2026-07-29",
+      "validated_commit": "9bbc6ed1c445731de8074f0e10aed06696d26d1d",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "configure.py",
+        "src/REL/bootDll/opening.c",
+        "config/dll/rels/bootDll/splits.txt",
+        "config/dll/rels/bootDll/symbols.txt",
         "src/REL/selmenuDll/selmenu.c",
         "config/dll/rels/selmenuDll/splits.txt",
         "config/dll/rels/selmenuDll/symbols.txt"
