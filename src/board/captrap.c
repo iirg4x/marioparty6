@@ -456,13 +456,15 @@ void mbev_CapBiriQMetalShock(void *workP)
         sinAngle = rot.y;
         sinYResult = mbSinDeg(sinAngle);
         sinY = sinYResult;
-        vel.x = (speed * (sinX = mbSinDeg(rot.x))) * sinY;
+        sinX = mbSinDeg(rot.x);
+        vel.x = (speed * sinX) * sinY;
         cosX = mbCosDeg(rot.x);
         vel.y = speed * cosX;
         cosAngle = rot.y;
         cosYResult = mbCosDeg(cosAngle);
         cosY = cosYResult;
-        vel.z = (speed * (sinX2 = mbSinDeg(rot.x))) * cosY;
+        sinX2 = mbSinDeg(rot.x);
+        vel.z = (speed * sinX2) * cosY;
 
         CAPTRAP_EFF_RAND_NEXT();
         randColorR = mbCapEffData[mbCapEffNum];
