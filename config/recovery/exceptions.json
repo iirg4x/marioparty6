@@ -325,6 +325,22 @@
       ]
     },
     {
+      "id": "filesel-init-index-live-range",
+      "classification": "authenticated",
+      "path": "src/REL/fileseldll/filesel.c",
+      "kind": "source_shape",
+      "rules": [
+        "self_assignment"
+      ],
+      "rationale": "FileselInit's retained `i = i` joins the GC/2.6 live ranges of the two adjacent index loops without emitting an instruction. Removing it swaps the long-lived sprite-group and loop-index registers and changes 52 function bytes. Reordering the declarations, using separate indices, following the predecessor declaration chronology, and initializing the index at declaration all remain nonmatching. The retained exact form is confined to this owner and statement; it does not authenticate self-assignment elsewhere.",
+      "evidence": [
+        "src/REL/fileseldll/filesel.c",
+        "build/filesel_cleanup_final.json",
+        "build/filesel_no_self_declswap.json",
+        "build/filesel_index_initializer_probe.json"
+      ]
+    },
+    {
       "id": "filesel-interface-header-guard",
       "classification": "authenticated",
       "path": "include/REL/fileseldll.h",
