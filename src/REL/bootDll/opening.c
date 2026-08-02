@@ -1,14 +1,5 @@
-/* Block math.h: its "extern inline" sqrtf (compiled as C++ via #pragma cplusplus)
- * emits weak local-static pool data (_half/_three) into every including TU's .rodata.
- * The original opening object's copy was discarded at link in favor of boot's, so the
- * split target opening object must not contain it. opening.c only needs sin/cos/M_PI. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
-#pragma pool_data off
-
 #include "dolphin.h"
+#include "dolphin/math.h"
 #include "humath.h"
 #include "game/audio.h"
 #include "game/data.h"
@@ -38,19 +29,37 @@ enum {
 
     CHAR_FOCUS_RANDOM_FRAME_BASE = 5,
     CHAR_FOCUS_RANDOM_FOCUS_CHAR = 0,
-    CHAR_FOCUS_RANDOM_FOCUS_FRAME = 0x4E,
-    CHAR_FOCUS_RANDOM_LATE_THRESHOLD = 0xF0,
+    CHAR_FOCUS_RANDOM_FOCUS_FRAME = 78,
+    CHAR_FOCUS_RANDOM_LATE_THRESHOLD = 240,
     CHAR_FOCUS_RANDOM_REARM_BASE = 10,
 
-    GUIDE_FOCUS_SELECTOR_CHAR_MASK = 0xFF,
-    GUIDE_FOCUS_SELECTOR_ALT = 0x8000,
+    GUIDE_FOCUS_SELECTOR_CHAR_MASK = 255,
+    GUIDE_FOCUS_SELECTOR_ALT = 32768,
     GUIDE_FOCUS_CHAR_A = 10,
 
     POSTDRAW_COPY_X = 0,
-    POSTDRAW_COPY_Y = 0x50,
-    POSTDRAW_COPY_W = 0x280,
-    POSTDRAW_COPY_H = 0x140,
+    POSTDRAW_COPY_Y = 80,
+    POSTDRAW_COPY_W = 640,
+    POSTDRAW_COPY_H = 320,
     POSTDRAW_COPY_MIPMAP = 0,
+
+    OPENING_PROMPT_MESSAGE = 65541,
+    OPENING_MESSAGE_BASE = 720896,
+
+    OPENING_CHAR_ANIM_FRAME_BASE = 14,
+    OPENING_CHAR_ANIM_FRAME_STEP = 7,
+    OPENING_GUIDE_ANIM_FRAME_BASE = 70,
+    OPENING_GUIDE_ANIM_FRAME_ALT_BASE = 72,
+    OPENING_GUIDE_ANIM_FRAME_OTHER_BASE = 74,
+    OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE = 76,
+    OPENING_SWAP_ANIM_FRAME_BASE = 11,
+    OPENING_SWAP_ANIM_FRAME_GUIDE_BASE = 57,
+
+    OPENING_FX_ID_0 = 1200,
+    OPENING_FX_ID_1 = 1201,
+    OPENING_FX_ID_2 = 1202,
+    OPENING_FX_ID_3 = 1203,
+    OPENING_FX_ID_4 = 1204,
 };
 
 #define CHAR_FOCUS_RANDOM_REARM_SCALE 30.0f
@@ -68,13 +77,6 @@ enum {
 #define BOOK_Y_PHASE_SCALE 2.0f
 #define BOOK_X_RADIUS_SCALE 5.0
 #define BOOK_Y_RADIUS_SCALE 20.0
-
-typedef struct OpeningFocusObject {
-    u8 reserved_00[0x34];
-    float focus34;
-    float focus38;
-} OpeningFocusObject;
-
 
 extern s16 FbCopyMode;
 extern s32 OpeningEndF;
@@ -104,14 +106,14 @@ extern char *OpeningCharTexNameTbl[12];
 extern char *OpeningCharObjNameTbl[12];
 extern HuVecF BookDefPos;
 extern HuVecF BookDefRot;
-extern char lbl_1_data_8988[0xE];
-extern char lbl_1_data_8996[0xF];
-extern char lbl_1_data_89A5[0x14];
+extern char lbl_1_data_8988[];
+extern char lbl_1_data_8996[];
+extern char lbl_1_data_89A5[];
 
 
 extern s16 BootLightId[3];
 
-void OpeningBgUpdate(void);
+static void OpeningBgUpdate(void);
 void OpeningDispOff(void);
 void OpeningExec(s32 enablePrompt);
 void OpeningEventExec(void);
@@ -152,41 +154,49 @@ void OpeningCreate(void)
     void *temp;
     s16 i;
 
-    OpeningMdlId[0] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D50016, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[0] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 22), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[0], 1);
     Hu3DMotionSpeedSet(OpeningMdlId[0], 0.015f);
     Hu3DModelPosSet(OpeningMdlId[0], 0.0f, 0.0f, -4500.f);
 
-    OpeningMdlId[1] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D50017, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[1] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 23), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[1], 1);
     Hu3DMotionSpeedSet(OpeningMdlId[1], 0.5f);
     Hu3DMotionClusterSpeedSet(OpeningMdlId[1], 0, 0.5f);
     Hu3DModelPosSet(OpeningMdlId[1], 0.0f, 0.0f, -2000.f);
     Hu3DModelRotSet(OpeningMdlId[1], -20.f, -30.f, 30.f);
 
-    OpeningMdlId[2] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D50018, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[2] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 24), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[2], 0);
     Hu3DModelPosSet(OpeningMdlId[2], 0.0f, -330.f, 0.0f);
 
-    OpeningMdlId[3] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D50019, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[3] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 25), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[3], 1);
 
-    OpeningMdlId[4] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D5001A, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[4] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 26), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[4], 1);
 
-    OpeningMdlId[5] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D5001C, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[5] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 28), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[5], 1);
 
-    OpeningMdlId[6] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D5001D, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[6] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 29), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[6], 1);
-    Hu3DModelAttrSet(OpeningMdlId[6], 0x40000001);
+    Hu3DModelAttrSet(OpeningMdlId[6], HU3D_MOTATTR_LOOP);
 
-    OpeningMdlId[7] = Hu3DModelCreate(HuDataSelHeapReadNum(0x00D5001B, HU_MEMNUM_OVL, HEAP_MODEL));
+    OpeningMdlId[7] = Hu3DModelCreate(
+        HuDataSelHeapReadNum(DATANUM(DATA_title, 27), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(OpeningMdlId[7], 1);
     Hu3DMotionSpeedSet(OpeningMdlId[7], 2.0f);
     Hu3DModelScaleSet(OpeningMdlId[7], 2.0f, 2.0f, 2.0f);
 
-    temp = HuMemDirectMallocNum(HEAP_DVD, 0x100000, HU_MEMNUM_OVL);
+    temp = HuMemDirectMallocNum(HEAP_DVD, 1048576, HU_MEMNUM_OVL);
     BookFrameBuf[0] = HuMemDirectMallocNum(
         HEAP_DVD,
         GXGetTexBufferSize(POSTDRAW_COPY_W, POSTDRAW_COPY_H, GX_TF_RGBA8, POSTDRAW_COPY_MIPMAP, 0),
@@ -218,7 +228,7 @@ void OpeningCreate(void)
         OpeningCharAnimId[i] = Hu3DAnimCreate(OpeningCharAnim[0], OpeningMdlId[2], OpeningCharTexNameTbl[i]);
     }
 
-    HuPrcChildCreate(BookExec, 0x100, 0x1000, 0, HuPrcCurrentGet());
+    HuPrcChildCreate(BookExec, 256, 4096, 0, HuPrcCurrentGet());
 
     BookOfs.x = BookOfs.y = BookOfs.z = 0.0f;
     BookPos = BookDefPos;
@@ -271,35 +281,35 @@ void OpeningExec(s32 enablePrompt)
     BookRadius = 1.0f;
 
     Hu3DMotionTimeSet(OpeningMdlId[1], 0.0f);
-    Hu3DModelAttrSet(OpeningMdlId[1], 0x40000002);
+    Hu3DModelAttrSet(OpeningMdlId[1], HU3D_MOTATTR_PAUSE);
     Hu3DMotionClusterTimeSet(OpeningMdlId[1], 0, 0.0f);
-    Hu3DModelClusterAttrSet(OpeningMdlId[1], 0, 0xC0000002);
+    Hu3DModelClusterAttrSet(OpeningMdlId[1], 0, HU3D_CLUSTER_ATTR_PAUSE);
 
     PSMTXTrans(matrix, 150.f, 0.0f, 0.0f);
     Hu3DModelMtxSet(OpeningMdlId[1], &matrix);
 
     SetCharAnimFrame(0, 0);
     SetCharAnimFrame(1, 7);
-    SetCharAnimFrame(2, 0x0E);
-    SetCharAnimFrame(3, 0x15);
-    SetCharAnimFrame(4, 0x1C);
-    SetCharAnimFrame(5, 0x23);
-    SetCharAnimFrame(6, 0x2A);
-    SetCharAnimFrame(7, 0x31);
-    SetCharAnimFrame(8, 0x38);
-    SetCharAnimFrame(9, 0x3F);
-    SetCharAnimFrame(10, 0x46);
-    SetCharAnimFrame(11, 0x4A);
+    SetCharAnimFrame(2, OPENING_CHAR_ANIM_FRAME_BASE);
+    SetCharAnimFrame(3, OPENING_CHAR_ANIM_FRAME_BASE + OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(4, OPENING_CHAR_ANIM_FRAME_BASE + 2 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(5, OPENING_CHAR_ANIM_FRAME_BASE + 3 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(6, OPENING_CHAR_ANIM_FRAME_BASE + 4 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(7, OPENING_CHAR_ANIM_FRAME_BASE + 5 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(8, OPENING_CHAR_ANIM_FRAME_BASE + 6 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(9, OPENING_CHAR_ANIM_FRAME_BASE + 7 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SetCharAnimFrame(10, OPENING_GUIDE_ANIM_FRAME_BASE);
+    SetCharAnimFrame(11, OPENING_GUIDE_ANIM_FRAME_OTHER_BASE);
 
     for (i = 0; i < 4; i++) {
         OpeningWinId[i] = HuWinExCreateFrame(
             -10000.f,
             364.0f,
-            0x220,
-            0x44,
+            544,
+            68,
             -1,
             WinFrameTypeTbl[i]);
-        HuWinAttrSet(OpeningWinId[i], 0x800);
+        HuWinAttrSet(OpeningWinId[i], HUWIN_ATTR_ALIGN_CENTER);
     }
 
     GuideDist.x = -225.0f;
@@ -307,12 +317,12 @@ void OpeningExec(s32 enablePrompt)
     SetStarDist(10, GuideDist.x);
     SetStarDist(11, GuideDist.y);
 
-    messageWinId = HuWinCreate(16.0f, 326.0f, 0x220, 0x2A, 0);
-    HuWinAttrSet(messageWinId, 0x800);
+    messageWinId = HuWinCreate(16.0f, 326.0f, 544, 42, 0);
+    HuWinAttrSet(messageWinId, HUWIN_ATTR_ALIGN_CENTER);
     HuWinPriSet(messageWinId, 100);
     HuWinBGTPLvlSet(messageWinId, 0.0f);
     HuWinMesSpeedSet(messageWinId, 0);
-    HuWinMesSet(messageWinId, 0x10005);
+    HuWinMesSet(messageWinId, OPENING_PROMPT_MESSAGE);
     HuWinDispOff(messageWinId);
 
     Hu3DGLightPosSet(BootLightId[0],
@@ -328,12 +338,12 @@ void OpeningExec(s32 enablePrompt)
     }
 
     OpeningEndF = 0;
-    eventProcess = HuPrcChildCreate(OpeningEventExec, 0x100, 0x3000, 0, HuPrcCurrentGet());
+    eventProcess = HuPrcChildCreate(OpeningEventExec, 256, 12288, 0, HuPrcCurrentGet());
 
     frame = 0;
     while (OpeningEndF == 0) {
         if (enablePrompt != 0) {
-            if (frame > 0xFA && omcurovl != 1) {
+            if (frame > 250 && omcurovl != 1) {
                 HuWinDispOn(messageWinId);
             }
 
@@ -374,62 +384,66 @@ void OpeningEventExec(void)
 {
     OpeningBgState = 0;
     EventCreate(OpeningBgUpdate, 0, 0);
-    EventCreate((void (*)(void))RotateGuide, 0x41A, 0);
-    EventCreate((void (*)(void))CharWaitEvent, 0x3DE, 0);
-    EventCreate((void (*)(void))BlinkGuide, 0x3F2, 0);
+    EventCreate((void (*)(void))RotateGuide, 1050, 0);
+    EventCreate((void (*)(void))CharWaitEvent, 990, 0);
+    EventCreate((void (*)(void))BlinkGuide, 1010, 0);
     EventCreate(ObjStarExec, 0, 0);
     BookOpen();
 
     HuPrcSleep(60);
     HuWinExOpen(OpeningWinId[0]);
-    MessStart(0, 0x000B0000, 0xF0);
-    MessStart(0, 0x000B0001, 0xF0);
-    MessStart(0, 0x000B0002, 0xF0);
-    MessStart(0, 0x000B0003, 0x50);
+    MessStart(0, OPENING_MESSAGE_BASE, 240);
+    MessStart(0, OPENING_MESSAGE_BASE + 1, 240);
+    MessStart(0, OPENING_MESSAGE_BASE + 2, 240);
+    MessStart(0, OPENING_MESSAGE_BASE + 3, 80);
     EventCreate((void (*)(void))GuideCharFocus, 10, 60);
     EventCreate(CharFocusLeft, 0, 0);
-    HuPrcSleep(0xA0);
+    HuPrcSleep(160);
 
     while (OpeningBgRotZ > -200.f) {
         HuPrcVSleep();
     }
 
     OpeningBgState = 2;
-    EventCreate((void (*)(void))GuideCharFocus, 0x800B, 60);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 60);
     EventCreate(CharFocusRight, 0, 0);
-    MessStart(0, 0x000B0004, 0x50);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800A, 40);
+    MessStart(0, OPENING_MESSAGE_BASE + 4, 80);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
     EventCreate(CharFocusLeft, 0, 0);
 
     OpeningBgState = 3;
-    MessStart(0, 0x000B0005, 70);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800B, 40);
-    EventCreate(CharFocusRight, 0, 0);
-
-    OpeningBgState = 4;
-    MessStart(0, 0x000B0006, 60);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800A, 40);
-    EventCreate(CharFocusLeft, 0, 0);
-
-    OpeningBgState = 3;
-    MessStart(0, 0x000B0007, 60);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800B, 40);
+    MessStart(0, OPENING_MESSAGE_BASE + 5, 70);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 40);
     EventCreate(CharFocusRight, 0, 0);
 
     OpeningBgState = 4;
-    MessStart(0, 0x000B0006, 50);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800A, 40);
+    MessStart(0, OPENING_MESSAGE_BASE + 6, 60);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
     EventCreate(CharFocusLeft, 0, 0);
 
     OpeningBgState = 3;
-    MessStart(0, 0x000B0007, 50);
+    MessStart(0, OPENING_MESSAGE_BASE + 7, 60);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 40);
+    EventCreate(CharFocusRight, 0, 0);
+
+    OpeningBgState = 4;
+    MessStart(0, OPENING_MESSAGE_BASE + 6, 50);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
+    EventCreate(CharFocusLeft, 0, 0);
+
+    OpeningBgState = 3;
+    MessStart(0, OPENING_MESSAGE_BASE + 7, 50);
 
     OpeningBgState = 5;
-    EventCreate((void (*)(void))GuideCharFocus, 0x800A, 10000);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800B, 10000);
+    EventCreate((void (*)(void))GuideCharFocus,
+                GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A,
+                10000);
+    EventCreate((void (*)(void))GuideCharFocus,
+                GUIDE_FOCUS_SELECTOR_ALT | 11,
+                10000);
     EventCreate((void (*)(void))CharFocusRandom, 600, 0);
-    MessStart(0, 0x000B0008, 0xF0);
-    MessStart(0, 0x000B0009, 0xF0);
+    MessStart(0, OPENING_MESSAGE_BASE + 8, 240);
+    MessStart(0, OPENING_MESSAGE_BASE + 9, 240);
     HuPrcSleep(120);
 
     HuWinExClose(OpeningWinId[0]);
@@ -438,61 +452,61 @@ void OpeningEventExec(void)
     EventCreate((void (*)(void))CharObjLightStart, 20, 0);
     SwapAnimFrame(0, 4);
     HuWinExOpen(OpeningWinId[0]);
-    MessStart(0, 0x000B000A, 0);
+    MessStart(0, OPENING_MESSAGE_BASE + 10, 0);
     HuPrcSleep(20);
 
-    SwapAnimFrame(1, 0x0B);
-    SwapAnimFrame(2, 0x12);
-    SwapAnimFrame(3, 0x19);
-    SwapAnimFrame(4, 0x20);
-    SwapAnimFrame(5, 0x27);
-    SwapAnimFrame(6, 0x2E);
-    SwapAnimFrame(7, 0x35);
+    SwapAnimFrame(1, OPENING_SWAP_ANIM_FRAME_BASE);
+    SwapAnimFrame(2, OPENING_SWAP_ANIM_FRAME_BASE + OPENING_CHAR_ANIM_FRAME_STEP);
+    SwapAnimFrame(3, OPENING_SWAP_ANIM_FRAME_BASE + 2 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SwapAnimFrame(4, OPENING_SWAP_ANIM_FRAME_BASE + 3 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SwapAnimFrame(5, OPENING_SWAP_ANIM_FRAME_BASE + 4 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SwapAnimFrame(6, OPENING_SWAP_ANIM_FRAME_BASE + 5 * OPENING_CHAR_ANIM_FRAME_STEP);
+    SwapAnimFrame(7, OPENING_SWAP_ANIM_FRAME_BASE + 6 * OPENING_CHAR_ANIM_FRAME_STEP);
     HuPrcSleep(30);
-    SwapAnimFrame(8, 0x39);
-    SwapAnimFrame(9, 0x40);
+    SwapAnimFrame(8, OPENING_SWAP_ANIM_FRAME_GUIDE_BASE);
+    SwapAnimFrame(9, OPENING_SWAP_ANIM_FRAME_GUIDE_BASE + OPENING_CHAR_ANIM_FRAME_STEP);
     HuPrcSleep(60);
 
     EventCreate((void (*)(void))CharObjLightEnd, 20, 0);
     HuPrcSleep(30);
-    MessStart(0, 0x000B000B, 10);
+    MessStart(0, OPENING_MESSAGE_BASE + 11, 10);
     EventCreate((void (*)(void))CharObjStarStart, 30, 0);
     HuPrcSleep(60);
 
     CharLightFocusF = CharFocusCancelF = 0;
-    EventCreate((void (*)(void))GuideCharFocus, 0x800A, 20);
-    EventCreate((void (*)(void))GuideCharFocus, 0x800B, 20);
-    HuPrcSleep(0xAA);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 20);
+    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 20);
+    HuPrcSleep(170);
 
-    MessStart(0, 0x000B000C, 0xF0);
-    MessStart(0, 0x000B000D, 0xF0);
-    MessStart(0, 0x000B000E, 40);
+    MessStart(0, OPENING_MESSAGE_BASE + 12, 240);
+    MessStart(0, OPENING_MESSAGE_BASE + 13, 240);
+    MessStart(0, OPENING_MESSAGE_BASE + 14, 40);
     EventCreate((void (*)(void))CharHappyEvent, 200, 0);
     HuPrcSleep(200);
     EventCreate((void (*)(void))CharObjStarEnd, 20, 0);
 
     HuWinExClose(OpeningWinId[0]);
     FbCopyMode = 1;
-    Hu3DModelAttrReset(OpeningMdlId[1], 0x40000002);
-    Hu3DModelClusterAttrReset(OpeningMdlId[1], 0, 0xC0000002);
+    Hu3DModelAttrReset(OpeningMdlId[1], HU3D_MOTATTR_PAUSE);
+    Hu3DModelClusterAttrReset(OpeningMdlId[1], 0, HU3D_CLUSTER_ATTR_PAUSE);
     HuPrcSleep(10);
-    SetCharAnimFrame(10, 0x48);
-    SetCharAnimFrame(11, 0x4C);
-    EventCreate((void (*)(void))CharHappyEvent, 0x186, 0);
-    HuPrcSleep(0x8C);
+    SetCharAnimFrame(10, OPENING_GUIDE_ANIM_FRAME_ALT_BASE);
+    SetCharAnimFrame(11, OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE);
+    EventCreate((void (*)(void))CharHappyEvent, 390, 0);
+    HuPrcSleep(140);
 
     HuWinExOpen(OpeningWinId[0]);
     EventCreate((void (*)(void))ObjStarStart, 30, 0);
-    MessStart(0, 0x000B000F, 0xF0);
+    MessStart(0, OPENING_MESSAGE_BASE + 15, 240);
     FbCopyMode = 2;
     HuWinExClose(OpeningWinId[0]);
-    HuPrcSleep(0x82);
+    HuPrcSleep(130);
 
     HuWinExOpen(OpeningWinId[0]);
-    MessStart(0, 0x000B0010, 0x12C);
+    MessStart(0, OPENING_MESSAGE_BASE + 16, 300);
     HuWinExClose(OpeningWinId[0]);
     EventCreate(ObjStarEnd, 0, 0);
-    HuPrcSleep(0x8C);
+    HuPrcSleep(140);
 
     OpeningEndF = 1;
     while (TRUE) {
@@ -699,20 +713,20 @@ static void BlinkGuide(u32 frameCount)
     s16 count;
     s16 i;
 
-    SetCharAnimFrame(10, 0x47);
-    SetCharAnimFrame(11, 0x4B);
+    SetCharAnimFrame(10, OPENING_GUIDE_ANIM_FRAME_BASE + 1);
+    SetCharAnimFrame(11, OPENING_GUIDE_ANIM_FRAME_OTHER_BASE + 1);
     phase = 1;
     for (i = 1, count = 0; i <= frameCount; i++) {
         if (count++ > 10) {
             phase ^= 1;
-            SetCharAnimFrame(10, phase + 0x46);
-            SetCharAnimFrame(11, phase + 0x4A);
+            SetCharAnimFrame(10, phase + OPENING_GUIDE_ANIM_FRAME_BASE);
+            SetCharAnimFrame(11, phase + OPENING_GUIDE_ANIM_FRAME_OTHER_BASE);
             count = 0;
         }
         HuPrcVSleep();
     }
-    SetCharAnimFrame(10, 0x46);
-    SetCharAnimFrame(11, 0x4A);
+    SetCharAnimFrame(10, OPENING_GUIDE_ANIM_FRAME_BASE);
+    SetCharAnimFrame(11, OPENING_GUIDE_ANIM_FRAME_OTHER_BASE);
 }
 
 static void GuideCharFocus(u32 guideChar, s32 frameCount)
@@ -722,34 +736,34 @@ static void GuideCharFocus(u32 guideChar, s32 frameCount)
     s16 phase;
     BOOL alternate;
     float focusValue;
-    OpeningFocusObject *object;
+    HSF_OBJECT *object;
 
     alternate = guideChar & GUIDE_FOCUS_SELECTOR_ALT;
     CharFocusCancelF = 0;
     guideChar &= GUIDE_FOCUS_SELECTOR_CHAR_MASK;
-    object = (OpeningFocusObject *)Hu3DModelObjPtrGet(
+    object = Hu3DModelObjPtrGet(
         OpeningMdlId[2],
         OpeningCharObjNameTbl[guideChar]);
 
     if (guideChar == GUIDE_FOCUS_CHAR_A) {
         if (!alternate) {
-            SetCharAnimFrame((s16)guideChar, 0x47);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_BASE + 1);
         } else {
-            SetCharAnimFrame((s16)guideChar, 0x49);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_ALT_BASE + 1);
         }
     } else {
         if (!alternate) {
-            SetCharAnimFrame((s16)guideChar, 0x4B);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_OTHER_BASE + 1);
         } else {
-            SetCharAnimFrame((s16)guideChar, 0x4D);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE + 1);
         }
     }
 
     focusValue = GUIDE_FOCUS_VALUE_LIT;
     phase = 1;
     for (frame = 1, toggleCounter = 0; frame <= frameCount; frame++) {
-        object->focus38 = focusValue;
-        object->focus34 = focusValue;
+        object->mesh.base.scale.y = focusValue;
+        object->mesh.base.scale.x = focusValue;
 
         if (toggleCounter++ > 5) {
             phase ^= 1;
@@ -762,15 +776,23 @@ static void GuideCharFocus(u32 guideChar, s32 frameCount)
 
             if (guideChar == GUIDE_FOCUS_CHAR_A) {
                 if (!alternate) {
-                    SetCharAnimFrame((s16)guideChar, (s16)(0x46 + phase));
+                    SetCharAnimFrame(
+                        (s16)guideChar,
+                        (s16)(OPENING_GUIDE_ANIM_FRAME_BASE + phase));
                 } else {
-                    SetCharAnimFrame((s16)guideChar, (s16)(0x48 + phase));
+                    SetCharAnimFrame(
+                        (s16)guideChar,
+                        (s16)(OPENING_GUIDE_ANIM_FRAME_ALT_BASE + phase));
                 }
             } else {
                 if (!alternate) {
-                    SetCharAnimFrame((s16)guideChar, (s16)(0x4A + phase));
+                    SetCharAnimFrame(
+                        (s16)guideChar,
+                        (s16)(OPENING_GUIDE_ANIM_FRAME_OTHER_BASE + phase));
                 } else {
-                    SetCharAnimFrame((s16)guideChar, (s16)(0x4C + phase));
+                    SetCharAnimFrame(
+                        (s16)guideChar,
+                        (s16)(OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE + phase));
                 }
             }
             toggleCounter = 0;
@@ -785,18 +807,18 @@ static void GuideCharFocus(u32 guideChar, s32 frameCount)
 
     if (guideChar == GUIDE_FOCUS_CHAR_A) {
         if (!alternate) {
-            SetCharAnimFrame((s16)guideChar, 0x47);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_BASE + 1);
         } else {
-            SetCharAnimFrame((s16)guideChar, 0x49);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_ALT_BASE + 1);
         }
     } else {
         if (!alternate) {
-            SetCharAnimFrame((s16)guideChar, 0x4B);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_OTHER_BASE + 1);
         } else {
-            SetCharAnimFrame((s16)guideChar, 0x4D);
+            SetCharAnimFrame((s16)guideChar, OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE + 1);
         }
     }
-    object->focus34 = object->focus38 = GUIDE_FOCUS_VALUE_REST;
+    object->mesh.base.scale.x = object->mesh.base.scale.y = GUIDE_FOCUS_VALUE_REST;
 }
 
 static void RotateGuide(u32 frameCount)
@@ -849,7 +871,7 @@ static void CharObjLightStart(u32 frameCount)
     pos.z += 20.f;
     Hu3DModelPosSetV(OpeningMdlId[OPENING_MODEL_LIGHT], &pos);
     Hu3DModelScaleSet(OpeningMdlId[OPENING_MODEL_LIGHT], 0.0f, 0.0f, 0.0f);
-    HuAudFXPlay(0x4b0);
+    HuAudFXPlay(OPENING_FX_ID_0);
 
     for (i = 1; i <= frameCount; i++) {
         if (i <= 0.7 * frameCount) {
@@ -929,7 +951,7 @@ static void CharObjStarStart(u32 frameCount)
         HuPrcVSleep();
     }
 
-    HuAudFXPlay(0x4b1);
+    HuAudFXPlay(OPENING_FX_ID_1);
 
     for (i = 1; i <= halfFrames; i++) {
         scaleX = 0.5 *
@@ -1007,7 +1029,7 @@ static void ObjStarStart(u32 frameCount)
     Hu3DModelScaleSet(OpeningMdlId[OPENING_MODEL_STAR_SIDE_A], 0.0f, 0.0f, 0.0f);
     Hu3DModelPosSetV(OpeningMdlId[OPENING_MODEL_STAR_SIDE_B], &pos);
     Hu3DModelScaleSet(OpeningMdlId[OPENING_MODEL_STAR_SIDE_B], 0.0f, 0.0f, 0.0f);
-    HuAudFXPlay(0x4B2);
+    HuAudFXPlay(OPENING_FX_ID_2);
 
     for (i = 1; i <= frameCount; i++) {
         scale = 0.5 *
@@ -1041,7 +1063,7 @@ static void ObjStarEnd(void)
 
     for (i = 1; i <= 30; i++) {
         if (i == 5) {
-            HuAudFXPlay(0x4B3);
+            HuAudFXPlay(OPENING_FX_ID_3);
         }
         rot = 720. *
               (1.0 -
@@ -1054,7 +1076,7 @@ static void ObjStarEnd(void)
         HuPrcVSleep();
     }
 
-    HuAudFXPlay(0x4B1);
+    HuAudFXPlay(OPENING_FX_ID_1);
     Hu3DModelAttrReset(OpeningMdlId[7], HU3D_ATTR_DISPOFF);
     Hu3DMotionTimeSet(OpeningMdlId[7], 0.0f);
     Hu3DModelPosGet(OpeningMdlId[OPENING_MODEL_STAR_SIDE_A], &pos);
@@ -1064,7 +1086,7 @@ static void ObjStarEnd(void)
 
     for (i = 1; i <= 60; i++) {
         if (i == 5) {
-            HuAudFXPlay(0x4B4);
+            HuAudFXPlay(OPENING_FX_ID_4);
         }
         rot = (float)i / 60.f;
         PSVECSubtract(&target, &pos, &vec);
@@ -1232,9 +1254,7 @@ static void SwapAnimFrame(s16 animIndex, s16 frameIndex)
 
 static void SwapAnimFrameEvent(s32 animIndex, s32 frameIndex)
 {
-    volatile s16 scratch;
-
-    scratch = 0;
+    s16 unused = 0;
     HuPrcSleep(5);
     Hu3DAnimAnimSet(OpeningCharAnimId[animIndex], OpeningCharAnim[frameIndex]);
 }
@@ -1270,8 +1290,8 @@ static void BookOpen(void)
 
     Hu3DMotionTimeSet(OpeningMdlId[1], 0.0f);
     Hu3DMotionClusterTimeSet(OpeningMdlId[1], 0, 0.0f);
-    Hu3DModelAttrReset(OpeningMdlId[1], 0x40000002);
-    Hu3DModelClusterAttrReset(OpeningMdlId[1], 0, 0xC0000002);
+    Hu3DModelAttrReset(OpeningMdlId[1], HU3D_MOTATTR_PAUSE);
+    Hu3DModelClusterAttrReset(OpeningMdlId[1], 0, HU3D_CLUSTER_ATTR_PAUSE);
     EventCreate(BookOpenEvent, 0, 0);
 
     for (i = 1; i <= 180; i++) {
@@ -1355,8 +1375,8 @@ static void EventCreate(void (*callback)(void), s32 arg0, s32 arg1)
     HUPROCESS *process;
     s32 *work;
 
-    process = HuPrcChildCreate(EventExec, 0x100, 0x3000, 0, HuPrcCurrentGet());
-    work = HuMemDirectMalloc(HEAP_HEAP, 0xC);
+    process = HuPrcChildCreate(EventExec, 256, 12288, 0, HuPrcCurrentGet());
+    work = HuMemDirectMalloc(HEAP_HEAP, sizeof(*work) * 3);
     process->property = work;
     HuPrcDestructorSet2(process, EventDestroy);
     work[0] = (s32)callback;
@@ -1399,8 +1419,8 @@ static void OpeningCameraSet(HuVecF *rotDeg, HuVecF *target, float distance)
         tgt.y,
         tgt.z);
 }
-const GXColor lbl_1_rodata_280 = { 0x9a, 0x70, 0x56, 0xff };
-const GXColor lbl_1_rodata_284 = { 0xa6, 0xa6, 0xa6, 0xff };
+const GXColor lbl_1_rodata_280 = { 154, 112, 86, 255 };
+const GXColor lbl_1_rodata_284 = { 166, 166, 166, 255 };
 
 static void FilterDraw(float alpha)
 {
@@ -1480,26 +1500,46 @@ s16 WinFrameTypeTbl[4] = {
 };
 
 u32 OpeningCharFileTbl[80] = {
-    0x00D5001E, 0x00D50020, 0x00D50022, 0x00D50021,
-    0x00D50022, 0x00D50023, 0x00D50024, 0x00D50026,
-    0x00D50027, 0x00D50028, 0x00D50029, 0x00D5002A,
-    0x00D5002B, 0x00D5002C, 0x00D5002D, 0x00D5002E,
-    0x00D5002F, 0x00D50030, 0x00D50031, 0x00D50032,
-    0x00D50033, 0x00D50034, 0x00D50035, 0x00D50036,
-    0x00D50037, 0x00D50038, 0x00D50039, 0x00D5003A,
-    0x00D5003B, 0x00D5003C, 0x00D5003D, 0x00D5003E,
-    0x00D5003F, 0x00D50040, 0x00D50041, 0x00D50042,
-    0x00D50043, 0x00D50044, 0x00D50045, 0x00D50046,
-    0x00D50047, 0x00D50048, 0x00D50049, 0x00D5004A,
-    0x00D5004B, 0x00D5004C, 0x00D5004D, 0x00D5004E,
-    0x00D5004F, 0x00D50050, 0x00D50051, 0x00D50052,
-    0x00D50053, 0x00D50054, 0x00D50055, 0x00D50056,
-    0x00D50057, 0x00D50058, 0x00D50059, 0x00D5005A,
-    0x00D5005B, 0x00D5005C, 0x00D5005D, 0x00D5005E,
-    0x00D5005F, 0x00D50060, 0x00D50061, 0x00D50062,
-    0x00D50063, 0x00D50064, 0x00D50069, 0x00D5006A,
-    0x00D5006B, 0x00D5006C, 0x00D50065, 0x00D50066,
-    0x00D50067, 0x00D50068, 0x00D50025, 0xFFFFFFFF,
+    DATANUM(DATA_title, 30), DATANUM(DATA_title, 32),
+    DATANUM(DATA_title, 34), DATANUM(DATA_title, 33),
+    DATANUM(DATA_title, 34), DATANUM(DATA_title, 35),
+    DATANUM(DATA_title, 36), DATANUM(DATA_title, 38),
+    DATANUM(DATA_title, 39), DATANUM(DATA_title, 40),
+    DATANUM(DATA_title, 41), DATANUM(DATA_title, 42),
+    DATANUM(DATA_title, 43), DATANUM(DATA_title, 44),
+    DATANUM(DATA_title, 45), DATANUM(DATA_title, 46),
+    DATANUM(DATA_title, 47), DATANUM(DATA_title, 48),
+    DATANUM(DATA_title, 49), DATANUM(DATA_title, 50),
+    DATANUM(DATA_title, 51), DATANUM(DATA_title, 52),
+    DATANUM(DATA_title, 53), DATANUM(DATA_title, 54),
+    DATANUM(DATA_title, 55), DATANUM(DATA_title, 56),
+    DATANUM(DATA_title, 57), DATANUM(DATA_title, 58),
+    DATANUM(DATA_title, 59), DATANUM(DATA_title, 60),
+    DATANUM(DATA_title, 61), DATANUM(DATA_title, 62),
+    DATANUM(DATA_title, 63), DATANUM(DATA_title, 64),
+    DATANUM(DATA_title, 65), DATANUM(DATA_title, 66),
+    DATANUM(DATA_title, 67), DATANUM(DATA_title, 68),
+    DATANUM(DATA_title, 69), DATANUM(DATA_title, 70),
+    DATANUM(DATA_title, 71), DATANUM(DATA_title, 72),
+    DATANUM(DATA_title, 73), DATANUM(DATA_title, 74),
+    DATANUM(DATA_title, 75), DATANUM(DATA_title, 76),
+    DATANUM(DATA_title, 77), DATANUM(DATA_title, 78),
+    DATANUM(DATA_title, 79), DATANUM(DATA_title, 80),
+    DATANUM(DATA_title, 81), DATANUM(DATA_title, 82),
+    DATANUM(DATA_title, 83), DATANUM(DATA_title, 84),
+    DATANUM(DATA_title, 85), DATANUM(DATA_title, 86),
+    DATANUM(DATA_title, 87), DATANUM(DATA_title, 88),
+    DATANUM(DATA_title, 89), DATANUM(DATA_title, 90),
+    DATANUM(DATA_title, 91), DATANUM(DATA_title, 92),
+    DATANUM(DATA_title, 93), DATANUM(DATA_title, 94),
+    DATANUM(DATA_title, 95), DATANUM(DATA_title, 96),
+    DATANUM(DATA_title, 97), DATANUM(DATA_title, 98),
+    DATANUM(DATA_title, 99), DATANUM(DATA_title, 100),
+    DATANUM(DATA_title, 105), DATANUM(DATA_title, 106),
+    DATANUM(DATA_title, 107), DATANUM(DATA_title, 108),
+    DATANUM(DATA_title, 101), DATANUM(DATA_title, 102),
+    DATANUM(DATA_title, 103), DATANUM(DATA_title, 104),
+    DATANUM(DATA_title, 37), HU_DATANUM_NONE,
 };
 
 char *OpeningCharTexNameTbl[12] = {
@@ -1535,6 +1575,6 @@ char *OpeningCharObjNameTbl[12] = {
 HuVecF BookDefPos = { 0.0f, 0.0f, -2000.0f };
 HuVecF BookDefRot = { -20.0f, -30.0f, 30.0f };
 
-char lbl_1_data_8988[0xE] = "op_book_dummy";
-char lbl_1_data_8996[0xF] = "op_book_dummy2";
-char lbl_1_data_89A5[0x14] = "op_stage004-bg_root";
+char lbl_1_data_8988[] = "op_book_dummy";
+char lbl_1_data_8996[] = "op_book_dummy2";
+char lbl_1_data_89A5[] = "op_stage004-bg_root";
