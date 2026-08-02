@@ -354,6 +354,39 @@
         "build/GP6E01/fileseldll/filename_owner_final.json",
         "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/REL/fileseldll.h"
       ]
+    },
+    {
+      "id": "mdparty-mixed-auto-inline-boundary",
+      "classification": "authenticated",
+      "path": "src/REL/mdpartydll/mdparty.c",
+      "kind": "source_shape",
+      "rules": [
+        "compiler_pragma"
+      ],
+      "rationale": "GC/1.3.2 must keep fn_1_BB30 callable while preserving automatic expansion elsewhere in the same translation unit. Without the scoped auto_inline off/reset boundary, fn_1_BBD8 grows from the 0x580-byte target to 0x5F4 and falls to 91.514206%; an owner-wide -inline noauto profile preserves only 84 of 258 exact functions. The retained boundary is therefore the narrowest measured source control: all 258 functions and relocations remain exact and mdpartydll.rel is byte-identical to retail. This authenticates the required compiler boundary, not an original Hudson spelling, and does not authorize pragmas in another owner.",
+      "evidence": [
+        "docs/native_matching_wave100.md",
+        "src/REL/mdpartydll/mdparty.c",
+        "config/GP6E01/build.sha1"
+      ]
+    },
+    {
+      "id": "mdsel-unconsumed-fixed-layout-storage",
+      "classification": "authenticated",
+      "path": "src/REL/mdseldll/mdsel.c",
+      "kind": "source_shape",
+      "rules": [
+        "opaque_blob"
+      ],
+      "rationale": "The five flagged byte spans preserve target-fixed 0x88-byte owner-local records at offsets proved by symbols.txt. A complete consumer audit found no index, load, store, copy, API argument, or escape for any span, while the neighboring typed fields have direct target accesses. Splitting the spans into scalar or vector fields, or assigning semantic names, would fabricate types solely to silence the quality gate. The smallest evidence-backed representation is byte storage with explicit unknown identity; all 113 application functions, text relocations, linked sections, and the retail mdseldll.rel remain exact. This exception is limited to the existing unconsumed spans and does not authenticate unknown storage with observed consumers.",
+      "evidence": [
+        "docs/native_matching_wave68.md",
+        "docs/native_matching_wave69.md",
+        "docs/native_matching_wave70.md",
+        "config/dll/rels/mdseldll/symbols.txt",
+        "src/REL/mdseldll/mdsel.c",
+        "config/GP6E01/build.sha1"
+      ]
     }
   ]
 }

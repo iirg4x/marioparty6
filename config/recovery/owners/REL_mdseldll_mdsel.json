@@ -4,13 +4,13 @@
   "module": "mdseldll",
   "source": "src/REL/mdseldll/mdsel.c",
   "compiler": "GC/1.3.2",
-  "summary": "Binary-exact mode-select application owner with target-proven translation-unit order and complete relocation closure. Address-derived names and numeric resource domains remain cleanup debt.",
+  "summary": "Binary-exact mode-select application owner with target-proven translation-unit order and complete relocation closure. Message and sound domains are catalog-backed; archive-local resource indices and unconsumed layout spans remain honestly unnamed.",
   "status": {
     "binary": "exact",
     "source_shape": "evidence_backed",
     "semantics": "partial",
     "naming": "address_only",
-    "data": "raw"
+    "data": "typed_partial"
   },
   "tags": [
     "priority-flow",
@@ -53,14 +53,23 @@
       "accepted": true,
       "summary": "The full 137-output gate and direct retail comparison prove mdseldll.rel byte-identical with SHA-1 e6c20b24cfca8135ed8c49ce59108100277444c0.",
       "reference": "config/GP6E01/build.sha1"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Every retained unknown byte span is unconsumed inside the complete owner; symbols and neighboring typed accesses prove the record sizes and offsets but do not prove scalar, vector, or semantic field identities.",
+      "reference": "docs/native_matching_wave69.md"
     }
   ],
-  "constraints": [],
+  "constraints": [
+    "mdsel-unconsumed-fixed-layout-storage"
+  ],
   "debt": [
     {
       "kind": "data_domains",
-      "priority": "high",
-      "summary": "Resource, message, flag, and state identifiers still use raw hexadecimal literals; each requires an authenticated named domain rather than decimal substitution."
+      "priority": "normal",
+      "summary": "Archive-local DATA_mdsel file indices are layout-authenticated but lack a surviving file-name catalog; retain numeric indices until same-game archive evidence supplies names."
     },
     {
       "kind": "semantic_names",

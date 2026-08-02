@@ -50,6 +50,13 @@
     {
       "kind": "compiler_probe",
       "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The target mixes automatic expansion with a required direct call to fn_1_BB30. Scoped auto_inline off/reset preserves all 258 functions; removing it expands the helper into fn_1_BBD8, while an owner-wide noauto profile leaves only 84 functions exact.",
+      "reference": "docs/native_matching_wave100.md"
+    },
+    {
+      "kind": "compiler_probe",
+      "confidence": "confirmed",
       "accepted": false,
       "summary": "Including the broad audio header changes fn_1_2F22C by eight bytes, so the target-visible local prototypes remain a bounded authenticated exception.",
       "reference": "docs/native_matching_wave103.md"
@@ -64,7 +71,8 @@
   ],
   "constraints": [
     "mdparty-late-owner-definitions",
-    "mdparty-local-audio-prototypes"
+    "mdparty-local-audio-prototypes",
+    "mdparty-mixed-auto-inline-boundary"
   ],
   "debt": [
     {
