@@ -289,7 +289,7 @@ static void PauseGuideMain(void)
             if (work->delay != 0) {
                 weight = 0.0f;
                 if (work->time >= work->delay) {
-                    work->time = work->delay = 0;
+                    work->delay = work->time = 0;
                     if (work->motion == 4) {
                         mbAudFXPlay(52);
                     } else if (work->motion == 5) {
@@ -301,7 +301,7 @@ static void PauseGuideMain(void)
                 if (work->time < work->maxTime && work->maxTime > 0) {
                     weight = work->time / (float)work->maxTime;
                 } else {
-                    work->maxTime = work->time = 0;
+                    work->time = work->maxTime = 0;
                     motionDone = TRUE;
                 }
                 switch (work->motion) {

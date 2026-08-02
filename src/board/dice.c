@@ -368,10 +368,12 @@ int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color)
 {
     s8 valueTblNew[DICE_VALUENUM_MAX];
+    int valueMax;
     int i;
 
     if (valueTbl == NULL) {
-        for (i = 0; i < mbDiceValueMaxGet(diceType); i++) {
+        valueMax = mbDiceValueMaxGet(diceType);
+        for (i = 0; i < valueMax; i++) {
             valueTblNew[i] = i;
         }
         valueTblNew[i] = -1;
@@ -408,9 +410,8 @@ int mbDiceExec(int playerNo, int diceType, s8 *valueTbl, int tutorialVal,
 
 int mbDicePlayerExec(int playerNo, int diceType)
 {
-    mbDiceProcExec(playerNo, diceType, NULL, NULL, TRUE, TRUE, NULL,
+    return mbDiceProcExec(playerNo, diceType, NULL, NULL, TRUE, TRUE, NULL,
         DICE_COLOR_GREEN);
-    return mbDiceResultGet(playerNo);
 }
 
 int mbDiceChanceTradeExec(int playerNo)

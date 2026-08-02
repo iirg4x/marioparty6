@@ -184,7 +184,7 @@ void mbev_Last5(void)
         mbPlayerDispSet(i, FALSE);
     }
     mbSNpcDispSet(FALSE);
-    last5RouletteOMObj = rouletteObj = Last5RouletteCreate(masuId);
+    rouletteObj = last5RouletteOMObj = Last5RouletteCreate(masuId);
 
     mbMasuPosGet(masuId, &pos);
     pos.y += 100.0f;

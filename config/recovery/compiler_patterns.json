@@ -2129,7 +2129,7 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, owner fields, or accessor-backed pointers can shorten or merge value lifetimes; source-authentic captures and reloads at distinct use boundaries, including staged raw-to-typed pointer ownership, can restore the target's saved-register and signed-comparison shape.",
+      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, owner fields, or accessor-backed values can shorten or merge value lifetimes; source-authentic captures and reloads at distinct use boundaries, including staged raw-to-typed pointer ownership and invariant loop-bound capture, can restore the target's saved-register and signed-comparison shape.",
       "conditions": "Use only for a repeated owner-local mismatch family involving global, bitfield, owner-field, accessor, or staged-pointer lifetimes with saved-register or signed-comparison evidence; a convenient temporary by itself is not evidence.",
       "source_condition": {
         "change": "Capture a global, bitfield, accessor result, or raw-to-typed pointer value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
@@ -2158,7 +2158,8 @@
           "function-scope model IDs plus block-scoped raw and typed hook-data stages restore chained particle lookup lifetimes",
           "distinct state-read and state-write captures preserve separate register lifetimes around one transition",
           "an authenticated inline accessor boundary can preserve a narrow global lifetime that a direct read collapses",
-          "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error"
+          "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error",
+          "capturing an invariant accessor result immediately before its loop can restore both the defining function and callers that inline it"
         ]
       },
       "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
@@ -2190,7 +2191,10 @@
           "mbMain",
           "mbNextTime",
           "mbObjectSetup",
-          "GWMgNightFGet"
+          "GWMgNightFGet",
+          "mbDiceProcExec",
+          "mbDiceExec",
+          "mbDicePlayerExec"
         ],
         "modules": [
           "main.dol",
@@ -2218,7 +2222,8 @@
         "miraclebookdll fn_1_7998 amplitude capture across two model consumers",
         "mbMain distinct party-state reads",
         "mbNextTime turn-limit and turn-count captures",
-        "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle"
+        "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle",
+        "mbDiceProcExec captures mbDiceValueMaxGet once before initialization; this closes its 360-byte body and the 680-byte mbDiceExec and 308-byte mbDicePlayerExec inline consumers"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -2230,7 +2235,8 @@
       "evidence": [
         "docs/native_matching_board_player_value_lifetimes.md",
         "src/board/board.c",
-        "src/board/player.c"
+        "src/board/player.c",
+        "src/board/dice.c"
       ]
     },
     {
