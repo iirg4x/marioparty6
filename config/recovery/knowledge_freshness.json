@@ -914,6 +914,19 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "target-symbol-inventory-before-seam-recovery": {
+      "status": "active",
+      "validated_commit": "99a135a8d9150f9fb4d52717d050e827379cf63a",
+      "validated_at": "2026-08-02",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "src/board/last5.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

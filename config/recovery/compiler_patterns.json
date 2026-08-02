@@ -4315,6 +4315,80 @@
         "config/dll/rels/selmenuDll/symbols.txt",
         "build/selmenu_support_pooloff.json"
       ]
+    },
+    {
+      "id": "target-symbol-inventory-before-seam-recovery",
+      "title": "Compare the retail function inventory before treating a seam as the only residual",
+      "classification": "confirmed_rule",
+      "category": "provenance_and_ownership",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "A stub or seam ledger can name the exported entry point while omitting static helper bodies that belong to the same retail object. Small object size and a short seam list therefore do not bound the remaining reconstruction work. The authoritative first pass is a function-by-function comparison of retail symbol extents against actual source definitions and configured ownership.",
+      "conditions": "Apply whenever a supposedly final seam remains far from exact, an owner is described as small or nearly complete, or the source definition count has not been reconciled with the retail object's complete function inventory.",
+      "source_condition": {
+        "change": "Rank or begin recovery for a residual seam or partial owner.",
+        "requires": [
+          "the complete retail function-start and size inventory for the object",
+          "the translation unit's actual function definitions rather than declarations",
+          "the active source-link or split ownership configuration",
+          "the byte extent and call relationships of every missing helper"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "discovery of unimplemented static helper families hidden behind one visible seam",
+          "a corrected remaining-function and remaining-byte denominator",
+          "bulk recovery of dependency helpers before final entry-point reconciliation",
+          "identification of declaration-only placeholders that were mistaken for implementations"
+        ],
+        "known_signatures": [
+          "the retail object contains more function symbols than the source contains definitions",
+          "the visible seam calls static functions that are only forward-declared",
+          "the source text deficit is much larger than the visible seam's size delta",
+          "a small owner remains unexpectedly difficult after repeated single-function probes"
+        ]
+      },
+      "rule": "Before probing the visible seam, subtract the source definition inventory from the complete retail function inventory and reconcile the result with active ownership. Treat every missing static helper as real recovery work, cluster helpers by call relationship, and report both missing function count and missing retail bytes. Do not infer completeness from object size, forward declarations, source-file presence, or a seam ledger alone.",
+      "safe_actions": [
+        "list every retail function symbol with its exact extent",
+        "count actual source function bodies separately from prototypes",
+        "sum the retail bytes of missing definitions before selecting workers",
+        "assign distinct missing helper families to separate workers",
+        "rebuild and diff the complete owner after integrating the helper cluster"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "main:board/last5:mbev_Last5"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "inventory",
+          "missing_static_helpers",
+          "stub_seam",
+          "bulk_recovery",
+          "board"
+        ]
+      },
+      "examples": [
+        "The Last5 seam looked like one residual in a small board object, but retail last5.o contained 10 functions and 9,304 text bytes while the source contained only six function bodies. Four absent static helpers represented 3,852 retail bytes: Last5RouletteCreate, Last5RouletteOMExec, ev_Last5CapsuleAdd5, and ev_Last5Koopa. Recovering that family in one pass raised the reconstructed source to all 10 function bodies before final byte reconciliation."
+      ],
+      "counterexamples": [
+        "A forward declaration is not a recovered function body.",
+        "A seam ledger is a priority list, not a complete object symbol inventory.",
+        "A small object can still require several kilobytes of missing helper reconstruction.",
+        "Do not count generated retail fallback coverage as a source definition."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "src/board/last5.c"
+      ]
     }
   ]
 }
