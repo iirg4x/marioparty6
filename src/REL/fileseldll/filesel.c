@@ -29,6 +29,17 @@ enum {
     FILESEL_SLOT_SPRITE_PRIORITY = 95,
     FILESEL_DECIMAL_DIGIT_MASK = 15,
     FILESEL_SUBSTICK_STEP_MASK = 248,
+    FILESEL_SOUND_05 = 1155,
+    FILESEL_SOUND_06 = 1156,
+    FILESEL_SOUND_07 = 1157,
+    FILESEL_SOUND_08 = 1158,
+    FILESEL_SOUND_09 = 1159,
+    FILESEL_SOUND_10 = 1160,
+    FILESEL_SOUND_11 = 1161,
+    FILESEL_SOUND_13 = 1163,
+    FILESEL_SOUND_14 = 1164,
+    FILESEL_SOUND_15 = 1165,
+    FILESEL_SOUND_17 = 1167,
 };
 
 /* lbl_1_bss_348 element (fn_1_8F34 / fn_1_ABF8 / fn_1_B234), 6 bytes */
@@ -261,7 +272,7 @@ void FileselMain(void)
         goto L_56C;
     }
     if (status == -1) {
-        HuAudFXPlay(MSM_SE_FILESEL_17);
+        HuAudFXPlay(FILESEL_SOUND_17);
         fn_1_CB4(0);
         GwCommon = GwCommonOrig;
         fn_1_6E54(0, 0);
@@ -269,7 +280,7 @@ void FileselMain(void)
         flag = 0;
         goto L_56C;
     }
-    HuAudFXPlay(MSM_SE_FILESEL_17);
+    HuAudFXPlay(FILESEL_SOUND_17);
     fn_1_CB4(1);
 L_454:
     status = FileselSelect();
@@ -728,7 +739,7 @@ L_192C:
                             SLSaveEmptySet(curSlotNo, i);
                         }
                     }
-                    fxId = HuAudFXPlay(MSM_SE_FILESEL_15);
+                    fxId = HuAudFXPlay(FILESEL_SOUND_15);
                     ret = FileClear(-1);
                     HuAudFXStop(fxId);
                     if (ret == FILESEL_RESULT_CANCEL) {
@@ -747,7 +758,7 @@ L_192C:
                     time = OSGetTime();
                     SLSaveDataMake(0, &time);
                     SLCommonSet();
-                    fxId = HuAudFXPlay(MSM_SE_FILESEL_15);
+                    fxId = HuAudFXPlay(FILESEL_SOUND_15);
                     ret = FileSaveMesOpen(-1, FILE_SELECT_SAVING);
                     HuAudFXStop(fxId);
                     if (ret == FILESEL_RESULT_CANCEL) {
@@ -791,7 +802,7 @@ L_192C:
             if (sel + dir >= 3) {
                 continue;
             }
-            HuAudFXPlay(MSM_SE_FILESEL_05);
+            HuAudFXPlay(FILESEL_SOUND_05);
             fn_1_3CF4(sel + dir, 0);
             fn_1_3CF4(sel, 1);
             for (i = 1; i <= 10; i++) {
@@ -1499,7 +1510,7 @@ s32 FileselCopy(s16 arg)
                 dir = 1;
             }
             if (dir != 0) {
-                HuAudFXPlay(MSM_SE_FILESEL_05);
+                HuAudFXPlay(FILESEL_SOUND_05);
                 prev = cur;
                 cur += dir;
                 if (cur < 0) {
@@ -1573,10 +1584,10 @@ s32 FileselCopy(s16 arg)
         }
         lbl_1_bss_D8[cur].visualState = 0;
         memcpy(&saveBuf[curSlotNo][SLBoxDataOffsetGet(cur)], &saveBuf[curSlotNo][SLBoxDataOffsetGet(arg)], SAVE_BOX_SIZE);
-        sndH = HuAudFXPlay(MSM_SE_FILESEL_06);
+        sndH = HuAudFXPlay(FILESEL_SOUND_06);
         ret = FileSaveMesOpen(-1, FILE_SELECT_COPYING);
         HuAudFXStop(sndH);
-        HuAudFXPlay(MSM_SE_FILESEL_07);
+        HuAudFXPlay(FILESEL_SOUND_07);
         if (ret == FILESEL_RESULT_CANCEL) {
             ret = -4;
         }
@@ -1587,7 +1598,7 @@ s32 FileselCopy(s16 arg)
             lbl_1_bss_D8[cur].displayNumber = lbl_1_bss_D8[arg].displayNumber;
             memcpy(lbl_1_bss_D8[cur].fileName, lbl_1_bss_D8[arg].fileName, FILESEL_FILENAME_LENGTH);
             fn_1_36C4(cur, cur);
-            HuAudFXPlay(MSM_SE_FILESEL_10);
+            HuAudFXPlay(FILESEL_SOUND_10);
             rz = pos[cur].z;
             ry = pos[cur].y;
             rx = pos[cur].x;
@@ -1709,13 +1720,13 @@ s32 FileselEraseConfirm(s16 arg0)
         return -4;
     }
     if (ret == 0) {
-        fxId = HuAudFXPlay(MSM_SE_FILESEL_08);
+        fxId = HuAudFXPlay(FILESEL_SOUND_08);
         SLSaveEmptySet(curSlotNo, arg0);
         ret = FileSaveMesOpen(-1, FILE_SELECT_ERASING);
         HuAudFXStop(fxId);
-        fxId = HuAudFXPlay(MSM_SE_FILESEL_09);
+        fxId = HuAudFXPlay(FILESEL_SOUND_09);
         if (ret == 0) {
-            HuAudFXPlay(MSM_SE_FILESEL_11);
+            HuAudFXPlay(FILESEL_SOUND_11);
         for (i = 1; i <= 20; i++) {
                 s = 1.0 - sin(3.141592653589793 * (90.0 * ((double)i / 20.0)) / 180.0);
                 Hu3DModelScaleSet(lbl_1_bss_D8[arg0].slotModel, 1.5f * s, 1.5f * s, 1.5f * s);
@@ -1882,7 +1893,7 @@ void fn_1_6E54(s16 a, s32 b)
         proc1 = HuPrcChildCreate(fn_1_7A0C, 16, 12288, 0, HuPrcCurrentGet());
         proc1->property = (void *)0;
         HuPrcSleep(40);
-        HuAudFXPlay(MSM_SE_FILESEL_14);
+        HuAudFXPlay(FILESEL_SOUND_14);
         fn_1_8510(0, &vpos);
     } else {
         for (i = 0; i < 3; i++) {
@@ -1933,7 +1944,7 @@ void fn_1_6E54(s16 a, s32 b)
             if (i == 10) {
                 proc2 = HuPrcChildCreate(fn_1_7B64, 16, 12288, 0, HuPrcCurrentGet());
                 proc2->property = (void *)a;
-                HuAudFXPlay(MSM_SE_FILESEL_13);
+                HuAudFXPlay(FILESEL_SOUND_13);
             }
             if (i > 10) {
                 phase = ((f32)i - 10.0f) / 70.0f;
@@ -1951,7 +1962,7 @@ void fn_1_6E54(s16 a, s32 b)
                 proc3->property = (void *)0;
             }
             if (i == 75) {
-                HuAudFXPlay(MSM_SE_FILESEL_14);
+                HuAudFXPlay(FILESEL_SOUND_14);
                 fn_1_8510(0, &vpos);
             }
             HuPrcVSleep();
