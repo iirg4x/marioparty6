@@ -79,7 +79,7 @@ typedef struct Lbl1Bss288Entry {
 
 typedef struct Lbl1Bss1C {
     OMOBJ *obj;
-    u8 unk_4[4];
+    u32 unk_4;
 } LBL_1_BSS_1C;
 
 typedef struct Lbl1Bss228Entry {
