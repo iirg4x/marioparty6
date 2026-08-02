@@ -495,7 +495,9 @@ def audit_promotion(
     head_ref: str,
     source_ref: str | None = None,
     selected_paths: Sequence[str] | None = None,
+    policy_root: Path | None = None,
 ) -> dict[str, Any]:
+    quality_root = policy_root or root
     base_commit = resolve_ref(root, base_ref)
     head_commit = resolve_ref(root, head_ref)
     names = _run(
@@ -539,7 +541,7 @@ def audit_promotion(
         errors.extend(f"{path}: {marker}" for marker in markers)
         errors.extend(
             f"{path}: {finding}"
-            for finding in source_quality_errors(root, path, text)
+            for finding in source_quality_errors(quality_root, path, text)
         )
         head_blob = _blob(root, head_commit, path)
         expected_blob = _blob(root, source_commit, path) if source_commit else None
@@ -641,6 +643,7 @@ def create_promotion(
             head_ref=promotion_commit,
             source_ref=plan["source_commit"],
             selected_paths=selected,
+            policy_root=root,
         )
         if audit["errors"]:
             raise PromotionError("promotion audit failed:\n- " + "\n- ".join(audit["errors"]))
@@ -715,6 +718,7 @@ def main() -> int:
     audit.add_argument("--head", default="HEAD")
     audit.add_argument("--source")
     audit.add_argument("--path", action="append", default=[])
+    audit.add_argument("--policy-root")
     audit.add_argument("--json", action="store_true")
 
     args = parser.parse_args()
@@ -754,6 +758,7 @@ def main() -> int:
             head_ref=args.head,
             source_ref=args.source,
             selected_paths=args.path,
+            policy_root=git_root(args.policy_root) if args.policy_root else None,
         )
         if args.json:
             print(json.dumps(value, indent=2))

@@ -240,6 +240,58 @@ class PromotionTests(unittest.TestCase):
             )
             temporary.cleanup()
 
+    def test_create_uses_authenticated_policy_from_ai_workspace(self):
+        temporary, root, base = self.fixture()
+        promotion = Path(temporary.name) / "promotion"
+        try:
+            (root / "src/game/example.c").write_text(
+                "int Example(void)\n{\n    int value = 1;\n    value = value;\n    return value;\n}\n",
+                encoding="utf-8",
+            )
+            exceptions = root / "config/recovery/exceptions.json"
+            exceptions.parent.mkdir(parents=True)
+            exceptions.write_text(
+                json.dumps(
+                    {
+                        "exceptions": [
+                            {
+                                "classification": "authenticated",
+                                "path": "src/game/example.c",
+                                "rules": ["self_assignment"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            run(root, "git", "add", "src/game/example.c", "config/recovery/exceptions.json")
+            run(root, "git", "commit", "-qm", "Authenticate source shape")
+            source_commit = run(root, "git", "rev-parse", "HEAD")
+
+            result = create_promotion(
+                root,
+                base_ref=base,
+                source_ref=source_commit,
+                branch="recovery/example-policy",
+                worktree=promotion,
+                title="Recover example processing",
+                paths=["src/game/example.c"],
+                owner=None,
+                allow_unverified=True,
+            )
+
+            self.assertTrue(result["promotion"]["audit"]["clean_human_promotion"])
+            self.assertFalse((promotion / "config/recovery/exceptions.json").exists())
+        finally:
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", str(promotion)],
+                cwd=root,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            temporary.cleanup()
+
     def test_branch_names_with_ai_words_are_refused(self):
         for branch in (
             "recovery/agent-fix",
