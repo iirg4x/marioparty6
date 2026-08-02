@@ -331,8 +331,8 @@
     },
     "dtk-synthetic-gap-not-source-ownership": {
       "status": "active",
-      "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",
-      "validated_at": "2026-07-29",
+      "validated_commit": "f602445798880149aa403387f55e399788c1ab6a",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_gap_ownership.md",
@@ -344,6 +344,7 @@
         "src/board/camera.c",
         "src/board/guide.c",
         "src/board/pause.c",
+        "src/board/tutorial.c",
         "src/board/window.c",
         "src/game/mgdata.c",
         "src/REL/mdpartydll/mdparty.c",
@@ -783,11 +784,13 @@
     },
     "gc26-o0-authenticated-initialized-local-preserves-stack-store": {
       "status": "active",
-      "validated_commit": "6688ecd6c2b535a61487bab3e746f6fc226ea15c",
-      "validated_at": "2026-07-29",
+      "validated_commit": "f602445798880149aa403387f55e399788c1ab6a",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
-        "src/board/capevent.c"
+        "src/board/capevent.c",
+        "src/board/mgcall.c",
+        "src/board/tutorial.c"
       ],
       "supersedes": [],
       "superseded_by": null
