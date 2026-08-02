@@ -295,7 +295,7 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "8cb628ab60c62fbf9f89c7a0c9ab2d00c998a681",
+      "validated_commit": "a370387755a9dc45fe026fbf0eebfd9565105bc7",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -922,7 +922,7 @@
     },
     "gc26-pooldata-mode-controls-relocations-and-bss": {
       "status": "active",
-      "validated_commit": "8cb628ab60c62fbf9f89c7a0c9ab2d00c998a681",
+      "validated_commit": "a370387755a9dc45fe026fbf0eebfd9565105bc7",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -940,7 +940,7 @@
     },
     "gc26-owner-profile-noauto-replaces-dont-inline-regions": {
       "status": "active",
-      "validated_commit": "8cb628ab60c62fbf9f89c7a0c9ab2d00c998a681",
+      "validated_commit": "a370387755a9dc45fe026fbf0eebfd9565105bc7",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
