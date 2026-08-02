@@ -413,7 +413,7 @@ typedef struct CapObjMotionWork {
     u32 attr;
     u32 _unk18;
     BOOL shiftF;
-    u32 nextAttr;
+    BOOL nextAttr;
 } CAPOBJMOTIONWORK;
 
 
@@ -634,7 +634,6 @@ static float baseST2[] = {
     1.0f, 1.0f,
     0.0f, 1.0f,
 };
-static HuVecF viewRot = { -33.0f, 0.0f, 0.0f };
 static int chanceTbl[] = { 100, 60, 30, 10 };
 static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
     void (*hook)(void));
@@ -678,6 +677,7 @@ void mbev_CapCoinManKill(OMOBJ *obj);
 void mbev_CapStarManKill(OMOBJ *obj);
 void mbev_CapEffCapLoseKill(OMOBJ *obj);
 void mbev_CapObjMotionOMExec(OMOBJ *obj);
+void mbev_CapPlayerMotionOMExec(OMOBJ *obj);
 int mbCapObjColorCreate(int capsuleNo, BOOL createF);
 void mbCapObjColorPosSet(int id, float x, float y, float z);
 void mbCapObjColorScaleSet(int id, float x, float y, float z);
@@ -1285,6 +1285,34 @@ int mbev_CapObjCreate(
     mbObjDispSet(work->objId[objIdx], TRUE);
     mbObjLayerSet(work->objId[objIdx], 3);
     return work->objId[objIdx];
+}
+
+void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId, HuVecF *pos)
+{
+    int i;
+
+    for (i = 0; i < CAP_WORK_MAX; i++) {
+        if (work->objId[i] == objId) {
+            work->masuId[i] = masuId;
+            if (pos != NULL) {
+                work->objPos[i] = *pos;
+            } else {
+                work->objPos[i].x = work->objPos[i].y = work->objPos[i].z = 0.0f;
+            }
+        }
+    }
+}
+
+void mbev_CapPlayerPosSet(
+    EVCAPWORK *work, int playerNo, int masuId, HuVecF *pos)
+{
+    work->playerMasuId[playerNo] = masuId;
+    if (pos != NULL) {
+        work->playerPos[playerNo] = *pos;
+    } else {
+        work->playerPos[playerNo].x = work->playerPos[playerNo].y =
+            work->playerPos[playerNo].z = 0.0f;
+    }
 }
 
 
@@ -2244,6 +2272,37 @@ void mbev_CapStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF)
     }
 }
 
+void mbev_CapDuelStatusOffSet(int leftPlayer, int rightPlayer, BOOL waitF)
+{
+    HuVecF posEnd;
+    HuVecF posBegin;
+
+    posEnd.x = -130.0f;
+    posEnd.y = 240.0f;
+    posEnd.z = 0.0f;
+    posBegin.x = 130.0f;
+    posBegin.y = 240.0f;
+    posBegin.z = 0.0f;
+    mbStatusMoveSet(
+        leftPlayer, &posBegin, &posEnd, STATUS_MOVE_REVCOS, 30);
+
+    posEnd.x = 706.0f;
+    posEnd.y = 240.0f;
+    posEnd.z = 0.0f;
+    posBegin.x = 446.0f;
+    posBegin.y = 240.0f;
+    posBegin.z = 0.0f;
+    mbStatusMoveSet(
+        rightPlayer, &posBegin, &posEnd, STATUS_MOVE_REVCOS, 30);
+
+    if (waitF) {
+        do {
+            HuPrcVSleep();
+        } while (!mbStatusMoveCheck(leftPlayer)
+            || !mbStatusMoveCheck(rightPlayer));
+    }
+}
+
 
 void mbev_CapDuelStatusOnSet(int leftPlayer, int rightPlayer, BOOL waitF)
 {
@@ -2394,12 +2453,14 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
 {
     OMOBJ *obj;
     CAPEFFMOVEWORK *workP;
+    void *workData;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
         omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapPlayerMoveObjExec);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
-    obj->data = workP;
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
     if (useMotF) {
         workP->motNo = 9;
@@ -2438,12 +2499,14 @@ void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
 {
     OMOBJ *obj;
     CAPEFFMOVEWORK *workP;
+    void *workData;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
         omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapPlayerMoveObjExec);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
-    obj->data = workP;
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
     workP->motNo = -1;
     if (useShiftF) {
@@ -2469,14 +2532,16 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
 {
     OMOBJ *obj;
     CAPEFFMOVEWORK *workP;
+    void *workData;
     HuVecF masuPos;
     HuVecF delta;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
         omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapPlayerMoveObjExec);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
-    obj->data = workP;
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
     workP->motNo = 9;
     workP->nextMotNo = 6;
@@ -2694,12 +2759,6 @@ BOOL mbev_CapCullCheck(int playerNo, int masuId)
     return FALSE;
 }
 
-
-
-
-
-
-
 s16 mbev_CapMasuPrevGet(s16 masuId, HuVecF *pos)
 {
     s16 linkTbl[MASU_LINK_MAX * 2];
@@ -2741,6 +2800,182 @@ BOOL mbev_CapPlayerMotShiftCheck(int playerNo)
     return FALSE;
 }
 
+void mbev_CapPlayerMotShiftSet(
+    int modelId, int motionNo, u32 attr, BOOL shiftF)
+{
+    if (shiftF) {
+        mbObjMotionShiftSet(modelId, motionNo, 0.0f, 8.0f, attr);
+        if (attr & HU3D_MOTATTR_LOOP) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(modelId) != -1);
+        } else {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(modelId) != -1);
+            do {
+                HuPrcVSleep();
+            } while (!mbObjMotionEndCheck(modelId));
+        }
+    } else {
+        mbObjMotionSet(modelId, motionNo, attr);
+        if (!(attr & HU3D_MOTATTR_LOOP)) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionEndCheck(modelId));
+        }
+    }
+}
+
+void mbev_CapPlayerMotShiftWait(
+    int playerNo, int motionNo, u32 attr, BOOL shiftF)
+{
+    int objId;
+
+    objId = mbPlayerObjIDGet(playerNo);
+    if (shiftF) {
+        mbPlayerMotionShiftSet(playerNo, motionNo, 0.0f, 8.0f, attr);
+        if (attr & HU3D_MOTATTR_LOOP) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != -1);
+        } else {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != -1);
+            do {
+                HuPrcVSleep();
+            } while (!mbObjMotionEndCheck(objId));
+        }
+    } else {
+        mbPlayerMotionSet(playerNo, motionNo, attr);
+        if (!(attr & HU3D_MOTATTR_LOOP)) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionEndCheck(objId));
+        }
+    }
+}
+
+void mbev_CapObjMotionSet(int modelId, int time, int motNo, int nextMotNo,
+    u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr)
+{
+    OMOBJ *obj;
+    CAPOBJMOTIONWORK *work;
+
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        mbev_CapObjMotionOMExec);
+    work = obj->data = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
+    memset(work, 0, sizeof(CAPOBJMOTIONWORK));
+    work->modelId = modelId;
+    work->time = time;
+    work->motNo = motNo;
+    work->nextMotNo = nextMotNo;
+    work->attr = attr;
+    work->_unk18 = unk18;
+    work->shiftF = shiftF;
+    work->nextAttr = nextAttr;
+    if (shiftF) {
+        mbObjMotionShiftSet((s16)modelId, motNo, 0.0f, 8.0f, attr);
+    } else {
+        mbObjMotionSet((s16)modelId, motNo, attr);
+    }
+}
+
+void mbev_CapObjMotionOMExec(OMOBJ *obj)
+{
+    CAPOBJMOTIONWORK *work = obj->data;
+    BOOL done = FALSE;
+
+    if (mbExitCheck()) {
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (work->attr & HU3D_MOTATTR_LOOP) {
+        if (mbObjMotionShiftIDGet((s16)work->modelId) == -1) {
+            float maxTime = mbObjMotionMaxTimeGet((s16)work->modelId);
+
+            if (mbObjMotionTimeGet((s16)work->modelId) + 1.0f >= maxTime) {
+                done = TRUE;
+            }
+        }
+    } else if (mbObjMotionShiftIDGet((s16)work->modelId) == -1) {
+        if (mbObjMotionEndCheck((s16)work->modelId)) {
+            done = TRUE;
+        }
+    }
+    if (done && --work->time <= 0) {
+        if (work->nextAttr) {
+            mbObjMotionShiftSet((s16)work->modelId, work->nextMotNo, 0.0f,
+                8.0f, work->nextAttr);
+        } else {
+            mbObjMotionSet(
+                (s16)work->modelId, work->nextMotNo, work->nextAttr);
+        }
+        omDelObjEx(mbObjMan, obj);
+    }
+}
+
+void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo,
+    int nextMotNo, u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr)
+{
+    OMOBJ *obj;
+    CAPOBJMOTIONWORK *work;
+
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        mbev_CapPlayerMotionOMExec);
+    work = obj->data = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
+    memset(work, 0, sizeof(CAPOBJMOTIONWORK));
+    work->_unk00 = playerNo;
+    work->time = time;
+    work->motNo = motNo;
+    work->nextMotNo = nextMotNo;
+    work->attr = attr;
+    work->_unk18 = unk18;
+    work->shiftF = shiftF;
+    work->nextAttr = nextAttr;
+    if (shiftF) {
+        mbPlayerMotionShiftSet(playerNo, motNo, 0.0f, 8.0f, attr);
+    } else {
+        mbPlayerMotionSet(playerNo, motNo, attr);
+    }
+}
+
+void mbev_CapPlayerMotionOMExec(OMOBJ *obj)
+{
+    CAPOBJMOTIONWORK *work = obj->data;
+    BOOL done = FALSE;
+
+    if (mbExitCheck()) {
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (work->attr & HU3D_MOTATTR_LOOP) {
+        if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->_unk00)) == -1) {
+            float maxTime = mbPlayerMotionMaxTimeGet(work->_unk00);
+
+            if (mbPlayerMotionTimeGet(work->_unk00) + 1.0f >= maxTime) {
+                done = TRUE;
+            }
+        }
+    } else if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->_unk00)) == -1) {
+        if (mbPlayerMotionEndCheck(work->_unk00)) {
+            done = TRUE;
+        }
+    }
+    if (done && --work->time <= 0) {
+        if (work->nextAttr) {
+            mbPlayerMotionShiftSet(work->_unk00, work->nextMotNo, 0.0f,
+                8.0f, work->nextAttr);
+        } else {
+            mbPlayerMotionSet(work->_unk00, work->nextMotNo, work->nextAttr);
+        }
+        omDelObjEx(mbObjMan, obj);
+    }
+}
+
 
 
 
@@ -2774,6 +3009,70 @@ void mbev_CapPlayerIdleWait(void)
     }
 }
 
+void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type)
+{
+    int i;
+
+    for (i = 0; i < playerNum; i++) {
+        mbPlayerMotionSpeedSet(playerNo[i], 1.0f);
+    }
+    i = 0;
+    while (TRUE) {
+        HuPrcVSleep();
+        for (i = 0; i < playerNum; i++) {
+            if (!mbPlayerMotionEndCheck(playerNo[i])) {
+                break;
+            }
+        }
+        if (i >= playerNum) {
+            break;
+        }
+    }
+    for (i = 0; i < playerNum; i++) {
+        switch (type) {
+            case 0:
+                mbPlayerMotionShiftSet(
+                    playerNo[i], 6, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                break;
+
+            case 1:
+                mbPlayerMotionShiftSet(
+                    playerNo[i], 6, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                break;
+        }
+        CharMotionVoiceOnSet(GwPlayer[playerNo[i]].charNo, 46, TRUE);
+    }
+}
+
+void mbev_CapPlayerShockSet(int playerNo)
+{
+    int masuId;
+    int i;
+
+    masuId = GwPlayer[playerNo].masuId;
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        OMOBJ *obj;
+        CAPOBJMOTIONWORK *work;
+
+        if (i == playerNo || masuId != GwPlayer[i].masuId) {
+            continue;
+        }
+        obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapPlayerMotionOMExec);
+        work = obj->data = HuMemDirectMallocNum(
+            HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
+        memset(work, 0, sizeof(CAPOBJMOTIONWORK));
+        work->_unk00 = i;
+        work->time = 0;
+        work->motNo = 9;
+        work->nextMotNo = 1;
+        work->attr = 0;
+        work->_unk18 = HU3D_MOTATTR_LOOP;
+        work->shiftF = TRUE;
+        work->nextAttr = TRUE;
+        mbPlayerMotionShiftSet(i, 9, 0.0f, 8.0f, 0);
+    }
+}
 
 void mbev_CapVibrate(int type)
 {
@@ -2927,7 +3226,7 @@ void mbev_CapEffExplodeOMExec(OMOBJ *obj)
         }
         particleWorkP->fadeTime += particleWorkP->fadeStep;
         particleWorkP->color.a = 255.0f
-            * (1.0f - (particleWorkP->fadeTime * 0.0625f));
+            * (1.0f - (0.0625f * particleWorkP->fadeTime));
         if (particleWorkP->fadeTime >= 16.0f) {
             particleWorkP->pat = 0;
             particleWorkP->mode = 0;
@@ -4426,6 +4725,17 @@ void mbev_CapBezierNormGetV(float t, float *a, float *b, float *c, float *out)
     }
 }
 
+BOOL mbev_CapPointCullCheck(HuVecF *pos)
+{
+    HuVecF posNorm;
+
+    mbPos3DtoNorm(pos, 1, &posNorm);
+    if (fabs(posNorm.x) <= 1.0 && fabs(posNorm.y) <= 1.0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
 
 
 int mbev_CapPlayerComSelGet(int playerNo, int selection)
@@ -4477,6 +4787,38 @@ int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF)
         playerNum++;
     }
     return mbev_CapPlayerComSelRandomGet(playerNo, selection, playerList, playerNum);
+}
+
+int mbev_CapPlayerComSelKettouGet(
+    int playerNo, int selection, int *playerList, int playerNum)
+{
+    int selectedPlayer;
+    int selectedIndex;
+    int i;
+
+    selectedPlayer = mbev_CapPlayerComSelRandomGet(
+        playerNo, selection, playerList, playerNum);
+    for (i = 0; i < playerNum; i++) {
+        if (selectedPlayer == playerList[i]) {
+            selectedIndex = i;
+            break;
+        }
+    }
+    for (i = 0; i < selectedIndex; i++) {
+        if (playerList[i] < 0) {
+            selectedIndex--;
+        }
+    }
+    return selectedIndex;
+}
+
+BOOL mbev_CapMasuMoveCheck(int masuId)
+{
+    if ((mbMasuAttrGet(masuId) & mbBranchAttrGet())
+        || (mbMasuMAttrGet(masuId) & mbBranchMAttrGet())) {
+        return TRUE;
+    }
+    return FALSE;
 }
 
 
@@ -4793,8 +5135,8 @@ OMOBJ *mbev_CapEffRingCreate(void)
     CAPEFFRINGHITPARTWORK *particleP;
     HU3D_MODEL *modelP;
     int modelId;
-    ANIMDATA *animP;
     void *workData;
+    ANIMDATA *animP;
     int j;
     int i;
 
@@ -5692,6 +6034,55 @@ void mbev_CapEffColorSet(GXColor *color, int colorNo)
         colorNo *= -1;
     }
     *color = ev_CapsuleRandomColorTbl[colorNo % 7];
+}
+
+void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF)
+{
+    static HuVecF viewRot = { -33.0f, 0.0f, 0.0f };
+    int cameraView;
+
+    if (GwSystem.playerMode >= 6) {
+        return;
+    }
+    if (viewNo != -1) {
+        cameraView = viewNo;
+    } else {
+        cameraView = mbCameraPlayerViewNoGet();
+    }
+    mbCameraMoveOnSet(TRUE);
+    switch (cameraView) {
+        case 0:
+            if (!stopF) {
+                mbCameraPlayerViewSet(playerNo, cameraView);
+            } else {
+                mbCameraMovePlayer((s16)playerNo, &viewRot,
+                    &ev_CapsuleViewOfs, 1800.0f, -1.0f, 21);
+            }
+            break;
+
+        case 1:
+            if (!stopF) {
+                mbCameraPlayerViewSet(playerNo, cameraView);
+            } else {
+                mbCameraMovePlayer((s16)playerNo, &viewRot,
+                    &ev_CapsuleViewOfs, 2100.0f, -1.0f, 21);
+            }
+            break;
+
+        case 2:
+            if (!stopF) {
+                mbCameraPlayerViewSet(playerNo, cameraView);
+            } else {
+                mbCameraMovePlayer((s16)playerNo, &viewRot,
+                    &ev_CapsuleViewOfs, 3200.0f, -1.0f, 21);
+            }
+            break;
+
+        case 3:
+            mbCameraMultiFocusSet(0, 0, -1.0, 21);
+            break;
+    }
+    mbCameraMoveWait();
 }
 
 static void ev_CapComChoiceHook(void)

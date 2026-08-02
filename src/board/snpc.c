@@ -493,7 +493,7 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
     }
     work->magic = MBOBJ_FADE_WORK_MAGIC;
     work->pos = *pos;
-    work->alpha = 1.0f;
+    work->alpha = lbl_802C32EC;
     work->color.r = work->color.g = work->color.b = 255;
     Hu3DModelMatHookSet(hu3DModelId, FadeMatHook);
     hsf = model->hsf;

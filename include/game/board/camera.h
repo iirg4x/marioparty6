@@ -141,6 +141,6 @@ void mbCameraPlayerViewGet(int viewNo, MBVIEW *viewP);
 int mbCameraPlayerViewNoGet(void);
 float mbCameraPlayerViewZoomGet(int viewNo);
 float mbCameraPlayerViewRotXGet(int viewNo);
-void mbCameraMultiFocusSet(void);
+void mbCameraMultiFocusSet(int arg0, int arg1, double arg2, int arg3);
 
 #endif

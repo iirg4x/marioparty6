@@ -167,15 +167,15 @@ static int diceDicePatapataResultTbl[] = {
     1, 3, 5, 10, 15, 20, 25, -1
 };
 
-static s8 diceMaxTbl[] ATTRIBUTE_ALIGN(8) = {
+static s8 diceMaxTbl[24] ATTRIBUTE_ALIGN(8) = {
     1, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3
 };
 
-static s8 diceValueMaxTbl[] ATTRIBUTE_ALIGN(8) = {
+static s8 diceValueMaxTbl[24] ATTRIBUTE_ALIGN(8) = {
     10, 10, 10, 5, 10, 1, 1, 7, 0, 0, 1, 5, 5, 6, 10, 10, 10, 10, 10, 10, 10
 };
 
-static s8 diceSingleValueMaxTbl[] ATTRIBUTE_ALIGN(8) = {
+static s8 diceSingleValueMaxTbl[24] ATTRIBUTE_ALIGN(8) = {
     6, 6, 6, 3, 10, 1, 1, 7, 0, 0, 1, 5, 5, 6, 6, 10, 10, 10, 10, 10, 10
 };
 
@@ -214,10 +214,6 @@ static GXColor diceInDotEffColorTbl[8] = {
     { 220, 220, 64, 0 }, { 64, 64, 220, 0 },
     { 220, 64, 220, 0 }, { 64, 220, 220, 0 },
     { 220, 120, 64, 0 }, { 64, 120, 220, 0 }
-};
-
-static u8 diceInEffAnimTbl[8] = {
-    0, 1, 2, 2, 3, 3, 3, 3
 };
 
 static char diceMatchCoinStr[8];
@@ -372,10 +368,12 @@ int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color)
 {
     s8 valueTblNew[DICE_VALUENUM_MAX];
+    int valueMax;
     int i;
 
     if (valueTbl == NULL) {
-        for (i = 0; i < mbDiceValueMaxGet(diceType); i++) {
+        valueMax = mbDiceValueMaxGet(diceType);
+        for (i = 0; i < valueMax; i++) {
             valueTblNew[i] = i;
         }
         valueTblNew[i] = -1;
@@ -412,9 +410,8 @@ int mbDiceExec(int playerNo, int diceType, s8 *valueTbl, int tutorialVal,
 
 int mbDicePlayerExec(int playerNo, int diceType)
 {
-    mbDiceProcExec(playerNo, diceType, NULL, NULL, TRUE, TRUE, NULL,
+    return mbDiceProcExec(playerNo, diceType, NULL, NULL, TRUE, TRUE, NULL,
         DICE_COLOR_GREEN);
-    return mbDiceResultGet(playerNo);
 }
 
 int mbDiceChanceTradeExec(int playerNo)
@@ -1394,7 +1391,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
     }
     colorTime *= 360;
     for (i = 0; i < 2; i++) {
-        static GXColor biriQColor = { 255, 255, 255, 255 };
+        GXColor biriQColor = { 255, 255, 255, 255 };
 
         if (obj->mdlId[i] >= 0) {
             float alpha;
@@ -1666,9 +1663,13 @@ static void ev_DiceZorome(DICE_WORK *work)
     mbMusBoardPlay();
 }
 
+static u8 diceInEffAnimTbl[8] = {
+    0, 1, 2, 2, 3, 3, 3, 3
+};
+
 static void ev_DiceZoromeCoin(int playerNo, int coin)
 {
-    int coinObjId[64] = {};
+    int coinObjId[64];
     float velocity[64];
     HuVecF playerPos;
     HuVecF pos;
@@ -1676,6 +1677,9 @@ static void ev_DiceZoromeCoin(int playerNo, int coin)
     int coinNum = coin;
     int i;
 
+    for (i = 0; i < 64; i++) {
+        coinObjId[i] = 0;
+    }
     mbPlayerPosGet(playerNo, &playerPos);
     while (coinNum != 0 || activeNum != 0) {
         if (coinNum != 0) {

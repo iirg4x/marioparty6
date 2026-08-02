@@ -2211,7 +2211,7 @@
       "category": "control_flow_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, owner fields, or accessor-backed pointers can shorten or merge value lifetimes; source-authentic captures and reloads at distinct use boundaries, including staged raw-to-typed pointer ownership, can restore the target's saved-register and signed-comparison shape.",
+      "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, owner fields, or accessor-backed values can shorten or merge value lifetimes; source-authentic captures and reloads at distinct use boundaries, including staged raw-to-typed pointer ownership and invariant loop-bound capture, can restore the target's saved-register and signed-comparison shape.",
       "conditions": "Use only for a repeated owner-local mismatch family involving global, bitfield, owner-field, accessor, or staged-pointer lifetimes with saved-register or signed-comparison evidence; a convenient temporary by itself is not evidence.",
       "source_condition": {
         "change": "Capture a global, bitfield, accessor result, or raw-to-typed pointer value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
@@ -2240,7 +2240,8 @@
           "function-scope model IDs plus block-scoped raw and typed hook-data stages restore chained particle lookup lifetimes",
           "distinct state-read and state-write captures preserve separate register lifetimes around one transition",
           "an authenticated inline accessor boundary can preserve a narrow global lifetime that a direct read collapses",
-          "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error"
+          "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error",
+          "capturing an invariant accessor result immediately before its loop can restore both the defining function and callers that inline it"
         ]
       },
       "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
@@ -2272,7 +2273,10 @@
           "mbMain",
           "mbNextTime",
           "mbObjectSetup",
-          "GWMgNightFGet"
+          "GWMgNightFGet",
+          "mbDiceProcExec",
+          "mbDiceExec",
+          "mbDicePlayerExec"
         ],
         "modules": [
           "main.dol",
@@ -2300,7 +2304,8 @@
         "miraclebookdll fn_1_7998 amplitude capture across two model consumers",
         "mbMain distinct party-state reads",
         "mbNextTime turn-limit and turn-count captures",
-        "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle"
+        "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle",
+        "mbDiceProcExec captures mbDiceValueMaxGet once before initialization; this closes its 360-byte body and the 680-byte mbDiceExec and 308-byte mbDicePlayerExec inline consumers"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -2312,7 +2317,8 @@
       "evidence": [
         "docs/native_matching_board_player_value_lifetimes.md",
         "src/board/board.c",
-        "src/board/player.c"
+        "src/board/player.c",
+        "src/board/dice.c"
       ]
     },
     {
@@ -3404,7 +3410,7 @@
       "category": "aggregate_copy_negative_evidence",
       "compiler": "GC/2.6",
       "confidence": "high",
-      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A powerpc-rs ISA-driven census of the current 508-object source corpus found no board or game object containing a non-stack unquantized displacement psq_l or psq_st instruction; all 908 such instructions were confined to 12 Dolphin or MusyX runtime objects. Retained-history archaeology found the matching displacement sequence only inside an MP6_NATIVE_PORT inline-assembly scaffold, not in an organic C helper or historical header. An authenticated boundary audit also excludes SDK PSMTXCopy, which is an explicit-assembly 48-byte matrix routine, and MWCC runtime __copy, which is a called helper for odd-aligned or odd-sized C++ default-copy arrays; neither can explain the inline 12-byte C transfers. Retail-object m2c passes for mbev_Last5, PauseGuideMain, mbObjFadeCreate, and mbObjFadeTexRotSet preserve each scalar z-field store but omit the paired x/y transfer entirely; m2c therefore confirms surrounding field/dataflow but cannot recover or authenticate the original 12-byte source spelling. A cross-title Hudson control narrows the remaining search: Mario Party 4 configures its last5.c as Matching under the same GC/2.6 game flags and identical Vec definition while using the natural aggregate assignment `sp3C = sp48`. This authenticates aggregate assignment as organic source, but does not prove that an isolated assignment must select paired instructions. When the target reuses one source/destination stack-slot pair across several copies while the candidate keeps distinct vectors alive, investigate source-level lifetime and slot reuse before repeating copy-spelling probes. For mbev_Last5 this lifetime consolidation is already exhausted: commit 03741f481d9040666ba02661728a17b666475e27 reuses shared `pos` and `target` locals for all three transfers, improves the strict result, but still emits integer lwz/stw copies instead of the target paired-single displacement sequence. An eight-arm pinned-GC/2.6 matrix additionally rules out the later-RB3 typed-pair clue: direct typed-pair dereference, float-pointer casts and offsets, immediate member offsets, pair-plus-scalar forms, local typed pointers, member pairs, and indexed pairs all select indexed psq_lx/psq_stx; the member-offset arm also materializes its offset in a GPR.",
+      "summary": "Repeated GC/2.6 board evidence shows that a target HuVecF copy written with displacement-form paired-single loads and stores is not reproduced by aggregate assignment, HuCopyVecF, ordinary memcpy, the documented inline __memcpy compiler intrinsic, a block-local pointer-mediated aggregate assignment, or explicit assignment through the documented __vec2x32float__ type: aggregate and __memcpy forms emit integer word copies, HuCopyVecF emits scalar float copies, ordinary memcpy emits a call, and the paired type emits indexed psq_lx/psq_stx forms. A powerpc-rs ISA-driven census of the current 508-object source corpus found no board or game object containing a non-stack unquantized displacement psq_l or psq_st instruction; all 908 such instructions were confined to 12 Dolphin or MusyX runtime objects. Retained-history archaeology found the matching displacement sequence only inside an MP6_NATIVE_PORT inline-assembly scaffold, not in an organic C helper or historical header. An authenticated boundary audit also excludes SDK PSMTXCopy, which is an explicit-assembly 48-byte matrix routine, and MWCC runtime __copy, which is a called helper for odd-aligned or odd-sized C++ default-copy arrays; neither can explain the inline 12-byte C transfers. Retail-object m2c passes for mbev_Last5, PauseGuideMain, mbObjFadeCreate, and mbObjFadeTexRotSet preserve each scalar z-field store but omit the paired x/y transfer entirely; m2c therefore confirms surrounding field/dataflow but cannot recover or authenticate the original 12-byte source spelling. A cross-title Hudson control narrows the remaining search: Mario Party 4 configures its last5.c as Matching under the same GC/2.6 game flags and identical Vec definition while using the natural aggregate assignment `sp3C = sp48`. This authenticates aggregate assignment as organic source, but does not prove that an isolated assignment must select paired instructions. When the target reuses one source/destination stack-slot pair across several copies while the candidate keeps distinct vectors alive, investigate source-level lifetime and slot reuse before repeating copy-spelling probes. For mbev_Last5 this lifetime consolidation is already exhausted: commit 03741f481d9040666ba02661728a17b666475e27 reuses shared `pos` and `target` locals for all three transfers, improves the strict result, but still emits integer lwz/stw copies instead of the target paired-single displacement sequence. An eight-arm pinned-GC/2.6 matrix additionally rules out the later-RB3 typed-pair clue: direct typed-pair dereference, float-pointer casts and offsets, immediate member offsets, pair-plus-scalar forms, local typed pointers, member pairs, and indexed pairs all select indexed psq_lx/psq_stx; the member-offset arm also materializes its offset in a GPR. A final Last5 alias-label control shows that spelling the byte-identical vector type as Vec instead of HuVecF is object-byte-neutral, so typedef naming cannot select the missing displacement form.",
       "conditions": "Use only after target instructions prove a 12-byte HuVecF-shaped copy implemented with psq_l/psq_st plus the remaining scalar word, and after bounded controls for the applicable ordinary spellings, documented __memcpy intrinsic, and documented __vec2x32float__ type have been measured under the pinned owner profile.",
       "source_condition": {
         "change": "Spell the same authenticated 12-byte vector transfer as direct or block-local pointer-mediated aggregate assignment, HuCopyVecF, ordinary memcpy, documented inline __memcpy, or one staged __vec2x32float__ pair plus the remaining scalar in an attempt to reproduce the target instructions.",
@@ -3443,6 +3449,7 @@
           "PSMTXCopy is a 48-byte explicit-assembly matrix boundary rather than an inline 12-byte vector-copy lowering",
           "MWCC runtime __copy is emitted as a call for odd-aligned or odd-sized C++ default-copy arrays, while the affected C functions contain inline psq_l/lfs/psq_st/stfs islands with no helper call",
           "all eight pinned-GC/2.6 typed-pair pointer, member, offset, and pair-plus-scalar controls select psq_lx/psq_stx rather than displacement psq_l/psq_st",
+          "switching Last5 locals between the byte-identical HuVecF and Vec typedef names leaves the generated object bytes unchanged",
           "m2c represents the scalar tail store while losing the paired x/y transfer at the same retail instruction island"
         ]
       },
@@ -3502,6 +3509,7 @@
         "powerpc-rs ISA census at main eb2a42d5031ea9778e04ded6eee7f24d39d19d79: 508 current source objects and 2,140,052 text bytes contain 662 non-stack unquantized displacement psq_l and 246 psq_st instructions, all in 12 Dolphin or MusyX runtime objects and none in src/board or src/game; census SHA-256 0f2c9abfac608e6fb23a5f6fd424e47c0edc8eae48e87d274fb7a7e3a470f749",
         "src/dolphin/mtx/vec.c C_VECHalfAngle uses the legal aggregate spelling `*half = ab`; the exact source object emits three lwz/stw transfers for that assignment rather than paired-single displacement operations",
         "Mario Party 4, 5, 6, and 7 sibling headers consistently define HuVecF as Vec and Vec as three f32 fields, weakening an alternate-wrapper typedef hypothesis without proving the unavailable original MP6 header provenance",
+        "main:board/last5 emits byte-identical output when its shared vector locals use Vec instead of the HuVecF alias, closing typedef-label spelling as a compiler-selection hypothesis",
         "retained-history search at commit 750233b07d108cd63e07d4bf7d0da5e4a27f6e83 finds the exact displacement-form sequence only in MP6_NATIVE_PORT inline assembly in src/board/snpc.c; no organic C helper or recovered header in that history authenticates the spelling",
         "DTK 0.9.2 confirms inline displacement-form psq_l/lfs/psq_st/stfs islands with no helper call in PauseGuideMain, mbev_Last5, mbObjFadeCreate, and mbObjFadeTexRotSet under compiler 2.4.7.1; SDK PSMTXCopy and MWCC runtime __copy therefore fail the observed boundary before any source probe",
         "Mario Party 4 commit 147b165a83187ac9e6cfdc3bf52f2e73437b1ffd configures game/board/last5.c as MatchingFor USA and PAL under GC/2.6 `-O0,p -char unsigned -fp_contract off`; its matching source uses the direct aggregate assignment `sp3C = sp48`, and its Vec definition is byte-identical to the Mario Party 6 sibling header",
