@@ -4,26 +4,21 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 1, 2026**
+Last published full-project snapshot: **August 2, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.37% | 32.76% | 327 / 923 |
-| Main DOL | 47.76% | 74.60% | 295 / 396 |
+| Entire project | 13.47% | 32.83% | 328 / 923 |
+| Main DOL | 48.28% | 74.78% | 296 / 396 |
 | REL modules | 6.08% | 6.25% | 32 / 527 |
 
-Current board recovery: **16 / 40 source owners matching** and **66 / 72
-Towering Treetop stub seams strict-exact and promoted**.
-Recovered `src/board/last5.c` is zero-hex and remains a partial **4 / 10**
-strict-exact owner. Recovered `src/board/player.c` is zero-hex and guard-clean;
-it remains a partial **158 / 165** strict-exact owner with **41,664** exact text
-bytes and **1,967** exact-function relocations, so neither board count changes.
-Recovered `src/board/shopevent.c` is zero-hex and remains a partial **12 / 13**
-strict-exact owner. The newly promoted `ev_Shop` contributes **5,876** exact
-text bytes and **384** exact non-`R_PPC_NONE` text relocations; only
-`ev_ShopSelect` remains, so the board-owner count stays **16 / 40**.
+Current board recovery: **17 / 40 source owners matching** and **66 / 72
+Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
+is matching at **55 / 55 functions**. The principal partial owners remain
+`src/board/last5.c` at **4 / 10**, `src/board/player.c` at **158 / 165**, and
+`src/board/shopevent.c` at **12 / 13** strict-exact functions.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their

@@ -33,7 +33,7 @@ void mbTutorialSprDispOff(s16 sprId);
 void mbTutorialSprGrpSet(s16 grpId);
 void mbTutorialSprGrpKill(s16 grpId);
 MBMODELID mbTutorialModelCreate(int dataNum, BOOL linkF);
-void mbTutorialModelKill(MBMODELID modelId);
+void mbTutorialModelKill(int modelId);
 OMOBJ *mbTutorialGuideCreate(s8 *motTbl, BOOL screenF);
 void mbTutorialGuideClose(OMOBJ *obj);
 OMOBJ *mbTutorialGuideGet(void);
