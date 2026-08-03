@@ -806,10 +806,10 @@
       "category": "type_contracts",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Independent staffdll, mdbankdll, and mdpresultdll recoveries replaced misleading offset-only, first-word, or incomplete-prefix interpretations with natural aggregates after configured sizes, complete element strides, public field types, callbacks, and state consumers were triangulated; exact text and relocations were preserved across both compiler profiles.",
-      "conditions": "Apply when an untyped target address or offset can be reproduced by an opaque overlay, pointer slot, or multiple plausible public aggregate fields.",
+      "summary": "Independent staffdll, mdbankdll, and mdpresultdll recoveries replaced misleading offset-only, first-word, or incomplete-prefix interpretations with natural aggregates after configured sizes, complete element strides, public field types, callbacks, and state consumers were triangulated; w01 cleanup additionally proved that ordinary ABI alignment must supply narrow-to-wide member gaps instead of manually named padding. Exact text and relocations were preserved across both compiler profiles.",
+      "conditions": "Apply when an untyped target address or offset can be reproduced by an opaque overlay, pointer slot, multiple plausible public aggregate fields, or explicit byte padding inserted only to force an ordinary ABI-aligned member offset.",
       "source_condition": {
-        "change": "Choose a natural aggregate owner and typed field chain instead of retaining an offset-only overlay or first-word pointer interpretation.",
+        "change": "Choose a natural aggregate owner and typed field chain, relying on ordinary ABI alignment before retaining an offset-only overlay, first-word pointer interpretation, or manual padding member.",
         "requires": [
           "configured symbol extent or independently bounded allocation size",
           "typed offsets and strides from public or authenticated owner contracts",
@@ -838,7 +838,8 @@
         "trace public consumer types through the complete pointer and field chain",
         "divide total extent by authenticated repeated-consumer count to test natural element stride",
         "verify callbacks, initialization, mutation, and teardown against the same owner",
-        "remove temporary overlays once a public natural contract reproduces identical bytes"
+        "remove temporary overlays once a public natural contract reproduces identical bytes",
+        "remove a manual padding member only after the adjacent member types, declaration order, target offsets, and ordinary compiler alignment reproduce the exact layout"
       ],
       "applicability": {
         "compiler_wide": false,
@@ -874,12 +875,14 @@
         "main:game/mgdata replaced a byte-oriented 83-record overlay with natural MGDATA dimensions after archive catalogs, access widths, and five exact consumer owners agreed.",
         "REL:mdpartydll:mdparty recovered 17 logical sprite-group counts, 58 typed descriptors, 67 HuVecF positions, and an 11-entry signed selection graph from target extents and independent consumers without inventing padding fields.",
         "Waves 31-37 recover GSSDK state, handle, serialized-data, table, and signal-processing layouts only where MP6 allocation sizes, access widths, callbacks, relocations, or public consumers independently bound them.",
-        "wave 72 retained two adjacent 16-entry effect arrays because MP6 deliberately indexes 32 entries from the first; consumer behavior proved adjacency without inventing a combined declaration."
+        "wave 72 retained two adjacent 16-entry effect arrays because MP6 deliberately indexes 32 entries from the first; consumer behavior proved adjacency without inventing a combined declaration.",
+        "w01Dll world01 cleanup commit 0fcb3d351085aae7563e157892d9d3849152f3f8 removed ten explicit padding members from ordinary ABI-aligned aggregates; the adjacent natural member types and declaration order preserved the exact owner layout."
       ],
       "counterexamples": [
         "Matching one field offset does not authenticate the semantic field or containing type.",
         "Repeated high/low address materialization of the first word does not prove pointer-to-pointer ownership.",
-        "Do not keep an opaque overlay after a public consumer chain reproduces the layout naturally."
+        "Do not keep an opaque overlay after a public consumer chain reproduces the layout naturally.",
+        "Do not remove an explicit byte field merely because a compiler could create a gap: packed, serialized, file-format, hardware, network, or external ABI layouts require independent evidence for every retained or removed byte."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -893,7 +896,8 @@
         "docs/native_matching_wave95.md",
         "docs/native_matching_wave98.md",
         "src/REL/mdpresultdll/mdpresult.c",
-        "config/recovery/owners/REL_mdpresultdll_mdpresult.json"
+        "config/recovery/owners/REL_mdpresultdll_mdpresult.json",
+        "src/REL/w01Dll/world01.c"
       ]
     },
     {
@@ -1959,7 +1963,8 @@
         "Ordinary-literal extern-inline functions may deduplicate to an existing tail without seeding the target prefix.",
         "Do not replace the demonstrated fn_1_14D34/fn_1_1EF8 `(-6*t)` conceptual term with `(+6*t)` because algebraic normalization can erase an exact source-form anomaly.",
         "Matching curve behavior or a behavior-derived label does not authenticate original function spellings, type names, or global names.",
-        "Instruction identity across w01Dll and s01Dll does not authorize collapsing their separate REL-local types, globals, csects, or owners into one deduplicated definition."
+        "Instruction identity across w01Dll and s01Dll does not authorize collapsing their separate REL-local types, globals, csects, or owners into one deduplicated definition.",
+        "The w01 cleanup probe at 3f13ef4bcc7971a9005b79b746131cc99d99777a rejected a typed two-callback closure: splitting the local unprototyped curve callback into quadratic and four-point typedefs, removing synthetic fourth arguments, and replacing casted callback expressions changed the target output. Do not generalize that typing change; retain the local source shape unless a new owner-specific exact probe proves it."
       ],
       "related_exceptions": [],
       "evidence": [
