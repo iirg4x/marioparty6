@@ -1182,11 +1182,11 @@ void mbev_CapTumujikunTrap(void *workP)
     int focusObj;
     int motionId;
     int masuNum;
+    int branchAttr;
     int randomStart;
     int candidate;
     int masuId;
     int frame;
-    int branchAttr;
     float weight;
 
     masuId = GwPlayer[work->playerNo].masuId;
@@ -1275,8 +1275,7 @@ void mbev_CapTumujikunTrap(void *workP)
         playerPos.x = masuPos.x + (weight * (targetPos.x - masuPos.x));
         playerPos.y = masuPos.y + (weight * (targetPos.y - masuPos.y));
         playerPos.z = masuPos.z + (weight * (targetPos.z - masuPos.z));
-        playerRot.y += 10.0f * weight;
-        if (playerRot.y > 360.0f) {
+        if ((playerRot.y += 10.0f * weight) > 360.0f) {
             playerRot.y -= 360.0f;
         }
         mbPlayerPosSetV(work->playerNo, &playerPos);
@@ -1287,12 +1286,12 @@ void mbev_CapTumujikunTrap(void *workP)
     for (frame = 0; frame < 30.0f; frame++) {
         weight = (float)frame / 30.0f;
         mbMasuPosGet(masuId, &masuPos);
-        playerPos = masuPos;
-        playerPos.y += 200.0f;
+        targetPos = masuPos;
+        targetPos.y += 200.0f;
+        playerPos = targetPos;
         playerPos.y += 0.2f * (100.0
             * sin((M_PI * (360.0f * weight)) / 180.0f));
-        playerRot.y += 10.0f;
-        if (playerRot.y > 360.0f) {
+        if ((playerRot.y += 10.0f) > 360.0f) {
             playerRot.y -= 360.0f;
         }
         mbPlayerPosSetV(work->playerNo, &playerPos);
@@ -1311,8 +1310,7 @@ void mbev_CapTumujikunTrap(void *workP)
             + (weight * (initialPos.y - targetPos.y));
         playerPos.z = targetPos.z
             + (weight * (initialPos.z - targetPos.z));
-        playerRot.y += 10.0f + (10.0f * weight);
-        if (playerRot.y > 360.0f) {
+        if ((playerRot.y += 10.0f + (10.0f * weight)) > 360.0f) {
             playerRot.y -= 360.0f;
         }
         mbPlayerPosSetV(work->playerNo, &playerPos);
@@ -1411,8 +1409,7 @@ void mbev_CapTumujikunTrap(void *workP)
             + (weight * (masuPos.y - targetPos.y));
         playerPos.z = targetPos.z
             + (weight * (masuPos.z - targetPos.z));
-        playerRot.y += 30.0f;
-        if (playerRot.y > 360.0f) {
+        if ((playerRot.y += 30.0f) > 360.0f) {
             playerRot.y -= 360.0f;
         }
         mbPlayerPosSetV(work->playerNo, &playerPos);
@@ -1802,7 +1799,7 @@ void mbev_CapBomheiTrap(void *workP)
     HuVecF endPos;
     HuVecF playerRot;
     HuVecF playerPos;
-    int motionId[5];
+    int motionId[16];
     int playerNo;
     int masuId;
     int frame;
