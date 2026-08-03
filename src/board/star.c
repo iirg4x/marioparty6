@@ -354,10 +354,11 @@ static int StarObjCreate(HuVecF *pos)
     int i;
 
     for (i = 0; i < STAR_OBJ_MAX; i++) {
-        if (starOMObj[i] == NULL) {
+        if (!starOMObj[i]) {
             OMOBJ *obj;
             STARWORK *work;
-            HU3D_MODELID modelId;
+            int modelId;
+            HU3D_MODELID effectModelId;
             HU3D_MODEL *modelP;
             HSF_DATA *hsf;
             HSF_MATERIAL *material;
@@ -389,12 +390,13 @@ static int StarObjCreate(HuVecF *pos)
             work->objNo = i;
             work->mode = STAR_MODE_IDLE;
             work->effectModelId = StarObjEffCreate(starEffAnim1);
-            particleP = Hu3DData[work->effectModelId].hookData;
+            effectModelId = work->effectModelId;
+            particleP = Hu3DData[effectModelId].hookData;
             particleP->hookData = work;
             work->modelDispF = TRUE;
-            work->effectTime = 0;
-            work->autoDispF = TRUE;
+            work->time = 0;
             work->effectDispF = TRUE;
+            work->autoDispF = TRUE;
             work->offset.x = work->offset.y = work->offset.z = 0.0f;
             work->rot.x = work->rot.y = work->rot.z = 0.0f;
             work->scale.x = work->scale.y = work->scale.z = 1.0f;
@@ -2003,10 +2005,11 @@ static int ZtarObjCreate(HuVecF *pos)
     int i;
 
     for (i = 0; i < STAR_OBJ_MAX; i++) {
-        if (ztarOMObj[i] == NULL) {
+        if (!ztarOMObj[i]) {
             OMOBJ *obj;
             STARWORK *work;
-            HU3D_MODELID modelId;
+            int modelId;
+            HU3D_MODELID effectModelId;
             HU3D_MODEL *modelP;
             HSF_DATA *hsf;
             HSF_MATERIAL *material;
@@ -2038,7 +2041,8 @@ static int ZtarObjCreate(HuVecF *pos)
             work->objNo = i;
             work->mode = STAR_MODE_IDLE;
             work->effectModelId = StarObjEffCreate(starEffAnim1);
-            particleP = Hu3DData[work->effectModelId].hookData;
+            effectModelId = work->effectModelId;
+            particleP = Hu3DData[effectModelId].hookData;
             particleP->hookData = work;
             work->modelDispF = TRUE;
             work->time = 0;
