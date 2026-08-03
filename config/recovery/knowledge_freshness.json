@@ -921,7 +921,8 @@
         "src/msm/msmsys.c",
         "src/REL/fileseldll/filesel.c",
         "src/REL/mdseldll/mdsel.c",
-        "src/REL/s01Dll/s01.c"
+        "src/REL/s01Dll/s01.c",
+        "src/board/capmove.c"
       ],
       "supersedes": [],
       "superseded_by": null
