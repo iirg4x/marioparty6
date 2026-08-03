@@ -58,12 +58,27 @@ typedef struct CapWork {
     OMOBJ *glowObj;
     OMOBJ *ringObj;
     OMOBJ *coinObj;
-    OMOBJ *starManObj;
+    OMOBJ *coinManObj;
     OMOBJ *_unkBEC;
     OMOBJ *capLoseObj;
 } CAPWORK;
 
+typedef struct CapTogezoOMWork {
+    int modelId;
+    int state;
+    int mode;
+    int time;
+    int timeMax;
+    HuVecF pos;
+    HuVecF velocity;
+    HuVecF rot;
+    HuVecF targetPos;
+} CAPTOGEZOOMWORK;
+
+#define CAPTHROW_TOGEZO_GRAVITY 1.633333357671897
+
 enum {
+    CAPTHROW_DATA_TOGEZO = 0,
     CAPTHROW_DATA_PAKKUN = 4,
     CAPTHROW_DATA_PAKKUN_MOTION_A = 5,
     CAPTHROW_DATA_PAKKUN_MOTION_B = 6,
@@ -75,10 +90,16 @@ enum {
 };
 
 extern void mbev_CapWait(CAPWORK *work);
+extern OMOBJ *mbev_CapEffGlowCreate(void);
+extern OMOBJ *mbev_CapEffRingHitCreate(void);
 extern OMOBJ *mbev_CapEffExplodeCreate(void);
 extern OMOBJ *mbev_CapEffSnowCreate(void);
 extern OMOBJ *mbev_CapEffCapLoseCreate(void);
 extern OMOBJ *mbev_CapEffCoinCreate(void);
+extern void mbev_CapEffCoinGlowSet(OMOBJ *obj, OMOBJ *glowObj);
+extern void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot);
+extern void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF pos, HuVecF rot,
+    HuVecF scale);
 extern int mbev_CapEffExplodeAdd(OMOBJ *obj, HuVecF pos, HuVecF vel,
     float active, float angleStep, float fadeStep, GXColor color);
 extern int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time);
@@ -99,6 +120,9 @@ extern void mbev_CapPlayerMoveVelSet(int playerNo, float vel,
     HuVecF moveDir);
 extern BOOL mbev_CapPlayerMoveObjCheck(int playerNo);
 extern void mbev_CapPlayerIdleWait(void);
+extern float mbev_CapAngleSumLerp(float t, float a, float b);
+extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
+    HuVecF *out);
 extern int mbev_CapObjCreate(EVCAPWORK *work, int dataNum, int *motFile,
     BOOL linkF, int delay, BOOL closeDir);
 extern void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId,
@@ -110,8 +134,314 @@ extern s16 mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF,
 extern void mbWipeDissolveFadeOutTime(int time);
 extern void mbWipeDissolveFadeIn(void);
 
+static void ev_CapTogezoOMExec(OMOBJ *obj);
+
+void mbev_CapTogezo(void)
+{
+    CAPWORK *work = HuPrcCurrentGet()->property;
+    CAPTOGEZOOMWORK *objWork;
+    OMOBJ *obj;
+    int i;
+    int j;
+    int modelId;
+    int playerNo;
+    int targetPlayerNo;
+    int playerMasuId;
+    int targetMasuId;
+    int coinNum;
+    int coinNumBase;
+    int coinNumTotal;
+    int motionId[3];
+    float time;
+    float angle;
+    float angleX;
+    float speed;
+    float radius;
+    HuVecF playerPos;
+    HuVecF targetPlayerPos;
+    HuVecF playerPosCur;
+    HuVecF playerPosNext;
+    HuVecF playerRot;
+    HuVecF togezoPos[3];
+    HuVecF coinPos;
+    HuVecF coinVel;
+    HuVecF ringScale;
+
+    mbev_CapWait(work);
+    work->glowObj = mbev_CapEffGlowCreate();
+    work->ringObj = mbev_CapEffRingHitCreate();
+    work->coinObj = mbev_CapEffCoinCreate();
+    mbev_CapEffCoinGlowSet(work->coinObj, work->glowObj);
+    mbev_CapPlayerMoveObjInit();
+    playerNo = work->playerNo;
+    targetPlayerNo = work->targetPlayerNo;
+    playerMasuId = GwPlayer[playerNo].masuId;
+    targetMasuId = GwPlayer[targetPlayerNo].masuId;
+    mbPlayerPosGet(targetPlayerNo, &targetPlayerPos);
+    mbPlayerPosGet(playerNo, &playerPos);
+    motionId[0] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        CHARMOT_HSF_c000m1_323);
+    motionId[1] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        CHARMOT_HSF_c000m1_325);
+    motionId[2] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        CHARMOT_HSF_c000m1_344);
+    modelId = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsulechar2, CAPTHROW_DATA_TOGEZO), NULL, FALSE, 5,
+        FALSE);
+    mbObjDispSet(modelId, FALSE);
+
+    obj = omAddObj(mbObjMan, -32768, 0, 0, ev_CapTogezoOMExec);
+    objWork = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPTOGEZOOMWORK), HU_MEMNUM_OVL);
+    memset(obj->data, 0, sizeof(CAPTOGEZOOMWORK));
+    objWork->modelId = mbev_CapObjCreate(&work->objWork,
+        DATANUM(DATA_capsulechar2, CAPTHROW_DATA_TOGEZO), NULL, TRUE, 0,
+        FALSE);
+    mbObjDispSet(objWork->modelId, FALSE);
+    objWork->state = 0;
+    objWork->mode = 1;
+    objWork->time = 0;
+    objWork->timeMax = 138;
+    objWork->pos = playerPos;
+    objWork->pos.y += 350.0f;
+    objWork->velocity.x = 0.0f;
+    objWork->velocity.y = 0.0f;
+    objWork->velocity.z = 0.0f;
+    objWork->rot.x = 0.0f;
+    objWork->rot.y = 0.0f;
+    objWork->rot.z = 0.0f;
+    objWork->targetPos = playerPos;
+    objWork->targetPos.y += 150.0f;
+    mbAudFXPlay(MSM_SE_BRD00_51);
+    mbPlayerMotionShiftSet(playerNo, motionId[0], 0.0f, 8.0f,
+        HU3D_MOTATTR_NONE);
+    Hu3DData[mbObjModelIDGet(mbPlayerObjIDGet(playerNo))].motWork.speed =
+        3.0f;
+    HuPrcSleep(120);
+    mbPlayerMotionShiftSet(playerNo, motionId[1], 0.0f, 8.0f,
+        HU3D_MOTATTR_NONE);
+
+    angle = 360.0f * MBCapsuleEffRandF();
+    for (i = 0; i < 3; i++) {
+        radius = 100.0f * (1.0f + (1.5f * MBCapsuleEffRandF()));
+        togezoPos[i].x = playerPos.x
+            + (float)(radius * sin((M_PI * angle) / 180.0));
+        togezoPos[i].y = playerPos.y
+            + (100.0f * (2.5f + (2.0f * MBCapsuleEffRandF())));
+        togezoPos[i].z = playerPos.z
+            + (float)(radius * cos((M_PI * angle) / 180.0));
+        angle += 60.0f + (60.0f * MBCapsuleEffRandF());
+    }
+    togezoPos[0] = playerPos;
+    coinNumBase = 0;
+    coinNumTotal = 0;
+    for (i = 0; i < 3; i++) {
+        if (i == 0) {
+            HuPrcSleep(24);
+            mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 8.0f,
+                HU3D_MOTATTR_NONE);
+            mbPlayerPosGet(playerNo, &playerPosCur);
+            mbPlayerColSnapPlayerSet(playerNo, FALSE);
+        } else {
+            obj = omAddObj(mbObjMan, -32768, 0, 0, ev_CapTogezoOMExec);
+            objWork = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
+                sizeof(CAPTOGEZOOMWORK), HU_MEMNUM_OVL);
+            memset(obj->data, 0, sizeof(CAPTOGEZOOMWORK));
+            objWork->modelId = mbev_CapObjCreate(&work->objWork,
+                DATANUM(DATA_capsulechar2, CAPTHROW_DATA_TOGEZO), NULL,
+                TRUE, 0, FALSE);
+            mbObjDispSet(objWork->modelId, FALSE);
+            objWork->state = 1;
+            objWork->mode = 0;
+            objWork->time = 0;
+            objWork->timeMax = 24;
+            objWork->pos = togezoPos[i];
+            objWork->pos.y += 500.0f;
+            objWork->velocity.x = 0.0f;
+            objWork->velocity.y = 0.0f;
+            objWork->velocity.z = 0.0f;
+            objWork->rot.x = 90.0f;
+            objWork->rot.y = 0.0f;
+            objWork->rot.z = 60.0f * (-0.5f + MBCapsuleEffRandF());
+            objWork->targetPos = togezoPos[i];
+            objWork->targetPos.y += 150.0f;
+            for (j = 0; (float)j <= 24.0f; j++) {
+                time = (float)j / 24.0f;
+                playerRot.x = 0.0f;
+                if (i & 1) {
+                    playerRot.y = 360.0f * time;
+                } else {
+                    playerRot.y = -360.0f * time;
+                }
+                playerRot.z = 0.0f;
+                mbev_CapVecChase(time, &playerPosCur, &togezoPos[i],
+                    &playerPosNext);
+                playerPosNext.y += (float)(1.5 * (100.0
+                    * sin((M_PI * (180.0f * time)) / 180.0)));
+                mbPlayerPosSetV(playerNo, &playerPosNext);
+                mbPlayerRotSetV(playerNo, &playerRot);
+                HuPrcVSleep();
+            }
+            mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_NONE);
+            mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 8.0f,
+                HU3D_MOTATTR_NONE);
+            mbPlayerPosGet(playerNo, &playerPosCur);
+        }
+        mbAudFXPlay(MSM_SE_BRD00_52);
+        if (i < 2) {
+            coinNum = 3;
+            coinNumBase += coinNum;
+        } else {
+            coinNum = 10 - coinNumBase;
+        }
+        if (mbPlayerCoinGet(playerNo) < coinNum) {
+            coinNum = mbPlayerCoinGet(playerNo);
+        }
+        mbCoinAddDispExec(playerNo, -coinNum, FALSE, TRUE);
+        coinNumTotal += coinNum;
+        angle = 360.0f * MBCapsuleEffRandF();
+        for (j = 0; j < coinNum; j++) {
+            angle += 360.0f / (float)coinNum;
+            coinPos = playerPosCur;
+            coinPos.y += 100.0f;
+            angleX = 70.0f + (15.0f * MBCapsuleEffRandF());
+            speed = 65.0f * (0.8f + (0.3f * MBCapsuleEffRandF()));
+            coinVel.x = (float)(speed
+                * (sin((M_PI * angle) / 180.0)
+                * cos((M_PI * angleX) / 180.0)));
+            coinVel.z = (float)(speed
+                * (cos((M_PI * angle) / 180.0)
+                * cos((M_PI * angleX) / 180.0)));
+            coinVel.y = (float)(speed * sin((M_PI * angleX) / 180.0));
+            mbev_CapEffCoinAdd(work->coinObj, &coinPos, &coinVel, 0.75f,
+                4.9f, 30, 0);
+        }
+        mbPlayerPosGet(playerNo, &playerPosNext);
+        playerPosNext.y += 150.0f;
+        playerRot.x = 45.0f * MBCapsuleEffRandF();
+        playerRot.y = 360.0f * MBCapsuleEffRandF();
+        playerRot.z = 0.0f;
+        mbev_CapEffGlowCoinAdd(work->glowObj, &playerPosNext, &playerRot);
+        ringScale.x = 0.5f;
+        ringScale.y = 3.0f;
+        ringScale.z = 100.0f * (1.0f + (0.25f * MBCapsuleEffRandF()));
+        mbev_CapEffRingHitAdd(work->ringObj, playerPosNext, playerRot,
+            ringScale);
+        omVibrate(playerNo, 20, 7, 3);
+    }
+    mbPlayerMotionShiftSet(playerNo, motionId[2], 0.0f, 8.0f,
+        HU3D_MOTATTR_LOOP);
+    for (j = 0; (float)j <= 36.0f; j++) {
+        time = (float)j / 36.0f;
+        playerRot.x = 360.0f * time;
+        playerRot.y = 360.0f * time;
+        playerRot.z = 0.0f;
+        mbMasuPosGet(playerMasuId, &playerPos);
+        mbev_CapVecChase(time, &playerPosCur, &playerPos, &playerPosNext);
+        playerPosNext.y += (float)(5.0 * (100.0
+            * sin((M_PI * (180.0f * time)) / 180.0)));
+        mbPlayerPosSetV(playerNo, &playerPosNext);
+        mbPlayerRotSetV(playerNo, &playerRot);
+        HuPrcVSleep();
+    }
+    mbPlayerMotionShiftSet(playerNo, 6, 0.0f, 8.0f,
+        HU3D_MOTATTR_LOOP);
+    mbPlayerColSnapPlayerSet(playerNo, TRUE);
+    if (coinNumTotal > 0) {
+        mbev_CapCoinDisp(playerNo, -coinNumTotal, FALSE, TRUE);
+    } else {
+        HuPrcSleep(60);
+    }
+    if (coinNumTotal > 0) {
+        mbWipeDissolveFadeOutTime(1);
+        mbCameraPlayerViewSetFast(targetPlayerNo, 0);
+        mbCameraMoveWait();
+        mbWipeDissolveFadeIn();
+        mbev_CapCoinAdd(work->coinObj, targetPlayerNo, coinNumTotal, TRUE);
+    }
+    mbev_CapPlayerMotShiftWait(targetPlayerNo, 1, HU3D_MOTATTR_LOOP, TRUE);
+    mbev_CapPlayerMotShiftWait(playerNo, 1, HU3D_MOTATTR_LOOP, TRUE);
+    HuPrcEnd();
+}
+
 void mbev_CapTogezoKill(void)
 {
+}
+
+static void ev_CapTogezoOMExec(OMOBJ *obj)
+{
+    CAPTOGEZOOMWORK *work = obj->data;
+    HuVecF nextPos;
+    float time;
+    float angleX;
+    float angleY;
+    float speed;
+
+    if (mbExitCheck() || obj->work[3] != 0) {
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    switch (work->state) {
+        case 0:
+            time = (float)++work->time / (float)work->timeMax;
+            work->rot.y = 720.0f * time;
+            mbObjPosSetV(work->modelId, &work->pos);
+            mbObjRotSetV(work->modelId, &work->rot);
+            mbObjScaleSet(work->modelId, time, time, time);
+            mbObjDispSet(work->modelId, TRUE);
+            if (time >= 1.0f) {
+                work->state++;
+                work->time = 0;
+                work->timeMax = 12;
+            }
+            break;
+        case 1:
+            time = (float)++work->time / (float)work->timeMax;
+            angleX = time * time;
+            work->rot.x = mbev_CapAngleSumLerp(time, work->rot.x, 90.0f);
+            if (work->mode == 0) {
+                work->rot.y = 360.0f * time;
+            }
+            mbev_CapVecChase(angleX, &work->pos, &work->targetPos,
+                &nextPos);
+            mbObjPosSetV(work->modelId, &nextPos);
+            mbObjRotSetV(work->modelId, &work->rot);
+            mbObjDispSet(work->modelId, TRUE);
+            if (time >= 1.0f) {
+                angleY = (mbRandMod(1 << 15) & 1) ? 90.0f : 270.0f;
+                angleY += 30.0f * (0.5f - MBCapsuleEffRandF());
+                angleX = 45.0f + (10.0f * MBCapsuleEffRandF());
+                speed = 35.0f;
+                work->velocity.x = (float)(speed
+                    * (sin((M_PI * angleY) / 180.0)
+                    * cos((M_PI * angleX) / 180.0)));
+                work->velocity.z = (float)(speed
+                    * (cos((M_PI * angleY) / 180.0)
+                    * cos((M_PI * angleX) / 180.0)));
+                work->velocity.y =
+                    (float)(time * sin((M_PI * angleX) / 180.0));
+                work->time = 0;
+                work->timeMax = 30;
+                mbObjPosGet(work->modelId, &work->pos);
+                work->pos.y += 100.0f;
+                work->state++;
+                obj->work[1] = 0;
+            }
+            break;
+        default:
+            time = (float)++work->time / (float)work->timeMax;
+            PSVECAdd(&work->pos, &work->velocity, &work->pos);
+            work->velocity.y =
+                (float)((double)work->velocity.y - CAPTHROW_TOGEZO_GRAVITY);
+            work->rot.z += 2.5f * MBCapsuleEffRandF();
+            mbObjPosSetV(work->modelId, &work->pos);
+            mbObjRotSetV(work->modelId, &work->rot);
+            if (time >= 1.0f) {
+                mbObjDispSet(work->modelId, FALSE);
+                omDelObjEx(mbObjMan, obj);
+            }
+            break;
+    }
 }
 
 void mbev_CapKuriboKill(void)
