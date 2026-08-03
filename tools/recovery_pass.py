@@ -11,15 +11,18 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import difflib
 import hashlib
 import json
 import math
+import os
 import re
 import struct
 import subprocess
 import sys
 import tempfile
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +52,8 @@ COMMUTATIVE = {"add", "add.", "and", "and.", "or", "or.", "xor", "xor.",
                "mullw", "mullw.", "fadd", "fadds", "fmul", "fmuls"}
 BRANCH_ONLY = {"b"}
 CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
+BUILD_LOCK_ENV = "MP6_RETAIL_BUILD_LOCK"
+DEFAULT_BUILD_LOCK = Path(tempfile.gettempdir()) / "mp6-recovery-retail-build.lock"
 
 
 @dataclass(frozen=True)
@@ -60,6 +65,58 @@ class ElfSection:
     link: int
     entsize: int
     kind: int
+
+
+def _lock_file_nonblocking(handle: Any) -> bool:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError:
+            return False
+    else:
+        import fcntl
+
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False
+    return True
+
+
+def _unlock_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def serialized_build_lock(path: Path, timeout_seconds: float) -> Iterable[None]:
+    """Serialize retail builds across repositories and orchestrator processes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as handle:
+        if path.stat().st_size == 0:
+            handle.write(b"\0")
+            handle.flush()
+        deadline = time.monotonic() + timeout_seconds
+        while not _lock_file_nonblocking(handle):
+            if time.monotonic() >= deadline:
+                raise ValueError(
+                    f"retail build lock remained busy for {timeout_seconds:g}s: {path}"
+                )
+            time.sleep(0.1)
+        try:
+            yield
+        finally:
+            _unlock_file(handle)
 
 
 def atomic_json(path: Path, value: Any) -> None:
@@ -1146,6 +1203,17 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="explicit report-only mode; safe to prepare while another serialized build owns the machine",
     )
+    parser.add_argument(
+        "--build-lock",
+        default=os.environ.get(BUILD_LOCK_ENV, str(DEFAULT_BUILD_LOCK)),
+        help=f"machine-wide build lock path (default: {BUILD_LOCK_ENV} or the system temp directory)",
+    )
+    parser.add_argument(
+        "--build-lock-timeout",
+        type=float,
+        default=55.0,
+        help="seconds to wait for the cross-orchestrator build lock (default: 55)",
+    )
     parser.add_argument("--donor-root", action="append", default=[])
     parser.add_argument("--graph", default="build/board-autonomy/graphify-board/graph.json")
     parser.add_argument("--force", action="store_true", help="ignore an unchanged-input report cache")
@@ -1176,7 +1244,9 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
         output = (root / output_dir).resolve()
         output.mkdir(parents=True, exist_ok=True)
         if args.build:
-            result = subprocess.run(["ninja", "-j1", str(unit["base_path"])], cwd=root, text=True, capture_output=True, check=False)
+            lock_path = Path(args.build_lock).expanduser().resolve()
+            with serialized_build_lock(lock_path, args.build_lock_timeout):
+                result = subprocess.run(["ninja", "-j1", str(unit["base_path"])], cwd=root, text=True, capture_output=True, check=False)
             if result.returncode:
                 raise ValueError(result.stderr.strip() or result.stdout.strip() or "serialized object build failed")
         strict_path = (root / args.strict_report).resolve() if args.strict_report else output / "strict.json"

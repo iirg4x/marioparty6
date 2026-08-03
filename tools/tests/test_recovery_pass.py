@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import tempfile
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -27,6 +29,56 @@ def symbol(name: str, size: int, target: int | None, match: float | None, rows=N
 
 
 class RecoveryPassTests(unittest.TestCase):
+    def test_serialized_build_lock_releases_for_the_next_process(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "retail-build.lock"
+            with module.serialized_build_lock(lock, 0.1):
+                self.assertTrue(lock.is_file())
+            with module.serialized_build_lock(lock, 0.1):
+                self.assertTrue(lock.is_file())
+
+    def test_serialized_build_lock_reports_bounded_contention(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "retail-build.lock"
+            with patch.object(module, "_lock_file_nonblocking", return_value=False):
+                with self.assertRaisesRegex(ValueError, "retail build lock remained busy"):
+                    with module.serialized_build_lock(lock, 0.0):
+                        self.fail("busy lock must not enter the build section")
+
+    def test_serialized_build_lock_excludes_another_process(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "retail-build.lock"
+            script = (
+                "import sys,time; from pathlib import Path; "
+                "from tools.recovery_pass import serialized_build_lock; "
+                "ctx=serialized_build_lock(Path(sys.argv[1]),5); ctx.__enter__(); "
+                "print('locked',flush=True); time.sleep(1); ctx.__exit__(None,None,None)"
+            )
+            child = subprocess.Popen(
+                [sys.executable, "-c", script, str(lock)],
+                cwd=module.DEFAULT_ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            try:
+                assert child.stdout is not None
+                self.assertEqual(child.stdout.readline().strip(), "locked")
+                with self.assertRaisesRegex(ValueError, "retail build lock remained busy"):
+                    with module.serialized_build_lock(lock, 0.0):
+                        self.fail("second process must not enter the build section")
+                self.assertEqual(child.wait(timeout=5), 0, child.stderr.read() if child.stderr else "")
+                with module.serialized_build_lock(lock, 0.1):
+                    pass
+            finally:
+                if child.poll() is None:
+                    child.terminate()
+                    child.wait(timeout=5)
+                if child.stdout is not None:
+                    child.stdout.close()
+                if child.stderr is not None:
+                    child.stderr.close()
+
     def test_objdiff_uses_the_selected_repo_as_its_working_directory(self) -> None:
         root = Path("C:/selected/repo")
         executable = root / "build/tools/objdiff-cli.exe"
