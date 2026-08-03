@@ -432,7 +432,7 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "e917ff4162af5acf9aa8a8758985da36fc00bfbb",
+      "validated_commit": "b480722506a42e20ffbe7eb4ff39528c637b2b4e",
       "validated_at": "2026-08-03",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -908,8 +908,8 @@
     },
     "mp6-msm-tables-authenticate-sound-id-ranges": {
       "status": "active",
-      "validated_commit": "e33d655887a9cdcbcf0b4f4e3635f0286cca7f3a",
-      "validated_at": "2026-08-02",
+      "validated_commit": "b480722506a42e20ffbe7eb4ff39528c637b2b4e",
+      "validated_at": "2026-08-03",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/owners/REL_mdseldll_mdsel.json",
