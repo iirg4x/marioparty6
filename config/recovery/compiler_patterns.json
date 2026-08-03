@@ -4720,18 +4720,18 @@
     },
     {
       "id": "target-call-skeleton-before-shared-accessor-abstraction",
-      "title": "Preserve repeated target call skeletons before introducing shared accessors",
+      "title": "Preserve repeated target call or access skeletons before abstraction",
       "classification": "confirmed_rule",
       "category": "source_shape",
       "compiler": "GC/2.6",
       "confidence": "confirmed",
-      "summary": "A nearby helper can be semantically equivalent yet compile differently from a retail sibling family that repeats the same direct bank, index, and object lookup. The repeated target call and access skeleton is stronger reconstruction evidence than a source-level desire to share the lookup.",
-      "conditions": "Apply when several sibling accessors or mutators differ together, the target repeats one direct lookup skeleton, and the recovered source routes those functions through another accessor or helper.",
+      "summary": "A nearby helper or wrapper can be semantically equivalent yet compile differently from a retail sibling family that repeats a direct memory lookup or a long ordered call skeleton. The repeated target skeleton is stronger reconstruction evidence than a source-level desire to share the work.",
+      "conditions": "Apply when several sibling functions differ together, the target repeats one direct access skeleton or at least six meaningful calls in the same order, and the recovered source routes those functions through another accessor, helper, or short wrapper.",
       "source_condition": {
-        "change": "Replace an unauthenticated shared-helper route with the repeated target-backed direct lookup using recovered structures and existing named domain constants.",
+        "change": "Replace an unauthenticated helper or wrapper route with the repeated target-backed direct access or call skeleton using recovered structures and existing named domain constants.",
         "requires": [
-          "the same target access and call skeleton across the sibling family",
-          "authenticated structure fields and index calculation",
+          "the same target access skeleton or a long ordered meaningful-call overlap across the sibling family",
+          "authenticated structure fields, index calculation, and called API roles",
           "a multi-function object comparison",
           "a negative control from any neighboring family with a different copy or return shape"
         ]
@@ -4739,18 +4739,19 @@
       "emitted_effect": {
         "possible_changes": [
           "restored instruction scheduling and register lifetimes across several siblings",
-          "removal of an extra accessor call or inlined abstraction shape",
+          "removal of an extra accessor call, wrapper call, or inlined abstraction shape",
           "regression when an aggregate-return sibling genuinely uses a different compiler pattern"
         ],
         "known_signatures": [
           "several scalar setters share the same residual and become exact from one direct lookup form",
           "the target repeats bank selection, slot selection, and object pointer loading in every sibling",
-          "neighboring vector getters regress under the same rewrite because their aggregate-copy skeleton differs"
+          "neighboring vector getters regress under the same rewrite because their aggregate-copy skeleton differs",
+          "a short wrapper expands into the same clamp, per-item update, sound, and sleep chronology already present in two longer siblings"
         ]
       },
-      "rule": "When a sibling family has a repeated target-backed direct lookup skeleton, preserve that skeleton in each function instead of routing through a merely equivalent shared accessor. Apply the rewrite only to the homogeneous family and stop at the first neighboring function whose target call, copy, or return shape differs.",
+      "rule": "When a sibling family has a repeated target-backed call or access skeleton, preserve that skeleton in each function instead of routing through a merely equivalent helper or wrapper. Apply the rewrite only to the homogeneous family and stop at the first neighboring function whose target calls, copy behavior, or return shape differs.",
       "safe_actions": [
-        "cluster siblings by target call and memory-access skeleton before editing",
+        "cluster siblings by ordered target calls and memory-access skeleton before editing",
         "use recovered field names and existing named domain constants in the repeated lookup",
         "compile and compare the whole sibling cluster after one source-form change",
         "probe one structurally different neighbor as a bounded negative control",
@@ -4770,7 +4771,10 @@
           "mbCoinObjScaleSet",
           "mbCoinObjScaleSetV",
           "mbCoinObjAlphaSet",
-          "mbCoinObjAlphaGet"
+          "mbCoinObjAlphaGet",
+          "mbCoinAddProcExec",
+          "mbCoinAddDispExec",
+          "mbCoinAddExec"
         ],
         "modules": [
           "main"
@@ -4778,17 +4782,20 @@
         "owner_tags": [
           "call_skeleton",
           "accessor_family",
+          "procedure_family",
           "source_shape",
           "bulk_recovery",
           "board"
         ]
       },
       "examples": [
-        "Restoring the repeated direct coin bank and slot lookup closed eight scalar Coin object accessors at once: 1,040 strict-exact text bytes with no exact-function regression."
+        "Restoring the repeated direct coin bank and slot lookup closed eight scalar Coin object accessors at once: 1,040 strict-exact text bytes with no exact-function regression.",
+        "Replacing mbCoinAddExec's short wrapper with the target-proven clamp, per-coin update, sound, and sleep skeleton recovered 288 of its 304 target bytes; the remaining 16 bytes are saved-register and local-stack lifetime differences."
       ],
       "counterexamples": [
         "The adjacent position, rotation, and scale getters use aggregate-copy behavior; forcing the scalar direct-lookup rewrite onto them regressed the object and was reverted.",
-        "Do not duplicate a lookup merely because several functions share a file or structure type; the target skeleton itself must be repeated."
+        "Do not duplicate a lookup merely because several functions share a file or structure type; the target skeleton itself must be repeated.",
+        "A long list of calls is not enough when the meaningful ordered overlap is short, generic, or belongs to different behavioral families."
       ],
       "related_exceptions": [],
       "evidence": [
