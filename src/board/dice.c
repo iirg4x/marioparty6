@@ -1852,7 +1852,8 @@ static HU3D_MODELID DiceInDotEffCreate(void)
 
 static void DiceHitEffSet(HU3D_MODELID modelId)
 {
-    MBPARTICLE *particleP = Hu3DData[modelId].hookData;
+    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    MBPARTICLE *particleP = modelP->hookData;
 
     particleP->mode = 1;
     particleP->time = 1;
