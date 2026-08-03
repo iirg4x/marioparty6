@@ -3,12 +3,14 @@ import unittest
 from pathlib import Path
 
 from tools.dll_cleanup_audit import (
+    _render,
     address_identifiers,
     build_cleanup_report,
     classify_module,
     forbidden_source_name,
     function_pointer_integer_casts,
     reviewed_rel_modules,
+    summarize_address_identifiers,
 )
 
 
@@ -68,6 +70,34 @@ class DllCleanupAuditTests(unittest.TestCase):
             self.assertEqual(len(casts), 1)
             self.assertEqual(casts[0]["rule"], "function_pointer_integer_cast")
 
+    def test_identifier_usage_ranks_high_leverage_debt_deterministically(self) -> None:
+        findings = [
+            {"path": "src/REL/foo/a.c", "line": 8, "identifier": "fn_1_20"},
+            {"path": "src/REL/foo/a.c", "line": 3, "identifier": "fn_1_10"},
+            {"path": "src/REL/foo/b.c", "line": 9, "identifier": "fn_1_20"},
+            {"path": "src/REL/foo/a.c", "line": 5, "identifier": "fn_1_20"},
+        ]
+        self.assertEqual(
+            summarize_address_identifiers(findings),
+            [
+                {
+                    "identifier": "fn_1_20",
+                    "occurrences": 3,
+                    "locations": [
+                        {"path": "src/REL/foo/a.c", "lines": [5, 8]},
+                        {"path": "src/REL/foo/b.c", "lines": [9]},
+                    ],
+                },
+                {
+                    "identifier": "fn_1_10",
+                    "occurrences": 1,
+                    "locations": [
+                        {"path": "src/REL/foo/a.c", "lines": [3]}
+                    ],
+                },
+            ],
+        )
+
     def test_report_scans_all_sources_in_reviewed_module_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -109,6 +139,31 @@ class DllCleanupAuditTests(unittest.TestCase):
             self.assertEqual(len(modules["endingdll"]["address_identifiers"]), 3)
             self.assertEqual(
                 len(modules["endingdll"]["unique_address_identifiers"]), 1
+            )
+            self.assertEqual(
+                modules["endingdll"]["address_identifier_usage"],
+                [
+                    {
+                        "identifier": "fn_1_1234",
+                        "occurrences": 3,
+                        "locations": [
+                            {
+                                "path": "src/REL/endingdll/ending_pass1.c",
+                                "lines": [1],
+                            },
+                            {
+                                "path": "src/REL/endingdll/runtime.c",
+                                "lines": [1, 2],
+                            },
+                        ],
+                    }
+                ],
+            )
+            rendered = _render(report, show_excluded=False, top_identifiers=1)
+            self.assertIn(
+                "endingdll\tfn_1_1234\t3\t"
+                "src/REL/endingdll/ending_pass1.c:1",
+                rendered,
             )
             self.assertEqual(modules["m401Dll"]["classification"], "uncertain_excluded")
             self.assertFalse(modules["m401Dll"]["actionable"])

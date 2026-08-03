@@ -112,6 +112,37 @@ def address_identifiers(path: Path, relative: str) -> list[dict[str, Any]]:
     return result
 
 
+def summarize_address_identifiers(
+    findings: Iterable[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Rank identifier debt by use count without making semantic claims."""
+
+    grouped: dict[str, dict[str, list[int]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for finding in findings:
+        identifier = str(finding["identifier"])
+        path = str(finding["path"])
+        grouped[identifier][path].append(int(finding["line"]))
+    result: list[dict[str, Any]] = []
+    for identifier, paths in grouped.items():
+        locations = [
+            {"path": path, "lines": sorted(lines)}
+            for path, lines in sorted(paths.items())
+        ]
+        result.append(
+            {
+                "identifier": identifier,
+                "occurrences": sum(len(item["lines"]) for item in locations),
+                "locations": locations,
+            }
+        )
+    return sorted(
+        result,
+        key=lambda item: (-int(item["occurrences"]), str(item["identifier"])),
+    )
+
+
 def function_pointer_integer_casts(
     path: Path, relative: str
 ) -> list[dict[str, Any]]:
@@ -213,6 +244,7 @@ def build_cleanup_report(
                 continue
             seen_identifiers.add(identifier)
             unique_identifiers.append(finding)
+        identifier_usage = summarize_address_identifiers(identifiers)
         records.append(
             {
                 "module": module,
@@ -223,6 +255,7 @@ def build_cleanup_report(
                 "filename_findings": filename_findings,
                 "address_identifiers": identifiers,
                 "unique_address_identifiers": unique_identifiers,
+                "address_identifier_usage": identifier_usage,
                 "source_quality_findings": source_quality,
                 "actionable": bool(filename_findings or identifiers or source_quality),
             }
@@ -286,7 +319,12 @@ def _write_atomic(root: Path, relative: str, report: Mapping[str, Any]) -> Path:
     return destination
 
 
-def _render(report: Mapping[str, Any], *, show_excluded: bool) -> str:
+def _render(
+    report: Mapping[str, Any],
+    *,
+    show_excluded: bool,
+    top_identifiers: int = 0,
+) -> str:
     summary = report["summary"]
     lines = [
         "DLL cleanup audit",
@@ -312,6 +350,23 @@ def _render(report: Mapping[str, Any], *, show_excluded: bool) -> str:
             )
         else:
             lines.append(f"{item['module']}\t{item['classification']}\t{item['reason']}")
+    if top_identifiers:
+        lines.extend(
+            [
+                "",
+                "highest-use address identifiers",
+                "module\tidentifier\tuses\tfirst-location",
+            ]
+        )
+        for item in report["modules"]:
+            if item["classification"] != "eligible_reviewed":
+                continue
+            for usage in item["address_identifier_usage"][:top_identifiers]:
+                first = usage["locations"][0]
+                lines.append(
+                    f"{item['module']}\t{usage['identifier']}\t"
+                    f"{usage['occurrences']}\t{first['path']}:{first['lines'][0]}"
+                )
     return "\n".join(lines)
 
 
@@ -325,11 +380,19 @@ def main() -> int:
     parser.add_argument("--module", action="append", dest="modules")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--show-excluded", action="store_true")
+    parser.add_argument(
+        "--top-identifiers",
+        type=int,
+        default=0,
+        help="show this many highest-use address identifiers per eligible module",
+    )
     parser.add_argument("--strict", action="store_true")
     parser.add_argument(
         "--output", default=None, help="optional JSON path under build/"
     )
     args = parser.parse_args()
+    if args.top_identifiers < 0:
+        parser.error("--top-identifiers must be non-negative")
     try:
         root = root_from(args.root)
         data = load(root)
@@ -343,7 +406,15 @@ def main() -> int:
         if args.output:
             destination = _write_atomic(root, args.output, report)
             print(f"wrote {destination}")
-        print(json.dumps(report, indent=2) if args.json else _render(report, show_excluded=args.show_excluded))
+        print(
+            json.dumps(report, indent=2)
+            if args.json
+            else _render(
+                report,
+                show_excluded=args.show_excluded,
+                top_identifiers=args.top_identifiers,
+            )
+        )
         return 1 if args.strict and report["summary"]["actionable_eligible"] else 0
     except (CatalogError, RecoveryError) as exc:
         print(f"error: {exc}")
