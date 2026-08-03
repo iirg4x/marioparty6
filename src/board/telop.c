@@ -292,6 +292,7 @@ void mbTelopTimeStarSet(s16 grpId, s32 starNum);
 void mbTelopTimeTPLvlSet(s16 grpId, float tpLvl);
 void mbTelopTimeDispSet(s16 grpId, BOOL dispF);
 extern float mbSinDeg(float angle);
+extern float mbCosDeg(float angle);
 
 void mbTelopCreate(int playerNo, int telopNo, BOOL waitF)
 {
@@ -951,14 +952,14 @@ void mbBoardDataDirRead(void)
         if (BoardDataDirGet(i) == BoardDataDirGet(languageNo)) {
             continue;
         }
-        if (HuARDirCheck(BoardDataDirGet(i)) != 0) {
+        if ((void *)HuARDirCheck(BoardDataDirGet(i)) != NULL) {
             HuARDirFree(BoardDataDirGet(i));
         }
         if (HuDataReadChk(BoardDataDirGet(i)) >= 0) {
             HuDataDirClose(BoardDataDirGet(i));
         }
     }
-    if (HuARDirCheck(BoardDataDirGet(languageNo)) == 0) {
+    if ((void *)HuARDirCheck(BoardDataDirGet(languageNo)) == NULL) {
         HuAR_DVDtoARAM(BoardDataDirGet(languageNo));
         while (HuARDMACheck()) {
         }
@@ -1055,10 +1056,11 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
     float scale;
     float posY;
     s32 languageNo;
-    s32 i;
 
     work = omObjGetWork(obj, TELOP_TIME_CHANGE_WORK);
     if (work->killF || mbExitCheck()) {
+        s32 i;
+
         for (i = 0; i < 8; i++) {
             espKill(obj->mdlId[i]);
             obj->mdlId[i] = 0;
@@ -1073,7 +1075,10 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
         work->time = work->maxTime;
     }
     weight = (float)work->time / (float)work->maxTime;
-    switch (work->mode) {
+    {
+        s32 i;
+
+        switch (work->mode) {
         case 0:
             espTPLvlSet(obj->mdlId[0], weight);
             espTPLvlSet(obj->mdlId[3], weight);
@@ -1112,11 +1117,11 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
             espPosSet(obj->mdlId[3], obj->trans.x, obj->trans.y);
             espScaleSet(obj->mdlId[3], scale, scale);
             if (work->time + 12 > work->maxTime) {
-                float endWeight = (float)(work->maxTime - work->time) * (1.0f / 12.0f);
-
-                scale = 1.0f + (2.0f * endWeight);
+                angle = (float)(work->maxTime - work->time);
+                angle *= 0.083333336f;
+                scale = 1.0f + (2.0f * angle);
                 espScaleSet(obj->mdlId[4], scale, scale);
-                espTPLvlSet(obj->mdlId[4], 1.0f - endWeight);
+                espTPLvlSet(obj->mdlId[4], 1.0f - angle);
             }
             if (work->time >= work->maxTime) {
                 espAttrSet(obj->mdlId[2], HUSPR_ATTR_ADDCOL);
@@ -1132,15 +1137,15 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
             for (i = 0; i < 3; i++) {
                 espDispOn(obj->mdlId[i + 5]);
             }
-            if (work->time >= work->maxTime) {
-                work->time = 0;
-                work->maxTime = 30;
-                work->mode++;
+            if (work->time < work->maxTime) {
+                break;
             }
-            break;
+            work->time = 0;
+            work->maxTime = 30;
+            work->mode++;
         case 3:
             if (work->time >= work->maxTime) {
-                work->mode++;
+                work->mode = 4;
             }
             break;
         case 4:
@@ -1148,7 +1153,7 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
             if (WipeCheck()) {
                 work->time = 0;
                 work->maxTime = 30;
-                work->mode++;
+                work->mode = 5;
             }
             break;
         case 5:
@@ -1179,6 +1184,7 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
                 work->killF = TRUE;
             }
             break;
+        }
     }
 }
 
