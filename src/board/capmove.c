@@ -1300,11 +1300,14 @@ void mbev_CapKillerMove(void)
     s16 motionRide;
     s16 masuId;
     s16 nextMasuId;
+    s16 currentMasuId;
     int modelId;
     int readStat;
     int coinNum;
     int moveNum;
     int stepNum;
+    int playerHitF[GW_PLAYER_MAX];
+    int waypointMasuId[GW_PLAYER_MAX];
     int i;
     int j;
     float t;
@@ -1321,17 +1324,10 @@ void mbev_CapKillerMove(void)
 
     mbPlayerPosGet(work->playerNo, &playerPos);
     mbPlayerRotGet(work->playerNo, &playerRot);
+    currentMasuId = GwPlayer[work->playerNo].masuId;
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        masuId = GwPlayer[work->playerNo].masuId;
-        mbMasuPosGet(masuId, &path[i]);
-        path[i].y += 100.0f;
+        playerHitF[i] = FALSE;
     }
-    masuId = mbev_CapMasuLinkNextRandomGet(GwPlayer[work->playerNo].masuId,
-        &path[4]);
-    path[4].y += 250.0f;
-    nextMasuId = mbev_CapMasuLinkNextRandomGet(masuId, &path[5]);
-    path[5].y += 250.0f;
-
     modelId = mbev_CapObjCreate(&work->objWork, CAPMOVE_DATA_KILLER, NULL,
         FALSE, 5, FALSE);
     mbObjDispSet(modelId, FALSE);
@@ -1339,6 +1335,17 @@ void mbev_CapKillerMove(void)
         CAPMOVE_DATA_KILLER_RIDE_START);
     motionRide = mbev_CapPlayerMotionCreate(&work->objWork, work->playerNo,
         CAPMOVE_DATA_KILLER_RIDE);
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        waypointMasuId[i] = GwPlayer[work->playerNo].masuId;
+        mbMasuPosGet(waypointMasuId[i], &path[i]);
+        path[i].y += 120.000004f;
+    }
+    waypointMasuId[2] = mbev_CapMasuLinkNextRandomGet(waypointMasuId[1],
+        &path[4]);
+    path[4].y += 120.000004f;
+    waypointMasuId[3] = mbev_CapMasuLinkNextRandomGet(waypointMasuId[2],
+        &path[5]);
+    path[5].y += 120.000004f;
     moveNum = mbDiceResultGet(work->playerNo);
     mbev_CapStatusDispSetAll(TRUE, FALSE);
 
