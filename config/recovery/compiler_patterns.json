@@ -4760,7 +4760,7 @@
         "compiler_wide": false,
         "project_wide": true,
         "owners": [
-          "main/board/coin"
+          "main:board/coin"
         ],
         "stable_ids": [
           "mbCoinObjPosSet",

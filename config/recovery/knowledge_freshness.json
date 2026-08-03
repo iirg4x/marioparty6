@@ -992,7 +992,7 @@
     },
     "target-call-skeleton-before-shared-accessor-abstraction": {
       "status": "active",
-      "validated_commit": "50e8dffd504068d0476015e0147cbbd8fe64a29a",
+      "validated_commit": "889dff9cb44d9c713972ba6ed08fdb0b57a50809",
       "validated_at": "2026-08-03",
       "watch_paths": [
         "src/board/coin.c",
