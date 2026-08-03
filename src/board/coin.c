@@ -550,7 +550,16 @@ void mbCoinObjKill(s16 objId)
 
 void mbCoinObjPosSet(s16 objId, float x, float y, float z)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJBANK *bankP;
+    MBCOINOBJ *objP;
+    int bankNo;
+    int objNo;
+
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & (COIN_OBJ_BANK_SIZE - 1);
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
 
     objP->pos.x = x;
     objP->pos.y = y;
@@ -571,7 +580,16 @@ void mbCoinObjPosGet(s16 objId, HuVecF *pos)
 
 void mbCoinObjRotSet(s16 objId, float x, float y, float z)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJBANK *bankP;
+    MBCOINOBJ *objP;
+    int bankNo;
+    int objNo;
+
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & (COIN_OBJ_BANK_SIZE - 1);
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
 
     objP->rot.x = x;
     objP->rot.y = y;
@@ -592,7 +610,16 @@ void mbCoinObjRotGet(s16 objId, HuVecF *rot)
 
 void mbCoinObjScaleSet(s16 objId, float x, float y, float z)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJBANK *bankP;
+    MBCOINOBJ *objP;
+    int bankNo;
+    int objNo;
+
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & (COIN_OBJ_BANK_SIZE - 1);
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
 
     objP->scale.x = x;
     objP->scale.y = y;
@@ -613,14 +640,32 @@ void mbCoinObjScaleGet(s16 objId, HuVecF *scale)
 
 void mbCoinObjAlphaSet(s16 objId, float alpha)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJBANK *bankP;
+    MBCOINOBJ *objP;
+    int bankNo;
+    int objNo;
+
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & (COIN_OBJ_BANK_SIZE - 1);
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
 
     objP->alpha = alpha;
 }
 
 float mbCoinObjAlphaGet(s16 objId)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJBANK *bankP;
+    MBCOINOBJ *objP;
+    int bankNo;
+    int objNo;
+
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & (COIN_OBJ_BANK_SIZE - 1);
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
 
     return objP->alpha;
 }
