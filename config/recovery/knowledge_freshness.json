@@ -432,7 +432,7 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "c4b32c0150ee40552b4440e24dd331e827280d98",
+      "validated_commit": "e917ff4162af5acf9aa8a8758985da36fc00bfbb",
       "validated_at": "2026-08-03",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
