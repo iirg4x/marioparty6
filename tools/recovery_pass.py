@@ -800,6 +800,133 @@ def select_cards(root: Path, card_ids: Iterable[str]) -> list[dict[str, Any]]:
     return selected
 
 
+def source_local_identifiers(body: str) -> dict[str, list[str]]:
+    """Return recovered local type/work names without inferring new source facts."""
+    types: set[str] = set()
+    work_identifiers: set[str] = set()
+    for match in re.finditer(
+        r"\b(?:const\s+)?([A-Za-z_]\w*)\s*(?:\*+\s*)?([A-Za-z_]\w*)\s*(?:[=;,\[])",
+        _mask_c(body),
+    ):
+        type_name, local_name = match.groups()
+        if type_name.startswith("Hu") or "work" in type_name.lower():
+            types.add(type_name)
+        if "work" in local_name.lower() or "work" in type_name.lower():
+            work_identifiers.add(local_name)
+    return {
+        "types": sorted(types),
+        "work_identifiers": sorted(work_identifiers),
+    }
+
+
+def relocation_identity_pattern(
+    target: Mapping[str, Any], *, strict_exact: bool, value_exact: bool
+) -> str:
+    if target.get("target_symbol") is None:
+        return "unpaired"
+    if strict_exact:
+        return "strict_exact"
+    if value_exact:
+        return "data_value_exact_only"
+    return "paired_instruction_residual"
+
+
+def cluster_cause(item: Mapping[str, Any]) -> str | None:
+    diagnostics = [str(value) for value in item.get("diagnostics", [])]
+    concrete = sorted(
+        value for value in diagnostics
+        if value in {
+            "branch_destination_only",
+            "floating_commutative_swap",
+            "integer_commutative_swap",
+            "local_declaration_or_first_use_cycle",
+        }
+    )
+    if concrete:
+        return "+".join(concrete)
+    if item.get("category") == "relocation_identity_only":
+        return "relocation_identity_only"
+    return None
+
+
+def cluster_feature_key(item: Mapping[str, Any]) -> tuple[str, str, tuple[tuple[str, int], ...], str, str] | None:
+    cause = cluster_cause(item)
+    if cause is None:
+        return None
+    delta = item.get("target_source_size_delta")
+    delta_shape = "unknown" if delta is None else "equal" if delta == 0 else "source_larger" if delta > 0 else "source_smaller"
+    return (
+        cause,
+        str(item.get("category")),
+        tuple(sorted((str(kind), number(count)) for kind, count in item.get("diff_kinds", {}).items())),
+        str(item.get("relocation_identity_pattern")),
+        delta_shape,
+    )
+
+
+def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Plan only evidence-linked, repeatable recovery probes from ranked residuals."""
+    grouped: dict[tuple[str, str, tuple[tuple[str, int], ...], str, str], list[Mapping[str, Any]]] = defaultdict(list)
+    for item in ranked:
+        if item.get("strict_exact"):
+            continue
+        key = cluster_feature_key(item)
+        if key is not None:
+            grouped[key].append(item)
+    clusters: list[dict[str, Any]] = []
+    for key, members in sorted(grouped.items()):
+        if len(members) < 2:
+            continue
+        call_sets = [set(str(call) for call in item.get("target_call_skeleton", [])) for item in members]
+        shared_calls = sorted(set.intersection(*call_sets)) if call_sets else []
+        identifier_sets = [
+            set(item.get("source_local_identifiers", {}).get("types", []))
+            | set(item.get("source_local_identifiers", {}).get("work_identifiers", []))
+            for item in members
+        ]
+        shared_identifiers = sorted(set.intersection(*identifier_sets)) if identifier_sets else []
+        if not shared_calls and not shared_identifiers:
+            continue
+        target_bytes = sum(number(item.get("target_bytes")) for item in members)
+        actionable = len(members) >= 3 or target_bytes >= 1024
+        cause, category, diff_shape, relocation_pattern, delta_shape = key
+        linkage: dict[str, list[str]] = {}
+        if shared_calls:
+            linkage["target_calls"] = shared_calls
+        if shared_identifiers:
+            linkage["source_local_identifiers"] = shared_identifiers
+        clusters.append(
+            {
+                "cluster_id": "",
+                "cause": cause,
+                "category": category,
+                "functions": [str(item["function"]) for item in members],
+                "function_count": len(members),
+                "target_bytes": target_bytes,
+                "diff_kind_shape": {kind: count for kind, count in diff_shape},
+                "relocation_identity_pattern": relocation_pattern,
+                "target_source_size_delta_shape": delta_shape,
+                "shared_evidence": linkage,
+                "concrete_shared_cause": True,
+                "actionable": actionable,
+                "expected_compiler_probes": 1,
+                "expected_exact_bytes": target_bytes,
+                "expected_exact_bytes_per_compiler_probe": target_bytes,
+            }
+        )
+    clusters.sort(
+        key=lambda item: (
+            not item["actionable"],
+            -number(item["expected_exact_bytes_per_compiler_probe"]),
+            item["cause"],
+            item["functions"],
+        )
+    )
+    for index, cluster in enumerate(clusters, 1):
+        cluster["cluster_id"] = f"shared-cause-{index:02d}"
+    return clusters
+
+
 def analyze(
     root: Path,
     unit: Mapping[str, Any],
@@ -856,6 +983,8 @@ def analyze(
         calls = call_skeleton(strict["left"], target)
         body = next((function_text(source_text, item) for item in parsed if item.symbol == name), "")
         pairs = paired_changed(strict, target)
+        paired = paired_symbol(strict, target)
+        source_size = number(paired.get("size")) if paired is not None else None
         diagnostics: list[str] = []
         safe_actions: list[str] = []
         commutative = commutative_swap_kind(pairs)
@@ -1008,11 +1137,18 @@ def analyze(
                 "strict_match_percent": target.get("match_percent"),
                 "strict_diff_rows": len(changed_rows(target)),
                 "diff_kinds": dict(Counter(str(row.get("diff_kind")) for row in changed_rows(target))),
+                "diff_kind_shape": dict(Counter(str(row.get("diff_kind")) for row in changed_rows(target))),
+                "source_bytes": source_size,
+                "target_source_size_delta": source_size - size if source_size is not None else None,
+                "relocation_identity_pattern": relocation_identity_pattern(
+                    target, strict_exact=strict_exact, value_exact=value_exact
+                ),
                 "diagnostics": diagnostics,
                 "register_cycle": register_cycle,
                 "stack_slot_cycle": stack_cycle,
                 "target_call_skeleton": calls,
                 "source_call_skeleton": source_calls(source_text, name, known_source) if name in known_source else [],
+                "source_local_identifiers": source_local_identifiers(body),
                 "immediate_macro_matches": immediate_matches,
                 "donor_candidates": donor_matches,
                 "safe_actions": safe_actions,
@@ -1040,6 +1176,7 @@ def analyze(
     for item in refinements:
         unique_refinements[(item["card_id"], item.get("function"))] = item
     ranked.sort(key=lambda item: (item["priority"], item["strict_diff_rows"], item["target_bytes"], item["function"]))
+    clusters = plan_shared_cause_clusters(ranked)
     head = git_value(root, "rev-parse", "HEAD")
     return {
         "schema_version": 1,
@@ -1051,6 +1188,7 @@ def analyze(
             "data_value_exact": "same gate under functionRelocDiffs=data_value",
             "donors": "committed sibling source ranked by normalized symbol similarity and ordered call LCS; candidates remain hypotheses",
             "knowledge": "existing cards selected from observed fingerprints; candidate records are never written automatically",
+            "shared_cause_clusters": "clusters require one concrete diagnostic plus shared target-call or local-identifier evidence; actionable clusters meet a three-function or 1024-byte threshold",
         },
         "summary": {
             "functions_total": len(strict_functions),
@@ -1067,6 +1205,7 @@ def analyze(
         "compiled_object_order": compiled_order,
         "baseline_compiled_object_order": baseline_compiled_order,
         "ranked_functions": ranked,
+        "shared_cause_clusters": clusters,
         "target_literals": literals,
         "selected_knowledge_cards": select_cards(root, card_ids),
         "knowledge_card_candidates": candidates,
@@ -1091,6 +1230,26 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         value = report.get(key)
         if value:
             lines.append(f"- {label} gain: **{len(value['newly_exact'])} functions / {value['newly_exact_bytes']} bytes**; regressions: **{len(value['regressed_exact'])}**")
+    lines += ["", "## Shared-cause clusters", ""]
+    clusters = list(report.get("shared_cause_clusters", []))
+    actionable_clusters = [item for item in clusters if item.get("actionable")]
+    if not actionable_clusters:
+        lines.append("- No actionable shared-cause clusters.")
+    for item in actionable_clusters:
+        members = ", ".join(f"`{name}`" for name in item["functions"])
+        evidence = item.get("shared_evidence", {})
+        links: list[str] = []
+        if evidence.get("target_calls"):
+            links.append("calls " + ", ".join(f"`{name}`" for name in evidence["target_calls"][:6]))
+        if evidence.get("source_local_identifiers"):
+            links.append("locals " + ", ".join(f"`{name}`" for name in evidence["source_local_identifiers"][:6]))
+        linkage = "; ".join(links)
+        lines.append(
+            f"- `{item['cluster_id']}` - {item['cause']}; {item['function_count']} functions / "
+            f"{item['target_bytes']} target bytes; score **{item['expected_exact_bytes_per_compiler_probe']} bytes/probe**"
+        )
+        lines.append(f"  - Members: {members}")
+        lines.append(f"  - Shared evidence: {linkage}")
     lines += ["", "## Ranked recovery actions", ""]
     actionable = [item for item in report["ranked_functions"] if not item["strict_exact"]]
     if not actionable:

@@ -233,6 +233,83 @@ class RecoveryPassTests(unittest.TestCase):
         self.assertEqual(stable["regressed_exact"], [])
         self.assertEqual(stable["newly_exact"], [])
 
+    def test_shared_cause_clusters_plan_dice_wipe_and_star_like_residuals(self) -> None:
+        def item(
+            name: str,
+            size: int,
+            category: str,
+            diagnostics: list[str],
+            diff_kinds: dict[str, int],
+            relocation: str,
+            calls: list[str],
+            identifiers: list[str],
+        ) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": category,
+                "diagnostics": diagnostics,
+                "diff_kinds": diff_kinds,
+                "relocation_identity_pattern": relocation,
+                "target_source_size_delta": 0,
+                "target_call_skeleton": calls,
+                "source_local_identifiers": {"types": identifiers, "work_identifiers": []},
+                "strict_exact": False,
+            }
+
+        clusters = module.plan_shared_cause_clusters(
+            [
+                item("DiceRollA", 300, "local_order_cycle", ["local_declaration_or_first_use_cycle"], {"DIFF_ARG_MISMATCH": 4}, "paired_instruction_residual", [], ["DICE_WORK"]),
+                item("DiceRollB", 300, "local_order_cycle", ["local_declaration_or_first_use_cycle"], {"DIFF_ARG_MISMATCH": 4}, "paired_instruction_residual", [], ["DICE_WORK"]),
+                item("DiceRollC", 300, "local_order_cycle", ["local_declaration_or_first_use_cycle"], {"DIFF_ARG_MISMATCH": 4}, "paired_instruction_residual", [], ["DICE_WORK"]),
+                item("WipeGrid", 700, "relocation_identity_only", [], {"DIFF_ARG_MISMATCH": 3}, "data_value_exact_only", ["WipeCheck"], []),
+                item("WipePaper", 600, "relocation_identity_only", [], {"DIFF_ARG_MISMATCH": 3}, "data_value_exact_only", ["WipeCheck"], []),
+                item("StarRise", 128, "branch_destination_only", ["branch_destination_only"], {"DIFF_ARG_MISMATCH": 1}, "paired_instruction_residual", ["espScaleSet"], []),
+                item("StarFall", 128, "branch_destination_only", ["branch_destination_only"], {"DIFF_ARG_MISMATCH": 1}, "paired_instruction_residual", ["espScaleSet"], []),
+                item("StarFlash", 128, "branch_destination_only", ["branch_destination_only"], {"DIFF_ARG_MISMATCH": 1}, "paired_instruction_residual", ["espScaleSet"], []),
+            ]
+        )
+        by_cause = {cluster["cause"]: cluster for cluster in clusters}
+        self.assertEqual(set(by_cause), {"local_declaration_or_first_use_cycle", "relocation_identity_only", "branch_destination_only"})
+        self.assertTrue(all(cluster["actionable"] for cluster in clusters))
+        self.assertEqual(by_cause["relocation_identity_only"]["expected_exact_bytes_per_compiler_probe"], 1300)
+        self.assertEqual(by_cause["local_declaration_or_first_use_cycle"]["shared_evidence"], {"source_local_identifiers": ["DICE_WORK"]})
+        self.assertEqual(by_cause["branch_destination_only"]["function_count"], 3)
+
+    def test_shared_cause_clusters_reject_heterogeneous_and_isolated_residuals(self) -> None:
+        shared_shape = {
+            "category": "local_order_cycle",
+            "diagnostics": ["local_declaration_or_first_use_cycle"],
+            "diff_kinds": {"DIFF_ARG_MISMATCH": 4},
+            "relocation_identity_pattern": "paired_instruction_residual",
+            "target_source_size_delta": 0,
+            "strict_exact": False,
+        }
+        ranked = [
+            {
+                **shared_shape,
+                "function": "DiceLike",
+                "target_bytes": 900,
+                "target_call_skeleton": ["mbRandMod"],
+                "source_local_identifiers": {"types": ["DICE_WORK"], "work_identifiers": ["diceWork"]},
+            },
+            {
+                **shared_shape,
+                "function": "UnrelatedLike",
+                "target_bytes": 900,
+                "target_call_skeleton": ["WipeCheck"],
+                "source_local_identifiers": {"types": ["WIPE_WORK"], "work_identifiers": ["wipeWork"]},
+            },
+            {
+                **shared_shape,
+                "function": "IsolatedLike",
+                "target_bytes": 1200,
+                "target_call_skeleton": ["espKill"],
+                "source_local_identifiers": {"types": ["STAR_WORK"], "work_identifiers": ["starWork"]},
+            },
+        ]
+        self.assertEqual(module.plan_shared_cause_clusters(ranked), [])
+
 
 if __name__ == "__main__":
     unittest.main()
