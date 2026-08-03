@@ -518,8 +518,8 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
             work->time++;
             time = (float)work->time / 15.0f;
             mbPlayerPosGet(work->playerNo, &work->endPos);
-            work->endPos.x += 100.0 * 0.5 * sin((M_PI * work->angle) / 180.0f);
-            work->endPos.z += 100.0 * 0.5 * cos((M_PI * work->angle) / 180.0f);
+            work->endPos.x += 0.5 * (100.0 * sin((M_PI * work->angle) / 180.0f));
+            work->endPos.z += 0.5 * (100.0 * cos((M_PI * work->angle) / 180.0f));
             work->pos.x = work->startPos.x + time * (work->endPos.x - work->startPos.x);
             work->pos.y = work->startPos.y + time * (work->endPos.y - work->startPos.y)
                 + work->arcHeight * mbSinDeg(180.0f * time);
@@ -545,8 +545,8 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
 
         case 4:
             mbPlayerPosGet(work->playerNo, &work->endPos);
-            work->endPos.x += 100.0 * 0.5 * sin((M_PI * work->angle) / 180.0f);
-            work->endPos.z += 100.0 * 0.5 * cos((M_PI * work->angle) / 180.0f);
+            work->endPos.x += 0.5 * (100.0 * sin((M_PI * work->angle) / 180.0f));
+            work->endPos.z += 0.5 * (100.0 * cos((M_PI * work->angle) / 180.0f));
             mbObjPosSetV(work->modelId, &work->endPos);
             work->time++;
             time = (float)work->time / 10.0f;
@@ -561,8 +561,8 @@ static void ev_CapBobleOMExec(OMOBJ *obj)
 
         case 5:
             mbPlayerPosGet(work->playerNo, &work->endPos);
-            work->endPos.x += 100.0 * 0.5 * sin((M_PI * work->angle) / 180.0f);
-            work->endPos.z += 100.0 * 0.5 * cos((M_PI * work->angle) / 180.0f);
+            work->endPos.x += 0.5 * (100.0 * sin((M_PI * work->angle) / 180.0f));
+            work->endPos.z += 0.5 * (100.0 * cos((M_PI * work->angle) / 180.0f));
             mbObjPosSetV(work->modelId, &work->endPos);
             work->time++;
             time = (float)work->time / 30.0f;

@@ -2080,6 +2080,7 @@
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
+        "when a source expression folds adjacent constants but retail emits separate multiplies, restore the target-authenticated operator tree around the dynamic subexpression and verify both the producer body and every downstream pool consumer",
         "test pool_data and named-constant controls only as bounded counterexamples",
         "group repeated relocation-only failures by target pool owner before opening more body probes",
         "compare final linked section offsets and relocation addends before assuming a local source symbol name is fatal",
@@ -2119,7 +2120,9 @@
           "main:board/capmove:mbev_CapKillerMove",
           "main:board/capmove:ev_CapEffKillerDustCreate",
           "main:board/capmove:ev_CapEffKillerExplodeCreate",
-          "main:board/capmove:ev_CapEffKillerBoostCreate"
+          "main:board/capmove:ev_CapEffKillerBoostCreate",
+          "main:board/captrap:ev_CapBobleOMExec",
+          "main:board/captrap:mbev_CapBomheiTrap"
         ],
         "modules": [
           "openingDll",
@@ -2161,7 +2164,8 @@
         "mdsingdll pass 27: fn_1_B998's anonymous local bitmap-name aggregate was object-exact but linked-invalid because fallback consumers required lbl_1_rodata_270; an authenticated global const BITMAP_NAME_TABLE plus natural local assignment preserved the exact stack-copy code, 16 data bytes, 67/67 island relocations, and the retail REL",
         "mdsingdll pass 29: fn_1_842C reached 580/580 instruction bytes with its natural 8-byte unsigned-conversion pool, but binding that local pool left a retained fallback consumer unresolved against global lbl_1_rodata_C0. The body and local owner were reverted and exact literal-free fn_1_8670 was selected instead; the final 12-function batch remained retail-exact.",
         "mdsingdll pass31 reverted fn_1_DE98/fn_1_F3C8/fn_1_FD5C/fn_1_10744 after exact sizes and high text scores because generated 8/16-byte conversion pools remained local instead of binding target lbl_1_rodata_C0 and related named scalar owners; four pool-free dependency-closed functions were retained.",
-        "main:board/capmove Killer effect family: ev_CapEffKillerDustCreate reached all 1,028 data-value-exact text bytes but remained strict-nonexact at 27 literal relocations; Explode and Boost added 60 relocation-owner rows of the same class. The mapped target/source owner delta exposed 56 bytes of missing preceding pool chronology inside incomplete mbev_CapKillerMove. Restoring the first authenticated eight-byte waypoint owner removed 49 strict rows from KillerMove while all 87 helper ownership rows remained unchanged, proving that helper-only shaping cannot close the family and partial pool restoration need not move downstream consumers."
+        "main:board/capmove Killer effect family: ev_CapEffKillerDustCreate reached all 1,028 data-value-exact text bytes but remained strict-nonexact at 27 literal relocations; Explode and Boost added 60 relocation-owner rows of the same class. The mapped target/source owner delta exposed 56 bytes of missing preceding pool chronology inside incomplete mbev_CapKillerMove. Restoring the first authenticated eight-byte waypoint owner removed 49 strict rows from KillerMove while all 87 helper ownership rows remained unchanged, proving that helper-only shaping cannot close the family and partial pool restoration need not move downstream consumers.",
+        "main:board/captrap ev_CapBobleOMExec used the algebraically equivalent left-associated form 100.0 * 0.5 * trig, which MWCC folded into a new double 50.0 owner. Restoring the retail two-stage tree as 0.5 * (100.0 * trig) emitted the target's separate multiplies, restored the shared double 0.5 owner at the earlier pool position, removed the downstream duplicate eight-byte owner, reduced the helper residual from 171 to 156 rows, and made the later 2,052-byte mbev_CapBomheiTrap strict-exact with zero regressions."
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -2193,6 +2197,7 @@
         "docs/native_matching_wave42.md",
         "src/board/scroll.c",
         "src/board/capmove.c",
+        "src/board/captrap.c",
         "src/REL/w01Dll/world01.c"
       ]
     },
