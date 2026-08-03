@@ -17,7 +17,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
 is matching at **55 / 55 functions**. The principal partial owners remain
-`src/board/last5.c` at **4 / 10**, `src/board/player.c` at **158 / 165**, and
+`src/board/capmove.c` at **17 / 24 strict-exact functions**, **18 / 24
+data-value-exact functions**, and **10,776 strict-exact text bytes**;
+`src/board/last5.c` at **4 / 10**; `src/board/player.c` at **158 / 165**; and
 `src/board/shopevent.c` at **12 / 13** strict-exact functions.
 
 REL recovery is stored under canonical application owners: **174 synthetic
