@@ -4,7 +4,7 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 2, 2026**
+Last published full-project snapshot: **August 3, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
@@ -16,14 +16,17 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
-is matching at **55 / 55 functions**. The principal partial owners remain
-`src/board/capmove.c` at **17 / 24 strict-exact functions**, **18 / 24
-data-value-exact functions**, and **10,776 strict-exact text bytes**;
-`src/board/captrap.c` at **11 / 20 strict-exact functions**, **11 / 20
-data-value-exact functions**, **6,648 strict-exact text bytes**, and **413
-verified relocations inside strict-exact functions**; `src/board/last5.c` at
-**4 / 10**; `src/board/player.c` at **158 / 165**; and `src/board/shopevent.c`
-at **12 / 13** strict-exact functions.
+is matching at **55 / 55 functions**. Current promoted partial-owner recovery
+includes `src/board/capmove.c` at **17 / 24 strict-exact functions** and **18 /
+24 data-value-exact functions**; `src/board/captrap.c` at **11 / 20** and **11
+/ 20**; `src/board/coin.c` at **26 / 52** and **32 / 52**; `src/board/dice.c`
+at **52 / 68** and **54 / 68**; `src/board/last5.c` at **4 / 10** and **5 /
+10**; `src/board/player.c` at **158 / 165** and **159 / 165**; and
+`src/board/telop.c` at **30 / 31 strict-exact and data-value-exact
+functions**. The latest source promotion added **11 strict-exact functions**
+and **3,640 strict-exact text bytes** across Coin, Dice, and Telop with zero
+exact-function regressions. The board-owner and Treetop seam totals are
+unchanged because all three remain partial owners.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
