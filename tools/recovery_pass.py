@@ -358,6 +358,29 @@ def relocation_name(side: Mapping[str, Any], relocation: Mapping[str, Any]) -> s
     return f"symbol[{index}]"
 
 
+def relocation_owner_evidence(
+    report: Mapping[str, Any], symbol: Mapping[str, Any]
+) -> list[dict[str, str]]:
+    other = paired_symbol(report, symbol)
+    if other is None:
+        return []
+    evidence: set[tuple[str, str, str]] = set()
+    for target_row, source_row in zip(changed_rows(symbol), changed_rows(other)):
+        target_relocation = target_row.get("instruction", {}).get("relocation")
+        source_relocation = source_row.get("instruction", {}).get("relocation")
+        if not isinstance(target_relocation, Mapping) or not isinstance(source_relocation, Mapping):
+            continue
+        target_owner = relocation_name(report.get("left", {}), target_relocation)
+        source_owner = relocation_name(report.get("right", {}), source_relocation)
+        relocation_type = str(target_relocation.get("type_name", "unknown"))
+        if target_owner != source_owner:
+            evidence.add((target_owner, source_owner, relocation_type))
+    return [
+        {"target_owner": target, "source_owner": source, "type": kind}
+        for target, source, kind in sorted(evidence)
+    ]
+
+
 def call_skeleton(side: Mapping[str, Any], symbol: Mapping[str, Any]) -> list[str]:
     result: list[str] = []
     for row in symbol.get("instructions", []):
@@ -997,6 +1020,7 @@ def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict
     for key, members in sorted(grouped.items()):
         if len(members) < 2:
             continue
+        cause, category, diff_shape, relocation_pattern, delta_shape = key
         call_sets = [set(str(call) for call in item.get("target_call_skeleton", [])) for item in members]
         shared_calls = sorted(set.intersection(*call_sets)) if call_sets else []
         identifier_sets = [
@@ -1005,15 +1029,33 @@ def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict
             for item in members
         ]
         shared_identifiers = sorted(set.intersection(*identifier_sets)) if identifier_sets else []
-        if not shared_calls and not shared_identifiers:
+        owner_sets = [
+            {
+                (
+                    str(value.get("target_owner")),
+                    str(value.get("source_owner")),
+                    str(value.get("type")),
+                )
+                for value in item.get("relocation_owner_evidence", [])
+            }
+            for item in members
+        ]
+        shared_owners = sorted(set.intersection(*owner_sets)) if owner_sets else []
+        owner_audit_only = cause == "relocation_identity_only" and not shared_owners
+        if cause != "relocation_identity_only" and not shared_calls and not shared_identifiers:
             continue
         target_bytes = sum(number(item.get("target_bytes")) for item in members)
-        actionable = len(members) >= 3 or target_bytes >= 1024
-        cause, category, diff_shape, relocation_pattern, delta_shape = key
-        linkage: dict[str, list[str]] = {}
-        if shared_calls:
+        threshold_met = len(members) >= 3 or target_bytes >= 1024
+        actionable = threshold_met and not owner_audit_only
+        linkage: dict[str, Any] = {}
+        if cause == "relocation_identity_only" and shared_owners:
+            linkage["relocation_owner_pairs"] = [
+                {"target_owner": target, "source_owner": source, "type": kind}
+                for target, source, kind in shared_owners
+            ]
+        elif shared_calls:
             linkage["target_calls"] = shared_calls
-        if shared_identifiers:
+        if cause != "relocation_identity_only" and shared_identifiers:
             linkage["source_local_identifiers"] = shared_identifiers
         clusters.append(
             {
@@ -1027,11 +1069,17 @@ def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict
                 "relocation_identity_pattern": relocation_pattern,
                 "target_source_size_delta_shape": delta_shape,
                 "shared_evidence": linkage,
-                "concrete_shared_cause": True,
+                "concrete_shared_cause": not owner_audit_only,
+                "owner_audit_only": owner_audit_only,
+                "actionability_reason": (
+                    "missing_shared_relocation_owner" if owner_audit_only
+                    else "shared_relocation_owner" if cause == "relocation_identity_only"
+                    else "shared_diagnostic_and_context"
+                ),
                 "actionable": actionable,
-                "expected_compiler_probes": 1,
-                "expected_exact_bytes": target_bytes,
-                "expected_exact_bytes_per_compiler_probe": target_bytes,
+                "expected_compiler_probes": 0 if owner_audit_only else 1,
+                "expected_exact_bytes": 0 if owner_audit_only else target_bytes,
+                "expected_exact_bytes_per_compiler_probe": 0 if owner_audit_only else target_bytes,
             }
         )
     clusters.extend(repeated_target_call_clusters(ranked))
@@ -1270,6 +1318,7 @@ def analyze(
                 "target_call_skeleton": calls,
                 "source_call_skeleton": source_calls(source_text, name, known_source) if name in known_source else [],
                 "source_local_identifiers": source_local_identifiers(body),
+                "relocation_owner_evidence": relocation_owner_evidence(strict, target),
                 "immediate_macro_matches": immediate_matches,
                 "donor_candidates": donor_matches,
                 "safe_actions": safe_actions,
@@ -1356,8 +1405,15 @@ def render_markdown(report: Mapping[str, Any]) -> str:
     lines += ["", "## Shared-cause clusters", ""]
     clusters = list(report.get("shared_cause_clusters", []))
     actionable_clusters = [item for item in clusters if item.get("actionable")]
+    owner_audits = [item for item in clusters if item.get("owner_audit_only")]
     if not actionable_clusters:
         lines.append("- No actionable shared-cause clusters.")
+    if owner_audits:
+        lines.append(
+            f"- Owner-audit only: {len(owner_audits)} cluster(s) / "
+            f"{sum(number(item.get('target_bytes')) for item in owner_audits)} target bytes; "
+            "no compiler probe is recommended without a shared relocation owner."
+        )
     for item in actionable_clusters:
         members = ", ".join(f"`{name}`" for name in item["functions"])
         evidence = item.get("shared_evidence", {})

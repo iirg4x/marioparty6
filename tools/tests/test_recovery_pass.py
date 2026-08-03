@@ -271,8 +271,11 @@ class RecoveryPassTests(unittest.TestCase):
         )
         by_cause = {cluster["cause"]: cluster for cluster in clusters}
         self.assertEqual(set(by_cause), {"local_declaration_or_first_use_cycle", "relocation_identity_only", "branch_destination_only"})
-        self.assertTrue(all(cluster["actionable"] for cluster in clusters))
-        self.assertEqual(by_cause["relocation_identity_only"]["expected_exact_bytes_per_compiler_probe"], 1300)
+        self.assertTrue(by_cause["local_declaration_or_first_use_cycle"]["actionable"])
+        self.assertTrue(by_cause["branch_destination_only"]["actionable"])
+        self.assertFalse(by_cause["relocation_identity_only"]["actionable"])
+        self.assertTrue(by_cause["relocation_identity_only"]["owner_audit_only"])
+        self.assertEqual(by_cause["relocation_identity_only"]["expected_exact_bytes_per_compiler_probe"], 0)
         self.assertEqual(by_cause["local_declaration_or_first_use_cycle"]["shared_evidence"], {"source_local_identifiers": ["DICE_WORK"]})
         self.assertEqual(by_cause["branch_destination_only"]["function_count"], 3)
 
@@ -309,6 +312,94 @@ class RecoveryPassTests(unittest.TestCase):
             },
         ]
         self.assertEqual(module.plan_shared_cause_clusters(ranked), [])
+
+    def test_relocation_clusters_require_shared_owner_not_wipe_calls_or_capevent_types(self) -> None:
+        def item(
+            name: str,
+            size: int,
+            calls: list[str],
+            types: list[str],
+            target_owner: str,
+            source_owner: str,
+        ) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": "relocation_identity_only",
+                "diagnostics": [],
+                "diff_kinds": {"DIFF_ARG_MISMATCH": 3},
+                "relocation_identity_pattern": "data_value_exact_only",
+                "target_source_size_delta": 0,
+                "target_call_skeleton": calls,
+                "source_local_identifiers": {"types": types, "work_identifiers": []},
+                "relocation_owner_evidence": [
+                    {
+                        "target_owner": target_owner,
+                        "source_owner": source_owner,
+                        "type": "R_PPC_ADDR16_LO",
+                    }
+                ],
+                "strict_exact": False,
+            }
+
+        wipe_calls = [
+            "C_MTXOrtho", "GXSetProjection", "GXSetViewport", "GXSetScissor",
+            "GXSetNumTevStages", "GXSetTevOrder", "GXBegin",
+        ]
+        wipe = module.plan_shared_cause_clusters(
+            [
+                item("WipeImageDraw", 1676, wipe_calls, ["WIPE_IMAGE_WORK"], "wipeImageWhite", "imageColorPool"),
+                item("WipeGridDraw", 1864, wipe_calls, ["WIPE_GRID_WORK"], "wipeGridWhite", "gridColorPool"),
+                item("WipePaperDraw", 2184, wipe_calls, ["WIPE_PAPER_WORK"], "wipePaperWhite", "paperColorPool"),
+            ]
+        )
+        self.assertEqual(len(wipe), 1)
+        self.assertFalse(wipe[0]["actionable"])
+        self.assertTrue(wipe[0]["owner_audit_only"])
+        self.assertEqual(wipe[0]["actionability_reason"], "missing_shared_relocation_owner")
+
+        capevent = module.plan_shared_cause_clusters(
+            [
+                item("mbev_CapEffGlowCoinAdd", 1500, [], ["HuVecF"], "capGlowColor", "glowPool"),
+                item("mbev_CapHermiteGetV", 592, [], ["HuVecF"], "capHermiteColor", "hermitePool"),
+            ]
+        )
+        self.assertEqual(len(capevent), 1)
+        self.assertFalse(capevent[0]["actionable"])
+        self.assertTrue(capevent[0]["owner_audit_only"])
+        self.assertEqual(capevent[0]["shared_evidence"], {})
+
+    def test_relocation_cluster_is_actionable_with_exact_shared_owner_identity(self) -> None:
+        common = {
+            "category": "relocation_identity_only",
+            "diagnostics": [],
+            "diff_kinds": {"DIFF_ARG_MISMATCH": 3},
+            "relocation_identity_pattern": "data_value_exact_only",
+            "target_source_size_delta": 0,
+            "target_call_skeleton": [],
+            "source_local_identifiers": {"types": [], "work_identifiers": []},
+            "relocation_owner_evidence": [
+                {
+                    "target_owner": "sharedTargetColor",
+                    "source_owner": "sharedSourceColor",
+                    "type": "R_PPC_ADDR16_LO",
+                }
+            ],
+            "strict_exact": False,
+        }
+        clusters = module.plan_shared_cause_clusters(
+            [
+                {**common, "function": "OwnerA", "target_bytes": 600},
+                {**common, "function": "OwnerB", "target_bytes": 600},
+            ]
+        )
+        self.assertEqual(len(clusters), 1)
+        self.assertTrue(clusters[0]["actionable"])
+        self.assertFalse(clusters[0]["owner_audit_only"])
+        self.assertEqual(
+            clusters[0]["shared_evidence"]["relocation_owner_pairs"],
+            [{"target_owner": "sharedTargetColor", "source_owner": "sharedSourceColor", "type": "R_PPC_ADDR16_LO"}],
+        )
 
     def test_target_call_cluster_recognizes_live_coin_add_family(self) -> None:
         common_prefix = [
