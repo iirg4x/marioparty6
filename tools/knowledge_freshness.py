@@ -99,6 +99,66 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _compiler_patterns_path(data: Mapping[str, Any]) -> str:
+    files = data.get("project", {}).get("files", {})
+    if isinstance(files, Mapping):
+        return str(
+            files.get(
+                "compiler_patterns",
+                "config/recovery/compiler_patterns.json",
+            )
+        )
+    return "config/recovery/compiler_patterns.json"
+
+
+def _card_payload(value: Mapping[str, Any], card_id: str) -> dict[str, Any] | None:
+    cards = value.get("patterns", [])
+    if not isinstance(cards, list):
+        return None
+    card = next(
+        (
+            item
+            for item in cards
+            if isinstance(item, Mapping) and str(item.get("id")) == card_id
+        ),
+        None,
+    )
+    if card is None:
+        return None
+    return {
+        "schema_version": value.get("schema_version"),
+        "card": dict(card),
+    }
+
+
+def _card_payload_at_commit(
+    root: Path,
+    commit: str,
+    relative: str,
+    card_id: str,
+) -> dict[str, Any] | None:
+    result = _git(root, "show", f"{commit}:{relative}")
+    if result.returncode:
+        return None
+    try:
+        value = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return _card_payload(value, card_id) if isinstance(value, Mapping) else None
+
+
+def _current_card_payload(
+    root: Path,
+    relative: str,
+    card_id: str,
+) -> dict[str, Any] | None:
+    try:
+        value = json.loads((root / relative).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return _card_payload(value, card_id) if isinstance(value, Mapping) else None
+
+
 def card_freshness(data: Mapping[str, Any], card_id: str) -> dict[str, Any]:
     value = load_freshness(data)
     record = dict(value.get("cards", {}).get(card_id, {}))
@@ -125,12 +185,23 @@ def card_freshness(data: Mapping[str, Any], card_id: str) -> dict[str, Any]:
             "reason": "validated commit unavailable",
         }
     watch = list(record.get("watch_paths", []))
+    patterns_path = _compiler_patterns_path(data)
+    if patterns_path in watch:
+        validated_card = _card_payload_at_commit(
+            root,
+            commit,
+            patterns_path,
+            card_id,
+        )
+        current_card = _current_card_payload(root, patterns_path, card_id)
+        if validated_card is not None and validated_card == current_card:
+            watch.remove(patterns_path)
     if watch:
         diff = _git(
             root,
             "diff",
             "--name-only",
-            f"{commit}...HEAD",
+            commit,
             "--",
             *watch,
         )
