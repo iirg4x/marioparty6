@@ -325,6 +325,21 @@
       ]
     },
     {
+      "id": "captrap-boble-move-final-rotation-copy",
+      "classification": "authenticated",
+      "path": "src/board/captrap.c",
+      "kind": "source_shape",
+      "rules": [
+        "self_assignment"
+      ],
+      "rationale": "mbev_CapBobleMove's final `rot = rot` is the only source form retained under this exception. Under the pinned GC/2.6 command it emits the target's six-word aggregate load/store island immediately before the final player rotation call. Removing only that statement deletes 24 target bytes and regresses the otherwise strict-exact 868-byte function, while every other exact Captrap function remains unchanged. The exception authenticates this owner-local recovered statement only and does not permit self-assignment elsewhere.",
+      "evidence": [
+        "src/board/captrap.c",
+        "build/board-autonomy/captrap-exact-p07/strict.json",
+        "build/board-autonomy/captrap-exact-p08/strict.json"
+      ]
+    },
+    {
       "id": "filesel-init-index-live-range",
       "classification": "authenticated",
       "path": "src/REL/fileseldll/filesel.c",
