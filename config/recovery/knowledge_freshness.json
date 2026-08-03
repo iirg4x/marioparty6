@@ -862,14 +862,28 @@
       "superseded_by": null
     },
     "mp6-board-capsule-eff-rand-macro": {
-      "status": "active",
+      "status": "stale",
       "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "include/game/board/capsule.h",
         "src/board/capevent.c",
-        "src/board/capspecial.c"
+        "src/board/capspecial.c",
+        "src/board/capmove.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "gc26-o0-single-for-or-condition-backedge": {
+      "status": "active",
+      "validated_commit": "a89e6d062a6d75546e9c148413da37ba02d7e6ad",
+      "validated_at": "2026-08-03",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "src/board/capmove.c",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
