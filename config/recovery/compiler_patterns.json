@@ -4717,6 +4717,85 @@
         "build/saveload_clean_final_objdiff.json",
         "config/GP6E01/build.sha1"
       ]
+    },
+    {
+      "id": "target-call-skeleton-before-shared-accessor-abstraction",
+      "title": "Preserve repeated target call skeletons before introducing shared accessors",
+      "classification": "confirmed_rule",
+      "category": "source_shape",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "A nearby helper can be semantically equivalent yet compile differently from a retail sibling family that repeats the same direct bank, index, and object lookup. The repeated target call and access skeleton is stronger reconstruction evidence than a source-level desire to share the lookup.",
+      "conditions": "Apply when several sibling accessors or mutators differ together, the target repeats one direct lookup skeleton, and the recovered source routes those functions through another accessor or helper.",
+      "source_condition": {
+        "change": "Replace an unauthenticated shared-helper route with the repeated target-backed direct lookup using recovered structures and existing named domain constants.",
+        "requires": [
+          "the same target access and call skeleton across the sibling family",
+          "authenticated structure fields and index calculation",
+          "a multi-function object comparison",
+          "a negative control from any neighboring family with a different copy or return shape"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "restored instruction scheduling and register lifetimes across several siblings",
+          "removal of an extra accessor call or inlined abstraction shape",
+          "regression when an aggregate-return sibling genuinely uses a different compiler pattern"
+        ],
+        "known_signatures": [
+          "several scalar setters share the same residual and become exact from one direct lookup form",
+          "the target repeats bank selection, slot selection, and object pointer loading in every sibling",
+          "neighboring vector getters regress under the same rewrite because their aggregate-copy skeleton differs"
+        ]
+      },
+      "rule": "When a sibling family has a repeated target-backed direct lookup skeleton, preserve that skeleton in each function instead of routing through a merely equivalent shared accessor. Apply the rewrite only to the homogeneous family and stop at the first neighboring function whose target call, copy, or return shape differs.",
+      "safe_actions": [
+        "cluster siblings by target call and memory-access skeleton before editing",
+        "use recovered field names and existing named domain constants in the repeated lookup",
+        "compile and compare the whole sibling cluster after one source-form change",
+        "probe one structurally different neighbor as a bounded negative control",
+        "retain only strict-exact gains with zero regressions"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [
+          "main/board/coin"
+        ],
+        "stable_ids": [
+          "mbCoinObjPosSet",
+          "mbCoinObjPosSetV",
+          "mbCoinObjRotSet",
+          "mbCoinObjRotSetV",
+          "mbCoinObjScaleSet",
+          "mbCoinObjScaleSetV",
+          "mbCoinObjAlphaSet",
+          "mbCoinObjAlphaGet"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "call_skeleton",
+          "accessor_family",
+          "source_shape",
+          "bulk_recovery",
+          "board"
+        ]
+      },
+      "examples": [
+        "Restoring the repeated direct coin bank and slot lookup closed eight scalar Coin object accessors at once: 1,040 strict-exact text bytes with no exact-function regression."
+      ],
+      "counterexamples": [
+        "The adjacent position, rotation, and scale getters use aggregate-copy behavior; forcing the scalar direct-lookup rewrite onto them regressed the object and was reverted.",
+        "Do not duplicate a lookup merely because several functions share a file or structure type; the target skeleton itself must be repeated."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/coin.c",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
+      ]
     }
   ]
 }

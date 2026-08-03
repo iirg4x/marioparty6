@@ -989,6 +989,18 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "target-call-skeleton-before-shared-accessor-abstraction": {
+      "status": "active",
+      "validated_commit": "50e8dffd504068d0476015e0147cbbd8fe64a29a",
+      "validated_at": "2026-08-03",
+      "watch_paths": [
+        "src/board/coin.c",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
