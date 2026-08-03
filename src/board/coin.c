@@ -358,7 +358,8 @@ s16 mbCoinCreate(void)
     int objNo;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -366,7 +367,7 @@ s16 mbCoinCreate(void)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -395,7 +396,8 @@ s16 mbCoinCreate2(void)
     int objNo;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -403,7 +405,7 @@ s16 mbCoinCreate2(void)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -433,7 +435,8 @@ s16 mbCoinObjCreate(int modelNo, int motNo)
     s16 objId;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -441,7 +444,7 @@ s16 mbCoinObjCreate(int modelNo, int motNo)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -473,7 +476,8 @@ s16 mbCoinObjCreate2(int modelNo, int motNo)
     s16 objId;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -481,7 +485,7 @@ s16 mbCoinObjCreate2(int modelNo, int motNo)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
