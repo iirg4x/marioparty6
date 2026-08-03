@@ -1861,8 +1861,8 @@
       "category": "evidence_provenance",
       "compiler": "GC/2.7",
       "confidence": "high",
-      "summary": "When a historical inline header is absent, a complete byte-identical function cluster plus the same literal prefix and chronology in multiple same-game retail RELs can authenticate shared ownership more strongly than a value-only match.",
-      "conditions": "Use only when no surviving same-game source/header authenticates the owner and at least two independent retail modules provide complete code, size-sequence, literal-prefix, and chronology agreement.",
+      "summary": "When a historical inline header is absent, a complete byte-identical function cluster plus the same literal prefix and chronology in multiple same-game retail RELs can authenticate shared ownership more strongly than a value-only match; the complete w01Dll/s01Dll 0x2344 curve cluster can then be ported by exact expression, control-flow, and size-sequence parity before each body is rebound to its REL-local owner.",
+      "conditions": "Use only when no surviving same-game source/header authenticates the owner and at least two independent retail modules provide complete code, size-sequence, literal-prefix, and chronology agreement. For the w01Dll/s01Dll curve cluster, require all 18 mapped functions to preserve exact expressions, control flow, and the complete size sequence before rebinding to each owner's local types, globals, and csects.",
       "source_condition": {
         "change": "Infer a missing shared inline owner from sibling retail modules rather than a surviving source file.",
         "requires": [
@@ -1870,7 +1870,10 @@
           "retail function-size sequence",
           "complete target literal prefix",
           "literal-to-body chronology mapping",
-          "current-owner instruction, relocation, section, and linked proof"
+          "current-owner instruction, relocation, section, and linked proof",
+          "verified retail evidence anchor commit 89181de2328aafa8e9e8e0f42291d397039dbf4d",
+          "complete 18-function w01Dll/s01Dll stable-ID pairing",
+          "owner-local type, global, and csect binding for each retained REL body"
         ]
       },
       "emitted_effect": {
@@ -1878,7 +1881,8 @@
           "authenticated inline-body placement",
           "literal-pool prefix ownership",
           "deferred code chronology",
-          "shared-owner confidence without semantic naming proof"
+          "shared-owner confidence without semantic naming proof",
+          "separate REL-local owner bindings for shared curve bodies"
         ],
         "known_signatures": [
           "multiple retail RELs share a complete cluster hash and size sequence",
@@ -1886,18 +1890,43 @@
           "multiset-only controls cannot distinguish ownership"
         ]
       },
-      "rule": "Treat complete cross-module code identity, function boundaries, literal-prefix identity, and literal chronology as a bounded ownership proof; do not infer an owner from matching values or a synthetic emitter alone.",
+      "rule": "Treat complete cross-module code identity, function boundaries, literal-prefix identity, and literal chronology as a bounded ownership proof; for the complete w01Dll/s01Dll 0x2344 curve cluster, port only exact expression/control-flow and size-sequence parity, then rebind every body to its owner-local types, globals, and csects. Preserve the demonstrably exact w01Dll fn_1_14D34 / s01Dll fn_1_1EF8 sign anomaly as conceptual `a * ((-3*t^2) - (6*t) - 3)`; do not canonicalize it to +6. Behavior labels do not authenticate original spellings, and cross-REL identity does not permit deduplicating separate REL-local owners.",
       "safe_actions": [
         "hash complete target clusters across sibling RELs",
         "compare exact prefix bytes and function-size chronology",
         "map each retained literal to an authenticated body",
-        "require an organic reconstructed owner and exact retail replay"
+        "require an organic reconstructed owner and exact retail replay",
+        "port the full 18-function w01Dll/s01Dll curve cluster only after each mapped pair has exact expression, control-flow, and size-sequence parity",
+        "preserve the fn_1_14D34/fn_1_1EF8 conceptual signed polynomial as `a * ((-3*t^2) - (6*t) - 3)` without algebraic canonicalization",
+        "rebind each ported body to the receiving REL's local types, globals, and csects, then retain separate owner-local definitions and validate each owner independently"
       ],
       "applicability": {
         "compiler_wide": false,
         "project_wide": false,
-        "owners": [],
-        "stable_ids": [],
+        "owners": [
+          "REL:w01Dll:world01",
+          "REL:s01Dll:s01"
+        ],
+        "stable_ids": [
+          "w01Dll:fn_1_14108=s01Dll:fn_1_12CC",
+          "w01Dll:fn_1_142B0=s01Dll:fn_1_1474",
+          "w01Dll:fn_1_144C0=s01Dll:fn_1_1684",
+          "w01Dll:fn_1_147DC=s01Dll:fn_1_19A0",
+          "w01Dll:fn_1_14A90=s01Dll:fn_1_1C54",
+          "w01Dll:fn_1_14B34=s01Dll:fn_1_1CF8",
+          "w01Dll:fn_1_14BF0=s01Dll:fn_1_1DB4",
+          "w01Dll:fn_1_14CAC=s01Dll:fn_1_1E70",
+          "w01Dll:fn_1_14D34=s01Dll:fn_1_1EF8",
+          "w01Dll:fn_1_14E0C=s01Dll:fn_1_1FD0",
+          "w01Dll:fn_1_150CC=s01Dll:fn_1_2290",
+          "w01Dll:fn_1_1547C=s01Dll:fn_1_2640",
+          "w01Dll:fn_1_155EC=s01Dll:fn_1_27B0",
+          "w01Dll:fn_1_15B60=s01Dll:fn_1_2D24",
+          "w01Dll:fn_1_15E1C=s01Dll:fn_1_2FE0",
+          "w01Dll:fn_1_15FF8=s01Dll:fn_1_31BC",
+          "w01Dll:fn_1_16148=s01Dll:fn_1_330C",
+          "w01Dll:fn_1_161AC=s01Dll:fn_1_3370"
+        ],
         "modules": [
           "w01Dll",
           "s01Dll",
@@ -1905,20 +1934,34 @@
         ],
         "owner_tags": [
           "missing_header",
-          "retail_triangulation"
+          "retail_triangulation",
+          "shared_curve_helpers",
+          "formula_preservation",
+          "cross_owner_parity"
         ]
       },
       "examples": [
-        "w01Dll/s01Dll/w04Dll 0x2344 common cluster and 0x10..0x77 prefix"
+        "w01Dll/s01Dll/w04Dll 0x2344 common cluster and 0x10..0x77 prefix",
+        "The complete w01Dll fn_1_14108..fn_1_161AC and s01Dll fn_1_12CC..fn_1_3370 18-function curve pairing preserves the retail size sequence 1A8,210,31C,2B4,A4,BC,BC,88,D8,2C0,3B0,170,574,2BC,1DC,150,64,2A0 before owner-local rebinding."
       ],
       "counterexamples": [
         "A matching literal multiset without matching code chronology is not owner proof.",
         "A synthetic no-text seeder that reproduces bytes is not an authenticated source owner.",
-        "Ordinary-literal extern-inline functions may deduplicate to an existing tail without seeding the target prefix."
+        "Ordinary-literal extern-inline functions may deduplicate to an existing tail without seeding the target prefix.",
+        "Do not replace the demonstrated fn_1_14D34/fn_1_1EF8 `(-6*t)` conceptual term with `(+6*t)` because algebraic normalization can erase an exact source-form anomaly.",
+        "Matching curve behavior or a behavior-derived label does not authenticate original function spellings, type names, or global names.",
+        "Instruction identity across w01Dll and s01Dll does not authorize collapsing their separate REL-local types, globals, csects, or owners into one deduplicated definition."
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/native_matching_w01_inline_chronology.md"
+        "docs/native_matching_w01_inline_chronology.md",
+        "docs/native_matching_s01_application.md",
+        "src/REL/w01Dll/world01.c",
+        "src/REL/s01Dll/s01.c",
+        "config/dll/rels/w01Dll/symbols.txt",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/s01Dll/symbols.txt",
+        "config/dll/rels/s01Dll/splits.txt"
       ]
     },
     {
