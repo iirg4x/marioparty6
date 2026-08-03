@@ -432,7 +432,7 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "b480722506a42e20ffbe7eb4ff39528c637b2b4e",
+      "validated_commit": "78eae3bce562278bc332032bd43c7f26cf9e8845",
       "validated_at": "2026-08-03",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -453,7 +453,8 @@
         "docs/native_matching_wave42.md",
         "src/REL/optionDll/option.c",
         "config/dll/rels/optionDll/splits.txt",
-        "src/board/capmove.c"
+        "src/board/capmove.c",
+        "src/board/captrap.c"
       ],
       "supersedes": [],
       "superseded_by": null
