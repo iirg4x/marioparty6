@@ -98,7 +98,7 @@ extern ANIMDATA *OpeningCharAnim[79];
 extern ANIMDATA *BookFrameBufAnim[2];
 extern void *FilterFrameBuf;
 extern void *BookFrameBuf[2];
-extern s16 lbl_1_bss_224;
+extern s16 OpeningUnusedBss;
 extern s16 OpeningMdlId[8];
 extern s16 WinFrameTypeTbl[4];
 extern u32 OpeningCharFileTbl[80];
@@ -106,9 +106,9 @@ extern char *OpeningCharTexNameTbl[12];
 extern char *OpeningCharObjNameTbl[12];
 extern HuVecF BookDefPos;
 extern HuVecF BookDefRot;
-extern char lbl_1_data_8988[];
-extern char lbl_1_data_8996[];
-extern char lbl_1_data_89A5[];
+extern char OpeningBookFramePrimaryObjectName[];
+extern char OpeningBookFrameSecondaryObjectName[];
+extern char OpeningBackgroundRootObjectName[];
 
 
 extern s16 BootLightId[3];
@@ -211,8 +211,8 @@ void OpeningCreate(void)
     BookFrameBufAnim[0]->bmp->data = BookFrameBuf[0];
     BookFrameBufAnim[1] = HuSprAnimMake(POSTDRAW_COPY_W, POSTDRAW_COPY_H, 0);
     BookFrameBufAnim[1]->bmp->data = BookFrameBuf[1];
-    BookFrameBufAnimId[0] = Hu3DAnimCreate(BookFrameBufAnim[0], OpeningMdlId[1], lbl_1_data_8988);
-    BookFrameBufAnimId[1] = Hu3DAnimCreate(BookFrameBufAnim[1], OpeningMdlId[1], lbl_1_data_8996);
+    BookFrameBufAnimId[0] = Hu3DAnimCreate(BookFrameBufAnim[0], OpeningMdlId[1], OpeningBookFramePrimaryObjectName);
+    BookFrameBufAnimId[1] = Hu3DAnimCreate(BookFrameBufAnim[1], OpeningMdlId[1], OpeningBookFrameSecondaryObjectName);
 
     FilterFrameBuf = HuMemDirectMallocNum(
         HEAP_HEAP,
@@ -610,7 +610,7 @@ static void OpeningBgUpdate(void)
 
     prevState = -1;
     OpeningBgState = 0;
-    bgObj = Hu3DModelObjPtrGet(OpeningMdlId[2], lbl_1_data_89A5);
+    bgObj = Hu3DModelObjPtrGet(OpeningMdlId[2], OpeningBackgroundRootObjectName);
     counter = 0;
     while (TRUE) {
         if (prevState != OpeningBgState) {
@@ -831,7 +831,7 @@ static void RotateGuide(u32 frameCount)
 
     phaseDeg = 0.0f;
     amplitude = 10.f;
-    bgObject = Hu3DModelObjPtrGet(OpeningMdlId[2], lbl_1_data_89A5);
+    bgObject = Hu3DModelObjPtrGet(OpeningMdlId[2], OpeningBackgroundRootObjectName);
 
     for (i = 1; ; i++) {
         object = Hu3DModelObjPtrGet(OpeningMdlId[2], OpeningCharObjNameTbl[10]);
@@ -1419,16 +1419,16 @@ static void OpeningCameraSet(HuVecF *rotDeg, HuVecF *target, float distance)
         tgt.y,
         tgt.z);
 }
-const GXColor lbl_1_rodata_280 = { 154, 112, 86, 255 };
-const GXColor lbl_1_rodata_284 = { 166, 166, 166, 255 };
+const GXColor OpeningFilterPrimaryColor = { 154, 112, 86, 255 };
+const GXColor OpeningFilterSecondaryColor = { 166, 166, 166, 255 };
 
 static void FilterDraw(float alpha)
 {
     Mtx44 proj;
     Mtx modelview;
     GXTexObj texObj;
-    GXColor color1 = lbl_1_rodata_280;
-    GXColor color2 = lbl_1_rodata_284;
+    GXColor color1 = OpeningFilterPrimaryColor;
+    GXColor color2 = OpeningFilterSecondaryColor;
 
     C_MTXOrtho(proj, 0.0f, 480.f, 0.0f, 640.f, 0.0f, 8000.f);
     GXSetProjection(proj, GX_ORTHOGRAPHIC);
@@ -1473,7 +1473,7 @@ static void FilterDraw(float alpha)
 
 
 s16 OpeningMdlId[8];
-s16 lbl_1_bss_224;
+s16 OpeningUnusedBss;
 void *BookFrameBuf[2];
 void *FilterFrameBuf;
 ANIMDATA *BookFrameBufAnim[2];
@@ -1575,6 +1575,6 @@ char *OpeningCharObjNameTbl[12] = {
 HuVecF BookDefPos = { 0.0f, 0.0f, -2000.0f };
 HuVecF BookDefRot = { -20.0f, -30.0f, 30.0f };
 
-char lbl_1_data_8988[] = "op_book_dummy";
-char lbl_1_data_8996[] = "op_book_dummy2";
-char lbl_1_data_89A5[] = "op_stage004-bg_root";
+char OpeningBookFramePrimaryObjectName[] = "op_book_dummy";
+char OpeningBookFrameSecondaryObjectName[] = "op_book_dummy2";
+char OpeningBackgroundRootObjectName[] = "op_stage004-bg_root";
