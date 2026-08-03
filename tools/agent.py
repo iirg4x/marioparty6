@@ -40,6 +40,7 @@ from tools.knowledge_freshness import (
     validate_freshness,
 )
 from tools.owner_catalog import CatalogError, build_catalog, find_owner, write_catalog
+from tools.recovery_pass import add_recovery_pass_parser, run_recovery_pass
 from tools.recovery_core import load, quality_findings, root_from
 from tools.recovery_data import RecoveryError, validate_data
 from tools.recovery_knowledge import (
@@ -526,6 +527,7 @@ def main() -> int:
     add_hooks_parser(sub)
     add_integration_parser(sub)
     _add_catalog_parser(sub)
+    add_recovery_pass_parser(sub)
 
     context = sub.add_parser("context")
     context.add_argument("kind", choices=["function", "owner"])
@@ -590,6 +592,8 @@ def main() -> int:
             return run_hooks_command(args, root=root)
         if args.command == "integration":
             return run_integration_command(args, root=root)
+        if args.command == "pass-report":
+            return run_recovery_pass(args, root=root)
         if args.command == "catalog":
             if args.catalog_command == "build":
                 destination = root / args.output
