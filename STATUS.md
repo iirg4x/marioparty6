@@ -19,8 +19,11 @@ Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
 is matching at **55 / 55 functions**. The principal partial owners remain
 `src/board/capmove.c` at **17 / 24 strict-exact functions**, **18 / 24
 data-value-exact functions**, and **10,776 strict-exact text bytes**;
-`src/board/last5.c` at **4 / 10**; `src/board/player.c` at **158 / 165**; and
-`src/board/shopevent.c` at **12 / 13** strict-exact functions.
+`src/board/captrap.c` at **11 / 20 strict-exact functions**, **11 / 20
+data-value-exact functions**, **6,648 strict-exact text bytes**, and **413
+verified relocations inside strict-exact functions**; `src/board/last5.c` at
+**4 / 10**; `src/board/player.c` at **158 / 165**; and `src/board/shopevent.c`
+at **12 / 13** strict-exact functions.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
