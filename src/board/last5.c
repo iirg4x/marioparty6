@@ -5,7 +5,6 @@
 #include "game/board/guide.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
-#include "game/board/object.h"
 #include "game/board/player.h"
 #include "game/board/status.h"
 #include "game/board/window.h"
@@ -116,6 +115,9 @@ extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
 extern void mbDiceMotHookSet(int playerNo, void (*hook)(int));
 extern BOOL mbDiceKillCheck(int playerNo);
 extern void mbDiceObjHit(int playerNo);
+extern void mbObjPosSet(MBMODELID modelId, float x, float y, float z);
+extern void mbObjMotionTimeSet(MBMODELID modelId, float time);
+extern void mbObjMotionSpeedSet(MBMODELID modelId, float speed);
 extern void mbSNpcDispSet(BOOL dispF);
 extern void mbWipeFadeIn(void);
 extern void mbWipeFadeOut(void);
@@ -133,7 +135,8 @@ static void ev_Last5Dice(int playerNo);
 static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj);
 static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     OMOBJ *guideObj);
-static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj, int modelId);
+static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj,
+    MBMODELID modelId);
 
 static inline void Last5RouletteResultSet(OMOBJ *obj)
 {
@@ -796,8 +799,8 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     HuVecF startPos;
     s16 *masuList[LAST5_CAPSULE_MASU_LIST_NUM];
     int masuNum[LAST5_CAPSULE_MASU_LIST_NUM];
-    int capsuleNum;
-    int validNum;
+    int validNum = 0;
+    int capsuleNum = 1;
     int useMode;
     int listNo;
     int i;
@@ -928,7 +931,8 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     mbPlayerMotIdleSet(playerNo);
 }
 
-static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj, int modelId)
+static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj,
+    MBMODELID modelId)
 {
     HuVecF modelPos;
     HuVecF playerPos;
