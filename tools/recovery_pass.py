@@ -54,6 +54,13 @@ BRANCH_ONLY = {"b"}
 CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
 BUILD_LOCK_ENV = "MP6_RETAIL_BUILD_LOCK"
 DEFAULT_BUILD_LOCK = Path.home() / ".codex" / "mp6-retail-build.lock"
+TARGET_CALL_CLUSTER_CARD = "target-call-skeleton-before-shared-accessor-abstraction"
+GENERIC_CLUSTER_CALLS = {
+    "abs", "fabs", "fabsf", "fmod", "memcpy", "memset",
+    "HuPrcCurrentGet", "HuPrcSleep", "HuPrcVSleep",
+}
+MIN_ORDERED_CLUSTER_CALLS = 6
+MIN_ORDERED_CLUSTER_RATIO = 0.75
 
 
 @dataclass(frozen=True)
@@ -460,6 +467,35 @@ def lcs_ratio(left: Sequence[str], right: Sequence[str]) -> float:
     return (2.0 * row[-1]) / (len(a) + len(b))
 
 
+def ordered_lcs(left: Sequence[str], right: Sequence[str]) -> list[str]:
+    rows: list[list[list[str]]] = [[[] for _ in range(len(right) + 1)] for _ in range(len(left) + 1)]
+    for left_index, left_item in enumerate(left, 1):
+        for right_index, right_item in enumerate(right, 1):
+            if left_item == right_item:
+                rows[left_index][right_index] = [*rows[left_index - 1][right_index - 1], left_item]
+            else:
+                above = rows[left_index - 1][right_index]
+                before = rows[left_index][right_index - 1]
+                rows[left_index][right_index] = above if len(above) >= len(before) else before
+    return rows[-1][-1]
+
+
+def filtered_cluster_calls(calls: Sequence[Any]) -> list[str]:
+    return [
+        name for name in (str(call) for call in calls)
+        if name not in GENERIC_CLUSTER_CALLS
+        and not name.startswith(("_savegpr_", "_restgpr_", "_savefpr_", "_restfpr_", "__"))
+    ]
+
+
+def strong_ordered_call_overlap(left: Sequence[str], right: Sequence[str]) -> bool:
+    if min(len(left), len(right)) < MIN_ORDERED_CLUSTER_CALLS:
+        return False
+    common = ordered_lcs(left, right)
+    ratio = (2.0 * len(common)) / (len(left) + len(right))
+    return len(common) >= MIN_ORDERED_CLUSTER_CALLS and ratio >= MIN_ORDERED_CLUSTER_RATIO
+
+
 def git_value(repo: Path, *args: str) -> str | None:
     result = subprocess.run(["git", "-C", str(repo), *args], text=True, capture_output=True, check=False)
     return result.stdout.strip() if result.returncode == 0 else None
@@ -864,6 +900,90 @@ def cluster_feature_key(item: Mapping[str, Any]) -> tuple[str, str, tuple[tuple[
     )
 
 
+def generic_call_cluster_key(item: Mapping[str, Any]) -> tuple[str, int, tuple[str, ...]] | None:
+    if item.get("category") != "paired_residual":
+        return None
+    if item.get("relocation_identity_pattern") != "paired_instruction_residual":
+        return None
+    delta = item.get("target_source_size_delta")
+    calls = filtered_cluster_calls(item.get("target_call_skeleton", []))
+    diff_kinds = tuple(sorted(str(kind) for kind in item.get("diff_kinds", {})))
+    if delta is None or len(calls) < MIN_ORDERED_CLUSTER_CALLS or len(set(calls)) < 2 or not diff_kinds:
+        return None
+    return "paired_instruction_residual", number(delta), diff_kinds
+
+
+def repeated_target_call_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    buckets: dict[tuple[str, int, tuple[str, ...]], list[Mapping[str, Any]]] = defaultdict(list)
+    for item in ranked:
+        key = generic_call_cluster_key(item)
+        if not item.get("strict_exact") and key is not None:
+            buckets[key].append(item)
+    clusters: list[dict[str, Any]] = []
+    for key, bucket in sorted(buckets.items()):
+        remaining = sorted(bucket, key=lambda item: str(item["function"]))
+        while remaining:
+            seed, *candidates = remaining
+            members = [seed]
+            rejected: list[Mapping[str, Any]] = []
+            for candidate in candidates:
+                candidate_calls = filtered_cluster_calls(candidate.get("target_call_skeleton", []))
+                if all(
+                    strong_ordered_call_overlap(
+                        candidate_calls,
+                        filtered_cluster_calls(member.get("target_call_skeleton", [])),
+                    )
+                    for member in members
+                ):
+                    members.append(candidate)
+                else:
+                    rejected.append(candidate)
+            remaining = rejected
+            if len(members) < 2:
+                continue
+            common_calls = filtered_cluster_calls(members[0].get("target_call_skeleton", []))
+            for member in members[1:]:
+                common_calls = ordered_lcs(
+                    common_calls, filtered_cluster_calls(member.get("target_call_skeleton", []))
+                )
+            if len(common_calls) < MIN_ORDERED_CLUSTER_CALLS or len(set(common_calls)) < 2:
+                continue
+            target_bytes = sum(number(item.get("target_bytes")) for item in members)
+            actionable = len(members) >= 3 or target_bytes >= 1024
+            diff_ranges = {
+                kind: {
+                    "min": min(number(item.get("diff_kinds", {}).get(kind)) for item in members),
+                    "max": max(number(item.get("diff_kinds", {}).get(kind)) for item in members),
+                }
+                for kind in key[2]
+            }
+            clusters.append(
+                {
+                    "cluster_id": "",
+                    "cause": "repeated_target_call_skeleton",
+                    "category": "paired_residual",
+                    "functions": [str(item["function"]) for item in members],
+                    "function_count": len(members),
+                    "target_bytes": target_bytes,
+                    "diff_kind_shape": {kind: values["min"] for kind, values in diff_ranges.items()},
+                    "diff_kind_count_ranges": diff_ranges,
+                    "relocation_identity_pattern": key[0],
+                    "target_source_size_delta_shape": (
+                        "equal" if key[1] == 0 else "source_larger" if key[1] > 0 else "source_smaller"
+                    ),
+                    "target_source_size_deltas": [key[1]],
+                    "shared_evidence": {"ordered_target_call_skeleton": common_calls},
+                    "knowledge_card_id": TARGET_CALL_CLUSTER_CARD,
+                    "concrete_shared_cause": True,
+                    "actionable": actionable,
+                    "expected_compiler_probes": 1,
+                    "expected_exact_bytes": target_bytes,
+                    "expected_exact_bytes_per_compiler_probe": target_bytes,
+                }
+            )
+    return clusters
+
+
 def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Plan only evidence-linked, repeatable recovery probes from ranked residuals."""
     grouped: dict[tuple[str, str, tuple[tuple[str, int], ...], str, str], list[Mapping[str, Any]]] = defaultdict(list)
@@ -914,6 +1034,7 @@ def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict
                 "expected_exact_bytes_per_compiler_probe": target_bytes,
             }
         )
+    clusters.extend(repeated_target_call_clusters(ranked))
     clusters.sort(
         key=lambda item: (
             not item["actionable"],
@@ -1177,6 +1298,8 @@ def analyze(
         unique_refinements[(item["card_id"], item.get("function"))] = item
     ranked.sort(key=lambda item: (item["priority"], item["strict_diff_rows"], item["target_bytes"], item["function"]))
     clusters = plan_shared_cause_clusters(ranked)
+    if any(item.get("knowledge_card_id") == TARGET_CALL_CLUSTER_CARD for item in clusters):
+        card_ids.add(TARGET_CALL_CLUSTER_CARD)
     head = git_value(root, "rev-parse", "HEAD")
     return {
         "schema_version": 1,
@@ -1243,6 +1366,11 @@ def render_markdown(report: Mapping[str, Any]) -> str:
             links.append("calls " + ", ".join(f"`{name}`" for name in evidence["target_calls"][:6]))
         if evidence.get("source_local_identifiers"):
             links.append("locals " + ", ".join(f"`{name}`" for name in evidence["source_local_identifiers"][:6]))
+        if evidence.get("ordered_target_call_skeleton"):
+            links.append(
+                "ordered calls "
+                + " → ".join(f"`{name}`" for name in evidence["ordered_target_call_skeleton"][:8])
+            )
         linkage = "; ".join(links)
         lines.append(
             f"- `{item['cluster_id']}` - {item['cause']}; {item['function_count']} functions / "

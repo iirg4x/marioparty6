@@ -310,6 +310,88 @@ class RecoveryPassTests(unittest.TestCase):
         ]
         self.assertEqual(module.plan_shared_cause_clusters(ranked), [])
 
+    def test_target_call_cluster_recognizes_live_coin_add_family(self) -> None:
+        common_prefix = [
+            "_savegpr_17", "abs", "abs", "mbPlayerCoinGet", "mbPlayerCoinGet",
+            "mbPlayerCoinGet", "mbPlayerCoinAdd", "mbAudFXPlay", "HuPrcSleep", "abs",
+        ]
+        display_tail = [
+            "mbPlayerCoinAdd", "mbAudFXPlay", "mbPlayerPosGet", "mbCoinDispCreate",
+            "HuPrcVSleep", "_restgpr_17",
+        ]
+
+        def item(name: str, size: int, diff_kinds: dict[str, int], calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": "paired_residual",
+                "diagnostics": [],
+                "diff_kinds": diff_kinds,
+                "relocation_identity_pattern": "paired_instruction_residual",
+                "target_source_size_delta": -16,
+                "target_call_skeleton": calls,
+                "source_local_identifiers": {"types": [], "work_identifiers": []},
+                "strict_exact": False,
+            }
+
+        clusters = module.plan_shared_cause_clusters(
+            [
+                item(
+                    "mbCoinAddProcExec", 524,
+                    {"DIFF_ARG_MISMATCH": 40, "DIFF_REPLACE": 3, "DIFF_DELETE": 4},
+                    [*common_prefix, *display_tail],
+                ),
+                item(
+                    "mbCoinAddDispExec", 536,
+                    {"DIFF_ARG_MISMATCH": 47, "DIFF_REPLACE": 1, "DIFF_DELETE": 4},
+                    [*common_prefix, *display_tail],
+                ),
+                item(
+                    "mbCoinAddExec", 304,
+                    {"DIFF_ARG_MISMATCH": 37, "DIFF_REPLACE": 1, "DIFF_DELETE": 4},
+                    [*common_prefix, "mbAudFXPlay", "_restgpr_17"],
+                ),
+            ]
+        )
+        self.assertEqual(len(clusters), 1)
+        cluster = clusters[0]
+        self.assertEqual(cluster["cause"], "repeated_target_call_skeleton")
+        self.assertEqual(cluster["functions"], ["mbCoinAddDispExec", "mbCoinAddExec", "mbCoinAddProcExec"])
+        self.assertEqual(cluster["target_bytes"], 1364)
+        self.assertTrue(cluster["actionable"])
+        self.assertEqual(cluster["knowledge_card_id"], module.TARGET_CALL_CLUSTER_CARD)
+        self.assertEqual(
+            cluster["shared_evidence"]["ordered_target_call_skeleton"],
+            ["mbPlayerCoinGet", "mbPlayerCoinGet", "mbPlayerCoinGet", "mbPlayerCoinAdd", "mbAudFXPlay", "mbAudFXPlay"],
+        )
+
+    def test_target_call_cluster_rejects_empty_short_generic_and_heterogeneous_groups(self) -> None:
+        def item(name: str, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": 700,
+                "category": "paired_residual",
+                "diagnostics": [],
+                "diff_kinds": {"DIFF_ARG_MISMATCH": 8},
+                "relocation_identity_pattern": "paired_instruction_residual",
+                "target_source_size_delta": 0,
+                "target_call_skeleton": calls,
+                "source_local_identifiers": {"types": [], "work_identifiers": []},
+                "strict_exact": False,
+            }
+
+        ranked = [
+            item("EmptyA", []),
+            item("EmptyB", []),
+            item("ShortA", ["mbCoinGet", "mbCoinSet", "mbCoinGet", "mbCoinSet", "mbCoinGet"]),
+            item("ShortB", ["mbCoinGet", "mbCoinSet", "mbCoinGet", "mbCoinSet", "mbCoinGet"]),
+            item("GenericA", ["_savegpr_17", "abs", "HuPrcSleep", "HuPrcVSleep", "memcpy", "_restgpr_17"]),
+            item("GenericB", ["_savegpr_17", "abs", "HuPrcSleep", "HuPrcVSleep", "memcpy", "_restgpr_17"]),
+            item("CoinFamily", ["mbCoinGet", "mbCoinSet", "mbCoinGet", "mbCoinSet", "mbCoinGet", "mbCoinSet", "mbCoinGet"]),
+            item("WipeFamily", ["WipeCheck", "WipeCreate", "WipeCheck", "WipeCreate", "WipeCheck", "WipeCreate", "WipeCheck"]),
+        ]
+        self.assertEqual(module.plan_shared_cause_clusters(ranked), [])
+
 
 if __name__ == "__main__":
     unittest.main()
