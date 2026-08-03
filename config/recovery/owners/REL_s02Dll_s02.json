@@ -4,13 +4,13 @@
   "module": "s02Dll",
   "source": "src/REL/s02Dll/s02.c",
   "compiler": "GC/1.3.2",
-  "summary": "Canonical S02 owner. All 19 functions defined in the consolidated file compare exact for 3,328 text bytes; four other target functions and the application data sections remain on retail fallback through one NonMatching owner.",
+  "summary": "Canonical S02 owner. All 19 functions defined in the consolidated file compare exact for 3,328 text bytes and 303 represented relocations; four other target functions and the unclaimed application data remain on retail fallback through one NonMatching owner. The first nine functions and three data owners now carry behavior-derived proposed names; no original spelling is claimed.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
     "semantics": "partial",
-    "naming": "address_only",
-    "data": "raw"
+    "naming": "partially_semantic",
+    "data": "typed_partial"
   },
   "tags": [
     "rel",
@@ -22,10 +22,15 @@
   "symbols": [
     { "symbol": "_prolog", "stable_id": "s02Dll:0x0" },
     { "symbol": "_epilog", "stable_id": "s02Dll:0x54" },
-    { "symbol": "fn_1_A0", "stable_id": "s02Dll:0xA0" },
-    { "symbol": "fn_1_268", "stable_id": "s02Dll:0x268" },
-    { "symbol": "fn_1_928", "stable_id": "s02Dll:0x928" },
-    { "symbol": "fn_1_1C0C", "stable_id": "s02Dll:0x1C0C" },
+    { "symbol": "S02OverlayInitialize", "stable_id": "s02Dll:0xA0" },
+    { "symbol": "S02ObjectClose", "stable_id": "s02Dll:0x268" },
+    { "symbol": "S02MapObjectScrollUpdate", "stable_id": "s02Dll:0x26C" },
+    { "symbol": "S02MasuAttr16Handler", "stable_id": "s02Dll:0x390" },
+    { "symbol": "S02MasuAttr5Handler", "stable_id": "s02Dll:0x3F4" },
+    { "symbol": "S02PairModelsResetEvent", "stable_id": "s02Dll:0x454" },
+    { "symbol": "S02PrimaryModelLightInfoEnable", "stable_id": "s02Dll:0x474" },
+    { "symbol": "S02SceneModelsCreate", "stable_id": "s02Dll:0x928" },
+    { "symbol": "S02PairModelsReset", "stable_id": "s02Dll:0x1C0C" },
     { "symbol": "fn_1_22C8", "stable_id": "s02Dll:0x22C8" }
   ],
   "evidence": [
@@ -40,8 +45,15 @@
       "kind": "same_game_consumer",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "REL lifecycle exports authenticate _prolog and _epilog, pass1 fn_1_454 calls fn_1_1C0C directly, and callback-address relocations authenticate the pass1 setup leaves.",
+      "summary": "REL lifecycle exports authenticate _prolog and _epilog. Direct calls and callbacks establish overlay initialization, object close/update, map-space attribute dispatch, scene-model creation, paired-model reset, and light-info roles for the nine cleaned functions.",
       "reference": "src/REL/s02Dll/s02.c"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "high",
+      "accepted": true,
+      "summary": "The consolidated owner's producers and consumers establish s02Work as the typed module state, s02MapObjectInitialPositions as the twelve-position initialization table, and s02MapScrollDelta as the per-update map-object displacement. These are behavior-derived proposals, not original-name recovery.",
+      "reference": "src/REL/s02Dll/s02.c; config/dll/rels/s02Dll/symbols.txt"
     },
     {
       "kind": "same_game_artifact",
@@ -62,6 +74,11 @@
       "kind": "private_header",
       "priority": "normal",
       "summary": "The private S02Work layout repeats across exact partitions, but header extraction is deferred until declaration chronology and complete fanout are verified."
+    },
+    {
+      "kind": "name_provenance",
+      "priority": "normal",
+      "summary": "The twelve cleaned identifiers are consumer-derived proposals only. Remaining address-derived functions and data stay unchanged until direct evidence supports narrow roles; no original spelling is inferred."
     }
   ],
   "context": {

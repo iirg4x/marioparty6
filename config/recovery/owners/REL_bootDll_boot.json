@@ -4,7 +4,7 @@
   "module": "bootDll",
   "source": "src/REL/bootDll/boot.c",
   "compiler": "GC/2.6",
-  "summary": "Canonical bootDll boot owner after a bounded numeric-domain cleanup. Existing title resource identifiers are carried into a claimed title catalog header; timing, input, out-view priority, and substick values retain narrow behavior-backed names. The rebuilt boot object is exact for text, rodata, and all 1,069 relocations, its source-owned data is the exact target prefix, and the linked REL is retail-identical.",
+  "summary": "Canonical bootDll boot owner after bounded numeric-domain and data-owner cleanup. Existing title resource identifiers are carried into a claimed title catalog header; timing, input, out-view priority, and substick values retain narrow behavior-backed names. The rebuilt boot object is exact for text, rodata, and all 1,069 relocations, its source-owned data is the exact target prefix, and the linked REL is retail-identical. No address-derived identifier remains in this owner; BootUnusedBss is deliberately non-semantic because the target exposes no consumer.",
   "status": {
     "binary": "exact",
     "source_shape": "plausible",
@@ -63,6 +63,13 @@
       "reference": "src/REL/bootDll/opening.c; include/dolphin/pad.h; include/game/object.h; include/msm_stream.h"
     },
     {
+      "kind": "target_binary",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "The remaining two-byte Boot BSS object has no relocation or source consumer. BootUnusedBss records that absence of use without assigning gameplay semantics; the DLL cleanup audit reports zero address-derived identifiers in boot.c.",
+      "reference": "config/dll/rels/bootDll/symbols.txt; src/REL/bootDll/boot.c"
+    },
+    {
       "kind": "sibling_source",
       "confidence": "medium",
       "accepted": false,
@@ -114,19 +121,9 @@
       "summary": "The current MP6 msm_se.h does not expose a target-backed symbol for the title confirmation value 1180. TITLE_CONFIRM_SE remains the existing behavior name with a decimal initializer; do not replace it with the MP5 MSM_SE_MENU_40 name or value."
     },
     {
-      "kind": "address_derived_globals",
-      "priority": "normal",
-      "summary": "The local moveF$486 BSS symbol has no target-backed original name; retain it as an address-derived local."
-    },
-    {
-      "kind": "address_derived_globals",
-      "priority": "normal",
-      "summary": "The owner-local lbl_1_bss_4 BSS symbol has no target-backed original name or consumer use; retain the placeholder and do not infer a cross-REL meaning."
-    },
-    {
       "kind": "source_quality",
       "priority": "normal",
-      "summary": "The cleanup changes one include/catalog declaration group and one local constant group; no structural ABI/type change or compiler-reconciliation probe was used. Source-quality, public, exact object-relocation, and retail REL gates pass."
+      "summary": "The cleanup changes one include/catalog declaration group, one local constant group, and one unreferenced BSS spelling; no structural ABI/type change or compiler-reconciliation probe was used. Source-quality, public, exact object-relocation, and retail REL gates pass."
     }
   ],
   "context": {

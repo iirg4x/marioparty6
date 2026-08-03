@@ -666,6 +666,177 @@
       "status": "proposed",
       "confidence": "high",
       "summary": "The pinned predecessor uses nameKeyboardNum for the available keyboard-page count, and MP6 exact consumers use this state for page wraparound."
+    },
+    {
+      "stable_id": "bootDll:bss:0x4",
+      "owner": "REL:bootDll:boot",
+      "current_symbol": "lbl_1_bss_4",
+      "proposed_name": "BootUnusedBss",
+      "status": "proposed",
+      "confidence": "confirmed",
+      "summary": "Configured as a two-byte Boot-owned BSS object and has no source consumer; the name records only that it is unreferenced storage, not a recovered gameplay role."
+    },
+    {
+      "stable_id": "bootDll:bss:0x224",
+      "owner": "REL:bootDll:opening",
+      "current_symbol": "lbl_1_bss_224",
+      "proposed_name": "OpeningUnusedBss",
+      "status": "proposed",
+      "confidence": "confirmed",
+      "summary": "Configured as a two-byte Opening-owned BSS object and has no source consumer; the name records only that it is unreferenced storage, not a recovered gameplay role."
+    },
+    {
+      "stable_id": "bootDll:data:0x8988",
+      "owner": "REL:bootDll:opening",
+      "current_symbol": "lbl_1_data_8988",
+      "proposed_name": "OpeningBookFramePrimaryObjectName",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The op_book_dummy literal is passed as the target object name when creating the first book-frame animation on the opening book model."
+    },
+    {
+      "stable_id": "bootDll:data:0x8996",
+      "owner": "REL:bootDll:opening",
+      "current_symbol": "lbl_1_data_8996",
+      "proposed_name": "OpeningBookFrameSecondaryObjectName",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The op_book_dummy2 literal is passed as the target object name when creating the second book-frame animation on the opening book model."
+    },
+    {
+      "stable_id": "bootDll:data:0x89A5",
+      "owner": "REL:bootDll:opening",
+      "current_symbol": "lbl_1_data_89A5",
+      "proposed_name": "OpeningBackgroundRootObjectName",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "The op_stage004-bg_root literal selects the opening background root object in both background-update consumers."
+    },
+    {
+      "stable_id": "bootDll:rodata:0x280",
+      "owner": "REL:bootDll:opening",
+      "current_symbol": "lbl_1_rodata_280",
+      "proposed_name": "OpeningFilterPrimaryColor",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Copied into FilterDraw's first GX TEV color register and its alpha is scaled by the filter alpha argument."
+    },
+    {
+      "stable_id": "bootDll:rodata:0x284",
+      "owner": "REL:bootDll:opening",
+      "current_symbol": "lbl_1_rodata_284",
+      "proposed_name": "OpeningFilterSecondaryColor",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Copied into FilterDraw's second GX TEV color register for the opening filter blend."
+    },
+    {
+      "stable_id": "s02Dll:0xA0",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_A0",
+      "proposed_name": "S02OverlayInitialize",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: clears the party flag and installs the S02 object lifecycle through mbObjectSetup. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x268",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_268",
+      "proposed_name": "S02ObjectClose",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: supplied as the close callback to mbObjectSetup and intentionally has no body. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x26C",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_26C",
+      "proposed_name": "S02MapObjectScrollUpdate",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: advances all twelve map objects by the stored scroll delta and wraps positions at the map boundary. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x390",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_390",
+      "proposed_name": "S02MasuAttr16Handler",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: reads the current space attribute and handles the value 16 path. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x3F4",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_3F4",
+      "proposed_name": "S02MasuAttr5Handler",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: reads the current space attribute and handles the value 5 path. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x454",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_454",
+      "proposed_name": "S02PairModelsResetEvent",
+      "status": "proposed",
+      "confidence": "medium",
+      "summary": "Behavioral proposal only: event-shaped wrapper that ignores its player argument and invokes the paired-model reset routine. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x474",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_474",
+      "proposed_name": "S02PrimaryModelLightInfoEnable",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: enables model light information on the primary stored model. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x928",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_928",
+      "proposed_name": "S02SceneModelsCreate",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: creates and configures the S02 scene's model set, hooks, positions, rotations, and initial display state. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:0x1C0C",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "fn_1_1C0C",
+      "proposed_name": "S02PairModelsReset",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: restores the paired models' visibility, motion, transforms, and scale. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:bss:0x4",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "lbl_1_bss_4",
+      "proposed_name": "s02MapScrollDelta",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: produced from the first and last initial map positions and consumed as the per-update displacement for all twelve map objects. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:bss:0x1C",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "lbl_1_bss_1C",
+      "proposed_name": "s02Work",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: the typed module state stores every scene, map, effect, and paired-model identifier used by the exact owner. No original-name provenance is known."
+    },
+    {
+      "stable_id": "s02Dll:data:0xE8",
+      "owner": "REL:s02Dll:s02",
+      "current_symbol": "lbl_1_data_E8",
+      "proposed_name": "s02MapObjectInitialPositions",
+      "status": "proposed",
+      "confidence": "high",
+      "summary": "Behavioral proposal only: the twelve-vector table initializes map-object positions and determines the map scroll displacement. No original-name provenance is known."
     }
   ]
 }

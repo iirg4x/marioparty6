@@ -4,7 +4,7 @@
   "module": "bootDll",
   "source": "src/REL/bootDll/opening.c",
   "compiler": "GC/2.6",
-  "summary": "Canonical boot opening owner. All 37 functions, 21,272 text bytes, four owned sections, and 1,928 relocations are exact; the linked boot REL and main DOL are retail-identical. One duplicated 16-bit initialized stack slot is target-backed, while its original name, signedness, and semantics remain unknown.",
+  "summary": "Canonical boot opening owner. All 37 functions, 21,272 text bytes, four owned sections, and 1,928 relocations are exact; the linked boot REL and main DOL are retail-identical. Five data objects now have narrow consumer-derived proposed names, one unreferenced BSS object has an explicitly non-semantic name, and no address-derived identifier remains in opening.c. One duplicated 16-bit initialized stack slot is target-backed, while its original name, signedness, and semantics remain unknown.",
   "status": {
     "binary": "exact",
     "source_shape": "evidence_backed",
@@ -54,6 +54,13 @@
       "accepted": true,
       "summary": "SwapAnimFrame passes only the animation and frame indices through EventCreate. The directed owner graph and direct target calls expose no third value or consumer that could authenticate semantics for the initialized slot.",
       "reference": "src/REL/bootDll/opening.c; src/REL/bootDll/graphify-out/graph.json"
+    },
+    {
+      "kind": "same_game_consumer",
+      "confidence": "confirmed",
+      "accepted": true,
+      "summary": "Three embedded object-name strings are consumed directly by Hu3DAnimCreate or Hu3DModelObjPtrGet, and two GXColor objects feed FilterDraw's two TEV color registers. Their proposed names describe those exact roles without claiming original spellings. OpeningUnusedBss is unreferenced and explicitly non-semantic.",
+      "reference": "src/REL/bootDll/opening.c; config/dll/rels/bootDll/symbols.txt"
     },
     {
       "kind": "readability_hypothesis",
@@ -110,6 +117,11 @@
       "kind": "catalog_names",
       "priority": "normal",
       "summary": "DATA_title ownership is authenticated, but archive-entry and sound-catalog names are unavailable. Resource indices use DATANUM(DATA_title, index), while message, animation, and sound constants remain deliberately generic and owner-local."
+    },
+    {
+      "kind": "name_provenance",
+      "priority": "normal",
+      "summary": "The five cleaned data names are behavior-derived proposals, not recovered original spellings. OpeningUnusedBss records only that the configured BSS object has no consumer."
     }
   ],
   "context": {
