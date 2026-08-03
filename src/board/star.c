@@ -16,11 +16,18 @@
 #include "game/hsfex.h"
 #include "game/memory.h"
 #include "game/sprite.h"
+#include "messdir_enum.h"
 
 #include "dolphin/os/OSFastCast.h"
 #include "humath.h"
 
 #define STAR_OBJ_MAX 999
+
+enum {
+    STAR_EVENT_PROC_PRIORITY = 8195,
+    STAR_EVENT_PROC_STACK_SIZE = 8192,
+    STAR_ZTAR_CAPSULE_FILE = 32
+};
 
 enum {
     STAR_MODE_GROW,
@@ -510,7 +517,8 @@ void mbStarStub(void)
 void mbev_StarMasu(int playerNo)
 {
     mbMoveNumDispSet(playerNo, FALSE);
-    starMasuProc = HuPrcChildCreate(ev_StarMasu, 0x2003, 0x2000, 0, mbMainProc);
+    starMasuProc = HuPrcChildCreate(ev_StarMasu, STAR_EVENT_PROC_PRIORITY,
+        STAR_EVENT_PROC_STACK_SIZE, 0, mbMainProc);
     HuPrcDestructorSet2(starMasuProc, ev_StarMasuKill);
     while (starMasuProc != NULL) {
         HuPrcVSleep();
@@ -521,7 +529,8 @@ void mbev_StarMasu(int playerNo)
 void mbev_StarFreeMasu(int playerNo)
 {
     mbMoveNumDispSet(playerNo, FALSE);
-    starFreeProc = HuPrcChildCreate(ev_StarFreeMasu, 0x2003, 0x2000, 0, mbMainProc);
+    starFreeProc = HuPrcChildCreate(ev_StarFreeMasu, STAR_EVENT_PROC_PRIORITY,
+        STAR_EVENT_PROC_STACK_SIZE, 0, mbMainProc);
     HuPrcDestructorSet2(starFreeProc, ev_StarFreeMasuKill);
     while (starFreeProc != NULL) {
         HuPrcVSleep();
@@ -1043,11 +1052,11 @@ void mbStarMapViewProcExec(void)
     mbMusPauseFadeOut(0, TRUE, 1000);
     HuPrcSleep(120);
     for (i = 0; i < 4; i++) {
-        mbPlayerMotionShiftSet(i, 1, 0.0f, 1.0f, 0x40000001);
+        mbPlayerMotionShiftSet(i, 1, 0.0f, 1.0f, HU3D_MOTATTR_LOOP);
     }
     mbCameraZoomSet(2400.0f);
     mbCameraRotSet(325.0f, 0.0f, 0.0f);
-    startMasuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    startMasuId = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
     mbMasuPosGet(startMasuId, &startPos);
     mbMasuPosGet(starMasuList[0], &endPos);
     mbNormPosto3D(&starGuidePos, 4, &guidePos);
@@ -1059,13 +1068,13 @@ void mbStarMapViewProcExec(void)
     mbWipeFadeIn();
     mbAudGuidePlay(952);
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    winNo = mbWinCreateTime(4, 0x270010, -1);
+    winNo = mbWinCreateTime(4, MESSNUM(MESS_BOARD_STAR, 16), -1);
     mbWinPause((s16)winNo);
     mbev_StarScroll(&startPos, &endPos, 150);
     mbWinKill((s16)winNo);
     mbAudGuidePlay(952);
     mbGuideMotionShiftSet(guideObj, 12, TRUE);
-    mbWinCreateTime(4, 0x27000E, -1);
+    mbWinCreateTime(4, MESSNUM(MESS_BOARD_STAR, 14), -1);
     mbWinTopWait();
     mbWipeFadeOut();
     mbMusFadeOutSpeed(1, 1000);
@@ -1795,14 +1804,14 @@ static void ev_StarMasuRun(BOOL freeF)
     if (mbPlayerStarGet(playerNo) >= 999) {
         mbAudGuidePlay(951);
         mbWinCreate(MBWIN_TYPE_EVENT,
-            0x27000A + messNo, speakerNo);
+            MESSNUM(MESS_BOARD_STAR, 10) + messNo, speakerNo);
         mbWinTopWait();
         goto end;
     }
     if (!freeF && mbPlayerCoinGet(playerNo) < 20) {
         mbAudGuidePlay(951);
         mbWinCreate(MBWIN_TYPE_EVENT,
-            0x270004 + messNo, speakerNo);
+            MESSNUM(MESS_BOARD_STAR, 4) + messNo, speakerNo);
         mbWinTopWait();
         goto end;
     }
@@ -1811,7 +1820,7 @@ static void ev_StarMasuRun(BOOL freeF)
         HuPrcVSleep();
     }
     mbAudGuidePlay(950);
-    mbWinCreate(MBWIN_TYPE_EVENT, 0x270000 + messNo, speakerNo);
+    mbWinCreate(MBWIN_TYPE_EVENT, MESSNUM(MESS_BOARD_STAR, 0) + messNo, speakerNo);
     mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo), 0);
     mbWinTopWait();
     mbStatusDispFocusSet(playerNo, TRUE);
@@ -1820,7 +1829,7 @@ static void ev_StarMasuRun(BOOL freeF)
     }
     if (!freeF) {
         mbAudGuidePlay(952);
-        mbWinCreateChoice(1, 0x270002 + messNo, speakerNo, 0);
+        mbWinCreateChoice(1, MESSNUM(MESS_BOARD_STAR, 2) + messNo, speakerNo, 0);
         if (GwPlayer[playerNo].comF) {
             if (mbPlayerCoinGet(playerNo) >= 20) {
                 mbComChoiceUpSet();
@@ -1832,7 +1841,7 @@ static void ev_StarMasuRun(BOOL freeF)
         if (mbWinTopChoiceGet() == -1) {
             mbAudGuidePlay(951);
             mbWinCreate(MBWIN_TYPE_EVENT,
-                0x270008 + messNo, speakerNo);
+                MESSNUM(MESS_BOARD_STAR, 8) + messNo, speakerNo);
             mbWinTopWait();
             mbStatusDispFocusSet(playerNo, FALSE);
             while (!mbStatusMoveCheck(playerNo)) {
@@ -1846,7 +1855,7 @@ static void ev_StarMasuRun(BOOL freeF)
                 if (mbPlayerCoinGet(playerNo) < 20) {
                     mbAudGuidePlay(951);
                     mbWinCreate(MBWIN_TYPE_EVENT,
-                        0x270004 + messNo, speakerNo);
+                        MESSNUM(MESS_BOARD_STAR, 4) + messNo, speakerNo);
                     mbWinTopWait();
                     mbStatusDispFocusSet(playerNo, FALSE);
                     while (!mbStatusMoveCheck(playerNo)) {
@@ -1860,7 +1869,7 @@ static void ev_StarMasuRun(BOOL freeF)
             case 1:
                 mbAudGuidePlay(951);
                 mbWinCreate(MBWIN_TYPE_EVENT,
-                    0x270008 + messNo, speakerNo);
+                    MESSNUM(MESS_BOARD_STAR, 8) + messNo, speakerNo);
                 mbWinTopWait();
                 mbStatusDispFocusSet(playerNo, FALSE);
                 while (!mbStatusMoveCheck(playerNo)) {
@@ -1873,14 +1882,14 @@ static void ev_StarMasuRun(BOOL freeF)
 starBuy:
                 mbAudGuidePlay(952);
                 mbWinCreate(MBWIN_TYPE_EVENT,
-                    0x270006 + messNo, speakerNo);
+                    MESSNUM(MESS_BOARD_STAR, 6) + messNo, speakerNo);
                 mbWinTopWait();
                 mbCoinAddExec(playerNo, -20);
                 break;
         }
     } else {
         mbWinCreate(MBWIN_TYPE_EVENT,
-            0x270006 + messNo, speakerNo);
+            MESSNUM(MESS_BOARD_STAR, 6) + messNo, speakerNo);
         mbWinTopWait();
     }
     masuId = GwPlayer[playerNo].masuId;
@@ -1888,7 +1897,7 @@ starBuy:
     _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 28));
     mbStarGetMain(playerNo, NULL, 1, TRUE);
     mbWipeFadeOut();
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, HU3D_MOTATTR_LOOP);
     mbCameraPlayerViewSetFast(playerNo, 2);
     if (starMoveHook != NULL) {
         starMoveHook();
@@ -1900,7 +1909,7 @@ starBuy:
     mbObjDispSet(obj->mdlId[0], FALSE);
     work->modelDispF = FALSE;
     mbObjDispSet(work->signModelId, FALSE);
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, HU3D_MOTATTR_LOOP);
     mbPauseHookPush(StarPauseHook);
     mbNormPosto3D(&starMasuGuidePos, 4, &guidePos);
     starGuideObj = mbGuideCreateFlag(&guidePos, starMasuGuideMotTbl,
@@ -1912,7 +1921,7 @@ starBuy:
     mbAudGuidePlay(952);
     mbGuideMotionShiftSet(starGuideObj, 12, TRUE);
     winNo = mbWinCreateTime(4,
-        0x27000C + messNo, HUWIN_SPEAKER_NULL);
+        MESSNUM(MESS_BOARD_STAR, 12) + messNo, HUWIN_SPEAKER_NULL);
     mbWinPause((s16)winNo);
     mbev_StarScroll(&startPos, &endPos, 120);
     mbWinKill((s16)winNo);
@@ -1929,7 +1938,7 @@ starBuy:
     mbAudGuidePlay(952);
     mbGuideMotionShiftSet(starGuideObj, 12, TRUE);
     mbWinCreateTime(4,
-        0x27000E + messNo, HUWIN_SPEAKER_NULL);
+        MESSNUM(MESS_BOARD_STAR, 14) + messNo, HUWIN_SPEAKER_NULL);
     mbWinTopWait();
     mbMusFadeOutSpeed(1, 1000);
     mbWipeFadeOut();
@@ -2025,7 +2034,7 @@ static int ZtarObjCreate(HuVecF *pos)
             memset(work, 0, sizeof(STARWORK));
             work->obj = obj;
             obj->mdlId[0] = mbObjCreate(
-                DATANUM(DATA_capsulechar1, 0x20), NULL, TRUE);
+                DATANUM(DATA_capsulechar1, STAR_ZTAR_CAPSULE_FILE), NULL, TRUE);
             modelId = mbObjModelIDGet(obj->mdlId[0]);
             modelP = &Hu3DData[modelId];
             hsf = modelP->hsf;
