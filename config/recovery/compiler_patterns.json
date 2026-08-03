@@ -4259,9 +4259,7 @@
       "applicability": {
         "compiler_wide": false,
         "project_wide": false,
-        "owners": [
-          "main:board/capmove"
-        ],
+        "owners": [],
         "stable_ids": [
           "main:board/capmove:mbev_CapKinoko",
           "main:board/capmove:mbev_CapSKinoko",
