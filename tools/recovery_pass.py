@@ -53,7 +53,7 @@ COMMUTATIVE = {"add", "add.", "and", "and.", "or", "or.", "xor", "xor.",
 BRANCH_ONLY = {"b"}
 CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
 BUILD_LOCK_ENV = "MP6_RETAIL_BUILD_LOCK"
-DEFAULT_BUILD_LOCK = Path(tempfile.gettempdir()) / "mp6-recovery-retail-build.lock"
+DEFAULT_BUILD_LOCK = Path.home() / ".codex" / "mp6-retail-build.lock"
 
 
 @dataclass(frozen=True)
@@ -1206,7 +1206,7 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--build-lock",
         default=os.environ.get(BUILD_LOCK_ENV, str(DEFAULT_BUILD_LOCK)),
-        help=f"machine-wide build lock path (default: {BUILD_LOCK_ENV} or the system temp directory)",
+        help=f"machine-wide build lock path (default: {BUILD_LOCK_ENV} or ~/.codex/mp6-retail-build.lock)",
     )
     parser.add_argument(
         "--build-lock-timeout",
