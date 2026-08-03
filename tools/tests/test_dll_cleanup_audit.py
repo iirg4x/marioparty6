@@ -77,7 +77,11 @@ class DllCleanupAuditTests(unittest.TestCase):
             ending.parent.mkdir(parents=True)
             minigame.parent.mkdir(parents=True)
             ending.write_text("int fn_1_1234(void) { return 0; }\n", encoding="utf-8")
-            runtime.write_text("int runtime(void) { return 0; }\n", encoding="utf-8")
+            runtime.write_text(
+                "extern int fn_1_1234(void);\n"
+                "int runtime(void) { return fn_1_1234(); }\n",
+                encoding="utf-8",
+            )
             minigame.write_text("int fn_1_5678(void) { return 0; }\n", encoding="utf-8")
             data = {
                 "root": root,
@@ -102,7 +106,10 @@ class DllCleanupAuditTests(unittest.TestCase):
             self.assertTrue(modules["endingdll"]["actionable"])
             self.assertEqual(modules["endingdll"]["configured_sources"], 2)
             self.assertEqual(len(modules["endingdll"]["filename_findings"]), 1)
-            self.assertEqual(len(modules["endingdll"]["address_identifiers"]), 1)
+            self.assertEqual(len(modules["endingdll"]["address_identifiers"]), 3)
+            self.assertEqual(
+                len(modules["endingdll"]["unique_address_identifiers"]), 1
+            )
             self.assertEqual(modules["m401Dll"]["classification"], "uncertain_excluded")
             self.assertFalse(modules["m401Dll"]["actionable"])
 

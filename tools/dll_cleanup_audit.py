@@ -205,6 +205,14 @@ def build_cleanup_report(
                 identifiers.extend(address_identifiers(path, relative))
                 source_quality.extend(quality_by_path.get(Path(relative).as_posix(), []))
                 source_quality.extend(function_pointer_integer_casts(path, relative))
+        unique_identifiers: list[dict[str, Any]] = []
+        seen_identifiers: set[str] = set()
+        for finding in identifiers:
+            identifier = str(finding["identifier"])
+            if identifier in seen_identifiers:
+                continue
+            seen_identifiers.add(identifier)
+            unique_identifiers.append(finding)
         records.append(
             {
                 "module": module,
@@ -214,6 +222,7 @@ def build_cleanup_report(
                 "source_bytes": total_bytes,
                 "filename_findings": filename_findings,
                 "address_identifiers": identifiers,
+                "unique_address_identifiers": unique_identifiers,
                 "source_quality_findings": source_quality,
                 "actionable": bool(filename_findings or identifiers or source_quality),
             }
@@ -224,6 +233,7 @@ def build_cleanup_report(
             item["classification"] != "eligible_reviewed",
             not item["actionable"],
             -len(item["filename_findings"]),
+            -len(item["unique_address_identifiers"]),
             -len(item["address_identifiers"]),
             -len(item["source_quality_findings"]),
             -item["source_bytes"],
@@ -287,7 +297,7 @@ def _render(report: Mapping[str, Any], *, show_excluded: bool) -> str:
             f"excluded-w0={summary['excluded_w0']} "
             f"uncertain-excluded={summary['uncertain_excluded']}"
         ),
-        "module\tfiles\tbytes\tfilenames\taddress-ids\tquality",
+        "module\tfiles\tbytes\tfilenames\tunique-address-ids\taddress-uses\tquality",
     ]
     for item in report["modules"]:
         if item["classification"] != "eligible_reviewed" and not show_excluded:
@@ -295,7 +305,9 @@ def _render(report: Mapping[str, Any], *, show_excluded: bool) -> str:
         if item["classification"] == "eligible_reviewed":
             lines.append(
                 f"{item['module']}\t{item['configured_sources']}\t{item['source_bytes']}\t"
-                f"{len(item['filename_findings'])}\t{len(item['address_identifiers'])}\t"
+                f"{len(item['filename_findings'])}\t"
+                f"{len(item['unique_address_identifiers'])}\t"
+                f"{len(item['address_identifiers'])}\t"
                 f"{len(item['source_quality_findings'])}"
             )
         else:
