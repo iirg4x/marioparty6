@@ -4140,7 +4140,7 @@
       "compiler": "GC/2.6",
       "confidence": "confirmed",
       "summary": "MP6 board capsule effects normalize `mbRandMod(1 << 28)` by 2^-28 through the shared `MBCapsuleEffRandF()` source macro. The bound and scaling are target-authenticated, but repeating either a raw power-of-two immediate or the exponent-form reciprocal at call sites is compiler/decompiler-shaped rather than credible authored source. The macro name and source role continue the direct MP5 capsule-header interface, while MP6 changes the underlying generator from the MP5 mask-based expression to `mbRandMod`.",
-      "conditions": "Apply only to MP6 board capsule-effect consumers whose target calls `mbRandMod` with 268435456 and multiplies the converted result by 2^-28. The current proof covers Capevent and Capspecial under GC/2.6; prove additional consumers independently before widening the header fan-out.",
+      "conditions": "Apply only to MP6 board capsule-effect consumers whose target calls `mbRandMod` with 268435456 and multiplies the converted result by 2^-28. The current proof covers Capevent, Capspecial, and the five strict-exact Capmove Kinoko variants under GC/2.6; prove additional consumers independently before widening the header fan-out.",
       "source_condition": {
         "change": "Replace a complete `mbRandMod(1 << 28)` times 2^-28 expansion with `MBCapsuleEffRandF()` from `game/board/capsule.h`.",
         "requires": [
@@ -4178,7 +4178,12 @@
         "owners": [],
         "stable_ids": [
           "main:board/capevent:MBCapsuleEffRandF",
-          "main:board/capspecial:MBCapsuleEffRandF"
+          "main:board/capspecial:MBCapsuleEffRandF",
+          "main:board/capmove:mbev_CapKinoko",
+          "main:board/capmove:mbev_CapSKinoko",
+          "main:board/capmove:mbev_CapPKinoko",
+          "main:board/capmove:mbev_CapMKinoko",
+          "main:board/capmove:mbev_CapNKinoko"
         ],
         "modules": [
           "main"
@@ -4195,6 +4200,7 @@
       "examples": [
         "Capevent converted 118 complete expansions to `MBCapsuleEffRandF()` while its full relocation-aware report stayed SHA-256 6052b0c2ad53f418164f3fe9af2de0fb98c2db47a6734bc93ae962cbf8700d8b before and after; all 160 strict-exact functions and 33,500 exact bytes were preserved.",
         "Capspecial converted four complete expansions while its full relocation-aware report stayed SHA-256 eab8958fe84da8db3ee13f03793d196b73829b1643f7f6fd8d6696b0d41e0290 before and after; all 18 strict-exact functions were preserved.",
+        "Capmove's five Kinoko variants are strict-exact across 6,756 text bytes with the shared macro at every target-authenticated random normalization call; the complete owner retained 17/24 strict-exact functions with zero regressions.",
         "Replacing the header body's raw bound with `1 << 28` and the reciprocal with `1.0f / (1 << 28)` preserved the complete Capevent object SHA-256 c1c4977e76666cbb07e68ae7a8f1ce74bf9c190bb03898dfd0b0bd8bd17d9535 and Capspecial object SHA-256 7af0047e5581ef3f4596b9556c8d37f346c7911727df53f430a65e78fb01f554.",
         "Mario Party 5 commit e246f9d9850ff53ac684b971068fbf87fdcf6acb defines the direct predecessor `MBCapsuleEffRandF()` interface in `include/game/board/capsule.h`; MP6 retains the MBCapsule family but authenticates a different mbRandMod-based expansion."
       ],
@@ -4208,7 +4214,85 @@
         "include/game/board/capsule.h",
         "src/board/capevent.c",
         "src/board/capspecial.c",
+        "src/board/capmove.c",
         "https://github.com/mariopartyrd/marioparty5/blob/e246f9d9850ff53ac684b971068fbf87fdcf6acb/include/game/board/capsule.h"
+      ]
+    },
+    {
+      "id": "gc26-o0-single-for-or-condition-backedge",
+      "title": "Keep one OR continuation in the loop condition when the target has one shared backedge",
+      "classification": "confirmed_rule",
+      "category": "control_flow_source_shape",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "Under GC/2.6 O0, a natural `for` loop whose continuation is the logical OR of a frame bound and a completion predicate emits one shared condition block and one body backedge. Splitting the same semantics into nested or consecutive loops changes the unconditional branch destination even when the calls and computations agree.",
+      "conditions": "Use only when target CFG evidence shows one initialization edge into a shared two-predicate condition, either true predicate enters the same body, and the body has one increment/backedge. The repeatable proof is the five strict-exact Capmove Kinoko variants.",
+      "source_condition": {
+        "change": "Express the target-backed frame-bound and completion predicates together as one `for` continuation using logical OR.",
+        "requires": [
+          "identical loop semantics and side-effect order",
+          "target CFG with one shared condition block and one body backedge",
+          "one bounded comparison against the nested or split-loop source shape",
+          "exact instructions, branches, relocations, and owner neighbors"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "one shared condition block for both continuation predicates",
+          "one unconditional body backedge",
+          "different branch destination under nested or split loops",
+          "unchanged calls and arithmetic around the loop body"
+        ],
+        "known_signatures": [
+          "an exact-sized candidate differs only in an unconditional branch destination",
+          "the target checks the frame bound and completion state before one shared body",
+          "five sibling variants close with the same single-for OR-condition spelling"
+        ]
+      },
+      "rule": "When the target CFG proves one shared OR continuation and one backedge, test the natural single-`for` spelling once. Retain it only with exact instructions, relocations, and semantics; do not introduce dead branches, duplicated predicates, or loop restructuring merely to redirect a branch.",
+      "safe_actions": [
+        "draw the target condition and backedge before changing C",
+        "compare one single-for form against one nested or split-loop control",
+        "verify predicate evaluation and side effects are unchanged",
+        "stop after a neutral or negative control instead of forcing the branch"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [
+          "main:board/capmove"
+        ],
+        "stable_ids": [
+          "main:board/capmove:mbev_CapKinoko",
+          "main:board/capmove:mbev_CapSKinoko",
+          "main:board/capmove:mbev_CapPKinoko",
+          "main:board/capmove:mbev_CapMKinoko",
+          "main:board/capmove:mbev_CapNKinoko"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "board",
+          "control_flow",
+          "loop_backedge",
+          "logical_or",
+          "source_shape"
+        ]
+      },
+      "examples": [
+        "mbev_CapKinoko, mbev_CapSKinoko, mbev_CapPKinoko, mbev_CapMKinoko, and mbev_CapNKinoko are strict-exact across 6,756 text bytes with `i < 60.0f || !check` retained in one for-condition."
+      ],
+      "counterexamples": [
+        "A branch-destination residual alone does not authorize changing loop semantics; the complete target CFG must show the shared OR condition.",
+        "Do not add a dead branch, duplicate a predicate, or split a side-effecting condition to force one branch target.",
+        "A nested or split-loop form that is byte-neutral or better for another owner is owner-local counterevidence, not a reason to generalize this card."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/capmove.c",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
       ]
     },
     {
