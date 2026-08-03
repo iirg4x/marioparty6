@@ -399,13 +399,18 @@
     },
     "retail-triangulation-for-missing-inline-owner": {
       "status": "active",
-      "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",
-      "validated_at": "2026-08-02",
+      "validated_commit": "1273812379cd5088ed6a158f44fc329661a09f1d",
+      "validated_at": "2026-08-03",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_w01_inline_chronology.md",
+        "docs/native_matching_s01_application.md",
         "src/REL/w01Dll/world01.c",
-        "config/dll/rels/w01Dll/symbols.txt"
+        "src/REL/s01Dll/s01.c",
+        "config/dll/rels/w01Dll/symbols.txt",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/s01Dll/symbols.txt",
+        "config/dll/rels/s01Dll/splits.txt"
       ],
       "supersedes": [],
       "superseded_by": null
