@@ -425,7 +425,8 @@ _ORGANIC_RULES: tuple[tuple[str, str, int, str, re.Pattern[str], str], ...] = (
         4,
         "Opaque raw/blob/tail/padding storage remains semantic recovery debt.",
         re.compile(
-            r"\b(?:raw|blob|tail|opaque|padding|reserved|pad|unk)[A-Za-z0-9_]*\s*\[",
+            r"\b(?:(?:raw|blob|tail|opaque|padding|reserved|unk)[A-Za-z0-9_]*"
+            r"|pad(?:_[A-Za-z0-9_]*|[0-9][A-Za-z0-9_]*)?)\s*\[",
             re.IGNORECASE,
         ),
         "high",
@@ -435,7 +436,11 @@ _ORGANIC_RULES: tuple[tuple[str, str, int, str, re.Pattern[str], str], ...] = (
         "semantic_debt",
         1,
         "Opaque identifier is honest but marks unrecovered semantics.",
-        re.compile(r"\b(?:unk|reserved|pad)[A-Za-z0-9_]*\b", re.IGNORECASE),
+        re.compile(
+            r"\b(?:(?:unk|reserved)[A-Za-z0-9_]*"
+            r"|pad(?:_[A-Za-z0-9_]*|[0-9][A-Za-z0-9_]*)?)\b",
+            re.IGNORECASE,
+        ),
         "high",
     ),
     (

@@ -56,6 +56,28 @@ static void fn_80001234(int *out, volatile int *in)
         self.assertLess(result.score, 60)
         self.assertTrue(result.human_review_required)
 
+    def test_organicity_distinguishes_gamepad_work_from_padding(self):
+        controller_work = """
+typedef struct PadWork {
+    int padNo;
+} PadWork;
+static PadWork padWork[4];
+"""
+        padding = """
+typedef struct Packet {
+    unsigned char pad_10[12];
+} Packet;
+"""
+
+        controller_ids = {
+            item.id for item in score_organicity(controller_work).findings
+        }
+        padding_ids = {item.id for item in score_organicity(padding).findings}
+        self.assertNotIn("opaque-storage", controller_ids)
+        self.assertNotIn("opaque-identifier", controller_ids)
+        self.assertIn("opaque-storage", padding_ids)
+        self.assertIn("opaque-identifier", padding_ids)
+
     def test_redundant_post_loop_condition_is_flagged(self):
         source = """
 static void flush(Block *block)
