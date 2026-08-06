@@ -313,6 +313,364 @@ class RecoveryPassTests(unittest.TestCase):
         ]
         self.assertEqual(module.plan_shared_cause_clusters(ranked), [])
 
+    def test_ready_missing_definition_family_requires_named_closed_dependencies(self) -> None:
+        def item(name: str, size: int, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": "missing_definition",
+                "target_call_skeleton": calls,
+                "strict_exact": False,
+            }
+
+        clusters = module.plan_shared_cause_clusters(
+            [
+                item("MgCallVsEffNumGet", 124, []),
+                item("MgCallVsEffCreate", 300, []),
+                item("mbMgCallVsEffCreate", 328, ["MgCallVsEffPosSet"]),
+                item("MgCallVsEffOMExec", 516, ["MgCallVsEffNumGet"]),
+                item("MgCallVsEffPosSet", 612, []),
+            ]
+        )
+        self.assertEqual(len(clusters), 1)
+        family = clusters[0]
+        self.assertTrue(family["implementation_ready"])
+        self.assertEqual(family["implementation_target_bytes"], 1880)
+        self.assertEqual(family["potential_exact_bytes"], 1880)
+        self.assertNotIn("expected_exact_bytes_per_compiler_probe", family)
+        self.assertEqual(family["expected_compiler_probes"], 0)
+        self.assertEqual(
+            family["shared_evidence"]["internal_target_call_edges"],
+            [
+                {"caller": "MgCallVsEffOMExec", "callee": "MgCallVsEffNumGet"},
+                {"caller": "mbMgCallVsEffCreate", "callee": "MgCallVsEffPosSet"},
+            ],
+        )
+
+    def test_ready_missing_definition_family_rejects_no_edge_or_open_dependency(self) -> None:
+        def item(name: str, size: int, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": "missing_definition",
+                "target_call_skeleton": calls,
+                "strict_exact": False,
+            }
+
+        self.assertEqual(
+            module.plan_shared_cause_clusters(
+                [item("MgCallVsEffCreate", 600, []), item("MgCallVsEffPosSet", 600, [])]
+            ),
+            [],
+        )
+
+    def test_preferred_packet_meets_bulk_bounds_without_splitting_dependencies(self) -> None:
+        def item(rank: int, name: str, size: int, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_rank": rank,
+                "target_bytes": size,
+                "category": "missing_definition",
+                "target_call_skeleton": calls,
+            }
+
+        ranked = [
+            item(0, "SingleMicListenerCreate", 84, []),
+            item(1, "SingleMicListener", 104, []),
+            item(2, "SingleMicCreate", 116, ["SingleMicListenerCreate"]),
+            item(3, "SingleMgSaveInit", 132, []),
+            item(4, "SingleEffMgStop", 320, ["SingleEffOMExec"]),
+            item(5, "SingleLast5", 388, []),
+            item(6, "SingleMasuOrderInit", 392, []),
+            item(7, "SingleEffMgMasuHook", 480, []),
+            item(8, "SingleEffInit", 576, []),
+            item(9, "SingleEffMgCapsuleHook", 720, []),
+            item(10, "SingleEffMgExplodeHook", 732, []),
+            item(11, "SingleEffMgHook", 968, []),
+            item(12, "SingleEffOMExec", 1412, ["SingleEffMgStop"]),
+        ]
+
+        packet = module.preferred_missing_definition_packet(ranked)
+
+        assert packet is not None
+        self.assertTrue(packet["ready"])
+        self.assertTrue(packet["dependency_closed"])
+        self.assertEqual(packet["function_count"], 12)
+        self.assertEqual(packet["target_bytes"], 6036)
+        self.assertNotIn("SingleLast5", packet["functions"])
+        self.assertLess(
+            packet["functions"].index("SingleMicListenerCreate"),
+            packet["functions"].index("SingleMicCreate"),
+        )
+        self.assertTrue(
+            {"SingleEffMgStop", "SingleEffOMExec"}.issubset(packet["functions"])
+        )
+
+    def test_preferred_packet_never_splits_an_oversized_missing_component(self) -> None:
+        ranked = [
+            {
+                "function": name,
+                "target_rank": rank,
+                "target_bytes": size,
+                "category": "missing_definition",
+                "target_call_skeleton": calls,
+            }
+            for rank, (name, size, calls) in enumerate(
+                [
+                    ("LargeA", 4000, ["LargeB"]),
+                    ("LargeB", 4000, []),
+                    *[(f"Small{index}", 300, []) for index in range(12)],
+                ]
+            )
+        ]
+
+        packet = module.preferred_missing_definition_packet(ranked)
+
+        assert packet is not None
+        self.assertTrue(packet["ready"])
+        self.assertTrue({"LargeA", "LargeB"}.isdisjoint(packet["functions"]))
+        self.assertEqual(packet["function_count"], 12)
+        self.assertEqual(packet["target_bytes"], 3600)
+
+    def test_source_pending_build_is_not_scheduled_as_missing_implementation(self) -> None:
+        def item(name: str, category: str, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": 600,
+                "category": category,
+                "target_call_skeleton": calls,
+                "strict_exact": False,
+            }
+
+        clusters = module.plan_ready_missing_definition_families(
+            [
+                item("mbev_MgCallVsEffCreate", "missing_definition", ["mbev_MgCallVsEffPosSet"]),
+                item("mbev_MgCallVsEffPosSet", "missing_definition", ["mbev_MgCallVsEffCreate"]),
+                item("mbev_MgCallVsEffOMExec", "source_pending_build", ["mbev_MgCallVsEffCreate"]),
+            ]
+        )
+        self.assertEqual(len(clusters), 1)
+        self.assertEqual(
+            clusters[0]["functions"],
+            ["mbev_MgCallVsEffCreate", "mbev_MgCallVsEffPosSet"],
+        )
+        self.assertNotIn("mbev_MgCallVsEffOMExec", clusters[0]["functions"])
+
+    def test_analyze_uses_current_source_definition_guard_for_object_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "board" / "owner.c"
+            source.parent.mkdir(parents=True)
+            source.write_text("void Present(void) {}\n", encoding="utf-8")
+            strict = {
+                "left": {
+                    "symbols": [
+                        symbol("Present", 120, None, None),
+                        symbol("Absent", 160, None, None),
+                    ]
+                },
+                "right": {"symbols": []},
+            }
+            value = {"left": {"symbols": []}, "right": {"symbols": []}}
+            unit = {
+                "name": "main/board/owner",
+                "target_path": "orig/owner.o",
+                "base_path": "build/owner.o",
+            }
+            with (
+                patch.object(module, "paired_single_quarantine", return_value=(None, set(), "missing", None)),
+                patch.object(module, "select_cards", return_value=[]),
+            ):
+                report = module.analyze(
+                    root,
+                    unit,
+                    source,
+                    strict,
+                    value,
+                    None,
+                    None,
+                    [],
+                    [],
+                    False,
+                    None,
+                )
+
+        self.assertEqual(report["summary"]["object_missing"], 2)
+        self.assertEqual(report["summary"]["source_pending_build"], 1)
+        self.assertEqual(report["summary"]["missing_definitions"], 1)
+        ranked = {item["function"]: item for item in report["ranked_functions"]}
+        self.assertEqual(ranked["Present"]["category"], "source_pending_build")
+        self.assertTrue(ranked["Present"]["object_missing"])
+        self.assertTrue(ranked["Present"]["source_definition_present"])
+        self.assertFalse(ranked["Present"]["strict_exact"])
+        self.assertEqual(len(ranked["Present"]["safe_actions"]), 1)
+        self.assertEqual(ranked["Absent"]["category"], "missing_definition")
+        self.assertFalse(ranked["Absent"]["source_definition_present"])
+
+    def test_mgcall_report_only_counts_current_source_pending_definitions(self) -> None:
+        root = module.DEFAULT_ROOT
+        report_dir = root / "build" / "board-autonomy" / "mgcall-roulette-number-family"
+        strict_path = report_dir / "strict.json"
+        value_path = report_dir / "data-value.json"
+        source = root / "src" / "board" / "mgcall.c"
+        if not strict_path.is_file() or not value_path.is_file() or not source.is_file():
+            self.skipTest("mgcall report-only fixture is unavailable")
+        config = module.read_json(root / "objdiff.json")
+        unit = next(item for item in config["units"] if item.get("name") == "main/board/mgcall")
+        report = module.analyze(
+            root,
+            unit,
+            source,
+            module.read_json(strict_path),
+            module.read_json(value_path),
+            None,
+            None,
+            [],
+            [],
+            False,
+            None,
+        )
+        summary = report["summary"]
+        self.assertEqual(summary["source_pending_build"], 11)
+        self.assertEqual(summary["missing_definitions"], 1)
+        ranked = {item["function"]: item for item in report["ranked_functions"]}
+        self.assertEqual(ranked["mbev_MgCallTutorial"]["category"], "missing_definition")
+        self.assertEqual(
+            sum(item["category"] == "source_pending_build" for item in report["ranked_functions"]),
+            11,
+        )
+        pending_names = {
+            name for name, item in ranked.items() if item["category"] == "source_pending_build"
+        }
+        for cluster in report["shared_cause_clusters"]:
+            if cluster.get("implementation_ready"):
+                self.assertTrue(pending_names.isdisjoint(cluster["functions"]))
+        markdown = module.render_markdown(report)
+        self.assertIn("Source-present/object-missing (pending build): **11 functions", markdown)
+
+    def test_ready_missing_definition_family_accepts_exact_homologous_siblings(self) -> None:
+        def item(name: str, size: int, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": "missing_definition",
+                "target_call_skeleton": calls,
+                "strict_exact": False,
+            }
+
+        clusters = module.plan_shared_cause_clusters(
+            [
+                item("mbev_MgCallDonkey", 308, ["HuPrcSleep", "ModelPosGet", "ModelPosSet"]),
+                item("mbev_MgCallKoopa", 308, ["HuPrcSleep", "ModelPosGet", "ModelPosSet"]),
+            ]
+        )
+        self.assertEqual(len(clusters), 1)
+        family = clusters[0]
+        self.assertEqual(family["cause"], "homologous_missing_definition_siblings")
+        self.assertEqual(family["functions"], ["mbev_MgCallDonkey", "mbev_MgCallKoopa"])
+        self.assertEqual(family["implementation_target_bytes"], 616)
+        self.assertEqual(
+            family["shared_evidence"],
+            {
+                "normalized_prefix": ["mg", "call"],
+                "target_byte_size": 308,
+                "ordered_nonruntime_target_calls": ["ModelPosGet", "ModelPosSet"],
+            },
+        )
+
+    def test_ready_missing_definition_family_rejects_homologous_sibling_near_misses(self) -> None:
+        def item(name: str, size: int, calls: list[str]) -> dict:
+            return {
+                "function": name,
+                "target_bytes": size,
+                "category": "missing_definition",
+                "target_call_skeleton": calls,
+                "strict_exact": False,
+            }
+
+        self.assertEqual(
+            module.plan_shared_cause_clusters(
+                [
+                    item("mbev_MgCallDonkey", 308, ["ModelPosGet", "ModelPosSet"]),
+                    item("mbev_MgCallKoopa", 308, ["ModelPosSet", "ModelPosGet"]),
+                ]
+            ),
+            [],
+        )
+        self.assertEqual(
+            module.plan_shared_cause_clusters(
+                [
+                    item("mbev_MgCallDonkey", 308, ["ModelPosGet", "ModelPosSet"]),
+                    item("mbev_MgCallKoopa", 304, ["ModelPosGet", "ModelPosSet"]),
+                ]
+            ),
+            [],
+        )
+        self.assertEqual(
+            module.plan_shared_cause_clusters(
+                [
+                    item("MgCallVsEffCreate", 600, ["OtherMissingHelper"]),
+                    item("MgCallVsEffPosSet", 600, ["MgCallVsEffCreate"]),
+                    item("OtherMissingHelper", 100, []),
+                ]
+            ),
+            [],
+        )
+
+    def test_paired_single_quarantine_is_explicit_and_excluded_from_clusters(self) -> None:
+        card = {
+            "id": module.PAIRED_SINGLE_QUARANTINE_CARD,
+            "applicability": {"stable_ids": ["mbObjFadeCreate", "mbObjFadeTexRotSet"]},
+            "safe_actions": ["reopen only with authenticated source evidence"],
+        }
+        with (
+            patch.object(module, "load", return_value={"patterns": [card]}),
+            patch.object(module, "card_freshness", return_value={"effective_status": "active", "reason": "validated"}),
+        ):
+            selected, stable_ids, status, reason = module.paired_single_quarantine(Path("C:/repo"))
+        self.assertEqual(selected, card)
+        self.assertEqual(stable_ids, {"mbObjFadeCreate", "mbObjFadeTexRotSet"})
+        self.assertEqual((status, reason), ("active", "validated"))
+        with (
+            patch.object(module, "load", return_value={"patterns": [card]}),
+            patch.object(module, "card_freshness", return_value={"effective_status": "stale", "reason": "watched input changed"}),
+        ):
+            _, _, status, reason = module.paired_single_quarantine(Path("C:/repo"))
+        self.assertEqual((status, reason), ("stale", "watched input changed"))
+        self.assertEqual(
+            module.plan_shared_cause_clusters(
+                [
+                    {
+                        "function": "mbObjFadeCreate",
+                        "target_bytes": 332,
+                        "category": "paired_residual",
+                        "diagnostics": [],
+                        "diff_kinds": {"DIFF_ARG_MISMATCH": 46},
+                        "relocation_identity_pattern": "paired_instruction_residual",
+                        "target_source_size_delta": 0,
+                        "target_call_skeleton": ["mbObjPosSetV"] * 6,
+                        "source_local_identifiers": {"types": [], "work_identifiers": []},
+                        "strict_exact": False,
+                        "quarantined_by_card": module.PAIRED_SINGLE_QUARANTINE_CARD,
+                    },
+                    {
+                        "function": "mbObjFadeTexRotSet",
+                        "target_bytes": 200,
+                        "category": "paired_residual",
+                        "diagnostics": [],
+                        "diff_kinds": {"DIFF_ARG_MISMATCH": 42},
+                        "relocation_identity_pattern": "paired_instruction_residual",
+                        "target_source_size_delta": 0,
+                        "target_call_skeleton": ["mbObjPosSetV"] * 6,
+                        "source_local_identifiers": {"types": [], "work_identifiers": []},
+                        "strict_exact": False,
+                        "quarantined_by_card": module.PAIRED_SINGLE_QUARANTINE_CARD,
+                    },
+                ]
+            ),
+            [],
+        )
+
     def test_relocation_clusters_require_shared_owner_not_wipe_calls_or_capevent_types(self) -> None:
         def item(
             name: str,

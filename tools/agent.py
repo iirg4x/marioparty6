@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -40,7 +41,13 @@ from tools.knowledge_freshness import (
     validate_freshness,
 )
 from tools.owner_catalog import CatalogError, build_catalog, find_owner, write_catalog
-from tools.recovery_pass import add_recovery_pass_parser, run_recovery_pass
+from tools.recovery_pass import (
+    add_recovery_pass_parser,
+    atomic_json,
+    file_hash,
+    run_recovery_pass,
+    serialized_build_lock,
+)
 from tools.recovery_core import load, quality_findings, root_from
 from tools.recovery_data import RecoveryError, validate_data
 from tools.recovery_knowledge import (
@@ -80,6 +87,8 @@ REQUIRED_AGENT_FILES = [
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 GENERATED_PATHS = ["build", "build.ninja", "objdiff.json", "ctx.c"]
+PROBE_HISTORY = Path("build/board-autonomy/batch-history.json")
+PROBE_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -87,6 +96,10 @@ class Check:
     name: str
     status: str
     detail: str
+
+
+class ProbeError(RecoveryError):
+    """Invalid or conflicting probe ledger input."""
 
 
 def _run(
@@ -279,6 +292,246 @@ def _print_checks(checks: list[Check], *, as_json: bool = False) -> None:
 
 def _safe_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_") or "context"
+
+
+def _probe_text(value: str | None, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ProbeError(f"{label} is required")
+    return value.strip()
+
+
+def _probe_sha256(value: str, label: str) -> str:
+    result = _probe_text(value, label)
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", result):
+        raise ProbeError(f"{label} must be 64 hexadecimal characters")
+    return result.lower()
+
+
+def _probe_key(owner: str, symbol: str, probe_key: str) -> str:
+    return "|".join(
+        (
+            _probe_text(owner, "owner"),
+            _probe_text(symbol, "symbol"),
+            _probe_text(probe_key, "probe-key"),
+        )
+    )
+
+
+def _probe_history_path(root: Path, history: str | Path | None) -> Path:
+    path = Path(history or PROBE_HISTORY).expanduser()
+    return (path if path.is_absolute() else root / path).resolve()
+
+
+def _probe_empty_history() -> dict[str, Any]:
+    return {
+        "schema_version": PROBE_SCHEMA_VERSION,
+        "batches": [],
+        "probes": {},
+        "result_index": {},
+    }
+
+
+def _probe_result_key(record: Mapping[str, Any]) -> str | None:
+    outputs = record.get("outputs")
+    strict = outputs.get("strict") if isinstance(outputs, Mapping) else None
+    strict_sha = strict.get("sha256") if isinstance(strict, Mapping) else None
+    owner = record.get("owner")
+    profile = record.get("profile")
+    target_sha = record.get("target_sha256")
+    if not all(
+        isinstance(value, str) and value
+        for value in (owner, profile, target_sha, strict_sha)
+    ):
+        return None
+    result = "|".join((owner, profile, target_sha, strict_sha))
+    value = outputs.get("value") if isinstance(outputs, Mapping) else None
+    value_sha = value.get("sha256") if isinstance(value, Mapping) else None
+    if isinstance(value_sha, str) and value_sha:
+        result += "|" + value_sha
+    return result
+
+
+def _probe_migrate(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ProbeError("probe history root must be an object")
+    version = value.get("schema_version", 1)
+    if version not in {1, PROBE_SCHEMA_VERSION}:
+        raise ProbeError(f"unsupported probe history schema_version: {version}")
+    history = dict(value)
+    batches = history.get("batches", [])
+    if not isinstance(batches, list):
+        raise ProbeError("probe history batches must be a list")
+    probes = history.get("probes", {})
+    if not isinstance(probes, Mapping):
+        raise ProbeError("probe history probes must be an object")
+    result_index = history.get("result_index", {})
+    if not isinstance(result_index, Mapping):
+        raise ProbeError("probe history result_index must be an object")
+    history["schema_version"] = PROBE_SCHEMA_VERSION
+    history["batches"] = batches
+    history["probes"] = dict(probes)
+    history["result_index"] = dict(result_index)
+    for key, record in history["probes"].items():
+        if not isinstance(key, str) or not isinstance(record, Mapping):
+            continue
+        result_key = _probe_result_key(record)
+        if result_key:
+            history["result_index"].setdefault(result_key, key)
+    return history
+
+
+def _probe_read(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return _probe_empty_history()
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ProbeError(
+            f"invalid probe history JSON {path}:{exc.lineno}:{exc.colno}: {exc.msg}"
+        ) from exc
+    return _probe_migrate(value)
+
+
+def _probe_hash(root: Path, report: str | Path, label: str) -> tuple[str, str]:
+    artifact = str(report)
+    path = Path(report).expanduser()
+    path = path if path.is_absolute() else root / path
+    digest = file_hash(path)
+    if digest is None:
+        raise ProbeError(f"{label} does not exist: {report}")
+    return digest, artifact
+
+
+def _probe_metrics(values: Sequence[str] | None) -> dict[str, str]:
+    metrics: dict[str, str] = {}
+    for value in values or []:
+        if "=" not in value:
+            raise ProbeError(f"metric must use key=value: {value}")
+        key, metric = value.split("=", 1)
+        key = _probe_text(key, "metric key")
+        metrics[key] = metric
+    return metrics
+
+
+def probe_lookup(
+    root: Path,
+    owner: str,
+    symbol: str,
+    probe_key: str,
+    input_key: str,
+    *,
+    history: str | Path | None = None,
+) -> dict[str, Any]:
+    root = Path(root)
+    key = _probe_key(owner, symbol, probe_key)
+    input_value = _probe_text(input_key, "input-key")
+    ledger = _probe_read(_probe_history_path(root, history))
+    record = ledger["probes"].get(key)
+    if isinstance(record, Mapping) and record.get("input_key") == input_value:
+        return {"status": "known", "record": dict(record)}
+    return {"status": "new", "record": None}
+
+
+def probe_record(
+    root: Path,
+    owner: str,
+    symbol: str,
+    probe_key: str,
+    input_key: str,
+    profile: str,
+    toolchain_key: str,
+    target_sha256: str,
+    candidate_sha256: str,
+    strict_report: str | Path,
+    status: str,
+    reason: str,
+    *,
+    value_report: str | Path | None = None,
+    commit: str | None = None,
+    metrics: Mapping[str, Any] | None = None,
+    history: str | Path | None = None,
+) -> dict[str, Any]:
+    root = Path(root)
+    owner_value = _probe_text(owner, "owner")
+    symbol_value = _probe_text(symbol, "symbol")
+    probe_value = _probe_text(probe_key, "probe-key")
+    input_value = _probe_text(input_key, "input-key")
+    profile_value = _probe_text(profile, "profile")
+    toolchain_value = _probe_text(toolchain_key, "toolchain-key")
+    target_value = _probe_sha256(target_sha256, "target-sha256")
+    candidate_value = _probe_sha256(candidate_sha256, "candidate-sha256")
+    status_value = _probe_text(status, "status")
+    reason_value = _probe_text(reason, "reason")
+    strict_sha, strict_artifact = _probe_hash(
+        root, strict_report, "strict-report"
+    )
+    value_output = None
+    if value_report is not None:
+        value_sha, value_artifact = _probe_hash(
+            root, value_report, "value-report"
+        )
+        value_output = {"sha256": value_sha, "artifact": value_artifact}
+    outputs: dict[str, Any] = {
+        "strict": {"sha256": strict_sha, "artifact": strict_artifact}
+    }
+    if value_output is not None:
+        outputs["value"] = value_output
+    key = _probe_key(owner_value, symbol_value, probe_value)
+    result_key = "|".join((owner_value, profile_value, target_value, strict_sha))
+    if value_output is not None:
+        result_key += "|" + value_output["sha256"]
+    candidate: dict[str, Any] = {
+        "owner": owner_value,
+        "symbol": symbol_value,
+        "probe_key": probe_value,
+        "input_key": input_value,
+        "profile": profile_value,
+        "toolchain_key": toolchain_value,
+        "target_sha256": target_value,
+        "candidate_sha256": candidate_value,
+        "outputs": outputs,
+        "status": status_value,
+        "duplicate_of": None,
+        "metrics": dict(metrics or {}),
+        "reason": reason_value,
+        "commit": commit,
+        "recorded_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+    }
+    path = _probe_history_path(root, history)
+    lock = Path(str(path) + ".lock")
+    try:
+        with serialized_build_lock(lock, 8.0):
+            ledger = _probe_read(path)
+            existing = ledger["probes"].get(key)
+            if isinstance(existing, Mapping):
+                existing_result = _probe_result_key(existing)
+                if (
+                    existing.get("owner") == owner_value
+                    and existing.get("symbol") == symbol_value
+                    and existing.get("probe_key") == probe_value
+                    and existing.get("input_key") == input_value
+                    and existing.get("profile") == profile_value
+                    and existing.get("toolchain_key") == toolchain_value
+                    and existing.get("target_sha256") == target_value
+                    and existing.get("candidate_sha256") == candidate_value
+                    and existing_result == result_key
+                ):
+                    return {"status": "unchanged", "record": dict(existing)}
+                raise ProbeError(
+                    f"probe key already records conflicting evidence: {key}"
+                )
+            duplicate_of = ledger["result_index"].get(result_key)
+            if duplicate_of and duplicate_of != key:
+                candidate["duplicate_of"] = duplicate_of
+                result_status = "duplicate"
+            else:
+                ledger["result_index"][result_key] = key
+                result_status = "recorded"
+            ledger["probes"][key] = candidate
+            atomic_json(path, ledger)
+    except ValueError as exc:
+        raise ProbeError(str(exc)) from exc
+    return {"status": result_status, "record": candidate}
 
 
 def _with_operational_context_owner(
@@ -503,6 +756,47 @@ def _print_knowledge(data: dict[str, Any], args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_probe_parser(sub: Any) -> None:
+    parser = sub.add_parser("probe", help="record/query compiler probe evidence")
+    commands = parser.add_subparsers(dest="probe_command", required=True)
+
+    lookup = commands.add_parser("lookup")
+    lookup.add_argument("--owner", required=True)
+    lookup.add_argument("--symbol", required=True)
+    lookup.add_argument("--probe-key", required=True)
+    lookup.add_argument("--input-key", required=True)
+    lookup.add_argument("--history")
+    lookup.add_argument("--json", action="store_true")
+
+    record = commands.add_parser("record")
+    for name in (
+        "owner",
+        "symbol",
+        "probe-key",
+        "input-key",
+        "profile",
+        "toolchain-key",
+        "target-sha256",
+        "candidate-sha256",
+        "strict-report",
+        "status",
+        "reason",
+    ):
+        record.add_argument(f"--{name}", required=True)
+    record.add_argument("--value-report")
+    record.add_argument("--commit")
+    record.add_argument("--metric", action="append", default=[])
+    record.add_argument("--history")
+    record.add_argument("--json", action="store_true")
+
+
+def _print_probe_result(result: Mapping[str, Any], *, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(result, indent=2))
+        return
+    print(result["status"])
+
+
 def _add_catalog_parser(sub: Any) -> None:
     parser = sub.add_parser(
         "catalog", help="build/query operational owner inventory"
@@ -526,6 +820,7 @@ def main() -> int:
     add_worktree_parser(sub)
     add_hooks_parser(sub)
     add_integration_parser(sub)
+    _add_probe_parser(sub)
     _add_catalog_parser(sub)
     add_recovery_pass_parser(sub)
 
@@ -558,6 +853,37 @@ def main() -> int:
     args = parser.parse_args()
     try:
         root = root_from(args.root)
+        if args.command == "probe":
+            if args.probe_command == "lookup":
+                result = probe_lookup(
+                    root,
+                    args.owner,
+                    args.symbol,
+                    args.probe_key,
+                    args.input_key,
+                    history=args.history,
+                )
+            else:
+                result = probe_record(
+                    root,
+                    args.owner,
+                    args.symbol,
+                    args.probe_key,
+                    args.input_key,
+                    args.profile,
+                    args.toolchain_key,
+                    args.target_sha256,
+                    args.candidate_sha256,
+                    args.strict_report,
+                    args.status,
+                    args.reason,
+                    value_report=args.value_report,
+                    commit=args.commit,
+                    metrics=_probe_metrics(args.metric),
+                    history=args.history,
+                )
+            _print_probe_result(result, as_json=args.json)
+            return 0
         data = load(root, validate=False)
         catalog = (
             _catalog(data)
@@ -641,6 +967,7 @@ def main() -> int:
         FreshnessError,
         HookError,
         OSError,
+        ProbeError,
         QueueError,
         RecoveryError,
         WorktreeError,

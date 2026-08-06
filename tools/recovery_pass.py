@@ -55,12 +55,18 @@ CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
 BUILD_LOCK_ENV = "MP6_RETAIL_BUILD_LOCK"
 DEFAULT_BUILD_LOCK = Path.home() / ".codex" / "mp6-retail-build.lock"
 TARGET_CALL_CLUSTER_CARD = "target-call-skeleton-before-shared-accessor-abstraction"
+PAIRED_SINGLE_QUARANTINE_CARD = "gc26-paired-single-huvecf-copy-spelling-negative"
 GENERIC_CLUSTER_CALLS = {
     "abs", "fabs", "fabsf", "fmod", "memcpy", "memset",
     "HuPrcCurrentGet", "HuPrcSleep", "HuPrcVSleep",
 }
 MIN_ORDERED_CLUSTER_CALLS = 6
 MIN_ORDERED_CLUSTER_RATIO = 0.75
+MIN_HOMOLOGOUS_MISSING_FAMILY_BYTES = 512
+PREFERRED_PACKET_MIN_FUNCTIONS = 12
+PREFERRED_PACKET_MAX_FUNCTIONS = 20
+PREFERRED_PACKET_MIN_BYTES = 3072
+PREFERRED_PACKET_MAX_BYTES = 6144
 
 
 @dataclass(frozen=True)
@@ -859,6 +865,28 @@ def select_cards(root: Path, card_ids: Iterable[str]) -> list[dict[str, Any]]:
     return selected
 
 
+def paired_single_quarantine(
+    root: Path,
+) -> tuple[dict[str, Any] | None, set[str], str, str | None]:
+    """Return the explicitly-scoped exhausted paired-single card, if present."""
+    data = load(root, validate=False)
+    card = next(
+        (item for item in data.get("patterns", []) if item.get("id") == PAIRED_SINGLE_QUARANTINE_CARD),
+        None,
+    )
+    if not isinstance(card, dict):
+        return None, set(), "missing", None
+    applicability = card.get("applicability", {})
+    stable_ids = applicability.get("stable_ids", []) if isinstance(applicability, Mapping) else []
+    freshness = card_freshness(data, PAIRED_SINGLE_QUARANTINE_CARD)
+    return (
+        card,
+        {str(item) for item in stable_ids if isinstance(item, str)},
+        str(freshness.get("effective_status", freshness.get("status", "unknown"))),
+        freshness.get("reason"),
+    )
+
+
 def source_local_identifiers(body: str) -> dict[str, list[str]]:
     """Return recovered local type/work names without inferring new source facts."""
     types: set[str] = set()
@@ -940,7 +968,7 @@ def repeated_target_call_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[d
     buckets: dict[tuple[str, int, tuple[str, ...]], list[Mapping[str, Any]]] = defaultdict(list)
     for item in ranked:
         key = generic_call_cluster_key(item)
-        if not item.get("strict_exact") and key is not None:
+        if not item.get("strict_exact") and not item.get("quarantined_by_card") and key is not None:
             buckets[key].append(item)
     clusters: list[dict[str, Any]] = []
     for key, bucket in sorted(buckets.items()):
@@ -1007,11 +1035,222 @@ def repeated_target_call_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[d
     return clusters
 
 
+def plan_ready_missing_definition_families(ranked: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Group only dependency-closed, named missing-definition implementation families."""
+    missing = [
+        item for item in ranked
+        if item.get("category") == "missing_definition" and not item.get("quarantined_by_card")
+    ]
+    missing_names = {str(item["function"]) for item in missing}
+    buckets: dict[tuple[str, ...], list[Mapping[str, Any]]] = defaultdict(list)
+    for item in missing:
+        tokens = normalize_tokens(str(item["function"]))
+        if len(tokens) >= 4:
+            buckets[tuple(tokens[:3])].append(item)
+    families: list[dict[str, Any]] = []
+    for prefix, members in sorted(buckets.items()):
+        if len(members) < 2:
+            continue
+        names = {str(item["function"]) for item in members}
+        edges = sorted(
+            (str(item["function"]), str(call))
+            for item in members
+            for call in item.get("target_call_skeleton", [])
+            if str(call) in names
+        )
+        if not edges:
+            continue
+        if any(
+            str(call) not in names
+            for item in members
+            for call in item.get("target_call_skeleton", [])
+            if str(call) in missing_names
+        ):
+            continue
+        target_bytes = sum(number(item.get("target_bytes")) for item in members)
+        if target_bytes < 1024:
+            continue
+        families.append(
+            {
+                "cluster_id": "",
+                "cause": "dependency_closed_missing_family",
+                "category": "missing_definition",
+                "functions": sorted(names),
+                "function_count": len(members),
+                "target_bytes": target_bytes,
+                "implementation_ready": True,
+                "actionable": True,
+                "actionability_reason": "named_dependency_closed_missing_family",
+                "shared_evidence": {
+                    "normalized_prefix": list(prefix),
+                    "internal_target_call_edges": [
+                        {"caller": caller, "callee": callee} for caller, callee in edges
+                    ],
+                },
+                "implementation_target_bytes": target_bytes,
+                "potential_exact_bytes": target_bytes,
+                "expected_compiler_probes": 0,
+            }
+        )
+    sibling_buckets: dict[tuple[int, tuple[str, ...], tuple[str, ...]], list[Mapping[str, Any]]] = defaultdict(list)
+    for item in missing:
+        tokens = normalize_tokens(str(item["function"]))
+        calls = tuple(filtered_cluster_calls(item.get("target_call_skeleton", [])))
+        prefix = tuple(tokens[:-1])
+        if len(prefix) >= 2 and calls:
+            sibling_buckets[(number(item.get("target_bytes")), calls, prefix)].append(item)
+    for (target_size, calls, prefix), members in sorted(sibling_buckets.items()):
+        if len(members) < 2:
+            continue
+        target_bytes = target_size * len(members)
+        if target_bytes < MIN_HOMOLOGOUS_MISSING_FAMILY_BYTES:
+            continue
+        families.append(
+            {
+                "cluster_id": "",
+                "cause": "homologous_missing_definition_siblings",
+                "category": "missing_definition",
+                "functions": sorted(str(item["function"]) for item in members),
+                "function_count": len(members),
+                "target_bytes": target_bytes,
+                "implementation_ready": True,
+                "actionable": True,
+                "actionability_reason": "exact_structural_missing_definition_siblings",
+                "shared_evidence": {
+                    "normalized_prefix": list(prefix),
+                    "target_byte_size": target_size,
+                    "ordered_nonruntime_target_calls": list(calls),
+                },
+                "implementation_target_bytes": target_bytes,
+                "potential_exact_bytes": target_bytes,
+                "expected_compiler_probes": 0,
+            }
+        )
+    return families
+
+
+def preferred_missing_definition_packet(
+    ranked: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Choose the largest dependency-closed missing-definition packet in pass bounds."""
+    missing = {
+        str(item["function"]): item
+        for item in ranked
+        if item.get("category") == "missing_definition"
+        and not item.get("quarantined_by_card")
+    }
+    if not missing:
+        return None
+
+    adjacency = {name: set() for name in missing}
+    for name, item in missing.items():
+        for call in item.get("target_call_skeleton", []):
+            callee = str(call)
+            if callee in missing:
+                adjacency[name].add(callee)
+                adjacency[callee].add(name)
+
+    components: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    ordered_names = sorted(
+        missing,
+        key=lambda name: (number(missing[name].get("target_rank")), name),
+    )
+    for start in ordered_names:
+        if start in seen:
+            continue
+        stack = [start]
+        seen.add(start)
+        members: list[str] = []
+        while stack:
+            name = stack.pop()
+            members.append(name)
+            for neighbor in adjacency[name]:
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    stack.append(neighbor)
+        members.sort(key=lambda name: (number(missing[name].get("target_rank")), name))
+        target_bytes = sum(number(missing[name].get("target_bytes")) for name in members)
+        if (
+            len(members) <= PREFERRED_PACKET_MAX_FUNCTIONS
+            and target_bytes <= PREFERRED_PACKET_MAX_BYTES
+        ):
+            components.append(
+                {
+                    "functions": members,
+                    "function_count": len(members),
+                    "target_bytes": target_bytes,
+                    "first_target_rank": min(
+                        number(missing[name].get("target_rank")) for name in members
+                    ),
+                }
+            )
+
+    states: dict[tuple[int, int], tuple[int, ...]] = {(0, 0): ()}
+    for component_index, component in enumerate(components):
+        additions: dict[tuple[int, int], tuple[int, ...]] = {}
+        for (function_count, target_bytes), chosen in list(states.items()):
+            next_count = function_count + number(component["function_count"])
+            next_bytes = target_bytes + number(component["target_bytes"])
+            if (
+                next_count > PREFERRED_PACKET_MAX_FUNCTIONS
+                or next_bytes > PREFERRED_PACKET_MAX_BYTES
+            ):
+                continue
+            state = (next_count, next_bytes)
+            candidate = (*chosen, component_index)
+            current = states.get(state) or additions.get(state)
+            if current is None or candidate < current:
+                additions[state] = candidate
+        states.update(additions)
+
+    ready_states = [
+        state
+        for state in states
+        if state[0] >= PREFERRED_PACKET_MIN_FUNCTIONS
+        and state[1] >= PREFERRED_PACKET_MIN_BYTES
+    ]
+    candidate_states = ready_states or [state for state in states if state != (0, 0)]
+    if not candidate_states:
+        return None
+    selected_state = max(
+        candidate_states,
+        key=lambda state: (
+            state[1],
+            state[0],
+            -sum(components[index]["first_target_rank"] for index in states[state]),
+        ),
+    )
+    selected_components = [components[index] for index in states[selected_state]]
+    selected_functions = sorted(
+        (
+            name
+            for component in selected_components
+            for name in component["functions"]
+        ),
+        key=lambda name: (number(missing[name].get("target_rank")), name),
+    )
+    return {
+        "ready": selected_state in ready_states,
+        "dependency_closed": True,
+        "function_count": selected_state[0],
+        "target_bytes": selected_state[1],
+        "functions": selected_functions,
+        "component_count": len(selected_components),
+        "constraints": {
+            "min_functions": PREFERRED_PACKET_MIN_FUNCTIONS,
+            "max_functions": PREFERRED_PACKET_MAX_FUNCTIONS,
+            "min_bytes": PREFERRED_PACKET_MIN_BYTES,
+            "max_bytes": PREFERRED_PACKET_MAX_BYTES,
+        },
+    }
+
+
 def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Plan only evidence-linked, repeatable recovery probes from ranked residuals."""
     grouped: dict[tuple[str, str, tuple[tuple[str, int], ...], str, str], list[Mapping[str, Any]]] = defaultdict(list)
     for item in ranked:
-        if item.get("strict_exact"):
+        if item.get("strict_exact") or item.get("quarantined_by_card"):
             continue
         key = cluster_feature_key(item)
         if key is not None:
@@ -1083,10 +1322,12 @@ def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict
             }
         )
     clusters.extend(repeated_target_call_clusters(ranked))
+    clusters.extend(plan_ready_missing_definition_families(ranked))
     clusters.sort(
         key=lambda item: (
+            not item.get("implementation_ready"),
             not item["actionable"],
-            -number(item["expected_exact_bytes_per_compiler_probe"]),
+            -number(item.get("implementation_target_bytes", item.get("expected_exact_bytes_per_compiler_probe"))),
             item["cause"],
             item["functions"],
         )
@@ -1116,6 +1357,7 @@ def analyze(
     strict_functions = functions(strict["left"])
     value_by_name = {item["name"]: item for item in functions(value["left"])}
     target_order = [item["name"] for item in strict_functions]
+    target_rank = {name: index for index, name in enumerate(target_order)}
     order = order_diagnostics(target_order, source_order)
     compiled_order = order_diagnostics(
         target_order, [item["name"] for item in functions(strict.get("right", {}))]
@@ -1131,24 +1373,49 @@ def analyze(
     macros = macro_index(root)
     literals = literal_report(root / str(unit["target_path"]), macros)
     source_uses_named_mem_domain = "HU_MEMNUM_OVL" in source_text
+    quarantine_card, quarantined_stable_ids, quarantine_status, quarantine_reason = paired_single_quarantine(root)
+    quarantine_reopen = None
+    if quarantine_card:
+        quarantine_reopen = next(
+            (
+                str(action)
+                for action in quarantine_card.get("safe_actions", [])
+                if "reopen" in str(action).lower()
+            ),
+            str(quarantine_card.get("rule", "")),
+        )
     card_ids: set[str] = set()
     candidates: list[dict[str, Any]] = []
     refinements: list[dict[str, Any]] = []
     ranked: list[dict[str, Any]] = []
     missing_count = 0
     missing_bytes = 0
+    object_missing_count = 0
+    object_missing_bytes = 0
+    source_pending_build_count = 0
+    source_pending_build_bytes = 0
     strict_exact_count = 0
     value_exact_count = 0
     for target in strict_functions:
         name = str(target["name"])
+        quarantined_by_card = (
+            PAIRED_SINGLE_QUARANTINE_CARD if name in quarantined_stable_ids else None
+        )
         size = number(target.get("size"))
         strict_exact = is_exact(target)
         value_exact = is_exact(value_by_name.get(name, {}))
         strict_exact_count += strict_exact
         value_exact_count += value_exact
-        missing = target.get("target_symbol") is None
-        missing_count += missing
-        missing_bytes += size if missing else 0
+        object_missing = target.get("target_symbol") is None
+        source_definition_present = name in known_source
+        source_pending_build = object_missing and source_definition_present
+        missing_definition = object_missing and not source_definition_present
+        object_missing_count += object_missing
+        object_missing_bytes += size if object_missing else 0
+        missing_count += missing_definition
+        missing_bytes += size if missing_definition else 0
+        source_pending_build_count += source_pending_build
+        source_pending_build_bytes += size if source_pending_build else 0
         calls = call_skeleton(strict["left"], target)
         body = next((function_text(source_text, item) for item in parsed if item.symbol == name), "")
         pairs = paired_changed(strict, target)
@@ -1254,16 +1521,34 @@ def analyze(
             )
         if source_uses_named_mem_domain:
             card_ids.add("recovered-c-numeric-identifiers-require-named-domains")
-        donor_matches = rank_donors(name, calls, donors) if (missing or not strict_exact) else []
+        donor_matches = rank_donors(name, calls, donors) if (missing_definition or (not strict_exact and not source_pending_build)) else []
         if donor_matches:
             card_ids.add("same-game-cross-owner-relocation-skeleton-harvesting")
-        if missing:
+        if strict_exact:
+            category = "strict_exact"
+            priority = 999
+            quarantined_by_card = None
+        elif quarantined_by_card:
+            category = "knowledge_quarantined" if quarantine_status == "active" else "knowledge_stale_hold"
+            priority = 998
+            card_ids.add(quarantined_by_card)
+            if quarantine_status == "active":
+                safe_actions = [quarantine_reopen] if quarantine_reopen else []
+            else:
+                safe_actions = [
+                    "Revalidate stale knowledge card before any reopen decision"
+                    + (f": {quarantine_reason}" if quarantine_reason else ".")
+                ]
+        elif source_pending_build:
+            category = "source_pending_build"
+            priority = 45
+            safe_actions = [
+                "Rebuild the source object and rerun objdiff before scheduling implementation work."
+            ]
+        elif missing_definition:
             category = "missing_definition"
             priority = 40 if donor_matches else 50
             safe_actions.append("Start from target calls/relocations and the highest-provenance sibling candidate; rebind every target-owned contract.")
-        elif strict_exact:
-            category = "strict_exact"
-            priority = 999
         elif value_exact:
             category = "relocation_identity_only"
             priority = 70
@@ -1298,11 +1583,15 @@ def analyze(
         ranked.append(
             {
                 "function": name,
+                "target_rank": target_rank[name],
                 "target_bytes": size,
                 "category": category,
                 "priority": priority,
                 "strict_exact": strict_exact,
                 "data_value_exact": value_exact,
+                "object_missing": object_missing,
+                "source_definition_present": source_definition_present,
+                "source_pending_build": source_pending_build,
                 "strict_match_percent": target.get("match_percent"),
                 "strict_diff_rows": len(changed_rows(target)),
                 "diff_kinds": dict(Counter(str(row.get("diff_kind")) for row in changed_rows(target))),
@@ -1322,6 +1611,11 @@ def analyze(
                 "immediate_macro_matches": immediate_matches,
                 "donor_candidates": donor_matches,
                 "safe_actions": safe_actions,
+                "quarantined_by_card": quarantined_by_card,
+                "quarantine_freshness": {
+                    "effective_status": quarantine_status,
+                    "reason": quarantine_reason,
+                } if quarantined_by_card else None,
             }
         )
     if not order["order_matches"] or (
@@ -1347,6 +1641,7 @@ def analyze(
         unique_refinements[(item["card_id"], item.get("function"))] = item
     ranked.sort(key=lambda item: (item["priority"], item["strict_diff_rows"], item["target_bytes"], item["function"]))
     clusters = plan_shared_cause_clusters(ranked)
+    preferred_packet = preferred_missing_definition_packet(ranked)
     if any(item.get("knowledge_card_id") == TARGET_CALL_CLUSTER_CARD for item in clusters):
         card_ids.add(TARGET_CALL_CLUSTER_CARD)
     head = git_value(root, "rev-parse", "HEAD")
@@ -1368,6 +1663,10 @@ def analyze(
             "data_value_exact": value_exact_count,
             "missing_definitions": missing_count,
             "missing_definition_bytes": missing_bytes,
+            "object_missing": object_missing_count,
+            "object_missing_bytes": object_missing_bytes,
+            "source_pending_build": source_pending_build_count,
+            "source_pending_build_bytes": source_pending_build_bytes,
             "source_definitions": len(source_order),
             "order_inversions": order["inversions"],
         },
@@ -1378,6 +1677,7 @@ def analyze(
         "baseline_compiled_object_order": baseline_compiled_order,
         "ranked_functions": ranked,
         "shared_cause_clusters": clusters,
+        "preferred_implementation_packet": preferred_packet,
         "target_literals": literals,
         "selected_knowledge_cards": select_cards(root, card_ids),
         "knowledge_card_candidates": candidates,
@@ -1396,17 +1696,31 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         f"- Strict exact: **{summary['strict_exact']} / {summary['functions_total']}**",
         f"- Data-value exact: **{summary['data_value_exact']} / {summary['functions_total']}**",
         f"- Missing definitions: **{summary['missing_definitions']} functions / {summary['missing_definition_bytes']} target bytes**",
+        f"- Source-present/object-missing (pending build): **{summary['source_pending_build']} functions / {summary['source_pending_build_bytes']} target bytes**",
         f"- Target/source definition-order inversions: **{summary['order_inversions']}**",
     ]
     for label, key in (("Strict", "strict_delta"), ("Data-value", "data_value_delta")):
         value = report.get(key)
         if value:
             lines.append(f"- {label} gain: **{len(value['newly_exact'])} functions / {value['newly_exact_bytes']} bytes**; regressions: **{len(value['regressed_exact'])}**")
+    packet = report.get("preferred_implementation_packet")
+    lines += ["", "## Preferred implementation packet", ""]
+    if not packet:
+        lines.append("- No missing-definition packet is available.")
+    else:
+        members = ", ".join(f"`{name}`" for name in packet["functions"])
+        readiness = "ready" if packet["ready"] else "below preferred pass bounds"
+        lines.append(
+            f"- **{packet['function_count']} functions / {packet['target_bytes']} target bytes**; "
+            f"dependency-closed; {readiness}."
+        )
+        lines.append(f"  - Members in target order: {members}")
     lines += ["", "## Shared-cause clusters", ""]
     clusters = list(report.get("shared_cause_clusters", []))
-    actionable_clusters = [item for item in clusters if item.get("actionable")]
+    implementation_families = [item for item in clusters if item.get("implementation_ready")]
+    actionable_clusters = [item for item in clusters if item.get("actionable") and not item.get("implementation_ready")]
     owner_audits = [item for item in clusters if item.get("owner_audit_only")]
-    if not actionable_clusters:
+    if not actionable_clusters and not implementation_families:
         lines.append("- No actionable shared-cause clusters.")
     if owner_audits:
         lines.append(
@@ -1414,6 +1728,21 @@ def render_markdown(report: Mapping[str, Any]) -> str:
             f"{sum(number(item.get('target_bytes')) for item in owner_audits)} target bytes; "
             "no compiler probe is recommended without a shared relocation owner."
         )
+    for item in implementation_families:
+        members = ", ".join(f"`{name}`" for name in item["functions"])
+        evidence = item.get("shared_evidence", {})
+        edges = evidence.get("internal_target_call_edges", [])
+        edge_text = ", ".join(f"`{edge['caller']}` â†’ `{edge['callee']}`" for edge in edges)
+        lines.append(
+            f"- `{item['cluster_id']}` - ready implementation family; {item['function_count']} functions / "
+            f"{item['implementation_target_bytes']} target bytes (potential exact bytes, not a compiler-probe yield)"
+        )
+        lines.append(f"  - Members: {members}")
+        if edge_text:
+            lines.append(f"  - Closed internal calls: {edge_text}")
+        elif evidence.get("ordered_nonruntime_target_calls"):
+            calls = " -> ".join(f"`{name}`" for name in evidence["ordered_nonruntime_target_calls"])
+            lines.append(f"  - Shared target call contract: {calls}")
     for item in actionable_clusters:
         members = ", ".join(f"`{name}`" for name in item["functions"])
         evidence = item.get("shared_evidence", {})
@@ -1647,12 +1976,24 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
             atomic_json(report_path, report)
             atomic_text(markdown_path, render_markdown(report))
         summary = report["summary"]
+        preferred_packet = report.get("preferred_implementation_packet")
         concise = {
             "unit": args.unit,
             "strict_exact": f"{summary['strict_exact']}/{summary['functions_total']}",
             "data_value_exact": f"{summary['data_value_exact']}/{summary['functions_total']}",
             "missing_definitions": summary["missing_definitions"],
             "missing_definition_bytes": summary["missing_definition_bytes"],
+            "source_pending_build": summary["source_pending_build"],
+            "source_pending_build_bytes": summary["source_pending_build_bytes"],
+            "preferred_packet": (
+                {
+                    "ready": preferred_packet["ready"],
+                    "functions": preferred_packet["function_count"],
+                    "target_bytes": preferred_packet["target_bytes"],
+                    "members": preferred_packet["functions"],
+                }
+                if preferred_packet else None
+            ),
             "order_inversions": summary["order_inversions"],
             "strict_delta": report.get("strict_delta"),
             "report_cache_hit": report_cache_hit,
@@ -1666,6 +2007,7 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
                 f"{args.unit}: strict={concise['strict_exact']} "
                 f"value={concise['data_value_exact']} "
                 f"missing={summary['missing_definitions']}/{summary['missing_definition_bytes']}B "
+                f"pending_build={summary['source_pending_build']}/{summary['source_pending_build_bytes']}B "
                 f"order_inversions={summary['order_inversions']}"
             )
             print(f"report cache: {'hit' if report_cache_hit else 'miss'}")
