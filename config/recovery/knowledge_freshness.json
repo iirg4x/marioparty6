@@ -340,7 +340,8 @@
         "config/recovery/exceptions.json",
         "include/dolphin/math.h",
         "src/board/last5.c",
-        "src/board/mgcall.c"
+        "src/board/mgcall.c",
+        "src/board/capevent.c"
       ],
       "supersedes": [],
       "superseded_by": null

@@ -4814,7 +4814,7 @@
       "category": "header_visibility",
       "compiler": "GC/2.6",
       "confidence": "confirmed",
-      "summary": "A previously measured library-header guard override can become codegen-neutral after the translation unit's include graph changes. Last5 and Mgcall both retained byte-identical candidate objects after `_MATH_H` was deleted, so keeping the override and its exception would preserve compiler-control debt without preserving any target output.",
+      "summary": "A previously measured library-header guard override can become codegen-neutral after the translation unit's include graph changes. Last5, Mgcall, and Capevent retained byte-identical candidate objects after `_MATH_H` was deleted, so keeping the override and its exception would preserve compiler-control debt without preserving any target output.",
       "conditions": "Apply only to a recovered translation unit that already contains a library-header guard override with recorded historical evidence, after its include set or header coexistence rules have changed. This is a removal probe, never authority to introduce a guard.",
       "source_condition": {
         "change": "Delete the recovered-C library guard override while leaving the natural SDK header include in place.",
@@ -4864,7 +4864,8 @@
       },
       "examples": [
         "Last5 retained candidate object hash 13278cb14fc151b26a7c36b09096fc39967bcecc, 6/10 strict exact, and 6/10 data-value exact after `_MATH_H` was removed; organicity rose from 83 to 97.",
-        "Mgcall retained candidate object hash bb0ec516c3849bd52e38814bcc6ed63190de973e, 22/38 strict exact, and 22/38 data-value exact after `_MATH_H` was removed; organicity rose from 81 to 95."
+        "Mgcall retained candidate object hash bb0ec516c3849bd52e38814bcc6ed63190de973e, 22/38 strict exact, and 22/38 data-value exact after `_MATH_H` was removed; organicity rose from 81 to 95.",
+        "Capevent retained candidate object hash d0d0cb678eb7b53e313957f1d63dee1cd197ad29, 172/237 strict exact, and 192/237 data-value exact after `_MATH_H` was removed."
       ],
       "counterexamples": [
         "If deletion restores target-absent weak constants or changes a visible math declaration, the exception is still active and must be retained with its existing evidence.",
@@ -4875,9 +4876,11 @@
       "evidence": [
         "src/board/last5.c",
         "src/board/mgcall.c",
+        "src/board/capevent.c",
         "config/recovery/exceptions.json",
         "build/board-autonomy/last5-no-guard-proof/report.json",
-        "build/board-autonomy/mgcall-no-guard-proof/report.json"
+        "build/board-autonomy/mgcall-no-guard-proof/report.json",
+        "build/board-autonomy/capevent-interruption-audit/worker-verification-p04/report.json"
       ]
     }
   ]

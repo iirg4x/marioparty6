@@ -202,28 +202,6 @@
       ]
     },
     {
-      "id": "capevent-no-generic-math-inline",
-      "classification": "authenticated",
-      "path": "src/board/capevent.c",
-      "kind": "header_visibility",
-      "rules": [
-        "include_guard_override"
-      ],
-      "rationale": "Retail capevent.o omits the weak sqrtf _half and _three local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, dice.c, capselect.c, scroll.c, and shopevent.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. Worker commit 1e76929e48f7fc38b5ae5d8ff875756625098f2c applies that owner-local boundary to capevent.c: it removes exactly the 16 source-only bytes, leaves all 130 strict exact functions (0x3D24 target text bytes) and all 143 data-value exact functions (0x5184 target text bytes) unchanged, and the final strict and value reports retain no _half or _three source objects.",
-      "evidence": [
-        "build/capevent-bulk-exact-004/final-strict.json",
-        "build/capevent-bulk-exact-004/final-value.json",
-        "docs/native_matching_board_constant_pool.md",
-        "src/board/gate.c",
-        "src/board/roulette.c",
-        "src/board/tutorial.c",
-        "src/board/dice.c",
-        "src/board/capselect.c",
-        "src/board/scroll.c",
-        "src/board/shopevent.c"
-      ]
-    },
-    {
       "id": "telop-no-generic-math-inline",
       "classification": "authenticated",
       "path": "src/board/telop.c",
