@@ -333,7 +333,7 @@
     },
     "gc26-revalidate-stale-library-guard-exceptions": {
       "status": "active",
-      "validated_commit": "36dd16a948f8799129aa9e586b47f6fb1a3b6ac3",
+      "validated_commit": "2c5c2ac01aa6addc2bc7e695ebf8475221e269db",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
