@@ -473,17 +473,40 @@ class RecoveryPassTests(unittest.TestCase):
     def test_worker_dispatch_prefers_closed_packet_and_rotates_exhausted_owner(self) -> None:
         implementation = module.worker_dispatch(
             {
-                "ranked_functions": [],
+                "ranked_functions": [
+                    {"function": "HelperA", "category": "missing_definition"},
+                    {"function": "CallerB", "category": "missing_definition"},
+                ],
                 "preferred_implementation_packet": {
                     "ready": True,
                     "functions": ["HelperA", "CallerB"],
                     "function_count": 2,
-                    "target_bytes": 1024,
+                    "target_bytes": 4000,
                 },
             }
         )
         self.assertEqual(implementation["mode"], "implementation")
         self.assertEqual(implementation["functions"], ["HelperA", "CallerB"])
+        self.assertTrue(implementation["bulk_bounds_met"])
+
+        preflight = module.worker_dispatch(
+            {
+                "ranked_functions": [
+                    {"function": "HelperA", "category": "missing_definition"},
+                    {"function": "CallerB", "category": "missing_definition"},
+                    {"function": "PoolOwnerC", "category": "missing_definition"},
+                ],
+                "preferred_implementation_packet": {
+                    "ready": False,
+                    "functions": ["HelperA", "CallerB"],
+                    "function_count": 2,
+                    "target_bytes": 4000,
+                },
+            }
+        )
+        self.assertEqual(preflight["mode"], "evidence_preflight")
+        self.assertFalse(preflight["ready"])
+        self.assertEqual(preflight["excluded_missing_functions"], ["PoolOwnerC"])
 
         rotate = module.worker_dispatch(
             {

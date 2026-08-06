@@ -56,6 +56,7 @@ BUILD_LOCK_ENV = "MP6_RETAIL_BUILD_LOCK"
 DEFAULT_BUILD_LOCK = Path.home() / ".codex" / "mp6-retail-build.lock"
 TARGET_CALL_CLUSTER_CARD = "target-call-skeleton-before-shared-accessor-abstraction"
 PAIRED_SINGLE_QUARANTINE_CARD = "gc26-paired-single-huvecf-copy-spelling-negative"
+POOL_OWNERSHIP_CARD = "mwcc-conversion-pool-relocation-ownership-before-text-retention"
 GENERIC_CLUSTER_CALLS = {
     "abs", "fabs", "fabsf", "fmod", "memcpy", "memset",
     "HuPrcCurrentGet", "HuPrcSleep", "HuPrcVSleep",
@@ -1287,10 +1288,34 @@ def worker_dispatch(report: Mapping[str, Any]) -> dict[str, Any]:
 
     preferred = report.get("preferred_implementation_packet")
     if isinstance(preferred, Mapping) and preferred.get("functions"):
+        selected = set(str(name) for name in preferred["functions"])
+        missing = {
+            str(item.get("function"))
+            for item in ranked
+            if item.get("category") == "missing_definition"
+        }
+        bulk_bounds_met = bool(preferred.get("ready")) or (
+            number(preferred.get("function_count")) >= PREFERRED_PACKET_MIN_FUNCTIONS
+            or number(preferred.get("target_bytes")) >= PREFERRED_PACKET_MIN_BYTES
+        )
+        if not preferred.get("ready") and missing - selected:
+            return {
+                "mode": "evidence_preflight",
+                "ready": False,
+                "bulk_bounds_met": bulk_bounds_met,
+                "reason": (
+                    "call-closed packet excludes other missing owner functions; validate literal/static-data "
+                    "ownership and source provenance before assigning an implementation lane"
+                ),
+                "functions": list(preferred["functions"]),
+                "function_count": number(preferred.get("function_count")),
+                "target_bytes": number(preferred.get("target_bytes")),
+                "excluded_missing_functions": sorted(missing - selected),
+            }
         return {
             "mode": "implementation",
             "ready": True,
-            "bulk_bounds_met": bool(preferred.get("ready")),
+            "bulk_bounds_met": bulk_bounds_met,
             "reason": "dependency-closed missing-definition packet in target order",
             "functions": list(preferred["functions"]),
             "function_count": number(preferred.get("function_count")),
@@ -1465,6 +1490,12 @@ def build_worker_packet(
         "--baseline-strict", _repo_relative(root, strict_baseline),
         "--baseline-value", _repo_relative(root, value_baseline),
     ]
+    knowledge_cards = list(report.get("selected_knowledge_cards", []))
+    if (
+        dispatch["mode"] == "evidence_preflight"
+        and not any(card.get("id") == POOL_OWNERSHIP_CARD for card in knowledge_cards)
+    ):
+        knowledge_cards.extend(select_cards(root, [POOL_OWNERSHIP_CARD]))
     return {
         "schema_version": WORKER_PACKET_SCHEMA_VERSION,
         "kind": "same-owner-recovery",
@@ -1479,7 +1510,7 @@ def build_worker_packet(
         "dispatch": dispatch,
         "baseline": dict(report.get("summary", {})),
         "function_evidence": evidence,
-        "knowledge_cards": list(report.get("selected_knowledge_cards", [])),
+        "knowledge_cards": knowledge_cards,
         "probe_history": probe_history_summary(root, unit_name, dispatch["functions"]),
         "graphify": report.get("graphify"),
         "budgets": {
@@ -1557,6 +1588,10 @@ def render_worker_prompt(packet: Mapping[str, Any]) -> str:
             f"Measured scope: **{dispatch['function_count']} functions / {dispatch['target_bytes']} target bytes**.",
             "Target-order functions: " + ", ".join(f"`{name}`" for name in dispatch["functions"]),
         ]
+        if dispatch["mode"] == "evidence_preflight":
+            lines.append(
+                "Do not edit or build yet. Prove that literal pools, static data, headers, and semantics are closed over this packet; return implementation-ready or rotate_owner."
+            )
     else:
         lines.append("Do not spend an implementation lane here; report `rotate_owner` immediately.")
     graph = packet.get("graphify")
@@ -1592,7 +1627,12 @@ def render_worker_prompt(packet: Mapping[str, Any]) -> str:
     else:
         lines.append("- No owner-local probe-ledger entry intersects this packet.")
     lines += ["", "## Execute", ""]
-    for label in ("context", "knowledge", "build", "verify", "organicity"):
+    execute = (
+        ("context", "knowledge")
+        if dispatch["mode"] == "evidence_preflight"
+        else ("context", "knowledge", "build", "verify", "organicity")
+    )
+    for label in execute:
         lines.append(
             f"- {label}: `{subprocess.list2cmdline(packet['commands'][label])}`"
         )
@@ -1600,7 +1640,12 @@ def render_worker_prompt(packet: Mapping[str, Any]) -> str:
         lines.append("- Before a compiler probe, run its exact lookup command from `worker-packet.json`; `conflict` means stop or re-key before compiling.")
     lines += ["", "## Hard gates", ""]
     lines.extend(f"- {gate}" for gate in packet["acceptance_gates"])
-    lines += ["", "## Continue", "", packet["continuation"]]
+    lines += ["", "## Continue", ""]
+    lines.append(
+        "Return the ownership/provenance closure result to root; do not convert this into an implementation task yourself."
+        if dispatch["mode"] == "evidence_preflight"
+        else packet["continuation"]
+    )
     return "\n".join(lines).rstrip() + "\n"
 
 
