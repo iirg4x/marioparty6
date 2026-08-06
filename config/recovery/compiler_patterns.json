@@ -4806,6 +4806,79 @@
         "config/GP6E01/symbols.txt",
         "config/GP6E01/splits.txt"
       ]
+    },
+    {
+      "id": "gc26-revalidate-stale-library-guard-exceptions",
+      "title": "Revalidate and remove stale library-guard exceptions after include changes",
+      "classification": "confirmed_rule",
+      "category": "header_visibility",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "A previously measured library-header guard override can become codegen-neutral after the translation unit's include graph changes. Last5 and Mgcall both retained byte-identical candidate objects after `_MATH_H` was deleted, so keeping the override and its exception would preserve compiler-control debt without preserving any target output.",
+      "conditions": "Apply only to a recovered translation unit that already contains a library-header guard override with recorded historical evidence, after its include set or header coexistence rules have changed. This is a removal probe, never authority to introduce a guard.",
+      "source_condition": {
+        "change": "Delete the recovered-C library guard override while leaving the natural SDK header include in place.",
+        "requires": [
+          "a candidate-object hash captured immediately before the probe",
+          "one serialized rebuild under the pinned owner compiler command",
+          "the complete candidate-object hash after the rebuild",
+          "strict and data-value owner reports with protected exact-function checks",
+          "full-file organicity and source-quality checks"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "no object change when current headers already provide the required coexistence boundary",
+          "reappearance of weak math constants or declaration-ABI changes when the override is still active",
+          "removal of a compiler-control organicity finding when the override is obsolete"
+        ],
+        "known_signatures": [
+          "the complete object hash is identical before and after guard deletion",
+          "strict- and data-value-exact function sets have zero regressions",
+          "organicity improves only because the foreign include-guard finding disappears"
+        ]
+      },
+      "rule": "Treat every recovered-C library guard as a temporary authenticated exception, not permanent source shape. Re-run a one-variable deletion probe after include-graph changes; when the complete object hash and protected reports are unchanged, remove both the guard and its exception. Restore the exact source immediately if any text, relocation, or owned-data byte changes.",
+      "safe_actions": [
+        "capture the candidate object hash before editing",
+        "delete only the guard override, not the natural header include",
+        "run one serialized owner rebuild",
+        "compare the complete object hash plus strict and data-value reports",
+        "remove the matching exception only after a byte-neutral result",
+        "record the successful owner pair as reusable evidence"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "header_visibility",
+          "organicity",
+          "exception_revalidation",
+          "weak_sqrtf_pool"
+        ]
+      },
+      "examples": [
+        "Last5 retained candidate object hash 13278cb14fc151b26a7c36b09096fc39967bcecc, 6/10 strict exact, and 6/10 data-value exact after `_MATH_H` was removed; organicity rose from 83 to 97.",
+        "Mgcall retained candidate object hash bb0ec516c3849bd52e38814bcc6ed63190de973e, 22/38 strict exact, and 22/38 data-value exact after `_MATH_H` was removed; organicity rose from 81 to 95."
+      ],
+      "counterexamples": [
+        "If deletion restores target-absent weak constants or changes a visible math declaration, the exception is still active and must be retained with its existing evidence.",
+        "Do not generalize byte neutrality across owners; each translation unit has an independent include closure.",
+        "Do not replace the guard with another macro, pragma, or declaration-suppression trick."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/last5.c",
+        "src/board/mgcall.c",
+        "config/recovery/exceptions.json",
+        "build/board-autonomy/last5-no-guard-proof/report.json",
+        "build/board-autonomy/mgcall-no-guard-proof/report.json"
+      ]
     }
   ]
 }

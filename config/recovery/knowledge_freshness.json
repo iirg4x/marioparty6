@@ -295,8 +295,8 @@
     },
     "gc26-board-transitive-sqrtf-pool": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "36dd16a948f8799129aa9e586b47f6fb1a3b6ac3",
+      "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/exceptions.json",
@@ -327,6 +327,20 @@
         "src/board/last5.c",
         "src/board/mgcall.c",
         "src/board/telop.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "gc26-revalidate-stale-library-guard-exceptions": {
+      "status": "active",
+      "validated_commit": "36dd16a948f8799129aa9e586b47f6fb1a3b6ac3",
+      "validated_at": "2026-08-07",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/exceptions.json",
+        "include/dolphin/math.h",
+        "src/board/last5.c",
+        "src/board/mgcall.c"
       ],
       "supersedes": [],
       "superseded_by": null
