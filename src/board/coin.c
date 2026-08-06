@@ -1,4 +1,3 @@
-#define _MATH_H
 #include "dolphin/math.h"
 
 #include "game/board/audio.h"
@@ -207,10 +206,15 @@ static HUPROCESS *coinMdlProc;
 
 void mbCoinInit(void)
 {
+    s16 modelId1;
+    s16 modelId2;
+
     memset(coinDispOMObj, 0, sizeof(coinDispOMObj));
     memset(coinEffData, 0, sizeof(coinEffData));
-    coin1MdlId = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL_RED), NULL, TRUE);
-    coin2MdlId = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL), NULL, TRUE);
+    modelId1 = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL_RED), NULL, TRUE);
+    coin1MdlId = modelId1;
+    modelId2 = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL), NULL, TRUE);
+    coin2MdlId = modelId2;
     mbObjDispSet(coin1MdlId, FALSE);
     mbObjDispSet(coin2MdlId, FALSE);
     CoinInit();

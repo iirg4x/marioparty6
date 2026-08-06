@@ -4,7 +4,7 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 2, 2026**
+Last published full-project snapshot: **August 7, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
@@ -16,9 +16,21 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
-is matching at **55 / 55 functions**. The principal partial owners remain
-`src/board/last5.c` at **4 / 10**, `src/board/player.c` at **158 / 165**, and
-`src/board/shopevent.c` at **12 / 13** strict-exact functions.
+is matching at **55 / 55 functions**. Current promoted partial-owner recovery
+includes `src/board/capevent.c` at **173 / 237 strict-exact functions** and
+**193 / 237 data-value-exact functions**; `src/board/capmove.c` at **17 / 24**
+and **18 / 24**; `src/board/capsule.c` at **109 / 165** and **110 / 165**;
+`src/board/config.c` at **22 / 51** and **26 / 51**; `src/board/captrap.c` at
+**11 / 20** and **11 / 20**; `src/board/coin.c` at **27 / 52** and **33 / 52**;
+`src/board/dice.c` at **52 / 68** and **54 / 68**; `src/board/last5.c` at **6 /
+10** and **6 / 10**; `src/board/mgcall.c` at **25 / 38** and **25 / 38**;
+`src/board/player.c` at **158 / 165** and **159 / 165**; `src/board/single.c`
+at **39 / 58** and **43 / 58**; `src/board/snpc.c` at **36 / 85** and **41 /
+85**; and
+`src/board/telop.c` at **30 / 31 strict-exact and data-value-exact functions**.
+The latest recovery batch adds verified strict and data-value gains across six
+partial owners with zero exact-function regressions. The board-owner and
+Treetop seam totals are unchanged because these files remain partial owners.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
@@ -26,11 +38,19 @@ compiled comparison objects retain **538 / 648 exact recovered functions**;
 incomplete application owners remain `NonMatching` as whole units until their
 full text, data, relocation, and consumer closure is exact.
 
-The canonical `fileseldll` save owner is strict-exact at **23 / 23 functions**,
-**11,856 text bytes**, and **831 relocations**, with `.text`, `.rodata`, and
-`.data` exact. Its source now uses the shared Filesel/save interfaces and an
-owner compiler profile instead of raw hexadecimal domains, local code-generation
-pragmas, or an include-guard override; the complete REL remains retail-identical.
+The canonical `fileseldll` application owner is strict-exact at **39 / 39
+functions**, **35,732 text bytes**, and **2,900 relocations**. Its source has no
+raw hexadecimal domains or synthetic padding, uses target-backed resource and
+message names, and scores **94 / 100** on the source-organicity review. The save
+owner remains strict-exact at **23 / 23 functions**, **11,856 text bytes**, and
+**831 relocations**. The complete REL remains retail-identical.
+
+The canonical `mdpartydll` stage owner is strict-exact at **57 / 57
+functions** and **29,656 text bytes**. Its particle targets and constant
+domains are typed and named, with no raw hexadecimal literals, header-guard
+override, or source pragma; the exact pool-data mode now lives in the owner
+compiler profile. The complete REL remains retail-identical with SHA-1
+`519debb149ef42eda1ab3b0a4d2b3132b4f3e3cc`.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one

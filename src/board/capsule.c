@@ -722,6 +722,7 @@ extern const float lbl_802C4540;
 extern const float lbl_802C4544;
 extern const float lbl_802C455C;
 extern const float lbl_802C45C0;
+extern const float lbl_802C45D0;
 extern const float lbl_802C4574;
 extern const float lbl_802C4570;
 extern const float lbl_802C4578;
@@ -1294,6 +1295,117 @@ static HuVec2f charSizeTbl[14] = {
     { 150.0f, 125.0f },
 };
 
+static BOOL CapColExec(int playerNo, HuVecF *posA, HuVecF *posB, HuVecF *out)
+{
+    HuVecF playerPos;
+    HuVecF faceVtx[3];
+    HuVecF faceNorm;
+    HuVecF faceBA;
+    HuVecF faceCA;
+    HuVecF edgeBA;
+    HuVecF edgeCA;
+    HuVecF edgeNorm;
+    HuVecF dir;
+    HuVecF outPos;
+    float dot;
+    float dotEdge;
+    float dotA;
+    float dotB;
+    float invDotA;
+    float scale;
+    float mag;
+    float dotVec[3];
+    BOOL partyF;
+    int i;
+    int j;
+    int temp;
+    int temp2;
+
+    temp = 0;
+    temp2 = 0;
+    PSVECSubtract(posA, posB, &dir);
+    if (PSVECMag(&dir) <= 0.0f) {
+        return FALSE;
+    }
+    PSVECNormalize(&dir, &dir);
+    mag = PSVECMag(&dir);
+    for (i = 0; i < 4; i++) {
+        partyF = GwSystem.partyF;
+        if ((!partyF && i != 0) || i == playerNo ||
+            !mbPlayerDispGet(i)) {
+            continue;
+        }
+        mbPlayerPosGet(i, &playerPos);
+        for (j = 0; j < 6; j++) {
+            faceVtx[0].x = colScaleTbl[j * 3].x *
+                charSizeTbl[GwPlayer[i].charNo].x;
+            faceVtx[0].y = colScaleTbl[j * 3].y *
+                charSizeTbl[GwPlayer[i].charNo].y;
+            faceVtx[0].z = colScaleTbl[j * 3].z *
+                charSizeTbl[GwPlayer[i].charNo].x;
+            faceVtx[1].x = colScaleTbl[j * 3 + 1].x *
+                charSizeTbl[GwPlayer[i].charNo].x;
+            faceVtx[1].y = colScaleTbl[j * 3 + 1].y *
+                charSizeTbl[GwPlayer[i].charNo].y;
+            faceVtx[1].z = colScaleTbl[j * 3 + 1].z *
+                charSizeTbl[GwPlayer[i].charNo].x;
+            faceVtx[2].x = colScaleTbl[j * 3 + 2].x *
+                charSizeTbl[GwPlayer[i].charNo].x;
+            faceVtx[2].y = colScaleTbl[j * 3 + 2].y *
+                charSizeTbl[GwPlayer[i].charNo].y;
+            faceVtx[2].z = colScaleTbl[j * 3 + 2].z *
+                charSizeTbl[GwPlayer[i].charNo].x;
+            PSVECAdd(&faceVtx[0], &playerPos, &faceVtx[0]);
+            PSVECAdd(&faceVtx[1], &playerPos, &faceVtx[1]);
+            PSVECAdd(&faceVtx[2], &playerPos, &faceVtx[2]);
+            PSVECSubtract(&faceVtx[1], &faceVtx[0], &faceBA);
+            PSVECSubtract(&faceVtx[2], &faceVtx[0], &faceCA);
+            PSVECCrossProduct(&faceBA, &faceCA, &faceNorm);
+            if (PSVECMag(&faceNorm) > 0.0f) {
+                PSVECNormalize(&faceNorm, &faceNorm);
+            }
+            dot = -PSVECDotProduct(&faceNorm, &faceVtx[0]);
+            dotA = (faceNorm.x * posA->x) +
+                (faceNorm.y * posA->y) + (faceNorm.z * posA->z) + dot;
+            dotB = (faceNorm.x * posB->x) +
+                (faceNorm.y * posB->y) + (faceNorm.z * posB->z) + dot;
+            if (dotA * dotB > 0.0f) {
+                continue;
+            }
+            invDotA = -((faceNorm.x * posA->x) +
+                (faceNorm.y * posA->y) + (faceNorm.z * posA->z) + dot);
+            dotEdge = (faceNorm.x * dir.x) +
+                (faceNorm.y * dir.y) + (faceNorm.z * dir.z);
+            if (dotEdge == 0.0f) {
+                continue;
+            }
+            scale = invDotA / dotEdge;
+            PSVECScale(&dir, &outPos, scale);
+            PSVECAdd(&outPos, posA, &outPos);
+            *out = outPos;
+            PSVECSubtract(&faceVtx[1], &faceVtx[0], &edgeBA);
+            PSVECSubtract(&outPos, &faceVtx[0], &edgeCA);
+            PSVECCrossProduct(&edgeBA, &edgeCA, &edgeNorm);
+            dotVec[0] = PSVECDotProduct(&faceNorm, &edgeNorm);
+            PSVECSubtract(&faceVtx[2], &faceVtx[1], &edgeBA);
+            PSVECSubtract(&outPos, &faceVtx[1], &edgeCA);
+            PSVECCrossProduct(&edgeBA, &edgeCA, &edgeNorm);
+            dotVec[1] = PSVECDotProduct(&faceNorm, &edgeNorm);
+            PSVECSubtract(&faceVtx[0], &faceVtx[2], &edgeBA);
+            PSVECSubtract(&outPos, &faceVtx[2], &edgeCA);
+            PSVECCrossProduct(&edgeBA, &edgeCA, &edgeNorm);
+            dotVec[2] = PSVECDotProduct(&faceNorm, &edgeNorm);
+            if (dotVec[0] > 0.0f && dotVec[1] > 0.0f && dotVec[2] > 0.0f) {
+                return TRUE;
+            }
+            if (dotVec[0] < 0.0f && dotVec[1] < 0.0f && dotVec[2] < 0.0f) {
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
 static void CapGuideGrowSet(void)
 {
     void *work = capsuleGuideOMObj->data;
@@ -1843,6 +1955,7 @@ static void CapPlayerThrow(void)
     work->jumpMotId = MB_MODEL_NONE;
     HuPrcEnd();
 }
+
 
 static void CapEffThrowHook(HU3D_MODEL *modelP, Mtx *mtx)
 {
@@ -2966,6 +3079,56 @@ int mbCapListCopy(CAPSULE_LIST *list)
     }
     capsuleList[i].id = -1;
     return i;
+}
+
+int mbCapRandomListGet(int *capsuleListOut, int maxNum)
+{
+    CAPSULE_LIST *listBase;
+    CAPSULE_LIST *list;
+    int count;
+    CAPSULE_LIST *listWork;
+    CAPSULE_LIST temp;
+    int i;
+    int listNo;
+    int otherListNo;
+    int num;
+
+    list = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(*listBase) * 33, HU_MEMNUM_OVL);
+    listBase = list;
+    listWork = listBase;
+    memset(listBase, 0, sizeof(*listBase) * 33);
+    i = 0;
+    count = 0;
+    for (; i < 33; i++, listWork++) {
+        if (capsuleList[i].id == -1) {
+            break;
+        }
+        *listWork = capsuleList[i];
+        count++;
+    }
+    if (count >= 2) {
+        for (i = 0; i < 256; i++) {
+            listNo = mbRandMod(count);
+            otherListNo = mbRandMod(count);
+            if (listNo != otherListNo) {
+                temp = listBase[listNo];
+                listBase[listNo] = listBase[otherListNo];
+                listBase[otherListNo] = temp;
+            }
+        }
+    }
+    i = 0;
+    num = 0;
+    for (; i < maxNum; i++) {
+        if (listBase[i].id == -1) {
+            break;
+        }
+        capsuleListOut[i] = listBase[i].id;
+        num++;
+    }
+    HuMemDirectFree(listBase);
+    return num;
 }
 
 void mbCapNumInc(int capsuleNo, int mode)
@@ -4750,4 +4913,100 @@ void mbCapObjBorderKill(int objId)
             capsuleObjBorderId[i] = -1;
         }
     }
+}
+
+
+static void CapThrowCameraCalc(float t, float *x, float *y, float *z,
+    HuVecF *out, int num)
+{
+    int lowX;
+    int midX;
+    int highX;
+    int lowY;
+    int midY;
+    int highY;
+    int lowZ;
+    int midZ;
+    int highZ;
+    float spanX;
+    float relX;
+    float spanY;
+    float relY;
+    float spanZ;
+    float relZ;
+    float outX;
+    float outY;
+    float outZ;
+
+    lowX = 0;
+    highX = num - 1;
+    while (lowX < highX) {
+        midX = (lowX + highX) / 2;
+        if (capsuleTime[midX] < t) {
+            lowX = midX + 1;
+        } else {
+            highX = midX;
+        }
+    }
+    if (lowX > 0) {
+        lowX--;
+    }
+    spanX = capsuleTime[lowX + 1] - capsuleTime[lowX];
+    relX = t - capsuleTime[lowX];
+    outX = x[lowX] + (relX *
+        ((relX * ((lbl_802C45D0 * capsuleBezierX[lowX]) +
+            ((relX * (capsuleBezierX[lowX + 1] - capsuleBezierX[lowX])) /
+                spanX))) +
+            (((x[lowX + 1] - x[lowX]) / spanX) -
+                (spanX * ((lbl_802C45C0 * capsuleBezierX[lowX]) +
+                    capsuleBezierX[lowX + 1])))));
+    out->x = outX;
+
+    lowY = 0;
+    highY = num - 1;
+    while (lowY < highY) {
+        midY = (lowY + highY) / 2;
+        if (capsuleTime[midY] < t) {
+            lowY = midY + 1;
+        } else {
+            highY = midY;
+        }
+    }
+    if (lowY > 0) {
+        lowY--;
+    }
+    spanY = capsuleTime[lowY + 1] - capsuleTime[lowY];
+    relY = t - capsuleTime[lowY];
+    outY = y[lowY] + (relY *
+        ((relY * ((lbl_802C45D0 * capsuleBezierY[lowY]) +
+            ((relY * (capsuleBezierY[lowY + 1] - capsuleBezierY[lowY])) /
+                spanY))) +
+            (((y[lowY + 1] - y[lowY]) / spanY) -
+                (spanY * ((lbl_802C45C0 * capsuleBezierY[lowY]) +
+                    capsuleBezierY[lowY + 1])))));
+    out->y = outY;
+
+    lowZ = 0;
+    highZ = num - 1;
+    while (lowZ < highZ) {
+        midZ = (lowZ + highZ) / 2;
+        if (capsuleTime[midZ] < t) {
+            lowZ = midZ + 1;
+        } else {
+            highZ = midZ;
+        }
+    }
+    if (lowZ > 0) {
+        lowZ--;
+    }
+    spanZ = capsuleTime[lowZ + 1] - capsuleTime[lowZ];
+    relZ = t - capsuleTime[lowZ];
+    outZ = z[lowZ] + (relZ *
+        ((relZ * ((lbl_802C45D0 * capsuleBezierZ[lowZ]) +
+            ((relZ * (capsuleBezierZ[lowZ + 1] - capsuleBezierZ[lowZ])) /
+                spanZ))) +
+            (((z[lowZ + 1] - z[lowZ]) / spanZ) -
+                (spanZ * ((lbl_802C45C0 * capsuleBezierZ[lowZ]) +
+                    capsuleBezierZ[lowZ + 1])))));
+    out->z = outZ;
 }

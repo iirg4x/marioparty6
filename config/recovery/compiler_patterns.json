@@ -806,7 +806,7 @@
       "category": "type_contracts",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Independent staffdll, mdbankdll, and mdpresultdll recoveries replaced misleading offset-only, first-word, or incomplete-prefix interpretations with natural aggregates after configured sizes, complete element strides, public field types, callbacks, and state consumers were triangulated; w01 cleanup additionally proved that ordinary ABI alignment must supply narrow-to-wide member gaps instead of manually named padding. Exact text and relocations were preserved across both compiler profiles.",
+      "summary": "Independent staffdll, mdbankdll, mdpresultdll, and main-board recoveries replaced misleading offset-only, first-word, incomplete-prefix, or opaque byte interpretations with natural aggregates after configured sizes, complete element strides, public field types, callbacks, and state consumers were triangulated; w01 cleanup additionally proved that ordinary ABI alignment must supply narrow-to-wide member gaps instead of manually named padding. Exact text and relocations were preserved across both compiler profiles.",
       "conditions": "Apply when an untyped target address or offset can be reproduced by an opaque overlay, pointer slot, multiple plausible public aggregate fields, or explicit byte padding inserted only to force an ordinary ABI-aligned member offset.",
       "source_condition": {
         "change": "Choose a natural aggregate owner and typed field chain, relying on ordinary ABI alignment before retaining an offset-only overlay, first-word pointer interpretation, or manual padding member.",
@@ -851,12 +851,14 @@
           "mdbankdll:fn_1_1994",
           "mdbankdll:fn_1_5550",
           "mdpresultdll:fn_1_20108",
-          "mdpresultdll:fn_1_20188"
+          "mdpresultdll:fn_1_20188",
+          "main:board/snpc:MBSNPCWORK.diceNumObj"
         ],
         "modules": [
           "staffdll",
           "mdbankdll",
-          "mdpresultdll"
+          "mdpresultdll",
+          "main.dol"
         ],
         "owner_tags": [
           "aggregate_ownership",
@@ -864,7 +866,9 @@
           "configured_extent",
           "public_types",
           "relocation_ownership",
-          "rel"
+          "rel",
+          "board",
+          "private_layout"
         ]
       },
       "examples": [
@@ -876,7 +880,8 @@
         "REL:mdpartydll:mdparty recovered 17 logical sprite-group counts, 58 typed descriptors, 67 HuVecF positions, and an 11-entry signed selection graph from target extents and independent consumers without inventing padding fields.",
         "Waves 31-37 recover GSSDK state, handle, serialized-data, table, and signal-processing layouts only where MP6 allocation sizes, access widths, callbacks, relocations, or public consumers independently bound them.",
         "wave 72 retained two adjacent 16-entry effect arrays because MP6 deliberately indexes 32 entries from the first; consumer behavior proved adjacency without inventing a combined declaration.",
-        "w01Dll world01 cleanup commit 0fcb3d351085aae7563e157892d9d3849152f3f8 removed ten explicit padding members from ordinary ABI-aligned aggregates; the adjacent natural member types and declaration order preserved the exact owner layout."
+        "w01Dll world01 cleanup commit 0fcb3d351085aae7563e157892d9d3849152f3f8 removed ten explicit padding members from ordinary ABI-aligned aggregates; the adjacent natural member types and declaration order preserved the exact owner layout.",
+        "main:board/snpc recovered MBSNPCWORK.diceNumObj as an OMOBJ pointer after its fixed offset and the independent mbDiceSNpcNumSet, mbDiceSNpcNumDispSet, mbDiceSNpcNumKill, and mbDiceSNpcNumPosSet consumers agreed; replacing four opaque bytes preserved 36/85 strict and 41/85 data-value exact functions with zero regressions and improved organicity from 90 to 94."
       ],
       "counterexamples": [
         "Matching one field offset does not authenticate the semantic field or containing type.",
@@ -897,7 +902,11 @@
         "docs/native_matching_wave98.md",
         "src/REL/mdpresultdll/mdpresult.c",
         "config/recovery/owners/REL_mdpresultdll_mdpresult.json",
-        "src/REL/w01Dll/world01.c"
+        "src/REL/w01Dll/world01.c",
+        "src/board/snpc.c",
+        "src/board/dice.c",
+        "config/GP6E01/symbols.txt",
+        "build/board-autonomy/root-final-snpc-semantic-field-20260807/report.json"
       ]
     },
     {
@@ -2223,10 +2232,10 @@
       "category": "signed_width_and_lifetime",
       "compiler": "GC/2.6",
       "confidence": "confirmed",
-      "summary": "A semantically narrow API result can require an s32 field or local initialized through an explicit s16 cast so MWCC emits sign extensions at the retail consumer sites.",
-      "conditions": "Apply when target code sign-extends a narrow-producing call result and repeats extsh at later consumers, while an s16 source lifetime removes or reschedules those extensions.",
+      "summary": "A semantically narrow API result can require either a narrow staging local before a wide store or a wide persistent field narrowed only at authenticated API consumers, so MWCC preserves the retail extension and register-lifetime schedule.",
+      "conditions": "Apply when target code separates a narrow-producing call from its later wide store, or sign-extends the produced value again at later narrow consumers, while a direct wide assignment or an s16 persistent lifetime removes or reschedules those boundaries.",
       "source_condition": {
-        "change": "Declare the stored lifetime itself as s16 instead of storing an explicitly narrowed value in an s32 lifetime.",
+        "change": "Collapse a target-backed narrow staging assignment into a direct wide store, or declare a target-backed wide persistent lifetime as s16.",
         "requires": [
           "authenticated producer return width",
           "target extension at assignment or first use",
@@ -2244,10 +2253,12 @@
         "known_signatures": [
           "an s16 lifetime turns repeated target extsh instructions into mr",
           "an explicit narrow cast at assignment plus s32 storage restores consumer extensions",
-          "producer semantics remain narrow even though storage is wide"
+          "producer semantics remain narrow even though storage is wide",
+          "an s16 staging local separates a narrow producer call from a later wide global store",
+          "a wide object field is loaded and narrowed only at each authenticated s16 API boundary"
         ]
       },
-      "rule": "Choose storage width from the complete producer-to-consumer instruction pattern; when authenticated, store the explicitly narrowed result in an s32 lifetime rather than declaring the lifetime s16, and retain it only after every extension site and relocation is exact.",
+      "rule": "Choose staging and persistent widths from the complete producer-to-consumer instruction pattern. Preserve a narrow staging local before wide storage, or a wide persistent lifetime narrowed at consumers, only when the target proves that boundary and every affected function and relocation has zero regressions.",
       "safe_actions": [
         "authenticate the producer contract before changing the lifetime",
         "compare s16 storage against s32 storage with an explicit narrow assignment cast",
@@ -2258,8 +2269,13 @@
         "compiler_wide": true,
         "project_wide": false,
         "owners": [],
-        "stable_ids": [],
+        "stable_ids": [
+          "main:board/coin:mbCoinInit",
+          "main:board/mgcall:MgCallVsEffCreate",
+          "main:board/mgcall:MgCallVsEffOMExec"
+        ],
         "modules": [
+          "main.dol",
           "s02Dll",
           "miraclebookdll"
         ],
@@ -2271,7 +2287,9 @@
       },
       "examples": [
         "s02Dll repeated producer/consumer extsh cluster",
-        "miraclebookdll fn_1_7354 HuWinChoiceGet assignment"
+        "miraclebookdll fn_1_7354 HuWinChoiceGet assignment",
+        "main:board/coin mbCoinInit uses two s16 model-ID staging locals before the wide globals and closes its 224-byte body",
+        "main:board/mgcall stores espEntry's s16 result in an int sprId field and narrows only at esp consumers, closing MgCallVsEffCreate and MgCallVsEffOMExec"
       ],
       "counterexamples": [
         "A lone extsh without repeated producer/consumer evidence does not authenticate wide storage.",
@@ -2279,7 +2297,11 @@
       ],
       "related_exceptions": [],
       "evidence": [
-        "docs/native_matching_narrow_assignment_lifetime.md"
+        "docs/native_matching_narrow_assignment_lifetime.md",
+        "src/board/coin.c",
+        "src/board/mgcall.c",
+        "build/board-autonomy/coin-luna-initlocals2-20260807/report.json",
+        "build/board-autonomy/mgcall-final-freeze-20260807/report.json"
       ]
     },
     {
@@ -2319,7 +2341,9 @@
           "distinct state-read and state-write captures preserve separate register lifetimes around one transition",
           "an authenticated inline accessor boundary can preserve a narrow global lifetime that a direct read collapses",
           "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error",
-          "capturing an invariant accessor result immediately before its loop can restore both the defining function and callers that inline it"
+          "capturing an invariant accessor result immediately before its loop can restore both the defining function and callers that inline it",
+          "a block-local bitfield capture can preserve separate saved-register lifetimes across two loops",
+          "staging an owner-data pointer through its semantic model, hook, and particle-work types can preserve a target call-spanning pointer chain"
         ]
       },
       "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
@@ -2354,7 +2378,9 @@
           "GWMgNightFGet",
           "mbDiceProcExec",
           "mbDiceExec",
-          "mbDicePlayerExec"
+          "mbDicePlayerExec",
+          "main:board/mgcall:SetupTeam",
+          "main:board/capevent:mbev_CapEffMasuHitCreate"
         ],
         "modules": [
           "main.dol",
@@ -2383,7 +2409,9 @@
         "mbMain distinct party-state reads",
         "mbNextTime turn-limit and turn-count captures",
         "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle",
-        "mbDiceProcExec captures mbDiceValueMaxGet once before initialization; this closes its 360-byte body and the 680-byte mbDiceExec and 308-byte mbDicePlayerExec inline consumers"
+        "mbDiceProcExec captures mbDiceValueMaxGet once before initialization; this closes its 360-byte body and the 680-byte mbDiceExec and 308-byte mbDicePlayerExec inline consumers",
+        "main:board/mgcall SetupTeam uses block-local int team captures in its two loops and closes 1,420 exact bytes",
+        "main:board/capevent mbev_CapEffMasuHitCreate stages obj data through model, hook-data, and particle-work lifetimes and closes 384 exact bytes"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
@@ -2396,7 +2424,11 @@
         "docs/native_matching_board_player_value_lifetimes.md",
         "src/board/board.c",
         "src/board/player.c",
-        "src/board/dice.c"
+        "src/board/dice.c",
+        "src/board/mgcall.c",
+        "src/board/capevent.c",
+        "build/board-autonomy/mgcall-setupteam-blockteam-probe-20260807/report.json",
+        "build/board-autonomy/capevent-parent-verify-20260807/report.json"
       ]
     },
     {
@@ -2500,7 +2532,8 @@
         "wave 68 moved fn_1_F790 and triggered an unwanted expansion into fn_1_A5D4, while blanket dont_inline also suppressed the authentic nested fn_1_F4E4 expansion.",
         "main:board/captrap mbev_CapBiriQMetalShock target m2c output correctly exposes separate sine-result stack lifetimes, but it is not source-evaluation authority: the natural separated C form stays exact-sized at 4148 bytes while MWCC preloads the far multiplicand and leaves eight instruction-order or operand differences instead of the retained six-difference form.",
         "Explicit final -schedule off does not repair that captrap ordering, and -sym on is text-identical while only adding a debug section; neither explains the two target post-mbSinDeg reloads.",
-        "Collapsing the captrap trig block into direct nested calls shrinks the function from 4148 to 4092 bytes and introduces an f17 call-result lifetime, while reversing only the inner commutative product remains 4148 bytes but preserves the wrong far-operand preload. All forms were reverted."
+        "Collapsing the captrap trig block into direct nested calls shrinks the function from 4148 to 4092 bytes and introduces an f17 call-result lifetime, while reversing only the inner commutative product remains 4148 bytes but preserves the wrong far-operand preload. All forms were reverted.",
+        "Splitting each mbev_CapBiriQMetalShock sine product into an assignment followed by compound multiplication grows the exact-sized 4148-byte body to 4164 bytes and inserts four spill rows; the target load order alone does not authenticate that source form, so the probe was reverted."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -4814,7 +4847,7 @@
       "category": "header_visibility",
       "compiler": "GC/2.6",
       "confidence": "confirmed",
-      "summary": "A previously measured library-header guard override can become codegen-neutral after the translation unit's include graph changes. Last5, Mgcall, and Capevent retained byte-identical candidate objects after `_MATH_H` was deleted, so keeping the override and its exception would preserve compiler-control debt without preserving any target output.",
+      "summary": "A previously measured library-header guard override can become codegen-neutral after the translation unit's include graph changes. Last5, Mgcall, Capevent, and Coin retained byte-identical candidate objects after `_MATH_H` was deleted, so keeping the override and its exception would preserve compiler-control debt without preserving any target output.",
       "conditions": "Apply only to a recovered translation unit that already contains a library-header guard override with recorded historical evidence, after its include set or header coexistence rules have changed. This is a removal probe, never authority to introduce a guard.",
       "source_condition": {
         "change": "Delete the recovered-C library guard override while leaving the natural SDK header include in place.",
@@ -4865,7 +4898,8 @@
       "examples": [
         "Last5 retained candidate object hash 13278cb14fc151b26a7c36b09096fc39967bcecc, 6/10 strict exact, and 6/10 data-value exact after `_MATH_H` was removed; organicity rose from 83 to 97.",
         "Mgcall retained candidate object hash bb0ec516c3849bd52e38814bcc6ed63190de973e, 22/38 strict exact, and 22/38 data-value exact after `_MATH_H` was removed; organicity rose from 81 to 95.",
-        "Capevent retained candidate object hash d0d0cb678eb7b53e313957f1d63dee1cd197ad29, 172/237 strict exact, and 192/237 data-value exact after `_MATH_H` was removed."
+        "Capevent retained candidate object hash d0d0cb678eb7b53e313957f1d63dee1cd197ad29, 172/237 strict exact, and 192/237 data-value exact after `_MATH_H` was removed.",
+        "Coin retained candidate object SHA-256 a1a3e91718666154b0b019a101494aa7c4b0cdd9fbcb8c06607be5e71217c0a3, 27/52 strict exact, and 33/52 data-value exact after `_MATH_H` was removed; organicity rose from 86 to 100."
       ],
       "counterexamples": [
         "If deletion restores target-absent weak constants or changes a visible math declaration, the exception is still active and must be retained with its existing evidence.",
@@ -4877,10 +4911,12 @@
         "src/board/last5.c",
         "src/board/mgcall.c",
         "src/board/capevent.c",
+        "src/board/coin.c",
         "config/recovery/exceptions.json",
         "build/board-autonomy/last5-no-guard-proof/report.json",
         "build/board-autonomy/mgcall-no-guard-proof/report.json",
-        "build/board-autonomy/capevent-interruption-audit/worker-verification-p04/report.json"
+        "build/board-autonomy/capevent-interruption-audit/worker-verification-p04/report.json",
+        "build/board-autonomy/root-final-coin-no-guard-20260807/report.json"
       ]
     }
   ]

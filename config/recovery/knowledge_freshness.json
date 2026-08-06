@@ -169,7 +169,10 @@
         "docs/native_matching_wave34.md",
         "docs/native_matching_wave36.md",
         "docs/native_matching_wave37.md",
-        "docs/native_matching_wave72.md"
+        "docs/native_matching_wave72.md",
+        "src/board/snpc.c",
+        "src/board/dice.c",
+        "config/GP6E01/symbols.txt"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -341,7 +344,8 @@
         "include/dolphin/math.h",
         "src/board/last5.c",
         "src/board/mgcall.c",
-        "src/board/capevent.c"
+        "src/board/capevent.c",
+        "src/board/coin.c"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -480,7 +484,9 @@
       "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
-        "docs/native_matching_narrow_assignment_lifetime.md"
+        "docs/native_matching_narrow_assignment_lifetime.md",
+        "src/board/coin.c",
+        "src/board/mgcall.c"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -494,6 +500,8 @@
         "docs/native_matching_board_player_value_lifetimes.md",
         "src/board/board.c",
         "src/board/player.c",
+        "src/board/mgcall.c",
+        "src/board/capevent.c",
         "include/game/gamework.h",
         "configure.py"
       ],
@@ -507,6 +515,7 @@
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_capsule_call_chronology.md",
+        "src/board/captrap.c",
         "src/board/capsule.c",
         "include/game/gamemes.h",
         "configure.py",
