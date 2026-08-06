@@ -1,4 +1,3 @@
-#define _MATH_H
 #include "dolphin/math.h"
 
 #include "game/gamework.h"
@@ -33,10 +32,13 @@ s8 mbPadStkYGet(int playerNo);
 #define CAPSULE_KOOPA 43
 
 #define CAPSULE_INVALID -99
+#define CAPEVENT_GRAVITY 9.8f
+#define CAPEVENT_COIN_GRAVITY 3.2666667f
 
 #define CAPEVENT_PROCESS_PRIORITY 8196
 #define CAPEVENT_PROCESS_STACK_SIZE 24576
 #define CAPEVENT_EFFECT_OBJ_PRIORITY ((s16)(1 << 15))
+#define CAPEVENT_WORK_OBJ_PRIORITY ((1 << 15) - 1)
 #define CAPEVENT_EFFECT_RANDOM_COUNT 1024
 #define CAPEVENT_EFFECT_RANDOM_RANGE (1 << 15)
 #define CAPEVENT_EFFECT_RANDOM_MASK (CAPEVENT_EFFECT_RANDOM_RANGE - 1)
@@ -228,6 +230,9 @@ typedef struct CapEffExplodeParticleData {
 typedef struct CapEffBoostParticleWork {
     u8 _unk00[32];
     u8 blendMode;
+    u8 _unk21;
+    u8 dispAttr;
+    u8 _unk23;
 } CAPEFFBOOSTPARTWORK;
 
 typedef struct CapEffGlowParticleWork {
@@ -413,7 +418,7 @@ typedef struct CapObjMotionWork {
     u32 attr;
     u32 _unk18;
     BOOL shiftF;
-    u32 nextAttr;
+    BOOL nextAttr;
 } CAPOBJMOTIONWORK;
 
 
@@ -470,15 +475,31 @@ typedef struct CapEffOpenWork {
 
 
 typedef struct CapCoinManWork {
-    u8 _unk00[4];
+    int objIdx;
     int activeF;
-    u8 _unk08[52];
+    int _unk08;
+    int modelId;
+    int playerNo;
+    int coinNum;
+    int _unk18;
+    int _unk1C;
+    float _unk20;
+    HuVecF pos;
+    HuVecF vel;
 } CAPCOINMANWORK;
 
 typedef struct CapStarManWork {
-    u8 _unk00[4];
+    int objIdx;
     int activeF;
-    u8 _unk08[52];
+    int _unk08;
+    int modelId;
+    int playerNo;
+    int coinNum;
+    int _unk18;
+    int _unk1C;
+    float _unk20;
+    HuVecF pos;
+    HuVecF vel;
 } CAPSTARMANWORK;
 
 typedef struct CapEffCapLoseWork {
@@ -634,8 +655,6 @@ static float baseST2[] = {
     1.0f, 1.0f,
     0.0f, 1.0f,
 };
-static HuVecF viewRot = { -33.0f, 0.0f, 0.0f };
-static int chanceTbl[] = { 100, 60, 30, 10 };
 static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
     void (*hook)(void));
 static float ev_CapRotCamera(float angle);
@@ -662,10 +681,30 @@ void mbev_CapEffRayOMExec(OMOBJ *obj);
 void mbev_CapEffRayDraw(HU3D_MODEL *modelP, Mtx *mtx);
 void mbev_CapEffMasuHitOMExec(OMOBJ *obj);
 void mbev_CapEffCoinOMExec(OMOBJ *obj);
+void mbev_CapCoinManOMExec(OMOBJ *obj);
+void mbev_CapVecChase(
+    float weight, HuVecF *src, HuVecF *target, HuVecF *out);
+void mbev_CapStarManOMExec(OMOBJ *obj);
 void mbev_CapEffCapLoseOMExec(OMOBJ *obj);
 void mbev_CapEffElectricOMExec(OMOBJ *obj);
+OMOBJ *mbev_CapEffExplodeCreate(void);
+OMOBJ *mbev_CapEffExhaustCreate(void);
+OMOBJ *mbev_CapEffBoostCreate(void);
+OMOBJ *mbev_CapEffSnowCreate(void);
+OMOBJ *mbev_CapEffGlowCreate(void);
+OMOBJ *mbev_CapEffGlowFireCreate(void);
+void mbev_CapEffGlowKinokoAddAlt(OMOBJ *obj, HuVecF *posP, int time,
+    float scale, float xRange, float yRange, float zRange, int type);
+void mbev_CapEffElectricModelSet(OMOBJ *obj, MBMODELID modelId, int effectId,
+    HuVecF *offset);
+OMOBJ *mbev_CapCoinManCreate(void);
+OMOBJ *mbev_CapStarManCreate(void);
+OMOBJ *mbev_CapEffCapLoseCreate(void);
+s16 mbev_CapMasuValidPrevGet(s16 masuId, HuVecF *pos);
 void mbev_CapPlayerMoveObjExec(OMOBJ *obj);
 float mbev_CapAngleWrap(float a, float b);
+float mbev_CapAngleSumLerp(float t, float a, float b);
+void mbev_CapColorLerp(GXColor *a, GXColor *b, float t, GXColor *out);
 void mbev_CapBezierGetV(float t, float *a, float *b, float *c, float *out);
 void mbev_CapEffExplodeKill(OMOBJ *obj);
 void mbev_CapEffBoostKill(OMOBJ *obj);
@@ -678,11 +717,17 @@ void mbev_CapCoinManKill(OMOBJ *obj);
 void mbev_CapStarManKill(OMOBJ *obj);
 void mbev_CapEffCapLoseKill(OMOBJ *obj);
 void mbev_CapObjMotionOMExec(OMOBJ *obj);
+void mbev_CapPlayerMotionOMExec(OMOBJ *obj);
 int mbCapObjColorCreate(int capsuleNo, BOOL createF);
 void mbCapObjColorPosSet(int id, float x, float y, float z);
 void mbCapObjColorScaleSet(int id, float x, float y, float z);
 void mbCapObjColorLayerSet(int id, u8 layer);
 void mbev_CapEffColorSet(GXColor *color, int colorNo);
+extern int mbStarObjCreate(void);
+extern void mbStarObjKill(int objNo);
+extern void mbStarObjDispSet(int objNo, BOOL dispF);
+extern void mbStarObjPosSetV(int objNo, HuVecF *pos);
+extern void mbStarObjScaleSet(int objNo, float x, float y, float z);
 static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int zNum);
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot, HuVecF *scale,
@@ -1285,6 +1330,34 @@ int mbev_CapObjCreate(
     mbObjDispSet(work->objId[objIdx], TRUE);
     mbObjLayerSet(work->objId[objIdx], 3);
     return work->objId[objIdx];
+}
+
+void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId, HuVecF *pos)
+{
+    int i;
+
+    for (i = 0; i < CAP_WORK_MAX; i++) {
+        if (work->objId[i] == objId) {
+            work->masuId[i] = masuId;
+            if (pos != NULL) {
+                work->objPos[i] = *pos;
+            } else {
+                work->objPos[i].x = work->objPos[i].y = work->objPos[i].z = 0.0f;
+            }
+        }
+    }
+}
+
+void mbev_CapPlayerPosSet(
+    EVCAPWORK *work, int playerNo, int masuId, HuVecF *pos)
+{
+    work->playerMasuId[playerNo] = masuId;
+    if (pos != NULL) {
+        work->playerPos[playerNo] = *pos;
+    } else {
+        work->playerPos[playerNo].x = work->playerPos[playerNo].y =
+            work->playerPos[playerNo].z = 0.0f;
+    }
 }
 
 
@@ -2244,6 +2317,37 @@ void mbev_CapStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF)
     }
 }
 
+void mbev_CapDuelStatusOffSet(int leftPlayer, int rightPlayer, BOOL waitF)
+{
+    HuVecF posEnd;
+    HuVecF posBegin;
+
+    posEnd.x = -130.0f;
+    posEnd.y = 240.0f;
+    posEnd.z = 0.0f;
+    posBegin.x = 130.0f;
+    posBegin.y = 240.0f;
+    posBegin.z = 0.0f;
+    mbStatusMoveSet(
+        leftPlayer, &posBegin, &posEnd, STATUS_MOVE_REVCOS, 30);
+
+    posEnd.x = 706.0f;
+    posEnd.y = 240.0f;
+    posEnd.z = 0.0f;
+    posBegin.x = 446.0f;
+    posBegin.y = 240.0f;
+    posBegin.z = 0.0f;
+    mbStatusMoveSet(
+        rightPlayer, &posBegin, &posEnd, STATUS_MOVE_REVCOS, 30);
+
+    if (waitF) {
+        do {
+            HuPrcVSleep();
+        } while (!mbStatusMoveCheck(leftPlayer)
+            || !mbStatusMoveCheck(rightPlayer));
+    }
+}
+
 
 void mbev_CapDuelStatusOnSet(int leftPlayer, int rightPlayer, BOOL waitF)
 {
@@ -2394,12 +2498,14 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
 {
     OMOBJ *obj;
     CAPEFFMOVEWORK *workP;
+    void *workData;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
         omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapPlayerMoveObjExec);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
-    obj->data = workP;
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
     if (useMotF) {
         workP->motNo = 9;
@@ -2418,9 +2524,9 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
     workP->minYF = TRUE;
     mbPlayerPosGet(playerNo, &workP->pos);
     workP->minY = workP->pos.y;
-    workP->vel = 6.5333333f;
+    workP->vel = CAPEVENT_GRAVITY / 1.5f;
     workP->velocity.x = workP->velocity.z = 0.0f;
-    workP->velocity.y = 60.000004f;
+    workP->velocity.y = 100.0f * 0.6f;
     if (workP->useMotF && workP->motNo != -1) {
         workP->state = 0;
         mbPlayerMotionSet(playerNo, workP->motNo, 0);
@@ -2438,12 +2544,14 @@ void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
 {
     OMOBJ *obj;
     CAPEFFMOVEWORK *workP;
+    void *workData;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
         omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapPlayerMoveObjExec);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
-    obj->data = workP;
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
     workP->motNo = -1;
     if (useShiftF) {
@@ -2458,7 +2566,7 @@ void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
     workP->minYF = TRUE;
     mbPlayerPosGet(playerNo, &workP->pos);
     workP->minY = workP->pos.y;
-    workP->vel = 6.5333333f;
+    workP->vel = CAPEVENT_GRAVITY / 1.5f;
     workP->velocity.x = workP->velocity.z = 0.0f;
     workP->velocity.y = 80.0f;
     workP->state = 0;
@@ -2469,14 +2577,16 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
 {
     OMOBJ *obj;
     CAPEFFMOVEWORK *workP;
+    void *workData;
     HuVecF masuPos;
     HuVecF delta;
 
     obj = ev_CapEffMoveOMObj[playerNo] =
         omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
             mbev_CapPlayerMoveObjExec);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
-    obj->data = workP;
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPEFFMOVEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
     memset(workP, 0, sizeof(CAPEFFMOVEWORK));
     workP->motNo = 9;
     workP->nextMotNo = 6;
@@ -2487,7 +2597,7 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     workP->minYF = TRUE;
     mbPlayerPosGet(playerNo, &workP->pos);
     workP->minY = workP->pos.y;
-    workP->vel = 6.5333333f;
+    workP->vel = CAPEVENT_GRAVITY / 1.5f;
     workP->velocity.x = workP->velocity.z = 0.0f;
     workP->velocity.y = 80.0f;
     workP->state = 1;
@@ -2694,12 +2804,6 @@ BOOL mbev_CapCullCheck(int playerNo, int masuId)
     return FALSE;
 }
 
-
-
-
-
-
-
 s16 mbev_CapMasuPrevGet(s16 masuId, HuVecF *pos)
 {
     s16 linkTbl[MASU_LINK_MAX * 2];
@@ -2712,6 +2816,42 @@ s16 mbev_CapMasuPrevGet(s16 masuId, HuVecF *pos)
     }
     linkNum = mbMasuLinkParentGet(masuId, linkTbl);
     for (i = 0; i < linkNum; i++) {
+        prevMasu = linkTbl[i];
+        break;
+    }
+    if (i >= linkNum) {
+        return -1;
+    }
+    if (pos != NULL) {
+        mbMasuPosGet(prevMasu, pos);
+    }
+    return prevMasu;
+}
+
+s16 mbev_CapMasuValidPrevGet(s16 masuId, HuVecF *pos)
+{
+    s16 linkTbl[MASU_LINK_MAX * 2];
+    s16 prevMasu;
+    s16 i;
+    s16 linkNum;
+    u32 attr;
+    BOOL validF;
+
+    if (masuId <= 0) {
+        return -1;
+    }
+    linkNum = mbMasuLinkParentGet(masuId, linkTbl);
+    for (i = 0; i < linkNum; i++) {
+        prevMasu = linkTbl[i];
+        attr = mbBranchAttrGet();
+        validF = (mbMasuAttrGet(prevMasu) & (u16)attr) != 0;
+        if (!validF) {
+            attr = mbBranchMAttrGet();
+            validF = (mbMasuMAttrGet(prevMasu) & attr) != 0;
+        }
+        if (validF) {
+            continue;
+        }
         prevMasu = linkTbl[i];
         break;
     }
@@ -2739,6 +2879,182 @@ BOOL mbev_CapPlayerMotShiftCheck(int playerNo)
         return TRUE;
     }
     return FALSE;
+}
+
+void mbev_CapPlayerMotShiftSet(
+    int modelId, int motionNo, u32 attr, BOOL shiftF)
+{
+    if (shiftF) {
+        mbObjMotionShiftSet(modelId, motionNo, 0.0f, 8.0f, attr);
+        if (attr & HU3D_MOTATTR_LOOP) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(modelId) != -1);
+        } else {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(modelId) != -1);
+            do {
+                HuPrcVSleep();
+            } while (!mbObjMotionEndCheck(modelId));
+        }
+    } else {
+        mbObjMotionSet(modelId, motionNo, attr);
+        if (!(attr & HU3D_MOTATTR_LOOP)) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionEndCheck(modelId));
+        }
+    }
+}
+
+void mbev_CapPlayerMotShiftWait(
+    int playerNo, int motionNo, u32 attr, BOOL shiftF)
+{
+    int objId;
+
+    objId = mbPlayerObjIDGet(playerNo);
+    if (shiftF) {
+        mbPlayerMotionShiftSet(playerNo, motionNo, 0.0f, 8.0f, attr);
+        if (attr & HU3D_MOTATTR_LOOP) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != -1);
+        } else {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != -1);
+            do {
+                HuPrcVSleep();
+            } while (!mbObjMotionEndCheck(objId));
+        }
+    } else {
+        mbPlayerMotionSet(playerNo, motionNo, attr);
+        if (!(attr & HU3D_MOTATTR_LOOP)) {
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionEndCheck(objId));
+        }
+    }
+}
+
+void mbev_CapObjMotionSet(int modelId, int time, int motNo, int nextMotNo,
+    u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr)
+{
+    OMOBJ *obj;
+    CAPOBJMOTIONWORK *work;
+
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        mbev_CapObjMotionOMExec);
+    work = obj->data = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
+    memset(work, 0, sizeof(CAPOBJMOTIONWORK));
+    work->modelId = modelId;
+    work->time = time;
+    work->motNo = motNo;
+    work->nextMotNo = nextMotNo;
+    work->attr = attr;
+    work->_unk18 = unk18;
+    work->shiftF = shiftF;
+    work->nextAttr = nextAttr;
+    if (shiftF) {
+        mbObjMotionShiftSet((s16)modelId, motNo, 0.0f, 8.0f, attr);
+    } else {
+        mbObjMotionSet((s16)modelId, motNo, attr);
+    }
+}
+
+void mbev_CapObjMotionOMExec(OMOBJ *obj)
+{
+    CAPOBJMOTIONWORK *work = obj->data;
+    BOOL done = FALSE;
+
+    if (mbExitCheck()) {
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (work->attr & HU3D_MOTATTR_LOOP) {
+        if (mbObjMotionShiftIDGet((s16)work->modelId) == -1) {
+            float maxTime = mbObjMotionMaxTimeGet((s16)work->modelId);
+
+            if (mbObjMotionTimeGet((s16)work->modelId) + 1.0f >= maxTime) {
+                done = TRUE;
+            }
+        }
+    } else if (mbObjMotionShiftIDGet((s16)work->modelId) == -1) {
+        if (mbObjMotionEndCheck((s16)work->modelId)) {
+            done = TRUE;
+        }
+    }
+    if (done && --work->time <= 0) {
+        if (work->nextAttr) {
+            mbObjMotionShiftSet((s16)work->modelId, work->nextMotNo, 0.0f,
+                8.0f, work->nextAttr);
+        } else {
+            mbObjMotionSet(
+                (s16)work->modelId, work->nextMotNo, work->nextAttr);
+        }
+        omDelObjEx(mbObjMan, obj);
+    }
+}
+
+void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo,
+    int nextMotNo, u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr)
+{
+    OMOBJ *obj;
+    CAPOBJMOTIONWORK *work;
+
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        mbev_CapPlayerMotionOMExec);
+    work = obj->data = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
+    memset(work, 0, sizeof(CAPOBJMOTIONWORK));
+    work->_unk00 = playerNo;
+    work->time = time;
+    work->motNo = motNo;
+    work->nextMotNo = nextMotNo;
+    work->attr = attr;
+    work->_unk18 = unk18;
+    work->shiftF = shiftF;
+    work->nextAttr = nextAttr;
+    if (shiftF) {
+        mbPlayerMotionShiftSet(playerNo, motNo, 0.0f, 8.0f, attr);
+    } else {
+        mbPlayerMotionSet(playerNo, motNo, attr);
+    }
+}
+
+void mbev_CapPlayerMotionOMExec(OMOBJ *obj)
+{
+    CAPOBJMOTIONWORK *work = obj->data;
+    BOOL done = FALSE;
+
+    if (mbExitCheck()) {
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (work->attr & HU3D_MOTATTR_LOOP) {
+        if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->_unk00)) == -1) {
+            float maxTime = mbPlayerMotionMaxTimeGet(work->_unk00);
+
+            if (mbPlayerMotionTimeGet(work->_unk00) + 1.0f >= maxTime) {
+                done = TRUE;
+            }
+        }
+    } else if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->_unk00)) == -1) {
+        if (mbPlayerMotionEndCheck(work->_unk00)) {
+            done = TRUE;
+        }
+    }
+    if (done && --work->time <= 0) {
+        if (work->nextAttr) {
+            mbPlayerMotionShiftSet(work->_unk00, work->nextMotNo, 0.0f,
+                8.0f, work->nextAttr);
+        } else {
+            mbPlayerMotionSet(work->_unk00, work->nextMotNo, work->nextAttr);
+        }
+        omDelObjEx(mbObjMan, obj);
+    }
 }
 
 
@@ -2774,6 +3090,70 @@ void mbev_CapPlayerIdleWait(void)
     }
 }
 
+void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type)
+{
+    int i;
+
+    for (i = 0; i < playerNum; i++) {
+        mbPlayerMotionSpeedSet(playerNo[i], 1.0f);
+    }
+    i = 0;
+    while (TRUE) {
+        HuPrcVSleep();
+        for (i = 0; i < playerNum; i++) {
+            if (!mbPlayerMotionEndCheck(playerNo[i])) {
+                break;
+            }
+        }
+        if (i >= playerNum) {
+            break;
+        }
+    }
+    for (i = 0; i < playerNum; i++) {
+        switch (type) {
+            case 0:
+                mbPlayerMotionShiftSet(
+                    playerNo[i], 6, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                break;
+
+            case 1:
+                mbPlayerMotionShiftSet(
+                    playerNo[i], 6, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                break;
+        }
+        CharMotionVoiceOnSet(GwPlayer[playerNo[i]].charNo, 46, TRUE);
+    }
+}
+
+void mbev_CapPlayerShockSet(int playerNo)
+{
+    int masuId;
+    int i;
+
+    masuId = GwPlayer[playerNo].masuId;
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        OMOBJ *obj;
+        CAPOBJMOTIONWORK *work;
+
+        if (i == playerNo || masuId != GwPlayer[i].masuId) {
+            continue;
+        }
+        obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapPlayerMotionOMExec);
+        work = obj->data = HuMemDirectMallocNum(
+            HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
+        memset(work, 0, sizeof(CAPOBJMOTIONWORK));
+        work->_unk00 = i;
+        work->time = 0;
+        work->motNo = 9;
+        work->nextMotNo = 1;
+        work->attr = 0;
+        work->_unk18 = HU3D_MOTATTR_LOOP;
+        work->shiftF = TRUE;
+        work->nextAttr = TRUE;
+        mbPlayerMotionShiftSet(i, 9, 0.0f, 8.0f, 0);
+    }
+}
 
 void mbev_CapVibrate(int type)
 {
@@ -2927,7 +3307,7 @@ void mbev_CapEffExplodeOMExec(OMOBJ *obj)
         }
         particleWorkP->fadeTime += particleWorkP->fadeStep;
         particleWorkP->color.a = 255.0f
-            * (1.0f - (particleWorkP->fadeTime * 0.0625f));
+            * (1.0f - (0.0625f * particleWorkP->fadeTime));
         if (particleWorkP->fadeTime >= 16.0f) {
             particleWorkP->pat = 0;
             particleWorkP->mode = 0;
@@ -2988,6 +3368,66 @@ int mbev_CapEffExplodeAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     particleWorkP->fadeStep = fadeStep;
     workP->num++;
     return i;
+}
+
+int mbev_CapEffExplodeKillerAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
+    float active, float angleStep, float distance, float fadeStep,
+    GXColor *color)
+{
+    HuVecF posTemp;
+    HuVecF dir;
+    HuVecF pos1;
+    HuVecF vel1;
+    HuVecF pos2;
+    HuVecF vel2;
+    GXColor color1;
+    GXColor color2;
+    int result;
+    int result2;
+    GXColor *color1P;
+    HuVecF *vel1P;
+    HuVecF *pos1P;
+    GXColor *color2P;
+    HuVecF *vel2P;
+    HuVecF *pos2P;
+    float halfDistance;
+
+    dir.x = vel->z;
+    dir.z = vel->x;
+    dir.y = 0.0f;
+    if (PSVECMag(&dir) > 0.0f) {
+        PSVECNormalize(&dir, &dir);
+    }
+    halfDistance = 0.5f * distance;
+    posTemp.x = pos->x + (dir.x * halfDistance);
+    posTemp.y = pos->y + (dir.y * halfDistance);
+    posTemp.z = pos->z + (dir.z * halfDistance);
+    color1.r = color->r;
+    color1.g = color->g;
+    color1.b = color->b;
+    color1.a = color->a;
+    color1P = &color1;
+    vel1 = *vel;
+    vel1P = &vel1;
+    pos1 = posTemp;
+    pos1P = &pos1;
+    result = mbev_CapEffExplodeAdd(obj, pos1P, vel1P, active, angleStep,
+        fadeStep, color1P);
+    posTemp.x = pos->x - (dir.x * halfDistance);
+    posTemp.y = pos->y - (dir.y * halfDistance);
+    posTemp.z = pos->z - (dir.z * halfDistance);
+    color2.r = color->r;
+    color2.g = color->g;
+    color2.b = color->b;
+    color2.a = color->a;
+    color2P = &color2;
+    vel2 = *vel;
+    vel2P = &vel2;
+    pos2 = posTemp;
+    pos2P = &pos2;
+    result2 = mbev_CapEffExplodeAdd(obj, pos2P, vel2P, active, -angleStep,
+        fadeStep, color2P);
+    return (result << 16) | result2;
 }
 
 void mbev_CapEffExplodeCircleAdd(OMOBJ *obj, HuVecF *posP, float radius,
@@ -3556,7 +3996,7 @@ int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time)
     particleWorkP->time = 1.0f;
     particleWorkP->timeStep = 1.0f / (float)time;
     particleWorkP->angle = mbRandMod(360);
-    particleWorkP->active = 15.000000953674316f * (1.0f + (0.25f *
+    particleWorkP->active = (50.0f * 0.3f) * (1.0f + (0.25f *
         MBCapsuleEffRandF()));
     particleWorkP->color.r = particleWorkP->color.g = particleWorkP->color.b =
         particleWorkP->color.a = 255;
@@ -3673,7 +4113,7 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
             vel.y = 0.0f;
             gravity = 0.05f + (0.02f
                 * MBCapsuleEffRandF());
-            rotStep = 0.08166666f;
+            rotStep = 9.8 / 120.0;
             if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
                 gravity *= -1.0f;
             }
@@ -3698,6 +4138,19 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
     }
     return mbev_CapEffGlowAdd(obj, &pos, &vel, time, scale, gravity, rotStep,
         &color);
+}
+
+void mbev_CapEffGlowKinokoAddAlt(OMOBJ *obj, HuVecF *posP, int time,
+    float scale, float xRange, float yRange, float zRange, int type)
+{
+    GXColor color;
+    HuVecF pos;
+
+    color = ev_CapsuleRandomColorTbl[mbRandMod(7)];
+    color.a = 192.0f + (63.0f * MBCapsuleEffRandF());
+    pos = *posP;
+    mbev_CapEffGlowKinokoAdd(obj, &pos, time, scale, xRange, yRange,
+        zRange, type, &color);
 }
 
 void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
@@ -3766,7 +4219,7 @@ void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
         mbev_CapEffGlowAdd(obj, posLocalP, velP,
             (int)(100.0f * (0.5f + (0.3f *
                 MBCapsuleEffRandF()))),
-            timeScale, 0.0f, 0.16333334f, colorP);
+                timeScale, 0.0f, CAPEVENT_GRAVITY / 60.0f, colorP);
     }
 }
 
@@ -3851,6 +4304,62 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
     }
 }
 
+int mbev_CapEffElectricAdd(OMOBJ *obj, HuVecF *pos, int time, int bank)
+{
+    CAPEFFELECTRICWORK *workP;
+    CAPEFFELECTRICPARTWORK *partP;
+    int objIdx;
+    int particleNo;
+    int i;
+    HU3D_MODEL *modelP;
+    CAPEFFPARTICLESYSTEMWORK *particleSystemP;
+    CAPEFFGLOWPARTICLEWORK *particleWorkP;
+    GXColor *colorP;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffElectricOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    objIdx >= 8;
+    workP = obj->data;
+    partP = workP->part;
+    modelP = &Hu3DData[workP->modelId];
+    particleSystemP = modelP->hookData;
+    particleWorkP = particleSystemP->data;
+    for (particleNo = 0; particleNo < 32;
+        particleNo++, partP++, particleWorkP += 6) {
+        if (partP->activeNo < 0) {
+            break;
+        }
+    }
+    if (particleNo >= 32) {
+        return -1;
+    }
+    particleWorkP->pos = *pos;
+    particleWorkP->rotX = particleWorkP->rotY = particleWorkP->angle = 0.0f;
+    particleWorkP->pat = mbRandMod(4);
+    colorP = &ev_CapEffElectricColor[mbRandMod(4)];
+    particleWorkP->color.r = colorP->r;
+    particleWorkP->color.g = colorP->g;
+    particleWorkP->color.b = colorP->b;
+    particleWorkP->color.a = colorP->a;
+    for (i = 0; i < 6; i++, particleWorkP++) {
+        particleWorkP->active = 0.0f;
+    }
+    partP->activeNo = particleNo;
+    partP->pos2 = *pos;
+    partP->pos1 = partP->pos2;
+    partP->pos0 = partP->pos1;
+    partP->phase = 0;
+    partP->phaseMax = time;
+    partP->time = 0;
+    partP->timeMax = bank;
+    partP->modelId = -1;
+    workP->num++;
+    return particleNo;
+}
+
 OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
 {
     CAPEFFRAYPARTICLEWORK *particleP;
@@ -3922,7 +4431,7 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
             mbev_CapEffColorSet(&particleP->color[j],
                 mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
             particleP->color[j].a =
-                255.0 * sin(3.141592653589793 * (180.0f * t) / 180.0);
+                255.0 * sin(M_PI * (180.0f * t) / 180.0);
         }
     }
     DCFlushRangeNoSync(workP->particleP, 128 * sizeof(CAPEFFRAYPARTICLEWORK));
@@ -3951,6 +4460,174 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
     DCFlushRange(workP->displayList, workP->displayListSize);
     HuMemDirectFree(dlBuf);
     return obj;
+}
+
+void mbev_CapEffRayOMExec(OMOBJ *obj)
+{
+    CAPEFFRAYWORK *workP;
+    CAPEFFRAYPARTICLEWORK *particleWorkP;
+    float weight;
+    float sinValue;
+    int i;
+    int j;
+
+    workP = obj->data;
+    if (mbExitCheck()
+        || ev_CapEffRayOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        Hu3DModelKill(workP->modelId);
+        ev_CapEffRayOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    particleWorkP = workP->particleP;
+    for (i = 0; i < 128; i++, particleWorkP++) {
+        if (particleWorkP->state) {
+            weight = (float)++particleWorkP->_unk08 /
+                (float)particleWorkP->_unk0C;
+            if (weight >= 1.0f) {
+                particleWorkP->state = FALSE;
+            } else {
+                sinValue = mbSinDeg(180.0f * weight);
+                particleWorkP->_unk14 = particleWorkP->_unk10 * sinValue;
+                particleWorkP->_unk3C.x = mbev_CapAngleSumLerp(weight,
+                    particleWorkP->_unk24.x, particleWorkP->_unk30.x);
+                particleWorkP->_unk3C.y = mbev_CapAngleSumLerp(weight,
+                    particleWorkP->_unk24.y, particleWorkP->_unk30.y);
+                particleWorkP->_unk3C.z = mbev_CapAngleSumLerp(weight,
+                    particleWorkP->_unk24.z, particleWorkP->_unk30.z);
+                for (j = 0; j < 8; j++) {
+                    mbev_CapColorLerp(&particleWorkP->color[j],
+                        &particleWorkP->color[j + 8], weight,
+                        &particleWorkP->colorLerp[j]);
+                    particleWorkP->colorLerp[j].a = (u8)
+                        ((float)particleWorkP->color[j].a * workP->alpha);
+                }
+            }
+        }
+    }
+    DCFlushRangeNoSync(workP->particleP,
+        128 * sizeof(CAPEFFRAYPARTICLEWORK));
+}
+
+void mbev_CapEffRayDraw(HU3D_MODEL *modelP, Mtx *mtx)
+{
+    CAPEFFRAYWORK *workP;
+    CAPEFFRAYPARTICLEWORK *particleWorkP;
+    Mtx transform;
+    int i;
+
+    workP = modelP->hookData;
+    particleWorkP = workP->particleP;
+    GXSetNumTevStages(1);
+    GXSetNumTexGens(0);
+    GXSetNumChans(1);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL,
+        GX_COLOR0A0);
+    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ONE, GX_CC_RASC,
+        GX_CC_ZERO);
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+        GX_TRUE, GX_TEVPREV);
+    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO,
+        GX_CA_RASA);
+    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+        GX_TRUE, GX_TEVPREV);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_VTX, GX_SRC_VTX,
+        GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
+    GXSetZCompLoc(GX_FALSE);
+    GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
+    GXSetCullMode(GX_CULL_NONE);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxDesc(GX_VA_CLR0, GX_INDEX16);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+    for (i = 0; i < 128; i++, particleWorkP++) {
+        if (particleWorkP->state) {
+            PSMTXIdentity(transform);
+            transform[0][0] = 1.0f - particleWorkP->_unk14;
+            transform[1][1] = particleWorkP->_unk14;
+            transform[2][2] = particleWorkP->_unk14;
+            mbMtxRotXDeg(transform, particleWorkP->_unk3C.x);
+            mbMtxRotYDeg(transform, particleWorkP->_unk3C.y);
+            mbMtxRotZDeg(transform, particleWorkP->_unk3C.z);
+            mbMtxTransCat(transform, particleWorkP->_unk18.x,
+                particleWorkP->_unk18.y, particleWorkP->_unk18.z);
+            PSMTXConcat(*mtx, transform, transform);
+            GXLoadPosMtxImm(transform, GX_PNMTX0);
+            GXSetArray(GX_VA_POS, particleWorkP->prevVtx, sizeof(HuVecF));
+            GXSetArray(GX_VA_CLR0, particleWorkP->colorLerp,
+                sizeof(GXColor));
+            GXCallDisplayList(workP->displayList, workP->displayListSize);
+        }
+    }
+}
+
+void mbev_CapEffMasuHitOMExec(OMOBJ *obj)
+{
+    CAPEFFMASUHITWORK *workP;
+    HU3D_MODEL *modelP;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
+    CAPEFFMASUHITPARTICLEWORK *particleWorkP;
+    float weight;
+    float cosWeight;
+    float scale;
+    float radius;
+    float sinRotY;
+    float cosRotX;
+    float cosRotY;
+    float sinWeight;
+    HuVecF rot;
+    int i;
+
+    workP = obj->data;
+    if (mbExitCheck()
+        || ev_CapEffMasuHitOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        Hu3DModelKill(workP->modelId);
+        workP->modelId = -1;
+        HuSprAnimKill(workP->animP);
+        workP->animP = NULL;
+        ev_CapEffMasuHitOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleWorkP = particleP->data;
+    for (i = 0; i < particleP->num; i++, particleWorkP++) {
+        if (particleWorkP->_unk40 <= 0.0f) {
+            continue;
+        }
+        weight = (float)++particleWorkP->_unk00 /
+            (float)particleWorkP->_unk02;
+        if (weight >= 1.0f) {
+            particleWorkP->_unk40 = 0.0f;
+            continue;
+        }
+        cosWeight = mbCosDeg(90.0f * weight);
+        scale = particleWorkP->_unk2C * cosWeight;
+        radius = particleWorkP->_unk30;
+        rot.x = mbev_CapAngleSumLerp(weight, particleWorkP->_unk14.x,
+            particleWorkP->_unk20.x);
+        rot.y = mbev_CapAngleSumLerp(weight, particleWorkP->_unk14.y,
+            particleWorkP->_unk20.y);
+        rot.z = mbev_CapAngleSumLerp(weight, particleWorkP->_unk14.z,
+            particleWorkP->_unk20.z);
+        sinRotY = mbSinDeg(rot.y);
+        particleWorkP->_unk58.x = particleWorkP->_unk08.x +
+            (radius * (mbSinDeg(rot.x) * sinRotY));
+        cosRotX = mbCosDeg(rot.x);
+        particleWorkP->_unk58.y = particleWorkP->_unk08.y +
+            (radius * cosRotX);
+        cosRotY = mbCosDeg(rot.y);
+        particleWorkP->_unk58.z = particleWorkP->_unk08.z +
+            (radius * (mbSinDeg(rot.x) * cosRotY));
+        particleWorkP->_unk40 = scale;
+        particleWorkP->_unk54 = rot.z;
+        sinWeight = mbSinDeg(180.0f * weight);
+        particleWorkP->color.a = (u8)(255.0f * sinWeight);
+    }
 }
 
 OMOBJ *mbev_CapEffCoinCreate(void)
@@ -4068,7 +4745,7 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
                 mbev_CapEffGlowAdd(workP->glowObj, &pos, &vel, 6,
                     100.0f * (0.5f + (0.3f *
                         MBCapsuleEffRandF())),
-                    0.0f, 3.2666667f, &color);
+                        0.0f, CAPEVENT_COIN_GRAVITY, &color);
             }
         } else if (workP->_unk0C == 4) {
             pos = workP->_unk2C;
@@ -4168,7 +4845,7 @@ void mbev_CapEffCoinMultiAdd(OMOBJ *obj, HuVecF *pos, int num)
         vel.z = speed * (cosAngle * cosAngleX2);
         sinAngleX = mbSinDeg(angleX);
         vel.y = speed * sinAngleX;
-        mbev_CapEffCoinAdd(obj, &pos2, &vel, 0.75f, 0.8166666666666667f, 30, 0);
+        mbev_CapEffCoinAdd(obj, &pos2, &vel, 0.75f, CAPEVENT_GRAVITY / 12.0f, 30, 0);
     }
 }
 
@@ -4426,6 +5103,17 @@ void mbev_CapBezierNormGetV(float t, float *a, float *b, float *c, float *out)
     }
 }
 
+BOOL mbev_CapPointCullCheck(HuVecF *pos)
+{
+    HuVecF posNorm;
+
+    mbPos3DtoNorm(pos, 1, &posNorm);
+    if (fabs(posNorm.x) <= 1.0 && fabs(posNorm.y) <= 1.0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
 
 
 int mbev_CapPlayerComSelGet(int playerNo, int selection)
@@ -4479,6 +5167,38 @@ int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF)
     return mbev_CapPlayerComSelRandomGet(playerNo, selection, playerList, playerNum);
 }
 
+int mbev_CapPlayerComSelKettouGet(
+    int playerNo, int selection, int *playerList, int playerNum)
+{
+    int selectedPlayer;
+    int selectedIndex;
+    int i;
+
+    selectedPlayer = mbev_CapPlayerComSelRandomGet(
+        playerNo, selection, playerList, playerNum);
+    for (i = 0; i < playerNum; i++) {
+        if (selectedPlayer == playerList[i]) {
+            selectedIndex = i;
+            break;
+        }
+    }
+    for (i = 0; i < selectedIndex; i++) {
+        if (playerList[i] < 0) {
+            selectedIndex--;
+        }
+    }
+    return selectedIndex;
+}
+
+BOOL mbev_CapMasuMoveCheck(int masuId)
+{
+    if ((mbMasuAttrGet(masuId) & mbBranchAttrGet())
+        || (mbMasuMAttrGet(masuId) & mbBranchMAttrGet())) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
 
 
 
@@ -4486,6 +5206,168 @@ void mbev_CapChoiceSet(int choice)
 {
     capsuleChoice = choice;
     mbWinTopComKeyHookSet(ev_CapComChoiceHook);
+}
+
+s16 mbev_CapMasuLinkNextGet(s16 masuId, HuVecF *pos)
+{
+    s16 linkTbl[10];
+    s16 i;
+    int linkMasu;
+    s16 nextMasu;
+    s16 linkNum;
+    s16 battanF;
+    BOOL blockedF;
+    u32 attr;
+    u32 mAttr;
+
+    if (masuId <= 0) {
+        return -1;
+    }
+    linkNum = mbMasuLinkTblGet(masuId, linkTbl);
+    if (mbMasuAttrGet(masuId) & MASU_FLAG_BATTAN) {
+        battanF = TRUE;
+    } else {
+        battanF = FALSE;
+    }
+    for (i = 0; i < linkNum; i++) {
+        linkMasu = linkTbl[i];
+        attr = mbBranchAttrGet();
+        if (attr & mbMasuAttrGet(linkMasu)) {
+            blockedF = TRUE;
+        } else {
+            mAttr = mbBranchMAttrGet();
+            if (mAttr & mbMasuMAttrGet(linkMasu)) {
+                blockedF = TRUE;
+            } else {
+                blockedF = FALSE;
+            }
+        }
+        if (!blockedF) {
+            if (!battanF || linkNum < 2 || i != 0) {
+                nextMasu = linkTbl[i];
+                break;
+            }
+        }
+    }
+    if (i >= linkNum) {
+        return -1;
+    }
+    if (pos != NULL) {
+        mbMasuPosGet(nextMasu, pos);
+    }
+    return nextMasu;
+}
+
+s16 mbev_CapMasuLinkNextRandomGet(s16 masuId, HuVecF *pos)
+{
+    s16 masuTbl[MASU_LINK_MAX];
+    s16 linkTbl[10];
+    s16 i;
+    s16 validNum;
+    s16 no;
+    s16 linkNum;
+    s16 battanF;
+    BOOL blockedF;
+    s16 linkMasu;
+    u32 attr;
+    u32 mAttr;
+
+    if (masuId <= 0) {
+        return -1;
+    }
+    linkNum = mbMasuLinkTblGet(masuId, linkTbl);
+    if (mbMasuAttrGet(masuId) & MASU_FLAG_BATTAN) {
+        battanF = TRUE;
+    } else {
+        battanF = FALSE;
+    }
+    for (i = 0, validNum = 0; i < linkNum; i++) {
+        linkMasu = linkTbl[i];
+        attr = mbBranchAttrGet();
+        if (attr & mbMasuAttrGet(linkMasu)) {
+            blockedF = TRUE;
+        } else {
+            mAttr = mbBranchMAttrGet();
+            if (mAttr & mbMasuMAttrGet(linkMasu)) {
+                blockedF = TRUE;
+            } else {
+                blockedF = FALSE;
+            }
+        }
+        if (!blockedF) {
+            if (!battanF || linkNum < 2 || i != 0) {
+                masuTbl[validNum] = linkTbl[i];
+                validNum++;
+            }
+        }
+    }
+    if (validNum <= 0) {
+        return -1;
+    }
+    if (validNum > 1) {
+        no = mbRandMod(validNum);
+    } else {
+        no = 0;
+    }
+    if (pos != NULL) {
+        mbMasuPosGet(masuTbl[no], pos);
+    }
+    return masuTbl[no];
+}
+
+void mbev_CapCoinManOMExec(OMOBJ *obj)
+{
+    CAPCOINMANWORK *workP;
+    HuVecF pos;
+    HuVecF pos3D;
+    float weight;
+    float sinValue;
+    int i;
+
+    workP = obj->data;
+    if (mbExitCheck()
+        || ev_CapEffCoinManOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        for (i = 0; i < 64; i++, workP++) {
+            if (workP->modelId >= 0) {
+                mbCoinObjNumDec((s16)workP->modelId);
+            }
+            workP->modelId = -1;
+        }
+        workP = obj->data;
+        ev_CapEffCoinManOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    for (i = 0; i < 64; i++, workP++) {
+        if (workP->activeF) {
+            weight = (float)workP->_unk18 / (float)workP->_unk1C;
+            mbev_CapVecChase(weight, &workP->pos, &workP->vel, &pos);
+            if (workP->_unk20) {
+                sinValue = mbSinDeg(180.0f * weight);
+                pos.y += workP->_unk20 * sinValue;
+            }
+            if (workP->_unk08) {
+                Hu3D2Dto3D(&pos, 1, &pos3D);
+                mbCoinObjPosSetV((s16)workP->modelId, &pos3D);
+            } else {
+                mbCoinObjPosSetV((s16)workP->modelId, &pos);
+            }
+            if (++workP->_unk18 >= workP->_unk1C) {
+                mbCoinObjNumDec((s16)workP->modelId);
+                workP->modelId = -1;
+                workP->activeF = FALSE;
+                if (workP->playerNo != -1 && workP->coinNum > 0) {
+                    mbPlayerCoinAdd(workP->playerNo, workP->coinNum);
+                    if (!workP->_unk08) {
+                        mbPlayerPosGet(workP->playerNo, &pos);
+                        pos.y += 50.0f;
+                        mbCoinEffCreate(&pos);
+                    }
+                    mbAudFXPlay(7);
+                }
+            }
+        }
+    }
 }
 
 void mbev_CapVecChase(
@@ -4496,6 +5378,73 @@ void mbev_CapVecChase(
     PSVECSubtract(target, src, &delta);
     PSVECScale(&delta, &delta, weight);
     PSVECAdd(src, &delta, out);
+}
+
+void mbev_CapVecRotGet(HuVecF *vec, HuVecF *rot)
+{
+    HuVecF result;
+
+    result.x = HuAtan(-vec->y, HuMagXZVecF(vec));
+    result.y = HuAtan(vec->x, vec->z);
+    result.z = 0.0f;
+    *rot = result;
+}
+
+void mbev_CapColorLerp(GXColor *a, GXColor *b, float t, GXColor *out)
+{
+    out->r = ((int)((float)a->r + (t * ((float)b->r - (float)a->r)))) & 255;
+    out->g = ((int)((float)a->g + (t * ((float)b->g - (float)a->g)))) & 255;
+    out->b = ((int)((float)a->b + (t * ((float)b->b - (float)a->b)))) & 255;
+    out->a = ((int)((float)a->a + (t * ((float)b->a - (float)a->a)))) & 255;
+}
+
+void mbev_CapEffBoostOMExec(OMOBJ *obj)
+{
+    CAPEFFBOOSTWORK *workP;
+    int i;
+    HU3D_MODEL *modelP;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
+    CAPEFFBOOSTPARTICLEWORK *particleWorkP;
+    float timeRatio;
+    float alpha;
+
+    workP = obj->data;
+    if (mbExitCheck() || ev_CapEffBoostOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        Hu3DModelKill(workP->modelId);
+        workP->modelId = -1;
+        HuSprAnimKill(workP->animP);
+        workP->animP = NULL;
+        ev_CapEffBoostOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (workP->time <= 0) {
+        Hu3DModelAttrSet(workP->modelId, 1);
+        return;
+    }
+    Hu3DModelAttrReset(workP->modelId, 1);
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleWorkP = particleP->data;
+    for (i = 0; i < particleP->num; i++, particleWorkP++) {
+        if (particleWorkP->active <= 0.0f) {
+            continue;
+        }
+        PSVECAdd(&particleWorkP->pos, &particleWorkP->vel,
+            &particleWorkP->pos);
+        particleWorkP->angle += particleWorkP->angleStep;
+        if (particleWorkP->angle >= 360.0f) {
+            particleWorkP->angle -= 360.0f;
+        }
+        timeRatio = (float)particleWorkP->time / (float)particleWorkP->timeTotal;
+        particleWorkP->time--;
+        alpha = mbSinDeg(90.0f * timeRatio);
+        particleWorkP->color.a = particleWorkP->alpha * alpha;
+        if (particleWorkP->time < 0) {
+            particleWorkP->active = 0.0f;
+            workP->time--;
+        }
+    }
 }
 
 void mbev_CapEffBoostKill(OMOBJ *obj)
@@ -4574,6 +5523,53 @@ void mbev_CapEffBoostBlendModeSet(OMOBJ *obj, int blendMode)
 
 
 
+
+void mbev_CapEffSnowOMExec(OMOBJ *obj)
+{
+    CAPEFFSNOWWORK *workP;
+    int i;
+    HU3D_MODEL *modelP;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
+    CAPEFFSNOWPARTWORK *particleWorkP;
+    float angle;
+    float sinAngle;
+
+    workP = obj->data;
+    if (mbExitCheck() || ev_CapEffSnowOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        Hu3DModelKill(workP->modelId);
+        workP->modelId = -1;
+        HuSprAnimKill(workP->animP);
+        workP->animP = NULL;
+        ev_CapEffSnowOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (workP->num <= 0) {
+        Hu3DModelAttrSet(workP->modelId, 1);
+        return;
+    }
+    Hu3DModelAttrReset(workP->modelId, 1);
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleWorkP = particleP->data;
+    for (i = 0; i < particleP->num; i++, particleWorkP++) {
+        if (particleWorkP->active <= 0.0f) {
+            continue;
+        }
+        if (++particleWorkP->angle > 360) {
+            particleWorkP->angle -= 360;
+        }
+        angle = 2.0f * (float)particleWorkP->angle;
+        sinAngle = mbSinDeg(angle);
+        particleWorkP->pos.x += particleWorkP->xAmplitude * sinAngle;
+        particleWorkP->pos.y += particleWorkP->yVelocity;
+        particleWorkP->time -= particleWorkP->timeStep;
+        particleWorkP->color.a = 255.0f * particleWorkP->time;
+        if (particleWorkP->time < 0.0f) {
+            particleWorkP->active = 0.0f;
+        }
+    }
+}
 
 void mbev_CapEffSnowKill(OMOBJ *obj)
 {
@@ -4793,8 +5789,8 @@ OMOBJ *mbev_CapEffRingCreate(void)
     CAPEFFRINGHITPARTWORK *particleP;
     HU3D_MODEL *modelP;
     int modelId;
-    ANIMDATA *animP;
     void *workData;
+    ANIMDATA *animP;
     int j;
     int i;
 
@@ -5063,6 +6059,266 @@ OMOBJ *mbev_CapEffElectricCreate(void)
     for (i = 0; i < 32; i++, partP++) {
         partP->activeNo = -1;
     }
+    return obj;
+}
+
+void mbev_CapEffElectricModelSet(OMOBJ *obj, MBMODELID modelId,
+    int effectId, HuVecF *offset)
+{
+    CAPEFFELECTRICWORK *workP;
+    CAPEFFELECTRICPARTWORK *partP;
+    CAPEFFPARTICLESYSTEMWORK *particleSystemP;
+    CAPEFFGLOWPARTICLEWORK *particleP;
+    HU3D_MODEL *modelP;
+    int objIdx;
+    int i;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffElectricOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    partP = workP->part;
+    modelP = &Hu3DData[workP->modelId];
+    particleSystemP = modelP->hookData;
+    particleP = particleSystemP->data;
+    for (i = 0; i < 32; i++, partP++, particleP += 6) {
+        if (partP->activeNo == effectId) {
+            break;
+        }
+    }
+    if (i >= 32) {
+        return;
+    }
+    partP->modelId = modelId;
+    if (offset != NULL) {
+        partP->modelPos = *offset;
+    } else {
+        partP->modelPos.x = 0.0f;
+        partP->modelPos.y = 0.0f;
+        partP->modelPos.z = 0.0f;
+    }
+}
+
+OMOBJ *mbev_CapEffExplodeCreate(void)
+{
+    CAPEFFEXPLODEWORK *workP;
+    OMOBJ *obj;
+    ANIMDATA *animP;
+    HU3D_MODEL *modelP;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    CAPEFFEXPLODEWORK *workData;
+    int objIdx;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffExplodeOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffExplodeOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffExplodeOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFEXPLODEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, sizeof(CAPEFFEXPLODEWORK));
+    animP = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 47), HU_MEMNUM_OVL));
+    workP->animP = animP;
+    workP->modelId = ev_CapEffCreate(animP, 256);
+    Hu3DModelLayerSet(workP->modelId, 5);
+    workP->num = 0;
+    workP->objIdx = objIdx;
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleP->dispAttr = 0;
+    particleP->blendMode = 2;
+    return obj;
+}
+
+OMOBJ *mbev_CapEffExhaustCreate(void)
+{
+    CAPEFFEXPLODEWORK *workP;
+    OMOBJ *obj;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    HU3D_MODEL *modelP;
+    void *workData;
+    ANIMDATA *animP;
+    s16 modelId;
+    int objIdx;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffExplodeOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffExplodeOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffExplodeOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFEXPLODEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, sizeof(CAPEFFEXPLODEWORK));
+    workP->animP = animP = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 46), HU_MEMNUM_OVL));
+    workP->modelId = modelId = ev_CapEffCreate(animP, 256);
+    Hu3DModelLayerSet(modelId, 5);
+    workP->num = 0;
+    workP->objIdx = objIdx;
+    modelP = &Hu3DData[modelId];
+    particleP = modelP->hookData;
+    particleP->dispAttr = 0;
+    particleP->blendMode = 2;
+    return obj;
+}
+
+OMOBJ *mbev_CapEffBoostCreate(void)
+{
+    CAPEFFBOOSTWORK *workP;
+    OMOBJ *obj;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    HU3D_MODEL *modelP;
+    void *workData;
+    ANIMDATA *animP;
+    s16 modelId;
+    int objIdx;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffBoostOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffBoostOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffBoostOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFBOOSTWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, sizeof(CAPEFFBOOSTWORK));
+    workP->animP = animP = boostEffAnim;
+    workP->modelId = modelId = ev_CapEffCreate(animP, 256);
+    Hu3DModelLayerSet(modelId, 5);
+    workP->time = 0;
+    workP->objIdx = objIdx;
+    modelP = &Hu3DData[modelId];
+    particleP = modelP->hookData;
+    particleP->dispAttr = 0;
+    particleP->blendMode = 2;
+    return obj;
+}
+
+OMOBJ *mbev_CapEffSnowCreate(void)
+{
+    CAPEFFSNOWWORK *workP;
+    OMOBJ *obj;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    HU3D_MODEL *modelP;
+    void *workData;
+    ANIMDATA *animP;
+    s16 modelId;
+    int objIdx;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffSnowOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffSnowOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffSnowOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFSNOWWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, sizeof(CAPEFFSNOWWORK));
+    workP->animP = animP = HuSprAnimRead(HuDataReadNum(
+        CAPEVENT_DATA_BOOST_EFFECT, HU_MEMNUM_OVL));
+    workP->modelId = modelId = ev_CapEffCreate(animP, 128);
+    Hu3DModelLayerSet(modelId, 5);
+    workP->num = 0;
+    workP->objIdx = objIdx;
+    modelP = &Hu3DData[modelId];
+    particleP = modelP->hookData;
+    particleP->dispAttr = 0;
+    particleP->blendMode = 2;
+    return obj;
+}
+
+OMOBJ *mbev_CapEffGlowCreate(void)
+{
+    CAPEFFGLOWWORK *workP;
+    OMOBJ *obj;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    HU3D_MODEL *modelP;
+    void *workData;
+    ANIMDATA *animP;
+    s16 modelId;
+    int objIdx;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffGlowOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffGlowOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffGlowOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFGLOWWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, sizeof(CAPEFFGLOWWORK));
+    workP->animP = animP = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 41), HU_MEMNUM_OVL));
+    workP->modelId = modelId = ev_CapEffCreate(animP, 1024);
+    Hu3DModelLayerSet(modelId, 5);
+    workP->num = 0;
+    workP->objIdx = objIdx;
+    modelP = &Hu3DData[modelId];
+    particleP = modelP->hookData;
+    particleP->dispAttr = 1;
+    particleP->blendMode = 2;
+    return obj;
+}
+
+OMOBJ *mbev_CapEffGlowFireCreate(void)
+{
+    CAPEFFGLOWWORK *workP;
+    OMOBJ *obj;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    HU3D_MODEL *modelP;
+    void *workData;
+    ANIMDATA *animP;
+    s16 modelId;
+    int objIdx;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffGlowOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffGlowOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffGlowOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFGLOWWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, sizeof(CAPEFFGLOWWORK));
+    workP->animP = animP = HuSprAnimRead(HuDataReadNum(
+        CAPEVENT_DATA_BOOST_EFFECT, HU_MEMNUM_OVL));
+    workP->modelId = modelId = ev_CapEffCreate(animP, 1024);
+    Hu3DModelLayerSet(modelId, 5);
+    workP->num = 0;
+    workP->objIdx = objIdx;
+    modelP = &Hu3DData[modelId];
+    particleP = modelP->hookData;
+    particleP->dispAttr = 1;
+    particleP->blendMode = 2;
     return obj;
 }
 
@@ -5427,6 +6683,193 @@ int mbev_CapStarManNumGet(OMOBJ *obj)
     return count;
 }
 
+int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
+    float scale, float gravity, int unk1C, int playerNo, int coinNum,
+    int highF)
+{
+    CAPCOINMANWORK *workP;
+    int objIdx;
+    int workNo;
+    float angle;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffCoinManOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    workNo = 0;
+    for (; workNo < 64; workNo++, workP++) {
+        if (!workP->activeF) {
+            break;
+        }
+    }
+    if (workNo >= 64) {
+        return -1;
+    }
+    workP->activeF = TRUE;
+    workP->_unk08 = highF;
+    workP->playerNo = playerNo;
+    workP->coinNum = coinNum;
+    workP->_unk18 = 0;
+    workP->_unk1C = unk1C;
+    workP->_unk20 = gravity;
+    workP->pos = *pos;
+    workP->vel = *vel;
+    workP->modelId = mbCoinCreate2();
+    mbCoinObjPosSetV((s16)workP->modelId, &workP->pos);
+    angle = 360.0f * MBCapsuleEffRandF();
+    mbCoinObjRotSet((s16)workP->modelId,
+        50.0f * (-0.5f + MBCapsuleEffRandF()), angle, 0.0f);
+    mbCoinObjScaleSet((s16)workP->modelId, scale, scale, scale);
+    return workNo;
+}
+
+int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
+    float scale, float gravity, int unk1C, int playerNo, int coinNum,
+    int highF)
+{
+    CAPSTARMANWORK *workP;
+    int objIdx;
+    int workNo;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffStarManOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    workNo = 0;
+    for (; workNo < 8; workNo++, workP++) {
+        if (!workP->activeF) {
+            break;
+        }
+    }
+    if (workNo >= 8) {
+        return -1;
+    }
+    workP->activeF = TRUE;
+    workP->_unk08 = highF;
+    workP->playerNo = playerNo;
+    workP->coinNum = coinNum;
+    workP->_unk18 = 0;
+    workP->_unk1C = unk1C;
+    workP->_unk20 = gravity;
+    workP->pos = *pos;
+    workP->vel = *vel;
+    mbStarObjDispSet(workP->modelId, TRUE);
+    mbStarObjPosSetV(workP->modelId, &workP->pos);
+    mbStarObjScaleSet(workP->modelId, scale, scale, scale);
+    return workNo;
+}
+
+int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
+    int playerNo, BOOL highF)
+{
+    CAPCOINMANWORK *workP;
+    int workNo;
+    int objIdx;
+    int result;
+    int time;
+    float speed;
+    float angle;
+
+    time = (int)(60.0f * (0.3f
+        + (0.05f * MBCapsuleEffRandF())));
+    speed = 100.0f * (2.0f
+        + (0.5f * MBCapsuleEffRandF()));
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffCoinManOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    workNo = 0;
+    for (; workNo < 64; workNo++, workP++) {
+        if (!workP->activeF) {
+            break;
+        }
+    }
+    if (workNo >= 64) {
+        result = -1;
+    } else {
+        workP->activeF = TRUE;
+        workP->_unk08 = 0;
+        workP->playerNo = playerNo;
+        workP->coinNum = highF;
+        workP->_unk18 = 0;
+        workP->_unk1C = time;
+        workP->_unk20 = speed;
+        workP->pos = *from;
+        workP->vel = *to;
+        workP->modelId = mbCoinCreate2();
+        mbCoinObjPosSetV((s16)workP->modelId, &workP->pos);
+        angle = 360.0f * MBCapsuleEffRandF();
+        mbCoinObjRotSet((s16)workP->modelId,
+            50.0f * (-0.5f + MBCapsuleEffRandF()),
+            angle, 0.0f);
+        mbCoinObjScaleSet((s16)workP->modelId, 1.0f, 1.0f, 1.0f);
+        result = workNo;
+    }
+    if (result == -1) {
+        return 0;
+    } else {
+        return highF;
+    }
+}
+
+int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
+    int playerNo, BOOL highF)
+{
+    CAPSTARMANWORK *workP;
+    int workNo;
+    int objIdx;
+    int result;
+    int time;
+    float speed;
+
+    time = (int)(60.0f * (0.3f
+        + (0.05f * MBCapsuleEffRandF())));
+    speed = 100.0f * (2.0f
+        + (0.5f * MBCapsuleEffRandF()));
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffStarManOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    workNo = 0;
+    for (; workNo < 8; workNo++, workP++) {
+        if (!workP->activeF) {
+            break;
+        }
+    }
+    if (workNo >= 8) {
+        result = -1;
+    } else {
+        workP->activeF = TRUE;
+        workP->_unk08 = 0;
+        workP->playerNo = playerNo;
+        workP->coinNum = highF;
+        workP->_unk18 = 0;
+        workP->_unk1C = time;
+        workP->_unk20 = speed;
+        workP->pos = *from;
+        workP->vel = *to;
+        mbStarObjDispSet(workP->modelId, TRUE);
+        mbStarObjPosSetV(workP->modelId, &workP->pos);
+        mbStarObjScaleSet(workP->modelId, 1.0f, 1.0f, 1.0f);
+        result = workNo;
+    }
+    if (result == -1) {
+        return 0;
+    } else {
+        return highF;
+    }
+}
+
 int mbev_CapEffCapLoseNumGet(OMOBJ *obj)
 {
     CAPEFFCAPLOSEWORK *workP;
@@ -5490,6 +6933,124 @@ int mbev_CapEffCapLoseObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale, 
     mbCapObjColorScaleSet(workP->colorObjId, scale, scale, scale);
     mbCapObjColorLayerSet(workP->colorObjId, 3);
     return workNo;
+}
+
+OMOBJ *mbev_CapCoinManCreate(void)
+{
+    CAPCOINMANWORK *workP;
+    OMOBJ *obj;
+    void *workData;
+    CAPCOINMANWORK *workBase;
+    HU3D_MODEL *modelP;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    int objIdx;
+    int i;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffCoinManOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffCoinManOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapCoinManOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        64 * sizeof(CAPCOINMANWORK), HU_MEMNUM_OVL);
+    workBase = workData;
+    obj->data = workBase;
+    workP = workBase;
+    memset(workP, 0, 64 * sizeof(CAPCOINMANWORK));
+    workP->objIdx = objIdx;
+    for (i = 0; i < 64; i++, workP++) {
+        workP->modelId = -1;
+        workP->activeF = 0;
+        workP->_unk08 = 1;
+        workP->playerNo = -1;
+        workP->coinNum = 0;
+        workP->_unk18 = 0;
+        workP->_unk1C = 0;
+        workP->_unk20 = 0.0f;
+        workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
+        workP->vel.x = workP->vel.y = workP->vel.z = 0.0f;
+    }
+    return obj;
+}
+
+OMOBJ *mbev_CapStarManCreate(void)
+{
+    CAPSTARMANWORK *workP;
+    OMOBJ *obj;
+    void *workData;
+    CAPSTARMANWORK *workBase;
+    HU3D_MODEL *modelP;
+    CAPEFFPARTICLESYSTEMWORK *particleP;
+    int objIdx;
+    int i;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffStarManOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffStarManOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapStarManOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        8 * sizeof(CAPSTARMANWORK), HU_MEMNUM_OVL);
+    workBase = workData;
+    obj->data = workBase;
+    workP = workBase;
+    memset(workP, 0, 8 * sizeof(CAPSTARMANWORK));
+    workP->objIdx = objIdx;
+    for (i = 0; i < 8; i++, workP++) {
+        workP->modelId = mbStarObjCreate();
+        mbStarObjDispSet(workP->modelId, FALSE);
+        workP->activeF = 0;
+        workP->_unk08 = 0;
+        workP->playerNo = -1;
+        workP->coinNum = 0;
+        workP->_unk18 = 0;
+        workP->_unk1C = 0;
+        workP->_unk20 = 0.0f;
+        workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
+        workP->vel.x = workP->vel.y = workP->vel.z = 0.0f;
+    }
+    return obj;
+}
+
+OMOBJ *mbev_CapEffCapLoseCreate(void)
+{
+    CAPEFFCAPLOSEWORK *workP;
+    OMOBJ *obj;
+    void *workData;
+    int objIdx;
+    int i;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffCapLoseOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = ev_CapEffCapLoseOMObj[objIdx] =
+        omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+            mbev_CapEffCapLoseOMExec);
+    workData = HuMemDirectMallocNum(HEAP_HEAP,
+        6 * sizeof(CAPEFFCAPLOSEWORK), HU_MEMNUM_OVL);
+    obj->data = workData;
+    workP = workData;
+    memset(workP, 0, 6 * sizeof(CAPEFFCAPLOSEWORK));
+    workP->objIdx = objIdx;
+    for (i = 0; i < 6; i++, workP++) {
+        workP->activeF = 0;
+        workP->colorObjId = -1;
+        workP->capsuleNo = -1;
+        workP->_unk10 = -1;
+        workP->_unk14 = 0;
+        workP->time = 0;
+        workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
+        workP->vel.x = workP->vel.x = workP->vel.x = 0.0f;
+    }
+    return obj;
 }
 
 
@@ -5639,6 +7200,50 @@ void mbev_CapEffMasuHitKill(OMOBJ *obj)
     ev_CapEffMasuHitOMObj[workP->objIdx] = (OMOBJ *)-1;
 }
 
+int mbev_CapEffMasuHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA,
+    HuVecF *rotB, float scale, float scaleY, int time)
+{
+    CAPEFFMASUHITWORK *workP;
+    int i;
+    HU3D_MODEL *modelP;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
+    CAPEFFMASUHITPARTICLEWORK *particleWorkP;
+    int particleNo;
+
+    for (i = 0; i < 8; i++) {
+        if (ev_CapEffMasuHitOMObj[i] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleWorkP = particleP->data;
+    particleNo = 0;
+    while (particleNo < particleP->num) {
+        if (particleWorkP->_unk40 == 0.0f) {
+            break;
+        }
+        particleNo++;
+        particleWorkP++;
+    }
+    if (particleNo >= particleP->num) {
+        return -1;
+    }
+    particleWorkP->_unk00 = 0;
+    particleWorkP->_unk02 = time;
+    particleWorkP->_unk04 = 0;
+    particleWorkP->_unk40 = scaleY;
+    particleWorkP->_unk08 = *pos;
+    particleWorkP->_unk14 = *rotA;
+    particleWorkP->_unk20 = *rotB;
+    particleWorkP->_unk2C = scaleY;
+    particleWorkP->_unk30 = scale;
+    particleWorkP->_unk68 = mbRandMod(4);
+    particleWorkP->color.a = 0;
+    return particleNo;
+}
+
 void mbev_CapEffMasuHitTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx *mtx)
 {
     CAPEFFMASUHITWORK *workP;
@@ -5694,6 +7299,55 @@ void mbev_CapEffColorSet(GXColor *color, int colorNo)
     *color = ev_CapsuleRandomColorTbl[colorNo % 7];
 }
 
+void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF)
+{
+    static HuVecF viewRot = { -33.0f, 0.0f, 0.0f };
+    int cameraView;
+
+    if (GwSystem.playerMode >= 6) {
+        return;
+    }
+    if (viewNo != -1) {
+        cameraView = viewNo;
+    } else {
+        cameraView = mbCameraPlayerViewNoGet();
+    }
+    mbCameraMoveOnSet(TRUE);
+    switch (cameraView) {
+        case 0:
+            if (!stopF) {
+                mbCameraPlayerViewSet(playerNo, cameraView);
+            } else {
+                mbCameraMovePlayer((s16)playerNo, &viewRot,
+                    &ev_CapsuleViewOfs, 1800.0f, -1.0f, 21);
+            }
+            break;
+
+        case 1:
+            if (!stopF) {
+                mbCameraPlayerViewSet(playerNo, cameraView);
+            } else {
+                mbCameraMovePlayer((s16)playerNo, &viewRot,
+                    &ev_CapsuleViewOfs, 2100.0f, -1.0f, 21);
+            }
+            break;
+
+        case 2:
+            if (!stopF) {
+                mbCameraPlayerViewSet(playerNo, cameraView);
+            } else {
+                mbCameraMovePlayer((s16)playerNo, &viewRot,
+                    &ev_CapsuleViewOfs, 3200.0f, -1.0f, 21);
+            }
+            break;
+
+        case 3:
+            mbCameraMultiFocusSet(0, 0, -1.0, 21);
+            break;
+    }
+    mbCameraMoveWait();
+}
+
 static void ev_CapComChoiceHook(void)
 {
     int key[4];
@@ -5715,4 +7369,644 @@ static void ev_CapComChoiceHook(void)
     }
     key[padNo] = PAD_BUTTON_A;
     HuWinComKeyWait(key[0], key[1], key[2], key[3], delay);
+}
+
+static void ev_CapCall(CAPWORK *work, BOOL waitF)
+{
+    CAPWORK *workP;
+    HUPROCESS *process;
+    int processNo;
+    int i;
+    void *workData;
+    BOOL endF;
+
+    for (i = 0; i < 8; i++) {
+        if (ev_CapMainProc[i] == NULL) {
+            break;
+        }
+    }
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPWORK), HU_MEMNUM_OVL);
+    workP = workData;
+    memset(workP, 0, sizeof(CAPWORK));
+    workP->playerNo = work->playerNo;
+    workP->targetPlayerNo = work->targetPlayerNo;
+    workP->capsuleNo = work->capsuleNo;
+    workP->_unk14 = work->_unk14;
+    workP->_unk1C = work->_unk1C;
+    workP->_unk18 = work->_unk18;
+    workP->masuId = work->masuId;
+    workP->masuIdNext = work->masuIdNext;
+    workP->processNo = i;
+    memcpy(&workP->flags, &work->flags, sizeof(CAPWORKFLAG));
+    ev_CapWorkInit(&workP->objWork, workP->capsuleNo);
+    mbev_CapWait(workP);
+    if (ev_CapsuleData[work->capsuleNo].main != NULL) {
+        process = HuPrcChildCreate(ev_CapsuleData[work->capsuleNo].main,
+            CAPEVENT_PROCESS_PRIORITY, CAPEVENT_PROCESS_STACK_SIZE, 0,
+            mbMainProc);
+        ev_CapMainProc[i] = process;
+        process->property = workP;
+        HuPrcDestructorSet2(process, ev_CapKill);
+        if (waitF) {
+            do {
+                HuPrcVSleep();
+                processNo = workP->processNo;
+                if (ev_CapMainProc[processNo] != NULL) {
+                    endF = FALSE;
+                } else {
+                    endF = TRUE;
+                }
+            } while (endF == FALSE);
+            while (mbMusBoardFadeCheck() != FALSE) {
+                HuPrcVSleep();
+            }
+        }
+    }
+}
+
+static void ev_CapWorkInit(EVCAPWORK *work, int bgId)
+{
+    int i;
+    int j;
+
+    memset(work, 0, sizeof(EVCAPWORK));
+    for (i = 0; i < CAP_WORK_MAX; i++) {
+        for (j = 0; j < GW_PLAYER_MAX; j++) {
+            work->motId[i][j] = -1;
+        }
+        work->objId[i] = -1;
+        work->sprId[i] = -1;
+        work->mem[i] = NULL;
+        work->masuId[i] = -1;
+        work->objPos[i].x = work->objPos[i].y = work->objPos[i].z = 0.0f;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        work->playerMasuId[i] = -1;
+        work->playerPos[i].x = work->playerPos[i].y =
+            work->playerPos[i].z = 0.0f;
+    }
+    work->obj = omAddObjEx(mbObjMan, CAPEVENT_WORK_OBJ_PRIORITY, 0, 0, -1,
+        ev_CapWorkOMExec);
+    work->obj->data = work;
+    if (bgId < 0) {
+        return;
+    }
+    if (bgId < 0) {
+        work->bgId = -1;
+    } else if (ev_CapsuleData[bgId].bgDataNum != -1) {
+        work->bgId = mbBGRead(ev_CapsuleData[bgId].bgDataNum);
+    } else {
+        work->bgId = -1;
+    }
+}
+
+void mbev_CapEffGlowOMExec(OMOBJ *obj)
+{
+    CAPEFFGLOWWORK *workP;
+    int i;
+    HU3D_MODEL *modelP;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
+    CAPEFFGLOWPARTICLEWORK *particleWorkP;
+    float phaseRatio;
+    float oneMinus;
+    float fadeFactor;
+    float fadeCos;
+    float fadeSin;
+    float waveSin;
+    float altWaveSin;
+
+    workP = obj->data;
+    if (mbExitCheck() || ev_CapEffGlowOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        Hu3DModelKill(workP->modelId);
+        workP->modelId = -1;
+        HuSprAnimKill(workP->animP);
+        workP->animP = NULL;
+        ev_CapEffGlowOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    if (workP->num <= 0) {
+        Hu3DModelAttrSet(workP->modelId, HU3D_ATTR_DISPOFF);
+        return;
+    }
+    Hu3DModelAttrReset(workP->modelId, HU3D_ATTR_DISPOFF);
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleWorkP = particleP->data;
+    particleP->_unk21[2] = 0;
+    for (i = 0; i < particleP->num; i++, particleWorkP++) {
+        if (particleWorkP->active <= 0.0f) {
+            continue;
+        }
+        particleWorkP->pos.x += particleWorkP->vel.x;
+        particleWorkP->pos.y += particleWorkP->vel.y;
+        particleWorkP->pos.z += particleWorkP->vel.z;
+        if (particleWorkP->gravity != 0.0f) {
+            particleWorkP->vel.y -= particleWorkP->gravity;
+        }
+        switch (particleWorkP->mode) {
+            case 0:
+                particleWorkP->active = particleWorkP->scale * particleWorkP->time;
+                break;
+
+            case 1:
+                phaseRatio = (float)particleWorkP->phase / 100.0f;
+                oneMinus = 1.0f - phaseRatio;
+                if (particleWorkP->time > phaseRatio) {
+                    fadeFactor = (1.0f / oneMinus) *
+                        (particleWorkP->time - phaseRatio);
+                    fadeCos = mbCosDeg(90.0f * fadeFactor);
+                    particleWorkP->active = particleWorkP->scale * fadeCos;
+                } else {
+                    fadeFactor = particleWorkP->time * (1.0f / phaseRatio);
+                    fadeSin = mbSinDeg(90.0f * fadeFactor);
+                    particleWorkP->active = particleWorkP->scale * fadeSin;
+                }
+                break;
+
+            case 2:
+                particleWorkP->cycle++;
+                waveSin = mbSinDeg(360.0f *
+                    ((float)particleWorkP->cycle / (float)particleWorkP->phase));
+                particleWorkP->pos.x += 10.0f *
+                    (particleWorkP->time * waveSin);
+                break;
+
+            case 3:
+                particleWorkP->cycle++;
+                altWaveSin = mbSinDeg(180.0f + (360.0f *
+                    ((float)particleWorkP->cycle / (float)particleWorkP->phase)));
+                particleWorkP->pos.x += 10.0f *
+                    (particleWorkP->time * altWaveSin);
+                break;
+        }
+        particleWorkP->time -= particleWorkP->timeStep;
+        particleWorkP->angle += particleWorkP->rotStep;
+        if (particleWorkP->time <= 0.0f) {
+            particleWorkP->pat = 0;
+            particleWorkP->mode = 0;
+            particleWorkP->active = 0.0f;
+            workP->num--;
+        }
+    }
+}
+
+void mbev_CapStarManOMExec(OMOBJ *obj)
+{
+    CAPSTARMANWORK *workP;
+    HuVecF pos;
+    HuVecF pos3D;
+    float weight;
+    int i;
+
+    workP = obj->data;
+    if (mbExitCheck()
+        || ev_CapEffStarManOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        for (i = 0; i < 8; i++, workP++) {
+            if (workP->modelId != -1) {
+                mbStarObjKill(workP->modelId);
+            }
+        }
+        workP = obj->data;
+        ev_CapEffStarManOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    for (i = 0; i < 8; i++, workP++) {
+        if (workP->activeF && workP->modelId != -1) {
+            weight = (float)workP->_unk18 / (float)workP->_unk1C;
+            PSVECSubtract(&workP->vel, &workP->pos, &pos);
+            PSVECScale(&pos, &pos, weight);
+            PSVECAdd(&workP->pos, &pos, &pos);
+            if (workP->_unk20 != 0.0f) {
+                pos.y += workP->_unk20 * mbSinDeg(180.0f * weight);
+            }
+            if (workP->_unk08) {
+                Hu3D2Dto3D(&pos, 1, &pos3D);
+                mbStarObjPosSetV(workP->modelId, &pos3D);
+            } else {
+                mbStarObjPosSetV(workP->modelId, &pos);
+            }
+            workP->_unk18++;
+            if (workP->_unk18 >= workP->_unk1C) {
+                mbStarObjDispSet(workP->modelId, FALSE);
+                workP->activeF = FALSE;
+                if (workP->playerNo != -1 && workP->coinNum > 0) {
+                    if (!workP->_unk08) {
+                        mbPlayerPosGet(workP->playerNo, &pos);
+                        pos.y += 50.0f;
+                        mbCoinEffCreate(&pos);
+                    }
+                    mbPlayerStarAdd(workP->playerNo, workP->coinNum);
+                }
+            }
+        }
+    }
+}
+
+void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count, float height)
+{
+    HuVecF playerPos;
+    HuVecF pos;
+    HuVecF vel;
+    int capsuleNo;
+    int i;
+    int objNo;
+    float sinAnglePos;
+    float cosAnglePos;
+    float cosAngleX1;
+    float sinAngle;
+    float cosAngleX2;
+    float cosAngle;
+    float sinAngleX;
+    float angle;
+    float speed;
+    float angleX;
+
+    for (objNo = 0; objNo < 8; objNo++) {
+        if (ev_CapEffCapLoseOMObj[objNo] == obj) {
+            break;
+        }
+    }
+    mbPlayerPosGet(playerNo, &playerPos);
+    if (count > mbPlayerCapsuleMaxGet()) {
+        count = mbPlayerCapsuleMaxGet();
+    }
+    angle = 360.0f * MBCapsuleEffRandF();
+    for (i = 0; i < count; i++) {
+        capsuleNo = mbPlayerCapsuleGet(playerNo, i);
+        if (capsuleNo != -1) {
+            int objNo2;
+            CAPEFFCAPLOSEWORK *workP;
+            int workNo;
+
+            speed = 65.0f * (1.0f + (0.1f * MBCapsuleEffRandF()));
+            angleX = 75.0f + (15.0f * MBCapsuleEffRandF());
+            angle += (360.0f / (float)count) +
+                (10.0f * MBCapsuleEffRandF());
+            sinAnglePos = mbSinDeg(angle);
+            pos.x = playerPos.x + (height * sinAnglePos);
+            cosAnglePos = mbCosDeg(angle);
+            pos.z = playerPos.z + (height * cosAnglePos);
+            pos.y = playerPos.y;
+            cosAngleX1 = mbCosDeg(angleX);
+            sinAngle = mbSinDeg(angle);
+            vel.x = speed * (sinAngle * cosAngleX1);
+            cosAngleX2 = mbCosDeg(angleX);
+            cosAngle = mbCosDeg(angle);
+            vel.z = speed * (cosAngle * cosAngleX2);
+            sinAngleX = mbSinDeg(angleX);
+            vel.y = speed * sinAngleX;
+            for (objNo2 = 0; objNo2 < 8; objNo2++) {
+                if (ev_CapEffCapLoseOMObj[objNo2] == obj) {
+                    break;
+                }
+            }
+            workP = obj->data;
+            workNo = 0;
+            while (workNo < 6) {
+                if (workP->activeF == 0) {
+                    break;
+                }
+                workNo++;
+                workP++;
+            }
+            if (workNo < 6) {
+                MBMODELID colorModelId;
+
+                workP->activeF = 1;
+                workP->colorObjId = mbCapObjColorCreate(capsuleNo, TRUE);
+                colorModelId = (MBMODELID)workP->colorObjId;
+                mbObjAttrSet(colorModelId, HU3D_MOTATTR_LOOP);
+                workP->capsuleNo = capsuleNo;
+                workP->_unk10 = -1;
+                workP->_unk14 = 0;
+                workP->time = 30;
+                workP->pos = pos;
+                workP->vel = vel;
+                mbCapObjColorPosSet(workP->colorObjId, pos.x, pos.y, pos.z);
+                mbCapObjColorScaleSet(workP->colorObjId, 0.5f, 0.5f, 0.5f);
+                mbCapObjColorLayerSet(workP->colorObjId, 3);
+            }
+        }
+    }
+}
+
+s16 mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF)
+{
+    HuVecF pos;
+    s16 coinDisp;
+
+    mbPlayerPosGet(playerNo, &pos);
+    pos.y += 250.0f;
+    coinDisp = mbCoinDispCapsuleCreate(&pos, coinNum);
+    if (winMotF) {
+        if (coinNum > 0) {
+            MBMODELID objId;
+
+            mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6));
+            objId = mbPlayerObjIDGet(playerNo);
+            mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 8.0f,
+                HU3D_MOTATTR_NONE);
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != MB_MODEL_NONE);
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionEndCheck(objId) == FALSE);
+        } else {
+            MBMODELID objId;
+
+            mbPlayerWinLoseVoicePlay(playerNo, 13, CHARVOICEID(12));
+            objId = mbPlayerObjIDGet(playerNo);
+            mbPlayerMotionShiftSet(playerNo, 13, 0.0f, 8.0f,
+                HU3D_MOTATTR_NONE);
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != MB_MODEL_NONE);
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionEndCheck(objId) == FALSE);
+        }
+    }
+    if (waitF) {
+        do {
+            HuPrcVSleep();
+        } while (mbCoinDispKillCheck(coinDisp) == FALSE);
+        if (winMotF) {
+            MBMODELID objId;
+
+            objId = mbPlayerObjIDGet(playerNo);
+            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
+                HU3D_MOTATTR_LOOP);
+            do {
+                HuPrcVSleep();
+            } while (mbObjMotionShiftIDGet(objId) != MB_MODEL_NONE);
+        }
+    }
+    return coinDisp;
+}
+
+int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
+{
+    CAPCOINMANWORK *workP;
+    int workNo;
+    int objIdx;
+    int result;
+    int time;
+    HuVecF pos;
+    HuVecF vel;
+    float gravity;
+    float angle;
+
+    if (mode == 0) {
+        pos.x = 80.0f;
+        pos.y = 240.0f;
+        pos.z = 1000.0f;
+        vel.x = 496.0f;
+        vel.y = 240.0f;
+        vel.z = 1000.0f;
+        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+    } else {
+        pos.x = 396.0f;
+        pos.y = 240.0f;
+        pos.z = 1000.0f;
+        vel.x = 180.0f;
+        vel.y = 240.0f;
+        vel.z = 1000.0f;
+        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+    }
+    time = (int)(30.0f * (1.0f
+        + (0.3f * MBCapsuleEffRandF())));
+    gravity = -75.0f + (1.0f
+        + (0.35f * MBCapsuleEffRandF()));
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffCoinManOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    workNo = 0;
+    for (; workNo < 64; workNo++, workP++) {
+        if (!workP->activeF) {
+            break;
+        }
+    }
+    if (workNo >= 64) {
+        result = -1;
+    } else {
+        workP->activeF = TRUE;
+        workP->_unk08 = TRUE;
+        workP->playerNo = playerNo;
+        workP->coinNum = coinNum;
+        workP->_unk18 = 0;
+        workP->_unk1C = time;
+        workP->_unk20 = gravity;
+        workP->pos = pos;
+        workP->vel = vel;
+        workP->modelId = mbCoinCreate2();
+        mbCoinObjPosSetV((s16)workP->modelId, &workP->pos);
+        angle = 360.0f * MBCapsuleEffRandF();
+        mbCoinObjRotSet((s16)workP->modelId,
+            50.0f * (-0.5f + MBCapsuleEffRandF()), angle, 0.0f);
+        mbCoinObjScaleSet((s16)workP->modelId, 0.3f, 0.3f, 0.3f);
+        result = workNo;
+    }
+    if (result != -1) {
+        return coinNum;
+    } else {
+        return 0;
+    }
+}
+
+int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
+{
+    CAPSTARMANWORK *workP;
+    int workNo;
+    int objIdx;
+    int result;
+    int time;
+    HuVecF pos;
+    HuVecF vel;
+    float gravity;
+
+    if (mode == 0) {
+        pos.x = 80.0f;
+        pos.y = 240.0f;
+        pos.z = 1000.0f;
+        vel.x = 496.0f;
+        vel.y = 240.0f;
+        vel.z = 1000.0f;
+        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+    } else {
+        pos.x = 396.0f;
+        pos.y = 240.0f;
+        pos.z = 1000.0f;
+        vel.x = 180.0f;
+        vel.y = 240.0f;
+        vel.z = 1000.0f;
+        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+    }
+    time = (int)(30.0f * (1.0f
+        + (0.3f * MBCapsuleEffRandF())));
+    gravity = -75.0f + (1.0f
+        + (0.35f * MBCapsuleEffRandF()));
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffStarManOMObj[objIdx] == obj) {
+            break;
+        }
+    }
+    workP = obj->data;
+    workNo = 0;
+    for (; workNo < 8; workNo++, workP++) {
+        if (!workP->activeF) {
+            break;
+        }
+    }
+    if (workNo >= 8) {
+        result = -1;
+    } else {
+        workP->activeF = TRUE;
+        workP->_unk08 = TRUE;
+        workP->playerNo = playerNo;
+        workP->coinNum = starNum;
+        workP->_unk18 = 0;
+        workP->_unk1C = time;
+        workP->_unk20 = gravity;
+        workP->pos = pos;
+        workP->vel = vel;
+        mbStarObjDispSet(workP->modelId, TRUE);
+        mbStarObjPosSetV(workP->modelId, &workP->pos);
+        mbStarObjScaleSet(workP->modelId, 0.15f, 0.15f, 0.15f);
+        result = workNo;
+    }
+    if (result != -1) {
+        return starNum;
+    } else {
+        return 0;
+    }
+}
+
+int mbev_CapPlayerComSelRandomGet(int playerNo, int selection, int *playerList,
+    int playerNum)
+{
+    static int chanceTbl[] = { 100, 60, 30, 10 };
+    int candidates[4];
+    int candidateNum;
+    int random1;
+    int random2;
+    int choiceNum;
+    int chanceTotal;
+    int chanceRoll;
+    int i;
+    int j;
+    int temp;
+
+    for (i = 0, candidateNum = 0; i < playerNum; i++) {
+        if (playerList[i] >= 0) {
+            candidates[candidateNum] = playerList[i];
+            candidateNum++;
+        }
+    }
+    if (candidateNum <= 0) {
+        return -1;
+    }
+    if (candidateNum == 1) {
+        return candidates[0];
+    }
+    for (i = 0; i < 64; i++) {
+        random1 = mbRandMod(candidateNum);
+        random2 = mbRandMod(candidateNum);
+        if (random1 != random2) {
+            temp = candidates[random1];
+            candidates[random1] = candidates[random2];
+            candidates[random2] = temp;
+        }
+    }
+    switch (selection) {
+        case 0:
+            for (i = 0; i < candidateNum - 1; i++) {
+                for (j = i + 1; j < candidateNum; j++) {
+                    if (mbPlayerCoinGet(candidates[i])
+                        < mbPlayerCoinGet(candidates[j])) {
+                        temp = candidates[i];
+                        candidates[i] = candidates[j];
+                        candidates[j] = temp;
+                    }
+                }
+            }
+            for (i = 0, choiceNum = 0; i < candidateNum; i++) {
+                if (mbPlayerCoinGet(candidates[i]) > 0) {
+                    choiceNum++;
+                }
+            }
+            if (choiceNum <= 0) {
+                choiceNum = candidateNum;
+            }
+            break;
+
+        case 1:
+            for (i = 0; i < candidateNum - 1; i++) {
+                for (j = i + 1; j < candidateNum; j++) {
+                    if (mbPlayerStarGet(candidates[i])
+                        < mbPlayerStarGet(candidates[j])) {
+                        temp = candidates[i];
+                        candidates[i] = candidates[j];
+                        candidates[j] = temp;
+                    }
+                }
+            }
+            for (i = 0, choiceNum = 0; i < candidateNum; i++) {
+                if (mbPlayerStarGet(candidates[i]) > 0) {
+                    choiceNum++;
+                }
+            }
+            if (choiceNum <= 0) {
+                choiceNum = candidateNum;
+            }
+            break;
+
+        case 2:
+            for (i = 0; i < candidateNum - 1; i++) {
+                for (j = i + 1; j < candidateNum; j++) {
+                    if (mbPlayerCapsuleNumGet(candidates[i])
+                        < mbPlayerCapsuleNumGet(candidates[j])) {
+                        temp = candidates[i];
+                        candidates[i] = candidates[j];
+                        candidates[j] = temp;
+                    }
+                }
+            }
+            for (i = 0, choiceNum = 0; i < candidateNum; i++) {
+                if (mbPlayerCapsuleNumGet(candidates[i]) > 0) {
+                    choiceNum++;
+                }
+            }
+            if (choiceNum <= 0) {
+                choiceNum = candidateNum;
+            }
+            break;
+
+        default:
+            if (candidateNum > 0) {
+                return candidates[mbRandMod(candidateNum)];
+            }
+            return -1;
+    }
+    if (choiceNum == 1) {
+        return candidates[0];
+    }
+    for (i = 0, chanceTotal = 0; i < choiceNum; i++) {
+        chanceTotal += chanceTbl[i];
+    }
+    chanceRoll = MBCapsuleEffRandF() * chanceTotal;
+    for (i = 0; i < choiceNum; i++) {
+        if (chanceRoll < chanceTbl[i]) {
+            break;
+        }
+    }
+    if (i >= choiceNum) {
+        return candidates[0];
+    }
+    return candidates[i];
 }

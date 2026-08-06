@@ -1,10 +1,10 @@
-#define _MATH_H
 #include "dolphin/math.h"
 
 #include "game/board/window.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
 #include "game/board/main.h"
+#include "game/board/masu.h"
 #include "game/board/model.h"
 #include "game/board/pause.h"
 #include "game/board/player.h"
@@ -21,6 +21,8 @@
 #include "game/pad.h"
 #include "game/wipe.h"
 
+#include "messnum/mg_name.h"
+
 #include "dolphin/mtx.h"
 
 #include <string.h>
@@ -29,6 +31,12 @@ extern int mbSingleOppCharGet(void);
 extern int mbSingleTeamCharGet(void);
 extern void mbDirClose(void);
 extern void mbev_CapPlayerMotShiftSet(int modelId, int motionNo, int attr, BOOL waitF);
+extern void mbev_CapEffColorSet(GXColor *color, int colorNo);
+extern s32 mbBGRead(s32 dataNum);
+extern void mbBGReadWait(s32 statId);
+extern void mbOvlCall(OMOVL ovl);
+extern void mbWipeCreate(s16 mode, s16 type, s16 time);
+extern void mbWipeSpecialWait(void);
 
 typedef struct MgListWork_s {
     unsigned killF : 1;
@@ -58,12 +66,130 @@ typedef struct MgCallWork_s {
     s16 unk36;
 } MGCALLWORK;
 
+typedef struct MgCallVsEffWork_s {
+    BOOL activeF;
+    s16 sprId;
+    int time;
+    int maxTime;
+    float scaleStep;
+    float scaleBase;
+    float zRotStep;
+    HuVecF pos;
+    HuVecF vel;
+    float scaleX;
+    float scaleY;
+    u32 unk3C;
+    u32 unk40;
+    u32 unk44;
+    float zRot;
+} MGCALLVSEFFWORK;
+
 typedef struct MgCallSingleType_s {
     int playerNo;
     int type;
     u32 dataNum;
     int bank;
 } MGCALLSINGLETYPE;
+
+typedef struct MgPackType_s {
+    int pack;
+    u8 flag;
+} MGPACKTYPE;
+
+enum {
+    MGCALL_BOARD_FILE_TYPE = 132,
+    MGCALL_BOARD_FILE_KOOPA_TYPE,
+    MGCALL_BOARD_FILE_DONKEY_TYPE,
+    MGCALL_BOARD_FILE_ROULETTE_LIST = 135,
+    MGCALL_BOARD_FILE_ROULETTE_MASK,
+    MGCALL_BOARD_FILE_ROULETTE_CURSOR,
+    MGCALL_BOARD_FILE_VERSUS,
+    MGCALL_BOARD_FILE_VERSUS_EFFECT,
+    MGCALL_BOARD_FILE_BATTLE_COIN_LABEL = 143,
+    MGCALL_BOARD_FILE_BATTLE_COIN_NUMBER,
+    MGCALL_BOARD_FILE_BATTLE_NAME_BACKDROP,
+    MGCALL_BOARD_FILE_BATTLE_PLAYER_CURSOR,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_MARIO,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_LUIGI,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_PEACH,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_YOSHI,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_WARIO,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_DAISY,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_WALUIGI,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPIO,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_TERESA,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_MINIKOOPA,
+    MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPICO,
+    MGCALL_BOARD_FILE_BATTLE_M646,
+    MGCALL_BOARD_FILE_BATTLE_M647_DAY,
+    MGCALL_BOARD_FILE_BATTLE_M647_NIGHT,
+    MGCALL_BOARD_FILE_BATTLE_M649,
+    MGCALL_BOARD_FILE_BATTLE_M664_DAY,
+    MGCALL_BOARD_FILE_BATTLE_M664_NIGHT,
+    MGCALL_BOARD_FILE_BATTLE_M680,
+    MGCALL_BOARD_FILE_BATTLE_M681,
+    MGCALL_BOARD_FILE_EFFECT_EXPLODE = 91,
+};
+
+enum {
+    MGCALL_GUIDE_DAY_MODEL,
+    MGCALL_GUIDE_DAY_MOTION_1,
+    MGCALL_GUIDE_DAY_MOTION_2 = 4,
+    MGCALL_GUIDE_DAY_MOTION_3,
+    MGCALL_GUIDE_DAY_MOTION_4 = 8,
+    MGCALL_GUIDE_DAY_MOTION_5 = 16,
+    MGCALL_GUIDE_DAY_MOTION_6,
+    MGCALL_GUIDE_DAY_MOTION_7,
+    MGCALL_GUIDE_DAY_MOTION_8,
+    MGCALL_GUIDE_DAY_MOTION_9,
+    MGCALL_GUIDE_NIGHT_MODEL = 27,
+    MGCALL_GUIDE_NIGHT_MOTION_1,
+    MGCALL_GUIDE_NIGHT_MOTION_2 = 31,
+    MGCALL_GUIDE_NIGHT_MOTION_3,
+    MGCALL_GUIDE_NIGHT_MOTION_4 = 35,
+    MGCALL_GUIDE_NIGHT_MOTION_5 = 42,
+    MGCALL_GUIDE_NIGHT_MOTION_6,
+    MGCALL_GUIDE_NIGHT_MOTION_7,
+    MGCALL_GUIDE_NIGHT_MOTION_8,
+    MGCALL_GUIDE_NIGHT_MOTION_9,
+    MGCALL_GUIDE_NIGHT_ITEM_MODEL = 53,
+};
+
+enum {
+    MGCALL_BATTLE_FILE_COIN_SPRITE_0,
+    MGCALL_BATTLE_FILE_COIN_SPRITE_1,
+    MGCALL_BATTLE_FILE_COIN_SPRITE_2,
+    MGCALL_BATTLE_FILE_COIN_SPRITE_3,
+    MGCALL_BATTLE_FILE_COIN_SPRITE_4,
+};
+
+enum {
+    MGCALL_ROULETTE_OBJECT_PRIORITY = 257,
+    MGCALL_MESSAGE_COLOR_CONTROL = 30,
+    MGCALL_VS_EFFECT_COUNT = 64,
+    MGCALL_VS_EFFECT_SPRITE_PRIORITY = 99,
+    MGCALL_VS_EFFECT_OBJECT_PRIORITY = -32768,
+};
+
+#define MGCALL_MESSAGE_POINTER_BASE (1u << 31)
+#define MGCALL_MESSAGE_BATTLE_INTRO MESSNUM(MESS_MGPACK_NAME, 0)
+#define MGCALL_MESSAGE_BATTLE_COIN_HIGH MESSNUM(MESS_MGPACK_NAME, 1)
+#define MGCALL_MESSAGE_BATTLE_COIN_LOW MESSNUM(MESS_MGPACK_NAME, 2)
+#define MGCALL_MESSAGE_BATTLE_RESULT MESSNUM(MESS_MGPACK_NAME, 3)
+#define MGCALL_MESSAGE_BATTLE_HELP MESSNUM(MESS_MGPACK_NAME, 8)
+
+#define MGCALL_TUTORIAL_MESSAGE_BEGIN MESSNUM(MESS_BOARD_TUTORIAL, 45)
+#define MGCALL_TUTORIAL_MESSAGE_ENDTURN MESSNUM(MESS_BOARD_TUTORIAL, 46)
+#define MGCALL_TUTORIAL_MESSAGE_STATUS MESSNUM(MESS_BOARD_TUTORIAL, 47)
+#define MGCALL_TUTORIAL_MESSAGE_4P MESSNUM(MESS_BOARD_TUTORIAL, 49)
+#define MGCALL_TUTORIAL_MESSAGE_GROUP MESSNUM(MESS_BOARD_TUTORIAL, 51)
+#define MGCALL_TUTORIAL_MESSAGE_2VS2 MESSNUM(MESS_BOARD_TUTORIAL, 52)
+#define MGCALL_TUTORIAL_MESSAGE_1VS3 MESSNUM(MESS_BOARD_TUTORIAL, 54)
+#define MGCALL_TUTORIAL_MESSAGE_3VS1 MESSNUM(MESS_BOARD_TUTORIAL, 55)
+#define MGCALL_TUTORIAL_MESSAGE_TYPE MESSNUM(MESS_BOARD_TUTORIAL, 57)
+#define MGCALL_TUTORIAL_MESSAGE_CALL MESSNUM(MESS_BOARD_TUTORIAL, 58)
+#define MGCALL_TUTORIAL_MESSAGE_BATTLE MESSNUM(MESS_BOARD_TUTORIAL, 59)
+#define MGCALL_TUTORIAL_MESSAGE_COIN MESSNUM(MESS_BOARD_TUTORIAL, 60)
 
 static const HuVec2f statusPos4PBase[GW_PLAYER_MAX] = {
     { 176.0f, 184.0f },
@@ -128,17 +254,31 @@ static int mgCallHisSize[9] = {
 };
 
 static int mgCallTypeFileTbl[4] = {
-    0x00050084,
-    0x00050084,
-    0x00050084,
-    0x00050084,
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE),
 };
 
 static u32 guideMotFileTbl[2][16] = {
-    { 0x00110001, 0x00110004, 0x00110005, 0x00110008, 0x00110010, 0x00110011,
-        0x00110012, 0x00110013, 0x00110014, 0xFFFFFFFF },
-    { 0x0011001C, 0x0011001F, 0x00110020, 0x00110023, 0x0011002A, 0x0011002B,
-        0x0011002C, 0x0011002D, 0x0011002E, 0xFFFFFFFF },
+    { DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_1),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_2),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_3),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_4),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_5),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_6),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_7),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_8),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MOTION_9), HU_DATANUM_NONE },
+    { DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_1),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_2),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_3),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_4),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_5),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_6),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_7),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_8),
+        DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MOTION_9), HU_DATANUM_NONE },
 };
 
 static char lbl_8024BA18[] = "itemhook_R";
@@ -172,6 +312,7 @@ static BOOL MgCallHisCheck(int type, s16 no);
 static u32 MgCallBattleMesGet(u32 mess);
 static void MgCallCallMg(int type, int no);
 static void MgCallVsEffCreate(void);
+static void MgCallVsEffOMExec(OMOBJ *obj);
 static void MgCallVsEffPosSet(float x, float y);
 static void MgCallVsEffKill(void);
 static int MgCallVsEffNumGet(void);
@@ -226,16 +367,21 @@ s32 mbev_MgCall(void)
         mbPlayerDispSet(i, FALSE);
     }
     if (!GwSystem.curTime) {
-        workP->guideMdlId = mbObjCreate(0x110000, (int *)guideMotFileTbl[0], 0);
+        workP->guideMdlId = mbObjCreate(
+            DATANUM(DATA_capsulechar4, MGCALL_GUIDE_DAY_MODEL),
+            (int *)guideMotFileTbl[0], 0);
         workP->guideItemMdlId = -1;
     } else {
-        workP->guideMdlId = mbObjCreate(0x11001B, (int *)guideMotFileTbl[1], 0);
-        workP->guideItemMdlId = mbObjCreate(0x110035, 0, 0);
+        workP->guideMdlId = mbObjCreate(
+            DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_MODEL),
+            (int *)guideMotFileTbl[1], 0);
+        workP->guideItemMdlId = mbObjCreate(
+            DATANUM(DATA_capsulechar4, MGCALL_GUIDE_NIGHT_ITEM_MODEL), 0, 0);
         mbObjHookSet(workP->guideMdlId, lbl_8024BA18, workP->guideItemMdlId);
     }
     mbObjMotionSet(workP->guideMdlId, 2, HU3D_MOTATTR_LOOP);
     for (i = 1; i < mbMasuNumGet(); i++) {
-        if ((u16)mbMasuAttrGet((s16)i) & 0x8000) {
+        if ((u16)mbMasuAttrGet((s16)i) & MASU_FLAG_START) {
             break;
         }
     }
@@ -252,7 +398,7 @@ s32 mbev_MgCall(void)
     mbCameraMoveWait();
     mbCameraFocusObjSet(-1);
     mbWipeFadeIn();
-    mbAudFXPlay(0x457);
+    mbAudFXPlay(MSM_SE_BRD00_107);
     if (!GWTeamFGet()) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             mbStatusPosOnGet(i, (HuVecF *)&statusPos);
@@ -269,10 +415,11 @@ s32 mbev_MgCall(void)
     }
     workP->type = SetupTeam(NULL);
     mbObjMotionShiftSet(workP->guideMdlId, 9, 0.0f, 8.0f, FALSE);
-    workP->sprId[2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x8A)), 90, 0);
+    workP->sprId[2] = espEntry(mbBoardDataNumGet(
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_VERSUS)), 90, 0);
     espPosSet(workP->sprId[2], 288.0f, 240.0f);
     espScaleSet(workP->sprId[2], 0.5f, 0.5f);
-    mbAudFXPlay(0x458);
+    mbAudFXPlay(MSM_SE_BRD00_108);
     for (i = 1; i <= 30; i++) {
         weight = i / 30.0f;
         scaleX = (0.5f * sin((M_PI * (90.0f * weight)) / 180.0))
@@ -305,7 +452,7 @@ s32 mbev_MgCall(void)
             HuPrcVSleep();
         }
         mbAudFXDelaySet(10);
-        mbAudGuidePlay(0x3B4);
+        mbAudGuidePlay(MSM_SE_GUIDE_24);
         mbev_CapPlayerMotShiftSet(workP->guideMdlId, 7, 0, TRUE);
         mbObjMotionShiftSet(workP->guideMdlId, 8, 0.0f, 8.0f, FALSE);
         result = MgCallBattleExec(workP);
@@ -331,7 +478,7 @@ s32 mbev_MgCall(void)
             }
             mbStatusMoveSet(i, NULL, (HuVecF *)&statusPos, TRUE, 15);
         }
-        mbAudFXPlay(0x459);
+        mbAudFXPlay(MSM_SE_BRD00_109);
         MgCallVsEffCreate();
         MgCallVsEffPosSet(288.0f, 240.0f);
         for (i = 1; i <= 30u; i++) {
@@ -358,6 +505,143 @@ s32 mbev_MgCall(void)
     MgCallCallMg(workP->type, result);
     MgRouletteKill(workP);
     return 0;
+}
+
+static int SetupTeam(int *colorIn)
+{
+    int i;
+    int j;
+    int statusNo;
+    int type;
+    int colorP1;
+    int playerNum;
+    BOOL colorChange;
+    int origColor[GW_PLAYER_MAX];
+    int colorTbl[GW_PLAYER_MAX];
+
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        GwPlayer[i].teamBackup = GwPlayer[i].team;
+    }
+    if (!GWTeamFGet()) {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            origColor[i] = mbStatusColorGet(i);
+        }
+    } else {
+        for (i = 0; i < GW_PLAYER_MAX / 2; i++) {
+            origColor[i] = (i == 0) ? STATUS_COLOR_RED : STATUS_COLOR_BLUE;
+        }
+    }
+    if (colorIn != NULL) {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            mbStatusColorSet(i, colorIn[i]);
+            colorTbl[i] = colorIn[i];
+        }
+    }
+    type = SetupMgType(colorTbl);
+    if (!GWTeamFGet()) {
+        playerNum = GW_PLAYER_MAX;
+    } else {
+        if (type == MG_TYPE_1VS3) {
+            type = (frandf() < 0.5f) ? MG_TYPE_2VS2 : MG_TYPE_4P;
+        }
+        if (type == MG_TYPE_4P) {
+            colorTbl[0] = STATUS_COLOR_RED;
+            colorTbl[1] = STATUS_COLOR_RED;
+        } else {
+            colorTbl[0] = STATUS_COLOR_RED;
+            colorTbl[1] = STATUS_COLOR_BLUE;
+        }
+        playerNum = GW_PLAYER_MAX / 2;
+    }
+    colorChange = FALSE;
+    for (i = 0; i < playerNum; i++) {
+        if (origColor[i] != colorTbl[i]) {
+            colorChange = TRUE;
+        }
+    }
+    if (colorChange) {
+        mbAudFXPlay(MSM_SE_BRD00_127);
+        for (i = 0; i <= 60u; i++) {
+            for (j = 0; j < playerNum; j++) {
+                if (origColor[j] != colorTbl[j]) {
+                    mbStatusRainbowSet(j, i / 60.0f, colorTbl[j]);
+                }
+            }
+            HuPrcVSleep();
+        }
+    }
+    HuPrcSleep(30);
+    if (GWTeamFGet()) {
+        switch (type) {
+        case MG_TYPE_2VS2:
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                GwPlayerConf[i].grpNo = GwPlayer[i].team;
+            }
+            break;
+        case MG_TYPE_4P:
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                GwPlayerConf[i].grpNo = 0;
+            }
+            break;
+        }
+        return type;
+    }
+    switch (type) {
+    case MG_TYPE_1VS3:
+        j = 0;
+        colorP1 = colorTbl[0];
+        for (i = 1; i < GW_PLAYER_MAX; i++) {
+            if (colorP1 == colorTbl[i]) {
+                j |= 1 << i;
+            }
+        }
+        if (j == 0) {
+            i = 0;
+        } else {
+            for (i = 1; i < GW_PLAYER_MAX; i++) {
+                if ((j & (1 << i)) == 0) {
+                    break;
+                }
+            }
+        }
+        colorP1 = colorTbl[i];
+        statusNo = 0;
+        mbStatusMoveSet(i, NULL,
+            (HuVecF *)&statusPos1Vs3Base[statusNo++], STATUS_MOVE_SIN, 15);
+        GwPlayerConf[i].grpNo = 0;
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (colorP1 != colorTbl[i]) {
+                mbStatusMoveSet(i, NULL,
+                    (HuVecF *)&statusPos1Vs3Base[statusNo++],
+                    STATUS_MOVE_SIN, 15);
+                GwPlayerConf[i].grpNo = 1;
+            }
+        }
+        break;
+    case MG_TYPE_2VS2:
+        statusNo = 0;
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (colorTbl[i] == STATUS_COLOR_RED) {
+                mbStatusMoveSet(i, NULL,
+                    (HuVecF *)&statusPos2Vs2Base[statusNo++],
+                    STATUS_MOVE_SIN, 15);
+                GwPlayerConf[i].grpNo = 0;
+            }
+        }
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (colorTbl[i] == STATUS_COLOR_BLUE) {
+                mbStatusMoveSet(i, NULL,
+                    (HuVecF *)&statusPos2Vs2Base[statusNo++],
+                    STATUS_MOVE_SIN, 15);
+                GwPlayerConf[i].grpNo = 1;
+            }
+        }
+        break;
+    }
+    while (!mbStatusOffCheckAll()) {
+        HuPrcVSleep();
+    }
+    return type;
 }
 
 static int SetupMgType(int *color)
@@ -597,7 +881,7 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
     if (micF && frandf() < chance) {
         type = MG_TYPE_1VS3;
         workP->sprId[1] = espEntry(
-            mbBoardDataNumGet(DATANUM(DATA_board, 0x84)), 95, 5);
+            mbBoardDataNumGet(DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE)), 95, 5);
         mbAudFXPlay(1115);
         posY = 88.0f;
         velY = 6.0f;
@@ -642,16 +926,19 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
         }
     }
     workP->sprId[4] = espEntry(
-        mbBoardDataNumGet(DATANUM(DATA_board, 0x87)), 100, 0);
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_ROULETTE_LIST)), 100, 0);
     espPosSet(workP->sprId[4], 288.0f, 240.0f);
     espDrawNoSet(workP->sprId[4], 32);
     workP->sprId[5] = espEntry(
-        mbBoardDataNumGet(DATANUM(DATA_board, 0x88)), 102, 0);
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_ROULETTE_MASK)), 102, 0);
     espPosSet(workP->sprId[5], 288.0f, 248.0f);
     espDrawNoSet(workP->sprId[5], 32);
     espTPLvlSet(workP->sprId[5], 0.5f);
     workP->sprId[6] = espEntry(
-        mbBoardDataNumGet(DATANUM(DATA_board, 0x89)), 101, 0);
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_ROULETTE_CURSOR)), 101, 0);
     espPosSet(workP->sprId[6], 288.0f, 256.0f);
     espDrawNoSet(workP->sprId[6], 32);
     espTPLvlSet(workP->sprId[6], 0.5f);
@@ -668,7 +955,8 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
     unlockNum = 0;
     for (i = 0; i < listNum; i++) {
         mgData = &MgDataTbl[mgTbl[i]];
-        mgListObj[i] = omAddObjEx(mbObjMan, 0x101, 0, 0, -1, MgRouletteOMExec);
+        mgListObj[i] = omAddObjEx(mbObjMan, MGCALL_ROULETTE_OBJECT_PRIORITY,
+            0, 0, -1, MgRouletteOMExec);
         listWork = omObjGetWork(mgListObj[i], MGLISTWORK);
         listWork->dispF = TRUE;
         listWork->no = i;
@@ -762,7 +1050,7 @@ static int MgRouletteExec(int type, MGCALLWORK *workP)
                 zRot = -90.0f
                     * cos((M_PI * (90.0f * (4.0f * (weight - 0.75f)))) / 180.0);
             }
-            mbev_CapVecChase(sin((M_PI * (90.0f * weight)) / 180.0),
+            mbev_CapVecChase((float)sin((M_PI * (90.0f * weight)) / 180.0),
                 &pos, &guidePos, &movePos);
             mbObjPosSetV(workP->guideMdlId, &movePos);
             mbObjRotSet(workP->guideMdlId, 0.0f, zRot, 0.0f);
@@ -782,17 +1070,489 @@ static s16 MgNameColorGet(u32 nameMes)
     char *mesPtr;
     s16 i;
 
-    if (nameMes > 0x80000000) {
+    if (nameMes > MGCALL_MESSAGE_POINTER_BASE) {
         mesPtr = (char *)nameMes;
     } else {
         mesPtr = HuWinMesPtrGet(nameMes);
     }
     for (i = 0; *mesPtr; mesPtr++) {
-        if (*mesPtr == 0x1E) {
+        if (*mesPtr == MGCALL_MESSAGE_COLOR_CONTROL) {
             return mesPtr[1] - 1;
         }
     }
     return 7;
+}
+
+static int MgRouletteNumGet(int type, int height, s16 *noTbl)
+{
+    MGPACKTYPE packTbl[4] = {
+        { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
+        { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
+        { GW_MINIGAME_PACK_HARD, MG_FLAG_PACK_SKILL },
+        { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
+    };
+    s16 tempTbl[128];
+    s16 historyNo;
+    int i;
+    int j;
+    int no;
+    int num;
+    int packNo;
+    int pack;
+    int historyOfs;
+    BOOL micF;
+    BOOL skipF;
+    MGDATA *mgData;
+
+    micF = FALSE;
+    for (packNo = 0; packNo < 4; packNo++) {
+        if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
+            GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
+        }
+        pack = GwSystem.mgPack;
+        if (packTbl[packNo].pack == pack) {
+            break;
+        }
+    }
+    if (packNo >= 4) {
+        packNo = -1;
+    }
+    no = 0;
+    num = 0;
+    for (mgData = MgDataTbl; mgData->ovl != (u16)DLL_NONE; mgData++, no++) {
+        if (mgData->type != type) {
+            continue;
+        }
+        if (packNo >= 0 && !(mgData->flag & packTbl[packNo].flag)) {
+            continue;
+        }
+        if (!micF && (mgData->flag & MG_FLAG_MIC)) {
+            continue;
+        }
+        if (GwSystem.curTime && (mgData->flag & MG_FLAG_DISABLE_NIGHT)) {
+            continue;
+        }
+        if (!GwSystem.curTime && (mgData->flag & MG_FLAG_DISABLE_DAY)) {
+            continue;
+        }
+        if (MgCallHisCheck(type, no + GW_MGNO_BASE)) {
+            continue;
+        }
+        tempTbl[num++] = no;
+    }
+    if (num < height) {
+        historyOfs = mgCallHisOfsTbl[type];
+        for (i = 0; i < mgCallHisSize[type]; i++) {
+            historyNo = mgCallHisPtr[type][historyOfs];
+            if (historyNo) {
+                no = historyNo - GW_MGNO_BASE;
+                skipF = FALSE;
+                if (packNo >= 0 && !(MgDataTbl[no].flag & packTbl[packNo].flag)) {
+                    skipF = TRUE;
+                }
+                if (!micF && (MgDataTbl[no].flag & MG_FLAG_MIC)) {
+                    skipF = TRUE;
+                }
+                if (GwSystem.curTime && (MgDataTbl[no].flag & MG_FLAG_DISABLE_NIGHT)) {
+                    skipF = TRUE;
+                }
+                if (!GwSystem.curTime && (MgDataTbl[no].flag & MG_FLAG_DISABLE_DAY)) {
+                    skipF = TRUE;
+                }
+                for (j = 0; j < num; j++) {
+                    if (no == tempTbl[j]) {
+                        break;
+                    }
+                }
+                if (j >= num && !skipF) {
+                    tempTbl[num++] = no;
+                    if (num >= height) {
+                        break;
+                    }
+                }
+            }
+            historyOfs = (historyOfs + 1) % mgCallHisSize[type];
+        }
+    }
+    for (i = 0; i < 100; i++) {
+        j = mbRandMod(num);
+        no = mbRandMod(num);
+        historyNo = tempTbl[j];
+        tempTbl[j] = tempTbl[no];
+        tempTbl[no] = historyNo;
+    }
+    if (num > height) {
+        num = height;
+    }
+    for (i = 0; i < num; i++) {
+        noTbl[i] = tempTbl[i];
+    }
+    for (; i < height; i++) {
+        noTbl[i] = -1;
+    }
+    return num;
+}
+
+static int MgRouletteNumSingleGet(int type, int height, s16 *noTbl)
+{
+    MGPACKTYPE packTbl[4] = {
+        { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
+        { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
+        { GW_MINIGAME_PACK_HARD, MG_FLAG_PACK_SKILL },
+        { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
+    };
+    s16 partyTbl[128];
+    s16 storyTbl[128];
+    s16 unownedTbl[128];
+    s16 historyNo;
+    int i;
+    int j;
+    int no;
+    int num;
+    int partyNum;
+    int storyNum;
+    int packNo;
+    BOOL micF;
+    MGDATA *mgData;
+
+    micF = FALSE;
+    for (packNo = 0; packNo < 4; packNo++) {
+        if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
+            GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
+        }
+        if (packTbl[packNo].pack == GwSystem.mgPack) {
+            break;
+        }
+    }
+    if (packNo >= 4) {
+        packNo = -1;
+    }
+    no = 0;
+    num = 0;
+    storyNum = 0;
+    partyNum = 0;
+    for (mgData = MgDataTbl; mgData->ovl != (u16)DLL_NONE; mgData++, no++) {
+        if (mgData->type != type) {
+            continue;
+        }
+        if (packNo >= 0 && !(mgData->flag & packTbl[packNo].flag)) {
+            continue;
+        }
+        if (!micF && (mgData->flag & MG_FLAG_MIC)) {
+            continue;
+        }
+        if (mgCallSingleKoopaF && (mgData->flag & MG_FLAG_GRPORDER)) {
+            continue;
+        }
+        if (mbSingleMgUnlockGet(no + GW_MGNO_BASE)) {
+            storyTbl[storyNum++] = no;
+        } else if (GWMgUnlockGet(no + GW_MGNO_BASE)) {
+            partyTbl[partyNum++] = no;
+        } else {
+            unownedTbl[num++] = no;
+        }
+    }
+    if (num < height && partyNum > 0) {
+        if (partyNum >= 2) {
+            for (i = 0; i < 100; i++) {
+                j = i % partyNum;
+                no = mbRandMod(partyNum);
+                if (j != no) {
+                    historyNo = partyTbl[j];
+                    partyTbl[j] = partyTbl[no];
+                    partyTbl[no] = historyNo;
+                }
+            }
+        }
+        for (i = 0; i < height - num && i < partyNum; i++) {
+            unownedTbl[num++] = partyTbl[i];
+        }
+    }
+    if (num < height && storyNum > 0) {
+        if (storyNum >= 2) {
+            for (i = 0; i < 100; i++) {
+                j = i % storyNum;
+                no = mbRandMod(storyNum);
+                if (j != no) {
+                    historyNo = storyTbl[j];
+                    storyTbl[j] = storyTbl[no];
+                    storyTbl[no] = historyNo;
+                }
+            }
+        }
+        for (i = 0; i < height - num && i < storyNum; i++) {
+            unownedTbl[num++] = storyTbl[i];
+        }
+    }
+    for (i = 0; i < 100; i++) {
+        j = mbRandMod(num);
+        no = mbRandMod(num);
+        historyNo = unownedTbl[j];
+        unownedTbl[j] = unownedTbl[no];
+        unownedTbl[no] = historyNo;
+    }
+    if (num > height) {
+        num = height;
+    }
+    for (i = 0; i < num; i++) {
+        noTbl[i] = unownedTbl[i];
+    }
+    for (; i < height; i++) {
+        noTbl[i] = -1;
+    }
+    return num;
+}
+
+static int MgRouletteNumMicGet(int type, int height, s16 *noTbl)
+{
+    MGPACKTYPE packTbl[4] = {
+        { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
+        { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
+        { GW_MINIGAME_PACK_HARD, MG_FLAG_PACK_SKILL },
+        { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
+    };
+    s16 tempTbl[128];
+    s16 temp;
+    int i;
+    int no;
+    int num;
+    int packNo;
+    MGDATA *mgData;
+
+    for (packNo = 0; packNo < 4; packNo++) {
+        if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
+            GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
+        }
+        if (packTbl[packNo].pack == GwSystem.mgPack) {
+            break;
+        }
+    }
+    if (packNo >= 4) {
+        packNo = -1;
+    }
+    no = 0;
+    num = 0;
+    for (mgData = MgDataTbl; mgData->ovl != (u16)DLL_NONE; mgData++, no++) {
+        if (mgData->type != type) {
+            continue;
+        }
+        if (packNo >= 0 && !(mgData->flag & packTbl[packNo].flag)) {
+            continue;
+        }
+        if (!(mgData->flag & MG_FLAG_MIC)) {
+            continue;
+        }
+        if (GwSystem.curTime && (mgData->flag & MG_FLAG_DISABLE_NIGHT)) {
+            continue;
+        }
+        if (!GwSystem.curTime && (mgData->flag & MG_FLAG_DISABLE_DAY)) {
+            continue;
+        }
+        tempTbl[num++] = no;
+    }
+    for (i = 0; i < 100; i++) {
+        no = mbRandMod(num);
+        packNo = mbRandMod(num);
+        temp = tempTbl[no];
+        tempTbl[no] = tempTbl[packNo];
+        tempTbl[packNo] = temp;
+    }
+    if (num > height) {
+        num = height;
+    }
+    for (i = 0; i < num; i++) {
+        noTbl[i] = tempTbl[i];
+    }
+    for (; i < height; i++) {
+        noTbl[i] = -1;
+    }
+    return num;
+}
+
+static int MgRouletteNumMicSingleGet(int type, int height, s16 *noTbl)
+{
+    MGPACKTYPE packTbl[4] = {
+        { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
+        { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
+        { GW_MINIGAME_PACK_HARD, MG_FLAG_PACK_SKILL },
+        { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
+    };
+    s16 partyTbl[128];
+    s16 storyTbl[128];
+    s16 unownedTbl[128];
+    s16 temp;
+    int i;
+    int no;
+    int num;
+    int partyNum;
+    int storyNum;
+    int packNo;
+    MGDATA *mgData;
+
+    for (packNo = 0; packNo < 4; packNo++) {
+        if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
+            GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
+        }
+        if (packTbl[packNo].pack == GwSystem.mgPack) {
+            break;
+        }
+    }
+    if (packNo >= 4) {
+        packNo = -1;
+    }
+    no = 0;
+    num = 0;
+    storyNum = 0;
+    partyNum = 0;
+    for (mgData = MgDataTbl; mgData->ovl != (u16)DLL_NONE; mgData++, no++) {
+        if (mgData->type != type) {
+            continue;
+        }
+        if (packNo >= 0 && !(mgData->flag & packTbl[packNo].flag)) {
+            continue;
+        }
+        if (!(mgData->flag & MG_FLAG_MIC)) {
+            continue;
+        }
+        if (GwSystem.curTime && (mgData->flag & MG_FLAG_DISABLE_NIGHT)) {
+            continue;
+        }
+        if (!GwSystem.curTime && (mgData->flag & MG_FLAG_DISABLE_DAY)) {
+            continue;
+        }
+        if (mbSingleMgUnlockGet(no + GW_MGNO_BASE)) {
+            storyTbl[storyNum++] = no;
+        } else if (GWMgUnlockGet(no + GW_MGNO_BASE)) {
+            partyTbl[partyNum++] = no;
+        } else {
+            unownedTbl[num++] = no;
+        }
+    }
+    if (num < height && partyNum > 0) {
+        if (partyNum >= 2) {
+            for (i = 0; i < 100; i++) {
+                no = i % partyNum;
+                packNo = mbRandMod(partyNum);
+                if (no != packNo) {
+                    temp = partyTbl[no];
+                    partyTbl[no] = partyTbl[packNo];
+                    partyTbl[packNo] = temp;
+                }
+            }
+        }
+        for (i = 0; i < height - num && i < partyNum; i++) {
+            unownedTbl[num++] = partyTbl[i];
+        }
+    }
+    if (num < height && storyNum > 0) {
+        if (storyNum >= 2) {
+            for (i = 0; i < 100; i++) {
+                no = i % storyNum;
+                packNo = mbRandMod(storyNum);
+                if (no != packNo) {
+                    temp = storyTbl[no];
+                    storyTbl[no] = storyTbl[packNo];
+                    storyTbl[packNo] = temp;
+                }
+            }
+        }
+        for (i = 0; i < height - num && i < storyNum; i++) {
+            unownedTbl[num++] = storyTbl[i];
+        }
+    }
+    for (i = 0; i < 100; i++) {
+        no = mbRandMod(num);
+        packNo = mbRandMod(num);
+        temp = unownedTbl[no];
+        unownedTbl[no] = unownedTbl[packNo];
+        unownedTbl[packNo] = temp;
+    }
+    if (num > height) {
+        num = height;
+    }
+    for (i = 0; i < num; i++) {
+        noTbl[i] = unownedTbl[i];
+    }
+    for (; i < height; i++) {
+        noTbl[i] = -1;
+    }
+    return num;
+}
+
+static void MgRouletteOMExec(OMOBJ *obj)
+{
+    MGLISTWORK *work = omObjGetWork(obj, MGLISTWORK);
+    float weight;
+    float time;
+    HuVec2f winSize;
+
+    if (work->killF || mbExitCheck()) {
+        mbWinKill(work->winNo);
+        omDelObjEx(HuPrcCurrentGet(), obj);
+        return;
+    }
+    if (work->dispF) {
+        mbWinDispSet(work->winNo, TRUE);
+    } else {
+        mbWinDispSet(work->winNo, FALSE);
+    }
+    switch (work->mode) {
+    case 0:
+        if (work->time > work->maxTime) {
+            work->slideF = FALSE;
+            work->mode = 1;
+        } else {
+            weight = (float)work->time++ / work->maxTime;
+            time = sin((M_PI * (90.0f * weight)) / 180.0);
+            if ((work->no & 1) == 0) {
+                obj->trans.x = -160.0f + (448.0f * time);
+            } else {
+                obj->trans.x = 736.0f + (-448.0f * time);
+            }
+        }
+        break;
+    case 1:
+        if (work->no == mgCallFocus) {
+            work->mode = 2;
+        }
+        break;
+    case 2:
+        if (work->no != mgCallFocus) {
+            work->mode = 3;
+            work->time = 0;
+            work->maxTime = 8;
+        }
+        break;
+    case 3:
+        if (work->time > work->maxTime) {
+            work->mode = 1;
+        } else {
+            weight = (float)work->time++ / work->maxTime;
+        }
+        break;
+    case 4:
+        if (work->time <= work->maxTime) {
+            weight = (float)work->time++ / work->maxTime;
+            obj->scale.x = obj->scale.y =
+                (0.2f
+                    * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0))
+                + 1.0f;
+        }
+        break;
+    case 5:
+        if (work->time <= work->maxTime) {
+            weight = (float)work->time++ / work->maxTime;
+            obj->trans.y = obj->rot.y + (weight * (96.0f - obj->rot.y));
+            obj->scale.x = obj->scale.y =
+                (0.5f * cos((M_PI * (90.0f * weight)) / 180.0)) + 0.5f;
+        }
+        break;
+    }
+    mbWinScaleSet(work->winNo, obj->scale.x, obj->scale.y);
+    mbWinMesMaxSizeGet(work->winNo, &winSize);
+    mbWinPosSet(work->winNo,
+        obj->trans.x - ((winSize.x / 2.0f) * obj->scale.x),
+        obj->trans.y - ((winSize.y / 2.0f) * obj->scale.y));
 }
 
 static void MgRouletteSlide(OMOBJ *obj)
@@ -847,12 +1607,12 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     };
     static int battleCoinChanceTbl[5] = { 6, 6, 3, 3, 1 };
     static u32 battleMgSprTbl[6] = {
-        0x00010000,
-        0x00010000,
-        0x00010001,
-        0x00010002,
-        0x00010003,
-        0x00010004,
+        DATANUM(DATA_bbattle, MGCALL_BATTLE_FILE_COIN_SPRITE_0),
+        DATANUM(DATA_bbattle, MGCALL_BATTLE_FILE_COIN_SPRITE_0),
+        DATANUM(DATA_bbattle, MGCALL_BATTLE_FILE_COIN_SPRITE_1),
+        DATANUM(DATA_bbattle, MGCALL_BATTLE_FILE_COIN_SPRITE_2),
+        DATANUM(DATA_bbattle, MGCALL_BATTLE_FILE_COIN_SPRITE_3),
+        DATANUM(DATA_bbattle, MGCALL_BATTLE_FILE_COIN_SPRITE_4),
     };
 
     int i;
@@ -892,7 +1652,7 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     mbMusPlay(0, 25, 127, 0);
     workP->type = MG_TYPE_BATTLE;
     workP->sprId[1] = espEntry(
-        mbBoardDataNumGet(DATANUM(DATA_board, 0x84)), 95, 3);
+        mbBoardDataNumGet(DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE)), 95, 3);
     mbAudFXPlay(1115);
     posY = 88.0f;
     velY = 6.0f;
@@ -945,13 +1705,16 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
     mbAudFXPlay(0);
-    mbWinCreate(2, MgCallBattleMesGet(0x40000), mbGuideSpeakerNoGet());
+    mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_INTRO),
+        mbGuideSpeakerNoGet());
     mbWinTopWait();
     workP->sprId[7] = espEntry(
-        mbBoardDataNumGet(DATANUM(DATA_board, 0x8F)), 100, 0);
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_COIN_LABEL)), 100, 0);
     workP->sprId[8] = espEntry(
-        mbBoardDataNumGet(DATANUM(DATA_board, 0x90)), 99, 0);
-    for (i = 0; i < 30; i++) {
+        mbBoardDataNumGet(
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_COIN_NUMBER)), 99, 0);
+    for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
         pos.x = 288.0f;
         pos.y = 516.0f - (224.0f * weight);
@@ -1040,10 +1803,12 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     espDispOff(workP->sprId[8]);
     if (coinHighF) {
         mbAudGuidePlay(949);
-        mbWinCreate(2, MgCallBattleMesGet(0x40001), mbGuideSpeakerNoGet());
+        mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_COIN_HIGH),
+            mbGuideSpeakerNoGet());
     } else {
         mbAudGuidePlay(954);
-        mbWinCreate(2, MgCallBattleMesGet(0x40002), mbGuideSpeakerNoGet());
+        mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_COIN_LOW),
+            mbGuideSpeakerNoGet());
     }
     sprintf(str, "%d", coinTotal);
     mbWinTopInsertMesSet((u32)str, 0);
@@ -1079,7 +1844,8 @@ static int MgCallBattleExec(MGCALLWORK *workP)
             HU3D_MOTATTR_LOOP);
     }
     mbAudGuidePlay(952);
-    mbWinCreate(2, MgCallBattleMesGet(0x40003), mbGuideSpeakerNoGet());
+    mbWinCreate(2, MgCallBattleMesGet(MGCALL_MESSAGE_BATTLE_RESULT),
+        mbGuideSpeakerNoGet());
     mbWinTopWait();
     _SetFlag(FLAG_BOARD_MG);
     mbCameraEyeGet(&pos);
@@ -1102,16 +1868,37 @@ typedef struct MgCallBattlePlayer_s {
 static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
 {
     static const u32 battleCharFileTbl[11] = {
-        0x00050093, 0x00050094, 0x00050095, 0x00050096, 0x00050097, 0x00050098,
-        0x00050099, 0x0005009A, 0x0005009B, 0x0005009C, 0x0005009D,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_MARIO),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_LUIGI),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_PEACH),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_YOSHI),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_WARIO),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_DAISY),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_WALUIGI),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPIO),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_TERESA),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_MINIKOOPA),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPICO),
     };
     static const u32 battleMgDataTbl[6][3] = {
-        { 0x0005002D, 0x0005009E, 0x0005009E },
-        { 0x0005002E, 0x0005009F, 0x000500A0 },
-        { 0x00050030, 0x000500A1, 0x000500A1 },
-        { 0x0005003F, 0x000500A2, 0x000500A3 },
-        { 0x0005004F, 0x000500A4, 0x000500A4 },
-        { 0x00050050, 0x000500A5, 0x000500A5 },
+        { MG_NAME_M646,
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M646),
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M646) },
+        { MG_NAME_M647,
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M647_DAY),
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M647_NIGHT) },
+        { MG_NAME_M649,
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M649),
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M649) },
+        { MG_NAME_M664,
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M664_DAY),
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M664_NIGHT) },
+        { MG_NAME_M680,
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M680),
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M680) },
+        { MG_NAME_M681,
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M681),
+            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M681) },
     };
     static HuVec2f mgBattlePosTbl[4][3] = {
         { { 0.0f, 0.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f } },
@@ -1171,7 +1958,9 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
         pos.y = mgBattlePosTbl[listNum][i].y;
         espPosSet(workP->battleSprId[i], pos.x, pos.y);
         workP->battleNameSprId[i] = espEntry(
-            mbBoardDataNumGet(DATANUM(DATA_board, 0x91)), 150, 0);
+            mbBoardDataNumGet(
+                DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_NAME_BACKDROP)),
+            150, 0);
         espPosSet(workP->battleNameSprId[i],
             mgBattlePosTbl[listNum][i].x,
             mgBattlePosTbl[listNum][i].y + 80.0f);
@@ -1207,13 +1996,15 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
         }
         HuPrcVSleep();
     }
-    helpWinNo = mbWinCreateHelp(0x00040008);
+    helpWinNo = mbWinCreateHelp(MGCALL_MESSAGE_BATTLE_HELP);
     mbWinMesMaxSizeGet(helpWinNo, &winSize);
     mbWinPosSet(helpWinNo, 288.0f - (winSize.x / 2.0f), 340);
     for (battlePlayer = &playerAll[0], i = 0; i < GW_PLAYER_MAX;
          i++, battlePlayer++) {
         battlePlayer->cursorSprId = espEntry(
-            mbBoardDataNumGet(DATANUM(DATA_board, 0x92)), (i * 2) + 81, 0);
+            mbBoardDataNumGet(
+                DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_PLAYER_CURSOR)),
+            (i * 2) + 81, 0);
         battlePlayer->charSprId = espEntry(
             mbBoardDataNumGet(battleCharFileTbl[GwPlayer[i].charNo]),
             (i * 2) + 80, 0);
@@ -1484,13 +2275,90 @@ static int MgCallBattleCoinGet(void)
     return no;
 }
 
+void mbev_MgCallKettou(void)
+{
+    int i;
+    int result;
+    int sprId;
+    float weight;
+
+    _SetFlag(FLAG_MG_CIRCUIT);
+    mbPauseDisableSet(TRUE);
+    sprId = espEntry(mbBoardDataNumGet(mgCallTypeFileTbl[MG_TYPE_BATTLE]),
+        100, 0);
+    espPosSet(sprId, 288.0f, -32.0f);
+    espBankSet(sprId, MG_TYPE_KUPA);
+    for (i = 0; i < 30u; i++) {
+        weight = i / 30.0f;
+        espPosSet(sprId, 288.0f,
+            88.0f - (120.0f
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
+        HuPrcVSleep();
+    }
+    _SetFlag(FLAG_BOARD_MG_KETTOU);
+    result = MgRouletteExec(MG_TYPE_KETTOU, NULL);
+    MgCallCallMg(MG_TYPE_KETTOU, result);
+    espKill(sprId);
+    HuPrcSleep(-1);
+}
+
+void mbev_MgCallDonkey(void)
+{
+    int i;
+    int result;
+    int sprId;
+    float weight;
+
+    mbPauseDisableSet(TRUE);
+    sprId = espEntry(mbBoardDataNumGet(
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_DONKEY_TYPE)), 95, 0);
+    espPosSet(sprId, 288.0f, -32.0f);
+    espDrawNoSet(sprId, 32);
+    for (i = 0; i < 30u; i++) {
+        weight = i / 30.0f;
+        espPosSet(sprId, 288.0f,
+            88.0f - (120.0f
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
+        HuPrcVSleep();
+    }
+    _SetFlag(FLAG_BOARD_MG_DONKEY);
+    result = MgRouletteExec(MG_TYPE_DONKEY, NULL);
+    MgCallCallMg(MG_TYPE_DONKEY, result);
+    HuPrcSleep(-1);
+}
+
+void mbev_MgCallKoopa(void)
+{
+    int i;
+    int result;
+    int sprId;
+    float weight;
+
+    mbPauseDisableSet(TRUE);
+    sprId = espEntry(mbBoardDataNumGet(
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_KOOPA_TYPE)), 95, 0);
+    espPosSet(sprId, 288.0f, -32.0f);
+    espDrawNoSet(sprId, 32);
+    for (i = 0; i < 30u; i++) {
+        weight = i / 30.0f;
+        espPosSet(sprId, 288.0f,
+            88.0f - (120.0f
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
+        HuPrcVSleep();
+    }
+    _SetFlag(FLAG_BOARD_MG_KOOPA);
+    result = MgRouletteExec(MG_TYPE_KUPA, NULL);
+    MgCallCallMg(MG_TYPE_KUPA, result);
+    HuPrcSleep(-1);
+}
+
 static MGCALLSINGLETYPE mgCallSingleTypeTbl[] = {
-    { 0, MG_TYPE_4P, DATANUM(DATA_board, 0x84), 0 },
-    { 1, MG_TYPE_1VS3, DATANUM(DATA_board, 0x84), 1 },
-    { 2, MG_TYPE_2VS2, DATANUM(DATA_board, 0x84), 2 },
-    { 3, MG_TYPE_BATTLE, DATANUM(DATA_board, 0x84), 3 },
-    { 6, MG_TYPE_KETTOU, DATANUM(DATA_board, 0x84), 4 },
-    { 4, MG_TYPE_KUPA, DATANUM(DATA_board, 0x85), 0 },
+    { 0, MG_TYPE_4P, DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE), 0 },
+    { 1, MG_TYPE_1VS3, DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE), 1 },
+    { 2, MG_TYPE_2VS2, DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE), 2 },
+    { 3, MG_TYPE_BATTLE, DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE), 3 },
+    { 6, MG_TYPE_KETTOU, DATANUM(DATA_board, MGCALL_BOARD_FILE_TYPE), 4 },
+    { 4, MG_TYPE_KUPA, DATANUM(DATA_board, MGCALL_BOARD_FILE_KOOPA_TYPE), 0 },
     { -1, -1, -1, -1 },
 };
 
@@ -1670,10 +2538,314 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
     HuPrcSleep(-1);
 }
 
+static void MgCallCallMg(int type, int no)
+{
+    int id;
+    int readStat;
+
+    id = no + GW_MGNO_BASE;
+    GWMgUnlockSet(id);
+    GwSystem.mgNo = id - GW_MGNO_BASE;
+    if (mgCallHisPtr[type] != NULL) {
+        mgCallHisPtr[type][mgCallHisOfsTbl[type]] = id;
+        if (++mgCallHisOfsTbl[type] >= mgCallHisSize[type]) {
+            mgCallHisOfsTbl[type] = 0;
+        }
+    }
+    mgCallDataDir = MgDataTbl[no].dataDir;
+    mbDirClose();
+    readStat = mbBGRead(DATA_inst);
+    if (GwSystem.curTime && GWPartyGet()) {
+        mbWipeCreate(WIPE_MODE_OUT,
+            WIPE_TYPE_MOON | WIPE_TYPE_FBKEEP, 60);
+    } else {
+        mbWipeCreate(WIPE_MODE_OUT,
+            WIPE_TYPE_SUN | WIPE_TYPE_FBKEEP, 60);
+    }
+    mbMusFadeOutSpeed(MB_MUS_CHAN_BG, 1000);
+    mbMusFadeOutSpeed(MB_MUS_CHAN_FG, 1000);
+    mbAudFXStopAll(1000);
+    mbBGReadWait(readStat);
+    mbWipeSpecialWait();
+    GwMgNightF = !GwSystem.curTime;
+    mbOvlCall(DLL_instdll);
+}
+
 void mbMgCallDataClose(void)
 {
     if (mgCallDataDir != -1) {
         HuDataDirClose(mgCallDataDir);
+    }
+}
+
+void mbev_MgCallTutorial(void)
+{
+    MGCALLWORK work;
+    Mtx explodeMtx;
+    HuVecF pos;
+    HuVecF posNew;
+    HuVecF explodePos2D;
+    HuVecF explodePos3D;
+    int colorTbl[GW_PLAYER_MAX];
+    int i;
+    MGCALLWORK *workP;
+    s16 winNo;
+    MBCAMERA *cameraP;
+    MGLISTWORK *listWork;
+    OMOBJ *listObj;
+    float weight;
+    float scale;
+
+    workP = &work;
+    cameraP = mbCameraGet();
+    mbWipeDissolveFadeIn();
+    mbAudFXPlay(0);
+    mbWinCreate(MBWIN_TYPE_GUIDE, MGCALL_TUTORIAL_MESSAGE_BEGIN, -1);
+    mbWinTopWait();
+    mbWinCreate(MBWIN_TYPE_GUIDE, MGCALL_TUTORIAL_MESSAGE_ENDTURN, -1);
+    mbWinTopWait();
+
+    pos.x = pos.y = pos.z = 0.0f;
+    posNew = pos;
+    for (i = 0; i <= 12u; i++) {
+        weight = i / 12.0f;
+        posNew.y = pos.y + (weight * (119.0f - pos.y));
+        HuPrcVSleep();
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        mgStatusPos4P[i].y += 64.0f;
+        mgStatusPos1Vs3[i].y += 64.0f;
+        mgStatusPos2Vs2[i].y += 64.0f;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        mbStatusPosOnGet(i, &pos);
+        mbStatusMoveSet(i, &pos, (HuVecF *)&mgStatusPos4P[i],
+            STATUS_MOVE_SIN, 15);
+    }
+    while (!mbStatusOffCheckAll()) {
+        HuPrcVSleep();
+    }
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_STATUS, -1);
+    mbWinTopWait();
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        colorTbl[i] = STATUS_COLOR_BLUE;
+    }
+    SetupTeam(colorTbl);
+    workP->sprId[2] = espEntry(
+        mbBoardDataNumGet(DATANUM(DATA_board, MGCALL_BOARD_FILE_VERSUS)),
+        100, 0);
+    espPosSet(workP->sprId[2], 288.0f, 304.0f);
+    for (i = 0; i < 30u; i++) {
+        weight = i / 30.0f;
+        scale = 1.5 + sin((M_PI * (360.0f * weight)) / 180.0);
+        if (weight < 0.2f) {
+            scale *= weight / 0.2f;
+        }
+        espScaleSet(workP->sprId[2], scale, scale);
+        HuPrcVSleep();
+    }
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_4P, -1);
+    mbWinTopWait();
+    colorTbl[1] = STATUS_COLOR_RED;
+    colorTbl[3] = STATUS_COLOR_RED;
+    SetupTeam(colorTbl);
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_GROUP, -1);
+    mbWinTopWait();
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_2VS2, -1);
+    mbWinTopWait();
+    colorTbl[0] = STATUS_COLOR_RED;
+    SetupTeam(colorTbl);
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_1VS3, -1);
+    mbWinTopWait();
+    colorTbl[0] = STATUS_COLOR_BLUE;
+    colorTbl[1] = STATUS_COLOR_BLUE;
+    SetupTeam(colorTbl);
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_3VS1, -1);
+    mbWinTopWait();
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_TYPE, -1);
+    mbWinTopWait();
+    mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_CALL, -1);
+    mbWinTopWait();
+
+    workP->sprId[0] = espEntry(
+        mbBoardDataNumGet(mgCallTypeFileTbl[1]), 1500, 0);
+    espPosSet(workP->sprId[0], 288.0f, -32.0f);
+    espDrawNoSet(workP->sprId[0], 32);
+    for (i = 0; i < 30u; i++) {
+        weight = i / 30.0f;
+        espPosSet(workP->sprId[0], 288.0f,
+            88.0f - (120.0f
+                * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
+        HuPrcVSleep();
+    }
+    for (i = 0; i < 60u; i++) {
+        weight = i / 60.0f;
+        scale = 1.5
+            + (0.8 * sin((M_PI
+                * (weight * (720.0f + (720.0f * weight)))) / 180.0));
+        espScaleSet(workP->sprId[2], scale, scale);
+        HuPrcVSleep();
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        mbStatusPosGet(i, &pos);
+        if (pos.x >= 0.0f) {
+            pos.x = 704.0f;
+        } else {
+            pos.x = -128.0f;
+        }
+        mbStatusMoveSet(i, NULL, &pos, STATUS_MOVE_SIN, 15);
+    }
+    workP->sprId[3] = mbObjCreate(
+        mbBoardDataNumGet(DATANUM(DATA_board,
+            MGCALL_BOARD_FILE_EFFECT_EXPLODE)), NULL, FALSE);
+    mbObjLayerSet(workP->sprId[3], 6);
+    explodePos2D.x = 288.0f;
+    explodePos2D.y = 304.0f;
+    explodePos2D.z = 500.0f;
+    mbPos2Dto3D(&explodePos2D, &explodePos3D);
+    mbObjPosSetV(workP->sprId[3], &explodePos3D);
+    C_MTXLookAt(explodeMtx, &cameraP->eye, &cameraP->up, &explodePos3D);
+    PSMTXInverse(explodeMtx, explodeMtx);
+    explodeMtx[0][3] = explodeMtx[1][3] = explodeMtx[2][3] = 0.0f;
+    mbObjMtxSet(workP->sprId[3], &explodeMtx);
+    espKill(workP->sprId[2]);
+    workP->sprId[2] = -1;
+    mbAudFXPlay(MSM_SE_BRD00_109);
+    for (i = 0; i < 30u; i++) {
+        weight = i / 30.0f;
+        scale = ((1.0f + (5.0f * weight))
+            + (0.5 * sin((M_PI * (16.0f * (weight * 360.0f))) / 180.0)))
+            * 0.4;
+        mbObjScaleSet(workP->sprId[3], scale, scale, scale);
+        if (i >= 25) {
+            mbObjAlphaSet(workP->sprId[3],
+                (int)(255.0 * cos((M_PI
+                    * (90.0f * ((i - 25) / 5.0f))) / 180.0)));
+        }
+        HuPrcVSleep();
+    }
+    mbObjKill(workP->sprId[3]);
+    workP->sprId[3] = -1;
+    while (!mbStatusOffCheckAll()) {
+        HuPrcVSleep();
+    }
+    MgRouletteExec(MG_TYPE_1VS3, workP);
+    winNo = mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_BATTLE, -1);
+    mbWinWait(winNo);
+    winNo = mbWinCreate(MBWIN_TYPE_RESULT, MGCALL_TUTORIAL_MESSAGE_COIN, -1);
+    mbWinWait(winNo);
+    mbWipeDissolveFadeOut();
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        if ((u32)mgListObj[i] != 0) {
+            listObj = mgListObj[i];
+            listWork = omObjGetWork(listObj, MGLISTWORK);
+            listWork->killF = TRUE;
+        }
+    }
+    espKill(workP->sprId[0]);
+}
+
+static void MgCallVsEffCreate(void)
+{
+    MGCALLVSEFFWORK *work;
+    int i;
+
+    mgCallVsEffOMObj = omAddObjEx(mbObjMan,
+        MGCALL_VS_EFFECT_OBJECT_PRIORITY, 0, 0, -1, MgCallVsEffOMExec);
+    work = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT, HU_MEMNUM_OVL);
+    mgCallVsEffOMObj->data = work;
+    memset(work, 0, sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT);
+    mgCallVsEffOMObj->work[0] = mgCallVsEffOMObj->work[1]
+        = mgCallVsEffOMObj->work[2] = mgCallVsEffOMObj->work[3] = 0;
+    for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+        work->activeF = FALSE;
+        work->sprId = espEntry(
+            mbBoardDataNumGet(DATANUM(
+                DATA_board, MGCALL_BOARD_FILE_VERSUS_EFFECT)),
+            MGCALL_VS_EFFECT_SPRITE_PRIORITY, i % 4);
+        espDispOff(work->sprId);
+        work->time = 0;
+        work->maxTime = 0;
+        work->scaleStep = 1.0f;
+        work->scaleBase = 1.0f;
+        work->zRotStep = 0.0f;
+    }
+}
+
+static void MgCallVsEffOMExec(OMOBJ *obj)
+{
+    MGCALLVSEFFWORK *work = obj->data;
+    int i;
+    float weight;
+    float scale;
+
+    if (obj->work[3] != 0 && MgCallVsEffNumGet() <= 0) {
+        mgCallVsEffOMObj = NULL;
+    }
+    if (mbExitCheck() || mgCallVsEffOMObj == NULL) {
+        for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+            espKill(work->sprId);
+        }
+        omDelObjEx(mbObjMan, obj);
+        mgCallVsEffOMObj = NULL;
+        return;
+    }
+    for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+        if (work->activeF) {
+            weight = (float)++work->time / work->maxTime;
+            PSVECAdd(&work->pos, &work->vel, &work->pos);
+            work->zRot += work->zRotStep;
+            scale = work->scaleBase + (weight * work->scaleStep);
+            espPosSet(work->sprId, work->pos.x, work->pos.y);
+            espScaleSet(work->sprId,
+                work->scaleX * scale, work->scaleY * scale);
+            espZRotSet(work->sprId, work->zRot);
+            espTPLvlSet(work->sprId,
+                cos((M_PI * (90.0f * weight)) / 180.0));
+            if (weight >= 1.0f) {
+                work->activeF = FALSE;
+                espDispOff(work->sprId);
+            }
+        }
+    }
+}
+
+static void MgCallVsEffPosSet(float x, float y)
+{
+    MGCALLVSEFFWORK *work = mgCallVsEffOMObj->data;
+    int i;
+    float angle;
+    float speed;
+    GXColor color;
+
+    for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+        if (!work->activeF) {
+            angle = 360.0f * frandf();
+            speed = 15.0f * (0.3f + (0.7f * frandf()));
+            work->activeF = TRUE;
+            work->time = 0;
+            work->maxTime = (int)(60.0f * (0.5f + (0.5f * frandf())));
+            work->scaleStep = 0.5f + (0.5f * frandf());
+            work->scaleBase = 0.2f + (0.2f * frandf());
+            work->zRotStep = 3.0f * (frandf() - 0.5f);
+            work->pos.x = x;
+            work->pos.y = y;
+            work->vel.x = speed * sin((M_PI * angle) / 180.0);
+            work->vel.y = speed * cos((M_PI * angle) / 180.0);
+            work->scaleX = 1.0f + frandf();
+            work->scaleY = 1.0f + frandf();
+            work->zRot = frandf();
+            mbev_CapEffColorSet(&color, frand() % 7);
+            espPosSet(work->sprId, work->pos.x, work->pos.y);
+            espScaleSet(work->sprId,
+                work->scaleX * work->scaleBase,
+                work->scaleY * work->scaleBase);
+            espZRotSet(work->sprId, work->zRot);
+            espColorSet(work->sprId, color.r, color.g, color.b);
+            espTPLvlSet(work->sprId, 1.0f);
+            espDispOn(work->sprId);
+        }
     }
 }
 
@@ -1682,9 +2854,72 @@ static void MgCallVsEffKill(void)
     mgCallVsEffOMObj = NULL;
 }
 
+static int MgCallVsEffNumGet(void)
+{
+    MGCALLVSEFFWORK *work;
+    int i;
+    int num;
+
+    if (mgCallVsEffOMObj == NULL) {
+        return 0;
+    }
+    work = mgCallVsEffOMObj->data;
+    num = 0;
+    for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+        if (work->activeF) {
+            num++;
+        }
+    }
+    return num;
+}
+
+int mbMgCallVsEffCreate(void)
+{
+    MGCALLVSEFFWORK *work;
+    int i;
+
+    mgCallVsEffOMObj = omAddObjEx(mbObjMan,
+        MGCALL_VS_EFFECT_OBJECT_PRIORITY, 0, 0, -1, MgCallVsEffOMExec);
+    work = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT, HU_MEMNUM_OVL);
+    mgCallVsEffOMObj->data = work;
+    memset(work, 0, sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT);
+    mgCallVsEffOMObj->work[0] = mgCallVsEffOMObj->work[1]
+        = mgCallVsEffOMObj->work[2] = mgCallVsEffOMObj->work[3] = 0;
+    for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+        work->activeF = FALSE;
+        work->sprId = espEntry(
+            mbBoardDataNumGet(DATANUM(
+                DATA_board, MGCALL_BOARD_FILE_VERSUS_EFFECT)),
+            MGCALL_VS_EFFECT_SPRITE_PRIORITY, i % 4);
+        espDispOff(work->sprId);
+        work->time = 0;
+        work->maxTime = 0;
+        work->scaleStep = 1.0f;
+        work->scaleBase = 1.0f;
+        work->zRotStep = 0.0f;
+    }
+    MgCallVsEffPosSet(288.0f, 240.0f);
+    mgCallVsEffOMObj->work[3] = TRUE;
+    return 60;
+}
+
 BOOL mbMgCallSingleOnCheck(void)
 {
     return TRUE;
+}
+
+int mbMgRouletteNumGet(int type)
+{
+    static int defaultHeightTbl[MG_TYPE_MAX] = {
+        4, 3, 3, 3, 3, 3, 3, 3, 3,
+    };
+    s16 noTbl[128];
+    int height;
+
+    height = defaultHeightTbl[type];
+    height = MgRouletteNumGet(type, height, noTbl);
+    return height;
 }
 
 static u32 MgCallBattleMesGet(u32 mess)

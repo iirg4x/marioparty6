@@ -34,7 +34,7 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
 OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BOOL layerF);
 OMOBJ *mbGuideCreateIn(void);
 void mbGuideKill(OMOBJ *obj);
-void mbGuideEnd(OMOBJ *obj);
+void mbGuideEnd(OMOBJ *obj, BOOL endF);
 void mbGuideFadeIn(OMOBJ *obj);
 void mbGuideFadeOut(OMOBJ *obj);
 int mbGuideModelGet(OMOBJ *obj);
@@ -58,7 +58,7 @@ void mbObjMotionSet(int modelId, int motNo, u32 attr);
 void mbObjMotionShiftSet(int modelId, int motNo, float start, float end, BOOL loopF);
 void mbObjPosSetV(int modelId, HuVecF *pos);
 void mbObjPosGet(int modelId, HuVecF *pos);
-void mbObjRotSet(MBMODELID modelId, float rotX, float rotY, float rotZ);
+void mbObjRotSet(int modelId, float rotX, float rotY, float rotZ);
 void mbObjRotSetV(int modelId, HuVecF *rot);
 void mbObjScaleSet(int modelId, float x, float y, float z);
 void mbObjScaleGet(int modelId, HuVecF *scale);

@@ -1053,6 +1053,6 @@ float mbCameraPlayerViewRotXGet(int viewNo)
     return viewData[viewNo].rotX;
 }
 
-void mbCameraMultiFocusSet(void)
+void mbCameraMultiFocusSet(int arg0, int arg1, double arg2, int arg3)
 {
 }
