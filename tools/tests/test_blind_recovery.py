@@ -78,6 +78,12 @@ typedef struct Packet {
         self.assertIn("opaque-storage", padding_ids)
         self.assertIn("opaque-identifier", padding_ids)
 
+    def test_organicity_does_not_treat_member_access_as_storage(self):
+        result = score_organicity("int value = attribute->unk8[2];\n")
+        finding_ids = {item.id for item in result.findings}
+        self.assertNotIn("opaque-storage", finding_ids)
+        self.assertIn("opaque-identifier", finding_ids)
+
     def test_organicity_flags_machine_rendered_float_literals(self):
         rendered = """
 float scale = 1.2000000476837158f;
@@ -87,6 +93,7 @@ float unit = 3.0518509447574615e-05f;
 #define M_PI 3.141592653589793
 float scale = 1.2f;
 float unit = 1.0f / 32767.0f;
+float epsilon = 0.000001f;
 """
 
         rendered_ids = {item.id for item in score_organicity(rendered).findings}

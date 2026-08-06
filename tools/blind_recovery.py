@@ -436,7 +436,8 @@ _ORGANIC_RULES: tuple[tuple[str, str, int, str, re.Pattern[str], str], ...] = (
         8,
         "Long decimal tails with repeated zeroes or nines need a natural source spelling and exact pool proof.",
         re.compile(
-            r"(?<![A-Za-z0-9_])[0-9]+\.[0-9]*(?:00000|99999)[0-9]*[fF]?\b"
+            r"(?<![A-Za-z0-9_])[0-9]+\."
+            r"(?=[0-9]{9,}[fF]?\b)[0-9]*(?:00000|99999)[0-9]*[fF]?\b"
         ),
         "medium",
     ),
@@ -446,7 +447,7 @@ _ORGANIC_RULES: tuple[tuple[str, str, int, str, re.Pattern[str], str], ...] = (
         4,
         "Opaque raw/blob/tail/padding storage remains semantic recovery debt.",
         re.compile(
-            r"\b(?:(?:raw|blob|tail|opaque|padding|reserved|unk)[A-Za-z0-9_]*"
+            r"(?<![.>])\b(?:(?:raw|blob|tail|opaque|padding|reserved|unk)[A-Za-z0-9_]*"
             r"|pad(?:_[A-Za-z0-9_]*|[0-9][A-Za-z0-9_]*)?)\s*\[",
             re.IGNORECASE,
         ),

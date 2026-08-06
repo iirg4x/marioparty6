@@ -223,6 +223,26 @@ class RecoveryWorkflowTests(unittest.TestCase):
                 ],
             )
 
+    def test_quality_flags_opaque_declarations_not_member_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            source = root / "src/new.c"
+            source.write_text(
+                "typedef struct Work { unsigned char unk10[4]; } Work;\n"
+                "int value = attribute->unk8[2];\n",
+                encoding="utf-8",
+            )
+            data = load(root)
+            data["owners"] = [
+                {**data["owners"][0], "source": "src/new.c"}
+            ]
+            findings = quality_findings(data, full=True)
+            self.assertEqual(
+                [(item["line"], item["rule"]) for item in findings],
+                [(1, "opaque_blob")],
+            )
+
     def test_quality_flags_self_assignment(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

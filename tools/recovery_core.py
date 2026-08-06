@@ -209,7 +209,10 @@ QUALITY_RULES: dict[str, tuple[str, re.Pattern[str]]] = {
             re.I,
         ),
     ),
-    "opaque_blob": ("opaque raw/tail/blob storage needs consumer analysis", re.compile(r"\b(?:raw|tail|blob|opaque|unk)\w*\s*\[[^\]]+\]", re.I)),
+    "opaque_blob": (
+        "opaque raw/tail/blob storage needs consumer analysis",
+        re.compile(r"(?<![.>])\b(?:raw|tail|blob|opaque|unk)\w*\s*\[[^\]]+\]", re.I),
+    ),
     "dead_branch": ("compile-time dead branches must not be codegen scaffolds", re.compile(r"^\s*#\s*if\s+0\b")),
     "raw_hex_literal": (
         "raw hexadecimal literals are forbidden in recovered C; use a named, evidence-backed constant",
