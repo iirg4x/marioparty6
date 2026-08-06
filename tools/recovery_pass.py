@@ -1496,6 +1496,13 @@ def build_worker_packet(
         and not any(card.get("id") == POOL_OWNERSHIP_CARD for card in knowledge_cards)
     ):
         knowledge_cards.extend(select_cards(root, [POOL_OWNERSHIP_CARD]))
+    graph_context = report.get("graphify")
+    if isinstance(graph_context, Mapping):
+        graph_context = dict(graph_context)
+        if graph_context.get("refresh_needed"):
+            graph_context.pop("refresh_command", None)
+            graph_context.pop("refresh_working_directory", None)
+            graph_context["refresh_owner"] = "root-orchestrator-only"
     return {
         "schema_version": WORKER_PACKET_SCHEMA_VERSION,
         "kind": "same-owner-recovery",
@@ -1512,7 +1519,7 @@ def build_worker_packet(
         "function_evidence": evidence,
         "knowledge_cards": knowledge_cards,
         "probe_history": probe_history_summary(root, unit_name, dispatch["functions"]),
-        "graphify": report.get("graphify"),
+        "graphify": graph_context,
         "budgets": {
             "preferred_functions": [PREFERRED_PACKET_MIN_FUNCTIONS, PREFERRED_PACKET_MAX_FUNCTIONS],
             "preferred_target_bytes": [PREFERRED_PACKET_MIN_BYTES, PREFERRED_PACKET_MAX_BYTES],
@@ -2215,7 +2222,7 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         if graph.get("missing_functions"):
             lines.append("- Missing current functions: " + ", ".join(f"`{name}`" for name in graph["missing_functions"][:20]))
         if graph.get("refresh_needed"):
-            lines.append(f"- Refresh serially from `{graph['refresh_working_directory']}` with `{graph['refresh_command']}`.")
+            lines.append("- Refresh is root-orchestrator-only and must not create `graphify-out` beneath a source directory.")
         for item in graph["cross_file_call_neighbors"][:8]:
             lines.append(f"- `{item['source']}`: {item['edges']} call edges")
     lines += ["", "## Literal decoding", ""]

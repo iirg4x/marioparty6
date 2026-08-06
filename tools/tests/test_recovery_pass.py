@@ -612,7 +612,12 @@ class RecoveryPassTests(unittest.TestCase):
                     }
                 ],
                 "shared_cause_clusters": [],
-                "graphify": {"fresh": True},
+                "graphify": {
+                    "fresh": False,
+                    "refresh_needed": True,
+                    "refresh_command": "graphify update src/board",
+                    "refresh_working_directory": "src/board",
+                },
             }
             report["ranked_functions"].reverse()
             packet = module.build_worker_packet(
@@ -672,6 +677,9 @@ class RecoveryPassTests(unittest.TestCase):
         self.assertIn("tools.serialized_build", packet["commands"]["build"])
         self.assertIn("tools/blind_recovery.py", packet["commands"]["organicity"])
         self.assertIn("--baseline-strict", packet["commands"]["verify"])
+        self.assertEqual(packet["graphify"]["refresh_owner"], "root-orchestrator-only")
+        self.assertNotIn("refresh_command", packet["graphify"])
+        self.assertIn("Graphify is stale", prompt)
         self.assertIn(".sdata2/.rodata", prompt)
         self.assertIn("do not split the caller", prompt)
         self.assertIn("12-20 functions", prompt)
