@@ -149,8 +149,8 @@
     },
     "consumer-triangulation-before-opaque-aggregate-overlay": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "45f5068c36fe41c27d41b5568afadc0febc7dd7e",
+      "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
@@ -336,7 +336,7 @@
     },
     "gc26-revalidate-stale-library-guard-exceptions": {
       "status": "active",
-      "validated_commit": "596bb7db7fd2243517f114bf87b6c8fe612168e8",
+      "validated_commit": "45f5068c36fe41c27d41b5568afadc0febc7dd7e",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -480,8 +480,8 @@
     },
     "mwcc-narrow-assignment-wide-lifetime-extension-scheduling": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "45f5068c36fe41c27d41b5568afadc0febc7dd7e",
+      "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_narrow_assignment_lifetime.md",
@@ -493,8 +493,8 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "45f5068c36fe41c27d41b5568afadc0febc7dd7e",
+      "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_player_value_lifetimes.md",
@@ -510,8 +510,8 @@
     },
     "gc26-o0-definition-order-and-call-evaluation": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "45f5068c36fe41c27d41b5568afadc0febc7dd7e",
+      "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_board_capsule_call_chronology.md",
