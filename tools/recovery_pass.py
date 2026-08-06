@@ -67,6 +67,13 @@ PREFERRED_PACKET_MIN_FUNCTIONS = 12
 PREFERRED_PACKET_MAX_FUNCTIONS = 20
 PREFERRED_PACKET_MIN_BYTES = 3072
 PREFERRED_PACKET_MAX_BYTES = 6144
+PROBE_HISTORY = Path("build/board-autonomy/batch-history.json")
+WORKER_PACKET_SCHEMA_VERSION = 1
+WORKER_PROBE_BUDGETS = {
+    "structural_or_type": 10,
+    "declaration_or_include": 6,
+    "compiler_reconciliation": 3,
+}
 
 
 @dataclass(frozen=True)
@@ -1246,6 +1253,357 @@ def preferred_missing_definition_packet(
     }
 
 
+def worker_dispatch(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Choose work that can produce a measured result without reopening dead ends."""
+    strict_delta = report.get("strict_delta") or {}
+    value_delta = report.get("data_value_delta") or {}
+    regressions = sorted(
+        set(strict_delta.get("regressed_exact", []))
+        | set(value_delta.get("regressed_exact", []))
+    )
+    ranked = list(report.get("ranked_functions", []))
+    by_name = {str(item.get("function")): item for item in ranked}
+    if regressions:
+        return {
+            "mode": "regression_reconciliation",
+            "ready": True,
+            "reason": "repair or revert exact regressions before opening new work",
+            "functions": regressions,
+            "function_count": len(regressions),
+            "target_bytes": sum(number(by_name.get(name, {}).get("target_bytes")) for name in regressions),
+        }
+
+    pending = [item for item in ranked if item.get("source_pending_build")]
+    if pending:
+        pending.sort(key=lambda item: (number(item.get("target_rank")), str(item.get("function"))))
+        return {
+            "mode": "verification_first",
+            "ready": True,
+            "reason": "source definitions changed after the compiled object; establish a clean baseline before more edits",
+            "functions": [str(item["function"]) for item in pending],
+            "function_count": len(pending),
+            "target_bytes": sum(number(item.get("target_bytes")) for item in pending),
+        }
+
+    preferred = report.get("preferred_implementation_packet")
+    if isinstance(preferred, Mapping) and preferred.get("functions"):
+        return {
+            "mode": "implementation",
+            "ready": True,
+            "bulk_bounds_met": bool(preferred.get("ready")),
+            "reason": "dependency-closed missing-definition packet in target order",
+            "functions": list(preferred["functions"]),
+            "function_count": number(preferred.get("function_count")),
+            "target_bytes": number(preferred.get("target_bytes")),
+        }
+
+    clusters = [
+        item for item in report.get("shared_cause_clusters", [])
+        if item.get("actionable") and not item.get("owner_audit_only")
+    ]
+    if clusters:
+        cluster = clusters[0]
+        return {
+            "mode": (
+                "implementation" if cluster.get("implementation_ready")
+                else "bounded_shared_cause_probe"
+            ),
+            "ready": True,
+            "bulk_bounds_met": (
+                number(cluster.get("function_count")) >= PREFERRED_PACKET_MIN_FUNCTIONS
+                or number(cluster.get("target_bytes")) >= PREFERRED_PACKET_MIN_BYTES
+            ),
+            "reason": str(cluster.get("actionability_reason") or cluster.get("cause")),
+            "cluster_id": cluster.get("cluster_id"),
+            "functions": list(cluster.get("functions", [])),
+            "function_count": number(cluster.get("function_count")),
+            "target_bytes": number(
+                cluster.get("implementation_target_bytes", cluster.get("target_bytes"))
+            ),
+        }
+
+    return {
+        "mode": "rotate_owner",
+        "ready": False,
+        "reason": "no dependency-closed implementation packet or evidence-linked shared-cause cluster",
+        "functions": [],
+        "function_count": 0,
+        "target_bytes": 0,
+    }
+
+
+def probe_history_summary(
+    root: Path,
+    unit_name: str,
+    functions: Sequence[str],
+    *,
+    history: Path = PROBE_HISTORY,
+) -> dict[str, Any]:
+    """Return compact owner-local negative/duplicate evidence for prompt deduplication."""
+    path = history if history.is_absolute() else root / history
+    if not path.is_file():
+        return {"path": _repo_relative(root, path), "status": "missing", "records": []}
+    try:
+        payload = read_json(path)
+    except ValueError as exc:
+        return {"path": str(path), "status": "invalid", "warning": str(exc), "records": []}
+    probes = payload.get("probes", {}) if isinstance(payload, Mapping) else {}
+    if not isinstance(probes, Mapping):
+        return {"path": str(path), "status": "invalid", "warning": "probes is not an object", "records": []}
+    aliases = {unit_name}
+    if unit_name.startswith("main/"):
+        aliases.add("main:" + unit_name[len("main/"):])
+    selected = set(functions)
+    records: list[dict[str, Any]] = []
+    for record in probes.values():
+        if not isinstance(record, Mapping) or record.get("owner") not in aliases:
+            continue
+        symbol = str(record.get("symbol", ""))
+        if selected and symbol not in selected:
+            continue
+        records.append(
+            {
+                "symbol": symbol,
+                "probe_key": record.get("probe_key"),
+                "status": record.get("status"),
+                "reason": record.get("reason"),
+                "duplicate_of": record.get("duplicate_of"),
+                "commit": record.get("commit"),
+            }
+        )
+    records.sort(key=lambda item: (str(item["symbol"]), str(item["probe_key"])))
+    return {
+        "path": _repo_relative(root, path),
+        "status": "available",
+        "records": records,
+    }
+
+
+def _repo_relative(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(path.resolve())
+
+
+def build_worker_packet(
+    root: Path,
+    unit: Mapping[str, Any],
+    report: Mapping[str, Any],
+    output: Path,
+    strict_baseline: Path,
+    value_baseline: Path,
+) -> dict[str, Any]:
+    """Build a concise, executor-ready contract for one Luna lane."""
+    dispatch = worker_dispatch(report)
+    wanted = set(dispatch["functions"])
+    ranked_by_name = {
+        str(item.get("function")): item
+        for item in report.get("ranked_functions", [])
+    }
+    evidence = []
+    for name in dispatch["functions"]:
+        item = ranked_by_name.get(str(name))
+        if item is None:
+            continue
+        evidence.append(
+            {
+                "function": item.get("function"),
+                "target_rank": item.get("target_rank"),
+                "target_bytes": item.get("target_bytes"),
+                "category": item.get("category"),
+                "strict_match_percent": item.get("strict_match_percent"),
+                "strict_diff_rows": item.get("strict_diff_rows"),
+                "diff_kind_shape": item.get("diff_kind_shape"),
+                "target_calls": item.get("target_call_skeleton", []),
+                "diagnostics": item.get("diagnostics", []),
+                "safe_actions": item.get("safe_actions", [])[:3],
+            }
+        )
+    source = str(report["source"])
+    unit_name = str(report["unit"])
+    owner = "main:" + unit_name[len("main/"):] if unit_name.startswith("main/") else unit_name
+    for item in evidence:
+        item["internal_dependencies"] = [
+            call for call in item["target_calls"] if call in wanted
+        ]
+    identity = {
+        "unit": unit_name,
+        "source": source,
+        "target_object": str(unit.get("target_path", "")),
+        "candidate_object": str(unit.get("base_path", "")),
+        "target_sha256": file_hash(root / str(unit.get("target_path", ""))),
+        "candidate_sha256": file_hash(root / str(unit.get("base_path", ""))),
+        "source_sha256": file_hash(root / source),
+        "functions": [
+            {
+                "function": item["function"],
+                "target_rank": item["target_rank"],
+                "target_bytes": item["target_bytes"],
+                "target_calls": item["target_calls"],
+            }
+            for item in evidence
+        ],
+    }
+    input_key = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    packet_id = input_key
+    for item in evidence:
+        item["probe"] = {
+            "probe_key": (
+                f"{dispatch['mode']}/{packet_id[:16]}/{item['function']}"
+            ),
+            "input_key": input_key,
+            "history": PROBE_HISTORY.as_posix(),
+        }
+    verification = output / "worker-verification"
+    report_command = [
+        "rtk", "python", "tools/recovery_pass.py", unit_name,
+        "--no-build", "--force",
+        "--output-dir", _repo_relative(root, verification),
+        "--baseline-strict", _repo_relative(root, strict_baseline),
+        "--baseline-value", _repo_relative(root, value_baseline),
+    ]
+    return {
+        "schema_version": WORKER_PACKET_SCHEMA_VERSION,
+        "kind": "same-owner-recovery",
+        "packet_id": packet_id,
+        "input_key": input_key,
+        "owner": owner,
+        "unit": unit_name,
+        "source": source,
+        "target_object": str(unit.get("target_path", "")),
+        "candidate_object": str(unit.get("base_path", "")),
+        "commit": report.get("commit"),
+        "dispatch": dispatch,
+        "baseline": dict(report.get("summary", {})),
+        "function_evidence": evidence,
+        "knowledge_cards": list(report.get("selected_knowledge_cards", [])),
+        "probe_history": probe_history_summary(root, unit_name, dispatch["functions"]),
+        "graphify": report.get("graphify"),
+        "budgets": {
+            "preferred_functions": [PREFERRED_PACKET_MIN_FUNCTIONS, PREFERRED_PACKET_MAX_FUNCTIONS],
+            "preferred_target_bytes": [PREFERRED_PACKET_MIN_BYTES, PREFERRED_PACKET_MAX_BYTES],
+            "max_probes": dict(WORKER_PROBE_BUDGETS),
+        },
+        "commands": {
+            "build": [
+                "rtk", "python", "-m", "tools.serialized_build", "--root", ".",
+                str(unit["base_path"]),
+            ],
+            "verify": report_command,
+            "knowledge": [
+                "rtk", "python", "tools/agent.py", "knowledge", "owner", unit_name,
+                "--limit", "8",
+            ],
+            "organicity": [
+                "rtk", "python", "tools/blind_recovery.py", "organicity", source,
+                "--json",
+            ],
+            "context": [
+                "rtk", "python", "tools/agent.py", "context", "owner", owner,
+                "--budget", "12000", "--knowledge-limit", "5", "--local-evidence",
+            ],
+            "probe_lookups": [
+                [
+                    "rtk", "python", "tools/agent.py", "probe", "lookup",
+                    "--owner", owner,
+                    "--symbol", str(item["function"]),
+                    "--probe-key", str(item["probe"]["probe_key"]),
+                    "--input-key", input_key,
+                    "--history", PROBE_HISTORY.as_posix(),
+                    "--json",
+                ]
+                for item in evidence
+            ],
+        },
+        "acceptance_gates": [
+            "Use the machine-wide serialized build only; never launch a parallel retail build.",
+            "Keep edits inside the assigned source and do not create branches, worktrees, commits, or pushes.",
+            "Require zero strict-exact and data-value-exact regressions against this packet baseline.",
+            "Retain a pass only when it gains strict-exact work or closes a necessary dependency of a gained exact caller.",
+            "For literal, macro, include, or static-data edits, compare affected .sdata2/.rodata bytes and relocations; function text alone is not proof.",
+            "Use natural target-backed C; no raw hexadecimal literals, scientific notation, invented names/types/padding, inline assembly, or match-only cast tricks.",
+            "Run the repository organicity review on the complete source; resolve each finding with target/provenance evidence instead of treating the numeric score as authenticity proof.",
+            "Record a rejected probe in the ledger and never repeat a listed probe without new target or provenance evidence.",
+        ],
+        "continuation": (
+            "After each accepted build, rerun the pass report and take the next dependency-closed packet in this same source "
+            "until 12-20 functions or 3072-6144 target bytes are measured, the owner closes, or the report says rotate_owner."
+        ),
+        "handoff": {
+            "keep_one_owner_scope": True,
+            "status_until_owner_closure": "coding",
+            "report_retained_exact_functions_and_bytes": True,
+            "report_rejected_probe_keys": True,
+            "report_organicity_findings": True,
+        },
+    }
+
+
+def render_worker_prompt(packet: Mapping[str, Any]) -> str:
+    """Render the packet as a low-context handoff that Luna can execute directly."""
+    dispatch = packet["dispatch"]
+    lines = [
+        f"# Luna recovery packet: `{packet['unit']}`",
+        "",
+        f"Packet ID: `{packet['packet_id']}`.",
+        f"Work only in `{packet['source']}`. You share this worktree with other workers; preserve their edits.",
+        f"Dispatch mode: **{dispatch['mode']}** - {dispatch['reason']}.",
+    ]
+    if dispatch["functions"]:
+        lines += [
+            f"Measured scope: **{dispatch['function_count']} functions / {dispatch['target_bytes']} target bytes**.",
+            "Target-order functions: " + ", ".join(f"`{name}`" for name in dispatch["functions"]),
+        ]
+    else:
+        lines.append("Do not spend an implementation lane here; report `rotate_owner` immediately.")
+    graph = packet.get("graphify")
+    if isinstance(graph, Mapping) and not graph.get("fresh"):
+        lines.append(
+            "Graphify is stale for this source; use the target-call evidence in this packet and let root refresh the graph serially between builds."
+        )
+    lines += ["", "## Evidence", ""]
+    for item in packet["function_evidence"]:
+        calls = " -> ".join(item["target_calls"][:10]) or "none"
+        diagnostics = ", ".join(item["diagnostics"]) or "none"
+        lines.append(
+            f"- `{item['function']}`: {item['target_bytes']}B, {item['category']}, "
+            f"strict={item['strict_match_percent']}%, rows={item['strict_diff_rows']}; "
+            f"calls: {calls}; diagnostics: {diagnostics}."
+        )
+    lines += ["", "## Knowledge and deduplication", ""]
+    if packet["knowledge_cards"]:
+        for card in packet["knowledge_cards"]:
+            lines.append(
+                f"- `{card['id']}` ({card.get('freshness', 'unknown')}): {card.get('rule') or card.get('title')}"
+            )
+            for counterexample in card.get("counterexamples", [])[:2]:
+                lines.append(f"  - Do not repeat: {counterexample}")
+    else:
+        lines.append("- No card was selected; target evidence still outranks source-shape guesses.")
+    records = packet["probe_history"]["records"]
+    if records:
+        for record in records:
+            lines.append(
+                f"- Prior probe `{record['symbol']}::{record['probe_key']}` = {record['status']}: {record['reason']}"
+            )
+    else:
+        lines.append("- No owner-local probe-ledger entry intersects this packet.")
+    lines += ["", "## Execute", ""]
+    for label in ("context", "knowledge", "build", "verify", "organicity"):
+        lines.append(
+            f"- {label}: `{subprocess.list2cmdline(packet['commands'][label])}`"
+        )
+    if packet["commands"]["probe_lookups"]:
+        lines.append("- Before a compiler probe, run its exact lookup command from `worker-packet.json`; `conflict` means stop or re-key before compiling.")
+    lines += ["", "## Hard gates", ""]
+    lines.extend(f"- {gate}" for gate in packet["acceptance_gates"])
+    lines += ["", "## Continue", "", packet["continuation"]]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def plan_shared_cause_clusters(ranked: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Plan only evidence-linked, repeatable recovery probes from ranked residuals."""
     grouped: dict[tuple[str, str, tuple[tuple[str, int], ...], str, str], list[Mapping[str, Any]]] = defaultdict(list)
@@ -1977,6 +2335,13 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
             atomic_text(markdown_path, render_markdown(report))
         summary = report["summary"]
         preferred_packet = report.get("preferred_implementation_packet")
+        worker_packet = build_worker_packet(
+            root, unit, report, output, strict_path, value_path,
+        )
+        worker_packet_path = output / "worker-packet.json"
+        worker_prompt_path = output / "worker-prompt.md"
+        atomic_json(worker_packet_path, worker_packet)
+        atomic_text(worker_prompt_path, render_worker_prompt(worker_packet))
         concise = {
             "unit": args.unit,
             "strict_exact": f"{summary['strict_exact']}/{summary['functions_total']}",
@@ -1996,9 +2361,12 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
             ),
             "order_inversions": summary["order_inversions"],
             "strict_delta": report.get("strict_delta"),
+            "worker_dispatch": worker_packet["dispatch"],
             "report_cache_hit": report_cache_hit,
             "report_json": str(report_path),
             "report_markdown": str(markdown_path),
+            "worker_packet_json": str(worker_packet_path),
+            "worker_prompt_markdown": str(worker_prompt_path),
         }
         if args.json:
             print(json.dumps(concise, indent=2))
@@ -2013,6 +2381,13 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
             print(f"report cache: {'hit' if report_cache_hit else 'miss'}")
             print(f"wrote {report_path}")
             print(f"wrote {markdown_path}")
+            print(
+                f"worker dispatch: {worker_packet['dispatch']['mode']} "
+                f"({worker_packet['dispatch']['function_count']} functions / "
+                f"{worker_packet['dispatch']['target_bytes']}B)"
+            )
+            print(f"wrote {worker_packet_path}")
+            print(f"wrote {worker_prompt_path}")
         return 0
     except (OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)

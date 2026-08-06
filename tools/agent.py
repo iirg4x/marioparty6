@@ -427,8 +427,17 @@ def probe_lookup(
     input_value = _probe_text(input_key, "input-key")
     ledger = _probe_read(_probe_history_path(root, history))
     record = ledger["probes"].get(key)
-    if isinstance(record, Mapping) and record.get("input_key") == input_value:
-        return {"status": "known", "record": dict(record)}
+    if isinstance(record, Mapping):
+        if record.get("input_key") == input_value:
+            return {"status": "known", "record": dict(record)}
+        return {
+            "status": "conflict",
+            "record": dict(record),
+            "reason": (
+                "probe key already belongs to a different input_key; stop or use a "
+                "new evidence-descriptive probe key before compiling"
+            ),
+        }
     return {"status": "new", "record": None}
 
 

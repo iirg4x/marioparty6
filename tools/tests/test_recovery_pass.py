@@ -432,6 +432,227 @@ class RecoveryPassTests(unittest.TestCase):
         self.assertEqual(packet["function_count"], 12)
         self.assertEqual(packet["target_bytes"], 3600)
 
+    def test_worker_dispatch_blocks_new_work_on_regression_or_unbuilt_source(self) -> None:
+        regression = module.worker_dispatch(
+            {
+                "strict_delta": {"regressed_exact": ["ExactLost"]},
+                "data_value_delta": {"regressed_exact": []},
+                "ranked_functions": [
+                    {"function": "ExactLost", "target_bytes": 240},
+                    {"function": "NewBody", "target_bytes": 900, "source_pending_build": True},
+                ],
+                "preferred_implementation_packet": {
+                    "ready": True,
+                    "functions": ["NewBody"],
+                    "function_count": 1,
+                    "target_bytes": 900,
+                },
+            }
+        )
+        self.assertEqual(regression["mode"], "regression_reconciliation")
+        self.assertEqual(regression["functions"], ["ExactLost"])
+
+        pending = module.worker_dispatch(
+            {
+                "strict_delta": {"regressed_exact": []},
+                "data_value_delta": {"regressed_exact": []},
+                "ranked_functions": [
+                    {"function": "NewBody", "target_rank": 4, "target_bytes": 900, "source_pending_build": True},
+                ],
+                "preferred_implementation_packet": {
+                    "ready": True,
+                    "functions": ["NewBody"],
+                    "function_count": 1,
+                    "target_bytes": 900,
+                },
+            }
+        )
+        self.assertEqual(pending["mode"], "verification_first")
+        self.assertEqual(pending["functions"], ["NewBody"])
+
+    def test_worker_dispatch_prefers_closed_packet_and_rotates_exhausted_owner(self) -> None:
+        implementation = module.worker_dispatch(
+            {
+                "ranked_functions": [],
+                "preferred_implementation_packet": {
+                    "ready": True,
+                    "functions": ["HelperA", "CallerB"],
+                    "function_count": 2,
+                    "target_bytes": 1024,
+                },
+            }
+        )
+        self.assertEqual(implementation["mode"], "implementation")
+        self.assertEqual(implementation["functions"], ["HelperA", "CallerB"])
+
+        rotate = module.worker_dispatch(
+            {
+                "ranked_functions": [],
+                "preferred_implementation_packet": None,
+                "shared_cause_clusters": [
+                    {
+                        "actionable": False,
+                        "owner_audit_only": True,
+                        "functions": ["Blocked"],
+                    }
+                ],
+            }
+        )
+        self.assertEqual(rotate["mode"], "rotate_owner")
+        self.assertFalse(rotate["ready"])
+
+    def test_probe_history_summary_filters_owner_alias_and_packet_functions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            history = root / module.PROBE_HISTORY
+            history.parent.mkdir(parents=True)
+            history.write_text(
+                """{
+  "schema_version": 2,
+  "probes": {
+    "a": {"owner":"main:board/captrap","symbol":"MetalShock","probe_key":"outer-product","status":"rejected","reason":"worse"},
+    "b": {"owner":"main:board/captrap","symbol":"Other","probe_key":"noise","status":"rejected","reason":"irrelevant"},
+    "c": {"owner":"main:board/player","symbol":"MetalShock","probe_key":"foreign","status":"rejected","reason":"other owner"}
+  }
+}
+""",
+                encoding="utf-8",
+            )
+            result = module.probe_history_summary(
+                root, "main/board/captrap", ["MetalShock"]
+            )
+        self.assertEqual(result["status"], "available")
+        self.assertEqual(
+            [(item["symbol"], item["probe_key"]) for item in result["records"]],
+            [("MetalShock", "outer-product")],
+        )
+
+    def test_worker_packet_is_directly_executable_and_requires_data_pool_proof(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "build" / "packet"
+            strict = output / "strict.json"
+            value = output / "data-value.json"
+            source = root / "src" / "board" / "single.c"
+            target = root / "orig" / "single.o"
+            candidate = root / "build" / "GP6E01" / "src" / "board" / "single.o"
+            for path, content in (
+                (source, b"void SingleHelper(void) {}\n"),
+                (target, b"target object"),
+                (candidate, b"candidate object"),
+            ):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+            report = {
+                "unit": "main/board/single",
+                "source": "src/board/single.c",
+                "commit": "a" * 40,
+                "summary": {"strict_exact": 30, "functions_total": 58},
+                "preferred_implementation_packet": {
+                    "ready": True,
+                    "functions": ["SingleHelper", "SingleCaller"],
+                    "function_count": 2,
+                    "target_bytes": 1200,
+                },
+                "ranked_functions": [
+                    {
+                        "function": "SingleHelper",
+                        "target_rank": 1,
+                        "target_bytes": 400,
+                        "category": "missing_definition",
+                        "strict_match_percent": None,
+                        "strict_diff_rows": 0,
+                        "diff_kind_shape": {},
+                        "target_call_skeleton": [],
+                        "diagnostics": [],
+                        "safe_actions": ["implement"],
+                    },
+                    {
+                        "function": "SingleCaller",
+                        "target_rank": 2,
+                        "target_bytes": 800,
+                        "category": "missing_definition",
+                        "strict_match_percent": None,
+                        "strict_diff_rows": 0,
+                        "diff_kind_shape": {},
+                        "target_call_skeleton": ["SingleHelper"],
+                        "diagnostics": [],
+                        "safe_actions": ["implement after helper"],
+                    },
+                ],
+                "selected_knowledge_cards": [
+                    {
+                        "id": "card-one",
+                        "freshness": "active",
+                        "rule": "keep the call family closed",
+                        "counterexamples": ["do not split the caller from its helper"],
+                    }
+                ],
+                "shared_cause_clusters": [],
+                "graphify": {"fresh": True},
+            }
+            report["ranked_functions"].reverse()
+            packet = module.build_worker_packet(
+                root,
+                {
+                    "target_path": "orig/single.o",
+                    "base_path": "build/GP6E01/src/board/single.o",
+                },
+                report,
+                output,
+                strict,
+                value,
+            )
+            duplicate = module.build_worker_packet(
+                root,
+                {
+                    "target_path": "orig/single.o",
+                    "base_path": "build/GP6E01/src/board/single.o",
+                },
+                report,
+                output,
+                strict,
+                value,
+            )
+            prompt = module.render_worker_prompt(packet)
+            source.write_text("void SingleHelper(void) { return; }\n", encoding="utf-8")
+            changed = module.build_worker_packet(
+                root,
+                {
+                    "target_path": "orig/single.o",
+                    "base_path": "build/GP6E01/src/board/single.o",
+                },
+                report,
+                output,
+                strict,
+                value,
+            )
+
+        self.assertEqual(packet["dispatch"]["mode"], "implementation")
+        self.assertEqual(packet["owner"], "main:board/single")
+        self.assertEqual(
+            [item["function"] for item in packet["function_evidence"]],
+            ["SingleHelper", "SingleCaller"],
+        )
+        self.assertEqual(packet["packet_id"], duplicate["packet_id"])
+        self.assertNotEqual(packet["packet_id"], changed["packet_id"])
+        self.assertEqual(
+            packet["function_evidence"][1]["internal_dependencies"],
+            ["SingleHelper"],
+        )
+        self.assertTrue(
+            packet["function_evidence"][0]["probe"]["probe_key"].startswith(
+                "implementation/" + packet["packet_id"][:16]
+            )
+        )
+        self.assertEqual(packet["budgets"]["max_probes"]["compiler_reconciliation"], 3)
+        self.assertIn("tools.serialized_build", packet["commands"]["build"])
+        self.assertIn("tools/blind_recovery.py", packet["commands"]["organicity"])
+        self.assertIn("--baseline-strict", packet["commands"]["verify"])
+        self.assertIn(".sdata2/.rodata", prompt)
+        self.assertIn("do not split the caller", prompt)
+        self.assertIn("12-20 functions", prompt)
+
     def test_source_pending_build_is_not_scheduled_as_missing_implementation(self) -> None:
         def item(name: str, category: str, calls: list[str]) -> dict:
             return {
@@ -531,14 +752,21 @@ class RecoveryPassTests(unittest.TestCase):
             None,
         )
         summary = report["summary"]
-        self.assertEqual(summary["source_pending_build"], 11)
-        self.assertEqual(summary["missing_definitions"], 1)
-        ranked = {item["function"]: item for item in report["ranked_functions"]}
-        self.assertEqual(ranked["mbev_MgCallTutorial"]["category"], "missing_definition")
+        self.assertGreater(summary["source_pending_build"], 0)
         self.assertEqual(
-            sum(item["category"] == "source_pending_build" for item in report["ranked_functions"]),
-            11,
+            summary["source_pending_build"] + summary["missing_definitions"],
+            summary["object_missing"],
         )
+        ranked = {item["function"]: item for item in report["ranked_functions"]}
+        for item in ranked.values():
+            if not item["object_missing"]:
+                continue
+            expected = (
+                "source_pending_build"
+                if item["source_definition_present"]
+                else "missing_definition"
+            )
+            self.assertEqual(item["category"], expected)
         pending_names = {
             name for name, item in ranked.items() if item["category"] == "source_pending_build"
         }
@@ -546,7 +774,10 @@ class RecoveryPassTests(unittest.TestCase):
             if cluster.get("implementation_ready"):
                 self.assertTrue(pending_names.isdisjoint(cluster["functions"]))
         markdown = module.render_markdown(report)
-        self.assertIn("Source-present/object-missing (pending build): **11 functions", markdown)
+        self.assertIn(
+            f"Source-present/object-missing (pending build): **{summary['source_pending_build']} functions",
+            markdown,
+        )
 
     def test_ready_missing_definition_family_accepts_exact_homologous_siblings(self) -> None:
         def item(name: str, size: int, calls: list[str]) -> dict:

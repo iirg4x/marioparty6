@@ -97,6 +97,17 @@ class AgentProbeTests(unittest.TestCase):
             duplicate["record"]["duplicate_of"],
             "main:board/math|MathFn|shape",
         )
+        conflict = probe_lookup(
+            self.root,
+            "main:board/math",
+            "MathFn",
+            "shape",
+            "different-input",
+            history=self.history,
+        )
+        self.assertEqual(conflict["status"], "conflict")
+        self.assertEqual(conflict["record"]["input_key"], "input-v1")
+        self.assertIn("new evidence-descriptive probe key", conflict["reason"])
         with self.assertRaisesRegex(ProbeError, "conflicting evidence"):
             probe_record(
                 self.root,
