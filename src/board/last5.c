@@ -1,3 +1,5 @@
+#include "dolphin/math.h"
+
 #include "game/board/audio.h"
 #include "game/board/camera.h"
 #include "game/board/capsule.h"
@@ -18,6 +20,9 @@
 #include "string.h"
 
 #define LAST5_COIN_NUM 40
+#define LAST5_COIN_SCATTER_RANGE (100.0f * 0.6f)
+#define LAST5_COIN_START_VELOCITY (-13.333334f)
+#define LAST5_COIN_GRAVITY (-0.5444445f)
 #define LAST5_MESS_DIRECTORY 46
 #define LAST5_MESS_ID(file) \
     ((u32)((LAST5_MESS_DIRECTORY << 16) | (file)))
@@ -115,9 +120,9 @@ extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
 extern void mbDiceMotHookSet(int playerNo, void (*hook)(int));
 extern BOOL mbDiceKillCheck(int playerNo);
 extern void mbDiceObjHit(int playerNo);
-extern void mbObjPosSet(MBMODELID modelId, float x, float y, float z);
-extern void mbObjMotionTimeSet(MBMODELID modelId, float time);
-extern void mbObjMotionSpeedSet(MBMODELID modelId, float speed);
+extern void mbObjPosSet(int modelId, float x, float y, float z);
+extern void mbObjMotionTimeSet(int modelId, float time);
+extern void mbObjMotionSpeedSet(int modelId, float speed);
 extern void mbSNpcDispSet(BOOL dispF);
 extern void mbWipeFadeIn(void);
 extern void mbWipeFadeOut(void);
@@ -748,15 +753,17 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
         coinObjId[i] = mbCoinCreate2();
         mbCoinObjDispSet(coinObjId[i], FALSE);
         coinObj = mbCoinObjGet(coinObjId[i]);
-        coinObj->pos.x = playerPos.x + (60.000004f * (frandf() - 0.5f));
+        coinObj->pos.x = playerPos.x
+            + (LAST5_COIN_SCATTER_RANGE * (frandf() - 0.5f));
         coinObj->pos.y = 800.0f + (playerPos.y + (50.0f * frandf()));
-        coinObj->pos.z = playerPos.z + (60.000004f * (frandf() - 0.5f));
+        coinObj->pos.z = playerPos.z
+            + (LAST5_COIN_SCATTER_RANGE * (frandf() - 0.5f));
         coinObj->rot.x = 40.0f * (frandf() - 0.5f);
         coinObj->rot.y = 360.0f * frandf();
         coinObj->scale.x = coinObj->scale.y = coinObj->scale.z = 0.7f;
         coinWork = (LAST5COINWORK *)coinObj->work;
         coinWork->delay = (float)(i * 30) / coinNum;
-        coinWork->velocity = -13.333334f;
+        coinWork->velocity = LAST5_COIN_START_VELOCITY;
     }
 
     activeNum = coinNum;
@@ -773,7 +780,7 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
                 continue;
             }
             mbCoinObjDispSet(coinObjId[i], TRUE);
-            coinWork->velocity += -0.5444445f;
+            coinWork->velocity += LAST5_COIN_GRAVITY;
             coinObj->pos.y += coinWork->velocity;
             if (coinObj->pos.y < 100.0f + playerPos.y) {
                 mbCoinObjKill(coinObjId[i]);

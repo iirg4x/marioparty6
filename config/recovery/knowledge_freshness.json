@@ -324,9 +324,9 @@
         "src/board/opening.c",
         "src/board/capselect.c",
         "src/board/scroll.c",
+        "src/board/last5.c",
         "src/board/mgcall.c",
-        "src/board/telop.c",
-        "configure.py"
+        "src/board/telop.c"
       ],
       "supersedes": [],
       "superseded_by": null

@@ -224,28 +224,6 @@
       ]
     },
     {
-      "id": "mgcall-no-generic-math-inline",
-      "classification": "authenticated",
-      "path": "src/board/mgcall.c",
-      "kind": "header_visibility",
-      "rules": [
-        "include_guard_override"
-      ],
-      "rationale": "Retail mgcall.o omits the weak sqrtf _half and _three local statics emitted through the generic math.h closure. Exact same-game board owners gate.c, roulette.c, tutorial.c, dice.c, capselect.c, scroll.c, capevent.c, and shopevent.c authenticate defining _MATH_H before including dolphin/math.h as the narrow translation-unit SDK boundary. In mgcall.c that boundary removes exactly 16 source-only .sdata2 bytes; the natural lifetime reconstruction then makes mbev_MgCall exact at 2404/2404 bytes with all 204 physical relocation records aligned, raises the object from 14/16 to 15/16 strict-exact functions, and loses none of the 14 baseline exact functions. mbev_MgCallSingleKoopa remains honestly nonexact.",
-      "evidence": [
-        "build/agent/mgcall-e464142-default-strict.json",
-        "docs/native_matching_board_constant_pool.md",
-        "src/board/gate.c",
-        "src/board/roulette.c",
-        "src/board/tutorial.c",
-        "src/board/dice.c",
-        "src/board/capselect.c",
-        "src/board/scroll.c",
-        "src/board/capevent.c",
-        "src/board/shopevent.c"
-      ]
-    },
-    {
       "id": "telop-no-generic-math-inline",
       "classification": "authenticated",
       "path": "src/board/telop.c",

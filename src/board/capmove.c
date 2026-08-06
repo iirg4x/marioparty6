@@ -173,11 +173,12 @@ extern OMOBJ *mbev_CapEffExhaustCreate(void);
 extern OMOBJ *mbev_CapEffBoostCreate(void);
 extern void mbev_CapEffBoostBlendModeSet(OMOBJ *obj, int blendMode);
 extern void mbev_CapPlayerMoveObjInit(void);
-extern void mbev_CapPlayerMoveIdleCreate(int playerNo);
+extern void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime);
 extern void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF,
     BOOL useShiftF);
-extern BOOL mbev_CapPlayerMoveObjCheck(void);
-extern void mbev_CapPlayerIdleWait(int playerNo);
+extern BOOL mbev_CapPlayerMoveObjCheck(int playerNo);
+extern void mbev_CapPlayerMoveObjKill(void);
+extern void mbev_CapPlayerIdleWait(void);
 extern int mbPlayerCoinGet(int playerNo);
 extern s16 mbev_CapMasuLinkNextGet(s16 masuId, HuVecF *pos);
 extern s16 mbev_CapMasuLinkNextRandomGet(s16 masuId, HuVecF *pos);
@@ -194,6 +195,9 @@ extern void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
 extern s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum);
 extern int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF,
     BOOL fastF);
+extern s16 mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF,
+    BOOL waitF);
+extern void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL waitF);
 extern void mbMoveNumKill(int playerNo);
 extern float mbev_CapAngleSumLerp(float t, float a, float b);
 extern void mbev_CapHermiteGetV(float t, HuVecF *a, HuVecF *b, HuVecF *c,
@@ -1196,7 +1200,7 @@ static void ev_CapHanachanOMExec(OMOBJ *obj)
         particleNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
             (int)(60.0f * (1.0f + (0.5f * MBCapsuleEffRandF()))),
             100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
-            0.05f + (0.02f * MBCapsuleEffRandF()), 0.08166666f,
+            0.05f + (0.02f * MBCapsuleEffRandF()), 4.9f / 60.0f,
             colorP);
         mbev_CapEffGlowKinokoTimeSet(
             work->glowObj, particleNo, 1, 90);
@@ -1282,10 +1286,22 @@ void mbev_CapNKinokoKill(void)
 {
 }
 
+static HuVecF killerOfsTbl[9] = {
+    { 0.0f, 0.0f, 0.0f },
+    { 80.0f, 0.0f, 80.0f },
+    { -80.0f, 0.0f, 80.0f },
+    { 80.0f, 0.0f, -80.0f },
+    { -80.0f, 0.0f, -80.0f },
+    { 100.0f, 0.0f, 0.0f },
+    { -100.0f, 0.0f, 0.0f },
+    { 0.0f, 0.0f, 100.0f },
+    { 0.0f, 0.0f, -100.0f },
+};
+
 void mbev_CapKillerMove(void)
 {
     CAPWORK *work;
-    HuVecF path[6];
+    HuVecF path[4];
     HuVecF playerPos;
     HuVecF playerRot;
     HuVecF killerPos;
@@ -1295,7 +1311,12 @@ void mbev_CapKillerMove(void)
     HuVecF direction;
     HuVecF velocity;
     HuVecF landingPos;
+    HuVecF playerPosStart;
+    HuVecF ridePos;
+    HuVecF playerRotStart;
+    HuVecF objectScale;
     GXColor color;
+    Mtx matrix;
     s16 motionStart;
     s16 motionRide;
     s16 masuId;
@@ -1304,13 +1325,21 @@ void mbev_CapKillerMove(void)
     int modelId;
     int readStat;
     int coinNum;
+    int coinTotal;
     int moveNum;
     int stepNum;
     int playerHitF[GW_PLAYER_MAX];
     int waypointMasuId[GW_PLAYER_MAX];
     int i;
     int j;
+    int routeFrame;
+    int boostBudget;
+    int angleStepNum;
+    float distance;
     float t;
+    float angleT;
+    float scalePos;
+    float scaleNeg;
 
     work = HuPrcCurrentGet()->property;
     readStat = mbBGRead(CAPMOVE_DATA_KILLER);
@@ -1325,6 +1354,7 @@ void mbev_CapKillerMove(void)
     mbPlayerPosGet(work->playerNo, &playerPos);
     mbPlayerRotGet(work->playerNo, &playerRot);
     currentMasuId = GwPlayer[work->playerNo].masuId;
+    coinTotal = 0;
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         playerHitF[i] = FALSE;
     }
@@ -1341,98 +1371,279 @@ void mbev_CapKillerMove(void)
         path[i].y += 120.000004f;
     }
     waypointMasuId[2] = mbev_CapMasuLinkNextRandomGet(waypointMasuId[1],
-        &path[4]);
-    path[4].y += 120.000004f;
+        &path[2]);
+    path[2].y += 120.000004f;
     waypointMasuId[3] = mbev_CapMasuLinkNextRandomGet(waypointMasuId[2],
-        &path[5]);
-    path[5].y += 120.000004f;
+        &path[3]);
+    path[3].y += 120.000004f;
     moveNum = mbDiceResultGet(work->playerNo);
     mbev_CapStatusDispSetAll(TRUE, FALSE);
 
+    mbPlayerPosGet(work->playerNo, &playerPosStart);
+    mbPlayerRotGet(work->playerNo, &playerRotStart);
     mbev_CapHermiteGetV(0.0f, &path[0], &path[1], &path[2], &path[3],
         &killerPos);
     mbev_CapHermiteGetV(1.0f, &path[0], &path[1], &path[2], &path[3],
-        &landingPos);
-    PSVECSubtract(&landingPos, &killerPos, &direction);
-    PSVECNormalize(&direction, &direction);
+        &ridePos);
+    PSVECSubtract(&ridePos, &killerPos, &direction);
+    distance = PSVECMag(&direction);
+    if (distance > 0.0f) {
+        PSVECNormalize(&direction, &direction);
+    }
     offset = direction;
     offset.y = 0.0f;
     killerRot.x = -atan2(direction.y, PSVECMag(&offset)) * 180.0f / M_PI;
     killerRot.y = atan2(direction.x, direction.z) * 180.0f / M_PI;
     killerRot.z = 0.0f;
-    mbObjPosSetV(modelId, &killerPos);
-    mbObjRotSetV(modelId, &killerRot);
-    mbObjDispSet(modelId, TRUE);
-    mbPlayerMotionShiftSet(work->playerNo, motionStart, 0.0f, 8.0f,
-        HU3D_MOTATTR_NONE);
+    mtxRot(matrix, -killerRot.x, killerRot.y, killerRot.z);
+    offset.x = 0.0f;
+    offset.y = 60.000004f;
+    offset.z = -75.0f;
+    PSMTXMultVec(matrix, &offset, &offset);
+    PSVECAdd(&killerPos, &offset, &ridePos);
+    mbPlayerColSnapPlayerSet(work->playerNo, FALSE);
+    mbPlayerMotionShiftSet(work->playerNo, CAPMOVE_PLAYER_MOT_JUMP, 0.0f,
+        8.0f, HU3D_MOTATTR_NONE);
 
     for (i = 0; i < 30; i++) {
         t = (float)i / 30.0f;
-        mbev_CapHermiteGetV(t, &path[0], &path[1], &path[2], &path[3],
-            &killerPos);
-        killerRot.x = mbev_CapAngleSumLerp(t, killerRot.x, 0.0f);
-        killerRot.y = mbev_CapAngleSumLerp(t, killerRot.y, playerRot.y);
-        mbObjPosSetV(modelId, &killerPos);
-        mbObjRotSetV(modelId, &killerRot);
-        offset.x = 0.0f;
-        offset.y = 25.0f;
-        offset.z = -50.0f;
-        mbPlayerPosSetV(work->playerNo, &killerPos);
-        mbPlayerRotSetV(work->playerNo, &killerRot);
-        ev_CapEffKillerDustCreate(work, &killerPos, &killerRot);
-        HuPrcVSleep();
-    }
-
-    mbPlayerMotionShiftSet(work->playerNo, motionRide, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
-    for (i = 0; i < moveNum; i++) {
-        masuId = GwPlayer[work->playerNo].masuId;
-        nextMasuId = mbev_CapMasuLinkNextGet(masuId, NULL);
-        if (nextMasuId <= 0) {
-            break;
+        PSVECSubtract(&ridePos, &playerPosStart, &offset);
+        distance = PSVECMag(&offset);
+        if (distance > 0.0f) {
+            PSVECNormalize(&offset, &offset);
         }
-        mbMasuPosGet(nextMasuId, &landingPos);
-        landingPos.y += 100.0f;
-        PSVECSubtract(&landingPos, &killerPos, &direction);
-        stepNum = (int)(PSVECMag(&direction) / 20.0f);
-        if (stepNum < 1) {
-            stepNum = 1;
-        }
-        for (j = 0; j < stepNum; j++) {
-            t = (float)j / (float)stepNum;
-            mbev_CapHermiteGetV(t, &path[2], &path[3], &path[4],
-                &landingPos, &killerPos);
-            PSVECSubtract(&landingPos, &killerPos, &direction);
-            PSVECNormalize(&direction, &direction);
-            offset = direction;
+        PSVECScale(&offset, &offset, t * distance);
+        PSVECAdd(&playerPosStart, &offset, &playerPos);
+        playerPos.y += (float)(2.0 *
+            (100.0 * sin((M_PI * (180.0 * t)) / 180.0)));
+        playerRot.x = mbev_CapAngleSumLerp(t, playerRotStart.x,
+            killerRot.x);
+        playerRot.y = mbev_CapAngleSumLerp(t, playerRotStart.y,
+            killerRot.y);
+        playerRot.z = mbev_CapAngleSumLerp(t, playerRotStart.z,
+            killerRot.z);
+        mbPlayerPosSetV(work->playerNo, &playerPos);
+        mbPlayerRotSetV(work->playerNo, &playerRot);
+        if (i == 15) {
+            mtxRot(matrix, killerRot.x, killerRot.y, killerRot.z);
+            offset.x = 0.0f;
             offset.y = 0.0f;
-            targetRot.x = -atan2(direction.y, PSVECMag(&offset)) * 180.0f
-                / M_PI;
-            targetRot.y = atan2(direction.x, direction.z) * 180.0f / M_PI;
-            killerRot.x = mbev_CapAngleSumLerp(0.5f, killerRot.x,
-                targetRot.x);
-            killerRot.y = mbev_CapAngleSumLerp(0.5f, killerRot.y,
-                targetRot.y);
+            offset.z = -75.0f;
+            PSMTXMultVec(matrix, &offset, &offset);
+            PSVECAdd(&killerPos, &offset, &offset);
+            offset.y += 50.0f;
+            mbev_CapEffDustCloudAdd(work->explodeObj, &offset);
+            mbAudFXPlay(MSM_SE_BRD00_45);
             mbObjPosSetV(modelId, &killerPos);
             mbObjRotSetV(modelId, &killerRot);
             mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
-            mbPlayerPosSetV(work->playerNo, &killerPos);
-            mbPlayerRotSetV(work->playerNo, &killerRot);
-            ev_CapEffKillerDustCreate(work, &killerPos, &killerRot);
-            ev_CapEffKillerBoostCreate(work, &killerPos, &killerRot);
+            mbObjDispSet(modelId, TRUE);
+            for (j = 0; j < GW_PLAYER_MAX; j++) {
+                if (j == work->playerNo ||
+                    GwPlayer[j].masuId != currentMasuId) {
+                    continue;
+                }
+                mbev_CapPlayerMoveIdleCreate(j, 12);
+                mbAudFXPlay(MSM_SE_BRD00_55);
+                CharFXPlay(GwPlayer[j].charNo, CHARVOICEID(9));
+                omVibrate(j, 20, 7, 3);
+                omVibrate(work->playerNo, 20, 7, 3);
+                playerHitF[j] = TRUE;
+                coinNum = 20;
+                if (mbPlayerCoinGet(j) < coinNum) {
+                    coinNum = mbPlayerCoinGet(j);
+                }
+                if (coinNum > 0) {
+                    mbPlayerPosGet(j, &direction);
+                    direction.y += 250.0f;
+                    mbCoinDispCapsuleCreate(&direction, -coinNum);
+                    mbCoinAddDispExec(j, -coinNum, FALSE, TRUE);
+                    mbCoinAddDispExec(work->playerNo, coinNum, FALSE,
+                        TRUE);
+                    coinTotal += coinNum;
+                }
+            }
+            mbPlayerMotionShiftSet(work->playerNo, motionStart, 0.0f,
+                8.0f, HU3D_MOTATTR_NONE);
+        } else if (i > 15) {
+            distance = ((float)i - 15.0f) / 10.0f;
+            if (distance > 1.0f) {
+                distance = 1.0f;
+            }
+            distance += 0.25f * sin(M_PI * distance);
+            mbObjScaleSet(modelId, distance, distance, distance);
+        }
+        HuPrcVSleep();
+    }
+
+    for (i = 0; i < 60; i++) {
+        t = (float)i / 60.0f;
+        mbObjPosSetV(modelId, &killerPos);
+        mbObjRotSet(modelId, killerRot.x,
+            killerRot.y + (30.0f * sin(3.0f * M_PI * t)), killerRot.z);
+        mbObjRotGet(modelId, &targetRot);
+        mtxRot(matrix, targetRot.x, targetRot.y, targetRot.z);
+        offset.x = 0.0f;
+        offset.y = 60.000004f;
+        offset.z = -75.0f;
+        PSMTXMultVec(matrix, &offset, &offset);
+        PSVECAdd(&killerPos, &offset, &ridePos);
+        mbObjRotGet(modelId, &playerRot);
+        mbPlayerPosSetV(work->playerNo, &ridePos);
+        mbPlayerRotSetV(work->playerNo, &playerRot);
+        for (j = 0; j < 3; j++) {
+            targetRot = killerRot;
+            targetRot.y += 30.0f * sin(3.0f * M_PI * t);
+            ev_CapEffKillerDustCreate(work, &killerPos, &targetRot);
+        }
+        HuPrcVSleep();
+    }
+
+    mbObjRotSet(modelId, -killerRot.x, killerRot.y, killerRot.z);
+    mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
+    for (i = 0; i < 30; i++) {
+        t = (float)i / 30.0f;
+        mbObjPosSetV(modelId, &killerPos);
+        mbObjRotSet(modelId,
+            killerRot.x + (30.0f * sin(M_PI * t)), killerRot.y, killerRot.z);
+        scalePos = 0.2f * sin(M_PI * t);
+        scaleNeg = -(0.2f * sin(M_PI * t));
+        mbObjScaleSet(modelId, 1.0f + scalePos, 1.0f + scalePos,
+            1.0f + scaleNeg);
+        mbObjRotGet(modelId, &targetRot);
+        mtxRot(matrix, targetRot.x, targetRot.y, targetRot.z);
+        offset.x = 0.0f;
+        offset.y = 60.000004f;
+        offset.z = -75.0f;
+        PSMTXMultVec(matrix, &offset, &offset);
+        PSVECAdd(&killerPos, &offset, &ridePos);
+        mbObjRotGet(modelId, &playerRot);
+        mbPlayerPosSetV(work->playerNo, &ridePos);
+        mbPlayerRotSetV(work->playerNo, &playerRot);
+        HuPrcVSleep();
+    }
+
+    mtxRot(matrix, killerRot.x, killerRot.y, killerRot.z);
+    offset.x = 0.0f;
+    offset.y = 0.0f;
+    offset.z = -120.00001f;
+    PSMTXMultVec(matrix, &offset, &offset);
+    PSVECAdd(&killerPos, &offset, &offset);
+    ev_CapEffKillerExplodeCreate(work, &offset, &killerRot, 32);
+    for (i = 0; i < 32; i++) {
+        ev_CapEffKillerBoostCreate(work, &offset, &killerRot);
+    }
+    mbObjRotGet(modelId, &targetRot);
+    killerRot.x = mbev_CapAngleSumLerp(0.5f, killerRot.x, targetRot.x);
+    killerRot.y = mbev_CapAngleSumLerp(0.5f, killerRot.y, targetRot.y);
+    killerRot.z = mbev_CapAngleSumLerp(0.5f, killerRot.z, targetRot.z);
+    mbObjScaleGet(modelId, &objectScale);
+    mbAudFXPlay(MSM_SE_BRD00_54);
+    masuId = waypointMasuId[1];
+    nextMasuId = waypointMasuId[2];
+    routeFrame = 0;
+    boostBudget = 12;
+    for (;;) {
+        routeFrame++;
+        if (routeFrame % 20 == 1) {
+            omVibrate(work->playerNo, 20, 4, 4);
+        }
+        if (moveNum <= 0 || nextMasuId <= 0 ||
+            mbev_CapMasuLinkNextGet(nextMasuId, NULL) <= 0) {
+            break;
+        }
+        playerPosStart = path[1];
+        landingPos = path[2];
+        offset = path[0];
+        PSVECSubtract(&landingPos, &playerPosStart, &direction);
+        distance = PSVECMag(&direction);
+        if (distance != 0.0f) {
+            PSVECNormalize(&direction, &direction);
+        }
+        targetRot = killerRot;
+        offset = direction;
+        offset.y = 0.0f;
+        targetRot.x = -atan2(direction.y, PSVECMag(&offset)) * 180.0f
+            / M_PI;
+        targetRot.y = atan2(direction.x, direction.z) * 180.0f / M_PI;
+        targetRot.z = 0.0f;
+        stepNum = (int)(distance / 20.0f);
+        if (stepNum < 1) {
+            stepNum = 1;
+        }
+        angleStepNum = stepNum;
+        if (angleStepNum > 20) {
+            angleStepNum = 20;
+        }
+        for (j = 1; j <= stepNum; j++) {
+            t = (float)j / (float)stepNum;
+            angleT = (float)j / (float)angleStepNum;
+            mbev_CapHermiteGetV(t, &path[0], &path[1], &path[2], &path[3],
+                &killerPos);
+            killerRot.x = mbev_CapAngleSumLerp(angleT, killerRot.x,
+                targetRot.x);
+            killerRot.y = mbev_CapAngleSumLerp(angleT, killerRot.y,
+                targetRot.y);
+            killerRot.z = 0.0f;
+            if (objectScale.x > 1.0f) {
+                objectScale.x -= 0.01f;
+            } else {
+                objectScale.x = 1.0f;
+            }
+            if (objectScale.y > 1.0f) {
+                objectScale.y -= 0.01f;
+            } else {
+                objectScale.y = 1.0f;
+            }
+            if (objectScale.z < 1.0f) {
+                objectScale.z += 0.01f;
+            } else {
+                objectScale.z = 1.0f;
+            }
+            mbObjPosSetV(modelId, &killerPos);
+            mbObjRotSetV(modelId, &killerRot);
+            mbObjScaleSetV(modelId, &objectScale);
+            mbObjRotGet(modelId, &targetRot);
+            mtxRot(matrix, targetRot.x, targetRot.y, targetRot.z);
+            offset.x = 0.0f;
+            offset.y = 60.000004f;
+            offset.z = -75.0f;
+            PSMTXMultVec(matrix, &offset, &offset);
+            PSVECAdd(&killerPos, &offset, &ridePos);
+            mbObjRotGet(modelId, &playerRot);
+            mbPlayerPosSetV(work->playerNo, &ridePos);
+            mbPlayerRotSetV(work->playerNo, &playerRot);
+            if (j & 1) {
+                ev_CapEffKillerDustCreate(work, &killerPos, &killerRot);
+            }
+            boostBudget--;
+            if (boostBudget > 0) {
+                mtxRot(matrix, killerRot.x, killerRot.y, killerRot.z);
+                offset.x = 0.0f;
+                offset.y = 0.0f;
+                offset.z = -120.00001f;
+                PSMTXMultVec(matrix, &offset, &offset);
+                PSVECAdd(&killerPos, &offset, &offset);
+                for (i = 0; i < 16; i++) {
+                    ev_CapEffKillerBoostCreate(work, &offset, &killerRot);
+                }
+            }
             HuPrcVSleep();
         }
         if (mbMasuTypeGet(nextMasuId) != CAPMOVE_MASU_TYPE_NONE) {
-            HuAudFXPlay(MSM_SE_BRD00_02);
+            HuAudFXPlay(1006);
         }
         for (j = 0; j < GW_PLAYER_MAX; j++) {
-            if (j == work->playerNo || GwPlayer[j].masuId != nextMasuId) {
+            if (j == work->playerNo || playerHitF[j] ||
+                GwPlayer[j].masuId != nextMasuId) {
                 continue;
             }
             mbAudFXPlay(MSM_SE_BRD00_55);
             mbev_CapPlayerMoveHitCreate(j, TRUE, TRUE);
             CharFXPlay(GwPlayer[j].charNo, CHARVOICEID(9));
-            omVibrate(j, 12, 4, 2);
+            omVibrate(j, 20, 7, 3);
+            omVibrate(work->playerNo, 20, 7, 3);
+            playerHitF[j] = TRUE;
             coinNum = 20;
             if (mbPlayerCoinGet(j) < coinNum) {
                 coinNum = mbPlayerCoinGet(j);
@@ -1443,6 +1654,7 @@ void mbev_CapKillerMove(void)
                 mbCoinDispCapsuleCreate(&playerPos, -coinNum);
                 mbCoinAddDispExec(j, -coinNum, FALSE, TRUE);
                 mbCoinAddDispExec(work->playerNo, coinNum, FALSE, TRUE);
+                coinTotal += coinNum;
             }
         }
         GwPlayer[work->playerNo].masuIdPrev = masuId;
@@ -1452,33 +1664,91 @@ void mbev_CapKillerMove(void)
         if (mbMasuDispCheck(nextMasuId)) {
             moveNum--;
         }
+        masuId = nextMasuId;
+        waypointMasuId[0] = waypointMasuId[1];
+        waypointMasuId[1] = waypointMasuId[2];
+        waypointMasuId[2] = waypointMasuId[3];
+        path[0] = path[1];
+        path[1] = path[2];
+        path[2] = path[3];
+        nextMasuId = mbev_CapMasuLinkNextRandomGet(waypointMasuId[2],
+            &path[3]);
+        path[3].y += 120.000004f;
+        waypointMasuId[3] = nextMasuId;
     }
 
     mbMoveNumKill(work->playerNo);
     mbObjDispSet(modelId, FALSE);
     mbev_CapEffDustCloudAdd(work->explodeObj, &killerPos);
+    mbAudFXPlay(MSM_SE_BRD00_35);
     mbPlayerMotionShiftSet(work->playerNo, CAPMOVE_PLAYER_MOT_JUMP, 0.0f, 8.0f,
         HU3D_MOTATTR_NONE);
-    mbMasuPosGet(GwPlayer[work->playerNo].masuId, &landingPos);
-    mbPlayerPosGet(work->playerNo, &playerPos);
+    mbPlayerPosGet(work->playerNo, &playerPosStart);
+    for (i = 0; i < 9; i++) {
+        mbMasuPosGet(GwPlayer[work->playerNo].masuId, &landingPos);
+        PSVECAdd(&landingPos, &killerOfsTbl[i], &landingPos);
+        for (j = 0; j < GW_PLAYER_MAX; j++) {
+            if (j == work->playerNo) {
+                continue;
+            }
+            mbPlayerPosGet(j, &direction);
+            PSVECSubtract(&landingPos, &direction, &direction);
+            distance = PSVECMag(&direction);
+            if (distance < 95.0f) {
+                break;
+            }
+        }
+        if (j >= GW_PLAYER_MAX) {
+            break;
+        }
+    }
     for (i = 0; i < 30; i++) {
         t = (float)i / 30.0f;
-        PSVECSubtract(&landingPos, &playerPos, &offset);
+        PSVECSubtract(&landingPos, &playerPosStart, &offset);
         PSVECScale(&offset, &offset, t);
-        PSVECAdd(&playerPos, &offset, &offset);
-        offset.y += sin((t * 180.0f * M_PI) / 180.0f) * 100.0f;
-        mbPlayerPosSetV(work->playerNo, &offset);
+        PSVECAdd(&playerPosStart, &offset, &playerPos);
+        playerPos.y += (float)(2.0 *
+            (100.0 * sin((M_PI * (180.0 * t)) / 180.0)));
+        playerRot.x = mbev_CapAngleSumLerp(t, playerRot.x, 0.0f);
+        playerRot.y = mbev_CapAngleSumLerp(t, playerRot.y, 0.0f);
+        playerRot.z = mbev_CapAngleSumLerp(t, playerRot.z, 0.0f);
+        mbPlayerPosSetV(work->playerNo, &playerPos);
+        mbPlayerRotSetV(work->playerNo, &playerRot);
         HuPrcVSleep();
     }
     mbPlayerPosSetV(work->playerNo, &landingPos);
     mbPlayerMotIdleSet(work->playerNo);
     mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
     mbCameraMoveWait();
-    if (mbev_CapPlayerMoveObjCheck()) {
-        mbev_CapPlayerIdleWait(work->playerNo);
+    for (i = 0; i < 60; i++) {
+        HuPrcVSleep();
     }
+    if (coinTotal > 0) {
+        mbev_CapCoinDisp(work->playerNo, coinTotal, TRUE, TRUE);
+    }
+    do {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (!mbev_CapPlayerMoveObjCheck(i)) {
+                break;
+            }
+        }
+        HuPrcVSleep();
+    } while (i < GW_PLAYER_MAX);
+    mbev_CapPlayerIdleWait();
     mbev_PlayerColMasuSet(work->playerNo,
-        GwPlayer[work->playerNo].masuId, TRUE);
+        GwPlayer[work->playerNo].masuId, FALSE);
+    mbMasuPosGet(GwPlayer[work->playerNo].masuId, &playerPos);
+    mbPlayerPosGet(work->playerNo, &offset);
+    PSVECSubtract(&playerPos, &offset, &direction);
+    if (PSVECMag(&direction) > 25.0f) {
+        mbMasuPosGet(GwPlayer[work->playerNo].masuId, &playerPos);
+        mbPlayerMoveExec(work->playerNo, 0, &playerPos, 30, 0, TRUE);
+        mbPlayerRotateStart(work->playerNo, 0, 15);
+        while (!mbPlayerRotateCheck(work->playerNo)) {
+            HuPrcVSleep();
+        }
+    }
+    mbev_CapPlayerMoveObjKill();
     HuPrcEnd();
 }
 
@@ -1625,7 +1895,6 @@ static void ev_CapEffKillerBoostCreate(CAPWORK *work, HuVecF *pos,
         2.0f * (-0.5f + MBCapsuleEffRandF()),
         time, colorP);
 }
-
 static void ev_CapEffKinokoCreate(CAPWORK *work)
 {
     OMOBJ *obj;

@@ -1442,7 +1442,7 @@
       "category": "header_visibility",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. Suppressing that closure removes exactly 16 bytes from `.sdata2` or `.rodata`, but success requires retaining every target-authenticated declaration and ABI surface. MDPResult pass53, Option passes 1 and 2, and Opening prefix prove zero-text-cost owner-local forms. Telop proves the reusable shared-header form: when `dolphin/math.h` is already active, `humath.h` and `musyx/musyx.h` can skip their second generic `math.h` include, preserving exact codegen without a recovered-C header-guard override. Opening pass2 remains the declaration-surface counterexample: blind suppression hid authentic double sin/cos prototypes, changed call ABI, grew two functions, and emitted an 8-byte conversion pool. The signature is diagnostic rather than universally corrective.",
+      "summary": "Across GC/2.6 main objects and GC/1.3.2 REL objects, a transitive generic math closure can emit source-only weak sqrtf statics for 0.5 and 3.0. Suppressing that closure removes exactly 16 bytes from `.sdata2` or `.rodata`, but success requires retaining every target-authenticated declaration and ABI surface. MDPResult pass53, Option passes 1 and 2, and Opening prefix prove zero-text-cost owner-local forms. Telop proves the reusable shared-header form: when `dolphin/math.h` is already active, `humath.h` and `musyx/musyx.h` can skip their second generic `math.h` include, preserving exact codegen without a recovered-C header-guard override. Later Last5 and Mgcall probes prove that old guard exceptions must be revalidated after include-graph changes: deleting `_MATH_H` left both object hashes byte-identical and removed the organicity violation. Opening pass2 remains the declaration-surface counterexample: blind suppression hid authentic double sin/cos prototypes, changed call ABI, grew two functions, and emitted an 8-byte conversion pool. The signature is diagnostic rather than universally corrective.",
       "conditions": "Use under the pinned owner compiler command when source text is exact or value-exact but the candidate object owns exactly 16 extra bytes encoding double 0.5 and 3.0, preprocessing proves a transitive generic math closure, retail has no corresponding owner, and exact same-game translation units authenticate the math-header chronology. Prefer a normal header-coexistence condition when `dolphin/math.h` is already active; require protected-consumer proof and a whole-project retail build for any shared-header change.",
       "source_condition": {
         "change": "A translation unit selects generic `math.h` or an already-active `dolphin/math.h` through an authenticated header boundary, changing whether weak function-local `_half` and `_three` statics own 16 bytes of `.sdata2` or `.rodata`.",
@@ -1478,6 +1478,7 @@
         "inspect the preprocessed include closure and raw `.sdata2` or `.rodata` bytes",
         "compare preprocessed function prototypes before and after pool suppression and reject any implicit-call ABI drift",
         "test only an authenticated include chronology or math-header coexistence change",
+        "rebuild every guarded owner after include-graph changes and delete a stale guard plus its exception when the complete object hash is unchanged",
         "reject recovered-C definitions of `_MATH_H`, `_DOLPHIN_MATH`, or any other library header guard",
         "enumerate and reverify every affected Matching consumer after a shared-header change",
         "run every configured retail output after any shared-header diagnostic",
@@ -1508,7 +1509,7 @@
         "main:board/dice",
         "main:board/capselect",
         "main:board/scroll",
-        "main:board/mgcall",
+        "main:board/last5 and main:board/mgcall removed stale `_MATH_H` overrides with byte-identical object hashes, zero strict/value regressions, and organicity improvements from 83 to 97 and 81 to 95",
         "main:board/telop (GC/2.6, mbTelopTimeChangeCreate 2,432 exact text bytes and 82/82 non-R_PPC_NONE relocations; 137/137 retail hashes pass with clean math-header coexistence)",
         "mdpresultdll:application_pass53 (GC/1.3.2, 1,176 exact text bytes, 48/48 objdiff rows, retail REL hash restored)",
         "optionDll:application_pass1_e538 and application_pass1_f1d8 (GC/1.3.2, seven functions, 1,724 exact text bytes, 95 physical relocations, 172/172 objdiff rows, retail REL hash restored)",
@@ -1530,11 +1531,13 @@
         "tutorial-no-generic-math-inline",
         "dice-no-generic-math-inline",
         "capselect-no-generic-math-inline",
-        "scroll-no-generic-math-inline",
-        "mgcall-no-generic-math-inline"
+        "scroll-no-generic-math-inline"
       ],
       "evidence": [
         "docs/native_matching_board_constant_pool.md",
+        "build/board-autonomy/last5-no-guard-proof/report.json",
+        "build/board-autonomy/mgcall-no-guard-proof/report.json",
+        "src/board/last5.c",
         "src/board/mgcall.c",
         "src/REL/mdpresultdll/mdpresult.c",
         "config/dll/rels/mdpresultdll/splits.txt",
