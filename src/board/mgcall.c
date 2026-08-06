@@ -68,7 +68,7 @@ typedef struct MgCallWork_s {
 
 typedef struct MgCallVsEffWork_s {
     BOOL activeF;
-    s16 sprId;
+    int sprId;
     int time;
     int maxTime;
     float scaleStep;
@@ -520,7 +520,9 @@ static int SetupTeam(int *colorIn)
     int colorTbl[GW_PLAYER_MAX];
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        GwPlayer[i].teamBackup = GwPlayer[i].team;
+        int team = GwPlayer[i].team;
+
+        GwPlayer[i].teamBackup = (BOOL)team;
     }
     if (!GWTeamFGet()) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -531,7 +533,7 @@ static int SetupTeam(int *colorIn)
             origColor[i] = (i == 0) ? STATUS_COLOR_RED : STATUS_COLOR_BLUE;
         }
     }
-    if (colorIn != NULL) {
+    if (colorIn) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             mbStatusColorSet(i, colorIn[i]);
             colorTbl[i] = colorIn[i];
@@ -575,7 +577,9 @@ static int SetupTeam(int *colorIn)
         switch (type) {
         case MG_TYPE_2VS2:
             for (i = 0; i < GW_PLAYER_MAX; i++) {
-                GwPlayerConf[i].grpNo = GwPlayer[i].team;
+                int team = GwPlayer[i].team;
+
+                GwPlayerConf[i].grpNo = team;
             }
             break;
         case MG_TYPE_4P:
@@ -2747,17 +2751,19 @@ void mbev_MgCallTutorial(void)
 
 static void MgCallVsEffCreate(void)
 {
+    OMOBJ *obj;
+    MGCALLVSEFFWORK *workP;
     MGCALLVSEFFWORK *work;
     int i;
 
-    mgCallVsEffOMObj = omAddObjEx(mbObjMan,
+    obj = mgCallVsEffOMObj = omAddObjEx(mbObjMan,
         MGCALL_VS_EFFECT_OBJECT_PRIORITY, 0, 0, -1, MgCallVsEffOMExec);
-    work = HuMemDirectMallocNum(HEAP_HEAP,
+    workP = HuMemDirectMallocNum(HEAP_HEAP,
         sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT, HU_MEMNUM_OVL);
-    mgCallVsEffOMObj->data = work;
+    obj->data = workP;
+    work = workP;
     memset(work, 0, sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT);
-    mgCallVsEffOMObj->work[0] = mgCallVsEffOMObj->work[1]
-        = mgCallVsEffOMObj->work[2] = mgCallVsEffOMObj->work[3] = 0;
+    obj->work[0] = obj->work[1] = obj->work[2] = obj->work[3] = 0;
     for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
         work->activeF = FALSE;
         work->sprId = espEntry(
@@ -2817,6 +2823,7 @@ static void MgCallVsEffPosSet(float x, float y)
     int i;
     float angle;
     float speed;
+    float scaleBase;
     GXColor color;
 
     for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
@@ -2837,10 +2844,11 @@ static void MgCallVsEffPosSet(float x, float y)
             work->scaleY = 1.0f + frandf();
             work->zRot = frandf();
             mbev_CapEffColorSet(&color, frand() % 7);
+            scaleBase = work->scaleBase;
             espPosSet(work->sprId, work->pos.x, work->pos.y);
             espScaleSet(work->sprId,
-                work->scaleX * work->scaleBase,
-                work->scaleY * work->scaleBase);
+                work->scaleX * scaleBase,
+                work->scaleY * scaleBase);
             espZRotSet(work->sprId, work->zRot);
             espColorSet(work->sprId, color.r, color.g, color.b);
             espTPLvlSet(work->sprId, 1.0f);

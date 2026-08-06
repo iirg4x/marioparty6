@@ -1,6 +1,7 @@
 #include "dolphin/math.h"
 
 #include "game/gamework.h"
+#include "game/main.h"
 #include "game/charman.h"
 #include "game/flag.h"
 #include "game/hsfex.h"
@@ -44,6 +45,16 @@ s8 mbPadStkYGet(int playerNo);
 #define CAPEVENT_EFFECT_RANDOM_MASK (CAPEVENT_EFFECT_RANDOM_RANGE - 1)
 #define CAPEVENT_EFFECT_RANDOM_DATA_SIZE (1 << 11)
 #define CAPEVENT_DISPLAY_LIST_SIZE (1 << 16)
+
+#define CAPEVENT_PARTICLE_ATTR_ZWRITE_OFF (1 << 0)
+#define CAPEVENT_PARTICLE_ATTR_GRID_UV (1 << 1)
+#define CAPEVENT_PARTICLE_ATTR_UV_LOCKED (1 << 2)
+#define CAPEVENT_PARTICLE_ATTR_ROTATE_3D (1 << 3)
+#define CAPEVENT_PARTICLE_ATTR_SCALE_XY (1 << 4)
+#define CAPEVENT_PARTICLE_ATTR_IDENTITY_VIEW (1 << 5)
+#define CAPEVENT_PARTICLE_ATTR_NO_CULL (1 << 6)
+#define CAPEVENT_PARTICLE_STATE_LOOP (1 << 0)
+#define CAPEVENT_PARTICLE_STATE_STOP_COUNTER (1 << 1)
 
 #define CAPEVENT_DATA_RING_PRIMARY DATANUM(DATA_capsule, 49)
 #define CAPEVENT_DATA_RING_SECONDARY DATANUM(DATA_capsule, 50)
@@ -262,7 +273,11 @@ typedef struct CapEffGlowKinokoParticleSystemWork {
     u8 _unk5C[4];
 } CAPEFFGLOWKINOKOPARTICLESYSTEMWORK;
 
-typedef struct CapEffParticleSystemWork {
+typedef struct CapEffParticleSystemWork CAPEFFPARTICLESYSTEMWORK;
+typedef void (*CAPEFFPARTICLEHOOK)(HU3D_MODEL *modelP,
+    CAPEFFPARTICLESYSTEMWORK *particleP, Mtx mtx);
+
+struct CapEffParticleSystemWork {
     s16 mode;
     s16 phase;
     u8 _unk04[28];
@@ -272,7 +287,7 @@ typedef struct CapEffParticleSystemWork {
     u8 _unk23[3];
     s16 num;
     int _unk28;
-    u8 _unk2C[4];
+    u32 _unk2C;
     int _unk30;
     u32 displayListSize;
     ANIMDATA *animP;
@@ -280,12 +295,12 @@ typedef struct CapEffParticleSystemWork {
     HuVecF *vertices;
     HuVec2f *texCoords;
     void *displayList;
-    int _unk4C;
+    CAPEFFPARTICLEHOOK _unk4C;
     HuVec2f *grid;
     int _unk54;
     int gridNum;
-    int _unk5C;
-} CAPEFFPARTICLESYSTEMWORK;
+    HU3D_MODEL *_unk5C;
+};
 
 typedef struct CapEffGlowKinokoParticleWork {
     s16 _unk00;
@@ -720,8 +735,11 @@ void mbev_CapObjMotionOMExec(OMOBJ *obj);
 void mbev_CapPlayerMotionOMExec(OMOBJ *obj);
 int mbCapObjColorCreate(int capsuleNo, BOOL createF);
 void mbCapObjColorPosSet(int id, float x, float y, float z);
+void mbCapObjColorPosSetV(int id, HuVecF *pos);
 void mbCapObjColorScaleSet(int id, float x, float y, float z);
+void mbCapObjColorAlphaSet(int id, u8 alpha);
 void mbCapObjColorLayerSet(int id, u8 layer);
+void mbCapObjColorKill(int id);
 void mbev_CapEffColorSet(GXColor *color, int colorNo);
 extern int mbStarObjCreate(void);
 extern void mbStarObjKill(int objNo);
@@ -4564,6 +4582,46 @@ void mbev_CapEffRayDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+OMOBJ *mbev_CapEffMasuHitCreate(void)
+{
+    CAPEFFMASUHITWORK *workP;
+    OMOBJ *obj;
+    HU3D_MODEL *modelP;
+    CAPEFFGLOWKINOKOPARTICLESYSTEMWORK *particleP;
+    CAPEFFMASUHITPARTICLEWORK *particleWorkP;
+    int objIdx;
+    int i;
+
+    for (objIdx = 0; objIdx < 8; objIdx++) {
+        if (ev_CapEffMasuHitOMObj[objIdx] == NULL) {
+            break;
+        }
+    }
+    obj = omAddObjEx(mbObjMan, CAPEVENT_EFFECT_OBJ_PRIORITY, 0, 0, -1,
+        mbev_CapEffMasuHitOMExec);
+    ev_CapEffMasuHitOMObj[objIdx] = obj;
+    workP = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
+        sizeof(CAPEFFMASUHITWORK), HU_MEMNUM_OVL);
+    memset(workP, 0, sizeof(CAPEFFMASUHITWORK));
+    workP->animP = HuSprAnimRead(HuDataReadNum(
+        DATANUM(DATA_capsule, 57), HU_MEMNUM_OVL));
+    workP->_unk04 = 0;
+    workP->objIdx = objIdx;
+    workP->modelId = ev_CapEffCreate(workP->animP, 128);
+    ev_CapEffGridSet((s16)workP->modelId, 1, 4, 0);
+    Hu3DModelLayerSet((s16)workP->modelId, 5);
+    modelP = &Hu3DData[workP->modelId];
+    particleP = modelP->hookData;
+    particleP->_unk20 = 1;
+    particleWorkP = particleP->data;
+    for (i = 0; i < particleP->num; i++, particleWorkP++) {
+        mbev_CapEffColorSet(&particleWorkP->color,
+            mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE));
+        particleWorkP->_unk40 = 0.0f;
+    }
+    return obj;
+}
+
 void mbev_CapEffMasuHitOMExec(OMOBJ *obj)
 {
     CAPEFFMASUHITWORK *workP;
@@ -6459,6 +6517,234 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
     return modelId;
 }
 
+static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
+{
+    CAPEFFPARTICLESYSTEMWORK *workP;
+    CAPEFFGLOWPARTICLEWORK *particleP;
+    HuVecF *vertexP;
+    HuVec2f *stP;
+    HuVec2f *gridP;
+    Mtx mtxInv;
+    ROMtx basePosMtx;
+    Mtx rotMtx;
+    Mtx particleMtx;
+    HuVecF baseVtx[4];
+    HuVecF scaleVtx[4];
+    int patX;
+    int patY;
+    int i;
+    int j;
+
+    workP = modelP->hookData;
+    if (workP->_unk2C == GlobalCounter && !shadowModelDrawF) {
+        return;
+    }
+    if (workP->_unk5C != NULL && workP->_unk5C != modelP) {
+        ev_CapEffDraw(workP->_unk5C, mtx);
+    }
+    GXLoadPosMtxImm(*mtx, GX_PNMTX0);
+    GXSetNumTevStages(1);
+    GXSetNumTexGens(1);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+        GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    if (shadowModelDrawF) {
+        GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO,
+            GX_CC_ZERO);
+        GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+    } else {
+        i = workP->animP->bmp->dataFmt & ANIM_BMP_FMTMASK;
+        if (i == ANIM_BMP_I8 || i == ANIM_BMP_I4) {
+            GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ONE, GX_CC_RASC,
+                GX_CC_ZERO);
+        } else {
+            GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC,
+                GX_CC_ZERO);
+        }
+        if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_ZWRITE_OFF) {
+            GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+        } else if (modelP->attr & HU3D_ATTR_ZWRITE_OFF) {
+            GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+        } else {
+            GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+        }
+    }
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+        GX_TRUE, GX_TEVPREV);
+    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_TEXA, GX_CA_RASA,
+        GX_CA_ZERO);
+    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+        GX_TRUE, GX_TEVPREV);
+    GXSetNumChans(1);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX,
+        GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    HuSprTexLoad(workP->animP, 0, GX_TEXMAP0, GX_CLAMP, GX_REPEAT, GX_NEAR);
+    GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
+    GXSetZCompLoc(GX_FALSE);
+    switch (workP->dispAttr) {
+        case 0:
+            GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA,
+                GX_BL_INVSRCALPHA, GX_LO_NOOP);
+            break;
+        case 1:
+            GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE,
+                GX_LO_NOOP);
+            break;
+        case 2:
+            GXSetBlendMode(GX_BM_BLEND, GX_BL_ZERO, GX_BL_INVSRCALPHA,
+                GX_LO_NOOP);
+            break;
+    }
+    if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_NO_CULL) {
+        GXSetCullMode(GX_CULL_NONE);
+    } else {
+        GXSetCullMode(GX_CULL_BACK);
+    }
+    if (HmfInverseMtxF3X3(*mtx, mtxInv) == FALSE) {
+        PSMTXIdentity(mtxInv);
+    }
+    PSMTXReorder(mtxInv, basePosMtx);
+    if (workP->_unk4C != NULL) {
+        workP->_unk4C(modelP, workP, *mtx);
+    }
+
+    vertexP = workP->vertices;
+    particleP = workP->data;
+    if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_IDENTITY_VIEW) {
+        PSMTXIdentity(mtxInv);
+        baseVtx[0] = basePos[0];
+        baseVtx[1] = basePos[1];
+        baseVtx[2] = basePos[2];
+        baseVtx[3] = basePos[3];
+    } else {
+        baseVtx[0] = basePos[0];
+        baseVtx[1] = basePos[1];
+        baseVtx[2] = basePos[2];
+        baseVtx[3] = basePos[3];
+    }
+    for (i = 0; i < workP->num; i++, particleP++) {
+        if (particleP->active == 0.0f) {
+            vertexP->x = 0.0f;
+            vertexP->y = 0.0f;
+            vertexP->z = 0.0f;
+            vertexP++;
+            vertexP->x = 0.0f;
+            vertexP->y = 0.0f;
+            vertexP->z = 0.0f;
+            vertexP++;
+            vertexP->x = 0.0f;
+            vertexP->y = 0.0f;
+            vertexP->z = 0.0f;
+            vertexP++;
+            vertexP->x = 0.0f;
+            vertexP->y = 0.0f;
+            vertexP->z = 0.0f;
+            vertexP++;
+            continue;
+        }
+        if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_SCALE_XY) {
+            scaleVtx[0].x = baseVtx[0].x * particleP->sizeX;
+            scaleVtx[0].y = baseVtx[0].y * particleP->sizeY;
+            scaleVtx[0].z = baseVtx[0].z;
+            scaleVtx[1].x = baseVtx[1].x * particleP->sizeX;
+            scaleVtx[1].y = baseVtx[1].y * particleP->sizeY;
+            scaleVtx[1].z = baseVtx[1].z;
+            scaleVtx[2].x = baseVtx[2].x * particleP->sizeX;
+            scaleVtx[2].y = baseVtx[2].y * particleP->sizeY;
+            scaleVtx[2].z = baseVtx[2].z;
+            scaleVtx[3].x = baseVtx[3].x * particleP->sizeX;
+            scaleVtx[3].y = baseVtx[3].y * particleP->sizeY;
+            scaleVtx[3].z = baseVtx[3].z;
+        } else {
+            scaleVtx[0] = baseVtx[0];
+            scaleVtx[1] = baseVtx[1];
+            scaleVtx[2] = baseVtx[2];
+            scaleVtx[3] = baseVtx[3];
+        }
+        PSVECScale(&scaleVtx[0], &scaleVtx[0], particleP->active);
+        PSVECScale(&scaleVtx[1], &scaleVtx[1], particleP->active);
+        PSVECScale(&scaleVtx[2], &scaleVtx[2], particleP->active);
+        PSVECScale(&scaleVtx[3], &scaleVtx[3], particleP->active);
+        if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_ROTATE_3D) {
+            mtxRot(rotMtx, particleP->rotX, particleP->rotY,
+                particleP->angle);
+            PSMTXConcat(mtxInv, rotMtx, particleMtx);
+        } else if (particleP->angle == 0.0f) {
+            PSMTXCopy(mtxInv, particleMtx);
+        } else {
+            PSMTXRotRad(rotMtx, 'Z', particleP->angle);
+            PSMTXConcat(mtxInv, rotMtx, particleMtx);
+        }
+        particleMtx[0][3] = particleP->pos.x;
+        particleMtx[1][3] = particleP->pos.y;
+        particleMtx[2][3] = particleP->pos.z;
+        PSMTXMultVecArray(particleMtx, scaleVtx, vertexP, 4);
+        vertexP += 4;
+    }
+
+    particleP = workP->data;
+    stP = workP->texCoords;
+    if (!(workP->blendMode & CAPEVENT_PARTICLE_ATTR_GRID_UV)) {
+        gridP = workP->grid;
+        if (gridP == NULL) {
+            for (i = 0; i < workP->num; i++, particleP++) {
+                patX = particleP->pat & 3;
+                patY = (particleP->pat >> 2) & 3;
+                for (j = 0; j < 4; j++, stP++) {
+                    stP->x = (float)patX * 0.25f + baseST1[j * 2];
+                    stP->y = (float)patY * 0.25f + baseST1[j * 2 + 1];
+                }
+            }
+        } else {
+            for (i = 0; i < workP->num; i++, particleP++) {
+                gridP = &workP->grid[particleP->pat * 4];
+                for (j = 0; j < 4; j++, stP++, gridP++) {
+                    *stP = *gridP;
+                }
+            }
+        }
+    } else if (!(workP->blendMode & CAPEVENT_PARTICLE_ATTR_UV_LOCKED)) {
+        for (i = 0; i < workP->num; i++) {
+            for (j = 0; j < 4; j++, stP++) {
+                stP->x = baseST2[j * 2];
+                stP->y = baseST2[j * 2 + 1];
+            }
+        }
+        workP->blendMode |= CAPEVENT_PARTICLE_ATTR_IDENTITY_VIEW;
+    }
+    DCFlushRangeNoSync(workP->vertices,
+        workP->num * sizeof(HuVecF) * 4);
+    DCFlushRangeNoSync(workP->texCoords,
+        workP->num * sizeof(HuVec2f) * 4);
+    DCFlushRangeNoSync(workP->data,
+        workP->num * sizeof(CAPEFFGLOWPARTICLEWORK));
+    PPCSync();
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetArray(GX_VA_POS, workP->vertices, sizeof(HuVecF));
+    GXSetVtxDesc(GX_VA_CLR0, GX_INDEX16);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+    GXSetArray(GX_VA_CLR0, &workP->data->color,
+        sizeof(CAPEFFGLOWPARTICLEWORK));
+    GXSetVtxDesc(GX_VA_TEX0, GX_INDEX16);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    GXSetArray(GX_VA_TEX0, workP->texCoords, sizeof(HuVec2f));
+    GXCallDisplayList(workP->displayList, workP->displayListSize);
+    if (!shadowModelDrawF) {
+        if (!(workP->_unk21 & CAPEVENT_PARTICLE_STATE_STOP_COUNTER)) {
+            workP->_unk28++;
+        }
+        if (workP->_unk30 != 0 && workP->_unk30 <= workP->_unk28) {
+            if (workP->_unk21 & CAPEVENT_PARTICLE_STATE_LOOP) {
+                workP->_unk28 = 0;
+            }
+            workP->_unk28 = workP->_unk30;
+        }
+        workP->_unk2C = GlobalCounter;
+    }
+}
+
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
 {
     HU3D_MODEL *model;
@@ -7051,6 +7337,46 @@ OMOBJ *mbev_CapEffCapLoseCreate(void)
         workP->vel.x = workP->vel.x = workP->vel.x = 0.0f;
     }
     return obj;
+}
+
+void mbev_CapEffCapLoseOMExec(OMOBJ *obj)
+{
+    CAPEFFCAPLOSEWORK *workP;
+    int i;
+
+    workP = obj->data;
+    if (mbExitCheck()
+        || ev_CapEffCapLoseOMObj[workP->objIdx] == (OMOBJ *)-1) {
+        for (i = 0; i < 6; i++, workP++) {
+            if (workP->colorObjId != -1) {
+                mbCapObjColorKill(workP->colorObjId);
+            }
+            workP->colorObjId = -1;
+        }
+        workP = obj->data;
+        ev_CapEffCapLoseOMObj[workP->objIdx] = NULL;
+        omDelObjEx(mbObjMan, obj);
+        return;
+    }
+    for (i = 0; i < 6; i++, workP++) {
+        if (workP->activeF) {
+            PSVECAdd(&workP->pos, &workP->vel, &workP->pos);
+            workP->vel.y -= CAPEVENT_GRAVITY * 0.5f;
+            workP->vel.y *= 0.98f;
+            workP->_unk14++;
+            mbCapObjColorPosSetV(workP->colorObjId, &workP->pos);
+            mbCapObjColorAlphaSet(workP->colorObjId, (u8)(255.0f
+                - (255.0f * ((float)workP->_unk14
+                / (float)workP->time))));
+            if (workP->_unk14 >= workP->time) {
+                if (workP->colorObjId != -1) {
+                    mbCapObjColorKill(workP->colorObjId);
+                }
+                workP->colorObjId = -1;
+                workP->activeF = 0;
+            }
+        }
+    }
 }
 
 

@@ -1,4 +1,3 @@
-#define _MATH_H
 #include "dolphin/math.h"
 
 #include "game/board/audio.h"
@@ -24,17 +23,47 @@
 #define COIN_EFF_MAX 64
 #define COIN_MODEL_MAX 14
 
-#define COIN_OBJ_ID_MASK 0x0FFF
-#define COIN_OBJ_ID_BASE 0x4000
+#define COIN_OBJ_ID_MASK ((1 << 12) - 1)
+#define COIN_OBJ_ID_BASE (1 << 14)
+#define COIN_OBJ_SLOT_MASK (COIN_OBJ_BANK_SIZE - 1)
 
-#define COIN_OBJ_ATTR_USED 0x00000001
-#define COIN_OBJ_ATTR_DISP 0x00100000
+#define COIN_OBJ_ATTR_USED (1 << 0)
+#define COIN_OBJ_ATTR_DISP (1 << 20)
+#define COIN_OBJ_KIND_SHIFT 16
+#define COIN_OBJ_KIND_MASK (15 << COIN_OBJ_KIND_SHIFT)
+#define COIN_OBJ_KIND_FIELD_MASK (~((1 << COIN_OBJ_KIND_SHIFT) - 1))
 
 #define COINDISP_MODE_ON 0
 #define COINDISP_MODE_MAIN 1
 #define COINDISP_MODE_NONE 2
 #define COINDISP_MODE_OFF 3
 #define COINDISP_MODEL_MAX 5
+
+enum {
+    COIN_SE_GAIN = 7,
+    COIN_SE_LOSS = 14,
+    COIN_SE_CHANGE_END = 15,
+    COIN_SE_DISPLAY_GAIN = 1127,
+    COIN_SE_DISPLAY_LOSS = 1128,
+};
+
+enum {
+    COIN_DATA_MODEL_RED = DATANUM(DATA_board, 3),
+    COIN_DATA_MODEL = DATANUM(DATA_board, 4),
+    COIN_DATA_NUMBER_ZERO = DATANUM(DATA_board, 11),
+    COIN_DATA_NUMBER_ONE = DATANUM(DATA_board, 12),
+    COIN_DATA_NUMBER_TWO = DATANUM(DATA_board, 13),
+    COIN_DATA_NUMBER_THREE = DATANUM(DATA_board, 14),
+    COIN_DATA_NUMBER_FOUR = DATANUM(DATA_board, 15),
+    COIN_DATA_NUMBER_FIVE = DATANUM(DATA_board, 16),
+    COIN_DATA_NUMBER_SIX = DATANUM(DATA_board, 17),
+    COIN_DATA_NUMBER_SEVEN = DATANUM(DATA_board, 18),
+    COIN_DATA_NUMBER_EIGHT = DATANUM(DATA_board, 19),
+    COIN_DATA_NUMBER_NINE = DATANUM(DATA_board, 20),
+    COIN_DATA_PLUS = DATANUM(DATA_board, 21),
+    COIN_DATA_PLUS_MINUS = DATANUM(DATA_board, 22),
+    COIN_DATA_EFFECT = DATANUM(DATA_board, 101),
+};
 
 typedef struct MbCoinObjBank_s {
     int count;
@@ -99,35 +128,35 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result);
 static OMOBJ *coinDispOMObj[GW_PLAYER_MAX + 1] = {};
 
 static int numberFileTbl[] = {
-    0x0005000B,
-    0x0005000C,
-    0x0005000D,
-    0x0005000E,
-    0x0005000F,
-    0x00050010,
-    0x00050011,
-    0x00050012,
-    0x00050013,
-    0x00050014,
-    0x00050015,
-    0x00050016,
+    COIN_DATA_NUMBER_ZERO,
+    COIN_DATA_NUMBER_ONE,
+    COIN_DATA_NUMBER_TWO,
+    COIN_DATA_NUMBER_THREE,
+    COIN_DATA_NUMBER_FOUR,
+    COIN_DATA_NUMBER_FIVE,
+    COIN_DATA_NUMBER_SIX,
+    COIN_DATA_NUMBER_SEVEN,
+    COIN_DATA_NUMBER_EIGHT,
+    COIN_DATA_NUMBER_NINE,
+    COIN_DATA_PLUS,
+    COIN_DATA_PLUS_MINUS,
 };
 
 static int coinObjFileTbl[] = {
-    0x00050003,
-    0x00050004,
-    0x0005000B,
-    0x0005000C,
-    0x0005000D,
-    0x0005000E,
-    0x0005000F,
-    0x00050010,
-    0x00050011,
-    0x00050012,
-    0x00050013,
-    0x00050014,
-    0x00050015,
-    0x00050016,
+    COIN_DATA_MODEL_RED,
+    COIN_DATA_MODEL,
+    COIN_DATA_NUMBER_ZERO,
+    COIN_DATA_NUMBER_ONE,
+    COIN_DATA_NUMBER_TWO,
+    COIN_DATA_NUMBER_THREE,
+    COIN_DATA_NUMBER_FOUR,
+    COIN_DATA_NUMBER_FIVE,
+    COIN_DATA_NUMBER_SIX,
+    COIN_DATA_NUMBER_SEVEN,
+    COIN_DATA_NUMBER_EIGHT,
+    COIN_DATA_NUMBER_NINE,
+    COIN_DATA_PLUS,
+    COIN_DATA_PLUS_MINUS,
 };
 
 static char *coinObjNameTbl[] = {
@@ -177,10 +206,15 @@ static HUPROCESS *coinMdlProc;
 
 void mbCoinInit(void)
 {
+    s16 modelId1;
+    s16 modelId2;
+
     memset(coinDispOMObj, 0, sizeof(coinDispOMObj));
     memset(coinEffData, 0, sizeof(coinEffData));
-    coin1MdlId = mbObjCreate(mbBoardDataNumGet(0x00050003), NULL, TRUE);
-    coin2MdlId = mbObjCreate(mbBoardDataNumGet(0x00050004), NULL, TRUE);
+    modelId1 = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL_RED), NULL, TRUE);
+    coin1MdlId = modelId1;
+    modelId2 = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL), NULL, TRUE);
+    coin2MdlId = modelId2;
     mbObjDispSet(coin1MdlId, FALSE);
     mbObjDispSet(coin2MdlId, FALSE);
     CoinInit();
@@ -328,7 +362,7 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
                         mtx[1][3] = objP->pos.y;
                         mtx[2][3] = objP->pos.z;
                         PSMTXConcat(*mtxP, mtx, mtx);
-                        modelNo = (*attrP & 0x000F0000) >> 16;
+                        modelNo = (*attrP & COIN_OBJ_KIND_MASK) >> COIN_OBJ_KIND_SHIFT;
                         alphaVal = 255.0f * objP->alpha;
                         if (alphaVal != alpha[modelNo]) {
                             alpha[modelNo] = alphaVal;
@@ -358,7 +392,8 @@ s16 mbCoinCreate(void)
     int objNo;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -366,7 +401,7 @@ s16 mbCoinCreate(void)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -395,7 +430,8 @@ s16 mbCoinCreate2(void)
     int objNo;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -403,7 +439,7 @@ s16 mbCoinCreate2(void)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -433,7 +469,8 @@ s16 mbCoinObjCreate(int modelNo, int motNo)
     s16 objId;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -441,7 +478,7 @@ s16 mbCoinObjCreate(int modelNo, int motNo)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -473,7 +510,8 @@ s16 mbCoinObjCreate2(int modelNo, int motNo)
     s16 objId;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        if (!coinObjData.bank[bankNo]) {
+        bankP = coinObjData.bank[bankNo];
+        if (!bankP) {
             bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
             bankP->count = 0;
             memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -481,7 +519,7 @@ s16 mbCoinObjCreate2(int modelNo, int motNo)
             coinObjData.bank[bankNo] = bankP;
             break;
         }
-        if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+        if (bankP->count < COIN_OBJ_BANK_SIZE) {
             break;
         }
     }
@@ -512,7 +550,7 @@ MBCOINOBJ *mbCoinObjGet(s16 objId)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     return &bankP->obj[objNo];
 }
@@ -525,7 +563,7 @@ void mbCoinObjNumDec(s16 objId)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     bankP->attr[objNo] = 0;
     bankP->count--;
@@ -540,7 +578,7 @@ void mbCoinObjKill(s16 objId)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     objP = &bankP->obj[objNo];
     mbCoinEffCreate(&objP->pos);
@@ -678,7 +716,7 @@ void mbCoinObjDispSet(s16 objId, BOOL dispF)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     bankP->attr[objNo] &= ~COIN_OBJ_ATTR_DISP;
     if (dispF) {
@@ -694,7 +732,7 @@ BOOL mbCoinObjDispGet(s16 objId)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     return (bankP->attr[objNo] & COIN_OBJ_ATTR_DISP) == COIN_OBJ_ATTR_DISP;
 }
@@ -707,9 +745,9 @@ void mbCoinObjLayerSet(s16 objId, u16 layer)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
-    bankP->attr[objNo] &= 0xFFFF0000;
+    bankP->attr[objNo] &= COIN_OBJ_KIND_FIELD_MASK;
     bankP->attr[objNo] |= layer;
 }
 
@@ -721,7 +759,7 @@ void mbCoinObjMotSet(s16 objId, int motNo)
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
-    objNo = objId & 0x3F;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
     bankP->motNo[objNo] = motNo;
 }
@@ -789,7 +827,7 @@ void mbCoinEffCreate(HuVecF *pos)
     int colorNo;
     int i;
 
-    mbAudFXPlay(7);
+    mbAudFXPlay(COIN_SE_GAIN);
     effNo = -1;
     for (effP = &coinEffData[0], i = 0; i < COIN_EFF_MAX; i++, effP++) {
         if (effP->modelId != 0) {
@@ -867,7 +905,7 @@ static void CoinEffCreate(int no, HuVecF *pos)
     effP = &coinEffData[no];
     if (effP->modelId <= 0) {
         effP->modelId = mbParticleCreate(
-            HuSprAnimRead(HuDataSelHeapReadNum(mbBoardDataNumGet(0x00050065), HU_MEMNUM_OVL, HEAP_MODEL)),
+            HuSprAnimRead(HuDataSelHeapReadNum(mbBoardDataNumGet(COIN_DATA_EFFECT), HU_MEMNUM_OVL, HEAP_MODEL)),
             100);
         mbParticleHookSet(effP->modelId, CoinEffHook);
         Hu3DModelLayerSet(effP->modelId, 5);
@@ -973,9 +1011,9 @@ s16 mbCoinDispCreate(HuVecF *pos, int coinNum, int sign, BOOL playSe)
     CoinDispObjUpdate(obj);
     if (playSe) {
         if (!work->sign) {
-            mbAudFXPlay(0x467);
+            mbAudFXPlay(COIN_SE_DISPLAY_GAIN);
         } else {
-            mbAudFXPlay(0x468);
+            mbAudFXPlay(COIN_SE_DISPLAY_LOSS);
         }
     }
     return work->no;
@@ -1271,7 +1309,7 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     coinDiff = coinNum;
     if (!fastF) {
         coinChg = (coinNum >= 0) ? 1 : -1;
-        seId = (coinChg > 0) ? 7 : 14;
+        seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
         for (i = 0; i < abs(coinNum); i++) {
             mbPlayerCoinAdd(playerNo, coinChg);
             mbAudFXPlay(seId);
@@ -1283,7 +1321,7 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     if (coinDiff != 0 || dispF) {
         HuVecF pos;
 
-        mbAudFXPlay(15);
+        mbAudFXPlay(COIN_SE_CHANGE_END);
         mbPlayerPosGet(playerNo, &pos);
         pos.y += 250.0f;
         dispNo = mbCoinDispCreate(&pos, coinDiff, dispF, TRUE);
@@ -1320,7 +1358,7 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     coinDiff = coinNum;
     if (!fastF) {
         coinChg = (coinNum >= 0) ? 1 : -1;
-        seId = (coinChg > 0) ? 7 : 14;
+        seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
         for (i = 0; i < abs(coinNum); i++) {
             mbPlayerCoinAdd(playerNo, coinChg);
             mbAudFXPlay(seId);
@@ -1330,7 +1368,7 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
         mbPlayerCoinAdd(playerNo, coinDiff);
     }
     if (coinDiff != 0) {
-        mbAudFXPlay(15);
+        mbAudFXPlay(COIN_SE_CHANGE_END);
     }
     if (dispF && coinDiff != 0) {
         HuVecF pos;
@@ -1347,7 +1385,38 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 
 int mbCoinAddExec(int playerNo, int coinNum)
 {
-    return mbCoinAddDispExec(playerNo, coinNum, FALSE, FALSE);
+    int coinDiff;
+    int i;
+    int delay;
+    int coinChg;
+    int coinNew;
+    s16 seId;
+
+    if (abs(coinNum) >= 50) {
+        delay = 1;
+    } else if (abs(coinNum) >= 20) {
+        delay = 3;
+    } else {
+        delay = 6;
+    }
+    coinNew = coinNum + mbPlayerCoinGet(playerNo);
+    if (coinNew > 999) {
+        coinNum = 999 - mbPlayerCoinGet(playerNo);
+    } else if (coinNew < 0) {
+        coinNum = -mbPlayerCoinGet(playerNo);
+    }
+    coinDiff = coinNum;
+    coinChg = (coinNum >= 0) ? 1 : -1;
+    seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
+    for (i = 0; i < abs(coinNum); i++) {
+        mbPlayerCoinAdd(playerNo, coinChg);
+        mbAudFXPlay(seId);
+        HuPrcSleep(delay);
+    }
+    if (coinDiff != 0) {
+        mbAudFXPlay(COIN_SE_CHANGE_END);
+    }
+    return coinDiff;
 }
 
 int mbStatTeamMinValGet(int teamNo, int value, int max, int *addNum,
@@ -1460,7 +1529,7 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
                 if (--time[i] == 0) {
                     mbPlayerCoinAdd(i, coinChg[i]);
                     coinNum[i] -= coinChg[i];
-                    mbAudFXPlay(7);
+                    mbAudFXPlay(COIN_SE_GAIN);
                     time[i] = delay[i];
                 }
                 playerNum++;
@@ -1474,7 +1543,7 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
             }
         }
     }
-    mbAudFXPlay(15);
+    mbAudFXPlay(COIN_SE_CHANGE_END);
 }
 
 void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF)
