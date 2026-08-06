@@ -17,19 +17,20 @@ This snapshot was generated from a verified full-project retail build with `tool
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
 is matching at **55 / 55 functions**. Current promoted partial-owner recovery
-includes `src/board/capevent.c` at **172 / 237 strict-exact functions** and
-**192 / 237 data-value-exact functions**; `src/board/capmove.c` at **17 / 24**
-and **18 / 24**; `src/board/capsule.c` at **107 / 165** and **108 / 165**;
+includes `src/board/capevent.c` at **173 / 237 strict-exact functions** and
+**193 / 237 data-value-exact functions**; `src/board/capmove.c` at **17 / 24**
+and **18 / 24**; `src/board/capsule.c` at **109 / 165** and **110 / 165**;
 `src/board/config.c` at **22 / 51** and **26 / 51**; `src/board/captrap.c` at
-**11 / 20** and **11 / 20**; `src/board/coin.c` at **26 / 52** and **32 / 52**;
+**11 / 20** and **11 / 20**; `src/board/coin.c` at **27 / 52** and **33 / 52**;
 `src/board/dice.c` at **52 / 68** and **54 / 68**; `src/board/last5.c` at **6 /
-10** and **6 / 10**; `src/board/mgcall.c` at **22 / 38** and **22 / 38**;
-`src/board/player.c` at **158 / 165** and **159 / 165**; and
+10** and **6 / 10**; `src/board/mgcall.c` at **25 / 38** and **25 / 38**;
+`src/board/player.c` at **158 / 165** and **159 / 165**; `src/board/single.c`
+at **39 / 58** and **43 / 58**; `src/board/snpc.c` at **36 / 85** and **41 /
+85**; and
 `src/board/telop.c` at **30 / 31 strict-exact and data-value-exact functions**.
-This promotion adds strict-exact `mbev_CapCoinManOMExec` and
-`CapEffThrowMasuCreate`, restores eight additional Capsule bodies, and has
-zero exact-function regressions. The board-owner and Treetop seam totals are
-unchanged because these files remain partial owners.
+The latest recovery batch adds verified strict and data-value gains across six
+partial owners with zero exact-function regressions. The board-owner and
+Treetop seam totals are unchanged because these files remain partial owners.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
