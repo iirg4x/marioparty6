@@ -420,6 +420,27 @@ _ORGANIC_RULES: tuple[tuple[str, str, int, str, re.Pattern[str], str], ...] = (
         "medium",
     ),
     (
+        "scientific-float-literal",
+        "semantic_debt",
+        14,
+        "Scientific notation in recovered gameplay C is decompiler-shaped; recover a natural named domain or expression.",
+        re.compile(
+            r"(?<![A-Za-z0-9_])(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)"
+            r"[eE][+-]?[0-9]+[fFlL]?\b"
+        ),
+        "high",
+    ),
+    (
+        "machine-rendered-float-literal",
+        "semantic_debt",
+        8,
+        "Long decimal tails with repeated zeroes or nines need a natural source spelling and exact pool proof.",
+        re.compile(
+            r"(?<![A-Za-z0-9_])[0-9]+\.[0-9]*(?:00000|99999)[0-9]*[fF]?\b"
+        ),
+        "medium",
+    ),
+    (
         "opaque-storage",
         "semantic_debt",
         4,

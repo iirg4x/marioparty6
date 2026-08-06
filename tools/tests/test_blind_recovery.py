@@ -78,6 +78,24 @@ typedef struct Packet {
         self.assertIn("opaque-storage", padding_ids)
         self.assertIn("opaque-identifier", padding_ids)
 
+    def test_organicity_flags_machine_rendered_float_literals(self):
+        rendered = """
+float scale = 1.2000000476837158f;
+float unit = 3.0518509447574615e-05f;
+"""
+        natural = """
+#define M_PI 3.141592653589793
+float scale = 1.2f;
+float unit = 1.0f / 32767.0f;
+"""
+
+        rendered_ids = {item.id for item in score_organicity(rendered).findings}
+        natural_ids = {item.id for item in score_organicity(natural).findings}
+        self.assertIn("scientific-float-literal", rendered_ids)
+        self.assertIn("machine-rendered-float-literal", rendered_ids)
+        self.assertNotIn("scientific-float-literal", natural_ids)
+        self.assertNotIn("machine-rendered-float-literal", natural_ids)
+
     def test_redundant_post_loop_condition_is_flagged(self):
         source = """
 static void flush(Block *block)
