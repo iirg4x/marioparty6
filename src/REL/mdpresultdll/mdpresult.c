@@ -1460,53 +1460,58 @@ void fn_1_9EBC(s16 count, u8 mask)
 void fn_1_A2B4(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *work;
-    HuVecF position;
-    HuVecF target;
     HuVecF rotation;
+    HuVecF target;
+    HuVecF position;
     float time;
-    float acceleration = lbl_1_rodata_360;
+    float acceleration;
 
     work = &lbl_1_bss_8EC[obj->work[3]];
-    if (work->state == 0) {
+    acceleration = lbl_1_rodata_360;
+    switch (work->state) {
+    case 0: {
         time = fn_1_1FC94(lbl_1_rodata_104, lbl_1_rodata_110,
             work->time, work->duration);
         acceleration = lbl_1_rodata_384 * time;
-        fn_1_1F948(&position, &work->current, &work->middle,
+        fn_1_1F948(&rotation, &work->current, &work->middle,
             &work->target, time);
-        Hu3DModelPosSetV(obj->mdlId[obj->work[3]], &position);
+        Hu3DModelPosSetV(obj->mdlId[obj->work[3]], &rotation);
         Hu3DModelScaleSet(obj->mdlId[obj->work[3]],
             lbl_1_rodata_3B8 * time, lbl_1_rodata_3B8 * time,
             lbl_1_rodata_3B8 * time);
-        work->time += lbl_1_rodata_110;
-        if (work->time > work->duration) {
+        if ((work->time += lbl_1_rodata_110) > work->duration) {
             work->state = 1;
             work->time = lbl_1_rodata_104;
             work->duration = lbl_1_rodata_380;
         }
-    } else if (work->state == 1) {
+        break;
+    }
+    case 1: {
         time = fn_1_1FC94(lbl_1_rodata_104, lbl_1_rodata_F4,
             work->time, work->duration);
-        work->time += lbl_1_rodata_110;
-        if (work->time > work->duration) {
+        acceleration = lbl_1_rodata_360;
+        if ((work->time += lbl_1_rodata_110) > work->duration) {
             work->time = lbl_1_rodata_104;
             work->duration = lbl_1_rodata_380;
         }
-        obj->work[0] += 1;
-        if (obj->work[0] > 20) {
+        if ((obj->work[0] += 1) > 20) {
             obj->work[0] = 0;
             work->values[1] = lbl_1_data_0[rand8() % 4].x;
         }
-        Hu3DModelPosGet(obj->mdlId[obj->work[3]], &position);
-        fn_1_1F868(&target, work->values[1],
-            lbl_1_rodata_39C + time, lbl_1_rodata_398);
-        fn_1_1FB50(&position, &target, lbl_1_rodata_F4);
-        Hu3DModelPosSetV(obj->mdlId[obj->work[3]], &position);
+        Hu3DModelPosGet(obj->mdlId[obj->work[3]], &rotation);
+        target.x = work->values[1];
+        target.y = lbl_1_rodata_39C + time;
+        target.z = lbl_1_rodata_398;
+        fn_1_1FB50(&rotation, &target, lbl_1_rodata_F4);
+        Hu3DModelPosSetV(obj->mdlId[obj->work[3]], &rotation);
         Hu3DModelRotGet(obj->mdlId[obj->work[3]], &rotation);
         rotation.y -= lbl_1_rodata_2B4;
         if (rotation.y > lbl_1_rodata_288) {
             rotation.y -= lbl_1_rodata_288;
         }
         Hu3DModelRotSetV(obj->mdlId[obj->work[3]], &rotation);
+        break;
+    }
     }
 
     Hu3DModelPosGet(obj->mdlId[obj->work[3]], &position);
