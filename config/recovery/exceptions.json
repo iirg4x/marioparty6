@@ -358,6 +358,22 @@
         "src/REL/mdseldll/mdsel.c",
         "config/GP6E01/build.sha1"
       ]
+    },
+    {
+      "id": "musyx-channel-defaults-packed-layout",
+      "classification": "authenticated",
+      "path": "include/musyx/seq.h",
+      "kind": "data_layout",
+      "rules": [
+        "compiler_pragma"
+      ],
+      "rationale": "The authenticated MusyX 2.0.4 donor declares CHANNEL_DEFAULTS under one-byte packing, and retail independently proves the active layout: pbRange is at offset 0, the two u32 filter boundaries are at offsets 1 and 5, and the arrays occupy exactly 0x480 and 0x240 bytes. Restoring that nine-byte ABI closes all 35 snd_midictrl functions strictly and by data value. The pragma records the proven SDK layout and is not a code-generation workaround.",
+      "evidence": [
+        "build/recovery-pass/main-dol/snd-midictrl-bulk-final-v5/report.json",
+        "build/GP6E01/obj/musyx/runtime/snd_midictrl.o",
+        "include/musyx/seq.h",
+        "https://github.com/AxioDL/musyx/tree/2a0e01aeff0d06a9ee9e12966c435cb75144af9e"
+      ]
     }
   ]
 }
