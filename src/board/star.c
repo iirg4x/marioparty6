@@ -358,6 +358,9 @@ void mbStarChestCreate(int objNo, int playerNo)
 
 static int StarObjCreate(HuVecF *pos)
 {
+    extern const float lbl_802C36E0;
+    extern const float lbl_802C36E4;
+    extern const float lbl_802C36E8;
     int i;
 
     for (i = 0; i < STAR_OBJ_MAX; i++) {
@@ -391,22 +394,30 @@ static int StarObjCreate(HuVecF *pos)
             for (j = 0; j < hsf->materialNum; j++, material++) {
                 material->flags |= HSF_MATERIAL_MATHOOK;
             }
-            mbObjRotSet(obj->mdlId[0], -90.0f, 0.0f, 0.0f);
+            mbObjRotSet(obj->mdlId[0], lbl_802C36E0, lbl_802C36E4,
+                lbl_802C36E4);
             mbObjZWriteOffSet(obj->mdlId[0], FALSE);
             mbObjLayerSet(obj->mdlId[0], 3);
             work->objNo = i;
             work->mode = STAR_MODE_IDLE;
             work->effectModelId = StarObjEffCreate(starEffAnim1);
-            effectModelId = work->effectModelId;
-            particleP = Hu3DData[effectModelId].hookData;
-            particleP->hookData = work;
+            {
+                void *hookData;
+                MBPARTICLE *modelParticleP;
+
+                effectModelId = work->effectModelId;
+                hookData = Hu3DData[effectModelId].hookData;
+                modelParticleP = hookData;
+                particleP = modelParticleP;
+                particleP->hookData = work;
+            }
             work->modelDispF = TRUE;
             work->time = 0;
             work->effectDispF = TRUE;
             work->autoDispF = TRUE;
-            work->offset.x = work->offset.y = work->offset.z = 0.0f;
-            work->rot.x = work->rot.y = work->rot.z = 0.0f;
-            work->scale.x = work->scale.y = work->scale.z = 1.0f;
+            work->offset.x = work->offset.y = work->offset.z = lbl_802C36E4;
+            work->rot.x = work->rot.y = work->rot.z = lbl_802C36E4;
+            work->scale.x = work->scale.y = work->scale.z = lbl_802C36E8;
             omSetStatBit(obj, OM_STAT_MODELPAUSE);
             return i;
         }
