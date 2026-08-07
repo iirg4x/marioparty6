@@ -149,6 +149,10 @@ void aramExit() {}
 
 unsigned long aramGetZeroBuffer() { return ARGetBaseAddress(); }
 
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+unsigned long aramGetFirstUserAddress() { return ARGetBaseAddress() + sizeof(s16) * 640; }
+#endif
+
 void aramSetUploadCallback(void* (*callback)(unsigned long, unsigned long),
                            unsigned long chunckSize) {
   unsigned long acs; // r30
