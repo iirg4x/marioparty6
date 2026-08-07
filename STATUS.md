@@ -4,14 +4,14 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 7, 2026**
+Last published full-project snapshot: **August 8, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.47% | 32.83% | 328 / 923 |
-| Main DOL | 48.28% | 74.78% | 296 / 396 |
+| Entire project | 13.90% | 37.29% | 334 / 923 |
+| Main DOL | 50.79% | 86.28% | 302 / 396 |
 | REL modules | 6.08% | 6.25% | 32 / 527 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
@@ -19,8 +19,9 @@ Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
 is matching at **55 / 55 functions**. Current promoted partial-owner recovery
 includes `src/board/capevent.c` at **200 / 237 strict-exact functions** and
 **202 / 237 data-value-exact functions**; `src/board/capmove.c` at **17 / 24**
-and **18 / 24**; `src/board/capsule.c` at **109 / 165** and **110 / 165**;
-`src/board/config.c` at **31 / 51** and **30 / 51**; `src/board/captrap.c` at
+and **18 / 24**; `src/board/capsule.c` at **111 / 165** and **112 / 165**;
+`src/board/capspecial.c` at **18 / 44** and **19 / 44**; `src/board/config.c` at
+**31 / 51** and **30 / 51**; `src/board/captrap.c` at
 **11 / 20** and **11 / 20**; `src/board/coin.c` at **36 / 52** and **36 / 52**;
 `src/board/dice.c` at **53 / 68** and **54 / 68**; `src/board/last5.c` at **6 /
 10** and **6 / 10**; `src/board/mgcall.c` at **26 / 38** and **26 / 38**;
@@ -29,10 +30,17 @@ at **42 / 58** and **43 / 58**; `src/board/snpc.c` at **43 / 85** and **47 /
 85**; `src/board/star.c` at **63 / 90** and **71 / 90**; `src/board/telop.c`
 at **30 / 31 strict-exact and data-value-exact functions**; and
 `src/board/wipe.c` at **32 / 33 strict-exact and data-value-exact functions**.
-The latest recovery batch adds **57 strict-exact functions** and **29,140 text
-bytes** across nine partial owners with zero exact-function regressions. The
+The latest recovery batch adds **61 strict-exact functions** and **33,632 text
+bytes** across 11 partial owners with zero exact-function regressions. The
 board-owner and Treetop seam totals are unchanged because these files remain
 partial owners.
+
+Four main-DOL MusyX runtime owners now build from recovered C: `synthvoice.c`
+at **21 / 21**, `synthdata.c` at **27 / 27**, `hw_aramdma.c` at **13 / 13**,
+and `snd_midictrl.c` at **35 / 35 strict-exact and data-value-exact
+functions**. Their combined source-linked build remains retail-identical.
+`s_data.c` and `hardware.c` remain `NonMatching` until their whole-object
+link closure is exact.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
