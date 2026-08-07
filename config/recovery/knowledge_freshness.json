@@ -916,6 +916,49 @@
       "supersedes": [],
       "superseded_by": null
     },
+    "canonical-nonmatching-splits-do-not-imply-function-recovery": {
+      "status": "stale",
+      "validated_commit": "796eaed501d45a2c5f2784b740e290a6169c8fe6",
+      "validated_at": "2026-08-07",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/recovery/owners/REL_miraclebookdll_miraclebook.json",
+        "config/dll/rels/miraclebookdll/symbols.txt",
+        "config/dll/rels/miraclebookdll/splits.txt",
+        "src/REL/miraclebookdll/miraclebook.c",
+        "config/dll/rels/mdbankdll/symbols.txt",
+        "config/dll/rels/mdbankdll/splits.txt",
+        "src/REL/mdbankdll/mdbank.c",
+        "config/dll/rels/mdsingdll/symbols.txt",
+        "config/dll/rels/mdsingdll/splits.txt",
+        "src/REL/mdsingdll/mdsing.c",
+        "config/dll/rels/mdpresultdll/symbols.txt",
+        "config/dll/rels/mdpresultdll/splits.txt",
+        "src/REL/mdpresultdll/mdpresult.c"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "empty-rel-aliases-have-no-semantic-source-owner": {
+      "status": "stale",
+      "validated_commit": "796eaed501d45a2c5f2784b740e290a6169c8fe6",
+      "validated_at": "2026-08-07",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/dll/rels/storyresultdll/symbols.txt",
+        "config/dll/rels/storyresultdll/splits.txt",
+        "config/dll/rels/partyresultdll/symbols.txt",
+        "config/dll/rels/partyresultdll/splits.txt",
+        "config/GP6E01/config.yml",
+        "config/GP6E01/build.sha1",
+        "configure.py",
+        "src/REL/empty.c",
+        "include/ovl_table.h",
+        "include/datadir_table.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "mp6-board-capsule-eff-rand-macro": {
       "status": "stale",
       "validated_commit": "f8cadf7b8b79740aefadcbcf7b41ae0116d8cb24",

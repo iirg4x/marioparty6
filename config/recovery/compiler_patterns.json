@@ -4250,6 +4250,183 @@
       ]
     },
     {
+      "id": "canonical-nonmatching-splits-do-not-imply-function-recovery",
+      "title": "Separate split assignment, source-body presence, and exact emission",
+      "classification": "confirmed_rule",
+      "category": "provenance_and_ownership",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "After recovery shards are consolidated, one canonical NonMatching source owner can be assigned the module's complete target interval even though the C file defines only a subset of target functions and only a smaller subset has fresh instruction and relocation proof. An empty target-minus-split interval set therefore proves configuration geometry, not recovery completion.",
+      "conditions": "Apply whenever splits.txt assigns a complete application text range to one NonMatching source owner, especially after pass, tail, extra, or address-derived recovery shards were collapsed into the canonical file.",
+      "source_condition": {
+        "change": "Inventory remaining recovery or declare a consolidated canonical owner complete.",
+        "requires": [
+          "target function starts and sizes from the pinned symbol catalog",
+          "current configured ownership intervals from splits.txt",
+          "a source parser that distinguishes target function definitions from declarations, imports, and compiler-generated entry points",
+          "fresh per-function instruction and relocation comparison for every source-defined candidate",
+          "consumer and linked-retail replay before upgrading the owner from NonMatching"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "a zero-byte geometric split gap while many target functions remain body-missing",
+          "a source-present function remaining unproven or non-exact in the canonical translation unit",
+          "a historical exact shard regressing after consolidation because declaration chronology, inline visibility, or literal-pool ownership changed",
+          "different denominators for configured ownership, source-body coverage, and freshly exact recovery"
+        ],
+        "known_signatures": [
+          "splits.txt assigns the full application range to one NonMatching C file",
+          "symbols.txt contains more target function rows than the canonical source defines",
+          "the owner exact-function aggregate is smaller than the source-definition count",
+          "target-minus-split subtraction is empty while declarations or imports still stand in for target bodies"
+        ]
+      },
+      "rule": "Maintain three independent ledgers: configured split assignment, target functions with canonical C bodies, and target functions freshly proven instruction-, relocation-, consumer-, and retail-exact. Use target-minus-split subtraction only for configuration gaps. For recovery debt inside a whole-range NonMatching owner, compare target symbols with actual source definitions, then subtract only freshly exact emitted functions. Never convert historical shard status or full-range split ownership into an exact-function claim.",
+      "safe_actions": [
+        "report configured interval coverage, source-body coverage, and fresh exact coverage as separate counts and byte totals",
+        "rank body-missing target functions before source-present mismatch work when both are otherwise dependency-closed",
+        "preserve compiler-generated prolog and epilog accounting separately from authored C bodies",
+        "replay historical exact subsets in the canonical translation unit before retaining their counts",
+        "keep unresolved target functions on fallback without creating recovery shard files"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [
+          "REL:miraclebookdll:miraclebook",
+          "REL:mdbankdll:mdbank",
+          "REL:mdsingdll:mdsing",
+          "REL:mdpresultdll:mdpresult"
+        ],
+        "stable_ids": [],
+        "modules": [
+          "miraclebookdll",
+          "mdbankdll",
+          "mdsingdll",
+          "mdpresultdll"
+        ],
+        "owner_tags": [
+          "canonical_owner",
+          "nonmatching",
+          "split_interval",
+          "source_body_inventory",
+          "exact_emission"
+        ]
+      },
+      "examples": [
+        "miraclebookdll assigns the complete application text range 0x0..0x99D8 to miraclebook.c, so geometric interval subtraction is empty, yet the 39 target rows include six directly body-missing fn_1_* definitions and the current owner aggregate still reports eight absent-or-not-exact functions totaling 20,484 text bytes.",
+        "mdbankdll assigns 0x0..0x137DC to mdbank.c while 36 target fn_1_* rows totaling 43,916 text bytes have no canonical C body. Full split ownership does not recover those bodies.",
+        "mdsingdll assigns 0x0..0x35300 to mdsing.c while the canonical source defines 92 of 285 target fn_1_* rows; the other 193 rows remain body-missing even though no configured text interval is uncovered."
+      ],
+      "counterexamples": [
+        "A genuinely unregistered exact island such as optionDll fn_1_18B8 is still found by target-minus-split subtraction; this rule does not replace the configuration-gap inventory.",
+        "A complete split interval is not an exactness report, and a function declaration is not a recovered body.",
+        "A historical Matching shard does not remain exact automatically after its body moves into a larger canonical translation unit."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/dll/rels/miraclebookdll/symbols.txt",
+        "config/dll/rels/miraclebookdll/splits.txt",
+        "src/REL/miraclebookdll/miraclebook.c",
+        "config/recovery/owners/REL_miraclebookdll_miraclebook.json",
+        "config/dll/rels/mdbankdll/symbols.txt",
+        "config/dll/rels/mdbankdll/splits.txt",
+        "src/REL/mdbankdll/mdbank.c",
+        "config/dll/rels/mdsingdll/symbols.txt",
+        "config/dll/rels/mdsingdll/splits.txt",
+        "src/REL/mdsingdll/mdsing.c",
+        "config/dll/rels/mdpresultdll/symbols.txt",
+        "config/dll/rels/mdpresultdll/splits.txt",
+        "src/REL/mdpresultdll/mdpresult.c"
+      ]
+    },
+    {
+      "id": "empty-rel-aliases-have-no-semantic-source-owner",
+      "title": "Preserve empty REL aliases without inventing source owners",
+      "classification": "confirmed_rule",
+      "category": "provenance_and_ownership",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "Some MP6 overlay names are deliberately empty REL aliases. Their catalog exposes only ctor and dtor section labels, generated configuration has no module units, and the build links the shared zero-byte REL/empty.c object. The overlay name and loader entry do not authenticate a dedicated C translation unit.",
+      "conditions": "Apply when an REL catalog has no text functions, no data objects, no source history, and generated module configuration links only the shared empty object. The current proof covers storyresultdll and partyresultdll.",
+      "source_condition": {
+        "change": "Classify an apparently source-less REL or propose creating a new canonical owner for it.",
+        "requires": [
+          "symbols and splits proving the absence of text, rodata, data, and bss target extents",
+          "configured unit inventory proving that only the shared empty object is linked",
+          "repository history confirming that no dedicated source owner existed",
+          "loader and resource references classified as module-name consumers rather than source-owner evidence",
+          "fresh linked retail proof before changing an existing empty-module classification"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "a named REL with zero recoverable application text and no runtime owner",
+          "two overlay aliases sharing the same expected target hash",
+          "a loader-table entry without any callable function or owned data",
+          "an invented nonempty object changing section layout and retail bytes"
+        ],
+        "known_signatures": [
+          "symbols.txt contains only _ctors and _dtors labels",
+          "splits.txt declares ctor and dtor sections but assigns no source ranges",
+          "generated module units are empty and the link consumes REL/empty.o",
+          "no src/REL/<module> path exists in current history"
+        ]
+      },
+      "rule": "Treat a proven empty REL alias as a closed zero-sized module, not as an unrecovered canonical C owner. Keep the shared zero-byte REL/empty.c infrastructure and stable module catalog entry. Do not create module-specific C, runtime, generated shard, data, or semantic function names unless new target extents and authenticated source ownership are discovered.",
+      "safe_actions": [
+        "exclude proven empty aliases from remaining function and byte denominators",
+        "record loader and data-directory references as module consumers without inferring code ownership",
+        "compare alias symbols, splits, configured units, and expected hashes before classifying an empty module",
+        "report unknown physical relocation totals as unknown rather than inventing zero from a sparse catalog",
+        "require fresh retail replay before modifying shared empty-object linkage"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "storyresultdll:_ctors",
+          "storyresultdll:_dtors",
+          "partyresultdll:_ctors",
+          "partyresultdll:_dtors"
+        ],
+        "modules": [
+          "storyresultdll",
+          "partyresultdll"
+        ],
+        "owner_tags": [
+          "empty_rel",
+          "module_alias",
+          "shared_empty_object",
+          "no_source_owner"
+        ]
+      },
+      "examples": [
+        "storyresultdll has no text function or data-object rows, no dedicated source path, and its generated module has no units while linking the shared empty object.",
+        "partyresultdll has the same empty symbols and splits and the same expected target hash as storyresultdll, corroborating an intentional empty overlay alias rather than missing recovered code."
+      ],
+      "counterexamples": [
+        "resultDll is not an empty alias: its target catalog contains application text and data extents even though no source owner is currently authenticated.",
+        "A loader-table DLL name does not by itself prove that a dedicated C file existed.",
+        "Do not report a fresh byte-identical retail result from expected hashes or generated build rules alone."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/dll/rels/storyresultdll/symbols.txt",
+        "config/dll/rels/storyresultdll/splits.txt",
+        "config/dll/rels/partyresultdll/symbols.txt",
+        "config/dll/rels/partyresultdll/splits.txt",
+        "config/GP6E01/config.yml",
+        "config/GP6E01/build.sha1",
+        "configure.py",
+        "src/REL/empty.c",
+        "include/ovl_table.h",
+        "include/datadir_table.h"
+      ]
+    },
+    {
       "id": "mp6-board-capsule-eff-rand-macro",
       "title": "Use the recovered capsule-effect random-float macro with authored shift spelling",
       "classification": "confirmed_rule",
