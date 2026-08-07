@@ -1073,7 +1073,7 @@
     },
     "mwcc-linker-folded-csects-are-compiled-unpaired-not-unbuilt": {
       "status": "active",
-      "validated_commit": "9e419c8fd4e5c192e1f3784d0732a81cceb213f2",
+      "validated_commit": "7dc83cc6864c649af0211b13ef1243aa54e08d39",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
