@@ -3179,6 +3179,11 @@ static int capsuleNumColW[16] = {
 
 void mbCapNumDebug(void)
 {
+    extern char lbl_802BFD90[5];
+    extern char lbl_802BFE41[3];
+    extern char lbl_802BFE44[5];
+    extern const float lbl_802C45F0;
+    extern const float lbl_802C45F4;
     static GXColor winColor = { 0, 0, 144, 192 };
     CAPSULE_LIST *list;
     float x;
@@ -3197,7 +3202,7 @@ void mbCapNumDebug(void)
         i = 0;
         list = capsuleList;
         for (; i < 15; i++, list++) {
-            x = 80.0f;
+            x = lbl_802C45F0;
             for (j = 0; j < 4; j++) {
                 if (color != prevColor) {
                     fontcolor = color;
@@ -3205,19 +3210,19 @@ void mbCapNumDebug(void)
                 prevColor = color;
                 if (j == 0) {
                     if (list->id != -1) {
-                        print8(x, y, 1.5f, "%s", mbCapDebugNameGet(list->id));
+                        print8(x, y, 1.5f, lbl_802BFE41, mbCapDebugNameGet(list->id));
                     } else {
-                        print8(x, y, 1.5f, "NULL");
+                        print8(x, y, 1.5f, lbl_802BFD90);
                     }
                 } else if (j == 3) {
-                    print8(x, y, 1.5f, "%02d",
+                    print8(x, y, 1.5f, lbl_802BFE44,
                         capsuleNum[list->id][0] + capsuleNum[list->id][1]);
                 } else {
-                    print8(x, y, 1.5f, "%02d", capsuleNum[list->id][j - 1]);
+                    print8(x, y, 1.5f, lbl_802BFE44, capsuleNum[list->id][j - 1]);
                 }
                 x += capsuleNumColW[j];
             }
-            y += 16.0f;
+            y += lbl_802C45F4;
         }
         HuPrcVSleep();
     } while (!(HuPadBtn[0] & PAD_TRIGGER_R) ||
