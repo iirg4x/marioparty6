@@ -77,16 +77,16 @@ static const int mapCharFileTbl[16] = {
     0x00050042, 0x00050043, 0x000500A9, 0x000500A8,
 };
 
-static MBSCROLLHOOK mapHook;
-static ANIMDATA *pathAnim;
-static ANIMDATA *masuMapAnim;
-static MBSCROLLHOOK scrollHook;
-static HSF_FACE *scrollColTriData;
-static int scrollColTriNum;
-static MBSCROLLSTARFINDFUNC scrollStarFindFunc;
-static HU3D_MODELID scrollColModel;
-static int lbl_802C0DD8;
 static float mapViewZoom;
+static int lbl_802C0DD8;
+static HU3D_MODELID scrollColModel;
+static MBSCROLLSTARFINDFUNC scrollStarFindFunc;
+static int scrollColTriNum;
+static HSF_FACE *scrollColTriData;
+static MBSCROLLHOOK scrollHook;
+static ANIMDATA *masuMapAnim;
+static ANIMDATA *pathAnim;
+static MBSCROLLHOOK mapHook;
 
 static void ScrollCreate(u32 dataNum);
 static void ScrollKill(void);
