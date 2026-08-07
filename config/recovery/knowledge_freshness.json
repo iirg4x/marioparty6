@@ -1028,7 +1028,7 @@
     },
     "gc26-fabsf-preserves-single-precision-pool-chronology": {
       "status": "active",
-      "validated_commit": "9bc0ad9df91bf55c32a62a291a6aa3db63227c61",
+      "validated_commit": "4160d7d503f648097bac6ee3fd6fb719e272b273",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
