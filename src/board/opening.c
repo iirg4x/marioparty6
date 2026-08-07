@@ -192,6 +192,19 @@ void mbev_OpeningParty(void)
 
 static void ev_OpeningParty(void)
 {
+    extern const float lbl_802C39D8;
+    extern const float lbl_802C3A0C;
+    extern const float lbl_802C3A10;
+    extern const float lbl_802C3A14;
+    extern const float lbl_802C3A18;
+    extern const float lbl_802C3A1C;
+    extern const float lbl_802C3A20;
+    extern const float lbl_802C3A24;
+    extern const float lbl_802C3A28;
+    extern const float lbl_802C3A48;
+    extern const double lbl_802C3A30;
+    extern const double lbl_802C3A38;
+    extern const double lbl_802C3A40;
     int orderTbl[10];
     HuVecF playerPos;
     HuVecF cameraOfs = { 0.0f, 250.0f, 0.0f };
@@ -205,7 +218,7 @@ static void ev_OpeningParty(void)
     s16 playerRotAngle;
     s16 masuId;
     int manPlayerNo;
-    float cameraZoom = 20000.0f;
+    float cameraZoom = lbl_802C3A0C;
     int comNum;
     int order1;
     int order2;
@@ -214,7 +227,7 @@ static void ev_OpeningParty(void)
     GW_PLAYER *playerP;
     MBPLAYERWORK *playerWorkP;
 
-    mbCameraNearFarSet(10.0f, 30000.0f);
+    mbCameraNearFarSet(lbl_802C3A10, lbl_802C3A14);
     HuDataDirRead(0x00110000);
     openingGuideObjId = mbObjCreate(0x00110000, guideMotFileTbl, FALSE);
     HuDataDirClose(0x00110000);
@@ -243,9 +256,9 @@ static void ev_OpeningParty(void)
     masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
     mbMasuPosGet(masuId, &masuPos);
     guidePos = masuPos;
-    guidePos.z -= 200.0f;
+    guidePos.z -= lbl_802C3A18;
     mbObjPosSetV(openingGuideObjId, &guidePos);
-    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
 
     mbWipeFadeIn();
@@ -258,8 +271,9 @@ static void ev_OpeningParty(void)
     HuPrcSleep(72);
 
     cameraPos = masuPos;
-    cameraPos.y -= 50.0f;
-    mbCameraMovePos(&cameraPos, &cameraRot, &cameraOfs, 1800.0f, -1.0f,
+    cameraPos.y -= lbl_802C3A20;
+    mbCameraMovePos(&cameraPos, &cameraRot, &cameraOfs,
+        lbl_802C3A24, lbl_802C3A28,
         180);
     mbCameraMoveWait();
 
@@ -270,14 +284,16 @@ static void ev_OpeningParty(void)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerPosGet(i, &playerPos);
         VECSubtract(&guidePos, &playerPos, &playerRotDir);
-        playerRotAngle = 90 - HuAtan(playerRotDir.z, playerRotDir.x);
+        playerRotAngle = lbl_802C3A30
+            - (lbl_802C3A38
+                * (atan2(playerRotDir.z, playerRotDir.x) / lbl_802C3A40));
         mbPlayerRotateStart(i, playerRotAngle, 30);
     }
     while (!mbPlayerRotateCheckAll()) {
         HuPrcVSleep();
     }
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
     {
@@ -298,12 +314,12 @@ static void ev_OpeningParty(void)
         openingInstHook();
     }
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(952);
     mbWinCreate(2, 0x002C000A, 6);
     mbWinTopWait();
-    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -360,13 +376,15 @@ static void ev_OpeningParty(void)
             mbStatusDispSet(i, TRUE);
         }
         mbPlayerWinLoseVoicePlay(i, 12, 0x243);
-        mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+        mbPlayerMotionShiftSet(i, 12, lbl_802C39D8, lbl_802C3A1C,
+            HU3D_MOTATTR_NONE);
         omVibrate(i, 20, 20, 0);
         HuPrcSleep(8);
         while (!mbPlayerMotionEndCheck(i)) {
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(i, 1, lbl_802C39D8, lbl_802C3A1C,
+            HU3D_MOTATTR_LOOP);
     }
 
     HuPrcSleep(30);
@@ -378,22 +396,23 @@ static void ev_OpeningParty(void)
     }
     HuPrcSleep(30);
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(952);
     mbWinCreate(2, 0x002C000F, 6);
     mbWinTopWait();
-    mbObjMotionShiftSet(openingGuideObjId, 6, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 6, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_NONE);
     HuPrcSleep(40);
     OpeningCoinExec();
     HuPrcSleep(30);
-    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerWinLoseVoicePlay(i, 12, 0x243);
-        mbPlayerMotionShiftSet(i, 7, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+        mbPlayerMotionShiftSet(i, 7, lbl_802C39D8, lbl_802C3A1C,
+            HU3D_MOTATTR_NONE);
     }
     while (!mbPlayerMotionEndCheckAll()) {
         HuPrcVSleep();
@@ -408,16 +427,17 @@ static void ev_OpeningParty(void)
         mbStarMapViewProcExec();
     }
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
     mbWinCreate(2, 0x002C0010, 6);
     mbWinTopWait();
-    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
+    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
         HU3D_MOTATTR_LOOP);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerWinLoseVoicePlay(i, 12, 0x243);
-        mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+        mbPlayerMotionShiftSet(i, 12, lbl_802C39D8, lbl_802C3A1C,
+            HU3D_MOTATTR_NONE);
     }
     while (!mbPlayerMotionEndCheckAll()) {
         HuPrcVSleep();
@@ -433,7 +453,7 @@ static void ev_OpeningParty(void)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerMotionSet(i, 1, HU3D_MOTATTR_LOOP);
     }
-    mbCameraNearFarSet(100.0f, 20000.0f);
+    mbCameraNearFarSet(lbl_802C3A48, lbl_802C3A0C);
     mbObjKill(openingGuideObjId);
     openingGuideObjId = -1;
     mbMusBoardPlay();
@@ -455,13 +475,15 @@ static void ev_OpeningPartyKill(void)
 
 void mbOpeningViewSet(HuVecF *rot, HuVecF *pos, float zoom)
 {
+    extern const float lbl_802C39D8;
+
     if (rot) {
         openingRot = *rot;
     }
     if (pos) {
         openingPos = *pos;
     }
-    if (zoom >= 0.0f) {
+    if (zoom >= lbl_802C39D8) {
         openingZoom = zoom;
     }
 }
@@ -526,6 +548,12 @@ static void OpeningCoinExec(void)
 
 static void PlayerDropExec(HuVecF *center)
 {
+    extern const float lbl_802C39D8;
+    extern const float lbl_802C3A1C;
+    extern const float lbl_802C3A48;
+    extern const float lbl_802C3A4C;
+    extern const float lbl_802C3A50;
+    extern const float lbl_802C3A70;
     int delay[GW_PLAYER_MAX] = { 0, 30, 60, 90 };
     BOOL landF[GW_PLAYER_MAX];
     HuVecF pos[GW_PLAYER_MAX];
@@ -535,15 +563,16 @@ static void PlayerDropExec(HuVecF *center)
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbObjDispSet(mbPlayerObjIDGet(i), TRUE);
-        mbPlayerRotYSet(i, 0.0f);
-        pos[i].x = center->x + 100.0f * playerCenterDist[i];
-        pos[i].y = center->y + 800.0f;
+        mbPlayerRotYSet(i, lbl_802C39D8);
+        pos[i].x = center->x + lbl_802C3A48 * playerCenterDist[i];
+        pos[i].y = lbl_802C3A50 + center->y;
         pos[i].z = center->z;
-        vel[i].y = -20.0f;
-        vel[i].x = vel[i].z = 0.0f;
+        vel[i].y = lbl_802C3A70;
+        vel[i].x = vel[i].z = lbl_802C39D8;
         landF[i] = FALSE;
         mbPlayerPosSetV(i, &pos[i]);
-        mbPlayerMotionShiftSet(i, 4, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+        mbPlayerMotionShiftSet(i, 4, lbl_802C39D8, lbl_802C3A1C,
+            HU3D_MOTATTR_NONE);
         mbPlayerMotionVoiceOnSet(i, 4, FALSE);
     }
 
@@ -551,17 +580,17 @@ static void PlayerDropExec(HuVecF *center)
     while (TRUE) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (landF[i] && mbPlayerMotionEndCheck(i)) {
-                mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
+                mbPlayerMotionShiftSet(i, 1, lbl_802C39D8, lbl_802C3A1C,
                     HU3D_MOTATTR_LOOP);
                 endNum++;
             }
             if (delay[i]-- <= 0 && !landF[i]) {
                 VECAdd(&pos[i], &vel[i], &pos[i]);
-                vel[i].y -= 0.2f;
+                vel[i].y -= lbl_802C3A4C;
                 if (pos[i].y <= center->y) {
                     pos[i].y = center->y;
                     landF[i] = TRUE;
-                    mbPlayerMotionShiftSet(i, 5, 0.0f, 8.0f,
+                    mbPlayerMotionShiftSet(i, 5, lbl_802C39D8, lbl_802C3A1C,
                         HU3D_MOTATTR_NONE);
                 }
                 mbPlayerPosSetV(i, &pos[i]);
@@ -1088,6 +1117,9 @@ MBMODELID mbOpeningGuideObjIdGet(void)
 
 void mbOpeningGuidePosRestore(void)
 {
+    extern const float lbl_802C39D8;
+    extern const float lbl_802C3A18;
+    extern const float lbl_802C3A1C;
     s16 masuId;
     HuVecF masuPos;
     HuVecF pos;
@@ -1095,13 +1127,17 @@ void mbOpeningGuidePosRestore(void)
     masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
     mbMasuPosGet(masuId, &masuPos);
     pos = masuPos;
-    pos.z -= 200.0f;
+    pos.z -= lbl_802C3A18;
     mbObjPosSetV(openingGuideObjId, &pos);
-    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8,
+        lbl_802C3A1C, HU3D_MOTATTR_LOOP);
 }
 
 void mbOpeningCameraPosRestore(void)
 {
+    extern const float lbl_802C3A20;
+    extern const float lbl_802C3A24;
+    extern const float lbl_802C3A28;
     s16 masuId;
     HuVecF masuPos;
     HuVecF pos;
@@ -1109,8 +1145,9 @@ void mbOpeningCameraPosRestore(void)
     masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
     mbMasuPosGet(masuId, &masuPos);
     pos = masuPos;
-    pos.y -= 50.0f;
-    mbCameraMovePos(&pos, &openingCameraRestoreRot, &openingCameraRestorePos, 1800.0f, -1.0f, 0);
+    pos.y -= lbl_802C3A20;
+    mbCameraMovePos(&pos, &openingCameraRestoreRot, &openingCameraRestorePos,
+        lbl_802C3A24, lbl_802C3A28, 0);
 }
 
 static void OpeningSingleEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
