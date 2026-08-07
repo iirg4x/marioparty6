@@ -270,6 +270,9 @@ extern BOOL mbev_CapEffCoinMaxYSet(OMOBJ *obj, int coinNo, float maxY);
 extern int mbev_CapEffCoinNumGet(OMOBJ *obj);
 extern void mbev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum,
     BOOL highF);
+extern int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
+    int playerNo, BOOL highF);
+extern int mbev_CapStarManNumGet(OMOBJ *obj);
 extern void mbWipeDissolveFadeIn(void);
 extern void mbWipeDissolveFadeOutTime(int time);
 extern int mbStarObjCreate(void);
@@ -1152,6 +1155,7 @@ void mbev_CapTeresaStealSet(int mesId, int coinNum, TERESA_STEAL_BEGIN_HOOK begi
 
 void mbev_CapTeresaFadeCreate(int objectId)
 {
+    extern const float lbl_802C42C4;
     int modelId;
     HU3D_MODEL *model;
     HSF_DATA *hsf;
@@ -1181,7 +1185,7 @@ void mbev_CapTeresaFadeCreate(int objectId)
     teresaFadeWork = work;
     memset(teresaFadeWork, 0, sizeof(TERESA_FADE_WORK));
     teresaFadeWork->activeF = TRUE;
-    teresaFadeWork->alpha = 255.0f;
+    teresaFadeWork->alpha = lbl_802C42C4;
     teresaFadeWork->copyF = FALSE;
     teresaFadeWork->screenWidth = 640;
     teresaFadeWork->screenHeight = 480;
@@ -1237,6 +1241,58 @@ void mbev_CapTeresaFadeSet(float alpha)
 
 void mbev_CapMiracleKill(void)
 {
+}
+
+static void ev_CapMiracleStarTrade(CAPWORK *work, int playerNo1, int playerNo2,
+    int starNum1, int starNum2)
+{
+    extern const float lbl_802C42CC;
+    HuVecF playerPos1;
+    HuVecF playerPos2;
+    int starDelay;
+    int starAddNum;
+
+    if (starNum1 + starNum2 < 5) {
+        starDelay = 15;
+    } else if (starNum1 + starNum2 < 10) {
+        starDelay = 12;
+    } else if (starNum1 + starNum2 < 15) {
+        starDelay = 10;
+    } else if (starNum1 + starNum2 < 20) {
+        starDelay = 8;
+    } else {
+        starDelay = 4;
+    }
+    mbPlayerPosGet(playerNo1, &playerPos1);
+    playerPos1.y += lbl_802C42CC;
+    mbPlayerPosGet(playerNo2, &playerPos2);
+    playerPos2.y += lbl_802C42CC;
+    do {
+        if (starNum1 > 0 && mbPlayerStarGet(playerNo1) > 0) {
+            starAddNum = mbev_CapStarManAdd(work->starManObj,
+                &playerPos1, &playerPos2, playerNo2, TRUE);
+            if (starAddNum != 0) {
+                mbPlayerStarAdd(playerNo1, -starAddNum);
+                starNum1 -= starAddNum;
+            }
+        }
+        if (mbPlayerStarGet(playerNo1) <= 0) {
+            starNum1 = 0;
+        }
+        if (starNum2 > 0 && mbPlayerStarGet(playerNo2) > 0) {
+            starAddNum = mbev_CapStarManAdd(work->starManObj,
+                &playerPos2, &playerPos1, playerNo1, TRUE);
+            if (starAddNum != 0) {
+                mbPlayerStarAdd(playerNo2, -starAddNum);
+                starNum2 -= starAddNum;
+            }
+        }
+        if (mbPlayerStarGet(playerNo2) <= 0) {
+            starNum2 = 0;
+        }
+        HuPrcSleep(starDelay);
+    } while (starNum1 > 0 || starNum2 > 0
+        || mbev_CapStarManNumGet(work->starManObj) > 0);
 }
 
 static int ev_CapMiracleMesGet(int messNo)
