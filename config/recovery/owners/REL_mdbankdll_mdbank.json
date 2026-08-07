@@ -4,7 +4,7 @@
   "module": "mdbankdll",
   "source": "src/REL/mdbankdll/mdbank.c",
   "compiler": "GC/1.3.2",
-  "summary": "Canonical non-minigame Miracle Book bank owner. The consolidated file defines 116 target functions; 111 currently compare exact for 34,164 text bytes. Remaining code and application data stay on retail fallback through one NonMatching owner.",
+  "summary": "Canonical non-minigame Miracle Book bank owner. The consolidated file defines 116 target functions; 113 currently compare strict exact for 34,916 text bytes. Remaining code and application data stay on retail fallback through one NonMatching owner.",
   "status": {
     "binary": "fallback",
     "source_shape": "evidence_backed",
@@ -39,7 +39,7 @@
       "kind": "target_binary",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "The canonical owner comparison retains 111 exact target functions and 34,164 exact text bytes; the serialized project build and direct retail comparison remain exact while the whole owner is NonMatching.",
+      "summary": "Fresh strict and data-value comparisons retain 113 exact target functions and 34,916 exact text bytes. A serialized full build reports all 137 configured files exact, mdbankdll.rel SHA-1 a1f9c9f9f8dfb62ffbfbb75f7155c3ff38b4df79, and main.dol SHA-1 b897e6ade6b3a0cd2f9907689f38a3b19c327e70 while the whole owner remains NonMatching.",
       "reference": "config/dll/rels/mdbankdll/splits.txt"
     },
     {
@@ -53,7 +53,7 @@
       "kind": "compiler_probe",
       "confidence": "confirmed",
       "accepted": true,
-      "summary": "Authenticated same-owner static-inline copies preserve the complete window and character-reaction auto-inline closure without emitting helper globals; every prior registered MDBank object and the linked retail REL remain exact.",
+      "summary": "Historical split donors and retail calls prove that fn_1_226C and fn_1_6F00 must see fn_1_11678 only through its prototype. Relocating the unchanged caller bodies before that helper definition restored both functions from 0% to strict exact, increasing the owner from 111 to 113 exact functions with zero losses; an independent zero-context verifier passed the scoped change.",
       "reference": "src/REL/mdbankdll/mdbank.c"
     }
   ],
@@ -62,7 +62,7 @@
     {
       "kind": "application_source",
       "priority": "high",
-      "summary": "Forty-one target functions are absent from, or not exact in, the canonical owner and remain on retail fallback."
+      "summary": "Thirty-nine target functions remain absent from, or not strict exact in, the canonical owner: 36 have no authenticated C-body donor, while fn_1_8B4, fn_1_8284, and fn_1_83CC are instruction-identical but retain a synthetic R_PPC_NONE ownership annotation at lbl_1_bss_1994+2. All remain on retail fallback."
     },
     {
       "kind": "semantic_names",
