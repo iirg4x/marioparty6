@@ -30,9 +30,15 @@ static GSTACK_INST gsDefault;
 #endif
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+#if MUSY_VERSION == MUSY_VERSION_CHECK(2, 0, 4)
+static GSTACK_INST* gsRoot;
+static GSTACK_INST* gsCurrent;
+static unsigned long gsNextID;
+#else
 static unsigned long gsNextID;
 static GSTACK_INST* gsCurrent;
 static GSTACK_INST* gsRoot;
+#endif
 
 static void dataInitStackInstance(GSTACK_INST* inst, unsigned long id, unsigned long aramBase,
                                   unsigned long aramSize) {
