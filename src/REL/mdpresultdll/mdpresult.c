@@ -1390,8 +1390,8 @@ void fn_1_9EBC(s16 count, u8 mask)
     OMOBJ *obj = lbl_1_bss_1C;
     MDRESULT_MOVE_WORK *work = &lbl_1_bss_8EC[obj->work[3]];
     HuVecF rotation;
-    float total = lbl_1_rodata_104;
     s16 slotCount = 4;
+    float total = lbl_1_rodata_104;
     s16 i;
 
     if (lbl_1_bss_1278.values[3] != 0) {
@@ -1412,7 +1412,11 @@ void fn_1_9EBC(s16 count, u8 mask)
     if (count != 0) {
         total /= count;
     }
-    obj->work[2] = count != 0 && count != slotCount;
+    if (count != 0 && count != slotCount) {
+        obj->work[2] = 1;
+    } else {
+        obj->work[2] = 0;
+    }
     Hu3DModelPosGet(obj->mdlId[obj->work[3]], &work->current);
     fn_1_1F868(&work->middle, total, lbl_1_rodata_394,
         lbl_1_rodata_398);
@@ -1422,8 +1426,8 @@ void fn_1_9EBC(s16 count, u8 mask)
     work->values[0] = rotation.y;
 
     if (obj->work[2] != 0) {
-        work = &lbl_1_bss_8EC[3];
-        for (i = 0; i < slotCount; i++) {
+        for (i = 0, work = &lbl_1_bss_8EC[3]; i < slotCount;
+            i++, work++) {
             if (mask & (1 << i)) {
                 work->state = 1;
                 work->time = lbl_1_rodata_104;
@@ -1446,7 +1450,6 @@ void fn_1_9EBC(s16 count, u8 mask)
                         lbl_1_rodata_3B4);
                 }
             }
-            work++;
         }
     }
     HuAudFXStop(lbl_1_bss_1298);
