@@ -2062,7 +2062,7 @@
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
       "summary": "Across MWCC O0 profiles, the compiler can reproduce every instruction byte in a conversion or ordinary literal consumer while binding its constants to a TU-local pool instead of the retail object's separate, preceding, or configured owner.",
-      "conditions": "Apply when function size and instructions are exact but one or more literal relocations name compiler-local symbols instead of the target owners.",
+      "conditions": "Apply when function size and instructions are exact but one or more literal relocations name compiler-local symbols instead of the target owners. It also covers a natural scalar consumer whose authenticated target owner is a named .sdata2 object and whose source visibility or definition chronology selects a different pool owner.",
       "source_condition": {
         "change": "Recover a literal consumer without the authenticated data owner or translation-unit chronology.",
         "requires": [
@@ -2090,10 +2090,12 @@
           "several byte-identical functions fail only because each anonymous literal relocation misses its configured lbl_1_rodata_* identity",
           "one target-backed near-literal changes a preceding pool word by one ULP and makes the remaining apparent ownership shift disappear",
           "address-labelled const objects, their natural alignment gap, all consumer relocations, and the source-owned raw section prefix close together while only a target-side tail remains",
-          "an anonymous local aggregate is object-exact but linked fallback consumers still require the target named owner; initializing the local copy from an authenticated global const aggregate preserves code shape and closes the linked relocations"
+          "an anonymous local aggregate is object-exact but linked fallback consumers still require the target named owner; initializing the local copy from an authenticated global const aggregate preserves code shape and closes the linked relocations",
+          "a same-translation-unit function-scope typed extern before first use keeps a later file definition bound to the target named .sdata2 scalar",
+          "a function-scope typed extern replaces a natural scalar literal so its consumer relocates to an authenticated target .sdata2 owner"
         ]
       },
-      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. When a natural local aggregate copy is already exact but other linked consumers require a named target owner, test an authenticated global const aggregate as that owner and initialize the local copy from it; retain only if code, data, relocations, all consumers, and the final REL remain exact. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact.",
+      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. When a natural local aggregate copy is already exact but other linked consumers require a named target owner, test an authenticated global const aggregate as that owner and initialize the local copy from it; retain only if code, data, relocations, all consumers, and the final REL remain exact. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact. For an authenticated target named .sdata2 scalar, a function-scope typed extern is a bounded owner probe; in the same translation unit, retain a later file definition only when target chronology and symbols authenticate it, and require exact function bytes, every affected relocation target/addend, section bytes, and linked consumers before retention.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
@@ -2104,7 +2106,9 @@
         "verify the exact bits of every preceding literal and resolve authenticated accessor or lifetime mismatches before assigning a residual pool owner",
         "accept address-only storage without semantic names only after raw section bytes, natural alignment, every consumer relocation, and the linked tail boundary agree",
         "when consumer evidence authenticates the named aggregate owner, test a global const owner plus natural local-copy initialization and replay every linked consumer",
-        "require organic source and linked consumer proof before retention"
+        "require organic source and linked consumer proof before retention",
+        "when the target names a .sdata2 scalar and the source literal is natural, test one function-scope typed extern at first semantic use; for a same-translation-unit owner keep the later file definition only when target chronology and symbols authenticate it",
+        "compare every affected consumer relocation owner/addend and target/source .sdata2 bytes and extent; require strict exactness and zero protected regressions"
       ],
       "applicability": {
         "compiler_wide": true,
@@ -2189,7 +2193,9 @@
         "main:board/capmove Killer effect family: ev_CapEffKillerDustCreate reached all 1,028 data-value-exact text bytes but remained strict-nonexact at 27 literal relocations; Explode and Boost added 60 relocation-owner rows of the same class. The mapped target/source owner delta exposed 56 bytes of missing preceding pool chronology inside incomplete mbev_CapKillerMove. Restoring the first authenticated eight-byte waypoint owner removed 49 strict rows from KillerMove while all 87 helper ownership rows remained unchanged, proving that helper-only shaping cannot close the family and partial pool restoration need not move downstream consumers.",
         "main:board/captrap ev_CapBobleOMExec used the algebraically equivalent left-associated form 100.0 * 0.5 * trig, which MWCC folded into a new double 50.0 owner. Restoring the retail two-stage tree as 0.5 * (100.0 * trig) emitted the target's separate multiplies, restored the shared double 0.5 owner at the earlier pool position, removed the downstream duplicate eight-byte owner, reduced the helper residual from 171 to 156 rows, and made the later 2,052-byte mbev_CapBomheiTrap strict-exact with zero regressions.",
         "main:board/player mbPlayerBiriQSet and PlayerBiriQOMExec are code-, section-byte-, and data-value-exact; their remaining 3 plus 6 strict rows are only three white GXColor aggregates emitted naturally as one four-byte anonymous owner each while the target split records each color into four one-byte owners. No authentic declaration or C-shape change was supported, so the pair is retained as a target-split ownership blocker instead of spending function probes or inventing split storage.",
-        "main:board/wipe WipeGridDraw, WipePaperDraw, and WipeImageDraw repeat the same boundary independently: each function is instruction- and data-value-exact, and each has only three strict rows because retail labels bytes one through three of a local white GXColor aggregate separately while natural source emits one four-byte anonymous owner. The source and target objects both retain 647 relocations overall, so no split-storage C rewrite is supported."
+        "main:board/wipe WipeGridDraw, WipePaperDraw, and WipeImageDraw repeat the same boundary independently: each function is instruction- and data-value-exact, and each has only three strict rows because retail labels bytes one through three of a local white GXColor aggregate separately while natural source emits one four-byte anonymous owner. The source and target objects both retain 647 relocations overall, so no split-storage C rewrite is supported.",
+        "main:board/single SingleEffCreate, SingleEffMgStop, and SingleLast5: block-scope const-float externs plus later same-translation-unit definitions closed 1,100 strict bytes with no exact regressions; target owners are lbl_802C4F40, lbl_802C4F44, and lbl_802C4F50 in .sdata2",
+        "main:board/dice DiceNumObjOMExec, main:board/capevent mbev_CapCameraViewSet, and main:board/config mbPausePanelCreate, mbPausePanelPosGet, mbPausePanelGrowSet, and mbPauseGuideTalkSet: typed function-scope extern owners closed 2,520 strict bytes with no exact regressions"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -2203,7 +2209,9 @@
         "wave 23 msmSysInit had identical instruction words and relocation types/addends but only a target split-label versus compiler-pool identity; no fake split global was introduced while the owner remained incomplete.",
         "wave 27 had seven exact-sized, instruction-identical board-space functions whose compiler-local pool/static identities remained unresolved in the incomplete owner; they were not counted exact from values alone.",
         "An object-exact anonymous aggregate is not sufficient when linked fallback consumers require a named owner; the final REL and every consumer remain mandatory.",
-        "An instruction-exact body plus an exact local conversion-pool csect still fails ownership when any linked fallback consumer relocates to the target global owner; do not replace the global merely to retain the new body."
+        "An instruction-exact body plus an exact local conversion-pool csect still fails ownership when any linked fallback consumer relocates to the target global owner; do not replace the global merely to retain the new body.",
+        "A value-equal local literal is not enough: an anonymous @NNN owner or duplicate named constant does not prove the target .sdata2 relocation owner.",
+        "A broad header or global extern, wrong width or alignment, or moved definition can change visibility and pool chronology; do not generalize a function-scope extern probe."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -2222,7 +2230,25 @@
         "src/board/scroll.c",
         "src/board/capmove.c",
         "src/board/captrap.c",
-        "src/REL/w01Dll/world01.c"
+        "src/REL/w01Dll/world01.c",
+        "src/board/single.c",
+        "src/board/dice.c",
+        "src/board/config.c",
+        "src/board/capevent.c",
+        "config/GP6E01/symbols.txt",
+        "C:/Temp/single-baseline.json",
+        "C:/Temp/single-final-strict.json",
+        "C:/Temp/single-strict-summary.txt",
+        "build/dice-pass-baseline-final.json",
+        "build/dice-pass-num-localextern-final.json",
+        "build/config-pass-baseline-current.json",
+        "build/config-pass-four-data-void.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/strict.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/data-value.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/report.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/strict.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/data-value.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/report.json"
       ]
     },
     {
@@ -2312,7 +2338,7 @@
       "compiler": "GC/2.6",
       "confidence": "high",
       "summary": "Under GC/2.6 -O0,p owner profiles, repeated reads of globals, bitfields, owner fields, or accessor-backed values can shorten or merge value lifetimes; source-authentic captures and reloads at distinct use boundaries, including staged raw-to-typed pointer ownership and invariant loop-bound capture, can restore the target's saved-register and signed-comparison shape.",
-      "conditions": "Use only for a repeated owner-local mismatch family involving global, bitfield, owner-field, accessor, or staged-pointer lifetimes with saved-register or signed-comparison evidence; a convenient temporary by itself is not evidence.",
+      "conditions": "Use only for a repeated owner-local mismatch family involving global, bitfield, owner-field, accessor, or staged-pointer lifetimes with saved-register or signed-comparison evidence; a convenient temporary by itself is not evidence. A repeated model-creation return stored into an owner field and immediately reused by layer, data, or hook consumers is the same bounded lifetime shape only when the field and consumer widths are authenticated.",
       "source_condition": {
         "change": "Capture a global, bitfield, accessor result, or raw-to-typed pointer value at the control-flow point where the target appears to begin its lifetime, rather than sharing one broad temporary or repeatedly folding the expression.",
         "requires": [
@@ -2343,15 +2369,18 @@
           "after the lifetime shape agrees, a target-proven floating literal can expose an independent source-value error",
           "capturing an invariant accessor result immediately before its loop can restore both the defining function and callers that inline it",
           "a block-local bitfield capture can preserve separate saved-register lifetimes across two loops",
-          "staging an owner-data pointer through its semantic model, hook, and particle-work types can preserve a target call-spanning pointer chain"
+          "staging an owner-data pointer through its semantic model, hook, and particle-work types can preserve a target call-spanning pointer chain",
+          "a model-creation return assigned through a typed local into the owner field, followed by field-based layer, data, or hook consumers, preserves the target model-ID lifetime"
         ]
       },
-      "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions.",
+      "rule": "Treat explicit captures as a bounded owner-local lifetime probe, not a source template; retain them only when strict object and relocation evidence improves without exact regressions. At an authenticated model-creation call, a natural field = local = call capture may be retained when later layer, data, and hook consumers use the owner field and the complete linked closure remains exact.",
       "safe_actions": [
         "identify the first target instruction that makes each value live",
         "test captures one semantic boundary at a time",
         "compare every previously exact function in the owner",
-        "revert capture or return-shape probes that merely move mismatches"
+        "revert capture or return-shape probes that merely move mismatches",
+        "at an authenticated model-creation call, test a natural field = local = call capture and route later consumers through the owner field",
+        "verify model-ID width, call order, field stores, layer/data/hook relocations, and every previously exact neighbor"
       ],
       "applicability": {
         "compiler_wide": false,
@@ -2380,7 +2409,14 @@
           "mbDiceExec",
           "mbDicePlayerExec",
           "main:board/mgcall:SetupTeam",
-          "main:board/capevent:mbev_CapEffMasuHitCreate"
+          "main:board/capevent:mbev_CapEffMasuHitCreate",
+          "main:board/capevent:mbev_CapEffExhaustCreate",
+          "main:board/capevent:mbev_CapEffGlowCreate",
+          "main:board/capevent:mbev_CapEffGlowFireCreate",
+          "main:board/capevent:mbev_CapEffSnowCreate",
+          "main:board/capevent:mbev_CapEffExplodeCreate",
+          "main:board/capevent:mbev_CapEffBoostCreate",
+          "main:board/capevent:mbev_CapEffRingCreate"
         ],
         "modules": [
           "main.dol",
@@ -2411,13 +2447,16 @@
         "mbObjectSetup inferred GWMgNightFGet boundary closes a 20-register lifetime cycle",
         "mbDiceProcExec captures mbDiceValueMaxGet once before initialization; this closes its 360-byte body and the 680-byte mbDiceExec and 308-byte mbDicePlayerExec inline consumers",
         "main:board/mgcall SetupTeam uses block-local int team captures in its two loops and closes 1,420 exact bytes",
-        "main:board/capevent mbev_CapEffMasuHitCreate stages obj data through model, hook-data, and particle-work lifetimes and closes 384 exact bytes"
+        "main:board/capevent mbev_CapEffMasuHitCreate stages obj data through model, hook-data, and particle-work lifetimes and closes 384 exact bytes",
+        "main:board/capevent seven effect constructors (Exhaust, Glow, GlowFire, Snow, Explode, Boost, Ring): chained model-ID capture closed 2,232 strict bytes with zero regressions"
       ],
       "counterexamples": [
         "A simplified mbPlayerMoveMain lifetime regressed and was reverted.",
         "Capsule inline return-shape probes regressed and were reverted.",
         "The remaining BiriQ literal or relocation-identity residuals are not value-lifetime evidence; only the strict-exact BiriQEffectCreate staging result is positive evidence.",
-        "mbObjectSetup capture variants only rotated its 20-register lifetime cycle and were reverted."
+        "mbObjectSetup capture variants only rotated its 20-register lifetime cycle and were reverted.",
+        "A model-ID chain is not evidence when IDs are reused across distinct creations, width changes lack consumer proof, or a cached local lacks target lifetime evidence.",
+        "Shared literal-owner edits in the Capevent constructors do not prove that every remaining residual is a lifetime mismatch; retain only strict linked closure."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -2428,7 +2467,13 @@
         "src/board/mgcall.c",
         "src/board/capevent.c",
         "build/board-autonomy/mgcall-setupteam-blockteam-probe-20260807/report.json",
-        "build/board-autonomy/capevent-parent-verify-20260807/report.json"
+        "build/board-autonomy/capevent-parent-verify-20260807/report.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/strict.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/data-value.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/report.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/strict.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/data-value.json",
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/report.json"
       ]
     },
     {
@@ -3237,7 +3282,7 @@
       "category": "local_lifetime_and_saved_register_coloring",
       "compiler": "GC/2.6 and GC/1.3.2",
       "confidence": "confirmed",
-      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, first semantic use, or static use count changes, even when control flow, types, size, and relocations are otherwise identical. Under the measured GC/2.6 -O0,p path, source FPR locals are assigned before PCode graph coloring: allocate_local_FPRs repeatedly selects the highest VarInfo.usage value, resolves ties by local-list traversal, and assigns descending nonvolatile FPRs. Graph coloring then handles compiler temporaries. A pure cycle is therefore evidence of an earlier source-local ranking or AST difference, not authority to force a register.",
+      "summary": "Across MWCC O0 profiles, adjacent same-width or pointer locals can receive different saved registers when their natural declaration order, initialization point, first semantic use, or static use count changes, even when control flow, types, size, and relocations are otherwise identical. Under the measured GC/2.6 -O0,p path, source FPR locals are assigned before PCode graph coloring: allocate_local_FPRs repeatedly selects the highest VarInfo.usage value, resolves ties by local-list traversal, and assigns descending nonvolatile FPRs. Graph coloring then handles compiler temporaries. A native Win32 Debug API probe in tools/mwcc_win32_varinfo.py can pause the pinned compiler at allocate_local_FPRs and read named VarInfo usage and assignments; this is diagnostic only and does not establish source names or source authority. A pure cycle is therefore evidence of an earlier source-local ranking or AST difference, not authority to force a register.",
       "conditions": "Use only for an exact-sized function whose remaining differences form a small same-width saved-register cycle after structural control flow, owner types, calls, and relocations already agree.",
       "source_condition": {
         "change": "Restore the target-backed declaration order, initialization point, and first semantic use of adjacent natural locals.",
@@ -3263,7 +3308,8 @@
           "a declaration initializer begins an owner-pointer lifetime before a target cleanup call cluster",
           "legal scope or declaration movement is byte-neutral when it does not change first use",
           "two exact-sized functions close after declaration-order changes remove complete inverse four- and eight-operand saved-register cycles",
-          "a GC/2.6 -O0,p FPR cycle follows descending source-local VarInfo.usage before temporary graph coloring"
+          "a GC/2.6 -O0,p FPR cycle follows descending source-local VarInfo.usage before temporary graph coloring",
+          "the native Win32 probe pauses at allocate_local_FPRs and reports named-local usage before the compiler assigns descending nonvolatile FPRs"
         ]
       },
       "rule": "Test one natural adjacent-local declaration order, one target-backed initialization point, and one independently justified first-use chronology when the mismatch is a pure saved-register cycle. Treat those as separate variables. Retain the form only when typed semantics, complete text, relocations, and consumers are exact; if the bounded controls are neutral or leave a cycle, stop and record negative evidence rather than adding register-shaping locals.",
@@ -3320,7 +3366,8 @@
         "main:board/config mbPausePanelCreate became exact after declaration-list order resolved its final saved-register swap",
         "main:board/tutorial TutorialWatch and three guide-object call sites became exact after restoring block-scoped value and pointer lifetimes",
         "wave 75 mbev_Scroll and ScrollMain became 100% after declaration-list order removed complete inverse r28/r29 and r30/r31 cycles without changing size, control flow, or relocations",
-        "main:board/telop mbTelopTimeSprRotSet proved the GC/2.6 O0 FPR ranking boundary: measured first-sine/second-sine/shared-scale usage 4/4/9 produced the source f29/f30/f31 order, while a diagnostic-only 11/10/9 control produced strict-exact retail f31/f30/f29 at 664 bytes"
+        "main:board/telop mbTelopTimeSprRotSet proved the GC/2.6 O0 FPR ranking boundary: measured first-sine/second-sine/shared-scale usage 4/4/9 produced the source f29/f30/f31 order, while a diagnostic-only 11/10/9 control produced strict-exact retail f31/f30/f29 at 664 bytes",
+        "tools/mwcc_win32_varinfo.py measured mbTelopTimeSprRotSet named VarInfo usage scale/sinFirst/sinSecond = 9/4/4 and allocator assignment scale f31, sinSecond f30, sinFirst f29"
       ],
       "counterexamples": [
         "meschkdll fn_1_188 improved to an exact-sized 99.893870 form, but legal declaration/scope controls could not break its final dirWin/nextMessNo r20/r22 cycle, so all nonexact probes were reverted.",
@@ -3333,7 +3380,8 @@
         "Do not add redundant temporaries, fake scopes, volatile qualifiers, register keywords, or discarded reads solely to choose registers.",
         "mbTelopTimeSprRotSet reached strict exact only under a discarded-read use-count diagnostic; that proved VarInfo.usage ownership but was rejected and reverted because no authenticated natural source justified those reads.",
         "Splitting mbTelopTimeSprRotSet's shared scale lifetime into natural scale, rotation, and phase locals grew the source from 664 to 696 bytes, added saved f22/f23 lifetimes, and regressed strict matching to 94.27109%; natural chained assignments for the two absolute-value copies were byte-neutral and retained the same twelve f29/f31 operand differences. Both probes were reverted, so do not repeat those allocator axes.",
-        "Further mbTelopTimeSprRotSet controls were all negative and reverted: -sym on was text-neutral with the same twelve f29/f31 differences, nested raw-result assignments shrank 664 to 624 bytes, HuAbs grew it to 744 bytes, and standard fabsf grew it to 728 bytes."
+        "Further mbTelopTimeSprRotSet controls were all negative and reverted: -sym on was text-neutral with the same twelve f29/f31 differences, nested raw-result assignments shrank 664 to 624 bytes, HuAbs grew it to 744 bytes, and standard fabsf grew it to 728 bytes.",
+        "A direct-inline fabsf diagnostic was also negative: usage and register roles were unchanged, text grew from 664 to 704 bytes with extra f22/f23 lifetimes, and no MP6 provenance authenticates that helper."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -3343,7 +3391,8 @@
         "docs/native_matching_wave75.md",
         "docs/native_matching_wave77.md",
         "docs/native_matching_wave79.md",
-        "docs/native_matching_wave94.md"
+        "docs/native_matching_wave94.md",
+        "tools/mwcc_win32_varinfo.py"
       ]
     },
     {
