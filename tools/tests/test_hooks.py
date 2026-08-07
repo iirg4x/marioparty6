@@ -35,6 +35,8 @@ class HookTests(unittest.TestCase):
             push_script = pre_push.read_text(encoding="utf-8")
             self.assertIn("git rev-parse --local-env-vars", push_script)
             self.assertIn('unset "$name"', push_script)
+            self.assertIn('"refs/heads/main"', push_script)
+            self.assertIn("tools/progress_gate.py", push_script)
             uninstall_hooks(root)
             self.assertEqual(set(hook_status(root).values()), {"missing"})
 

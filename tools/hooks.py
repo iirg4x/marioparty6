@@ -83,6 +83,11 @@ for name in $LOCAL_GIT_ENV; do
 done
 PYTHON_BIN="${MP6_PYTHON:-python}"
 cd "$ROOT"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    "$PYTHON_BIN" tools/progress_gate.py --base "$remote_sha" --head "$local_sha"
+  fi
+done
 "$PYTHON_BIN" tools/recovery_index.py check
 "$PYTHON_BIN" tools/knowledge_cards.py check
 "$PYTHON_BIN" tools/blind_recovery.py audit
