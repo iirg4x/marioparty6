@@ -892,17 +892,19 @@ static void StarObjRotate(STARWORK *work, OMOBJ *obj)
 
 static void StarObjShrinkIdleSet(OMOBJ *obj)
 {
+    extern const float lbl_802C3774;
     STARWORK *work = obj->data;
 
     work->mode = STAR_MODE_SHRINK_IDLE;
     if (work->effectDispF == FALSE) {
         mbObjDispSet(obj->mdlId[0], TRUE);
-        work->pos.y = work->baseY + 800.0f;
+        work->pos.y = lbl_802C3774 + work->baseY;
     }
 }
 
 static inline void StarObjGrowSet(OMOBJ *obj)
 {
+    extern const float lbl_802C36E4;
     STARWORK *work = obj->data;
 
     work->rotateF = TRUE;
@@ -910,7 +912,7 @@ static inline void StarObjGrowSet(OMOBJ *obj)
     work->time = 0;
     work->mode = STAR_MODE_GROW;
     work->modelDispF = TRUE;
-    work->offset.y = 0.0f;
+    work->offset.y = lbl_802C36E4;
     work->effectDispF = TRUE;
     work->autoDispF = TRUE;
     if (work->signF == TRUE) {
@@ -1495,10 +1497,11 @@ void mbStarAddAllExec(int num0, int num1, int num2, int num3)
 
 int mbStarDispPlayerCreate(int playerNo, int num)
 {
+    extern const float lbl_802C37A0;
     HuVecF pos;
 
     mbPlayerPosGet(playerNo, &pos);
-    pos.y += 250.0f;
+    pos.y += lbl_802C37A0;
     mbStarDispCreate(playerNo, &pos, num);
     return playerNo;
 }
@@ -2430,17 +2433,19 @@ static void ZtarObjRotate(STARWORK *work, OMOBJ *obj)
 
 static void ZtarObjShrinkIdleSet(OMOBJ *obj)
 {
+    extern const float lbl_802C3774;
     STARWORK *work = obj->data;
 
     work->mode = STAR_MODE_SHRINK_IDLE;
     if (work->effectDispF == FALSE) {
         mbObjDispSet(obj->mdlId[0], TRUE);
-        work->pos.y = work->baseY + 800.0f;
+        work->pos.y = lbl_802C3774 + work->baseY;
     }
 }
 
 static void ZtarObjGrowSet(OMOBJ *obj)
 {
+    extern const float lbl_802C36E4;
     STARWORK *work = obj->data;
 
     work->rotateF = TRUE;
@@ -2448,7 +2453,7 @@ static void ZtarObjGrowSet(OMOBJ *obj)
     work->time = 0;
     work->mode = STAR_MODE_GROW;
     work->modelDispF = TRUE;
-    work->offset.y = 0.0f;
+    work->offset.y = lbl_802C36E4;
     mbAudFXPlay(1118);
 }
 
