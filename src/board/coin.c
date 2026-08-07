@@ -836,9 +836,9 @@ void mbCoinEffCreate(HuVecF *pos)
                 break;
             }
             if (effP->count <= 80
-                && fabs(pos->x - effP->pos.x) < 300.0f
-                && fabs(pos->y - effP->pos.y) < 300.0f
-                && fabs(pos->z - effP->pos.z) < 300.0f) {
+                && __fabsf(pos->x - effP->pos.x) < 300.0f
+                && __fabsf(pos->y - effP->pos.y) < 300.0f
+                && __fabsf(pos->z - effP->pos.z) < 300.0f) {
                 effNo = i;
                 break;
             }
@@ -869,7 +869,7 @@ void mbCoinEffCreate(HuVecF *pos)
             particleDataP->pos.x = particleDataP->pos.y = particleDataP->pos.z = 0.0f;
             angle = 360.0f * frandf();
             angleY = (1.7f * frandf()) - 0.7f;
-            angleY = 90.0f * (angleY * fabs(angleY));
+            angleY = 90.0f * (angleY * __fabsf(angleY));
             cosY = mbCosDeg(angleY);
             particleDataP->vel.x = mbSinDeg(angle) * cosY;
             particleDataP->vel.y = mbSinDeg(angleY);
