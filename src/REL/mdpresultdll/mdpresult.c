@@ -30,6 +30,10 @@ typedef struct MdResultS16Table22_s {
     s16 altValues[11];
 } MDRESULT_S16_TABLE_22;
 
+typedef struct MdResultU8Table12_s {
+    u8 values[12];
+} MDRESULT_U8_TABLE_12;
+
 typedef struct MdResultMessageTable48_s {
     s32 values[48];
 } MDRESULT_MESSAGE_TABLE_48;
@@ -469,7 +473,7 @@ extern const float lbl_1_rodata_390;
 extern const float lbl_1_rodata_388;
 extern const float lbl_1_rodata_38C;
 extern const float lbl_1_rodata_4A0;
-extern const u8 lbl_1_rodata_3BC[12];
+extern const MDRESULT_U8_TABLE_12 lbl_1_rodata_3BC;
 extern const float lbl_1_rodata_3C8;
 extern const float lbl_1_rodata_360;
 extern const float lbl_1_rodata_374;
@@ -1511,8 +1515,8 @@ void fn_1_A624(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_1C;
     MDRESULT_MOVE_WORK *work;
+    MDRESULT_U8_TABLE_12 color;
     HuVecF position;
-    u8 color[12];
 
     work = &lbl_1_bss_8EC[index];
     obj->work[0] = 0;
@@ -1530,22 +1534,10 @@ void fn_1_A624(s16 index)
         lbl_1_rodata_104, lbl_1_rodata_104);
     Hu3DModelAttrReset(obj->mdlId[obj->work[3]], HU3D_ATTR_DISPOFF);
 
-    color[0] = lbl_1_rodata_3BC[0];
-    color[1] = lbl_1_rodata_3BC[1];
-    color[2] = lbl_1_rodata_3BC[2];
-    color[3] = lbl_1_rodata_3BC[3];
-    color[4] = lbl_1_rodata_3BC[4];
-    color[5] = lbl_1_rodata_3BC[5];
-    color[6] = lbl_1_rodata_3BC[6];
-    color[7] = lbl_1_rodata_3BC[7];
-    color[8] = lbl_1_rodata_3BC[8];
-    color[9] = lbl_1_rodata_3BC[9];
-    color[10] = lbl_1_rodata_3BC[10];
-    color[11] = lbl_1_rodata_3BC[11];
-
+    color = lbl_1_rodata_3BC;
     Hu3DModelPosGet(obj->mdlId[obj->work[3]], &position);
     fn_1_25E6C((s16)(obj->work[3] + 4), 2, &position,
-        lbl_1_rodata_110, &color[obj->work[3] * 4]);
+        lbl_1_rodata_110, &color.values[obj->work[3] * 4]);
     lbl_1_bss_1298 = HuAudFXPlay(1172);
     obj->objFunc = fn_1_A2B4;
 }
