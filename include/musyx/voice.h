@@ -223,8 +223,14 @@ void voiceInitLastStarted();
 s32 voiceKillSound(u32 voiceid);
 void voiceKill(u32 vi);
 u32 voiceBlock(u8 prio);
-u32 voiceAllocate(u8 priority, u8 maxVoices, u16 allocId, u8 fxFlag);
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+u32 voiceAllocate(u8 priority, u8 maxVoices,
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                  u32 allocId,
+#else
+                  u16 allocId,
+#endif
+                  u8 fxFlag);
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
 int voiceAllocatePeek(u8 priority, u8 maxVoices, u32 allocId, u8 fxFlag, u32* currentAllocId);
 #endif
 

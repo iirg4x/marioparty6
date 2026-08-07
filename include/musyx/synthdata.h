@@ -1,6 +1,7 @@
 #ifndef SYNTHDATA_H
 #define SYNTHDATA_H
 
+#include "musyx/hardware.h"
 #include "musyx/macros.h"
 
 #ifdef __cplusplus
@@ -119,6 +120,16 @@ typedef struct GSTACK {
   void* prjAddr;       // offset 0x8, size 0x4
 } GSTACK;
 
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+typedef struct GSTACK_INST {
+  struct GSTACK_INST* next;
+  unsigned long id;
+  signed short sp;
+  struct GSTACK gs[128];
+  ARAMInfo aramInfo;
+} GSTACK_INST;
+#endif
+
 typedef struct LAYER {
   // total size: 0xC
   u16 id;         // offset 0x0, size 0x2
@@ -198,6 +209,9 @@ void dataInitStack(unsigned long aramBase, unsigned long aramSize);
 #else
 void dataInitStack(); /* extern */
 #endif
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+ARAMInfo* dataARAMDefaultGetInfo();
+#endif
 bool dataInsertSDir(SDIR_DATA* sdir, void* smp_data);
 bool dataRemoveSDir(SDIR_DATA* sdir);
 bool dataInsertMacro(u16 mid, void* macroaddr);
@@ -206,8 +220,18 @@ bool dataInsertCurve(u16 cid, void* curvedata);
 bool dataRemoveCurve(u16 sid);
 s32 dataGetSample(u16 sid, SAMPLE_INFO* newsmp);
 void* dataGetCurve(u16 cid);
-bool dataAddSampleReference(u16 sid);
-bool dataRemoveSampleReference(u16 sid);
+bool dataAddSampleReference(u16 sid
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                            ,
+                            ARAMInfo* aramInfo
+#endif
+);
+bool dataRemoveSampleReference(u16 sid
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                               ,
+                               ARAMInfo* aramInfo
+#endif
+);
 bool dataInsertKeymap(u16 cid, void* keymapdata);
 bool dataRemoveKeymap(u16 sid);
 bool dataInsertLayer(u16 cid, void* layerdata, u16 size);
