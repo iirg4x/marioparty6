@@ -4465,6 +4465,353 @@ int mbCapValidListGet(int *list)
     return num;
 }
 
+static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
+{
+    CAP_EFFECT *effP;
+    CAP_EFF_DATA *effDataP;
+    s16 i;
+    HuVec2f *st;
+    HU3D_MODEL *modelP;
+    HuVecF *vtx;
+    HU3D_MODELID modelId;
+    void *dlBuf;
+    void *dlBegin;
+    u32 workHeap;
+    u32 particleHeap;
+    u32 vertexHeap;
+    u32 stHeap;
+    u32 dlBufHeap;
+    int dlSizeData;
+    u32 dlDataHeap;
+    void *workData;
+    void *workBase;
+    void *particleData;
+    void *particleBase;
+    void *vertexData;
+    void *vertexBase;
+    void *stData;
+    void *stBase;
+    void *dlBufData;
+    void *dlBufBase;
+    void *dlData;
+    void *dlBase;
+
+    modelId = Hu3DHookFuncCreate(CapEffDraw);
+    Hu3DModelCameraSet(modelId, HU3D_CAM0);
+    modelP = &Hu3DData[modelId];
+    workHeap = modelP->mallocNo;
+    workData = HuMemDirectMallocNum(HEAP_MODEL,
+        sizeof(CAP_EFFECT), workHeap);
+    workBase = workData;
+    modelP->hookData = effP = workBase;
+    effP->anim = anim;
+    effP->num = num;
+    effP->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
+    effP->dispAttr = CAP_EFF_DISPATTR_NONE;
+    effP->hook = NULL;
+    effP->hookMdlP = NULL;
+    effP->count = 0;
+    effP->attr = CAP_EFF_ATTR_NONE;
+    effP->unk23 = 0;
+    effP->prevCount = 0;
+    effP->mode = effP->time = 0;
+    particleHeap = modelP->mallocNo;
+    particleData = HuMemDirectMallocNum(HEAP_MODEL,
+        num * sizeof(CAP_EFF_DATA), particleHeap);
+    particleBase = particleData;
+    effP->data = effDataP = particleBase;
+    memset(effDataP, 0, num * sizeof(CAP_EFF_DATA));
+    for (i = 0; i < num; i++, effDataP++) {
+        effDataP->scale = 0;
+        effDataP->rot.x = effDataP->rot.y = effDataP->rot.z = 0;
+        effDataP->animTime = 0;
+        effDataP->animSpeed = 1;
+        effDataP->pos.x = 0.0f;
+        effDataP->pos.y = 0.0f;
+        effDataP->pos.z = 0.0f;
+        effDataP->color.r = effDataP->color.g = effDataP->color.b =
+            effDataP->color.a = 255;
+        effDataP->no = 0;
+    }
+    vertexHeap = modelP->mallocNo;
+    vertexData = HuMemDirectMallocNum(HEAP_MODEL,
+        num * sizeof(HuVecF) * 4, vertexHeap);
+    vertexBase = vertexData;
+    effP->vertex = vtx = vertexBase;
+    for (i = 0; i < num * 4; i++, vtx++) {
+        vtx->x = vtx->y = vtx->z = 0;
+    }
+    stHeap = modelP->mallocNo;
+    stData = HuMemDirectMallocNum(HEAP_MODEL,
+        num * sizeof(HuVec2f) * 4, stHeap);
+    stBase = stData;
+    effP->st = st = stBase;
+    for (i = 0; i < num; i++) {
+        st->x = 0;
+        st->y = 0;
+        st++;
+
+        st->x = 1;
+        st->y = 0;
+        st++;
+
+        st->x = 1;
+        st->y = 1;
+        st++;
+
+        st->x = 0;
+        st->y = 1;
+        st++;
+    }
+    dlBufHeap = modelP->mallocNo;
+    dlBufData = HuMemDirectMallocNum(HEAP_MODEL, 65536, dlBufHeap);
+    dlBufBase = dlBufData;
+    dlBegin = dlBuf = dlBufBase;
+    DCFlushRange(dlBuf, 65536);
+    GXBeginDisplayList(dlBegin, 65536);
+    GXBegin(GX_QUADS, GX_VTXFMT0, num * 4);
+    for (i = 0; i < num; i++) {
+        GXPosition1x16(i * 4);
+        GXColor1x16(i);
+        GXTexCoord1x16(i * 4);
+
+        GXPosition1x16((i * 4) + 1);
+        GXColor1x16(i);
+        GXTexCoord1x16((i * 4) + 1);
+
+        GXPosition1x16((i * 4) + 2);
+        GXColor1x16(i);
+        GXTexCoord1x16((i * 4) + 2);
+
+        GXPosition1x16((i * 4) + 3);
+        GXColor1x16(i);
+        GXTexCoord1x16((i * 4) + 3);
+    }
+    GXEnd();
+    effP->dlSize = GXEndDisplayList();
+    dlDataHeap = modelP->mallocNo;
+    dlSizeData = effP->dlSize;
+    dlData = HuMemDirectMallocNum(HEAP_MODEL, dlSizeData, dlDataHeap);
+    dlBase = dlData;
+    effP->dl = dlBase;
+    memcpy(effP->dl, dlBuf, effP->dlSize);
+    DCFlushRange(effP->dl, effP->dlSize);
+    HuMemDirectFree(dlBuf);
+    return modelId;
+}
+
+static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
+{
+    CAP_EFFECT *effP;
+    CAP_EFF_DATA *effDataP;
+    HuVecF *vtx;
+    HuVec2f *st;
+    HuVecF *scaleVtxP;
+    s16 i;
+    s16 j;
+    HuVecF *initVtxP;
+    s16 bmpFmt;
+    s16 row;
+    s16 col;
+    CAP_EFF_HOOK hook;
+
+    Mtx mtxInv;
+    Mtx mtxPos;
+    Mtx mtxRotZ;
+    HuVecF scaleVtx[4];
+    HuVecF finalVtx[4];
+    HuVecF initVtx[4];
+    ROMtx basePosMtx;
+    static HuVecF posTbl[4] = {
+        { -0.5f,  0.5f, 0.0f },
+        {  0.5f,  0.5f, 0.0f },
+        {  0.5f, -0.5f, 0.0f },
+        { -0.5f, -0.5f, 0.0f },
+    };
+    static HuVec2f uvTbl[4] = {
+        { 0.0f, 0.0f },
+        { 0.25f, 0.0f },
+        { 0.25f, 0.25f },
+        { 0.0f, 0.25f },
+    };
+
+    effP = modelP->hookData;
+    if (effP->prevCounter != GlobalCounter || shadowModelDrawF) {
+        if (effP->hookMdlP && effP->hookMdlP != modelP) {
+            CapEffDraw(effP->hookMdlP, mtx);
+        }
+        GXLoadPosMtxImm(*mtx, GX_PNMTX0);
+        GXSetNumTevStages(1);
+        GXSetNumTexGens(1);
+        GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+            GX_IDENTITY);
+        GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0,
+            GX_COLOR0A0);
+        if (shadowModelDrawF) {
+            GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO,
+                GX_CC_ZERO);
+            GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+        } else {
+            bmpFmt = effP->anim->bmp->dataFmt & ANIM_BMP_FMTMASK;
+            if (bmpFmt == ANIM_BMP_I8 || bmpFmt == ANIM_BMP_I4) {
+                GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ONE,
+                    GX_CC_RASC, GX_CC_ZERO);
+            } else {
+                GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC,
+                    GX_CC_RASC, GX_CC_ZERO);
+            }
+            if (effP->dispAttr & CAP_EFF_DISPATTR_ZBUF_OFF) {
+                GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+            } else if (modelP->attr & HU3D_ATTR_ZWRITE_OFF) {
+                GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+            } else {
+                GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+            }
+        }
+        GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+            GX_TRUE, GX_TEVPREV);
+        GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_TEXA, GX_CA_RASA,
+            GX_CA_ZERO);
+        GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+            GX_TRUE, GX_TEVPREV);
+        GXSetNumChans(1);
+        GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX,
+            GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+        HuSprTexLoad(effP->anim, 0, GX_TEXMAP0, GX_REPEAT, GX_REPEAT,
+            GX_LINEAR);
+        GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
+        GXSetZCompLoc(GX_FALSE);
+        switch (effP->blendMode) {
+            case HU3D_PARTICLE_BLEND_NORMAL:
+                GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA,
+                    GX_BL_INVSRCALPHA, GX_LO_NOOP);
+                break;
+            case HU3D_PARTICLE_BLEND_ADDCOL:
+                GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE,
+                    GX_LO_NOOP);
+                break;
+            case HU3D_PARTICLE_BLEND_INVCOL:
+                GXSetBlendMode(GX_BM_BLEND, GX_BL_ZERO, GX_BL_INVDSTCLR,
+                    GX_LO_NOOP);
+                break;
+        }
+        if (HmfInverseMtxF3X3(*mtx, mtxInv) == FALSE) {
+            PSMTXIdentity(mtxInv);
+        }
+        PSMTXReorder(mtxInv, basePosMtx);
+        if (effP->hook) {
+            hook = effP->hook;
+            hook(modelP, effP, mtx);
+        }
+        effDataP = effP->data;
+        vtx = effP->vertex;
+        st = effP->st;
+        if (effP->dispAttr & CAP_EFF_DISPATTR_CAMERA_ROT) {
+            MTXIdentity(mtxInv);
+            MTXIdentity(*(Mtx *)(&basePosMtx));
+            initVtx[0] = posTbl[0];
+            initVtx[1] = posTbl[1];
+            initVtx[2] = posTbl[2];
+            initVtx[3] = posTbl[3];
+        } else {
+            PSMTXROMultVecArray(basePosMtx, &posTbl[0], initVtx, 4);
+        }
+        for (i = 0; i < effP->num; i++, effDataP++) {
+            if (!effDataP->scale) {
+                vtx->x = vtx->y = vtx->z = 0;
+                vtx++;
+                vtx->x = vtx->y = vtx->z = 0;
+                vtx++;
+                vtx->x = vtx->y = vtx->z = 0;
+                vtx++;
+                vtx->x = vtx->y = vtx->z = 0;
+                vtx++;
+            } else if (effP->dispAttr & CAP_EFF_DISPATTR_ROT3D) {
+                VECScale(&posTbl[0], &scaleVtx[0], effDataP->scale);
+                VECScale(&posTbl[1], &scaleVtx[1], effDataP->scale);
+                VECScale(&posTbl[2], &scaleVtx[2], effDataP->scale);
+                VECScale(&posTbl[3], &scaleVtx[3], effDataP->scale);
+                mtxRot(mtxPos, effDataP->rot.x, effDataP->rot.y,
+                    effDataP->rot.z);
+                PSMTXMultVecArray(mtxPos, scaleVtx, finalVtx, 4);
+                VECAdd(&finalVtx[0], &effDataP->pos, vtx++);
+                VECAdd(&finalVtx[1], &effDataP->pos, vtx++);
+                VECAdd(&finalVtx[2], &effDataP->pos, vtx++);
+                VECAdd(&finalVtx[3], &effDataP->pos, vtx++);
+            } else if (!effDataP->rot.z) {
+                scaleVtxP = scaleVtx;
+                initVtxP = initVtx;
+                VECScale(initVtxP++, scaleVtxP, effDataP->scale);
+                VECAdd(scaleVtxP++, &effDataP->pos, vtx++);
+                VECScale(initVtxP++, scaleVtxP, effDataP->scale);
+                VECAdd(scaleVtxP++, &effDataP->pos, vtx++);
+                VECScale(initVtxP++, scaleVtxP, effDataP->scale);
+                VECAdd(scaleVtxP++, &effDataP->pos, vtx++);
+                VECScale(initVtxP++, scaleVtxP, effDataP->scale);
+                VECAdd(scaleVtxP++, &effDataP->pos, vtx++);
+            } else {
+                VECScale(&posTbl[0], &scaleVtx[0], effDataP->scale);
+                VECScale(&posTbl[1], &scaleVtx[1], effDataP->scale);
+                VECScale(&posTbl[2], &scaleVtx[2], effDataP->scale);
+                VECScale(&posTbl[3], &scaleVtx[3], effDataP->scale);
+                MTXRotRad(mtxRotZ, 'Z', effDataP->rot.z);
+                PSMTXConcat(mtxInv, mtxRotZ, mtxPos);
+                PSMTXMultVecArray(mtxPos, scaleVtx, finalVtx, 4);
+                VECAdd(&finalVtx[0], &effDataP->pos, vtx++);
+                VECAdd(&finalVtx[1], &effDataP->pos, vtx++);
+                VECAdd(&finalVtx[2], &effDataP->pos, vtx++);
+                VECAdd(&finalVtx[3], &effDataP->pos, vtx++);
+            }
+        }
+        effDataP = effP->data;
+        st = effP->st;
+        if (!(effP->dispAttr & CAP_EFF_DISPATTR_NOANIM)) {
+            for (i = 0; i < effP->num; i++, effDataP++) {
+                row = effDataP->no & 3;
+                col = (effDataP->no >> 2) & 3;
+                for (j = 0; j < 4; j++, st++) {
+                    st->x = (0.25f * row) + uvTbl[j].x;
+                    st->y = (0.25f * col) + uvTbl[j].y;
+                }
+            }
+        } else {
+            for (i = 0; i < effP->num; i++, effDataP++) {
+                for (j = 0; j < 4; j++, st++) {
+                    st->x = 4 * uvTbl[j].x;
+                    st->y = 4 * uvTbl[j].y;
+                }
+            }
+        }
+        DCFlushRangeNoSync(effP->vertex, effP->num * sizeof(HuVecF) * 4);
+        DCFlushRangeNoSync(effP->st, effP->num * sizeof(HuVec2f) * 4);
+        DCFlushRangeNoSync(effP->data, effP->num * sizeof(CAP_EFF_DATA));
+        PPCSync();
+        GXClearVtxDesc();
+        GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
+        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+        GXSetArray(GX_VA_POS, effP->vertex, sizeof(HuVecF));
+        GXSetVtxDesc(GX_VA_CLR0, GX_INDEX16);
+        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+        GXSetArray(GX_VA_CLR0, &effP->data->color, sizeof(CAP_EFF_DATA));
+        GXSetVtxDesc(GX_VA_TEX0, GX_INDEX16);
+        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+        GXSetArray(GX_VA_TEX0, effP->st, sizeof(HuVec2f));
+        GXCallDisplayList(effP->dl, effP->dlSize);
+        if (shadowModelDrawF == FALSE) {
+            if (!(effP->attr & CAP_EFF_ATTR_COUNTER_UPDATE)) {
+                effP->count++;
+            }
+            if (effP->prevCount != 0 && effP->prevCount <= effP->count) {
+                if (effP->attr & CAP_EFF_ATTR_COUNTER_RESET) {
+                    effP->count = 0;
+                }
+                effP->count = effP->prevCount;
+            }
+            effP->prevCounter = GlobalCounter;
+        }
+    }
+}
+
 int mbCapSelectMasuNum(int masuId)
 {
     return mbCapSelectMasuFrontNum(masuId)
