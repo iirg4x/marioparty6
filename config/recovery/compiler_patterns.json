@@ -5055,6 +5055,91 @@
         "config/GP6E01/symbols.txt",
         "config/GP6E01/splits.txt"
       ]
+    },
+    {
+      "id": "mwcc-linker-folded-csects-are-compiled-unpaired-not-unbuilt",
+      "title": "Classify linker-folded MWCC csects as compiled-unpaired until linked replay",
+      "classification": "confirmed_rule",
+      "category": "verification",
+      "compiler": "GC/2.7",
+      "confidence": "confirmed",
+      "summary": "An MWCC source object may emit functions into named code csects that the split retail object presents as one `.text` section. Objdiff then leaves those same-named compiled functions unpaired even though they exist in the current object. This is a section-mapping limitation, not evidence of stale or missing source. In w01Dll, 20 helpers occupied `.text.common` plus `.text.after_common`; their 9,120 bytes completed the source code-section sum exactly, and the custom link reproduced the retail REL and full 137-file checksum.",
+      "conditions": "Apply only when a target function has no objdiff pair, the current compiled object contains a same-named function, named source code csects are present, section sizes and order explain the complete target extent, relocation counts agree, and the owner linker script intentionally folds those csects into the target output. A same-named symbol alone is not exactness proof.",
+      "source_condition": {
+        "change": "Interpret an objdiff object gap for a source definition emitted into a non-default MWCC code csect.",
+        "requires": [
+          "the freshly compiled source object",
+          "the split target object",
+          "same-named compiled function evidence",
+          "all target and source code-section sizes and order",
+          "target and source relocation counts",
+          "the generated owner linker script or authenticated selector configuration",
+          "serialized linked owner replay and retail checksum"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "objdiff target functions remain unpaired despite existing in the current source object",
+          "source `.text` is shorter while named code csects exactly supply the difference",
+          "compiled function order agrees after concatenating code csects",
+          "the linked REL is byte-identical even though the raw object report is not 100 percent paired"
+        ],
+        "known_signatures": [
+          "w01 target `.text` 0x164A8 versus source `.text` 0x14108 plus `.text.common` 0x2344 plus `.text.after_common` 0x5C",
+          "the two auxiliary csects total 0x23A0, exactly the 9,120 bytes objdiff left unpaired",
+          "target and source world01 objects both contain 5,673 relocations",
+          "serialized w01 REL SHA-1 196d7075abbe6eec3031c9484d25216de9dc0889 and full checksum 137 files OK"
+        ]
+      },
+      "rule": "If the current object contains a same-named function that objdiff cannot pair because it lives in an auxiliary code csect, classify it as compiled-unpaired rather than pending-build or missing-definition. Do not count it exact from object evidence alone; verify csect concatenation, relocation parity, linker selectors, the linked owner, and retail checksum.",
+      "safe_actions": [
+        "list every code section and its size in both objects with the pinned DTK",
+        "confirm the current object contains each unpaired function by stable name and expected size",
+        "compare aggregate code size, section chronology, and relocation count",
+        "inspect the generated owner linker script for explicit csect placement",
+        "run one serialized linked REL replay and the project checksum before closing the owner"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [
+          "REL:w01Dll:world01"
+        ],
+        "stable_ids": [
+          "w01Dll:fn_1_14108..fn_1_164A8"
+        ],
+        "modules": [
+          "w01Dll"
+        ],
+        "owner_tags": [
+          "csect",
+          "section_mapping",
+          "compiled_unpaired",
+          "linked_replay",
+          "objdiff"
+        ]
+      },
+      "examples": [
+        "w01Dll's 18 curve helpers occupy `.text.common` and its two timer helpers occupy `.text.after_common`; objdiff pairs the ordinary `.text` functions but cannot directly pair these auxiliary sections against the split target's single `.text`.",
+        "The updated recovery reporter records this case as 20 compiled-unpaired functions / 9,120 bytes and zero source-pending-build functions, then directs the owner to serialized linked replay."
+      ],
+      "counterexamples": [
+        "Do not use this rule when the same-named function is absent from the freshly compiled object; that remains pending-build or missing-definition evidence.",
+        "Equal aggregate section size without function boundaries, relocation parity, and linker placement is not exactness proof.",
+        "A linked checksum cannot excuse invented padding, byte injection, synthetic csects, or unauthenticated linker controls.",
+        "Do not flatten authenticated source pragmas merely to make the raw object layout resemble the split retail object."
+      ],
+      "related_exceptions": [
+        "w01-world01-exact-source-shape"
+      ],
+      "evidence": [
+        "src/REL/w01Dll/world01.c",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/w01Dll/symbols.txt",
+        "configure.py",
+        "tools/recovery_pass.py",
+        "tools/tests/test_recovery_pass.py"
+      ]
     }
   ]
 }

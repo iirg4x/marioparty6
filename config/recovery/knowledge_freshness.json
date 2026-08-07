@@ -1070,6 +1070,22 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "mwcc-linker-folded-csects-are-compiled-unpaired-not-unbuilt": {
+      "status": "active",
+      "validated_commit": "9e419c8fd4e5c192e1f3784d0732a81cceb213f2",
+      "validated_at": "2026-08-07",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "src/REL/w01Dll/world01.c",
+        "config/dll/rels/w01Dll/splits.txt",
+        "config/dll/rels/w01Dll/symbols.txt",
+        "configure.py",
+        "tools/recovery_pass.py",
+        "tools/tests/test_recovery_pass.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
