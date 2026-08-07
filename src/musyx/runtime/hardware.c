@@ -6,7 +6,28 @@
 #include "musyx/stream.h"
 #include "musyx/synth.h"
 
-static volatile const u16 itdOffTab[128] = {
+#define HW_CHANGED_BREAK 32
+#define HW_ADSR_LEVEL_MAX 32767
+#define HW_UPDATE_NONE 255
+#define HW_ADSR_TIME_MASK 65535
+#define HW_ADSR_INDEX_MAX 1023
+#define HW_CHANGED_ADSR 16
+#define HW_CHANGED_KEY_OFF 64
+#define HW_PITCH_LIMIT 16384
+#define HW_PITCH_MAX 16383
+#define HW_CHANGED_SRC 256
+#define HW_CHANGED_COEF 128
+#define HW_CHANGED_ITD 512
+#define HW_ITD_ENABLED_FLAG ((u32)2147483648U)
+#define HW_SAMPLE_ADDR_OFFSET_MASK 15
+#define HW_SAMPLE_BASE_ADDRESS 0
+#define HW_ADPCM_BLOCK_OVERHEAD 13
+#define HW_ADPCM_BLOCK_SIZE 14
+#define HW_SAMPLE_LENGTH_MASK 16777215
+#define HW_SAMPLE_TYPE_SHIFT 24
+#define HW_SAMPLE_ID_NONE ((u32)4294967295U)
+
+static const u16 itdOffTab[128] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,
     2,  3,  3,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,  6,  6,  6,  7,  7,  7,  8,  8,  8,
     9,  9,  9,  10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 15, 15, 15, 16, 16, 17,
@@ -148,7 +169,7 @@ void hwInitSamplePlayback(u32 v, u16 smpID, void* newsmp, u32 set_defadsr, u32 p
   unsigned long bf; // r29
   bf = 0;
   for (i = 0; i <= salTimeOffset; ++i) {
-    bf |= dspVoice[v].changed[i] & 0x20;
+    bf |= dspVoice[v].changed[i] & HW_CHANGED_BREAK;
     dspVoice[v].changed[i] = 0;
   }
 
@@ -163,14 +184,14 @@ void hwInitSamplePlayback(u32 v, u16 smpID, void* newsmp, u32 set_defadsr, u32 p
     dspVoice[v].adsr.mode = 0;
     dspVoice[v].adsr.data.dls.aTime = 0;
     dspVoice[v].adsr.data.dls.dTime = 0;
-    dspVoice[v].adsr.data.dls.sLevel = 0x7FFF;
+    dspVoice[v].adsr.data.dls.sLevel = HW_ADSR_LEVEL_MAX;
     dspVoice[v].adsr.data.dls.rTime = 0;
   }
 
-  dspVoice[v].lastUpdate.pitch = 0xff;
-  dspVoice[v].lastUpdate.vol = 0xff;
-  dspVoice[v].lastUpdate.volA = 0xff;
-  dspVoice[v].lastUpdate.volB = 0xff;
+  dspVoice[v].lastUpdate.pitch = HW_UPDATE_NONE;
+  dspVoice[v].lastUpdate.vol = HW_UPDATE_NONE;
+  dspVoice[v].lastUpdate.volA = HW_UPDATE_NONE;
+  dspVoice[v].lastUpdate.volB = HW_UPDATE_NONE;
 
   if (setSRC != 0) {
     hwSetSRCType(v, 0);
@@ -185,7 +206,7 @@ void hwBreak(s32 vid) {
     dspVoice[vid].startupBreak = 1;
   }
 
-  dspVoice[vid].changed[salTimeOffset] |= 0x20;
+  dspVoice[vid].changed[salTimeOffset] |= HW_CHANGED_BREAK;
 }
 
 void hwSetADSR(u32 v, void* _adsr, u8 mode) {
@@ -198,8 +219,8 @@ void hwSetADSR(u32 v, void* _adsr, u8 mode) {
     dspVoice[v].adsr.data.linear.aTime = adsr->data.linear.atime;
     dspVoice[v].adsr.data.linear.dTime = adsr->data.linear.dtime;
     sl = adsr->data.linear.slevel << 3;
-    if (sl > 0x7fff) {
-      sl = 0x7fff;
+    if (sl > HW_ADSR_LEVEL_MAX) {
+      sl = HW_ADSR_LEVEL_MAX;
     }
 
     dspVoice[v].adsr.data.linear.sLevel = sl;
@@ -211,25 +232,25 @@ void hwSetADSR(u32 v, void* _adsr, u8 mode) {
     dspVoice[v].adsr.mode = 1;
     dspVoice[v].adsr.data.dls.aMode = 0;
     if (mode == 1) {
-      dspVoice[v].adsr.data.dls.aTime = adsrConvertTimeCents(adsr->data.dls.atime) & 0xFFFF;
-      dspVoice[v].adsr.data.dls.dTime = adsrConvertTimeCents(adsr->data.dls.dtime) & 0xFFFF;
+      dspVoice[v].adsr.data.dls.aTime = adsrConvertTimeCents(adsr->data.dls.atime) & HW_ADSR_TIME_MASK;
+      dspVoice[v].adsr.data.dls.dTime = adsrConvertTimeCents(adsr->data.dls.dtime) & HW_ADSR_TIME_MASK;
 
       sl = adsr->data.dls.slevel >> 2;
-      if (sl > 0x3ff) {
-        sl = 0x3ff;
+      if (sl > HW_ADSR_INDEX_MAX) {
+        sl = HW_ADSR_INDEX_MAX;
       }
 
       dspVoice[v].adsr.data.dls.sLevel = 193 - dspScale2IndexTab[sl];
     } else {
-      dspVoice[v].adsr.data.dls.aTime = adsr->data.dls.atime & 0xFFFF;
-      dspVoice[v].adsr.data.dls.dTime = adsr->data.dls.dtime & 0xFFFF;
+      dspVoice[v].adsr.data.dls.aTime = adsr->data.dls.atime & HW_ADSR_TIME_MASK;
+      dspVoice[v].adsr.data.dls.dTime = adsr->data.dls.dtime & HW_ADSR_TIME_MASK;
       dspVoice[v].adsr.data.dls.sLevel = adsr->data.dls.slevel;
     }
 
     dspVoice[v].adsr.data.dls.rTime = adsr->data.dls.rtime;
   }
 
-  dspVoice[v].changed[0] |= 0x10;
+  dspVoice[v].changed[0] |= HW_CHANGED_ADSR;
 }
 
 void hwSetVirtualSampleLoopBuffer(u32 voice, void* addr, u32 len) {
@@ -250,16 +271,16 @@ void hwStart(u32 v, u8 studio) {
   salActivateVoice(&dspVoice[v], studio);
 }
 
-void hwKeyOff(u32 v) { dspVoice[v].changed[salTimeOffset] |= 0x40; }
+void hwKeyOff(u32 v) { dspVoice[v].changed[salTimeOffset] |= HW_CHANGED_KEY_OFF; }
 
 void hwSetPitch(u32 v, u16 speed) {
   DSPvoice* dsp_vptr = &dspVoice[v];
 
-  if (speed >= 0x4000) {
-    speed = 0x3fff;
+  if (speed >= HW_PITCH_LIMIT) {
+    speed = HW_PITCH_MAX;
   }
 
-  if (dsp_vptr->lastUpdate.pitch != 0xff &&
+  if (dsp_vptr->lastUpdate.pitch != HW_UPDATE_NONE &&
       dsp_vptr->pitch[dsp_vptr->lastUpdate.pitch] == speed * 16) {
     return;
   }
@@ -273,36 +294,36 @@ void hwSetSRCType(u32 v, u8 salSRCType) {
   static u16 dspSRCType[3] = {0, 1, 2};
   struct DSPvoice* dsp_vptr = &dspVoice[v];
   dsp_vptr->srcTypeSelect = dspSRCType[salSRCType];
-  dsp_vptr->changed[0] |= 0x100;
+  dsp_vptr->changed[0] |= HW_CHANGED_SRC;
 }
 
 void hwSetPolyPhaseFilter(u32 v, u8 salCoefSel) {
   static u16 dspCoefSel[3] = {0, 1, 2};
   DSPvoice* dsp_vptr = &dspVoice[v];
   dsp_vptr->srcCoefSelect = dspCoefSel[salCoefSel];
-  dsp_vptr->changed[0] |= 0x80;
+  dsp_vptr->changed[0] |= HW_CHANGED_COEF;
 }
 
 static void SetupITD(DSPvoice* dsp_vptr, u8 pan) {
   dsp_vptr->itdShiftL = itdOffTab[pan];
   dsp_vptr->itdShiftR = 32 - itdOffTab[pan];
-  dsp_vptr->changed[0] |= 0x200;
+  dsp_vptr->changed[0] |= HW_CHANGED_ITD;
 }
 
 void hwSetITDMode(u32 v, u8 mode) {
   if (!mode) {
-    dspVoice[v].flags |= 0x80000000;
+    dspVoice[v].flags |= HW_ITD_ENABLED_FLAG;
     dspVoice[v].itdShiftL = 16;
     dspVoice[v].itdShiftR = 16;
     return;
   }
-  dspVoice[v].flags &= ~0x80000000;
+  dspVoice[v].flags &= ~HW_ITD_ENABLED_FLAG;
 }
 
-#define hwGetITDMode(dsp_vptr) (dsp_vptr->flags & 0x80000000)
+#define hwGetITDMode(dsp_vptr) (dsp_vptr->flags & HW_ITD_ENABLED_FLAG)
 
 void hwSetVolume(u32 v, u8 table, float vol, u32 pan, u32 span, float auxa, float auxb) {
-  SAL_VOLINFO vi;                    // r1+0x24
+  SAL_VOLINFO vi;                    // r1+36
   u16 il;                            // r30
   u16 ir;                            // r29
   u16 is;                            // r28
@@ -326,7 +347,7 @@ void hwSetVolume(u32 v, u8 table, float vol, u32 pan, u32 span, float auxa, floa
   ir = 32767.f * vi.volR;
   is = 32767.f * vi.volS;
 
-  if (dsp_vptr->lastUpdate.vol == 0xff || dsp_vptr->volL != il || dsp_vptr->volR != ir ||
+  if (dsp_vptr->lastUpdate.vol == HW_UPDATE_NONE || dsp_vptr->volL != il || dsp_vptr->volR != ir ||
       dsp_vptr->volS != is) {
     dsp_vptr->volL = il;
     dsp_vptr->volR = ir;
@@ -339,7 +360,7 @@ void hwSetVolume(u32 v, u8 table, float vol, u32 pan, u32 span, float auxa, floa
   ir = 32767.f * vi.volAuxAR;
   is = 32767.f * vi.volAuxAS;
 
-  if (dsp_vptr->lastUpdate.volA == 0xff || dsp_vptr->volLa != il || dsp_vptr->volRa != ir ||
+  if (dsp_vptr->lastUpdate.volA == HW_UPDATE_NONE || dsp_vptr->volLa != il || dsp_vptr->volRa != ir ||
       dsp_vptr->volSa != is) {
     dsp_vptr->volLa = il;
     dsp_vptr->volRa = ir;
@@ -352,7 +373,7 @@ void hwSetVolume(u32 v, u8 table, float vol, u32 pan, u32 span, float auxa, floa
   ir = 32767.f * vi.volAuxBR;
   is = 32767.f * vi.volAuxBS;
 
-  if (dsp_vptr->lastUpdate.volB == 0xff || dsp_vptr->volLb != il || dsp_vptr->volRb != ir ||
+  if (dsp_vptr->lastUpdate.volB == HW_UPDATE_NONE || dsp_vptr->volLb != il || dsp_vptr->volRb != ir ||
       dsp_vptr->volSb != is) {
     dsp_vptr->volLb = il;
     dsp_vptr->volRb = ir;
@@ -409,7 +430,7 @@ u32 hwGetPos(u32 v) {
   case 4:
   case 5:
     pos = ((dspVoice[v].currentAddr - (u32)dspVoice[v].smp_info.addr * 2) / 16) * 14;
-    off = dspVoice[v].currentAddr & 0xf;
+    off = dspVoice[v].currentAddr & HW_SAMPLE_ADDR_OFFSET_MASK;
     if (off >= 2) {
       pos += off - 2;
     }
@@ -456,7 +477,7 @@ u32 hwFrq2Pitch(u32 frq) { return (frq * 4096.f) / synthInfo.mixFrq; }
 
 void hwInitSampleMem(u32 baseAddr, u32 length) {
 #line 940
-  MUSY_ASSERT(baseAddr == 0x00000000);
+  MUSY_ASSERT(baseAddr == HW_SAMPLE_BASE_ADDRESS);
   aramInit(length);
 }
 
@@ -468,7 +489,7 @@ static u32 convert_length(u32 len, u8 type) {
   case 1:
   case 4:
   case 5:
-    return (((u32)((len + 0xD) / 0xe))) * 8;
+    return (((u32)((len + HW_ADPCM_BLOCK_OVERHEAD) / HW_ADPCM_BLOCK_SIZE))) * 8;
   case 2:
     return len * 2;
   }
@@ -482,8 +503,8 @@ void hwSaveSample(void* header, void* data
 #endif
 ) {
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
-  u32 len = ((u32*)*((u32*)header))[1] & 0xFFFFFF;
-  u8 type = ((u32*)*((u32*)header))[1] >> 0x18;
+  u32 len = ((u32*)*((u32*)header))[1] & HW_SAMPLE_LENGTH_MASK;
+  u8 type = ((u32*)*((u32*)header))[1] >> HW_SAMPLE_TYPE_SHIFT;
   len = convert_length(len, type);
   *((u32*)data) = (u32)aramStoreData((void*)*((u32*)data), len
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
@@ -505,12 +526,12 @@ void hwRemoveSample(void* header, void* data
 #endif
 ) {
 #if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
-  u32 len = (((u32*)header))[1] & 0xFFFFFF;
-  u8 type = (((u32*)header))[1] >> 0x18;
+  u32 len = (((u32*)header))[1] & HW_SAMPLE_LENGTH_MASK;
+  u8 type = (((u32*)header))[1] >> HW_SAMPLE_TYPE_SHIFT;
   len = convert_length(len, type);
 #else
-  u8 type = (((u32*)header))[1] >> 0x18;
-  u32 len = convert_length((((u32*)header))[1] & 0xFFFFFF, type);
+  u8 type = (((u32*)header))[1] >> HW_SAMPLE_TYPE_SHIFT;
+  u32 len = convert_length((((u32*)header))[1] & HW_SAMPLE_LENGTH_MASK, type);
 #endif
   aramRemoveData(data, len
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
@@ -537,7 +558,7 @@ void hwDisableHRTF() { dspHRTFOn = FALSE; }
 
 u32 hwGetVirtualSampleID(u32 v) {
   if (dspVoice[v].state == 0) {
-    return 0xFFFFFFFF;
+    return HW_SAMPLE_ID_NONE;
   }
 
   return dspVoice[v].virtualSampleID;

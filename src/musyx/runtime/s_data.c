@@ -7,6 +7,12 @@
 #include "musyx/s3d.h"
 
 #define DATA_ID_END 65535
+#define DATA_POOL_OFFSET_END (~0U)
+#define DATA_KEYMAP_ID_FLAG (1 << 14)
+#define DATA_LAYER_ID_FLAG (1 << 15)
+#define DATA_REFERENCE_END 65535
+#define DATA_REFERENCE_RANGE_FLAG 32768
+#define DATA_REFERENCE_ID_MASK 16383
 
 #if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
 static GSTACK gs[128];
@@ -60,7 +66,7 @@ ARAMInfo* dataARAMDefaultGetInfo() { return &gsDefault.aramInfo; }
 #endif
 
 static MEM_DATA* GetPoolAddr(u16 id, MEM_DATA* m) {
-  while (m->nextOff != 0xFFFFFFFF) {
+  while (m->nextOff != DATA_POOL_OFFSET_END) {
     if (m->id == id) {
       return m;
     }
@@ -101,7 +107,7 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
     }
     break;
   case 2: {
-    id |= 0x4000;
+    id |= DATA_KEYMAP_ID_FLAG;
     if (!remove) {
       if ((m = GetKeymapAddr(id, data)) != NULL) {
         dataInsertKeymap(id, &m->data.map);
@@ -113,7 +119,7 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
     }
   } break;
   case 3: {
-    id |= 0x8000;
+    id |= DATA_LAYER_ID_FLAG;
     if (!remove) {
       if ((m = GetLayerAddr(id, data)) != NULL) {
         dataInsertLayer(id, &m->data.layer.entry, m->data.layer.num);
@@ -156,9 +162,9 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
 static void ScanIDList(u16* ref, void* data, u8 dataType, u32 remove) {
   u16 id; // r30
 
-  while (*ref != 0xFFFF) {
-    if ((*ref & 0x8000)) {
-      id = *ref & 0x3fff;
+  while (*ref != DATA_REFERENCE_END) {
+    if ((*ref & DATA_REFERENCE_RANGE_FLAG)) {
+      id = *ref & DATA_REFERENCE_ID_MASK;
       while (id <= ref[1]) {
         InsertData(id, data, dataType, remove);
         ++id;
@@ -175,18 +181,18 @@ static void ScanIDListReverse(u16* refBase, void* data, u8 dataType, u32 remove)
   s16 id;
   u16* ref;
 
-  if (*refBase != 0xffff) {
+  if (*refBase != DATA_REFERENCE_END) {
     ref = refBase;
-    while (*ref != 0xffff) {
+    while (*ref != DATA_REFERENCE_END) {
       ref++;
     }
     ref--;
 
     while (ref >= refBase) {
       if (ref != refBase) {
-        if ((ref[-1] & 0x8000) != 0) {
+        if ((ref[-1] & DATA_REFERENCE_RANGE_FLAG) != 0) {
           id = *ref;
-          while (id >= (s16)(ref[-1] & 0x3fff)) {
+          while (id >= (s16)(ref[-1] & DATA_REFERENCE_ID_MASK)) {
             InsertData(id, data, dataType, remove);
             id--;
           }
@@ -248,7 +254,7 @@ bool sndPushGroup(void* prj_data, u16 gid, void* samples, void* sdir, void* pool
   if (sndActive && SP_CURRENT < 128) {
     g = prj_data;
 
-    while (g->nextOff != 0xFFFFFFFF) {
+    while (g->nextOff != DATA_POOL_OFFSET_END) {
       if (g->id == gid) {
         GS_CURRENT[SP_CURRENT].gAddr = g;
         GS_CURRENT[SP_CURRENT].prjAddr = prj_data;

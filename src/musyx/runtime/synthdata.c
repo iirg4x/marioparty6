@@ -4,6 +4,10 @@
 #include "musyx/snd.h"
 
 #define SAMPLE_ID_END 65535
+#define SAMPLE_REFCOUNT_UNAVAILABLE 65535
+#define MACRO_MAIN_INDEX_MASK 1023
+#define MACRO_LOOKUP_INDEX_MASK 16383
+#define SAMPLE_LENGTH_MASK 16777215
 
 static SDIR_TAB dataSmpSDirs[128];
 static u16 dataSmpSDirNum;
@@ -232,7 +236,7 @@ bool dataInsertSDir(SDIR_DATA* sdir, void* smp_data) {
   if (i == dataSmpSDirNum) {
     if (dataSmpSDirNum < 128) {
       n = 0;
-      for (s = sdir; s->id != 0xffff; ++s) {
+      for (s = sdir; s->id != SAMPLE_ID_END; ++s) {
         ++n;
       }
 
@@ -246,7 +250,7 @@ bool dataInsertSDir(SDIR_DATA* sdir, void* smp_data) {
         }
       found_id:
         if (i != dataSmpSDirNum) {
-          sdir[j].ref_cnt = 0xffff;
+          sdir[j].ref_cnt = SAMPLE_REFCOUNT_UNAVAILABLE;
         } else {
           sdir[j].ref_cnt = 0;
         }
@@ -280,22 +284,22 @@ bool dataRemoveSDir(struct SDIR_DATA* sdir) {
 
     hwDisableIrq();
 
-    for (data = sdir; data->id != 0xFFFF; ++data) {
-      if (data->ref_cnt != 0xFFFF && data->ref_cnt != 0)
+    for (data = sdir; data->id != SAMPLE_ID_END; ++data) {
+      if (data->ref_cnt != SAMPLE_REFCOUNT_UNAVAILABLE && data->ref_cnt != 0)
         break;
     }
 
-    if (data->id == 0xFFFF) {
+    if (data->id == SAMPLE_ID_END) {
       data = sdir;
 
-      for (data = sdir; data->id != 0xFFFF; ++data) {
-        if (data->ref_cnt != 0xFFFF) {
+      for (data = sdir; data->id != SAMPLE_ID_END; ++data) {
+        if (data->ref_cnt != SAMPLE_REFCOUNT_UNAVAILABLE) {
           for (i = 0; i < dataSmpSDirNum; ++i) {
             if (dataSmpSDirs[i].data == sdir)
               continue;
             for (j = 0; j < dataSmpSDirs[i].numSmp; ++j) {
               if (data->id == dataSmpSDirs[i].data[j].id &&
-                  dataSmpSDirs[i].data[j].ref_cnt == 0xFFFF) {
+                  dataSmpSDirs[i].data[j].ref_cnt == SAMPLE_REFCOUNT_UNAVAILABLE) {
                 dataSmpSDirs[i].data[j].ref_cnt = 0;
                 break;
               }
@@ -309,7 +313,7 @@ bool dataRemoveSDir(struct SDIR_DATA* sdir) {
         }
       }
       data = sdir;
-      for (; data->id != 0xFFFF; ++data) {
+      for (; data->id != SAMPLE_ID_END; ++data) {
         data->ref_cnt = 0;
       }
 
@@ -334,7 +338,7 @@ bool dataAddSampleReference(u16 sid
 #endif
 ) {
   u32 i;                 // r29
-  SAMPLE_HEADER* header; // r1+0xC
+  SAMPLE_HEADER* header; // r1+12
   SDIR_DATA* data;       // r30
   SDIR_DATA* sdir;       // r31
 
@@ -342,7 +346,7 @@ bool dataAddSampleReference(u16 sid
   sdir = NULL;
   for (i = 0; i < dataSmpSDirNum; ++i) {
     for (data = dataSmpSDirs[i].data; data->id != SAMPLE_ID_END; ++data) {
-      if (data->id == sid && data->ref_cnt != SAMPLE_ID_END) {
+      if (data->id == sid && data->ref_cnt != SAMPLE_REFCOUNT_UNAVAILABLE) {
         sdir = data;
         goto done;
       }
@@ -379,7 +383,7 @@ bool dataRemoveSampleReference(u16 sid
 
   for (i = 0; i < dataSmpSDirNum; ++i) {
     for (sdir = dataSmpSDirs[i].data; sdir->id != SAMPLE_ID_END; ++sdir) {
-      if (sdir->id == sid && sdir->ref_cnt != SAMPLE_ID_END) {
+      if (sdir->id == sid && sdir->ref_cnt != SAMPLE_REFCOUNT_UNAVAILABLE) {
         --sdir->ref_cnt;
 
         if (sdir->ref_cnt == 0) {
@@ -449,7 +453,7 @@ bool dataInsertMacro(u16 mid, void* macroaddr) {
 
   hwDisableIrq();
 
-  main = (mid >> 6) & 0x3ff;
+  main = (mid >> 6) & MACRO_MAIN_INDEX_MASK;
 
   if (dataMacMainTab[main].num == 0) {
     pos = base = dataMacMainTab[main].subTabIndex = dataMacTotal;
@@ -501,7 +505,7 @@ bool dataRemoveMacro(u16 mid) {
   s32 i;    // r31
 
   hwDisableIrq();
-  main = (mid >> 6) & 0x3ff;
+  main = (mid >> 6) & MACRO_MAIN_INDEX_MASK;
 
   if (dataMacMainTab[main].num != 0) {
     base = dataMacMainTab[main].subTabIndex;
@@ -538,7 +542,7 @@ MSTEP* dataGetMacro(u16 mid) {
   static MAC_SUBTAB key;
   static MAC_SUBTAB* result;
 
-  main = (mid >> 6) & 0x3fff;
+  main = (mid >> 6) & MACRO_LOOKUP_INDEX_MASK;
 
   if (dataMacMainTab[main].num != 0) {
     base = dataMacMainTab[main].subTabIndex;
@@ -565,13 +569,13 @@ s32 dataGetSample(u16 sid, SAMPLE_INFO* newsmp) {
   for (i = 0; i < dataSmpSDirNum; ++i) {
     if ((result = sndBSearch(&key, dataSmpSDirs[i].data, dataSmpSDirs[i].numSmp, sizeof(SDIR_DATA),
                              smpcmp)) != NULL) {
-      if (result->ref_cnt != 0xFFFF) {
+      if (result->ref_cnt != SAMPLE_REFCOUNT_UNAVAILABLE) {
         sheader = &result->header;
         newsmp->info = sheader->info;
         newsmp->addr = result->addr;
         newsmp->offset = 0;
         newsmp->loop = sheader->loopOffset;
-        newsmp->length = sheader->length & 0xffffff;
+        newsmp->length = sheader->length & SAMPLE_LENGTH_MASK;
         newsmp->loopLength = sheader->loopLength;
         newsmp->compType = sheader->length >> 24;
 
@@ -674,7 +678,7 @@ void* sndConvert32BitSDIRTo64BitSDIR(void* sdir_int) {
   SDIR_DATA_INTER* s2 = NULL;
   u16 n = 0;
 
-  for (s2 = sdir_inter; s2->id != 0xffff; ++s2) {
+  for (s2 = sdir_inter; s2->id != SAMPLE_ID_END; ++s2) {
     ++n;
   }
 
