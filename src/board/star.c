@@ -1142,18 +1142,39 @@ void mbStarMasuDispSet(int masuId, BOOL dispF)
 {
     int objNo = StarMasuNoGet(masuId);
 
-    if (objNo >= 0 && starOMObj[objNo]) {
-        mbStarObjDispSet(objNo, dispF);
+    if (objNo >= 0) {
+        STARWORK *work;
+        OMOBJ *obj;
+
+        obj = starOMObj[objNo];
+        if (obj) {
+            mbObjDispSet(obj->mdlId[0], dispF);
+            work = obj->data;
+            work->modelDispF = dispF;
+            work->effectDispF = dispF;
+            if (work->signF == TRUE) {
+                mbObjDispSet(work->signModelId, dispF);
+            }
+        }
     }
 }
 
 void mbStarDispSetAll(BOOL dispF)
 {
     int i;
+    STARWORK *work;
+    OMOBJ *obj;
 
     for (i = 0; i < STAR_OBJ_MAX; i++) {
-        if (starOMObj[i]) {
-            mbStarObjDispSet(i, dispF);
+        obj = starOMObj[i];
+        if (obj) {
+            mbObjDispSet(obj->mdlId[0], dispF);
+            work = obj->data;
+            work->modelDispF = dispF;
+            work->effectDispF = dispF;
+            if (work->signF == TRUE) {
+                mbObjDispSet(work->signModelId, dispF);
+            }
         }
     }
 }
@@ -1168,8 +1189,20 @@ void mbStarObjDispSetAll(BOOL dispF)
 
             work->autoDispF = dispF;
         }
-        if (starOMObj[i]) {
-            mbStarObjDispSet(i, dispF);
+        {
+            STARWORK *work;
+            OMOBJ *obj;
+
+            obj = starOMObj[i];
+            if (obj) {
+                mbObjDispSet(obj->mdlId[0], dispF);
+                work = obj->data;
+                work->modelDispF = dispF;
+                work->effectDispF = dispF;
+                if (work->signF == TRUE) {
+                    mbObjDispSet(work->signModelId, dispF);
+                }
+            }
         }
     }
 }

@@ -1223,6 +1223,7 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
 
 static void DiceNumObjOMExec(OMOBJ *obj)
 {
+    extern float lbl_802C3874;
     DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
     DICE_NUM_VTX **vtx = obj->data;
     float time;
@@ -1255,8 +1256,8 @@ static void DiceNumObjOMExec(OMOBJ *obj)
             continue;
         }
         angle = 450 * time;
-        if (angle > 360) {
-            angle = 360;
+        if (angle > lbl_802C3874) {
+            angle = lbl_802C3874;
         }
         MTXRotDeg(rot2, 'y', angle);
         angle = (450 * time) - 90;

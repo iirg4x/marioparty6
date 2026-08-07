@@ -831,18 +831,30 @@ static void WipeImageUpdate(HU3D_MODEL *model, Mtx *mtx,
 static void WipeGridDraw(HU3D_MODEL *model, Mtx *mtx,
     WIPE_SPECIAL_DATA *wipeData)
 {
+    extern unsigned char lbl_802C4F2C;
+    extern unsigned char lbl_802C4F2D;
+    extern unsigned char lbl_802C4F2E;
+    extern unsigned char lbl_802C4F2F;
+    extern float lbl_802C4E98;
+    extern float lbl_802C4EF0;
+    extern float lbl_802C4EF8;
+    extern float lbl_802C4F24;
     WIPE_GRID_WORK *work = wipeData->work;
     WIPE_GRID_ENTRY *entry;
     Mtx drawMtx;
     Mtx44 projection;
-    GXColor color = { 255, 255, 255, 255 };
+    GXColor color;
     float tileWidth;
     float tileHeight;
     int i;
     int j;
 
-    C_MTXOrtho(projection, 0.0f, 480.0f, 0.0f, 640.0f, 0.0f,
-        1000.0f);
+    color.r = lbl_802C4F2C;
+    color.g = lbl_802C4F2D;
+    color.b = lbl_802C4F2E;
+    color.a = lbl_802C4F2F;
+    C_MTXOrtho(projection, lbl_802C4E98, lbl_802C4EF8,
+        lbl_802C4E98, lbl_802C4EF0, lbl_802C4E98, lbl_802C4F24);
     GXSetProjection(projection, GX_ORTHOGRAPHIC);
     GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     GXSetScissor(0, 0, 640, 480);
@@ -911,23 +923,39 @@ static void WipeGridDraw(HU3D_MODEL *model, Mtx *mtx,
 static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
     WIPE_SPECIAL_DATA *wipeData)
 {
+    extern unsigned char lbl_802C4F30;
+    extern unsigned char lbl_802C4F31;
+    extern unsigned char lbl_802C4F32;
+    extern unsigned char lbl_802C4F33;
+    extern float lbl_802C4E98;
+    extern float lbl_802C4EC0;
+    extern float lbl_802C4ED8;
+    extern float lbl_802C4EF0;
+    extern float lbl_802C4EF8;
+    extern float lbl_802C4F24;
+    extern float lbl_802C4F34;
     WIPE_PAPER_WORK *work = wipeData->work;
     WIPE_PAPER_VTX *vtx = work->vtx;
     Mtx rotationMtx;
     Mtx normalMtx;
     GXLightObj light;
     Mtx44 projection;
-    GXColor color = { 255, 255, 255, 255 };
+    GXColor color;
     Vec current[2];
     Vec next[2];
     Vec delta[2];
     Vec normal;
     int i;
 
-    C_MTXOrtho(projection, 0.0f, 480.0f, 0.0f, 640.0f, 0.0f,
-        1000.0f);
+    color.r = lbl_802C4F30;
+    color.g = lbl_802C4F31;
+    color.b = lbl_802C4F32;
+    color.a = lbl_802C4F33;
+    C_MTXOrtho(projection, lbl_802C4E98, lbl_802C4EF8,
+        lbl_802C4E98, lbl_802C4EF0, lbl_802C4E98, lbl_802C4F24);
     GXSetProjection(projection, GX_ORTHOGRAPHIC);
-    GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
+    GXSetViewport(lbl_802C4E98, lbl_802C4E98, lbl_802C4EF0,
+        lbl_802C4EF8, lbl_802C4E98, lbl_802C4EC0);
     GXSetScissor(0, 0, 640, 480);
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
@@ -949,8 +977,9 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         GX_LO_NOOP);
 
     memset(&light, 0, sizeof(light));
-    GXInitLightAttnA(&light, 1.0f, 0.0f, 0.0f);
-    GXInitLightDistAttn(&light, 0.0f, 1.0f, GX_DA_OFF);
+    GXInitLightAttnA(&light, lbl_802C4EC0, lbl_802C4E98,
+        lbl_802C4E98);
+    GXInitLightDistAttn(&light, lbl_802C4E98, lbl_802C4EC0, GX_DA_OFF);
     GXInitLightPos(&light, paperLightPos.x, paperLightPos.y,
         paperLightPos.z);
     GXInitLightDir(&light, paperLightDir.x, paperLightDir.y,
@@ -994,7 +1023,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         PSVECSubtract(&vtx[1].pos[0], &vtx->pos[0], &delta[0]);
         PSVECSubtract(&vtx[1].pos[1], &vtx->pos[1], &delta[1]);
         PSMTXRotAxisRad(rotationMtx, &work->normal,
-            ((float)M_PI / 180.0f) * vtx->angle);
+            lbl_802C4F34 * vtx->angle);
         PSMTXMultVec(rotationMtx, &delta[0], &delta[0]);
         PSMTXMultVec(rotationMtx, &delta[1], &delta[1]);
         PSVECAdd(&current[0], &delta[0], &next[0]);
@@ -1002,7 +1031,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
 
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         PSMTXRotAxisRad(rotationMtx, &work->normal,
-            ((float)M_PI / 180.0f) * (90.0f + vtx->bend));
+            lbl_802C4F34 * (lbl_802C4ED8 + vtx->bend));
         PSMTXMultVec(rotationMtx, &work->dir, &normal);
         GXPosition3f32(current[0].x, current[0].y, current[0].z);
         GXNormal3f32(normal.x, normal.y, normal.z);
@@ -1012,7 +1041,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         GXTexCoord2f32(vtx->texCoord[1].x, vtx->texCoord[1].y);
 
         PSMTXRotAxisRad(rotationMtx, &work->normal,
-            ((float)M_PI / 180.0f) * (90.0f + vtx[1].bend));
+            lbl_802C4F34 * (lbl_802C4ED8 + vtx[1].bend));
         PSMTXMultVec(rotationMtx, &work->dir, &normal);
         GXPosition3f32(next[1].x, next[1].y, next[1].z);
         GXNormal3f32(normal.x, normal.y, normal.z);
@@ -1028,22 +1057,39 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
 static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     WIPE_SPECIAL_DATA *wipeData)
 {
+    extern unsigned char lbl_802C4F38;
+    extern unsigned char lbl_802C4F39;
+    extern unsigned char lbl_802C4F3A;
+    extern unsigned char lbl_802C4F3B;
+    extern const float lbl_802C4E98;
+    extern const float lbl_802C4EA8;
+    extern const float lbl_802C4EBC;
+    extern const float lbl_802C4EC0;
+    extern const float lbl_802C4EF0;
+    extern const float lbl_802C4EF8;
+    extern const float lbl_802C4F24;
+    extern const float lbl_802C4F3C;
     WIPE_IMAGE_WORK *work;
     Mtx44 imageProjection;
     Mtx posMtx;
     Mtx44 projection;
-    GXColor color = { 255, 255, 255, 255 };
+    GXColor color;
     float halfSize;
     float left;
     float top;
     float right;
     float bottom;
 
+    color.r = lbl_802C4F38;
+    color.g = lbl_802C4F39;
+    color.b = lbl_802C4F3A;
+    color.a = lbl_802C4F3B;
     work = wipeData->work;
-    C_MTXOrtho(projection, 0.0f, 480.0f, 0.0f, 640.0f, 0.0f,
-        1000.0f);
+    C_MTXOrtho(projection, lbl_802C4E98, lbl_802C4EF8,
+        lbl_802C4E98, lbl_802C4EF0, lbl_802C4E98, lbl_802C4F24);
     GXSetProjection(projection, GX_ORTHOGRAPHIC);
-    GXSetViewport(0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
+    GXSetViewport(lbl_802C4E98, lbl_802C4E98, lbl_802C4EF0,
+        lbl_802C4EF8, lbl_802C4E98, lbl_802C4EC0);
     GXSetScissor(0, 0, 640, 480);
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
@@ -1064,8 +1110,8 @@ static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA,
         GX_LO_NOOP);
 
-    C_MTXOrtho(imageProjection, 0.0f, 480.0f, 0.0f, 576.0f, 0.0f,
-        1000.0f);
+    C_MTXOrtho(imageProjection, lbl_802C4E98, lbl_802C4EF8,
+        lbl_802C4E98, lbl_802C4F3C, lbl_802C4E98, lbl_802C4F24);
     GXSetProjection(imageProjection, GX_ORTHOGRAPHIC);
     HuSprTexLoad(wipeImageAnim[work->imageNo], 0, GX_TEXMAP0, GX_CLAMP,
         GX_CLAMP, GX_LINEAR);
@@ -1074,12 +1120,12 @@ static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     PSMTXIdentity(posMtx);
     GXLoadPosMtxImm(posMtx, GX_PNMTX0);
 
-    halfSize = 0.5f * work->size;
+    halfSize = lbl_802C4EA8 * work->size;
     left = work->x - halfSize;
     top = work->y - halfSize;
     right = work->x + halfSize;
     bottom = work->y + halfSize;
-    color.a = 255.0f * work->alpha;
+    color.a = lbl_802C4EBC * work->alpha;
     GXSetTevColor(GX_TEVREG0, color);
     GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO,
         GX_CC_ZERO);
@@ -1092,32 +1138,32 @@ static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_F32, 0);
-    if (top > 0.0f) {
+    if (top > lbl_802C4E98) {
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-        GXPosition2f32(0.0f, 0.0f);
-        GXPosition2f32(576.0f, 0.0f);
-        GXPosition2f32(576.0f, top);
-        GXPosition2f32(0.0f, top);
+        GXPosition2f32(lbl_802C4E98, lbl_802C4E98);
+        GXPosition2f32(lbl_802C4F3C, lbl_802C4E98);
+        GXPosition2f32(lbl_802C4F3C, top);
+        GXPosition2f32(lbl_802C4E98, top);
     }
-    if (bottom < 480.0f) {
+    if (bottom < lbl_802C4EF8) {
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-        GXPosition2f32(0.0f, bottom);
-        GXPosition2f32(576.0f, bottom);
-        GXPosition2f32(576.0f, 480.0f);
-        GXPosition2f32(0.0f, 480.0f);
+        GXPosition2f32(lbl_802C4E98, bottom);
+        GXPosition2f32(lbl_802C4F3C, bottom);
+        GXPosition2f32(lbl_802C4F3C, lbl_802C4EF8);
+        GXPosition2f32(lbl_802C4E98, lbl_802C4EF8);
     }
-    if (left > 0.0f) {
+    if (left > lbl_802C4E98) {
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-        GXPosition2f32(0.0f, top);
+        GXPosition2f32(lbl_802C4E98, top);
         GXPosition2f32(left, top);
         GXPosition2f32(left, bottom);
-        GXPosition2f32(0.0f, bottom);
+        GXPosition2f32(lbl_802C4E98, bottom);
     }
-    if (left < 576.0f) {
+    if (left < lbl_802C4F3C) {
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         GXPosition2f32(right, top);
-        GXPosition2f32(576.0f, top);
-        GXPosition2f32(576.0f, bottom);
+        GXPosition2f32(lbl_802C4F3C, top);
+        GXPosition2f32(lbl_802C4F3C, bottom);
         GXPosition2f32(right, bottom);
     }
 
@@ -1136,13 +1182,13 @@ static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition2f32(left, top);
-    GXTexCoord2f32(0.0f, 0.0f);
+    GXTexCoord2f32(lbl_802C4E98, lbl_802C4E98);
     GXPosition2f32(right, top);
-    GXTexCoord2f32(1.0f, 0.0f);
+    GXTexCoord2f32(lbl_802C4EC0, lbl_802C4E98);
     GXPosition2f32(right, bottom);
-    GXTexCoord2f32(1.0f, 1.0f);
+    GXTexCoord2f32(lbl_802C4EC0, lbl_802C4EC0);
     GXPosition2f32(left, bottom);
-    GXTexCoord2f32(0.0f, 1.0f);
+    GXTexCoord2f32(lbl_802C4E98, lbl_802C4EC0);
 }
 
 void mbWipeSpecialCreate(int state, int type, int time)

@@ -277,11 +277,11 @@ static const SNPCMOTNEXTDATA *snpcNextMotTbl[2] = {
     snpcKoopaNextMotTbl,
 };
 
-static const int snpcDiceMotTimeTbl[2] = { 25, 25 };
+static int snpcDiceMotTimeTbl[2] = { 25, 25 };
 static const float snpcRotSpeedTbl[2] = { 1.3f, 1.8f };
 static const float snpcPosFixSpeedTbl[2] = { 1.3f, 1.8f };
 
-static const int snpcSeTbl[8][2] = {
+static int snpcSeTbl[8][2] = {
     { 0, 0 },
     { MSM_SE_GUIDE_11, MSM_SE_GUIDE_47 },
     { MSM_SE_GUIDE_13, MSM_SE_GUIDE_48 },
@@ -473,10 +473,13 @@ void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 dataNum)
 
 void mbSNpcKill(void)
 {
+    MBSNPCWORK *work;
+
     if (snpcMagic == SNPC_MAGIC) {
         mbPlayerEndTurnHookSet(GW_PLAYER_MAX - 1, NULL);
         SNpcObjKill();
-        HuMemDirectFree(snpcWork);
+        work = snpcWork;
+        HuMemDirectFree(work);
         snpcWork = NULL;
         snpcSaveWork = NULL;
         snpcMagic = 0;
@@ -530,12 +533,9 @@ void mbSNpcPlayerWalkSet(int playerNo, int masuId)
 
 static void SNpcTargetAngleSet(float angle)
 {
-    OMOBJ *obj;
-
-    obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0, OM_GRP_NONE,
-        SNpcRotateUpdate);
-    snpcWork->rotateObj = obj;
-    omObjGetWork(obj, SNPCROTATEWORK)->targetAngle = angle;
+    snpcWork->rotateObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
+        0, OM_GRP_NONE, SNpcRotateUpdate);
+    omObjGetWork(snpcWork->rotateObj, SNPCROTATEWORK)->targetAngle = angle;
 }
 
 static void SNpcRotateWait(void)
@@ -682,16 +682,13 @@ done:
 
 static void SNpcZoomSet(float zoom)
 {
-    SNPCZOOMWORK *work;
-
     if (!SNpcZoomCheck()) {
         snpcWork->zoomObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
             0, OM_GRP_NONE, SNpcZoomUpdate);
     }
-    work = omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK);
-    work->initF = FALSE;
-    work->killF = FALSE;
-    work->targetZoom = zoom;
+    omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK)->initF = FALSE;
+    omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK)->killF = FALSE;
+    omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK)->targetZoom = zoom;
 }
 
 static BOOL SNpcZoomCheck(void)
@@ -2093,19 +2090,8 @@ static BOOL SNpcObjMotEndCheck(void)
 
 static void SNpcObjMotEndWait(void)
 {
-    BOOL endF;
-
-    for (;;) {
-        endF = FALSE;
-        if (mbObjMotionEndCheck(snpcWork->objId[0])
-            && mbObjMotionShiftIDGet(snpcWork->objId[0]) == -1) {
-            endF = TRUE;
-        }
-        if (!endF) {
-            HuPrcVSleep();
-        } else {
-            break;
-        }
+    while (!SNpcObjMotEndCheck()) {
+        HuPrcVSleep();
     }
 }
 
@@ -2117,7 +2103,7 @@ static void SNpcObjMasuSet(int masuId)
     pos.y += lbl_802C3318;
     mbObjPosSetV(snpcWork->objId[2], &pos);
     mbObjDispSet(snpcWork->objId[2], TRUE);
-    mbObjMotionTimeSet(snpcWork->objId[2], 0.0f);
+    mbObjMotionTimeSet(snpcWork->objId[2], lbl_802C3290);
 }
 
 static void SNpcMasuEffDispSet(void)

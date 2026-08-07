@@ -2599,6 +2599,16 @@ void mbev_MgCallTutorial(void)
     OMOBJ *listObj;
     float weight;
     float scale;
+    extern float lbl_802C4BE4;
+    extern float lbl_802C4BE8;
+    extern float lbl_802C4BEC;
+    extern double lbl_802C4BF0;
+    extern float lbl_802C4A64;
+    extern float lbl_802C4BF8;
+    extern float lbl_802C4BB4;
+    extern float lbl_802C4BFC;
+    extern double lbl_802C4AE8;
+    extern double lbl_802C4C00;
 
     workP = &work;
     cameraP = mbCameraGet();
@@ -2613,13 +2623,13 @@ void mbev_MgCallTutorial(void)
     posNew = pos;
     for (i = 0; i <= 12u; i++) {
         weight = i / 12.0f;
-        posNew.y = pos.y + (weight * (119.0f - pos.y));
+        posNew.y = pos.y + (weight * (lbl_802C4BE4 - pos.y));
         HuPrcVSleep();
     }
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mgStatusPos4P[i].y += 64.0f;
-        mgStatusPos1Vs3[i].y += 64.0f;
-        mgStatusPos2Vs2[i].y += 64.0f;
+        mgStatusPos4P[i].y += lbl_802C4BE8;
+        mgStatusPos1Vs3[i].y += lbl_802C4BE8;
+        mgStatusPos2Vs2[i].y += lbl_802C4BE8;
     }
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbStatusPosOnGet(i, &pos);
@@ -2638,7 +2648,7 @@ void mbev_MgCallTutorial(void)
     workP->sprId[2] = espEntry(
         mbBoardDataNumGet(DATANUM(DATA_board, MGCALL_BOARD_FILE_VERSUS)),
         100, 0);
-    espPosSet(workP->sprId[2], 288.0f, 304.0f);
+    espPosSet(workP->sprId[2], 288.0f, lbl_802C4BEC);
     for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
         scale = 1.5 + sin((M_PI * (360.0f * weight)) / 180.0);
@@ -2685,14 +2695,14 @@ void mbev_MgCallTutorial(void)
     for (i = 0; i < 60u; i++) {
         weight = i / 60.0f;
         scale = 1.5
-            + (0.8 * sin((M_PI
+            + (lbl_802C4BF0 * sin((M_PI
                 * (weight * (720.0f + (720.0f * weight)))) / 180.0));
         espScaleSet(workP->sprId[2], scale, scale);
         HuPrcVSleep();
     }
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbStatusPosGet(i, &pos);
-        if (pos.x >= 0.0f) {
+        if (pos.x >= lbl_802C4A64) {
             pos.x = 704.0f;
         } else {
             pos.x = -128.0f;
@@ -2704,8 +2714,8 @@ void mbev_MgCallTutorial(void)
             MGCALL_BOARD_FILE_EFFECT_EXPLODE)), NULL, FALSE);
     mbObjLayerSet(workP->sprId[3], 6);
     explodePos2D.x = 288.0f;
-    explodePos2D.y = 304.0f;
-    explodePos2D.z = 500.0f;
+    explodePos2D.y = lbl_802C4BEC;
+    explodePos2D.z = lbl_802C4BF8;
     mbPos2Dto3D(&explodePos2D, &explodePos3D);
     mbObjPosSetV(workP->sprId[3], &explodePos3D);
     C_MTXLookAt(explodeMtx, &cameraP->eye, &cameraP->up, &explodePos3D);
@@ -2717,14 +2727,14 @@ void mbev_MgCallTutorial(void)
     mbAudFXPlay(MSM_SE_BRD00_109);
     for (i = 0; i < 30u; i++) {
         weight = i / 30.0f;
-        scale = ((1.0f + (5.0f * weight))
-            + (0.5 * sin((M_PI * (16.0f * (weight * 360.0f))) / 180.0)))
-            * 0.4;
+        scale = ((1.0f + (lbl_802C4BFC * weight))
+            + (0.5 * sin((M_PI * (lbl_802C4BB4 * (weight * 360.0f))) / 180.0)))
+            * lbl_802C4AE8;
         mbObjScaleSet(workP->sprId[3], scale, scale, scale);
         if (i >= 25) {
             mbObjAlphaSet(workP->sprId[3],
-                (int)(255.0 * cos((M_PI
-                    * (90.0f * ((i - 25) / 5.0f))) / 180.0)));
+                (int)(lbl_802C4C00 * cos((M_PI
+                    * (90.0f * ((i - 25) / lbl_802C4BFC))) / 180.0)));
         }
         HuPrcVSleep();
     }
