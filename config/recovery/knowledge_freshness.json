@@ -1025,6 +1025,22 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "gc26-fabsf-preserves-single-precision-pool-chronology": {
+      "status": "active",
+      "validated_commit": "9bc0ad9df91bf55c32a62a291a6aa3db63227c61",
+      "validated_at": "2026-08-07",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "src/board/coin.c",
+        "src/board/dice.c",
+        "include/dolphin/math.h",
+        "configure.py",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

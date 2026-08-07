@@ -4918,6 +4918,94 @@
         "build/board-autonomy/capevent-interruption-audit/worker-verification-p04/report.json",
         "build/board-autonomy/root-final-coin-no-guard-20260807/report.json"
       ]
+    },
+    {
+      "id": "gc26-fabsf-preserves-single-precision-pool-chronology",
+      "title": "Use the float absolute intrinsic when retail remains single-precision",
+      "classification": "confirmed_rule",
+      "category": "constant_pool_ownership",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "Under the MP6 GC/2.6 profile, a float expression passed through `fabs` can be promoted to double, producing `lfd`, `fmul`, `frsp`, 8-byte constants, extra saved FPR lifetimes, and shifted later `.sdata2` identities. When retail instead uses single-precision absolute arithmetic, `__fabsf` preserves the target `lfs`/`fmuls` shape and float-pool chronology. Four such corrections in Coin removed the two source-only double constants and made six previously value-exact functions strict exact without changing their bodies.",
+      "conditions": "Apply as a GC/2.6 diagnostic only when the argument and result are authenticated floats and retail instructions prove single-precision absolute arithmetic. Do not replace an intentional double-precision `fabs` path.",
+      "source_condition": {
+        "change": "Replace `fabs` with `__fabsf` at an authenticated float-only expression whose target uses single-precision absolute arithmetic.",
+        "requires": [
+          "the pinned GC/2.6 owner command and declaration visibility",
+          "float-typed inputs and consumers",
+          "target `fabs` with `lfs` or `fmuls` rather than a double load or multiply",
+          "before-and-after text, constant-pool, relocation, and exact-function comparison",
+          "a zero-regression check for every independently exact function in the owner"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "remove source-only 8-byte double constants",
+          "replace `lfd`/`fmul`/`frsp` with target `lfs`/`fmuls` arithmetic",
+          "reduce stack or saved-FPR pressure in the changed function",
+          "restore later `.sdata2` symbol and relocation chronology",
+          "convert downstream value-exact functions to strict exact without changing their instructions"
+        ],
+        "known_signatures": [
+          "candidate loads a double constant for a source literal suffixed with `f` while retail loads a float",
+          "candidate saves extra floating-point registers around an otherwise float-only expression",
+          "several unchanged functions are value exact but differ only in later small-data relocation identities",
+          "removing the promoted constants causes the later source pool order to align with retail"
+        ]
+      },
+      "rule": "When retail proves a float-only absolute expression, use the project-visible float intrinsic spelling that preserves single precision; verify that the promoted double constants disappear and that all affected text and relocation identities improve together.",
+      "safe_actions": [
+        "compare the target and candidate arithmetic width before changing the call",
+        "look for exact same-game `__fabsf` precedent under the same include closure",
+        "change only the authenticated float absolute sites in one owner",
+        "compile one isolated object and compare strict plus data-value reports",
+        "retain the change only when the causal function and downstream pool consumers have zero exact regressions"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": false,
+        "owners": [
+          "main:board/coin"
+        ],
+        "stable_ids": [
+          "mbCoinEffCreate",
+          "CoinEffHook",
+          "mbCoinDispCreate",
+          "CoinDispOn",
+          "CoinDispMain",
+          "CoinDispOff",
+          "mbCoinAddAllProcExecV"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "float_precision",
+          "constant_pool",
+          "relocation_identity",
+          "saved_fpr_lifetime",
+          "board"
+        ]
+      },
+      "examples": [
+        "In main:board/coin, three 300.0f bounds and one 90.0f angle expression used `fabs`; changing only those four calls to `__fabsf` removed source-only double 300 and 90 pool entries.",
+        "The Coin correction raised strict exactness from 27/52 to 33/52 and added 2,900 strict-exact text bytes with no regression: CoinEffHook, mbCoinDispCreate, CoinDispOn, CoinDispMain, CoinDispOff, and mbCoinAddAllProcExecV.",
+        "Exact same-game Dice source uses `__fabsf` for the corresponding 90.0f ratio expression and emits the retail single-precision shape."
+      ],
+      "counterexamples": [
+        "Keep `fabs` when retail intentionally loads or computes a double and the source-visible types authenticate double precision.",
+        "A value-equal float pool is not sufficient evidence; require target arithmetic width and relocation proof.",
+        "Do not introduce a local prototype, cast ladder, pragma, or synthetic constant merely to force the float intrinsic shape."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/coin.c",
+        "src/board/dice.c",
+        "include/dolphin/math.h",
+        "configure.py",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt"
+      ]
     }
   ]
 }
