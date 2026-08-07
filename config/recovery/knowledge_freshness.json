@@ -917,8 +917,8 @@
       "superseded_by": null
     },
     "canonical-nonmatching-splits-do-not-imply-function-recovery": {
-      "status": "stale",
-      "validated_commit": "796eaed501d45a2c5f2784b740e290a6169c8fe6",
+      "status": "active",
+      "validated_commit": "87845dcd7359f6fec9524a9b48f5d527f738a427",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -940,8 +940,8 @@
       "superseded_by": null
     },
     "empty-rel-aliases-have-no-semantic-source-owner": {
-      "status": "stale",
-      "validated_commit": "796eaed501d45a2c5f2784b740e290a6169c8fe6",
+      "status": "active",
+      "validated_commit": "87845dcd7359f6fec9524a9b48f5d527f738a427",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
