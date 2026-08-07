@@ -451,8 +451,8 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "e11bce1275a0e91a88e656847073fffe3271339d",
+      "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
@@ -504,7 +504,7 @@
     },
     "gc26-o0-explicit-value-capture-lifetime": {
       "status": "active",
-      "validated_commit": "c53fff34a3631776faf2871287db8c9afe149aa3",
+      "validated_commit": "e11bce1275a0e91a88e656847073fffe3271339d",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -670,7 +670,7 @@
     },
     "mwcc-local-declaration-order-and-first-use-rotate-saved-registers": {
       "status": "active",
-      "validated_commit": "c53fff34a3631776faf2871287db8c9afe149aa3",
+      "validated_commit": "e11bce1275a0e91a88e656847073fffe3271339d",
       "validated_at": "2026-08-07",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -969,8 +969,8 @@
     },
     "gc26-o0-complete-void-prototype-visibility-restores-regalloc": {
       "status": "active",
-      "validated_commit": "c53fff34a3631776faf2871287db8c9afe149aa3",
-      "validated_at": "2026-08-07",
+      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
+      "validated_at": "2026-08-02",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "src/board/shopevent.c",
