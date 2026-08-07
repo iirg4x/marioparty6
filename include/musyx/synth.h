@@ -174,7 +174,7 @@ typedef struct SYNTH_VOICE {
 #endif
   u32 sInfo;   // offset 0x124, size 0x4
   u32 playFrq; // offset 0x128, size 0x4
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
   u16 sampleId;
 #endif
   u16 curNote;             // offset 0x12C, size 0x2
@@ -294,6 +294,9 @@ extern SYNTH_MESSAGE_CALLBACK synthMessageCallback;
 
 u32 synthGetTicksPerSecond(SYNTH_VOICE* svoice);
 void synthKillVoicesByMacroReferences(u16* ref);
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+void synthKillVoicesBySampleReferences(u16* ref);
+#endif
 void synthExit();
 void synthInit(u32 mixFrq, u32 numVoices);
 void synthSetBpm(u32 pbm, u8 set, u8 section);

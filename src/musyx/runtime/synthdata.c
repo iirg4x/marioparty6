@@ -3,6 +3,8 @@
 #include "musyx/hardware.h"
 #include "musyx/snd.h"
 
+#define SAMPLE_ID_END 65535
+
 static SDIR_TAB dataSmpSDirs[128];
 static u16 dataSmpSDirNum;
 static DATA_TAB dataCurveTab[2048];
@@ -325,7 +327,12 @@ bool dataRemoveSDir(struct SDIR_DATA* sdir) {
   return FALSE;
 }
 
-bool dataAddSampleReference(u16 sid) {
+bool dataAddSampleReference(u16 sid
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                            ,
+                            ARAMInfo* aramInfo
+#endif
+) {
   u32 i;                 // r29
   SAMPLE_HEADER* header; // r1+0xC
   SDIR_DATA* data;       // r30
@@ -334,8 +341,8 @@ bool dataAddSampleReference(u16 sid) {
   data = NULL;
   sdir = NULL;
   for (i = 0; i < dataSmpSDirNum; ++i) {
-    for (data = dataSmpSDirs[i].data; data->id != 0xFFFF; ++data) {
-      if (data->id == sid && data->ref_cnt != 0xFFFF) {
+    for (data = dataSmpSDirs[i].data; data->id != SAMPLE_ID_END; ++data) {
+      if (data->id == sid && data->ref_cnt != SAMPLE_ID_END) {
         sdir = data;
         goto done;
       }
@@ -349,24 +356,39 @@ done:
   if (sdir->ref_cnt == 0) {
     sdir->addr = (void*)((size_t)sdir->offset + (s32)dataSmpSDirs[i].base);
     header = &sdir->header;
-    hwSaveSample(&header, &sdir->addr);
+    hwSaveSample(&header, &sdir->addr
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                 ,
+                 aramInfo
+#endif
+    );
   }
 
   ++sdir->ref_cnt;
   return TRUE;
 }
 
-bool dataRemoveSampleReference(u16 sid) {
+bool dataRemoveSampleReference(u16 sid
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                               ,
+                               ARAMInfo* aramInfo
+#endif
+) {
   u32 i;           // r30
   SDIR_DATA* sdir; // r31
 
   for (i = 0; i < dataSmpSDirNum; ++i) {
-    for (sdir = dataSmpSDirs[i].data; sdir->id != 0xFFFF; ++sdir) {
-      if (sdir->id == sid && sdir->ref_cnt != 0xFFFF) {
+    for (sdir = dataSmpSDirs[i].data; sdir->id != SAMPLE_ID_END; ++sdir) {
+      if (sdir->id == sid && sdir->ref_cnt != SAMPLE_ID_END) {
         --sdir->ref_cnt;
 
         if (sdir->ref_cnt == 0) {
-          hwRemoveSample(&sdir->header, sdir->addr);
+          hwRemoveSample(&sdir->header, sdir->addr
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                         ,
+                         aramInfo
+#endif
+          );
         }
 
         return TRUE;

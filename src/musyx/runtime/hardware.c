@@ -475,12 +475,22 @@ static u32 convert_length(u32 len, u8 type) {
   return len;
 }
 
-void hwSaveSample(void* header, void* data) {
+void hwSaveSample(void* header, void* data
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                  ,
+                  ARAMInfo* aramInfo
+#endif
+) {
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
   u32 len = ((u32*)*((u32*)header))[1] & 0xFFFFFF;
   u8 type = ((u32*)*((u32*)header))[1] >> 0x18;
   len = convert_length(len, type);
-  *((u32*)data) = (u32)aramStoreData((void*)*((u32*)data), len);
+  *((u32*)data) = (u32)aramStoreData((void*)*((u32*)data), len
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                                     ,
+                                     aramInfo
+#endif
+  );
 #endif
 }
 
@@ -488,7 +498,12 @@ void hwSetSaveSampleCallback(ARAMUploadCallback callback, unsigned long chunckSi
   aramSetUploadCallback(callback, chunckSize);
 }
 
-void hwRemoveSample(void* header, void* data) {
+void hwRemoveSample(void* header, void* data
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                    ,
+                    ARAMInfo* aramInfo
+#endif
+) {
 #if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
   u32 len = (((u32*)header))[1] & 0xFFFFFF;
   u8 type = (((u32*)header))[1] >> 0x18;
@@ -497,7 +512,12 @@ void hwRemoveSample(void* header, void* data) {
   u8 type = (((u32*)header))[1] >> 0x18;
   u32 len = convert_length((((u32*)header))[1] & 0xFFFFFF, type);
 #endif
-  aramRemoveData(data, len);
+  aramRemoveData(data, len
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                 ,
+                 aramInfo
+#endif
+  );
 }
 
 void hwSyncSampleMem() { aramSyncTransferQueue(); }

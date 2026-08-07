@@ -7,6 +7,13 @@
 #include "musyx/stream.h"
 #include "musyx/voice.h"
 
+#define VOICE_INDEX_NONE 255
+#define VOICE_PRIORITY_NONE 65535
+#define VOICE_ALLOC_ID_LEGACY_NONE 65535
+#define SAMPLE_REFERENCE_END 65535
+#define SAMPLE_REFERENCE_RANGE_FLAG 32768
+#define SAMPLE_REFERENCE_ID_MASK 16383
+
 void voiceResetLastStarted(SYNTH_VOICE* svoice);
 
 static VID_LIST vidList[128];
@@ -287,7 +294,147 @@ void voiceSetPriority(SYNTH_VOICE* svoice, u8 prio) {
   hwSetPriority(svoice->id & 0xFF, ((u32)prio << 24) | (svoice->age >> 15));
 }
 
-u32 voiceAllocate(u8 priority, u8 maxVoices, u16 allocId, u8 fxFlag) {
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+static s32 voiceAllocateFind(u8 priority, u8 maxVoices, u32 allocId, u8 fxFlag) {
+  s32 i;          // r31
+  s32 num;        // r27
+  s32 voice;      // r30
+  u16 p;          // r29
+  u32 type_alloc; // r26
+
+  if (synthIdleWaitActive == 0) {
+    if (fxFlag != 0) {
+      type_alloc = (voiceFxRunning >= synthInfo.maxSFX) && (synthInfo.voiceNum > synthInfo.maxSFX);
+      if (synthInfo.maxSFX <= maxVoices) {
+        goto _skip_alloc;
+      }
+      goto _do_alloc;
+    }
+    type_alloc =
+        (voiceMusicRunning >= synthInfo.maxMusic) && (synthInfo.voiceNum > synthInfo.maxMusic);
+    if (synthInfo.maxMusic > maxVoices) {
+    _do_alloc:
+      num = 0;
+      voice = -1;
+      for (p = voicePrioSortRootListRoot;
+           (p != VOICE_PRIORITY_NONE) && (priority >= p) && (voice == -1);
+           p = voicePrioSortRootList[p].next) {
+        for (i = voicePrioSortVoicesRoot[p]; i != VOICE_INDEX_NONE;
+             i = voicePrioSortVoices[i].next) {
+          if (allocId == synthVoice[i].allocId) {
+            num++;
+            if ((synthVoice[i].block == 0) &&
+                ((type_alloc == 0) || (fxFlag == synthVoice[i].fxFlag))) {
+              if ((synthVoice[i].cFlags & 2) == 0) {
+                if (voice != -1) {
+                  if (synthVoice[i].age < synthVoice[voice].age) {
+                    voice = i;
+                  }
+                } else {
+                  voice = i;
+                }
+              }
+            }
+          }
+        }
+      }
+      if (num >= maxVoices) {
+        return voice;
+      }
+      for (; (p != VOICE_PRIORITY_NONE) && (num < maxVoices);
+           p = voicePrioSortRootList[p].next) {
+        for (i = voicePrioSortVoicesRoot[p]; i != VOICE_INDEX_NONE;
+             i = voicePrioSortVoices[i].next) {
+          if (allocId == synthVoice[i].allocId) {
+            num++;
+          }
+        }
+      }
+      if (num >= maxVoices) {
+        return voice;
+      }
+    }
+  _skip_alloc:
+    if ((voiceListRoot != VOICE_INDEX_NONE) && (type_alloc == 0)) {
+      return voiceListRoot;
+    }
+    if (priority < voicePrioSortRootListRoot) {
+      return -1;
+    }
+    voice = -1;
+    for (p = voicePrioSortRootListRoot;
+         (p != VOICE_PRIORITY_NONE) && (priority >= p) && (voice == -1);
+         p = voicePrioSortRootList[p].next) {
+      for (i = voicePrioSortVoicesRoot[p]; i != VOICE_INDEX_NONE;
+           i = voicePrioSortVoices[i].next) {
+        if ((synthVoice[i].block == 0) && ((type_alloc == 0) || (fxFlag == synthVoice[i].fxFlag))) {
+          if ((synthVoice[i].cFlags & 2) == 0) {
+            if (voice != -1) {
+              if (synthVoice[voice].age > synthVoice[i].age) {
+                voice = i;
+              }
+            } else {
+              voice = i;
+            }
+          }
+        }
+      }
+    }
+    if (voice == -1) {
+      return -1;
+    }
+    if (synthVoice[voice].prio <= priority) {
+      return voice;
+    }
+  }
+  return -1;
+}
+
+static u32 voiceAllocateDo(s32 voice, u8 fxFlag) {
+  s32 i;                // r30
+  SYNTH_VOICELIST* sfv; // r31
+
+  if (voice != -1) {
+    if (voiceList[voice].user == 1) {
+      sfv = &voiceList[voice];
+      i = sfv->prev;
+      if (i != VOICE_INDEX_NONE) {
+        voiceList[i].next = sfv->next;
+      } else {
+        voiceListRoot = sfv->next;
+      }
+      i = sfv->next;
+      if (i != VOICE_INDEX_NONE) {
+        voiceList[i].prev = sfv->prev;
+      }
+      if (voice == voiceListInsert) {
+        voiceListInsert = sfv->prev;
+      }
+      sfv->user = 0;
+    } else if (synthVoice[voice].fxFlag != 0) {
+      voiceFxRunning -= 1;
+    } else {
+      voiceMusicRunning -= 1;
+    }
+    if (fxFlag != 0) {
+      voiceFxRunning++;
+      return;
+    }
+    voiceMusicRunning++;
+  }
+}
+#endif
+
+u32 voiceAllocate(u8 priority, u8 maxVoices,
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                  u32 allocId,
+#else
+                  u16 allocId,
+#endif
+                  u8 fxFlag) {
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  voiceAllocateDo(voiceAllocateFind(priority, maxVoices, allocId, fxFlag), fxFlag);
+#else
   s32 i;                // r31
   s32 num;              // r26
   s32 voice;            // r30
@@ -318,11 +465,17 @@ _do_alloc:
           p = voicePrioSortRootListRoot;
           while (p != 0xFFFF &&  priority >= p && voice == -1) {
             for (i = voicePrioSortVoicesRoot[p]; i != 0xff; i = voicePrioSortVoices[i].next) {
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
+              if (synthVoice[i].block)
+                continue;
+#endif
               if (allocId != synthVoice[i].allocId)
                   continue;
                 ++num;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
                 if(synthVoice[i].block)
                   continue;
+#endif
 
                 if (!type_alloc || fxFlag == synthVoice[i].fxFlag) {
                     if((synthVoice[i].cFlags & 2))
@@ -345,9 +498,15 @@ _do_alloc:
           while (p != 0xffff && num < maxVoices) {
               i = voicePrioSortVoicesRoot[p];
               while (i != 0xff) {
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
+                if (!synthVoice[i].block) {
+#endif
                     if (allocId == synthVoice[i].allocId) {
                         num++;
                     }
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
+                }
+#endif
 
                     i = voicePrioSortVoices[i].next;
               }
@@ -356,7 +515,10 @@ _do_alloc:
           }
 
         if (num < maxVoices) {
-    _skip_alloc:
+      _skip_alloc:
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
+        voice = -1;
+#endif
             if (voiceListRoot != 0xff && type_alloc == 0) {
                 voice = voiceListRoot;
                 goto _update;
@@ -366,7 +528,9 @@ _do_alloc:
                 return -1;
             }
 
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
             voice = -1;
+#endif
             p = voicePrioSortRootListRoot;
 
           while (p != 0xFFFF &&  priority >= p && voice == -1) {
@@ -392,13 +556,18 @@ _do_alloc:
                 return 0xffffffff;
               }
 
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(1, 5, 3)
+      _update:
+#endif
               if (synthVoice[voice].prio > priority) {
                   goto _fail;
               }
         }
       }
 
-    _update:
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
+  _update:
+#endif
       if (voice == -1) {
           goto _fail;
       }
@@ -438,7 +607,22 @@ _do_alloc:
 
 _fail:
   return -1;
+#endif
 }
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+int voiceAllocatePeek(u8 priority, u8 maxVoices, u32 allocId, u8 fxFlag, u32* currentAllocId) {
+  s32 voice = voiceAllocateFind(priority, maxVoices, allocId, fxFlag);
+  if (voice == -1) {
+    return 0;
+  }
+  if (voiceList[voice].user == 1) {
+    return 0;
+  }
+  *currentAllocId = synthVoice[voice].allocId;
+  return 1;
+}
+#endif
 
 void voiceFree(SYNTH_VOICE* svoice) {
   u32 i;                // r29
@@ -498,12 +682,19 @@ void synthInitAllocationAids() {
 u32 voiceBlock(u8 prio) {
   u32 voice;
 
-  if ((voice = voiceAllocate(prio, 0xFF, 0xFFFF, 1)) != 0xFFFFFFFF) {
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  voice = voiceAllocateFind(prio, VOICE_INDEX_NONE, VOICE_ALLOC_ID_LEGACY_NONE, 1);
+  voiceAllocateDo(voice, 1);
+#else
+  voice = voiceAllocate(prio, VOICE_INDEX_NONE, VOICE_ALLOC_ID_LEGACY_NONE, 1);
+#endif
+  if (voice != (u32)-1) {
     synthVoice[voice].block = 1;
     synthVoice[voice].fxFlag = 1;
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-    synthVoice[voice].allocId = 0xFFFF;
+    synthVoice[voice].allocId =
+        MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 1) ? VOICE_ALLOC_ID_LEGACY_NONE : -1;
 #endif
 
     vidRemoveVoiceReferences(&synthVoice[voice]);
@@ -615,6 +806,38 @@ void synthKillVoicesByMacroReferences(u16* ref) {
     }
   }
 }
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+void synthKillVoicesBySampleReferences(u16* ref) {
+  u32 i;  // r31
+  u16 id; // r29
+
+  for (i = 0; i < synthInfo.voiceNum; i++) {
+    if (synthVoice[i].addr == 0 && synthVoice[i].block == 0) {
+      voiceKill(i);
+    }
+  }
+  while (ref[0] != SAMPLE_REFERENCE_END) {
+    if ((ref[0] & SAMPLE_REFERENCE_RANGE_FLAG) != 0) {
+      for (id = ref[0] & SAMPLE_REFERENCE_ID_MASK; id <= ref[1]; id++) {
+        for (i = 0; i < synthInfo.voiceNum; i++) {
+          if (synthVoice[i].addr != 0 && (id == synthVoice[i].sampleId)) {
+            voiceKill(i);
+          }
+        }
+      }
+      ref += 2;
+    } else {
+      for (i = 0; i < synthInfo.voiceNum; i++) {
+        if (synthVoice[i].addr != 0 && (ref[0] == synthVoice[i].sampleId)) {
+          voiceKill(i);
+        }
+      }
+      ref++;
+    }
+  }
+}
+#endif
 
 u32 voiceIsLastStarted(SYNTH_VOICE* svoice) {
   u32 i; // r31

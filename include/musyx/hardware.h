@@ -7,6 +7,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct ARAMInfo {
+  unsigned long aramBase;
+  unsigned long aramTop;
+  unsigned long aramWrite;
+} ARAMInfo;
+
 typedef void* (*ARAMUploadCallback)(u32, u32);
 typedef u32 (*SND_MESSAGE_CALLBACK)(u32, u32);
 
@@ -35,8 +42,18 @@ void hwEnableIrq();
 void hwDisableIrq();
 void* hwTransAddr(void* samples);
 void hwExitStream(u8 id);
-void hwSaveSample(void* header, void* data);
-void hwRemoveSample(void* header, void* data);
+void hwSaveSample(void* header, void* data
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                  ,
+                  ARAMInfo* aramInfo
+#endif
+);
+void hwRemoveSample(void* header, void* data
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                    ,
+                    ARAMInfo* aramInfo
+#endif
+);
 u32 hwGetVirtualSampleState(u32 voice);
 bool hwVoiceInStartup(u32 v);
 void hwBreak(s32 vid);
@@ -90,8 +107,18 @@ void aramExit();
 size_t aramGetStreamBufferAddress(u8 id, size_t* len);
 void aramUploadData(void* mram, u32 aram, u32 len, u32 highPrio, void (*callback)(size_t), u32 user);
 void aramFreeStreamBuffer(u8 id);
-void* aramStoreData(void* src, u32 len);
-void aramRemoveData(void* aram, u32 len);
+void* aramStoreData(void* src, u32 len
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                    ,
+                    ARAMInfo* ai
+#endif
+);
+void aramRemoveData(void* aram, u32 len
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+                    ,
+                    ARAMInfo* ai
+#endif
+);
 u8 aramAllocateStreamBuffer(u32 len);
 unsigned long aramGetZeroBuffer();
 void aramSetUploadCallback(ARAMUploadCallback callback, u32 chunckSize);
