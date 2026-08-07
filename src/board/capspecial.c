@@ -1228,12 +1228,15 @@ static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
 
 void mbev_CapTeresaFadeSet(float alpha)
 {
+    extern const float lbl_802C4288;
+    extern const float lbl_802C42C4;
+
     if (teresaFadeWork) {
-        if (alpha < 0.0f) {
-            alpha = 0.0f;
+        if (alpha < lbl_802C4288) {
+            alpha = lbl_802C4288;
         }
-        if (alpha > 255.0f) {
-            alpha = 255.0f;
+        if (alpha > lbl_802C42C4) {
+            alpha = lbl_802C42C4;
         }
         teresaFadeWork->alpha = alpha;
     }
