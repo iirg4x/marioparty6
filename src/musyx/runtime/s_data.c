@@ -6,13 +6,67 @@
 #include "musyx/synthdata.h"
 #include "musyx/s3d.h"
 
-static GSTACK gs[128];
-static s16 sp;
+#define DATA_ID_END 65535
+#define DATA_POOL_OFFSET_END (~0U)
+#define DATA_KEYMAP_ID_FLAG (1 << 14)
+#define DATA_LAYER_ID_FLAG (1 << 15)
+#define DATA_REFERENCE_END 65535
+#define DATA_REFERENCE_RANGE_FLAG 32768
+#define DATA_REFERENCE_ID_MASK 16383
 
-void dataInitStack() { sp = 0; }
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
+static GSTACK gs[128];
+#define GS_CURRENT gs
+#define GS_GSI gs
+static s16 sp;
+#define SP_CURRENT sp
+#define SP_GSI sp
+#else
+static GSTACK_INST gsDefault;
+#define GS_CURRENT gsCurrent->gs
+#define GS_GSI gsi->gs
+#define SP_CURRENT gsCurrent->sp
+#define SP_GSI gsi->sp
+#endif
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+static unsigned long gsNextID;
+static GSTACK_INST* gsCurrent;
+static GSTACK_INST* gsRoot;
+
+static void dataInitStackInstance(GSTACK_INST* inst, unsigned long id, unsigned long aramBase,
+                                  unsigned long aramSize) {
+  inst->id = id;
+  inst->sp = 0;
+  inst->aramInfo.aramBase = aramBase;
+  inst->aramInfo.aramWrite = aramBase;
+  inst->aramInfo.aramTop = aramBase + aramSize;
+  inst->next = gsRoot;
+  gsRoot = inst;
+}
+#endif
+
+void dataInitStack(
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+    unsigned long aramBase, unsigned long aramSize
+#endif
+) {
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
+  sp = 0;
+#else
+  gsRoot = NULL;
+  dataInitStackInstance(&gsDefault, -2, aramBase, aramSize);
+  gsNextID = 0;
+  gsCurrent = &gsDefault;
+#endif
+}
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+ARAMInfo* dataARAMDefaultGetInfo() { return &gsDefault.aramInfo; }
+#endif
 
 static MEM_DATA* GetPoolAddr(u16 id, MEM_DATA* m) {
-  while (m->nextOff != 0xFFFFFFFF) {
+  while (m->nextOff != DATA_POOL_OFFSET_END) {
     if (m->id == id) {
       return m;
     }
@@ -53,7 +107,7 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
     }
     break;
   case 2: {
-    id |= 0x4000;
+    id |= DATA_KEYMAP_ID_FLAG;
     if (!remove) {
       if ((m = GetKeymapAddr(id, data)) != NULL) {
         dataInsertKeymap(id, &m->data.map);
@@ -65,7 +119,7 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
     }
   } break;
   case 3: {
-    id |= 0x8000;
+    id |= DATA_LAYER_ID_FLAG;
     if (!remove) {
       if ((m = GetLayerAddr(id, data)) != NULL) {
         dataInsertLayer(id, &m->data.layer.entry, m->data.layer.num);
@@ -89,9 +143,17 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
     break;
   case 1:
     if (!remove) {
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
       dataAddSampleReference(id);
+#else
+      dataAddSampleReference(id, &gsCurrent->aramInfo);
+#endif
     } else {
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
       dataRemoveSampleReference(id);
+#else
+      dataRemoveSampleReference(id, &gsCurrent->aramInfo);
+#endif
     }
     break;
   }
@@ -100,9 +162,9 @@ static void InsertData(u16 id, void* data, u8 dataType, u32 remove) {
 static void ScanIDList(u16* ref, void* data, u8 dataType, u32 remove) {
   u16 id; // r30
 
-  while (*ref != 0xFFFF) {
-    if ((*ref & 0x8000)) {
-      id = *ref & 0x3fff;
+  while (*ref != DATA_REFERENCE_END) {
+    if ((*ref & DATA_REFERENCE_RANGE_FLAG)) {
+      id = *ref & DATA_REFERENCE_ID_MASK;
       while (id <= ref[1]) {
         InsertData(id, data, dataType, remove);
         ++id;
@@ -119,18 +181,18 @@ static void ScanIDListReverse(u16* refBase, void* data, u8 dataType, u32 remove)
   s16 id;
   u16* ref;
 
-  if (*refBase != 0xffff) {
+  if (*refBase != DATA_REFERENCE_END) {
     ref = refBase;
-    while (*ref != 0xffff) {
+    while (*ref != DATA_REFERENCE_END) {
       ref++;
     }
     ref--;
 
     while (ref >= refBase) {
       if (ref != refBase) {
-        if ((ref[-1] & 0x8000) != 0) {
+        if ((ref[-1] & DATA_REFERENCE_RANGE_FLAG) != 0) {
           id = *ref;
-          while (id >= (s16)(ref[-1] & 0x3fff)) {
+          while (id >= (s16)(ref[-1] & DATA_REFERENCE_ID_MASK)) {
             InsertData(id, data, dataType, remove);
             id--;
           }
@@ -189,14 +251,14 @@ bool sndPushGroup(void* prj_data, u16 gid, void* samples, void* sdir, void* pool
   MUSY_ASSERT_MSG(prj_data != NULL, "Project data pointer is NULL");
   MUSY_ASSERT_MSG(sdir != NULL, "Sample directory pointer is NULL");
 
-  if (sndActive && sp < 128) {
+  if (sndActive && SP_CURRENT < 128) {
     g = prj_data;
 
-    while (g->nextOff != 0xFFFFFFFF) {
+    while (g->nextOff != DATA_POOL_OFFSET_END) {
       if (g->id == gid) {
-        gs[sp].gAddr = g;
-        gs[sp].prjAddr = prj_data;
-        gs[sp].sdirAddr = sdir;
+        GS_CURRENT[SP_CURRENT].gAddr = g;
+        GS_CURRENT[SP_CURRENT].prjAddr = prj_data;
+        GS_CURRENT[SP_CURRENT].sdirAddr = sdir;
         InsertSamples((u16*)((u8*)prj_data + g->sampleOff), samples, sdir);
         InsertMacros((u16*)((u8*)prj_data + g->macroOff), pool);
         InsertCurves((u16*)((u8*)prj_data + g->curveOff), pool);
@@ -206,7 +268,7 @@ bool sndPushGroup(void* prj_data, u16 gid, void* samples, void* sdir, void* pool
           InsertFXTab(gid, (FX_DATA*)((u8*)prj_data + g->data.song.normpageOff));
         }
         hwSyncSampleMem();
-        ++sp;
+        ++SP_CURRENT;
         return TRUE;
       }
 
@@ -237,10 +299,10 @@ bool sndPopGroup() {
   FX_DATA* fd;
 
   MUSY_ASSERT_MSG(sndActive != FALSE, "Sound system is not initialized.");
-  MUSY_ASSERT_MSG(sp != 0, "Soundstack is empty.");
-  g = gs[--sp].gAddr;
-  prj = gs[sp].prjAddr;
-  sdir = gs[sp].sdirAddr;
+  MUSY_ASSERT_MSG(SP_CURRENT != 0, "Soundstack is empty.");
+  g = GS_CURRENT[--SP_CURRENT].gAddr;
+  prj = GS_CURRENT[SP_CURRENT].prjAddr;
+  sdir = GS_CURRENT[SP_CURRENT].sdirAddr;
   hwDisableIrq();
 
   if (g->type == 1) {
@@ -251,6 +313,9 @@ bool sndPopGroup() {
   }
 
   synthKillVoicesByMacroReferences((u16*)((u8*)prj + g->macroOff));
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  synthKillVoicesBySampleReferences((u16*)((u8*)prj + g->sampleOff));
+#endif
   hwEnableIrq();
   RemoveSamples((u16*)((u8*)prj + g->sampleOff), sdir);
   RemoveMacros((u16*)((u8*)prj + g->macroOff));
@@ -286,46 +351,125 @@ u32 seqPlaySong(u16 sgid, u16 sid, void* arrfile, SND_PLAYPARA* para, u8 irq_cal
   MIDISETUP* midiSetup;
   u32 seqId;
   void* prj;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  GSTACK_INST* gsi;
+#endif
   MUSY_ASSERT_MSG(sndActive != FALSE, "Sound system is not initialized.");
 
-  for (i = 0; i < sp; ++i) {
-    if (sgid != gs[i].gAddr->id) {
-      continue;
-    }
-
-    if (gs[i].gAddr->type == 0) {
-      g = gs[i].gAddr;
-      prj = gs[i].prjAddr;
-      norm = (PAGE*)((size_t)prj + g->data.song.normpageOff);
-      drum = (PAGE*)((size_t)prj + g->data.song.drumpageOff);
-      midiSetup = (MIDISETUP*)((size_t)prj + g->data.song.midiSetupOff);
-      while (midiSetup->songId != 0xFFFF) {
-        if (midiSetup->songId == sid) {
-          if (irq_call != 0) {
-            seqId = seqStartPlay(norm, drum, midiSetup, arrfile, para, studio, sgid);
-          } else {
-            hwDisableIrq();
-            seqId = seqStartPlay(norm, drum, midiSetup, arrfile, para, studio, sgid);
-            hwEnableIrq();
-          }
-          return seqId;
-        }
-
-        ++midiSetup;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  for (gsi = gsRoot; gsi != NULL; gsi = gsi->next) {
+#endif
+    for (i = 0; i < SP_GSI; ++i) {
+      if (GS_GSI[i].gAddr->id != sgid) {
+        continue;
       }
 
-      MUSY_DEBUG("Song ID=%d is not in group ID=%d.", sid, sgid);
-      return 0xffffffff;
-    } else {
-      MUSY_DEBUG("Group ID=%d is no songgroup.", sgid);
-      return 0xffffffff;
+      if (GS_GSI[i].gAddr->type == 0) {
+        g = GS_GSI[i].gAddr;
+        prj = GS_GSI[i].prjAddr;
+        norm = (PAGE*)((size_t)prj + g->data.song.normpageOff);
+        drum = (PAGE*)((size_t)prj + g->data.song.drumpageOff);
+        midiSetup = (MIDISETUP*)((size_t)prj + g->data.song.midiSetupOff);
+        while (midiSetup->songId != DATA_ID_END) {
+          if (midiSetup->songId == sid) {
+            if (irq_call != 0) {
+              seqId = seqStartPlay(norm, drum, midiSetup, arrfile, para, studio, sgid);
+            } else {
+              hwDisableIrq();
+              seqId = seqStartPlay(norm, drum, midiSetup, arrfile, para, studio, sgid);
+              hwEnableIrq();
+            }
+            return seqId;
+          }
+
+          ++midiSetup;
+        }
+
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 1)
+        MUSY_DEBUG("Song ID=%d is not in group ID=%d.", sid, sgid);
+#else
+        MUSY_DEBUG("Song ID=%d is not in group ID=%d.\n", sid, sgid);
+#endif
+        return SND_ID_ERROR;
+      } else {
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 1)
+        MUSY_DEBUG("Group ID=%d is no songgroup.", sgid);
+#else
+        MUSY_DEBUG("Group ID=%d is no songgroup.\n", sgid);
+#endif
+        return SND_ID_ERROR;
+      }
+    }
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  }
+#endif
+
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
+  MUSY_DEBUG("Group ID=%d is not on soundstack.", sgid);
+#else
+  MUSY_DEBUG("Group ID=%d is not on any soundstack.\n", sgid);
+#endif
+  return SND_ID_ERROR;
+}
+
+#if MUSY_VERSION == MUSY_VERSION_CHECK(2, 0, 4)
+inline u32 _seqPlaySong(u16 sgid, u16 sid, void* arrfile, SND_PLAYPARA* para, u8 irq_call, u8 studio) {
+  int i;
+  GROUP_DATA* g;
+  PAGE* norm;
+  PAGE* drum;
+  MIDISETUP* midiSetup;
+  u32 seqId;
+  void* prj;
+  GSTACK_INST* gsi;
+
+  MUSY_ASSERT_MSG(sndActive != FALSE, "Sound system is not initialized.");
+
+  for (gsi = gsRoot; gsi != NULL; gsi = gsi->next) {
+    for (i = 0; i < SP_GSI; ++i) {
+      if (GS_GSI[i].gAddr->id != sgid) {
+        continue;
+      }
+
+      if (GS_GSI[i].gAddr->type == 0) {
+        g = GS_GSI[i].gAddr;
+        prj = GS_GSI[i].prjAddr;
+        norm = (PAGE*)((size_t)prj + g->data.song.normpageOff);
+        drum = (PAGE*)((size_t)prj + g->data.song.drumpageOff);
+        midiSetup = (MIDISETUP*)((size_t)prj + g->data.song.midiSetupOff);
+        while (midiSetup->songId != DATA_ID_END) {
+          if (midiSetup->songId == sid) {
+            if (irq_call != 0) {
+              seqId = seqStartPlay(norm, drum, midiSetup, arrfile, para, studio, sgid);
+            } else {
+              hwDisableIrq();
+              seqId = seqStartPlay(norm, drum, midiSetup, arrfile, para, studio, sgid);
+              hwEnableIrq();
+            }
+            return seqId;
+          }
+
+          ++midiSetup;
+        }
+
+        MUSY_DEBUG("Song ID=%d is not in group ID=%d.\n", sid, sgid);
+        return SND_ID_ERROR;
+      } else {
+        MUSY_DEBUG("Group ID=%d is no songgroup.\n", sgid);
+        return SND_ID_ERROR;
+      }
     }
   }
 
-  MUSY_DEBUG("Group ID=%d is not on soundstack.", sgid);
-  return 0xffffffff;
+  MUSY_DEBUG("Group ID=%d is not on any soundstack.\n", sgid);
+  return SND_ID_ERROR;
 }
+#endif
 
 u32 sndSeqPlayEx(u16 sgid, u16 sid, void* arrfile, SND_PLAYPARA* para, u8 studio) {
+#if MUSY_VERSION == MUSY_VERSION_CHECK(2, 0, 4)
+  return _seqPlaySong(sgid, sid, arrfile, para, 0, studio);
+#else
   return seqPlaySong(sgid, sid, arrfile, para, 0, studio);
+#endif
 }
