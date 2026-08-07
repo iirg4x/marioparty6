@@ -1,41 +1,72 @@
 import unittest
 
-from tools.progress_gate import PROGRESS_PATHS, progress_errors
+from tools.progress_gate import COMMON_PROGRESS_PATHS, progress_errors
 
 
 class ProgressGateTests(unittest.TestCase):
     def test_source_promotion_requires_status(self) -> None:
         self.assertEqual(
             progress_errors(
-                ["src/board/capsule.c"], matching_status_changed=False
+                ["src/board/capsule.c"]
             ),
             ["recovery source or Matching status changed, but STATUS.md was not updated"],
         )
         self.assertEqual(
             progress_errors(
                 ["src/board/capsule.c", "STATUS.md"],
-                matching_status_changed=False,
             ),
             [],
         )
 
-    def test_matching_change_requires_status_and_generated_snapshot(self) -> None:
+    def test_dol_matching_change_requires_only_dol_snapshot(self) -> None:
         errors = progress_errors(
-            ["configure.py", "STATUS.md"], matching_status_changed=True
+            ["configure.py", "STATUS.md"], matching_categories={"dol"}
         )
         self.assertEqual(len(errors), 1)
         self.assertIn("generated progress files", errors[0])
         self.assertEqual(
             progress_errors(
-                ["configure.py", "STATUS.md", *PROGRESS_PATHS],
-                matching_status_changed=True,
+                [
+                    "configure.py",
+                    "STATUS.md",
+                    *COMMON_PROGRESS_PATHS,
+                    "progress/dol.json",
+                ],
+                matching_categories={"dol"},
             ),
             [],
         )
 
+    def test_rel_matching_change_requires_only_dll_snapshot(self) -> None:
+        self.assertEqual(
+            progress_errors(
+                [
+                    "configure.py",
+                    "STATUS.md",
+                    *COMMON_PROGRESS_PATHS,
+                    "progress/dlls.json",
+                ],
+                matching_categories={"dlls"},
+            ),
+            [],
+        )
+
+    def test_mixed_matching_change_requires_both_category_snapshots(self) -> None:
+        errors = progress_errors(
+            [
+                "configure.py",
+                "STATUS.md",
+                *COMMON_PROGRESS_PATHS,
+                "progress/dol.json",
+            ],
+            matching_categories={"dol", "dlls"},
+        )
+        self.assertEqual(len(errors), 1)
+        self.assertIn("progress/dlls.json", errors[0])
+
     def test_unrelated_change_needs_no_progress_update(self) -> None:
         self.assertEqual(
-            progress_errors(["docs/getting_started.md"], matching_status_changed=False),
+            progress_errors(["docs/getting_started.md"]),
             [],
         )
 

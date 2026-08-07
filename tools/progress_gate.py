@@ -11,11 +11,13 @@ from typing import Iterable
 
 
 STATUS_PATH = "STATUS.md"
-PROGRESS_PATHS = {
+COMMON_PROGRESS_PATHS = {
     "progress/GP6E01.json",
     "progress/all.json",
-    "progress/dlls.json",
-    "progress/dol.json",
+}
+CATEGORY_PROGRESS_PATHS = {
+    "dlls": "progress/dlls.json",
+    "dol": "progress/dol.json",
 }
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx"}
 OBJECT_RE = re.compile(
@@ -48,9 +50,11 @@ def _object_statuses(root: Path, ref: str) -> dict[str, str]:
 
 
 def progress_errors(
-    changed_paths: Iterable[str], *, matching_status_changed: bool
+    changed_paths: Iterable[str], *, matching_categories: Iterable[str] = ()
 ) -> list[str]:
     paths = {path.replace("\\", "/") for path in changed_paths}
+    categories = set(matching_categories)
+    matching_status_changed = bool(categories)
     source_changed = any(
         path.startswith("src/") and Path(path).suffix.lower() in SOURCE_SUFFIXES
         for path in paths
@@ -61,7 +65,10 @@ def progress_errors(
             "recovery source or Matching status changed, but STATUS.md was not updated"
         )
     if matching_status_changed:
-        missing = sorted(PROGRESS_PATHS - paths)
+        required = COMMON_PROGRESS_PATHS | {
+            CATEGORY_PROGRESS_PATHS[category] for category in categories
+        }
+        missing = sorted(required - paths)
         if missing:
             errors.append(
                 "Matching status changed, but generated progress files were not "
@@ -82,8 +89,18 @@ def check_range(root: Path, base: str, head: str) -> list[str]:
         "--diff-filter=ACMRD",
         f"{base}..{head}",
     ).splitlines()
-    matching_changed = _object_statuses(root, base) != _object_statuses(root, head)
-    return progress_errors(changed, matching_status_changed=matching_changed)
+    before = _object_statuses(root, base)
+    after = _object_statuses(root, head)
+    changed_objects = {
+        path
+        for path in before.keys() | after.keys()
+        if before.get(path) != after.get(path)
+    }
+    categories = {
+        "dlls" if path.startswith("REL/") else "dol"
+        for path in changed_objects
+    }
+    return progress_errors(changed, matching_categories=categories)
 
 
 def main() -> int:
