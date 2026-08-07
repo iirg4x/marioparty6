@@ -540,6 +540,8 @@ static void SingleEffClose(void)
 
 static s16 SingleEffCreate(HuVecF *pos, int masuType)
 {
+    extern const float lbl_802C4F40;
+    extern const float lbl_802C4F44;
     HU3D_MODELID modelId;
     void *hookData;
     MBPARTICLE *particleWork;
@@ -558,11 +560,11 @@ static s16 SingleEffCreate(HuVecF *pos, int masuType)
     work->unk08 = TRUE;
     work->masuType = masuType;
     work->pos = *pos;
-    work->unk30 = work->unk34 = work->unk38 = 0.0f;
-    work->scale.x = work->scale.y = work->scale.z = 1.0f;
-    work->unk5C = 1.0f;
-    work->unk58 = 0.0f;
-    work->unk4C = 1.0f;
+    work->unk30 = work->unk34 = work->unk38 = lbl_802C4F40;
+    work->scale.x = work->scale.y = work->scale.z = lbl_802C4F44;
+    work->unk5C = lbl_802C4F44;
+    work->unk58 = lbl_802C4F40;
+    work->unk4C = lbl_802C4F44;
     work->unk54 = TRUE;
     Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
     Hu3DModelAttrReset(work->childModelId[0], HU3D_ATTR_DISPOFF);
@@ -1129,13 +1131,14 @@ static void SingleEffOMExec(OMOBJ *obj)
 
 static void SingleEffMgStop(s16 effNo, int type)
 {
+    extern const float lbl_802C4F40;
     SINGLE_EFF_DATA *work;
     int i;
 
     work = &singleEffData[effNo - 1];
     work->state = 4;
-    work->unk34 = 0.0f;
-    work->unk48 = 0.0f;
+    work->unk34 = lbl_802C4F40;
+    work->unk48 = lbl_802C4F40;
     work->timer = 0;
     work->timerMax = 30;
     Hu3DModelAttrReset(work->childModelId[1], HU3D_ATTR_DISPOFF);
@@ -1154,6 +1157,9 @@ static void SingleEffMgStop(s16 effNo, int type)
         omVibrate(GwSystem.turnPlayerNo, 20, 20, 0);
     }
 }
+
+const float lbl_802C4F40 = 0.0f;
+const float lbl_802C4F44 = 1.0f;
 
 void mbev_SingleMg(int playerNo, s16 masuId)
 {
@@ -3001,6 +3007,7 @@ static void SingleMgRecordPrizeSet(void)
 
 static void SingleLast5(void)
 {
+    extern const float lbl_802C4F50;
     static u32 mesTbl[] = {
         MESSNUM(MESS_MAP_NAME, 6),
         MESSNUM(MESS_MAP_NAME, 7),
@@ -3020,8 +3027,8 @@ static void SingleLast5(void)
         mbWipeFadeIn();
     }
     mbPlayerPosGet(playerNo, &pos);
-    pos.y += 100.0f;
-    pos.z -= 100.0f;
+    pos.y += lbl_802C4F50;
+    pos.z -= lbl_802C4F50;
     guideObj = mbGuideCreateFlag(&pos, guideLast5MotTbl, FALSE, TRUE, FALSE);
     mbGuideMotionNextSet(guideObj, 1);
     winId = mbWinCreate(2, SINGLE_MESS_LAST5_INTRO, mbGuideSpeakerNoGet());
@@ -3036,6 +3043,8 @@ static void SingleLast5(void)
     HuPrcSleep(30);
     mbGuideEnd(guideObj, TRUE);
 }
+
+const float lbl_802C4F50 = 100.0f;
 
 void mbSingleReturn(void)
 {

@@ -571,17 +571,15 @@ void mbCoinObjNumDec(s16 objId)
 
 void mbCoinObjKill(s16 objId)
 {
-    MBCOINOBJBANK *bankP;
-    MBCOINOBJ *objP;
     int bankNo;
     int objNo;
+    MBCOINOBJBANK *bankP;
 
     objId &= COIN_OBJ_ID_MASK;
     bankNo = objId >> 6;
     objNo = objId & COIN_OBJ_SLOT_MASK;
     bankP = coinObjData.bank[bankNo];
-    objP = &bankP->obj[objNo];
-    mbCoinEffCreate(&objP->pos);
+    mbCoinEffCreate(&bankP->obj[objNo].pos);
     bankP->attr[objNo] = 0;
     bankP->count--;
 }
@@ -1111,8 +1109,8 @@ static void CoinDispObjUpdate(OMOBJ *obj)
 {
     COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
     COINDISPMODEL *model = obj->data;
-    HuVecF pos2D;
     HuVecF pos;
+    HuVecF pos2D;
     Mtx rotMtx;
     float cameraRotY;
     int i;
@@ -1125,7 +1123,7 @@ static void CoinDispObjUpdate(OMOBJ *obj)
         float z;
 
         PSMTXMultVec(rotMtx, &model->pos, &pos2D);
-        VECAdd(&obj->trans, &pos2D, &pos);
+        PSVECAdd(&obj->trans, &pos2D, &pos);
         mbPos3Dto2D(&pos, &pos2D);
         z = pos2D.z;
         pos2D.z = 800.0f;
@@ -1264,9 +1262,7 @@ void mbCoinDispKill(s16 no)
         return;
     }
     if (coinDispOMObj[no]) {
-        COINDISPWORK *work = omObjGetWork(coinDispOMObj[no], COINDISPWORK);
-
-        work->killF = TRUE;
+        omObjGetWork(coinDispOMObj[no], COINDISPWORK)->killF = TRUE;
     }
 }
 
