@@ -713,15 +713,19 @@ class RecoveryPassTests(unittest.TestCase):
             root = Path(directory)
             source = root / "src" / "board" / "owner.c"
             source.parent.mkdir(parents=True)
-            source.write_text("void Present(void) {}\n", encoding="utf-8")
+            source.write_text(
+                "void Present(void) {}\nvoid Csect(void) {}\n",
+                encoding="utf-8",
+            )
             strict = {
                 "left": {
                     "symbols": [
                         symbol("Present", 120, None, None),
+                        symbol("Csect", 140, None, None),
                         symbol("Absent", 160, None, None),
                     ]
                 },
-                "right": {"symbols": []},
+                "right": {"symbols": [symbol("Csect", 140, None, None)]},
             }
             value = {"left": {"symbols": []}, "right": {"symbols": []}}
             unit = {
@@ -747,8 +751,10 @@ class RecoveryPassTests(unittest.TestCase):
                     None,
                 )
 
-        self.assertEqual(report["summary"]["object_missing"], 2)
+        self.assertEqual(report["summary"]["object_missing"], 3)
         self.assertEqual(report["summary"]["source_pending_build"], 1)
+        self.assertEqual(report["summary"]["compiled_unpaired"], 1)
+        self.assertEqual(report["summary"]["compiled_unpaired_bytes"], 140)
         self.assertEqual(report["summary"]["missing_definitions"], 1)
         ranked = {item["function"]: item for item in report["ranked_functions"]}
         self.assertEqual(ranked["Present"]["category"], "source_pending_build")
@@ -756,6 +762,10 @@ class RecoveryPassTests(unittest.TestCase):
         self.assertTrue(ranked["Present"]["source_definition_present"])
         self.assertFalse(ranked["Present"]["strict_exact"])
         self.assertEqual(len(ranked["Present"]["safe_actions"]), 1)
+        self.assertEqual(ranked["Csect"]["category"], "compiled_unpaired")
+        self.assertTrue(ranked["Csect"]["compiled_unpaired"])
+        self.assertFalse(ranked["Csect"]["source_pending_build"])
+        self.assertEqual(len(ranked["Csect"]["safe_actions"]), 1)
         self.assertEqual(ranked["Absent"]["category"], "missing_definition")
         self.assertFalse(ranked["Absent"]["source_definition_present"])
 

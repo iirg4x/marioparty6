@@ -1765,6 +1765,11 @@ def analyze(
     source_order = [item.symbol for item in parsed]
     known_source = set(source_order)
     strict_functions = functions(strict["left"])
+    compiled_by_name = {
+        str(item["name"]): item
+        for item in functions(strict.get("right", {}))
+        if item.get("name")
+    }
     value_by_name = {item["name"]: item for item in functions(value["left"])}
     target_order = [item["name"] for item in strict_functions]
     target_rank = {name: index for index, name in enumerate(target_order)}
@@ -1804,6 +1809,8 @@ def analyze(
     object_missing_bytes = 0
     source_pending_build_count = 0
     source_pending_build_bytes = 0
+    compiled_unpaired_count = 0
+    compiled_unpaired_bytes = 0
     strict_exact_count = 0
     value_exact_count = 0
     for target in strict_functions:
@@ -1818,7 +1825,16 @@ def analyze(
         value_exact_count += value_exact
         object_missing = target.get("target_symbol") is None
         source_definition_present = name in known_source
-        source_pending_build = object_missing and source_definition_present
+        compiled_unpaired = (
+            object_missing
+            and source_definition_present
+            and name in compiled_by_name
+        )
+        source_pending_build = (
+            object_missing
+            and source_definition_present
+            and not compiled_unpaired
+        )
         missing_definition = object_missing and not source_definition_present
         object_missing_count += object_missing
         object_missing_bytes += size if object_missing else 0
@@ -1826,6 +1842,8 @@ def analyze(
         missing_bytes += size if missing_definition else 0
         source_pending_build_count += source_pending_build
         source_pending_build_bytes += size if source_pending_build else 0
+        compiled_unpaired_count += compiled_unpaired
+        compiled_unpaired_bytes += size if compiled_unpaired else 0
         calls = call_skeleton(strict["left"], target)
         body = next((function_text(source_text, item) for item in parsed if item.symbol == name), "")
         pairs = paired_changed(strict, target)
@@ -1931,7 +1949,18 @@ def analyze(
             )
         if source_uses_named_mem_domain:
             card_ids.add("recovered-c-numeric-identifiers-require-named-domains")
-        donor_matches = rank_donors(name, calls, donors) if (missing_definition or (not strict_exact and not source_pending_build)) else []
+        donor_matches = (
+            rank_donors(name, calls, donors)
+            if (
+                missing_definition
+                or (
+                    not strict_exact
+                    and not source_pending_build
+                    and not compiled_unpaired
+                )
+            )
+            else []
+        )
         if donor_matches:
             card_ids.add("same-game-cross-owner-relocation-skeleton-harvesting")
         if strict_exact:
@@ -1954,6 +1983,12 @@ def analyze(
             priority = 45
             safe_actions = [
                 "Rebuild the source object and rerun objdiff before scheduling implementation work."
+            ]
+        elif compiled_unpaired:
+            category = "compiled_unpaired"
+            priority = 46
+            safe_actions = [
+                "Inspect source csects/section mappings, then prove the linker-folded owner with a serialized linked-binary replay."
             ]
         elif missing_definition:
             category = "missing_definition"
@@ -2002,6 +2037,7 @@ def analyze(
                 "object_missing": object_missing,
                 "source_definition_present": source_definition_present,
                 "source_pending_build": source_pending_build,
+                "compiled_unpaired": compiled_unpaired,
                 "strict_match_percent": target.get("match_percent"),
                 "strict_diff_rows": len(changed_rows(target)),
                 "diff_kinds": dict(Counter(str(row.get("diff_kind")) for row in changed_rows(target))),
@@ -2077,6 +2113,8 @@ def analyze(
             "object_missing_bytes": object_missing_bytes,
             "source_pending_build": source_pending_build_count,
             "source_pending_build_bytes": source_pending_build_bytes,
+            "compiled_unpaired": compiled_unpaired_count,
+            "compiled_unpaired_bytes": compiled_unpaired_bytes,
             "source_definitions": len(source_order),
             "order_inversions": order["inversions"],
         },
@@ -2107,6 +2145,7 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         f"- Data-value exact: **{summary['data_value_exact']} / {summary['functions_total']}**",
         f"- Missing definitions: **{summary['missing_definitions']} functions / {summary['missing_definition_bytes']} target bytes**",
         f"- Source-present/object-missing (pending build): **{summary['source_pending_build']} functions / {summary['source_pending_build_bytes']} target bytes**",
+        f"- Compiled but unpaired (section/csect mapping): **{summary.get('compiled_unpaired', 0)} functions / {summary.get('compiled_unpaired_bytes', 0)} target bytes**",
         f"- Target/source definition-order inversions: **{summary['order_inversions']}**",
     ]
     for label, key in (("Strict", "strict_delta"), ("Data-value", "data_value_delta")):
@@ -2402,6 +2441,8 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
             "missing_definition_bytes": summary["missing_definition_bytes"],
             "source_pending_build": summary["source_pending_build"],
             "source_pending_build_bytes": summary["source_pending_build_bytes"],
+            "compiled_unpaired": summary.get("compiled_unpaired", 0),
+            "compiled_unpaired_bytes": summary.get("compiled_unpaired_bytes", 0),
             "preferred_packet": (
                 {
                     "ready": preferred_packet["ready"],
@@ -2428,6 +2469,7 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
                 f"value={concise['data_value_exact']} "
                 f"missing={summary['missing_definitions']}/{summary['missing_definition_bytes']}B "
                 f"pending_build={summary['source_pending_build']}/{summary['source_pending_build_bytes']}B "
+                f"compiled_unpaired={summary.get('compiled_unpaired', 0)}/{summary.get('compiled_unpaired_bytes', 0)}B "
                 f"order_inversions={summary['order_inversions']}"
             )
             print(f"report cache: {'hit' if report_cache_hit else 'miss'}")
