@@ -15,6 +15,7 @@
 #include "game/memory.h"
 #include "game/pad.h"
 #include "game/sprite.h"
+#include "messdir_enum.h"
 
 typedef void (*MBSCROLLHOOK)(BOOL enterF);
 typedef s16 (*MBSCROLLSTARFINDFUNC)(int playerNo);
@@ -42,10 +43,42 @@ typedef struct ScrollWork_s {
     MAPSPRWORK mapSpr[32];
 } SCROLLWORK;
 
+enum {
+    SCROLL_MESS_HELP_STAR_FOUND = MESSNUM(MESS_BOARD_OPE, 11),
+    SCROLL_MESS_HELP_NO_STAR = MESSNUM(MESS_BOARD_OPE, 5),
+    SCROLL_MESS_HELP_SINGLE = MESSNUM(MESS_BOARD_OPE, 15),
+    SCROLL_MESS_HELP_MAP = MESSNUM(MESS_BOARD_OPE, 6),
+    SCROLL_DATA_MAP_CHAR_MARIO = DATANUM(DATA_board, 54),
+    SCROLL_DATA_MAP_CHAR_LUIGI = DATANUM(DATA_board, 55),
+    SCROLL_DATA_MAP_CHAR_PEACH = DATANUM(DATA_board, 56),
+    SCROLL_DATA_MAP_CHAR_YOSHI = DATANUM(DATA_board, 57),
+    SCROLL_DATA_MAP_CHAR_WARIO = DATANUM(DATA_board, 58),
+    SCROLL_DATA_MAP_CHAR_DAISY = DATANUM(DATA_board, 59),
+    SCROLL_DATA_MAP_CHAR_WALUIGI = DATANUM(DATA_board, 60),
+    SCROLL_DATA_MAP_CHAR_KINOPIO = DATANUM(DATA_board, 61),
+    SCROLL_DATA_MAP_CHAR_TERESA = DATANUM(DATA_board, 62),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPA = DATANUM(DATA_board, 63),
+    SCROLL_DATA_MAP_CHAR_KINOPIKO = DATANUM(DATA_board, 64),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAR = DATANUM(DATA_board, 65),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAG = DATANUM(DATA_board, 66),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAB = DATANUM(DATA_board, 67),
+    SCROLL_DATA_MAP_CHAR_SLOT14 = DATANUM(DATA_board, 169),
+    SCROLL_DATA_MAP_CHAR_SLOT15 = DATANUM(DATA_board, 168),
+    SCROLL_DATA_MAP_DONKEY_ICON = DATANUM(DATA_board, 166),
+    SCROLL_DATA_MAP_KOOPA_ICON = DATANUM(DATA_board, 167),
+    SCROLL_DATA_MAP_TYPE16 = DATANUM(DATA_board, 170),
+    SCROLL_DATA_MAP_TYPE17 = DATANUM(DATA_board, 171),
+    SCROLL_DATA_MAP_TYPE18 = DATANUM(DATA_board, 172),
+    SCROLL_DATA_MAP_TYPE19 = DATANUM(DATA_board, 173),
+    SCROLL_DATA_MAP_TYPE20 = DATANUM(DATA_board, 174),
+    SCROLL_DATA_MAP_ARROW = DATANUM(DATA_board, 175),
+    SCROLL_MASU_ATTR_PATH_IGNORED = 1 << 4,
+};
+
 static HuVecF scrollPos;
 static HuVecF mapViewPos;
 static HuVecF mapViewRot;
-static u8 mapPathBit[0x100];
+static u8 mapPathBit[MASU_MAX];
 static SCROLLWORK scrollWork;
 
 static SCROLLWORK *scrollWorkP = &scrollWork;
@@ -71,22 +104,26 @@ static GXColor charColorTbl[16] = {
 };
 
 static const int mapCharFileTbl[16] = {
-    0x00050036, 0x00050037, 0x00050038, 0x00050039,
-    0x0005003A, 0x0005003B, 0x0005003C, 0x0005003D,
-    0x0005003E, 0x0005003F, 0x00050040, 0x00050041,
-    0x00050042, 0x00050043, 0x000500A9, 0x000500A8,
+    SCROLL_DATA_MAP_CHAR_MARIO, SCROLL_DATA_MAP_CHAR_LUIGI,
+    SCROLL_DATA_MAP_CHAR_PEACH, SCROLL_DATA_MAP_CHAR_YOSHI,
+    SCROLL_DATA_MAP_CHAR_WARIO, SCROLL_DATA_MAP_CHAR_DAISY,
+    SCROLL_DATA_MAP_CHAR_WALUIGI, SCROLL_DATA_MAP_CHAR_KINOPIO,
+    SCROLL_DATA_MAP_CHAR_TERESA, SCROLL_DATA_MAP_CHAR_MINIKOOPA,
+    SCROLL_DATA_MAP_CHAR_KINOPIKO, SCROLL_DATA_MAP_CHAR_MINIKOOPAR,
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAG, SCROLL_DATA_MAP_CHAR_MINIKOOPAB,
+    SCROLL_DATA_MAP_CHAR_SLOT14, SCROLL_DATA_MAP_CHAR_SLOT15,
 };
 
-static MBSCROLLHOOK mapHook;
-static ANIMDATA *pathAnim;
-static ANIMDATA *masuMapAnim;
-static MBSCROLLHOOK scrollHook;
-static HSF_FACE *scrollColTriData;
-static int scrollColTriNum;
-static MBSCROLLSTARFINDFUNC scrollStarFindFunc;
-static HU3D_MODELID scrollColModel;
-static int lbl_802C0DD8;
 static float mapViewZoom;
+static int lbl_802C0DD8;
+static HU3D_MODELID scrollColModel;
+static MBSCROLLSTARFINDFUNC scrollStarFindFunc;
+static int scrollColTriNum;
+static HSF_FACE *scrollColTriData;
+static MBSCROLLHOOK scrollHook;
+static ANIMDATA *masuMapAnim;
+static ANIMDATA *pathAnim;
+static MBSCROLLHOOK mapHook;
 
 static void ScrollCreate(u32 dataNum);
 static void ScrollKill(void);
@@ -227,12 +264,12 @@ static BOOL ScrollMain(int playerNo)
     }
     if (GWPartyGet() != FALSE) {
         if (starMasuId > 0) {
-            winNo = mbWinCreateHelp(0x0026000B);
+            winNo = mbWinCreateHelp(SCROLL_MESS_HELP_STAR_FOUND);
         } else {
-            winNo = mbWinCreateHelp(0x00260005);
+            winNo = mbWinCreateHelp(SCROLL_MESS_HELP_NO_STAR);
         }
     } else {
-        winNo = mbWinCreateHelp(0x0026000F);
+        winNo = mbWinCreateHelp(SCROLL_MESS_HELP_SINGLE);
     }
     result = ScrollExec(playerNo, starMasuId);
     if (result == FALSE) {
@@ -702,7 +739,7 @@ static BOOL MapViewExec(int playerNo)
     }
     mbEffFadeCreate(1, 128);
     scrollWorkP->mapFrame = 0;
-    winNo = mbWinCreateHelp(0x00260006);
+    winNo = mbWinCreateHelp(SCROLL_MESS_HELP_MAP);
     mbWinPosSet(winNo, 120, 408);
     mbWipeSpecialFadeOutCreate(4, 30);
     padNo = GwPlayer[playerNo].padNo;
@@ -785,42 +822,42 @@ static void MapSprCreate(int type, s16 masuId, int layer)
     if (work->type >= 0 && work->type <= 15) {
         dataNum = mapCharFileTbl[work->type];
         work->sprId[0] = MapSprEntry(dataNum, 2000);
-        work->arrowSprId[0] = MapSprEntry(0x000500AF, 2300);
+        work->arrowSprId[0] = MapSprEntry(SCROLL_DATA_MAP_ARROW, 2300);
         espColorSet(work->arrowSprId[0], work->color.r, work->color.g, work->color.b);
     } else {
         switch (type) {
         case -1:
-            work->sprId[0] = MapSprEntry(0x000500A6, 2500);
-            work->sprId[1] = MapSprEntry(0x000500A6, 2600);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_DONKEY_ICON, 2500);
+            work->sprId[1] = MapSprEntry(SCROLL_DATA_MAP_DONKEY_ICON, 2600);
             espScaleSet(work->sprId[0], 0.6f, 0.6f);
             espScaleSet(work->sprId[1], 0.6f, 0.6f);
             espTPLvlSet(work->sprId[1], 0.5f);
             break;
         case -2:
-            work->sprId[0] = MapSprEntry(0x000500A7, 2500);
-            work->sprId[1] = MapSprEntry(0x000500A7, 2600);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_KOOPA_ICON, 2500);
+            work->sprId[1] = MapSprEntry(SCROLL_DATA_MAP_KOOPA_ICON, 2600);
             espScaleSet(work->sprId[0], 0.6f, 0.6f);
             espScaleSet(work->sprId[1], 0.6f, 0.6f);
             espTPLvlSet(work->sprId[1], 0.5f);
             break;
         case 19:
-            work->sprId[0] = MapSprEntry(0x000500AD, 2700);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_TYPE19, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 16:
-            work->sprId[0] = MapSprEntry(0x000500AA, 2700);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_TYPE16, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 17:
-            work->sprId[0] = MapSprEntry(0x000500AB, 2700);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_TYPE17, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 18:
-            work->sprId[0] = MapSprEntry(0x000500AC, 2700);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_TYPE18, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         case 20:
-            work->sprId[0] = MapSprEntry(0x000500AE, 2700);
+            work->sprId[0] = MapSprEntry(SCROLL_DATA_MAP_TYPE20, 2700);
             espScaleSet(work->sprId[0], 0.5f, 0.5f);
             break;
         }
@@ -1245,7 +1282,7 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP1, GX_COLOR0A0);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
         GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
-    startMasuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    startMasuId = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
     memset(mapPathBit, 0, sizeof(mapPathBit));
     MapPathDraw(startMasuId, &cameraMtx);
     if (mbMasuDispGet()) {
@@ -1260,7 +1297,7 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 masuType = mbMasuTypeGet(i);
                 attr = mbMasuAttrGet(i);
                 mAttr = mbMasuMAttrGet(i);
-                if (masuType == 0 || (attr & ~0x10 & mbMasuDispAttrGet()) != 0
+                if (masuType == 0 || (attr & ~SCROLL_MASU_ATTR_PATH_IGNORED & mbMasuDispAttrGet()) != 0
                     || (mAttr & mbMasuDispMAttrGet()) != 0) {
                     continue;
                 }
