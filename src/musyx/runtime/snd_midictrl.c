@@ -24,7 +24,11 @@
 
 #include <string.h>
 
-#define SYNTH_FX_MIDISET 0xFF
+#define SYNTH_FX_MIDISET 255
+#define MIDI_CTRL_DEFAULT_ZERO 0
+#define MIDI_CTRL_DEFAULT_CENTER 64
+#define MIDI_CTRL_DEFAULT_MAX 127
+#define MIDI_CTRL_WARM_UNCHANGED 255
 #define INPUT_SOURCE_VARIABLE 16
 #define INPUT_COMBINE_MASK 15
 #define INPUT_SIGNED_CENTER 8192
@@ -51,6 +55,40 @@
 #define INPUT_RPN_CTRL_FIRST 96
 #define INPUT_RPN_CTRL_LIMIT 102
 #define INPUT_MIDI_PAIR_MASK 254
+#define INPUT_DIRTY_VOLUME 1
+#define INPUT_DIRTY_PANNING 2
+#define INPUT_DIRTY_SURROUND_PANNING 4
+#define INPUT_DIRTY_PITCH_BEND 8
+#define INPUT_DIRTY_DOPPLER 16
+#define INPUT_DIRTY_MODULATION 32
+#define INPUT_DIRTY_PEDAL 64
+#define INPUT_DIRTY_PRE_AUX_A 256
+#define INPUT_DIRTY_REVERB 512
+#define INPUT_DIRTY_PRE_AUX_B 1024
+#define INPUT_DIRTY_POST_AUX_B 2048
+#define INPUT_DIRTY_TREMOLO 4096
+#define INPUT_RUNTIME_LFO_0 160
+#define INPUT_RUNTIME_LFO_1 161
+#define INPUT_RUNTIME_NOTE 162
+#define INPUT_RUNTIME_VOLUME 163
+#define INPUT_RUNTIME_TIME 164
+#define INPUT_TRANSLATE_CTRL_PITCH_BEND 128
+#define INPUT_TRANSLATE_CTRL_PITCH_BEND_FINE 129
+#define INPUT_TRANSLATE_CTRL_LFO_0 130
+#define INPUT_TRANSLATE_CTRL_LFO_1 131
+#define INPUT_TRANSLATE_CTRL_SURROUND_PANNING 132
+#define INPUT_TRANSLATE_CTRL_DOPPLER 133
+#define INPUT_TRANSLATE_CTRL_NOTE 134
+#define INPUT_TRANSLATE_CTRL_VOLUME 135
+#define INPUT_TRANSLATE_CTRL_TIME 136
+#define INPUT_AUX_A_DIRTY_STUDIO_0 ((u32)2147483649UL)
+#define INPUT_AUX_A_DIRTY_STUDIO_1 ((u32)2147483650UL)
+#define INPUT_AUX_A_DIRTY_STUDIO_2 ((u32)2147483652UL)
+#define INPUT_AUX_A_DIRTY_STUDIO_3 ((u32)2147483656UL)
+#define INPUT_AUX_B_DIRTY_STUDIO_0 ((u32)2147483664UL)
+#define INPUT_AUX_B_DIRTY_STUDIO_1 ((u32)2147483680UL)
+#define INPUT_AUX_B_DIRTY_STUDIO_2 ((u32)2147483712UL)
+#define INPUT_AUX_B_DIRTY_STUDIO_3 ((u32)2147483776UL)
 
 static u8 midi_lastNote[8][16];
 
@@ -82,7 +120,7 @@ static void inpResetGlobalMIDIDirtyFlags() {
   u32 i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 16; ++j) {
-      inpGlobalMIDIDirtyFlags[i][j] = 0xFF;
+      inpGlobalMIDIDirtyFlags[i][j] = INPUT_GLOBAL_DIRTY_ALL;
     }
   }
 }
@@ -406,45 +444,45 @@ void inpSetMidiCtrl(u8 ctrl, u8 channel, u8 set, u8 value) {
 
 void inpSetMidiCtrl14(u8 ctrl, u8 channel, u8 set, u16 value) {
 
-  if (channel == 0xFF) {
+  if (channel == SYNTH_FX_MIDISET) {
     return;
   }
 
   if (ctrl < 64) {
     inpSetMidiCtrl(ctrl & 31, channel, set, value >> 7);
-    inpSetMidiCtrl((ctrl & 31) + 32, channel, set, value & 0x7f);
+    inpSetMidiCtrl((ctrl & 31) + 32, channel, set, value & INPUT_MIDI_VALUE_MASK);
   } else if (ctrl == 128 || ctrl == 129) {
     inpSetMidiCtrl(ctrl & 254, channel, set, value >> 7);
-    inpSetMidiCtrl((ctrl & 254) + 1, channel, set, value & 0x7f);
+    inpSetMidiCtrl((ctrl & 254) + 1, channel, set, value & INPUT_MIDI_VALUE_MASK);
   } else if (ctrl == 132 || ctrl == 133) {
     inpSetMidiCtrl(ctrl & 254, channel, set, value >> 7);
-    inpSetMidiCtrl((ctrl & 254) + 1, channel, set, value & 0x7f);
+    inpSetMidiCtrl((ctrl & 254) + 1, channel, set, value & INPUT_MIDI_VALUE_MASK);
   } else {
     inpSetMidiCtrl(ctrl, channel, set, value >> 7);
   }
 }
 
 static const u8 inpColdMIDIDefaults[134] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0x00, 0x00, 0x40, 0x7F, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0x7F, 0x7F, 0x7F, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x40, 0x00,
+    0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 64, 127, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 127, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 64, 0,
 };
 static const u8 inpWarmMIDIDefaults[134] = {
-    0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    255, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 0, 0, 0, 0, 255, 0, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 64, 255, 255, 255, 255, 255,
 
 };
 
@@ -580,7 +618,7 @@ void inpFXCopyCtrl(u8 ctrl, SYNTH_VOICE* dvoice, SYNTH_VOICE* svoice) {
 }
 
 void inpSetMidiLastNote(u8 midi, u8 midiSet, u8 key) {
-  if (midiSet != 0xFF) {
+  if (midiSet != SYNTH_FX_MIDISET) {
     midi_lastNote[midiSet][midi] = key;
   } else {
     fx_lastNote[midi] = key;
@@ -588,7 +626,7 @@ void inpSetMidiLastNote(u8 midi, u8 midiSet, u8 key) {
 }
 
 u8 inpGetMidiLastNote(u8 midi, u8 midiSet) {
-  if (midiSet != 0xFF) {
+  if (midiSet != SYNTH_FX_MIDISET) {
     return midi_lastNote[midiSet][midi];
   }
   return fx_lastNote[midi];
@@ -750,38 +788,52 @@ static u16 GetGlobalInputValue(CTRL_DEST* inp, u32 dirtyMask, u8 midi, u8 midiSe
   return _GetInputValue(NULL, inp, midi, midiSet);
 }
 
-u16 inpGetVolume(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpVolume, 0x1); }
+u16 inpGetVolume(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpVolume, INPUT_DIRTY_VOLUME);
+}
 
-u16 inpGetPanning(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpPanning, 0x2); }
+u16 inpGetPanning(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpPanning, INPUT_DIRTY_PANNING);
+}
 
 u16 inpGetSurPanning(SYNTH_VOICE* svoice) {
-  return GetInputValue(svoice, &svoice->inpSurroundPanning, 0x4);
+  return GetInputValue(svoice, &svoice->inpSurroundPanning, INPUT_DIRTY_SURROUND_PANNING);
 }
 
 u16 inpGetPitchBend(SYNTH_VOICE* svoice) {
-  return GetInputValue(svoice, &svoice->inpPitchBend, 0x8);
+  return GetInputValue(svoice, &svoice->inpPitchBend, INPUT_DIRTY_PITCH_BEND);
 }
 
-u16 inpGetDoppler(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpDoppler, 0x10); }
+u16 inpGetDoppler(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpDoppler, INPUT_DIRTY_DOPPLER);
+}
 
 u16 inpGetModulation(SYNTH_VOICE* svoice) {
-  return GetInputValue(svoice, &svoice->inpModulation, 0x20);
+  return GetInputValue(svoice, &svoice->inpModulation, INPUT_DIRTY_MODULATION);
 }
 
-u16 inpGetPedal(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpPedal, 0x40); }
+u16 inpGetPedal(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpPedal, INPUT_DIRTY_PEDAL);
+}
 
-u16 inpGetPreAuxA(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpPreAuxA, 0x100); }
+u16 inpGetPreAuxA(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpPreAuxA, INPUT_DIRTY_PRE_AUX_A);
+}
 
-u16 inpGetReverb(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpReverb, 0x200); }
+u16 inpGetReverb(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpReverb, INPUT_DIRTY_REVERB);
+}
 
-u16 inpGetPreAuxB(SYNTH_VOICE* svoice) { return GetInputValue(svoice, &svoice->inpPreAuxB, 0x400); }
+u16 inpGetPreAuxB(SYNTH_VOICE* svoice) {
+  return GetInputValue(svoice, &svoice->inpPreAuxB, INPUT_DIRTY_PRE_AUX_B);
+}
 
 u16 inpGetPostAuxB(SYNTH_VOICE* svoice) {
-  return GetInputValue(svoice, &svoice->inpPostAuxB, 0x800);
+  return GetInputValue(svoice, &svoice->inpPostAuxB, INPUT_DIRTY_POST_AUX_B);
 }
 
 u16 inpGetTremolo(SYNTH_VOICE* svoice) {
-  return GetInputValue(svoice, &svoice->inpTremolo, 0x1000);
+  return GetInputValue(svoice, &svoice->inpTremolo, INPUT_DIRTY_TREMOLO);
 }
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
@@ -795,12 +847,22 @@ u16 inpGetFilterParameter(SYNTH_VOICE* svoice) {
 #endif
 
 u16 inpGetAuxA(u8 studio, u8 index, u8 midi, u8 midiSet) {
-  static u32 dirtyMask[4] = {0x80000001, 0x80000002, 0x80000004, 0x80000008};
+  static u32 dirtyMask[4] = {
+      INPUT_AUX_A_DIRTY_STUDIO_0,
+      INPUT_AUX_A_DIRTY_STUDIO_1,
+      INPUT_AUX_A_DIRTY_STUDIO_2,
+      INPUT_AUX_A_DIRTY_STUDIO_3,
+  };
   return GetGlobalInputValue(&inpAuxA[studio][index], dirtyMask[index], midi, midiSet);
 }
 
 u16 inpGetAuxB(u8 studio, u8 index, u8 midi, u8 midiSet) {
-  static u32 dirtyMask[4] = {0x80000010, 0x80000020, 0x80000040, 0x80000080};
+  static u32 dirtyMask[4] = {
+      INPUT_AUX_B_DIRTY_STUDIO_0,
+      INPUT_AUX_B_DIRTY_STUDIO_1,
+      INPUT_AUX_B_DIRTY_STUDIO_2,
+      INPUT_AUX_B_DIRTY_STUDIO_3,
+  };
 
   return GetGlobalInputValue(&inpAuxB[studio][index], dirtyMask[index], midi, midiSet);
 }
@@ -812,48 +874,48 @@ void inpInit(SYNTH_VOICE* svoice) {
   if (svoice != NULL) {
     svoice->inpVolume.source[0].midiCtrl = 7;
     svoice->inpVolume.source[0].combine = 0;
-    svoice->inpVolume.source[0].scale = 0x10000;
+    svoice->inpVolume.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpVolume.source[1].midiCtrl = 11;
     svoice->inpVolume.source[1].combine = 2;
-    svoice->inpVolume.source[1].scale = 0x10000;
+    svoice->inpVolume.source[1].scale = INPUT_DEFAULT_SCALE;
     svoice->inpVolume.numSource = 2;
     svoice->inpPanning.source[0].midiCtrl = 10;
     svoice->inpPanning.source[0].combine = 0;
-    svoice->inpPanning.source[0].scale = 0x10000;
+    svoice->inpPanning.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpPanning.numSource = 1;
     svoice->inpSurroundPanning.source[0].midiCtrl = 131;
     svoice->inpSurroundPanning.source[0].combine = 0;
-    svoice->inpSurroundPanning.source[0].scale = 0x10000;
+    svoice->inpSurroundPanning.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpSurroundPanning.numSource = 1;
     svoice->inpPitchBend.source[0].midiCtrl = 128;
     svoice->inpPitchBend.source[0].combine = 0;
-    svoice->inpPitchBend.source[0].scale = 0x10000;
+    svoice->inpPitchBend.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpPitchBend.numSource = 1;
     svoice->inpModulation.source[0].midiCtrl = 1;
     svoice->inpModulation.source[0].combine = 0;
-    svoice->inpModulation.source[0].scale = 0x10000;
+    svoice->inpModulation.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpModulation.numSource = 1;
     svoice->inpPedal.source[0].midiCtrl = 64;
     svoice->inpPedal.source[0].combine = 0;
-    svoice->inpPedal.source[0].scale = 0x10000;
+    svoice->inpPedal.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpPedal.numSource = 1;
     svoice->inpPortamento.source[0].midiCtrl = 65;
     svoice->inpPortamento.source[0].combine = 0;
-    svoice->inpPortamento.source[0].scale = 0x10000;
+    svoice->inpPortamento.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpPortamento.numSource = 1;
     svoice->inpPreAuxA.numSource = 0;
     svoice->inpReverb.source[0].midiCtrl = 91;
     svoice->inpReverb.source[0].combine = 0;
-    svoice->inpReverb.source[0].scale = 0x10000;
+    svoice->inpReverb.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpReverb.numSource = 1;
     svoice->inpPreAuxB.numSource = 0;
     svoice->inpPostAuxB.source[0].midiCtrl = 93;
     svoice->inpPostAuxB.source[0].combine = 0;
-    svoice->inpPostAuxB.source[0].scale = 0x10000;
+    svoice->inpPostAuxB.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpPostAuxB.numSource = 1;
     svoice->inpDoppler.source[0].midiCtrl = 132;
     svoice->inpDoppler.source[0].combine = 0;
-    svoice->inpDoppler.source[0].scale = 0x10000;
+    svoice->inpDoppler.source[0].scale = INPUT_DEFAULT_SCALE;
     svoice->inpDoppler.numSource = 1;
     svoice->inpTremolo.numSource = 0;
 
@@ -871,7 +933,7 @@ void inpInit(SYNTH_VOICE* svoice) {
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
     svoice->midiDirtyFlags = INPUT_DIRTY_ALL;
 #else
-    svoice->midiDirtyFlags = 0x1fff;
+    svoice->midiDirtyFlags = INPUT_DIRTY_LEGACY;
 #endif
     svoice->lfoUsedByInput[0] = 0;
     svoice->lfoUsedByInput[1] = 0;
@@ -890,32 +952,32 @@ void inpInit(SYNTH_VOICE* svoice) {
 
 u8 inpTranslateExCtrl(u8 ctrl) {
   switch (ctrl) {
-  case 0x80:
-    ctrl = 0x80;
+  case INPUT_TRANSLATE_CTRL_PITCH_BEND:
+    ctrl = INPUT_TRANSLATE_CTRL_PITCH_BEND;
     break;
-  case 0x81:
-    ctrl = 0x82;
+  case INPUT_TRANSLATE_CTRL_PITCH_BEND_FINE:
+    ctrl = INPUT_TRANSLATE_CTRL_LFO_0;
     break;
-  case 0x82:
-    ctrl = 0xa0;
+  case INPUT_TRANSLATE_CTRL_LFO_0:
+    ctrl = INPUT_RUNTIME_LFO_0;
     break;
-  case 0x83:
-    ctrl = 0xa1;
+  case INPUT_TRANSLATE_CTRL_LFO_1:
+    ctrl = INPUT_RUNTIME_LFO_1;
     break;
-  case 0x84:
-    ctrl = 0x83;
+  case INPUT_TRANSLATE_CTRL_SURROUND_PANNING:
+    ctrl = INPUT_TRANSLATE_CTRL_LFO_1;
     break;
-  case 0x85:
-    ctrl = 0x84;
+  case INPUT_TRANSLATE_CTRL_DOPPLER:
+    ctrl = INPUT_TRANSLATE_CTRL_SURROUND_PANNING;
     break;
-  case 0x86:
-    ctrl = 0xa2;
+  case INPUT_TRANSLATE_CTRL_NOTE:
+    ctrl = INPUT_RUNTIME_NOTE;
     break;
-  case 0x87:
-    ctrl = 0xa3;
+  case INPUT_TRANSLATE_CTRL_VOLUME:
+    ctrl = INPUT_RUNTIME_VOLUME;
     break;
-  case 0x88:
-    ctrl = 0xa4;
+  case INPUT_TRANSLATE_CTRL_TIME:
+    ctrl = INPUT_RUNTIME_TIME;
     break;
   }
   return ctrl;
@@ -923,28 +985,28 @@ u8 inpTranslateExCtrl(u8 ctrl) {
 u16 inpGetExCtrl(SYNTH_VOICE* svoice, u8 ctrl) {
   u16 v; // r30
   switch (inpTranslateExCtrl(ctrl)) {
-  case 160:
-    v = (svoice->lfo[0].value << 1) + 0x2000;
+  case INPUT_RUNTIME_LFO_0:
+    v = (svoice->lfo[0].value << 1) + INPUT_SIGNED_CENTER;
     break;
-  case 161:
-    v = (svoice->lfo[1].value << 1) + 0x2000;
+  case INPUT_RUNTIME_LFO_1:
+    v = (svoice->lfo[1].value << 1) + INPUT_SIGNED_CENTER;
     break;
   default:
-    v = svoice->midi != 0xFF ? inpGetMidiCtrl(ctrl, svoice->midi, svoice->midiSet) : 0;
+    v = svoice->midi != SYNTH_FX_MIDISET ? inpGetMidiCtrl(ctrl, svoice->midi, svoice->midiSet) : 0;
     break;
   }
 
   return v;
 }
 void inpSetExCtrl(SYNTH_VOICE* svoice, u8 ctrl, s16 v) {
-  v = v < 0 ? 0 : v > 0x3fff ? 0x3fff : v;
+  v = v < 0 ? 0 : v > INPUT_VALUE_MAX ? INPUT_VALUE_MAX : v;
 
   switch (inpTranslateExCtrl(ctrl)) {
-  case 161:
-  case 160:
+  case INPUT_RUNTIME_LFO_1:
+  case INPUT_RUNTIME_LFO_0:
     break;
   default:
-    if (svoice->midi != 0xFF) {
+    if (svoice->midi != SYNTH_FX_MIDISET) {
       inpSetMidiCtrl14(ctrl, svoice->midi, svoice->midiSet, v);
     }
     break;
