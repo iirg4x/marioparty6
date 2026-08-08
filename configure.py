@@ -1351,6 +1351,16 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "motchkDll",
+        objects={
+            Object(
+                Matching,
+                "REL/motchkDll/motchk.c",
+                extra_cflags=["-pool off"],
+            ),
+        },
+    ),
 
 ]
 

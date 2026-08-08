@@ -82,10 +82,13 @@ typedef struct omCameraView_s {
     float zoom;
 } OM_CAMERA_VIEW;
 
+#define OM_OUTVIEW_PRIO 32730
+
 #define omOvlCall(ovl, evtno, stat) omOvlCallEx(ovl, TRUE, evtno, stat)
 #define omOvlGoto(ovl, evtno, stat) omOvlGotoEx(ovl, TRUE, evtno, stat)
 #define omOvlReturn(hisOfs) omOvlReturnEx(hisOfs, TRUE)
 #define omAddObj(objman, prio, mdlcnt, mtncnt, objFunc) omAddObjEx(objman, prio, mdlcnt, mtncnt, OM_GRP_NONE, objFunc)
+#define omAddOutViewObj(objman) omAddObj(objman, OM_OUTVIEW_PRIO, 0, 0, omOutView)
 #define omDelObj omDelObjEx
 #define omMakeGroup omMakeGroupEx
 #define omGetGroupMemberList omGetGroupMemberListEx
