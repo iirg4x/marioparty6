@@ -254,6 +254,7 @@ static void ConfigClose(s32 result);
 static void PauseCursorCreate(void);
 static void PauseCursorKill(void);
 static void PauseCursorHiliteSet(s32 cursorNo, s32 cursorPos, s32 mask);
+static void PauseCursorPosNextSet(s32 time, float x, float y);
 static BOOL PausePadCheck(s32 padNo);
 void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
     HuVecF *posNormP);
@@ -1257,6 +1258,48 @@ static void PauseCursorHiliteSet(s32 cursorNo, s32 cursorPos, s32 mask)
         } else {
             espDispOff(cursorP->sprId[i]);
         }
+    }
+}
+
+static void PauseCursorPosNextSet(s32 time, float x, float y)
+{
+    PAUSE_CURSOR_WORK *cursorP;
+    HuVecF pos2D;
+    int i;
+
+    cursorP = &pauseWork.cursor;
+    if (cursorP->moveTime < 0 || time <= 0) {
+        cursorP->moveTime = 0;
+        cursorP->maxMoveTime = 0;
+        cursorP->pos.x = x;
+        cursorP->pos.y = y;
+        for (i = 0; i < 4; i++) {
+            cursorP->alpha[i] = 0.0f;
+            if (cursorP->cursorPos & pauseCursorMaskTbl[i]) {
+                cursorP->alpha[i] = 1.0f;
+            }
+        }
+    } else {
+        HuVecF *srcP = &cursorP->pos;
+        HuVecF *dstP = &cursorP->posStart;
+
+        cursorP->maxMoveTime = time;
+        cursorP->moveTime = time;
+        *dstP = *srcP;
+        cursorP->posDelta.x = x - cursorP->posStart.x;
+        cursorP->posDelta.y = y - cursorP->posStart.y;
+        cursorP->posDelta.z = 0.0f;
+    }
+    mbNormPosto2D(&cursorP->pos, &pos2D);
+    for (i = 0; i < 4; i++) {
+        espPosSet(cursorP->sprId[i],
+            pos2D.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos2D.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->sprId[i], cursorP->alpha[i]);
+        espPosSet(cursorP->hiliteSprId[i],
+            pos2D.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos2D.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->hiliteSprId[i], cursorP->alpha[i]);
     }
 }
 
