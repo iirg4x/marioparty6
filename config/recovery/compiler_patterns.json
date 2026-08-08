@@ -5738,6 +5738,85 @@
         "config/GP6E01/symbols.txt",
         "include/humath.h"
       ]
+    },
+    {
+      "id": "linked-retail-hash-requires-fresh-owner-object",
+      "title": "Require a fresh owner object before accepting linked retail hashes",
+      "classification": "confirmed_rule",
+      "category": "verification",
+      "compiler": null,
+      "confidence": "confirmed",
+      "summary": "A successful serialized link, 137/137 consumer replay, or retail DOL SHA1 can reuse a stale owner object after source transfer when filesystem timestamps do not trigger Ninja. Config integration commit ab51ca4f2c5e328c7a7dddd5376a074c88431e30 had newer src/board/config.c content but a stale build/GP6E01/src/board/config.o: linked main.dol and progress.json still reported 137/137 and SHA1 b897e6ade6b3a0cd2f9907689f38a3b19c327e70, while recovery_pass --no-build --force reported 36/51 strict/data and source_pending_build=3. A forced owner build reached 38/51 and source_pending_build=0 before linked proof was accepted. This is the narrower freshness enforcement for configured-matching-needs-retail-replay, not a compiler rule.",
+      "conditions": "Apply before accepting linked retail hashes after source transfer, cherry-pick, rebase, or any source change that may leave the owner object's filesystem timestamp or Ninja cache unchanged.",
+      "source_condition": {
+        "change": "Accept linked retail proof generated after source transfer without forcing the claimed owner's current object to rebuild.",
+        "requires": [
+          "current source transfer, cherry-pick, rebase, or equivalent source change",
+          "fresh owner object built under the pinned owner command",
+          "recovery_pass report stamped with the current HEAD",
+          "source_pending_build=0",
+          "serialized linked 137-file replay and checksum after the fresh owner build"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "stale object can preserve old function scores while current source is newer",
+          "137/137 linked consumer and retail DOL SHA1 can pass on a stale owner object",
+          "recovery_pass --no-build --force exposes pending source builds and lower current strict/data counts",
+          "a forced owner build makes linked proof attributable to the current source"
+        ],
+        "known_signatures": [
+          "source content is newer in Git but Ninja does not rebuild the owner object",
+          "serialized main.dol and progress.json report 137/137 and the prior retail SHA1 before the owner rebuild",
+          "recovery_pass --no-build --force reports source_pending_build=3",
+          "recovery_pass --build --force changes strict/data from 36/51 to 38/51 and source_pending_build to 0"
+        ]
+      },
+      "rule": "Before accepting linked retail hashes after source transfer, cherry-pick, or rebase, force-build the claimed owner object under its pinned command, generate a fresh report stamped with the current HEAD, require source_pending_build=0, then run linked 137/checksum replay. A successful Ninja link or retail hash proves only the objects consumed by that link, not that current source was compiled.",
+      "safe_actions": [
+        "force rebuild with recovery_pass owner --build --force or the equivalent pinned owner command",
+        "verify the report current HEAD and source_pending_build=0",
+        "inspect owner strict/data and object/report provenance before linked replay",
+        "re-run serialized main.dol and progress.json plus full 137/checksum after the fresh owner object",
+        "reject linked proof when 137/137 is supported only by a stale owner object"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "main:board/config:PauseCursorPosNextSet",
+          "main:board/config:PauseCursorMove",
+          "main:board/config:PausePlayerComRead"
+        ],
+        "modules": ["main"],
+        "owner_tags": [
+          "freshness",
+          "owner_object",
+          "timestamp",
+          "ninja_cache",
+          "retail_replay"
+        ]
+      },
+      "examples": [
+        "AI Config integration ab51ca4f2c5e328c7a7dddd5376a074c88431e30 had newer src/board/config.c content but a stale build/GP6E01/src/board/config.o; serialized linked outputs still yielded 137/137 and SHA1 b897e6ade6b3a0cd2f9907689f38a3b19c327e70.",
+        "recovery_pass --no-build --force reported 36/51 strict/data and source_pending_build=3; forced owner build reported 38/51 and source_pending_build=0 before the linked replay was accepted.",
+        "This card narrows configured-matching-needs-retail-replay to the owner-object freshness gate."
+      ],
+      "counterexamples": [
+        "A 137/137 linked replay or matching retail hash alone cannot prove current source compilation.",
+        "A fresh report with source_pending_build=0 does not waive object, data, relocation, consumer, or full-retail checks.",
+        "Do not rely on filesystem mtimes, a successful Ninja link, or a reused build directory as freshness evidence."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/recovery/compiler_patterns.json#configured-matching-needs-retail-replay",
+        "tools/recovery_pass.py",
+        "tools/tests/test_recovery_pass.py",
+        "tools/serialized_build.py",
+        "tools/integration_finalize.py",
+        "config/recovery/compiler_patterns.json"
+      ]
     }
   ]
 }

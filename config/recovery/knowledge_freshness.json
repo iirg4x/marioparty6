@@ -1215,6 +1215,20 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "linked-retail-hash-requires-fresh-owner-object": {
+      "status": "active",
+      "validated_commit": "ab51ca4f2c5e328c7a7dddd5376a074c88431e30",
+      "validated_at": "2026-08-08",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "tools/recovery_pass.py",
+        "tools/tests/test_recovery_pass.py",
+        "tools/serialized_build.py",
+        "tools/integration_finalize.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
