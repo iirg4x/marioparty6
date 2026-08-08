@@ -42,6 +42,16 @@ class WeakOrderDiffTests(unittest.TestCase):
         self.assertEqual(symbols[1].size, 16)
         self.assertEqual(symbols[1].name, "beta$2")
 
+    def test_parser_accepts_hexadecimal_symbol_size(self) -> None:
+        output = """
+Symbol table '.symtab' contains 1 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     1: 00000010  0x10 FUNC    LOCAL  DEFAULT    1 hex_sized
+"""
+        symbols = module.parse_readelf_symbols(output)
+        self.assertEqual(len(symbols), 1)
+        self.assertEqual(symbols[0].size, 0x10)
+
     def test_symtab_is_preferred_when_readelf_prints_dynsym_too(self) -> None:
         output = """
 Symbol table '.dynsym' contains 1 entries:

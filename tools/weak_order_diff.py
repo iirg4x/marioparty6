@@ -78,7 +78,7 @@ class Symbol:
 _SYMBOL_RE = re.compile(
     r"^\s*(?P<number>\d+):\s+"
     r"(?P<value>[0-9A-Fa-f]+)\s+"
-    r"(?P<size>\d+)\s+"
+    r"(?P<size>(?:0[xX])?[0-9A-Fa-f]+)\s+"
     r"(?P<symbol_type>\S+)\s+"
     r"(?P<binding>\S+)\s+"
     r"(?P<visibility>\S+)\s+"
