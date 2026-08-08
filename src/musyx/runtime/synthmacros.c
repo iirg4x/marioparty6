@@ -10,6 +10,14 @@
 #include <float.h>
 #include <string.h>
 
+#define MAC_FILTER_SWITCH_SOURCE_FLAG 64
+#define MAC_FILTER_PARAMETER_SOURCE_FLAG 2048
+#define MAC_FILTER_SWITCH_DIRTY_FLAG 8192
+#define MAC_FILTER_PARAMETER_DIRTY_FLAG 16384
+#define MAC_SAMPLE_ID_NONE 65535
+#define MAC_CMD_FILTER_SWITCH 94
+#define MAC_CMD_FILTER_PARAMETER 95
+
 static u8 DebugMacroSteps;
 
 static SYNTH_VOICE* macActiveMacroRoot;
@@ -484,6 +492,9 @@ static void mcmdStartSample(SYNTH_VOICE* svoice, MSTEP* cstep) {
                        (svoice->cFlags & 0x80000000000) == 0, svoice->itdMode);
 
   svoice->sInfo = newsmp.info;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  svoice->sampleId = smp;
+#endif
 
   if (svoice->playFrq != -1) {
     DoSetPitch(svoice);
@@ -1083,6 +1094,18 @@ static void mcmdTremoloSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
   SelectSource(svoice, &svoice->inpTremolo, cstep, 0x10000000, 0x1000);
 }
 
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+static void mcmdFilterSwitchSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
+  SelectSource(svoice, &svoice->inpFilterSwitch, cstep, MAC_FILTER_SWITCH_SOURCE_FLAG,
+               MAC_FILTER_SWITCH_DIRTY_FLAG);
+}
+
+static void mcmdFilterParameterSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
+  SelectSource(svoice, &svoice->inpFilterParameter, cstep, MAC_FILTER_PARAMETER_SOURCE_FLAG,
+               MAC_FILTER_PARAMETER_DIRTY_FLAG);
+}
+#endif
+
 static void mcmdAuxAFXSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 i;                                                                     // r31
   static u64 mask[4] = {0x100000000, 0x200000000, 0x400000000, 0x800000000}; // size: 0x20
@@ -1364,6 +1387,10 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     channelDefaults = inpGetChannelDefaults(svoice->midi, svoice->midiSet);
     svoice->pbLowerKeyRange = channelDefaults->pbRange;
     svoice->pbUpperKeyRange = channelDefaults->pbRange;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+    svoice->lpfLowerFrqBoundary = channelDefaults->lpfLowerFrqBoundary;
+    svoice->lpfUpperFrqBoundary = channelDefaults->lpfUpperFrqBoundary;
+#endif
     svoice->revVolScale = 128;
     svoice->revVolOffset = 0;
     svoice->loop = 0;
@@ -1385,6 +1412,9 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     svoice->trapEventAny = 0;
     svoice->sInfo = -1;
     svoice->playFrq = -1;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+    svoice->sampleId = MAC_SAMPLE_ID_NONE;
+#endif
     svoice->pbLast = 0x2000;
     svoice->curOutputVolume = 0;
     svoice->cFlags &= 8;
@@ -1623,6 +1653,14 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     case 0x5a:
       mcmdSRCModeSelect(svoice, &cstep);
       break;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+    case MAC_CMD_FILTER_SWITCH:
+      mcmdFilterSwitchSelect(svoice, &cstep);
+      break;
+    case MAC_CMD_FILTER_PARAMETER:
+      mcmdFilterParameterSelect(svoice, &cstep);
+      break;
+#endif
     case 0x60:
       mcmdVarCalculation(svoice, &cstep, 0);
       break;
@@ -1810,9 +1848,14 @@ void macMakeInactive(SYNTH_VOICE* svoice, MAC_STATE newState) {
   svoice->macState = newState;
 }
 
-u32 macStart(u16 macid, u8 priority, u8 maxVoices, u16 allocId, u8 key, u8 vol, u8 panning, u8 midi,
-             u8 midiSet, u8 section, u16 step, u16 trackid, u8 new_vid, u8 vGroup, u8 studio,
-             u32 itd) {
+u32 macStart(u16 macid, u8 priority, u8 maxVoices,
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+             u32 allocId,
+#else
+             u16 allocId,
+#endif
+             u8 key, u8 vol, u8 panning, u8 midi, u8 midiSet, u8 section, u16 step, u16 trackid,
+             u8 new_vid, u8 vGroup, u8 studio, u32 itd) {
   u32 voice;           // r30
   u32 vid;             // r25
   MSTEP* addr;         // r28
