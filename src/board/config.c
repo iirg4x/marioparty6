@@ -255,6 +255,7 @@ static void PauseCursorCreate(void);
 static void PauseCursorKill(void);
 static void PauseCursorHiliteSet(s32 cursorNo, s32 cursorPos, s32 mask);
 static void PauseCursorPosNextSet(s32 time, float x, float y);
+static int PauseCursorMove(void);
 static BOOL PausePadCheck(s32 padNo);
 void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
     HuVecF *posNormP);
@@ -1301,6 +1302,58 @@ static void PauseCursorPosNextSet(s32 time, float x, float y)
             pos2D.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
         espTPLvlSet(cursorP->hiliteSprId[i], cursorP->alpha[i]);
     }
+}
+
+static int PauseCursorMove(void)
+{
+    extern float lbl_802C4CB4;
+    extern float lbl_802C4CCC;
+    extern float lbl_802C4D0C;
+    extern float lbl_802C4D10;
+    PAUSE_CURSOR_WORK *cursorP;
+    HuVecF pos;
+    float t;
+    int i;
+
+    cursorP = &pauseWork.cursor;
+    if (cursorP->moveTime <= 0) {
+        return 0;
+    }
+    cursorP->moveTime--;
+    t = (float)(cursorP->maxMoveTime - cursorP->moveTime)
+        / (float)cursorP->maxMoveTime;
+    t = mbSinDeg(lbl_802C4D0C * t);
+    PSVECScale(&cursorP->posDelta, &pos, t);
+    PSVECAdd(&cursorP->posStart, &pos, &cursorP->pos);
+    for (i = 0; i < 4; i++) {
+        if (cursorP->cursorPos & pauseCursorMaskTbl[i]) {
+            if (cursorP->alpha[i] < lbl_802C4CCC) {
+                cursorP->alpha[i] += lbl_802C4D10;
+            }
+            if (cursorP->alpha[i] > lbl_802C4CCC) {
+                cursorP->alpha[i] = lbl_802C4CCC;
+            }
+        } else {
+            if (cursorP->alpha[i] > lbl_802C4CB4) {
+                cursorP->alpha[i] -= lbl_802C4D10;
+            }
+            if (cursorP->alpha[i] < lbl_802C4CB4) {
+                cursorP->alpha[i] = lbl_802C4CB4;
+            }
+        }
+    }
+    mbNormPosto2D(&cursorP->pos, &pos);
+    for (i = 0; i < 4; i++) {
+        espPosSet(cursorP->sprId[i],
+            pos.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->sprId[i], cursorP->alpha[i]);
+        espPosSet(cursorP->hiliteSprId[i],
+            pos.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->hiliteSprId[i], cursorP->alpha[i]);
+    }
+    return cursorP->moveTime;
 }
 
 static BOOL PausePadCheck(s32 padNo)
