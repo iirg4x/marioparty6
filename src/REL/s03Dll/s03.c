@@ -15,10 +15,23 @@
 typedef void (*VoidFunc)(void);
 typedef void (*MBHook)(void);
 
+enum {
+    S03_BOARD_NO = 8,
+    S03_WORK_CLEAR_SIZE = 112,
+    S03_SAVE_CLEAR_SIZE = 8,
+    S03_MOTION_DATA_COUNT = 16,
+    S03_HOOK_NAME_SIZE = 16,
+    S03_HOOK_COUNT = 10,
+    S03_OBJECT_LAYER = 3,
+    S03_OBJECT_PRIORITY = 8204,
+    S03_MASU_ATTR_MOVE_START = 2,
+    S03_MASU_ATTR_HATENA = 1,
+};
+
 typedef struct S03Work {
     s16 modelId;
     s16 pathModelId[2];
-    u8 reserved_06[2];
+    s16 unk_06;
     s16 chainModelId;
     s16 sourceModelId;
     s16 markerModelId;
@@ -34,7 +47,10 @@ typedef struct S03Work {
     s32 effectState;
     void *effectWork;
     float effectAngle;
-    u8 reserved_64[0x10];
+    u32 unk_64;
+    u32 unk_68;
+    u32 unk_6C;
+    u32 unk_70;
 } S03Work;
 
 extern const VoidFunc _ctors[];
@@ -108,69 +124,69 @@ void _epilog(void)
 void fn_1_A0(void)
 {
     GWPartySet(FALSE);
-    mbObjectSetup(8, fn_1_F4, fn_1_5EC);
+    mbObjectSetup(S03_BOARD_NO, fn_1_F4, fn_1_5EC);
 }
 
 void fn_1_F4(void)
 {
     S03Work *work = &lbl_1_bss_4;
     int boardNo = MBBoardNoGet();
-    int motData[16];
+    int motData[S03_MOTION_DATA_COUNT];
     Mtx matrix;
     s32 modelId;
     s32 hookModelId;
     int i;
-    char name[16];
+    char name[S03_HOOK_NAME_SIZE];
 
-    HuAudSndGrpSetSet(0x1D);
+    HuAudSndGrpSetSet(MSM_GRP_SBRD);
     lbl_1_bss_78 = GwSystem.boardWork;
-    mbMasuInit(0xC90000);
-    memset(work, 0, 0x70);
+    mbMasuInit(DATANUM(DATA_s03, 0));
+    memset(work, 0, S03_WORK_CLEAR_SIZE);
     work->effectState = 0;
     work->effectWork = NULL;
 
-    work->modelId = mbObjCreate(0xC90002, NULL, FALSE);
-    mbObjAttrSet(work->modelId, 0x40000001);
-    mbScrollInit(0xC90001);
+    work->modelId = mbObjCreate(DATANUM(DATA_s03, 2), NULL, FALSE);
+    mbObjAttrSet(work->modelId, HU3D_MOTATTR_LOOP);
+    mbScrollInit(DATANUM(DATA_s03, 1));
     mbLightFuncSet(fn_1_728, fn_1_764);
     if (mbSaveNewF) {
-        memset(lbl_1_bss_78, 0, 8);
+        memset(lbl_1_bss_78, 0, S03_SAVE_CLEAR_SIZE);
     }
 
-    modelId = mbObjCreate(0xC90004, NULL, FALSE);
+    modelId = mbObjCreate(DATANUM(DATA_s03, 4), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, lbl_1_rodata_10);
-    mbObjAttrSet(modelId, 0x40000001);
-    modelId = mbObjCreate(0xC90005, NULL, FALSE);
-    mbObjAttrSet(modelId, 0x40000041);
-    modelId = mbObjCreate(0xC90006, NULL, FALSE);
-    mbObjLayerSet(modelId, 3);
-    hookModelId = mbObjCreate(0xC9000C, NULL, FALSE);
-    mbObjAttrSet(hookModelId, 0x40000001);
-    mbObjLayerSet(hookModelId, 3);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    modelId = mbObjCreate(DATANUM(DATA_s03, 5), NULL, FALSE);
+    mbObjAttrSet(modelId, (HU3D_MOTATTR_LOOP | HU3D_MOTATTR_SHAPE_LOOP));
+    modelId = mbObjCreate(DATANUM(DATA_s03, 6), NULL, FALSE);
+    mbObjLayerSet(modelId, S03_OBJECT_LAYER);
+    hookModelId = mbObjCreate(DATANUM(DATA_s03, 12), NULL, FALSE);
+    mbObjAttrSet(hookModelId, HU3D_MOTATTR_LOOP);
+    mbObjLayerSet(hookModelId, S03_OBJECT_LAYER);
     mbObjScaleSet(hookModelId, lbl_1_rodata_14, lbl_1_rodata_14,
         lbl_1_rodata_14);
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < S03_HOOK_COUNT; i++) {
         sprintf(name, lbl_1_data_4C, i + 1);
         mbObjHookSet(modelId, name, hookModelId);
     }
 
     for (i = 0; i < 2; i++) {
-        modelId = mbObjCreate(0xC90007, NULL, TRUE);
+        modelId = mbObjCreate(DATANUM(DATA_s03, 7), NULL, TRUE);
         work->pathModelId[i] = modelId;
         mbObjPosSetV(modelId, &lbl_1_data_18[i]);
         mbObjMotionSpeedSet(modelId, lbl_1_rodata_18);
     }
 
-    motData[0] = 0xC9000E;
-    motData[1] = 0xC9000F;
-    motData[2] = -1;
-    modelId = mbObjCreate(0xC9000D, motData, FALSE);
+    motData[0] = DATANUM(DATA_s03, 14);
+    motData[1] = DATANUM(DATA_s03, 15);
+    motData[2] = HU_DATANUM_NONE;
+    modelId = mbObjCreate(DATANUM(DATA_s03, 13), motData, FALSE);
     work->eventModelId = modelId;
     mbObjDispSet(modelId, FALSE);
 
-    modelId = mbObjCreate(0xC9000B, NULL, FALSE);
+    modelId = mbObjCreate(DATANUM(DATA_s03, 11), NULL, FALSE);
     work->chainModelId = modelId;
-    mbObjAttrSet(modelId, 0x40000001);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
     mbObjDispSet(modelId, FALSE);
     Hu3DMotionCalc(mbObjModelIDGet(modelId));
     Hu3DModelObjMtxGet(mbObjModelIDGet(modelId), lbl_1_data_52, matrix);
@@ -178,11 +194,11 @@ void fn_1_F4(void)
     work->targetPos.y = matrix[1][3];
     work->targetPos.z = matrix[2][3];
 
-    modelId = mbObjCreate(0xC90008, NULL, FALSE);
+    modelId = mbObjCreate(DATANUM(DATA_s03, 8), NULL, FALSE);
     work->markerModelId = modelId;
     mbObjPosSetV(modelId, &lbl_1_data_0);
 
-    modelId = mbObjCreate(0xC90009, NULL, FALSE);
+    modelId = mbObjCreate(DATANUM(DATA_s03, 9), NULL, FALSE);
     work->sourceModelId = modelId;
     mbObjDispSet(modelId, FALSE);
     Hu3DMotionCalc(mbObjModelIDGet(work->sourceModelId));
@@ -211,8 +227,8 @@ void fn_1_F4(void)
     mbMapCameraSet(NULL, &lbl_1_data_C, lbl_1_rodata_20);
     mbMapHookSet(fn_1_768);
     mbOpeningInstHookSet(fn_1_634);
-    omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_5F0);
-    HuDataDirClose(0xC90000);
+    omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1, fn_1_5F0);
+    HuDataDirClose(DATANUM(DATA_s03, 0));
     mbOpeningViewSet(&lbl_1_data_30, &lbl_1_data_3C, lbl_1_data_48);
 }
 
@@ -236,7 +252,7 @@ int fn_1_638(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & 2) {
+    if (mAttr & S03_MASU_ATTR_MOVE_START) {
         mbPauseDisableSet(TRUE);
         fn_1_1450(playerNo, id);
     }
@@ -254,7 +270,7 @@ int fn_1_6CC(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & 1) {
+    if (mAttr & S03_MASU_ATTR_HATENA) {
         fn_1_76C(playerNo, id);
     }
     return 0;
