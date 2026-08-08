@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.06% | 38.00% | 338 / 927 |
-| Main DOL | 51.30% | 87.60% | 305 / 396 |
+| Entire project | 14.33% | 38.37% | 340 / 927 |
+| Main DOL | 52.86% | 88.57% | 307 / 396 |
 | REL modules | 6.16% | 6.56% | 33 / 531 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72

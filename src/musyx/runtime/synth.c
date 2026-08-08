@@ -1,4 +1,7 @@
 
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "musyx/synth.h"
 #include "musyx/assert.h"
 #include "musyx/hardware.h"
