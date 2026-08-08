@@ -2022,14 +2022,23 @@ static void StarPauseHook(BOOL pauseF)
 
 static void StarMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
-    GXColor colorNew = { 255, 255, 255, 255 };
-    HuVecF lightDir = lbl_8021AB24;
+    extern unsigned char lbl_802C3810;
+    extern unsigned char lbl_802C3811;
+    extern unsigned char lbl_802C3812;
+    extern unsigned char lbl_802C3813;
+    GXColor colorNew;
+    HuVecF lightDir;
     int tevStageNum;
     int texGenNum;
     GXColor color;
     HuVecF pos;
     HuVecF dir;
 
+    colorNew.r = lbl_802C3810;
+    colorNew.g = lbl_802C3811;
+    colorNew.b = lbl_802C3812;
+    colorNew.a = lbl_802C3813;
+    lightDir = lbl_8021AB24;
     Hu3DGLightParamGet(0, &pos, &dir, &color);
     Hu3DGlobalLight[0].color = colorNew;
     Hu3DGlobalLight[0].dir = lightDir;
