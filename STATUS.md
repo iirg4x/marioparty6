@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.90% | 37.29% | 334 / 923 |
-| Main DOL | 50.79% | 86.28% | 302 / 396 |
+| Entire project | 13.93% | 37.38% | 335 / 923 |
+| Main DOL | 50.93% | 86.50% | 303 / 396 |
 | REL modules | 6.08% | 6.25% | 32 / 527 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
@@ -35,11 +35,11 @@ bytes** across 11 partial owners with zero exact-function regressions. The
 board-owner and Treetop seam totals are unchanged because these files remain
 partial owners.
 
-Four main-DOL MusyX runtime owners now build from recovered C: `synthvoice.c`
+Five main-DOL MusyX runtime owners now build from recovered C: `synthvoice.c`
 at **21 / 21**, `synthdata.c` at **27 / 27**, `hw_aramdma.c` at **13 / 13**,
-and `snd_midictrl.c` at **35 / 35 strict-exact and data-value-exact
-functions**. Their combined source-linked build remains retail-identical.
-`s_data.c` and `hardware.c` remain `NonMatching` until their whole-object
+`snd_midictrl.c` at **35 / 35**, and `s_data.c` at **7 / 7 strict-exact and
+data-value-exact functions**. Their combined source-linked build remains
+retail-identical. `hardware.c` remains `NonMatching` until its whole-object
 link closure is exact.
 
 REL recovery is stored under canonical application owners: **174 synthetic
