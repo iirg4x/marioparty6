@@ -10,6 +10,204 @@
 #include <float.h>
 #include <string.h>
 
+/* Macro command opcodes. */
+#define MAC_CMD_END_OF_MACRO 0
+#define MAC_CMD_STOP 1
+#define MAC_CMD_IF_KEY 2
+#define MAC_CMD_IF_VELOCITY 3
+#define MAC_CMD_WAIT 4
+#define MAC_CMD_LOOP 5
+#define MAC_CMD_GOTO 6
+#define MAC_CMD_WAIT_MS 7
+#define MAC_CMD_PLAY_MACRO 8
+#define MAC_CMD_SEND_KEY_OFF 9
+#define MAC_CMD_IF_MODULATION 10
+#define MAC_CMD_SET_PIANO_PANNING 11
+#define MAC_CMD_SET_ADSR 12
+#define MAC_CMD_SCALE_VOLUME 13
+#define MAC_CMD_SET_PANNING 14
+#define MAC_CMD_ENVELOPE 15
+#define MAC_CMD_START_SAMPLE 16
+#define MAC_CMD_STOP_SAMPLE 17
+#define MAC_CMD_KEY_OFF 18
+#define MAC_CMD_IF_RANDOM 19
+#define MAC_CMD_FADE_IN 20
+#define MAC_CMD_SET_SURROUND_PANNING 21
+#define MAC_CMD_SET_ADSR_FROM_CTRL 22
+#define MAC_CMD_RANDOM_KEY 23
+#define MAC_CMD_ADD_KEY 24
+#define MAC_CMD_SET_KEY 25
+#define MAC_CMD_LAST_KEY 26
+#define MAC_CMD_PORTAMENTO 27
+#define MAC_CMD_VIBRATO 28
+#define MAC_CMD_PITCH_SWEEP_UP 29
+#define MAC_CMD_PITCH_SWEEP_DOWN 30
+#define MAC_CMD_SET_PITCH 31
+#define MAC_CMD_SET_PITCH_ADSR 32
+#define MAC_CMD_SCALE_VOLUME_DLS 33
+#define MAC_CMD_SET_MOD_VIBRATO 34
+#define MAC_CMD_SETUP_TREMOLO 35
+#define MAC_CMD_RETURN 36
+#define MAC_CMD_GOSUB 37
+#define MAC_CMD_TRAP_EVENT 40
+#define MAC_CMD_UNTRAP_EVENT 41
+#define MAC_CMD_SEND_MESSAGE 42
+#define MAC_CMD_GET_MESSAGE 43
+#define MAC_CMD_GET_VID 44
+#define MAC_CMD_ADD_AGE_COUNTER 48
+#define MAC_CMD_SET_AGE_COUNTER 49
+#define MAC_CMD_SEND_FLAG 50
+#define MAC_CMD_SET_PITCH_WHEEL_RANGE 51
+#define MAC_CMD_SCALE_REVERB 52
+#define MAC_CMD_SET_PITCHBEND_AFTER_KEYOFF 53
+#define MAC_CMD_SET_PRIORITY 54
+#define MAC_CMD_ADD_PRIORITY 55
+#define MAC_CMD_SET_AGE_COUNTER_SPEED 56
+#define MAC_CMD_SET_AGE_COUNTER_BY_VOLUME 57
+#define MAC_CMD_VOLUME_SELECT 64
+#define MAC_CMD_PANNING_SELECT 65
+#define MAC_CMD_PITCH_WHEEL_SELECT 66
+#define MAC_CMD_MOD_WHEEL_SELECT 67
+#define MAC_CMD_PEDAL_SELECT 68
+#define MAC_CMD_PORTAMENTO_SELECT 69
+#define MAC_CMD_REVERB_SELECT 70
+#define MAC_CMD_SURROUND_PANNING_SELECT 71
+#define MAC_CMD_DOPPLER_SELECT 72
+#define MAC_CMD_TREMOLO_SELECT 73
+#define MAC_CMD_PRE_AUX_A_SELECT 74
+#define MAC_CMD_PRE_AUX_B_SELECT 75
+#define MAC_CMD_POST_AUX_B_SELECT 76
+#define MAC_CMD_AUX_AFX_SELECT 77
+#define MAC_CMD_AUX_BFX_SELECT 78
+#define MAC_CMD_SETUP_LFO 80
+#define MAC_CMD_MODE_SELECT 88
+#define MAC_CMD_SET_KEY_GROUP 89
+#define MAC_CMD_SRC_MODE_SELECT 90
+#define MAC_CMD_FILTER_SWITCH 94
+#define MAC_CMD_FILTER_PARAMETER 95
+#define MAC_CMD_VAR_ADD 96
+#define MAC_CMD_VAR_SUB 97
+#define MAC_CMD_VAR_MUL 98
+#define MAC_CMD_VAR_DIV 99
+#define MAC_CMD_VAR_ADD_IMMEDIATE 100
+#define MAC_CMD_SET_VAR_IMMEDIATE 101
+#define MAC_CMD_IF_VAR_EQUAL 112
+#define MAC_CMD_IF_VAR_LESS 113
+
+/* Packed macro fields. */
+#define MAC_PACK_SHIFT_BYTE 8
+#define MAC_PACK_SHIFT_HALFWORD 16
+#define MAC_PACK_SHIFT_HIGH_BYTE 24
+#define MAC_PACK_SHIFT_AGE 15
+#define MAC_PACK_MASK_7BIT 127
+#define MAC_PACK_MASK_BYTE 255
+#define MAC_PACK_MASK_HALFWORD 65535
+#define MAC_PACK_MASK_FREQUENCY 16777215
+#define MAC_PACK_MASK_ADSR_SCALE 1023
+#define MAC_VAR_INDEX_MASK 31
+#define MAC_PACK_SCALE_BYTE 256
+
+/* Voice and control sentinels. */
+#define MAC_VOICE_ID_INVALID ((u32)4294967295U)
+#define MAC_VOICE_KEY_FX 128
+#define MAC_MIDI_NONE 255
+#define MAC_U8_MAX 255
+#define MAC_WAIT_SENTINEL 65535
+#define MAC_LOOP_SENTINEL 65535
+#define MAC_CURVE_NONE 65535
+#define MAC_MESSAGE_MACRO_NONE 65535
+#define MAC_PRIORITY_NONE 65535
+#define MAC_SAMPLE_ID_NONE 65535
+
+/* Fixed-point scales and limits. */
+#define MAC_FIXED_POINT_UNIT 65536
+#define MAC_AGE_SCALE 32768
+#define MAC_VOLUME_MAX 8323072
+#define MAC_PANNING_MAX 8323072
+#define MAC_AGE_INITIAL 1966080000
+#define MAC_AGE_MAX_FIXED 2147450880
+#define MAC_AGE_COUNTER_MAX 65535
+#define MAC_AGE_SPEED_INITIAL 1024
+#define MAC_PITCHBEND_CENTER 8192
+#define MAC_ADSR_SCALE_MIN ((s32)2147483648U)
+#define MAC_ADSR_SCALE_UNSET ((u32)2147483648U)
+#define MAC_SIGNED_16BIT_MIN (-32768)
+#define MAC_SIGNED_16BIT_MAX 32767
+
+/* Voice state and macro control flags. */
+#define MAC_CFLAG_VOICE_ALLOCATED 2
+#define MAC_CFLAG_WAITING 4
+#define MAC_CFLAG_KEYOFF 8
+#define MAC_CFLAG_KEYOFF_REQUEST 128
+#define MAC_CFLAG_PERSISTENT 16
+#define MAC_CFLAG_SAMPLE_ACTIVE 32
+#define MAC_CFLAG_HW_EVENT_WAIT 262144
+#define MAC_CFLAG_PORTAMENTO 1024
+#define MAC_CFLAG_PITCHBEND_AFTER_KEYOFF 65536
+#define MAC_CFLAG_VIBRATO 8192
+#define MAC_CFLAG_VIBRATO_MODE 16384
+#define MAC_CFLAG_ADSR 256
+#define MAC_CFLAG_ENVELOPE 32768
+#define MAC_CFLAG_UNYIELD_MASK 262148
+#define MAC_CFLAG_SRC_MODE ((u64)8796093022208ULL)
+#define MAC_CFLAG_PITCH_ADSR ((u64)2199023255552ULL)
+#define MAC_CFLAG_VOLUME ((u64)17592186044416ULL)
+#define MAC_CFLAG_PANNING ((u64)35184372088832ULL)
+#define MAC_CFLAG_PEDAL ((u64)1099511627776ULL)
+#define MAC_CFLAG_TRAP_PENDING ((u64)4398046511104ULL)
+#define MAC_CFLAG_KEYOFF_PEDAL ((u64)1099511627784ULL)
+#define MAC_CFLAG_INITIALIZED ((u64)52776558133248ULL)
+
+/* Control source and dirty masks. */
+#define MAC_SOURCE_VOLUME 524288
+#define MAC_SOURCE_PANNING 1048576
+#define MAC_SOURCE_PITCH_BEND 2097152
+#define MAC_SOURCE_MODULATION 4194304
+#define MAC_SOURCE_PEDAL 33554432
+#define MAC_SOURCE_PORTAMENTO 16777216
+#define MAC_SOURCE_REVERB 8388608
+#define MAC_SOURCE_PRE_AUX_A 536870912
+#define MAC_SOURCE_PRE_AUX_B 1073741824
+#define MAC_SOURCE_POST_AUX_B ((u32)2147483648U)
+#define MAC_SOURCE_SURROUND_PANNING 67108864
+#define MAC_SOURCE_DOPPLER 134217728
+#define MAC_SOURCE_TREMOLO 268435456
+#define MAC_FILTER_SWITCH_SOURCE_FLAG 64
+#define MAC_FILTER_PARAMETER_SOURCE_FLAG 2048
+#define MAC_DIRTY_DOPPLER 16
+#define MAC_DIRTY_MODULATION 32
+#define MAC_DIRTY_PEDAL 64
+#define MAC_DIRTY_PORTAMENTO 128
+#define MAC_DIRTY_PRE_AUX_A 256
+#define MAC_DIRTY_REVERB 512
+#define MAC_DIRTY_PRE_AUX_B 1024
+#define MAC_DIRTY_POST_AUX_B 2048
+#define MAC_DIRTY_TREMOLO 4096
+#define MAC_FILTER_SWITCH_DIRTY_FLAG 8192
+#define MAC_FILTER_PARAMETER_DIRTY_FLAG 16384
+#define MAC_DIRTY_GLOBAL ((u32)2147483648U)
+
+/* Auxiliary source tables. */
+#define MAC_AUX_A_SOURCE_0 ((u64)4294967296ULL)
+#define MAC_AUX_A_SOURCE_1 ((u64)8589934592ULL)
+#define MAC_AUX_A_SOURCE_2 ((u64)17179869184ULL)
+#define MAC_AUX_A_SOURCE_3 ((u64)34359738368ULL)
+#define MAC_AUX_A_DIRTY_0 ((u32)2147483649U)
+#define MAC_AUX_A_DIRTY_1 ((u32)2147483650U)
+#define MAC_AUX_A_DIRTY_2 ((u32)2147483652U)
+#define MAC_AUX_A_DIRTY_3 ((u32)2147483656U)
+#define MAC_AUX_B_SOURCE_0 ((u64)68719476736ULL)
+#define MAC_AUX_B_SOURCE_1 ((u64)137438953472ULL)
+#define MAC_AUX_B_SOURCE_2 ((u64)274877906944ULL)
+#define MAC_AUX_B_SOURCE_3 ((u64)549755813888ULL)
+#define MAC_AUX_B_DIRTY_0 ((u32)2147483664U)
+#define MAC_AUX_B_DIRTY_1 ((u32)2147483680U)
+#define MAC_AUX_B_DIRTY_2 ((u32)2147483712U)
+#define MAC_AUX_B_DIRTY_3 ((u32)2147483776U)
+
+/* MIDI, message, and queue domains. */
+#define MAC_MIDI_CTRL_PORTAMENTO 65
+
 static u8 DebugMacroSteps;
 
 static SYNTH_VOICE* macActiveMacroRoot;
@@ -27,9 +225,9 @@ static void DoSetPitch(SYNTH_VOICE* svoice);
 static int SendSingleKeyOff(u32 voiceid) {
   u32 i; // r31
 
-  if (voiceid != 0xFFFFFFFF) {
+  if (voiceid != MAC_VOICE_ID_INVALID) {
 
-    i = voiceid & 0xFF;
+    i = voiceid & MAC_PACK_MASK_BYTE;
 
     if (voiceid == synthVoice[i].id) {
 
@@ -62,7 +260,7 @@ static u32 HasHWEventTrap(SYNTH_VOICE* svoice) {
 }
 
 static void CheckHWEventTrap(SYNTH_VOICE* svoice) {
-  if ((svoice->cFlags & 0x20) == 0 && !hwIsActive(svoice->id & 0xff)) {
+  if ((svoice->cFlags & MAC_CFLAG_SAMPLE_ACTIVE) == 0 && !hwIsActive(svoice->id & MAC_PACK_MASK_BYTE)) {
     ExecuteTrap(svoice, 1);
   }
 }
@@ -71,34 +269,34 @@ static u32 mcmdWait(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 w;  // r1+0x10
   u32 ms; // r29
 
-  if ((ms = (u16)(cstep->para[1] >> 0x10))) {
+  if ((ms = (u16)(cstep->para[1] >> MAC_PACK_SHIFT_HALFWORD))) {
     if (((u8)(cstep->para[0] >> 8) & 1)) {
       if (svoice->cFlags & 8) {
-        if (!(svoice->cFlags & 0x10000000000)) {
+        if (!(svoice->cFlags & MAC_CFLAG_PEDAL)) {
           return 0;
         }
-        svoice->cFlags |= 0x40000000000;
+        svoice->cFlags |= MAC_CFLAG_TRAP_PENDING;
       }
       svoice->cFlags |= 4;
     } else {
       svoice->cFlags &= ~4;
     }
 
-    if (((u8)(cstep->para[0] >> 0x18) & 1)) {
-      if (!(svoice->cFlags & 0x20) && !hwIsActive(svoice->id & 0xFF)) {
+    if (((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE) & 1)) {
+      if (!(svoice->cFlags & MAC_CFLAG_SAMPLE_ACTIVE) && !hwIsActive(svoice->id & MAC_PACK_MASK_BYTE)) {
         return 0;
       }
-      svoice->cFlags |= 0x40000;
+      svoice->cFlags |= MAC_CFLAG_HW_EVENT_WAIT;
     } else {
-      svoice->cFlags &= ~0x40000;
+      svoice->cFlags &= ~MAC_CFLAG_HW_EVENT_WAIT;
     }
 
-    if (((u8)(cstep->para[0] >> 0x10)) & 1) {
+    if (((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) & 1) {
       ms = sndRand() % ms;
     }
 
-    if (ms != 0xFFFF) {
-      if ((w = ((u8)(cstep->para[1] >> 0x8) & 1) != 0)) {
+    if (ms != MAC_WAIT_SENTINEL) {
+      if ((w = ((u8)(cstep->para[1] >> MAC_PACK_SHIFT_BYTE) & 1) != 0)) {
         sndConvertMs(&ms);
       } else {
         sndConvertTicks(&ms, svoice);
@@ -167,7 +365,7 @@ static void mcmdIfKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro((cstep->para[0] >> 0x10))) != NULL) {
+  if ((addr = (MSTEP*)dataGetMacro((cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) != NULL) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -175,11 +373,11 @@ static void mcmdIfKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static void mcmdIfVelocity(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr;
-  if (((u8)(svoice->volume >> 0x10)) < (u8)(cstep->para[0] >> 8)) {
+  if (((u8)(svoice->volume >> MAC_PACK_SHIFT_HALFWORD)) < (u8)(cstep->para[0] >> 8)) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> 0x10))) {
+  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -189,7 +387,7 @@ static void mcmdIfModulation(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r30
   u8 mod;      // r28
 
-  if (svoice->midi == 0xff) {
+  if (svoice->midi == MAC_MIDI_NONE) {
     return;
   }
   mod = inpGetModulation(svoice) >> 7;
@@ -197,7 +395,7 @@ static void mcmdIfModulation(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> 0x10))) {
+  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)(cstep->para[1]);
   }
@@ -209,7 +407,7 @@ static void mcmdIfRandom(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> 0x10))) {
+  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
   }
@@ -217,7 +415,7 @@ static void mcmdIfRandom(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static u32 mcmdGoto(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r31
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> 0x10)) != NULL) {
+  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
     svoice->addr = addr;
     svoice->curAddr = addr + (u16)cstep->para[1];
     return 0;
@@ -228,7 +426,7 @@ static u32 mcmdGoto(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static u32 mcmdGosub(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r30
-  if ((addr = (MSTEP*)dataGetMacro((u16)(cstep->para[0] >> 0x10))) != NULL) {
+  if ((addr = (MSTEP*)dataGetMacro((u16)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD))) != NULL) {
     svoice->callStackIndex = (svoice->callStackIndex + 1) & 3;
     svoice->callStack[svoice->callStackIndex].addr = svoice->addr;
     svoice->callStack[svoice->callStackIndex].curAddr = svoice->curAddr;
@@ -247,13 +445,13 @@ static u32 mcmdGosub(SYNTH_VOICE* svoice, MSTEP* cstep) {
 static void mcmdTrapEvent(SYNTH_VOICE* svoice, MSTEP* cstep) {
   MSTEP* addr; // r29
   u8 t;        // r30
-  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> 0x10)) != NULL) {
+  if ((addr = (MSTEP*)dataGetMacro(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD)) != NULL) {
     t = (u8)(cstep->para[0] >> 8);
     svoice->trapEventAddr[t] = addr;
     svoice->trapEventCurAddr[t] = addr + (u16)cstep->para[1];
     svoice->trapEventAny = 1;
-    if (t == 0 && (svoice->cFlags & 0x10000000008) == 0x10000000008) {
-      svoice->cFlags |= 0x40000000000;
+    if (t == 0 && (svoice->cFlags & MAC_CFLAG_KEYOFF_PEDAL) == MAC_CFLAG_KEYOFF_PEDAL) {
+      svoice->cFlags |= MAC_CFLAG_TRAP_PENDING;
     }
   }
 }
@@ -280,11 +478,11 @@ static void mcmdLoop(SYNTH_VOICE* svoice, MSTEP* cstep) {
       svoice->loop = (cstep->para[1] >> 16);
     }
 
-    if (svoice->loop == 0xFFFF) {
+    if (svoice->loop == MAC_LOOP_SENTINEL) {
       goto skip;
     }
     ++svoice->loop;
-  } else if (svoice->loop == 0xFFFF) {
+  } else if (svoice->loop == MAC_LOOP_SENTINEL) {
     goto skip;
   }
 
@@ -292,11 +490,11 @@ static void mcmdLoop(SYNTH_VOICE* svoice, MSTEP* cstep) {
     return;
   }
 skip:
-  if (((u8)(cstep->para[0] >> 8) & 1) != 0 && (svoice->cFlags & 0x10000000008) == 0x00000000008) {
+  if (((u8)(cstep->para[0] >> 8) & 1) != 0 && (svoice->cFlags & MAC_CFLAG_KEYOFF_PEDAL) == MAC_CFLAG_KEYOFF) {
     svoice->loop = 0;
 
-  } else if (((u8)(cstep->para[0] >> 0x18) & 1) && (svoice->cFlags & 0x20) == 0 &&
-             !hwIsActive(svoice->id & 0xFF)) {
+  } else if (((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE) & 1) && (svoice->cFlags & MAC_CFLAG_SAMPLE_ACTIVE) == 0 &&
+             !hwIsActive(svoice->id & MAC_PACK_MASK_BYTE)) {
     svoice->loop = 0;
   } else {
     svoice->curAddr = svoice->addr + ((u16)cstep->para[1]);
@@ -308,20 +506,20 @@ static void mcmdPlayMacro(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 new_child; // r30
 
   key = ((u32)svoice->orgNote + (s8)(u8)(cstep->para[0] >> 8));
-  key = (key < 0) ? 0 : key > 0x7f ? 0x7f : key;
+  key = (key < 0) ? 0 : key > MAC_PACK_MASK_7BIT ? MAC_PACK_MASK_7BIT : key;
 
   if (svoice->fxFlag != 0) {
-    key |= 0x80;
+    key |= MAC_VOICE_KEY_FX;
   }
 
   svoice->block = 1;
-  new_child = macStart((u16)(cstep->para[0] >> 0x10), (u8)(cstep->para[1] >> 0x10),
-                       (u8)(cstep->para[1] >> 0x18), svoice->allocId, key,
-                       (u8)(svoice->volume >> 0x10), (u8)(svoice->panning[0] >> 0x10), svoice->midi,
+  new_child = macStart((u16)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD), (u8)(cstep->para[1] >> MAC_PACK_SHIFT_HALFWORD),
+                       (u8)(cstep->para[1] >> MAC_PACK_SHIFT_HIGH_BYTE), svoice->allocId, key,
+                       (u8)(svoice->volume >> MAC_PACK_SHIFT_HALFWORD), (u8)(svoice->panning[0] >> MAC_PACK_SHIFT_HALFWORD), svoice->midi,
                        svoice->midiSet, svoice->section, (u16)cstep->para[1], (u16)svoice->track, 0,
                        svoice->vGroup, svoice->studio, svoice->itdMode == 0);
   svoice->block = 0;
-  if (new_child != 0xFFFFFFFF) {
+  if (new_child != MAC_VOICE_ID_INVALID) {
     svoice->lastVID = synthVoice[(u8)new_child].vidList->vid;
     synthVoice[(u8)new_child].parent = svoice->id;
     if (svoice->child != -1) {
@@ -333,7 +531,7 @@ static void mcmdPlayMacro(SYNTH_VOICE* svoice, MSTEP* cstep) {
       synthFXCloneMidiSetup(&synthVoice[(u8)new_child], svoice);
     }
   } else {
-    svoice->lastVID = 0xFFFFFFFF;
+    svoice->lastVID = MAC_VOICE_ID_INVALID;
   }
 }
 
@@ -359,18 +557,18 @@ static void mcmdAddAgeCounter(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
   if (age < 0) {
     svoice->age = 0;
-  } else if (age > 0xFFFF) {
-    svoice->age = 0x7fff8000;
+  } else if (age > MAC_AGE_COUNTER_MAX) {
+    svoice->age = MAC_AGE_MAX_FIXED;
   } else {
-    svoice->age = age * 0x8000;
+    svoice->age = age * MAC_AGE_SCALE;
   }
 
-  hwSetPriority(svoice->id & 0xFF, ((u32)svoice->prio << 24) | ((u32)svoice->age >> 15));
+  hwSetPriority(svoice->id & MAC_PACK_MASK_BYTE, ((u32)svoice->prio << 24) | ((u32)svoice->age >> 15));
 }
 
 static void mcmdSetAgeCounter(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  svoice->age = (u16)(cstep->para[0] >> 0x10) << 0xf;
-  hwSetPriority(svoice->id & 0xff, (u32)svoice->prio << 0x18 | svoice->age >> 0xf);
+  svoice->age = (u16)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD) << MAC_PACK_SHIFT_AGE;
+  hwSetPriority(svoice->id & MAC_PACK_MASK_BYTE, (u32)svoice->prio << MAC_PACK_SHIFT_HIGH_BYTE | svoice->age >> MAC_PACK_SHIFT_AGE);
 }
 
 static void mcmdSetAgeCounterSpeed(SYNTH_VOICE* svoice, MSTEP* cstep) {
@@ -385,8 +583,8 @@ static void mcmdSetAgeCounterByVolume(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 age; // r30
 
   age = (((u8)(svoice->volume >> 16) * (u16)cstep->para[1]) >> 7) + (u16)(cstep->para[0] >> 16);
-  svoice->age = age > 60000 ? 0x75300000 : age * 0x8000;
-  hwSetPriority(svoice->id & 0xff, (u32)svoice->prio << 0x18 | svoice->age >> 0xf);
+  svoice->age = age > 60000 ? MAC_AGE_INITIAL : age * MAC_AGE_SCALE;
+  hwSetPriority(svoice->id & MAC_PACK_MASK_BYTE, (u32)svoice->prio << MAC_PACK_SHIFT_HIGH_BYTE | svoice->age >> MAC_PACK_SHIFT_AGE);
 }
 
 static void mcmdAddPriority(SYNTH_VOICE* svoice, MSTEP* cstep) {
@@ -394,7 +592,7 @@ static void mcmdAddPriority(SYNTH_VOICE* svoice, MSTEP* cstep) {
   s16 prio; // r31
   add = (u16)(cstep->para[0] >> 16);
   prio = svoice->prio + add;
-  prio = (prio < 0) ? 0 : (prio > 0xFF) ? 0xFF : prio;
+  prio = (prio < 0) ? 0 : (prio > MAC_U8_MAX) ? MAC_U8_MAX : prio;
 
   voiceSetPriority(svoice, prio);
 }
@@ -408,29 +606,29 @@ static void mcmdSendFlag(MSTEP* cstep) {
 }
 
 static void mcmdSetPitchWheelRange(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  svoice->pbLowerKeyRange = (u8)(cstep->para[0] >> 0x10);
+  svoice->pbLowerKeyRange = (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD);
   svoice->pbUpperKeyRange = (u8)(cstep->para[0] >> 8);
 }
 
 static u32 mcmdSetKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  svoice->curNote = (u8)(cstep->para[0] >> 8) & 0x7f;
-  svoice->curDetune = (s8)(cstep->para[0] >> 0x10);
+  svoice->curNote = (u8)(cstep->para[0] >> 8) & MAC_PACK_MASK_7BIT;
+  svoice->curDetune = (s8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD);
   if (voiceIsLastStarted(svoice) != 0) {
-    inpSetMidiLastNote(svoice->midi, svoice->midiSet, svoice->curNote & 0xff);
+    inpSetMidiLastNote(svoice->midi, svoice->midiSet, svoice->curNote & MAC_PACK_MASK_BYTE);
   }
   cstep->para[0] = 4;
   return mcmdWait(svoice, cstep);
 }
 
 static u32 mcmdAddKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  if ((u8)(cstep->para[0] >> 0x18) == 0) {
+  if ((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE) == 0) {
     svoice->curNote += (s8)(u8)(cstep->para[0] >> 8);
   } else {
     svoice->curNote = (u16)svoice->orgNote + (s16)(s8)(u8)(cstep->para[0] >> 8);
   }
 
-  svoice->curNote = (s16)svoice->curNote < 0 ? 0 : svoice->curNote > 0x7f ? 0x7f : svoice->curNote;
-  svoice->curDetune = (s8)(cstep->para[0] >> 0x10);
+  svoice->curNote = (s16)svoice->curNote < 0 ? 0 : svoice->curNote > MAC_PACK_MASK_7BIT ? MAC_PACK_MASK_7BIT : svoice->curNote;
+  svoice->curDetune = (s8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD);
 
   if (voiceIsLastStarted(svoice) != 0) {
     inpSetMidiLastNote(svoice->midi, svoice->midiSet, svoice->curNote);
@@ -441,9 +639,9 @@ static u32 mcmdAddKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
 static u32 mcmdLastKey(SYNTH_VOICE* svoice, MSTEP* cstep) {
   svoice->curNote = svoice->lastNote + (s8)(u8)(cstep->para[0] >> 8);
-  svoice->curNote = (s16)svoice->curNote < 0 ? 0 : svoice->curNote > 0x7f ? 0x7f : svoice->curNote;
+  svoice->curNote = (s16)svoice->curNote < 0 ? 0 : svoice->curNote > MAC_PACK_MASK_7BIT ? MAC_PACK_MASK_7BIT : svoice->curNote;
   svoice->curDetune = (s8)(cstep->para[0] >> 16);
-  if (svoice->midi != 0xFF) {
+  if (svoice->midi != MAC_MIDI_NONE) {
     inpSetMidiLastNote(svoice->midi, svoice->midiSet, svoice->curNote);
   }
   cstep->para[0] = 4;
@@ -459,16 +657,16 @@ static void mcmdStartSample(SYNTH_VOICE* svoice, MSTEP* cstep) {
   if (dataGetSample(smp, &newsmp) != 0) {
     return;
   }
-  switch ((u8)(cstep->para[0] >> 0x18)) {
+  switch ((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE)) {
   case 0:
     newsmp.offset = cstep->para[1];
     break;
   case 1:
-    newsmp.offset = ((u8)(0x7f - (svoice->volume >> 0x10)) * (u32)cstep->para[1]) / 0x7f;
+    newsmp.offset = ((u8)(MAC_PACK_MASK_7BIT - (svoice->volume >> MAC_PACK_SHIFT_HALFWORD)) * (u32)cstep->para[1]) / MAC_PACK_MASK_7BIT;
     ;
     break;
   case 2:
-    newsmp.offset = ((u8)((svoice->volume >> 0x10)) * (u32)cstep->para[1]) / 0x7f;
+    newsmp.offset = ((u8)((svoice->volume >> MAC_PACK_SHIFT_HALFWORD)) * (u32)cstep->para[1]) / MAC_PACK_MASK_7BIT;
     break;
   default:
     newsmp.offset = 0;
@@ -479,32 +677,35 @@ static void mcmdStartSample(SYNTH_VOICE* svoice, MSTEP* cstep) {
     newsmp.offset = newsmp.length - 1;
   }
 
-  hwInitSamplePlayback(svoice->id & 0xFF, smp, &newsmp, (svoice->cFlags & 0x100) == 0,
+  hwInitSamplePlayback(svoice->id & MAC_PACK_MASK_BYTE, smp, &newsmp, (svoice->cFlags & MAC_CFLAG_ADSR) == 0,
                        ((u32)svoice->prio << 24) | ((u32)svoice->age >> 15), svoice->id,
-                       (svoice->cFlags & 0x80000000000) == 0, svoice->itdMode);
+                       (svoice->cFlags & MAC_CFLAG_SRC_MODE) == 0, svoice->itdMode);
 
   svoice->sInfo = newsmp.info;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+  svoice->sampleId = smp;
+#endif
 
   if (svoice->playFrq != -1) {
     DoSetPitch(svoice);
   }
-  svoice->cFlags |= 0x20;
+  svoice->cFlags |= MAC_CFLAG_SAMPLE_ACTIVE;
   synthKeyStateUpdate(svoice);
 }
 
-static void mcmdStopSample(SYNTH_VOICE* svoice) { hwBreak(svoice->id & 0xFF); }
+static void mcmdStopSample(SYNTH_VOICE* svoice) { hwBreak(svoice->id & MAC_PACK_MASK_BYTE); }
 static void mcmdKeyOff(SYNTH_VOICE* svoice) {
-  svoice->cFlags |= 0x80;
+  svoice->cFlags |= MAC_CFLAG_KEYOFF_REQUEST;
   synthKeyStateUpdate(svoice);
 }
 
 static void mcmdSetMod2Vibrato(SYNTH_VOICE* svoice, MSTEP* cstep) {
   svoice->vibModAddScale = (s8)(cstep->para[0] >> 8) << 8;
   if (svoice->vibModAddScale >= 0) {
-    svoice->vibModAddScale += ((s16)(s8)(cstep->para[0] >> 0x10) << 8) / 100;
+    svoice->vibModAddScale += ((s16)(s8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD) << 8) / 100;
 
   } else {
-    svoice->vibModAddScale -= ((s16)(s8)(cstep->para[0] >> 0x10) << 8) / 100;
+    svoice->vibModAddScale -= ((s16)(s8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD) << 8) / 100;
   }
 }
 
@@ -513,13 +714,13 @@ static void mcmdVibrato(SYNTH_VOICE* svoice, MSTEP* cstep) {
   s8 kr;    // r29
   s8 cr;    // r30
 
-  if ((u8)(cstep->para[0] >> 0x18) & 3) {
-    svoice->cFlags |= 0x4000;
+  if ((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE) & 3) {
+    svoice->cFlags |= MAC_CFLAG_VIBRATO_MODE;
   } else {
-    svoice->cFlags &= ~0x4000;
+    svoice->cFlags &= ~MAC_CFLAG_VIBRATO_MODE;
   }
 
-  time = (u16)(cstep->para[1] >> 0x10);
+  time = (u16)(cstep->para[1] >> MAC_PACK_SHIFT_HALFWORD);
   if ((u8)(cstep->para[1] >> 8) & 1) {
     sndConvertMs(&time);
   } else {
@@ -527,7 +728,7 @@ static void mcmdVibrato(SYNTH_VOICE* svoice, MSTEP* cstep) {
   }
 
   if (time) {
-    svoice->cFlags |= 0x2000;
+    svoice->cFlags |= MAC_CFLAG_VIBRATO;
     svoice->vibPeriod = time;
 
     kr = (s8)(cstep->para[0] >> 8);
@@ -559,7 +760,7 @@ static void mcmdVibrato(SYNTH_VOICE* svoice, MSTEP* cstep) {
       svoice->vibKeyRange = kr;
     }
   } else {
-    svoice->cFlags &= ~0x2000;
+    svoice->cFlags &= ~MAC_CFLAG_VIBRATO;
   }
 }
 
@@ -569,7 +770,7 @@ static void mcmdSetupLFO(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u8 n;      // r31
 
   n = (u8)(cstep->para[0] >> 8);
-  time = (u16)(cstep->para[0] >> 0x10);
+  time = (u16)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD);
   sndConvertMs(&time);
   if (svoice->lfo[n].period != 0) {
     phase = (u16)cstep->para[1];
@@ -592,8 +793,8 @@ static void DoSetPitch(SYNTH_VOICE* svoice) {
       4096, 4339, 4597, 4871, 5160, 5467, 5792, 6137, 6502, 6888, 7298, 7732, 8192,
   };
 
-  frq = svoice->playFrq & 0xFFFFFF;
-  ofrq = svoice->sInfo & 0xFFFFFF;
+  frq = svoice->playFrq & MAC_PACK_MASK_FREQUENCY;
+  ofrq = svoice->sInfo & MAC_PACK_MASK_FREQUENCY;
 
   if (ofrq == frq) {
     svoice->curNote = svoice->sInfo >> 24;
@@ -669,7 +870,7 @@ static void mcmdSetADSR(SYNTH_VOICE* svoice, MSTEP* cstep) {
       adsr.data.linear.slevel = adsr_ptr->data.linear.slevel >> 8 | adsr_ptr->data.linear.slevel
                                                                         << 8;
       adsr.data.linear.rtime = adsr_ptr->data.linear.rtime >> 8 | adsr_ptr->data.linear.rtime << 8;
-      hwSetADSR(svoice->id & 0xFF, &adsr, FALSE);
+      hwSetADSR(svoice->id & MAC_PACK_MASK_BYTE, &adsr, FALSE);
     } else {
       sScale =
           dspDLSVolTab[(u16)(adsr_ptr->data.dls.slevel >> 8 | adsr_ptr->data.dls.slevel << 8) >> 5];
@@ -689,18 +890,18 @@ static void mcmdSetADSR(SYNTH_VOICE* svoice, MSTEP* cstep) {
           ((u8*)&adsr_ptr->data.dls.dscale)[0] << 0 | ((u8*)&adsr_ptr->data.dls.dscale)[1] << 8 |
           ((u8*)&adsr_ptr->data.dls.dscale)[2] << 16 | ((u8*)&adsr_ptr->data.dls.dscale)[3] << 24;
 
-      if (ascale != 0x80000000) {
+      if (ascale != MAC_ADSR_SCALE_UNSET) {
         adsr.data.dls.atime += (s32)(FLT_EPSILON * svoice->orgVolume * ascale);
       }
 
-      if (dscale != 0x80000000) {
+      if (dscale != MAC_ADSR_SCALE_UNSET) {
         adsr.data.dls.dtime += (s32)(0.0078125f * svoice->orgNote * dscale);
       }
 
-      hwSetADSR(svoice->id & 0xFF, &adsr, TRUE);
+      hwSetADSR(svoice->id & MAC_PACK_MASK_BYTE, &adsr, TRUE);
     }
 
-    svoice->cFlags |= 0x100;
+    svoice->cFlags |= MAC_CFLAG_ADSR;
   }
 }
 
@@ -718,7 +919,6 @@ static s32 midi2TimeTab[128] = {
     150000, 155000, 160000, 165000, 170000, 175000, 180000, 0,
 };
 
-#pragma dont_inline on
 static void mcmdSetADSRFromCtrl(SYNTH_VOICE* svoice, MSTEP* cstep) {
   // Local variables
   f32 sScale;     // f31
@@ -732,10 +932,10 @@ static void mcmdSetADSRFromCtrl(SYNTH_VOICE* svoice, MSTEP* cstep) {
   adsr.data.dls.slevel = 193 - dspScale2IndexTab[(u32)(1023.f * sScale)];
   adsr.data.dls.rtime =
       midi2TimeTab[inpGetMidiCtrl(cstep->para[1], svoice->midi, svoice->midiSet) >> 7];
-  adsr.data.dls.ascale = -0x80000000;
-  adsr.data.dls.dscale = -0x80000000;
+  adsr.data.dls.ascale = MAC_ADSR_SCALE_MIN;
+  adsr.data.dls.dscale = MAC_ADSR_SCALE_MIN;
   hwSetADSR((u8)svoice->id, &adsr, 2);
-  svoice->cFlags |= 0x100;
+  svoice->cFlags |= MAC_CFLAG_ADSR;
 }
 
 static void mcmdSetPitchADSR(SYNTH_VOICE* svoice, MSTEP* cstep) {
@@ -775,10 +975,10 @@ static void mcmdSetPitchADSR(SYNTH_VOICE* svoice, MSTEP* cstep) {
       (((u8*)&adsr_ptr->data.dls.dscale)[0] << 0) | (((u8*)&adsr_ptr->data.dls.dscale)[1] << 8) |
       (((u8*)&adsr_ptr->data.dls.dscale)[2] << 16) | (((u8*)&adsr_ptr->data.dls.dscale)[3] << 24);
 
-  if (ascale != 0x80000000) {
+  if (ascale != MAC_ADSR_SCALE_UNSET) {
     adsr.data.dls.atime += (s32)((FLT_EPSILON * svoice->orgVolume) * (f32)ascale);
   }
-  if (dscale != 0x80000000) {
+  if (dscale != MAC_ADSR_SCALE_UNSET) {
     adsr.data.dls.dtime += (s32)((0.0078125f * svoice->orgNote) * (f32)dscale);
   }
 
@@ -787,31 +987,29 @@ static void mcmdSetPitchADSR(SYNTH_VOICE* svoice, MSTEP* cstep) {
   svoice->pitchADSR.data.dls.aTime = adsrConvertTimeCents(adsr.data.dls.atime);
   svoice->pitchADSR.data.dls.dTime = adsrConvertTimeCents(adsr.data.dls.dtime);
   sl = adsr.data.dls.slevel >> 2;
-  if (sl > 0x3ff) {
-    sl = 0x3ff;
+  if (sl > MAC_PACK_MASK_ADSR_SCALE) {
+    sl = MAC_PACK_MASK_ADSR_SCALE;
   }
 
   svoice->pitchADSR.data.dls.sLevel = 193 - dspScale2IndexTab[sl];
   svoice->pitchADSR.data.dls.rTime = adsr.data.dls.rtime;
   ;
   adsrSetup(&svoice->pitchADSR);
-  svoice->cFlags |= 0x20000000000;
+  svoice->cFlags |= MAC_CFLAG_PITCH_ADSR;
 }
-
-#pragma dont_inline reset
 
 static u32 mcmdPitchSweep(SYNTH_VOICE* svoice, MSTEP* cstep, int num) {
   s32 delta; // r31
   svoice->sweepOff[num] = 0;
   svoice->sweepNum[num] = (u8)(cstep->para[0] >> 8);
-  svoice->sweepCnt[num] = (s32)svoice->sweepNum[num] << 0x10;
-  delta = (int)(short)(cstep->para[0] >> 0x10);
+  svoice->sweepCnt[num] = (s32)svoice->sweepNum[num] << MAC_PACK_SHIFT_HALFWORD;
+  delta = (int)(short)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD);
   if (delta >= 0) {
     delta = hwFrq2Pitch(delta);
   } else {
     delta = -hwFrq2Pitch(-delta);
   }
-  svoice->sweepAdd[num] = delta << 0x10;
+  svoice->sweepAdd[num] = delta << MAC_PACK_SHIFT_HALFWORD;
   cstep->para[0] = 0;
   return mcmdWait(svoice, cstep);
 }
@@ -823,14 +1021,14 @@ static void DoPanningSetup(SYNTH_VOICE* svoice, MSTEP* cstep, u8 pi) {
   sndConvertMs(&svoice->panTime[pi]);
   mstime = (s8)(cstep->para[1]);
   svoice->panning[pi] = ((u8)(cstep->para[0] >> 8)) << 16;
-  svoice->panTarget[pi] = svoice->panning[pi] + mstime * 0x10000;
+  svoice->panTarget[pi] = svoice->panning[pi] + mstime * MAC_FIXED_POINT_UNIT;
   if (svoice->panTime[pi] != 0) {
     svoice->panDelta[pi] = (s32)(mstime << 16) / width;
   } else {
     svoice->panDelta[pi] = (s32)(mstime << 16);
   }
 
-  svoice->cFlags |= 0x200000000000;
+  svoice->cFlags |= MAC_CFLAG_PANNING;
 }
 
 static void mcmdSetPanning(SYNTH_VOICE* svoice, MSTEP* cstep) { DoPanningSetup(svoice, cstep, 0); }
@@ -845,8 +1043,8 @@ static void mcmdSetPianoPanning(SYNTH_VOICE* svoice, MSTEP* cstep) {
   delta = (svoice->curNote << 16) - ((u8)(cstep->para[0] >> 16) << 16);
   scale = (s8)((u8)(cstep->para[0] >> 8));
   delta = ((delta * scale) >> 7);
-  delta += (u8)(cstep->para[0] >> 0x18) << 16;
-  delta = delta < 0 ? 0 : delta > 0x7f0000 ? 0x7f0000 : delta;
+  delta += (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE) << 16;
+  delta = delta < 0 ? 0 : delta > MAC_PANNING_MAX ? MAC_PANNING_MAX : delta;
   svoice->panTarget[0] = delta;
   svoice->panning[0] = delta;
 }
@@ -857,12 +1055,12 @@ static u32 TranslateVolume(u32 volume, u16 curve) {
   u32 vhigh; // r31
   s32 d;     // r27
 
-  if (curve != 0xFFFF) {
+  if (curve != MAC_CURVE_NONE) {
     if ((ptr = (u8*)dataGetCurve(curve))) {
-      vhigh = (volume >> 16) & 0xFFFF;
-      vlow = volume & 0xFFFF;
+      vhigh = (volume >> 16) & MAC_PACK_MASK_HALFWORD;
+      vlow = volume & MAC_PACK_MASK_HALFWORD;
 
-      if (vhigh < 0x7f) {
+      if (vhigh < MAC_PACK_MASK_7BIT) {
         d = vlow * (ptr[vhigh + 1] - ptr[vhigh]);
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 0)
         volume = d + ((u16)ptr[vhigh] << 16);
@@ -884,40 +1082,40 @@ static void mcmdScaleVolume(SYNTH_VOICE* svoice, MSTEP* cstep) {
   scale = (u16)(u8)(cstep->para[0] >> 8);
 
   if ((u8)(cstep->para[1] >> 8) == 0) {
-    svoice->volume = (svoice->volume * scale) / 0x7f;
+    svoice->volume = (svoice->volume * scale) / MAC_PACK_MASK_7BIT;
   } else {
-    svoice->volume = (svoice->orgVolume * scale) / 0x7f;
+    svoice->volume = (svoice->orgVolume * scale) / MAC_PACK_MASK_7BIT;
   }
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 0)
   svoice->volume += (u8)(cstep->para[0] >> 16) << 16;
 #else
   svoice->volume += EXTRACT_3RDNYBBLE(cstep->para[0]);
 #endif
-  if (svoice->volume > 0x7f0000) {
-    svoice->volume = 0x7f0000;
+  if (svoice->volume > MAC_VOLUME_MAX) {
+    svoice->volume = MAC_VOLUME_MAX;
   }
 
-  curve = (u8)(cstep->para[0] >> 0x18);
+  curve = (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE);
   curve |= ((u16)((u8)cstep->para[1]) << 8);
 
   svoice->volume = TranslateVolume(svoice->volume, curve);
-  svoice->cFlags |= 0x100000000000;
+  svoice->cFlags |= MAC_CFLAG_VOLUME;
 }
 
 static void mcmdScaleVolumeDLS(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u16 scale; // r31
 
   scale = (cstep->para[0] >> 8);
-  if ((u8)(cstep->para[0] >> 0x18) == 0) {
+  if ((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE) == 0) {
     svoice->volume = ((svoice->volume >> 5) * scale) >> 7;
   } else {
     svoice->volume = ((svoice->orgVolume >> 5) * scale) >> 7;
   }
-  if (svoice->volume > 0x7f0000) {
-    svoice->volume = 0x7f0000;
+  if (svoice->volume > MAC_VOLUME_MAX) {
+    svoice->volume = MAC_VOLUME_MAX;
   }
 
-  svoice->cFlags |= 0x100000000000;
+  svoice->cFlags |= MAC_CFLAG_VOLUME;
 }
 
 static void DoEnvelopeCalculation(SYNTH_VOICE* svoice, MSTEP* cstep, s32 start_vol) {
@@ -942,18 +1140,18 @@ static void DoEnvelopeCalculation(SYNTH_VOICE* svoice, MSTEP* cstep, s32 start_v
   tvol = (svoice->volume * (u8)(cstep->para[0] >> 8) >> 7);
   tvol += (u8)(cstep->para[0] >> 16) << 16;
 
-  if (tvol > 0x7f0000) {
-    tvol = 0x7f0000;
+  if (tvol > MAC_VOLUME_MAX) {
+    tvol = MAC_VOLUME_MAX;
   }
 
-  curve = (u16)(u8)(cstep->para[0] >> 0x18);
+  curve = (u16)(u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE);
   curve |= (((u16)(u8)cstep->para[1]) << 8);
   tvol = TranslateVolume(tvol, curve);
   svoice->envTarget = tvol;
   svoice->envCurrent = start_vol;
   svoice->envDelta = (s32)(tvol - start_vol) / mstime;
   svoice->volume = start_vol;
-  svoice->cFlags |= 0x8000;
+  svoice->cFlags |= MAC_CFLAG_ENVELOPE;
 }
 
 static void mcmdEnvelope(SYNTH_VOICE* svoice, MSTEP* cstep) {
@@ -993,15 +1191,15 @@ static void mcmdRandomKey(SYNTH_VOICE* svoice /* r28 */, MSTEP* cstep /* r31 */)
     detune = (u8)(cstep->para[0] >> 16);
   }
 
-  cstep->para[0] = ((u8)detune << 16) | 0x19 | ((k1 + (sndRand() % ((k2 - k1) + 1))) * 0x100);
+  cstep->para[0] = ((u8)detune << 16) | MAC_CMD_SET_KEY | ((k1 + (sndRand() % ((k2 - k1) + 1))) * MAC_PACK_SCALE_BYTE);
   cstep->para[1] = 0;
   mcmdSetKey(svoice, cstep);
 }
 
-static void mcmdSetPitchbendAfterKeyOff(SYNTH_VOICE* svoice) { svoice->cFlags |= 0x10000; }
+static void mcmdSetPitchbendAfterKeyOff(SYNTH_VOICE* svoice) { svoice->cFlags |= MAC_CFLAG_PITCHBEND_AFTER_KEYOFF; }
 static void mcmdScaleReverb(SYNTH_VOICE* svoice, MSTEP* cstep) {
   svoice->revVolScale = (u8)(cstep->para[0] >> 8);
-  svoice->revVolOffset = (u8)(cstep->para[0] >> 0x10);
+  svoice->revVolOffset = (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD);
 }
 static void SelectSource(SYNTH_VOICE* svoice, CTRL_DEST* dest, MSTEP* cstep, u64 tstflag,
                          u32 dirtyFlag) {
@@ -1017,14 +1215,14 @@ static void SelectSource(SYNTH_VOICE* svoice, CTRL_DEST* dest, MSTEP* cstep, u64
 
   scale = ((s16)(cstep->para[0] >> 16) << 16) / 100;
   if (scale < 0) {
-    scale -= ((s8)(cstep->para[1] >> 0x10) << 8) / 100;
+    scale -= ((s8)(cstep->para[1] >> MAC_PACK_SHIFT_HALFWORD) << 8) / 100;
   } else {
-    scale += ((s8)(cstep->para[1] >> 0x10) << 8) / 100;
+    scale += ((s8)(cstep->para[1] >> MAC_PACK_SHIFT_HALFWORD) << 8) / 100;
   }
 
   inpAddCtrl(dest, (u8)(cstep->para[0] >> 8), scale, comb, (u8)(cstep->para[1] >> 8) != 0);
 
-  if ((dirtyFlag & 0x80000000) != 0) {
+  if ((dirtyFlag & MAC_DIRTY_GLOBAL) != 0) {
     inpSetGlobalMIDIDirtyFlag(svoice->midi, svoice->midiSet, dirtyFlag);
   } else {
     svoice->midiDirtyFlags |= dirtyFlag;
@@ -1032,70 +1230,82 @@ static void SelectSource(SYNTH_VOICE* svoice, CTRL_DEST* dest, MSTEP* cstep, u64
 }
 
 static void mcmdVolumeSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpVolume, cstep, 0x80000, 1);
+  SelectSource(svoice, &svoice->inpVolume, cstep, MAC_SOURCE_VOLUME, 1);
 }
 
 static void mcmdPanningSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPanning, cstep, 0x100000, 2);
+  SelectSource(svoice, &svoice->inpPanning, cstep, MAC_SOURCE_PANNING, 2);
 }
 
 static void mcmdPitchWheelSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPitchBend, cstep, 0x200000, 8);
+  SelectSource(svoice, &svoice->inpPitchBend, cstep, MAC_SOURCE_PITCH_BEND, 8);
 }
 
 static void mcmdModWheelSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpModulation, cstep, 0x400000, 0x20);
+  SelectSource(svoice, &svoice->inpModulation, cstep, MAC_SOURCE_MODULATION, MAC_DIRTY_MODULATION);
 }
 
 static void mcmdPedalSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPedal, cstep, 0x2000000, 0x40);
+  SelectSource(svoice, &svoice->inpPedal, cstep, MAC_SOURCE_PEDAL, MAC_DIRTY_PEDAL);
 }
 
 static void mcmdPortamentoSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPortamento, cstep, 0x1000000, 0x80);
+  SelectSource(svoice, &svoice->inpPortamento, cstep, MAC_SOURCE_PORTAMENTO, MAC_DIRTY_PORTAMENTO);
 }
 
 static void mcmdReverbSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpReverb, cstep, 0x800000, 0x200);
+  SelectSource(svoice, &svoice->inpReverb, cstep, MAC_SOURCE_REVERB, MAC_DIRTY_REVERB);
 }
 
 static void mcmdPreAuxASelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPreAuxA, cstep, 0x20000000, 0x100);
+  SelectSource(svoice, &svoice->inpPreAuxA, cstep, MAC_SOURCE_PRE_AUX_A, MAC_DIRTY_PRE_AUX_A);
 }
 
 static void mcmdPreAuxBSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPreAuxB, cstep, 0x40000000, 0x400);
+  SelectSource(svoice, &svoice->inpPreAuxB, cstep, MAC_SOURCE_PRE_AUX_B, MAC_DIRTY_PRE_AUX_B);
 }
 
 static void mcmdPostAuxBSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpPostAuxB, cstep, 0x80000000, 0x800);
+  SelectSource(svoice, &svoice->inpPostAuxB, cstep, MAC_SOURCE_POST_AUX_B, MAC_DIRTY_POST_AUX_B);
 }
 
 static void mcmdSurroundPanningSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpSurroundPanning, cstep, 0x4000000, 4);
+  SelectSource(svoice, &svoice->inpSurroundPanning, cstep, MAC_SOURCE_SURROUND_PANNING, 4);
 }
 
 static void mcmdDopplerSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpDoppler, cstep, 0x8000000, 0x10);
+  SelectSource(svoice, &svoice->inpDoppler, cstep, MAC_SOURCE_DOPPLER, MAC_DIRTY_DOPPLER);
 }
 
 static void mcmdTremoloSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  SelectSource(svoice, &svoice->inpTremolo, cstep, 0x10000000, 0x1000);
+  SelectSource(svoice, &svoice->inpTremolo, cstep, MAC_SOURCE_TREMOLO, MAC_DIRTY_TREMOLO);
 }
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+static void mcmdFilterSwitchSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
+  SelectSource(svoice, &svoice->inpFilterSwitch, cstep, MAC_FILTER_SWITCH_SOURCE_FLAG,
+               MAC_FILTER_SWITCH_DIRTY_FLAG);
+}
+
+static void mcmdFilterParameterSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
+  SelectSource(svoice, &svoice->inpFilterParameter, cstep, MAC_FILTER_PARAMETER_SOURCE_FLAG,
+               MAC_FILTER_PARAMETER_DIRTY_FLAG);
+}
+#endif
 
 static void mcmdAuxAFXSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 i;                                                                     // r31
-  static u64 mask[4] = {0x100000000, 0x200000000, 0x400000000, 0x800000000}; // size: 0x20
-  static u32 dirty[4] = {0x80000001, 0x80000002, 0x80000004, 0x80000008};    // size: 0x10
-  i = (u8)(cstep->para[1] >> 0x18);
+  static u64 mask[4] = {MAC_AUX_A_SOURCE_0, MAC_AUX_A_SOURCE_1, MAC_AUX_A_SOURCE_2, MAC_AUX_A_SOURCE_3}; // size: 0x20
+  static u32 dirty[4] = {MAC_AUX_A_DIRTY_0, MAC_AUX_A_DIRTY_1, MAC_AUX_A_DIRTY_2, MAC_AUX_A_DIRTY_3};    // size: 0x10
+  i = (u8)(cstep->para[1] >> MAC_PACK_SHIFT_HIGH_BYTE);
   SelectSource(svoice, &inpAuxA[svoice->studio][i], cstep, mask[i], dirty[i]);
 }
 
 static void mcmdAuxBFXSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 i;                                                                         // r31
-  static u64 mask[4] = {0x1000000000, 0x2000000000, 0x4000000000, 0x8000000000}; // size: 0x20
-  static u32 dirty[4] = {0x80000010, 0x80000020, 0x80000040, 0x80000080};        // size: 0x10
-  i = (u8)(cstep->para[1] >> 0x18);
+  static u64 mask[4] = {MAC_AUX_B_SOURCE_0, MAC_AUX_B_SOURCE_1, MAC_AUX_B_SOURCE_2, MAC_AUX_B_SOURCE_3}; // size: 0x20
+  static u32 dirty[4] = {MAC_AUX_B_DIRTY_0, MAC_AUX_B_DIRTY_1, MAC_AUX_B_DIRTY_2, MAC_AUX_B_DIRTY_3};        // size: 0x10
+  i = (u8)(cstep->para[1] >> MAC_PACK_SHIFT_HIGH_BYTE);
   SelectSource(svoice, &inpAuxB[svoice->studio][i], cstep, mask[i], dirty[i]);
 }
 
@@ -1113,24 +1323,24 @@ static void mcmdPortamento(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
   switch ((u8)(cstep->para[0] >> 8)) {
   case 0:
-    if (svoice->midi != 0xFF) {
-      inpSetMidiCtrl(0x41, svoice->midi, svoice->midiSet, 0);
+    if (svoice->midi != MAC_MIDI_NONE) {
+      inpSetMidiCtrl(MAC_MIDI_CTRL_PORTAMENTO, svoice->midi, svoice->midiSet, 0);
     }
 
-    svoice->cFlags &= ~0x400;
+    svoice->cFlags &= ~MAC_CFLAG_PORTAMENTO;
     return;
   case 1:
-    if (svoice->midi != 0xFF) {
-      inpSetMidiCtrl(0x41, svoice->midi, svoice->midiSet, 0x7f);
+    if (svoice->midi != MAC_MIDI_NONE) {
+      inpSetMidiCtrl(MAC_MIDI_CTRL_PORTAMENTO, svoice->midi, svoice->midiSet, MAC_PACK_MASK_7BIT);
     }
   init_port:
-    if (!(svoice->cFlags & 0x400)) {
+    if (!(svoice->cFlags & MAC_CFLAG_PORTAMENTO)) {
       synthInitPortamento(svoice);
     }
-    svoice->cFlags |= 0x400;
+    svoice->cFlags |= MAC_CFLAG_PORTAMENTO;
     break;
   case 2:
-    if (svoice->midi != 0xFF && inpGetMidiCtrl(0x41, svoice->midi, svoice->midiSet) > 8064) {
+    if (svoice->midi != MAC_MIDI_NONE && inpGetMidiCtrl(MAC_MIDI_CTRL_PORTAMENTO, svoice->midi, svoice->midiSet) > 8064) {
       goto init_port;
     }
     break;
@@ -1142,7 +1352,7 @@ s32 varGet32(SYNTH_VOICE* svoice, u32 ctrl, u8 index) {
     return inpGetExCtrl(svoice, index);
   }
 
-  index &= 0x1f;
+  index &= MAC_VAR_INDEX_MASK;
   return index < 16 ? svoice->local_vars[index] : synthGlobalVariable[index - 16];
 }
 
@@ -1153,7 +1363,7 @@ void varSet32(SYNTH_VOICE* svoice, u32 ctrl, u8 index, s32 v) {
     inpSetExCtrl(svoice, index, v);
     return;
   }
-  index &= 0x1f;
+  index &= MAC_VAR_INDEX_MASK;
 
   if (index < 16) {
     svoice->local_vars[index] = v;
@@ -1191,14 +1401,14 @@ static void mcmdVarCalculation(SYNTH_VOICE* svoice, MSTEP* cstep, u8 op) {
     break;
   }
 
-  varSet(svoice, (u8)(cstep->para[0] >> 8), (u8)(cstep->para[0] >> 0x10),
-         (t < -0x8000  ? -0x8000
-          : t > 0x7FFF ? 0x7FFF
+  varSet(svoice, (u8)(cstep->para[0] >> 8), (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD),
+         (t < MAC_SIGNED_16BIT_MIN  ? MAC_SIGNED_16BIT_MIN
+          : t > MAC_SIGNED_16BIT_MAX ? MAC_SIGNED_16BIT_MAX
                        : t));
 }
 
 static void mcmdSetVarImmediate(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  varSet(svoice, (u8)(cstep->para[0] >> 8), (u8)(cstep->para[0] >> 0x10), (s16)cstep->para[1]);
+  varSet(svoice, (u8)(cstep->para[0] >> 8), (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD), (s16)cstep->para[1]);
 }
 
 static void mcmdIfVarCompare(SYNTH_VOICE* svoice, MSTEP* cstep, u8 cmp) {
@@ -1206,8 +1416,8 @@ static void mcmdIfVarCompare(SYNTH_VOICE* svoice, MSTEP* cstep, u8 cmp) {
   s32 b;     // r27
   u8 result; // r30
 
-  a = varGet32(svoice, (u8)(cstep->para[0] >> 8), (u8)(cstep->para[0] >> 0x10));
-  b = varGet32(svoice, (u8)(cstep->para[0] >> 0x18), (u8)cstep->para[1]);
+  a = varGet32(svoice, (u8)(cstep->para[0] >> 8), (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD));
+  b = varGet32(svoice, (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HIGH_BYTE), (u8)cstep->para[1]);
 
   switch (cmp) {
   case 0:
@@ -1222,12 +1432,12 @@ static void mcmdIfVarCompare(SYNTH_VOICE* svoice, MSTEP* cstep, u8 cmp) {
     result = !result;
   }
   if ((u8)result != 0) {
-    svoice->curAddr = svoice->addr + (u16)(cstep->para[1] >> 0x10);
+    svoice->curAddr = svoice->addr + (u16)(cstep->para[1] >> MAC_PACK_SHIFT_HALFWORD);
   }
 }
 bool macPostMessage(u32 vid, s32 mesg) {
   SYNTH_VOICE* sv; // r31
-  if ((vid = vidGetInternalId(vid)) != -1 && (sv = &synthVoice[vid & 0xFF])->mesgNum < 4) {
+  if ((vid = vidGetInternalId(vid)) != -1 && (sv = &synthVoice[vid & MAC_PACK_MASK_BYTE])->mesgNum < 4) {
     ++sv->mesgNum;
     sv->mesgQueue[sv->mesgWrite] = mesg;
     sv->mesgWrite = (sv->mesgWrite + 1) & 3;
@@ -1246,7 +1456,7 @@ static void mcmdSendMessage(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
   if (!(u8)(cstep->para[0] >> 8)) {
     macro = (u16)(cstep->para[0] >> 16);
-    if (macro != 0xFFFF) {
+    if (macro != MAC_MESSAGE_MACRO_NONE) {
       for (i = 0; i < synthInfo.voiceNum; ++i) {
         if (synthVoice[i].addr != NULL && macro == synthVoice[i].macroId) {
           macPostMessage(synthVoice[i].vidList->vid, mesg);
@@ -1272,7 +1482,7 @@ static void mcmdGetMessage(SYNTH_VOICE* svoice, MSTEP* cstep) {
 }
 
 static void mcmdGetVID(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  if ((u8)(cstep->para[0] >> 0x10) == 0) {
+  if ((u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD) == 0) {
     varSet32(svoice, 0, (u8)(cstep->para[0] >> 8), svoice->vidList->vid);
   } else {
     varSet32(svoice, 0, (u8)(cstep->para[0] >> 8), svoice->lastVID);
@@ -1280,12 +1490,12 @@ static void mcmdGetVID(SYNTH_VOICE* svoice, MSTEP* cstep) {
 }
 static void mcmdModeSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
   svoice->volTable = (u8)(cstep->para[0] >> 8) ? TRUE : FALSE;
-  svoice->itdMode = (u8)(cstep->para[0] >> 0x10) ? FALSE : TRUE;
+  svoice->itdMode = (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD) ? FALSE : TRUE;
 }
 static void mcmdSRCModeSelect(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  hwSetSRCType(svoice->id & 0xff, (u8)(cstep->para[0] >> 8));
-  hwSetPolyPhaseFilter(svoice->id & 0xff, (u8)(cstep->para[0] >> 0x10));
-  svoice->cFlags |= 0x80000000000;
+  hwSetSRCType(svoice->id & MAC_PACK_MASK_BYTE, (u8)(cstep->para[0] >> 8));
+  hwSetPolyPhaseFilter(svoice->id & MAC_PACK_MASK_BYTE, (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD));
+  svoice->cFlags |= MAC_CFLAG_SRC_MODE;
 }
 static void mcmdSetKeyGroup(SYNTH_VOICE* svoice, MSTEP* cstep) {
   u32 i;    // r31
@@ -1294,11 +1504,11 @@ static void mcmdSetKeyGroup(SYNTH_VOICE* svoice, MSTEP* cstep) {
 
   svoice->keyGroup = 0;
   kg = (u8)(cstep->para[0] >> 8);
-  kill = (u8)(cstep->para[0] >> 0x10) != 0;
+  kill = (u8)(cstep->para[0] >> MAC_PACK_SHIFT_HALFWORD) != 0;
 
   if (kg) {
     for (i = 0; i < synthInfo.voiceNum; ++i) {
-      if (synthVoice[i].addr != NULL && (synthVoice[i].cFlags & 0x2) == 0 &&
+      if (synthVoice[i].addr != NULL && (synthVoice[i].cFlags & MAC_CFLAG_VOICE_ALLOCATED) == 0 &&
           kg == synthVoice[i].keyGroup) {
         if (!kill) {
           macSetExternalKeyoff(&synthVoice[i]);
@@ -1326,7 +1536,7 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
   if (svoice->cFlags & 3) {
     if (svoice->cFlags & 1) {
       svoice->cFlags &= ~1;
-      hwBreak(svoice->id & 0xFF);
+      hwBreak(svoice->id & MAC_PACK_MASK_BYTE);
     }
 
     svoice->panning[0] = svoice->panTarget[0] = (u32)(svoice->setup.pan) << 16;
@@ -1343,7 +1553,7 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     svoice->vibModAddScale = 0;
     svoice->treScale = 0;
     inpInit(svoice);
-    if ((lastNote = inpGetMidiLastNote(svoice->midi, svoice->midiSet)) != 0xFF) {
+    if ((lastNote = inpGetMidiLastNote(svoice->midi, svoice->midiSet)) != MAC_MIDI_NONE) {
       svoice->lastNote = lastNote;
     } else {
       svoice->lastNote = svoice->orgNote;
@@ -1356,7 +1566,7 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     svoice->portTime = 0;
     svoice->portDuration = 25600;
     svoice->portType = 0;
-    if (svoice->midi != 0xff) {
+    if (svoice->midi != MAC_MIDI_NONE) {
       svoice->portLastCtrlState = inpGetMidiCtrl(65, svoice->midi, svoice->midiSet);
     } else {
       svoice->portLastCtrlState = 0;
@@ -1364,6 +1574,10 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     channelDefaults = inpGetChannelDefaults(svoice->midi, svoice->midiSet);
     svoice->pbLowerKeyRange = channelDefaults->pbRange;
     svoice->pbUpperKeyRange = channelDefaults->pbRange;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+    svoice->lpfLowerFrqBoundary = channelDefaults->lpfLowerFrqBoundary;
+    svoice->lpfUpperFrqBoundary = channelDefaults->lpfUpperFrqBoundary;
+#endif
     svoice->revVolScale = 128;
     svoice->revVolOffset = 0;
     svoice->loop = 0;
@@ -1373,10 +1587,10 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     svoice->sweepOff[1] = 0;
     svoice->lfo[0].period = 0;
     svoice->lfo[0].value = 0;
-    svoice->lfo[0].lastValue = 0x7fff;
+    svoice->lfo[0].lastValue = MAC_SIGNED_16BIT_MAX;
     svoice->lfo[1].period = 0;
     svoice->lfo[1].value = 0;
-    svoice->lfo[1].lastValue = 0x7fff;
+    svoice->lfo[1].lastValue = MAC_SIGNED_16BIT_MAX;
 
     for (i = 0; i < 3; ++i) {
       svoice->trapEventAddr[i] = NULL;
@@ -1385,10 +1599,13 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     svoice->trapEventAny = 0;
     svoice->sInfo = -1;
     svoice->playFrq = -1;
-    svoice->pbLast = 0x2000;
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+    svoice->sampleId = MAC_SAMPLE_ID_NONE;
+#endif
+    svoice->pbLast = MAC_PITCHBEND_CENTER;
     svoice->curOutputVolume = 0;
     svoice->cFlags &= 8;
-    svoice->cFlags |= 0x300000000000;
+    svoice->cFlags |= MAC_CFLAG_INITIALIZED;
     memset(svoice->local_vars, 0, sizeof(svoice->local_vars));
     svoice->waitTime = macRealTime;
     svoice->macStartTime = macRealTime;
@@ -1406,245 +1623,253 @@ static void macHandleActive(SYNTH_VOICE* svoice) {
     cstep.para[1] = svoice->curAddr->para[1];
     ++svoice->curAddr;
     ex = 0;
-    switch (cstep.para[0] & 0x7f) {
-    case 0x0:
+    switch (cstep.para[0] & MAC_PACK_MASK_7BIT) {
+    case MAC_CMD_END_OF_MACRO:
       ex = mcmdEndOfMacro(svoice);
       break;
-    case 0x1:
+    case MAC_CMD_STOP:
       ex = mcmdStop(svoice);
       break;
-    case 0x2:
+    case MAC_CMD_IF_KEY:
       mcmdIfKey(svoice, &cstep);
       break;
-    case 0x3:
+    case MAC_CMD_IF_VELOCITY:
       mcmdIfVelocity(svoice, &cstep);
       break;
-    case 0x4:
+    case MAC_CMD_WAIT:
       ex = mcmdWait(svoice, &cstep);
       break;
-    case 0x5:
+    case MAC_CMD_LOOP:
       mcmdLoop(svoice, &cstep);
       break;
-    case 0x6:
+    case MAC_CMD_GOTO:
       ex = mcmdGoto(svoice, &cstep);
       break;
-    case 0x7:
+    case MAC_CMD_WAIT_MS:
       ex = mcmdWaitMs(svoice, &cstep);
       break;
-    case 0x8:
+    case MAC_CMD_PLAY_MACRO:
       mcmdPlayMacro(svoice, &cstep);
       break;
-    case 0x9:
+    case MAC_CMD_SEND_KEY_OFF:
       mcmdSendKeyOff(svoice, &cstep);
       break;
-    case 0xa:
+    case MAC_CMD_IF_MODULATION:
       mcmdIfModulation(svoice, &cstep);
       break;
-    case 0xb:
+    case MAC_CMD_SET_PIANO_PANNING:
       mcmdSetPianoPanning(svoice, &cstep);
       break;
-    case 0xc:
+    case MAC_CMD_SET_ADSR:
       mcmdSetADSR(svoice, &cstep);
       break;
-    case 0xd:
+    case MAC_CMD_SCALE_VOLUME:
       mcmdScaleVolume(svoice, &cstep);
       break;
-    case 0xe:
+    case MAC_CMD_SET_PANNING:
       mcmdSetPanning(svoice, &cstep);
       break;
-    case 0xf:
+    case MAC_CMD_ENVELOPE:
       mcmdEnvelope(svoice, &cstep);
       break;
-    case 0x10:
+    case MAC_CMD_START_SAMPLE:
       mcmdStartSample(svoice, &cstep);
       break;
-    case 0x11:
+    case MAC_CMD_STOP_SAMPLE:
       mcmdStopSample(svoice);
       break;
-    case 0x12:
+    case MAC_CMD_KEY_OFF:
       mcmdKeyOff(svoice);
       break;
-    case 0x13:
+    case MAC_CMD_IF_RANDOM:
       mcmdIfRandom(svoice, &cstep);
       break;
-    case 0x14:
+    case MAC_CMD_FADE_IN:
       mcmdFadeIn(svoice, &cstep);
       break;
-    case 0x15:
+    case MAC_CMD_SET_SURROUND_PANNING:
       mcmdSetSurroundPanning(svoice, &cstep);
       break;
-    case 0x16:
+    case MAC_CMD_SET_ADSR_FROM_CTRL:
       mcmdSetADSRFromCtrl(svoice, &cstep);
       break;
-    case 0x17:
+    case MAC_CMD_RANDOM_KEY:
       mcmdRandomKey(svoice, &cstep);
       break;
-    case 0x18:
+    case MAC_CMD_ADD_KEY:
       ex = mcmdAddKey(svoice, &cstep);
       break;
-    case 0x19:
+    case MAC_CMD_SET_KEY:
       ex = mcmdSetKey(svoice, &cstep);
       break;
-    case 0x1a:
+    case MAC_CMD_LAST_KEY:
       ex = mcmdLastKey(svoice, &cstep);
       break;
-    case 0x1b:
+    case MAC_CMD_PORTAMENTO:
       mcmdPortamento(svoice, &cstep);
       break;
-    case 0x1c:
+    case MAC_CMD_VIBRATO:
       mcmdVibrato(svoice, &cstep);
       break;
-    case 0x1d:
+    case MAC_CMD_PITCH_SWEEP_UP:
       ex = mcmdPitchSweep(svoice, &cstep, 0);
       break;
-    case 0x1e:
+    case MAC_CMD_PITCH_SWEEP_DOWN:
       ex = mcmdPitchSweep(svoice, &cstep, 1);
       break;
-    case 0x1f:
+    case MAC_CMD_SET_PITCH:
       mcmdSetPitch(svoice, &cstep);
       break;
-    case 0x20:
+    case MAC_CMD_SET_PITCH_ADSR:
       mcmdSetPitchADSR(svoice, &cstep);
       break;
-    case 0x21:
+    case MAC_CMD_SCALE_VOLUME_DLS:
       mcmdScaleVolumeDLS(svoice, &cstep);
       break;
-    case 0x22:
+    case MAC_CMD_SET_MOD_VIBRATO:
       mcmdSetMod2Vibrato(svoice, &cstep);
       break;
-    case 0x23:
+    case MAC_CMD_SETUP_TREMOLO:
       mcmdSetupTremolo(svoice, &cstep);
       break;
-    case 0x24:
+    case MAC_CMD_RETURN:
       mcmdReturn(svoice);
       break;
-    case 0x25:
+    case MAC_CMD_GOSUB:
       ex = mcmdGosub(svoice, &cstep);
       break;
-    case 0x28:
+    case MAC_CMD_TRAP_EVENT:
       mcmdTrapEvent(svoice, &cstep);
       break;
-    case 0x29:
+    case MAC_CMD_UNTRAP_EVENT:
       mcmdUntrapEvent(svoice, &cstep);
       break;
-    case 0x2a:
+    case MAC_CMD_SEND_MESSAGE:
       mcmdSendMessage(svoice, &cstep);
       break;
-    case 0x2b:
+    case MAC_CMD_GET_MESSAGE:
       mcmdGetMessage(svoice, &cstep);
       break;
-    case 0x2c:
+    case MAC_CMD_GET_VID:
       mcmdGetVID(svoice, &cstep);
       break;
-    case 0x30:
+    case MAC_CMD_ADD_AGE_COUNTER:
       mcmdAddAgeCounter(svoice, &cstep);
       break;
-    case 0x31:
+    case MAC_CMD_SET_AGE_COUNTER:
       mcmdSetAgeCounter(svoice, &cstep);
       break;
-    case 0x32:
+    case MAC_CMD_SEND_FLAG:
       mcmdSendFlag(&cstep);
       break;
-    case 0x33:
+    case MAC_CMD_SET_PITCH_WHEEL_RANGE:
       mcmdSetPitchWheelRange(svoice, &cstep);
       break;
-    case 0x34:
+    case MAC_CMD_SCALE_REVERB:
       mcmdScaleReverb(svoice, &cstep);
       break;
-    case 0x35:
+    case MAC_CMD_SET_PITCHBEND_AFTER_KEYOFF:
       mcmdSetPitchbendAfterKeyOff(svoice);
       break;
-    case 0x36:
+    case MAC_CMD_SET_PRIORITY:
       mcmdSetPriority(svoice, &cstep);
       break;
-    case 0x37:
+    case MAC_CMD_ADD_PRIORITY:
       mcmdAddPriority(svoice, &cstep);
       break;
-    case 0x38:
+    case MAC_CMD_SET_AGE_COUNTER_SPEED:
       mcmdSetAgeCounterSpeed(svoice, &cstep);
       break;
-    case 0x39:
+    case MAC_CMD_SET_AGE_COUNTER_BY_VOLUME:
       mcmdSetAgeCounterByVolume(svoice, &cstep);
       break;
-    case 0x40:
+    case MAC_CMD_VOLUME_SELECT:
       mcmdVolumeSelect(svoice, &cstep);
       break;
-    case 0x41:
+    case MAC_CMD_PANNING_SELECT:
       mcmdPanningSelect(svoice, &cstep);
       break;
-    case 0x42:
+    case MAC_CMD_PITCH_WHEEL_SELECT:
       mcmdPitchWheelSelect(svoice, &cstep);
       break;
-    case 0x43:
+    case MAC_CMD_MOD_WHEEL_SELECT:
       mcmdModWheelSelect(svoice, &cstep);
       break;
-    case 0x44:
+    case MAC_CMD_PEDAL_SELECT:
       mcmdPedalSelect(svoice, &cstep);
       break;
-    case 0x45:
+    case MAC_CMD_PORTAMENTO_SELECT:
       mcmdPortamentoSelect(svoice, &cstep);
       break;
-    case 0x46:
+    case MAC_CMD_REVERB_SELECT:
       mcmdReverbSelect(svoice, &cstep);
       break;
-    case 0x47:
+    case MAC_CMD_SURROUND_PANNING_SELECT:
       mcmdSurroundPanningSelect(svoice, &cstep);
       break;
-    case 0x48:
+    case MAC_CMD_DOPPLER_SELECT:
       mcmdDopplerSelect(svoice, &cstep);
       break;
-    case 0x49:
+    case MAC_CMD_TREMOLO_SELECT:
       mcmdTremoloSelect(svoice, &cstep);
       break;
-    case 0x4a:
+    case MAC_CMD_PRE_AUX_A_SELECT:
       mcmdPreAuxASelect(svoice, &cstep);
       break;
-    case 0x4b:
+    case MAC_CMD_PRE_AUX_B_SELECT:
       mcmdPreAuxBSelect(svoice, &cstep);
       break;
-    case 0x4c:
+    case MAC_CMD_POST_AUX_B_SELECT:
       mcmdPostAuxBSelect(svoice, &cstep);
       break;
-    case 0x4d:
+    case MAC_CMD_AUX_AFX_SELECT:
       mcmdAuxAFXSelect(svoice, &cstep);
       break;
-    case 0x4e:
+    case MAC_CMD_AUX_BFX_SELECT:
       mcmdAuxBFXSelect(svoice, &cstep);
       break;
-    case 0x50:
+    case MAC_CMD_SETUP_LFO:
       mcmdSetupLFO(svoice, &cstep);
       break;
-    case 0x58:
+    case MAC_CMD_MODE_SELECT:
       mcmdModeSelect(svoice, &cstep);
       break;
-    case 0x59:
+    case MAC_CMD_SET_KEY_GROUP:
       mcmdSetKeyGroup(svoice, &cstep);
       break;
-    case 0x5a:
+    case MAC_CMD_SRC_MODE_SELECT:
       mcmdSRCModeSelect(svoice, &cstep);
       break;
-    case 0x60:
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 3)
+    case MAC_CMD_FILTER_SWITCH:
+      mcmdFilterSwitchSelect(svoice, &cstep);
+      break;
+    case MAC_CMD_FILTER_PARAMETER:
+      mcmdFilterParameterSelect(svoice, &cstep);
+      break;
+#endif
+    case MAC_CMD_VAR_ADD:
       mcmdVarCalculation(svoice, &cstep, 0);
       break;
-    case 0x61:
+    case MAC_CMD_VAR_SUB:
       mcmdVarCalculation(svoice, &cstep, 1);
       break;
-    case 0x62:
+    case MAC_CMD_VAR_MUL:
       mcmdVarCalculation(svoice, &cstep, 2);
       break;
-    case 0x63:
+    case MAC_CMD_VAR_DIV:
       mcmdVarCalculation(svoice, &cstep, 3);
       break;
-    case 0x64:
+    case MAC_CMD_VAR_ADD_IMMEDIATE:
       mcmdVarCalculation(svoice, &cstep, 4);
       break;
-    case 0x65:
+    case MAC_CMD_SET_VAR_IMMEDIATE:
       mcmdSetVarImmediate(svoice, &cstep);
       break;
-    case 0x70:
+    case MAC_CMD_IF_VAR_EQUAL:
       mcmdIfVarCompare(svoice, &cstep, 0);
       break;
-    case 0x71:
+    case MAC_CMD_IF_VAR_LESS:
       mcmdIfVarCompare(svoice, &cstep, 1);
       break;
     }
@@ -1682,7 +1907,7 @@ void macSampleEndNotify(SYNTH_VOICE* sv) {
   MUSY_ASSERT(sv->addr!=NULL);
   /* clang-format on */
 
-  if (!ExecuteTrap(sv, 1) && (sv->cFlags & 0x40000)) {
+  if (!ExecuteTrap(sv, 1) && (sv->cFlags & MAC_CFLAG_HW_EVENT_WAIT)) {
     macMakeActive(sv);
   }
 }
@@ -1692,26 +1917,26 @@ void macSetExternalKeyoff(SYNTH_VOICE* sv) {
     return;
   }
 
-  if (!(sv->cFlags & 0x10000000000)) {
-    if (!ExecuteTrap(sv, 0) && (sv->cFlags & 0x4)) {
+  if (!(sv->cFlags & MAC_CFLAG_PEDAL)) {
+    if (!ExecuteTrap(sv, 0) && (sv->cFlags & MAC_CFLAG_WAITING)) {
       macMakeActive(sv);
     }
   } else {
-    sv->cFlags |= 0x40000000000;
+    sv->cFlags |= MAC_CFLAG_TRAP_PENDING;
   }
 }
 
 void macSetPedalState(SYNTH_VOICE* svoice, u32 state) {
   if (state != 0) {
-    svoice->cFlags |= 0x10000000000;
+    svoice->cFlags |= MAC_CFLAG_PEDAL;
   } else {
-    if (svoice->addr && (svoice->cFlags & 0x40000000000)) {
-      if (!ExecuteTrap(svoice, 0) && (svoice->cFlags & 0x4)) {
+    if (svoice->addr && (svoice->cFlags & MAC_CFLAG_TRAP_PENDING)) {
+      if (!ExecuteTrap(svoice, 0) && (svoice->cFlags & MAC_CFLAG_WAITING)) {
         macMakeActive(svoice);
       }
     }
 
-    svoice->cFlags &= ~(0x10000000000 | 0x40000000000);
+    svoice->cFlags &= ~(MAC_CFLAG_PEDAL | MAC_CFLAG_TRAP_PENDING);
   }
 }
 
@@ -1765,7 +1990,7 @@ static void UnYieldMacro(SYNTH_VOICE* svoice, bool disableUpdate) {
 
     svoice->wait = 0;
     svoice->waitTime = macRealTime;
-    svoice->cFlags &= ~0x40004;
+    svoice->cFlags &= ~MAC_CFLAG_UNYIELD_MASK;
   }
 }
 void macMakeActive(SYNTH_VOICE* sv) {
@@ -1810,9 +2035,14 @@ void macMakeInactive(SYNTH_VOICE* svoice, MAC_STATE newState) {
   svoice->macState = newState;
 }
 
-u32 macStart(u16 macid, u8 priority, u8 maxVoices, u16 allocId, u8 key, u8 vol, u8 panning, u8 midi,
-             u8 midiSet, u8 section, u16 step, u16 trackid, u8 new_vid, u8 vGroup, u8 studio,
-             u32 itd) {
+u32 macStart(u16 macid, u8 priority, u8 maxVoices,
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+             u32 allocId,
+#else
+             u16 allocId,
+#endif
+             u8 key, u8 vol, u8 panning, u8 midi, u8 midiSet, u8 section, u16 step, u16 trackid,
+             u8 new_vid, u8 vGroup, u8 studio, u32 itd) {
   u32 voice;           // r30
   u32 vid;             // r25
   MSTEP* addr;         // r28
@@ -1820,15 +2050,15 @@ u32 macStart(u16 macid, u8 priority, u8 maxVoices, u16 allocId, u8 key, u8 vol, 
   u16 seqPrio;         // r24
 
   if ((addr = dataGetMacro(macid))) {
-    if (!(key & 0x80) && (seqPrio = seqGetMIDIPriority(midiSet, midi)) != 0xFFFF) {
+    if (!(key & MAC_VOICE_KEY_FX) && (seqPrio = seqGetMIDIPriority(midiSet, midi)) != MAC_PRIORITY_NONE) {
       priority = seqPrio;
     }
 
-    if ((voice = voiceAllocate(priority, maxVoices, allocId, (key & 0x80) ? 1 : 0)) != -1) {
+    if ((voice = voiceAllocate(priority, maxVoices, allocId, (key & MAC_VOICE_KEY_FX) ? 1 : 0)) != -1) {
       svoice = &synthVoice[voice];
       vidRemoveVoiceReferences(svoice);
       macMakeInactive(svoice, MAC_STATE_STOPPED);
-      svoice->cFlags = (svoice->cFlags & 0x10) | 2;
+      svoice->cFlags = (svoice->cFlags & MAC_CFLAG_PERSISTENT) | 2;
 
       if (hwIsActive(voice)) {
         svoice->cFlags |= 1;
@@ -1836,13 +2066,13 @@ u32 macStart(u16 macid, u8 priority, u8 maxVoices, u16 allocId, u8 key, u8 vol, 
 
       svoice->wait = 0;
 
-      if ((key & 0x80) != 0) {
+      if ((key & MAC_VOICE_KEY_FX) != 0) {
         svoice->fxFlag = 01;
-        key &= 0x7f;
-        inpResetMidiCtrl(voice, 0xff, 1);
-        inpResetChannelDefaults(voice, 0xff);
+        key &= MAC_PACK_MASK_7BIT;
+        inpResetMidiCtrl(voice, MAC_MIDI_NONE, 1);
+        inpResetChannelDefaults(voice, MAC_MIDI_NONE);
         svoice->setup.midi = voice;
-        svoice->setup.midiSet = 0xff;
+        svoice->setup.midiSet = MAC_MIDI_NONE;
         svoice->setup.section = 0;
       } else {
         svoice->fxFlag = 0;
@@ -1853,8 +2083,8 @@ u32 macStart(u16 macid, u8 priority, u8 maxVoices, u16 allocId, u8 key, u8 vol, 
 
       svoice->macroId = macid;
       svoice->allocId = allocId;
-      svoice->age = 0x75300000;
-      svoice->ageSpeed = 0x400;
+      svoice->age = MAC_AGE_INITIAL;
+      svoice->ageSpeed = MAC_AGE_SPEED_INITIAL;
       svoice->addr = addr;
       svoice->curAddr = addr + step;
       svoice->orgNote = key;
