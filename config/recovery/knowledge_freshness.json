@@ -1156,7 +1156,7 @@
     },
     "target-first-owner-packet": {
       "status": "active",
-      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_commit": "d08a9409d579f8f5798bf22540096af5267eb937",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -1172,7 +1172,7 @@
     },
     "mwcc-local-declaration-order-stack-slot-swap": {
       "status": "active",
-      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_commit": "d08a9409d579f8f5798bf22540096af5267eb937",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -1187,7 +1187,7 @@
     },
     "weak-order-symbol-order-diagnostics-are-not-source-proof": {
       "status": "active",
-      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_commit": "d08a9409d579f8f5798bf22540096af5267eb937",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -1202,7 +1202,7 @@
     },
     "authenticated-inline-asm-barrier": {
       "status": "active",
-      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_commit": "d08a9409d579f8f5798bf22540096af5267eb937",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
