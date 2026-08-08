@@ -521,7 +521,7 @@ config.libs = [
             Object(Matching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/targimpl.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/targsupp.s"),
-            Object(NonMatching, "TRK_MINNOW_DOLPHIN/__exception.s"),
+            Object(Matching, "TRK_MINNOW_DOLPHIN/__exception.s"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/dolphin_trk.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/main_TRK.c"),

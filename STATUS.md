@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.93% | 37.38% | 335 / 923 |
-| Main DOL | 50.93% | 86.50% | 303 / 396 |
+| Entire project | 13.99% | 37.38% | 336 / 923 |
+| Main DOL | 51.30% | 86.50% | 304 / 396 |
 | REL modules | 6.08% | 6.25% | 32 / 527 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
@@ -46,6 +46,12 @@ The current partial MusyX batch adds **45 strict-exact functions** and
 **15,224 text bytes**, plus **44 data-value-exact functions** and **19,376
 text bytes**, with zero exact-function regressions. No owner or configuration
 status changes are claimed.
+
+The TRK exception-vector owner now builds from a sibling-authenticated
+standalone assembly exception covering **7,988 exact `.init` bytes**. Its 48
+target-specific handler relocations resolve exactly, and the complete DOL
+remains retail-identical. This owner is tracked separately from recovered
+clean C.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
