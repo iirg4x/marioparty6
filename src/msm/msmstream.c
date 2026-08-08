@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "msm/msmstream.h"
 #include "msm/msmmem.h"
 #include "msm/msmsys.h"
@@ -256,12 +259,15 @@ static inline BOOL msmStreamIsPlay(MSM_STREAM_SLOT* slot) {
 void msmStreamStopAll(s32 speed)
 {
     MSM_STREAM_SLOT* slot;
+    s32 offset;
     s32 i;
 
     msmSysIrqDisable();
-    for (i = 0; i < StreamInfo.header.chanMax; i++) {
+    for (i = 0, offset = 0; i < StreamInfo.header.chanMax;
+        offset += sizeof(MSM_STREAM_SLOT), i++)
+    {
         if (i >= 0 && i < StreamInfo.header.chanMax) {
-            slot = &StreamInfo.slot[i];
+            slot = (MSM_STREAM_SLOT*) ((u8*) StreamInfo.slot + offset);
             msmSysIrqDisable();
             msmStreamStopSub(i, speed);
             if (slot->slotL != -1) {

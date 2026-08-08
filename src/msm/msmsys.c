@@ -1,3 +1,6 @@
+#define _MATH_H
+#include "dolphin/math.h"
+
 #include "msm/msmsys.h"
 #include "msm/msmfio.h"
 #include "msm/msmmem.h"
