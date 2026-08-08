@@ -192,7 +192,7 @@
     },
     "configured-matching-needs-retail-replay": {
       "status": "active",
-      "validated_commit": "3a9843f9b7ebddcae5fda3348c6336e1f6ef9e39",
+      "validated_commit": "3a9843f6ddf0ab0916a4de9a6c33fb2085e6b6ff",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -853,7 +853,7 @@
     },
     "recovery-shard-filenames-are-not-source-provenance": {
       "status": "active",
-      "validated_commit": "3a9843f9b7ebddcae5fda3348c6336e1f6ef9e39",
+      "validated_commit": "3a9843f6ddf0ab0916a4de9a6c33fb2085e6b6ff",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
@@ -1139,7 +1139,7 @@
     },
     "target-first-fallback-evidence-protocol": {
       "status": "active",
-      "validated_commit": "3a9843f9b7ebddcae5fda3348c6336e1f6ef9e39",
+      "validated_commit": "3a9843f6ddf0ab0916a4de9a6c33fb2085e6b6ff",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
