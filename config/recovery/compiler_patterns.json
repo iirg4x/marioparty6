@@ -5436,6 +5436,308 @@
         "tools/recovery_pass.py",
         "tools/tests/test_recovery_pass.py"
       ]
+    },
+    {
+      "id": "target-first-owner-packet",
+      "title": "Rank target-first owner packets before widening recovery scope",
+      "classification": "contextual_heuristic",
+      "category": "recovery_workflow",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "A useful first recovery packet is the smallest target-defined routine cluster whose sizes, relocations, calls, fields, globals, and prototypes are already authenticated. Ranking missing static routines by target extent and dependency inventory keeps unknown semantics out of the first probe; donor assembly or unknown bodies remain evidence, not source ownership.",
+      "conditions": "Apply when an owner has missing static routines or a seam ledger but the target symbol, relocation, and caller inventory can be bounded. Re-rank only when target evidence or a verified consumer changes.",
+      "source_condition": {
+        "change": "Select the next target-first recovery packet instead of broadening a source stub or importing an unverified donor body.",
+        "requires": [
+          "target function size and boundary inventory",
+          "target relocation and call inventory",
+          "authenticated fields, globals, prototypes, and consumer contracts for every packet item",
+          "a dependency-closed packet with no unresolved semantic field or ownership assumption",
+          "a caller, function-order, object, and linked-owner verification plan"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "smaller unknown-free recovery packets",
+          "ranked missing static routines by target bytes and dependency closure",
+          "fewer speculative donor-body or field imports",
+          "earlier detection of caller, ordering, relocation, or link-gate regressions"
+        ],
+        "known_signatures": [
+          "the target symbol table contains a sized static routine absent from the current source definition inventory",
+          "the routine's target calls and relocations are known while its source semantics are not",
+          "a donor assembly body would require inventing a field, global, prototype, or owner",
+          "a candidate function is exact in isolation but a caller or final owner gate remains unresolved"
+        ]
+      },
+      "rule": "Start with the smallest target-defined, dependency-closed packet whose fields, globals, prototypes, sizes, calls, and relocations are all authenticated. Use donor assembly and unknown bodies only as evidence. Function-level proof never waives caller, source-order, relocation, linked-owner, or final retail gates.",
+      "safe_actions": [
+        "rank missing routines by target size, relocation count, and call/dependency inventory",
+        "reject a packet when any required field, global, prototype, or owner is still guessed",
+        "record donor assembly as a constraint and recover a natural source form independently",
+        "verify the packet's callers and neighboring order before widening its source scope",
+        "replay object, relocation, linked-owner, and retail gates before marking the packet complete"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "main:board/config:PauseCursorPosNextSet",
+          "main:board/player:mbPlayerMoveMain"
+        ],
+        "modules": ["main"],
+        "owner_tags": [
+          "target_first",
+          "packet",
+          "missing_static",
+          "dependency_closure",
+          "caller_gate"
+        ]
+      },
+      "examples": [
+        "The Config PauseCursor packet can be bounded from target symbols, source declarations, and authenticated cursor work fields before probing an unknown helper.",
+        "The Player mbPlayerMoveMain audit uses target size and lifetime evidence while keeping caller and final-order checks open."
+      ],
+      "counterexamples": [
+        "A same-sized donor assembly body is not source ownership when its field or global accesses are unknown.",
+        "An exact isolated function does not prove its caller ABI, neighboring definition order, relocation ownership, or linked placement.",
+        "Do not widen a packet merely because a seam ledger names a routine; require target and consumer evidence first."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/context_workflow.md",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "src/board/config.c",
+        "src/board/player.c",
+        "docs/native_matching_board_player_value_lifetimes.md"
+      ]
+    },
+    {
+      "id": "mwcc-local-declaration-order-stack-slot-swap",
+      "title": "Treat a local declaration reorder as a one-probe stack-slot diagnostic",
+      "classification": "contextual_heuristic",
+      "category": "local_lifetime_and_order",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "Under the authenticated MWCC O0 profile, changing local declaration order can recolor saved registers or stack slots while leaving assignment and call evaluation order unchanged. A concrete target/candidate stack-offset swap with exact-size aligned control flow is useful layout evidence, but it does not prove original declaration chronology or justify a broad source reorder.",
+      "conditions": "Apply only when Objdiff shows exact-size aligned control flow and the residual is a concrete stack-offset or register-color swap attributable to local lifetime order. Run one narrowly scoped probe and roll it back immediately if any broader text, relocation, pool, caller, or neighbor change appears.",
+      "source_condition": {
+        "change": "Reorder one authenticated local declaration or first-use boundary to test a stack-slot/register-color mismatch.",
+        "requires": [
+          "pinned GC/2.6 compiler and translation-unit visibility",
+          "exact-size target/candidate control-flow alignment",
+          "a concrete target-versus-candidate stack offset or saved-register swap",
+          "authenticated local types and consumer lifetimes",
+          "before-and-after function, relocation, pool, caller, and neighboring-order checks"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "saved-register colors or stack offsets rotate",
+          "local loads and stores retain target evaluation order",
+          "a one-function residual closes without changing control flow",
+          "an over-broad declaration move changes unrelated functions, pools, or callers"
+        ],
+        "known_signatures": [
+          "Objdiff reports exact function size and aligned branches while only local stack offsets differ",
+          "the same assignments and calls remain in target order after the probe",
+          "a single declaration/first-use change swaps the observed local slot without new literals or relocations",
+          "moving a declaration changes neighboring functions or pool chronology, indicating the probe was too broad"
+        ]
+      },
+      "rule": "Use a local declaration-order change only as a single, reversible probe for a target-proven stack-slot or register-color swap. Keep assignment and call evaluation order intact, require immediate zero-regression evidence, and treat the observed symbol or slot order as emitted-layout evidence rather than proof of the original source order.",
+      "safe_actions": [
+        "record the exact target and candidate stack offsets or register colors before editing",
+        "change one local declaration or first-use boundary in the owning function",
+        "compare strict function bytes, CFG alignment, relocations, local pools, callers, and neighboring order",
+        "retain the probe only when the concrete swap improves without broader change",
+        "roll back immediately when a second function, pool, relocation, or caller changes"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "main:board/player:mbPlayerMoveMain",
+          "main:board/config:PauseCursorPosNextSet"
+        ],
+        "modules": ["main"],
+        "owner_tags": [
+          "GC/2.6",
+          "local_order",
+          "stack_slot",
+          "register_color",
+          "one_probe"
+        ]
+      },
+      "examples": [
+        "The Player mbPlayerMoveMain audit distinguishes a local lifetime/slot experiment from a broad helper or caller rewrite.",
+        "The Config PauseCursor packet is a bounded local-order diagnostic only when target offsets and exact CFG shape identify the affected locals."
+      ],
+      "counterexamples": [
+        "A symbol-order difference without a concrete stack/register swap cannot authenticate declaration chronology.",
+        "Do not reorder locals to repair a pool or section difference when text, relocations, or consumers are not exact.",
+        "A probe that changes a caller, neighboring function, or literal pool is not a narrow local-order repair."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_player_value_lifetimes.md",
+        "docs/native_matching_wave77.md",
+        "src/board/player.c",
+        "src/board/config.c",
+        "config/GP6E01/symbols.txt"
+      ]
+    },
+    {
+      "id": "weak-order-symbol-order-diagnostics-are-not-source-proof",
+      "title": "Use weak-order symbol differences as diagnostics, not source proof",
+      "classification": "contextual_heuristic",
+      "category": "verification",
+      "compiler": "all",
+      "confidence": "confirmed",
+      "summary": "Normalized function, data, and local-pool order differences identify emitted-object facts: missing or extra names and relative inversions. They can prioritize target-first investigation, but they cannot authenticate a source declaration order, semantic owner, field meaning, or source reorder in isolation.",
+      "conditions": "Apply when comparing two objects built under a pinned, comparable compiler/linker profile and when readelf symbol rows are available for both inputs. Treat generated local-pool identities as normalized diagnostics, not stable source names.",
+      "source_condition": {
+        "change": "Use a weak-order diff to select or reject a narrowly scoped source-order hypothesis.",
+        "requires": [
+          "explicit target and source ELF/object paths",
+          "pinned readelf output or a safe readelf PATH resolution",
+          "normalized function, data, and local-pool sequences",
+          "target instruction, relocation, consumer, and owner-order evidence before any source move"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "function/data/local-pool sequence differences become reviewable",
+          "missing and extra normalized names identify inventory gaps",
+          "relative order inversions identify an emitted chronology mismatch",
+          "compiler-local pool numbering is collapsed without claiming semantic identity"
+        ],
+        "known_signatures": [
+          "the same normalized names occur in a different relative order",
+          "the target contains a name absent from the source or vice versa",
+          "multiple compiler-local @N pool symbols normalize to @",
+          "the report has an order inversion while text or relocation equivalence remains unproven"
+        ]
+      },
+      "rule": "Use weak-order output to describe and rank emitted layout evidence. Do not infer original declaration chronology, semantic ownership, compiler intent, or a justified source reorder from missing/extra names or inversions alone; require target instructions, relocations, consumers, and linked-owner gates.",
+      "safe_actions": [
+        "pin both input paths and the readelf executable in the report",
+        "review normalized sequences together with target section, instruction, and relocation evidence",
+        "use an inversion to choose one falsifiable source hypothesis at a time",
+        "record rejected moves and counterexamples when text, pool, or consumer evidence regresses",
+        "close a source-order change only after object, caller, linked-owner, and retail verification"
+      ],
+      "applicability": {
+        "compiler_wide": true,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [],
+        "modules": ["main", "REL"],
+        "owner_tags": [
+          "symbol_order",
+          "function_order",
+          "data_order",
+          "literal_pool",
+          "diagnostic_limits"
+        ]
+      },
+      "examples": [
+        "tools/weak_order_diff.py reports normalized target/source functions, data, local pools, missing/extra names, and pairwise inversions without invoking ninja or editing source.",
+        "A local-pool @N versus lbl_* difference can prioritize relocation-ownership review while remaining unresolved source provenance."
+      ],
+      "counterexamples": [
+        "A matching function list does not prove instruction bytes, relocation targets, callers, or final link placement.",
+        "A symbol inversion can be caused by csect/linker chronology or compiler-local naming and is not by itself a declaration-order proof.",
+        "Repeated normalized @ values describe sequence and multiplicity only; they do not identify which target pool row maps to which source row.",
+        "Do not add padding, pragmas, synthetic constants, or donor definitions solely to make the report order match."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "tools/weak_order_diff.py",
+        "tools/tests/test_weak_order_diff.py",
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "docs/native_matching_conversion_pool_ownership.md",
+        "config/GP6E01/symbols.txt"
+      ]
+    },
+    {
+      "id": "authenticated-inline-asm-barrier",
+      "title": "Retain a natural semantic barrier when authenticated inline asm owns the target shape",
+      "classification": "contextual_heuristic",
+      "category": "aggregate_copy_negative_evidence",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "An authenticated same-game PauseCursorPosNextSet donor uses register pointers and inline psq_l/lfs/psq_st/stfs operations; the retail target saves f28-f31 with frame size 0x90. Natural direct HuVecF copy reached 700/724 bytes at 88.607735%, while a typed pointer copy reached 90.756905% but remained 700/724 with frame size 0x70. Legal C controls therefore cannot create the inline-assembly clobber and save set, which is an explicit exactness barrier rather than a source-reordering invitation.",
+      "conditions": "Apply only when provenance authenticates the retail inline-assembly boundary and project policy forbids inline asm, register shaping, or equivalent forced code generation. Keep the barrier scoped to the affected owner and target operation.",
+      "source_condition": {
+        "change": "Choose the natural semantic C form for an authenticated vector transfer whose retail register pressure is owned by inline assembly.",
+        "requires": [
+          "same-game donor or retained source evidence for register-pointer plus psq_l/lfs/psq_st/stfs assembly",
+          "target frame and saved-FPR evidence",
+          "strict function-size and instruction reports for natural direct and typed-pointer controls",
+          "project policy ruling out inline asm, explicit register variables, and forced FPR pressure",
+          "caller, relocation, pool, and linked-owner review before closing the residual"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "natural aggregate C emits a smaller or different frame and saved-register set",
+          "typed pointer mediation can improve nearby instructions without creating the target clobber/save set",
+          "target-only f28-f31 saves and frame 0x90 remain unmatched",
+          "the owner remains honestly nonexact with a recorded mechanism barrier"
+        ],
+        "known_signatures": [
+          "target contains inline displacement psq_l/lfs/psq_st/stfs islands and no helper call",
+          "target saves f28-f31 at frame 0x90 while natural direct HuVecF remains frame 0x70",
+          "direct HuVecF copy measures 700/724 at 88.607735%",
+          "typed pointer copy measures 700/724 at 90.756905% but does not create the target save set"
+        ]
+      },
+      "rule": "When provenance proves that retail register pressure and vector transfer shape belong to inline assembly that project policy forbids, retain the clean natural semantic C form, record an explicit exactness barrier, and do not fabricate FPR pressure, register variables, asm scaffolds, or a matching claim.",
+      "safe_actions": [
+        "record the donor provenance, target frame, saved FPRs, and exact probe scores",
+        "keep direct semantic HuVecF or typed-pointer controls as measured diagnostics only",
+        "compare callers, relocations, local pools, and neighboring order before accepting any collateral improvement",
+        "mark the owner nonexact with the mechanism barrier and preserve the rejected controls",
+        "reopen only if an authenticated project-policy-compatible source boundary explains the same save set"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": false,
+        "owners": [],
+        "stable_ids": [
+          "main:board/config:PauseCursorPosNextSet"
+        ],
+        "modules": ["main"],
+        "owner_tags": [
+          "inline_asm",
+          "paired_single",
+          "FPR_pressure",
+          "frame_size",
+          "exactness_barrier"
+        ]
+      },
+      "examples": [
+        "PauseCursorPosNextSet retains target f28-f31/frame0x90 pressure while direct HuVecF and typed-pointer controls remain 700/724; the gap is recorded instead of forced with asm or register shaping.",
+        "The same-game vector-copy audit treats a displacement psq_l/lfs/psq_st/stfs island as a mechanism boundary, not evidence for invented source fields or declaration order."
+      ],
+      "counterexamples": [
+        "A natural C function that reaches exact text and relocations without asm is not subject to this barrier.",
+        "A higher percentage from typed pointers is not a match when frame size, saved FPRs, or relocation ownership remain wrong.",
+        "Do not generalize a donor's inline assembly to unrelated owners or claim that an asm scaffold was original source."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "docs/native_matching_board_snpc_vector_copy.md",
+        "docs/native_matching_wave51.md",
+        "docs/native_matching_wave65.md",
+        "src/board/config.c",
+        "config/GP6E01/symbols.txt",
+        "include/humath.h"
+      ]
     }
   ]
 }

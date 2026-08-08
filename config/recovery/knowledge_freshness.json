@@ -1153,6 +1153,68 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "target-first-owner-packet": {
+      "status": "active",
+      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_at": "2026-08-08",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/context_workflow.md",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "src/board/config.c",
+        "src/board/player.c",
+        "docs/native_matching_board_player_value_lifetimes.md"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "mwcc-local-declaration-order-stack-slot-swap": {
+      "status": "active",
+      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_at": "2026-08-08",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_board_player_value_lifetimes.md",
+        "docs/native_matching_wave77.md",
+        "src/board/player.c",
+        "src/board/config.c",
+        "config/GP6E01/symbols.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "weak-order-symbol-order-diagnostics-are-not-source-proof": {
+      "status": "active",
+      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_at": "2026-08-08",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "tools/weak_order_diff.py",
+        "tools/tests/test_weak_order_diff.py",
+        "docs/w01dll_rodata_emission_model_evidence.md",
+        "docs/native_matching_conversion_pool_ownership.md",
+        "config/GP6E01/symbols.txt"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "authenticated-inline-asm-barrier": {
+      "status": "active",
+      "validated_commit": "ec07fcb9ae3371f93bfe2d4ebf156b73fbb2b023",
+      "validated_at": "2026-08-08",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "docs/native_matching_board_snpc_vector_copy.md",
+        "docs/native_matching_wave51.md",
+        "docs/native_matching_wave65.md",
+        "src/board/config.c",
+        "config/GP6E01/symbols.txt",
+        "include/humath.h"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }
