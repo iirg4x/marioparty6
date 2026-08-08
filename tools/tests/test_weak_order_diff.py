@@ -52,6 +52,16 @@ Symbol table '.symtab' contains 1 entries:
         self.assertEqual(len(symbols), 1)
         self.assertEqual(symbols[0].size, 0x10)
 
+    def test_parser_skips_unprefixed_alpha_size_without_crashing(self) -> None:
+        output = """
+Symbol table '.symtab' contains 2 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     1: 00000010   ABC FUNC    LOCAL  DEFAULT    1 malformed
+     2: 00000020    16 FUNC    LOCAL  DEFAULT    1 valid
+"""
+        symbols = module.parse_readelf_symbols(output)
+        self.assertEqual([symbol.name for symbol in symbols], ["valid"])
+
     def test_symtab_is_preferred_when_readelf_prints_dynsym_too(self) -> None:
         output = """
 Symbol table '.dynsym' contains 1 entries:
