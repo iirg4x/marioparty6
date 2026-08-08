@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 13.99% | 37.38% | 336 / 923 |
+| Entire project | 14.06% | 37.57% | 341 / 932 |
 | Main DOL | 51.30% | 86.50% | 304 / 396 |
-| REL modules | 6.08% | 6.25% | 32 / 527 |
+| REL modules | 6.17% | 6.57% | 37 / 536 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
@@ -55,9 +55,19 @@ clean C.
 
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
-compiled comparison objects retain **538 / 648 exact recovered functions**;
+compiled comparison objects retain **547 / 675 exact recovered functions**;
 incomplete application owners remain `NonMatching` as whole units until their
 full text, data, relocation, and consumer closure is exact.
+
+The complete `motchkDll` application owner now builds from recovered C with
+**9 / 9 strict-exact and data-value-exact functions**, **8,144 text bytes**,
+and exact `.rodata`, `.data`, `.bss`, and **1,014 relocation rows**. Four
+source-linked `w11Dll` islands recover **9 strict-exact and data-value-exact
+functions**, **564 text bytes**, and **40 relocation rows**; the surrounding
+W11 spans remain retail fallback until the rest of that owner is recovered.
+The MDBank comparison set advances to **113 / 116 strict-exact functions**,
+and MDPResult advances to **121 / 206 strict-exact** and **129 / 206
+data-value-exact functions**. All affected RELs remain retail-identical.
 
 The canonical `fileseldll` application owner is strict-exact at **39 / 39
 functions**, **35,732 text bytes**, and **2,900 relocations**. Its source has no
