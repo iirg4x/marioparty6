@@ -8,6 +8,7 @@ Sections:
 
 REL/s03Dll/s03.c:
 	.text       start:0x00000000 end:0x0000076C
+	.rodata     start:0x00000000 end:0x00000010
 
 REL/s03Dll/runtime.c:
 	.text       start:0x00003178 end:0x00003BBC
