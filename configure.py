@@ -1308,7 +1308,7 @@ config.libs = [
         "s03Dll",
         objects={
             Object(
-                Matching,
+                NonMatching,
                 "REL/s03Dll/s03.c",
                 mw_version=config.linker_version,
             ),
@@ -1366,45 +1366,6 @@ config.libs = [
             ),
         },
     ),
-    Rel(
-        "w11Dll",
-        objects={
-            Object(
-                Matching,
-                "REL/w11Dll/world11_callbacks.c",
-            ),
-            Object(
-                Matching,
-                "REL/w11Dll/world11_tutorial.c",
-            ),
-            Object(
-                Matching,
-                "REL/w11Dll/world11_tutorial_wait.c",
-            ),
-            Object(
-                Matching,
-                "REL/w11Dll/world11_guide.c",
-            ),
-            Object(
-                Matching,
-                "REL/w11Dll/world11_curve.c",
-            ),
-        },
-    ),
-    Rel(
-        "m616dll",
-        objects={
-            Object(
-                Matching,
-                "REL/m616dll/m616_prefix.c",
-            ),
-            Object(
-                Matching,
-                "REL/m616dll/m616_helpers.c",
-            ),
-        },
-    ),
-
 ]
 
 if args.mode == "configure":

@@ -5,10 +5,3 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
-
-REL/m616dll/m616_prefix.c:
-	.text       start:0x000000A0 end:0x00000160
-	.rodata     start:0x00000000 end:0x00000010
-
-REL/m616dll/m616_helpers.c:
-	.text       start:0x000020D8 end:0x00002104

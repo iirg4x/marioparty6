@@ -10,9 +10,9 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.08% | 38.00% | 346 / 940 |
+| Entire project | 14.06% | 38.00% | 338 / 927 |
 | Main DOL | 51.30% | 87.60% | 305 / 396 |
-| REL modules | 6.19% | 6.57% | 41 / 544 |
+| REL modules | 6.16% | 6.56% | 33 / 531 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
@@ -59,23 +59,20 @@ target-specific handler relocations resolve exactly, and the complete DOL
 remains retail-identical. This owner is tracked separately from recovered
 clean C.
 
-REL recovery is stored under canonical application owners: **174 synthetic
-pass/tail/address-derived C files have been removed across nine DLLs**. Their
-compiled comparison objects retain **565 / 693 exact recovered functions**;
+REL recovery is stored under canonical application owners: **181 synthetic
+pass/tail/address-derived C files have been removed across eleven DLLs**. Their
+compiled comparison objects retain **538 / 666 exact recovered functions**;
 incomplete application owners remain `NonMatching` as whole units until their
 full text, data, relocation, and consumer closure is exact.
 
 The complete `motchkDll` application owner now builds from recovered C with
 **9 / 9 strict-exact and data-value-exact functions**, **8,144 text bytes**,
-and exact `.rodata`, `.data`, `.bss`, and **1,014 relocation rows**. Five
-source-linked `w11Dll` islands recover **10 strict-exact and data-value-exact
-functions**, **868 text bytes**, and **41 relocation rows**; the surrounding
-W11 spans remain retail fallback until the rest of that owner is recovered.
-The latest source-island batch also recovers **13 / 13 strict-exact and
-data-value-exact `s03Dll` functions** with **1,900 text bytes** and **16
-rodata bytes**, plus **4 / 4 `m616dll` functions** with **236 text bytes** and
-**16 rodata bytes**. Those S03 and m616 application owners remain partial and
-continue to use retail fallback for their unrecovered spans.
+and exact `.rodata`, `.data`, `.bss`, and **1,014 relocation rows**. Partial
+`w11Dll` and `m616dll` function-island reconstructions are not tracked or
+credited because no authenticated original translation-unit path is known;
+both modules use retail fallback. The canonical `s03Dll/s03.c` recovery is
+retained as incomplete evidence but remains `NonMatching`, so the full S03
+application owner also uses retail fallback until owner-wide closure.
 The MDBank comparison set advances to **113 / 116 strict-exact functions**,
 and MDPResult advances to **121 / 206 strict-exact** and **129 / 206
 data-value-exact functions**. All affected RELs remain retail-identical.
