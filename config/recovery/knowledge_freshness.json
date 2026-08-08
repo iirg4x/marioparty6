@@ -1218,7 +1218,7 @@
     },
     "linked-retail-hash-requires-fresh-owner-object": {
       "status": "active",
-      "validated_commit": "ab51ca4f2c5e328c7a7dddd5376a074c88431e30",
+      "validated_commit": "cf4d25e30d03b13123fab10c5cbdef0a39737e0c",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
