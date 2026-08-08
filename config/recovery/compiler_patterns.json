@@ -2196,10 +2196,11 @@
           "address-labelled const objects, their natural alignment gap, all consumer relocations, and the source-owned raw section prefix close together while only a target-side tail remains",
           "an anonymous local aggregate is object-exact but linked fallback consumers still require the target named owner; initializing the local copy from an authenticated global const aggregate preserves code shape and closes the linked relocations",
           "a same-translation-unit function-scope typed extern before first use keeps a later file definition bound to the target named .sdata2 scalar",
-          "a function-scope typed extern replaces a natural scalar literal so its consumer relocates to an authenticated target .sdata2 owner"
+          "a function-scope typed extern replaces a natural scalar literal so its consumer relocates to an authenticated target .sdata2 owner",
+          "ConfigPadOpen p13 function-scope externs close 16 strict ARG relocation rows (92.680145% / 107 rows) but p14's literal-owner rewrite reaches 92.974266% / 91 rows while shrinking source-owned .sdata2 from 144 to 112 bytes; data-value remains 93.01103% and the exact set remains 38/51"
         ]
       },
-      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. When a natural local aggregate copy is already exact but other linked consumers require a named target owner, test an authenticated global const aggregate as that owner and initialize the local copy from it; retain only if code, data, relocations, all consumers, and the final REL remain exact. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact. For an authenticated target named .sdata2 scalar, a function-scope typed extern is a bounded owner probe; in the same translation unit, retain a later file definition only when target chronology and symbols authenticate it, and require exact function bytes, every affected relocation target/addend, section bytes, and linked consumers before retention.",
+      "rule": "Do not retain a text-exact function until its literal-pool relocation owner is exact; restore authenticated source/data chronology or keep the function unresolved, and never fabricate a literal, ABI construction, split, or object rewrite to force the symbol name. When several bodies fail only at named pool owners, stop per-function shaping and recover the owner-level data binding before re-enabling them together. When a natural local aggregate copy is already exact but other linked consumers require a named target owner, test an authenticated global const aggregate as that owner and initialize the local copy from it; retain only if code, data, relocations, all consumers, and the final REL remain exact. An intermediate local symbol spelling is acceptable only when the complete source-owned pool section, linked relocation target/addend, consumers, and final REL are exact. For an authenticated target named .sdata2 scalar, a function-scope typed extern is a bounded owner probe; in the same translation unit, retain a later file definition only when target chronology and symbols authenticate it, and require exact function bytes, every affected relocation target/addend, section bytes, and linked consumers before retention. A superficial strict-score gain does not authorize retention when an owner-local probe shrinks the authenticated .sdata2 extent or leaves data-value and exact-function coverage unchanged: the ConfigPadOpen p13-to-p14 result is a rejected counterexample, and owner-local section extent outranks the score.",
       "safe_actions": [
         "compare relocation target symbols in addition to instruction bytes",
         "compile the authenticated preceding-function cluster under the exact profile",
@@ -2212,7 +2213,8 @@
         "when consumer evidence authenticates the named aggregate owner, test a global const owner plus natural local-copy initialization and replay every linked consumer",
         "require organic source and linked consumer proof before retention",
         "when the target names a .sdata2 scalar and the source literal is natural, test one function-scope typed extern at first semantic use; for a same-translation-unit owner keep the later file definition only when target chronology and symbols authenticate it",
-        "compare every affected consumer relocation owner/addend and target/source .sdata2 bytes and extent; require strict exactness and zero protected regressions"
+        "compare every affected consumer relocation owner/addend and target/source .sdata2 bytes and extent; require strict exactness and zero protected regressions",
+        "when a function-scope extern raises strict rows but shrinks the source-owned .sdata2 extent without changing data-value or exact-function coverage, reject the owner probe and preserve the authenticated extent"
       ],
       "applicability": {
         "compiler_wide": true,
@@ -2299,7 +2301,8 @@
         "main:board/player mbPlayerBiriQSet and PlayerBiriQOMExec are code-, section-byte-, and data-value-exact; their remaining 3 plus 6 strict rows are only three white GXColor aggregates emitted naturally as one four-byte anonymous owner each while the target split records each color into four one-byte owners. No authentic declaration or C-shape change was supported, so the pair is retained as a target-split ownership blocker instead of spending function probes or inventing split storage.",
         "main:board/wipe WipeGridDraw, WipePaperDraw, and WipeImageDraw repeat the same boundary independently: each function is instruction- and data-value-exact, and each has only three strict rows because retail labels bytes one through three of a local white GXColor aggregate separately while natural source emits one four-byte anonymous owner. The source and target objects both retain 647 relocations overall, so no split-storage C rewrite is supported.",
         "main:board/single SingleEffCreate, SingleEffMgStop, and SingleLast5: block-scope const-float externs plus later same-translation-unit definitions closed 1,100 strict bytes with no exact regressions; target owners are lbl_802C4F40, lbl_802C4F44, and lbl_802C4F50 in .sdata2",
-        "main:board/dice DiceNumObjOMExec, main:board/capevent mbev_CapCameraViewSet, and main:board/config mbPausePanelCreate, mbPausePanelPosGet, mbPausePanelGrowSet, and mbPauseGuideTalkSet: typed function-scope extern owners closed 2,520 strict bytes with no exact regressions"
+        "main:board/dice DiceNumObjOMExec, main:board/capevent mbev_CapCameraViewSet, and main:board/config mbPausePanelCreate, mbPausePanelPosGet, mbPausePanelGrowSet, and mbPauseGuideTalkSet: typed function-scope extern owners closed 2,520 strict bytes with no exact regressions",
+        "ConfigPadOpen p13-panelid-abi-casts to p14-literal-owner: function-scope externs close 16 strict ARG relocation rows (92.680145% / 107 rows to 92.974266% / 91 rows), but source-owned .sdata2 shrinks 144 to 112 bytes while data-value stays 93.01103% and exact functions stay 38/51; reject the superficially higher strict score"
       ],
       "counterexamples": [
         "A matching literal value does not prove relocation ownership.",
@@ -2315,7 +2318,8 @@
         "An object-exact anonymous aggregate is not sufficient when linked fallback consumers require a named owner; the final REL and every consumer remain mandatory.",
         "An instruction-exact body plus an exact local conversion-pool csect still fails ownership when any linked fallback consumer relocates to the target global owner; do not replace the global merely to retain the new body.",
         "A value-equal local literal is not enough: an anonymous @NNN owner or duplicate named constant does not prove the target .sdata2 relocation owner.",
-        "A broad header or global extern, wrong width or alignment, or moved definition can change visibility and pool chronology; do not generalize a function-scope extern probe."
+        "A broad header or global extern, wrong width or alignment, or moved definition can change visibility and pool chronology; do not generalize a function-scope extern probe.",
+        "ConfigPadOpen p13-to-p14 is a counterexample: 16 strict ARG relocation rows close and the score rises, but source-owned .sdata2 shrinks 144 to 112 bytes with unchanged 93.01103% data-value and 38/51 exact functions, so owner-local section extent outranks the superficial score."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -2352,7 +2356,11 @@
         "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/report.json",
         "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/strict.json",
         "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/data-value.json",
-        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/report.json"
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/report.json",
+        "build/board-autonomy/config-pad-open-v19/p13-panelid-abi-casts/strict.json",
+        "build/board-autonomy/config-pad-open-v19/p13-panelid-abi-casts/data-value.json",
+        "build/board-autonomy/config-pad-open-v19/p14-literal-owner/strict.json",
+        "build/board-autonomy/config-pad-open-v19/p14-literal-owner/data-value.json"
       ]
     },
     {
@@ -5816,6 +5824,88 @@
         "tools/serialized_build.py",
         "tools/integration_finalize.py",
         "config/recovery/compiler_patterns.json"
+      ]
+    },
+    {
+      "id": "gc26-indexed-load-does-not-prove-array-dimensionality",
+      "title": "Indexed loads do not prove flat versus multidimensional array source shape",
+      "classification": "confirmed_rule",
+      "category": "data_layout_and_addressing",
+      "compiler": "GC/2.6",
+      "confidence": "confirmed",
+      "summary": "MWCC section-base commoning can make an authenticated multidimensional table and a flat equivalent share the same-looking indexed-load/address arithmetic. In ConfigPadOpen, the retained `s16 configPadSprOfsTbl[3][2]` source reached 91.32353% with 110 strict rows, while an atomic flat `[6]` candidate using `[j * 2]` and `[(j * 2) + 1]` regressed to 90.382355% with 113 strict rows and did not recover the target r31 base. The `slwi`/`addi`/`lhax` shape therefore constrains layout and access width but does not authenticate array dimensionality or source register choreography.",
+      "conditions": "Use as a bounded GC/2.6 evidence-limit diagnostic when a target indexed load or commoned section-base sequence appears to imply a flat table. Do not generalize to another compiler profile or owner without retained declaration, data-extent, or donor evidence.",
+      "source_condition": {
+        "change": "Choose between a retained multidimensional array and a flat equivalent solely from target index arithmetic, indexed loads, or a section-base register sequence.",
+        "requires": [
+          "a retained header or same-game donor declaration when available",
+          "authenticated element width, data extent, and consumer stride evidence",
+          "one bounded owner-local compile for each materially different source shape",
+          "strict and data-value object comparison with relocation and exact-neighbor checks",
+          "register/base lifetime observations recorded as emitted effects, not source authority"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "identical-looking `slwi`/`addi`/`lhax` indexed loads from different C declarators",
+          "section-base commoning that hides whether the source used one or two array dimensions",
+          "r31 or another base-register lifetime changing without a data-byte change",
+          "strict rows, register allocation, or relocation identities regressing after a flat rewrite"
+        ],
+        "known_signatures": [
+          "the retained 2D ConfigPadOpen candidate reports 91.32353% and 110 strict rows",
+          "the atomic flat `[6]` candidate reports 90.382355% and 113 strict rows",
+          "the flat candidate fails to restore the target r31 base even though its element addresses are mathematically equivalent",
+          "the target indexed-load island resembles `slwi`/`addi`/`lhax` after section-base commoning"
+        ]
+      },
+      "rule": "Do not infer flat versus multidimensional array source shape from indexed-load/address arithmetic after MWCC section-base commoning. Treat those instructions as layout and access-width evidence only; retain the strongest authenticated declaration and data extent, run a bounded same-command compile, and revert a candidate that does not improve the complete owner. Never invent a section-base pointer, register choreography, or declarator solely to chase r31 or a target-looking load sequence.",
+      "safe_actions": [
+        "preserve the retained 2D declaration while no header, donor, or extent evidence refutes it",
+        "verify element width, total bytes, row stride, and every consumer before changing the declarator",
+        "run one atomic flat-versus-2D owner-local probe under the pinned command",
+        "record strict/data-value rows, register/base lifetimes, relocations, and exact-neighbor regressions",
+        "revert a mathematically equivalent flat candidate when it worsens the complete object or fails to recover the target base"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "main:board/config:ConfigPadOpen",
+          "main:board/config:configPadSprOfsTbl"
+        ],
+        "modules": [
+          "main"
+        ],
+        "owner_tags": [
+          "array_shape",
+          "address_arithmetic",
+          "section_base_commoning",
+          "data_extent",
+          "evidence_limit",
+          "config"
+        ]
+      },
+      "examples": [
+        "Config v19 p9-mp5-anim-sentinel retains `s16 configPadSprOfsTbl[3][2]`; ConfigPadOpen reports 91.32353% and 110 strict rows.",
+        "The p12-flat-offset-table probe atomically changes the table to `[6]` and accesses `[j * 2]`/`[(j * 2) + 1]`; ConfigPadOpen regresses to 90.382355% and 113 strict rows, with the target r31 base still absent. The probe was reverted.",
+        "The target load island looks like `slwi`/`addi`/`lhax` after MWCC section-base commoning, so its address arithmetic cannot distinguish the two source declarations."
+      ],
+      "counterexamples": [
+        "An authenticated header or same-game donor that explicitly declares dimensions, combined with data extent and consumer stride proof, can establish source dimensionality; the indexed load alone still cannot.",
+        "A flat candidate that preserves table bytes or mathematical addresses may still alter register lifetimes, section-base commoning, relocations, or strict codegen.",
+        "Do not use this card to infer a generic cast, prototype, or ABI rule; those require separate evidence."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "src/board/config.c",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "build/board-autonomy/config-pad-open-v19/p9-mp5-anim-sentinel/report.json",
+        "build/board-autonomy/config-pad-open-v19/p9-mp5-anim-sentinel/report.md",
+        "build/board-autonomy/config-pad-open-v19/p12-flat-offset-table/report.json",
+        "build/board-autonomy/config-pad-open-v19/p12-flat-offset-table/report.md"
       ]
     }
   ]

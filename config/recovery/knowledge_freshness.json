@@ -487,7 +487,11 @@
         "build/config-pass-baseline-current.json",
         "build/config-pass-four-data-void.json",
         "build/board-autonomy/root-final-capevent-20260807/worker-verification-final/report.json",
-        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/report.json"
+        "build/board-autonomy/root-final-capevent-20260807/worker-verification-bulk1/report.json",
+        "build/board-autonomy/config-pad-open-v19/p13-panelid-abi-casts/strict.json",
+        "build/board-autonomy/config-pad-open-v19/p13-panelid-abi-casts/data-value.json",
+        "build/board-autonomy/config-pad-open-v19/p14-literal-owner/strict.json",
+        "build/board-autonomy/config-pad-open-v19/p14-literal-owner/data-value.json"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -1226,6 +1230,23 @@
         "tools/tests/test_recovery_pass.py",
         "tools/serialized_build.py",
         "tools/integration_finalize.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
+    "gc26-indexed-load-does-not-prove-array-dimensionality": {
+      "status": "active",
+      "validated_commit": "421822940df4efb3a2c0088a5dda1fc4ed2611ff",
+      "validated_at": "2026-08-09",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "src/board/config.c",
+        "config/GP6E01/symbols.txt",
+        "config/GP6E01/splits.txt",
+        "build/board-autonomy/config-pad-open-v19/p9-mp5-anim-sentinel/report.json",
+        "build/board-autonomy/config-pad-open-v19/p9-mp5-anim-sentinel/report.md",
+        "build/board-autonomy/config-pad-open-v19/p12-flat-offset-table/report.json",
+        "build/board-autonomy/config-pad-open-v19/p12-flat-offset-table/report.md"
       ],
       "supersedes": [],
       "superseded_by": null
