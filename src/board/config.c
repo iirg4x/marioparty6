@@ -248,7 +248,7 @@ void mbPausePanelBatsuSet(s16 panelId, BOOL batsuF);
 void mbPausePanelGrowSet(s16 panelId, int time, int delay, float scale);
 void mbPausePanelShrinkSet(s16 panelId, int time, int delay);
 void mbPausePanelBankSet(s16 panelId, int bank);
-static void PausePlayerComRead(s32 playerNo);
+static BOOL PausePlayerComRead(s32 playerNo);
 static void ConfigExec(void);
 static void ConfigClose(s32 result);
 static void PauseCursorCreate(void);
@@ -1354,6 +1354,87 @@ static int PauseCursorMove(void)
         espTPLvlSet(cursorP->hiliteSprId[i], cursorP->alpha[i]);
     }
     return cursorP->moveTime;
+}
+
+static BOOL PausePlayerComRead(s32 playerNo)
+{
+    extern s16 HuPadStatGet(s16 padNo);
+    PAUSE_PAD_WORK *work;
+    BOOL changeF;
+    s32 i;
+    s32 j;
+    s32 temp;
+
+    work = pauseWork.padWork;
+    changeF = FALSE;
+    if (playerNo) {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            work[i].port = i;
+            work[i].padNo = GwPlayer[i].padNo;
+            work[i].playerNo = 0;
+            work[i].activeF = FALSE;
+        }
+        for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
+            for (j = i + 1; j < GW_PLAYER_MAX; j++) {
+                if (work[i].padNo > work[j].padNo
+                    || (work[i].padNo == work[j].padNo
+                        && work[i].port > work[j].port)) {
+                    temp = work[i].padNo;
+                    work[i].padNo = work[j].padNo;
+                    work[j].padNo = temp;
+                    temp = work[i].port;
+                    work[i].port = work[j].port;
+                    work[j].port = temp;
+                }
+            }
+        }
+        {
+            BOOL partyF;
+
+            partyF = GwSystem.partyF;
+            if (partyF) {
+                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                    work[i].playerNo = HuPadStatGet((s16)work[i].padNo);
+                    if (work[i].playerNo != 0
+                        && !GwPlayer[work[i].port].comF) {
+                        GwPlayer[work[i].port].comF = TRUE;
+                        GwPlayerConf[work[i].port].type = TRUE;
+                    }
+                }
+            }
+        }
+    }
+    {
+        BOOL partyF;
+
+        partyF = GwSystem.partyF;
+        if (!partyF) {
+            return FALSE;
+        }
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        temp = HuPadStatGet((s16)work[i].padNo);
+        if (temp != work[i].playerNo) {
+            work[i].activeF++;
+        } else {
+            work[i].activeF = 0;
+        }
+        if (work[i].activeF < 4) {
+            continue;
+        }
+        if (temp == 0) {
+            GwPlayer[work[i].port].comF = FALSE;
+            GwPlayerConf[work[i].port].type = FALSE;
+            changeF = TRUE;
+            work[i].playerNo = temp;
+        } else if (temp == -1) {
+            GwPlayer[work[i].port].comF = TRUE;
+            GwPlayerConf[work[i].port].type = TRUE;
+            changeF = TRUE;
+            work[i].playerNo = temp;
+        }
+    }
+    return changeF;
 }
 
 static BOOL PausePadCheck(s32 padNo)
