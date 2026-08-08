@@ -5,3 +5,16 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/w11Dll/world11_callbacks.c:
+	.text       start:0x00000510 end:0x000005DC
+	.rodata     start:0x00000000 end:0x00000010
+
+REL/w11Dll/world11_tutorial.c:
+	.text       start:0x00000918 end:0x00000984
+
+REL/w11Dll/world11_tutorial_wait.c:
+	.text       start:0x00001200 end:0x0000127C
+
+REL/w11Dll/world11_guide.c:
+	.text       start:0x0000127C end:0x000012FC

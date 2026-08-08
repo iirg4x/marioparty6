@@ -1351,6 +1351,37 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "motchkDll",
+        objects={
+            Object(
+                Matching,
+                "REL/motchkDll/motchk.c",
+                extra_cflags=["-pool off"],
+            ),
+        },
+    ),
+    Rel(
+        "w11Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w11Dll/world11_callbacks.c",
+            ),
+            Object(
+                Matching,
+                "REL/w11Dll/world11_tutorial.c",
+            ),
+            Object(
+                Matching,
+                "REL/w11Dll/world11_tutorial_wait.c",
+            ),
+            Object(
+                Matching,
+                "REL/w11Dll/world11_guide.c",
+            ),
+        },
+    ),
 
 ]
 
