@@ -25,7 +25,12 @@
       "generated output",
       "AI attribution"
     ],
-    "promotion_branch_prefix": "recovery/"
+    "promotion_branch_prefix": "recovery/",
+    "original_data_promotion_tool": "tools/promote_original_data.py",
+    "original_data_manifest": "config/recovery/original_data.json",
+    "original_data_allowlist": [
+      "src/musyx/runtime/dsp_import.c"
+    ]
   },
   "owner_globs": [
     "config/recovery/owners/*.json"
@@ -36,6 +41,7 @@
     "compiler_patterns": "config/recovery/compiler_patterns.json",
     "evidence_sources": "config/recovery/evidence_sources.json",
     "knowledge_freshness": "config/recovery/knowledge_freshness.json",
+    "original_data": "config/recovery/original_data.json",
     "blind_benchmark": "benchmarks/blind_recovery/manifest.json"
   },
   "agent_readiness": {
@@ -55,6 +61,7 @@
       "docs/context_workflow.md",
       "docs/concurrent_agents.md",
       "docs/main_promotion.md",
+      "docs/original_data_promotion.md",
       "docs/blind_recovery_benchmark.md",
       "benchmarks/blind_recovery/README.md",
       "benchmarks/blind_recovery/manifest.json",
@@ -73,6 +80,7 @@
       "tools/knowledge_cards.py",
       "tools/blind_recovery.py",
       "tools/promote_recovered_c.py",
+      "tools/promote_original_data.py",
       ".github/PULL_REQUEST_TEMPLATE.md",
       ".github/ISSUE_TEMPLATE/recovery-task.yml",
       ".github/workflows/ai-workspace-boundary.yml"
@@ -194,7 +202,9 @@
     "Binary identity is required for final promotion but is not, by itself, a source-authenticity claim.",
     "Same-game target and consumer evidence outrank sibling source, compiler probes, and readability hypotheses.",
     "The AI workspace is permanent and must never be merged, squashed, rebased, or cherry-picked into main.",
-    "Only exact verified src/**/*.c blobs may be promoted automatically to a fresh recovery/* branch based on main.",
+    "The ordinary recovered-C path may promote only exact verified src/**/*.c blobs to a fresh recovery/* branch based on main; authenticated original data uses its separate allowlist and tool.",
+    "Authenticated original-data records may cross only through the dedicated allowlist and tools/promote_original_data.py, carry exact byte/source provenance, earn zero clean-C credit, and require object, relocation, linked-retail, checksum, and progress proof before Matching.",
+    "The authenticated original-data path does not relax the raw numeric hexadecimal prohibition for ordinary recovered C; tools/promote_recovered_c.py remains C-only and unchanged.",
     "Claim the owner and every shared write path before editing; the real Git diff must remain inside the claim.",
     "Consult automatically selected knowledge cards, freshness state, symptoms, and counterexamples before starting a compiler probe.",
     "Compiler experiments may justify source shape; they do not prove semantic names.",
@@ -214,6 +224,7 @@
     "Bind worker verification proof to a clean current commit.",
     "Run relocation-aware owner and consumer comparisons.",
     "Run serialized retail checksum and byte gates before integration finalization.",
+    "Require native object, relocation, linked-retail, checksum, and progress proof before marking authenticated original data Matching.",
     "Update source-quality dimensions independently from binary status.",
     "Do not merge an unexplained compiler-control construct merely because it reaches 100%.",
     "Do not describe a blind-recovery trial as reproducible unless its evidence, frozen candidate, compared assembly, hashes, source commit, and deterministic score are preserved.",

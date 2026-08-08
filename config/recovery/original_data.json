@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "musyx-dsp-import-mp4-201",
+      "classification": "authenticated",
+      "kind": "original_data",
+      "status": "static_authenticated_pending_native",
+      "owner": "main:musyx/runtime/dsp_import#mp4-201-dsp-image-v1",
+      "path": "src/musyx/runtime/dsp_import.c",
+      "source_sha256": "c1ae58e9266eec264439de252eeb42fd486c63933b0aeef58b5120daea6c5989",
+      "payload": {
+        "symbol": "dspSlave",
+        "length": 7872,
+        "alignment": 32,
+        "sha256": "ccfb81d9afa40688deff1a70e5da4bba1038a23713b4813a22ad900689a79e22"
+      },
+      "length_symbol": {
+        "symbol": "dspSlaveLength",
+        "value": 7872
+      },
+      "target": {
+        "section": ".data",
+        "address": "0x80242C60",
+        "size": 7872,
+        "length_section": ".sdata",
+        "length_address": "0x802BFB30",
+        "length_size": 8,
+        "relocations": []
+      },
+      "donor": {
+        "repo": "repos/marioparty4/extern/musyx",
+        "path": "src/musyx/runtime/dsp_import.c",
+        "commit": "5b5e325e22f593a708393aef363cccf0732d7222",
+        "blob": "37ef068dffe78e4e13dfd7a91db1f1addd8d57e4"
+      },
+      "evidence": [
+        "docs/native_matching_wave41.md",
+        "config/GP6E01/splits.txt",
+        "config/GP6E01/symbols.txt"
+      ]
+    }
+  ]
+}

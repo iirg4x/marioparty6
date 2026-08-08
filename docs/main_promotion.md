@@ -12,6 +12,11 @@ main:         human-readable project and accepted recovered source
 Do not merge the AI workspace. Promotion is a **content transfer**, not a branch
 merge or commit-history transfer.
 
+The ordinary recovered-C path below remains C-only and keeps its raw numeric
+hexadecimal prohibition. Authenticated original data uses the separate,
+allowlisted path documented in [`original_data_promotion.md`](original_data_promotion.md);
+it is not clean-C recovery.
+
 ## Preconditions
 
 The worker task must be `ready` or `done` in the local queue and its verification
@@ -145,3 +150,19 @@ local queue, manifests, and recovery metadata.
 
 `--allow-unverified` exists only for tool tests and planning experiments. It must
 not be used for a real promotion to `main`.
+
+## Authenticated original-data path
+
+Use `tools/promote_original_data.py` only for an exact record listed in
+`config/recovery/original_data.json`. The tool creates a fresh `recovery/*`
+branch directly from `main` and transfers the allowlisted source blob with its
+exact byte/source provenance. It must not transfer AI metadata, documentation,
+tooling, generated output, or queue state.
+
+The current record is `musyx-dsp-import-mp4-201` for
+`src/musyx/runtime/dsp_import.c`. It is statically authenticated and pending
+native proof. Original data earns zero clean-C credit, and the owner cannot be
+marked `Matching` until object, relocation, linked-retail, checksum, and
+progress gates pass. No object proof is claimed yet. See
+[`original_data_promotion.md`](original_data_promotion.md) for the record,
+evidence, and gate checklist.

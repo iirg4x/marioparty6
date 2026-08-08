@@ -5,12 +5,18 @@
 This is the AI-forward recovery workspace. **Never merge, squash, rebase, or
 cherry-pick this branch into `main`.**
 
-`main` is the clean, human-facing project. The only automatic transfer allowed
-from this workspace is an exact verified `src/**/*.c` blob copied into a fresh
-`recovery/*` branch created directly from `main`.
+`main` is the clean, human-facing project. For ordinary recovered C, the only
+automatic transfer is an exact verified `src/**/*.c` blob copied into a fresh
+`recovery/*` branch created directly from `main`. A separate authenticated
+original-data transfer is allowed only through `tools/promote_original_data.py`
+for an exact record in `config/recovery/original_data.json` (currently
+`src/musyx/runtime/dsp_import.c`). It carries byte/source provenance only and
+earns zero clean-C credit; no AI workspace metadata may cross the boundary.
 
 Read [`AI_WORKSPACE.md`](AI_WORKSPACE.md) and
-[`docs/main_promotion.md`](docs/main_promotion.md).
+[`docs/main_promotion.md`](docs/main_promotion.md). For the dedicated
+original-data path, also read
+[`docs/original_data_promotion.md`](docs/original_data_promotion.md).
 
 ## Mission
 
@@ -45,8 +51,9 @@ and recovery schemas with `--shared` before editing them.
 `AI_BASE_COMMIT` is the pinned commit of `agent/recovery-context-workflow` for
 the active batch. Worker branches and diff checks use that exact commit. Only
 the promotion tools start a new branch from `main`:
-`tools/promote_recovered_c.py` for recovered C and
-`tools/promote_supporting_change.py` for supporting changes.
+`tools/promote_recovered_c.py` for recovered C,
+`tools/promote_supporting_change.py` for supporting changes, and
+`tools/promote_original_data.py` for the allowlisted original-data path.
 
 Generate bounded task context:
 
@@ -165,6 +172,13 @@ directly from `main`, transfers only declared verified blobs, and enforces the
 same attribution, contamination, and consumer-re-verification gates. Never copy
 them to `main` outside that tool. See
 `docs/supporting_change_promotion.md`.
+
+Authenticated original data follows a separate allowlisted path through
+`tools/promote_original_data.py`; it is not recovered-C promotion and does not
+relax the raw numeric hexadecimal prohibition for ordinary recovered C. The
+record must pass object, relocation, linked-retail, checksum, and progress gates
+before its owner can be marked `Matching`; until then, no object proof is
+claimed.
 
 ## Blind benchmark evidence
 

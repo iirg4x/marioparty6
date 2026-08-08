@@ -10,6 +10,8 @@ Follow [`AGENTS.md`](AGENTS.md) before editing.
 
 - `project.json`: project contract, evidence hierarchy, status vocabularies,
   context/coordination policy, and required tooling.
+- `original_data.json`: the reviewed allowlist for authenticated original-data
+  byte/source transfers; it is not clean-C recovery metadata.
 - `owners/*.json`: reviewed semantic recovery owners. Coverage is intentionally
   incremental.
 - `names.json`: stable identities and semantic naming decisions.
@@ -26,6 +28,13 @@ source files and dependencies but does not promote semantic status.
 Each reviewed owner tracks binary, source shape, semantics, naming, and data
 independently. Exact output can coexist with address-only naming or semantic
 debt. A natural semantic candidate may be useful before matching.
+
+Authenticated original-data records are separate from ordinary recovered C. They
+carry exact byte/source provenance, earn zero clean-C credit, and remain pending
+until object, relocation, linked-retail, checksum, and progress gates are proved.
+The dedicated promotion tool is the only path that may transfer an allowlisted
+record; this does not relax the raw numeric hexadecimal prohibition for
+recovered C.
 
 Include the configured compiler when known. Evidence must be concise,
 falsifiable, accepted/rejected explicitly, and normally linked to a durable

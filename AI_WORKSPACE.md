@@ -43,7 +43,8 @@ historical marker, not a merge candidate.
 
 ## Allowed transfer
 
-Only a verified recovered C blob may be transferred by the C promotion tool:
+For ordinary recovered C, only a verified recovered C blob may be transferred
+by the C promotion tool:
 
 ```text
 src/**/*.c
@@ -77,6 +78,22 @@ The tool rejects:
 - co-author trailers;
 - blobs that differ from the verified worker commit;
 - unverified queue tasks unless an explicit diagnostic override is used.
+
+### Authenticated original data
+
+The dedicated `tools/promote_original_data.py` path is the only transfer path
+for an allowlisted authenticated original-data record in
+`config/recovery/original_data.json`. The current allowlist contains the exact
+`src/musyx/runtime/dsp_import.c` source blob. The tool creates a fresh
+`recovery/*` branch from `main` and transfers exact bytes and source provenance
+only; it transfers no AI metadata, documentation, tooling, or generated state.
+
+Original data is not clean-C recovery and earns zero clean-C credit. This narrow
+path does not relax the raw numeric hexadecimal prohibition for ordinary
+recovered C, and it leaves `tools/promote_recovered_c.py` unchanged. Its owner
+cannot be marked `Matching` until object, relocation, linked-retail, checksum,
+and progress gates pass. The current record is statically authenticated and
+pending native proof; no object proof is claimed yet.
 
 ## Supporting changes
 

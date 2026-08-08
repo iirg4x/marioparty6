@@ -21,10 +21,19 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
   `src/**/*.c` for `promote_recovered_c.py`; `include/**`, `config/**` (never
   `config/recovery/**`), and `configure.py` for
   `promote_supporting_change.py`.
+- `promote_original_data.py` is the only transfer path for exact authenticated
+  original-data records listed in `config/recovery/original_data.json`; its
+  allowlist currently contains `src/musyx/runtime/dsp_import.c` and it must
+  create a fresh `recovery/*` branch directly from `main`.
 - Every promoted Git blob must exactly equal the verified worker-commit blob.
-- The C tool rejects headers, configuration, symbols, and splits; both tools
-  reject tools, metadata, docs, workflows, benchmarks, generated output, and AI
-  attribution.
+- The C tool rejects headers, configuration, symbols, and splits; promotion
+  tooling rejects tools, metadata, docs, workflows, benchmarks, generated
+  output, and AI attribution.
+- Original-data transfer is not recovered-C promotion, earns zero clean-C
+  credit, and does not relax the raw numeric hexadecimal prohibition for
+  ordinary recovered C. Object, relocation, linked-retail, checksum, and
+  progress gates are required before an original-data owner is marked
+  `Matching`; no AI metadata may enter `main`.
 - Promotion manifests remain under ignored `build/promotion/` in the AI
   workspace; never commit them to the clean branch.
 - Supporting changes move only through `promote_supporting_change.py` onto
