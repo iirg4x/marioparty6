@@ -1205,7 +1205,7 @@ void mbPausePanelSlideSet(s16 panelId, s16 time, HuVecF *pos)
     workP->posStart = workP->pos;
 }
 
-BOOL mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank)
+void mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank)
 {
     PAUSE_PANEL_WORK *workP;
 
@@ -1215,7 +1215,7 @@ BOOL mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank)
     Hu3DAnmNoSet(workP->animId[0], (u16)workP->bank);
     workP->bank = (s16)bank;
     Hu3DAnmNoSet(workP->animId[1], (u16)bank);
-    return workP->sprId >= 0;
+    workP->sprId >= 0;
 }
 
 void mbPauseGuideTalkSet(MBMODELID modelId)
