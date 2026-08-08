@@ -7,7 +7,7 @@
 
 - [`../AI_WORKSPACE.md`](../AI_WORKSPACE.md): permanent branch boundary
 - [`../README.md`](../README.md): AI workspace scope and commands
-- [`main_promotion.md`](main_promotion.md): exact C-only transfer to clean `main`
+- [`main_promotion.md`](main_promotion.md): exact canonical recovered-source transfer to clean `main`
 - [`original_data_promotion.md`](original_data_promotion.md): narrow authenticated original-data transfer
 - [`supporting_change_promotion.md`](supporting_change_promotion.md): audited header/symbol/split/build transfer to clean `main`
 - [`agent_quickstart.md`](agent_quickstart.md): shortest worker path
@@ -32,7 +32,8 @@ agent/recovery-context-workflow
 
 Never merge the second branch into the first. After a worker commit is fully
 verified, create a fresh `recovery/*` worktree from `main` and copy only selected
-`src/**/*.c` blobs:
+canonical source/header blobs (`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`,
+`src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`, or `include/**/*.hpp`):
 
 ```sh
 python tools/promote_recovered_c.py create \
@@ -45,17 +46,19 @@ python tools/promote_recovered_c.py create \
   --title "Recover <subsystem>"
 ```
 
-Headers and build configuration are deliberately excluded from the C path.
-Promote them separately with `tools/promote_supporting_change.py` onto a
-`project/*` branch cut from `main`; see
+Canonical headers may be selected and verified with their recovered source in
+the `recovery/*` branch. Promote symbols, splits, and build configuration
+separately with `tools/promote_supporting_change.py` onto a `project/*` branch
+cut from `main`; see
 [`supporting_change_promotion.md`](supporting_change_promotion.md).
 
 Authenticated original data has a separate allowlisted path through
 `tools/promote_original_data.py` and
 [`original_data_promotion.md`](original_data_promotion.md). It transfers exact
 bytes and source provenance only, earns zero clean-C credit, requires native
-proof before `Matching`, and never transfers AI metadata. The ordinary C path
-and its raw numeric hexadecimal prohibition remain unchanged.
+proof before `Matching`, and never transfers AI metadata. The ordinary
+recovered-source path and its raw numeric hexadecimal prohibition remain
+unchanged.
 
 ## Build reference
 

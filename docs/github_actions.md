@@ -11,7 +11,9 @@ that still contains AI workspace markers such as `AI_WORKSPACE.md`, agent tools,
 recovery metadata, or blind-benchmark infrastructure.
 
 A legitimate `recovery/*` branch starts directly from `main`, so it contains none
-of those markers and only the explicitly promoted C blobs.
+of those markers and only the explicitly promoted canonical C/C++ source/header blobs.
+The recovered-source tool accepts `src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`,
+`src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`, and `include/**/*.hpp`.
 
 The closed PR **“AI recovery workspace — do not merge into main”** records the
 policy. Do not reopen it.
@@ -25,7 +27,7 @@ Mario Party 6 files. It validates:
 - template cleanup and untracked retail/generated policy;
 - recovery metadata, cards, freshness, and blind cases;
 - Python compilation and synthetic tests;
-- C-only promotion branch creation and rejection rules;
+- canonical C/C++ source promotion branch creation and rejection rules;
 - confirmation that the full AI workspace cannot pass as a clean main promotion;
 - owner catalog, queue migration, worktree audit, index, context, local evidence,
   organicity, reports, and source-quality policy.
@@ -56,7 +58,7 @@ A clean source promotion is created from `main` with:
 python tools/promote_recovered_c.py create ...
 ```
 
-That branch contains only selected recovered C blobs. Supporting project changes
+That branch contains only selected canonical recovered-source blobs. Supporting project changes
 use a separate human branch from `main`. Neither branch contains AI workflows,
 agent docs, metadata, or benchmark tooling.
 
@@ -95,7 +97,7 @@ build/tools/dtk shasum -q -c config/GP6E01/build.sha1
 Compare `main.dol` and every affected REL, check Matching consumers, and inspect
 generated symbols.
 
-After the AI worker commit is verified, create the clean C-only promotion branch
+After the AI worker commit is verified, create the clean canonical-source promotion branch
 from `main` and rerun the relevant object, consumer, DOL/REL, checksum, byte, and
 readability gates there. Only that clean branch is eligible for a human-facing
 pull request to `main`.

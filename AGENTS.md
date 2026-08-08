@@ -5,9 +5,11 @@
 This is the AI-forward recovery workspace. **Never merge, squash, rebase, or
 cherry-pick this branch into `main`.**
 
-`main` is the clean, human-facing project. For ordinary recovered C, the only
-automatic transfer is an exact verified `src/**/*.c` blob copied into a fresh
-`recovery/*` branch created directly from `main`. A separate authenticated
+`main` is the clean, human-facing project. For ordinary recovered source, the
+only automatic transfer is an exact verified canonical source/header blob
+(`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`,
+`include/**/*.h`, or `include/**/*.hpp`) copied into a fresh `recovery/*` branch created directly
+from `main`. A separate authenticated
 original-data transfer is allowed only through `tools/promote_original_data.py`
 for an exact record in `config/recovery/original_data.json` (currently
 `src/musyx/runtime/dsp_import.c`). It carries byte/source provenance only and
@@ -51,7 +53,7 @@ and recovery schemas with `--shared` before editing them.
 `AI_BASE_COMMIT` is the pinned commit of `agent/recovery-context-workflow` for
 the active batch. Worker branches and diff checks use that exact commit. Only
 the promotion tools start a new branch from `main`:
-`tools/promote_recovered_c.py` for recovered C,
+`tools/promote_recovered_c.py` for recovered source and headers,
 `tools/promote_supporting_change.py` for supporting changes, and
 `tools/promote_original_data.py` for the allowlisted original-data path.
 
@@ -162,15 +164,18 @@ python tools/promote_recovered_c.py create \
   --title "Recover <subsystem>"
 ```
 
-The command accepts only `src/**/*.c`, copies exact verified blobs, rejects AI
-attribution, and proves the clean branch contains none of this workspace's
-infrastructure.
+The command accepts only canonical source/header paths (`src/**/*.c`,
+`src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`,
+or `include/**/*.hpp`), copies
+exact verified blobs, rejects AI attribution, and proves the clean branch
+contains none of this workspace's infrastructure.
 
-Header, symbol, split, or build changes are promoted separately by
+Symbol, split, or build changes are promoted separately by
 `tools/promote_supporting_change.py`, which cuts its own `project/*` branch
 directly from `main`, transfers only declared verified blobs, and enforces the
 same attribution, contamination, and consumer-re-verification gates. Never copy
-them to `main` outside that tool. See
+them to `main` outside that tool. Canonical headers may move with their selected
+verified source through the recovered-source path. See
 `docs/supporting_change_promotion.md`.
 
 Authenticated original data follows a separate allowlisted path through

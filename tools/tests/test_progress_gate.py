@@ -18,6 +18,23 @@ class ProgressGateTests(unittest.TestCase):
             [],
         )
 
+    def test_canonical_cpp_source_suffixes_require_status(self) -> None:
+        for prefix, suffix in (
+            ("src/Runtime", ".cp"),
+            ("src/Runtime", ".cpp"),
+            ("src/Runtime", ".h"),
+            ("src/Runtime", ".hpp"),
+            ("include/Runtime", ".h"),
+            ("include/Runtime", ".hpp"),
+        ):
+            with self.subTest(suffix=suffix):
+                self.assertEqual(
+                    progress_errors([f"{prefix}/example{suffix}"]),
+                    [
+                        "recovery source or Matching status changed, but STATUS.md was not updated"
+                    ],
+                )
+
     def test_dol_matching_change_requires_only_dol_snapshot(self) -> None:
         errors = progress_errors(
             ["configure.py", "STATUS.md"], matching_categories={"dol"}

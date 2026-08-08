@@ -19,7 +19,8 @@ CATEGORY_PROGRESS_PATHS = {
     "dlls": "progress/dlls.json",
     "dol": "progress/dol.json",
 }
-SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx"}
+SOURCE_SUFFIXES = {".c", ".cp", ".cc", ".cpp", ".cxx", ".h", ".hpp"}
+HEADER_SUFFIXES = {".h", ".hpp"}
 OBJECT_RE = re.compile(
     r'Object\(\s*(Matching|NonMatching),\s*"([^"]+)"', re.MULTILINE
 )
@@ -56,7 +57,14 @@ def progress_errors(
     categories = set(matching_categories)
     matching_status_changed = bool(categories)
     source_changed = any(
-        path.startswith("src/") and Path(path).suffix.lower() in SOURCE_SUFFIXES
+        (
+            path.startswith("src/")
+            and Path(path).suffix.lower() in SOURCE_SUFFIXES
+        )
+        or (
+            path.startswith("include/")
+            and Path(path).suffix.lower() in HEADER_SUFFIXES
+        )
         for path in paths
     )
     errors: list[str] = []

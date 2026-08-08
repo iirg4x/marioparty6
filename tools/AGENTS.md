@@ -18,7 +18,8 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
   cherry-picked into `main`.
 - Main-promotion tooling must create a new branch/worktree directly from `main`.
 - Automatic transfer accepts only explicitly declared added/modified paths:
-  `src/**/*.c` for `promote_recovered_c.py`; `include/**`, `config/**` (never
+  `src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`,
+  `include/**/*.h`, or `include/**/*.hpp` for `promote_recovered_c.py`; `config/**` (never
   `config/recovery/**`), and `configure.py` for
   `promote_supporting_change.py`.
 - `promote_original_data.py` is the only transfer path for exact authenticated
@@ -26,9 +27,9 @@ These rules apply under `tools/`. Also follow root `AGENTS.md`.
   allowlist currently contains `src/musyx/runtime/dsp_import.c` and it must
   create a fresh `recovery/*` branch directly from `main`.
 - Every promoted Git blob must exactly equal the verified worker-commit blob.
-- The C tool rejects headers, configuration, symbols, and splits; promotion
-  tooling rejects tools, metadata, docs, workflows, benchmarks, generated
-  output, and AI attribution.
+- The recovered-source tool rejects noncanonical headers, configuration,
+  symbols, and splits; promotion tooling rejects tools, metadata, docs,
+  workflows, benchmarks, generated output, and AI attribution.
 - Original-data transfer is not recovered-C promotion, earns zero clean-C
   credit, and does not relax the raw numeric hexadecimal prohibition for
   ordinary recovered C. Object, relocation, linked-retail, checksum, and

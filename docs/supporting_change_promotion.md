@@ -2,15 +2,18 @@
 
 ## Principle
 
-Recovered C is promoted by `tools/promote_recovered_c.py` and always stops at
-`src/**/*.c`. The supporting changes a recovery depends on — shared headers,
-symbols, splits, TU declarations, and `configure.py` object-status flips — use
+Recovered source and headers are promoted by `tools/promote_recovered_c.py` and
+accept canonical `src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`,
+`src/**/*.hpp`, `include/**/*.h`, and `include/**/*.hpp` paths. The
+supporting changes a recovery depends on — shared headers that are not
+co-promoted, symbols, splits, TU declarations, and `configure.py` object-status
+flips — use
 this workflow instead. The same permanent boundary applies: the AI workspace is
 never merged; promotion is a content transfer onto a `project/*` branch created
 directly from `main`.
 
 ```text
-recovery/<subsystem>       verified C blobs only
+recovery/<subsystem>       verified canonical source/header blobs only
 project/<supporting-fix>   audited supporting change, also cut from main
 ```
 
@@ -29,7 +32,9 @@ config/**        (never config/recovery/**)
 configure.py
 ```
 
-It refuses `src/**/*.c` (use `tools/promote_recovered_c.py`), AI-workspace
+It refuses canonical recovered-source paths (`src/**/*.c`, `src/**/*.cp`,
+`src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`, or
+`include/**/*.hpp`; use `tools/promote_recovered_c.py`), AI-workspace
 metadata, tools, docs, workflows, and everything else. There is no automatic
 path selection: declare each path.
 

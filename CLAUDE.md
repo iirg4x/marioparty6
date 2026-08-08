@@ -2,7 +2,8 @@
 
 This is the permanent AI recovery workspace. **Never merge or open a merge PR
 from this branch to `main`.** `main` is human-facing and receives only verified
-content through fresh main-based branches: `recovery/*` for C blobs,
+content through fresh main-based branches: `recovery/*` for canonical
+source/header blobs,
 `project/*` for audited supporting changes.
 
 Read root `AGENTS.md`, `AI_WORKSPACE.md`, and the nearest nested `AGENTS.md`.
@@ -24,9 +25,11 @@ Generate focused context, commit a clean candidate, run the public and object
 proof, record `queue verify`, and stop at `ready`.
 
 After private integration, use `tools/promote_recovered_c.py` to create a clean
-`recovery/*` branch from `main`. Only selected `src/**/*.c` blobs may transfer.
-Verified supporting changes (headers, symbols, splits, `configure.py`) use
-`tools/promote_supporting_change.py` and their own `project/*` branch. Never
+`recovery/*` branch from `main`. Only selected canonical source/header blobs
+(`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`,
+`include/**/*.h`, or `include/**/*.hpp`) may transfer. Verified supporting changes (symbols, splits,
+`configure.py`) use `tools/promote_supporting_change.py` and their own
+`project/*` branch. Never
 transfer Claude attribution, prompts, metadata, tooling, docs, or benchmarks.
 
 There are no separate Claude recovery rules; `AGENTS.md` is authoritative.

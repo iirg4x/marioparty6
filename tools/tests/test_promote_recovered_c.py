@@ -6,6 +6,7 @@ from pathlib import Path
 
 from tools.promote_recovered_c import (
     PromotionError,
+    _normalise_path,
     audit_promotion,
     branch_errors,
     create_promotion,
@@ -55,6 +56,42 @@ class PromotionTests(unittest.TestCase):
         run(root, "git", "commit", "-qm", "Recover example with internal tooling")
         return temporary, root, base
 
+    def test_normalise_accepts_only_canonical_recovered_source_and_header_suffixes(self):
+        self.assertEqual(
+            _normalise_path(r"  src\game\example.c  "),
+            "src/game/example.c",
+        )
+        for suffix in (".cp", ".cpp"):
+            with self.subTest(suffix=suffix):
+                self.assertEqual(
+                    _normalise_path(f"src\\game\\example{suffix}"),
+                    f"src/game/example{suffix}",
+                )
+        for path in (
+            "include/game/example.h",
+            "include/game/example.hpp",
+            "src/game/example.h",
+            "src/game/example.hpp",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(_normalise_path(path), path)
+        for path in (
+            "src/game/example.cc",
+            "src/game/example.cxx",
+            "src/game/example.CP",
+            "src/game/example.s",
+            "include/game/example.cp",
+            "include/game/example.cpp",
+            "src/game/example.inc",
+            "tools/example.py",
+        ):
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(
+                    PromotionError,
+                    r"automatic promotion accepts only",
+                ):
+                    _normalise_path(path)
+
     def test_plan_selects_only_recovered_c(self):
         temporary, root, base = self.fixture()
         try:
@@ -67,6 +104,170 @@ class PromotionTests(unittest.TestCase):
             self.assertEqual(
                 [item["path"] for item in value["files"]],
                 ["src/game/example.c"],
+            )
+        finally:
+            temporary.cleanup()
+
+    def test_plan_rejects_unchanged_source_and_header_paths(self):
+        temporary, root, base = self.fixture()
+        try:
+            (root / "include/game").mkdir(parents=True)
+            (root / "include/game/unchanged.h").write_text(
+                "int Unchanged(void);\n", encoding="utf-8"
+            )
+            run(root, "git", "add", "include/game/unchanged.h")
+            run(root, "git", "commit", "-qm", "Add unchanged header")
+            same = run(root, "git", "rev-parse", "HEAD")
+            with self.assertRaisesRegex(PromotionError, "identical to base"):
+                plan_promotion(
+                    root,
+                    base_ref=same,
+                    source_ref=same,
+                    paths=["src/game/example.c", "include/game/unchanged.h"],
+                    allow_unverified=True,
+                )
+        finally:
+            temporary.cleanup()
+
+    def test_plan_auto_selects_canonical_sources_and_headers(self):
+        temporary, root, base = self.fixture()
+        try:
+            for suffix in (".cp", ".cpp"):
+                (root / f"src/game/example{suffix}").write_text(
+                    "int Example(void) { return 1; }\n",
+                    encoding="utf-8",
+                )
+            # Auto-selection must include canonical headers while ignoring
+            # unrelated support and unsupported source suffixes.
+            (root / "src/game/example.cc").write_text(
+                "int Example(void) { return 1; }\n", encoding="utf-8"
+            )
+            (root / "include/game/example.h").parent.mkdir(parents=True)
+            (root / "include/game/example.h").write_text(
+                "int Example(void);\n", encoding="utf-8"
+            )
+            (root / "include/game/example.hpp").write_text(
+                "int Example(void);\n", encoding="utf-8"
+            )
+            for suffix in (".h", ".hpp"):
+                (root / f"src/game/example{suffix}").write_text(
+                    "int Example(void);\n", encoding="utf-8"
+                )
+            run(root, "git", "add", ".")
+            run(root, "git", "commit", "-qm", "Add canonical source suffixes")
+            value = plan_promotion(
+                root,
+                base_ref=base,
+                source_ref="HEAD",
+                allow_unverified=True,
+            )
+            self.assertEqual(
+                [item["path"] for item in value["files"]],
+                [
+                    "include/game/example.h",
+                    "include/game/example.hpp",
+                    "src/game/example.c",
+                    "src/game/example.cp",
+                    "src/game/example.cpp",
+                    "src/game/example.h",
+                    "src/game/example.hpp",
+                ],
+            )
+            explicit_headers = plan_promotion(
+                root,
+                base_ref=base,
+                source_ref="HEAD",
+                paths=["src/game/example.h", "src/game/example.hpp"],
+                allow_unverified=True,
+            )
+            self.assertEqual(
+                [item["path"] for item in explicit_headers["files"]],
+                ["src/game/example.h", "src/game/example.hpp"],
+            )
+            with self.assertRaisesRegex(PromotionError, "README.md"):
+                plan_promotion(
+                    root,
+                    base_ref=base,
+                    source_ref="HEAD",
+                    paths=["src/game/example.cp", "README.md"],
+                    allow_unverified=True,
+                )
+            with self.assertRaisesRegex(PromotionError, r"automatic promotion accepts only"):
+                plan_promotion(
+                    root,
+                    base_ref=base,
+                    source_ref="HEAD",
+                    paths=["src/game/example.cc"],
+                    allow_unverified=True,
+                )
+            for unsupported in ("configure.py", "asm/example.s"):
+                with self.subTest(unsupported=unsupported):
+                    with self.assertRaisesRegex(PromotionError, unsupported):
+                        plan_promotion(
+                            root,
+                            base_ref=base,
+                            source_ref="HEAD",
+                            paths=["include/game/example.h", unsupported],
+                            allow_unverified=True,
+                        )
+        finally:
+            temporary.cleanup()
+
+    def test_audit_accepts_canonical_sources_and_headers(self):
+        temporary, root, base = self.fixture()
+        try:
+            run(root, "git", "checkout", "-qb", "recovery/canonical", base)
+            for suffix in (".cp", ".cpp"):
+                (root / f"src/game/example{suffix}").write_text(
+                    "int Example(void) { return 1; }\n",
+                    encoding="utf-8",
+                )
+            (root / "include/game").mkdir(parents=True)
+            for suffix in (".h", ".hpp"):
+                (root / f"include/game/example{suffix}").write_text(
+                    "int Example(void);\n",
+                    encoding="utf-8",
+                )
+            for suffix in (".h", ".hpp"):
+                (root / f"src/game/example{suffix}").write_text(
+                    "int Example(void);\n", encoding="utf-8"
+                )
+            run(
+                root,
+                "git",
+                "add",
+                "src/game/example.cp",
+                "src/game/example.cpp",
+                "src/game/example.h",
+                "src/game/example.hpp",
+                "include/game/example.h",
+                "include/game/example.hpp",
+            )
+            run(root, "git", "commit", "-qm", "Recover canonical source")
+            result = audit_promotion(
+                root,
+                base_ref=base,
+                head_ref="HEAD",
+                selected_paths=[
+                    "src/game/example.cp",
+                    "src/game/example.cpp",
+                    "src/game/example.h",
+                    "src/game/example.hpp",
+                    "include/game/example.h",
+                    "include/game/example.hpp",
+                ],
+            )
+            self.assertTrue(result["clean_human_promotion"])
+            self.assertEqual(
+                [item["path"] for item in result["files"]],
+                [
+                    "include/game/example.h",
+                    "include/game/example.hpp",
+                    "src/game/example.cp",
+                    "src/game/example.cpp",
+                    "src/game/example.h",
+                    "src/game/example.hpp",
+                ],
             )
         finally:
             temporary.cleanup()
@@ -120,15 +321,15 @@ class PromotionTests(unittest.TestCase):
         finally:
             temporary.cleanup()
 
-    def test_headers_are_not_automatically_promotable(self):
+    def test_noncanonical_support_paths_are_not_promotable(self):
         temporary, root, base = self.fixture()
         try:
-            with self.assertRaisesRegex(PromotionError, "src/.*\\.c"):
+            with self.assertRaisesRegex(PromotionError, "automatic promotion accepts only"):
                 plan_promotion(
                     root,
                     base_ref=base,
                     source_ref="HEAD",
-                    paths=["include/game/example.h"],
+                    paths=["include/game/example.cpp"],
                     allow_unverified=True,
                 )
         finally:
@@ -189,9 +390,108 @@ class PromotionTests(unittest.TestCase):
         finally:
             temporary.cleanup()
 
+    def test_header_guards_allow_matching_leading_guard_only(self):
+        temporary, root, _ = self.fixture()
+        try:
+            for suffix in (".h", ".hpp"):
+                macro = "_EXAMPLE_H" if suffix == ".h" else "_EXAMPLE_HPP"
+                text = (
+                    f"#ifndef {macro}\n"
+                    f"#define {macro}\n"
+                    "int Example(void);\n"
+                    "#endif\n"
+                )
+                self.assertFalse(
+                    any(
+                        "include_guard_override" in finding
+                        for finding in source_quality_errors(
+                            root, f"include/game/example{suffix}", text
+                        )
+                    )
+                )
+            self.assertTrue(
+                any(
+                    "include_guard_override" in finding
+                    for finding in source_quality_errors(
+                        root,
+                        "src/game/example.c",
+                        "#ifndef _EXAMPLE_H\n"
+                        "#define _EXAMPLE_H\n"
+                        "int Example(void);\n"
+                        "#endif\n",
+                    )
+                )
+            )
+            foreign = (
+                "#ifndef _EXAMPLE_H\n"
+                "#define _EXAMPLE_H\n"
+                "#define _FOREIGN_H\n"
+                "#endif\n"
+            )
+            self.assertTrue(
+                any(
+                    "include_guard_override" in finding
+                    for finding in source_quality_errors(
+                        root, "include/game/example.h", foreign
+                    )
+                )
+            )
+            foreign_leading = (
+                "#ifndef _OTHER_H\n"
+                "#define _OTHER_H\n"
+                "int Example(void);\n"
+                "#endif\n"
+            )
+            self.assertTrue(
+                any(
+                    "include_guard_override" in finding
+                    for finding in source_quality_errors(
+                        root, "include/game/example.h", foreign_leading
+                    )
+                )
+            )
+            self.assertTrue(
+                any(
+                    "include_guard_override" in finding
+                    for finding in source_quality_errors(
+                        root,
+                        "include/game/alloc.h",
+                        "#ifndef _NOTALLOC_H\n"
+                        "#define _NOTALLOC_H\n"
+                        "int Example(void);\n"
+                        "#endif\n",
+                    )
+                )
+            )
+            foreign_hpp = (
+                "#ifndef _OTHER_HPP\n"
+                "#define _OTHER_HPP\n"
+                "int Example(void);\n"
+                "#endif\n"
+            )
+            self.assertTrue(
+                any(
+                    "include_guard_override" in finding
+                    for finding in source_quality_errors(
+                        root, "include/game/example.hpp", foreign_hpp
+                    )
+                )
+            )
+            self.assertTrue(
+                any(
+                    "include_guard_override" in finding
+                    for finding in source_quality_errors(
+                        root, "src/game/example.c", foreign
+                    )
+                )
+            )
+        finally:
+            temporary.cleanup()
+
     def test_synthetic_rel_shard_paths_are_rejected(self):
         self.assertTrue(synthetic_rel_source("src/REL/staffdll/application_pass5_0000.c"))
         self.assertTrue(synthetic_rel_source("src/REL/mdsingdll/application_3116c.c"))
+        self.assertTrue(synthetic_rel_source("src/REL/mdsingdll/application_3116.hpp"))
         self.assertTrue(synthetic_rel_source("src/REL/mdsingdll/mdsing_tail8.c"))
         self.assertFalse(synthetic_rel_source("src/REL/staffdll/staff.c"))
 
@@ -230,6 +530,78 @@ class PromotionTests(unittest.TestCase):
             self.assertEqual(run(promotion, "git", "rev-parse", "HEAD^"), base)
             message = run(promotion, "git", "log", "-1", "--format=%B")
             self.assertEqual(message, "Recover example processing")
+        finally:
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", str(promotion)],
+                cwd=root,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            temporary.cleanup()
+
+    def test_create_copies_canonical_headers_and_exact_blobs(self):
+        temporary, root, base = self.fixture()
+        promotion = Path(temporary.name) / "header-promotion"
+        try:
+            (root / "include/game").mkdir(parents=True)
+            for suffix in (".h", ".hpp"):
+                (root / f"include/game/example{suffix}").write_text(
+                    "int Example(void);\n",
+                    encoding="utf-8",
+                )
+                (root / f"src/game/example{suffix}").write_text(
+                    "int Example(void);\n", encoding="utf-8"
+                )
+            run(
+                root,
+                "git",
+                "add",
+                "include/game/example.h",
+                "include/game/example.hpp",
+                "src/game/example.h",
+                "src/game/example.hpp",
+            )
+            run(root, "git", "commit", "-qm", "Add reviewed headers")
+            source_commit = run(root, "git", "rev-parse", "HEAD")
+            result = create_promotion(
+                root,
+                base_ref=base,
+                source_ref=source_commit,
+                branch="recovery/example-headers",
+                worktree=promotion,
+                title="Recover example headers",
+                paths=[
+                    "include/game/example.h",
+                    "include/game/example.hpp",
+                    "src/game/example.h",
+                    "src/game/example.hpp",
+                ],
+                owner=None,
+                allow_unverified=True,
+            )
+            self.assertTrue(result["promotion"]["audit"]["clean_human_promotion"])
+            self.assertEqual(
+                run(
+                    promotion,
+                    "git",
+                    "diff",
+                    "--name-only",
+                    f"{base}...HEAD",
+                ).splitlines(),
+                [
+                    "include/game/example.h",
+                    "include/game/example.hpp",
+                    "src/game/example.h",
+                    "src/game/example.hpp",
+                ],
+            )
+            for prefix in ("include/game/example", "src/game/example"):
+                for suffix in (".h", ".hpp"):
+                    self.assertEqual(
+                        run(root, "git", "rev-parse", f"{source_commit}:{prefix}{suffix}"),
+                        run(promotion, "git", "rev-parse", f"HEAD:{prefix}{suffix}"),
+                    )
         finally:
             subprocess.run(
                 ["git", "worktree", "remove", "--force", str(promotion)],

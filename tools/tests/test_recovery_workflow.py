@@ -1,5 +1,6 @@
 import json
 import sqlite3
+import subprocess
 import tempfile
 import unittest
 from contextlib import closing
@@ -306,6 +307,102 @@ class RecoveryWorkflowTests(unittest.TestCase):
             self.assertEqual(
                 [(item["line"], item["rule"]) for item in findings],
                 [(2, "raw_hex_literal")],
+            )
+
+    def test_quality_full_scan_includes_canonical_headers_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            (root / "include/new.h").write_text(
+                "#ifndef _NEW_H\n"
+                "#define _NEW_H\n"
+                "int header_value = 0x2A;\n"
+                "#endif\n",
+                encoding="utf-8",
+            )
+            (root / "include/new.hpp").write_text(
+                "#ifndef _NEW_HPP\n"
+                "#define _NEW_HPP\n"
+                "int template_value = 0x2B;\n"
+                "#endif\n",
+                encoding="utf-8",
+            )
+            (root / "include/ignored.c").write_text(
+                "int unsupported_value = 0x2C;\n", encoding="utf-8"
+            )
+            data = load(root)
+            findings = quality_findings(data, full=True)
+            self.assertEqual(
+                [(item["path"], item["rule"]) for item in findings],
+                [
+                    ("include/new.h", "raw_hex_literal"),
+                    ("include/new.hpp", "raw_hex_literal"),
+                ],
+            )
+
+    def test_quality_diff_scan_includes_cp_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            source = root / "src/new.cp"
+            source.write_text("int value = 1;\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            for key, value in (("user.email", "test@example.com"), ("user.name", "Test")):
+                subprocess.run(
+                    ["git", "config", key, value],
+                    cwd=root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            subprocess.run(
+                ["git", "add", "."],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-qm", "Initial source"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            base = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            source.write_text("int value = 0x2A;\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "add", "src/new.cp"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-qm", "Update cp source"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            data = load(root)
+            data["owners"] = [{**data["owners"][0], "source": "src/new.cp"}]
+            findings = quality_findings(data, base=base)
+            self.assertEqual(
+                [(item["path"], item["rule"]) for item in findings],
+                [("src/new.cp", "raw_hex_literal")],
             )
 
 

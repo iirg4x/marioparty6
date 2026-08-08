@@ -6,8 +6,10 @@ This branch is the AI-forward recovery laboratory. It must never be merged,
 squashed, rebased, or cherry-picked wholesale into `main`.
 
 `main` is human-facing. Only verified content may be copied to fresh branches
-created directly from `main`: recovered `src/**/*.c` blobs to `recovery/*`
-branches, audited supporting changes to `project/*` branches.
+created directly from `main`: canonical recovered source/header blobs
+(`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`,
+`include/**/*.h`, or `include/**/*.hpp`) to `recovery/*` branches, audited supporting changes to
+`project/*` branches.
 
 See `AI_WORKSPACE.md`, `docs/main_promotion.md`, and
 `docs/supporting_change_promotion.md`.
@@ -67,13 +69,14 @@ python tools/agent.py hooks install
 2. Generate focused context with symptoms and local objdiff evidence.
 3. Research target instructions, relocations, callers, consumers, selected
    rules, freshness warnings, and rejected probes.
-4. Write natural evidence-supported C.
+4. Write natural evidence-supported source.
 5. Reconcile compiler shape one variable at a time.
 6. Review for invented semantics and match-only constructs.
 7. Update AI-workspace evidence and knowledge.
 8. Commit, record worker proof, and mark the task `ready`.
 9. Run private retail integration serially.
-10. Promote only the verified C blobs to a fresh main-based branch.
+10. Promote only the verified canonical source/header blobs to a fresh
+    main-based branch.
 
 ## Worker verification
 
@@ -101,7 +104,7 @@ The AI integration worktree may acquire exclusive resources and run the full
 DOL/REL, consumer, checksum, and byte-comparison gates. Completing those gates
 does not make the AI branch mergeable.
 
-## Clean C-only promotion
+## Clean source/header promotion
 
 From the AI workspace:
 
@@ -116,17 +119,20 @@ python tools/promote_recovered_c.py create \
   --title "Recover <subsystem>"
 ```
 
-The command creates a branch from `main`, copies exact C blobs, and rejects:
+The command creates a branch from `main`, copies exact canonical source/header
+blobs, and rejects:
 
-- anything outside `src/**/*.c`;
+- anything outside `src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`,
+  `src/**/*.hpp`, `include/**/*.h`, or `include/**/*.hpp`;
 - AI/tooling files and metadata;
-- headers and build configuration;
+- noncanonical headers and build configuration;
 - AI/agent attribution in comments, branch names, or commit messages;
 - blobs that differ from the verified worker commit.
 
-If a header, symbol, split, or build change is required, promote it separately
-with `tools/promote_supporting_change.py` onto its own `project/*` branch and
-review it as a separate human-facing change (see
+If a symbol, split, or build change is required, promote it separately with
+`tools/promote_supporting_change.py` onto its own `project/*` branch and review
+it as a separate human-facing change. Select and verify canonical headers with
+their recovered source when needed (see
 `docs/supporting_change_promotion.md`). Never copy it to `main` by hand.
 
 In the promotion worktree, run:

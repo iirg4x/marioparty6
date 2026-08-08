@@ -26,7 +26,7 @@ from tools.recovery_data import parse_functions
 
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]', re.MULTILINE)
 CALL_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
-SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".s"}
+SOURCE_SUFFIXES = {".c", ".cp", ".cc", ".cpp", ".cxx", ".s"}
 CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
 
 

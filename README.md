@@ -3,8 +3,10 @@
 > **Permanent branch boundary:** this branch is the AI-forward recovery
 > workspace. It must never be merged, squashed, or rebased into `main`.
 >
-> `main` remains the clean, human-facing project. Only verified recovered
-> `src/**/*.c` blobs may move to a fresh branch created from `main`.
+> `main` remains the clean, human-facing project. Only verified canonical
+> source/header blobs (`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`,
+> `src/**/*.hpp`, `include/**/*.h`, or `include/**/*.hpp`) may move to a fresh branch created
+> from `main`.
 
 Read [`AI_WORKSPACE.md`](AI_WORKSPACE.md) before doing any work on this branch.
 
@@ -40,7 +42,7 @@ This branch contains:
 
 The branches are permanent parallels. They are not intended to converge.
 
-## Promoting recovered C to `main`
+## Promoting recovered source and headers to `main`
 
 Promotion is a content transfer from one verified commit, not a merge or
 cherry-pick of AI-workspace history.
@@ -65,15 +67,17 @@ python tools/promote_recovered_c.py create \
 The promotion tool:
 
 - creates the branch directly from `main`;
-- accepts only added or modified `src/**/*.c` files;
+- accepts only added or modified canonical source/header files (`src/**/*.c`,
+  `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`,
+  or `include/**/*.hpp`);
 - copies exact blobs from the verified worker commit;
-- rejects headers, tooling, metadata, prompts, workflows, reports, and generated
-  output;
+- rejects noncanonical headers, tooling, metadata, prompts, workflows, reports,
+  and generated output;
 - rejects AI/agent attribution in source comments, branch names, and commit
   messages;
-- verifies that the promotion diff contains only selected C files.
+- verifies that the promotion diff contains only selected source/header files.
 
-Supporting header or build changes are promoted separately by
+Supporting symbol, split, or build changes are promoted separately by
 `tools/promote_supporting_change.py` onto a `project/*` branch cut from `main`,
 with the same attribution and contamination gates plus explicit consumer
 re-verification. See
@@ -96,7 +100,7 @@ Read:
 
 - [`AGENTS.md`](AGENTS.md): mandatory workspace rules
 - [`AI_WORKSPACE.md`](AI_WORKSPACE.md): permanent branch boundary
-- [`docs/main_promotion.md`](docs/main_promotion.md): clean C transfer
+- [`docs/main_promotion.md`](docs/main_promotion.md): clean source/header transfer
 - [`docs/supporting_change_promotion.md`](docs/supporting_change_promotion.md):
   audited header/symbol/split/build transfer
 - [`docs/agent_quickstart.md`](docs/agent_quickstart.md): worker workflow
@@ -228,4 +232,6 @@ comparisons in the clean promotion worktree.
 - `orig/GP6E01/`: ignored local retail inputs
 
 No AI workspace file is promoted automatically to `main`. Only verified
-`src/**/*.c` content may cross the boundary through a fresh `recovery/*` branch.
+canonical source/header content (`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`,
+`src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`, or `include/**/*.hpp`) may cross
+the boundary through a fresh `recovery/*` branch.

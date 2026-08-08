@@ -197,7 +197,10 @@ QUALITY_RULES: dict[str, tuple[str, re.Pattern[str]]] = {
     "register": ("register may be a register-allocation control", re.compile(r"\bregister\b")),
     "forced_inline": ("forced inline/no-inline requires evidence", re.compile(r"\b(?:NOINLINE|FORCEINLINE|FORCE_INLINE|never_inline|always_inline)\b", re.I)),
     "inline_asm": ("inline assembly requires original-assembly or target evidence", re.compile(r"\b(?:asm|__asm__)\s*(?:\(|\{)")),
-    "include_guard_override": ("defining another header guard in C is a source-quality smell", re.compile(r"^\s*#\s*define\s+_[A-Z0-9_]+_H\b")),
+    "include_guard_override": (
+        "defining another header guard in C is a source-quality smell",
+        re.compile(r"^\s*#\s*define\s+_[A-Z0-9_]+_(?:H|HPP)\b"),
+    ),
     "self_assignment": (
         "self-assignment requires source-shape evidence",
         re.compile(r"(?<![A-Za-z0-9_.>])([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\1\s*;"),
@@ -219,11 +222,47 @@ QUALITY_RULES: dict[str, tuple[str, re.Pattern[str]]] = {
         re.compile(r"(?<![A-Za-z0-9_])0[xX][0-9A-Fa-f]+(?:[uUlL]*)\b"),
     ),
 }
-C_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp"}
+C_SUFFIXES = {".c", ".cp", ".cc", ".cpp", ".cxx", ".h", ".hpp"}
+HEADER_SUFFIXES = {".h", ".hpp"}
+_HEADER_IFNDEF = re.compile(r"^\s*#\s*ifndef\s+([_A-Za-z][_A-Za-z0-9]*)\s*$")
+_HEADER_DEFINE = re.compile(r"^\s*#\s*define\s+([_A-Za-z][_A-Za-z0-9]*)\s*$")
+
+
+def canonical_header_guard_lines(path: str, text: str) -> set[int]:
+    """Return the one matching leading guard define line allowed in a header."""
+    suffix = Path(path).suffix.lower()
+    if suffix not in HEADER_SUFFIXES:
+        return set()
+    stem = re.sub(r"[^A-Za-z0-9]+", "_", Path(path).stem).strip("_").upper()
+    if not stem:
+        return set()
+    guard_suffixes = (f"{stem}_H", f"{stem}_HPP") if suffix == ".hpp" else (f"{stem}_H",)
+    lines = _mask_c(text, preserve_preprocessor=True).splitlines()
+    meaningful = [
+        (line_number, value.strip())
+        for line_number, value in enumerate(lines, 1)
+        if value.strip()
+    ]
+    if len(meaningful) < 2:
+        return set()
+    ifndef = _HEADER_IFNDEF.fullmatch(meaningful[0][1])
+    define = _HEADER_DEFINE.fullmatch(meaningful[1][1])
+    if (
+        not ifndef
+        or not define
+        or ifndef.group(1) != define.group(1)
+        or not any(
+            define.group(1).upper() == value
+            or define.group(1).upper().endswith(f"_{value}")
+            for value in guard_suffixes
+        )
+    ):
+        return set()
+    return {meaningful[1][0]}
 
 
 def added_lines(root: Path, base: str) -> list[tuple[str, int, str]]:
-    process = subprocess.run(["git", "diff", "--unified=0", f"{base}...HEAD", "--", "*.c", "*.h", "*.cc", "*.cpp", "*.cxx", "*.hpp"], cwd=root, text=True, capture_output=True, check=False)
+    process = subprocess.run(["git", "diff", "--unified=0", f"{base}...HEAD", "--", "*.c", "*.cp", "*.h", "*.cc", "*.cpp", "*.cxx", "*.hpp"], cwd=root, text=True, capture_output=True, check=False)
     if process.returncode:
         raise RecoveryError(process.stderr.strip() or "git diff failed")
     path = ""
@@ -246,6 +285,7 @@ def added_lines(root: Path, base: str) -> list[tuple[str, int, str]]:
 def quality_findings(data: dict[str, Any], *, base: str | None = None, full: bool = False) -> list[dict[str, Any]]:
     root: Path = data["root"]
     candidates: list[tuple[str, int, str]] = []
+    allowed_guard_lines: dict[str, set[int]] = {}
     if base:
         changed = added_lines(root, base)
         by_path: dict[str, set[int]] = {}
@@ -256,27 +296,38 @@ def quality_findings(data: dict[str, Any], *, base: str | None = None, full: boo
             if file_path.suffix.lower() not in C_SUFFIXES or not file_path.is_file():
                 continue
             original = file_path.read_text(encoding="utf-8", errors="replace")
+            allowed_guard_lines[path] = canonical_header_guard_lines(path, original)
             masked = _mask_c(original, preserve_preprocessor=True).splitlines()
             for line in sorted(lines):
                 value = masked[line - 1] if 0 < line <= len(masked) else ""
                 candidates.append((path, line, value))
     elif full:
-        for path in sorted((root / "src").rglob("*")):
-            if path.suffix.lower() not in C_SUFFIXES or not path.is_file():
+        roots = ((root / "src", C_SUFFIXES), (root / "include", HEADER_SUFFIXES))
+        for source_root, suffixes in roots:
+            if not source_root.is_dir():
                 continue
-            relative = path.relative_to(root).as_posix()
-            masked = _mask_c(
-                path.read_text(encoding="utf-8", errors="replace"),
-                preserve_preprocessor=True,
-            )
-            for line, value in enumerate(masked.splitlines(), 1):
-                candidates.append((relative, line, value))
+            for path in sorted(source_root.rglob("*")):
+                if path.suffix.lower() not in suffixes or not path.is_file():
+                    continue
+                relative = path.relative_to(root).as_posix()
+                allowed_guard_lines[relative] = canonical_header_guard_lines(
+                    relative,
+                    path.read_text(encoding="utf-8", errors="replace"),
+                )
+                masked = _mask_c(
+                    path.read_text(encoding="utf-8", errors="replace"),
+                    preserve_preprocessor=True,
+                )
+                for line, value in enumerate(masked.splitlines(), 1):
+                    candidates.append((relative, line, value))
     else:
         raise RecoveryError("quality scan requires a diff base or full=True")
     findings: list[dict[str, Any]] = []
     for path, line, text in candidates:
         for rule, (message, pattern) in QUALITY_RULES.items():
             if not pattern.search(text):
+                continue
+            if rule == "include_guard_override" and line in allowed_guard_lines.get(path, set()):
                 continue
             matching = [item for item in data["exceptions"] if fnmatch.fnmatch(path, str(item.get("path", ""))) and rule in item.get("rules", [])]
             authenticated = next((item for item in matching if item.get("classification") == "authenticated"), None)

@@ -43,15 +43,21 @@ historical marker, not a merge candidate.
 
 ## Allowed transfer
 
-For ordinary recovered C, only a verified recovered C blob may be transferred
-by the C promotion tool:
+For ordinary recovered source, only a verified canonical source/header blob may be
+transferred by the recovered-source promotion tool:
 
 ```text
 src/**/*.c
+src/**/*.cp
+src/**/*.cpp
+src/**/*.h
+src/**/*.hpp
+include/**/*.h
+include/**/*.hpp
 ```
 
 The transfer starts from a fresh branch and worktree based on current `main`. It
-copies explicitly selected C files from the verified worker commit and proves
+copies explicitly selected canonical source/header files from the verified worker commit and proves
 each promoted Git blob is identical.
 
 ```sh
@@ -72,8 +78,8 @@ python tools/promote_recovered_c.py create \
 
 The tool rejects:
 
-- any path outside `src/**/*.c`;
-- headers and build/configuration files;
+- any path outside the canonical source/header paths above;
+- noncanonical headers and build/configuration files;
 - AI/agent attribution in source comments, branch names, or commit messages;
 - co-author trailers;
 - blobs that differ from the verified worker commit;
@@ -90,7 +96,7 @@ only; it transfers no AI metadata, documentation, tooling, or generated state.
 
 Original data is not clean-C recovery and earns zero clean-C credit. This narrow
 path does not relax the raw numeric hexadecimal prohibition for ordinary
-recovered C, and it leaves `tools/promote_recovered_c.py` unchanged. The
+recovered source, and it leaves the separate original-data path unchanged. The
 object, relocation, linked-retail, and checksum gates are complete for the
 current record; the clean main-based promotion must still generate and review
 the public status/progress sidecars before marking the owner `Matching`. The
@@ -101,8 +107,10 @@ source, object, linked-retail, and checksum evidence.
 
 ## Supporting changes
 
-A recovered C file may reveal that `main` needs a header, symbol, split, or build
-configuration update. Those changes do not belong in the C promotion PR.
+A recovered source may reveal that `main` needs a canonical header, symbol, split,
+or build configuration update. Select and verify canonical headers with their
+source in the recovered-source promotion; symbols, splits, and build
+configuration remain separate supporting changes.
 
 Promote them with `tools/promote_supporting_change.py`, which creates a second
 branch (`project/*`) directly from `main`, transfers only declared verified
@@ -110,7 +118,7 @@ blobs, enforces the same attribution and contamination scans, and requires every
 affected Matching consumer to be re-verified
 (see `docs/supporting_change_promotion.md`). Review it as a separate
 human-facing PR. Merge that support first when necessary, then recreate/rebase
-and revalidate the C-only promotion.
+and revalidate the canonical recovered-source promotion.
 
 This prevents prompts, scaffolding, generated metadata, speculative names, and
 agent-specific structure from leaking into public history while keeping the C

@@ -33,6 +33,14 @@ class OwnerCatalogTests(unittest.TestCase):
                 "}\n",
                 encoding="utf-8",
             )
+            (root / "src/game/canonical_cp.cp").write_text(
+                "int CanonicalCp(void)\n{\n    return 1;\n}\n",
+                encoding="utf-8",
+            )
+            (root / "src/game/canonical_cpp.cpp").write_text(
+                "int CanonicalCpp(void)\n{\n    return 2;\n}\n",
+                encoding="utf-8",
+            )
             (root / "configure.py").write_text(
                 'main = [Object(Matching, "game/a.c")]\n'
                 'rel = Rel("foo", objects=[Object(NonMatching, "REL/foo/b.c")])\n',
@@ -42,6 +50,8 @@ class OwnerCatalogTests(unittest.TestCase):
             identifiers = {owner["id"] for owner in catalog["owners"]}
             self.assertIn("main:game/a", identifiers)
             self.assertIn("REL:foo:b", identifiers)
+            self.assertIn("unconfigured:game/canonical_cp", identifiers)
+            self.assertIn("unconfigured:game/canonical_cpp", identifiers)
 
             owner = find_owner(catalog, "main:game/a")[0]
             self.assertIn("include/common.h", owner["includes"])

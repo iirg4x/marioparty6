@@ -5,12 +5,15 @@ This tool enforces the repository's permanent branch boundary:
 
 * the AI recovery branch is never merged into ``main``;
 * promotion starts from a fresh worktree created from ``main``;
-* only explicitly selected ``src/**/*.c`` blobs are copied;
+* only explicitly selected canonical source/header blobs are copied:
+  ``src/**/*.c``, ``src/**/*.cp``, ``src/**/*.cpp``, ``src/**/*.h``,
+  ``src/**/*.hpp``, ``include/**/*.h``, or ``include/**/*.hpp``;
 * AI/tooling attribution is rejected from promoted source and commit messages;
-* every promoted C file passes the complete-file source-quality gate;
+* every promoted source file passes the complete-file source-quality gate;
 * synthetic REL pass/tail/extra/address shards are rejected;
 * the copied Git blobs must exactly match the verified worker commit;
-* headers and build/configuration changes are never imported automatically.
+* build/configuration changes are never imported automatically; canonical
+  headers may be selected with their source and verified through this path.
 
 The resulting promotion branch contains no orchestration, prompts, agent files,
 knowledge metadata, benchmarks, or workflow changes because it is based on
@@ -38,7 +41,11 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools import agent_queue
-from tools.recovery_core import QUALITY_RULES, _mask_c
+from tools.recovery_core import (
+    QUALITY_RULES,
+    _mask_c,
+    canonical_header_guard_lines,
+)
 from tools.workspace_policy import DEFAULT_PROMOTION_BASE
 
 DEFAULT_BASE = DEFAULT_PROMOTION_BASE
@@ -60,8 +67,11 @@ COAUTHOR = re.compile(r"(?im)^\s*Co-authored-by\s*:")
 # lookarounds treat "_" as a separator, which plain \b would not.
 BRANCH_AI_WORDS = re.compile(r"(?i)(?<![a-z0-9])(?:ai|agent)(?![a-z0-9])")
 SYNTHETIC_REL_SOURCE = re.compile(
-    r"(?i)(?:^|_)(?:pass\d*|tail\d*|extra)(?:_|\.|$)|^application_[0-9a-f]+\.c$"
+    r"(?i)(?:^|_)(?:pass\d*|tail\d*|extra)(?:_|\.|$)|^application_[0-9a-f]+\.(?:c|cp|cpp|h|hpp)$"
 )
+PROMOTABLE_SOURCE_SUFFIXES = frozenset({".c", ".cp", ".cpp"})
+PROMOTABLE_HEADER_SUFFIXES = frozenset({".h", ".hpp"})
+PROMOTABLE_SUFFIXES = PROMOTABLE_SOURCE_SUFFIXES | PROMOTABLE_HEADER_SUFFIXES
 
 
 class PromotionError(ValueError):
@@ -154,8 +164,18 @@ def _changed_paths(root: Path, base: str, source: str) -> list[str]:
         f"{base}...{source}",
         "--",
         "src",
+        "include",
     ).stdout
     return sorted({line.strip() for line in output.splitlines() if line.strip()})
+
+
+def _is_promotable_path(path: str) -> bool:
+    pure = PurePosixPath(path)
+    if not pure.parts:
+        return False
+    if pure.parts[0] == "src":
+        return pure.suffix in PROMOTABLE_SUFFIXES
+    return pure.parts[0] == "include" and pure.suffix in PROMOTABLE_HEADER_SUFFIXES
 
 
 def _normalise_path(value: str) -> str:
@@ -163,9 +183,12 @@ def _normalise_path(value: str) -> str:
     if path.is_absolute() or ".." in path.parts:
         raise PromotionError(f"path must be repository-relative: {value}")
     normalised = path.as_posix()
-    if not normalised.startswith("src/") or not normalised.endswith(".c"):
+    if not _is_promotable_path(normalised):
         raise PromotionError(
-            f"automatic promotion accepts only src/**/*.c, not {normalised}"
+            "automatic promotion accepts only src/**/*.c, src/**/*.cp, "
+            "src/**/*.cpp, src/**/*.h, src/**/*.hpp, include/**/*.h, or "
+            "include/**/*.hpp, "
+            f"not {normalised}"
         )
     return normalised
 
@@ -275,10 +298,13 @@ def source_quality_errors(root: Path, path: str, text: str) -> list[str]:
     """Return full-file promotion findings, honoring only authenticated exceptions."""
     authenticated = _authenticated_quality_rules(root, path)
     masked = _mask_c(text, preserve_preprocessor=True)
+    allowed_guard_lines = canonical_header_guard_lines(path, text)
     findings: list[str] = []
     for line, value in enumerate(masked.splitlines(), 1):
         for rule, (message, pattern) in QUALITY_RULES.items():
             if not pattern.search(value):
+                continue
+            if rule == "include_guard_override" and line in allowed_guard_lines:
                 continue
             # The project-wide numeric-domain ban has no owner exception.
             if rule != "raw_hex_literal" and rule in authenticated:
@@ -382,11 +408,13 @@ def plan_promotion(
         else [
             path
             for path in _changed_paths(root, base_commit, source_commit)
-            if path.endswith(".c")
+            if _is_promotable_path(path)
         ]
     )
     if not selected:
-        raise PromotionError("no changed src/**/*.c files selected for promotion")
+        raise PromotionError(
+            "no changed canonical source/header files selected for promotion"
+        )
 
     queue_proof: dict[str, Any] | None = None
     if owner:
@@ -419,11 +447,15 @@ def plan_promotion(
         if source_blob is None:
             errors.append(f"{path}: missing source blob")
             continue
+        base_blob = _blob(root, base_commit, path)
+        if source_blob == base_blob:
+            errors.append(f"{path}: identical to base; nothing to promote")
+            continue
         files.append(
             PromotedFile(
                 path=path,
                 source_blob=source_blob,
-                base_blob=_blob(root, base_commit, path),
+                base_blob=base_blob,
                 sha256=hashlib.sha256(data).hexdigest(),
                 size=len(data),
             )
@@ -441,10 +473,10 @@ def plan_promotion(
         "queue_proof": queue_proof,
         "files": [item.as_dict() for item in files],
         "policy": {
-            "allowed": "modified/added src/**/*.c only",
+            "allowed": "modified/added src/**/*.c, src/**/*.cp, src/**/*.cpp, src/**/*.h, src/**/*.hpp, include/**/*.h, or include/**/*.hpp only",
             "source_quality": "the complete promoted file must pass; raw hexadecimal literals have no exception",
             "rel_ownership": "synthetic pass/tail/extra/address shards are forbidden; use the authenticated canonical owner",
-            "headers": "must be recreated and reviewed separately from main",
+            "headers": "canonical src/.h/.hpp and include/.h/.hpp files may be promoted with selected source blobs when explicitly verified",
             "ai_attribution": "forbidden in promoted comments, branch and commit message",
             "workspace_merge": "forbidden",
         },
@@ -529,7 +561,7 @@ def audit_promotion(
     file_results: list[dict[str, Any]] = []
     source_commit = resolve_ref(root, source_ref) if source_ref else None
     for path in changed:
-        if not path.startswith("src/") or not path.endswith(".c"):
+        if not _is_promotable_path(path):
             continue
         data = _git_bytes(root, head_commit, path)
         text = data.decode("utf-8", errors="replace")
@@ -695,7 +727,7 @@ def main() -> int:
     parser.add_argument("--root")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    plan = sub.add_parser("plan", help="plan a C-only promotion")
+    plan = sub.add_parser("plan", help="plan a recovered source/header promotion")
     plan.add_argument("--base", default=DEFAULT_BASE)
     plan.add_argument("--source", required=True)
     plan.add_argument("--owner")

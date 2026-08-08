@@ -6,8 +6,10 @@ Read root `AGENTS.md`, `AI_WORKSPACE.md`, the nearest nested `AGENTS.md`, and
 this file.
 
 This branch never merges into `main`. It is the AI recovery workspace. Only
-verified recovered `src/**/*.c` blobs may move through a fresh main-based
-`recovery/*` branch.
+verified canonical source/header blobs (`src/**/*.c`, `src/**/*.cp`,
+`src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`, or
+`include/**/*.hpp`) may move through a
+fresh main-based `recovery/*` branch.
 
 Do not load all of `STATUS.md` or the wave archive.
 
@@ -127,7 +129,7 @@ python tools/agent.py queue acquire-resource retail-build --agent integrator
 
 This verifies the worker commit. It still does not make the AI branch mergeable.
 
-## 10. Promote only recovered C
+## 10. Promote only recovered source
 
 From the AI workspace:
 
@@ -143,11 +145,14 @@ python tools/promote_recovered_c.py create \
 ```
 
 The new worktree is based directly on `main` and contains only the selected exact
-C blobs. It contains none of this branch's tools, prompts, metadata, benchmarks,
-workflows, or history.
+canonical source/header blobs (`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`,
+`src/**/*.h`, `src/**/*.hpp`, `include/**/*.h`, or `include/**/*.hpp`). It
+contains none of this branch's tools, prompts, metadata, benchmarks, workflows,
+or history.
 
-If a header or build change is necessary, promote it separately with
-`tools/promote_supporting_change.py` onto its own `project/*` branch (see
+If a symbol, split, or build change is necessary, promote it separately with
+`tools/promote_supporting_change.py` onto its own `project/*` branch. Select
+and verify canonical headers with their source when needed (see
 [`supporting_change_promotion.md`](supporting_change_promotion.md)). Never copy
 it to `main` by hand.
 

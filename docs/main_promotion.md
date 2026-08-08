@@ -12,8 +12,8 @@ main:         human-readable project and accepted recovered source
 Do not merge the AI workspace. Promotion is a **content transfer**, not a branch
 merge or commit-history transfer.
 
-The ordinary recovered-C path below remains C-only and keeps its raw numeric
-hexadecimal prohibition. Authenticated original data uses the separate,
+The ordinary recovered-source path below accepts only canonical C/C++ source and
+header suffixes and keeps its raw numeric hexadecimal prohibition. Authenticated original data uses the separate,
 allowlisted path documented in [`original_data_promotion.md`](original_data_promotion.md);
 it is not clean-C recovery.
 
@@ -28,10 +28,17 @@ The automatic path accepts only added or modified:
 
 ```text
 src/**/*.c
+src/**/*.cp
+src/**/*.cpp
+src/**/*.h
+src/**/*.hpp
+include/**/*.h
+include/**/*.hpp
 ```
 
-It does not accept headers, assembly, symbols, splits, configuration, scripts,
-documentation, metadata, workflow files, or generated output.
+It does not accept assembly, symbols, splits, configuration, scripts,
+documentation, metadata, workflow files, or generated output. Canonical headers
+are promoted here when explicitly selected and verified with their source.
 
 ## 1. Inspect the transfer
 
@@ -45,11 +52,14 @@ python tools/promote_recovered_c.py plan \
   --path src/path/recovered.c
 ```
 
-The plan resolves immutable commits, checks queue verification, scans C comments
-for AI attribution, and records source/base blobs plus SHA-256 values.
+The plan resolves immutable commits, checks queue verification, scans source and
+header comments for AI attribution, and records source/base blobs plus SHA-256
+values.
 
-Omitting `--path` selects every changed `src/**/*.c` file between `main` and the
-verified source commit. Explicit paths are preferred.
+Omitting `--path` selects every changed canonical source/header file
+(`src/**/*.c`, `src/**/*.cp`, `src/**/*.cpp`, `src/**/*.h`, `src/**/*.hpp`,
+`include/**/*.h`, or `include/**/*.hpp`) between `main` and the verified source commit. Explicit
+paths are preferred.
 
 ## 2. Create a clean promotion worktree
 
@@ -68,11 +78,11 @@ The command:
 
 1. creates the branch directly from `main`;
 2. copies exact selected blobs from the verified commit;
-3. stages only those C paths;
+3. stages only those canonical source/header paths;
 4. rejects AI/agent attribution in branch names, source comments, and commit
    messages;
-5. creates one ordinary source commit;
-6. confirms the promotion diff contains only selected C files;
+5. creates one ordinary source/header commit;
+6. confirms the promotion diff contains only selected canonical source/header files;
 7. confirms every promoted blob equals the verified source blob;
 8. writes a local ignored manifest under `build/promotion/` in the AI workspace.
 
@@ -81,32 +91,36 @@ descends from that branch.
 
 ## 3. Supporting changes use a different human branch
 
-When the C file depends on a header, symbol, split, object-status, or build
-change, the automatic promotion still stops at C.
+When the recovered source depends on a symbol, split, object-status, or build
+change, the automatic promotion still stops at canonical source/header files.
+Select and verify dependent canonical headers in the same promotion when needed.
 
-Do **not** add that supporting change to the C promotion branch. Promote it
-with `tools/promote_supporting_change.py`, which cuts a second branch directly
+Do **not** add symbols, splits, object-status, or build configuration to the
+recovered-source promotion branch. Promote those supporting changes with
+`tools/promote_supporting_change.py`, which cuts a second branch directly
 from `main`, transfers only declared verified blobs, and enforces the same
 attribution, contamination, and consumer-re-verification gates. See
 [`supporting_change_promotion.md`](supporting_change_promotion.md).
 
 ```text
-recovery/<subsystem>       verified C blobs only
+recovery/<subsystem>       verified canonical source/header blobs only
 project/<supporting-fix>   separately recreated human project change
 ```
 
-This preserves a hard audit rule: the recovered-C PR always contains only
-`src/**/*.c`. The supporting PR may be reviewed and merged first when the C
-branch depends on it.
+This preserves a hard audit rule: the recovered-source PR always contains only
+the canonical source/header paths selected and verified for that owner. The
+supporting PR may be reviewed and merged first when symbols, splits, or build
+configuration are required.
 
-Never copy a header or configuration file to `main` outside that tool. Its
-scans exist to keep prompt-oriented comments, speculative names, temporary
+Never copy an unselected header or configuration file to `main` outside the
+applicable tool. The promotion scans exist to keep prompt-oriented comments,
+speculative names, temporary
 experiments, queue identifiers, generated scaffolding, and AI attribution out
 of `main`; findings refuse the promotion rather than being stripped silently.
 
 ## 4. Run source and retail proof
 
-Inside the clean C promotion worktree:
+Inside the clean recovered-source promotion worktree:
 
 ```sh
 python <ai-workspace>/tools/promote_recovered_c.py audit \
@@ -127,7 +141,7 @@ The audit must pass. Then run:
 - explicit retail DOL/REL byte comparison;
 - source readability and semantic-debt review.
 
-When a separate supporting PR is required, rebase or recreate the C promotion
+When a separate supporting PR is required, rebase or recreate the recovered-source promotion
 branch on the updated `main`, rerun the blob audit, and repeat the retail gates.
 
 ## 5. Open a human-facing C PR
