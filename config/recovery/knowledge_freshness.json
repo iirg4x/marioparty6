@@ -1187,7 +1187,7 @@
     },
     "weak-order-symbol-order-diagnostics-are-not-source-proof": {
       "status": "active",
-      "validated_commit": "d08a9409d579f8f5798bf22540096af5267eb937",
+      "validated_commit": "ac0532a79f7611bc74681e0450391e84f5e399cb",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
