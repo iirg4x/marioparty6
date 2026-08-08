@@ -1129,6 +1129,23 @@
       ],
       "supersedes": [],
       "superseded_by": null
+    },
+    "target-first-fallback-evidence-protocol": {
+      "status": "stale",
+      "validated_commit": "b89648f422bc7dc87005f4a198d835545427bcc8",
+      "validated_at": "2026-08-08",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "config/dll/rels/w11Dll/symbols.txt",
+        "config/dll/rels/w11Dll/splits.txt",
+        "config/GP6E01/build.sha1",
+        "docs/context_workflow.md",
+        "docs/native_matching_cross_owner_analogue_harvesting.md",
+        "tools/recovery_pass.py",
+        "tools/agent.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
     }
   }
 }

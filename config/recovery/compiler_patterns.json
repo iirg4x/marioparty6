@@ -991,12 +991,14 @@
       "category": "verification",
       "compiler": null,
       "confidence": "confirmed",
-      "summary": "The pinned same-game repository labels 54 owners Matching but commits no object reports, relocation reports, or replayable checksum proof; current acceptance must regenerate those dimensions.",
-      "conditions": "Apply to imported status labels, historical progress reports, cached objdiff output, and source blobs from any branch or repository.",
+      "summary": "Configured labels and cached/static comparisons are not freshness proof. The Meschk trap is concrete: a static retail/source comparison appeared exact after resolving REL24s, while one fresh GC/2.6 compile of fn_1_188 measured only 99.136795% with 71 instruction/register differences; current acceptance must regenerate the object, relocation, section, consumer, and checksum dimensions.",
+      "conditions": "Apply to imported status labels, historical progress reports, cached or static objdiff output, and source blobs from any branch or repository; a comparison is not current until its base object is freshly compiled and its artifact paths and timestamps are reported.",
       "source_condition": {
         "change": "Treat a historical Matching or Equivalent label as sufficient evidence for current integration.",
         "requires": [
-          "fresh active-object build",
+          "fresh active-object build from the current worktree rather than a cached or static artifact",
+          "reported target/object paths, source commit, and artifact timestamps",
+          "pinned compiler command and profile for the owner",
           "instruction and relocation comparison",
           "section ownership comparison",
           "standalone and every retained inline-consumer replay for shared helper source",
@@ -1006,6 +1008,7 @@
       "emitted_effect": {
         "possible_changes": [
           "false exact-function count",
+          "false closure from a stale static comparison that only resolves REL24s",
           "stale section match",
           "hidden relocation regression",
           "regression in an exact standalone body or sibling inline expansion",
@@ -1014,12 +1017,15 @@
         "known_signatures": [
           "source blobs differ while both repositories label an owner Matching",
           "no reproducible object or checksum artifact accompanies the label",
+          "a static retail/source comparison is exact modulo resolved REL24s but a fresh object is not",
+          "Meschk fn_1_188 is 99.136795% with 71 instruction/register differences in the fresh GC/2.6 comparison",
           "one near-exact inline clone improves while an already exact helper or sibling clone changes"
         ]
       },
-      "rule": "Report configured status separately from freshly replayed retained-object, relocation, section, consumer-context, and linked-output results. A shared helper source is exact only when its standalone body and every retained inline expansion remain exact.",
+      "rule": "Report configured status and cached/static comparisons separately from a freshly compiled base object. Before declaring closure, record the target and object paths, source commit, compiler profile, and timestamps, then replay retained-object instructions, data and relocations, section ownership, consumer contexts, and linked output. A shared helper source is exact only when its standalone body and every retained inline expansion remain exact in that fresh replay.",
       "safe_actions": [
-        "compile the active object in an isolated current worktree",
+        "compile the active base object in an isolated current worktree under the pinned owner command",
+        "record target/object paths, source commit, compiler profile, and artifact timestamps in the comparison report",
         "save a fresh relocation-aware objdiff report",
         "diff every exact standalone and inline context reached by an edited helper",
         "run the serialized linked hash gate before integration completion"
@@ -1028,16 +1034,28 @@
         "compiler_wide": false,
         "project_wide": true,
         "owners": [],
-        "stable_ids": [],
-        "modules": [],
-        "owner_tags": []
+        "stable_ids": [
+          "meschkdll:fn_1_188"
+        ],
+        "modules": [
+          "meschkdll"
+        ],
+        "owner_tags": [
+          "freshness",
+          "artifact_provenance",
+          "retail_replay"
+        ]
       },
       "examples": [
         "mariopartyrd-mp6-fcf0b69:54-configured-matching",
         "endingdll fn_1_A964 reached 99.984920 with only seven stack-slot differences, but candidate helper changes regressed exact fn_1_A6D8 or fn_1_A58C and were correctly reverted",
-        "Waves 20-22 and 28-30 accepted or rejected authenticated sibling owners only after active-object, effective-relocation, retained-range, and final-container replay."
+        "Waves 20-22 and 28-30 accepted or rejected authenticated sibling owners only after active-object, effective-relocation, retained-range, and final-container replay.",
+        "Meschk fn_1_188 was reported as a static retail/source match after REL24 resolution, but one fresh GC/2.6 object comparison measured 99.136795% and 71 instruction/register differences; the stale result was not closure proof."
       ],
-      "counterexamples": [],
+      "counterexamples": [
+        "A static comparison that resolves REL24s is not a fresh-base-object proof and cannot close meschkdll:fn_1_188.",
+        "A report without reproducible target/object paths and timestamps cannot establish artifact freshness."
+      ],
       "related_exceptions": [],
       "evidence": [
         "config/recovery/evidence_sources.json#mariopartyrd-mp6-fcf0b69",
@@ -1051,7 +1069,93 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave42.md",
         "docs/native_matching_wave51.md",
-        "docs/native_matching_wave52.md"
+        "docs/native_matching_wave52.md",
+        "docs/native_matching_local_declaration_order_first_use.md",
+        "config/dll/rels/meschkdll/symbols.txt",
+        "src/REL/meschkdll/meschkdll.c"
+      ]
+    },
+    {
+      "id": "target-first-fallback-evidence-protocol",
+      "title": "Use target-first evidence when the C donor index is empty",
+      "classification": "contextual_heuristic",
+      "category": "evidence_protocol",
+      "compiler": null,
+      "confidence": "high",
+      "summary": "A zero-result Graft or Graphify C index does not block bounded recovery. DTK symbols and relocations delimit the target, headless m2c supplies a provisional C shape, and one fresh owner-profile compile with strict, data, and relocation comparison decides whether any source subset can be retained; otherwise the target fallback remains authoritative.",
+      "conditions": "Apply when Graft/Graphify finds no authenticated C donor for a target function or owner and the target has a usable symbol/relocation catalog.",
+      "source_condition": {
+        "change": "Replace an unowned target span with a target-first C candidate after donor search returns zero results.",
+        "requires": [
+          "DTK symbol extents and relocation/call skeleton for the target span",
+          "headless m2c output used only as a provisional source-shape aid",
+          "one bounded compile under the pinned owner compiler/profile",
+          "fresh strict, data, and relocation comparison for the candidate span",
+          "fallback and linked-consumer replay before retaining any source"
+        ]
+      },
+      "emitted_effect": {
+        "possible_changes": [
+          "a target-first C candidate with explicit provisional provenance",
+          "an exact symbol-boundary subset while adjacent functions remain fallback-linked",
+          "a retained target fallback when the bounded candidate is nonexact",
+          "a donor-absence record that does not inflate source or Matching counts"
+        ],
+        "known_signatures": [
+          "Graft/Graphify C index returns zero donor hits",
+          "DTK symbols and REL24/REL32 rows delimit the candidate and its call skeleton",
+          "headless m2c output compiles under the owner command but is retained only after strict/data/relocation proof",
+          "one candidate island is exact while a neighboring target span remains on fallback"
+        ]
+      },
+      "rule": "Treat donor absence as a search result, not a blocker: derive one bounded candidate from DTK symbols/relocations and headless m2c, compile it once under the pinned owner profile, and retain only fresh strict+data+relocation exact subsets with fallback and consumer closure. Discard speculative C and keep target fallback when the bounded proof fails.",
+      "safe_actions": [
+        "record the zero Graft/Graphify C-index result and stop broad donor harvesting",
+        "extract target symbol boundaries, widths, and relocation/call skeleton with DTK",
+        "run headless m2c once to seed a provisional candidate without treating its names as provenance",
+        "compile one bounded candidate under the exact owner command and compare strict bytes, data, and relocations",
+        "retain only exact symbol-boundary subsets and replay fallback consumers; otherwise delete the candidate from tracked source"
+      ],
+      "applicability": {
+        "compiler_wide": false,
+        "project_wide": true,
+        "owners": [],
+        "stable_ids": [
+          "w11Dll:fn_1_1454",
+          "w11Dll:fn_1_12FC"
+        ],
+        "modules": [
+          "w11Dll"
+        ],
+        "owner_tags": [
+          "target_first",
+          "donor_absence",
+          "graft",
+          "graphify",
+          "dtk",
+          "m2c",
+          "fallback",
+          "strict_data"
+        ]
+      },
+      "examples": [
+        "A zero Graft/Graphify C index was handled with DTK symbols/relocations, headless m2c, and one bounded strict+data compile; the candidate was retained only where the fresh object and fallback-linked consumers closed exactly.",
+        "W11 under GC/1.3.2: fn_1_1454 is a target-first 304/304 strict+data exact island with one mbHermiteCalc REL24, while adjacent fn_1_12FC remains target fallback at +16 bytes/+3 relocations."
+      ],
+      "counterexamples": [
+        "Donor absence does not authenticate a semantic name, type, layout, or speculative C body.",
+        "Headless m2c output without a fresh strict/data/relocation proof is not source closure.",
+        "Do not widen an exact target-first island into an adjacent fallback span merely because both functions share a source file or object boundary."
+      ],
+      "related_exceptions": [],
+      "evidence": [
+        "config/dll/rels/w11Dll/symbols.txt",
+        "config/dll/rels/w11Dll/splits.txt",
+        "config/GP6E01/build.sha1",
+        "docs/context_workflow.md",
+        "docs/native_matching_cross_owner_analogue_harvesting.md",
+        "tools/recovery_pass.py",
+        "tools/agent.py"
       ]
     },
     {
@@ -4012,12 +4116,13 @@
       "category": "provenance_and_ownership",
       "compiler": "all",
       "confidence": "confirmed",
-      "summary": "A source file created to bind an exact fallback island is a reconstruction partition, not evidence of Nintendo's original translation-unit filename. Pass, tail, extra, and address-derived files belong only in ignored evidence. Recovered C stays in an authenticated canonical owner; while that owner is incomplete, its configured application object may remain NonMatching and exact source subsets must be reported separately from source-linked ownership.",
-      "conditions": "Apply whenever exact source covers only a prefix, suffix, or noncontiguous island while adjacent target ranges remain on autogenerated retail fallback.",
+      "summary": "A source file created to bind an exact fallback island is a reconstruction partition, not evidence of Nintendo's original translation-unit filename. Pass, tail, extra, and address-derived files belong only in ignored evidence. Recovered C stays in an authenticated canonical owner; while that owner is incomplete, its configured application object may remain NonMatching and exact source subsets must be reported separately from source-linked ownership. W11 under GC/1.3.2 demonstrates the boundary: fn_1_1454 is a 304/304 strict+data exact island with one REL24 to mbHermiteCalc, while adjacent fn_1_12FC is +16 bytes and +3 relocations and remains target fallback.",
+      "conditions": "Apply whenever exact source covers only a prefix, suffix, or noncontiguous island while adjacent target ranges remain on autogenerated retail fallback; compare both sides of every candidate symbol boundary before widening a source span.",
       "source_condition": {
         "change": "Recover, consolidate, or promote C that replaces part of a DTK fallback span.",
         "requires": [
           "target section boundaries and relocations for the generated owner",
+          "per-function strict/data/relocation rows for the exact island and each adjacent target span",
           "explicit separation between build partition and semantic/original owner",
           "a pinned map, debug record, source blob, or equivalent provenance before claiming an original filename",
           "full object and retail verification after any path or ownership change"
@@ -4029,23 +4134,27 @@
           "an increased build-object denominator without new original owners",
           "a reduced matching-object count after synthetic islands are collapsed without losing recovered source or exact-function evidence",
           "one canonical MWCC text csect concatenating recovered functions that the target separates with fallback gaps",
+          "an exact island can coexist with an adjacent fallback function without promoting the surrounding object",
           "repository path churn with no target-binary evidence"
         ],
         "known_signatures": [
           "a filename contains a recovery iteration number absent from every target and source-provenance artifact",
           "one original application range is represented by several generated C objects separated by fallback spans",
           "moving discontiguous exact islands into one canonical file makes their emitted text contiguous and displaces intervening target fallback ranges",
+          "W11 under GC/1.3.2: fn_1_1454 is 304/304 strict+data exact with one mbHermiteCalc REL24 while adjacent fn_1_12FC is +16 bytes/+3 relocations",
           "renaming the source path leaves compiled and linked retail bytes unchanged"
         ]
       },
-      "rule": "Use recovery pass numbers and address islands only in ignored evidence and queue metadata. Do not add or promote pass, tail, extra, or address-derived C shard paths. Consolidate recovered C into an authenticated canonical owner. If the translation unit is incomplete, configure the whole application owner as NonMatching, retain relocation-aware exact-subset evidence without calling it source-linked, and require a byte-identical retail build; mark the owner Matching only after its complete compiler, data, relocation, and consumer closure is exact.",
+      "rule": "Use recovery pass numbers and address islands only in ignored evidence and queue metadata. Do not add or promote pass, tail, extra, or address-derived C shard paths. Consolidate recovered C into an authenticated canonical owner. If the translation unit is incomplete, configure the whole application owner as NonMatching, retain relocation-aware exact-subset evidence without calling it source-linked, and require a byte-identical retail build; mark the owner Matching only after its complete compiler, data, relocation, and consumer closure is exact. When a split deliberately isolates a symbol-boundary island, keep every adjacent nonexact symbol on target fallback and never promote the surrounding object from the island's score.",
       "safe_actions": [
         "keep partial-island probes under ignored build evidence rather than tracked source",
         "record the semantic owner and temporary build partition as separate evidence fields",
         "retain address-derived function symbols until naming evidence exists",
+        "compare exact island and adjacent target spans independently before changing a split boundary",
         "restore or extend the authenticated canonical owner only after declaration chronology, inline closure, data ownership, and retail output remain exact",
         "treat consolidation of historical shards as a verified ownership change, not a cosmetic bulk rename",
         "keep exact-function counts independent from configured build-object counts when an incomplete canonical owner uses whole-owner fallback",
+        "record the linked REL hash alongside the island's strict/data and relocation proof",
         "run the complete-file promotion gate before READY"
       ],
       "applicability": {
@@ -4061,9 +4170,13 @@
           "REL:openingDll:opening",
           "REL:mdsingdll:mdsing",
           "REL:endingdll:ending",
-          "REL:optionDll:option"
+          "REL:optionDll:option",
+          "w11Dll:fn_1_1454",
+          "w11Dll:fn_1_12FC"
         ],
-        "modules": [],
+        "modules": [
+          "w11Dll"
+        ],
         "owner_tags": [
           "generated_object",
           "source_provenance",
@@ -4074,12 +4187,14 @@
       "examples": [
         "Existing pass, tail, and application_<address> files record earlier build partitioning only. They are migration debt, not original filename evidence and not templates for new recovery.",
         "A repository-wide consolidation removed 174 synthetic C files across endingdll, mdbankdll, mdpresultdll, mdsingdll, miraclebookdll, openingDll, optionDll, s02Dll, and staffdll. Their authenticated canonical owners retained 538 of 648 exact source functions while all 137 retail outputs remained byte-identical.",
-        "An incomplete canonical application owner stays NonMatching as one unit. Exact functions in its compiled comparison object remain recovery evidence, but they do not inflate the configured matching-object count."
+        "An incomplete canonical application owner stays NonMatching as one unit. Exact functions in its compiled comparison object remain recovery evidence, but they do not inflate the configured matching-object count.",
+        "W11 under GC/1.3.2 retained fn_1_1454 as a symbol-boundary 304/304 strict+data exact island with one REL24 to mbHermiteCalc; the linked w11 REL remained SHA1 7718483b2764d53433edbe72ca4abc3c686629bc."
       ],
       "counterexamples": [
         "A filename preserved in a pinned original map, debug record, or authenticated same-game source blob is provenance and may be used with its confidence stated.",
         "An address-bound shard name is deliberately neutral, but it still is not an original filename claim.",
-        "Do not merge noncontiguous shards merely to make the tree look original when the compiler closure or unresolved fallback gaps would regress."
+        "Do not merge noncontiguous shards merely to make the tree look original when the compiler closure or unresolved fallback gaps would regress.",
+        "W11 fn_1_12FC remained target fallback at +16 bytes/+3 relocations; its mismatch is not permission to widen the exact fn_1_1454 island."
       ],
       "related_exceptions": [],
       "evidence": [
@@ -4101,7 +4216,11 @@
         "src/REL/openingDll/opening.c",
         "src/REL/optionDll/option.c",
         "src/REL/s02Dll/s02.c",
-        "src/REL/staffdll/staff.c"
+        "src/REL/staffdll/staff.c",
+        "config/dll/rels/w11Dll/symbols.txt",
+        "config/dll/rels/w11Dll/splits.txt",
+        "config/GP6E01/config.yml",
+        "config/GP6E01/build.sha1"
       ]
     },
     {
