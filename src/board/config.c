@@ -272,7 +272,7 @@ static void ConfigKill(void)
     menuP = pauseWork.menu;
     for (i = 0; i < 8; i++, menuP++) {
         if (menuP->panelId != 0) {
-            mbPausePanelKill(menuP->panelId);
+            mbPausePanelKill((s16)menuP->panelId);
             menuP->panelId = 0;
         }
     }
@@ -344,7 +344,7 @@ static void ConfigGrowWait(void)
         menuP = pauseWork.menu;
         for (i = 0; i < 8; i++, menuP++) {
             if (menuP->panelId != 0
-                && !mbPausePanelFreezeGet(menuP->panelId)) {
+                && !mbPausePanelFreezeGet((s16)menuP->panelId)) {
                 doneF = FALSE;
             }
         }
