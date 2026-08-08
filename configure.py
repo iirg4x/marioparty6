@@ -1391,6 +1391,19 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m616dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m616dll/m616_prefix.c",
+            ),
+            Object(
+                Matching,
+                "REL/m616dll/m616_helpers.c",
+            ),
+        },
+    ),
 
 ]
 
