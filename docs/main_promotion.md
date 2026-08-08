@@ -160,9 +160,10 @@ exact byte/source provenance. It must not transfer AI metadata, documentation,
 tooling, generated output, or queue state.
 
 The current record is `musyx-dsp-import-mp4-201` for
-`src/musyx/runtime/dsp_import.c`. It is statically authenticated and pending
-native proof. Original data earns zero clean-C credit, and the owner cannot be
-marked `Matching` until object, relocation, linked-retail, checksum, and
-progress gates pass. No object proof is claimed yet. See
-[`original_data_promotion.md`](original_data_promotion.md) for the record,
-evidence, and gate checklist.
+`src/musyx/runtime/dsp_import.c`. It is `native_verified`: object, relocation,
+linked-retail, and checksum gates passed. The clean main-based promotion must
+still generate and review the public status/progress sidecars before marking
+the owner `Matching`. It remains a data-only owner (0/0 functions expected),
+earns zero clean-C credit, and does not change clean-C totals. See
+[`original_data_promotion.md`](original_data_promotion.md) for the record and
+exact native evidence.

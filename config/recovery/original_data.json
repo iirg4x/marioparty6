@@ -5,10 +5,10 @@
       "id": "musyx-dsp-import-mp4-201",
       "classification": "authenticated",
       "kind": "original_data",
-      "status": "static_authenticated_pending_native",
+      "status": "native_verified",
       "owner": "main:musyx/runtime/dsp_import#mp4-201-dsp-image-v1",
       "path": "src/musyx/runtime/dsp_import.c",
-      "source_sha256": "c1ae58e9266eec264439de252eeb42fd486c63933b0aeef58b5120daea6c5989",
+      "source_sha256": "49a5f2442a39746b5736c6c08807a3544fb70d188c7ab36453ad06fcc855dc7e",
       "payload": {
         "symbol": "dspSlave",
         "length": 7872,

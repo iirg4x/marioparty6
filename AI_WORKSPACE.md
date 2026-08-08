@@ -90,10 +90,14 @@ only; it transfers no AI metadata, documentation, tooling, or generated state.
 
 Original data is not clean-C recovery and earns zero clean-C credit. This narrow
 path does not relax the raw numeric hexadecimal prohibition for ordinary
-recovered C, and it leaves `tools/promote_recovered_c.py` unchanged. Its owner
-cannot be marked `Matching` until object, relocation, linked-retail, checksum,
-and progress gates pass. The current record is statically authenticated and
-pending native proof; no object proof is claimed yet.
+recovered C, and it leaves `tools/promote_recovered_c.py` unchanged. The
+object, relocation, linked-retail, and checksum gates are complete for the
+current record; the clean main-based promotion must still generate and review
+the public status/progress sidecars before marking the owner `Matching`. The
+record is `native_verified`, remains data-only (0/0 functions expected), and
+does not change clean-C totals. See
+[`docs/original_data_promotion.md`](docs/original_data_promotion.md) for the
+source, object, linked-retail, and checksum evidence.
 
 ## Supporting changes
 
