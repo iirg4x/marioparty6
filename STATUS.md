@@ -4,15 +4,15 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 8, 2026**
+Last published full-project snapshot: **August 9, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.40% | 38.63% | 341 / 927 |
-| Main DOL | 53.26% | 89.23% | 308 / 396 |
-| REL modules | 6.16% | 6.56% | 33 / 531 |
+| Entire project | 14.41% | 38.64% | 342 / 925 |
+| Main DOL | 53.28% | 89.26% | 309 / 396 |
+| REL modules | 6.16% | 6.56% | 33 / 529 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
@@ -55,6 +55,10 @@ The current partial MusyX batch adds **45 strict-exact functions** and
 **15,224 text bytes**, plus **44 data-value-exact functions** and **19,376
 text bytes**, with zero exact-function regressions. No owner or configuration
 status changes are claimed.
+
+The canonical Runtime `New.cp` owner now builds from recovered C++ allocation
+operators with **372 text bytes** and **152 data bytes**; the complete DOL
+remains retail-identical.
 
 The TRK exception-vector owner now builds from a sibling-authenticated
 standalone assembly exception covering **7,988 exact `.init` bytes**. Its 48

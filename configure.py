@@ -361,9 +361,9 @@ config.libs = [
             Object(Matching, "Runtime.PPCEABI.H/__va_arg.c"),
             Object(Matching, "Runtime.PPCEABI.H/global_destructor_chain.c"),
             Object(
-                NonMatching,
+                Matching,
                 "Runtime.PPCEABI.H/New.cp",
-                extra_cflags=["-Cpp_exceptions on"],
+                extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"],
             ),
             Object(
                 NonMatching,
