@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.08% | 37.57% | 345 / 940 |
-| Main DOL | 51.30% | 86.50% | 304 / 396 |
+| Entire project | 14.08% | 38.00% | 346 / 940 |
+| Main DOL | 51.30% | 87.60% | 305 / 396 |
 | REL modules | 6.19% | 6.57% | 41 / 544 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
@@ -41,6 +41,12 @@ at **21 / 21**, `synthdata.c` at **27 / 27**, `hw_aramdma.c` at **13 / 13**,
 data-value-exact functions**. Their combined source-linked build remains
 retail-identical. `hardware.c` remains `NonMatching` until its whole-object
 link closure is exact.
+
+The MusyX DSP image owner now builds from sibling-authenticated original data:
+the **7,872-byte** `dspSlave` payload and its `dspSlaveLength` value are exact,
+both objects have zero relocations, and the complete DOL remains
+retail-identical. This data-only owner has **0 / 0 functions** and earns zero
+clean-C credit.
 
 The current partial MusyX batch adds **45 strict-exact functions** and
 **15,224 text bytes**, plus **44 data-value-exact functions** and **19,376
