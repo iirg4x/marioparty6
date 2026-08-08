@@ -286,6 +286,8 @@ extern void mbStarGetExec(int playerNo);
 
 static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
 static void ev_CapTeresaFadeOMExec(OMOBJ *obj);
+static void ev_CapMiracleSprCreate(void);
+static void ev_CapMiracleSprUpdate(OMOBJ *obj);
 void mbev_CapTeresaFadeCreate(int objectId);
 void mbev_CapTeresaFadeKill(int objectId);
 void mbev_CapTeresaFadeSet(float alpha);
@@ -1309,6 +1311,34 @@ static int ev_CapMiracleMesGet(int messNo)
 static void ev_CapMiracleDiceHitHook(void)
 {
     diceHitTimer = 0;
+}
+
+static void ev_CapMiracleSprCreate(void)
+{
+    extern const float lbl_802C4288;
+    MIRACLE_SPR_WORK *work;
+    int i;
+    int j;
+    OMOBJ *obj;
+
+    miracleSprObj = obj = omAddObjEx(
+        mbObjMan, -32768, 0, 0, -1, ev_CapMiracleSprUpdate);
+    work = obj->data = HuMemDirectMallocNum(
+        HEAP_HEAP, 6 * sizeof(MIRACLE_SPR_WORK), HU_MEMNUM_OVL);
+    memset(work, 0, 6 * sizeof(MIRACLE_SPR_WORK));
+    for (i = 0; i < 6; i++, work++) {
+        work->activeF = FALSE;
+        work->sprId = -1;
+        work->backSprId = -1;
+        for (j = 0; j < 6; j++) {
+            work->sprIdTbl[j] = -1;
+        }
+        work->focusTime = 0;
+        work->focusNo = 0;
+        work->hideF = FALSE;
+        work->unk30 = lbl_802C4288;
+        work->unk34 = lbl_802C4288;
+    }
 }
 
 static void ev_CapMiracleSprDestroy(void)
