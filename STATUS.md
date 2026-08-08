@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.33% | 38.37% | 340 / 927 |
-| Main DOL | 52.86% | 88.57% | 307 / 396 |
+| Entire project | 14.40% | 38.63% | 341 / 927 |
+| Main DOL | 53.26% | 89.23% | 308 / 396 |
 | REL modules | 6.16% | 6.56% | 33 / 531 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
@@ -35,12 +35,15 @@ bytes** across 11 partial owners with zero exact-function regressions. The
 board-owner and Treetop seam totals are unchanged because these files remain
 partial owners.
 
-Five main-DOL MusyX runtime owners now build from recovered C: `synthvoice.c`
+Eight main-DOL MusyX runtime owners now build from recovered C: `synthvoice.c`
 at **21 / 21**, `synthdata.c` at **27 / 27**, `hw_aramdma.c` at **13 / 13**,
-`snd_midictrl.c` at **35 / 35**, and `s_data.c` at **7 / 7 strict-exact and
-data-value-exact functions**. Their combined source-linked build remains
-retail-identical. `hardware.c` remains `NonMatching` until its whole-object
-link closure is exact.
+`snd_midictrl.c` at **35 / 35**, `s_data.c` at **7 / 7**, `synth.c` at
+**27 / 27**, `synthmacros.c` at **52 / 52 strict-exact functions**, and
+`snd3d.c` at **16 / 16 strict-exact and data-value-exact functions**. The
+complete `snd3d.c` owner contributes **8,760 text bytes** with exact retained
+relocations; its authenticated extra donor csects are discarded by the linker.
+Their combined source-linked build remains retail-identical. `hardware.c`
+remains `NonMatching` until its whole-object link closure is exact.
 
 The MusyX DSP image owner now builds from sibling-authenticated original data:
 the **7,872-byte** `dspSlave` payload and its `dspSlaveLength` value are exact,
