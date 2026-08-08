@@ -454,8 +454,8 @@
     },
     "mwcc-conversion-pool-relocation-ownership-before-text-retention": {
       "status": "active",
-      "validated_commit": "e11bce1275a0e91a88e656847073fffe3271339d",
-      "validated_at": "2026-08-07",
+      "validated_commit": "b6c1dd8418e16f6beda1b5a116523b7585c58c36",
+      "validated_at": "2026-08-09",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "docs/native_matching_dll_reinforcements_20260728.md",
@@ -1236,7 +1236,7 @@
     },
     "gc26-indexed-load-does-not-prove-array-dimensionality": {
       "status": "active",
-      "validated_commit": "421822940df4efb3a2c0088a5dda1fc4ed2611ff",
+      "validated_commit": "b6c1dd8418e16f6beda1b5a116523b7585c58c36",
       "validated_at": "2026-08-09",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
