@@ -1361,6 +1361,23 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "w11Dll",
+        objects={
+            Object(
+                NonMatching,
+                "REL/w11Dll/world11_callbacks.c",
+            ),
+            Object(
+                NonMatching,
+                "REL/w11Dll/world11_tutorial.c",
+            ),
+            Object(
+                NonMatching,
+                "REL/w11Dll/world11_guide.c",
+            ),
+        },
+    ),
 
 ]
 
