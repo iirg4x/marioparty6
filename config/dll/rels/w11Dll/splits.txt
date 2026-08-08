@@ -18,3 +18,6 @@ REL/w11Dll/world11_tutorial_wait.c:
 
 REL/w11Dll/world11_guide.c:
 	.text       start:0x0000127C end:0x000012FC
+
+REL/w11Dll/world11_curve.c:
+	.text       start:0x00001454 end:0x00001584

@@ -1380,6 +1380,10 @@ config.libs = [
                 Matching,
                 "REL/w11Dll/world11_guide.c",
             ),
+            Object(
+                Matching,
+                "REL/w11Dll/world11_curve.c",
+            ),
         },
     ),
 
