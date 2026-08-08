@@ -42,6 +42,11 @@ data-value-exact functions**. Their combined source-linked build remains
 retail-identical. `hardware.c` remains `NonMatching` until its whole-object
 link closure is exact.
 
+The current partial MusyX batch adds **45 strict-exact functions** and
+**15,224 text bytes**, plus **44 data-value-exact functions** and **19,376
+text bytes**, with zero exact-function regressions. No owner or configuration
+status changes are claimed.
+
 REL recovery is stored under canonical application owners: **174 synthetic
 pass/tail/address-derived C files have been removed across nine DLLs**. Their
 compiled comparison objects retain **538 / 648 exact recovered functions**;
