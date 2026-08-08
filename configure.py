@@ -1365,19 +1365,19 @@ config.libs = [
         "w11Dll",
         objects={
             Object(
-                NonMatching,
+                Matching,
                 "REL/w11Dll/world11_callbacks.c",
             ),
             Object(
-                NonMatching,
+                Matching,
                 "REL/w11Dll/world11_tutorial.c",
             ),
             Object(
-                NonMatching,
+                Matching,
                 "REL/w11Dll/world11_tutorial_tail.c",
             ),
             Object(
-                NonMatching,
+                Matching,
                 "REL/w11Dll/world11_guide.c",
             ),
         },
