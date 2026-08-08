@@ -192,8 +192,8 @@
     },
     "configured-matching-needs-retail-replay": {
       "status": "active",
-      "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",
-      "validated_at": "2026-08-02",
+      "validated_commit": "3a9843f9b7ebddcae5fda3348c6336e1f6ef9e39",
+      "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/evidence_sources.json",
@@ -208,7 +208,10 @@
         "docs/native_matching_wave38.md",
         "docs/native_matching_wave42.md",
         "docs/native_matching_wave51.md",
-        "docs/native_matching_wave52.md"
+        "docs/native_matching_wave52.md",
+        "docs/native_matching_local_declaration_order_first_use.md",
+        "config/dll/rels/meschkdll/symbols.txt",
+        "src/REL/meschkdll/meschkdll.c"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -850,8 +853,8 @@
     },
     "recovery-shard-filenames-are-not-source-provenance": {
       "status": "active",
-      "validated_commit": "26af7eb198385873e130a3385b5b9446158eb1ea",
-      "validated_at": "2026-08-07",
+      "validated_commit": "3a9843f9b7ebddcae5fda3348c6336e1f6ef9e39",
+      "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "config/recovery/project.json",
@@ -884,7 +887,11 @@
         "src/REL/optionDll/option.c",
         "config/recovery/owners/REL_mdsingdll_mdsing.json",
         "config/dll/rels/mdsingdll/splits.txt",
-        "src/REL/mdsingdll/mdsing.c"
+        "src/REL/mdsingdll/mdsing.c",
+        "config/dll/rels/w11Dll/symbols.txt",
+        "config/dll/rels/w11Dll/splits.txt",
+        "config/GP6E01/config.yml",
+        "config/GP6E01/build.sha1"
       ],
       "supersedes": [],
       "superseded_by": null
@@ -1131,8 +1138,8 @@
       "superseded_by": null
     },
     "target-first-fallback-evidence-protocol": {
-      "status": "stale",
-      "validated_commit": "b89648f422bc7dc87005f4a198d835545427bcc8",
+      "status": "active",
+      "validated_commit": "3a9843f9b7ebddcae5fda3348c6336e1f6ef9e39",
       "validated_at": "2026-08-08",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
