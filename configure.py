@@ -1309,6 +1309,11 @@ config.libs = [
         objects={
             Object(
                 Matching,
+                "REL/s03Dll/s03.c",
+                mw_version=config.linker_version,
+            ),
+            Object(
+                Matching,
                 "REL/s03Dll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
@@ -1379,6 +1384,23 @@ config.libs = [
             Object(
                 Matching,
                 "REL/w11Dll/world11_guide.c",
+            ),
+            Object(
+                Matching,
+                "REL/w11Dll/world11_curve.c",
+            ),
+        },
+    ),
+    Rel(
+        "m616dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m616dll/m616_prefix.c",
+            ),
+            Object(
+                Matching,
+                "REL/m616dll/m616_helpers.c",
             ),
         },
     ),
