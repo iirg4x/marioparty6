@@ -1,3 +1,11 @@
+#include "dolphin/math.h"
+#include "messdir_enum.h"
+
+extern inline float fabsf(float x)
+{
+    return fabs(x);
+}
+
 #include "game/board/main.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
@@ -158,34 +166,42 @@ static s32 pausePanelLabelFileTbl[8] = {
 };
 static s16 pauseValueNumTbl[8] = { 1, 2, 2, 5, 2, 3, 3, 1 };
 static s16 pauseBatsuValueTbl[8] = { -1, 1, 1, -1, 1, -1, 1, -1 };
-static u32 pauseWinMesTbl[40] = {
-    DATANUM(DATA_win, 0), DATANUM(DATA_win, 1), DATANUM(DATA_win, 2), 0, 0,
-    DATANUM(DATA_win, 3), DATANUM(DATA_win, 4), 0, 0, 0,
-    DATANUM(DATA_win, 5), DATANUM(DATA_win, 6), 0, 0, 0,
-    DATANUM(DATA_win, 7), DATANUM(DATA_win, 8), DATANUM(DATA_win, 9),
-    DATANUM(DATA_win, 10), DATANUM(DATA_win, 23),
-    DATANUM(DATA_win, 11), DATANUM(DATA_win, 12), 0, 0, 0,
-    DATANUM(DATA_win, 15), DATANUM(DATA_win, 14), DATANUM(DATA_win, 13), 0, 0,
-    DATANUM(DATA_win, 16), DATANUM(DATA_win, 17), DATANUM(DATA_win, 18), 0, 0,
-    DATANUM(DATA_win, 19), DATANUM(DATA_win, 40), 0, 0, 0
+static u32 pauseWinMesTbl[8][5] = {
+    MESSNUM(MESS_BOARD_PAUSE, 0), MESSNUM(MESS_BOARD_PAUSE, 1),
+    MESSNUM(MESS_BOARD_PAUSE, 2), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 3), MESSNUM(MESS_BOARD_PAUSE, 4), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 5), MESSNUM(MESS_BOARD_PAUSE, 6), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 7), MESSNUM(MESS_BOARD_PAUSE, 8),
+    MESSNUM(MESS_BOARD_PAUSE, 9), MESSNUM(MESS_BOARD_PAUSE, 10),
+    MESSNUM(MESS_BOARD_PAUSE, 23),
+    MESSNUM(MESS_BOARD_PAUSE, 11), MESSNUM(MESS_BOARD_PAUSE, 12), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 15), MESSNUM(MESS_BOARD_PAUSE, 14),
+    MESSNUM(MESS_BOARD_PAUSE, 13), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 16), MESSNUM(MESS_BOARD_PAUSE, 17),
+    MESSNUM(MESS_BOARD_PAUSE, 18), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 19), MESSNUM(MESS_BOARD_PAUSE, 40), 0, 0, 0
 };
-static u32 pauseSingleWinMesTbl[40] = {
-    DATANUM(DATA_win, 42), DATANUM(DATA_win, 1), DATANUM(DATA_win, 2), 0, 0,
-    DATANUM(DATA_win, 3), DATANUM(DATA_win, 4), 0, 0, 0,
-    DATANUM(DATA_win, 5), DATANUM(DATA_win, 43), 0, 0, 0,
-    DATANUM(DATA_win, 7), DATANUM(DATA_win, 8), DATANUM(DATA_win, 9),
-    DATANUM(DATA_win, 10), DATANUM(DATA_win, 23),
-    DATANUM(DATA_win, 11), DATANUM(DATA_win, 12), 0, 0, 0,
-    DATANUM(DATA_win, 15), DATANUM(DATA_win, 14), DATANUM(DATA_win, 13), 0, 0,
-    DATANUM(DATA_win, 16), DATANUM(DATA_win, 17), DATANUM(DATA_win, 18), 0, 0,
-    DATANUM(DATA_win, 40), DATANUM(DATA_win, 40), 0, 0, 0
+static u32 pauseSingleWinMesTbl[8][5] = {
+    MESSNUM(MESS_BOARD_PAUSE, 42), MESSNUM(MESS_BOARD_PAUSE, 1),
+    MESSNUM(MESS_BOARD_PAUSE, 2), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 3), MESSNUM(MESS_BOARD_PAUSE, 4), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 5), MESSNUM(MESS_BOARD_PAUSE, 43), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 7), MESSNUM(MESS_BOARD_PAUSE, 8),
+    MESSNUM(MESS_BOARD_PAUSE, 9), MESSNUM(MESS_BOARD_PAUSE, 10),
+    MESSNUM(MESS_BOARD_PAUSE, 23),
+    MESSNUM(MESS_BOARD_PAUSE, 11), MESSNUM(MESS_BOARD_PAUSE, 12), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 15), MESSNUM(MESS_BOARD_PAUSE, 14),
+    MESSNUM(MESS_BOARD_PAUSE, 13), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 16), MESSNUM(MESS_BOARD_PAUSE, 17),
+    MESSNUM(MESS_BOARD_PAUSE, 18), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 40), MESSNUM(MESS_BOARD_PAUSE, 40), 0, 0, 0
 };
 static HuVecF pauseGuidePos2 = { -0.7f, -0.75f, -750.0f };
 static char configExitMessage[] =
     "-------------------- Config Exit! ----------------------\n";
 static u32 pausePadWinMesTbl[4] = {
-    DATANUM(DATA_win, 21), DATANUM(DATA_win, 22),
-    DATANUM(DATA_win, 22), DATANUM(DATA_win, 22)
+    MESSNUM(MESS_BOARD_PAUSE, 21), MESSNUM(MESS_BOARD_PAUSE, 22),
+    MESSNUM(MESS_BOARD_PAUSE, 22), MESSNUM(MESS_BOARD_PAUSE, 22)
 };
 static float pausePadWinPosTbl[4][2] = {
     { 64.0f, 288.0f },
@@ -216,14 +232,18 @@ static void ConfigKill(void);
 static void ConfigMain(void);
 static void ConfigOpen(void);
 static void ConfigGrowWait(void);
+static void ConfigWinUpdate(s32 index);
 static void ConfigPadWinSet(s32 index);
 static void ConfigPadSprSet(CONFIG_PAD_WORK *workP);
+static void ConfigPadTimeSet(CONFIG_PAD_WORK *workP, float scale);
 static void ConfigSettingRead(void);
 static void ConfigSettingWrite(void);
 BOOL mbPausePanelFreezeGet(s16 panelId);
 s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum);
 void mbPausePanelKill(s16 panelId);
 void mbPausePanelPosSet(s16 panelId, float x, float y);
+void mbPausePanelPosGet(s16 panelId, HuVecF *pos);
+float mbPausePanelScaleGet(s16 panelId);
 void mbPausePanelBatsuSet(s16 panelId, BOOL batsuF);
 void mbPausePanelGrowSet(s16 panelId, int time, int delay, float scale);
 void mbPausePanelShrinkSet(s16 panelId, int time, int delay);
@@ -411,6 +431,47 @@ static void ConfigClose(s32 result)
             menuP->panelId = 0;
             menuP->initialValue = 0;
         }
+    }
+}
+
+static void ConfigWinUpdate(s32 index)
+{
+    HuVec2f pos;
+    BOOL partyF;
+    s32 i;
+    u32 *winMesTbl;
+    s32 mesNo;
+
+    if (pauseWork.helpWinNo >= 0) {
+        mbWinKill((s16)pauseWork.helpWinNo);
+        pauseWork.helpWinNo = -1;
+    }
+    if (index >= 0) {
+        partyF = GwSystem.partyF;
+        if (partyF) {
+            winMesTbl = pauseWinMesTbl[index];
+        } else {
+            winMesTbl = pauseSingleWinMesTbl[index];
+        }
+        if (index == 0) {
+            pauseWork.helpWinNo = mbWinCreateTime(8, winMesTbl[0], -1);
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                if (GwPlayer[pauseWork.padWork[i].port].comF) {
+                    mesNo = 2;
+                } else {
+                    mesNo = 1;
+                }
+                mbWinInsertMesSet((s16)pauseWork.helpWinNo,
+                    pauseWinMesTbl[index][mesNo], i);
+            }
+        } else {
+            pauseWork.helpWinNo = mbWinCreateTime(8,
+                winMesTbl[pauseWork.menu[index].valueMin], -1);
+        }
+        mbWinPosGet((s16)pauseWork.helpWinNo, &pos);
+        mbWinPosSet((s16)pauseWork.helpWinNo, 144, (s16)pos.y);
+        mbWinPause((s16)pauseWork.helpWinNo);
+        pauseWork.talkTime = 30;
     }
 }
 
@@ -712,6 +773,34 @@ static void PauseGuideMain(void)
         HuPrcVSleep();
     }
     HuPrcEnd();
+}
+
+static void ConfigPadTimeSet(CONFIG_PAD_WORK *workP, float scale)
+{
+    HuVecF pos;
+    float panelScale;
+    s32 sprId;
+
+    mbPausePanelPosGet((s16)workP->panelId, &pos);
+    mbNormPosto2D(&pos, &pos);
+    panelScale = mbPausePanelScaleGet((s16)workP->panelId);
+    pos.x += workP->pos.x * panelScale;
+    pos.y += workP->pos.y * panelScale;
+
+    sprId = workP->sprId[0];
+    espScaleSet(sprId, scale, scale);
+    espPosSet(sprId, pos.x + (configPadSprOfsTbl[0] * scale),
+        pos.y + (configPadSprOfsTbl[1] * scale));
+
+    sprId = workP->sprId[1];
+    espScaleSet(sprId, scale, scale);
+    espPosSet(sprId, pos.x + (configPadSprOfsTbl[2] * scale),
+        pos.y + (configPadSprOfsTbl[3] * scale));
+
+    sprId = workP->sprId[2];
+    espScaleSet(sprId, scale, scale);
+    espPosSet(sprId, pos.x + (configPadSprOfsTbl[4] * scale),
+        pos.y + (configPadSprOfsTbl[5] * scale));
 }
 
 static void PauseGuideDestroy(void)
