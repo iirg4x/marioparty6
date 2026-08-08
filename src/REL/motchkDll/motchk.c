@@ -34,6 +34,10 @@ void _epilog(void) {
 
 #define MOTION_MAX 216
 
+enum {
+    MOTCHK_SUBSTICK_AXIS_MASK = 248,
+};
+
 static char *MotNameTbl[MOTION_MAX] = {
     "c000m1_300",
     "c000m1_301",
@@ -521,14 +525,14 @@ void CameraMain(OMOBJ *obj)
         + dir.y * (offset.y * offset.z * (1.0 - HuCos(rotZ)) + offset.x * HuSin(rotZ)));
     VECCrossProduct(&dir, &offset, &offset);
     VECNormalize(&offset, &offset);
-    stickPos = (HuPadSubStkX[0] & 0xF8);
+    stickPos = (HuPadSubStkX[0] & MOTCHK_SUBSTICK_AXIS_MASK);
     if (stickPos != 0) {
         Center.x += 0.05f * (offset.x * stickPos);
         Center.y += 0.05f * (offset.y * stickPos);
         Center.z += 0.05f * (offset.z * stickPos);
     }
     VECNormalize(&yOfs, &offset);
-    stickPos = -(HuPadSubStkY[0] & 0xF8);
+    stickPos = -(HuPadSubStkY[0] & MOTCHK_SUBSTICK_AXIS_MASK);
     if (stickPos != 0) {
         Center.x += 0.05f * (offset.x * stickPos);
         Center.y += 0.05f * (offset.y * stickPos);
