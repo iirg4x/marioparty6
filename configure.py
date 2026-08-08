@@ -1374,6 +1374,10 @@ config.libs = [
             ),
             Object(
                 NonMatching,
+                "REL/w11Dll/world11_tutorial_tail.c",
+            ),
+            Object(
+                NonMatching,
                 "REL/w11Dll/world11_guide.c",
             ),
         },
