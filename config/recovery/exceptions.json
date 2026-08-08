@@ -374,6 +374,42 @@
         "include/musyx/seq.h",
         "https://github.com/AxioDL/musyx/tree/2a0e01aeff0d06a9ee9e12966c435cb75144af9e"
       ]
+    },
+    {
+      "id": "musyx-synth-math-header-visibility",
+      "classification": "authenticated",
+      "path": "src/musyx/runtime/synth.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Worker commit cc5186981a579d3cf4a5cd1678c947a356cbe58d retains the canonical three-line translation-unit prefix `#define _MATH_H`, `#include \"dolphin/math.h\"`, and a blank line. This is the same narrow non-Board visibility pattern already authenticated by src/game/hsfdraw.c: it suppresses generic math.h's weak sqrtf statics without introducing a global or raw-hex policy. Objdiff 3.8 reports synth strict 27/27 and data-value 27/27; DTK target/source sections are 11/10 and relocations 354/460, with `.text` 0x349C/0x4348, `.bss` 0x15E8/0x15E4, `.sbss` 0x48/0x48, and `.sdata2` 0x40/0x40. These retained-pool and linker-stripped differences do not remove any target function bytes. A temporary Matching flip followed by the serialized retail gate reports 137/137 files OK and main.dol SHA-1 b897e6ade6b3a0cd2f9907689f38a3b19c327e70.",
+      "evidence": [
+        "commit:cc5186981a579d3cf4a5cd1678c947a356cbe58d",
+        "src/game/hsfdraw.c",
+        "build/recovery-pass/main_musyx_runtime_synth_math_guard/strict.json",
+        "build/recovery-pass/main_musyx_runtime_synth_math_guard/data-value.json",
+        "config/GP6E01/build.sha1",
+        "STATUS.md"
+      ]
+    },
+    {
+      "id": "musyx-synthmacros-math-header-visibility",
+      "classification": "authenticated",
+      "path": "src/musyx/runtime/synthmacros.c",
+      "kind": "header_visibility",
+      "rules": [
+        "include_guard_override"
+      ],
+      "rationale": "Worker commit cc5186981a579d3cf4a5cd1678c947a356cbe58d retains the canonical three-line translation-unit prefix `#define _MATH_H`, `#include \"dolphin/math.h\"`, and a blank line. This is the same narrow non-Board visibility pattern already authenticated by src/game/hsfdraw.c and does not authorize wildcard header suppression or raw hexadecimal literals. Objdiff 3.8 reports synthmacros strict 52/52 and data-value 51/52; DTK target/source sections are 13/12 and relocations 574/651, with `.text` 0x4FA0/0x63DC, `.data` 0x448/0x448, `.bss` 0x20/0x20, `.sbss` 0x20/0x19, and `.sdata2` 0x28/0x28. The sole data residual is the known DoSetPitch R_PPC_NONE constant-pool ownership (target lbl_8023F770, 28 bytes; source kf$429, 26 bytes) while strict instructions remain exact. A temporary Matching flip followed by the serialized retail gate reports 137/137 files OK and main.dol SHA-1 b897e6ade6b3a0cd2f9907689f38a3b19c327e70.",
+      "evidence": [
+        "commit:cc5186981a579d3cf4a5cd1678c947a356cbe58d",
+        "src/game/hsfdraw.c",
+        "build/recovery-pass/main_musyx_runtime_synthmacros_math_guard/strict.json",
+        "build/recovery-pass/main_musyx_runtime_synthmacros_math_guard/data-value.json",
+        "config/GP6E01/build.sha1",
+        "STATUS.md"
+      ]
     }
   ]
 }
