@@ -59,7 +59,7 @@ typedef struct GenderSessionTail {
     f32 outputWeight;
 } GenderSessionTail;
 
-static const u8 ControlID_Disable[] = { 0xD, 0xE, 0xF };
+static const u8 ControlID_Disable[] = { 13, 14, 15 };
 
 extern void *heap_Alloc(void *heap, u32 size);
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
@@ -132,7 +132,7 @@ static u32 LoadCodeBook(Gender *block, LanguageData *language)
     block->codeBook.secondCodeBook = language->getpSecondCdb(source);
 
     if (block->codeBook.dimension > block->inputEnd - block->inputStart) {
-        return _tosErrorLog(block, 0x66);
+        return _tosErrorLog(block, 102);
     }
     block->language = language;
     return 0;
@@ -226,7 +226,7 @@ static u32 ControlGender(
     case 10:
         block->enabledGenders[(u32)argument + 1] = 0;
         break;
-    case 0xFF:
+    case 255:
         heap_Free(block->base.context->heap, block->scores);
         heap_Free(block->base.context->heap, block->frameBuffer);
         heap_Free(block->base.context->heap, block->enabledGenders);
@@ -382,7 +382,7 @@ static u32 WriteFrameToOutput(Gender *block)
 
     if (block->totalWeight > block->fixedGenderThreshold &&
         block->totalWeight > 0.001f &&
-        (block->genderMask & 0x80000000) != 0) {
+        (block->genderMask & 2147483648U) != 0) {
         for (gender = 0; gender < block->genderCount; gender++) {
             if (gender != bestGender) {
                 _tosControl(
@@ -411,7 +411,7 @@ static u32 WriteFrameToOutput(Gender *block)
     return bestGender + 1;
 }
 
-static void OutputFrame(Gender *block)
+static inline void OutputFrame(Gender *block)
 {
     f32 *output;
 
@@ -474,7 +474,7 @@ static u32 InitGender(TosBaseBlock *baseBlock)
     block->base.input[2].inputSize = block->inputEnd * sizeof(f32);
     block->base.input[3].inputSize = block->inputEnd * sizeof(f32);
     block->base.output->outputSize = block->inputEnd * sizeof(f32);
-    block->genderMask = 0x7FFFFFFF;
+    block->genderMask = 2147483647;
     ResetGender(block);
     return 0;
 }
