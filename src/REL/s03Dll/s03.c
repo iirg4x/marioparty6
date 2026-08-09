@@ -34,28 +34,40 @@ enum {
     S03_OBJECT_PRIORITY = 8204,
     S03_MASU_ATTR_MOVE_START = 2,
     S03_MASU_ATTR_HATENA = 1,
+    S03_MASU_LINK_FLAG = (1 << 13),
+    S03_ROTATE_HALF_TURN = 180,
+    S03_ROTATE_MODE = 15,
+    S03_MOVE_DURATION = 90,
+    S03_MOVE_START_DELAY = 30,
+    S03_RING_HIT_TIME = 18,
+    S03_VIBRATION_TIME = 20,
+    S03_LIFT_FRAMES = 60,
+    S03_SWING_FRAMES = 120,
+    S03_CHAIN_FRAMES = 240,
+    S03_MUSIC_FADE_SPEED = 1000,
+    S03_CAPSULE_LOAD_DELAY = 180,
 };
 
 typedef struct S03ParticleWork {
-    s32 modelId;       // 0x00
-    s32 index;          // 0x04
-    HuVecF pos;        // 0x08
-    HuVecF basePos;    // 0x14
-    HuVecF rot;        // 0x20
-    HuVecF scale;      // 0x2C
-    HuVecF angle;      // 0x38
-    HuVecF worldPos;   // 0x44
-    HuVecF worldPos2;  // 0x50
+    s32 modelId;       // offset 0
+    s32 index;          // offset 4
+    HuVecF pos;        // offset 8
+    HuVecF basePos;    // offset 20
+    HuVecF rot;        // offset 32
+    HuVecF scale;      // offset 44
+    HuVecF angle;      // offset 56
+    HuVecF worldPos;   // offset 68
+    HuVecF worldPos2;  // offset 80
 } S03ParticleWork;
 
 typedef struct S03MoveWork {
-    s32 playerNo;      // 0x00
-    s32 timer;         // 0x04
-    s32 duration;      // 0x08
-    s32 startDelay;    // 0x0C
-    HuVecF startPos;   // 0x10
-    HuVecF controlPos; // 0x1C
-    HuVecF endPos;     // 0x28
+    s32 playerNo;      // offset 0
+    s32 timer;         // offset 4
+    s32 duration;      // offset 8
+    s32 startDelay;    // offset 12
+    HuVecF startPos;   // offset 16
+    HuVecF controlPos; // offset 28
+    HuVecF endPos;     // offset 40
 } S03MoveWork;
 
 typedef struct S03Work {
@@ -69,15 +81,15 @@ typedef struct S03Work {
     HuVecF chainPos;
     HuVecF chainEndPos;
     s32 state;
-    s32 captureFlag;       // 0x2C
+    s32 captureFlag;       // offset 44
     s32 substate;
     HuVecF rotation;
     HuVecF scale;
     HuVecF targetPos;
-    OMOBJ *effectObj;             // 0x58
-    S03ParticleWork *particleWork; // 0x5C
+    OMOBJ *effectObj;             // offset 88
+    S03ParticleWork *particleWork; // offset 92
     float effectAngle;
-    HuVecF playerOffset;          // 0x64
+    HuVecF playerOffset;          // offset 100
     u32 unk_70;
 } S03Work;
 
@@ -399,7 +411,7 @@ void fn_1_76C(int playerNo, s16 id)
     }
 
     idLocal = id;
-    linkedMasu = mbMasuAttrFindLink(idLocal, 0x2000);
+    linkedMasu = mbMasuAttrFindLink(idLocal, S03_MASU_LINK_FLAG);
     mbMasuPosGet(idLocal, &pathPos0);
     mbMasuPosGet(linkedMasu, &pathPos1);
     mbObjPosSetV(work->eventModelId, &pathPos1);
@@ -424,7 +436,7 @@ void fn_1_76C(int playerNo, s16 id)
     mbAudFXPlay(MSM_SE_SBRD_13);
     mbObjMotionTimeSet(work->pathModelId[pathIndex], 0.0f);
     mbObjMotionSpeedSet(work->pathModelId[pathIndex], 1.0f);
-    mbPlayerRotateStart(playerNo, 0xB4, 0xF);
+    mbPlayerRotateStart(playerNo, S03_ROTATE_HALF_TURN, S03_ROTATE_MODE);
     HuPrcSleep(10);
     mbAudFXPlay(MSM_SE_GUIDE_77);
     mbObjMotionShiftSet(work->eventModelId, 2, 0.0f,
@@ -450,8 +462,8 @@ void fn_1_76C(int playerNo, s16 id)
             memset(moveWork, 0, sizeof(*moveWork));
             moveWork->playerNo = playerNo;
             moveWork->timer = 0;
-            moveWork->duration = 0x5A;
-            moveWork->startDelay = 0x1E;
+            moveWork->duration = S03_MOVE_DURATION;
+            moveWork->startDelay = S03_MOVE_START_DELAY;
             moveWork->startPos = pathPos0;
             moveWork->controlPos.x = moveWork->startPos.x;
             moveWork->controlPos.y = moveWork->startPos.y
@@ -482,7 +494,7 @@ void fn_1_76C(int playerNo, s16 id)
             ringPosArg = masuPos;
             ringPosPtr = &ringPosArg;
             mbev_CapEffRingAdd(ringObj, ringPosPtr, ringRotPtr,
-                ringScalePtr, 1, 0x12, 2, colorPtr);
+                ringScalePtr, 1, S03_RING_HIT_TIME, 2, colorPtr);
             mbAudFXPlay(MSM_SE_SBRD_15);
             omVibrate((s16)playerNo, 20, 7, 3);
         }
@@ -504,7 +516,7 @@ void fn_1_76C(int playerNo, s16 id)
     pathPos1.x = pathPos0.x;
     pathPos1.y = pathPos0.y + 800.0f;
     pathPos1.z = pathPos0.z - 200.0f;
-    mbWipeDissolveFadeInTime(0x1E);
+    mbWipeDissolveFadeInTime(S03_MOVE_START_DELAY);
     mbPlayerDispSet(playerNo, TRUE);
     for (time = 1; (float)time < 30.0f; time++) {
         t = (float)time / 30.0f;
@@ -534,7 +546,7 @@ void fn_1_76C(int playerNo, s16 id)
         PSMTXIdentity(resetMatrix);
         mbPlayerMtxSet(playerNo, &resetMatrix);
         GwPlayer[playerNo].masuId = startMasu;
-        HuPrcSleep(0x1E);
+        HuPrcSleep(S03_MOVE_START_DELAY);
         while (mbev_CapEffExplodeAnimGet(explodeObj) > 0) {
             HuPrcVSleep();
         }
@@ -590,8 +602,7 @@ void fn_1_1238(OMOBJ *obj)
 void fn_1_1450(int playerNo, s16 id)
 {
     S03Work *work = &lbl_1_bss_4;
-    Mtx matrix;
-    int playerMotion[4];
+    int playerMotion[16];
     HuVecF playerPos;
     HuVecF targetPos;
     HuVecF movePos;
@@ -628,7 +639,7 @@ void fn_1_1450(int playerNo, s16 id)
 
     mbMoveNumDispSet(playerNo, FALSE);
     mbCameraMovePlayer((s16)playerNo, &lbl_1_data_6C[0], NULL,
-        900.0f, -1.0f, 120);
+        900.0f, -1.0f, S03_SWING_FRAMES);
     currentMasu = GwPlayer[playerNo].masuId;
     mbMasuPosGet((s16)currentMasu, &playerPos);
     mbMasuPosGet(id, &targetPos);
@@ -639,22 +650,22 @@ void fn_1_1450(int playerNo, s16 id)
     mbPlayerMotionShiftSet(playerNo, 2, 0.0f,
         8.0f, HU3D_MOTATTR_LOOP);
 
-    for (time = 0; (u32)time <= 0x3C; time++) {
+    for (time = 0; (u32)time <= S03_LIFT_FRAMES; time++) {
         scale = 0.4f * ((float)time / 60.0f);
         movePos.x = playerPos.x + scale * delta.x;
         movePos.y = playerPos.y;
         movePos.z = playerPos.z + scale * delta.z;
         mbPlayerPosSetV(playerNo, &movePos);
-        if (time == 0 || time == 0x1E || time == 0x3C
-            || time == 0x5A || time == 0x78) {
-            omVibrate((s16)playerNo, 20, 7, 3);
+        if (time == 0 || time == S03_MOVE_START_DELAY || time == S03_LIFT_FRAMES
+            || time == S03_MOVE_DURATION || time == S03_SWING_FRAMES) {
+            omVibrate((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
         }
         HuPrcVSleep();
     }
 
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f,
         8.0f, HU3D_MOTATTR_NONE);
-    for (time = 0; (u32)time <= 0x1E; time++) {
+    for (time = 0; (u32)time <= S03_MOVE_START_DELAY; time++) {
         t = (float)time / 30.0f;
         scale = 0.4f + 0.4f * t;
         movePos.x = playerPos.x + scale * delta.x;
@@ -665,39 +676,39 @@ void fn_1_1450(int playerNo, s16 id)
                         / 180.0)));
         movePos.z = playerPos.z + scale * delta.z;
         mbPlayerPosSetV(playerNo, &movePos);
-        if (time == 0x14) {
+        if (time == S03_VIBRATION_TIME) {
             mbPlayerMotionShiftSet(playerNo, 5, 0.0f,
                 8.0f, HU3D_MOTATTR_NONE);
         }
-        if (time == 0 || time == 0x1E || time == 0x3C
-            || time == 0x5A || time == 0x78) {
-            omVibrate((s16)playerNo, 20, 7, 3);
+        if (time == 0 || time == S03_MOVE_START_DELAY || time == S03_LIFT_FRAMES
+            || time == S03_MOVE_DURATION || time == S03_SWING_FRAMES) {
+            omVibrate((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
         }
         HuPrcVSleep();
     }
 
     mbPlayerMotionShiftSet(playerNo, 2, 0.0f,
         8.0f, HU3D_MOTATTR_LOOP);
-    for (time = 0; (u32)time <= 0x1E; time++) {
+    for (time = 0; (u32)time <= S03_MOVE_START_DELAY; time++) {
         t = (float)time / 30.0f;
         scale = 0.8f + 0.2f * t;
         movePos.x = playerPos.x + scale * delta.x;
         movePos.y = playerPos.y + delta.y;
         movePos.z = playerPos.z + scale * delta.z;
         mbPlayerPosSetV(playerNo, &movePos);
-        if (time == 0 || time == 0x1E || time == 0x3C
-            || time == 0x5A || time == 0x78) {
-            omVibrate((s16)playerNo, 20, 7, 3);
+        if (time == 0 || time == S03_MOVE_START_DELAY || time == S03_LIFT_FRAMES
+            || time == S03_MOVE_DURATION || time == S03_SWING_FRAMES) {
+            omVibrate((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
         }
         HuPrcVSleep();
     }
 
     mbPlayerMotionShiftSet(playerNo, playerMotion[1],
         0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    HuPrcSleep(0x78);
+    HuPrcSleep(S03_SWING_FRAMES);
     mbCameraMoveWait();
     mbObjDispSet(work->sourceModelId, TRUE);
-    for (time = 1; (u32)time <= 0x1E; time++) {
+    for (time = 1; (u32)time <= S03_MOVE_START_DELAY; time++) {
         scale = (float)time / 30.0f;
         modelPos = lbl_1_data_0;
         modelPos.y += 5.0
@@ -738,7 +749,7 @@ void fn_1_1450(int playerNo, s16 id)
         moveObj->rot.z = 0.0f;
 
         readStat = mbBGRead(DATANUM(DATA_capsulechar1, 0));
-        HuPrcSleep(0xB4);
+        HuPrcSleep(S03_CAPSULE_LOAD_DELAY);
         mbBGReadWait(readStat);
         work->unk_06 = mbObjCreate(DATANUM(DATA_capsulechar1, 0), NULL,
             FALSE);
@@ -760,21 +771,21 @@ void fn_1_1450(int playerNo, s16 id)
         while (work->effectObj) {
             HuPrcVSleep();
         }
-        mbPlayerRotateStart(playerNo, 0, 0xF);
+        mbPlayerRotateStart(playerNo, 0, S03_ROTATE_MODE);
         while (!mbPlayerRotateCheck(playerNo)) {
             HuPrcVSleep();
         }
         mbPlayerMotionShiftSet(playerNo, playerMotion[3],
             0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-        HuPrcSleep(0x3C);
+        HuPrcSleep(S03_LIFT_FRAMES);
         mbAudFXPlay(MSM_SE_SBRD_17);
         modelPos.x = modelPos.z = 0.0f;
         modelPos.y = 600.0f;
         mbCameraMoveMasu(id, &lbl_1_data_6C[0], &modelPos,
-            3000.0f, -1.0f, 0x5A);
+            3000.0f, -1.0f, S03_MOVE_DURATION);
         work->state = playerNo;
-        HuPrcSleep(0x1E);
-        mbAudFXDelaySet(0x1E);
+        HuPrcSleep(S03_MOVE_START_DELAY);
+        mbAudFXDelaySet(S03_MOVE_START_DELAY);
         mbAudFXPlay(MSM_SE_GUIDE_47);
         mbev_CapPlayerMotShiftSet(work->unk_06, 2, HU3D_MOTATTR_NONE,
             TRUE);
@@ -786,8 +797,8 @@ void fn_1_1450(int playerNo, s16 id)
         work->substate++;
     }
 
-    for (time = 1; (u32)time < 0x3C; time++) {
-        t = (float)time / 60.0f;
+    for (time = 1; (u32)time < S03_LIFT_FRAMES; time++) {
+        t = (float)time / S03_LIFT_FRAMES;
         modelPos.x = pos.x;
         modelPos.y = pos.y + (2.0
             * (100.0
@@ -798,8 +809,8 @@ void fn_1_1450(int playerNo, s16 id)
         HuPrcVSleep();
     }
     mbObjPosGet(work->chainModelId, &pos);
-    for (time = 1; (u32)time < 0x78; time++) {
-        t = (float)time / 120.0f;
+    for (time = 1; (u32)time < S03_SWING_FRAMES; time++) {
+        t = (float)time / S03_SWING_FRAMES;
         modelPos.x = pos.x;
         modelPos.y = pos.y + (0.1f
             * (100.0
@@ -822,12 +833,12 @@ void fn_1_1450(int playerNo, s16 id)
     curveC.y = curveA.y - 500.0f;
     curveC.z = curveA.z - 3000.0f;
     work->substate++;
-    omVibrate((s16)playerNo, 0xF0, 4, 4);
-    for (time = 1; (u32)time < 0xF0; time++) {
+    omVibrate((s16)playerNo, S03_CHAIN_FRAMES, 4, 4);
+    for (time = 1; (u32)time < S03_CHAIN_FRAMES; time++) {
         float curvePhase;
 
-        t = (float)time / 240.0f;
-        curvePhase = (float)time / 120.0f;
+        t = (float)time / S03_CHAIN_FRAMES;
+        curvePhase = (float)time / S03_SWING_FRAMES;
         scale = (float)sin((M_PI * (90.0f * (t * t))) / 180.0);
         mbev_CapBezierGetV(
             scale,
@@ -838,12 +849,12 @@ void fn_1_1450(int playerNo, s16 id)
                 * sin((M_PI * (720.0f * t))
                     / 180.0));
         mbObjPosSetV(work->chainModelId, &pos);
-        if (time == 0x78) {
-            mbWipeSpecialCreate(1, 6, 0x78);
+        if (time == S03_SWING_FRAMES) {
+            mbWipeSpecialCreate(1, 6, S03_SWING_FRAMES);
         }
-        if (time == 0xB4) {
-            mbMusFadeOutSpeed(0, 0x3E8);
-            mbMusFadeOutSpeed(1, 0x3E8);
+        if (time == S03_CAPSULE_LOAD_DELAY) {
+            mbMusFadeOutSpeed(0, S03_MUSIC_FADE_SPEED);
+            mbMusFadeOutSpeed(1, S03_MUSIC_FADE_SPEED);
         }
         HuPrcVSleep();
     }
