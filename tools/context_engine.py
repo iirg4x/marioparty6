@@ -262,6 +262,8 @@ REJECTED_PROBE_STATUSES = {
     "no_gain",
     "regressed",
     "rejected",
+    "rejected-neutral",
+    "rejected-regression",
     "reverted",
 }
 
@@ -544,6 +546,7 @@ def _blocked_history_records(path: Path) -> list[dict[str, Any]]:
         return []
     records: list[dict[str, Any]] = []
     for field in (
+        "blocked",
         "exhausted_recent_probes",
         "owner_checkpoint",
         "missing_definition_deadlock",
@@ -766,6 +769,9 @@ def collect_rejected_probe_history(
         for symbol in target_symbols or []
         for alias in _symbol_aliases(symbol)
     }
+    requested_limit = max(0, min(limit, HISTORY_LIMIT))
+    if requested_limit == 0:
+        return []
     records: list[dict[str, Any]] = []
     records.extend(_blocked_history_records(root / BLOCKED_HISTORY_PATH))
     records.extend(_batch_history_records(root / BATCH_HISTORY_PATH))
@@ -782,7 +788,7 @@ def collect_rejected_probe_history(
             continue
         seen.add(identity)
         selected.append(record)
-        if len(selected) >= max(0, min(limit, HISTORY_LIMIT)):
+        if len(selected) >= requested_limit:
             break
     return selected
 

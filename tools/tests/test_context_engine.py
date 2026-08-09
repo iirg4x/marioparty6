@@ -303,6 +303,107 @@ int fn(void) { return 1; }
             self.assertNotIn("bad queue", rendered)
             self.assertNotIn("Traceback", rendered)
 
+    def test_rejected_history_reads_canonical_blocked_and_batch_statuses(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            history_dir = root / "build" / "board-autonomy"
+            history_dir.mkdir(parents=True)
+            (history_dir / "blocked.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "blocked": [
+                            {
+                                "owner": "main:board/mgcall",
+                                "function": "MgRouletteExec",
+                                "reason": "canonical top-level blocker",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (history_dir / "batch-history.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "probes": [
+                            {
+                                "owner": "main:board/mgcall",
+                                "symbol": "MgRouletteExec",
+                                "status": "rejected-neutral",
+                                "input_key": "mg-neutral",
+                                "reason": "canonical neutral rejection",
+                            },
+                            {
+                                "owner": "main:board/mgcall",
+                                "symbol": "MgRouletteExec",
+                                "status": "rejected-regression",
+                                "input_key": "mg-regression",
+                                "reason": "canonical regression rejection",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            queue_path = root / "queue.json"
+            queue = {"tasks": []}
+            with (
+                patch("tools.context_engine.queue_path", return_value=queue_path),
+                patch("tools.context_engine.read_queue", return_value=queue),
+            ):
+                records = collect_rejected_probe_history(
+                    root,
+                    {"id": "main:board/mgcall", "source": "src/board/mgcall.c"},
+                    target_symbols=["MgRouletteExec"],
+                )
+                rendered = render_rejected_probe_history(
+                    root,
+                    {"id": "main:board/mgcall", "source": "src/board/mgcall.c"},
+                    target_symbols=["MgRouletteExec"],
+                )
+
+            self.assertEqual(len(records), 3)
+            self.assertEqual(
+                [record["status"] for record in records],
+                ["", "rejected-neutral", "rejected-regression"],
+            )
+            self.assertIn("canonical top-level blocker", rendered)
+            self.assertIn("canonical neutral rejection", rendered)
+            self.assertIn("canonical regression rejection", rendered)
+
+    def test_rejected_history_limit_zero_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            history_dir = root / "build" / "board-autonomy"
+            history_dir.mkdir(parents=True)
+            (history_dir / "blocked.json").write_text(
+                json.dumps(
+                    {
+                        "blocked": [
+                            {
+                                "owner": "main:board/math",
+                                "function": "MathFn",
+                                "reason": "must be omitted at zero limit",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch(
+                "tools.context_engine.queue_path",
+                return_value=root / "queue.json",
+            ):
+                records = collect_rejected_probe_history(
+                    root,
+                    {"id": "main:board/math", "source": "src/board/math.c"},
+                    target_symbols=["MathFn"],
+                    limit=0,
+                )
+            self.assertEqual(records, [])
+
     def test_rejected_history_skips_malformed_queue_task_status(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
