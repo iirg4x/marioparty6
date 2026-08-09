@@ -136,7 +136,7 @@ s32 msmStreamGetStatus(int streamNo) {
     return status;
 }
 
-static void msmStreamUpdateBaseParam(MSM_STREAM_SLOT* slot) {
+static inline void msmStreamUpdateBaseParam(MSM_STREAM_SLOT* slot) {
     s32 pan;
     s32 vol;
 
@@ -401,7 +401,7 @@ s32 msmStreamAmemAlloc(void) {
         }
         slot->streamBufSize = StreamInfo.bufSize;
         slot->streamFrq = StreamInfo.frq;
-        slot->stid = sndStreamAllocEx(0xFF, slot->streamBuf, slot->streamFrq, StreamInfo.header.sampleFrq, 0, 64, 0, 0, 0, 0, 0x30001, msmStreamUpdateFunc, i, NULL);
+        slot->stid = sndStreamAllocEx(255, slot->streamBuf, slot->streamFrq, StreamInfo.header.sampleFrq, 0, 64, 0, 0, 0, 0, 196609, msmStreamUpdateFunc, i, NULL);
         if (slot->stid == -1) {
             return MSM_ERR_STREAMALLOC_FAIL;
         }
@@ -427,7 +427,7 @@ s32 msmStreamInit(char *pdtPath) {
     if (!msmFioOpen(StreamInfo.pdtEntryNum, &file)) {
         return MSM_ERR_OPENFAIL;
     }
-    if (msmFioRead(&file, &StreamInfo.header, 0x20, 0) < 0) {
+    if (msmFioRead(&file, &StreamInfo.header, 32, 0) < 0) {
         msmFioClose(&file);
         return MSM_ERR_READFAIL;
     }
@@ -436,7 +436,7 @@ s32 msmStreamInit(char *pdtPath) {
         return MSM_ERR_INVALIDFILE;
     }
     if (StreamInfo.header.streamMax != 0) {
-        size = (StreamInfo.header.adpcmParamOfs - StreamInfo.header.streamPackListOfs + 0x1F) & ~0x1F;
+        size = (StreamInfo.header.adpcmParamOfs - StreamInfo.header.streamPackListOfs + 31) & ~31;
         StreamInfo.streamPackList = msmMemAlloc(size);
         if (StreamInfo.streamPackList == NULL) {
             msmFioClose(&file);
@@ -446,7 +446,7 @@ s32 msmStreamInit(char *pdtPath) {
             msmFioClose(&file);
             return MSM_ERR_READFAIL;
         }
-        size = (StreamInfo.header.sampleOfs - StreamInfo.header.streamPackOfs + 0x1F) & ~0x1F;
+        size = (StreamInfo.header.sampleOfs - StreamInfo.header.streamPackOfs + 31) & ~31;
         StreamInfo.streamPackFlag = msmMemAlloc(size);
         if (StreamInfo.streamPackFlag == NULL) {
             msmFioClose(&file);
@@ -469,7 +469,7 @@ s32 msmStreamInit(char *pdtPath) {
     }
     msmFioClose(&file);
     StreamInfo.sampleFrq = (StreamInfo.header.sampleFrq + (SND_STREAM_ADPCM_BLKSIZE-1)) / SND_STREAM_ADPCM_BLKSIZE ;
-    StreamInfo.bufSize = (8 * StreamInfo.sampleFrq * StreamInfo.header.maxBufs + 0x3F) & ~0x3F;
+    StreamInfo.bufSize = (8 * StreamInfo.sampleFrq * StreamInfo.header.maxBufs + 63) & ~63;
     StreamInfo.frq = (StreamInfo.bufSize / SND_STREAM_ADPCM_BLKBYTES ) * SND_STREAM_ADPCM_BLKSIZE;
     StreamInfo.slot = msmMemAlloc(StreamInfo.header.chanMax * sizeof(*StreamInfo.slot));
     memset(StreamInfo.slot, 0, StreamInfo.header.chanMax * sizeof(*StreamInfo.slot));
@@ -1162,12 +1162,12 @@ static s32 msmStreamSlotInit(MSM_STREAM_SLOT *slot, MSM_STREAM_PACK* pack, STREA
     slot->pauseF = 0;
     slot->updateAramF = 0;
     slot->bufNo = 1;
-    slot->streamBufSize = (StreamInfo.header.sampleFrq * StreamInfo.header.maxBufs * SND_STREAM_ADPCM_BLKBYTES / SND_STREAM_ADPCM_BLKSIZE + 0x3F) & ~0x3F;
+    slot->streamBufSize = (StreamInfo.header.sampleFrq * StreamInfo.header.maxBufs * SND_STREAM_ADPCM_BLKBYTES / SND_STREAM_ADPCM_BLKSIZE + 63) & ~63;
     if (slot->streamBufSize > StreamInfo.bufSize) {
         slot->streamBufSize = StreamInfo.bufSize;
     }
     slot->streamFrq = (slot->streamBufSize / SND_STREAM_ADPCM_BLKBYTES) * SND_STREAM_ADPCM_BLKSIZE;
-    slot->loopLen = (pack->loopOfsEnd >> 1) & ~0x1F;
+    slot->loopLen = (pack->loopOfsEnd >> 1) & ~31;
     slot->loopEndOfs = (slot->loopLen / SND_STREAM_ADPCM_BLKBYTES) * SND_STREAM_ADPCM_BLKSIZE;
     slot->unk64 = slot->unk68 = 0;
     slot->unk6C = 0;
