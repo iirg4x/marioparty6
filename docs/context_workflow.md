@@ -7,6 +7,44 @@ relocations, callers, data, compiler configuration, and known probes. The normal
 retrieval path is deterministic and exact-first—not a whole-repository prompt,
 embeddings-only search, or scan of every wave report.
 
+## Packet-first context
+
+Before implementation, the root/orchestrator prepares one bounded packet per
+target function or dependency-closed target group. It records:
+
+- owner and stable identity;
+- target symbol/address range and size, plus the exact bounded assembly slice;
+- direct calls and relocation sites/addends;
+- referenced static data with offsets, values, and ownership;
+- current source span, signature, and body;
+- compiler/profile, accepted and rejected history, and acceptance/regression
+  gates.
+
+Retain the packet under ignored `build/context/`. Keep it compact and
+exact-first: link to larger assembly and report artifacts rather than embedding
+unbounded output. The existing `tools/recovery_pass.py pass-report <unit>`
+pipeline already emits bounded `worker-packet.json` and `worker-prompt.md`
+under `build/recovery-pass/<unit>` with target identity, call evidence,
+baselines, selected knowledge, and probe history; reuse those outputs where
+they cover the packet and do not invent a second CLI. Richer assembly,
+static-data, and current-source slicing can be added by a later automation
+change.
+
+Use this handoff checklist:
+
+1. Root freezes the owner, packet identity/input key, source span, compiler
+   profile, base commit, and packet path.
+2. The editor confirms packet freshness and claims/writes only its assigned TU.
+3. Read-only dependency specialists report facts to that editor; they do not
+   edit or claim the TU.
+4. The editor applies one hypothesis at a time and records the acceptance and
+   regression-gate result.
+5. If identity, source, or base changes, stop and re-slice before editing.
+
+At most five editor lanes may run concurrently, with exactly one editor per C
+translation unit. Queue claims, shared-path checks, and serialized build/retail
+resources remain authoritative.
+
 ## Operational owner catalog
 
 Generate the non-semantic scheduling inventory:

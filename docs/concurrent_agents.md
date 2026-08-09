@@ -56,6 +56,26 @@ python tools/agent.py queue add REL:fileseldll:filesel \
 Priority is preserved when the task is claimed unless `--priority` is explicitly
 provided again.
 
+## Packet-first lane dispatch
+
+The root/orchestrator prepares a bounded evidence packet before assigning
+implementation. The packet contract and current report pipeline are described
+in [`context_workflow.md`](context_workflow.md#packet-first-context). Keep
+packet artifacts under ignored `build/context/` and link to larger assembly or
+report artifacts instead of embedding them.
+
+Scale to at most five implementation lanes by translation-unit ownership: one
+editor owns one C translation unit, while read-only dependency-group specialists
+may feed facts to that editor. Specialists do not claim or write the TU and do
+not build under another lane's retail lease. The editor alone applies one
+hypothesis at a time; queue and serialized-resource rules remain authoritative.
+
+Handoff is explicit: root freezes the packet's owner, identity, source, and base;
+the editor confirms those inputs before editing; specialists return facts only;
+the editor records the acceptance and regression-gate result. If the packet's
+identity, source, or base is stale, stop and re-slice before continuing. A
+reusable slicer may be added later; do not create a second CLI in this workflow.
+
 ## Create isolated worktrees
 
 The bootstrap command creates the branch, worktree, private build directory,
