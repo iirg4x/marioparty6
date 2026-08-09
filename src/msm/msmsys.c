@@ -99,7 +99,7 @@ static s32 msmSysSetAuxParam(s32 auxA, s32 auxB)
             return TRUE;
         }
     }
-    sndSetAuxProcessingCallbacks(0, auxcb[0], &sys.aux[0], 0xFF, 0, auxcb[1], &sys.aux[1], 0xFF, 0);
+    sndSetAuxProcessingCallbacks(0, auxcb[0], &sys.aux[0], 255, 0, auxcb[1], &sys.aux[1], 255, 0);
     return FALSE;
 }
 
@@ -522,9 +522,9 @@ s32 msmSysDelGroupBase(s32 grpNum)
 
 static inline s32 msmSysPushGroup(DVDFileInfo *file, void *buf, MSM_GRP_STACK *grp, s32 grpId)
 {
+    s32 result;
     MSM_GRP_INFO *grpInfo;
     MSM_GRP_HEAD *grpBuf;
-    s32 result;
 
     grpInfo = &sys.grpInfo[grpId];
     if (msmFioRead(file, grp->buf, grpInfo->dataSize, grpInfo->dataOfs + sys.header->grpDataOfs) < 0) {
@@ -571,7 +571,7 @@ s32 msmSysLoadGroupBase(s32 grpId, void *buf)
     if (msmSysCheckBaseGroupNo(grpId)) {
         return 0;
     }
-    if (baseGrpNo >= 0xF) {
+    if (baseGrpNo >= 15) {
         return MSM_ERR_STACK_OVERFLOW;
     }
     stackLevel = msmSysSearchGroupStack(grpId, -1);
@@ -780,11 +780,11 @@ s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
     if (msmFioOpen(sys.msmEntryNum, &file) != 1) {
         return MSM_ERR_OPENFAIL;
     }
-    if ((sys.header = msmMemAlloc(0x60)) == NULL) {
+    if ((sys.header = msmMemAlloc(96)) == NULL) {
         msmFioClose(&file);
         return MSM_ERR_OUTOFMEM;
     }
-    if (msmFioRead(&file, sys.header, 0x60, 0) < 0) {
+    if (msmFioRead(&file, sys.header, 96, 0) < 0) {
         msmFioClose(&file);
         return MSM_ERR_READFAIL;
     }
@@ -881,9 +881,9 @@ s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
         sndQuit();
         return result;
     }
-    sys.aramP = result + 0x500;
+    sys.aramP = result + 1280;
     if ((int)sys.info->minMem != 0) {
-        temp = msmMemAlloc(sys.info->minMem + 0x100);
+        temp = msmMemAlloc(sys.info->minMem + 256);
         if (temp == NULL) {
             msmStreamAmemFree();
             sndQuit();
@@ -897,6 +897,6 @@ s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
         return MSM_ERR_INVALID_AUXPARAM;
     }
     msmSysSetOutputMode(OSGetSoundMode() == 0 ? SND_OUTPUTMODE_MONO : SND_OUTPUTMODE_STEREO);
-    sndVolume(0x7F, 0, 0xFF);
+    sndVolume(127, 0, 255);
     return 0;
 }
