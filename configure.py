@@ -1308,7 +1308,7 @@ config.libs = [
         "s03Dll",
         objects={
             Object(
-                NonMatching,
+                Matching,
                 "REL/s03Dll/s03.c",
                 mw_version=config.linker_version,
             ),
