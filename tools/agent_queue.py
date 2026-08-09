@@ -8,6 +8,9 @@ one clone sees the same claims. Separate clones can share ``MP6_AGENT_QUEUE``.
 from __future__ import annotations
 
 import argparse
+import copy
+import errno
+import hashlib
 import json
 import os
 import shutil
@@ -17,6 +20,7 @@ import tempfile
 import time
 import uuid
 import sys
+import warnings
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -30,6 +34,9 @@ from tools.workspace_policy import DEFAULT_WORKER_BASE
 
 SCHEMA_VERSION = 2
 QUEUE_ENV = "MP6_AGENT_QUEUE"
+QUEUE_BACKUP_SUFFIX = ".bak"
+QUEUE_AUDIT_SUFFIX = ".audit.jsonl"
+QUEUE_AUDIT_PENDING_SUFFIX = ".audit.pending"
 ACTIVE = {"claimed", "researching", "coding", "verifying", "blocked", "ready"}
 OPEN = {"pending", *ACTIVE}
 TERMINAL = {"done", "released", "cancelled"}
@@ -114,7 +121,10 @@ def _empty() -> dict[str, Any]:
 
 
 def _normalise_task(task: Mapping[str, Any]) -> dict[str, Any]:
-    value = dict(task)
+    # Migration is deliberately the only place where legacy defaults are
+    # introduced.  The raw queue is shape-checked before this function runs so
+    # malformed records can never disappear through a permissive comprehension.
+    value = copy.deepcopy(dict(task))
     value.setdefault("target", None)
     value.setdefault("source", None)
     value.setdefault("priority", "normal")
@@ -143,45 +153,595 @@ def _normalise_task(task: Mapping[str, Any]) -> dict[str, Any]:
 
 def _migrate(value: dict[str, Any]) -> dict[str, Any]:
     version = value.get("schema_version", 1)
+    result = copy.deepcopy(value)
     if version not in {1, 2}:
-        return value
-    result = dict(value)
+        return result
     result["schema_version"] = SCHEMA_VERSION
-    tasks = result.get("tasks", [])
-    result["tasks"] = [
-        _normalise_task(item) for item in tasks if isinstance(item, Mapping)
-    ]
+    result["tasks"] = [_normalise_task(item) for item in result["tasks"]]
     resources = result.get("resources")
-    result["resources"] = dict(resources) if isinstance(resources, Mapping) else {}
+    result["resources"] = dict(resources) if resources is not None else {}
     result.setdefault("updated_at", _now())
     return result
 
 
-def read_queue(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return _empty()
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _queue_json_bytes(queue: Mapping[str, Any]) -> bytes:
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        return (
+            json.dumps(
+                queue,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+                sort_keys=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, UnicodeError, ValueError) as exc:
+        raise QueueError(f"queue cannot be serialized as strict JSON: {exc}") from exc
+
+
+def _audit_json_bytes(record: Mapping[str, Any]) -> bytes:
+    try:
+        return (
+            json.dumps(
+                record,
+                ensure_ascii=False,
+                allow_nan=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, UnicodeError, ValueError) as exc:
+        raise QueueError(f"audit record cannot be serialized as strict JSON: {exc}") from exc
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON constant is not allowed: {value}")
+
+
+def _parse_json_bytes(data: bytes, path: Path) -> Any:
+    if not data:
+        raise QueueError(f"empty queue file: {path}")
+    if all(byte == 0 for byte in data):
+        raise QueueError(f"all-NUL queue file: {path}")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise QueueError(f"invalid UTF-8 queue {path}: {exc}") from exc
+    try:
+        return json.loads(
+            text,
+            parse_constant=_reject_json_constant,
+        )
     except json.JSONDecodeError as exc:
         raise QueueError(
             f"invalid queue JSON {path}:{exc.lineno}:{exc.colno}: {exc.msg}"
         ) from exc
-    if not isinstance(raw, dict):
-        raise QueueError(f"{path}: queue root must be an object")
-    return _migrate(raw)
+    except (TypeError, ValueError) as exc:
+        raise QueueError(f"invalid queue JSON {path}: {exc}") from exc
 
 
-def _write(path: Path, queue: dict[str, Any]) -> None:
+def _raw_task_errors(task: Any, where: str) -> list[str]:
+    if not isinstance(task, Mapping):
+        return [f"{where} must be an object"]
+    errors: list[str] = []
+    for key in ("id", "owner"):
+        if key in task and (not isinstance(task[key], str) or not task[key]):
+            errors.append(f"{where}.{key} must be a non-empty string")
+    for key in (
+        "target", "source", "agent", "worktree", "branch", "build_dir",
+        "created_at", "claimed_at", "updated_at", "released_at", "base_ref", "note",
+    ):
+        if key in task and task[key] is not None and not isinstance(task[key], str):
+            errors.append(f"{where}.{key} must be a string or null")
+    if "status" in task and task["status"] not in ALL:
+        errors.append(f"{where}.status is invalid")
+    if "priority" in task and task["priority"] not in PRIORITY:
+        errors.append(f"{where}.priority is invalid")
+    if "change_class" in task and task["change_class"] not in CHANGE_CLASSES:
+        errors.append(f"{where}.change_class is invalid")
+    for key in ("shared_files", "depends_on", "capabilities"):
+        if key in task and (
+            not isinstance(task[key], list)
+            or not all(isinstance(item, str) and item for item in task[key])
+        ):
+            errors.append(f"{where}.{key} must be a string list")
+    for key in ("estimated_cost", "verification_cost"):
+        if key in task and (
+            isinstance(task[key], bool)
+            or not isinstance(task[key], int)
+            or task[key] < 1
+        ):
+            errors.append(f"{where}.{key} must be a positive integer")
+    if "verification" in task and task["verification"] is not None and not isinstance(task["verification"], Mapping):
+        errors.append(f"{where}.verification must be an object or null")
+    return errors
+
+
+def _raw_resource_errors(name: Any, record: Any, where: str) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(name, str) or not name:
+        errors.append(f"{where} resource name must be a non-empty string")
+    if not isinstance(record, Mapping):
+        return [*errors, f"{where} must be an object"]
+    required = ("name", "agent", "worktree", "branch", "acquired_at", "updated_at", "host")
+    for key in required:
+        if key not in record:
+            errors.append(f"{where}.{key} is required")
+        elif not isinstance(record[key], str) or not record[key]:
+            errors.append(f"{where}.{key} must be a non-empty string")
+    if isinstance(name, str) and record.get("name") is not None and record.get("name") != name:
+        errors.append(f"{where}.name must match resource key {name!r}")
+    if "owner" in record and record["owner"] is not None and (not isinstance(record["owner"], str) or not record["owner"]):
+        errors.append(f"{where}.owner must be a string or null")
+    return errors
+
+
+def _raw_queue_errors(value: Any) -> list[str]:
+    if not isinstance(value, Mapping):
+        return ["queue root must be an object"]
+    errors: list[str] = []
+    version = value.get("schema_version", 1)
+    if isinstance(version, bool) or not isinstance(version, int) or version not in {1, 2}:
+        errors.append("schema_version must be 1 or 2")
+    tasks = value.get("tasks")
+    if not isinstance(tasks, list):
+        errors.append("tasks must be a list")
+    else:
+        errors.extend(
+            error
+            for index, task in enumerate(tasks)
+            for error in _raw_task_errors(task, f"tasks[{index}]")
+        )
+    if "resources" in value:
+        resources = value["resources"]
+        if not isinstance(resources, Mapping):
+            errors.append("resources must be an object")
+        else:
+            errors.extend(
+                error
+                for name, record in resources.items()
+                for error in _raw_resource_errors(name, record, f"resources[{name!r}]")
+            )
+    elif version == 2:
+        errors.append("resources is required for schema_version 2")
+    if "updated_at" in value and (not isinstance(value["updated_at"], str) or not value["updated_at"]):
+        errors.append("updated_at must be a non-empty string")
+    return sorted(set(errors))
+
+
+def _preserve_evidence(path: Path, data: bytes, kind: str = "corrupt") -> Path | None:
+    """Preserve bytes without ever overwriting an existing evidence file."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        digest = _sha256(data)
+        evidence = path.with_name(f"{path.name}.{kind}.{digest}")
+        if evidence.exists() and evidence.read_bytes() == data:
+            return evidence
+        if evidence.exists():
+            return None
+        _install_bytes(evidence, data, label="evidence")
+        return evidence
+    except (OSError, QueueError):
+        return None
+
+
+def _fsync_directory(directory: Path) -> bool:
+    """Best-effort directory durability; unsupported directory fsync is normal."""
+    unsupported = {errno.EINVAL, errno.ENOTSUP}
+    if os.name == "nt":
+        unsupported.update({errno.EPERM, errno.EACCES})
+    try:
+        descriptor = os.open(str(directory), os.O_RDONLY)
+    except OSError as exc:
+        if exc.errno in unsupported:
+            return False
+        raise QueueError(f"cannot open queue directory for durability {directory}: {exc}") from exc
+    try:
+        os.fsync(descriptor)
+    except OSError as exc:
+        # Windows and several network filesystems reject fsync on directories.
+        if exc.errno in unsupported:
+            return False
+        raise QueueError(f"cannot fsync queue directory {directory}: {exc}") from exc
+    finally:
+        os.close(descriptor)
+    return True
+
+
+def _parse_queue_bytes(
+    data: bytes, path: Path, *, strict: bool = False
+) -> dict[str, Any]:
+    raw = _parse_json_bytes(data, path)
+    raw_errors = _raw_queue_errors(raw)
+    if raw_errors:
+        raise QueueError("invalid queue schema:\n- " + "\n- ".join(raw_errors))
+    migrated = _migrate(dict(raw))
+    if strict:
+        validation_errors = validate_queue(migrated)
+        if validation_errors:
+            raise QueueError("invalid queue schema:\n- " + "\n- ".join(validation_errors))
+    return migrated
+
+
+def read_queue(path: Path) -> dict[str, Any]:
+    path = Path(path)
+    if not path.exists():
+        return _empty()
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise QueueError(f"cannot read queue {path}: {exc}") from exc
+    try:
+        return _parse_queue_bytes(data, path)
+    except QueueError as exc:
+        evidence = _preserve_evidence(path, data, "corrupt")
+        detail = f"{exc}; preserved evidence at {evidence}" if evidence else str(exc)
+        raise QueueError(detail) from exc
+
+
+def _durable_temp(path: Path, data: bytes, *, label: str = "candidate") -> Path:
+    temporary: Path | None = None
+    keep_temp = False
+    try:
+        with tempfile.NamedTemporaryFile(
+            "wb",
+            dir=path.parent,
+            prefix=f".{path.name}.{label}-",
+            suffix=".json",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        readback = temporary.read_bytes()
+        if _sha256(readback) != _sha256(data):
+            keep_temp = True
+            raise QueueError(
+                f"{label} temp hash mismatch for {path}"
+                f"; preserved temp evidence at {temporary}"
+            )
+        return temporary
+    except (OSError, QueueError, UnicodeError) as exc:
+        if temporary is not None and not keep_temp:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise QueueError(f"cannot durably write {label} for {path}: {exc}") from exc
+
+
+def _install_bytes(path: Path, data: bytes, *, label: str) -> None:
+    temporary = _durable_temp(path, data, label=label)
+    try:
+        os.replace(temporary, path)
+        temporary = None
+        _fsync_directory(path.parent)
+        if _sha256(path.read_bytes()) != _sha256(data):
+            raise QueueError(f"{label} install hash mismatch for {path}")
+    except (OSError, QueueError) as exc:
+        raise QueueError(f"cannot durably replace {path}: {exc}") from exc
+    finally:
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _backup_path(path: Path) -> Path:
+    return path.with_name(path.name + QUEUE_BACKUP_SUFFIX)
+
+
+def _audit_path(path: Path) -> Path:
+    return path.with_name(path.name + QUEUE_AUDIT_SUFFIX)
+
+
+def _pending_audit_path(path: Path) -> Path:
+    return path.with_name(path.name + QUEUE_AUDIT_PENDING_SUFFIX)
+
+
+def _task_changes(before: Mapping[str, Any] | None, after: Mapping[str, Any]) -> list[dict[str, str | None]]:
+    old_tasks = {
+        str(task.get("id")): task
+        for task in (before or {}).get("tasks", [])
+        if isinstance(task, Mapping) and task.get("id")
+    }
+    new_tasks = {
+        str(task.get("id")): task
+        for task in after.get("tasks", [])
+        if isinstance(task, Mapping) and task.get("id")
+    }
+    changed: list[dict[str, str | None]] = []
+    for task_id in sorted(set(old_tasks) | set(new_tasks)):
+        if old_tasks.get(task_id) != new_tasks.get(task_id):
+            task = new_tasks.get(task_id) or old_tasks.get(task_id) or {}
+            changed.append({"id": task_id, "owner": task.get("owner")})
+    return changed
+
+
+def _append_audit_record(path: Path, record: Mapping[str, Any]) -> None:
+    payload = _audit_json_bytes(record)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("ab") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_directory(path.parent)
+    except OSError as exc:
+        raise QueueError(f"cannot append queue audit {path}: {exc}") from exc
+
+
+def _pending_records(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise QueueError(f"cannot read pending queue audit {path}: {exc}") from exc
+    records: list[dict[str, Any]] = []
+    for index, line in enumerate(data.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(
+                line.decode("utf-8"),
+                parse_constant=_reject_json_constant,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise QueueError(f"invalid pending queue audit {path}:{index}: {exc}") from exc
+        if not isinstance(value, dict):
+            raise QueueError(f"invalid pending queue audit {path}:{index}: record must be an object")
+        records.append(value)
+    return records
+
+
+def _replay_pending_audit(path: Path) -> None:
+    pending_path = _pending_audit_path(path)
+    pending = _pending_records(pending_path)
+    if not pending:
+        return
+    audit_path = _audit_path(path)
+    try:
+        live_hash = _sha256(path.read_bytes()) if path.exists() else None
+        pending_data = pending_path.read_bytes()
+        existing_audit = set(audit_path.read_bytes().splitlines()) if audit_path.exists() else set()
+    except OSError as exc:
+        raise QueueError(f"cannot inspect pending queue audit {pending_path}: {exc}") from exc
+    try:
+        for record in pending:
+            old_hash = record.get("old_sha256")
+            new_hash = record.get("new_sha256")
+            if live_hash == old_hash:
+                _preserve_evidence(pending_path, pending_data, "aborted")
+                continue
+            if live_hash != new_hash:
+                raise QueueError(
+                    f"pending queue audit conflicts with live queue {path}; "
+                    f"pending new hash {new_hash}, live hash {live_hash}"
+                )
+            payload = _audit_json_bytes(record).rstrip(b"\n")
+            if payload not in existing_audit:
+                _append_audit_record(audit_path, record)
+                existing_audit.add(payload)
+        pending_path.unlink()
+        _fsync_directory(path.parent)
+    except (OSError, QueueError) as exc:
+        raise QueueError(f"pending queue audit remains at {pending_path}: {exc}") from exc
+
+
+def _make_audit_record(
+    *,
+    before: Mapping[str, Any] | None,
+    after: Mapping[str, Any],
+    old_sha256: str | None,
+    new_sha256: str,
+    command: str | None,
+) -> dict[str, Any]:
+    changed = _task_changes(before, after)
+    record: dict[str, Any] = {
+        "timestamp": _now(),
+        "pid": os.getpid(),
+        "host": socket.gethostname(),
+        "command": command or " ".join(sys.argv),
+        "changed_tasks": changed,
+        "old_sha256": old_sha256,
+        "new_sha256": new_sha256,
+        "event_id": uuid.uuid4().hex,
+    }
+    return record
+
+
+def _stage_audit(
+    path: Path,
+    *,
+    before: Mapping[str, Any] | None,
+    after: Mapping[str, Any],
+    old_sha256: str | None,
+    new_sha256: str,
+    command: str | None = None,
+) -> dict[str, Any]:
+    pending_path = _pending_audit_path(path)
+    _replay_pending_audit(path)
+    record = _make_audit_record(
+        before=before,
+        after=after,
+        old_sha256=old_sha256,
+        new_sha256=new_sha256,
+        command=command,
+    )
+    try:
+        with pending_path.open("ab") as handle:
+            handle.write(_audit_json_bytes(record))
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_directory(path.parent)
+    except (OSError, QueueError) as exc:
+        raise QueueError(f"cannot stage queue audit {pending_path}: {exc}") from exc
+    return record
+
+
+def _finalize_audit(path: Path, record: Mapping[str, Any]) -> None:
+    pending_path = _pending_audit_path(path)
+    try:
+        _append_audit_record(_audit_path(path), record)
+        pending_path.unlink()
+        _fsync_directory(path.parent)
+    except (OSError, QueueError) as exc:
+        warnings.warn(
+            f"queue committed and validated; audit pending at {pending_path}: {exc}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+
+def _discard_staged_audit(path: Path) -> None:
+    pending_path = _pending_audit_path(path)
+    try:
+        pending_path.unlink(missing_ok=True)
+        _fsync_directory(path.parent)
+    except (OSError, QueueError):
+        # Preserve pending evidence if cleanup cannot be made durable.
+        return
+
+
+def _rollback_queue(path: Path, old_data: bytes | None) -> None:
+    if old_data is None:
+        try:
+            path.unlink(missing_ok=True)
+            _fsync_directory(path.parent)
+        except OSError as exc:
+            raise QueueError(f"rollback could not remove {path}: {exc}") from exc
+        return
+    try:
+        _install_bytes(path, old_data, label="rollback")
+        restored = path.read_bytes()
+        if _sha256(restored) != _sha256(old_data):
+            raise QueueError(f"rollback hash mismatch for {path}")
+        _parse_queue_bytes(restored, path, strict=True)
+    except (OSError, QueueError) as exc:
+        raise QueueError(f"rollback failed for {path}: {exc}") from exc
+
+
+def _write(
+    path: Path,
+    queue: dict[str, Any],
+    *,
+    before: Mapping[str, Any] | None = None,
+    command: str | None = None,
+) -> None:
+    """Persist a validated queue with atomic replacement and an audit record."""
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    old_data: bytes | None = None
+    old_queue: Mapping[str, Any] | None = before
+    if path.exists():
+        try:
+            old_data = path.read_bytes()
+            if old_queue is None:
+                old_queue = _parse_queue_bytes(old_data, path, strict=True)
+        except (OSError, QueueError) as exc:
+            evidence = (
+                _preserve_evidence(path, old_data, "corrupt")
+                if old_data is not None
+                else None
+            )
+            detail = f"cannot read existing queue before write {path}: {exc}"
+            if evidence:
+                detail += f"; preserved evidence at {evidence}"
+            raise QueueError(detail) from exc
+
     queue["schema_version"] = SCHEMA_VERSION
     queue["updated_at"] = _now()
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="utf-8", dir=path.parent, delete=False
-    ) as handle:
-        json.dump(queue, handle, indent=2, sort_keys=False)
-        handle.write("\n")
-        temporary = Path(handle.name)
-    os.replace(temporary, path)
+    validation_errors = validate_queue(queue)
+    if validation_errors:
+        raise QueueError("queue invalid before write:\n- " + "\n- ".join(validation_errors))
+    candidate_data = _queue_json_bytes(queue)
+    candidate_hash = _sha256(candidate_data)
+    temporary: Path | None = None
+    staged_audit: dict[str, Any] | None = None
+    try:
+        temporary = _durable_temp(path, candidate_data, label="candidate")
+        readback = temporary.read_bytes()
+        if _sha256(readback) != candidate_hash:
+            evidence = _preserve_evidence(temporary, readback, "candidate")
+            raise QueueError(
+                f"candidate queue hash mismatch for {temporary}"
+                + (f"; preserved evidence at {evidence}" if evidence else "")
+            )
+        _parse_queue_bytes(readback, temporary, strict=True)
+        staged_audit = _stage_audit(
+            path,
+            before=old_queue,
+            after=queue,
+            old_sha256=_sha256(old_data) if old_data is not None else None,
+            new_sha256=candidate_hash,
+            command=command,
+        )
+        if old_data is not None:
+            try:
+                _install_bytes(_backup_path(path), old_data, label="backup")
+            except QueueError:
+                _discard_staged_audit(path)
+                raise
+        try:
+            os.replace(temporary, path)
+        except OSError as exc:
+            _discard_staged_audit(path)
+            evidence = _preserve_evidence(temporary, readback, "candidate")
+            raise QueueError(
+                f"atomic queue replace failed for {path}: {exc}"
+                + (f"; preserved evidence at {evidence}" if evidence else "")
+            ) from exc
+        temporary = None
+        try:
+            _fsync_directory(path.parent)
+            installed = path.read_bytes()
+            if _sha256(installed) != candidate_hash:
+                raise QueueError(f"post-replace queue hash mismatch for {path}")
+            post_queue = read_queue(path)
+            if validate_queue(post_queue):
+                raise QueueError("post-replace queue validation failed")
+        except (OSError, QueueError) as exc:
+            corrupt: bytes | None = None
+            try:
+                corrupt = path.read_bytes()
+            except OSError:
+                pass
+            evidence = (
+                _preserve_evidence(path, corrupt, "corrupt")
+                if corrupt is not None
+                else None
+            )
+            try:
+                _rollback_queue(path, old_data)
+            except QueueError as rollback_exc:
+                _discard_staged_audit(path)
+                raise QueueError(
+                    f"post-replace queue validation failed for {path}: {exc}; "
+                    f"rollback failed: {rollback_exc}"
+                ) from exc
+            _discard_staged_audit(path)
+            raise QueueError(
+                f"post-replace queue validation failed for {path}: {exc}"
+                + (f"; preserved evidence at {evidence}" if evidence else "")
+            ) from exc
+        if staged_audit is None:
+            raise QueueError("queue audit was not staged before replacement")
+        _finalize_audit(path, staged_audit)
+    finally:
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 @contextmanager
@@ -215,9 +775,11 @@ def locked_queue(path: Path, timeout: float = 8.0) -> Iterator[dict[str, Any]]:
                 raise QueueError(f"timed out waiting for queue lock {lock}")
             time.sleep(0.05)
     try:
-        queue = read_queue(path)
+        queue = copy.deepcopy(read_queue(path))
+        original = copy.deepcopy(queue)
         yield queue
-        _write(path, queue)
+        if queue != original:
+            _write(path, queue, before=original)
     finally:
         shutil.rmtree(lock, ignore_errors=True)
 
@@ -446,8 +1008,22 @@ def _verification_errors(task: Mapping[str, Any], *, terminal: bool) -> list[str
 
 def validate_queue(queue: Mapping[str, Any]) -> list[str]:
     errors: list[str] = []
-    if queue.get("schema_version") != SCHEMA_VERSION:
+    if not isinstance(queue, Mapping):
+        return ["queue root must be an object"]
+    if (
+        isinstance(queue.get("schema_version"), bool)
+        or not isinstance(queue.get("schema_version"), int)
+        or queue.get("schema_version") != SCHEMA_VERSION
+    ):
         errors.append(f"schema_version must be {SCHEMA_VERSION}")
+    if not isinstance(queue.get("updated_at"), str) or not queue.get("updated_at"):
+        errors.append("updated_at must be a non-empty string")
+    resources = queue.get("resources")
+    if not isinstance(resources, Mapping):
+        errors.append("resources must be an object")
+    else:
+        for name, record in resources.items():
+            errors.extend(_raw_resource_errors(name, record, f"resources[{name!r}]"))
     tasks = queue.get("tasks")
     if not isinstance(tasks, list):
         return [*errors, "tasks must be a list"]
@@ -484,12 +1060,48 @@ def validate_queue(queue: Mapping[str, Any]) -> list[str]:
             errors.append(f"{where}.priority is invalid")
         if task.get("change_class") not in CHANGE_CLASSES:
             errors.append(f"{where}.change_class is invalid")
+        for key in (
+            "target",
+            "source",
+            "agent",
+            "worktree",
+            "branch",
+            "build_dir",
+            "created_at",
+            "claimed_at",
+            "updated_at",
+            "released_at",
+            "base_ref",
+            "note",
+        ):
+            value = task.get(key)
+            if value is not None and not isinstance(value, str):
+                errors.append(f"{where}.{key} must be a string or null")
         for key in ("shared_files", "depends_on", "capabilities"):
             values = task.get(key, [])
             if not isinstance(values, list) or not all(
                 isinstance(item, str) and item for item in values
             ):
                 errors.append(f"{where}.{key} must be a string list")
+            elif key == "shared_files":
+                for item in values:
+                    try:
+                        _repo_path(item)
+                    except QueueError as exc:
+                        errors.append(f"{where}.shared_files: {exc}")
+        if isinstance(task.get("source"), str):
+            try:
+                _repo_path(task["source"])
+            except QueueError as exc:
+                errors.append(f"{where}.source: {exc}")
+        for key in ("estimated_cost", "verification_cost"):
+            value = task.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                errors.append(f"{where}.{key} must be a positive integer")
+        if task.get("verification") is not None and not isinstance(
+            task.get("verification"), Mapping
+        ):
+            errors.append(f"{where}.verification must be an object or null")
         for dependency in task.get("depends_on", []):
             if dependency == owner:
                 errors.append(f"{where} depends on itself")

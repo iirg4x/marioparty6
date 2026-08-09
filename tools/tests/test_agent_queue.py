@@ -1,11 +1,19 @@
+import json
 import subprocess
 import tempfile
 import unittest
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest import mock
+
+import tools.agent_queue as agent_queue
 
 from tools.agent_queue import (
     QueueError,
+    QUEUE_AUDIT_PENDING_SUFFIX,
+    QUEUE_AUDIT_SUFFIX,
+    QUEUE_BACKUP_SUFFIX,
     acquire_resource,
     active_tasks,
     add_task,
@@ -19,6 +27,7 @@ from tools.agent_queue import (
     release_task,
     update_task,
     validate_queue,
+    locked_queue,
 )
 
 
@@ -271,6 +280,220 @@ class AgentQueueTests(unittest.TestCase):
         self.assertEqual(
             {task["owner"] for task in active_tasks(queue)}, {"a", "b"}
         )
+
+    def test_invalid_queue_is_preserved_as_unique_evidence(self) -> None:
+        path = self.base / "queue.json"
+        path.write_bytes(b"\x00" * 8)
+        with self.assertRaisesRegex(QueueError, "all-NUL"):
+            read_queue(path)
+        evidence = list(path.parent.glob("queue.json.corrupt.*"))
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0].read_bytes(), b"\x00" * 8)
+        with self.assertRaises(QueueError):
+            read_queue(path)
+        self.assertEqual(len(list(path.parent.glob("queue.json.corrupt.*"))), 1)
+
+    def test_schema_v1_migrates_without_dropping_records(self) -> None:
+        path = self.base / "queue.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "updated_at": "2024-01-01T00:00:00+00:00",
+                    "tasks": [{"id": "one", "owner": "one", "priority": "normal"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        queue = read_queue(path)
+        self.assertEqual(queue["schema_version"], 2)
+        self.assertEqual([task["id"] for task in queue["tasks"]], ["one"])
+        self.assertEqual(queue["resources"], {})
+
+    def test_malformed_task_and_resource_are_rejected(self) -> None:
+        path = self.base / "queue.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "updated_at": "2024-01-01T00:00:00+00:00",
+                    "tasks": [None],
+                    "resources": {"x": "not-an-object"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(QueueError, "invalid queue schema") as raised:
+            read_queue(path)
+        self.assertIn("tasks[0]", str(raised.exception))
+        self.assertIn("resources", str(raised.exception))
+
+    def test_malformed_task_field_type_is_rejected_before_migration(self) -> None:
+        path = self.base / "queue.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "tasks": [{"id": 7, "owner": "bad", "status": "done"}],
+                    "resources": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(QueueError, r"tasks\[0\].id"):
+            read_queue(path)
+
+    def test_incomplete_resource_record_is_rejected(self) -> None:
+        path = self.base / "queue.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "updated_at": "2024-01-01T00:00:00+00:00",
+                    "tasks": [],
+                    "resources": {"x": {}},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(QueueError, "resources"):
+            read_queue(path)
+
+    def test_backup_audit_and_noop_lock(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        first = path.read_bytes()
+        with locked_queue(path):
+            pass
+        self.assertEqual(path.read_bytes(), first)
+        queue = read_queue(path)
+        queue["tasks"][0]["note"] = "changed"
+        with locked_queue(path) as locked:
+            locked["tasks"][0]["note"] = "changed"
+        self.assertEqual((path.with_name(path.name + QUEUE_BACKUP_SUFFIX)).read_bytes(), first)
+        audit = path.with_name(path.name + QUEUE_AUDIT_SUFFIX)
+        records = [json.loads(line) for line in audit.read_text(encoding="utf-8").splitlines()]
+        self.assertGreaterEqual(len(records), 2)
+        self.assertEqual(records[-1]["old_sha256"], __import__("hashlib").sha256(first).hexdigest())
+        self.assertTrue(records[-1]["changed_tasks"])
+        self.assertFalse(path.with_name(path.name + QUEUE_AUDIT_PENDING_SUFFIX).exists())
+
+    def test_audit_failure_leaves_pending_without_rollback(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        before = path.read_bytes()
+        real_open = Path.open
+
+        def fail_audit(handle: Path, *args: object, **kwargs: object):
+            if str(handle).endswith(QUEUE_AUDIT_SUFFIX):
+                raise OSError("audit unavailable")
+            return real_open(handle, *args, **kwargs)
+
+        with mock.patch.object(Path, "open", new=fail_audit):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                with locked_queue(path) as queue:
+                    queue["tasks"][0]["note"] = "pending"
+        self.assertTrue(any("queue committed" in str(item.message) for item in caught))
+        self.assertNotEqual(path.read_bytes(), before)
+        self.assertTrue(path.with_name(path.name + QUEUE_AUDIT_PENDING_SUFFIX).exists())
+
+    def test_pending_replay_deduplicates_audit_append(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        real_unlink = Path.unlink
+
+        def keep_pending(handle: Path, *args: object, **kwargs: object) -> None:
+            if str(handle).endswith(QUEUE_AUDIT_PENDING_SUFFIX):
+                raise OSError("pending cleanup unavailable")
+            real_unlink(handle, *args, **kwargs)
+
+        with mock.patch.object(Path, "unlink", new=keep_pending):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                with locked_queue(path) as queue:
+                    queue["tasks"][0]["note"] = "pending-cleanup"
+        self.assertTrue(any("audit pending" in str(item.message) for item in caught))
+        audit = path.with_name(path.name + QUEUE_AUDIT_SUFFIX)
+        first_records = audit.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(path.with_name(path.name + QUEUE_AUDIT_PENDING_SUFFIX).exists())
+        with locked_queue(path) as queue:
+            queue["tasks"][0]["note"] = "replayed"
+        second_records = audit.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(second_records), len(first_records) + 1)
+
+    def test_candidate_hash_failure_preserves_evidence_and_original(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        before = path.read_bytes()
+        real_read = Path.read_bytes
+
+        def tamper(handle: Path) -> bytes:
+            data = real_read(handle)
+            return b"tampered" if ".candidate-" in handle.name else data
+
+        with mock.patch.object(Path, "read_bytes", new=tamper):
+            with self.assertRaisesRegex(QueueError, "candidate.*hash mismatch"):
+                with locked_queue(path) as queue:
+                    queue["tasks"][0]["note"] = "tampered"
+        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(list(path.parent.glob(f".{path.name}.candidate-*.json")))
+
+    def test_replace_failure_preserves_original(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        before = path.read_bytes()
+        real_replace = agent_queue.os.replace
+
+        def fail_queue_replace(source: str | bytes, target: str | bytes) -> None:
+            if Path(target).resolve() == path.resolve():
+                raise OSError("replace unavailable")
+            real_replace(source, target)
+
+        with mock.patch.object(agent_queue.os, "replace", new=fail_queue_replace):
+            with self.assertRaisesRegex(QueueError, "atomic queue replace failed"):
+                with locked_queue(path) as queue:
+                    queue["tasks"][0]["note"] = "replace"
+        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(list(path.parent.glob("*.candidate.*")))
+
+    def test_backup_temp_hash_failure_leaves_queue_and_backup_unchanged(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        before = path.read_bytes()
+        backup = path.with_name(path.name + QUEUE_BACKUP_SUFFIX)
+        real_read = Path.read_bytes
+
+        def tamper_backup(handle: Path) -> bytes:
+            data = real_read(handle)
+            return b"bad backup" if ".backup-" in handle.name else data
+
+        with mock.patch.object(Path, "read_bytes", new=tamper_backup):
+            with self.assertRaisesRegex(QueueError, "backup.*hash mismatch"):
+                with locked_queue(path) as queue:
+                    queue["tasks"][0]["note"] = "backup"
+        self.assertEqual(path.read_bytes(), before)
+        self.assertFalse(backup.exists())
+
+    def test_post_replace_failure_rolls_back_and_preserves_corrupt_bytes(self) -> None:
+        path = self.base / "queue.json"
+        add_task(self.main, "one", queue_file=path, source="src/a.c")
+        before = path.read_bytes()
+        real_read_queue = agent_queue.read_queue
+        calls = 0
+
+        def fail_post_check(handle: Path):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return real_read_queue(handle)
+            raise QueueError("post-check failed")
+
+        with mock.patch.object(agent_queue, "read_queue", new=fail_post_check):
+            with self.assertRaisesRegex(QueueError, "post-replace queue validation failed"):
+                with locked_queue(path) as queue:
+                    queue["tasks"][0]["note"] = "post-check"
+        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(list(path.parent.glob("queue.json.corrupt.*")))
 
 
 if __name__ == "__main__":
