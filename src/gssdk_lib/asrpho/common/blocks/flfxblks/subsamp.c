@@ -72,7 +72,7 @@ static s32 Subsampler_CheckImpulseResponse(
     const f64 tolerance = 1e-15;
     const f64 *left;
     const f64 *right;
-    u32 invalid = 0;
+    s32 invalid = 0;
 
     if ((impulseLength & 1) == 0) {
         invalid = 1;
@@ -125,17 +125,16 @@ done:
 void Subsampler_Reset(TriggerLR *block)
 {
     s32 *delay;
+    s32 *value;
     s32 **row;
 
     for (delay = block->delay; delay < block->delayEnd; delay++) {
         *delay = 0;
     }
     block->delayWrite = block->delay;
-    block->delayRead = block->delay + block->halfImpulseLength / 2;
+    block->delayRead = block->delayWrite + block->halfImpulseLength / 2;
 
     for (row = block->productRows; row < block->productRowsEnd; row++) {
-        s32 *value;
-
         for (value = *row;
              value < *row + block->halfImpulseLengthPlusOne; value++) {
             *value = 0;
@@ -147,6 +146,8 @@ void Subsampler_Reset(TriggerLR *block)
 
 s32 Subsampler_Init(TriggerLR *block)
 {
+    TosContext *context = block->base.context;
+    u32 result = 0;
     f64 impulseResponse[23] = {
         -0.0044691990096899963,
         -2.8698779710312522e-16,
@@ -172,17 +173,16 @@ s32 Subsampler_Init(TriggerLR *block)
         -2.8698779710312522e-16,
         -0.0044691990096899963,
     };
-    TosContext *context = block->base.context;
     s32 **row;
     f64 scale;
-    f64 *impulse;
     s32 *coefficient;
-    u32 result = 0;
+    f64 *impulse;
 
     block->impulseLength = 23;
     if (Subsampler_CheckImpulseResponse(
             block, impulseResponse, block->impulseLength) != 0) {
-        return 1;
+        result = 1;
+        goto done;
     }
 
     block->subsamplerInputCount =
@@ -207,7 +207,8 @@ s32 Subsampler_Init(TriggerLR *block)
     if (block->subsamplerOutput == NULL || block->delay == NULL ||
         block->productRows == NULL) {
         _tosErrorLog(block, 2);
-        return 1;
+        result = 1;
+        goto done;
     }
 
     row = block->productRows;
