@@ -1299,7 +1299,7 @@ config.libs = [
     Rel(
         "s02Dll",
         objects={
-            Object(NonMatching, "REL/s02Dll/s02.c"),
+            Object(Matching, "REL/s02Dll/s02.c"),
             Object(
                 Matching,
                 "REL/s02Dll/runtime.c",
