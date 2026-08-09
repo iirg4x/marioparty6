@@ -70,6 +70,7 @@ extern const f32 lbl_1_rodata_D4;
 extern const f32 lbl_1_rodata_158;
 extern const f32 lbl_1_rodata_16C;
 extern const f32 lbl_1_rodata_198;
+extern const f32 lbl_1_rodata_19C;
 extern const f32 lbl_1_rodata_1A0;
 extern const f32 lbl_1_rodata_1B0;
 extern const f64 lbl_1_rodata_F0;
@@ -94,7 +95,13 @@ extern const f64 lbl_1_rodata_1D0;
 extern const f32 lbl_1_rodata_1B4;
 extern const f32 lbl_1_rodata_1D8;
 extern const f32 lbl_1_rodata_1DC;
+extern const f32 lbl_1_rodata_1E0;
+extern const f32 lbl_1_rodata_1E4;
+extern const f32 lbl_1_rodata_1E8;
 extern const f32 lbl_1_rodata_1EC;
+extern const f32 lbl_1_rodata_1F0;
+extern const f32 lbl_1_rodata_1F4;
+extern const f32 lbl_1_rodata_1F8;
 extern const f32 lbl_1_rodata_1FC;
 extern const HuVecF lbl_1_rodata_200;
 extern const f32 lbl_1_rodata_20C;
@@ -108,7 +115,9 @@ extern const f64 lbl_1_rodata_240;
 extern const f32 lbl_1_rodata_248;
 extern const f32 lbl_1_rodata_24C;
 extern const f32 lbl_1_rodata_250;
+extern const f32 lbl_1_rodata_254;
 extern const f32 lbl_1_rodata_258;
+extern const f32 lbl_1_rodata_25C;
 extern const f32 lbl_1_rodata_260;
 extern const f32 lbl_1_rodata_264;
 extern const f32 lbl_1_rodata_268;
@@ -183,6 +192,9 @@ extern s16 lbl_1_bss_21A;
 extern s16 lbl_1_bss_21C;
 extern s32 lbl_1_bss_220;
 extern s32 lbl_1_bss_224;
+
+extern u32 lbl_1_data_6F4[];
+extern u32 lbl_1_data_748[];
 
 void fn_1_A0(void);
 void fn_1_1CC(void);
@@ -917,6 +929,83 @@ void fn_1_69F8(void)
     HuWinExKill((s16)lbl_1_bss_114);
 }
 
+void fn_1_6B8C(void)
+{
+    HuVec2f size;
+    f32 posX;
+    f32 posY;
+    s32 start;
+    s32 end;
+    s32 i;
+    u32 messNo;
+
+    fn_1_7158();
+    if (lbl_1_bss_180 == 0) {
+        start = 0;
+        end = 5;
+        for (i = start; i < end; i++) {
+            messNo = (lbl_1_bss_1E8[i] == 255) ?
+                lbl_1_data_6F4[0] : lbl_1_data_6F4[i + 1];
+            HuWinMesMaxSizeGet(1, &size, messNo);
+            posX = lbl_1_rodata_1E0;
+            posY = lbl_1_rodata_1E4 +
+                lbl_1_rodata_19C * (f32)(i - start) -
+                lbl_1_rodata_1E8 - lbl_1_rodata_C8;
+            lbl_1_bss_B4[i] = HuWinCreate(posX, posY,
+                (s16)size.x, (s16)size.y, 0);
+            HuWinPriSet((s16)lbl_1_bss_B4[i], 0);
+            HuWinBGTPLvlSet((s16)lbl_1_bss_B4[i], lbl_1_rodata_30);
+            HuWinMesSpeedSet((s16)lbl_1_bss_B4[i], 0);
+            HuWinMesSet((s16)lbl_1_bss_B4[i], messNo);
+        }
+        messNo = lbl_1_data_748[0];
+        HuWinMesMaxSizeGet(1, &size, messNo);
+        posX = lbl_1_rodata_1EC;
+        posY = lbl_1_rodata_1F0;
+        lbl_1_bss_B4[20] = HuWinCreate(posX, posY,
+            (s16)size.x, (s16)size.y, 0);
+        HuWinPriSet((s16)lbl_1_bss_B4[20], 0);
+        HuWinBGTPLvlSet((s16)lbl_1_bss_B4[20], lbl_1_rodata_30);
+        HuWinMesSpeedSet((s16)lbl_1_bss_B4[20], 0);
+        HuWinMesSet((s16)lbl_1_bss_B4[20], messNo);
+    } else {
+        if (lbl_1_bss_180 == 1) {
+            start = 5;
+            end = 15;
+        } else {
+            start = 15;
+            end = 20;
+        }
+        for (i = start; i < end; i++) {
+            messNo = (lbl_1_bss_1E8[i] == 255) ?
+                lbl_1_data_6F4[0] : lbl_1_data_6F4[i + 1];
+            HuWinMesMaxSizeGet(1, &size, messNo);
+            posX = lbl_1_rodata_1E0;
+            posY = lbl_1_rodata_1F4 +
+                lbl_1_rodata_19C * (f32)(i - start) -
+                lbl_1_rodata_1E8 - lbl_1_rodata_C8;
+            lbl_1_bss_B4[i] = HuWinCreate(posX, posY,
+                (s16)size.x, (s16)size.y, 0);
+            HuWinPriSet((s16)lbl_1_bss_B4[i], 0);
+            HuWinBGTPLvlSet((s16)lbl_1_bss_B4[i], lbl_1_rodata_30);
+            HuWinMesSpeedSet((s16)lbl_1_bss_B4[i], 0);
+            HuWinMesSet((s16)lbl_1_bss_B4[i], messNo);
+        }
+        if (lbl_1_bss_180 == 2) {
+            messNo = lbl_1_data_748[1];
+            HuWinMesMaxSizeGet(1, &size, messNo);
+            posX = lbl_1_rodata_1EC;
+            posY = lbl_1_rodata_1F8;
+            lbl_1_bss_B4[21] = HuWinCreate(posX, posY,
+                (s16)size.x, (s16)size.y, 0);
+            HuWinPriSet((s16)lbl_1_bss_B4[21], 0);
+            HuWinBGTPLvlSet((s16)lbl_1_bss_B4[21], lbl_1_rodata_30);
+            HuWinMesSpeedSet((s16)lbl_1_bss_B4[21], 0);
+            HuWinMesSet((s16)lbl_1_bss_B4[21], messNo);
+        }
+    }
+}
+
 void fn_1_7158(void)
 {
     s32 i;
@@ -1170,6 +1259,70 @@ void fn_1_8A0C(s16 layerNo)
         GXSetTexCopyDst(640, 480, GX_TF_RGB565, GX_FALSE);
         GXCopyTex(lbl_1_bss_C, GX_FALSE);
     }
+}
+
+void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
+{
+    HU3D_CAMERA *camera = &Hu3DCamera[Hu3DCameraNo];
+    UNK_MIRACLEBOOK_HOOK *hook;
+    Mtx tmpMtx;
+    Mtx scaleMtx;
+    Mtx texMtx;
+    Mtx lightMtx;
+    Mtx invMtx;
+    GXTexObj texObj;
+    f32 transS;
+
+    hook = drawObj->model->hookData;
+    hook->unk_1C = hook->unk_1C + hook->unk_20;
+
+    GXInitTexObj(&texObj, lbl_1_bss_C, 640, 480, GX_TF_RGB565, 0, 0, 0);
+    GXInitTexObjLOD(&texObj, 1, 1, lbl_1_rodata_30, lbl_1_rodata_30,
+        lbl_1_rodata_30, 0, 0, 0);
+    GXLoadTexObj(&texObj, 1);
+    HuSprTexLoad(lbl_1_bss_10, 0, 2, 1, 1, 1);
+    HuSprTexLoad(lbl_1_bss_14, 0, 3, 1, 1, 1);
+    GXSetNumTexGens(3);
+    GXSetNumTevStages(2);
+
+    transS = ((f32)camera->scissorX +
+        (f32)camera->scissorW * lbl_1_rodata_254) / lbl_1_rodata_B8;
+    C_MTXLightPerspective(lightMtx, camera->fov, lbl_1_rodata_D0,
+        lbl_1_rodata_254, lbl_1_rodata_258, transS, lbl_1_rodata_254);
+    PSMTXInverse(Hu3DCameraMtx, invMtx);
+    PSMTXConcat(invMtx, drawObj->matrix, tmpMtx);
+    PSMTXConcat(lightMtx, Hu3DCameraMtx, texMtx);
+    PSMTXConcat(texMtx, tmpMtx, texMtx);
+    GXLoadTexMtxImm(texMtx, GX_TEXMTX1, GX_MTX3x4);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS,
+        GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY);
+
+    PSMTXTrans(tmpMtx, lbl_1_rodata_30, hook->unk_1C, lbl_1_rodata_30);
+    PSMTXScale(scaleMtx, lbl_1_rodata_25C, lbl_1_rodata_25C,
+        lbl_1_rodata_C0);
+    PSMTXConcat(scaleMtx, tmpMtx, texMtx);
+    GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
+    GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0,
+        GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
+    GXSetTexCoordGen2(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0,
+        GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
+
+    GXSetTevColor(1, hook->color);
+    GXSetTevOrder(0, 0, 1, 0);
+    GXSetTevColorIn(0, 15, 15, 15, 8);
+    GXSetTevColorOp(0, 0, 0, 0, 1, 0);
+    GXSetTevAlphaIn(0, 7, 7, 7, 6);
+    GXSetTevAlphaOp(0, 0, 0, 0, 1, 0);
+    GXSetTevOrder(1, 1, 0, 0);
+    GXSetTevColorIn(1, 15, 8, 2, 0);
+    GXSetTevColorOp(1, 0, 0, 0, 1, 0);
+    GXSetTevAlphaIn(1, 7, 7, 7, 6);
+    GXSetTevAlphaOp(1, 0, 0, 0, 1, 0);
+    GXSetNumIndStages(1);
+    GXSetIndTexOrder(0, 1, 2);
+    GXSetIndTexCoordScale(0, 0, 0);
+    GXSetTevIndWarp(0, 0, 1, 0, 1);
+    GXSetIndTexMtx(1, (f32 (*)[3])hook, -1);
 }
 
 void fn_1_8F10(OMOBJ *obj)
