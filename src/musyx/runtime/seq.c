@@ -238,7 +238,7 @@ static void HandleKeyOffNotes() {
   cseq->keyOffCheck = (cseq->keyOffCheck + 1) % 5;
 }
 
-static void InitPublicIds() { seq_next_id = 0; }
+static inline void InitPublicIds() { seq_next_id = 0; }
 
 static u32 GetPublicId(u32 seqId) {
   u32 pub_id;       // r30
@@ -283,10 +283,10 @@ u32 seqGetPrivateId(u32 seqId) {
 }
 
 static void DoPrgChange(SEQ_INSTANCE* seq, u8 prg, u8 midi) {
-  seqMIDIPriority[curSeqId][midi] = 0xFFFF;
+  seqMIDIPriority[curSeqId][midi] = 65535;
   if (midi != 9) {
     prg = seq->normTrans[prg];
-    if (prg == 0xFF) {
+    if (prg == 255) {
       return;
     }
 
@@ -300,7 +300,7 @@ static void DoPrgChange(SEQ_INSTANCE* seq, u8 prg, u8 midi) {
   }
 
   prg = seq->drumTrans[prg];
-  if (prg == 0xFF) {
+  if (prg == 255) {
     return;
   }
 
@@ -316,10 +316,10 @@ static void BuildTransTab(u8* tab, PAGE* page) {
   u8 i; // r31
 
   for (i = 0; i < 128; ++i) {
-    tab[i] = 0xff;
+    tab[i] = 255;
   }
 
-  for (i = 0; page->index != 0xFF; ++i, ++page) {
+  for (i = 0; page->index != 255; ++i, ++page) {
     tab[page->index] = i;
   }
 }
@@ -414,15 +414,15 @@ u32 seqStartPlay(PAGE* norm, PAGE* drum, MIDISETUP* midiSetup, u32* song, SND_PL
   }
 
   arr = (ARR*)song;
-  if (arr->info & 0x80000000) {
+  if (arr->info & 2147483648U) {
     nseq->trackSectionTab = ARR_GET(arr, arr->tsTab);
   } else {
     nseq->trackSectionTab = NULL;
   }
 
-  bpm = arr->info & 0x0fffffff;
+  bpm = arr->info & 268435455;
 
-  if (!(arr->info & 0x40000000)) {
+  if (!(arr->info & 1073741824)) {
     bpm <<= 10;
   }
 
@@ -460,7 +460,7 @@ u32 seqStartPlay(PAGE* norm, PAGE* drum, MIDISETUP* midiSetup, u32* song, SND_PL
     inpResetMidiCtrl(i, seqId, 1);
   }
   for (i = 0; i < 16; ++i) {
-    nseq->prgState[i].macId = 0xffff;
+    nseq->prgState[i].macId = 65535;
   }
   for (i = 0; i < 16; ++i) {
     inpResetChannelDefaults(i, seqId);
@@ -475,7 +475,7 @@ u32 seqStartPlay(PAGE* norm, PAGE* drum, MIDISETUP* midiSetup, u32* song, SND_PL
     }
   }
   for (i = 0; i < 16; ++i) {
-    seqMIDIPriority[seqId][i] = 0xffff;
+    seqMIDIPriority[seqId][i] = 65535;
   }
   for (i = 0; i < 16; ++i) {
     nseq->section[i].time[0].high = 0;
@@ -516,7 +516,7 @@ static void HandleMasterTrack(u8 secIndex) {
         break;
       }
 
-      if ((cseq->arrbase->info & 0x40000000) != 0) {
+      if ((cseq->arrbase->info & 1073741824) != 0) {
         synthSetBpm((section->bpm = section->mTrack.addr->bpm) >> 10, curSeqId, secIndex);
       } else {
         synthSetBpm(section->mTrack.addr->bpm, curSeqId, secIndex);
@@ -867,15 +867,15 @@ static u8* GetStreamValue(u8* stream, u16* deltaTime, s16* deltaData) {
 
   b1 = stream[0];
   b2 = stream[1];
-  if (b1 == 0x80 && b2 == 0) {
+  if (b1 == 128 && b2 == 0) {
     return NULL;
   }
 
-  if ((b1 & 0x80) != 0) {
+  if ((b1 & 128) != 0) {
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-    *deltaTime = (((u16)b1 & 0x7f) << 8) | b2;
+    *deltaTime = (((u16)b1 & 127) << 8) | b2;
 #else
-    *deltaTime = ((b1 & 0x7f) << 8) | b2;
+    *deltaTime = ((b1 & 127) << 8) | b2;
 #endif
     stream += 2;
   } else {
@@ -885,12 +885,12 @@ static u8* GetStreamValue(u8* stream, u16* deltaTime, s16* deltaData) {
 
   b1 = stream[0];
   b2 = stream[1];
-  if ((b1 & 0x80) != 0) {
+  if ((b1 & 128) != 0) {
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-    v = (((u16)b1 & 0x7f) << 8) | b2;
-    v |= (v & 0x4000) << 1;
+    v = (((u16)b1 & 127) << 8) | b2;
+    v |= (v & 16384) << 1;
 #else
-    v = ((b1 & 0x7f) << 8) | b2;
+    v = ((b1 & 127) << 8) | b2;
     v <<= 1;
     v >>= 1;
 #endif
@@ -898,7 +898,7 @@ static u8* GetStreamValue(u8* stream, u16* deltaTime, s16* deltaData) {
     stream += 2;
   } else {
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-    b1 |= (b1 & 0x40) << 1;
+    b1 |= (b1 & 64) << 1;
     *deltaData = (s8)b1;
 #else
     v = b1;
@@ -919,10 +919,10 @@ static void InitStream(SEQ_STREAM* stream, u32 streamDataOffset) {
                                            &stream->nextDelta)) != NULL) {
       stream->nextTime = delta;
     } else {
-      stream->nextTime = 0x7fffffff;
+      stream->nextTime = 2147483647;
     }
   } else {
-    stream->nextTime = 0x7fffffff;
+    stream->nextTime = 2147483647;
   }
 }
 
@@ -933,10 +933,10 @@ static u16 HandleStream(SEQ_STREAM* stream) {
     if ((stream->nextAddr = GetStreamValue(stream->nextAddr, &delta, &stream->nextDelta)) != NULL) {
       stream->nextTime += delta;
     } else {
-      stream->nextTime = 0x7fffffff;
+      stream->nextTime = 2147483647;
     }
   } else {
-    stream->nextTime = 0x7fffffff;
+    stream->nextTime = 2147483647;
   }
   return stream->value;
 }
@@ -959,12 +959,12 @@ static SEQ_EVENT* GenerateNextTrackEvent(u8 trackId) {
 
     if (pattern->addr == NULL) {
     null_pattern_addr:
-      if (track->addr->pattern == 0xffff) {
+      if (track->addr->pattern == 65535) {
         track->addr = NULL;
         return NULL;
       }
 
-      if (track->addr->pattern == 0xfffe) {
+      if (track->addr->pattern == 65534) {
         if (cseq->trackSectionTab == NULL) {
           if (cseq->section[0].loopDisable) {
             track->addr = NULL;
@@ -1000,7 +1000,7 @@ static SEQ_EVENT* GenerateNextTrackEvent(u8 trackId) {
     if (patternTime >= modTime) {
       goto use_mod_time;
     }
-    if (pattern->addr->key == 0xff && pattern->addr->velocity == 0xff) {
+    if (pattern->addr->key == 255 && pattern->addr->velocity == 255) {
       pattern->addr = NULL;
       goto null_pattern_addr;
     }
@@ -1008,7 +1008,7 @@ static SEQ_EVENT* GenerateNextTrackEvent(u8 trackId) {
     ev->info.trackAddr = (TENTRY*)pattern->addr;
     pattern->lTime = patternTime;
 
-    if ((pattern->addr->key & 0x80) != 0) {
+    if ((pattern->addr->key & 128) != 0) {
       pattern->addr = (NOTE_DATA*)((u8*)pattern->addr + 4);
       goto use_pattern_time;
     }
@@ -1107,14 +1107,14 @@ static SEQ_EVENT* HandleEvent(SEQ_EVENT* event, u8 secIndex, bool* loopFlag) {
     pattern->baseTime = tEntry->time;
     pattern->patternInfo = tEntry;
     InitStream(&pattern->pitchBend, pptr->pitchBend);
-    pattern->pitchBend.value = 0x2000;
+    pattern->pitchBend.value = 8192;
     InitStream(&pattern->modulation, pptr->modulation);
     pattern->modulation.value = 0;
     pattern->midi = ARR_GET_TYPE(cseq->arrbase, cseq->arrbase->tmTab, u8*)[event->trackId];
-    if (tEntry->prgChange != 0xff) {
+    if (tEntry->prgChange != 255) {
       DoPrgChange(cseq, tEntry->prgChange, pattern->midi);
     }
-    if (tEntry->velocity != 0xff) {
+    if (tEntry->velocity != 255) {
       inpSetMidiCtrl(SND_MIDICTRL_VOLUME, pattern->midi, curSeqId, tEntry->velocity);
     }
     break;
@@ -1126,52 +1126,52 @@ static SEQ_EVENT* HandleEvent(SEQ_EVENT* event, u8 secIndex, bool* loopFlag) {
     velocity = pe->velocity;
     midi = pa->midi;
 
-    if ((key & 0x80) != 0) {
+    if ((key & 128) != 0) {
       switch (velocity) {
       case 0:
-        DoPrgChange(cseq, key & 0x7f, midi);
+        DoPrgChange(cseq, key & 127, midi);
         break;
       case 1:
-        inpSetMidiCtrl(0x82 /* TODO SND_MIDICTRL_? */, midi, curSeqId, key & 0x7f);
+        inpSetMidiCtrl(130 /* TODO SND_MIDICTRL_? */, midi, curSeqId, key & 127);
         break;
       default:
-        if ((velocity & 0x80) != 0x80) {
+        if ((velocity & 128) != 128) {
           break;
         }
-        switch (velocity & 0x7f) {
-        case 0x68:
+        switch (velocity & 127) {
+        case 104:
           if (cseq->syncActive) {
             seqCrossFade(&cseq->syncCrossInfo, cseq->syncSeqIdPtr, TRUE);
             cseq->syncActive = FALSE;
           }
           break;
-        case 0x69:
-          seqMIDIPriority[curSeqId][midi] = key & 0x7f;
+        case 105:
+          seqMIDIPriority[curSeqId][midi] = key & 127;
           break;
-        case 0x6a:
-          seqMIDIPriority[curSeqId][midi] = (key & 0x7f) + 0x80;
+        case 106:
+          seqMIDIPriority[curSeqId][midi] = (key & 127) + 128;
           break;
-        case 0x79:
+        case 121:
           inpResetMidiCtrl(midi, curSeqId, FALSE);
           break;
-        case 0x7b:
+        case 123:
           KeyOffNotes();
           break;
         default:
-          inpSetMidiCtrl(velocity & 0x7f, midi, curSeqId, key & 0x7f);
+          inpSetMidiCtrl(velocity & 127, midi, curSeqId, key & 127);
           break;
         }
       }
       break;
     }
 
-    if ((cseq->trackMute[event->trackId / 32] & (1 << (event->trackId & 0x1f))) != 0) {
-      if ((macId = cseq->prgState[midi].macId) != 0xffff) {
+    if ((cseq->trackMute[event->trackId / 32] & (1 << (event->trackId & 31))) != 0) {
+      if ((macId = cseq->prgState[midi].macId) != 65535) {
         key += pa->patternInfo->transpose;
-        key = CLAMP(key, 0, 0x7f);
+        key = CLAMP(key, 0, 127);
 
         velocity += pa->patternInfo->velocityAdd;
-        velocity = CLAMP(velocity, 0, 0x7f);
+        velocity = CLAMP(velocity, 0, 127);
 
         if ((note = AllocateNote(event->time + pe->length, secIndex)) != NULL) {
           if ((note->id = synthStartSound(
@@ -1213,13 +1213,13 @@ static void InitTrackEvents() {
   SEQ_EVENT* ev; // r30
 
   if (cseq->trackSectionTab == NULL) {
-    for (i = 0; i < 0x40; i += 1) {
+    for (i = 0; i < 64; i += 1) {
       if ((ev = GenerateNextTrackEvent(i)) != NULL) {
         InsertGlobalEvent(cseq->section, ev);
       }
     }
   } else {
-    for (i = 0; i < 0x40; i += 1) {
+    for (i = 0; i < 64; i += 1) {
       if ((ev = GenerateNextTrackEvent(i)) != NULL) {
         InsertGlobalEvent(cseq->section + cseq->trackSectionTab[i], ev);
       }
@@ -1307,7 +1307,7 @@ void seqHandle(u32 deltaTime) {
 
       for (i = 0; i < 2; ++i) {
         x = cseq->section[0].time[i].low + cseq->section[0].tickDelta[i].low;
-        cseq->section[0].time[i].low = x & 0xffff;
+        cseq->section[0].time[i].low = x & 65535;
         x >>= 16;
         cseq->section[0].time[i].high += x + cseq->section[0].tickDelta[i].high;
       }
@@ -1324,7 +1324,7 @@ void seqHandle(u32 deltaTime) {
       for (i = 0; i < 16; ++i) {
         for (j = 0; j < 2; ++j) {
           x = cseq->section[i].time[j].low + cseq->section[i].tickDelta[j].low;
-          cseq->section[i].time[j].low = x & 0xffff;
+          cseq->section[i].time[j].low = x & 65535;
           x >>= 16;
           cseq->section[i].time[j].high += x + cseq->section[i].tickDelta[j].high;
         }
@@ -1373,8 +1373,8 @@ void seqInit() {
     }
     seqInstance[i].index = i;
     seqInstance[i].state = 0;
-    for (j = 0; j < 0x10; ++j) {
-      seqMIDIPriority[i][j] = 0xffff;
+    for (j = 0; j < 16; ++j) {
+      seqMIDIPriority[i][j] = 65535;
     }
   }
   seqInstance[i - 1].next = NULL;
