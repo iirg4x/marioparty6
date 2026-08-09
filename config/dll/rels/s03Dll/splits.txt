@@ -7,8 +7,10 @@ Sections:
 	.bss        type:bss align:8
 
 REL/s03Dll/s03.c:
-	.text       start:0x00000000 end:0x0000076C
-	.rodata     start:0x00000000 end:0x00000010
+	.text       start:0x00000000 end:0x00003178
+	.rodata     start:0x00000000 end:0x00000138
+	.data       start:0x00000000 end:0x000000A4
+	.bss        start:0x00000000 end:0x0000007C
 
 REL/s03Dll/runtime.c:
 	.text       start:0x00003178 end:0x00003BBC
