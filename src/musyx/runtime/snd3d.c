@@ -579,7 +579,7 @@ static void CalcEmitter(SND_EMITTER* em, f32* vol, f32* doppler, f32* xPan, f32*
 #endif
 }
 
-static u8 clip127(u8 v) {
+static inline u8 clip127(u8 v) {
   if (v > 0x7f) {
     return 0x7f;
   }
