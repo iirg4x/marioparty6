@@ -54,7 +54,7 @@ void streamHandle() {
   for (i = 0; i < synthInfo.voiceNum; ++i, ++si) {
     switch (si->state) {
     case 1:
-      newsmp.info = si->frq | 0x40000000;
+      newsmp.info = si->frq | 1073741824;
       newsmp.addr = hwGetStreamPlayBuffer(si->hwStreamHandle);
       newsmp.offset = 0;
       newsmp.length = si->size;
@@ -96,7 +96,7 @@ void streamHandle() {
 
       hwStart(si->voice, si->studio);
       si->state = 2;
-      if (!(si->flags & 0x20000)) {
+      if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
         hwFlushStream(si->buffer, 0, si->bytes, si->hwStreamHandle, NULL, 0);
       }
       break;
@@ -114,7 +114,7 @@ void streamHandle() {
             len = si->updateFunction(si->buffer + si->last, off - si->last, NULL, 0, si->user);
             if (len != 0 && si->state == 2) {
               off = (si->last + len) % si->size;
-              if (!(si->flags & 0x20000)) {
+              if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
                 if (off != 0) {
                   hwFlushStream(si->buffer, si->last * 2, (off - si->last) * 2, si->hwStreamHandle,
                                 NULL, 0);
@@ -134,7 +134,7 @@ void streamHandle() {
                 si->state == 2) {
               off = (si->last + len) % si->size;
 
-              if (!(si->flags & 0x20000)) {
+              if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
                 if (off != 0) {
                   hwFlushStream(si->buffer, cpos, ((off + 13) / 14) * 8 - cpos, si->hwStreamHandle,
                                 NULL, 0);
@@ -153,7 +153,7 @@ void streamHandle() {
                                           si->user)) &&
                 si->state == 2) {
               off = (si->last + len) % si->size;
-              if (!(si->flags & 0x20000)) {
+              if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
                 if (off == 0) {
                   hwFlushStream(si->buffer, si->last * 2, si->bytes - (si->last * 2),
                                 si->hwStreamHandle, NULL, 0);
@@ -171,7 +171,7 @@ void streamHandle() {
                                           NULL, 0, si->user)) &&
                 si->state == 2) {
               off = (si->last + len) % si->size;
-              if (!(si->flags & 0x20000)) {
+              if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
                 if (off == 0) {
                   hwFlushStream(si->buffer, cpos, si->bytes - cpos, si->hwStreamHandle, NULL, 0);
                 } else {
@@ -192,7 +192,7 @@ void streamHandle() {
                 si->state == 2) {
               off = (si->last + len) % si->size;
 
-              if (!(si->flags & 0x20000)) {
+              if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
                 if (len > si->size - si->last) {
                   hwFlushStream(si->buffer, si->last * 2, (si->bytes - si->last * 2),
                                 si->hwStreamHandle, NULL, 0);
@@ -216,7 +216,7 @@ void streamHandle() {
                 si->state == 2) {
               off = (si->last + len) % si->size;
 
-              if (!(si->flags & 0x20000)) {
+              if (!(si->flags & SND_STREAM_MANUALARAMUPD)) {
                 if (len > si->size - si->last) {
                   hwFlushStream(si->buffer, cpos, si->bytes - cpos, si->hwStreamHandle, NULL, 0);
                   hwFlushStream(si->buffer, 0, (off / 14) << 3, si->hwStreamHandle, NULL, 0);
@@ -234,7 +234,7 @@ void streamHandle() {
           }
         }
 
-        if (si->state == 2 && !(si->flags & 0x20000) && si->type == 1) {
+        if (si->state == 2 && !(si->flags & SND_STREAM_MANUALARAMUPD) && si->type == 1) {
 #if MUSY_TARGET == MUSY_TARGET_DOLPHIN
           hwSetStreamLoopPS(si->voice,
                             (si->lastPSFromBuffer = *(u32*)OSCachedToUncached(si->buffer) >> 24));
@@ -277,7 +277,7 @@ static u32 GetPrivateIndex(u32 publicID) {
   return -1;
 }
 
-static u32 GeneratePublicID() {
+static inline u32 GeneratePublicID() {
   u32 id; // r30
   u32 i;  // r31
 
@@ -451,8 +451,8 @@ SND_STREAMID sndStreamAllocEx(u8 prio, void* buffer, u32 samples, u32 frq, u8 vo
     streamInfo[i].user = user;
     streamInfo[i].nextStreamHandle = -1;
     streamInfo[i].state = 3;
-    if ((streamInfo[i].hwStreamHandle = hwInitStream(bytes)) != 0xFF) {
-      if (!(flags & 0x10000) && !sndStreamActivate(stid)) {
+    if ((streamInfo[i].hwStreamHandle = hwInitStream(bytes)) != 255) {
+      if (!(flags & SND_STREAM_INACTIVE) && !sndStreamActivate(stid)) {
         MUSY_DEBUG("No voice could be allocated for streaming.\n");
         stid = -1;
       }
@@ -488,13 +488,13 @@ u32 sndStreamAllocStereo(u8 prio, void* lBuffer, void* rBuffer, u32 samples, u32
   hwDisableIrq();
 
   if ((stid[0] = sndStreamAllocEx(prio, lBuffer, samples, frq, vol, lPan, span, auxa, auxb, studio,
-                                  flags, updateFunction, lUser, adpcmInfoL)) != 0xFFFFFFFF) {
+                                  flags, updateFunction, lUser, adpcmInfoL)) != SND_ID_ERROR) {
     if ((stid[1] = sndStreamAllocEx(prio, rBuffer, samples, frq, vol, rPan, span, auxa, auxb,
                                     studio, flags, updateFunction, rUser, adpcmInfoR)) ==
-        0xFFFFFFFF) {
+        SND_ID_ERROR) {
       sndStreamFree(stid[0]);
       hwEnableIrq();
-      return 0xFFFFFFFF;
+      return SND_ID_ERROR;
     }
 
     streamInfo[GetPrivateIndex(stid[0])].nextStreamHandle = stid[1];
@@ -524,7 +524,7 @@ void sndStreamADPCMParameter(u32 stid, SND_ADPCMSTREAM_INFO* adpcmInfo) {
       streamInfo[i].adpcmInfo.coefTab[j][1] = adpcmInfo->coefTab[j][1];
     }
     streamInfo[i].adpcmInfo.numCoef = 8;
-    if (streamInfo[i].nextStreamHandle != 0xffffffff) {
+    if (streamInfo[i].nextStreamHandle != SND_ID_ERROR) {
       sndStreamADPCMParameter(streamInfo[i].nextStreamHandle, adpcmInfo);
     }
   } else {
@@ -628,7 +628,7 @@ void sndStreamFree(SND_STREAMID stid) {
   if (i != -1) {
     sndStreamDeactivate(stid);
     hwExitStream(streamInfo[i].hwStreamHandle);
-    if (streamInfo[i].nextStreamHandle != 0xffffffff) {
+    if (streamInfo[i].nextStreamHandle != SND_ID_ERROR) {
       sndStreamFree(streamInfo[i].nextStreamHandle);
     }
 
@@ -662,7 +662,7 @@ bool sndStreamActivate(SND_STREAMID stid) {
       MUSY_DEBUG("Stream is already active.\n");
     }
 
-    if (streamInfo[i].nextStreamHandle != 0xffffffff) {
+    if (streamInfo[i].nextStreamHandle != SND_ID_ERROR) {
       ret = sndStreamActivate(streamInfo[i].nextStreamHandle);
     } else {
       ret = TRUE;
