@@ -475,7 +475,7 @@ static void SetFXParameters(SND_EMITTER* const em, f32 vol, f32 xPan, f32 yPan, 
   }
 }
 
-static void EmitterShutdown(SND_EMITTER* em) {
+static inline void EmitterShutdown(SND_EMITTER* em) {
   if (em->next != NULL) {
     em->next->prev = em->prev;
   }
