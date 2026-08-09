@@ -176,6 +176,7 @@ void fn_1_F068(s16 index, s16 display, HuVecF *pos);
 void fn_1_F11C(s16 index, s16 count);
 void fn_1_F23C(s16 count);
 void fn_1_111B0(s16 display);
+void fn_1_11208(s16 index, HuVecF *pos, s16 mode);
 void fn_1_E0EC(s16 groupId, u32 attr);
 void fn_1_EB54(s16 time);
 void fn_1_1160(OMOBJ *object);
@@ -1881,6 +1882,29 @@ void fn_1_111B0(s16 display)
         Hu3DModelAttrReset(lbl_1_bss_1E1C, HU3D_ATTR_DISPOFF);
     } else {
         Hu3DModelAttrSet(lbl_1_bss_1E1C, HU3D_ATTR_DISPOFF);
+    }
+}
+
+void fn_1_11208(s16 index, HuVecF *pos, s16 mode)
+{
+    HU3D_MODEL *model = &Hu3DData[lbl_1_bss_1E1C];
+    HU3D_PARTICLE *particle = model->hookData;
+    HU3D_PARTICLE_DATA *data = &particle->data[index];
+
+    if (mode == 0) {
+        data->time = 0;
+        data->color.a = 0;
+        data->scale = lbl_1_rodata_2F8;
+    } else {
+        data->time = 1;
+        data->pos.x = pos->x;
+        data->pos.y = pos->y;
+        data->pos.z = pos->z;
+        data->color.r = 255;
+        data->color.r = 255;
+        data->color.r = 255;
+        data->color.a = 32;
+        data->scale = lbl_1_rodata_340;
     }
 }
 
