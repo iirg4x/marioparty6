@@ -55,6 +55,11 @@ typedef struct S02Work {
     s32 modelId8C;
 } S02Work;
 
+enum {
+    S02_OBJECT_PRIORITY = 8204,
+    S02_RANDOM_MASK = 65535,
+};
+
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern char lbl_1_data_20[4][16];
@@ -173,10 +178,10 @@ void fn_1_F4(void)
 
     boardNo[0] = MBBoardNoGet();
 
-    mbMasuInit(0x00C80000);
-    modelId[0] = mbObjCreate(0x00C80002, NULL, FALSE);
-    mbObjAttrSet(modelId[0], 0x40000001);
-    mbScrollInit(0x00C80001);
+    mbMasuInit(DATANUM(DATA_s02, 0));
+    modelId[0] = mbObjCreate(DATANUM(DATA_s02, 2), NULL, FALSE);
+    mbObjAttrSet(modelId[0], HU3D_MOTATTR_LOOP);
+    mbScrollInit(DATANUM(DATA_s02, 1));
     mbLightFuncSet(S02PrimaryModelLightInfoEnable, fn_1_4B0);
     mbPlayerTurnInitHookSet(fn_1_450);
     mbPlayerTurnCloseHookSet(S02PairModelsResetEvent);
@@ -185,12 +190,12 @@ void fn_1_F4(void)
     mbev_MasuHatenaSet(S02MasuAttr5Handler);
     mbMapCameraSet(NULL, &lbl_1_data_60, 9800.0f);
     mbMapHookSet(fn_1_4B4);
-    omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, S02MapObjectScrollUpdate);
+    omAddObjEx(mbObjMan, S02_OBJECT_PRIORITY, 0, 0, -1, S02MapObjectScrollUpdate);
     S02SceneModelsCreate();
     mbCameraNearFarSet(100.0f, 80000.0f);
     mbOpeningViewSet(&lbl_1_data_6C, &lbl_1_data_78, lbl_1_data_84);
     HuAudSndGrpSet(29);
-    HuDataDirClose(0x00C80000);
+    HuDataDirClose(DATANUM(DATA_s02, 0));
     (void)boardNo;
 }
 
@@ -512,7 +517,7 @@ void fn_1_1120(int playerNo, s16 id)
         playerMotion[i] = mbPlayerMotionCreate(playerNo,
             lbl_1_data_254[i]);
     }
-    anim = HuSprAnimRead(HuDataReadNum(0x00210003, HU_MEMNUM_OVL));
+    anim = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 3), HU_MEMNUM_OVL));
     lbl_1_bss_10[0] = 0;
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
@@ -706,7 +711,7 @@ void fn_1_1DC8(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
             data->activeF = (s16)(60.0f
                 * (0.2f
                     + 0.1f
-                        * (0.000015258789f * (frand() & 0xFFFF))));
+                        * (0.000015258789f * (frand() & S02_RANDOM_MASK))));
             angle = 360.0f * frandf();
             radius = 100.0f * frandf();
             data->pos.x = radius * cos(
@@ -729,7 +734,7 @@ void fn_1_1DC8(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
             data->color.a = color.a;
             data->color.a = 20.0f
                 + 80.0f
-                    * ((float)(frand() & 0xFFFF) * 0.000015258789f);
+                    * ((float)(frand() & S02_RANDOM_MASK) * 0.000015258789f);
         }
         particleP->mode = 1;
     }
@@ -797,13 +802,16 @@ float lbl_1_data_84 = 7500.0f;
 HuVecF lbl_1_data_88 = { 4906.0f, -3125.0f, -2167.0f };
 HuVecF lbl_1_data_94 = { -5880.0f, -3125.0f, 2640.0f };
 HuVecF lbl_1_data_A0 = { -10.0f, 0.0f, 0.0f };
-s32 lbl_1_data_AC[2] = { 0x930017, 0x930022 };
+s32 lbl_1_data_AC[2] = {
+    CHARMOT_HSF_c000m1_323,
+    CHARMOT_HSF_c000m1_344
+};
 S02DataB4 lbl_1_data_B4 = {
     "itemhook_8",
-    { 0xC80006, 0xC80008 }
+    { DATANUM(DATA_s02, 6), DATANUM(DATA_s02, 8) }
 };
 S02DataC8 lbl_1_data_C8 = {
-    { 0xC80007, 0xC80009 },
+    { DATANUM(DATA_s02, 7), DATANUM(DATA_s02, 9) },
     {
         { -230.0f, 100.0f, -800.0f },
         { 990.0f, 100.0f, 2860.0f }
@@ -848,7 +856,11 @@ HuVecF lbl_1_data_220[3] = {
 };
 char lbl_1_data_244[8] = "m12hook";
 s32 lbl_1_data_24C[2] = { 2, 8 };
-s32 lbl_1_data_254[3] = { 0x930012, 0x930023, 0x930017 };
+s32 lbl_1_data_254[3] = {
+    CHARMOT_HSF_c000m1_318,
+    CHARMOT_HSF_c000m1_345,
+    CHARMOT_HSF_c000m1_323
+};
 HuVecF lbl_1_data_260[2] = {
     { 612.6f, -143.0f, -355.0f },
     { 1409.6f, -143.0f, 1449.0f }
