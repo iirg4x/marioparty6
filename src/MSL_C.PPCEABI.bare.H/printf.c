@@ -120,7 +120,7 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
     }
 
     if (f.field_width > 509) {
-        f.conversion_char = 0xFF;
+        f.conversion_char = 255;
         *format = f;
         return ((const char*)s + 1);
     }
@@ -188,7 +188,7 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
         case 'x':
         case 'X':
             if (f.argument_options == long_double_argument) {
-                f.conversion_char = 0xFF;
+                f.conversion_char = 255;
                 break;
             }
 
@@ -203,7 +203,7 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
         case 'f':
         case 'F':
             if (f.argument_options == short_argument || f.argument_options == long_long_argument) {
-                f.conversion_char = 0xFF;
+                f.conversion_char = 255;
                 break;
             }
 
@@ -215,11 +215,11 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
         case 'a':
         case 'A':
             if (!f.precision_specified) {
-                f.precision = 0xD;
+                f.precision = 13;
             }
 
             if (f.argument_options == short_argument || f.argument_options == long_long_argument || f.argument_options == char_argument) {
-                f.conversion_char = 0xFF;
+                f.conversion_char = 255;
             }
 
             break;
@@ -233,7 +233,7 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
         case 'e':
         case 'E':
             if (f.argument_options == short_argument || f.argument_options == long_long_argument || f.argument_options == char_argument) {
-                f.conversion_char = 0xFF;
+                f.conversion_char = 255;
                 break;
             }
 
@@ -255,7 +255,7 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
             }
             else {
                 if (f.precision_specified || f.argument_options != normal_argument) {
-                    f.conversion_char = 0xFF;
+                    f.conversion_char = 255;
                 }
             }
 
@@ -267,7 +267,7 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
             }
             else {
                 if (f.argument_options != normal_argument) {
-                    f.conversion_char = 0xFF;
+                    f.conversion_char = 255;
                 }
             }
 
@@ -275,13 +275,13 @@ static const char* parse_format(const char *format_string, va_list *arg, print_f
 
         case 'n':
             if (f.argument_options == long_double_argument) {
-                f.conversion_char = 0xFF;
+                    f.conversion_char = 255;
             }
 
             break;
 
         default:
-            f.conversion_char = 0xFF;
+            f.conversion_char = 255;
             break;
     }
 
@@ -517,11 +517,11 @@ static char * double2hex(long double num, char * buff, print_format format)  {
     }
 
     form.style = (char) 0;
-    form.digits = 0x20;
+    form.digits = 32;
     __num2dec(&form, num, &dec);
 
     if (*dec.sig.text == 'I') {
-        if (*(short*) &ld & 0x8000) {
+        if (*(short*) &ld & 32768) {
             p = buff - 5;
             if (format.conversion_char == 'A') strcpy(p, "-INF");
             else strcpy(p, "-inf");
@@ -535,7 +535,7 @@ static char * double2hex(long double num, char * buff, print_format format)  {
         return p;
     }
     if (*dec.sig.text == 'N') {
-        if (*(unsigned char*) &num & 0x80) {
+        if (*(unsigned char*) &num & 128) {
             p = buff - 5;
             if (format.conversion_char == 'A') strcpy(p, "-NAN");
             else strcpy(p, "-nan");
@@ -558,7 +558,7 @@ static char * double2hex(long double num, char * buff, print_format format)  {
     exp_format.precision = 1;
     exp_format.conversion_char = 'd';
 
-    exp = (short) ((*(short*) &ld & 0x7FFF) >> 4) - 0x3FF;
+    exp = (short) ((*(short*) &ld & 32767) >> 4) - 1023;
     p = long2str(exp, buff, exp_format);
     if (format.conversion_char == 'a')
         *--p = 'p';
@@ -569,7 +569,7 @@ static char * double2hex(long double num, char * buff, print_format format)  {
     for (hex_precision = format.precision; hex_precision >= 1; hex_precision--) {
         temp_r7 = *(q + (hex_precision / 2 + 1));
         if (hex_precision % 2) {
-            working_byte = temp_r7 & 0xF;
+            working_byte = temp_r7 & 15;
         } else {
             working_byte = (temp_r7 >> 4);
         }
@@ -604,7 +604,7 @@ static char * double2hex(long double num, char * buff, print_format format)  {
 
     *--p = '0';
 
-    if (*((short*) &ld) & 0x8000) {
+    if (*((short*) &ld) & 32768) {
         *--p = '-';
     }
     else if (format.sign_options == sign_always) {
@@ -684,7 +684,7 @@ static char* float2str(long double num, char *buff, print_format format) {
     }
 
     form.style = 0;
-    form.digits = 0x20;
+    form.digits = 32;
     __num2dec(&form, num, &dec);
     p = (char*)dec.sig.text + dec.sig.length;
 
@@ -1122,7 +1122,7 @@ static int __pformatter(void *(*WriteProc)(void *, const char *, size_t), void *
                 num_chars = 1;
                 break;
 
-            case 0xFF:
+            case 255:
             default:
                 conversion_error:
                     num_chars = strlen(curr_format);
@@ -1216,6 +1216,32 @@ int printf(const char* format, ...)
     return res;
 }
 
+#ifndef _No_Disk_File_OS_Support
+int fprintf(FILE* file, const char* format, ...)
+{
+    int result;
+
+#if __PPC_EABI__ || __MIPS__
+    va_list args;
+#ifndef __NO_WIDE_CHAR
+    if (fwide(file, -1) >= 0) {
+        return -1;
+    }
+#endif
+    va_start(args, format);
+    result = __pformatter(&__FileWrite, (void*)file, format, args);
+#else
+#ifndef __NO_WIDE_CHAR
+    if (fwide(file, -1) >= 0) {
+        return -1;
+    }
+#endif
+    result = __pformatter(&__FileWrite, (void*)file, format, __va_start(format));
+#endif
+    return result;
+}
+#endif
+
 int vprintf(const char* format, va_list arg)
 {
     int ret;
@@ -1246,12 +1272,12 @@ int vsnprintf(char* s, size_t n, const char* format, va_list arg)
 }
 
 int vsprintf(char *s, const char *format, va_list arg) {
-    return vsnprintf(s, 0xFFFFFFFF, format, arg);
+    return vsnprintf(s, 4294967295U, format, arg);
 }
 
 int sprintf(char* s, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
-    return vsnprintf(s, 0xFFFFFFFF, format, args);
+    return vsnprintf(s, 4294967295U, format, args);
 }
