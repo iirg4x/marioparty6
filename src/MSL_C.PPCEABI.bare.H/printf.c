@@ -1272,12 +1272,12 @@ int vsnprintf(char* s, size_t n, const char* format, va_list arg)
 }
 
 int vsprintf(char *s, const char *format, va_list arg) {
-    return vsnprintf(s, 4294967295U, format, arg);
+    return vsnprintf(s, 0xFFFFFFFF /* No output limit. */, format, arg);
 }
 
 int sprintf(char* s, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
-    return vsnprintf(s, 4294967295U, format, args);
+    return vsnprintf(s, 0xFFFFFFFF /* No output limit. */, format, args);
 }
