@@ -1,8 +1,10 @@
 #include "musyx/hardware.h"
 #include "musyx/assert.h"
+#include "math.h"
 #include "musyx/s3d.h"
 #include "musyx/sal.h"
 #include "musyx/seq.h"
+#include "musyx/snd.h"
 #include "musyx/stream.h"
 #include "musyx/synth.h"
 
@@ -18,6 +20,9 @@
 #define HW_CHANGED_SRC 256
 #define HW_CHANGED_COEF 128
 #define HW_CHANGED_ITD 512
+#define HW_CHANGED_FILTER_STATE 1024
+#define HW_CHANGED_FILTER_COEF 2048
+#define HW_COMPRESSOR_FLAG 8
 #define HW_ITD_ENABLED_FLAG ((u32)2147483648U)
 #define HW_SAMPLE_ADDR_OFFSET_MASK 15
 #define HW_SAMPLE_BASE_ADDRESS 0
@@ -45,6 +50,9 @@ u8 salMaxStudioNum;
 SND_HOOKS salHooks;
 u8 salTimeOffset;
 void hwSetTimeOffset(u8 offset);
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+void hwEnableCompressor();
+#endif
 
 static void snd_handle_irq() {
   u8 r; // r31
@@ -124,6 +132,11 @@ s32 hwInit(u32* frq, u16 numVoices, u16 numStudios, u32 flags) {
   if (salInitAi(snd_handle_irq, flags, frq) != 0) {
     MUSY_DEBUG("salInitAi() is done.\n\n");
     if (salInitDspCtrl(numVoices, numStudios, (flags & 1) != 0) != 0) {
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+      if (flags & HW_COMPRESSOR_FLAG) {
+        hwEnableCompressor();
+      }
+#endif
       MUSY_DEBUG("salInitDspCtrl() is done.\n\n");
       if (salInitDsp(flags)) {
         MUSY_DEBUG("salInitDsp() is done.\n\n");
@@ -303,6 +316,40 @@ void hwSetPolyPhaseFilter(u32 v, u8 salCoefSel) {
   dsp_vptr->srcCoefSelect = dspCoefSel[salCoefSel];
   dsp_vptr->changed[0] |= HW_CHANGED_COEF;
 }
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+void hwLowPassFrqToCoef(u32 frq, u16* _a0, u16* _b1) {
+  float c;  // f30
+  float b1; // f31
+
+  c = 2.0f - sndCos(((float)(2 * M_PI) * frq) / 32000.0f);
+  b1 = c > 1.0f ? (sndSqrt((c * c) - 1.0f) - c) : -1.0f;
+  b1 = CLAMP(b1, -1.0f, 1.0f);
+  *_a0 = 32768.0f * (1.0f + b1);
+  *_b1 = 32768.0f * -b1;
+}
+
+void hwSetFilter(u32 v, u8 mode, u16 coefA, u16 coefB) {
+  struct DSPvoice* dsp_vptr = &dspVoice[v]; // r31
+  if (dsp_vptr->filter.on == 0) {
+    if (mode == 1) {
+      dsp_vptr->filter.on = 1;
+      dsp_vptr->filter.coefA = coefA;
+      dsp_vptr->filter.coefB = coefB;
+      dsp_vptr->changed[0] |= HW_CHANGED_FILTER_STATE | HW_CHANGED_FILTER_COEF;
+    }
+  } else {
+    if (mode == 1) {
+      dsp_vptr->filter.coefA = coefA;
+      dsp_vptr->filter.coefB = coefB;
+      dsp_vptr->changed[0] |= HW_CHANGED_FILTER_COEF;
+      return;
+    }
+    dsp_vptr->filter.on = 0;
+    dsp_vptr->changed[0] |= HW_CHANGED_FILTER_STATE;
+  }
+}
+#endif
 
 static void SetupITD(DSPvoice* dsp_vptr, u8 pan) {
   dsp_vptr->itdShiftL = itdOffTab[pan];
@@ -555,6 +602,10 @@ void hwEnableHRTF() {
   salInitHRTFBuffer();
 }
 void hwDisableHRTF() { dspHRTFOn = FALSE; }
+
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+void hwEnableCompressor() { dspCompressorOn = TRUE; }
+#endif
 
 u32 hwGetVirtualSampleID(u32 v) {
   if (dspVoice[v].state == 0) {
