@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import tempfile
 import subprocess
 import sys
@@ -29,6 +31,422 @@ def symbol(name: str, size: int, target: int | None, match: float | None, rows=N
 
 
 class RecoveryPassTests(unittest.TestCase):
+    def test_function_forensics_orders_relocations_and_separates_calls_callbacks_and_data(self) -> None:
+        target_data = base64.b64encode(b"\x00\x01\x02").decode("ascii")
+        side = {
+            "symbols": [
+                {"name": "Caller", "kind": "SYMBOL_FUNCTION"},
+                {"name": "DirectFn", "kind": "SYMBOL_FUNCTION", "size": "16"},
+                {"name": "CallbackFn", "kind": "SYMBOL_FUNCTION", "size": "20"},
+                {
+                    "name": "StaticState",
+                    "kind": "SYMBOL_OBJECT",
+                    "address": "0x2000",
+                    "size": "3",
+                    "data_diff": [{"data": target_data, "size": "3"}],
+                },
+            ]
+        }
+        caller = {
+            "name": "Caller",
+            "address": "0x100",
+            "size": "32",
+            "instructions": [
+                {"instruction": {"address": "0x100", "size": 4, "formatted": "stwu r1, -0x20(r1)"}},
+                {
+                    "instruction": {
+                        "address": "0x104",
+                        "size": 4,
+                        "formatted": "bl DirectFn",
+                        "relocation": {"type_name": "R_PPC_REL24", "target_symbol": 1},
+                    }
+                },
+                {
+                    "instruction": {
+                        "address": "0x108",
+                        "size": 4,
+                        "formatted": "lis r3, CallbackFn@ha",
+                        "relocation": {"type_name": "R_PPC_ADDR16_HA", "target_symbol": 2},
+                    }
+                },
+                {
+                    "instruction": {
+                        "address": "0x10c",
+                        "size": 4,
+                        "formatted": "stw r3, StaticState@sda21",
+                        "relocation": {
+                            "type_name": "R_PPC_EMB_SDA21",
+                            "target_symbol": 3,
+                            "addend": "4",
+                        },
+                    }
+                },
+            ],
+        }
+
+        result = module.function_forensics(side, caller, ["local_declaration_or_first_use_cycle"])
+
+        self.assertEqual(result["target_range"], {"start": 0x100, "end": 0x120, "size": 32})
+        self.assertEqual([item["offset"] for item in result["relocations"]], [0x104, 0x108, 0x10C])
+        self.assertEqual([item["kind"] for item in result["relocations"]], ["call", "callback", "data"])
+        self.assertEqual(result["relocations"][2]["addend"], 4)
+        self.assertEqual(result["direct_rel24_calls"], ["DirectFn"])
+        self.assertEqual(result["callback_edges"], [{"offset": 0x108, "target": "CallbackFn", "type": "R_PPC_ADDR16_HA"}])
+        self.assertEqual(
+            result["data_symbols"],
+            [{
+                "name": "StaticState",
+                "address": 0x2000,
+                "size": 3,
+                "order": 0,
+                "bytes": target_data,
+                "bytes_emitted": 3,
+                "bytes_total": 3,
+                "bytes_truncated": 0,
+            }],
+        )
+
+    def test_function_forensics_reports_stack_clues_and_diagnostics(self) -> None:
+        result = module.function_forensics(
+            {"symbols": []},
+            {
+                "size": "12",
+                "instructions": [
+                    {"instruction": {"address": "0", "formatted": "stwu r1, -0x30(r1)"}},
+                    {"instruction": {"address": "4", "formatted": "stw r31, 0x2c(r1)"}},
+                    {"instruction": {"address": "8", "formatted": "mr r31, r3"}},
+                ],
+            },
+            ["branch_destination_only"],
+        )
+        self.assertEqual(result["stack_clues"]["frame_size"], 0x30)
+        self.assertEqual(result["stack_clues"]["r1_offsets"], [-0x30, 0x2C])
+        self.assertEqual(result["stack_clues"]["diagnostics"], ["branch_destination_only"])
+        self.assertEqual(result["stack_clues"]["prologue"][0], "stwu r1, -0x30(r1)")
+
+    def test_function_forensics_is_safe_for_missing_fields(self) -> None:
+        for side, target in (
+            ({"symbols": None}, {"size": "not-a-number", "instructions": [{}, {"instruction": None}, None]}),
+            (None, {}),
+            ({}, None),
+        ):
+            result = module.function_forensics(side, target)
+            self.assertEqual(result["target_range"], {"start": 0, "end": 0, "size": 0})
+            self.assertEqual(result["relocations"], [])
+            self.assertEqual(result["callback_edges"], [])
+            self.assertEqual(result["data_symbols"], [])
+        self.assertEqual(module.function_forensics({}, {}, "bad diagnostics")["stack_clues"]["diagnostics"], [])
+
+    def test_function_forensics_sorting_is_order_independent_and_packet_identity_stable(self) -> None:
+        side = {
+            "symbols": [
+                {"name": "Caller", "kind": "SYMBOL_FUNCTION"},
+                {"name": "DirectFn", "kind": "SYMBOL_FUNCTION"},
+                {"name": "CallbackFn", "kind": "SYMBOL_FUNCTION"},
+                {
+                    "name": "StaticLate",
+                    "kind": "SYMBOL_OBJECT",
+                    "address": "0x300",
+                    "size": "4",
+                    "data_diff": [
+                        {"offset": "4", "data": "Q0Q="},
+                        {"offset": "0", "data": "QUI="},
+                    ],
+                },
+                {
+                    "name": "StaticEarly",
+                    "kind": "SYMBOL_OBJECT",
+                    "address": "0x100",
+                    "size": "4",
+                    "data_diff": [
+                        {"offset": "4", "data": "RkdI"},
+                        {"offset": "0", "data": "REU="},
+                    ],
+                },
+            ]
+        }
+        rows = [
+            {
+                "instruction": {
+                    "address": "0x100",
+                    "formatted": "bl DirectFn",
+                    "relocation": {"type_name": "R_PPC_REL24", "target_symbol": 1},
+                }
+            },
+            {
+                "instruction": {
+                    "address": "0x104",
+                    "formatted": "lis r3, StaticLate@ha",
+                    "relocation": {"type_name": "R_PPC_ADDR16_HA", "target_symbol": 3},
+                }
+            },
+            {
+                "instruction": {
+                    "address": "0x108",
+                    "formatted": "lis r3, CallbackFn@ha",
+                    "relocation": {"type_name": "R_PPC_ADDR16_HA", "target_symbol": 2},
+                }
+            },
+            {
+                "instruction": {
+                    "address": "0x10c",
+                    "formatted": "lis r3, StaticEarly@ha",
+                    "relocation": {"type_name": "R_PPC_ADDR16_HA", "target_symbol": 4},
+                }
+            },
+        ]
+        ordered_symbol = {"name": "Caller", "address": "0x100", "size": "16", "instructions": rows}
+        shuffled_symbol = {**ordered_symbol, "instructions": [rows[3], rows[1], rows[0], rows[2]]}
+        ordered = module.function_forensics(side, ordered_symbol)
+        shuffled = module.function_forensics(side, shuffled_symbol)
+        self.assertEqual(ordered, shuffled)
+        self.assertEqual([item["name"] for item in ordered["data_symbols"]], ["StaticLate", "StaticEarly"])
+        self.assertEqual(ordered["data_symbols"][0]["bytes"], "QUJDRA==")
+        self.assertEqual(ordered["data_symbols"][1]["bytes"], "REVGRw==")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "packet"
+            source = root / "src" / "board" / "caller.c"
+            target = root / "orig" / "caller.o"
+            candidate = root / "build" / "caller.o"
+            source.parent.mkdir(parents=True)
+            target.parent.mkdir(parents=True)
+            candidate.parent.mkdir(parents=True)
+            source.write_text("void Caller(void) {}\n", encoding="utf-8")
+            target.write_bytes(b"target")
+            candidate.write_bytes(b"candidate")
+
+            def report(forensics: dict) -> dict:
+                return {
+                    "unit": "main/board/caller",
+                    "source": "src/board/caller.c",
+                    "summary": {},
+                    "preferred_implementation_packet": {
+                        "ready": True,
+                        "functions": ["Caller"],
+                        "function_count": 1,
+                        "target_bytes": 16,
+                    },
+                    "ranked_functions": [{
+                        "function": "Caller",
+                        "target_rank": 0,
+                        "target_bytes": 16,
+                        "category": "missing_definition",
+                        "strict_match_percent": None,
+                        "strict_diff_rows": 0,
+                        "diff_kind_shape": {},
+                        "target_call_skeleton": ["DirectFn"],
+                        "diagnostics": [],
+                        "safe_actions": [],
+                        "function_forensics": forensics,
+                    }],
+                    "selected_knowledge_cards": [],
+                    "shared_cause_clusters": [],
+                }
+
+            packet_a = module.build_worker_packet(root, {"target_path": "orig/caller.o", "base_path": "build/caller.o"}, report(ordered), output, root / "strict.json", root / "value.json")
+            packet_b = module.build_worker_packet(root, {"target_path": "orig/caller.o", "base_path": "build/caller.o"}, report(shuffled), output, root / "strict.json", root / "value.json")
+        self.assertEqual(packet_a["packet_id"], packet_b["packet_id"])
+        self.assertEqual(packet_a["function_evidence"], packet_b["function_evidence"])
+
+    def test_function_forensics_caps_large_inputs_and_preserves_counts(self) -> None:
+        symbols = [{"name": "Stress", "kind": "SYMBOL_FUNCTION"}]
+        rows = []
+        for index in range(2000):
+            mode = index % 3
+            target_index = len(symbols)
+            if mode == 0:
+                symbols.append({"name": f"Call{index}", "kind": "SYMBOL_FUNCTION"})
+                type_name = "R_PPC_REL24"
+                formatted = f"bl Call{index}; stw r{index}, {index}(r1)"
+            elif mode == 1:
+                symbols.append({"name": f"Callback{index}", "kind": "SYMBOL_FUNCTION"})
+                type_name = "R_PPC_ADDR16_HA"
+                formatted = f"lis r{index}, Callback{index}@ha; stw r{index}, {index}(r1)"
+            else:
+                symbols.append({
+                    "name": f"Data{index}",
+                    "kind": "SYMBOL_OBJECT",
+                    "address": str(index),
+                    "size": "1",
+                    "data_diff": [{"offset": "0", "data": "AA=="}],
+                })
+                type_name = "R_PPC_EMB_SDA21"
+                formatted = f"stw r{index}, Data{index}@sda21; stw r{index}, {index}(r1)"
+            rows.append({"instruction": {"address": str(index * 4), "formatted": formatted, "relocation": {"type_name": type_name, "target_symbol": target_index}}})
+        side = {"symbols": symbols}
+        result = module.function_forensics(side, {"address": "0", "size": str(len(rows) * 4), "instructions": rows})
+        reversed_result = module.function_forensics(side, {"address": "0", "size": str(len(rows) * 4), "instructions": list(reversed(rows))})
+        self.assertEqual(result, reversed_result)
+        self.assertLess(len(json.dumps(result)), 60000)
+        self.assertEqual(len(result["relocations"]), module.FORENSICS_RELOCATION_LIMIT)
+        self.assertEqual(result["counts"]["relocations"], 2000)
+        self.assertEqual(result["truncated"]["relocations"], 2000 - module.FORENSICS_RELOCATION_LIMIT)
+        self.assertLessEqual(len(result["direct_call_edges"]), module.FORENSICS_DIRECT_CALL_LIMIT)
+        self.assertLessEqual(len(result["callback_edges"]), module.FORENSICS_CALLBACK_LIMIT)
+        self.assertLessEqual(len(result["data_symbols"]), module.FORENSICS_DATA_SYMBOL_LIMIT)
+        self.assertGreater(result["truncated"]["r1_offsets"], 0)
+
+    def test_function_forensics_bounds_declared_data_size_and_encoded_work(self) -> None:
+        oversized = base64.b64encode(b"A" * 300_000).decode("ascii")
+        result = module.function_forensics(
+            {"symbols": [{"name": "Owner", "kind": "SYMBOL_FUNCTION"}, {"name": "Blob", "kind": "SYMBOL_OBJECT", "size": "3", "data_diff": [{"offset": "0", "data": oversized}]}]},
+            {"name": "Owner", "size": "4", "instructions": [{"instruction": {"address": "0", "formatted": "lis r3, Blob@ha", "relocation": {"type_name": "R_PPC_ADDR16_HA", "target_symbol": 1}}}]},
+        )
+        blob = result["data_symbols"][0]
+        self.assertEqual(blob["bytes"], base64.b64encode(b"AAA").decode("ascii"))
+        self.assertEqual(blob["bytes_emitted"], 3)
+        self.assertEqual(blob["bytes_total"], 300_000)
+        self.assertEqual(blob["bytes_truncated"], 299_997)
+        self.assertLess(len(json.dumps(result)), 10000)
+
+    def test_probe_history_summary_joins_canonical_blocked_and_batch_records_once(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            history_dir = root / "build" / "board-autonomy"
+            history_dir.mkdir(parents=True)
+            (history_dir / "blocked.json").write_text(
+                json.dumps(
+                    {
+                        "blocked": [
+                            {
+                                "owner": "main:board/math",
+                                "function": "MathFn",
+                                "reason": "blocked canonical probe",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (history_dir / "batch-history.json").write_text(
+                json.dumps(
+                    {
+                        "probes": {
+                            "same": {
+                                "owner": "main:board/math",
+                                "symbol": "MathFn",
+                                "probe_key": "same-probe",
+                                "status": "rejected-neutral",
+                                "input_key": "same-input",
+                                "reason": "neutral canonical probe",
+                            }
+                        },
+                        "batches": [
+                            {
+                                "owner": "main:board/math",
+                                "rejected": [
+                                    {
+                                        "symbol": "MathFn",
+                                        "probe_key": "same-probe",
+                                        "status": "rejected-neutral",
+                                        "input_key": "same-input",
+                                        "reason": "neutral canonical probe",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = module.probe_history_summary(
+                root,
+                "main/board/math",
+                ["MathFn"],
+                source="src/board/math.c",
+            )
+
+        self.assertEqual(result["status"], "available")
+        self.assertEqual(len(result["records"]), 2)
+        self.assertEqual(
+            {record["status"] for record in result["records"]},
+            {"blocked", "rejected-neutral"},
+        )
+        self.assertEqual(
+            sum(record.get("probe_key") == "same-probe" for record in result["records"]),
+            1,
+        )
+
+    def test_probe_history_summary_prefers_latest_cross_ledger_evidence_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            history_dir = root / "build" / "board-autonomy"
+            history_dir.mkdir(parents=True)
+            (history_dir / "blocked.json").write_text(
+                json.dumps({
+                    "blocked": [{
+                        "owner": "main:board/math",
+                        "symbol": "MathFn",
+                        "probe_key": "same-probe",
+                        "input_key": "same-input",
+                        "status": "blocked",
+                        "reason": "older blocker wording",
+                    }]
+                }),
+                encoding="utf-8",
+            )
+            (history_dir / "batch-history.json").write_text(
+                json.dumps({
+                    "probes": [{
+                        "owner": "main:board/math",
+                        "symbol": "MathFn",
+                        "probe_key": "same-probe",
+                        "input_key": "same-input",
+                        "status": "rejected-regression",
+                        "reason": "newer batch wording",
+                    }, {
+                        "owner": "main:board/math",
+                        "symbol": "MathFn",
+                        "probe_key": "same-probe",
+                        "input_key": "different-input",
+                        "status": "rejected-neutral",
+                        "reason": "distinct input must survive",
+                    }]
+                }),
+                encoding="utf-8",
+            )
+            result = module.probe_history_summary(root, "main/board/math", ["MathFn"], source="src/board/math.c")
+        self.assertEqual(len(result["records"]), 2)
+        same = next(record for record in result["records"] if record["input_key"] == "same-input")
+        self.assertEqual(same["status"], "rejected-regression")
+        self.assertEqual(same["reason"], "newer batch wording")
+
+    def test_probe_history_summary_normalizes_cross_form_owner_aliases(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            history_dir = root / "build" / "board-autonomy"
+            history_dir.mkdir(parents=True)
+            (history_dir / "blocked.json").write_text(
+                json.dumps({
+                    "blocked": [{
+                        "owner": "src/board/math.c",
+                        "symbol": "MathFn",
+                        "probe_key": "alias-probe",
+                        "input_key": "alias-input",
+                        "status": "blocked",
+                        "reason": "older alias form",
+                    }]
+                }),
+                encoding="utf-8",
+            )
+            (history_dir / "batch-history.json").write_text(
+                json.dumps({
+                    "probes": [{
+                        "owner": "main:board/math",
+                        "symbol": "MathFn",
+                        "probe_key": "alias-probe",
+                        "input_key": "alias-input",
+                        "status": "rejected-neutral",
+                        "reason": "newer canonical form",
+                    }]
+                }),
+                encoding="utf-8",
+            )
+            result = module.probe_history_summary(root, "board/math", ["MathFn"], source="src/board/math.c")
+        self.assertEqual(len(result["records"]), 1)
+        self.assertEqual(result["records"][0]["status"], "rejected-neutral")
     def test_serialized_build_lock_releases_for_the_next_process(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             lock = Path(directory) / "retail-build.lock"
@@ -642,6 +1060,21 @@ class RecoveryPassTests(unittest.TestCase):
                 strict,
                 value,
             )
+            report["ranked_functions"][0]["function_forensics"] = {
+                "target_range": {"start": 0, "end": 401},
+                "relocations": [{"offset": 4, "type": "R_PPC_REL24", "addend": 0, "target": "SingleHelper", "kind": "call"}],
+            }
+            metadata_changed = module.build_worker_packet(
+                root,
+                {
+                    "target_path": "orig/single.o",
+                    "base_path": "build/GP6E01/src/board/single.o",
+                },
+                report,
+                output,
+                strict,
+                value,
+            )
             prompt = module.render_worker_prompt(packet)
             source.write_text("void SingleHelper(void) { return; }\n", encoding="utf-8")
             changed = module.build_worker_packet(
@@ -663,6 +1096,7 @@ class RecoveryPassTests(unittest.TestCase):
             ["SingleHelper", "SingleCaller"],
         )
         self.assertEqual(packet["packet_id"], duplicate["packet_id"])
+        self.assertNotEqual(packet["packet_id"], metadata_changed["packet_id"])
         self.assertNotEqual(packet["packet_id"], changed["packet_id"])
         self.assertEqual(
             packet["function_evidence"][1]["internal_dependencies"],

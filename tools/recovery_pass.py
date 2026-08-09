@@ -35,6 +35,7 @@ if str(DEFAULT_ROOT) not in sys.path:
     sys.path.insert(0, str(DEFAULT_ROOT))
 
 from tools.knowledge_freshness import card_freshness
+from tools.context_engine import collect_rejected_probe_history
 from tools.recovery_core import load
 from tools.recovery_data import _mask_c, function_text, parse_functions
 
@@ -402,6 +403,377 @@ def call_skeleton(side: Mapping[str, Any], symbol: Mapping[str, Any]) -> list[st
         if isinstance(relocation, Mapping) and relocation.get("type_name") == "R_PPC_REL24":
             result.append(relocation_name(side, relocation))
     return result
+
+
+FORENSICS_BYTE_LIMIT = 96
+FORENSICS_PROLOGUE_LIMIT = 8
+FORENSICS_RELOCATION_LIMIT = 96
+FORENSICS_DIRECT_CALL_LIMIT = 64
+FORENSICS_CALLBACK_LIMIT = 32
+FORENSICS_DATA_SYMBOL_LIMIT = 32
+FORENSICS_R1_OFFSET_LIMIT = 64
+FORENSICS_REGISTER_LIMIT = 64
+FORENSICS_DIAGNOSTIC_LIMIT = 16
+FORENSICS_TEXT_LIMIT = 240
+STACK_CLUE_RE = re.compile(r"(-?(?:0[xX][0-9A-Fa-f]+|\d+))\(r1\)")
+BASE64_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+
+
+def _objdiff_int(value: Any, default: int | None = None) -> int | None:
+    """Parse the decimal/hex strings emitted by objdiff without raising."""
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return default
+        try:
+            return int(text, 0)
+        except ValueError:
+            try:
+                return int(text, 10)
+            except ValueError:
+                return default
+    return default
+
+
+def _forensics_text(value: Any, limit: int = FORENSICS_TEXT_LIMIT) -> str:
+    """Render bounded free-form objdiff text without inflating worker packets."""
+    text = value if isinstance(value, str) else str(value) if value is not None else ""
+    if len(text) <= limit:
+        return text
+    return text[: max(0, limit - 14)] + "...[clipped]"
+
+
+def _symbol_target(side: Mapping[str, Any], relocation: Mapping[str, Any]) -> tuple[str, Mapping[str, Any] | None, int | None]:
+    if not isinstance(side, Mapping):
+        side = {}
+    index = relocation.get("target_symbol")
+    symbols = side.get("symbols", [])
+    if not isinstance(symbols, Sequence) or isinstance(symbols, (str, bytes, bytearray)):
+        symbols = []
+    target: Mapping[str, Any] | None = None
+    if isinstance(index, int) and 0 <= index < len(symbols) and isinstance(symbols[index], Mapping):
+        target = symbols[index]
+    name = str(target.get("name")) if target and target.get("name") else (
+        f"symbol[{index}]" if index is not None else "<unknown>"
+    )
+    return name, target, index if isinstance(index, int) else None
+
+
+def _target_data_bytes(symbol: Mapping[str, Any]) -> tuple[str | None, dict[str, int]]:
+    """Return bounded target data bytes and explicit emission/truncation counts."""
+    if not isinstance(symbol, Mapping):
+        return None, {"emitted": 0, "total": 0, "truncated": 0}
+    chunks: list[bytes] = []
+    entries = symbol.get("data_diff", [])
+    if not isinstance(entries, Sequence) or isinstance(entries, (str, bytes, bytearray)):
+        return None, {"emitted": 0, "total": 0, "truncated": 0}
+    valid_entries = [entry for entry in entries if isinstance(entry, Mapping)]
+    addressed = [
+        _objdiff_int(entry.get("offset", entry.get("address")))
+        for entry in valid_entries
+    ]
+    if any(value is not None for value in addressed):
+        valid_entries = sorted(
+            valid_entries,
+            key=lambda entry: (
+                _objdiff_int(entry.get("offset", entry.get("address"))) is None,
+                _objdiff_int(entry.get("offset", entry.get("address")), 0) or 0,
+                str(entry.get("kind", "")),
+                str(entry.get("data", "")),
+                _objdiff_int(entry.get("size"), 0) or 0,
+            ),
+        )
+    declared_size = _objdiff_int(symbol.get("size"))
+    byte_limit = FORENSICS_BYTE_LIMIT
+    if declared_size is not None and declared_size >= 0:
+        byte_limit = min(byte_limit, declared_size)
+    remaining = byte_limit
+    total = 0
+    for entry in valid_entries:
+        if not isinstance(entry.get("data"), str):
+            continue
+        encoded = entry["data"]
+        encoded_count = 0
+        trailing_padding = 0
+        for character in encoded:
+            if character not in BASE64_ALPHABET:
+                continue
+            encoded_count += 1
+            if character == "=":
+                trailing_padding += 1
+            else:
+                trailing_padding = 0
+        if encoded_count:
+            total += max(0, ((encoded_count + 3) // 4) * 3 - min(2, trailing_padding))
+        if remaining <= 0:
+            continue
+        desired_chars = max(4, ((remaining + 2) // 3) * 4)
+        prefix_chars: list[str] = []
+        for character in encoded:
+            if character not in BASE64_ALPHABET:
+                continue
+            prefix_chars.append(character)
+            if len(prefix_chars) >= desired_chars:
+                break
+        if not prefix_chars:
+            continue
+        prefix = "".join(prefix_chars)
+        if len(prefix) % 4:
+            prefix += "=" * (4 - len(prefix) % 4)
+        try:
+            raw = base64.b64decode(prefix, validate=False)
+        except (ValueError, TypeError):
+            continue
+        if raw:
+            chunk = raw[:remaining]
+            chunks.append(chunk)
+            remaining -= len(chunk)
+    emitted_bytes = b"".join(chunks)[:byte_limit]
+    counts = {
+        "emitted": len(emitted_bytes),
+        "total": total,
+        "truncated": max(0, total - len(emitted_bytes)),
+    }
+    if not emitted_bytes:
+        return None, counts
+    return base64.b64encode(emitted_bytes).decode("ascii"), counts
+
+
+def function_forensics(
+    side: Mapping[str, Any],
+    symbol: Mapping[str, Any],
+    diagnostics: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Extract compact target-backed relocation and stack clues for one function.
+
+    Objdiff has historically emitted partially populated rows (notably for
+    synthetic/missing symbols), so this deliberately treats every field as
+    optional and never lets malformed evidence abort packet generation.
+    """
+    if not isinstance(side, Mapping):
+        side = {}
+    if not isinstance(symbol, Mapping):
+        symbol = {}
+    size = _objdiff_int(symbol.get("size"), 0) or 0
+    instructions = symbol.get("instructions", [])
+    if not isinstance(instructions, Sequence) or isinstance(instructions, (str, bytes, bytearray)):
+        instructions = []
+    def instruction_sort_key(row: Any, row_index: int) -> tuple[Any, ...]:
+        raw = row.get("instruction") if isinstance(row, Mapping) else {}
+        inst = raw if isinstance(raw, Mapping) else {}
+        address = _objdiff_int(inst.get("address"))
+        relocation = inst.get("relocation")
+        relocation = relocation if isinstance(relocation, Mapping) else {}
+        target_name, _, target_index = _symbol_target(side, relocation)
+        type_name = _forensics_text(relocation.get("type_name") or relocation.get("type") or "unknown")
+        target_name = _forensics_text(target_name)
+        addend = _objdiff_int(relocation.get("addend"), 0) or 0
+        return (
+            address is None,
+            address if address is not None else 0,
+            type_name,
+            target_name,
+            addend,
+            target_index if target_index is not None else -1,
+            row_index if address is None else -1,
+            str(inst.get("formatted", "")),
+            _objdiff_int(inst.get("size"), 4) or 4,
+        )
+    ordered_instructions = [
+        row
+        for _, row in sorted(
+            enumerate(instructions),
+            key=lambda pair: instruction_sort_key(pair[1], pair[0]),
+        )
+    ]
+    symbol_start = _objdiff_int(symbol.get("address"))
+    first_address: int | None = None
+    cursor = 0
+    relocations: list[dict[str, Any]] = []
+    direct_calls: list[str] = []
+    direct_call_edges: list[dict[str, Any]] = []
+    callback_edges: list[dict[str, Any]] = []
+    data_symbols: dict[int | str, dict[str, Any]] = {}
+    prologue: list[str] = []
+    r1_offsets: set[int] = set()
+    registers: set[str] = set()
+    frame_size: int | None = None
+    for row in ordered_instructions:
+        if not isinstance(row, Mapping):
+            continue
+        raw_instruction = row.get("instruction")
+        inst = raw_instruction if isinstance(raw_instruction, Mapping) else {}
+        formatted = inst.get("formatted")
+        formatted_text = _forensics_text(formatted)
+        if len(prologue) < FORENSICS_PROLOGUE_LIMIT and formatted_text:
+            prologue.append(formatted_text)
+        address = _objdiff_int(inst.get("address"), cursor)
+        if first_address is None and address is not None:
+            first_address = address
+        instruction_size = _objdiff_int(inst.get("size"), 4) or 4
+        cursor = (address if address is not None else cursor) + instruction_size
+        for match in STACK_CLUE_RE.finditer(formatted_text):
+            offset = _objdiff_int(match.group(1))
+            if offset is not None:
+                r1_offsets.add(offset)
+        for match in REGISTER_RE.finditer(formatted_text):
+            registers.add(match.group(0))
+        if frame_size is None:
+            opcode, operands = split_instruction(formatted_text)
+            if opcode in {"stwu", "stdu"} and len(operands) >= 2:
+                immediate = _objdiff_int(operands[1].split("(", 1)[0])
+                if immediate is not None:
+                    frame_size = abs(immediate)
+        relocation = inst.get("relocation")
+        if not isinstance(relocation, Mapping):
+            continue
+        target_name, target_symbol, target_index = _symbol_target(side, relocation)
+        type_name = _forensics_text(relocation.get("type_name") or relocation.get("type") or "unknown")
+        addend = _objdiff_int(relocation.get("addend"), 0) or 0
+        target_kind = str(target_symbol.get("kind", "")) if target_symbol else ""
+        target_name = _forensics_text(target_name)
+        if type_name == "R_PPC_REL24":
+            kind = "call"
+            direct_calls.append(target_name)
+            edge = {"offset": address, "target": target_name}
+            direct_call_edges.append(edge)
+        elif target_kind == "SYMBOL_FUNCTION":
+            kind = "callback"
+            callback_edges.append(
+                {"offset": address, "target": target_name, "type": type_name}
+            )
+        elif target_kind == "SYMBOL_OBJECT":
+            kind = "data"
+        else:
+            kind = "symbol"
+        relocations.append(
+            {
+                "offset": address,
+                "type": type_name,
+                "addend": addend,
+                "target": target_name,
+                "kind": kind,
+            }
+        )
+        if target_kind == "SYMBOL_OBJECT":
+            key: int | str = target_index if target_index is not None else target_name
+            if key not in data_symbols:
+                data_item: dict[str, Any] = {
+                    "name": _forensics_text(target_name),
+                    "address": _objdiff_int(target_symbol.get("address")),
+                    "size": _objdiff_int(target_symbol.get("size"), 0) or 0,
+                    "order": len(data_symbols),
+                    "symbol_index": target_index,
+                    "first_offset": address,
+                }
+                compact, byte_counts = _target_data_bytes(target_symbol)
+                if compact is not None:
+                    data_item["bytes"] = compact
+                data_item["bytes_emitted"] = byte_counts["emitted"]
+                data_item["bytes_total"] = byte_counts["total"]
+                data_item["bytes_truncated"] = byte_counts["truncated"]
+                data_symbols[key] = data_item
+    start = symbol_start if symbol_start is not None else (first_address if first_address is not None else 0)
+    relocations.sort(
+        key=lambda item: (
+            item["offset"] is None,
+            item["offset"] if item["offset"] is not None else 0,
+            str(item.get("type", "")),
+            str(item.get("target", "")),
+            _objdiff_int(item.get("addend"), 0) or 0,
+            str(item.get("kind", "")),
+        )
+    )
+    direct_call_edges.sort(
+        key=lambda item: (
+            item["offset"] is None,
+            item["offset"] if item["offset"] is not None else 0,
+            str(item.get("target", "")),
+        )
+    )
+    callback_edges.sort(
+        key=lambda item: (
+            item["offset"] is None,
+            item["offset"] if item["offset"] is not None else 0,
+            str(item.get("type", "")),
+            str(item.get("target", "")),
+        )
+    )
+    direct_call_names = list(dict.fromkeys(item["target"] for item in direct_call_edges))
+    ordered_data_symbols = sorted(
+        data_symbols.values(),
+        key=lambda item: (
+            item["first_offset"] is None,
+            item["first_offset"] if item["first_offset"] is not None else 0,
+            item["address"] is None,
+            item["address"] if item["address"] is not None else 0,
+            str(item.get("name", "")),
+            item.get("symbol_index") if item.get("symbol_index") is not None else -1,
+        ),
+    )
+    for order, item in enumerate(ordered_data_symbols):
+        item["order"] = order
+        item.pop("symbol_index", None)
+        item.pop("first_offset", None)
+    diagnostic_values = (
+        [_forensics_text(item) for item in diagnostics if isinstance(item, str)]
+        if isinstance(diagnostics, (list, tuple))
+        else []
+    )
+    counts = {
+        "relocations": len(relocations),
+        "direct_rel24_calls": len(direct_call_names),
+        "direct_calls": len(direct_call_names),
+        "direct_call_edges": len(direct_call_edges),
+        "callback_edges": len(callback_edges),
+        "data_symbols": len(ordered_data_symbols),
+        "r1_offsets": len(r1_offsets),
+        "registers": len(registers),
+        "diagnostics": len(diagnostic_values),
+    }
+    limits = {
+        "relocations": FORENSICS_RELOCATION_LIMIT,
+        "direct_rel24_calls": FORENSICS_DIRECT_CALL_LIMIT,
+        "direct_calls": FORENSICS_DIRECT_CALL_LIMIT,
+        "direct_call_edges": FORENSICS_DIRECT_CALL_LIMIT,
+        "callback_edges": FORENSICS_CALLBACK_LIMIT,
+        "data_symbols": FORENSICS_DATA_SYMBOL_LIMIT,
+        "r1_offsets": FORENSICS_R1_OFFSET_LIMIT,
+        "registers": FORENSICS_REGISTER_LIMIT,
+        "diagnostics": FORENSICS_DIAGNOSTIC_LIMIT,
+    }
+    truncated = {
+        name: max(0, counts[name] - limit)
+        for name, limit in limits.items()
+    }
+    emitted_data_symbols = ordered_data_symbols[:FORENSICS_DATA_SYMBOL_LIMIT]
+    emitted_r1_offsets = sorted(r1_offsets)[:FORENSICS_R1_OFFSET_LIMIT]
+    emitted_registers = sorted(registers)[:FORENSICS_REGISTER_LIMIT]
+    target_range = {"start": start, "end": start + size, "size": size}
+    return {
+        "target_range": target_range,
+        "relocations": relocations[:FORENSICS_RELOCATION_LIMIT],
+        "direct_rel24_calls": direct_call_names[:FORENSICS_DIRECT_CALL_LIMIT],
+        "direct_calls": direct_call_names[:FORENSICS_DIRECT_CALL_LIMIT],
+        "direct_call_edges": direct_call_edges[:FORENSICS_DIRECT_CALL_LIMIT],
+        "callback_edges": callback_edges[:FORENSICS_CALLBACK_LIMIT],
+        "data_symbols": emitted_data_symbols,
+        "counts": counts,
+        "truncated": truncated,
+        "stack_clues": {
+            "prologue": prologue,
+            "frame_size": frame_size,
+            "r1_offsets": emitted_r1_offsets,
+            "registers": emitted_registers,
+            "diagnostics": diagnostic_values[:FORENSICS_DIAGNOSTIC_LIMIT],
+        },
+    }
 
 
 def source_calls(text: str, symbol: str, known: set[str]) -> list[str]:
@@ -1363,45 +1735,182 @@ def probe_history_summary(
     functions: Sequence[str],
     *,
     history: Path = PROBE_HISTORY,
+    source: str | None = None,
 ) -> dict[str, Any]:
-    """Return compact owner-local negative/duplicate evidence for prompt deduplication."""
+    """Return compact owner-local negative evidence across canonical ledgers."""
     path = history if history.is_absolute() else root / history
-    if not path.is_file():
-        return {"path": _repo_relative(root, path), "status": "missing", "records": []}
-    try:
-        payload = read_json(path)
-    except ValueError as exc:
-        return {"path": str(path), "status": "invalid", "warning": str(exc), "records": []}
-    probes = payload.get("probes", {}) if isinstance(payload, Mapping) else {}
-    if not isinstance(probes, Mapping):
-        return {"path": str(path), "status": "invalid", "warning": "probes is not an object", "records": []}
+    legacy_records: list[dict[str, Any]] = []
+    legacy_status = "missing"
+    warning: str | None = None
+    if path.is_file():
+        try:
+            payload = read_json(path)
+            probes = payload.get("probes", {}) if isinstance(payload, Mapping) else {}
+            if not isinstance(probes, Mapping):
+                legacy_status = "invalid"
+                warning = "probes is not an object"
+                probes = {}
+            else:
+                legacy_status = "available"
+        except ValueError as exc:
+            legacy_status = "invalid"
+            warning = str(exc)
+            probes = {}
+    else:
+        probes = {}
+    owner_id = (
+        "main:" + unit_name[len("main/"):]
+        if unit_name.startswith("main/")
+        else unit_name
+    )
     aliases = {unit_name}
     if unit_name.startswith("main/"):
         aliases.add("main:" + unit_name[len("main/"):])
     selected = set(functions)
-    records: list[dict[str, Any]] = []
     for record in probes.values():
         if not isinstance(record, Mapping) or record.get("owner") not in aliases:
             continue
         symbol = str(record.get("symbol", ""))
         if selected and symbol not in selected:
             continue
-        records.append(
+        legacy_records.append(
             {
+                "owner": owner_id,
                 "symbol": symbol,
+                "symbols": [symbol] if symbol else [],
                 "probe_key": record.get("probe_key"),
+                "probe": record.get("probe_key"),
+                "input_key": record.get("input_key", ""),
                 "status": record.get("status"),
                 "reason": record.get("reason"),
                 "duplicate_of": record.get("duplicate_of"),
                 "commit": record.get("commit"),
+                "source": "batch-history.json:legacy",
             }
         )
-    records.sort(key=lambda item: (str(item["symbol"]), str(item["probe_key"])))
-    return {
+    owner_source = source
+    if not owner_source:
+        owner_path = owner_id[5:] if owner_id.startswith("main:") else owner_id
+        owner_source = owner_path if owner_path.endswith(".c") else f"src/{owner_path}.c"
+    canonical_records: list[dict[str, Any]] = []
+    try:
+        for record in collect_rejected_probe_history(
+            root,
+            {"id": owner_id, "source": owner_source},
+            target_symbols=list(functions),
+            limit=12,
+        ):
+            symbols = record.get("symbols")
+            symbol_values = [str(item) for item in symbols if isinstance(item, str)] if isinstance(symbols, Sequence) and not isinstance(symbols, (str, bytes, bytearray)) else []
+            symbol = symbol_values[0] if symbol_values else ""
+            record_source = str(record.get("source", ""))
+            record_status = record.get("status") or (
+                "blocked" if record_source.startswith("blocked.json:") else ""
+            )
+            canonical_records.append(
+                {
+                    "owner": record.get("owner"),
+                    "symbol": symbol,
+                    "symbols": symbol_values,
+                    "probe_key": record.get("probe", ""),
+                    "probe": record.get("probe", ""),
+                    "input_key": record.get("input_key", ""),
+                    "status": record_status,
+                    "reason": record.get("reason"),
+                    "duplicate_of": record.get("duplicate_of"),
+                    "commit": record.get("commit"),
+                    "profile": record.get("profile", ""),
+                    "toolchain": record.get("toolchain", ""),
+                    "target_sha256": record.get("target_sha256", ""),
+                    "candidate_sha256": record.get("candidate_sha256", ""),
+                    "source": record_source,
+                    "artifact": record.get("artifact", ""),
+                }
+            )
+    except Exception:
+        # Context history is deliberately best effort; malformed queue/ledgers
+        # must never prevent a worker packet from being generated.
+        canonical_records = []
+
+    def history_identity(record: Mapping[str, Any]) -> tuple[str, ...]:
+        owner_text = str(record.get("owner") or owner_id).replace("\\", "/").strip()
+        owner_text = owner_text.split("#", 1)[0].strip("/")
+        folded_owner = owner_text.casefold()
+        if folded_owner.startswith("main:") or folded_owner.startswith("main/"):
+            owner_text = owner_text[5:]
+        if owner_text.casefold().startswith("src/"):
+            owner_text = owner_text[4:]
+        if owner_text.casefold().startswith("board/"):
+            owner_text = owner_text[6:]
+        if ":" in owner_text:
+            owner_text = owner_text.split(":", 1)[0]
+        if owner_text.casefold().endswith(".c"):
+            owner_text = owner_text[:-2]
+        owner = owner_text.strip("/").casefold()
+        symbols = record.get("symbols")
+        if isinstance(symbols, Sequence) and not isinstance(symbols, (str, bytes, bytearray)):
+            symbol_values = sorted({str(item).casefold() for item in symbols if isinstance(item, str)})
+        else:
+            symbol_values = [str(record.get("symbol", "")).casefold()] if record.get("symbol") else []
+        probe = str(record.get("probe_key") or record.get("probe") or "").casefold()
+        input_key = str(record.get("input_key", "")).casefold()
+        fallback = str(record.get("artifact") or record.get("source") or "").casefold()
+        return (owner, ",".join(symbol_values), probe, input_key or fallback)
+
+    def history_quality(record: Mapping[str, Any]) -> tuple[Any, ...]:
+        source_name = str(record.get("source", "")).casefold()
+        source_rank = (
+            3 if source_name.startswith("queue:")
+            else 2 if source_name.startswith("batch-history.json")
+            else 1 if source_name.startswith("blocked.json")
+            else 0
+        )
+        return (
+            bool(record.get("input_key")),
+            bool(record.get("status")),
+            bool(record.get("artifact") or record.get("report")),
+            source_rank,
+            source_name,
+            str(record.get("reason", "")).casefold(),
+        )
+
+    canonical_batch_probe_keys = {
+        (
+            str(record.get("owner") or owner_id).casefold(),
+            str(record.get("symbol", "")).casefold(),
+            str(record.get("probe_key") or record.get("probe") or "").casefold(),
+        )
+        for record in canonical_records
+        if not record.get("input_key")
+        and str(record.get("source", "")).startswith("batch-history.json")
+        and (record.get("probe_key") or record.get("probe"))
+    }
+    by_identity: dict[tuple[str, ...], dict[str, Any]] = {}
+    for source_records, legacy in ((canonical_records, False), (legacy_records, True)):
+        for record in source_records:
+            if legacy and not record.get("input_key"):
+                legacy_key = (
+                    str(record.get("owner") or owner_id).casefold(),
+                    str(record.get("symbol", "")).casefold(),
+                    str(record.get("probe_key") or record.get("probe") or "").casefold(),
+                )
+                if legacy_key in canonical_batch_probe_keys:
+                    continue
+            identity = history_identity(record)
+            current = by_identity.get(identity)
+            if current is None or history_quality(record) > history_quality(current):
+                by_identity[identity] = record
+    records = list(by_identity.values())
+    records.sort(key=lambda item: (str(item.get("symbol", "")), str(item.get("probe_key", "")), str(item.get("source", ""))))
+    status = "available" if records else legacy_status
+    result = {
         "path": _repo_relative(root, path),
-        "status": "available",
+        "status": status,
         "records": records,
     }
+    if warning and not records:
+        result["warning"] = warning
+    return result
 
 
 def _repo_relative(root: Path, path: Path) -> str:
@@ -1442,6 +1951,26 @@ def build_worker_packet(
                 "diff_kind_shape": item.get("diff_kind_shape"),
                 "target_calls": item.get("target_call_skeleton", []),
                 "diagnostics": item.get("diagnostics", []),
+                "function_forensics": item.get("function_forensics", {
+                    "target_range": {
+                        "start": 0,
+                        "end": number(item.get("target_bytes")),
+                        "size": number(item.get("target_bytes")),
+                    },
+                    "relocations": [],
+                    "direct_rel24_calls": [],
+                    "direct_calls": [],
+                    "direct_call_edges": [],
+                    "callback_edges": [],
+                    "data_symbols": [],
+                    "stack_clues": {
+                        "prologue": [],
+                        "frame_size": None,
+                        "r1_offsets": [],
+                        "registers": [],
+                        "diagnostics": list(item.get("diagnostics", [])),
+                    },
+                }),
                 "safe_actions": item.get("safe_actions", [])[:3],
             }
         )
@@ -1466,6 +1995,7 @@ def build_worker_packet(
                 "target_rank": item["target_rank"],
                 "target_bytes": item["target_bytes"],
                 "target_calls": item["target_calls"],
+                "function_forensics": item.get("function_forensics", {}),
             }
             for item in evidence
         ],
@@ -1518,7 +2048,12 @@ def build_worker_packet(
         "baseline": dict(report.get("summary", {})),
         "function_evidence": evidence,
         "knowledge_cards": knowledge_cards,
-        "probe_history": probe_history_summary(root, unit_name, dispatch["functions"]),
+        "probe_history": probe_history_summary(
+            root,
+            unit_name,
+            dispatch["functions"],
+            source=source,
+        ),
         "graphify": graph_context,
         "budgets": {
             "preferred_functions": [PREFERRED_PACKET_MIN_FUNCTIONS, PREFERRED_PACKET_MAX_FUNCTIONS],
@@ -2048,6 +2583,7 @@ def analyze(
                     target, strict_exact=strict_exact, value_exact=value_exact
                 ),
                 "diagnostics": diagnostics,
+                "function_forensics": function_forensics(strict.get("left", {}), target, diagnostics),
                 "register_cycle": register_cycle,
                 "stack_slot_cycle": stack_cycle,
                 "target_call_skeleton": calls,
