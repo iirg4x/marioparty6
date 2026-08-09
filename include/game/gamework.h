@@ -61,8 +61,8 @@ typedef struct GwPlayer_s {
     s16 star; //0x30
     s16 starMax; //0x32
     s16 capsuleUseNum; //0x34
-    s16 starGraph[GW_PLAYER_GRAPH_SIZE]; //0x36
-    s16 coinGraph[GW_PLAYER_GRAPH_SIZE]; //0x9E
+    u16 starGraph[GW_PLAYER_GRAPH_SIZE]; //0x36
+    u16 coinGraph[GW_PLAYER_GRAPH_SIZE]; //0x9E
 } GW_PLAYER;
 
 typedef struct GwDecaScore_s {
