@@ -15,6 +15,85 @@
 #include "game/sprite.h"
 #include "game/window.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
+
+enum {
+    MDRESULT_GROUP_CURSOR_X = 329,
+    MDRESULT_GROUP_CURSOR_Y = 330,
+    MDRESULT_GROUP_GRAPH_INDEX = 331,
+    MDRESULT_GROUP_VIEW_MODE = 332,
+    MDRESULT_GROUP_TABLE_COUNT = 333,
+};
+
+enum {
+    MDRESULT_OBJECT_MANAGER_PRIORITY = 8192,
+    MDRESULT_OBJECT_PRIORITY = 4096,
+    MDRESULT_MAIN_PROCESS_PRIORITY = 12288,
+    MDRESULT_MAIN_PROCESS_STACK_SIZE = 12288,
+    MDRESULT_CHARACTER_MOTION_COUNT = 80,
+    MDRESULT_MODEL_ARRAY_COUNT = 16,
+    MDRESULT_MOTION_ARRAY_COUNT = 16,
+    MDRESULT_LARGE_MODEL_ARRAY_COUNT = 32,
+    MDRESULT_WIN_MOTION_OFFSET = 32,
+    MDRESULT_OTHER_MOTION_OFFSET = 36,
+};
+
+enum {
+    MDRESULT_MESSAGE_GUIDE_START = MESSNUM(MESS_SYS_GUIDE, 0),
+    MDRESULT_MESSAGE_GUIDE_RETURN = MESSNUM(MESS_SYS_GUIDE, 8),
+    MDRESULT_MESSAGE_PARTY_GRAPH_STAR = MESSNUM(MESS_PARTY_RESULTS, 52),
+    MDRESULT_MESSAGE_PARTY_GRAPH_COIN = MESSNUM(MESS_PARTY_RESULTS, 53),
+    MDRESULT_MESSAGE_TEAM_GRAPH_STAR = MESSNUM(MESS_PARTY_RESULTS, 64),
+    MDRESULT_MESSAGE_TEAM_GRAPH_COIN = MESSNUM(MESS_PARTY_RESULTS, 65),
+};
+
+enum {
+    MDRESULT_GRAPH_GROUP_CAPACITY = 344,
+    MDRESULT_GRAPH_MODE_GROUP_CAPACITY = 37,
+    MDRESULT_TEAM_RESULT_GROUP_CAPACITY = 11,
+    MDRESULT_GRAPH_GRID_SPRITE_PRIORITY = 65,
+    MDRESULT_GRAPH_WIDE_SPRITE_PRIORITY = 70,
+    MDRESULT_GRAPH_SELECTED_SPRITE_PRIORITY = 95,
+    MDRESULT_GRAPH_MODE_SPRITE_PRIORITY = 60,
+    MDRESULT_GRAPH_VALUE_SPRITE_PRIORITY = 61,
+    MDRESULT_GRAPH_WIDE_SPRITE_ANIM = 54,
+    MDRESULT_GRAPH_LINE_SPRITE_ANIM = 48,
+    MDRESULT_GRAPH_SELECTED_SPRITE_ANIM = 28,
+    MDRESULT_GRAPH_MODE_LEFT_SPRITE_ANIM = 34,
+    MDRESULT_GRAPH_MODE_RIGHT_SPRITE_ANIM = 35,
+    MDRESULT_GRAPH_VALUE_SPRITE_ANIM = 33,
+    MDRESULT_GRAPH_GRID_END = 180,
+    MDRESULT_GRAPH_LINE_START = 240,
+    MDRESULT_GRAPH_WIDE_END = 240,
+    MDRESULT_TEAM_GRAPH_WIDE_END = 210,
+    MDRESULT_GRAPH_LINE_END = 255,
+    MDRESULT_GRAPH_SELECTED_END = 259,
+    MDRESULT_GRAPH_BANK_BASE = 240,
+    MDRESULT_GRAPH_GRID_X_STEP = 20,
+    MDRESULT_GRAPH_COLUMN_X_STEP = 76,
+    MDRESULT_GRAPH_GRID_X_START = 142,
+    MDRESULT_GRAPH_ROW_Y_STEP = 100,
+    MDRESULT_GRAPH_GRID_Y_START = 204,
+    MDRESULT_GRAPH_COLUMN_X_START = 162,
+    MDRESULT_GRAPH_VALUE_X_STEP = 54,
+    MDRESULT_GRAPH_VALUE_X_START = 153,
+    MDRESULT_GRAPH_VALUE_Y_STEP = 50,
+    MDRESULT_GRAPH_VALUE_Y_START = 131,
+    MDRESULT_GRAPH_DRAW_NO = 64,
+    MDRESULT_GRAPH_SCISSOR_X = 138,
+    MDRESULT_GRAPH_SCISSOR_Y = 90,
+    MDRESULT_GRAPH_SCISSOR_WIDTH = 425,
+    MDRESULT_GRAPH_SCISSOR_HEIGHT = 300,
+    MDRESULT_GRAPH_ALPHA_DIM = 32,
+    MDRESULT_COLOR_MAX = 255,
+};
+
+enum {
+    MDRESULT_PLAYER_WINDOW_WIDTH = 240,
+    MDRESULT_PLAYER_WINDOW_HEIGHT = 42,
+    MDRESULT_PARTICLE_COLOR_RED_GREEN = 136,
+    MDRESULT_PARTICLE_PAIRED_ALPHA = 64,
+};
 
 typedef struct MdResultCameraWork_s MDRESULT_CAMERA_WORK;
 typedef void (*MDRESULT_CAMERA_CALLBACK)(OMOBJ *obj, MDRESULT_CAMERA_WORK *camera);
@@ -476,7 +555,7 @@ extern ANIMDATA *lbl_1_bss_5C;
 extern MDRESULT_PLAYER_WORK lbl_1_bss_66C[4];
 extern MDRESULT_EMITTER_WORK lbl_1_bss_81C[9];
 extern s32 lbl_1_bss_12A0[4];
-extern HUSPR_GROUPID lbl_1_bss_3D2[0x14D];
+extern HUSPR_GROUPID lbl_1_bss_3D2[MDRESULT_GROUP_TABLE_COUNT];
 extern MDRESULT_GROUP_WORK lbl_1_bss_714;
 extern MDRESULT_SCORE_WORK lbl_1_bss_10D4[4];
 extern MDRESULT_MOVE_WORK lbl_1_bss_71C[4];
@@ -1705,7 +1784,7 @@ void fn_1_6CB8(OMOBJ *obj)
 {
     s16 i;
 
-    omSetStatBit(obj, 0x100);
+    omSetStatBit(obj, OM_STAT_MODELPAUSE);
     obj->mdlId[1] = Hu3DModelCreate(HuDataSelHeapReadNum(
         DATANUM(DATA_mdpresult, 15), HU_MEMNUM_OVL, HEAP_MODEL));
     obj->mtnId[1] = Hu3DMotionIDGet(obj->mdlId[1]);
@@ -2069,7 +2148,7 @@ void fn_1_8184(OMOBJ *obj)
 {
     s16 i;
 
-    omSetStatBit(obj, 256);
+    omSetStatBit(obj, OM_STAT_MODELPAUSE);
     for (i = 0; i < 4; i++) {
         obj->mdlId[i] = Hu3DModelCreate(HuDataSelHeapReadNum(
             DATANUM(DATA_mdpresult, 14), HU_MEMNUM_OVL, HEAP_MODEL));
@@ -2334,7 +2413,7 @@ void fn_1_F548(void)
     MDRESULT_SPRITE_INFO *desc;
     s16 i;
 
-    lbl_1_bss_0 = omInitObjMan(27, 0x2000);
+    lbl_1_bss_0 = omInitObjMan(27, MDRESULT_OBJECT_MANAGER_PRIORITY);
     omGameSysInit(lbl_1_bss_0);
 
     camera = &lbl_1_bss_12BC;
@@ -2430,37 +2509,39 @@ void fn_1_F548(void)
     fn_1_252F8();
     fn_1_1F308();
 
-    lbl_1_bss_C = omAddObjEx(lbl_1_bss_0, 0x1000, 4, 0x50, -1,
+    lbl_1_bss_C = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 4,
+        MDRESULT_CHARACTER_MOTION_COUNT, -1,
         fn_1_4694);
-    lbl_1_bss_4 = omAddObjEx(lbl_1_bss_0, 0x1000, 2, 8, -1,
+    lbl_1_bss_4 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 2, 8, -1,
         fn_1_4CD4);
-    lbl_1_bss_8 = omAddObjEx(lbl_1_bss_0, 0x1000, 2, 8, -1,
+    lbl_1_bss_8 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 2, 8, -1,
         fn_1_4EF0);
-    lbl_1_bss_10 = omAddObjEx(lbl_1_bss_0, 0x1000, 2, 2, -1,
+    lbl_1_bss_10 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 2, 2, -1,
         fn_1_5160);
-    lbl_1_bss_14 = omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1,
-        fn_1_6CB8);
-    lbl_1_bss_28 = omAddObjEx(lbl_1_bss_0, 0x1000, 4, 4, -1,
+    lbl_1_bss_14 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY,
+        MDRESULT_MODEL_ARRAY_COUNT, MDRESULT_MOTION_ARRAY_COUNT, -1, fn_1_6CB8);
+    lbl_1_bss_28 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 4, 4, -1,
         fn_1_8184);
-    lbl_1_bss_18 = omAddObjEx(lbl_1_bss_0, 0x1000, 8, 8, -1,
+    lbl_1_bss_18 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 8, 8, -1,
         fn_1_95E8);
-    lbl_1_bss_1C = omAddObjEx(lbl_1_bss_0, 0x1000, 8, 8, -1,
+    lbl_1_bss_1C = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 8, 8, -1,
         fn_1_AA7C);
-    lbl_1_bss_20 = omAddObjEx(lbl_1_bss_0, 0x1000, 0x10, 0x10, -1,
-        fn_1_CAEC);
-    lbl_1_bss_24 = omAddObjEx(lbl_1_bss_0, 0x1000, 0x20, 0, -1,
-        fn_1_B05C);
-    lbl_1_bss_2C = omAddObjEx(lbl_1_bss_0, 0x1000, 0, 0, -1,
+    lbl_1_bss_20 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY,
+        MDRESULT_MODEL_ARRAY_COUNT, MDRESULT_MOTION_ARRAY_COUNT, -1, fn_1_CAEC);
+    lbl_1_bss_24 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY,
+        MDRESULT_LARGE_MODEL_ARRAY_COUNT, 0, -1, fn_1_B05C);
+    lbl_1_bss_2C = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 0, 0, -1,
         fn_1_CE0C);
-    lbl_1_bss_30 = omAddObjEx(lbl_1_bss_0, 0x1000, 1, 1, -1,
+    lbl_1_bss_30 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 1, 1, -1,
         fn_1_31F8);
-    lbl_1_bss_34 = omAddObjEx(lbl_1_bss_0, 0x1000, 0, 0, -1,
+    lbl_1_bss_34 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 0, 0, -1,
         fn_1_17DCC);
-    lbl_1_bss_38 = omAddObjEx(lbl_1_bss_0, 0x1000, 3, 3, -1,
+    lbl_1_bss_38 = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 3, 3, -1,
         fn_1_1AD68);
-    lbl_1_bss_3C[0] = omAddObjEx(lbl_1_bss_0, 0x1000, 0, 0, -1,
+    lbl_1_bss_3C[0] = omAddObjEx(lbl_1_bss_0, MDRESULT_OBJECT_PRIORITY, 0, 0, -1,
         fn_1_1E358);
-    HuPrcChildCreate(fn_1_F1C4, 0x3000, 0x3000, 0, lbl_1_bss_0);
+    HuPrcChildCreate(fn_1_F1C4, MDRESULT_MAIN_PROCESS_PRIORITY,
+        MDRESULT_MAIN_PROCESS_STACK_SIZE, 0, lbl_1_bss_0);
 }
 
 void fn_1_17D94(void)
@@ -2520,7 +2601,8 @@ void fn_1_17F78(OMOBJ *obj)
         for (i = 0; i < 4; i++) {
             if (lbl_1_bss_70C[i] == 0) {
                 Hu3DMotionShiftSet(lbl_1_bss_C->mdlId[i],
-                    lbl_1_bss_C->mtnId[i + 0x24], lbl_1_rodata_104,
+                    lbl_1_bss_C->mtnId[i + MDRESULT_OTHER_MOTION_OFFSET],
+                    lbl_1_rodata_104,
                     lbl_1_rodata_104, 0);
             }
         }
@@ -2593,14 +2675,16 @@ void fn_1_181C0(void)
         if (i == 0) {
             lbl_1_bss_70C[p] = 1;
             Hu3DMotionShiftSet(lbl_1_bss_C->mdlId[p],
-                lbl_1_bss_C->mtnId[p + 0x20], lbl_1_rodata_104,
+                lbl_1_bss_C->mtnId[p + MDRESULT_WIN_MOTION_OFFSET],
+                lbl_1_rodata_104,
                 lbl_1_rodata_104, HU3D_MOTATTR_LOOP);
             Hu3DMotionShiftStartEndSet(lbl_1_bss_C->mdlId[p],
                 lbl_1_rodata_F4, lbl_1_rodata_25C);
         } else {
             lbl_1_bss_70C[p] = 0;
             Hu3DMotionShiftSet(lbl_1_bss_C->mdlId[p],
-                lbl_1_bss_C->mtnId[p + 0x24], lbl_1_rodata_104,
+                lbl_1_bss_C->mtnId[p + MDRESULT_OTHER_MOTION_OFFSET],
+                lbl_1_rodata_104,
                 lbl_1_rodata_104, 0);
         }
     }
@@ -4179,7 +4263,7 @@ void fn_1_17248(void)
             WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, 60);
             WipeWait();
             HuPrcSleep(10);
-            fn_1_295C(0x10000, 1);
+            fn_1_295C(MDRESULT_MESSAGE_GUIDE_START, 1);
             do {
                 HuPrcVSleep();
             } while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0);
@@ -4211,7 +4295,7 @@ void fn_1_17248(void)
             WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, 60);
             WipeWait();
             HuPrcSleep(10);
-            fn_1_295C(0x10008, 0);
+            fn_1_295C(MDRESULT_MESSAGE_GUIDE_RETURN, 0);
             for (;;) {
                 HuPrcVSleep();
                 if (HuPadBtnDown[0] & PAD_BUTTON_A) {
@@ -4290,15 +4374,15 @@ void fn_1_1B194(OMOBJ *obj)
     timer = obj->work[0];
     obj->work[0] = timer + 1;
     if (timer > 10) {
-        if (group[0x14C] == 0) {
+        if (group[MDRESULT_GROUP_VIEW_MODE] == 0) {
             if (HuPadDStkRep[0] & PAD_BUTTON_LEFT) {
-                group[0x149]--;
+                group[MDRESULT_GROUP_CURSOR_X]--;
                 obj->work[0] = 0;
-                if (group[0x149] < 0) {
-                    group[0x149] = 0;
-                    group[0x14A]--;
-                    if (group[0x14A] < 0) {
-                        group[0x14A] = 0;
+                if (group[MDRESULT_GROUP_CURSOR_X] < 0) {
+                    group[MDRESULT_GROUP_CURSOR_X] = 0;
+                    group[MDRESULT_GROUP_CURSOR_Y]--;
+                    if (group[MDRESULT_GROUP_CURSOR_Y] < 0) {
+                        group[MDRESULT_GROUP_CURSOR_Y] = 0;
                         obj->work[0] = 20;
                     }
                 }
@@ -4306,15 +4390,15 @@ void fn_1_1B194(OMOBJ *obj)
                     HuAudFXPlay(0);
                 }
             } else if (HuPadDStkRep[0] & PAD_BUTTON_RIGHT) {
-                group[0x149]++;
+                group[MDRESULT_GROUP_CURSOR_X]++;
                 obj->work[0] = 0;
-                if (group[0x149] > 4) {
-                    group[0x149] = 4;
-                    group[0x14A]++;
+                if (group[MDRESULT_GROUP_CURSOR_X] > 4) {
+                    group[MDRESULT_GROUP_CURSOR_X] = 4;
+                    group[MDRESULT_GROUP_CURSOR_Y]++;
                     mode = lbl_1_bss_1278.values[0];
                     limit = lbl_1_data_3A8[mode] - 5;
-                    if (group[0x14A] > limit) {
-                        group[0x14A] = limit;
+                    if (group[MDRESULT_GROUP_CURSOR_Y] > limit) {
+                        group[MDRESULT_GROUP_CURSOR_Y] = limit;
                         obj->work[0] = 20;
                     }
                 }
@@ -4323,57 +4407,57 @@ void fn_1_1B194(OMOBJ *obj)
                 }
             } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
                 HuAudFXPlay(0);
-                group[0x14B]++;
+                group[MDRESULT_GROUP_GRAPH_INDEX]++;
                 obj->work[0] = 0;
-                if (group[0x14B] > 3) {
-                    group[0x14B] = 0;
+                if (group[MDRESULT_GROUP_GRAPH_INDEX] > 3) {
+                    group[MDRESULT_GROUP_GRAPH_INDEX] = 0;
                 }
                 positions = lbl_1_rodata_190;
-                Hu3D2Dto3D(&positions.values[group[0x14B]
+                Hu3D2Dto3D(&positions.values[group[MDRESULT_GROUP_GRAPH_INDEX]
                     + (lbl_1_bss_1278.values[1] * 4)], 1, &world);
                 lbl_1_bss_109C[0] = world;
             } else if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
                 HuAudFXPlay(0);
-                group[0x14C] = (group[0x14C] + 1) % 3;
+                group[MDRESULT_GROUP_VIEW_MODE] = (group[MDRESULT_GROUP_VIEW_MODE] + 1) % 3;
                 fn_1_1BAF4();
                 obj->work[0] = 0;
             }
         } else if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
             HuAudFXPlay(0);
-            group[0x14B]--;
+            group[MDRESULT_GROUP_GRAPH_INDEX]--;
             obj->work[0] = 0;
-            if (group[0x14B] < 0) {
-                group[0x14B] = 3;
+            if (group[MDRESULT_GROUP_GRAPH_INDEX] < 0) {
+                group[MDRESULT_GROUP_GRAPH_INDEX] = 3;
             }
             positions = lbl_1_rodata_190;
-            Hu3D2Dto3D(&positions.values[group[0x14B]
+            Hu3D2Dto3D(&positions.values[group[MDRESULT_GROUP_GRAPH_INDEX]
                 + (lbl_1_bss_1278.values[1] * 4)], 1, &world);
             lbl_1_bss_109C[0] = world;
         } else if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
             HuAudFXPlay(0);
-            group[0x14C] = (group[0x14C] + 1) % 3;
+            group[MDRESULT_GROUP_VIEW_MODE] = (group[MDRESULT_GROUP_VIEW_MODE] + 1) % 3;
             fn_1_1BAF4();
             obj->work[0] = 0;
         }
     }
 
     mode = lbl_1_bss_1278.values[0];
-    if (group[0x14C] == 0) {
+    if (group[MDRESULT_GROUP_VIEW_MODE] == 0) {
         message = lbl_1_data_3B4[mode].values[
-            group[0x149] + group[0x14A]].message;
+            group[MDRESULT_GROUP_CURSOR_X] + group[MDRESULT_GROUP_CURSOR_Y]].message;
         fn_1_1E28(2, message, 0);
-    } else if (group[0x14C] == 1) {
-        fn_1_27A4(1, lbl_1_bss_1278.messages[group[0x14B]], 0);
-        fn_1_1E28(2, 0x000E0034, 0);
+    } else if (group[MDRESULT_GROUP_VIEW_MODE] == 1) {
+        fn_1_27A4(1, lbl_1_bss_1278.messages[group[MDRESULT_GROUP_GRAPH_INDEX]], 0);
+        fn_1_1E28(2, MDRESULT_MESSAGE_PARTY_GRAPH_STAR, 0);
     } else {
-        fn_1_27A4(1, lbl_1_bss_1278.messages[group[0x14B]], 0);
-        fn_1_1E28(2, 0x000E0035, 0);
+        fn_1_27A4(1, lbl_1_bss_1278.messages[group[MDRESULT_GROUP_GRAPH_INDEX]], 0);
+        fn_1_1E28(2, MDRESULT_MESSAGE_PARTY_GRAPH_COIN, 0);
     }
 
     lbl_1_data_754 = fn_1_1F8BC(lbl_1_data_754,
-        (float)(162 + (76 * group[0x149])), lbl_1_rodata_254);
+        (float)(162 + (76 * group[MDRESULT_GROUP_CURSOR_X])), lbl_1_rodata_254);
     lbl_1_bss_4C = fn_1_1F8BC(lbl_1_bss_4C,
-        (float)(-76 * group[0x14A]), lbl_1_rodata_254);
+        (float)(-76 * group[MDRESULT_GROUP_CURSOR_Y]), lbl_1_rodata_254);
     HuSprPosSet(group[0], 4, lbl_1_data_754, lbl_1_rodata_AD0);
     HuSprGrpPosSet(group[31], lbl_1_bss_4C, lbl_1_rodata_2D0);
 }
@@ -4406,14 +4490,14 @@ void fn_1_1BAF4(void)
         }
     }
     for (j = 0; j < limit; j++) {
-        HuSprBankSet(group[31], j + 0xF0,
+        HuSprBankSet(group[31], j + MDRESULT_GRAPH_BANK_BASE,
             lbl_1_data_3B4[mode].values[j].bank);
     }
     for (i = 0; i < 4; i++) {
         HuSprBankSet(group[0], i + 5, lbl_1_bss_1248[i].character);
     }
 
-    if (group[0x14C] == 0) {
+    if (group[MDRESULT_GROUP_VIEW_MODE] == 0) {
         Hu3DModelAttrSet(lbl_1_bss_30->mdlId[0], HU3D_ATTR_DISPOFF);
         return;
     }
@@ -4422,12 +4506,12 @@ void fn_1_1BAF4(void)
     HuSprAttrSet(group[0], 1, HUSPR_ATTR_DISPOFF);
     HuSprAttrSet(group[0], 2, HUSPR_ATTR_DISPOFF);
     HuSprAttrSet(group[0], 3, HUSPR_ATTR_DISPOFF);
-    HuSprAttrSet(group[291], group[0x14C] == 1 ? 0 : 1,
+    HuSprAttrSet(group[291], group[MDRESULT_GROUP_VIEW_MODE] == 1 ? 0 : 1,
         HUSPR_ATTR_DISPOFF);
     fn_1_1F7FC();
     positions = lbl_1_rodata_1F0;
     fn_1_2001C(lbl_1_bss_30->mdlId[0],
-        &positions.values[group[0x14B] + (lbl_1_bss_1278.values[1] * 4)],
+        &positions.values[group[MDRESULT_GROUP_GRAPH_INDEX] + (lbl_1_bss_1278.values[1] * 4)],
         NULL);
     Hu3DModelRotSet(lbl_1_bss_30->mdlId[0], lbl_1_rodata_104,
         lbl_1_rodata_104, lbl_1_rodata_104);
@@ -4538,7 +4622,8 @@ void fn_1_192BC(OMOBJ *obj)
         for (i = 0; i < 4; i++) {
             if (lbl_1_bss_70C[i] == 0) {
                 Hu3DMotionShiftSet(lbl_1_bss_C->mdlId[i],
-                    lbl_1_bss_C->mtnId[i + 0x24], lbl_1_rodata_104,
+                    lbl_1_bss_C->mtnId[i + MDRESULT_OTHER_MOTION_OFFSET],
+                    lbl_1_rodata_104,
                     lbl_1_rodata_104, 0);
             }
         }
@@ -4616,7 +4701,8 @@ void fn_1_19504(void)
             for (k = 0; k < 2; k++) {
                 idx = modelIdx[i][k];
                 Hu3DMotionShiftSet(lbl_1_bss_C->mdlId[idx],
-                    lbl_1_bss_C->mtnId[idx + 0x20], lbl_1_rodata_104,
+                    lbl_1_bss_C->mtnId[idx + MDRESULT_WIN_MOTION_OFFSET],
+                    lbl_1_rodata_104,
                     lbl_1_rodata_104, HU3D_MOTATTR_LOOP);
                 Hu3DMotionShiftStartEndSet(lbl_1_bss_C->mdlId[idx],
                     lbl_1_rodata_F4, lbl_1_rodata_25C);
@@ -4627,7 +4713,8 @@ void fn_1_19504(void)
             for (k = 0; k < 2; k++) {
                 idx = modelIdx[i][k];
                 Hu3DMotionShiftSet(lbl_1_bss_C->mdlId[idx],
-                    lbl_1_bss_C->mtnId[idx + 0x24], lbl_1_rodata_104,
+                    lbl_1_bss_C->mtnId[idx + MDRESULT_OTHER_MOTION_OFFSET],
+                    lbl_1_rodata_104,
                     lbl_1_rodata_104, 0);
             }
             lbl_1_bss_70C[modelIdx[i][0]] = 0;
@@ -4892,15 +4979,15 @@ void fn_1_1E5E8(HUSPRITE *sprite)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
     graphCount = lbl_1_bss_1278.values[1];
-    if (lbl_1_bss_1278.values[2] == 1 && group[0x14C] == 1) {
+    if (lbl_1_bss_1278.values[2] == 1 && group[MDRESULT_GROUP_VIEW_MODE] == 1) {
         graphCount++;
     }
-    lbl_1_bss_54 = group[0x14B];
+    lbl_1_bss_54 = group[MDRESULT_GROUP_GRAPH_INDEX];
     playerCount = (lbl_1_bss_1278.values[3] == 1) ? 2 : 4;
     max = lbl_1_rodata_104;
     for (i = 0; i < playerCount; i++) {
         for (j = 0; j <= graphCount; j++) {
-            if (group[0x14C] == 1) {
+            if (group[MDRESULT_GROUP_VIEW_MODE] == 1) {
                 if (max < lbl_1_bss_62[i][j]) {
                     max = lbl_1_bss_62[i][j];
                 }
@@ -4915,7 +5002,7 @@ void fn_1_1E5E8(HUSPRITE *sprite)
         for (j = 0; j <= graphCount; j++) {
             points[j].x = (float)j
                 * (lbl_1_rodata_E64 / (float)graphCount);
-            if (group[0x14C] == 1) {
+            if (group[MDRESULT_GROUP_VIEW_MODE] == 1) {
                 points[j].y = (float)(-lbl_1_bss_62[i][j]) * max;
                 lbl_1_bss_56 = 1;
             } else {
@@ -4945,7 +5032,8 @@ void fn_1_1E5E8(HUSPRITE *sprite)
         }
 
         {
-            u8 alpha = (i == lbl_1_bss_54) ? 0xFF : 0x20;
+            u8 alpha = (i == lbl_1_bss_54)
+                ? MDRESULT_COLOR_MAX : MDRESULT_GRAPH_ALPHA_DIM;
 
             for (j = 0; j < graphCount; j++) {
                 GXBegin(GX_QUADS, GX_VTXFMT0, 4);
@@ -4999,8 +5087,8 @@ void fn_1_1C0C8(OMOBJ *obj)
     (void)obj;
     spriteInfo = lbl_1_rodata_AD4;
     group[0] = HuSprGrpCreate(13);
-    group[31] = HuSprGrpCreate(0x158);
-    group[291] = HuSprGrpCreate(0x25);
+    group[31] = HuSprGrpCreate(MDRESULT_GRAPH_GROUP_CAPACITY);
+    group[291] = HuSprGrpCreate(MDRESULT_GRAPH_MODE_GROUP_CAPACITY);
 
     for (i = 0; i < 13; i++) {
         MDRESULT_PLAYER_SPRITE_INFO *info = &spriteInfo.values[i];
@@ -5022,7 +5110,8 @@ void fn_1_1C0C8(OMOBJ *obj)
     row = 0;
     col = 0;
     while (i < 180) {
-        HUSPRID sprite = HuSprCreate(lbl_1_bss_11AC[0], 0x41, 0);
+        HUSPRID sprite = HuSprCreate(lbl_1_bss_11AC[0],
+            MDRESULT_GRAPH_GRID_SPRITE_PRIORITY, 0);
         float x;
         float y;
 
@@ -5035,20 +5124,25 @@ void fn_1_1C0C8(OMOBJ *obj)
             row++;
             col = 0;
         }
-        x = (float)(j % 3 * 0x14 + col * 0x4C + 0x8E)
+        x = (float)(j % 3 * MDRESULT_GRAPH_GRID_X_STEP
+            + col * MDRESULT_GRAPH_COLUMN_X_STEP
+            + MDRESULT_GRAPH_GRID_X_START)
             - (float)lbl_1_rodata_300;
-        y = (float)(row * 0x64 + 0xCC) - (float)lbl_1_rodata_300;
+        y = (float)(row * MDRESULT_GRAPH_ROW_Y_STEP
+            + MDRESULT_GRAPH_GRID_Y_START) - (float)lbl_1_rodata_300;
         HuSprPosSet(group[31], i, x, y);
         i++;
         j++;
     }
 
-    i = 0xB4;
+    i = MDRESULT_GRAPH_GRID_END;
     j = 0;
     row = 0;
     col = 0;
-    while (i < 0xF0) {
-        HUSPRID sprite = HuSprCreate(lbl_1_bss_11AC[0x36], 0x46, 0);
+    while (i < MDRESULT_GRAPH_WIDE_END) {
+        HUSPRID sprite = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_WIDE_SPRITE_ANIM],
+            MDRESULT_GRAPH_WIDE_SPRITE_PRIORITY, 0);
         float x;
         float y;
 
@@ -5061,19 +5155,23 @@ void fn_1_1C0C8(OMOBJ *obj)
             row++;
             col = 0;
         }
-        x = (float)(col * 0x4C + 0xA2) - (float)lbl_1_rodata_300;
-        y = (float)(row * 0x64 + 0xCC) - (float)lbl_1_rodata_300;
+        x = (float)(col * MDRESULT_GRAPH_COLUMN_X_STEP
+            + MDRESULT_GRAPH_COLUMN_X_START) - (float)lbl_1_rodata_300;
+        y = (float)(row * MDRESULT_GRAPH_ROW_Y_STEP
+            + MDRESULT_GRAPH_GRID_Y_START) - (float)lbl_1_rodata_300;
         HuSprPosSet(group[31], i, x, y);
         i++;
         j++;
     }
 
-    i = 0xF0;
+    i = MDRESULT_GRAPH_LINE_START;
     j = 0;
     row = 0;
     col = 0;
-    while (i < 0xFF) {
-        HUSPRID sprite = HuSprCreate(lbl_1_bss_11AC[0x30], 0x41, 0);
+    while (i < MDRESULT_GRAPH_LINE_END) {
+        HUSPRID sprite = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_LINE_SPRITE_ANIM],
+            MDRESULT_GRAPH_GRID_SPRITE_PRIORITY, 0);
         float x;
 
         group[i + 32] = sprite;
@@ -5081,17 +5179,20 @@ void fn_1_1C0C8(OMOBJ *obj)
         if (j != 0) {
             col++;
         }
-        x = (float)(col * 0x4C + 0xA2) - (float)lbl_1_rodata_300;
+        x = (float)(col * MDRESULT_GRAPH_COLUMN_X_STEP
+            + MDRESULT_GRAPH_COLUMN_X_START) - (float)lbl_1_rodata_300;
         HuSprPosSet(group[31], i, x, lbl_1_rodata_CB0);
         i++;
         j++;
     }
 
-    i = 0xFF;
+    i = MDRESULT_GRAPH_LINE_END;
     j = 13;
-    while (i < 0x103) {
+    while (i < MDRESULT_GRAPH_SELECTED_END) {
         MDRESULT_PLAYER_SPRITE_INFO *info = &spriteInfo.values[j];
-        HUSPRID sprite = HuSprCreate(lbl_1_bss_11AC[0x1C], 0x5F, 0);
+        HUSPRID sprite = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_SELECTED_SPRITE_ANIM],
+            MDRESULT_GRAPH_SELECTED_SPRITE_PRIORITY, 0);
 
         group[i + 32] = sprite;
         HuSprGrpMemberSet(group[31], i, sprite);
@@ -5102,10 +5203,14 @@ void fn_1_1C0C8(OMOBJ *obj)
         j++;
     }
 
-    group[292] = HuSprCreate(lbl_1_bss_11AC[0x22], 0x3C, 0);
+    group[292] = HuSprCreate(
+        lbl_1_bss_11AC[MDRESULT_GRAPH_MODE_LEFT_SPRITE_ANIM],
+        MDRESULT_GRAPH_MODE_SPRITE_PRIORITY, 0);
     HuSprGrpMemberSet(group[291], 0, group[292]);
     HuSprPosSet(group[291], 0, lbl_1_rodata_CB4, lbl_1_rodata_AD0);
-    group[293] = HuSprCreate(lbl_1_bss_11AC[0x23], 0x3C, 0);
+    group[293] = HuSprCreate(
+        lbl_1_bss_11AC[MDRESULT_GRAPH_MODE_RIGHT_SPRITE_ANIM],
+        MDRESULT_GRAPH_MODE_SPRITE_PRIORITY, 0);
     HuSprGrpMemberSet(group[291], 1, group[293]);
     HuSprPosSet(group[291], 1, lbl_1_rodata_CB4, lbl_1_rodata_AD0);
 
@@ -5113,8 +5218,10 @@ void fn_1_1C0C8(OMOBJ *obj)
     j = 0;
     row = 0;
     col = 0;
-    while (i < 0x25) {
-        HUSPRID sprite = HuSprCreate(lbl_1_bss_11AC[0x21], 0x3D, 0);
+    while (i < MDRESULT_GRAPH_MODE_GROUP_CAPACITY) {
+        HUSPRID sprite = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_VALUE_SPRITE_ANIM],
+            MDRESULT_GRAPH_VALUE_SPRITE_PRIORITY, 0);
         float x;
         float y;
 
@@ -5127,8 +5234,10 @@ void fn_1_1C0C8(OMOBJ *obj)
             row++;
             col = 0;
         }
-        x = (float)(col * 0x36 + 0x99) - (float)lbl_1_rodata_300;
-        y = (float)(row * 0x32 + 0x83) - (float)lbl_1_rodata_300;
+        x = (float)(col * MDRESULT_GRAPH_VALUE_X_STEP
+            + MDRESULT_GRAPH_VALUE_X_START) - (float)lbl_1_rodata_300;
+        y = (float)(row * MDRESULT_GRAPH_VALUE_Y_STEP
+            + MDRESULT_GRAPH_VALUE_Y_START) - (float)lbl_1_rodata_300;
         HuSprPosSet(group[291], i, x, y);
         i++;
         j++;
@@ -5137,14 +5246,16 @@ void fn_1_1C0C8(OMOBJ *obj)
     HuSprGrpPosSet(group[0], lbl_1_rodata_104, lbl_1_rodata_2D0);
     HuSprGrpPosSet(group[31], lbl_1_rodata_104, lbl_1_rodata_2D0);
     HuSprGrpPosSet(group[291], lbl_1_rodata_104, lbl_1_rodata_2D0);
-    HuSprGrpDrawNoSet(group[0], 0x40);
-    HuSprGrpDrawNoSet(group[31], 0x40);
-    HuSprGrpDrawNoSet(group[291], 0x40);
-    HuSprGrpScissorSet(group[31], 0x8A, 0x5A, 0x1A9, 0x12C);
-    group[0x149] = 0;
-    group[0x14A] = 0;
-    group[0x14B] = 0;
-    group[0x14C] = 0;
+    HuSprGrpDrawNoSet(group[0], MDRESULT_GRAPH_DRAW_NO);
+    HuSprGrpDrawNoSet(group[31], MDRESULT_GRAPH_DRAW_NO);
+    HuSprGrpDrawNoSet(group[291], MDRESULT_GRAPH_DRAW_NO);
+    HuSprGrpScissorSet(group[31], MDRESULT_GRAPH_SCISSOR_X,
+        MDRESULT_GRAPH_SCISSOR_Y, MDRESULT_GRAPH_SCISSOR_WIDTH,
+        MDRESULT_GRAPH_SCISSOR_HEIGHT);
+    group[MDRESULT_GROUP_CURSOR_X] = 0;
+    group[MDRESULT_GROUP_CURSOR_Y] = 0;
+    group[MDRESULT_GROUP_GRAPH_INDEX] = 0;
+    group[MDRESULT_GROUP_VIEW_MODE] = 0;
 }
 
 void fn_1_1C9A0(void)
@@ -5165,15 +5276,15 @@ void fn_1_1C9B8(OMOBJ *obj)
     timer = obj->work[0];
     obj->work[0] = timer + 1;
     if (timer > 10) {
-        if (group[0x14C] == 0) {
+        if (group[MDRESULT_GROUP_VIEW_MODE] == 0) {
             if (HuPadDStkRep[0] & PAD_BUTTON_LEFT) {
-                group[0x149]--;
+                group[MDRESULT_GROUP_CURSOR_X]--;
                 obj->work[0] = 0;
-                if (group[0x149] < 0) {
-                    group[0x149] = 0;
-                    group[0x14A]--;
-                    if (group[0x14A] < 0) {
-                        group[0x14A] = 0;
+                if (group[MDRESULT_GROUP_CURSOR_X] < 0) {
+                    group[MDRESULT_GROUP_CURSOR_X] = 0;
+                    group[MDRESULT_GROUP_CURSOR_Y]--;
+                    if (group[MDRESULT_GROUP_CURSOR_Y] < 0) {
+                        group[MDRESULT_GROUP_CURSOR_Y] = 0;
                         obj->work[0] = 20;
                     }
                 }
@@ -5181,15 +5292,15 @@ void fn_1_1C9B8(OMOBJ *obj)
                     HuAudFXPlay(0);
                 }
             } else if (HuPadDStkRep[0] & PAD_BUTTON_RIGHT) {
-                group[0x149]++;
+                group[MDRESULT_GROUP_CURSOR_X]++;
                 obj->work[0] = 0;
-                if (group[0x149] > 4) {
-                    group[0x149] = 4;
-                    group[0x14A]++;
+                if (group[MDRESULT_GROUP_CURSOR_X] > 4) {
+                    group[MDRESULT_GROUP_CURSOR_X] = 4;
+                    group[MDRESULT_GROUP_CURSOR_Y]++;
                     mode = lbl_1_bss_1278.values[0];
                     limit = lbl_1_data_3A8[mode] - 5;
-                    if (group[0x14A] > limit) {
-                        group[0x14A] = limit;
+                    if (group[MDRESULT_GROUP_CURSOR_Y] > limit) {
+                        group[MDRESULT_GROUP_CURSOR_Y] = limit;
                         obj->work[0] = 20;
                     }
                 }
@@ -5198,57 +5309,57 @@ void fn_1_1C9B8(OMOBJ *obj)
                 }
             } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
                 HuAudFXPlay(0);
-                group[0x14B]++;
+                group[MDRESULT_GROUP_GRAPH_INDEX]++;
                 obj->work[0] = 0;
-                if (group[0x14B] > 1) {
-                    group[0x14B] = 0;
+                if (group[MDRESULT_GROUP_GRAPH_INDEX] > 1) {
+                    group[MDRESULT_GROUP_GRAPH_INDEX] = 0;
                 }
                 positions = lbl_1_rodata_190;
-                Hu3D2Dto3D(&positions.values[group[0x14B]
+                Hu3D2Dto3D(&positions.values[group[MDRESULT_GROUP_GRAPH_INDEX]
                     + (lbl_1_bss_1278.values[1] * 4)], 1, &world);
                 lbl_1_bss_109C[0] = world;
             } else if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
                 HuAudFXPlay(0);
-                group[0x14C] = (group[0x14C] + 1) % 3;
+                group[MDRESULT_GROUP_VIEW_MODE] = (group[MDRESULT_GROUP_VIEW_MODE] + 1) % 3;
                 fn_1_1D318();
                 obj->work[0] = 0;
             }
         } else if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
             HuAudFXPlay(0);
-            group[0x14B]--;
+            group[MDRESULT_GROUP_GRAPH_INDEX]--;
             obj->work[0] = 0;
-            if (group[0x14B] < 0) {
-                group[0x14B] = 1;
+            if (group[MDRESULT_GROUP_GRAPH_INDEX] < 0) {
+                group[MDRESULT_GROUP_GRAPH_INDEX] = 1;
             }
             positions = lbl_1_rodata_190;
-            Hu3D2Dto3D(&positions.values[group[0x14B]
+            Hu3D2Dto3D(&positions.values[group[MDRESULT_GROUP_GRAPH_INDEX]
                 + (lbl_1_bss_1278.values[1] * 4)], 1, &world);
             lbl_1_bss_109C[0] = world;
         } else if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
             HuAudFXPlay(0);
-            group[0x14C] = (group[0x14C] + 1) % 3;
+            group[MDRESULT_GROUP_VIEW_MODE] = (group[MDRESULT_GROUP_VIEW_MODE] + 1) % 3;
             fn_1_1D318();
             obj->work[0] = 0;
         }
     }
 
     mode = lbl_1_bss_1278.values[0];
-    if (group[0x14C] == 0) {
+    if (group[MDRESULT_GROUP_VIEW_MODE] == 0) {
         message = lbl_1_data_3B4[mode].values[
-            group[0x149] + group[0x14A]].message;
+            group[MDRESULT_GROUP_CURSOR_X] + group[MDRESULT_GROUP_CURSOR_Y]].message;
         fn_1_1E28(2, message, 0);
-    } else if (group[0x14C] == 1) {
-        fn_1_27A4(1, lbl_1_bss_1278.messages[4 + group[0x14B]], 0);
-        fn_1_1E28(2, 0x000E0040, 0);
+    } else if (group[MDRESULT_GROUP_VIEW_MODE] == 1) {
+        fn_1_27A4(1, lbl_1_bss_1278.messages[4 + group[MDRESULT_GROUP_GRAPH_INDEX]], 0);
+        fn_1_1E28(2, MDRESULT_MESSAGE_TEAM_GRAPH_STAR, 0);
     } else {
-        fn_1_27A4(1, lbl_1_bss_1278.messages[4 + group[0x14B]], 0);
-        fn_1_1E28(2, 0x000E0041, 0);
+        fn_1_27A4(1, lbl_1_bss_1278.messages[4 + group[MDRESULT_GROUP_GRAPH_INDEX]], 0);
+        fn_1_1E28(2, MDRESULT_MESSAGE_TEAM_GRAPH_COIN, 0);
     }
 
     lbl_1_data_758 = fn_1_1F8BC(lbl_1_data_758,
-        (float)(162 + (76 * group[0x149])), lbl_1_rodata_254);
+        (float)(162 + (76 * group[MDRESULT_GROUP_CURSOR_X])), lbl_1_rodata_254);
     lbl_1_bss_50 = fn_1_1F8BC(lbl_1_bss_50,
-        (float)(-76 * group[0x14A]), lbl_1_rodata_254);
+        (float)(-76 * group[MDRESULT_GROUP_CURSOR_Y]), lbl_1_rodata_254);
     HuSprPosSet(group[0], 4, lbl_1_data_758, lbl_1_rodata_AD0);
     HuSprGrpPosSet(group[31], lbl_1_bss_50, lbl_1_rodata_2D0);
 }
@@ -5294,14 +5405,14 @@ void fn_1_1D318(void)
         }
     }
     for (j = 0; j < limit; j++) {
-        HuSprBankSet(group[31], j + 0xF0,
+        HuSprBankSet(group[31], j + MDRESULT_GRAPH_BANK_BASE,
             lbl_1_data_3B4[mode].values[j].bank);
     }
     for (i = 0; i < 4; i++) {
         HuSprBankSet(group[0], i + 5, lbl_1_bss_1248[i].character);
     }
 
-    if (group[0x14C] == 0) {
+    if (group[MDRESULT_GROUP_VIEW_MODE] == 0) {
         Hu3DModelAttrSet(lbl_1_bss_30->mdlId[0], HU3D_ATTR_DISPOFF);
         return;
     }
@@ -5310,12 +5421,12 @@ void fn_1_1D318(void)
     HuSprAttrSet(group[0], 1, HUSPR_ATTR_DISPOFF);
     HuSprAttrSet(group[0], 2, HUSPR_ATTR_DISPOFF);
     HuSprAttrSet(group[0], 3, HUSPR_ATTR_DISPOFF);
-    HuSprAttrSet(group[291], group[0x14C] == 1 ? 0 : 1,
+    HuSprAttrSet(group[291], group[MDRESULT_GROUP_VIEW_MODE] == 1 ? 0 : 1,
         HUSPR_ATTR_DISPOFF);
     fn_1_1F7FC();
     positions = lbl_1_rodata_1F0;
     fn_1_2001C(lbl_1_bss_30->mdlId[0],
-        &positions.values[group[0x14B] + (lbl_1_bss_1278.values[1] * 4)],
+        &positions.values[group[MDRESULT_GROUP_GRAPH_INDEX] + (lbl_1_bss_1278.values[1] * 4)],
         NULL);
     Hu3DModelRotSet(lbl_1_bss_30->mdlId[0], lbl_1_rodata_104,
         lbl_1_rodata_104, lbl_1_rodata_104);
@@ -5335,9 +5446,9 @@ void fn_1_1D8EC(OMOBJ *obj)
     s16 row;
     s16 col;
 
-    group[0] = HuSprGrpCreate(0x0B);
-    group[31] = HuSprGrpCreate(0x158);
-    group[291] = HuSprGrpCreate(0x25);
+    group[0] = HuSprGrpCreate(MDRESULT_TEAM_RESULT_GROUP_CAPACITY);
+    group[31] = HuSprGrpCreate(MDRESULT_GRAPH_GROUP_CAPACITY);
+    group[291] = HuSprGrpCreate(MDRESULT_GRAPH_MODE_GROUP_CAPACITY);
 
     for (i = 0; i < 11; i++) {
         if (spriteInfo.values[i].animNo != -1) {
@@ -5358,7 +5469,8 @@ void fn_1_1D8EC(OMOBJ *obj)
     row = 0;
     col = 0;
     while (i < 90) {
-        group[i + 32] = HuSprCreate(lbl_1_bss_11AC[0], 0x41, 0);
+        group[i + 32] = HuSprCreate(lbl_1_bss_11AC[0],
+            MDRESULT_GRAPH_GRID_SPRITE_PRIORITY, 0);
         HuSprGrpMemberSet(group[31], i, group[i + 32]);
         if (j != 0 && (j % 3) == 0) {
             col++;
@@ -5368,19 +5480,24 @@ void fn_1_1D8EC(OMOBJ *obj)
             col = 0;
         }
         HuSprPosSet(group[31], i,
-            (float)(j % 3 * 0x14 + col * 0x4C + 0x8E)
+            (float)(j % 3 * MDRESULT_GRAPH_GRID_X_STEP
+                + col * MDRESULT_GRAPH_COLUMN_X_STEP
+                + MDRESULT_GRAPH_GRID_X_START)
                 - (float)lbl_1_rodata_300,
-            (float)(row * 0x64 + 0xCC) - (float)lbl_1_rodata_300);
+            (float)(row * MDRESULT_GRAPH_ROW_Y_STEP
+                + MDRESULT_GRAPH_GRID_Y_START) - (float)lbl_1_rodata_300);
         i++;
         j++;
     }
 
-    i = 0xB4;
+    i = MDRESULT_GRAPH_GRID_END;
     j = 0;
     row = 0;
     col = 0;
-    while (i < 0xD2) {
-        group[i + 32] = HuSprCreate(lbl_1_bss_11AC[0x36], 0x46, 0);
+    while (i < MDRESULT_TEAM_GRAPH_WIDE_END) {
+        group[i + 32] = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_WIDE_SPRITE_ANIM],
+            MDRESULT_GRAPH_WIDE_SPRITE_PRIORITY, 0);
         HuSprGrpMemberSet(group[31], i, group[i + 32]);
         if (j != 0) {
             col++;
@@ -5390,33 +5507,40 @@ void fn_1_1D8EC(OMOBJ *obj)
             col = 0;
         }
         HuSprPosSet(group[31], i,
-            (float)(col * 0x4C + 0xA2) - (float)lbl_1_rodata_300,
-            (float)(row * 0x64 + 0xCC) - (float)lbl_1_rodata_300);
+            (float)(col * MDRESULT_GRAPH_COLUMN_X_STEP
+                + MDRESULT_GRAPH_COLUMN_X_START) - (float)lbl_1_rodata_300,
+            (float)(row * MDRESULT_GRAPH_ROW_Y_STEP
+                + MDRESULT_GRAPH_GRID_Y_START) - (float)lbl_1_rodata_300);
         i++;
         j++;
     }
 
-    i = 0xF0;
+    i = MDRESULT_GRAPH_LINE_START;
     j = 0;
     row = 0;
     col = 0;
-    while (i < 0xFF) {
-        group[i + 32] = HuSprCreate(lbl_1_bss_11AC[0x30], 0x41, 0);
+    while (i < MDRESULT_GRAPH_LINE_END) {
+        group[i + 32] = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_LINE_SPRITE_ANIM],
+            MDRESULT_GRAPH_GRID_SPRITE_PRIORITY, 0);
         HuSprGrpMemberSet(group[31], i, group[i + 32]);
         if (j != 0) {
             col++;
         }
         HuSprPosSet(group[31], i,
-            (float)(col * 0x4C + 0xA2) - (float)lbl_1_rodata_300,
+            (float)(col * MDRESULT_GRAPH_COLUMN_X_STEP
+                + MDRESULT_GRAPH_COLUMN_X_START) - (float)lbl_1_rodata_300,
             lbl_1_rodata_CB0);
         i++;
         j++;
     }
 
-    i = 0xFF;
+    i = MDRESULT_GRAPH_LINE_END;
     j = 11;
-    while (i < 0x103) {
-        group[i + 32] = HuSprCreate(lbl_1_bss_11AC[0x1C], 0x5F, 0);
+    while (i < MDRESULT_GRAPH_SELECTED_END) {
+        group[i + 32] = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_SELECTED_SPRITE_ANIM],
+            MDRESULT_GRAPH_SELECTED_SPRITE_PRIORITY, 0);
         HuSprGrpMemberSet(group[31], i, group[i + 32]);
         HuSprPosSet(group[31], i, spriteInfo.values[j].pos.x,
             spriteInfo.values[j].pos.y);
@@ -5427,10 +5551,14 @@ void fn_1_1D8EC(OMOBJ *obj)
         j++;
     }
 
-    group[292] = HuSprCreate(lbl_1_bss_11AC[0x22], 0x3C, 0);
+    group[292] = HuSprCreate(
+        lbl_1_bss_11AC[MDRESULT_GRAPH_MODE_LEFT_SPRITE_ANIM],
+        MDRESULT_GRAPH_MODE_SPRITE_PRIORITY, 0);
     HuSprGrpMemberSet(group[291], 0, group[292]);
     HuSprPosSet(group[291], 0, lbl_1_rodata_CB4, lbl_1_rodata_AD0);
-    group[293] = HuSprCreate(lbl_1_bss_11AC[0x23], 0x3C, 0);
+    group[293] = HuSprCreate(
+        lbl_1_bss_11AC[MDRESULT_GRAPH_MODE_RIGHT_SPRITE_ANIM],
+        MDRESULT_GRAPH_MODE_SPRITE_PRIORITY, 0);
     HuSprGrpMemberSet(group[291], 1, group[293]);
     HuSprPosSet(group[291], 1, lbl_1_rodata_CB4, lbl_1_rodata_AD0);
 
@@ -5438,8 +5566,10 @@ void fn_1_1D8EC(OMOBJ *obj)
     j = 0;
     row = 0;
     col = 0;
-    while (i < 0x25) {
-        group[i + 292] = HuSprCreate(lbl_1_bss_11AC[0x21], 0x3D, 0);
+    while (i < MDRESULT_GRAPH_MODE_GROUP_CAPACITY) {
+        group[i + 292] = HuSprCreate(
+            lbl_1_bss_11AC[MDRESULT_GRAPH_VALUE_SPRITE_ANIM],
+            MDRESULT_GRAPH_VALUE_SPRITE_PRIORITY, 0);
         HuSprGrpMemberSet(group[291], i, group[i + 292]);
         if (j != 0) {
             col++;
@@ -5449,8 +5579,10 @@ void fn_1_1D8EC(OMOBJ *obj)
             col = 0;
         }
         HuSprPosSet(group[291], i,
-            (float)(col * 0x36 + 0x99) - (float)lbl_1_rodata_300,
-            (float)(row * 0x32 + 0x83) - (float)lbl_1_rodata_300);
+            (float)(col * MDRESULT_GRAPH_VALUE_X_STEP
+                + MDRESULT_GRAPH_VALUE_X_START) - (float)lbl_1_rodata_300,
+            (float)(row * MDRESULT_GRAPH_VALUE_Y_STEP
+                + MDRESULT_GRAPH_VALUE_Y_START) - (float)lbl_1_rodata_300);
         i++;
         j++;
     }
@@ -5458,14 +5590,16 @@ void fn_1_1D8EC(OMOBJ *obj)
     HuSprGrpPosSet(group[0], lbl_1_rodata_104, lbl_1_rodata_2D0);
     HuSprGrpPosSet(group[31], lbl_1_rodata_104, lbl_1_rodata_2D0);
     HuSprGrpPosSet(group[291], lbl_1_rodata_104, lbl_1_rodata_2D0);
-    HuSprGrpDrawNoSet(group[0], 0x40);
-    HuSprGrpDrawNoSet(group[31], 0x40);
-    HuSprGrpDrawNoSet(group[291], 0x40);
-    HuSprGrpScissorSet(group[31], 0x8A, 0x5A, 0x1A9, 0x12C);
-    group[0x149] = 0;
-    group[0x14A] = 0;
-    group[0x14B] = 0;
-    group[0x14C] = 0;
+    HuSprGrpDrawNoSet(group[0], MDRESULT_GRAPH_DRAW_NO);
+    HuSprGrpDrawNoSet(group[31], MDRESULT_GRAPH_DRAW_NO);
+    HuSprGrpDrawNoSet(group[291], MDRESULT_GRAPH_DRAW_NO);
+    HuSprGrpScissorSet(group[31], MDRESULT_GRAPH_SCISSOR_X,
+        MDRESULT_GRAPH_SCISSOR_Y, MDRESULT_GRAPH_SCISSOR_WIDTH,
+        MDRESULT_GRAPH_SCISSOR_HEIGHT);
+    group[MDRESULT_GROUP_CURSOR_X] = 0;
+    group[MDRESULT_GROUP_CURSOR_Y] = 0;
+    group[MDRESULT_GROUP_GRAPH_INDEX] = 0;
+    group[MDRESULT_GROUP_VIEW_MODE] = 0;
 }
 
 void fn_1_1E19C(void)
@@ -6208,7 +6342,7 @@ void fn_1_1A570(OMOBJ *obj)
                 lbl_1_rodata_104, lbl_1_rodata_104, HU3D_MOTATTR_LOOP);
         }
         work->winId = HuWinExCreateFrame(lbl_1_rodata_104, lbl_1_rodata_104,
-            0xF0, 0x2A, -1, 0);
+            MDRESULT_PLAYER_WINDOW_WIDTH, MDRESULT_PLAYER_WINDOW_HEIGHT, -1, 0);
         HuWinDispOff(work->winId);
         HuWinBGTPLvlSet(work->winId, lbl_1_rodata_104);
         HuWinPriSet(work->winId, 0);
@@ -6623,9 +6757,9 @@ void fn_1_20554(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             data->pos.x = frandmod(2000) - 1000;
             data->pos.y = frandmod(1000);
             data->pos.z = -frandmod(2000) + 1000;
-            data->color.r = 0x88;
-            data->color.g = 0x88;
-            data->color.b = 0xFF;
+            data->color.r = MDRESULT_PARTICLE_COLOR_RED_GREEN;
+            data->color.g = MDRESULT_PARTICLE_COLOR_RED_GREEN;
+            data->color.b = MDRESULT_COLOR_MAX;
             data->color.a = 0;
             data->vel.x = lbl_1_rodata_E70;
             data->vel.y = frandmod(120) + 120;
@@ -6653,14 +6787,14 @@ void fn_1_20554(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             paired->pos.x = data->pos.x;
             paired->pos.y = data->pos.y;
             paired->pos.z = data->pos.z;
-            paired->color.r = 0x88;
-            paired->color.g = 0x88;
-            paired->color.b = 0xFF;
-            paired->color.a = 0x40;
-            data->color.r = 0x88;
-            data->color.g = 0x88;
-            data->color.b = 0xFF;
-            data->color.a = 0xFF;
+            paired->color.r = MDRESULT_PARTICLE_COLOR_RED_GREEN;
+            paired->color.g = MDRESULT_PARTICLE_COLOR_RED_GREEN;
+            paired->color.b = MDRESULT_COLOR_MAX;
+            paired->color.a = MDRESULT_PARTICLE_PAIRED_ALPHA;
+            data->color.r = MDRESULT_PARTICLE_COLOR_RED_GREEN;
+            data->color.g = MDRESULT_PARTICLE_COLOR_RED_GREEN;
+            data->color.b = MDRESULT_COLOR_MAX;
+            data->color.a = MDRESULT_COLOR_MAX;
             alpha = (u8)(data->vel.z * data->accel.x);
             data->color.a = alpha;
             alpha = (u8)((data->color.a * data->accel.x) * lbl_1_rodata_EE0);
@@ -7980,7 +8114,7 @@ void fn_1_CAEC(OMOBJ *obj)
 {
     s16 i;
 
-    omSetStatBit(obj, 256);
+    omSetStatBit(obj, OM_STAT_MODELPAUSE);
     for (i = 0; i < 4; i++) {
         obj->mdlId[i] = Hu3DModelCreate(HuDataSelHeapReadNum(
             DATANUM(DATA_mdpresult, 63), HU_MEMNUM_OVL, HEAP_MODEL));
@@ -9097,7 +9231,7 @@ MDRESULT_MOVE_WORK lbl_1_bss_71C[4];
 MDRESULT_GROUP_WORK lbl_1_bss_714;
 s16 lbl_1_bss_70C[4];
 MDRESULT_PLAYER_WORK lbl_1_bss_66C[4];
-HUSPR_GROUPID lbl_1_bss_3D2[0x14D];
+HUSPR_GROUPID lbl_1_bss_3D2[MDRESULT_GROUP_TABLE_COUNT];
 s16 lbl_1_bss_21A[4][55];
 s16 lbl_1_bss_62[4][55];
 HUSPR_GROUPID lbl_1_bss_60;
