@@ -351,7 +351,7 @@ void hwSetFilter(u32 v, u8 mode, u16 coefA, u16 coefB) {
 }
 #endif
 
-static void SetupITD(DSPvoice* dsp_vptr, u8 pan) {
+static inline void SetupITD(DSPvoice* dsp_vptr, u8 pan) {
   dsp_vptr->itdShiftL = itdOffTab[pan];
   dsp_vptr->itdShiftR = 32 - itdOffTab[pan];
   dsp_vptr->changed[0] |= HW_CHANGED_ITD;
@@ -530,7 +530,7 @@ void hwInitSampleMem(u32 baseAddr, u32 length) {
 
 void hwExitSampleMem() { aramExit(); }
 
-static u32 convert_length(u32 len, u8 type) {
+static inline u32 convert_length(u32 len, u8 type) {
   switch (type) {
   case 0:
   case 1:
