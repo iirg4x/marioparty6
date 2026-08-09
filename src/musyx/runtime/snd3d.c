@@ -740,7 +740,7 @@ void s3dKillEmitterByFXID(FX_TAB* fxTab, unsigned long num) {
   }
 }
 
-static void MakeListenerMatrix(SND_LISTENER* li) {
+static inline void MakeListenerMatrix(SND_LISTENER* li) {
   struct SND_FMATRIX mat; // r1+0xC
   salCrossProduct(&li->right, &li->heading, &li->up);
   mat.m[0][0] = li->right.x;
