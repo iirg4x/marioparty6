@@ -24,7 +24,7 @@ void qsort(
     void *table_base, size_t num_members, size_t member_size,
     _compare_function compare_members)
 {
-    size_t l, r, j;
+    size_t l, r, j, multiplier;
     char *lp;
     char *rp;
     char *ip;
@@ -35,11 +35,11 @@ void qsort(
         return;
     }
 
-    r = num_members;
-    l = (r / 2) + 1;
+    l = (num_members / 2) + 1;
 
     lp = table_ptr(l);
-    rp = table_ptr(r);
+    rp = table_ptr(num_members);
+    r = num_members;
 
     for (;;) {
         if (l > 1) {
@@ -60,7 +60,8 @@ void qsort(
         jp = table_ptr(j);
 
         while (j * 2 <= r) {
-            j *= 2;
+            multiplier = 2;
+            j *= multiplier;
 
             ip = jp;
             jp = table_ptr(j);

@@ -447,7 +447,11 @@ config.libs = [
             ),
             Object(Matching, "MSL_C.PPCEABI.bare.H/misc_io.c"),
             Object(NonMatching, "MSL_C.PPCEABI.bare.H/printf.c"),
-            Object(NonMatching, "MSL_C.PPCEABI.bare.H/qsort.c"),
+            Object(
+                Matching,
+                "MSL_C.PPCEABI.bare.H/qsort.c",
+                extra_cflags=["-opt nopropagation"],
+            ),
             Object(Matching, "MSL_C.PPCEABI.bare.H/float.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/signal.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/string.c"),
