@@ -32,31 +32,66 @@ typedef struct MiracleBookVecTable_s {
     HuVecF entries[5];
 } MIRACLEBOOK_VEC_TABLE;
 
+enum {
+    MIRACLEBOOK_SPRITE_PRIORITY = 256,
+    MIRACLEBOOK_SPECIAL_SPRITE_PRIORITY = 512,
+};
+
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
-extern const HuVecF lbl_1_rodata_10;
-extern const HuVecF lbl_1_rodata_1C;
-extern const GXColor lbl_1_rodata_28;
-extern const f32 lbl_1_rodata_30;
-extern const f64 lbl_1_rodata_38;
-extern const f64 lbl_1_rodata_40;
-extern const f32 lbl_1_rodata_48;
-extern const f32 lbl_1_rodata_4C;
-extern const f32 lbl_1_rodata_50;
-extern const f32 lbl_1_rodata_54;
-extern const f32 lbl_1_rodata_58;
-extern const f32 lbl_1_rodata_5C;
-extern const f32 lbl_1_rodata_60;
-extern const f32 lbl_1_rodata_64;
-extern const f32 lbl_1_rodata_68;
-extern const f32 lbl_1_rodata_6C;
-extern const f32 lbl_1_rodata_70;
-extern const f32 lbl_1_rodata_74;
-extern const f32 lbl_1_rodata_78;
-extern const f32 lbl_1_rodata_7C;
-extern const f32 lbl_1_rodata_84;
-extern const f32 lbl_1_rodata_90;
+extern HuVecF lbl_1_rodata_10;
+extern HuVecF lbl_1_rodata_1C;
+extern GXColor lbl_1_rodata_28[2];
+extern f32 lbl_1_rodata_30;
+extern f64 lbl_1_rodata_38;
+extern f64 lbl_1_rodata_40;
+extern f32 lbl_1_rodata_48;
+extern f32 lbl_1_rodata_4C;
+extern f32 lbl_1_rodata_50;
+extern f32 lbl_1_rodata_54;
+extern f32 lbl_1_rodata_58;
+extern f32 lbl_1_rodata_5C;
+extern f32 lbl_1_rodata_60;
+extern f32 lbl_1_rodata_64;
+extern f32 lbl_1_rodata_68;
+extern f32 lbl_1_rodata_6C;
+extern f32 lbl_1_rodata_70;
+extern f32 lbl_1_rodata_74;
+extern f32 lbl_1_rodata_78;
+extern f32 lbl_1_rodata_7C;
+extern f32 lbl_1_rodata_80;
+extern f32 lbl_1_rodata_84;
+extern f32 lbl_1_rodata_88;
+extern f32 lbl_1_rodata_8C;
+extern f32 lbl_1_rodata_90;
+
+#define MIRACLEBOOK_EARLY_RODATA_EXTERNS() \
+    extern HuVecF lbl_1_rodata_10; \
+    extern HuVecF lbl_1_rodata_1C; \
+    extern GXColor lbl_1_rodata_28[2]; \
+    extern f32 lbl_1_rodata_30; \
+    extern f64 lbl_1_rodata_38; \
+    extern f64 lbl_1_rodata_40; \
+    extern f32 lbl_1_rodata_48; \
+    extern f32 lbl_1_rodata_4C; \
+    extern f32 lbl_1_rodata_50; \
+    extern f32 lbl_1_rodata_54; \
+    extern f32 lbl_1_rodata_58; \
+    extern f32 lbl_1_rodata_5C; \
+    extern f32 lbl_1_rodata_60; \
+    extern f32 lbl_1_rodata_64; \
+    extern f32 lbl_1_rodata_68; \
+    extern f32 lbl_1_rodata_6C; \
+    extern f32 lbl_1_rodata_70; \
+    extern f32 lbl_1_rodata_74; \
+    extern f32 lbl_1_rodata_78; \
+    extern f32 lbl_1_rodata_7C; \
+    extern f32 lbl_1_rodata_80; \
+    extern f32 lbl_1_rodata_84; \
+    extern f32 lbl_1_rodata_88; \
+    extern f32 lbl_1_rodata_8C; \
+    extern f32 lbl_1_rodata_90;
 extern const HuVecF lbl_1_rodata_A0;
 extern const HuVecF lbl_1_rodata_AC;
 extern const f32 lbl_1_rodata_B8;
@@ -70,10 +105,27 @@ extern const f32 lbl_1_rodata_D4;
 extern const f32 lbl_1_rodata_D8;
 extern const f32 lbl_1_rodata_DC;
 extern const f32 lbl_1_rodata_158;
+extern const f32 lbl_1_rodata_15C;
+extern const f32 lbl_1_rodata_160;
+extern const f32 lbl_1_rodata_164;
+extern const f32 lbl_1_rodata_168;
 extern const f32 lbl_1_rodata_16C;
+extern const f32 lbl_1_rodata_170;
+extern const f32 lbl_1_rodata_174;
+extern const f32 lbl_1_rodata_178;
+extern const f32 lbl_1_rodata_17C;
+extern const f32 lbl_1_rodata_180;
+extern const f32 lbl_1_rodata_184;
+extern const f32 lbl_1_rodata_188;
+extern const f32 lbl_1_rodata_18C;
+extern const f32 lbl_1_rodata_190;
+extern const f32 lbl_1_rodata_194;
 extern const f32 lbl_1_rodata_198;
 extern const f32 lbl_1_rodata_19C;
 extern const f32 lbl_1_rodata_1A0;
+extern const f32 lbl_1_rodata_1A4;
+extern const f32 lbl_1_rodata_1A8;
+extern const f32 lbl_1_rodata_1AC;
 extern const f32 lbl_1_rodata_1B0;
 extern const f64 lbl_1_rodata_F0;
 extern const f64 lbl_1_rodata_F8;
@@ -91,6 +143,7 @@ extern const f64 lbl_1_rodata_148;
 extern const f64 lbl_1_rodata_150;
 extern const f64 lbl_1_rodata_E0;
 extern const f64 lbl_1_rodata_E8;
+extern const f64 lbl_1_rodata_98;
 extern const f64 lbl_1_rodata_1B8;
 extern const f64 lbl_1_rodata_1C0;
 extern const f64 lbl_1_rodata_1C8;
@@ -147,13 +200,13 @@ extern void *lbl_1_bss_C;
 extern ANIMDATA *lbl_1_bss_10;
 extern ANIMDATA *lbl_1_bss_14;
 extern UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
-extern s16 lbl_1_bss_68[5];
+extern s16 lbl_1_bss_68[6];
 extern OMOBJMAN *lbl_1_bss_74;
 extern HuVecF lbl_1_bss_78;
 extern f32 lbl_1_bss_84;
 extern f32 lbl_1_bss_88;
 extern s32 lbl_1_bss_8C;
-extern s16 lbl_1_bss_90[3];
+extern s16 lbl_1_bss_90[4];
 extern s32 lbl_1_bss_98[2];
 extern s32 lbl_1_bss_A0;
 extern s32 lbl_1_bss_A4[2];
@@ -263,7 +316,7 @@ void fn_1_A0(void)
 {
     HuVecF lightPos = lbl_1_rodata_10;
     HuVecF lightDir = lbl_1_rodata_1C;
-    GXColor lightColor = lbl_1_rodata_28;
+    GXColor lightColor = lbl_1_rodata_28[0];
     HU3D_LIGHTID light;
 
     lbl_1_bss_4 = omInitObjMan(200, 8192);
@@ -520,8 +573,38 @@ void fn_1_4CC(void)
     }
 }
 
+__declspec(section ".rodata") HuVecF lbl_1_rodata_10 = {0.0f, 1000.0f, 5000.0f};
+__declspec(section ".rodata") HuVecF lbl_1_rodata_1C = {0.0f, -1.0f, -1.0f};
+__declspec(section ".rodata") GXColor lbl_1_rodata_28[2] = {
+    {255, 255, 255, 255},
+    {0, 0, 0, 0},
+};
+__declspec(section ".rodata") f32 lbl_1_rodata_30 = 0.0f;
+__declspec(section ".rodata") f64 lbl_1_rodata_38 = 2000.0;
+__declspec(section ".rodata") f64 lbl_1_rodata_40 = -0.4363323129985824;
+__declspec(section ".rodata") f32 lbl_1_rodata_48 = -2000.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_4C = -25.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_50 = 0.04f;
+__declspec(section ".rodata") f32 lbl_1_rodata_54 = 100.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_58 = -229.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_5C = -500.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_60 = 125.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_64 = -130.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_68 = -45.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_6C = -65.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_70 = 86.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_74 = 5.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_78 = -54.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_7C = 60.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_80 = 139.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_84 = -90.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_88 = 149.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_8C = 209.0f;
+__declspec(section ".rodata") f32 lbl_1_rodata_90 = 90.0f;
+
 void fn_1_3418(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 i;
 
     for (i = 0; i < 7; i++) {
@@ -535,6 +618,7 @@ void fn_1_3418(void)
 
 void fn_1_34C4(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     OMOBJ *obj;
     HuVecF center;
     HuVecF rot;
@@ -568,6 +652,7 @@ void fn_1_34C4(void)
 
 void fn_1_3734(s32 arg0)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
 
     f64 zeroForward;
     f64 zeroReverse;
@@ -652,6 +737,7 @@ void fn_1_3734(s32 arg0)
 
 void fn_1_3E40(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     lbl_1_bss_19C += lbl_1_rodata_110;
     if (lbl_1_bss_19C > lbl_1_rodata_90) {
         lbl_1_bss_19C = lbl_1_rodata_90;
@@ -690,6 +776,7 @@ void fn_1_3E40(void)
 
 s32 fn_1_427C(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 result = 0;
 
     lbl_1_bss_19C += lbl_1_rodata_110;
@@ -740,8 +827,105 @@ s32 fn_1_427C(void)
     return result;
 }
 
+void fn_1_479C(void)
+{
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
+    s32 i;
+    s32 j;
+    f32 bankPos;
+    f32 itemPos;
+    f32 posY;
+    f32 posYWork;
+    f32 posYForCall;
+
+    lbl_1_bss_17A = espEntry(DATANUM(DATA_miraclebook, 83), 0, 0);
+    espDrawNoSet(lbl_1_bss_17A, 0);
+    espPosSet(lbl_1_bss_17A, lbl_1_rodata_15C, lbl_1_rodata_160);
+    espDispOff(lbl_1_bss_17A);
+    espPriSet(lbl_1_bss_17A, MIRACLEBOOK_SPECIAL_SPRITE_PRIORITY);
+    espScaleSet(lbl_1_bss_17A, lbl_1_rodata_7C, lbl_1_rodata_164);
+    espTPLvlSet(lbl_1_bss_17A, lbl_1_rodata_168);
+
+    lbl_1_bss_178 = espEntry(DATANUM(DATA_miraclebook, 84), 0, 0);
+    espDrawNoSet(lbl_1_bss_178, 0);
+    espPosSet(lbl_1_bss_178, lbl_1_rodata_16C, lbl_1_rodata_170);
+    espScaleSet(lbl_1_bss_178, lbl_1_rodata_174, lbl_1_rodata_C0);
+    espTPLvlSet(lbl_1_bss_178, lbl_1_rodata_178);
+    espDispOff(lbl_1_bss_178);
+    espPriSet(lbl_1_bss_178, MIRACLEBOOK_SPRITE_PRIORITY);
+
+    for (i = 0; i < 2; i++) {
+        lbl_1_bss_174[i] = espEntry(DATANUM(DATA_miraclebook, 81), 0, 0);
+        espDrawNoSet(lbl_1_bss_174[i], 0);
+        espBankSet(lbl_1_bss_174[i], i);
+        if (i == 0) {
+            bankPos = lbl_1_rodata_17C;
+        } else {
+            bankPos = lbl_1_rodata_180;
+        }
+        espPosSet(lbl_1_bss_174[i],
+            lbl_1_rodata_C8 + (lbl_1_rodata_C8 + bankPos),
+            lbl_1_rodata_184);
+        espDispOff(lbl_1_bss_174[i]);
+        espPriSet(lbl_1_bss_174[i], MIRACLEBOOK_SPRITE_PRIORITY);
+
+        for (j = 0; j < 2; j++) {
+            lbl_1_bss_16C[i][j] =
+                espEntry(DATANUM(DATA_miraclebook, 82), 0, 0);
+            espDrawNoSet(lbl_1_bss_16C[i][j], 0);
+            espBankSet(lbl_1_bss_16C[i][j], j + i * 2);
+            if (i == 0) {
+                itemPos = lbl_1_rodata_188;
+            } else {
+                itemPos = lbl_1_rodata_18C;
+            }
+            espPosSet(lbl_1_bss_16C[i][j],
+                lbl_1_rodata_190 + (lbl_1_rodata_C8 + itemPos),
+                lbl_1_rodata_194);
+            espDispOff(lbl_1_bss_16C[i][j]);
+            espPriSet(lbl_1_bss_16C[i][j], MIRACLEBOOK_SPRITE_PRIORITY);
+            if (j == 1) {
+                espTPLvlSet(lbl_1_bss_16C[i][j], lbl_1_rodata_30);
+            }
+        }
+    }
+
+    for (i = 0; i < 20; i++) {
+        lbl_1_bss_144[i] = espEntry(DATANUM(DATA_miraclebook, 80), 0, 0);
+        espDrawNoSet(lbl_1_bss_144[i], 0);
+        if (i < 5) {
+            posY = lbl_1_rodata_198 + lbl_1_rodata_19C * (f32)i;
+        } else {
+            if (i < 15) {
+                posYWork = lbl_1_rodata_1A0 +
+                    lbl_1_rodata_19C * (f32)(i - 5);
+            } else {
+                posYWork = lbl_1_rodata_1A0 +
+                    lbl_1_rodata_19C * (f32)(i - 15);
+            }
+            posY = posYWork;
+        }
+        posYForCall = posY;
+        espPosSet(lbl_1_bss_144[i], lbl_1_rodata_1A4,
+            posYForCall - lbl_1_rodata_C8);
+        espDispOff(lbl_1_bss_144[i]);
+        espPriSet(lbl_1_bss_144[i], MIRACLEBOOK_SPRITE_PRIORITY);
+    }
+
+    lbl_1_bss_180 = 0;
+    lbl_1_bss_140 = 0;
+    lbl_1_bss_13C = 0;
+    lbl_1_bss_138 = 0;
+    lbl_1_bss_134 = 0;
+    lbl_1_bss_120[0] = lbl_1_bss_120[1] = lbl_1_bss_120[2] =
+        lbl_1_bss_120[3] = lbl_1_rodata_30;
+    lbl_1_bss_11C = lbl_1_rodata_30;
+    lbl_1_bss_17C = 0;
+}
+
 void fn_1_4E94(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     if (lbl_1_bss_224 == 2) {
         if (lbl_1_bss_1A0 == 0) {
             fn_1_5ED0(1);
@@ -757,6 +941,7 @@ void fn_1_4E94(void)
 
 void fn_1_4EFC(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 i;
     s32 j;
 
@@ -770,6 +955,158 @@ void fn_1_4EFC(void)
     }
     for (i = 0; i < 20; i++) {
         espKill(lbl_1_bss_144[i]);
+    }
+}
+
+void fn_1_4FD4(void)
+{
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
+    s32 i;
+    s32 start;
+    s32 end;
+    s32 limit;
+    s32 upLimit;
+    s32 downLimit;
+    f32 posY;
+
+    if (lbl_1_bss_180 == 0) {
+        Hu3DModelAttrReset(lbl_1_bss_90[0], HU3D_ATTR_DISPOFF);
+        if (lbl_1_bss_138 == -1 || lbl_1_bss_138 == 5) {
+            espDispOff(lbl_1_bss_178);
+        }
+        lbl_1_bss_1E4 = 0;
+        if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
+            HuAudFXPlay(1155);
+            lbl_1_bss_138--;
+            if (lbl_1_bss_138 < -1) {
+                lbl_1_bss_138 = 4;
+            }
+            if (lbl_1_bss_138 == -1) {
+                espDispOff(lbl_1_bss_178);
+                Hu3DModelPosSet(lbl_1_bss_90[2], lbl_1_rodata_30,
+                    lbl_1_rodata_70, lbl_1_rodata_74);
+                Hu3DModelAttrReset(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = -1;
+            } else {
+                espDispOn(lbl_1_bss_178);
+                Hu3DModelAttrSet(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = 0;
+            }
+        } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
+            HuAudFXPlay(1155);
+            lbl_1_bss_138++;
+            if (lbl_1_bss_138 > 5) {
+                lbl_1_bss_138 = 0;
+            }
+            if (lbl_1_bss_138 == 5) {
+                espDispOff(lbl_1_bss_178);
+                Hu3DModelPosSet(lbl_1_bss_90[2], lbl_1_rodata_30,
+                    lbl_1_rodata_70, lbl_1_rodata_74);
+                Hu3DModelAttrReset(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = -1;
+            } else {
+                espDispOn(lbl_1_bss_178);
+                Hu3DModelAttrSet(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = 0;
+            }
+        }
+        posY = lbl_1_rodata_1A8 + lbl_1_rodata_19C *
+            (f32)lbl_1_bss_138 - lbl_1_rodata_C0;
+        start = 0;
+        end = 5;
+        lbl_1_bss_1E4 += lbl_1_bss_138;
+    } else if (lbl_1_bss_180 == 1) {
+        lbl_1_bss_1E4 = 5;
+        if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
+            HuAudFXPlay(1155);
+            lbl_1_bss_138--;
+            if (lbl_1_bss_138 < 0) {
+                lbl_1_bss_138 = 9;
+            }
+        } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
+            HuAudFXPlay(1155);
+            lbl_1_bss_138++;
+            if (lbl_1_bss_138 > 9) {
+                lbl_1_bss_138 = 0;
+            }
+        }
+        posY = lbl_1_rodata_1AC + lbl_1_rodata_19C *
+            (f32)lbl_1_bss_138 - lbl_1_rodata_C0;
+        start = 5;
+        end = 15;
+        lbl_1_bss_1E4 += lbl_1_bss_138;
+        Hu3DModelAttrSet(lbl_1_bss_90[0], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_90[1], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+        lbl_1_bss_134 = 0;
+    } else {
+        Hu3DModelAttrReset(lbl_1_bss_90[1], HU3D_ATTR_DISPOFF);
+        if (lbl_1_bss_138 == -1 || lbl_1_bss_138 == 5) {
+            espDispOff(lbl_1_bss_178);
+        }
+        lbl_1_bss_1E4 = 15;
+        if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
+            HuAudFXPlay(1155);
+            if (lbl_1_bss_130 == 20) {
+                upLimit = -1;
+            } else {
+                upLimit = 0;
+            }
+            limit = upLimit;
+            lbl_1_bss_138--;
+            if (lbl_1_bss_138 < limit) {
+                lbl_1_bss_138 = 4;
+            }
+            if (lbl_1_bss_138 == -1) {
+                espDispOff(lbl_1_bss_178);
+                Hu3DModelPosSet(lbl_1_bss_90[2], lbl_1_rodata_30,
+                    lbl_1_rodata_78, lbl_1_rodata_7C);
+                Hu3DModelAttrReset(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = -2;
+            } else {
+                espDispOn(lbl_1_bss_178);
+                Hu3DModelAttrSet(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = 0;
+            }
+        } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
+            HuAudFXPlay(1155);
+            if (lbl_1_bss_130 == 20) {
+                downLimit = 5;
+            } else {
+                downLimit = 4;
+            }
+            limit = downLimit;
+            lbl_1_bss_138++;
+            if (lbl_1_bss_138 > limit) {
+                lbl_1_bss_138 = 0;
+            }
+            if (lbl_1_bss_138 == 5) {
+                espDispOff(lbl_1_bss_178);
+                Hu3DModelPosSet(lbl_1_bss_90[2], lbl_1_rodata_30,
+                    lbl_1_rodata_78, lbl_1_rodata_7C);
+                Hu3DModelAttrReset(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = -2;
+            } else {
+                espDispOn(lbl_1_bss_178);
+                Hu3DModelAttrSet(lbl_1_bss_90[2], HU3D_ATTR_DISPOFF);
+                lbl_1_bss_134 = 0;
+            }
+        }
+        posY = lbl_1_rodata_1AC + lbl_1_rodata_19C *
+            (f32)lbl_1_bss_138 - lbl_1_rodata_C0;
+        start = 15;
+        end = 20;
+        lbl_1_bss_1E4 += lbl_1_bss_138;
+    }
+
+    espPosSet(lbl_1_bss_178, lbl_1_rodata_16C,
+        posY - lbl_1_rodata_C8);
+    for (i = 0; i < 20; i++) {
+        if (i >= start && i < end && lbl_1_bss_1E8[i] == 0) {
+            espDispOn(lbl_1_bss_144[i]);
+        } else {
+            espDispOff(lbl_1_bss_144[i]);
+        }
     }
 }
 
@@ -854,6 +1191,7 @@ void fn_1_5904(void)
 
 void fn_1_5ED0(s32 dispF)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 i;
     s32 j;
 
@@ -890,6 +1228,7 @@ void fn_1_5ED0(s32 dispF)
 
 void fn_1_60A4(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 i;
 
     if (lbl_1_bss_224 == 0) {
@@ -985,6 +1324,7 @@ void fn_1_60A4(void)
 
 void fn_1_69A8(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 i;
 
     for (i = 0; i < 20; i++) {
@@ -995,6 +1335,7 @@ void fn_1_69A8(void)
 
 void fn_1_69F8(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HuVec2f size;
     f32 posY;
     HUWIN *win;
@@ -1019,6 +1360,7 @@ void fn_1_69F8(void)
 
 void fn_1_6B8C(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HuVec2f size;
     f32 posX;
     f32 posY;
@@ -1096,6 +1438,7 @@ void fn_1_6B8C(void)
 
 void fn_1_7158(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     s32 i;
 
     for (i = 0; i < 22; i++) {
@@ -1108,6 +1451,7 @@ void fn_1_7158(void)
 
 void fn_1_71E0(s32 messNo)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HuVec2f size;
     f32 posX;
     f32 posY;
@@ -1124,6 +1468,7 @@ void fn_1_71E0(s32 messNo)
 
 s32 fn_1_7354(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HuVec2f size;
     f32 posX;
     f32 posY;
@@ -1154,6 +1499,7 @@ s32 fn_1_7354(void)
 
 void fn_1_7560(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     ANIMDATA *anim;
     s16 i;
 
@@ -1205,11 +1551,13 @@ void fn_1_7560(void)
 
 void fn_1_7324(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HuWinKill((s16)lbl_1_bss_110);
 }
 
 void fn_1_7998(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HuVecF pos;
     f32 amplitude;
 
@@ -1342,6 +1690,7 @@ void fn_1_7998(void)
 
 void fn_1_8A0C(s16 layerNo)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     if (lbl_1_bss_C) {
         GXSetTexCopySrc(0, 0, 640, 480);
         GXSetTexCopyDst(640, 480, GX_TF_RGB565, GX_FALSE);
@@ -1351,6 +1700,7 @@ void fn_1_8A0C(s16 layerNo)
 
 void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     HU3D_CAMERA *camera = &Hu3DCamera[Hu3DCameraNo];
     UNK_MIRACLEBOOK_HOOK *hook;
     Mtx tmpMtx;
@@ -1415,6 +1765,7 @@ void fn_1_8A78(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 
 void fn_1_8F10(OMOBJ *obj)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     UNK_MIRACLEBOOK_HOOK *hook;
     s16 i = 0;
     f32 colorTime;
@@ -1449,6 +1800,7 @@ void fn_1_8F10(OMOBJ *obj)
 
 void fn_1_9130(s16 hookNo, HuVecF *pos)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     OMOBJ *obj = lbl_1_bss_8;
 
     if (!obj) {
@@ -1509,6 +1861,7 @@ void fn_1_92B4(OMOBJ *obj)
 
 void fn_1_95B8(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     OMOBJ *obj = lbl_1_bss_8;
     HU3D_MODEL *model = NULL;
     s16 i;
@@ -1539,6 +1892,7 @@ void fn_1_95B8(void)
 
 void fn_1_9718(void)
 {
+    MIRACLEBOOK_EARLY_RODATA_EXTERNS()
     Mtx objMtx;
     Mtx transMtx;
     MIRACLEBOOK_VEC_TABLE offsets = lbl_1_rodata_284;
@@ -1576,3 +1930,159 @@ void fn_1_9718(void)
         }
     }
 }
+
+__declspec(section ".rodata") const HuVecF lbl_1_rodata_A0 = {0.0f, 0.0f, 0.0f};
+__declspec(section ".rodata") const HuVecF lbl_1_rodata_AC = {-25.0f, 0.0f, 0.0f};
+__declspec(section ".rodata") const f32 lbl_1_rodata_B8 = 640.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_BC = 480.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_C0 = 1.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_C4 = 35.259f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_C8 = 20.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_CC = 30000.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_D0 = 1.2f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_D4 = 701.8f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_D8 = 745.9f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_DC = 1.8f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_E0 = 3.141592653589793;
+__declspec(section ".rodata") const f64 lbl_1_rodata_E8 = 180.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_F0 = 0.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_F8 = 55.0;
+__declspec(section ".rodata") const f32 lbl_1_rodata_100 = 21.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_104 = 55.0f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_108 = 86.0;
+__declspec(section ".rodata") const f32 lbl_1_rodata_110 = 1.5f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_118 = 100.0;
+__declspec(section ".rodata") const f32 lbl_1_rodata_120 = -250.0f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_128 = -500.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_130 = 70.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_138 = -130.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_140 = -45.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_148 = 1.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_150 = 35.0;
+__declspec(section ".rodata") const f32 lbl_1_rodata_158 = -35.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_15C = 288.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_160 = 220.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_164 = 37.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_168 = 0.2f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_16C = 306.2f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_170 = 246.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_174 = 12.4f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_178 = 0.4f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_17C = 74.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_180 = 422.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_184 = 95.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_188 = 30.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_18C = 462.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_190 = 22.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_194 = 92.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_198 = 266.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_19C = 24.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1A0 = 146.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1A4 = 118.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1A8 = 267.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1AC = 147.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1B0 = 2.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1B4 = 360.0f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_1B8 = 10.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_1C0 = 3.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_1C8 = 2.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_1D0 = 1.5;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1D8 = 544.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1DC = -10000.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1E0 = 140.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1E4 = 254.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1E8 = 8.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1EC = 240.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1F0 = 127.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1F4 = 134.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1F8 = 297.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_1FC = 440.0f;
+__declspec(section ".rodata") const HuVecF lbl_1_rodata_200 = {0.0f, 0.0f, 0.0f};
+__declspec(section ".rodata") const f32 lbl_1_rodata_20C = 180.1f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_210 = 35.0f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_218 = 105.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_220 = 360.0;
+__declspec(section ".rodata") const f32 lbl_1_rodata_228 = 105.0f;
+__declspec(section ".rodata") const f64 lbl_1_rodata_230 = -54.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_238 = 160.0;
+__declspec(section ".rodata") const f64 lbl_1_rodata_240 = 40.0;
+__declspec(section ".rodata") const f32 lbl_1_rodata_248 = 160.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_24C = 0.03f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_250 = 180.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_254 = 0.5f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_258 = -0.5f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_25C = 0.8f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_260 = 0.09f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_264 = 120.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_268 = -0.02f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_26C = 80.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_270 = 40.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_274 = 16.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_278 = 64.0f;
+__declspec(section ".rodata") const f32 lbl_1_rodata_27C = 10.0f;
+__declspec(section ".rodata") const GXColor lbl_1_rodata_280 = {0, 16, 64, 16};
+__declspec(section ".rodata") const MIRACLEBOOK_VEC_TABLE lbl_1_rodata_284 = {{
+    {0.0f, 0.0f, 0.0f},
+    {40.0f, 10.0f, 0.0f},
+    {-40.0f, 10.0f, 0.0f},
+    {20.0f, -40.0f, 0.0f},
+    {-20.0f, -40.0f, 0.0f},
+}};
+
+s32 lbl_1_bss_224;
+s32 lbl_1_bss_220;
+s16 lbl_1_bss_21C;
+s16 lbl_1_bss_21A;
+s16 lbl_1_bss_218;
+s16 lbl_1_bss_1FC[2][7];
+u8 lbl_1_bss_1E8[20];
+s32 lbl_1_bss_1E4;
+s32 lbl_1_bss_1E0;
+s32 lbl_1_bss_1DC;
+s32 lbl_1_bss_1D8;
+s32 lbl_1_bss_1D4;
+f32 lbl_1_bss_1C8[3];
+s32 lbl_1_bss_1C4;
+s16 lbl_1_bss_1C0[2];
+OM_CAMERA_VIEW lbl_1_bss_1A4;
+s32 lbl_1_bss_1A0;
+f32 lbl_1_bss_19C;
+f32 lbl_1_bss_184[6];
+s32 lbl_1_bss_180;
+s32 lbl_1_bss_17C;
+s16 lbl_1_bss_17A;
+s16 lbl_1_bss_178;
+s16 lbl_1_bss_174[2];
+s16 lbl_1_bss_16C[2][2];
+s16 lbl_1_bss_144[20];
+s32 lbl_1_bss_140;
+s32 lbl_1_bss_13C;
+s32 lbl_1_bss_138;
+s32 lbl_1_bss_134;
+s32 lbl_1_bss_130;
+f32 lbl_1_bss_120[4];
+f32 lbl_1_bss_11C;
+f32 lbl_1_bss_118;
+s32 lbl_1_bss_114;
+s32 lbl_1_bss_110;
+s32 lbl_1_bss_10C;
+s32 lbl_1_bss_B4[22];
+s32 lbl_1_bss_B0;
+s32 lbl_1_bss_AC;
+s32 lbl_1_bss_A4[2];
+s32 lbl_1_bss_A0;
+s32 lbl_1_bss_98[2];
+s16 lbl_1_bss_90[4];
+s32 lbl_1_bss_8C;
+f32 lbl_1_bss_88;
+f32 lbl_1_bss_84;
+HuVecF lbl_1_bss_78;
+OMOBJMAN *lbl_1_bss_74;
+s16 lbl_1_bss_68[6];
+UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
+ANIMDATA *lbl_1_bss_14;
+ANIMDATA *lbl_1_bss_10;
+void *lbl_1_bss_C;
+OMOBJ *lbl_1_bss_8;
+OMOBJMAN *lbl_1_bss_4;
+s32 lbl_1_bss_0;
