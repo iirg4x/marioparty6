@@ -17,19 +17,18 @@ static const double
 static double
 #endif
 one = 1.0,
-halF[2] = {0.5, -0.5},
+expTable[6] = {
+    0.5,
+    -0.5,
+    6.93147180369123816490e-01,
+    -6.93147180369123816490e-01,
+    1.90821492927058770002e-10,
+    -1.90821492927058770002e-10,
+},
 huge = 1.0e+300,
 twom1000 = 9.33263618503218878990e-302,
 o_threshold = 7.09782712893383973096e+02,
 u_threshold = -7.45133219101941108420e+02,
-ln2HI[2] = {
-    6.93147180369123816490e-01,
-    -6.93147180369123816490e-01,
-},
-ln2LO[2] = {
-    1.90821492927058770002e-10,
-    -1.90821492927058770002e-10,
-},
 invln2 = 1.44269504088896338700e+00,
 P1 = 1.66666666666666019037e-01,
 P2 = -2.77777777770155933842e-03,
@@ -44,6 +43,7 @@ double __ieee754_exp(x)
 double x;
 #endif
 {
+    const double *table = expTable;
     double y, hi, lo, c, t;
     int k, xsb;
     unsigned int hx;
@@ -70,14 +70,14 @@ double x;
 
     if (hx > 0x3fd62e42) {
         if (hx < 0x3FF0A2B2) {
-            hi = x - ln2HI[xsb];
-            lo = ln2LO[xsb];
+            hi = x - table[2 + xsb];
+            lo = table[4 + xsb];
             k = 1 - xsb - xsb;
         } else {
-            k = (int)(invln2 * x + halF[xsb]);
+            k = (int)(invln2 * x + table[xsb]);
             t = k;
-            hi = x - t * ln2HI[0];
-            lo = t * ln2LO[0];
+            hi = x - t * table[2];
+            lo = t * table[4];
         }
         x = hi - lo;
     } else if (hx < 0x3e300000) {
