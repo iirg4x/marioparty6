@@ -162,26 +162,26 @@ static void fn_1_110(void)
 
 static void fn_1_188(void)
 {
-    HuVec2f size;
-    HUWINID titleWin;
-    HUWINID dirWin;
-    HUWINID langWin;
-    HUWINID messWin;
-    HUWIN *messWinData;
     char messNoText[8];
+    HuVec2f size;
     char *name;
-    u32 messNum;
-    s16 dirNo;
     s16 messNo;
-    s16 nextMessNo;
-    s16 messMax;
+    s16 dirNo;
+    HUWINID messWin;
     s16 key;
+    HUWINID langWin;
+    HUWINID titleWin;
+    u32 messNum;
+    HUWIN *messWinData;
+    HUWINID dirWin;
     s16 dimension;
+    s16 nextMessNo;
     BOOL previousDir;
+    s16 messMax;
     BOOL hasControl;
 
-    for (dirNo = 0; lbl_1_data_494[dirNo]; dirNo++) {
-        name = lbl_1_data_494[dirNo];
+    for (messNo = 0; lbl_1_data_494[messNo]; messNo++) {
+        name = lbl_1_data_494[messNo];
         while (*name != '\0') {
             if (*name == '_') {
                 *name = '=';
@@ -208,8 +208,7 @@ static void fn_1_188(void)
     HuWinBGTPLvlSet(langWin, 0.0f);
     HuWinMesSet(langWin, lbl_1_data_5C4[GwLanguage]);
 
-    nextMessNo = 0;
-    dirNo = nextMessNo;
+    dirNo = nextMessNo = 0;
     previousDir = FALSE;
     while (lbl_1_data_494[dirNo]) {
         HuWinMesSet(dirWin, MESSNUM_PTR(lbl_1_data_494[dirNo]));
@@ -303,13 +302,13 @@ static void fn_1_188(void)
                 messNo -= 2;
                 if (messNo < 0) {
                     messNo = -1;
+                    dirNo -= 2;
+                    if (dirNo < 0) {
+                        dirNo = -1;
+                    }
+                    previousDir = TRUE;
+                    break;
                 }
-                dirNo -= 2;
-                if (dirNo < 0) {
-                    dirNo = -1;
-                }
-                previousDir = TRUE;
-                break;
             }
             HuPrcVSleep();
         }
