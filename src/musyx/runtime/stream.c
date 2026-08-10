@@ -597,6 +597,8 @@ void sndStreamMixParameterEx(u32 stid, u8 vol, u8 pan, u8 span, u8 auxa, u8 auxb
   hwEnableIrq();
 }
 
+#pragma push
+#pragma inline_depth(3)
 void sndStreamFrq(u32 stid, u32 frq) {
   u32 i;     // r31
   u16 pitch; // r27
@@ -619,6 +621,7 @@ void sndStreamFrq(u32 stid, u32 frq) {
 
   hwEnableIrq();
 }
+#pragma pop
 
 void sndStreamFree(SND_STREAMID stid) {
   u32 i; // r31
