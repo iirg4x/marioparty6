@@ -4,15 +4,15 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 9, 2026**
+Last published full-project snapshot: **August 10, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.41% | 38.64% | 343 / 925 |
-| Main DOL | 53.30% | 89.26% | 310 / 396 |
-| REL modules | 6.16% | 6.56% | 33 / 529 |
+| Entire project | 14.80% | 38.94% | 349 / 925 |
+| Main DOL | 53.40% | 89.31% | 312 / 396 |
+| REL modules | 6.61% | 7.03% | 37 / 529 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
@@ -40,7 +40,12 @@ at **21 / 21**, `synthdata.c` at **27 / 27**, `hw_aramdma.c` at **13 / 13**,
 `snd_midictrl.c` at **35 / 35**, `s_data.c` at **7 / 7**, `synth.c` at
 **27 / 27**, `synthmacros.c` at **52 / 52 strict-exact functions**, and
 `snd3d.c` at **16 / 16 strict-exact and data-value-exact functions**. The
-complete `snd3d.c` owner contributes **8,760 text bytes** with exact retained
+corrected `synth.c` source reproduces all **13,468 target text bytes** and
+**354 target relocations**; its distinct compiled and target objects both link
+to the retail DOL SHA-1 `b897e6ade6b3a0cd2f9907689f38a3b19c327e70`,
+removing the stale-source checksum debt without changing the already-counted
+Matching object total. The complete `snd3d.c` owner contributes **8,760 text
+bytes** with exact retained
 relocations; its authenticated extra donor csects are discarded by the linker.
 Their combined source-linked build remains retail-identical. `hardware.c`
 remains `NonMatching` until its whole-object link closure is exact.

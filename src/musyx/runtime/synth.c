@@ -119,7 +119,7 @@ u32 synthGetTicksPerSecond(SYNTH_VOICE* svoice) {
   return synthTicksPerSecond[svoice->midiSet == SYNTH_MIDI_SET_NONE ? 8 : svoice->midiSet][svoice->section];
 }
 
-static u32 apply_portamento(SYNTH_VOICE* svoice, u32 ccents, u32 deltaTime) {
+static inline u32 apply_portamento(SYNTH_VOICE* svoice, u32 ccents, u32 deltaTime) {
   u32 old_portCurPitch; // r31
 
   if ((svoice->cFlags & SYNTH_CFLAG_PORTAMENTO_ACTIVE) != 0 && (int)((svoice->portDuration - svoice->portTime) >> 8) > 0) {
@@ -216,7 +216,7 @@ static u32 do_voice_portamento(u8 key, u8 midi, u8 midiSet, u32 isMaster, u32* r
   return vid;
 }
 
-static u32 check_portamento(u8 key, u8 midi, u8 midiSet, u32 newVID, u32* vid) {
+static inline u32 check_portamento(u8 key, u8 midi, u8 midiSet, u32 newVID, u32* vid) {
   u32 rejected; // r1+0x14
 
   if (inpGetMidiCtrl(65 /* TODO SND_MIDICTRL_? */, midi, midiSet) > 8064) {
@@ -401,7 +401,7 @@ static u32 StartKeymap(u16 keymapID, s16 prio, u8 maxVoices,
 }
 
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(1, 5, 4)
-static void unblockAllAllocatedVoices(u32 vid) {
+static inline void unblockAllAllocatedVoices(u32 vid) {
   u32 id; // r31
 
   id = vidGetInternalId(vid);
@@ -483,7 +483,7 @@ u32 synthStartSound(u16 id, u8 prio, u8 max,
   }
 }
 
-static u32 convert_cents(SYNTH_VOICE* svoice, u32 ccents) {
+static inline u32 convert_cents(SYNTH_VOICE* svoice, u32 ccents) {
   u32 curDetune; // r30
   u32 cpitch;    // r31
 
@@ -494,7 +494,7 @@ static u32 convert_cents(SYNTH_VOICE* svoice, u32 ccents) {
   return cpitch;
 }
 
-static void UpdateTimeMIDICtrl(SYNTH_VOICE* sv) {
+static inline void UpdateTimeMIDICtrl(SYNTH_VOICE* sv) {
   if (!sv->timeUsedByInput) {
     return;
   }
@@ -830,7 +830,7 @@ end:
   UpdateTimeMIDICtrl(sv);
 }
 
-static void EventHandler(u32 i) {
+static inline void EventHandler(u32 i) {
   SYNTH_VOICE* sv; // r31
 
   sv = &synthVoice[i];
@@ -858,7 +858,7 @@ end:
   UpdateTimeMIDICtrl(sv);
 }
 
-static void synthInitJobQueue() {
+static inline void synthInitJobQueue() {
   u8 i; // r31
 
   for (i = 0; i < 32; ++i) {
@@ -947,7 +947,7 @@ void synthForceLowPrecisionUpdate(SYNTH_VOICE* svoice) {
 
 void synthKeyStateUpdate(SYNTH_VOICE* svoice) { synthAddJob(svoice, SYNTH_JOBTYPE_EVENT, 0); }
 
-static void HandleJobQueue(SYNTH_QUEUE** queueRoot, void (*handler)(u32)) {
+static inline void HandleJobQueue(SYNTH_QUEUE** queueRoot, void (*handler)(u32)) {
   SYNTH_QUEUE* jq;     // r31
   SYNTH_QUEUE* nextJq; // r30
 
@@ -964,7 +964,7 @@ static void HandleJobQueue(SYNTH_QUEUE** queueRoot, void (*handler)(u32)) {
   *queueRoot = NULL;
 }
 
-static void HandleVoices() {
+static inline void HandleVoices() {
   SYNTH_JOBTAB* jTab = &synthJobTable[synthJobTableIndex]; // r31
   HandleJobQueue(&jTab->lowPrecision, LowPrecisionHandler);
   HandleJobQueue(&jTab->event, EventHandler);
@@ -972,7 +972,7 @@ static void HandleVoices() {
   synthJobTableIndex = synthJobTableIndex + 1 & SYNTH_JOB_SLOT_MASK;
 }
 
-static void HandleFaderTermination(SYNTHMasterFader* smf) {
+static inline void HandleFaderTermination(SYNTHMasterFader* smf) {
   switch (smf->seqMode) {
   case 1:
     seqStop(smf->seqId);
@@ -1165,7 +1165,7 @@ void synthFXCloneMidiSetup(SYNTH_VOICE* dest, SYNTH_VOICE* src) {
   inpFXCopyCtrl(SND_MIDICTRL_DOPPLER, dest, src);
 }
 
-static bool synthFXVolume(u32 vid, u8 vol) {
+static inline bool synthFXVolume(u32 vid, u8 vol) {
   u32 i;   // r31
   u32 ret; // r29
 
@@ -1229,7 +1229,7 @@ u16 synthGetVolume(u32 vid) {
   return 0;
 }
 
-static void SetupFader(SYNTHMasterFader* smf, u8 volume, u32 time, u8 seqMode, u32 seqId) {
+static inline void SetupFader(SYNTHMasterFader* smf, u8 volume, u32 time, u8 seqMode, u32 seqId) {
   smf->seqMode = seqMode;
   smf->seqId = seqId;
   if (time != 0) {
