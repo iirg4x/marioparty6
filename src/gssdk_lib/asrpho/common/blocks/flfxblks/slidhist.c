@@ -77,14 +77,16 @@ void SlidingHisto_Clear(TriggerLR *block)
 u32 SlidingHisto_Init(TriggerLR *block)
 {
     TosContext *context = block->base.context;
+    f32 minimum;
     f32 maximum;
     u32 *bin;
     s32 *history;
     u32 result = 0;
 
-    block->histogramMinimum = _tosGetProfileFloat(block, 12, 6.5f);
+    minimum = _tosGetProfileFloat(block, 12, 6.5f);
     maximum = _tosGetProfileFloat(block, 13, 27.0f);
-    block->histogramRange = maximum - block->histogramMinimum;
+    block->histogramMinimum = minimum;
+    block->histogramRange = maximum - minimum;
 
     block->histogramBinCount = _tosGetProfileU32(block, 14, 150);
     block->histogramBins = heap_Calloc(
