@@ -321,6 +321,17 @@ config.rel_ldscript_replacements = {
         }""",
         ),
     ],
+    "openingDll": [
+        (
+            "        .text ALIGN(0x4):{}",
+            """        .text ALIGN(0x4):{
+            opening.o(.text)
+            opening.o(.text.object_setup)
+            opening.o(.text.after_setup)
+            *(.text)
+        }""",
+        ),
+    ],
 }
 
 # Helper function for Dolphin libraries
@@ -1259,7 +1270,7 @@ config.libs = [
     Rel(
         "openingDll",
         objects={
-            Object(NonMatching, "REL/openingDll/opening.c"),
+            Object(Matching, "REL/openingDll/opening.c"),
             Object(
                 Matching,
                 "REL/openingDll/runtime.c",
