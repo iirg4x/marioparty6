@@ -91,6 +91,23 @@
       ]
     },
     {
+      "id": "opening-application-authenticated-csect-order",
+      "classification": "authenticated",
+      "path": "src/REL/openingDll/opening.c",
+      "kind": "source_shape",
+      "rules": [
+        "compiler_pragma"
+      ],
+      "rationale": "The complete GC/1.3.2 opening application owner is exact only when fn_1_A0 and the remaining application functions retain separate code_type csects. File-qualified linker selectors concatenate .text, .text.object_setup, and .text.after_setup into the retail function order without changing function bodies. A fresh source-linked build proves all 41 functions, all owned sections, and 2,024 relocations exact, and openingDll.rel is byte-identical to retail. This authenticates the owner-specific chronology/link-order mechanism and does not authorize pragmas in another owner.",
+      "evidence": [
+        "build/opening_full_csect_object_strict_fresh.json",
+        "config/dll/rels/openingDll/splits.txt",
+        "config/dll/rels/openingDll/symbols.txt",
+        "configure.py",
+        "src/REL/openingDll/opening.c"
+      ]
+    },
+    {
       "id": "gate-no-generic-math-inline",
       "classification": "authenticated",
       "path": "src/board/gate.c",
