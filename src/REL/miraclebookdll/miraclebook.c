@@ -67,6 +67,8 @@ extern const f32 lbl_1_rodata_C8;
 extern const f32 lbl_1_rodata_CC;
 extern const f32 lbl_1_rodata_D0;
 extern const f32 lbl_1_rodata_D4;
+extern const f32 lbl_1_rodata_D8;
+extern const f32 lbl_1_rodata_DC;
 extern const f32 lbl_1_rodata_158;
 extern const f32 lbl_1_rodata_16C;
 extern const f32 lbl_1_rodata_198;
@@ -74,6 +76,7 @@ extern const f32 lbl_1_rodata_19C;
 extern const f32 lbl_1_rodata_1A0;
 extern const f32 lbl_1_rodata_1B0;
 extern const f64 lbl_1_rodata_F0;
+extern const f64 lbl_1_rodata_F8;
 extern const f32 lbl_1_rodata_100;
 extern const f32 lbl_1_rodata_104;
 extern const f64 lbl_1_rodata_108;
@@ -207,6 +210,7 @@ void fn_1_4CC(void);
 void fn_1_A30(void);
 void fn_1_3418(void);
 void fn_1_34C4(void);
+void fn_1_3734(s32 arg0);
 void fn_1_3E40(void);
 s32 fn_1_427C(void);
 void fn_1_479C(void);
@@ -560,6 +564,90 @@ void fn_1_34C4(void)
     omCameraViewSetMulti(2, &lbl_1_bss_1A4);
     lbl_1_bss_1A0 = 0;
     lbl_1_bss_19C = lbl_1_rodata_30;
+}
+
+void fn_1_3734(s32 arg0)
+{
+
+    f64 zeroForward;
+    f64 zeroReverse;
+
+    if (lbl_1_bss_1A0 == 0) {
+        lbl_1_bss_1A0 = arg0;
+        lbl_1_bss_224 = 8;
+        return;
+    }
+
+    if (lbl_1_rodata_30 == lbl_1_bss_19C) {
+        if (lbl_1_bss_1A0 == 1) {
+            lbl_1_bss_1A4.zoom = lbl_1_rodata_D8;
+            omCameraViewMoveSimpleMulti(3, &lbl_1_bss_1A4, 50);
+        } else if (lbl_1_bss_1A0 == -1) {
+            lbl_1_bss_1A4.zoom = lbl_1_rodata_D4;
+            omCameraViewMoveSimpleMulti(3, &lbl_1_bss_1A4, 50);
+        }
+    }
+
+    lbl_1_bss_19C += lbl_1_rodata_DC;
+    if (lbl_1_bss_19C > lbl_1_rodata_90) {
+        lbl_1_bss_19C = lbl_1_rodata_90;
+    }
+
+    if (lbl_1_bss_1A0 == 1) {
+        lbl_1_bss_184[1] = (f32) ((lbl_1_rodata_70 + lbl_1_bss_11C) *
+            sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8));
+        sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8);
+        zeroForward = lbl_1_rodata_F0;
+        lbl_1_bss_184[2] = (f32)zeroForward;
+        lbl_1_bss_184[3] = (f32) (lbl_1_rodata_F8 *
+            sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8));
+        lbl_1_bss_184[5] = (f32) (lbl_1_bss_118 *
+            sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8));
+
+        Hu3DModelPosSet(lbl_1_bss_21A, lbl_1_rodata_30,
+            lbl_1_rodata_100 + lbl_1_bss_11C - lbl_1_bss_184[1],
+            -lbl_1_bss_184[2]);
+        Hu3DModelRotSet(lbl_1_bss_21A,
+            lbl_1_rodata_104 - lbl_1_bss_184[3], lbl_1_rodata_30,
+            lbl_1_bss_118 - lbl_1_bss_184[5]);
+        Hu3DModelPosSet(lbl_1_bss_218, lbl_1_rodata_30,
+            lbl_1_rodata_100 + lbl_1_bss_11C - lbl_1_bss_184[1],
+            -lbl_1_bss_184[2]);
+        Hu3DModelRotSet(lbl_1_bss_218,
+            lbl_1_rodata_104 - lbl_1_bss_184[3], lbl_1_rodata_30,
+            lbl_1_bss_118 - lbl_1_bss_184[5]);
+
+        if (lbl_1_rodata_90 == lbl_1_bss_19C) {
+            lbl_1_bss_224 = 2;
+            lbl_1_bss_19C = lbl_1_rodata_30;
+        }
+    } else if (lbl_1_bss_1A0 == -1) {
+        lbl_1_bss_184[1] = (f32) (lbl_1_rodata_108 *
+            sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8));
+        sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8);
+        zeroReverse = lbl_1_rodata_F0;
+        lbl_1_bss_184[2] = (f32)zeroReverse;
+        lbl_1_bss_184[3] = (f32) (lbl_1_rodata_F8 *
+            sin(lbl_1_rodata_E0 * lbl_1_bss_19C / lbl_1_rodata_E8));
+
+        Hu3DModelPosSet(lbl_1_bss_21A, lbl_1_rodata_30,
+            lbl_1_rodata_6C + lbl_1_bss_184[1], lbl_1_bss_184[2]);
+        Hu3DModelRotSet(lbl_1_bss_21A, lbl_1_bss_184[3],
+            lbl_1_rodata_30, lbl_1_rodata_30);
+        Hu3DModelPosSet(lbl_1_bss_218, lbl_1_rodata_30,
+            lbl_1_rodata_6C + lbl_1_bss_184[1], lbl_1_bss_184[2]);
+        Hu3DModelRotSet(lbl_1_bss_218, lbl_1_bss_184[3],
+            lbl_1_rodata_30, lbl_1_rodata_30);
+
+        if (lbl_1_rodata_90 == lbl_1_bss_19C) {
+            lbl_1_bss_224 = 2;
+            lbl_1_bss_1A0 = 0;
+            lbl_1_bss_19C = lbl_1_rodata_30;
+            fn_1_71E0(0);
+            lbl_1_bss_11C = lbl_1_rodata_30;
+            lbl_1_bss_120[2] = lbl_1_bss_120[3] = lbl_1_rodata_30;
+        }
+    }
 }
 
 void fn_1_3E40(void)
