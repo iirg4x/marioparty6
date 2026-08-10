@@ -907,7 +907,9 @@ static void CoinEffCreate(int no, HuVecF *pos)
             100);
         mbParticleHookSet(effP->modelId, CoinEffHook);
         Hu3DModelLayerSet(effP->modelId, 5);
-        effP->pos = *pos;
+        effP->pos.x = pos->x;
+        effP->pos.y = pos->y;
+        effP->pos.z = pos->z;
         Hu3DModelPosSetV(effP->modelId, pos);
         effP->count = 0;
         particleP = Hu3DData[effP->modelId].hookData;
@@ -918,10 +920,12 @@ static void CoinEffCreate(int no, HuVecF *pos)
             particleDataP->color.a = 0;
             particleDataP->time = 0;
         }
-        particleP->attr = MB_PARTICLE_ATTR_LOOP;
+        particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
         particleP->time = no;
     } else if (effP->count == 0) {
-        effP->pos = *pos;
+        effP->pos.x = pos->x;
+        effP->pos.y = pos->y;
+        effP->pos.z = pos->z;
         Hu3DModelPosSetV(effP->modelId, pos);
     }
 }

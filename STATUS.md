@@ -16,24 +16,26 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
 Towering Treetop stub seams strict-exact and promoted**. `src/board/tutorial.c`
-is matching at **55 / 55 functions**. Current promoted partial-owner recovery
-includes `src/board/capevent.c` at **200 / 237 strict-exact functions** and
-**202 / 237 data-value-exact functions**; `src/board/capmove.c` at **17 / 24**
-and **18 / 24**; `src/board/capsule.c` at **111 / 165** and **112 / 165**;
-`src/board/capspecial.c` at **18 / 44** and **19 / 44**; `src/board/config.c` at
-**31 / 51** and **30 / 51**; `src/board/captrap.c` at
-**11 / 20** and **11 / 20**; `src/board/coin.c` at **36 / 52** and **36 / 52**;
-`src/board/dice.c` at **53 / 68** and **54 / 68**; `src/board/last5.c` at **6 /
-10** and **6 / 10**; `src/board/mgcall.c` at **26 / 38** and **26 / 38**;
-`src/board/player.c` at **158 / 165** and **159 / 165**; `src/board/single.c`
-at **42 / 58** and **43 / 58**; `src/board/snpc.c` at **43 / 85** and **47 /
-85**; `src/board/star.c` at **63 / 90** and **71 / 90**; `src/board/telop.c`
-at **30 / 31 strict-exact and data-value-exact functions**; and
-`src/board/wipe.c` at **32 / 33 strict-exact and data-value-exact functions**.
-The latest recovery batch adds **61 strict-exact functions** and **33,632 text
-bytes** across 11 partial owners with zero exact-function regressions. The
-board-owner and Treetop seam totals are unchanged because these files remain
-partial owners.
+is matching at **55 / 55 functions**. Promoted partial-owner recovery now
+includes `src/board/capevent.c` at **203 / 237 strict-exact functions** and
+**205 / 237 data-value-exact functions**; `src/board/capmove.c` at **19 / 24**
+and **19 / 24**; `src/board/capspecial.c` at **22 / 44** and **23 / 44**;
+`src/board/capsule.c` at **119 / 165** and **123 / 165**;
+`src/board/capthrow.c` at **12 / 19** and **12 / 19**; `src/board/captrap.c` at
+**11 / 20** and **11 / 20**; `src/board/coin.c` at **37 / 52** and **37 / 52**;
+`src/board/config.c` at **38 / 51** and **38 / 51**; `src/board/dice.c` at
+**53 / 68** and **54 / 68**; `src/board/last5.c` at **6 / 10** and **6 / 10**;
+`src/board/mgcall.c` at **26 / 38** and **26 / 38**; `src/board/opening.c` at
+**19 / 22** and **21 / 22**; `src/board/player.c` at **158 / 165** and
+**160 / 165**; `src/board/shopevent.c` at **11 / 13** and **11 / 13**;
+`src/board/single.c` at **42 / 58** and **43 / 58**; `src/board/snpc.c` at
+**44 / 85** and **48 / 85**; `src/board/star.c` at **70 / 90** and **72 / 90**;
+`src/board/telop.c` at **30 / 31 strict-exact and data-value-exact functions**;
+and `src/board/wipe.c` at **32 / 33 strict-exact and data-value-exact
+functions**. All target functions in the 13 synchronized Board source owners
+are paired in the fresh GC/2.6 reports, and the complete 137-output retail
+checksum passes. The board-owner and Treetop seam totals are unchanged because
+these files remain partial owners.
 
 Eight main-DOL MusyX runtime owners now build from recovered C: `synthvoice.c`
 at **21 / 21**, `synthdata.c` at **27 / 27**, `hw_aramdma.c` at **13 / 13**,

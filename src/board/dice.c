@@ -2307,6 +2307,10 @@ static void DiceObjEffTriDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+static float diceCloudRotYRatio2[3] = {
+    1.0f / 1.0f, 1.0f / 2.0f, 1.0f / 3.0f
+};
+
 static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
 {
     HU3D_MODEL *model = &Hu3DData[modelId];

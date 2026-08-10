@@ -1105,7 +1105,7 @@ void mbev_CapHanachan(void)
                 ease = 1.0f;
             }
             startPos.x = endPos.x + ((distance +
-                (2.0f * (3.0f * (100.0f * time)))) *
+                (2.0 * (3.0f * (100.0f * time)))) *
                 sin((M_PI * angle) / 180.0f));
             startPos.z = endPos.z + ((distance +
                 (3.0f * (100.0f * time))) *
@@ -1392,7 +1392,8 @@ void mbev_CapKillerMove(void)
     }
     offset = direction;
     offset.y = 0.0f;
-    killerRot.x = -atan2(direction.y, PSVECMag(&offset)) * 180.0f / M_PI;
+    killerRot.x = -atan2(direction.y,
+        sqrtf(offset.x * offset.x + offset.z * offset.z)) * 180.0f / M_PI;
     killerRot.y = atan2(direction.x, direction.z) * 180.0f / M_PI;
     killerRot.z = 0.0f;
     mtxRot(matrix, -killerRot.x, killerRot.y, killerRot.z);
@@ -1480,7 +1481,7 @@ void mbev_CapKillerMove(void)
         t = (float)i / 60.0f;
         mbObjPosSetV(modelId, &killerPos);
         mbObjRotSet(modelId, killerRot.x,
-            killerRot.y + (30.0f * sin(3.0f * M_PI * t)), killerRot.z);
+        killerRot.y + (30.0f * sin((M_PI * (540.0f * t)) / 180.0f)), killerRot.z);
         mbObjRotGet(modelId, &targetRot);
         mtxRot(matrix, targetRot.x, targetRot.y, targetRot.z);
         offset.x = 0.0f;
@@ -1493,7 +1494,7 @@ void mbev_CapKillerMove(void)
         mbPlayerRotSetV(work->playerNo, &playerRot);
         for (j = 0; j < 3; j++) {
             targetRot = killerRot;
-            targetRot.y += 30.0f * sin(3.0f * M_PI * t);
+        targetRot.y += 30.0f * sin((M_PI * (540.0f * t)) / 180.0f);
             ev_CapEffKillerDustCreate(work, &killerPos, &targetRot);
         }
         HuPrcVSleep();
@@ -1563,7 +1564,8 @@ void mbev_CapKillerMove(void)
         targetRot = killerRot;
         offset = direction;
         offset.y = 0.0f;
-        targetRot.x = -atan2(direction.y, PSVECMag(&offset)) * 180.0f
+        targetRot.x = -atan2(direction.y,
+            sqrtf(offset.x * offset.x + offset.z * offset.z)) * 180.0f
             / M_PI;
         targetRot.y = atan2(direction.x, direction.z) * 180.0f / M_PI;
         targetRot.z = 0.0f;
@@ -1816,7 +1818,6 @@ static void ev_CapEffKillerExplodeCreate(CAPWORK *work, HuVecF *pos,
     GXColor *colorP;
     HuVecF *velocityP;
     HuVecF *effectPosP;
-    float scale;
     int angle;
     int colorValue;
     int i;
@@ -1827,12 +1828,12 @@ static void ev_CapEffKillerExplodeCreate(CAPWORK *work, HuVecF *pos,
         effectPos.y = pos->y;
         effectPos.z = pos->z;
         angle = (360.0f / count) * i;
-        scale = 0.9f + (0.1f * MBCapsuleEffRandF());
         velocity.x = 0.075f * (100.0f *
-            sin((angle * M_PI) / 180.0f)) * scale;
-        scale = 0.9f + (0.1f * MBCapsuleEffRandF());
+            sin((angle * M_PI) / 180.0f)) *
+            (0.9f + (0.1f * MBCapsuleEffRandF()));
         velocity.y = 0.075f * (100.0f *
-            cos((angle * M_PI) / 180.0f)) * scale;
+            cos((angle * M_PI) / 180.0f)) *
+            (0.9f + (0.1f * MBCapsuleEffRandF()));
         velocity.z = 0.0f;
         PSMTXMultVec(mtx, &velocity, &velocity);
         colorValue = 63.0f * MBCapsuleEffRandF();

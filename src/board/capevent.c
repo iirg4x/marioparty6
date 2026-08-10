@@ -719,7 +719,7 @@ s16 mbev_CapMasuValidPrevGet(s16 masuId, HuVecF *pos);
 void mbev_CapPlayerMoveObjExec(OMOBJ *obj);
 float mbev_CapAngleWrap(float a, float b);
 float mbev_CapAngleSumLerp(float t, float a, float b);
-void mbev_CapColorLerp(GXColor *a, GXColor *b, float t, GXColor *out);
+void mbev_CapColorLerp(float t, GXColor *a, GXColor *b, GXColor *out);
 void mbev_CapBezierGetV(float t, float *a, float *b, float *c, float *out);
 void mbev_CapEffExplodeKill(OMOBJ *obj);
 void mbev_CapEffBoostKill(OMOBJ *obj);
@@ -4517,9 +4517,8 @@ void mbev_CapEffRayOMExec(OMOBJ *obj)
                 particleWorkP->_unk3C.z = mbev_CapAngleSumLerp(weight,
                     particleWorkP->_unk24.z, particleWorkP->_unk30.z);
                 for (j = 0; j < 8; j++) {
-                    mbev_CapColorLerp(&particleWorkP->color[j],
-                        &particleWorkP->color[j + 8], weight,
-                        &particleWorkP->colorLerp[j]);
+                    mbev_CapColorLerp(weight, &particleWorkP->color[j],
+                        &particleWorkP->color[j + 8], &particleWorkP->colorLerp[j]);
                     particleWorkP->colorLerp[j].a = (u8)
                         ((float)particleWorkP->color[j].a * workP->alpha);
                 }
@@ -5460,7 +5459,7 @@ void mbev_CapVecRotGet(HuVecF *vec, HuVecF *rot)
     *rot = result;
 }
 
-void mbev_CapColorLerp(GXColor *a, GXColor *b, float t, GXColor *out)
+void mbev_CapColorLerp(float t, GXColor *a, GXColor *b, GXColor *out)
 {
     out->r = ((int)((float)a->r + (t * ((float)b->r - (float)a->r)))) & 255;
     out->g = ((int)((float)a->g + (t * ((float)b->g - (float)a->g)))) & 255;
@@ -7117,10 +7116,10 @@ int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         mbCoinObjScaleSet((s16)workP->modelId, 1.0f, 1.0f, 1.0f);
         result = workNo;
     }
-    if (result == -1) {
-        return 0;
-    } else {
+    if (result != -1) {
         return highF;
+    } else {
+        return 0;
     }
 }
 
@@ -7168,10 +7167,10 @@ int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         mbStarObjScaleSet(workP->modelId, 1.0f, 1.0f, 1.0f);
         result = workNo;
     }
-    if (result == -1) {
-        return 0;
-    } else {
+    if (result != -1) {
         return highF;
+    } else {
+        return 0;
     }
 }
 

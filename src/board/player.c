@@ -3230,6 +3230,8 @@ static s8 tagIdTbl[110] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 54
 };
 
+char lbl_8024767A[14] = "%d:%d->%d\n";
+
 u32 mbPlayerTagNameMesGet(int teamNo)
 {
     int charNo1;
@@ -3245,7 +3247,7 @@ u32 mbPlayerTagNameMesGet(int teamNo)
         charNo2 = temp;
     }
     tagId = tagIdTbl[(charNo1 * 11) + charNo2];
-    OSReport("%d:%d->%d\n", charNo1, charNo2, tagId);
+    OSReport(lbl_8024767A, charNo1, charNo2, tagId);
     if (tagId == -1) {
         return MESSNUM(MESS_TAG_NAME, 55);
     }

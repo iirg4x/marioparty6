@@ -1,3 +1,11 @@
+#include "dolphin/math.h"
+#include "messdir_enum.h"
+
+extern inline float fabsf(float x)
+{
+    return fabs(x);
+}
+
 #include "game/board/main.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
@@ -8,6 +16,7 @@
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/memory.h"
+#include "game/pad.h"
 #include "game/process.h"
 #include "game/sprite.h"
 
@@ -26,6 +35,12 @@ extern void HuPadRumbleAllStop(void);
 extern s32 HuMCProbe(s32 chan);
 extern s32 HuMCMicGet(void);
 extern void HuMCMicSet(s32 value);
+extern s16 HuPadStatGet(s16 padNo);
+extern void mbWipeFadeOut(void);
+extern BOOL SLSaveFlagGet(void);
+extern BOOL saveExecF;
+extern void mbSingleSaveFlush(int value);
+extern int mbAudGuidePlay(s16 seId);
 
 typedef struct PausePanelWork_s {
 int modelId;              /* offset 0 */
@@ -82,6 +97,16 @@ typedef struct PauseCursorWork_s {
     s16 hiliteSprId[4];
 } PAUSE_CURSOR_WORK;
 
+typedef struct ConfigPadWork_s {
+    s32 padNo;
+    s32 playerNo;
+    s32 comDif;
+    BOOL activeF;
+    HuVecF pos;
+    s16 panelId;
+    s16 sprId[3];
+} CONFIG_PAD_WORK;
+
 typedef struct PauseWork_s {
     s32 playerNo;
     s32 cursorPos;
@@ -100,20 +125,11 @@ typedef struct PauseWork_s {
     s32 state38;
     s32 talkTime;
     s32 prevTalkTime;
-    CONFIG_MENU_WORK menu[14];
+    CONFIG_MENU_WORK menu[8];
+    CONFIG_PAD_WORK configPad[4];
     PAUSE_CURSOR_WORK cursor;
     PAUSE_PAD_WORK padWork[GW_PLAYER_MAX];
 } PAUSE_WORK;
-
-typedef struct ConfigPadWork_s {
-    s32 padNo;
-    s32 playerNo;
-    s32 comDif;
-    BOOL activeF;
-    HuVecF pos;
-    s16 panelId;
-    s16 sprId[3];
-} CONFIG_PAD_WORK;
 
 static HuVecF playerPos;
 static PAUSE_WORK pauseWork;
@@ -140,7 +156,7 @@ static s32 mesSpeedAnmNo[4] = {
 static HuVecF pauseGuidePos = { -0.7f, -0.75f, -750.0f };
 static HuVecF pauseGuideQuitPos = { 0.0f, -0.75f, -500.0f };
 static s32 pauseMicValueTbl[3] = { 1, 0, 2 };
-static s16 pauseGridPosTbl[16] = {
+static s16 pauseGridPosTbl[][2] = {
     0, 0, 1, 0, 2, 0, 3, 0,
     0, 1, 1, 1, 2, 1, 3, 1
 };
@@ -158,34 +174,42 @@ static s32 pausePanelLabelFileTbl[8] = {
 };
 static s16 pauseValueNumTbl[8] = { 1, 2, 2, 5, 2, 3, 3, 1 };
 static s16 pauseBatsuValueTbl[8] = { -1, 1, 1, -1, 1, -1, 1, -1 };
-static u32 pauseWinMesTbl[40] = {
-    DATANUM(DATA_win, 0), DATANUM(DATA_win, 1), DATANUM(DATA_win, 2), 0, 0,
-    DATANUM(DATA_win, 3), DATANUM(DATA_win, 4), 0, 0, 0,
-    DATANUM(DATA_win, 5), DATANUM(DATA_win, 6), 0, 0, 0,
-    DATANUM(DATA_win, 7), DATANUM(DATA_win, 8), DATANUM(DATA_win, 9),
-    DATANUM(DATA_win, 10), DATANUM(DATA_win, 23),
-    DATANUM(DATA_win, 11), DATANUM(DATA_win, 12), 0, 0, 0,
-    DATANUM(DATA_win, 15), DATANUM(DATA_win, 14), DATANUM(DATA_win, 13), 0, 0,
-    DATANUM(DATA_win, 16), DATANUM(DATA_win, 17), DATANUM(DATA_win, 18), 0, 0,
-    DATANUM(DATA_win, 19), DATANUM(DATA_win, 40), 0, 0, 0
+static u32 pauseWinMesTbl[8][5] = {
+    MESSNUM(MESS_BOARD_PAUSE, 0), MESSNUM(MESS_BOARD_PAUSE, 1),
+    MESSNUM(MESS_BOARD_PAUSE, 2), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 3), MESSNUM(MESS_BOARD_PAUSE, 4), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 5), MESSNUM(MESS_BOARD_PAUSE, 6), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 7), MESSNUM(MESS_BOARD_PAUSE, 8),
+    MESSNUM(MESS_BOARD_PAUSE, 9), MESSNUM(MESS_BOARD_PAUSE, 10),
+    MESSNUM(MESS_BOARD_PAUSE, 23),
+    MESSNUM(MESS_BOARD_PAUSE, 11), MESSNUM(MESS_BOARD_PAUSE, 12), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 15), MESSNUM(MESS_BOARD_PAUSE, 14),
+    MESSNUM(MESS_BOARD_PAUSE, 13), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 16), MESSNUM(MESS_BOARD_PAUSE, 17),
+    MESSNUM(MESS_BOARD_PAUSE, 18), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 19), MESSNUM(MESS_BOARD_PAUSE, 40), 0, 0, 0
 };
-static u32 pauseSingleWinMesTbl[40] = {
-    DATANUM(DATA_win, 42), DATANUM(DATA_win, 1), DATANUM(DATA_win, 2), 0, 0,
-    DATANUM(DATA_win, 3), DATANUM(DATA_win, 4), 0, 0, 0,
-    DATANUM(DATA_win, 5), DATANUM(DATA_win, 43), 0, 0, 0,
-    DATANUM(DATA_win, 7), DATANUM(DATA_win, 8), DATANUM(DATA_win, 9),
-    DATANUM(DATA_win, 10), DATANUM(DATA_win, 23),
-    DATANUM(DATA_win, 11), DATANUM(DATA_win, 12), 0, 0, 0,
-    DATANUM(DATA_win, 15), DATANUM(DATA_win, 14), DATANUM(DATA_win, 13), 0, 0,
-    DATANUM(DATA_win, 16), DATANUM(DATA_win, 17), DATANUM(DATA_win, 18), 0, 0,
-    DATANUM(DATA_win, 40), DATANUM(DATA_win, 40), 0, 0, 0
+static u32 pauseSingleWinMesTbl[8][5] = {
+    MESSNUM(MESS_BOARD_PAUSE, 42), MESSNUM(MESS_BOARD_PAUSE, 1),
+    MESSNUM(MESS_BOARD_PAUSE, 2), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 3), MESSNUM(MESS_BOARD_PAUSE, 4), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 5), MESSNUM(MESS_BOARD_PAUSE, 43), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 7), MESSNUM(MESS_BOARD_PAUSE, 8),
+    MESSNUM(MESS_BOARD_PAUSE, 9), MESSNUM(MESS_BOARD_PAUSE, 10),
+    MESSNUM(MESS_BOARD_PAUSE, 23),
+    MESSNUM(MESS_BOARD_PAUSE, 11), MESSNUM(MESS_BOARD_PAUSE, 12), 0, 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 15), MESSNUM(MESS_BOARD_PAUSE, 14),
+    MESSNUM(MESS_BOARD_PAUSE, 13), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 16), MESSNUM(MESS_BOARD_PAUSE, 17),
+    MESSNUM(MESS_BOARD_PAUSE, 18), 0, 0,
+    MESSNUM(MESS_BOARD_PAUSE, 40), MESSNUM(MESS_BOARD_PAUSE, 40), 0, 0, 0
 };
 static HuVecF pauseGuidePos2 = { -0.7f, -0.75f, -750.0f };
 static char configExitMessage[] =
     "-------------------- Config Exit! ----------------------\n";
 static u32 pausePadWinMesTbl[4] = {
-    DATANUM(DATA_win, 21), DATANUM(DATA_win, 22),
-    DATANUM(DATA_win, 22), DATANUM(DATA_win, 22)
+    MESSNUM(MESS_BOARD_PAUSE, 21), MESSNUM(MESS_BOARD_PAUSE, 22),
+    MESSNUM(MESS_BOARD_PAUSE, 22), MESSNUM(MESS_BOARD_PAUSE, 22)
 };
 static float pausePadWinPosTbl[4][2] = {
     { 64.0f, 288.0f },
@@ -204,7 +228,11 @@ static s32 pauseCharPanelFileTbl[17] = {
     DATANUM(DATA_bpause6, 19), DATANUM(DATA_bpause6, 31),
     DATANUM(DATA_bpause6, 31)
 };
-static s16 configPadSprOfsTbl[6] = { 0, 0, 20, -30, 42, -70 };
+static s16 configPadSprOfsTbl[3][2] = {
+    { 0, 0 },
+    { 20, -30 },
+    { 42, -70 }
+};
 static s16 pauseCursorSprOfsTbl[2][4][2] = {
     { { 0, -62 }, { 0, 68 }, { 62, 0 }, { -62, 0 } },
     { { 0, -20 }, { 0, 20 }, { 43, -60 }, { -45, -60 } }
@@ -216,27 +244,41 @@ static void ConfigKill(void);
 static void ConfigMain(void);
 static void ConfigOpen(void);
 static void ConfigGrowWait(void);
+static void ConfigWinUpdate(s32 index);
 static void ConfigPadWinSet(s32 index);
+static void ConfigPadOpen(void);
 static void ConfigPadSprSet(CONFIG_PAD_WORK *workP);
+static void ConfigPadTimeSet(CONFIG_PAD_WORK *workP, float scale);
+static void ConfigPadClose(void);
+static BOOL ConfigPadMain(void);
 static void ConfigSettingRead(void);
 static void ConfigSettingWrite(void);
 BOOL mbPausePanelFreezeGet(s16 panelId);
 s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum);
 void mbPausePanelKill(s16 panelId);
 void mbPausePanelPosSet(s16 panelId, float x, float y);
+void mbPausePanelPosGet(s16 panelId, HuVecF *pos);
+float mbPausePanelScaleGet(s16 panelId);
 void mbPausePanelBatsuSet(s16 panelId, BOOL batsuF);
+void mbPausePanelSizeSet(s16 panelId, int time, float scale);
 void mbPausePanelGrowSet(s16 panelId, int time, int delay, float scale);
 void mbPausePanelShrinkSet(s16 panelId, int time, int delay);
+void mbPausePanelSlideSet(s16 panelId, s16 time, HuVecF *pos);
 void mbPausePanelBankSet(s16 panelId, int bank);
-static void PausePlayerComRead(s32 playerNo);
+void mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank);
+static BOOL PausePlayerComRead(s32 playerNo);
 static void ConfigExec(void);
+static BOOL ConfigQuitExec(void);
 static void ConfigClose(s32 result);
 static void PauseCursorCreate(void);
 static void PauseCursorKill(void);
 static void PauseCursorHiliteSet(s32 cursorNo, s32 cursorPos, s32 mask);
+static void PauseCursorPosNextSet(s32 time, float x, float y);
+static int PauseCursorMove(void);
 static BOOL PausePadCheck(s32 padNo);
 void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
     HuVecF *posNormP);
+void mbPauseGuideTalkSet(MBMODELID modelId);
 static void PauseDispCopyDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void PauseGuideMain(void);
 static void PauseGuideDestroy(void);
@@ -272,7 +314,7 @@ static void ConfigKill(void)
     menuP = pauseWork.menu;
     for (i = 0; i < 8; i++, menuP++) {
         if (menuP->panelId != 0) {
-            mbPausePanelKill(menuP->panelId);
+            mbPausePanelKill((s16)menuP->panelId);
             menuP->panelId = 0;
         }
     }
@@ -321,8 +363,8 @@ static void ConfigOpen(void)
             || menuP->valueMin == pauseBatsuValueTbl[i]) {
             mbPausePanelBatsuSet(menuP->panelId, TRUE);
         }
-        x = 0.4f * ((float)pauseGridPosTbl[i * 2] - 1.5f);
-        y = 0.3f + (-0.5f * ((float)pauseGridPosTbl[(i * 2) + 1] - 0.5f));
+        x = 0.4f * ((float)pauseGridPosTbl[i][0] - 1.5f);
+        y = 0.3f + (-0.5f * ((float)pauseGridPosTbl[i][1] - 0.5f));
         mbPausePanelPosSet(menuP->panelId, x, y);
         mbPausePanelGrowSet(menuP->panelId, 16, i * 2, 1.0f);
         menuP->valueMax = pauseValueNumTbl[i];
@@ -344,7 +386,7 @@ static void ConfigGrowWait(void)
         menuP = pauseWork.menu;
         for (i = 0; i < 8; i++, menuP++) {
             if (menuP->panelId != 0
-                && !mbPausePanelFreezeGet(menuP->panelId)) {
+                && !mbPausePanelFreezeGet((s16)menuP->panelId)) {
                 doneF = FALSE;
             }
         }
@@ -352,17 +394,6 @@ static void ConfigGrowWait(void)
             HuPrcVSleep();
         }
     } while (!doneF);
-}
-
-BOOL mbPausePanelFreezeGet(s16 panelId)
-{
-    PAUSE_PANEL_WORK *work = &pausePanelWork[panelId];
-    BOOL freezeF = FALSE;
-
-    if (work->motion == 0 && work->animMaxTime == 0) {
-        freezeF = TRUE;
-    }
-    return freezeF;
 }
 
 static void ConfigClose(s32 result)
@@ -375,10 +406,10 @@ static void ConfigClose(s32 result)
     menuP = pauseWork.menu;
     for (i = 0; i < 8; i++, menuP++) {
         if (menuP->enabled && menuP->panelId != 0) {
-            pos.x = 0.4f * ((float)pauseGridPosTbl[i * 2] - 1.5f);
+            pos.x = 0.4f * ((float)pauseGridPosTbl[i][0] - 1.5f);
             pos.y = 0.3f
                 + (-0.5f
-                    * ((float)pauseGridPosTbl[(i * 2) + 1] - 0.5f));
+                    * ((float)pauseGridPosTbl[i][1] - 0.5f));
             pos.z = 0.0f;
             mbPausePanelPosSet(menuP->panelId, pos.x, pos.y);
             mbPausePanelShrinkSet(menuP->panelId, 16, 0);
@@ -411,6 +442,513 @@ static void ConfigClose(s32 result)
             menuP->panelId = 0;
             menuP->initialValue = 0;
         }
+    }
+}
+
+static void ConfigExec(void)
+{
+    CONFIG_MENU_WORK *menuP;
+    HuVecF pos;
+    s32 cursorPos;
+    s32 prevPos;
+    s32 padNo;
+    s32 stkDir;
+    s32 oldValue;
+    s32 value;
+    s32 i;
+    BOOL doneF;
+    BOOL padOff;
+    BOOL aPressed;
+    int cursorMove;
+    int stkDirTbl[8] = { 6, 7, 7, 5, 10, 11, 11, 9 };
+
+    ConfigPadWinSet(0);
+    pauseWork.selectedRow = 1;
+    prevPos = -1;
+    for (;;) {
+        HuPrcVSleep();
+        mbPauseGuideTalkSet(pausePlayer);
+        padNo = GwPlayer[pauseWork.playerNo].padNo;
+        padOff = HuPadStatGet((s16)padNo) < 0;
+        cursorMove = PauseCursorMove();
+        if (cursorMove != 0) {
+            if (prevPos >= 0 && (HuPadBtnDown[padNo] & PAD_BUTTON_A)
+                && !padOff && cursorMove < 10) {
+                pauseWork.activeF = 1;
+            }
+            goto config_exec_bottom;
+        }
+
+        cursorPos = pauseWork.cursorPos;
+        prevPos = cursorPos;
+        if (cursorPos < 0) {
+            cursorPos = 0;
+        }
+        if (pauseWork.activeF == 0) {
+            stkDir = HuPadDStk[padNo] & stkDirTbl[cursorPos];
+            if (padOff) {
+                stkDir = 0;
+            }
+            if (stkDir & PAD_BUTTON_DOWN) {
+                mbAudFXPlay(0);
+                cursorPos = (cursorPos + 4) & 7;
+            } else if (stkDir & PAD_BUTTON_UP) {
+                mbAudFXPlay(0);
+                cursorPos = (cursorPos - 4) & 7;
+            }
+            if (stkDir & PAD_BUTTON_RIGHT) {
+                mbAudFXPlay(0);
+                cursorPos = (cursorPos + 1) & 7;
+            } else if (stkDir & PAD_BUTTON_LEFT) {
+                mbAudFXPlay(0);
+                cursorPos = (cursorPos - 1) & 7;
+            }
+            pauseWork.cursorPos = cursorPos;
+            PauseCursorHiliteSet(0, stkDirTbl[cursorPos], HuPadDStk[padNo]);
+            if (prevPos != cursorPos) {
+                pos.x = 0.4f * ((float)pauseGridPosTbl[cursorPos][0] - 1.5f);
+                pos.y = 0.3f
+                    + (-0.5f
+                        * ((float)pauseGridPosTbl[cursorPos][1] - 0.5f));
+                pos.z = 0.0f;
+                PauseCursorPosNextSet(12, pos.x, pos.y);
+                if (prevPos >= 0) {
+                    mbPausePanelSizeSet(
+                        (s16)pauseWork.menu[prevPos].panelId, 12, 1.0f);
+                }
+                if (cursorPos >= 0) {
+                    mbPausePanelSizeSet(
+                        (s16)pauseWork.menu[cursorPos].panelId, 12, 1.2f);
+                }
+                ConfigWinUpdate(cursorPos);
+            }
+        }
+
+        aPressed = (HuPadBtnDown[padNo] & PAD_BUTTON_A) && !padOff;
+        if (aPressed) {
+            pauseWork.activeF = 1;
+        }
+        if (pauseWork.activeF != 0) {
+            menuP = &pauseWork.menu[cursorPos];
+            if (!mbPausePanelFreezeGet((s16)menuP->panelId)) {
+                goto config_exec_bottom;
+            }
+            pauseWork.activeF = 0;
+            if (menuP->initialValue == 0) {
+                mbAudFXPlay(4);
+                goto config_exec_bottom;
+            }
+            if (cursorPos == 0) {
+                mbAudFXPlay(2);
+                pos.x = -0.225f;
+                pos.y = 0.15f;
+                pos.z = 0.0f;
+                pos.x += -0.425f;
+                mbPausePanelSlideSet(
+                    (s16)pauseWork.menu[0].panelId, 16, &pos);
+                for (i = 1; i < 8; i++) {
+                    pauseWork.menu[i].enabled = TRUE;
+                }
+                PauseCursorHiliteSet(-1, 0, 0);
+                menuP = pauseWork.menu;
+                for (i = 0; i < 8; i++, menuP++) {
+                    if (menuP->enabled && menuP->panelId != 0) {
+                        pos.x = 0.4f
+                            * ((float)pauseGridPosTbl[i][0] - 1.5f);
+                        pos.y = 0.3f
+                            + (-0.5f
+                                * ((float)pauseGridPosTbl[i][1] - 0.5f));
+                        pos.z = 0.0f;
+                        mbPausePanelPosSet(
+                            (s16)menuP->panelId, pos.x, pos.y);
+                        mbPausePanelShrinkSet(
+                            (s16)menuP->panelId, 16, 0);
+                    }
+                }
+                doneF = FALSE;
+                while (!doneF) {
+                    doneF = TRUE;
+                    menuP = pauseWork.menu;
+                    for (i = 0; i < 8; i++, menuP++) {
+                        if (menuP->panelId != 0
+                            && !mbPausePanelFreezeGet(
+                                (s16)menuP->panelId)) {
+                            doneF = FALSE;
+                        }
+                    }
+                    if (!doneF) {
+                        HuPrcVSleep();
+                    }
+                }
+                menuP = pauseWork.menu;
+                for (i = 0; i < 8; i++, menuP++) {
+                    if (menuP->enabled && menuP->panelId != 0) {
+                        mbPausePanelKill((s16)menuP->panelId);
+                        menuP->panelId = 0;
+                        menuP->enabled = FALSE;
+                    }
+                }
+                ConfigPadOpen();
+                while (!ConfigPadMain()) {
+                    HuPrcVSleep();
+                    mbPauseGuideTalkSet(pausePlayer);
+                }
+                mbAudFXPlay(3);
+                PauseCursorHiliteSet(-1, 0, 0);
+                ConfigPadClose();
+                pauseWork.activeF = 0;
+                menuP = pauseWork.menu;
+                for (i = 0; i < 8; i++, menuP++) {
+                    if (menuP->panelId <= 0) {
+                        menuP->panelId = mbPausePanelCreate(
+                            pausePanelFileTbl[i],
+                            pausePanelLabelFileTbl[i]);
+                        if (menuP->initialValue == 0
+                            || menuP->valueMin == pauseBatsuValueTbl[i]) {
+                            mbPausePanelBatsuSet(menuP->panelId, TRUE);
+                        }
+                        pos.x = 0.4f
+                            * ((float)pauseGridPosTbl[i][0] - 1.5f);
+                        pos.y = 0.3f
+                            + (-0.5f
+                                * ((float)pauseGridPosTbl[i][1] - 0.5f));
+                        pos.z = 0.0f;
+                        mbPausePanelPosSet(
+                            (s16)menuP->panelId, pos.x, pos.y);
+                        mbPausePanelGrowSet(
+                            (s16)menuP->panelId, 16, i * 2, 1.0f);
+                        mbPausePanelBankSet(
+                            (s16)menuP->panelId, menuP->valueMin);
+                    }
+                }
+                mbPauseGuideMoveSet(pausePlayer, 20, NULL, &pauseGuidePos);
+                doneF = FALSE;
+                while (!doneF) {
+                    doneF = TRUE;
+                    menuP = pauseWork.menu;
+                    for (i = 0; i < 8; i++, menuP++) {
+                        if (menuP->panelId != 0
+                            && !mbPausePanelFreezeGet(
+                                (s16)menuP->panelId)) {
+                            doneF = FALSE;
+                        }
+                    }
+                    if (!doneF) {
+                        HuPrcVSleep();
+                    }
+                }
+                pauseWork.cursorPos = -1;
+                HuPrcVSleep();
+                goto config_exec_bottom;
+            }
+            if (cursorPos == 7) {
+                mbAudFXPlay(1);
+                if (ConfigQuitExec()) {
+                    mbWipeFadeOut();
+                    _SetFlag(FLAG_BOARD_EXIT);
+                    pauseWork.selectedColumn = 1;
+                    goto config_exec_bottom;
+                }
+                pauseWork.activeF = 0;
+                menuP = pauseWork.menu;
+                for (i = 0; i < 8; i++, menuP++) {
+                    if (menuP->panelId <= 0) {
+                        menuP->panelId = mbPausePanelCreate(
+                            pausePanelFileTbl[i],
+                            pausePanelLabelFileTbl[i]);
+                        if (menuP->initialValue == 0
+                            || menuP->valueMin == pauseBatsuValueTbl[i]) {
+                            mbPausePanelBatsuSet(menuP->panelId, TRUE);
+                        }
+                        pos.x = 0.4f
+                            * ((float)pauseGridPosTbl[i][0] - 1.5f);
+                        pos.y = 0.3f
+                            + (-0.5f
+                                * ((float)pauseGridPosTbl[i][1] - 0.5f));
+                        pos.z = 0.0f;
+                        mbPausePanelPosSet(
+                            (s16)menuP->panelId, pos.x, pos.y);
+                        mbPausePanelGrowSet(
+                            (s16)menuP->panelId, 16, i * 2, 1.0f);
+                        mbPausePanelBankSet(
+                            (s16)menuP->panelId, menuP->valueMin);
+                    }
+                }
+                mbPauseGuideMoveSet(pausePlayer, 20, NULL, &pauseGuidePos);
+                doneF = FALSE;
+                while (!doneF) {
+                    doneF = TRUE;
+                    menuP = pauseWork.menu;
+                    for (i = 0; i < 8; i++, menuP++) {
+                        if (menuP->panelId != 0
+                            && !mbPausePanelFreezeGet(
+                                (s16)menuP->panelId)) {
+                            doneF = FALSE;
+                        }
+                    }
+                    if (!doneF) {
+                        HuPrcVSleep();
+                    }
+                }
+                ConfigPadWinSet(0);
+                pauseWork.cursorPos = -1;
+                goto config_exec_bottom;
+            }
+
+            mbAudFXPlay(1);
+            if (menuP->valueMax > 1) {
+                oldValue = menuP->valueMin;
+                menuP->valueMin++;
+                if (menuP->valueMin >= menuP->valueMax) {
+                    menuP->valueMin = 0;
+                }
+                if (cursorPos == 6 && menuP->valueMin == 0
+                    && HuMCProbe(1)) {
+                    menuP->valueMin = 1;
+                }
+                (void)oldValue;
+                mbPausePanelAnmNoSet(
+                    (s16)menuP->panelId, 12, menuP->valueMin);
+            }
+            if (menuP->valueMin == pauseBatsuValueTbl[cursorPos]) {
+                mbPausePanelBatsuSet((s16)menuP->panelId, TRUE);
+            } else {
+                mbPausePanelBatsuSet((s16)menuP->panelId, FALSE);
+            }
+            if (cursorPos == 5) {
+                value = mesSpeedAnmNo[pauseWork.menu[5].valueMin];
+                GwSystem.messSpeed = value;
+                switch (value) {
+                    case GW_MESS_SPEED_FAST:
+                        GwSystem.comKeyDelay = 16;
+                        break;
+
+                    case GW_MESS_SPEED_SLOW:
+                        GwSystem.comKeyDelay = 48;
+                        break;
+
+                    default:
+                        GwSystem.comKeyDelay = 32;
+                        break;
+                }
+            } else if (cursorPos == 4) {
+                BOOL vibrateF = !pauseWork.menu[4].valueMin;
+
+                GwCommon.vibrateF = vibrateF;
+                if (!vibrateF) {
+                    HuPadRumbleAllStop();
+                }
+                omVibrate((s16)pauseWork.playerNo, 20, 7, 3);
+            } else if (cursorPos == 6) {
+                HuMCMicSet(
+                    pauseMicValueTbl[pauseWork.menu[6].valueMin]);
+            }
+            ConfigWinUpdate(cursorPos);
+        }
+
+config_exec_bottom:
+        if ((HuPadBtnDown[padNo] & PAD_BUTTON_B) && !padOff
+            && pauseWork.selectedColumn == 0) {
+            pauseWork.talkTime = 0;
+            pauseWork.prevTalkTime = 1;
+            mbPauseGuideTalkSet(pausePlayer);
+            pauseWork.selectedColumn = 1;
+            mbAudFXPlay(3);
+            OSReport(configExitMessage);
+        }
+        if (pauseWork.selectedColumn != 0) {
+            PauseCursorHiliteSet(-1, 0, 0);
+            return;
+        }
+    }
+}
+
+static BOOL ConfigQuitExec(void)
+{
+    CONFIG_MENU_WORK *menuP;
+    MBWIN *winP;
+    HuVecF pos;
+    HuVec2f winPos;
+    BOOL doneF;
+    BOOL partyF;
+    BOOL comF;
+    s32 padStat;
+    s32 winNo;
+    s32 choice;
+    s32 saveValue;
+    s32 i;
+    float weight;
+
+    for (i = 0; i < 8; i++) {
+        pauseWork.menu[i].enabled = TRUE;
+    }
+    PauseCursorHiliteSet(-1, 0, 0);
+    ConfigWinUpdate(-1);
+    ConfigPadWinSet(-1);
+
+    doneF = FALSE;
+    menuP = pauseWork.menu;
+    for (i = 0; i < 8; i++, menuP++) {
+        if (menuP->enabled && menuP->panelId != 0) {
+            pos.x = 0.4f * ((float)pauseGridPosTbl[i][0] - 1.5f);
+            pos.y = 0.3f
+                + (-0.5f
+                    * ((float)pauseGridPosTbl[i][1] - 0.5f));
+            pos.z = 0.0f;
+            mbPausePanelPosSet((s16)menuP->panelId, pos.x, pos.y);
+            mbPausePanelShrinkSet((s16)menuP->panelId, 16, 0);
+        }
+    }
+    mbPauseGuideMoveSet(pausePlayer, 20, NULL, &pauseGuideQuitPos);
+
+    do {
+        doneF = TRUE;
+        menuP = pauseWork.menu;
+        for (i = 0; i < 8; i++, menuP++) {
+            if (menuP->panelId != 0
+                && !mbPausePanelFreezeGet((s16)menuP->panelId)) {
+                doneF = FALSE;
+            }
+        }
+        if (!doneF) {
+            HuPrcVSleep();
+        }
+    } while (!doneF);
+
+    menuP = pauseWork.menu;
+    for (i = 0; i < 8; i++, menuP++) {
+        if (menuP->enabled && menuP->panelId != 0) {
+            mbPausePanelKill((s16)menuP->panelId);
+            menuP->panelId = 0;
+            menuP->enabled = FALSE;
+        }
+    }
+
+    mbObjMotionShiftSet(pausePlayer, 11, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    comF = GwPlayer[pauseWork.playerNo].comF;
+    GwPlayer[pauseWork.playerNo].comF = FALSE;
+    GwPlayerConf[pauseWork.playerNo].type = FALSE;
+    padStat = HuPadStatGet((s16)GwPlayer[pauseWork.playerNo].padNo);
+    partyF = GwSystem.partyF;
+    if (partyF) {
+        if (SLSaveFlagGet() && saveExecF) {
+            winNo = mbWinCreate(3, MESSNUM(MESS_BOARD_PAUSE, 25), -1);
+            mbWinPriSet((s16)winNo, 100);
+            mbWinPlayerDisable((s16)winNo, pauseWork.playerNo);
+            mbWinMesSpeedSet((s16)winNo, 0);
+            winP = mbWinGet(winNo);
+            winP->size.x = 400.0f;
+            mbWinCenterGet((s16)winNo, &winPos);
+            mbWinPosSet((s16)winNo, (s16)winPos.x, 100);
+            mbWinAttrReset((s16)winNo, HUWIN_ATTR_NOCANCEL);
+            mbWinWait((s16)winNo);
+        }
+        winNo = mbWinCreateChoice(
+            3, MESSNUM(MESS_BOARD_PAUSE, 20), -1, 0);
+    } else {
+        winNo = mbWinCreateChoice(
+            3, MESSNUM(MESS_BOARD_PAUSE, 41), -1, 0);
+    }
+    mbWinPriSet((s16)winNo, 100);
+    mbWinPlayerDisable((s16)winNo, pauseWork.playerNo);
+    mbWinMesSpeedSet((s16)winNo, 0);
+    winP = mbWinGet(winNo);
+    winP->size.x = 400.0f;
+    mbWinCenterGet((s16)winNo, &winPos);
+    mbWinPosSet((s16)winNo, (s16)winPos.x, 100);
+
+    if (GwSystem.partyF) {
+        ConfigPadWinSet(2);
+    } else {
+        ConfigPadWinSet(3);
+    }
+    choice = 0;
+    if (padStat == 0) {
+        mbWinAttrReset((s16)winNo, HUWIN_ATTR_NOCANCEL);
+        mbWinWait((s16)winNo);
+        choice = mbWinChoiceGet((s16)winNo);
+        ConfigPadWinSet(-1);
+        if (choice > 0) {
+            mbObjMotionShiftSet(
+                pausePlayer, 7, 0.0f, 12.0f, HU3D_MOTATTR_LOOP);
+            for (i = 0; i < 30; i++) {
+                HuPrcVSleep();
+            }
+        } else if (choice == 0) {
+            mbObjPosGet(pausePlayer, &pos);
+            mbObjMotionShiftSet(
+                pausePlayer, 23, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+            mbAudGuidePlay(950);
+            for (i = 0; i < 10; i++) {
+                HuPrcVSleep();
+            }
+            for (i = 0; i <= 30; i++) {
+                weight = (1.0f / 30.0f) * (float)i;
+                weight = 100.0f * (0.5f * mbSinDeg(180.0f * weight));
+                mbObjPosSet(pausePlayer, pos.x, pos.y + weight, pos.z);
+                HuPrcVSleep();
+            }
+        }
+    } else {
+        mbWinKill((s16)winNo);
+        ConfigPadWinSet(-1);
+    }
+
+    GwPlayer[pauseWork.playerNo].comF = comF;
+    GwPlayerConf[pauseWork.playerNo].type = comF;
+    configResult = FALSE;
+    if (choice > 0) {
+        configResult = TRUE;
+        if (!GwSystem.partyF) {
+            if (choice > 1) {
+                saveValue = -1;
+            } else {
+                saveValue = 0;
+            }
+            mbSingleSaveFlush(saveValue);
+        }
+    }
+    return configResult;
+}
+
+static void ConfigWinUpdate(s32 index)
+{
+    HuVec2f pos;
+    BOOL partyF;
+    s32 i;
+    u32 *winMesTbl;
+    s32 mesNo;
+
+    if (pauseWork.helpWinNo >= 0) {
+        mbWinKill((s16)pauseWork.helpWinNo);
+        pauseWork.helpWinNo = -1;
+    }
+    if (index >= 0) {
+        partyF = GwSystem.partyF;
+        if (partyF) {
+            winMesTbl = pauseWinMesTbl[index];
+        } else {
+            winMesTbl = pauseSingleWinMesTbl[index];
+        }
+        if (index == 0) {
+            pauseWork.helpWinNo = mbWinCreateTime(8, winMesTbl[0], -1);
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                if (GwPlayer[pauseWork.padWork[i].port].comF) {
+                    mesNo = 2;
+                } else {
+                    mesNo = 1;
+                }
+                mbWinInsertMesSet((s16)pauseWork.helpWinNo,
+                    pauseWinMesTbl[index][mesNo], i);
+            }
+        } else {
+            pauseWork.helpWinNo = mbWinCreateTime(8,
+                winMesTbl[pauseWork.menu[index].valueMin], -1);
+        }
+        mbWinPosGet((s16)pauseWork.helpWinNo, &pos);
+        mbWinPosSet((s16)pauseWork.helpWinNo, 144, (s16)pos.y);
+        mbWinPause((s16)pauseWork.helpWinNo);
+        pauseWork.talkTime = 30;
     }
 }
 
@@ -712,6 +1250,332 @@ static void PauseGuideMain(void)
         HuPrcVSleep();
     }
     HuPrcEnd();
+}
+
+static void ConfigPadOpen(void)
+{
+    CONFIG_PAD_WORK *workP;
+    HuVecF pos;
+    int time[GW_PLAYER_MAX];
+    int doneF;
+    int i;
+    int j;
+    int sprId;
+    int animId;
+    float posStep;
+    float weight;
+
+    pauseWork.state08 = -1;
+    pauseWork.activeF = FALSE;
+    PausePlayerComRead(FALSE);
+    workP = pauseWork.configPad;
+    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+        for (j = 0; j < 3; j++) {
+            workP->sprId[j] = -1;
+        }
+        workP->playerNo = pauseWork.padWork[i].port;
+        workP->padNo = pauseWork.padWork[i].padNo;
+    }
+
+    pos.x = -0.225f;
+    pos.y = 0.15f;
+    pos.z = 0.0f;
+    weight = pos.x;
+    pos.x = 0.395f;
+    pos.y = 0.15f;
+    pos.z = 0.0f;
+    posStep = (1.0f / 3.0f) * (pos.x - weight);
+    for (workP = pauseWork.configPad, animId = HU3D_ANIMID_NONE, i = 0;
+         i < GW_PLAYER_MAX; i++, workP++) {
+        workP->comDif = GwPlayer[workP->playerNo].comDif;
+        workP->activeF = PausePadCheck(workP->padNo);
+        if (!GwPlayer[workP->playerNo].comF) {
+            workP->comDif = GW_PLAYER_COM_DIF_MAX;
+        }
+        workP->panelId = mbPausePanelCreate(
+            pauseCharPanelFileTbl[GwPlayer[workP->playerNo].charNo], 0);
+        pos.x = (0.31f * (float)i) - 0.225f;
+        pos.y = 0.15f;
+        pos.z = 0.0f;
+        mbPausePanelPosSet((s16)workP->panelId, pos.x, pos.y);
+        mbPausePanelGrowSet((s16)workP->panelId, 16, i * 4, 0.95f);
+        mbNormPosto2D(&pos, &pos);
+        workP->pos.x = -22.0f;
+        workP->pos.y = -30.0f;
+        workP->pos.z = 0.0f;
+        PSVECAdd(&pos, &workP->pos, &pos);
+        for (j = 0; j < 3; j++) {
+            sprId = espEntry(
+                mbBoardDataNumGet(pauseCharPanelFileTbl[j + 14]),
+                (s16)(100 - j), 0);
+            workP->sprId[j] = sprId;
+            espAttrSet(sprId, HUSPR_ATTR_LINEAR);
+            espPosSet(sprId, pos.x + configPadSprOfsTbl[j][0],
+                pos.y + configPadSprOfsTbl[j][1]);
+        }
+        ConfigPadSprSet(workP);
+        ConfigPadTimeSet(workP, 0.0f);
+    }
+
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        time[i] = 0;
+    }
+    doneF = 0;
+    while (doneF < GW_PLAYER_MAX) {
+        doneF = 0;
+        workP = pauseWork.configPad;
+        for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+            if (mbPausePanelFreezeGet((s16)workP->panelId)) {
+                time[i]++;
+                weight = (1.0f / 12.0f) * (float)time[i];
+                if (weight > 1.0f) {
+                    weight = 1.0f;
+                    doneF++;
+                }
+                weight = mbSinDeg(90.0f * weight);
+                ConfigPadTimeSet(workP, weight);
+            }
+        }
+        HuPrcVSleep();
+    }
+}
+
+static void ConfigPadTimeSet(CONFIG_PAD_WORK *workP, float scale)
+{
+    HuVecF pos;
+    float panelScale;
+    s32 sprId;
+
+    mbPausePanelPosGet((s16)workP->panelId, &pos);
+    mbNormPosto2D(&pos, &pos);
+    panelScale = mbPausePanelScaleGet((s16)workP->panelId);
+    pos.x += workP->pos.x * panelScale;
+    pos.y += workP->pos.y * panelScale;
+
+    sprId = workP->sprId[0];
+    espScaleSet(sprId, scale, scale);
+    espPosSet(sprId, pos.x + (configPadSprOfsTbl[0][0] * scale),
+        pos.y + (configPadSprOfsTbl[0][1] * scale));
+
+    sprId = workP->sprId[1];
+    espScaleSet(sprId, scale, scale);
+    espPosSet(sprId, pos.x + (configPadSprOfsTbl[1][0] * scale),
+        pos.y + (configPadSprOfsTbl[1][1] * scale));
+
+    sprId = workP->sprId[2];
+    espScaleSet(sprId, scale, scale);
+    espPosSet(sprId, pos.x + (configPadSprOfsTbl[2][0] * scale),
+        pos.y + (configPadSprOfsTbl[2][1] * scale));
+}
+
+static void ConfigPadClose(void)
+{
+    CONFIG_MENU_WORK *menuP;
+    CONFIG_PAD_WORK *workP;
+    HuVecF pos;
+    float posStep;
+    float weight;
+    int value;
+    int i;
+    int j;
+
+    menuP = pauseWork.menu;
+    if (menuP->panelId != 0) {
+        value = menuP->value;
+        pos.x = 0.4f * ((float)pauseGridPosTbl[value][0] - 1.5f);
+        pos.y = 0.3f
+            + (-0.5f * ((float)pauseGridPosTbl[value][1] - 0.5f));
+        pos.z = 0.0f;
+        mbPausePanelSlideSet((s16)menuP->panelId, 20, &pos);
+        mbPausePanelSizeSet((s16)menuP->panelId, 20, 1.2f);
+    }
+
+    pos.x = -0.225f;
+    pos.y = 0.15f;
+    pos.z = 0.0f;
+    weight = pos.x;
+    pos.x = 0.395f;
+    pos.y = 0.15f;
+    pos.z = 0.0f;
+    posStep = (1.0f / 3.0f) * (pos.x - weight);
+
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        mbPausePanelShrinkSet(
+            (s16)pauseWork.configPad[i].panelId, 20, 0);
+    }
+
+    for (i = 0;
+         !mbPausePanelFreezeGet((s16)pauseWork.configPad[0].panelId); i++) {
+        HuPrcVSleep();
+        weight = (1.0f / 12.0f) * (float)i;
+        if (weight > 1.0f) {
+            weight = 1.0f;
+        }
+        weight = mbCosDeg(90.0f * weight);
+        workP = pauseWork.configPad;
+        for (j = 0; j < GW_PLAYER_MAX; j++, workP++) {
+            ConfigPadTimeSet(workP, weight);
+        }
+    }
+
+    workP = pauseWork.configPad;
+    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+        if (workP->panelId != 0) {
+            mbPausePanelKill((s16)workP->panelId);
+            workP->panelId = 0;
+        }
+        for (j = 0; j < 3; j++) {
+            if (workP->sprId[j] >= 0) {
+                espKill(workP->sprId[j]);
+            }
+            workP->sprId[j] = -1;
+        }
+    }
+}
+
+static BOOL ConfigPadMain(void)
+{
+    BOOL result = FALSE;
+    int stkDirTbl[4] = { 2, 3, 3, 1 };
+    CONFIG_PAD_WORK *workP;
+    s32 cursorPos;
+    s32 prevPos;
+    s32 padNo;
+    s32 stkDir;
+    s32 padStatus;
+    s32 i;
+    s32 maxDif;
+    BOOL padOff;
+    BOOL padStatChangeF;
+    int cursorMove;
+
+    padNo = GwPlayer[pauseWork.playerNo].padNo;
+    padStatChangeF = PausePlayerComRead(FALSE);
+    padOff = !PausePadCheck(padNo);
+    cursorMove = PauseCursorMove();
+    if (cursorMove != 0) {
+        if ((HuPadBtnDown[padNo] & PAD_BUTTON_A)
+            && !padOff && cursorMove < 10) {
+            pauseWork.activeF = 12;
+        }
+        if (padStatChangeF) {
+            pauseWork.activeF = 0;
+        }
+        pauseWork.state0C = 0;
+        return FALSE;
+    }
+
+    cursorPos = pauseWork.state08;
+    prevPos = cursorPos;
+    if (cursorPos < 0) {
+        cursorPos = 0;
+        pauseWork.state08 = cursorPos;
+    }
+    stkDir = HuPadDStk[padNo] & stkDirTbl[cursorPos];
+    if (padOff) {
+        stkDir = 0;
+    }
+    if (stkDir & PAD_BUTTON_RIGHT) {
+        mbAudFXPlay(0);
+        cursorPos = (cursorPos + 1) & 3;
+    } else if (stkDir & PAD_BUTTON_LEFT) {
+        mbAudFXPlay(0);
+        cursorPos = (cursorPos - 1) & 3;
+    }
+    pauseWork.state08 = cursorPos;
+    PauseCursorHiliteSet(1, stkDirTbl[cursorPos], HuPadDStk[padNo]);
+
+    workP = &pauseWork.configPad[cursorPos];
+    if (cursorPos != prevPos) {
+        HuVecF pos;
+
+        pos.x = 0.4f * ((float)pauseGridPosTbl[cursorPos][0] - 1.5f);
+        pos.y = 0.3f
+            + (-0.5f * ((float)pauseGridPosTbl[cursorPos][1] - 0.5f));
+        pos.z = 0.0f;
+        PauseCursorPosNextSet(12, pos.x, pos.y);
+    }
+    if (prevPos >= 0) {
+        workP = &pauseWork.configPad[prevPos];
+    }
+
+    if (HuPadBtnDown[padNo] & PAD_BUTTON_A) {
+        pauseWork.activeF = 8;
+    }
+    if (padStatChangeF) {
+        pauseWork.activeF = 0;
+    }
+    if (pauseWork.state0C == 0 && pauseWork.activeF != 0) {
+        maxDif = GW_PLAYER_COM_DIF_MAX;
+        workP->comDif++;
+        pauseWork.state0C = 16;
+        pauseWork.activeF = 0;
+        mbAudFXPlay(1);
+        if (!GWBankFlagGet(3) && workP->comDif == maxDif - 1) {
+            workP->comDif++;
+        }
+        if (workP->comDif > maxDif) {
+            workP->comDif = 0;
+        }
+        if (workP->comDif == maxDif) {
+            if (PausePadCheck(workP->padNo)) {
+                GwPlayer[workP->playerNo].comF = FALSE;
+                GwPlayerConf[workP->playerNo].type = FALSE;
+            } else {
+                workP->comDif = 0;
+            }
+        }
+        if (workP->comDif < maxDif) {
+            GwPlayer[workP->playerNo].comF = TRUE;
+            GwPlayerConf[workP->playerNo].type = TRUE;
+            GwPlayer[workP->playerNo].comDif = workP->comDif;
+                GwPlayerConf[workP->playerNo].comDif = workP->comDif;
+        }
+        ConfigPadSprSet(workP);
+        mbPausePanelAnmNoSet((s16)workP->panelId, 12, 0);
+    }
+
+    workP = pauseWork.configPad;
+    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+        padStatus = PausePadCheck(workP->padNo);
+        if (!padStatus && workP->activeF) {
+            GwPlayer[workP->playerNo].comF = TRUE;
+            GwPlayerConf[workP->playerNo].type = TRUE;
+            workP->comDif = GwPlayer[workP->playerNo].comDif;
+            ConfigPadSprSet(workP);
+        } else if (padStatus && !workP->activeF) {
+            workP->comDif = GW_PLAYER_COM_DIF_MAX;
+            GwPlayer[workP->playerNo].comF = FALSE;
+            GwPlayerConf[workP->playerNo].type = FALSE;
+            ConfigPadSprSet(workP);
+        }
+        workP->activeF = padStatus;
+    }
+
+    if (padStatChangeF) {
+        ConfigWinUpdate(pauseWork.playerNo);
+    }
+    if ((HuPadBtnDown[padNo] & PAD_BUTTON_B) && !padOff) {
+        result = TRUE;
+    }
+    if (pauseWork.state0C != 0) {
+        pauseWork.state0C--;
+    }
+    if (pauseWork.activeF != 0) {
+        pauseWork.activeF--;
+    }
+    return result;
+}
+
+BOOL mbPausePanelFreezeGet(s16 panelId)
+{
+    PAUSE_PANEL_WORK *work = &pausePanelWork[panelId];
+    BOOL freezeF = FALSE;
+
+    if (work->motion == 0 && work->animMaxTime == 0) {
+        freezeF = TRUE;
+    }
+    return freezeF;
 }
 
 static void PauseGuideDestroy(void)
@@ -1171,6 +2035,181 @@ static void PauseCursorHiliteSet(s32 cursorNo, s32 cursorPos, s32 mask)
     }
 }
 
+static void PauseCursorPosNextSet(s32 time, float x, float y)
+{
+    PAUSE_CURSOR_WORK *cursorP;
+    HuVecF pos2D;
+    int i;
+
+    cursorP = &pauseWork.cursor;
+    if (cursorP->moveTime < 0 || time <= 0) {
+        cursorP->moveTime = 0;
+        cursorP->maxMoveTime = 0;
+        cursorP->pos.x = x;
+        cursorP->pos.y = y;
+        for (i = 0; i < 4; i++) {
+            cursorP->alpha[i] = 0.0f;
+            if (cursorP->cursorPos & pauseCursorMaskTbl[i]) {
+                cursorP->alpha[i] = 1.0f;
+            }
+        }
+    } else {
+        HuVecF *srcP = &cursorP->pos;
+        HuVecF *dstP = &cursorP->posStart;
+
+        cursorP->maxMoveTime = time;
+        cursorP->moveTime = time;
+        *dstP = *srcP;
+        cursorP->posDelta.x = x - cursorP->posStart.x;
+        cursorP->posDelta.y = y - cursorP->posStart.y;
+        cursorP->posDelta.z = 0.0f;
+    }
+    mbNormPosto2D(&cursorP->pos, &pos2D);
+    for (i = 0; i < 4; i++) {
+        espPosSet(cursorP->sprId[i],
+            pos2D.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos2D.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->sprId[i], cursorP->alpha[i]);
+        espPosSet(cursorP->hiliteSprId[i],
+            pos2D.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos2D.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->hiliteSprId[i], cursorP->alpha[i]);
+    }
+}
+
+static int PauseCursorMove(void)
+{
+    extern float lbl_802C4CB4;
+    extern float lbl_802C4CCC;
+    extern float lbl_802C4D0C;
+    extern float lbl_802C4D10;
+    PAUSE_CURSOR_WORK *cursorP;
+    HuVecF pos;
+    float t;
+    int i;
+
+    cursorP = &pauseWork.cursor;
+    if (cursorP->moveTime <= 0) {
+        return 0;
+    }
+    cursorP->moveTime--;
+    t = (float)(cursorP->maxMoveTime - cursorP->moveTime)
+        / (float)cursorP->maxMoveTime;
+    t = mbSinDeg(lbl_802C4D0C * t);
+    PSVECScale(&cursorP->posDelta, &pos, t);
+    PSVECAdd(&cursorP->posStart, &pos, &cursorP->pos);
+    for (i = 0; i < 4; i++) {
+        if (cursorP->cursorPos & pauseCursorMaskTbl[i]) {
+            if (cursorP->alpha[i] < lbl_802C4CCC) {
+                cursorP->alpha[i] += lbl_802C4D10;
+            }
+            if (cursorP->alpha[i] > lbl_802C4CCC) {
+                cursorP->alpha[i] = lbl_802C4CCC;
+            }
+        } else {
+            if (cursorP->alpha[i] > lbl_802C4CB4) {
+                cursorP->alpha[i] -= lbl_802C4D10;
+            }
+            if (cursorP->alpha[i] < lbl_802C4CB4) {
+                cursorP->alpha[i] = lbl_802C4CB4;
+            }
+        }
+    }
+    mbNormPosto2D(&cursorP->pos, &pos);
+    for (i = 0; i < 4; i++) {
+        espPosSet(cursorP->sprId[i],
+            pos.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->sprId[i], cursorP->alpha[i]);
+        espPosSet(cursorP->hiliteSprId[i],
+            pos.x + pauseCursorSprOfsTbl[cursorP->cursorNo][i][0],
+            pos.y + pauseCursorSprOfsTbl[cursorP->cursorNo][i][1]);
+        espTPLvlSet(cursorP->hiliteSprId[i], cursorP->alpha[i]);
+    }
+    return cursorP->moveTime;
+}
+
+static BOOL PausePlayerComRead(s32 playerNo)
+{
+    extern s16 HuPadStatGet(s16 padNo);
+    PAUSE_PAD_WORK *work;
+    BOOL changeF;
+    s32 i;
+    s32 j;
+    s32 temp;
+
+    work = pauseWork.padWork;
+    changeF = FALSE;
+    if (playerNo) {
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            work[i].port = i;
+            work[i].padNo = GwPlayer[i].padNo;
+            work[i].playerNo = 0;
+            work[i].activeF = FALSE;
+        }
+        for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
+            for (j = i + 1; j < GW_PLAYER_MAX; j++) {
+                if (work[i].padNo > work[j].padNo
+                    || (work[i].padNo == work[j].padNo
+                        && work[i].port > work[j].port)) {
+                    temp = work[i].padNo;
+                    work[i].padNo = work[j].padNo;
+                    work[j].padNo = temp;
+                    temp = work[i].port;
+                    work[i].port = work[j].port;
+                    work[j].port = temp;
+                }
+            }
+        }
+        {
+            BOOL partyF;
+
+            partyF = GwSystem.partyF;
+            if (partyF) {
+                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                    work[i].playerNo = HuPadStatGet((s16)work[i].padNo);
+                    if (work[i].playerNo != 0
+                        && !GwPlayer[work[i].port].comF) {
+                        GwPlayer[work[i].port].comF = TRUE;
+                        GwPlayerConf[work[i].port].type = TRUE;
+                    }
+                }
+            }
+        }
+    }
+    {
+        BOOL partyF;
+
+        partyF = GwSystem.partyF;
+        if (!partyF) {
+            return FALSE;
+        }
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        temp = HuPadStatGet((s16)work[i].padNo);
+        if (temp != work[i].playerNo) {
+            work[i].activeF++;
+        } else {
+            work[i].activeF = 0;
+        }
+        if (work[i].activeF < 4) {
+            continue;
+        }
+        if (temp == 0) {
+            GwPlayer[work[i].port].comF = FALSE;
+            GwPlayerConf[work[i].port].type = FALSE;
+            changeF = TRUE;
+            work[i].playerNo = temp;
+        } else if (temp == -1) {
+            GwPlayer[work[i].port].comF = TRUE;
+            GwPlayerConf[work[i].port].type = TRUE;
+            changeF = TRUE;
+            work[i].playerNo = temp;
+        }
+    }
+    return changeF;
+}
+
 static BOOL PausePadCheck(s32 padNo)
 {
     PAUSE_PAD_WORK *work = pauseWork.padWork;
@@ -1205,7 +2244,7 @@ void mbPausePanelSlideSet(s16 panelId, s16 time, HuVecF *pos)
     workP->posStart = workP->pos;
 }
 
-BOOL mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank)
+void mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank)
 {
     PAUSE_PANEL_WORK *workP;
 
@@ -1215,7 +2254,7 @@ BOOL mbPausePanelAnmNoSet(s16 panelId, s32 animMaxTime, s32 bank)
     Hu3DAnmNoSet(workP->animId[0], (u16)workP->bank);
     workP->bank = (s16)bank;
     Hu3DAnmNoSet(workP->animId[1], (u16)bank);
-    return workP->sprId >= 0;
+    workP->sprId >= 0;
 }
 
 void mbPauseGuideTalkSet(MBMODELID modelId)

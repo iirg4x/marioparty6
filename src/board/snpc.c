@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "dolphin/math.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
@@ -10,6 +12,7 @@
 #include "game/hu3d.h"
 #include "game/memory.h"
 #include "game/sprite.h"
+#include "messdir_enum.h"
 #include "msm_se.h"
 
 #include "humath.h"
@@ -104,6 +107,9 @@ typedef struct SNPCMOVEWORK {
     u8 unk00 : 2;
     s16 time;
     s16 maxTime;
+    s16 unk06;
+    s16 unk08;
+    s16 masuId;
 } SNPCMOVEWORK;
 
 typedef struct SNPCCHANCEPATH {
@@ -209,7 +215,9 @@ static MBSNPCWORK *snpcWork;
 
 #define SNPC_DONKEY_DATA_MODEL DATANUM(DATA_capsulechar1, 31)
 #define SNPC_KOOPA_DATA_MODEL DATANUM(DATA_capsulechar1, 0)
+#define SNPC_DONKEY_EFFECT_DATA_MODEL DATANUM(DATA_capsulechar1, 30)
 #define SNPC_EFFECT_DATA_MODEL DATANUM(DATA_board, 92)
+#define SNPC_KOOPA_FIRE_DATA_ANIM DATANUM(DATA_board, 102)
 
 static const SNPCMOTDATA snpcDonkeyMotTbl[SNPC_MOTION_NUM] = {
     { DATANUM(DATA_capsulechar1, 15), 1.0f, 1, 0, 0 },
@@ -276,6 +284,113 @@ static const SNPCMOTNEXTDATA *snpcNextMotTbl[2] = {
     snpcDonkeyNextMotTbl,
     snpcKoopaNextMotTbl,
 };
+
+static HuVecF masuViewOfs = { 0.0f, 100.0f, 0.0f };
+
+static int playerStarMotNoTbl[2] = { 7, 8 };
+static int playerStarSeTbl[2] = {
+    MSM_SE_CHARVOICE_MARIO,
+    585,
+};
+static int playerStarChgMotNoTbl[2] = { 7, 8 };
+static int playerStarChgSeTbl[2] = {
+    MSM_SE_CHARVOICE_MARIO,
+    585,
+};
+
+static int starMdlTbl[2] = {
+    DATANUM(DATA_board, 5),
+    DATANUM(DATA_capsulechar1, 32),
+};
+
+static HU3D_PARMAN_PARAM snpcStarEffParam[2] = {
+    {
+        30,
+        0,
+        3.3f,
+        70.0f,
+        7.0f,
+        { 0.0f, -0.05f, 0.0f },
+        2.0f,
+        1.0f,
+        30.0f,
+        0.98f,
+        2,
+        {
+            { 255, 255, 255, 255 },
+            { 255, 255, 64, 255 },
+            { 0, 0, 0, 0 },
+            { 0, 0, 0, 0 },
+        },
+        {
+            { 255, 128, 128, 0 },
+            { 255, 64, 32, 0 },
+            { 0, 0, 0, 0 },
+            { 0, 0, 0, 0 },
+        },
+    },
+    {
+        30,
+        0,
+        3.3f,
+        70.0f,
+        7.0f,
+        { 0.0f, -0.05f, 0.0f },
+        2.0f,
+        1.0f,
+        30.0f,
+        0.98f,
+        2,
+        {
+            { 144, 144, 144, 255 },
+            { 160, 144, 176, 255 },
+            { 0, 0, 0, 0 },
+            { 0, 0, 0, 0 },
+        },
+        {
+            { 16, 16, 16, 0 },
+            { 32, 0, 48, 0 },
+            { 0, 0, 0, 0 },
+            { 0, 0, 0, 0 },
+        },
+    },
+};
+
+/* Message, effect, and movement tables used by the turn controller.  The
+ * packed message ids are the board message group (0x2D) followed by the
+ * message index; keeping them as u32s preserves the retail table shape. */
+static const u32 snpcMesTbl[12] = {
+    MESSNUM(MESS_BOARD_SNPC, 0), MESSNUM(MESS_BOARD_SNPC, 5),
+    MESSNUM(MESS_BOARD_SNPC, 1), MESSNUM(MESS_BOARD_SNPC, 6),
+    MESSNUM(MESS_BOARD_SNPC, 4), 0, MESSNUM(MESS_BOARD_SNPC, 9),
+    MESSNUM(MESS_BOARD_SNPC, 11), MESSNUM(MESS_BOARD_SNPC, 10),
+    MESSNUM(MESS_BOARD_SNPC, 12), MESSNUM(MESS_BOARD_SNPC, 2),
+    MESSNUM(MESS_BOARD_SNPC, 7),
+};
+
+static const u32 snpcStarMesTbl[10] = {
+    MESSNUM(MESS_BOARD_SNPC, 13), MESSNUM(MESS_BOARD_SNPC, 18),
+    MESSNUM(MESS_BOARD_SNPC, 14), MESSNUM(MESS_BOARD_SNPC, 19),
+    MESSNUM(MESS_BOARD_SNPC, 16), MESSNUM(MESS_BOARD_SNPC, 21),
+    MESSNUM(MESS_BOARD_SNPC, 17), MESSNUM(MESS_BOARD_SNPC, 22),
+    MESSNUM(MESS_BOARD_SNPC, 15), MESSNUM(MESS_BOARD_SNPC, 20),
+};
+
+static const int snpcEffectChanceTbl[4] = { 30, 55, 80, 95 };
+static const int snpcDiceTypeTbl[2][2] = {
+    { 16, 17 },
+    { 18, 18 },
+};
+static const HuVecF snpcDiceOfsTbl[2] = {
+    { 0.0f, 90.0f, 0.0f },
+    { 0.0f, 90.0f, 0.0f },
+};
+
+static const int snpcMesSpeakerTbl[2] = { 6, 13 };
+static const int snpcStarStrmTbl[2] = { 30, 28 };
+static const int snpcStarMesSpeakerTbl[2] = { 30, 28 };
+static const int snpcMoveStrmTbl[2] = { 573, 585 };
+static const int snpcMoveNumColor[2] = { 1, 2 };
 
 static int snpcDiceMotTimeTbl[2] = { 25, 25 };
 static const float snpcRotSpeedTbl[2] = { 1.3f, 1.8f };
@@ -359,14 +474,16 @@ static void SNpcStarWait(void);
 static void SNpcSePlay(int seNo, int unused);
 static void SNpcZoomUpdate(OMOBJ *obj);
 static u16 SNpcDiceBtnHook(int playerNo);
-static void SNpcDiceMotHook(void);
+static void SNpcDiceMotHook(int playerNo);
 static void SNpcPlayerMoveFunc(int playerNo);
 static void SNpcPlayerMoveObjExec(OMOBJ *obj);
 static void SNpcStarObjExec(OMOBJ *obj);
 static void SNpcStarCreate(int type, BOOL loopF, HuVecF *pos);
 static HU3D_MODELID SNpcStarEffCreate(ANIMDATA *anim, int type);
 static void SNpcStarEffKill(s16 parManId);
+void mbSNpcStarExec(int playerNo, int masuId);
 static BOOL SNpcMoveExec(void);
+static void SNpcMoveOMExec(OMOBJ *obj);
 static void SNpcEffectExec(void);
 static void SNpcKoopaFireExec(void);
 static void SNpcKoopaFireHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
@@ -377,11 +494,14 @@ static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx);
 static void StarChangeExec(s8 *playerNoTbl, int starF, int amount);
 static int MasuNextGet(int masuId, int linkNo);
-static void SNpcDiceExec(int diceValue, int diceNum);
+static OMOBJ *SNpcDiceExec(int diceValue, int diceNum);
+static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
+    u32 mAttr, float chance, s16 *pathTbl);
 
 extern void *mbMallocNum(s32 size, u32 num);
 extern void *mbMalloc(s32 size);
 extern void mbMtxRot(Mtx mtx, float x, float y, float z);
+extern float mbAngleLerp(float from, float to, float weight);
 extern BOOL mbBranchAttrCheck(int masuId);
 extern s16 mbCapMasuDispTypeGet(s16 masuId);
 extern float Hu3DMotionShiftMaxTimeGet(HU3D_MODELID modelId);
@@ -394,10 +514,107 @@ extern int mbSNpcMasuStarNextGet(s16 masuId, int type, int *linkNoTbl,
     u32 attr);
 extern void mbDiceObjHit(int playerNo);
 extern void mbPlayerMoveHookSet(int playerNo, void (*hook)(int playerNo));
+extern void mbWipeSpecialFadeInCreate(int type, int time);
+extern void mbWipeSpecialFadeOutCreate(int type, int time);
+extern void mbDiceSNpcNumKill(OMOBJ *obj);
+extern void mbDiceSNpcNumDispSet(OMOBJ *obj, BOOL dispF);
+extern void mbDiceSNpcNumSet(OMOBJ *obj, u8 value);
+extern void mbDiceSNpcNumPosSet(OMOBJ *obj, HuVecF *pos);
+extern OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos);
+extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
+    int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
+extern void mbDicePadBtnHookSet(int playerNo,
+    u16 (*hook)(int playerNo));
+extern void mbDiceMotHookSet(int playerNo, void (*hook)(int playerNo));
+extern BOOL mbDiceKillCheck(int playerNo);
+extern void mbCameraFocusObjSet(MBMODELID modelId);
+extern void mbCameraOffsetSet(float offsetX, float offsetY, float offsetZ);
+extern void mbCameraMoveOnSet(BOOL moveOn);
+extern void mbCapMasuDispSet(BOOL dispF);
+extern void mbTelopCreate(int playerNo, int mess, int time);
+extern void mbMoveNumDispSet(int playerNo, BOOL dispF);
+extern void mbPlayerMotionEndWait(int playerNo);
+extern void mbPlayerMotIdleSet(int playerNo);
+extern void mbPlayerPosGet(int playerNo, HuVecF *pos);
+extern void mbPlayerPosSetV(int playerNo, const HuVecF *pos);
+extern void mbPlayerRotGet(int playerNo, HuVecF *rot);
+extern void mbPlayerRotSet(int playerNo, float rotX, float rotY, float rotZ);
+extern void mbPlayerMotionSet(int playerNo, int motNo, u32 attr);
+extern int mbPlayerCoinGet(int playerNo);
+extern int mbPlayerStarGet(int playerNo);
+extern void mbPlayerStarAdd(int playerNo, int starNum);
+extern void mbPlayerWinLoseVoicePlay(int playerNo, int motNo, int seId);
+extern int mbPlayerTeamFindPlayer(int teamNo, int memberNo);
+extern int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF,
+    BOOL fastF);
+extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF,
+    BOOL fastF);
+extern void mbStarAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
+extern void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF);
+extern int mbStarAddProcExec(int playerNo, int starNum, BOOL dispF, BOOL fastF);
+extern int mbMusJinglePlay(s16 id);
+extern void mbMusJingleWait(int streamNo);
+extern void mbMusPauseFadeOut(int chan, BOOL pauseF, int speed);
+extern BOOL mbMusBoardFadeOut(int chan, int nextChan, int speed,
+    int fadeSpeed, int streamNo, BOOL waitF);
+extern int mbWinCreate(int type, u32 mess, int speakerNo);
+extern int mbWinCreateChoice(int type, u32 mess, int speakerNo, int choiceNo);
+extern int mbWinChoiceGet(s16 winNo);
+extern void mbWinPause(s16 winNo);
+extern void mbWinKill(s16 winNo);
+extern void mbWinPlayerDisable(s16 winNo, int playerNo);
+extern void mbWinWait(s16 winNo);
+extern int mbGuideSpeakerNoGet(void);
+extern void mbComChoiceUpSet(void);
+extern int mbCameraStackPush(void);
+extern void mbCameraStackPop(int maxTime);
+extern void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset,
+    float zoom, float fov, s16 maxTime);
+extern void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset,
+    float zoom, float fov, s16 maxTime);
+extern void mbCameraShakeSet(int maxTime, float power);
+extern void mbCameraMoveWait(void);
+extern float mbCameraPlayerViewZoomGet(int viewNo);
 extern float mbSinDeg(float deg);
+extern void mbWipeDissolveFadeIn(void);
+extern void mbWipeDissolveFadeOut(void);
+extern const float lbl_802C3270;
+extern const float lbl_802C3288;
+extern const float lbl_802C3298;
+extern const float lbl_802C329C;
+extern const float lbl_802C32A4;
+extern const float lbl_802C32A8;
+extern const float lbl_802C32AC;
+extern const float lbl_802C3354;
+extern const float lbl_802C335C;
+extern const float lbl_802C3368;
+extern const float lbl_802C3370;
+extern const float lbl_802C3374;
+extern const float lbl_802C3378;
+extern const float lbl_802C337C;
+extern const float lbl_802C3380;
+extern const float lbl_802C3384;
+extern const float lbl_802C3388;
+extern const float lbl_802C338C;
+extern const float lbl_802C3390;
+extern const float lbl_802C3394;
+extern const float lbl_802C3398;
+extern const float lbl_802C339C;
+extern const float lbl_802C33A0;
+extern const float lbl_802C33B0;
+extern const float lbl_802C33B4;
+extern const float lbl_802C33B8;
+extern const float lbl_802C33BC;
 extern const float lbl_802C328C;
 extern const float lbl_802C3290;
 extern const float lbl_802C3294;
+extern const float lbl_802C32B8;
+extern const float lbl_802C32BC;
+extern const float lbl_802C32C0;
+extern const double lbl_802C32C8;
+extern const double lbl_802C32D0;
+extern const float lbl_802C32D8;
+extern const float lbl_802C32DC;
 extern const float lbl_802C32E0;
 extern const float lbl_802C32E4;
 extern const float lbl_802C32E8;
@@ -410,13 +627,17 @@ extern const float lbl_802C332C;
 extern const float lbl_802C3328;
 extern const float lbl_802C3344;
 extern const float lbl_802C3348;
+extern const float lbl_802C334C;
+extern const float lbl_802C3350;
 extern const float lbl_802C3358;
+extern const float lbl_802C3360;
 extern const float lbl_802C3378;
 extern const float lbl_802C336C;
 extern const float lbl_802C33E0;
 extern const float lbl_802C33E4;
 extern const float lbl_802C33E8;
 extern const float lbl_802C32EC;
+extern const float lbl_802C32F0;
 extern const float lbl_802C33EC;
 extern const float lbl_802C33F0;
 extern const float lbl_802C33F4;
@@ -529,6 +750,1418 @@ void mbSNpcPlayerWalkSet(int playerNo, int masuId)
     if (snpcMagic == SNPC_MAGIC && masuId == snpcSaveWork->masuId) {
         mbPlayerMoveHookSet(playerNo, SNpcPlayerMoveFunc);
     }
+}
+
+static BOOL SNpcMoveExec(void)
+{
+    static const int typeTbl[3] = { 1, 2, -1 };
+    s16 coinTbl[GW_PLAYER_MAX];
+    s16 starTbl[GW_PLAYER_MAX];
+    u8 hitTbl[GW_PLAYER_MAX];
+    s8 playerTbl[2][GW_PLAYER_MAX + 1];
+    HuVecF pos;
+    OMOBJ *obj;
+    SNPCMOVEWORK *moveWork;
+    int isKoopa;
+    int diceNum;
+    int diceValue;
+    int linkNo;
+    int masuId;
+    int currentMasu;
+    int playerCount;
+    int prizeCount;
+    int otherCount;
+    int disablePlayer;
+    int i;
+
+    if (GwSystem.turnPlayerNo < 3) {
+        return FALSE;
+    }
+    isKoopa = (snpcSaveWork->flags >> 7) & 1;
+    mbWipeSpecialFadeInCreate(5, 1);
+    masuId = snpcSaveWork->masuId;
+    mbMasuPosGet(masuId, &pos);
+    SNpcObjPosSetV(&pos);
+    SNpcObjRotSet(lbl_802C3290, lbl_802C3290, lbl_802C3290);
+    mbCapMasuDispSet(FALSE);
+    mbMasuPlayerDispSet(FALSE);
+    mbCameraFocusObjSet(snpcWork->objId[0]);
+    mbCameraOffsetSet(lbl_802C3290, lbl_802C32B8, lbl_802C3290);
+    mbCameraZoomSet(mbCameraPlayerViewZoomGet(0));
+    mbCameraMoveOnSet(FALSE);
+    mbWipeSpecialFadeOutCreate(5, 42);
+    mbCameraMoveOnSet(TRUE);
+    mbMusPlay(0, snpcMoveStrmTbl[isKoopa], 127, 0);
+    mbTelopCreate(-1, isKoopa + 14, 1);
+
+    diceNum = 1;
+    if (mbRandMod(100) < snpcEffectChanceTbl[snpcSaveWork->effectMissCount]) {
+        diceNum++;
+        snpcSaveWork->effectMissCount = 0;
+    } else {
+        snpcSaveWork->effectMissCount++;
+        if (snpcSaveWork->effectMissCount >= 4) {
+            snpcSaveWork->effectMissCount = 3;
+        }
+    }
+    if (GwSystem.turnNo < 2) {
+        diceNum = 1;
+    }
+    if (diceNum > 1) {
+        SNpcEffectExec();
+    }
+
+    if (isKoopa) {
+        float roll = frandf();
+        roll = lbl_802C32BC + lbl_802C32C0 * roll;
+        if (mbRandMod(100) < 10) {
+            roll = lbl_802C32BC + lbl_802C32C0 * frandf();
+        }
+        diceValue = SNpcDiceValueGet(masuId, diceNum, typeTbl,
+            snpcWork->unk04, roll, snpcWork->pathTbl);
+    } else {
+        double roll = lbl_802C32C8 + lbl_802C32D0 * (double)frandf();
+        if (diceNum > 1) {
+            roll = lbl_802C32BC + lbl_802C32D8 * (double)frandf();
+        }
+        if (mbRandMod(100) < 10) {
+            roll = lbl_802C32BC + lbl_802C32C0 * (double)frandf();
+        }
+        diceValue = SNpcDiceValueGet(masuId, diceNum, typeTbl,
+            snpcWork->unk04, (float)roll, snpcWork->pathTbl);
+    }
+    snpcWork->diceNumObj = SNpcDiceExec(diceValue, diceNum);
+    SNpcZoomSet(mbCameraPlayerViewZoomGet(2));
+    SNpcMasuReset(TRUE);
+    linkNo = -1;
+    currentMasu = masuId;
+
+    for (;;) {
+        int nextMasu;
+        nextMasu = MasuNextGet(currentMasu, linkNo);
+        linkNo = nextMasu;
+        nextMasu = snpcWork->pathTbl[linkNo];
+        if (nextMasu <= 0) {
+            break;
+        }
+        mbev_PlayerColCircleAdd(-1, (s16)nextMasu, FALSE,
+            lbl_802C32DC);
+        prizeCount = 0;
+        otherCount = 0;
+        playerCount = 0;
+        disablePlayer = -1;
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            coinTbl[i] = mbPlayerCoinGet(i);
+            starTbl[i] = mbPlayerStarGet(i);
+            hitTbl[i] = (GwPlayer[i].masuId == nextMasu);
+            if (hitTbl[i]) {
+                playerCount++;
+                if (GwPlayer[i].comF) {
+                    disablePlayer = i;
+                }
+            }
+        }
+        if (GwSystem.partyF) {
+            for (i = 0; i < 2; i++) {
+                int first = mbPlayerTeamFindPlayer(i, 0);
+                int second = mbPlayerTeamFindPlayer(i, 1);
+                if (hitTbl[first] && hitTbl[second]) {
+                    starTbl[first] = 0;
+                    coinTbl[second] = 0;
+                }
+                if (coinTbl[first] > 20) {
+                    coinTbl[second] = coinTbl[first] - 20;
+                    coinTbl[first] = 20;
+                }
+                if (starTbl[second] > 1) {
+                    starTbl[first] = starTbl[second] - 1;
+                    starTbl[second] = 1;
+                }
+            }
+        }
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            playerTbl[0][i] = -1;
+            playerTbl[1][i] = -1;
+        }
+        prizeCount = 0;
+        otherCount = 0;
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (!hitTbl[i]) {
+                continue;
+            }
+            if (!isKoopa) {
+                if (coinTbl[i] >= 20) {
+                    playerTbl[0][prizeCount++] = (s8)i;
+                } else {
+                    playerTbl[1][otherCount++] = (s8)i;
+                }
+            } else if (starTbl[i] > 0) {
+                playerTbl[0][prizeCount++] = (s8)i;
+            } else {
+                playerTbl[1][otherCount++] = (s8)i;
+            }
+        }
+        playerTbl[0][prizeCount] = -1;
+        playerTbl[1][otherCount] = -1;
+        if (!isKoopa) {
+            playerCount = prizeCount;
+        }
+        obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0,
+            OM_GRP_NONE, SNpcMoveOMExec);
+        snpcWork->moveObj = obj;
+        moveWork = omObjGetWork(obj, SNPCMOVEWORK);
+        moveWork->masuId = (s16)nextMasu;
+        while (snpcWork->moveObj != NULL) {
+            HuPrcVSleep();
+        }
+        mbev_PlayerColMasuAdd(-1, (s16)currentMasu, FALSE);
+        if (mbMasuDispCheck((s16)nextMasu)) {
+            diceValue--;
+        }
+        mbDiceSNpcNumSet(snpcWork->diceNumObj, diceValue);
+        if (playerCount > 0) {
+            mbDiceSNpcNumDispSet(snpcWork->diceNumObj, FALSE);
+            SNpcZoomSet(mbCameraPlayerViewZoomGet(0));
+            SNpcTargetAngleSet(lbl_802C3290);
+            SNpcRotateWait();
+            while (!mbPlayerColCheck()) {
+                HuPrcVSleep();
+            }
+            {
+                int winNo = mbWinCreate(2,
+                    snpcStarMesTbl[2 + isKoopa],
+                    snpcStarMesSpeakerTbl[isKoopa]);
+                mbWinPlayerDisable((s16)winNo, disablePlayer);
+                for (i = 0; i < otherCount; i++) {
+                    int player = playerTbl[1][i];
+                    mbPlayerWinLoseVoicePlay(player, isKoopa ? 13 : 12,
+                        isKoopa ? 585 : 579);
+                    mbPlayerMotionShiftSet(player, isKoopa ? 13 : 12,
+                        lbl_802C3290, lbl_802C3294, 0);
+                }
+                for (i = 0; i < prizeCount; i++) {
+                    int player = playerTbl[0][i];
+                    mbPlayerWinLoseVoicePlay(player, isKoopa ? 13 : 12,
+                        isKoopa ? 585 : 579);
+                    mbPlayerMotionShiftSet(player, isKoopa ? 13 : 12,
+                        lbl_802C3290, lbl_802C3294, 0);
+                }
+                if (isKoopa) {
+                    SNpcObjMotEndWait();
+                    SNpcObjMotShiftSet(0);
+                }
+                mbWinWait((s16)winNo);
+                for (i = 0; i < otherCount; i++) {
+                    mbPlayerMotionEndWait(playerTbl[1][i]);
+                }
+                for (i = 0; i < prizeCount; i++) {
+                    mbPlayerMotionEndWait(playerTbl[0][i]);
+                }
+            }
+            SNpcSePlay(1, 0);
+            SNpcObjMotShiftSet(8);
+            SNpcObjMotEndWait();
+            SNpcObjMotShiftSet(0);
+            if (!isKoopa) {
+                for (i = 0; i < otherCount; i++) {
+                    mbCoinAddDispExec(playerTbl[1][i], -20, FALSE, TRUE);
+                }
+                mbMusJingleWait(mbMusJinglePlay(39));
+                StarChangeExec(playerTbl[0], 0, 1);
+            } else if (prizeCount > 0) {
+                StarChangeExec(playerTbl[0], 0, -1);
+            } else {
+                StarChangeExec(playerTbl[1], 1, -20);
+            }
+            if (!isKoopa || prizeCount > 0) {
+                HuVecF starPos;
+                mbMasuPosGet((s16)nextMasu, &starPos);
+                SNpcStarCreate(isKoopa, FALSE, &starPos);
+                mbMusPauseFadeOut(0, TRUE, 1000);
+                SNpcStarWait();
+                SNpcObjMotEndWait();
+                SNpcObjMotShiftSet(0);
+            }
+            mbMusPauseFadeOut(0, FALSE, 1000);
+            HuPrcSleep(12);
+            if (isKoopa && prizeCount > 0 && otherCount > 0) {
+                int winNo = mbWinCreate(2, snpcStarMesTbl[8 + isKoopa],
+                    snpcStarMesSpeakerTbl[isKoopa]);
+                mbWinPlayerDisable((s16)winNo, disablePlayer);
+                mbWinWait((s16)winNo);
+            }
+        }
+        mbDiceSNpcNumDispSet(snpcWork->diceNumObj, TRUE);
+        SNpcZoomSet(mbCameraPlayerViewZoomGet(2));
+        currentMasu = nextMasu;
+    }
+    mbDiceSNpcNumKill(snpcWork->diceNumObj);
+    snpcWork->diceNumObj = NULL;
+    SNpcMasuSet(snpcWork->pathTbl[linkNo], TRUE);
+    SNpcZoomSet(mbCameraPlayerViewZoomGet(0));
+    SNpcTargetAngleSet(lbl_802C3290);
+    SNpcRotateWait();
+    {
+        int winNo = mbWinCreate(2, snpcStarMesTbl[6 + isKoopa],
+            snpcStarMesSpeakerTbl[isKoopa]);
+        mbWinPlayerDisable((s16)winNo, -1);
+        SNpcSePlay(1, 0);
+        SNpcObjMotShiftSet(8);
+        mbWinWait((s16)winNo);
+        SNpcObjMotEndWait();
+        SNpcZoomWait();
+    }
+    if (GwSystem.turnPlayerNo >= 3 || _CheckFlag(FLAG_BOARD_NOMG)) {
+        mbCapMasuDispSet(TRUE);
+        mbMasuPlayerDispSet(TRUE);
+    }
+    SNpcMasuEffDispSet();
+    mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
+    return FALSE;
+}
+
+static void StarChangeExec(s8 *playerNoTbl, int starF, int amount)
+{
+    int addNum[GW_PLAYER_MAX];
+    BOOL dispF[GW_PLAYER_MAX];
+    int voiceNo;
+    int playerNo;
+    int i;
+
+    voiceNo = amount < 0;
+    for (i = 0; playerNoTbl[i] >= 0; i++) {
+        playerNo = playerNoTbl[i];
+        mbPlayerWinLoseVoicePlay(playerNo, playerStarChgMotNoTbl[voiceNo],
+            playerStarChgSeTbl[voiceNo]);
+        mbPlayerMotionShiftSet(playerNo, playerStarChgMotNoTbl[voiceNo],
+            lbl_802C3290, lbl_802C3294, 0);
+        omVibrate((s16)playerNo, 20, 7, 3);
+    }
+
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        addNum[i] = 0;
+        dispF[i] = FALSE;
+    }
+    for (i = 0; playerNoTbl[i] >= 0; i++) {
+        playerNo = playerNoTbl[i];
+        addNum[playerNo] = amount;
+        dispF[playerNo] = amount;
+    }
+    if (starF == 0) {
+        mbStarAddAllProcExecV(addNum, dispF, TRUE);
+    } else {
+        mbCoinAddAllProcExecV(addNum, dispF, TRUE);
+    }
+    for (i = 0; playerNoTbl[i] >= 0; i++) {
+        mbPlayerMotionEndWait(playerNoTbl[i]);
+    }
+    HuPrcSleep(20);
+}
+
+static int MasuNextGet(int masuId, int linkNo)
+{
+    int nextLinkNo;
+    BOOL jumpF;
+
+    nextLinkNo = linkNo + 1;
+    jumpF = FALSE;
+    if ((mbMasuAttrGet((s16)masuId) & MASU_FLAG_JUMPFROM)
+        && (mbMasuAttrGet(snpcWork->pathTbl[nextLinkNo])
+            & MASU_FLAG_JUMPTO)) {
+        jumpF = TRUE;
+    } else if ((mbMasuAttrGet((s16)masuId) & MASU_FLAG_CLIMBFROM)
+        && (mbMasuAttrGet(snpcWork->pathTbl[nextLinkNo])
+            & MASU_FLAG_CLIMBTO)) {
+        jumpF = TRUE;
+    } else if ((mbMasuAttrGet(snpcWork->pathTbl[nextLinkNo])
+        & MASU_FLAG_CLIMBFROM)
+        && (mbMasuAttrGet(snpcWork->pathTbl[nextLinkNo + 1])
+            & MASU_FLAG_CLIMBTO)) {
+        jumpF = TRUE;
+        nextLinkNo += 2;
+    }
+    snpcWork->unk0C = jumpF;
+    return nextLinkNo;
+}
+
+static void SNpcStarCreate(int type, BOOL loopF, HuVecF *pos)
+{
+    OMOBJ *obj;
+    SNPCSTAREFFWORK *work;
+    int modelData;
+
+    obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
+        SNPC_STAR_OBJ_GROUP, 0, OM_GRP_NONE, SNpcStarObjExec);
+    snpcWork->starObj = obj;
+    work = omObjGetWork(obj, SNPCSTAREFFWORK);
+    work->unk00 = (type != 0);
+    omSetStatBit(obj, SNPC_MOVE_OBJ_PRIORITY);
+    work->loopF = loopF;
+    obj->trans = *pos;
+
+    modelData = mbBoardDataNumGet(starMdlTbl[type]);
+    obj->mdlId[0] = mbObjCreate(modelData, NULL, TRUE);
+    mbObjDispSet(obj->mdlId[0], FALSE);
+    obj->mdlId[1] = SNpcStarEffCreate(
+        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_effect, 1),
+            HU_MEMNUM_OVL, HEAP_MODEL)), type);
+}
+
+static HU3D_MODELID SNpcStarEffCreate(ANIMDATA *anim, int type)
+{
+    HU3D_MODELID modelId;
+
+    modelId = mbParManCreate(anim, SNPC_STAR_PARTICLE_MAX,
+        &snpcStarEffParam[type]);
+    mbParManAttrSet((int)modelId, SNPC_STAR_PARTICLE_ATTR);
+    mbParManRotSet((int)modelId, lbl_802C328C, lbl_802C3290, lbl_802C3290);
+    mbParticleBlendModeSet((int)modelId, 1);
+    Hu3DModelLayerSet(modelId, 5);
+    Hu3DModelCameraSet(modelId, 1);
+    return modelId;
+}
+
+static void SNpcKoopaFireExec(void)
+{
+    HU3D_MODELID fire3Id;
+    HU3D_MODELID fire3CopyId;
+    HU3D_MODELID fireId;
+    HU3D_MODELID fireCopyId;
+    MBPARTICLE *fire3P;
+    MBPARTICLE *fire3CopyP;
+    MBPARTICLE *fireP;
+    MBPARTICLE *fireCopyP;
+    HuVecF *fireVec;
+    HuVecF *fire3Vec;
+    HuVecF offset;
+    Mtx mtx;
+    float value;
+    int mode;
+    int i;
+
+    SNpcObjMotShiftSet(10);
+    mbAudFXPlay(MSM_SE_GUIDE_49);
+    fire3Id = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 88);
+    fire3CopyId = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 88);
+    mbParticleHookSet(fire3Id, SNpcKoopaFire3Hook);
+    mbParticleHookSet(fire3CopyId, SNpcKoopaFire2Hook);
+    Hu3DModelLayerSet(fire3Id, 5);
+    Hu3DModelLayerSet(fire3CopyId, 5);
+    fire3P = Hu3DData[fire3Id].hookData;
+    fire3CopyP = Hu3DData[fire3CopyId].hookData;
+    fire3CopyP->hookData = fire3P;
+    fire3CopyP->mode = 0;
+
+    fireId = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 500);
+    fireCopyId = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 500);
+    mbParticleHookSet(fireId, SNpcKoopaFireHook);
+    mbParticleHookSet(fireCopyId, SNpcKoopaFire2Hook);
+    Hu3DModelLayerSet(fireId, 5);
+    Hu3DModelLayerSet(fireCopyId, 5);
+    fireP = Hu3DData[fireId].hookData;
+    fireCopyP = Hu3DData[fireCopyId].hookData;
+    fireCopyP->hookData = fireP;
+    fireCopyP->mode = 0;
+
+    mode = 0;
+    fire3P->mode = (s16)mode;
+    fireP->mode = (s16)mode;
+    fireVec = (HuVecF *)fireP->work;
+    fire3Vec = (HuVecF *)fire3P->work;
+    for (i = 0; i < 260; i++) {
+        if (i > 30) {
+            if (i < 60) {
+                mode = 16;
+            } else {
+                mode += 4;
+                if (mode > 256) {
+                    mode = 256;
+                }
+            }
+            fireP->mode = (s16)mode;
+            if (mode > 64) {
+                fire3P->mode = (s16)mode;
+            }
+        }
+
+        Hu3DModelObjMtxGet(mbObjModelIDGet(snpcWork->objId[0]),
+            "itemhook_M", mtx);
+        fireP->vel.x = mtx[0][3];
+        fireP->vel.y = mtx[1][3];
+        fireP->vel.z = mtx[2][3];
+        mtx[0][3] = lbl_802C3290;
+        mtx[1][3] = lbl_802C3290;
+        mtx[2][3] = lbl_802C3290;
+
+        offset.x = lbl_802C3358;
+        offset.y = lbl_802C335C;
+        offset.z = lbl_802C3360;
+        PSMTXMultVec(mtx, &offset, &offset);
+        PSVECAdd(&fireP->vel, &offset, &fireP->vel);
+        fire3P->vel = fireP->vel;
+
+        offset.x = lbl_802C3364;
+        offset.y = lbl_802C32EC;
+        offset.z = lbl_802C3290;
+        PSMTXMultVec(mtx, &offset, fireVec);
+        *fire3Vec = *fireVec;
+        value = (float)mode * lbl_802C3368;
+        PSVECScale(fireVec, &offset,
+            lbl_802C32A0 * (lbl_802C336C * value));
+        PSVECAdd(&fireP->vel, &offset, &fireP->vel);
+        HuPrcVSleep();
+    }
+
+    fireP->mode = 0;
+    fire3P->mode = 0;
+    SNpcObjMotEndWait();
+    SNpcObjMotShiftSet(0);
+    HuPrcSleep(30);
+    mbParticleKill(fireId);
+    mbParticleKill(fireCopyId);
+    mbParticleKill(fire3Id);
+    mbParticleKill(fire3CopyId);
+    HuPrcSleep(4);
+}
+
+static void SNpcKoopaFireHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
+    Mtx mtx)
+{
+    HuVecF axisZ = { 0.0f, 0.0f, 1.0f };
+    HuVecF axisX = { 1.0f, 0.0f, 0.0f };
+    MBPARTICLEDATA *data;
+    HuVecF axisCross;
+    HuVecF offset;
+    const HuVecF *axis;
+    Mtx rotMtx;
+    float ratio;
+    float blend;
+    float speed;
+    float value;
+    float absY;
+    float absZ;
+    int gray;
+    int i;
+
+    (void)modelP;
+    (void)mtx;
+    data = particleP->data;
+    if (particleP->count == 0) {
+        for (i = 0; i < particleP->num; i++) {
+            data[i].scale = lbl_802C3290;
+            data[i].color.a = 0;
+            data[i].time = (s16)-(i >> 3);
+        }
+        particleP->count = 1;
+    }
+
+    for (i = 0; i < particleP->num; i++, data++) {
+        if (particleP->mode != 0) {
+            if (data->time < 0) {
+                data->time++;
+                continue;
+            }
+            if (data->time == 0) {
+                data->vel = *(HuVecF *)particleP->work;
+                axis = &axisZ;
+                absZ = fabsf(data->vel.z);
+                absY = fabsf(data->vel.y);
+                if (absZ >= absY && absZ >= fabsf(data->vel.x)) {
+                    axis = &axisX;
+                }
+                PSVECCrossProduct(axis, &data->vel, &axisCross);
+                value = frandf() * lbl_802C3330 * lbl_802C3370;
+                PSMTXRotAxisRad(rotMtx, &data->vel, value);
+                PSMTXMultVec(rotMtx, &axisCross, &data->accel);
+                data->activeF = 30;
+                data->time = 30;
+                data->pos = particleP->vel;
+
+                speed = frandf() * lbl_802C3374 * lbl_802C32A0;
+                PSVECScale(&data->vel, &offset, speed);
+                PSVECAdd(&data->pos, &offset, &data->pos);
+                speed = frandf() * lbl_802C3374 * lbl_802C32A0;
+                PSVECScale(&data->accel, &offset, speed);
+                PSVECAdd(&data->pos, &offset, &data->pos);
+
+                value = (float)particleP->mode * lbl_802C3368;
+                speed = (lbl_802C3364 + lbl_802C3378 * value)
+                    * (lbl_802C3374 + frandf());
+                PSVECScale(&data->vel, &data->vel,
+                    lbl_802C337C * speed);
+                PSVECScale(&data->accel, &data->accel,
+                    lbl_802C3380 * speed);
+                data->colorIdx = lbl_802C3290;
+                data->scaleBase = lbl_802C3384
+                    * (lbl_802C32D8 + lbl_802C32D8 * frandf());
+                data->rot.z = (float)mbRandMod(360);
+                data->animBank = (s16)mbRandMod(8);
+                gray = (int)(lbl_802C32A0 + lbl_802C3388 * frandf());
+                data->color.r = (u8)gray;
+                data->color.g = (u8)gray;
+                data->color.b = (u8)gray;
+                data->scale = (lbl_802C3354 + lbl_802C3298 * frandf())
+                    * (lbl_802C32D8 + lbl_802C32D8 * value);
+                data->color.a = (u8)(mbRandMod(32) + 48);
+            }
+        }
+        if (data->time <= 0) {
+            continue;
+        }
+
+        ratio = lbl_802C32EC
+            - ((float)data->time / (float)data->activeF);
+        data->time--;
+        speed = mbSinDeg(lbl_802C32A0 + (lbl_802C338C * ratio));
+        PSVECScale(&data->vel, &offset, speed);
+        PSVECAdd(&data->pos, &offset, &data->pos);
+        speed = mbSinDeg(lbl_802C335C + (lbl_802C338C * ratio));
+        PSVECScale(&data->accel, &offset, speed);
+        PSVECAdd(&data->pos, &offset, &data->pos);
+
+        if (particleP->mode == 0) {
+            data->colorIdx += data->scaleBase;
+            data->pos.y += data->colorIdx;
+            if (ratio > lbl_802C32D8) {
+                data->scale *= lbl_802C3390;
+            }
+        }
+        if (ratio > lbl_802C3314) {
+            blend = lbl_802C3394 * (ratio - lbl_802C3314);
+            value = (float)data->color.r
+                + ((lbl_802C3298 - (float)data->color.r) * blend);
+            data->color.r = (u8)value;
+            value = (float)data->color.g
+                + ((lbl_802C3298 - (float)data->color.g) * blend);
+            data->color.g = (u8)value;
+            value = (float)data->color.b
+                + ((lbl_802C3298 - (float)data->color.b) * blend);
+            data->color.b = (u8)value;
+        }
+        if (ratio > lbl_802C3398) {
+            blend = lbl_802C339C * (ratio - lbl_802C3398);
+            value = (float)data->color.a
+                + ((lbl_802C33A0 - (float)data->color.a) * blend);
+            data->color.a = (u8)value;
+        }
+        if (data->time == 0) {
+            data->scale = lbl_802C3290;
+            data->color.a = 0;
+        }
+    }
+}
+
+static void SNpcKoopaFire2Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
+    Mtx mtx)
+{
+    MBPARTICLE *sourceP;
+    MBPARTICLEDATA *data;
+    int alpha;
+    int i;
+
+    (void)modelP;
+    (void)mtx;
+    if (particleP->mode == 0) {
+        data = particleP->data;
+        for (i = 0; i < particleP->num; i++, data++) {
+            data->scale = lbl_802C3290;
+            data->color.a = 0;
+            data->time = 0;
+        }
+        particleP->mode = 1;
+        particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
+    }
+
+    sourceP = particleP->hookData;
+    memcpy(particleP->data, sourceP->data,
+        particleP->num * sizeof(MBPARTICLEDATA));
+    data = particleP->data;
+    for (i = 0; i < particleP->num; i++, data++) {
+        alpha = (int)(lbl_802C3378 * (float)data->color.a);
+        if (alpha > 255) {
+            alpha = 255;
+        }
+        data->color.a = (u8)alpha;
+    }
+}
+
+static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
+    Mtx mtx)
+{
+    HuVecF axisZ = { 0.0f, 0.0f, 1.0f };
+    HuVecF axisX = { 1.0f, 0.0f, 0.0f };
+    MBPARTICLEDATA *data;
+    const HuVecF *axis;
+    HuVecF axisCross;
+    HuVecF offset;
+    Mtx rotMtx;
+    float modeScale;
+    float ratio;
+    float blend;
+    float speed;
+    float value;
+    float absY;
+    float absZ;
+    int gray;
+    int i;
+
+    (void)modelP;
+    (void)mtx;
+    data = particleP->data;
+    if (particleP->count == 0) {
+        for (i = 0; i < particleP->num; i++) {
+            data[i].scale = lbl_802C3290;
+            data[i].color.a = 0;
+            data[i].time = (s16)-(i >> 3);
+        }
+        particleP->count = 1;
+    }
+
+    for (i = 0; i < particleP->num; i++, data++) {
+        if (particleP->mode != 0) {
+            if (data->time < 0) {
+                data->time++;
+                continue;
+            }
+            if (data->time == 0) {
+                axis = &axisZ;
+                absZ = fabsf(data->vel.z);
+                absY = fabsf(data->vel.y);
+                if (absZ >= absY && absZ >= fabsf(data->vel.x)) {
+                    axis = &axisX;
+                }
+                PSVECCrossProduct(axis, &data->vel, &axisCross);
+                value = frandf() * lbl_802C3330 * lbl_802C3370;
+                PSMTXRotAxisRad(rotMtx, &data->vel, value);
+                PSMTXMultVec(rotMtx, &axisCross, &data->accel);
+                modeScale = (float)particleP->mode * lbl_802C3368;
+                data->activeF = 10;
+                data->time = 10;
+                data->pos = particleP->vel;
+
+                speed = frandf() * lbl_802C3374 * lbl_802C32A0;
+                PSVECScale(&data->vel, &offset, speed * modeScale);
+                PSVECAdd(&data->pos, &offset, &data->pos);
+                speed = frandf() * lbl_802C33B0 * lbl_802C32A0;
+                PSVECScale(&data->accel, &offset, speed * modeScale);
+                PSVECAdd(&data->pos, &offset, &data->pos);
+
+                PSVECScale(&data->vel, &data->vel,
+                    lbl_802C33B4 * modeScale);
+                PSVECScale(&data->accel, &data->accel,
+                    lbl_802C33B8 * modeScale);
+                data->rot.z = (float)mbRandMod(360);
+                data->animBank = (s16)mbRandMod(8);
+                gray = (int)(lbl_802C32A0 + lbl_802C3388 * frandf());
+                data->color.r = (u8)gray;
+                data->color.g = (u8)gray;
+                data->color.b = (u8)gray;
+                data->color.a = 0;
+                data->speedDecay = (float)(mbRandMod(62) + 58);
+                data->scale = lbl_802C33BC;
+                data->colorIdx = lbl_802C33BC
+                    + (lbl_802C3354 * frandf());
+            }
+        }
+        if (data->time <= 0) {
+            continue;
+        }
+
+        ratio = lbl_802C32EC
+            - ((float)data->time / (float)data->activeF);
+        data->time--;
+        PSVECAdd(&data->pos, &data->vel, &data->pos);
+        PSVECAdd(&data->pos, &data->accel, &data->pos);
+        blend = lbl_802C332C * ratio;
+        if (blend > lbl_802C32EC) {
+            blend = lbl_802C32EC;
+        }
+        value = (float)data->color.a
+            + ((data->speedDecay - (float)data->color.a) * blend);
+        data->color.a = (u8)value;
+        data->scale += (data->colorIdx - data->scale) * blend;
+        if (data->time == 0) {
+            data->scale = lbl_802C3290;
+            data->color.a = 0;
+        }
+    }
+}
+
+static void SNpcEffectExec(void)
+{
+    HuVecF offset = { -70.0f, 320.0f, 20.0f };
+    HuVecF pos;
+    MBMODELID modelId;
+    float height;
+    int i;
+
+    if ((snpcSaveWork->flags >> 7) & 1) {
+        SNpcKoopaFireExec();
+        return;
+    }
+
+    modelId = mbObjCreate(SNPC_DONKEY_EFFECT_DATA_MODEL, NULL, FALSE);
+    mbObjPosGet(snpcWork->objId[0], &pos);
+    PSVECAdd(&pos, &offset, &pos);
+    SNpcObjMotShiftSet(10);
+    for (i = 14; i >= 0; i--) {
+        height = lbl_802C32A0 * (lbl_802C3350
+            * mbSinDeg(lbl_802C3354
+                * ((float)i / lbl_802C334C)));
+        mbObjPosSet(modelId, pos.x, pos.y + height, pos.z);
+        HuPrcVSleep();
+    }
+    mbObjDispSet(modelId, FALSE);
+    SNpcObjMotEndWait();
+    mbObjKill(modelId);
+}
+
+void mbSNpcStarExec(int playerNo, int masuId)
+{
+    HuVecF playerPos;
+    HuVecF playerRot;
+    HuVecF npcPos;
+    HuVecF masuPos;
+    HuVecF starPos;
+    float angle;
+    float angleDiff;
+    float ratio;
+    float zoom;
+    int isKoopa;
+    int state;
+    int winNo;
+    int nextMasu;
+    int jingleNo;
+    BOOL moveStarF;
+    int i;
+
+    if (snpcMagic != SNPC_MAGIC || masuId != snpcSaveWork->masuId) {
+        return;
+    }
+
+    mbCameraStackPush();
+    mbMoveNumDispSet(playerNo, FALSE);
+    mbCameraMoveMasu((s16)masuId, NULL, &masuViewOfs,
+        mbCameraPlayerViewZoomGet(0), lbl_802C3270, 24);
+
+    isKoopa = (snpcSaveWork->flags >> 7) & 1;
+    state = 0;
+    if (!isKoopa) {
+        if (mbPlayerCoinGet(playerNo) >= 20) {
+            winNo = mbWinCreateChoice(2, snpcMesTbl[isKoopa],
+                snpcMesSpeakerTbl[isKoopa], 0);
+            if (GwPlayer[playerNo].comF) {
+                mbComChoiceUpSet();
+            }
+            state = 1;
+        } else {
+            winNo = mbWinCreate(2, snpcMesTbl[2 + isKoopa],
+                snpcMesSpeakerTbl[isKoopa]);
+        }
+    } else if (mbPlayerStarGet(playerNo) > 0) {
+        winNo = mbWinCreate(2, snpcMesTbl[isKoopa],
+            snpcMesSpeakerTbl[isKoopa]);
+        state = 2;
+    } else {
+        winNo = mbWinCreate(2, snpcMesTbl[2 + isKoopa],
+            snpcMesSpeakerTbl[isKoopa]);
+        state = 3;
+    }
+    SNpcSePlay(1, 0);
+
+    mbPlayerPosGet(playerNo, &playerPos);
+    SNpcObjPosGet(&npcPos);
+    PSVECSubtract(&npcPos, &playerPos, &npcPos);
+    PSVECNormalize(&npcPos, &npcPos);
+    angle = (float)(lbl_802C3278
+        * (atan2(-npcPos.x, -npcPos.z) / lbl_802C3280));
+    SNpcTargetAngleSet(angle);
+    PSVECScale(&npcPos, &npcPos, lbl_802C3288 / 7.0f);
+
+    mbPlayerPosGet(playerNo, &playerPos);
+    mbPlayerRotGet(playerNo, &playerRot);
+    angle = (float)(lbl_802C3278
+        * (atan2(-npcPos.x, -npcPos.z) / lbl_802C3280));
+    angleDiff = mbAngleWrap2(angle, playerRot.y);
+    mbPlayerMotionSet(playerNo, 9, HU3D_MOTATTR_NONE);
+    for (i = 0; i < 7; i++) {
+        ratio = (float)(i + 1) / 7.0f;
+        angle = (float)sin((lbl_802C3280 * (lbl_802C328C * ratio))
+            / lbl_802C3278);
+        mbPlayerRotSet(playerNo, lbl_802C3290,
+            playerRot.y + (angle * angleDiff), lbl_802C3290);
+        HuPrcVSleep();
+    }
+    mbMusPlay(0, snpcStarStrmTbl[isKoopa], 127, 0);
+    while (!mbPlayerMotionEndCheck(playerNo)) {
+        HuPrcVSleep();
+    }
+    mbPlayerMotIdleSet(playerNo);
+    SNpcRotateWait();
+
+    moveStarF = TRUE;
+    if (state == 0) {
+        mbWinWait((s16)winNo);
+        winNo = mbWinCreate(2, snpcMesTbl[10 + isKoopa],
+            snpcMesSpeakerTbl[isKoopa]);
+        SNpcSePlay(2, 0);
+        SNpcObjMotShiftSet(9);
+        mbWinWait((s16)winNo);
+        mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
+        mbPlayerMotionShiftSet(playerNo, 13, lbl_802C3290,
+            lbl_802C3294, HU3D_MOTATTR_NONE);
+        mbPlayerMotionEndWait(playerNo);
+        moveStarF = FALSE;
+    } else if (state == 1) {
+        mbWinWait((s16)winNo);
+        if (mbWinChoiceGet((s16)winNo) == 0) {
+            jingleNo = -1;
+            mbCoinAddDispExec(playerNo, -20, FALSE, TRUE);
+            mbPlayerPosGet(playerNo, &playerPos);
+            SNpcStarCreate(isKoopa, TRUE, &playerPos);
+            mbPlayerRotateStart(playerNo, 0, 15);
+            SNpcObjMotShiftSet(7);
+            HuPrcSleep(150);
+            SNpcTargetAngleSet(lbl_802C3290);
+            mbPlayerMotionShiftSet(playerNo, 11, lbl_802C3290,
+                lbl_802C3294, HU3D_MOTATTR_NONE);
+            mbMusPauseFadeOut(0, TRUE, 1000);
+            mbPlayerMotionEndWait(playerNo);
+            mbPlayerMotIdleSet(playerNo);
+            SNpcStarWait();
+            omVibrate((s16)playerNo, 20, 7, 3);
+            mbPlayerStarAdd(playerNo, 1);
+            mbPlayerWinLoseVoicePlay(playerNo, playerStarMotNoTbl[isKoopa],
+                playerStarSeTbl[isKoopa]);
+            mbPlayerMotionShiftSet(playerNo, playerStarMotNoTbl[isKoopa],
+                lbl_802C3290, lbl_802C3294, HU3D_MOTATTR_NONE);
+            SNpcSePlay(1, 0);
+            SNpcObjMotShiftSet(8);
+            jingleNo = mbMusJinglePlay(39);
+            SNpcObjMotEndWait();
+            mbPlayerMotionEndWait(playerNo);
+            HuPrcSleep(60);
+            mbMusJingleWait(jingleNo);
+            mbMusPauseFadeOut(0, FALSE, 1000);
+            mbPlayerMotIdleSet(playerNo);
+        } else {
+            SNpcSePlay(2, 0);
+            SNpcObjMotShiftSet(9);
+            winNo = mbWinCreate(2, snpcMesTbl[4 + isKoopa],
+                snpcMesSpeakerTbl[isKoopa]);
+            mbWinWait((s16)winNo);
+        }
+    } else {
+        mbWinWait((s16)winNo);
+        if (state == 3) {
+            winNo = mbWinCreate(2, snpcMesTbl[10 + isKoopa],
+                snpcMesSpeakerTbl[isKoopa]);
+            mbWinWait((s16)winNo);
+        }
+        mbPlayerPosGet(playerNo, &playerPos);
+        SNpcStarCreate(isKoopa, TRUE, &playerPos);
+        SNpcObjMotShiftSet(7);
+        SNpcStarWait();
+        omVibrate((s16)playerNo, 20, 7, 3);
+        SNpcTargetAngleSet(lbl_802C3290);
+        if (state == 2) {
+            mbStarAddProcExec(playerNo, -1, -1, TRUE);
+        } else {
+            mbCoinAddProcExec(playerNo, -20, -1, TRUE);
+        }
+        mbPlayerWinLoseVoicePlay(playerNo, playerStarMotNoTbl[isKoopa],
+            playerStarSeTbl[isKoopa]);
+        mbPlayerMotionShiftSet(playerNo, playerStarMotNoTbl[isKoopa],
+            lbl_802C3290, lbl_802C3294, HU3D_MOTATTR_NONE);
+        SNpcSePlay(1, 0);
+        SNpcObjMotShiftSet(8);
+        SNpcObjMotEndWait();
+        mbPlayerMotionEndWait(playerNo);
+    }
+
+    if (moveStarF) {
+        nextMasu = SNpcMasuStarNextGet(FALSE);
+        SNpcObjMotShiftSet(3);
+        SNpcObjMotEndWait();
+        if (isKoopa) {
+            mbCameraShakeSet(12, lbl_802C3298);
+        }
+        SNpcSePlay(3, 0);
+        SNpcObjMotShiftSet(4);
+        SNpcObjPosGet(&starPos);
+        for (i = 0; i < 30; i++) {
+            ratio = (float)i / 30.0f;
+            npcPos = starPos;
+            npcPos.y += lbl_802C32A0
+                * (float)sin((lbl_802C3280 * (lbl_802C329C * ratio))
+                    / lbl_802C3278);
+            SNpcObjPosSetV(&npcPos);
+            HuPrcVSleep();
+        }
+        SNpcObjDispSet(FALSE);
+        SNpcMasuReset(TRUE);
+        mbCameraMovePlayer(-1, NULL, NULL,
+            mbCameraPlayerViewZoomGet(2), lbl_802C3270, 24);
+        mbCameraMoveWait();
+        mbMasuPosGet(nextMasu, &masuPos);
+        mbMasuPosGet(masuId, &npcPos);
+        PSVECSubtract(&npcPos, &masuPos, &npcPos);
+        zoom = PSVECMag(&npcPos) * lbl_802C32A4 * lbl_802C32A8;
+        mbCameraMoveMasu((s16)nextMasu, NULL, NULL,
+            mbCameraPlayerViewZoomGet(2), lbl_802C3270, (s16)zoom);
+        winNo = mbWinCreate(2, snpcMesTbl[6 + isKoopa],
+            mbGuideSpeakerNoGet());
+        mbWinPause((s16)winNo);
+        mbCameraMoveWait();
+        mbWinKill((s16)winNo);
+        mbCameraMoveMasu(-1, NULL, NULL,
+            mbCameraPlayerViewZoomGet(0), lbl_802C3270, 21);
+        SNpcObjDispSet(TRUE);
+        mbMasuPosGet(nextMasu, &starPos);
+        SNpcObjRotSet(lbl_802C3290, lbl_802C3290, lbl_802C3290);
+        for (i = 0; i < 30; i++) {
+            ratio = (float)(29 - i) / 30.0f;
+            npcPos = starPos;
+            npcPos.y += lbl_802C32A0
+                * (float)sin((lbl_802C3280 * (lbl_802C329C * ratio))
+                    / lbl_802C3278);
+            SNpcObjPosSetV(&npcPos);
+            if (i + 5 == 30) {
+                SNpcSePlay(7, 0);
+                SNpcObjMotShiftSet(5);
+            }
+            HuPrcVSleep();
+        }
+        if (isKoopa) {
+            mbCameraShakeSet(18, lbl_802C32AC);
+        }
+        SNpcObjPosSetV(&starPos);
+        SNpcMasuSet(nextMasu, TRUE);
+        SNpcObjMotEndWait();
+        winNo = mbWinCreate(2, snpcMesTbl[8 + isKoopa],
+            snpcMesSpeakerTbl[isKoopa]);
+        mbWinPlayerDisable((s16)winNo, -1);
+        SNpcSePlay(1, 0);
+        SNpcObjMotShiftSet(8);
+        mbWinWait((s16)winNo);
+        mbCameraMoveWait();
+        SNpcObjMotEndWait();
+        mbWipeDissolveFadeOut();
+        mbCameraStackPop(0);
+        mbMasuPosGet(masuId, &playerPos);
+        mbPlayerPosSetV(playerNo, &playerPos);
+        mbPlayerRotSet(playerNo, lbl_802C3290, lbl_802C3290,
+            lbl_802C3290);
+        SNpcPosFixSnap();
+    } else {
+        mbWipeDissolveFadeOut();
+        mbCameraStackPop(0);
+        SNpcObjPosGet(&npcPos);
+        mbPlayerPosGet(playerNo, &playerPos);
+        SNpcObjPosSetV(&playerPos);
+        mbPlayerPosSetV(playerNo, &npcPos);
+        mbPlayerRotGet(playerNo, &playerRot);
+        SNpcObjRotSet(lbl_802C3290, playerRot.y, lbl_802C3290);
+    }
+    SNpcObjMotSet(0);
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+    SNpcMasuEffDispSet();
+    mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
+    mbWipeDissolveFadeIn();
+    mbMoveNumDispSet(playerNo, TRUE);
+    if (!moveStarF) {
+        SNpcPosFixCreate();
+    }
+}
+
+static void SNpcMoveOMExec(OMOBJ *obj)
+{
+    SNPCMOVEWORK *work;
+    HuVecF move;
+    HuVecF pos;
+    float time;
+    float weight;
+    BOOL endF;
+
+    work = omObjGetWork(obj, SNPCMOVEWORK);
+    endF = FALSE;
+    if (mbExitCheck() || work->killF) {
+        omDelObjEx(HuPrcCurrentGet(), obj);
+        snpcWork->moveObj = NULL;
+        return;
+    }
+    if (!work->initF) {
+        work->initF = TRUE;
+        work->time = 0;
+        work->unk06 = 0;
+        work->unk08 = 0;
+        SNpcObjPosGet(&obj->trans);
+        SNpcObjRotGet(&obj->rot);
+        mbMasuPosGet(work->masuId, &obj->scale);
+        PSVECSubtract(&obj->scale, &obj->trans, &move);
+        time = PSVECMag(&move);
+        if ((snpcSaveWork->flags >> 7) & 1) {
+            time *= lbl_802C32E0;
+        }
+        work->maxTime = (s16)(time / lbl_802C32E4);
+        obj->rot.z = (float)(lbl_802C3278
+            * (atan2(move.x, move.z) / lbl_802C3280));
+        if (snpcWork->unk0C != 0) {
+            work->mode = 1;
+            SNpcObjMotShiftSet(3);
+        } else {
+            SNpcObjMotShiftSet(1);
+        }
+    }
+
+    work->time++;
+    work->unk06++;
+    time = (float)work->time / (float)work->maxTime;
+    pos.x = obj->trans.x + (time * (obj->scale.x - obj->trans.x));
+    pos.y = obj->trans.y + (time * (obj->scale.y - obj->trans.y));
+    pos.z = obj->trans.z + (time * (obj->scale.z - obj->trans.z));
+
+    weight = lbl_802C32E8 * (float)work->unk06;
+    if (weight > lbl_802C32EC) {
+        weight = lbl_802C32EC;
+    }
+    obj->rot.y = mbAngleLerp(obj->rot.y, obj->rot.z,
+        lbl_802C32F0 * weight);
+    SNpcObjRotSet(lbl_802C3290, obj->rot.y, lbl_802C3290);
+
+    if (work->mode == 0) {
+        SNpcObjPosSetV(&pos);
+        if (work->time >= work->maxTime) {
+            endF = TRUE;
+        }
+    } else {
+        switch (work->unk08) {
+        case 0:
+            if (SNpcObjMotEndCheck()) {
+                SNpcObjMotShiftSet(4);
+                work->time = 0;
+                work->maxTime = 35;
+                work->unk08++;
+            }
+            break;
+        case 1:
+            if (work->time >= work->maxTime - 5) {
+                SNpcObjMotShiftSet(5);
+                work->unk08++;
+            }
+            /* fall through */
+        case 2:
+            weight = (float)(lbl_802C3300 * sin(
+                (lbl_802C3280 * (lbl_802C3308 * time))
+                    / lbl_802C3278));
+            pos.y += lbl_802C32F8 * weight;
+            SNpcObjPosSetV(&pos);
+            if (work->time >= work->maxTime) {
+                if ((snpcSaveWork->flags >> 7) & 1) {
+                    mbCameraShakeSet(12, lbl_802C32A0);
+                }
+                work->unk08++;
+            }
+            break;
+        case 3:
+            if (SNpcObjMotEndCheck()) {
+                endF = TRUE;
+            }
+            break;
+        }
+    }
+    if (snpcWork->diceNumObj != NULL) {
+        SNpcObjPosGet(&pos);
+        mbDiceSNpcNumPosSet(snpcWork->diceNumObj, &pos);
+    }
+    SNpcMotSetNext();
+    if (endF) {
+        omDelObjEx(HuPrcCurrentGet(), obj);
+        snpcWork->moveObj = NULL;
+    }
+}
+
+static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
+    u32 mAttr, float chance, s16 *pathTbl)
+{
+    typedef struct SNPCCOMPACTPATH {
+        u8 chanceF;
+        u8 masuId;
+        s16 chance;
+    } SNPCCOMPACTPATH;
+    u8 *masuState;
+    u8 *branchCount;
+    SNPCCHANCEPATH *pathStack;
+    SNPCCOMPACTPATH *candidateTbl[64];
+    int pathCapacity;
+    int masuNum;
+    int candidateNum;
+    int minBranch;
+    int current;
+    int linkNo;
+    int chanceCount;
+    int pathCount;
+    int i;
+    int j;
+    int result;
+
+    pathCapacity = diceNum + 12;
+    masuState = mbMalloc(256);
+    pathStack = mbMalloc(pathCapacity * (int)sizeof(*pathStack));
+    branchCount = mbMalloc(pathCapacity);
+    for (i = 0; i < 64; i++) {
+        candidateTbl[i] = NULL;
+    }
+    masuNum = mbMasuNumGet();
+    for (i = 1; i < masuNum; i++) {
+        s8 state = mbBranchAttrCheck(i) ? 0 : -1;
+        if (mbMasuDispCheck((s16)i)) {
+            state |= 1;
+        }
+        masuState[i] = (u8)state;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        masuState[GwPlayer[i].masuId] |= 2;
+    }
+    candidateNum = 0;
+    minBranch = pathCapacity;
+    if (diceNum > 0) {
+        current = masuId;
+        linkNo = 0;
+        chanceCount = 0;
+        pathCount = 0;
+        while (pathCount >= 0) {
+            MASU *masu;
+            BOOL advanced;
+
+            advanced = FALSE;
+            if (pathCount < pathCapacity) {
+                masu = mbMasuGet((s16)current);
+                while (linkNo < masu->linkNum) {
+                    int nextMasu;
+                    int usedLink;
+
+                    usedLink = linkNo++;
+                    nextMasu = masu->linkTbl[usedLink];
+                    if ((s8)masuState[nextMasu] < 0) {
+                        continue;
+                    }
+                    branchCount[pathCount]++;
+                    pathStack[pathCount].masuId = (s16)current;
+                    pathStack[pathCount].linkNo = (s16)(usedLink + 1);
+                    pathStack[pathCount].chance = (s16)chanceCount;
+                    pathStack[pathCount].unk06 = 0;
+                    pathCount++;
+                    current = nextMasu;
+                    linkNo = 0;
+                    if (masuState[current] & 1) {
+                        chanceCount++;
+                    }
+                    if ((masuState[current] & 112) == 0
+                        && (mAttr & mbMasuMAttrGet((s16)current)) == 0) {
+                        int type = mbMasuTypeGet((s16)current);
+                        for (i = 0; typeTbl[i] >= 0; i++) {
+                            if (type == typeTbl[i]) {
+                                pathStack[pathCount - 1].unk06 = 1;
+                                break;
+                            }
+                        }
+                    }
+                    advanced = TRUE;
+                    break;
+                }
+            }
+            if (advanced) {
+                continue;
+            }
+            if (pathCount > 1) {
+                BOOL marked = FALSE;
+                for (i = 1; i < pathCount; i++) {
+                    if (pathStack[i].unk06 != 0) {
+                        marked = TRUE;
+                        break;
+                    }
+                }
+                if (marked && candidateNum < 64) {
+                    SNPCCOMPACTPATH *candidate;
+                    candidate = HuMemDirectMallocNum(0,
+                        (pathCount + 1) * (int)sizeof(*candidate),
+                        4096);
+                    candidateTbl[candidateNum++] = candidate;
+                    for (i = 1; i < pathCount; i++) {
+                        candidate[i - 1].chanceF =
+                            (u8)pathStack[i].unk06;
+                        candidate[i - 1].masuId =
+                            (u8)pathStack[i].masuId;
+                        candidate[i - 1].chance = pathStack[i].chance;
+                    }
+                    candidate[pathCount - 1].chance = -1;
+                    for (i = 0; i + 1 < pathCount; i++) {
+                        if (branchCount[i] > 1 && i < minBranch) {
+                            minBranch = i;
+                        }
+                    }
+                }
+            }
+            if (pathCount == 0) {
+                break;
+            }
+            pathCount--;
+            if (pathCount == 0) {
+                break;
+            }
+            current = pathStack[pathCount - 1].masuId;
+            linkNo = pathStack[pathCount - 1].linkNo;
+            chanceCount = pathStack[pathCount - 1].chance;
+        }
+    }
+    result = 0;
+    if (candidateNum > 0) {
+        int playerFixed[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
+        int score[64];
+        int order[64];
+        int maxStars = 0;
+        int limit;
+
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            int stars = mbPlayerStarGet(i);
+            if (stars > maxStars) {
+                maxStars = stars;
+            }
+        }
+        for (i = 0; i < candidateNum; i++) {
+            SNPCCOMPACTPATH *candidate = candidateTbl[i];
+            for (j = 0; candidate[j].chance >= 0; j++) {
+                int player;
+                if ((masuState[candidate[j].masuId] & 7) == 0) {
+                    continue;
+                }
+                for (player = 0; player < GW_PLAYER_MAX; player++) {
+                    if (GwPlayer[player].masuId == candidate[j].masuId) {
+                        playerFixed[player] = 1;
+                    }
+                }
+            }
+        }
+        limit = minBranch;
+        if (limit <= 0 || limit > candidateNum) {
+            limit = candidateNum;
+        }
+        for (i = 0; i < candidateNum; i++) {
+            int playerDistance[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
+            int scoreValue = 2147483647;
+            int player;
+            SNPCCOMPACTPATH *candidate = candidateTbl[i];
+            for (j = 0; candidate[j].chance >= 0; j++) {
+                if ((masuState[candidate[j].masuId] & 7) == 0) {
+                    continue;
+                }
+                for (player = 0; player < GW_PLAYER_MAX; player++) {
+                    int value;
+                    if (GwPlayer[player].masuId != candidate[j].masuId
+                        || playerFixed[player]) {
+                        continue;
+                    }
+                    value = candidate[j].chance;
+                    if (value >= diceNum + 1) {
+                        playerFixed[player] = 1;
+                    } else if (playerDistance[player] == 0
+                        || value < playerDistance[player]) {
+                        playerDistance[player] = value;
+                    }
+                }
+            }
+            for (player = 0; player < GW_PLAYER_MAX; player++) {
+                if (playerDistance[player] != 0) {
+                    int value = mbPlayerStarGet(player) * 20;
+                    if ((snpcSaveWork->flags >> 7) & 1) {
+                        value = (maxStars - mbPlayerStarGet(player)) * 20;
+                    }
+                    value += playerDistance[player];
+                    if (value < scoreValue) {
+                        scoreValue = value;
+                    }
+                }
+            }
+            score[i] = scoreValue;
+            order[i] = i;
+        }
+        for (i = 0; i < candidateNum; i++) {
+            for (j = i + 1; j < candidateNum; j++) {
+                if (score[order[i]] > score[order[j]]) {
+                    int swap = order[i];
+                    order[i] = order[j];
+                    order[j] = swap;
+                }
+            }
+        }
+        if (limit > candidateNum) {
+            limit = candidateNum;
+        }
+        {
+            int best = score[order[0]];
+            int tieCount = 0;
+            int selected;
+            for (i = 0; i < limit; i++) {
+                if (score[order[i]] == best) {
+                    tieCount++;
+                }
+            }
+            if (tieCount == 0) {
+                tieCount = 1;
+            }
+            selected = order[mbRandMod(tieCount)];
+            {
+                SNPCCOMPACTPATH *candidate = candidateTbl[selected];
+                int selectedIndex = 0;
+                int activeCount = 0;
+                for (j = 0; candidate[j].chance >= 0; j++) {
+                    if (masuState[candidate[j].masuId] != 0) {
+                        activeCount++;
+                    }
+                }
+                for (j = 0; candidate[j].chance >= 0; j++) {
+                    pathTbl[j] = (s16)candidate[j].masuId;
+                    if (candidate[j].chanceF != 0) {
+                        activeCount--;
+                        if (masuState[candidate[j].masuId] > 0) {
+                            int threshold = (int)(lbl_802C32D8
+                                + ((float)diceNum * chance));
+                            if (candidate[j].chance < threshold) {
+                                selectedIndex = j + 1;
+                            } else {
+                                activeCount = 0;
+                            }
+                        }
+                    }
+                }
+                if (selectedIndex > 0
+                    && mbCapMasuDispTypeGet(pathTbl[selectedIndex - 1]) != 0
+                    && mbCapMasuDispTypeGet(pathTbl[selectedIndex]) == 0) {
+                    selectedIndex++;
+                }
+                if (selectedIndex > 0) {
+                    result = candidate[selectedIndex - 1].chance;
+                    pathTbl[selectedIndex] = 0;
+                } else {
+                    pathTbl[0] = 0;
+                }
+            }
+        }
+    }
+    for (i = 0; i < 64; i++) {
+        if (candidateTbl[i] != NULL) {
+            HuMemDirectFree(candidateTbl[i]);
+        }
+    }
+    HuMemDirectFree(masuState);
+    HuMemDirectFree(pathStack);
+    HuMemDirectFree(branchCount);
+    return result;
 }
 
 static void SNpcTargetAngleSet(float angle)
@@ -853,12 +2486,63 @@ static void SNpcZoomUpdate(OMOBJ *obj)
         + (time * (work->targetZoom - work->startZoom)));
 }
 
+static OMOBJ *SNpcDiceExec(int diceValue, int diceNum)
+{
+    int valueTbl[3] = { 0, 0, 0 };
+    int isKoopa;
+    HuVecF pos;
+    int i;
+
+    isKoopa = (snpcSaveWork->flags >> 7) & 1;
+    SNpcObjPosGet(&pos);
+    PSVECAdd(&pos, &snpcDiceOfsTbl[isKoopa], &pos);
+    if (diceNum > 2) {
+        diceNum = 2;
+    }
+    valueTbl[0] = diceValue;
+    if (diceNum == 2 && diceValue > 1) {
+        int split;
+        int limit;
+
+        split = diceValue >> 1;
+        valueTbl[0] = split;
+        valueTbl[1] = diceValue - split;
+        limit = 10 - valueTbl[1];
+        if (limit > valueTbl[0] - 1) {
+            limit = valueTbl[0] - 1;
+        }
+        i = mbRandMod(limit + 1);
+        valueTbl[0] -= i;
+        valueTbl[1] += i;
+        if (mbRandMod(100) < 80) {
+            int value;
+
+            value = valueTbl[0];
+            valueTbl[0] = valueTbl[1];
+            valueTbl[1] = value;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        valueTbl[i]--;
+    }
+    mbDiceProcExec(-1, snpcDiceTypeTbl[diceNum - 1][isKoopa],
+        (s8 *)valueTbl, NULL, FALSE, FALSE, &pos,
+        snpcMoveNumColor[isKoopa]);
+    mbDicePadBtnHookSet(-1, SNpcDiceBtnHook);
+    mbDiceMotHookSet(-1, SNpcDiceMotHook);
+    while (!mbDiceKillCheck(-1)) {
+        HuPrcVSleep();
+    }
+    SNpcObjPosGet(&pos);
+    return mbDiceSNpcNumCreate(-1, &pos);
+}
+
 static u16 SNpcDiceBtnHook(int playerNo)
 {
     return PAD_BUTTON_A;
 }
 
-static void SNpcDiceMotHook(void)
+static void SNpcDiceMotHook(int playerNo)
 {
     int time;
 
