@@ -3,8 +3,8 @@
 
 #include "musyx/musyx.h"
 
-#include "musyx/voice.h"
 #include "musyx/synthdata.h"
+#include "musyx/voice.h"
 
 typedef struct FILTERInfo {
   // total size: 0x6
@@ -76,6 +76,7 @@ typedef struct DSPvoice {
   u8 studio;
   u32 flags;
 } DSPvoice;
+
 typedef struct DSPhostDPop {
   // total size: 0x24
   s32 l;  // offset 0x0, size 0x4
@@ -120,8 +121,5 @@ typedef struct DSPstudioinfo {
 
 extern DSPstudioinfo dspStudio[8];
 extern DSPvoice* dspVoice;
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
 extern bool dspCompressorOn;
-#endif
-
 #endif

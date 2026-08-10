@@ -5,6 +5,9 @@
 #include "musyx/musyx.h"
 typedef void (*SND_SOME_CALLBACK)();
 
+#ifndef MAX
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
+#endif
 #ifndef MIN
 #define MIN(a, b) ((a) > (b) ? (b) : (a))
 #endif
@@ -64,11 +67,15 @@ void salActivateVoice(DSPvoice* dsp_vptr, u8 studio);
 void salCalcVolume(u8 voltab_index, SAL_VOLINFO* vi, f32 vol, u32 pan, u32 span, f32 auxa, f32 auxb,
                    u32 itd, u32 dpl2);
 void salReconnectVoice(DSPvoice* dsp_vptr, u8 studio);
-void* salMalloc(u32 len);
+void* salMalloc(size_t len);
+#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1)
+void* salMallocPhysical(size_t len);
+#endif
 void salFree(void* addr);
-void salBuildCommandList(signed short* dest, unsigned long nsDelay);
-void salStartDsp(s16* cmdList);
+void salBuildCommandList(s16* dest, u32 nsDelay);
+void salStartDsp(u16* cmdList);
 void salCtrlDsp(s16* dest);
+u32 salSynthSendMessage(DSPvoice* dsp_vptr, u32 mesg);
 void salHandleAuxProcessing();
 
 #define SAL_MAX_STUDIONUM 8
