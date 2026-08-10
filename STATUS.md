@@ -60,6 +60,16 @@ The canonical Runtime `New.cp` owner now builds from recovered C++ allocation
 operators with **372 text bytes** and **152 data bytes**; the complete DOL
 remains retail-identical.
 
+The main-DOL MSL `e_exp` owner landed in **1a848a3** at **1 / 1
+strict-exact and data-value-exact function**, with **0x21C `.text`**, **0x30
+`.rodata`**, **0x78 `.sdata2`**, and **21 / 21 relocations**. Candidate SHA-256
+`e55b8b0d03c26a8288513bd2348af240d316e06d0f88cc9c6508d0b75878f717`, target
+SHA-256 `c967b5c71b6e6c89bd7d53366b117c3c2815e784c45b4f9ede995aef1c03bd7d`,
+and validation report SHA-256
+`6a214d3ecc35f5a52904c67cf5eb7197dfa79ac28f76989074b25f4bd93b6fd4` remain
+authenticated; **165 tests pass** and the complete DOL remains
+retail-identical.
+
 The TRK exception-vector owner now builds from a sibling-authenticated
 standalone assembly exception covering **7,988 exact `.init` bytes**. Its 48
 target-specific handler relocations resolve exactly, and the complete DOL
