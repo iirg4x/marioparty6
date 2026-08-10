@@ -4,14 +4,14 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **August 10, 2026**
+Last published full-project snapshot: **August 9, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
 | Entire project | 14.41% | 38.64% | 343 / 925 |
-| Main DOL | 53.32% | 89.26% | 310 / 396 |
+| Main DOL | 53.30% | 89.26% | 310 / 396 |
 | REL modules | 6.16% | 6.56% | 33 / 529 |
 
 Current board recovery: **17 / 40 source owners matching** and **66 / 72
@@ -69,11 +69,6 @@ and validation report SHA-256
 `6a214d3ecc35f5a52904c67cf5eb7197dfa79ac28f76989074b25f4bd93b6fd4` remain
 authenticated; **165 tests pass** and the complete DOL remains
 retail-identical.
-
-The main-DOL GSSDK `SlidingHisto_Init` function now matches exactly at **1 / 1
-function** and **0x194 `.text` bytes**, with **21 / 21 relocations** and no data
-delta. The `slidhist.c` owner remains `NonMatching` until its remaining three
-nonexact functions close.
 
 The TRK exception-vector owner now builds from a sibling-authenticated
 standalone assembly exception covering **7,988 exact `.init` bytes**. Its 48
