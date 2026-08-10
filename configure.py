@@ -1207,7 +1207,7 @@ config.libs = [
         "meschkdll",
         objects={
             Object(
-                NonMatching,
+                Matching,
                 "REL/meschkdll/meschkdll.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-pooldata off"],
