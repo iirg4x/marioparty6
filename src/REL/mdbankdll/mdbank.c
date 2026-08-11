@@ -1,7 +1,9 @@
 #include "dolphin.h"
 #include "game/audio.h"
 #include "game/data.h"
+#include "game/frand.h"
 #include "game/gamework.h"
+#include "game/main.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/process.h"
@@ -173,8 +175,18 @@ extern const float lbl_1_rodata_1E4;
 extern const HuVecF lbl_1_rodata_148;
 extern const HuVecF lbl_1_rodata_200;
 extern const float lbl_1_rodata_240;
+extern const double lbl_1_rodata_250;
+extern const float lbl_1_rodata_258;
+extern const double lbl_1_rodata_260;
 extern const float lbl_1_rodata_268;
+extern const float lbl_1_rodata_26C;
+extern const float lbl_1_rodata_270;
 extern const float lbl_1_rodata_274;
+extern const float lbl_1_rodata_278;
+extern const float lbl_1_rodata_27C;
+extern const double lbl_1_rodata_280;
+extern const double lbl_1_rodata_288;
+extern const double lbl_1_rodata_290;
 extern const float lbl_1_rodata_298;
 extern const float lbl_1_rodata_29C;
 extern const float lbl_1_rodata_2A8;
@@ -1580,6 +1592,84 @@ void fn_1_2888(void)
     obj->objFunc = fn_1_2750;
 }
 
+void fn_1_119C4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
+{
+    HU3D_PARTICLE_DATA *data;
+    s16 i;
+    s16 spawnCount = 0;
+    float angle;
+
+    if (particle->count == 0) {
+        for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
+            data->time = 0;
+        }
+    }
+    for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
+        if (data->time == 0 && spawnCount == 0) {
+            spawnCount = 1;
+            data->time = 1;
+            data->parManId = 0;
+            data->vel.x = (float)(frandmod(3) + 1);
+            data->vel.y = (float)(frandmod(3) + 1);
+            data->vel.z = (float)(frandmod(3) + 1);
+            data->accel.x = lbl_1_rodata_240;
+            data->accel.y = (float)(frandmod(720) + 360);
+            data->accel.z = (float)(frandmod(80) + 100);
+            data->accel.x = (float)frandmod(360);
+            data->speedDecay = lbl_1_rodata_240;
+            data->colorIdx = (float)(frandmod(180) + 60);
+            data->speedDecay = (float)frandmod(60);
+            data->scale = lbl_1_rodata_278;
+            data->color.r = 255;
+            data->color.g = 255;
+            data->color.b = 255;
+        } else if (data->time == 1) {
+            if (data->accel.x <= lbl_1_rodata_240) {
+                angle = lbl_1_rodata_240;
+            } else if (data->accel.x >= data->accel.y) {
+                angle = lbl_1_rodata_26C;
+            } else {
+                angle = lbl_1_rodata_26C
+                    * (data->accel.x / data->accel.y);
+            }
+            data->pos.x = data->accel.z
+                * sin(lbl_1_rodata_250
+                    * (angle * data->vel.x) / lbl_1_rodata_260);
+            data->pos.y = data->accel.z
+                * cos(lbl_1_rodata_250
+                    * (angle * data->vel.y) / lbl_1_rodata_260);
+            data->pos.z = data->accel.z
+                * sin(lbl_1_rodata_250
+                    * (angle * data->vel.z) / lbl_1_rodata_260);
+            data->scale = (float)(frandmod(30) + 10);
+            if (rand8() % 10 == 0) {
+                data->zRot = (float)frandmod(360) * lbl_1_rodata_27C;
+            }
+            if (data->speedDecay <= lbl_1_rodata_240
+                || data->speedDecay >= data->colorIdx) {
+                data->color.a = 0;
+            } else {
+                data->color.a = (u8)(lbl_1_rodata_288
+                    * sin(lbl_1_rodata_250
+                        * ((lbl_1_rodata_270 / data->colorIdx)
+                            * data->speedDecay)
+                        / lbl_1_rodata_260)
+                    + lbl_1_rodata_280);
+            }
+            data->accel.x += lbl_1_rodata_268;
+            if (data->accel.x > data->accel.y) {
+                data->vel.x = (float)(frandmod(4) + 1);
+                data->vel.y = (float)(frandmod(4) + 1);
+                data->vel.z = (float)(frandmod(4) + 1);
+                data->accel.x = lbl_1_rodata_240;
+                data->accel.y = (float)(frandmod(720) + 360);
+            }
+        }
+    }
+    DCFlushRangeNoSync(
+        particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
+}
+
 void fn_1_12120(void)
 {
     lbl_1_bss_19EC = Hu3DParticleCreate(lbl_1_bss_19F0[0], 32);
@@ -1617,6 +1707,45 @@ void fn_1_12AE8(s16 time)
     for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
         data->time = time;
     }
+}
+
+void fn_1_12B60(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
+{
+    HU3D_PARTICLE_DATA *data;
+    s16 i;
+
+    if (particle->count == 0) {
+        for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
+            data->time = 0;
+        }
+    }
+    for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
+        if (data->time == 0) {
+            data->pos.x = lbl_1_rodata_240;
+            data->pos.y = lbl_1_rodata_240;
+            data->pos.z = lbl_1_rodata_240;
+            if (rand8() % 5 == 0) {
+                data->color.r = 0x30;
+                data->color.g = 0x30;
+                data->color.b = 0x30;
+                data->color.a = (u8)(frandmod(24) + 0x30);
+                data->scale = (float)(frandmod(100) + 600);
+            }
+        } else if (data->time == 1) {
+            data->pos.x = lbl_1_rodata_240;
+            data->pos.y = lbl_1_rodata_240;
+            data->pos.z = lbl_1_rodata_240;
+            if (rand8() % 5 == 0) {
+                data->color.r = 0x40;
+                data->color.g = 0x40;
+                data->color.b = 0x40;
+                data->color.a = (u8)(frandmod(24) + 0x5C);
+                data->scale = (float)(frandmod(100) + 600);
+            }
+        }
+    }
+    DCFlushRangeNoSync(
+        particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
 void fn_1_12D98(void)
@@ -1904,6 +2033,76 @@ s16 fn_1_A438(void)
     return fn_1_1200(2);
 }
 
+void fn_1_124F4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
+{
+    HU3D_PARTICLE_DATA *data;
+    s16 i;
+    float q;
+
+    if (particle->count == 0) {
+        for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
+            data->time = 0;
+        }
+    }
+    for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
+        if (data->time == 1) {
+            if (data->vel.x <= lbl_1_rodata_240) {
+                q = lbl_1_rodata_240;
+            } else if (data->vel.x >= data->vel.y) {
+                q = data->accel.x;
+            } else {
+                q = data->accel.x
+                    * sin(lbl_1_rodata_250
+                        * ((lbl_1_rodata_258 / data->vel.y)
+                            * data->vel.x)
+                        / lbl_1_rodata_260)
+                    + lbl_1_rodata_280;
+            }
+            data->scale = q;
+            if (data->vel.x <= lbl_1_rodata_240
+                || data->vel.x >= data->vel.y) {
+                data->color.a = 0;
+            } else {
+                data->color.a = (u8)(data->accel.y
+                    * sin(lbl_1_rodata_250
+                        * ((lbl_1_rodata_270 / data->vel.y)
+                            * data->vel.x)
+                        / lbl_1_rodata_260)
+                    + lbl_1_rodata_280);
+            }
+            data->vel.x += lbl_1_rodata_268;
+            if (data->vel.x > data->vel.y) {
+                data->scale = lbl_1_rodata_240;
+                data->time = 0;
+            }
+        } else if (data->time == 2) {
+            if (data->vel.x <= lbl_1_rodata_240) {
+                q = lbl_1_rodata_240;
+            } else if (data->vel.x >= data->vel.y) {
+                q = data->vel.z;
+            } else {
+                q = data->vel.z
+                    * sin(lbl_1_rodata_250
+                        * ((lbl_1_rodata_258 / data->vel.y)
+                            * data->vel.x)
+                        / lbl_1_rodata_260)
+                    + lbl_1_rodata_280;
+            }
+            data->scale = (float)(frandmod(6) + 1);
+            data->pos.x = data->accel.x + data->speedDecay * q;
+            data->pos.y = data->accel.y + data->colorIdx * q;
+            data->pos.z = data->accel.z + data->scaleBase * q;
+            data->vel.x += lbl_1_rodata_268;
+            if (data->vel.x > data->vel.y) {
+                data->scale = lbl_1_rodata_240;
+                data->time = 0;
+            }
+        }
+    }
+    DCFlushRangeNoSync(
+        particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
+}
+
 void fn_1_12984(void)
 {
     lbl_1_bss_19EA = Hu3DParticleCreate(lbl_1_bss_19F0[1], 1000);
@@ -2055,6 +2254,11 @@ __declspec(section ".rodata") const float lbl_1_rodata_268 = 1.0f;
 __declspec(section ".rodata") const float lbl_1_rodata_26C = 360.0f;
 __declspec(section ".rodata") const float lbl_1_rodata_270 = 180.0f;
 __declspec(section ".rodata") const float lbl_1_rodata_274 = 2.0f;
+__declspec(section ".rodata") const float lbl_1_rodata_278 = 10.0f;
+__declspec(section ".rodata") const float lbl_1_rodata_27C = 0.01745329238474369f;
+__declspec(section ".rodata") const double lbl_1_rodata_280 = 0.0;
+__declspec(section ".rodata") const double lbl_1_rodata_288 = 255.0;
+__declspec(section ".rodata") const double lbl_1_rodata_290 = 4503601774854144.0;
 __declspec(section ".rodata") const float lbl_1_rodata_298 = 375.0f;
 __declspec(section ".rodata") const float lbl_1_rodata_29C = -100.0f;
 __declspec(section ".rodata") const float lbl_1_rodata_2A8 = 100.0f;
