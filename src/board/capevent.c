@@ -2245,6 +2245,59 @@ static void ev_CapKill(void)
 }
 
 
+static void ev_CapCall(CAPWORK *work, BOOL waitF)
+{
+    CAPWORK *workP;
+    HUPROCESS *process;
+    int processNo;
+    int i;
+    void *workData;
+    BOOL endF;
+
+    for (i = 0; i < 8; i++) {
+        if (ev_CapMainProc[i] == NULL) {
+            break;
+        }
+    }
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPWORK), HU_MEMNUM_OVL);
+    workP = workData;
+    memset(workP, 0, sizeof(CAPWORK));
+    workP->playerNo = work->playerNo;
+    workP->targetPlayerNo = work->targetPlayerNo;
+    workP->capsuleNo = work->capsuleNo;
+    workP->_unk14 = work->_unk14;
+    workP->_unk1C = work->_unk1C;
+    workP->_unk18 = work->_unk18;
+    workP->masuId = work->masuId;
+    workP->masuIdNext = work->masuIdNext;
+    workP->processNo = i;
+    memcpy(&workP->flags, &work->flags, sizeof(CAPWORKFLAG));
+    ev_CapWorkInit(&workP->objWork, workP->capsuleNo);
+    mbev_CapWait(workP);
+    if (ev_CapsuleData[work->capsuleNo].main != NULL) {
+        process = HuPrcChildCreate(ev_CapsuleData[work->capsuleNo].main,
+            CAPEVENT_PROCESS_PRIORITY, CAPEVENT_PROCESS_STACK_SIZE, 0,
+            mbMainProc);
+        ev_CapMainProc[i] = process;
+        process->property = workP;
+        HuPrcDestructorSet2(process, ev_CapKill);
+        if (waitF) {
+            do {
+                HuPrcVSleep();
+                processNo = workP->processNo;
+                if (ev_CapMainProc[processNo] != NULL) {
+                    endF = FALSE;
+                } else {
+                    endF = TRUE;
+                }
+            } while (endF == FALSE);
+            while (mbMusBoardFadeCheck() != FALSE) {
+                HuPrcVSleep();
+            }
+        }
+    }
+}
+
 void mbev_CapWait(CAPWORK *work)
 {
     EVCAPWORK *objWork;
@@ -2256,6 +2309,42 @@ void mbev_CapWait(CAPWORK *work)
             objWork->bgId = -1;
         }
         mbCameraMoveWait();
+    }
+}
+
+static void ev_CapWorkInit(EVCAPWORK *work, int bgId)
+{
+    int i;
+    int j;
+
+    memset(work, 0, sizeof(EVCAPWORK));
+    for (i = 0; i < CAP_WORK_MAX; i++) {
+        for (j = 0; j < GW_PLAYER_MAX; j++) {
+            work->motId[i][j] = -1;
+        }
+        work->objId[i] = -1;
+        work->sprId[i] = -1;
+        work->mem[i] = NULL;
+        work->masuId[i] = -1;
+        work->objPos[i].x = work->objPos[i].y = work->objPos[i].z = 0.0f;
+    }
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        work->playerMasuId[i] = -1;
+        work->playerPos[i].x = work->playerPos[i].y =
+            work->playerPos[i].z = 0.0f;
+    }
+    work->obj = omAddObjEx(mbObjMan, CAPEVENT_WORK_OBJ_PRIORITY, 0, 0, -1,
+        ev_CapWorkOMExec);
+    work->obj->data = work;
+    if (bgId < 0) {
+        return;
+    }
+    if (bgId < 0) {
+        work->bgId = -1;
+    } else if (ev_CapsuleData[bgId].bgDataNum != -1) {
+        work->bgId = mbBGRead(ev_CapsuleData[bgId].bgDataNum);
+    } else {
+        work->bgId = -1;
     }
 }
 
@@ -7720,95 +7809,6 @@ static void ev_CapComChoiceHook(void)
     }
     key[padNo] = PAD_BUTTON_A;
     HuWinComKeyWait(key[0], key[1], key[2], key[3], delay);
-}
-
-static void ev_CapCall(CAPWORK *work, BOOL waitF)
-{
-    CAPWORK *workP;
-    HUPROCESS *process;
-    int processNo;
-    int i;
-    void *workData;
-    BOOL endF;
-
-    for (i = 0; i < 8; i++) {
-        if (ev_CapMainProc[i] == NULL) {
-            break;
-        }
-    }
-    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPWORK), HU_MEMNUM_OVL);
-    workP = workData;
-    memset(workP, 0, sizeof(CAPWORK));
-    workP->playerNo = work->playerNo;
-    workP->targetPlayerNo = work->targetPlayerNo;
-    workP->capsuleNo = work->capsuleNo;
-    workP->_unk14 = work->_unk14;
-    workP->_unk1C = work->_unk1C;
-    workP->_unk18 = work->_unk18;
-    workP->masuId = work->masuId;
-    workP->masuIdNext = work->masuIdNext;
-    workP->processNo = i;
-    memcpy(&workP->flags, &work->flags, sizeof(CAPWORKFLAG));
-    ev_CapWorkInit(&workP->objWork, workP->capsuleNo);
-    mbev_CapWait(workP);
-    if (ev_CapsuleData[work->capsuleNo].main != NULL) {
-        process = HuPrcChildCreate(ev_CapsuleData[work->capsuleNo].main,
-            CAPEVENT_PROCESS_PRIORITY, CAPEVENT_PROCESS_STACK_SIZE, 0,
-            mbMainProc);
-        ev_CapMainProc[i] = process;
-        process->property = workP;
-        HuPrcDestructorSet2(process, ev_CapKill);
-        if (waitF) {
-            do {
-                HuPrcVSleep();
-                processNo = workP->processNo;
-                if (ev_CapMainProc[processNo] != NULL) {
-                    endF = FALSE;
-                } else {
-                    endF = TRUE;
-                }
-            } while (endF == FALSE);
-            while (mbMusBoardFadeCheck() != FALSE) {
-                HuPrcVSleep();
-            }
-        }
-    }
-}
-
-static void ev_CapWorkInit(EVCAPWORK *work, int bgId)
-{
-    int i;
-    int j;
-
-    memset(work, 0, sizeof(EVCAPWORK));
-    for (i = 0; i < CAP_WORK_MAX; i++) {
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
-            work->motId[i][j] = -1;
-        }
-        work->objId[i] = -1;
-        work->sprId[i] = -1;
-        work->mem[i] = NULL;
-        work->masuId[i] = -1;
-        work->objPos[i].x = work->objPos[i].y = work->objPos[i].z = 0.0f;
-    }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        work->playerMasuId[i] = -1;
-        work->playerPos[i].x = work->playerPos[i].y =
-            work->playerPos[i].z = 0.0f;
-    }
-    work->obj = omAddObjEx(mbObjMan, CAPEVENT_WORK_OBJ_PRIORITY, 0, 0, -1,
-        ev_CapWorkOMExec);
-    work->obj->data = work;
-    if (bgId < 0) {
-        return;
-    }
-    if (bgId < 0) {
-        work->bgId = -1;
-    } else if (ev_CapsuleData[bgId].bgDataNum != -1) {
-        work->bgId = mbBGRead(ev_CapsuleData[bgId].bgDataNum);
-    } else {
-        work->bgId = -1;
-    }
 }
 
 void mbev_CapEffGlowOMExec(OMOBJ *obj)
