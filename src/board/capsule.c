@@ -558,41 +558,6 @@ static CAPSULE_COM_CHANCE capsuleChanceTbl[] = {
     { 31, { { 10, '*' }, { 50, ' ' }, { 30, '*' }, { 30, ' ' }, { 10, '*' }, { 30, '*' }, { 10, ' ' }, { 50, ' ' }, { 0, ' ' }, { 10, ' ' }, { 50, ' ' } } },
     { -1, { { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' }, { 0, ' ' } } },
 };
-static int capsuleHiliteFileTbl[3] = {
-    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_0),
-    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_1),
-    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_2),
-};
-static HuVecF capsuleCrackScaleTbl[2][3] = {
-    {
-        { 0.0f, 0.0f, 0.0f },
-        { 1.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 1.0f },
-    },
-    {
-        { 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f },
-        { 1.0f, 0.0f, 1.0f },
-    },
-};
-static GXColor capsuleTrailColorTbl[4][2] = {
-    {
-        { 128, 255, 128, 255 },
-        { 192, 255, 192, 255 },
-    },
-    {
-        { 255, 255, 128, 255 },
-        { 255, 255, 192, 255 },
-    },
-    {
-        { 255, 128, 128, 255 },
-        { 255, 192, 192, 255 },
-    },
-    {
-        { 128, 255, 255, 255 },
-        { 192, 255, 255, 255 },
-    },
-};
 static GXColor capsuleMasuSelectColorTbl[8] = {
     { 192, 255, 192, 255 },
     { 255, 255, 192, 255 },
@@ -3019,117 +2984,6 @@ static void CapEffRemoveAddAll(HuVecF *pos)
     }
 }
 
-static void CapEffCrackCreate(void)
-{
-    CAP_EFF_CRACK_WORK *work;
-    CAP_EFF_CRACK_DATA *data;
-    HU3D_MODEL *model;
-    HuVecF pos;
-    void *dl;
-    int i;
-    int j;
-    int k;
-    int l;
-    float x;
-    float z;
-    float length;
-    float crackScale;
-
-    capEffCrackOMObj = omAddObjEx(mbObjMan, -32768, 0, 0, OM_GRP_NONE,
-        CapEffCrackOMExec);
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
-    capEffCrackOMObj->data = work;
-    memset(work, 0, sizeof(*work));
-    work->modelId = Hu3DHookFuncCreate(CapEffCrackDraw);
-    Hu3DModelCameraSet(work->modelId, 1);
-    Hu3DModelLayerSet(work->modelId, 3);
-    model = &Hu3DData[work->modelId];
-    model->hookData = work;
-    work->num = 24 * 24 * 2;
-    work->vtxNum = work->num * 3;
-    work->data = HuMemDirectMallocNum(HEAP_MODEL,
-        work->num * sizeof(*work->data), model->mallocNo);
-    memset(work->data, 0, work->num * sizeof(*work->data));
-    work->vtx = HuMemDirectMallocNum(HEAP_MODEL,
-        work->vtxNum * sizeof(*work->vtx), model->mallocNo);
-    memset(work->vtx, 0, work->vtxNum * sizeof(*work->vtx));
-    work->st = HuMemDirectMallocNum(HEAP_MODEL,
-        work->vtxNum * sizeof(*work->st), model->mallocNo);
-    memset(work->st, 0, work->vtxNum * sizeof(*work->st));
-    work->animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_capsule, 43),
-        HU_MEMNUM_OVL));
-    work->color.r = work->color.g = work->color.b = work->color.a = 0;
-
-    crackScale = 200.0f / 24.0f;
-    data = work->data;
-    z = -100.0f;
-    for (i = 0; i < 24; i++, z += crackScale) {
-        x = -100.0f;
-        for (j = 0; j < 24; j++, x += crackScale) {
-            for (k = 0; k < 2; k++, data++) {
-                data->flag = TRUE;
-                data->scale = 1.0f;
-                data->angle = 0.0f;
-                data->angleSpeed = 5.0f + (200.0f * MBCapsuleEffRandF());
-                if (mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 1) {
-                    data->angleSpeed = -data->angleSpeed;
-                }
-                data->scaleSpeed = 0.035f + (0.035f * MBCapsuleEffRandF());
-                data->delay = mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 15;
-                for (l = 0; l < 3; l++) {
-                    data->pos[l].x = x + (crackScale * capsuleCrackScaleTbl[k][l].x);
-                    data->pos[l].y = 0.0f;
-                    data->pos[l].z = z + (crackScale * capsuleCrackScaleTbl[k][l].z);
-                    length = PSVECMag(&data->pos[l]);
-                    if (length > 100.0f) {
-                        PSVECNormalize(&data->pos[l], &data->pos[l]);
-                        PSVECScale(&data->pos[l], &data->pos[l], 100.0f);
-                        length = 100.0f;
-                    }
-                    data->pos[l].y = sqrtf((100.0f * 100.0f) - (length * length));
-                    data->uv[l].x = (data->pos[l].x + 100.0f) / 200.0f;
-                    data->uv[l].y = (data->pos[l].z + 100.0f) / 200.0f;
-                }
-                pos = data->pos[0];
-                PSVECAdd(&pos, &data->pos[1], &pos);
-                PSVECAdd(&pos, &data->pos[2], &pos);
-                PSVECScale(&pos, &data->vel, 1.0f / 3.0f);
-                if (PSVECMag(&data->vel) > 0.0f) {
-                    PSVECNormalize(&data->vel, &data->accel);
-                }
-                PSVECScale(&data->accel, &data->accel,
-                    3.0f * (0.5f + (0.5f * MBCapsuleEffRandF())));
-                data->prevVel = data->vel;
-                for (l = 0; l < 3; l++) {
-                    PSVECAdd(&data->pos[l], &data->vel, &pos);
-                    data->prevPos[l] = pos;
-                }
-                data->color = capsuleCrackEffColor;
-            }
-        }
-    }
-
-    dl = HuMemDirectMallocNum(HEAP_MODEL, 65536, model->mallocNo);
-    GXBeginDisplayList(dl, 65536);
-    GXBegin(GX_TRIANGLES, GX_VTXFMT0, work->vtxNum);
-    for (i = 0; i < work->num; i++) {
-        GXPosition1x16(3 * i);
-        GXColor1x16(i);
-        GXTexCoord1x16(3 * i);
-        GXPosition1x16((3 * i) + 1);
-        GXColor1x16(i);
-        GXTexCoord1x16((3 * i) + 1);
-        GXPosition1x16((3 * i) + 2);
-        GXColor1x16(i);
-        GXTexCoord1x16((3 * i) + 2);
-    }
-    work->dlSize = GXEndDisplayList();
-    work->dl = HuMemDirectMallocNum(HEAP_MODEL, work->dlSize, model->mallocNo);
-    memcpy(work->dl, dl, work->dlSize);
-    DCFlushRange(work->dl, work->dlSize);
-    HuMemDirectFree(dl);
-}
-
 static void CapEffCrackOMExec(OMOBJ *obj)
 {
     CAP_EFF_CRACK_WORK *work = obj->data;
@@ -3780,42 +3634,6 @@ void mbCapListDebug(void)
     HuMemDirectFree(listBase);
 }
 
-static int capsuleThrowTbl[8] = { 10, 11, 12, 13, 25, 15, 16, 17 };
-static int capsuleTrapTbl[5] = { 20, 21, 22, 23, 24 };
-static int capsuleChanceWeightTbl[3][4][5] = {
-    {
-        { 70, 15, 15 },
-        { 70, 20, 10 },
-        { 70, 20, 0, 10 },
-        { 50, 30, 0, 20 },
-    },
-    {
-        { 40, 30, 30 },
-        { 30, 30, 20, 20 },
-        { 10, 40, 10, 30, 10 },
-        { 10, 40, 0, 30, 20 },
-    },
-    {
-        { 30, 30, 30, 10 },
-        { 20, 20, 20, 30, 10 },
-        { 10, 30, 0, 40, 20 },
-        { 10, 20, 0, 40, 30 },
-    },
-};
-
-static int capsuleMaxTurnTbl[9] = { 10, 15, 20, 25, 30, 35, 40, 45, 50 };
-static int capsuleTurnTbl[9][2] = {
-    { 3, 6 },
-    { 5, 10 },
-    { 5, 15 },
-    { 8, 16 },
-    { 10, 20 },
-    { 10, 20 },
-    { 13, 26 },
-    { 15, 30 },
-    { 15, 35 },
-};
-
 void mbCapNumInc(int capsuleNo, int mode)
 {
     capsuleNum[capsuleNo][mode]++;
@@ -4050,48 +3868,6 @@ static void CapEffTrailPosSet(HuVecF *pos)
         obj->trans.y = pos->y;
         obj->trans.z = pos->z;
     }
-}
-
-static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
-{
-    CAP_EFF_TRAIL_WORK *work;
-    MBPARTICLE *particle;
-    MBPARTICLEDATA *data;
-    GXColor color;
-    float time;
-    int i;
-
-    if (capEffTrailOMObj == NULL) {
-        return;
-    }
-    work = capEffTrailOMObj->data;
-    for (i = 0; i < 12; i++) {
-        work->prevPos[i] = *pos;
-    }
-    particle = Hu3DData[capEffTrailOMObj->mdlId[12]].hookData;
-    color = capsuleTrailColorTbl[capsuleData[(u8)capsuleNo].color][0];
-    data = particle->data;
-    for (i = 0; i < particle->num / 2; i++, data++) {
-        time = (float)i / 12.0f;
-        data->speedDecay = 100.0f * (0.9f + (-0.49999997f * time));
-        data->pos = *pos;
-        data->color.r = color.r;
-        data->color.g = color.g;
-        data->color.b = color.b;
-        data->color.a = (u8)(64.0f * (1.0f - time));
-    }
-    color = capsuleTrailColorTbl[capsuleData[(u8)capsuleNo].color][1];
-    for (i = 0; i < particle->num / 2; i++, data++) {
-        time = (float)i / 12.0f;
-        data->speedDecay = 0.75f * 100.0f *
-            (0.9f + (-0.49999997f * time));
-        data->pos = *pos;
-        data->color.r = color.r;
-        data->color.g = color.g;
-        data->color.b = color.b;
-        data->color.a = (u8)(32.0f * (1.0f - time));
-    }
-    capEffTrailOMObj->work[0] = 1;
 }
 
 static void CapEffTrailOMExec(OMOBJ *obj)
@@ -4402,6 +4178,42 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             return 0;
     }
 }
+
+static int capsuleThrowTbl[8] = { 10, 11, 12, 13, 25, 15, 16, 17 };
+static int capsuleTrapTbl[5] = { 20, 21, 22, 23, 24 };
+static int capsuleChanceWeightTbl[3][4][5] = {
+    {
+        { 70, 15, 15 },
+        { 70, 20, 10 },
+        { 70, 20, 0, 10 },
+        { 50, 30, 0, 20 },
+    },
+    {
+        { 40, 30, 30 },
+        { 30, 30, 20, 20 },
+        { 10, 40, 10, 30, 10 },
+        { 10, 40, 0, 30, 20 },
+    },
+    {
+        { 30, 30, 30, 10 },
+        { 20, 20, 20, 30, 10 },
+        { 10, 30, 0, 40, 20 },
+        { 10, 20, 0, 40, 30 },
+    },
+};
+
+static int capsuleMaxTurnTbl[9] = { 10, 15, 20, 25, 30, 35, 40, 45, 50 };
+static int capsuleTurnTbl[9][2] = {
+    { 3, 6 },
+    { 5, 10 },
+    { 5, 15 },
+    { 8, 16 },
+    { 10, 20 },
+    { 10, 20 },
+    { 13, 26 },
+    { 15, 30 },
+    { 15, 35 },
+};
 
 static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
 {
@@ -5163,31 +4975,6 @@ static void CapEffMasuOkNext(void)
     work->state = 10;
 }
 
-static void CapEffHiliteCreate(void)
-{
-    CAP_EFF_HILITE_WORK *work;
-    CAP_EFFECT *effect;
-    int i;
-
-    capEffHiliteOMObj = omAddObjEx(
-        mbObjMan, -32768, 0, 0, -1, CapEffHiliteOMExec);
-    work = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
-    capEffHiliteOMObj->data = work;
-    memset(work, 0, sizeof(*work));
-    for (i = 0; i < 3; i++) {
-        work->anim[i] = HuSprAnimRead(HuDataReadNum(
-            capsuleHiliteFileTbl[i], HU_MEMNUM_OVL));
-        work->modelId[i] = CapEffCreate(work->anim[i], 32);
-        Hu3DModelLayerSet(work->modelId[i], 5);
-        work->modelNo = 0;
-        effect = Hu3DData[work->modelId[i]].hookData;
-        effect->blendMode = HU3D_PARTICLE_BLEND_ADDCOL;
-        effect->dispAttr = CAP_EFF_DISPATTR_NOANIM |
-            CAP_EFF_DISPATTR_CAMERA_ROT | CAP_EFF_DISPATTR_ROT3D;
-    }
-}
-
 static void CapEffHiliteOMExec(OMOBJ *obj)
 {
     CAP_EFF_HILITE_WORK *work = obj->data;
@@ -5844,6 +5631,320 @@ s16 mbCapDescWinCreate(int capsuleNo)
     return winId;
 }
 
+void mbCapInit(void)
+{
+    int i;
+    int j;
+    int objId;
+    CAPSULE_OBJ_COLOR *objColorData;
+    s16 *borderObjData;
+    s16 *borderId;
+
+    objColorData = capsuleObjColorData;
+    memset(objColorData, 0, sizeof(capsuleObjColorData));
+    for (i = 0; i < 6; i++) {
+        capsuleObjBorderId[i] = MB_MODEL_NONE;
+    }
+    capsuleBorderObjId = borderObjData = HuMemDirectMallocNum(
+        HEAP_HEAP, 768, HU_MEMNUM_OVL);
+    borderId = borderObjData;
+    memset(capsuleBorderObjId, 0, 768);
+    for (i = 0; i < 6; i++) {
+        for (j = 0; j < 64; j++, borderId++) {
+            *borderId = MB_MODEL_NONE;
+        }
+    }
+    for (i = 0; i < 8; i++) {
+        capsuleObjData[i].objId = MB_MODEL_NONE;
+    }
+    objId = mbObjCreate(
+        DATANUM(DATA_capsule, CAPSULE_DATA_INIT_MODEL_0), NULL, TRUE);
+    mbObjDispSet(objId, FALSE);
+    objId = mbObjCreate(
+        DATANUM(DATA_capsule, CAPSULE_DATA_INIT_MODEL_1), NULL, TRUE);
+    mbObjDispSet(objId, FALSE);
+}
+
+int mbCapObjCreate(int capsuleNo, BOOL specialF)
+{
+    ANIMDATA *anim;
+    Mtx mtx;
+    int objId;
+    int i;
+
+    if (capsuleNo == CAPSULE_YAMERU) {
+        int capValue;
+        s16 capValueShort;
+        int fileNo;
+        u32 file;
+
+        for (i = 0; i < 8; i++) {
+            if (capsuleObjData[i].objId == MB_MODEL_NONE) {
+                break;
+            }
+        }
+        capValue = capsuleNo;
+        capValueShort = (s16)capValue & CAPSULE_VALUE_TYPE_MASK;
+        capValue = capValueShort;
+        fileNo = mbBoardDataNumGet(capsuleData[capValue].file);
+        file = fileNo;
+        objId = (s16)mbObjCreate(file, NULL, FALSE);
+        capsuleObjData[i].objId = objId;
+        anim = capsuleObjData[i].anim = HuSprAnimRead(HuDataSelHeapReadNum(
+            DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_ANIM),
+            HU_MEMNUM_OVL, HEAP_MODEL));
+        capsuleObjData[i].animId0 = Hu3DAnimCreate(
+            anim, mbObjModelIDGet(objId), "S3TCys77120");
+        Hu3DAnmNoSet(capsuleObjData[i].animId0, 0);
+        capsuleObjData[i].animId1 = Hu3DAnimLink(
+            capsuleObjData[i].animId0, mbObjModelIDGet(objId),
+            "S3TCys77121");
+        Hu3DAnmNoSet(capsuleObjData[i].animId1, 0);
+        PSMTXScale(mtx, 1.5f, 1.5f, 1.5f);
+        mbObjMtxSet(objId, &mtx);
+        return objId;
+    } else {
+        int capValue;
+        s16 capValueShort;
+        int fileNo;
+        u32 file;
+
+        capValue = capsuleNo;
+        capValueShort = (s16)capValue & CAPSULE_VALUE_TYPE_MASK;
+        capValue = capValueShort;
+        fileNo = mbBoardDataNumGet(capsuleData[capValue].file);
+        file = fileNo;
+        objId = (s16)mbObjCreate(file, NULL, FALSE);
+        mbCapObjBorderCreate(objId, capsuleNo);
+        return objId;
+    }
+}
+
+static int capsuleBorderFileTbl[6] = {
+    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_0),
+    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_1),
+    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_2),
+    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_3),
+    0,
+    0,
+};
+
+static int capsuleHiliteFileTbl[3] = {
+    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_0),
+    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_1),
+    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_2),
+};
+
+static HuVecF capsuleCrackScaleTbl[2][3] = {
+    {
+        { 0.0f, 0.0f, 0.0f },
+        { 1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 1.0f },
+    },
+    {
+        { 0.0f, 0.0f, 1.0f },
+        { 1.0f, 0.0f, 0.0f },
+        { 1.0f, 0.0f, 1.0f },
+    },
+};
+
+static GXColor capsuleTrailColorTbl[4][2] = {
+    {
+        { 128, 255, 128, 255 },
+        { 192, 255, 192, 255 },
+    },
+    {
+        { 255, 255, 128, 255 },
+        { 255, 255, 192, 255 },
+    },
+    {
+        { 255, 128, 128, 255 },
+        { 255, 192, 192, 255 },
+    },
+    {
+        { 128, 255, 255, 255 },
+        { 192, 255, 255, 255 },
+    },
+};
+
+static void CapEffHiliteCreate(void)
+{
+    CAP_EFF_HILITE_WORK *work;
+    CAP_EFFECT *effect;
+    int i;
+
+    capEffHiliteOMObj = omAddObjEx(
+        mbObjMan, -32768, 0, 0, -1, CapEffHiliteOMExec);
+    work = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+    capEffHiliteOMObj->data = work;
+    memset(work, 0, sizeof(*work));
+    for (i = 0; i < 3; i++) {
+        work->anim[i] = HuSprAnimRead(HuDataReadNum(
+            capsuleHiliteFileTbl[i], HU_MEMNUM_OVL));
+        work->modelId[i] = CapEffCreate(work->anim[i], 32);
+        Hu3DModelLayerSet(work->modelId[i], 5);
+        work->modelNo = 0;
+        effect = Hu3DData[work->modelId[i]].hookData;
+        effect->blendMode = HU3D_PARTICLE_BLEND_ADDCOL;
+        effect->dispAttr = CAP_EFF_DISPATTR_NOANIM |
+            CAP_EFF_DISPATTR_CAMERA_ROT | CAP_EFF_DISPATTR_ROT3D;
+    }
+}
+
+static void CapEffCrackCreate(void)
+{
+    CAP_EFF_CRACK_WORK *work;
+    CAP_EFF_CRACK_DATA *data;
+    HU3D_MODEL *model;
+    HuVecF pos;
+    void *dl;
+    int i;
+    int j;
+    int k;
+    int l;
+    float x;
+    float z;
+    float length;
+    float crackScale;
+
+    capEffCrackOMObj = omAddObjEx(mbObjMan, -32768, 0, 0, OM_GRP_NONE,
+        CapEffCrackOMExec);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+    capEffCrackOMObj->data = work;
+    memset(work, 0, sizeof(*work));
+    work->modelId = Hu3DHookFuncCreate(CapEffCrackDraw);
+    Hu3DModelCameraSet(work->modelId, 1);
+    Hu3DModelLayerSet(work->modelId, 3);
+    model = &Hu3DData[work->modelId];
+    model->hookData = work;
+    work->num = 24 * 24 * 2;
+    work->vtxNum = work->num * 3;
+    work->data = HuMemDirectMallocNum(HEAP_MODEL,
+        work->num * sizeof(*work->data), model->mallocNo);
+    memset(work->data, 0, work->num * sizeof(*work->data));
+    work->vtx = HuMemDirectMallocNum(HEAP_MODEL,
+        work->vtxNum * sizeof(*work->vtx), model->mallocNo);
+    memset(work->vtx, 0, work->vtxNum * sizeof(*work->vtx));
+    work->st = HuMemDirectMallocNum(HEAP_MODEL,
+        work->vtxNum * sizeof(*work->st), model->mallocNo);
+    memset(work->st, 0, work->vtxNum * sizeof(*work->st));
+    work->animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_capsule, 43),
+        HU_MEMNUM_OVL));
+    work->color.r = work->color.g = work->color.b = work->color.a = 0;
+
+    crackScale = 200.0f / 24.0f;
+    data = work->data;
+    z = -100.0f;
+    for (i = 0; i < 24; i++, z += crackScale) {
+        x = -100.0f;
+        for (j = 0; j < 24; j++, x += crackScale) {
+            for (k = 0; k < 2; k++, data++) {
+                data->flag = TRUE;
+                data->scale = 1.0f;
+                data->angle = 0.0f;
+                data->angleSpeed = 5.0f + (200.0f * MBCapsuleEffRandF());
+                if (mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 1) {
+                    data->angleSpeed = -data->angleSpeed;
+                }
+                data->scaleSpeed = 0.035f + (0.035f * MBCapsuleEffRandF());
+                data->delay = mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 15;
+                for (l = 0; l < 3; l++) {
+                    data->pos[l].x = x + (crackScale * capsuleCrackScaleTbl[k][l].x);
+                    data->pos[l].y = 0.0f;
+                    data->pos[l].z = z + (crackScale * capsuleCrackScaleTbl[k][l].z);
+                    length = PSVECMag(&data->pos[l]);
+                    if (length > 100.0f) {
+                        PSVECNormalize(&data->pos[l], &data->pos[l]);
+                        PSVECScale(&data->pos[l], &data->pos[l], 100.0f);
+                        length = 100.0f;
+                    }
+                    data->pos[l].y = sqrtf((100.0f * 100.0f) - (length * length));
+                    data->uv[l].x = (data->pos[l].x + 100.0f) / 200.0f;
+                    data->uv[l].y = (data->pos[l].z + 100.0f) / 200.0f;
+                }
+                pos = data->pos[0];
+                PSVECAdd(&pos, &data->pos[1], &pos);
+                PSVECAdd(&pos, &data->pos[2], &pos);
+                PSVECScale(&pos, &data->vel, 1.0f / 3.0f);
+                if (PSVECMag(&data->vel) > 0.0f) {
+                    PSVECNormalize(&data->vel, &data->accel);
+                }
+                PSVECScale(&data->accel, &data->accel,
+                    3.0f * (0.5f + (0.5f * MBCapsuleEffRandF())));
+                data->prevVel = data->vel;
+                for (l = 0; l < 3; l++) {
+                    PSVECAdd(&data->pos[l], &data->vel, &pos);
+                    data->prevPos[l] = pos;
+                }
+                data->color = capsuleCrackEffColor;
+            }
+        }
+    }
+
+    dl = HuMemDirectMallocNum(HEAP_MODEL, 65536, model->mallocNo);
+    GXBeginDisplayList(dl, 65536);
+    GXBegin(GX_TRIANGLES, GX_VTXFMT0, work->vtxNum);
+    for (i = 0; i < work->num; i++) {
+        GXPosition1x16(3 * i);
+        GXColor1x16(i);
+        GXTexCoord1x16(3 * i);
+        GXPosition1x16((3 * i) + 1);
+        GXColor1x16(i);
+        GXTexCoord1x16((3 * i) + 1);
+        GXPosition1x16((3 * i) + 2);
+        GXColor1x16(i);
+        GXTexCoord1x16((3 * i) + 2);
+    }
+    work->dlSize = GXEndDisplayList();
+    work->dl = HuMemDirectMallocNum(HEAP_MODEL, work->dlSize, model->mallocNo);
+    memcpy(work->dl, dl, work->dlSize);
+    DCFlushRange(work->dl, work->dlSize);
+    HuMemDirectFree(dl);
+}
+
+static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
+{
+    CAP_EFF_TRAIL_WORK *work;
+    MBPARTICLE *particle;
+    MBPARTICLEDATA *data;
+    GXColor color;
+    float time;
+    int i;
+
+    if (capEffTrailOMObj == NULL) {
+        return;
+    }
+    work = capEffTrailOMObj->data;
+    for (i = 0; i < 12; i++) {
+        work->prevPos[i] = *pos;
+    }
+    particle = Hu3DData[capEffTrailOMObj->mdlId[12]].hookData;
+    color = capsuleTrailColorTbl[capsuleData[(u8)capsuleNo].color][0];
+    data = particle->data;
+    for (i = 0; i < particle->num / 2; i++, data++) {
+        time = (float)i / 12.0f;
+        data->speedDecay = 100.0f * (0.9f + (-0.49999997f * time));
+        data->pos = *pos;
+        data->color.r = color.r;
+        data->color.g = color.g;
+        data->color.b = color.b;
+        data->color.a = (u8)(64.0f * (1.0f - time));
+    }
+    color = capsuleTrailColorTbl[capsuleData[(u8)capsuleNo].color][1];
+    for (i = 0; i < particle->num / 2; i++, data++) {
+        time = (float)i / 12.0f;
+        data->speedDecay = 0.75f * 100.0f *
+            (0.9f + (-0.49999997f * time));
+        data->pos = *pos;
+        data->color.r = color.r;
+        data->color.g = color.g;
+        data->color.b = color.b;
+        data->color.a = (u8)(32.0f * (1.0f - time));
+    }
+    capEffTrailOMObj->work[0] = 1;
+}
+
 int mbCapValidListGet(int *list)
 {
     int i;
@@ -6394,90 +6495,6 @@ int mbCapSelectMasuBackNum(int masuId)
     HuMemDirectFree(masuFlag);
     return num;
 }
-
-void mbCapInit(void)
-{
-    int i;
-    int j;
-    int objId;
-    CAPSULE_OBJ_COLOR *objColorData;
-    s16 *borderObjData;
-    s16 *borderId;
-
-    objColorData = capsuleObjColorData;
-    memset(objColorData, 0, sizeof(capsuleObjColorData));
-    for (i = 0; i < 6; i++) {
-        capsuleObjBorderId[i] = MB_MODEL_NONE;
-    }
-    capsuleBorderObjId = borderObjData = HuMemDirectMallocNum(
-        HEAP_HEAP, 768, HU_MEMNUM_OVL);
-    borderId = borderObjData;
-    memset(capsuleBorderObjId, 0, 768);
-    for (i = 0; i < 6; i++) {
-        for (j = 0; j < 64; j++, borderId++) {
-            *borderId = MB_MODEL_NONE;
-        }
-    }
-    for (i = 0; i < 8; i++) {
-        capsuleObjData[i].objId = MB_MODEL_NONE;
-    }
-    objId = mbObjCreate(
-        DATANUM(DATA_capsule, CAPSULE_DATA_INIT_MODEL_0), NULL, TRUE);
-    mbObjDispSet(objId, FALSE);
-    objId = mbObjCreate(
-        DATANUM(DATA_capsule, CAPSULE_DATA_INIT_MODEL_1), NULL, TRUE);
-    mbObjDispSet(objId, FALSE);
-}
-
-int mbCapObjCreate(int capsuleNo, BOOL specialF)
-{
-    CAPSULE_OBJ_DATA *objData;
-    ANIMDATA *anim;
-    Mtx mtx;
-    MBMODELID objId;
-    int capsuleIndex;
-    int i;
-
-    if (capsuleNo == CAPSULE_YAMERU) {
-        for (i = 0; i < 8; i++) {
-            if (capsuleObjData[i].objId == MB_MODEL_NONE) {
-                break;
-            }
-        }
-        capsuleIndex = capsuleNo & CAPSULE_VALUE_TYPE_MASK;
-        objData = &capsuleObjData[i];
-        objId = mbObjCreate(
-            mbBoardDataNumGet(capsuleData[capsuleIndex].file), NULL, FALSE);
-        objData->objId = objId;
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(
-            DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_ANIM),
-            HU_MEMNUM_OVL, HEAP_MODEL));
-        objData->anim = anim;
-        objData->animId0 = Hu3DAnimCreate(
-            anim, mbObjModelIDGet(objId), "S3TCys77120");
-        Hu3DAnmNoSet(objData->animId0, 0);
-        objData->animId1 = Hu3DAnimLink(
-            objData->animId0, mbObjModelIDGet(objId), "S3TCys77121");
-        Hu3DAnmNoSet(objData->animId1, 0);
-        PSMTXScale(mtx, 1.5f, 1.5f, 1.5f);
-        mbObjMtxSet(objId, &mtx);
-    } else {
-        capsuleIndex = capsuleNo & CAPSULE_VALUE_TYPE_MASK;
-        objId = mbObjCreate(
-            mbBoardDataNumGet(capsuleData[capsuleIndex].file), NULL, FALSE);
-        mbCapObjBorderCreate(objId, capsuleNo);
-    }
-    return objId;
-}
-
-static int capsuleBorderFileTbl[6] = {
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_0),
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_1),
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_2),
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_3),
-    0,
-    0,
-};
 
 static int CapObjColorSearch(int id)
 {
