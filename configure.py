@@ -1065,7 +1065,7 @@ config.libs = [
             Object(NonMatching, "board/capspecial.c"),
             Object(NonMatching, "board/capsule.c"),
             Object(NonMatching, "board/capevent.c"),
-            Object(NonMatching, "board/shopevent.c"),
+            Object(Matching, "board/shopevent.c"),
             Object(Matching, "board/guide.c"),
             Object(Matching, "board/branch.c"),
             Object(NonMatching, "board/mgcall.c"),

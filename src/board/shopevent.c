@@ -158,7 +158,7 @@ void mbev_ShopCreate(int dataNum, int motDataNum);
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, char *hookName);
 extern int mbCapObjCreate(int capsuleNo, BOOL flag);
 extern void mbCapObjKill(int objId);
-extern s16 mbCapDescWinCreate(int capsuleNo);
+extern int mbCapDescWinCreate(int capsuleNo);
 extern s8 mbPadStkXGet(s32 playerNo);
 extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
     HuVecF *out);
@@ -189,9 +189,9 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum, int 
 static int ev_ShopMesGet(int messNo);
 void mbev_ShopExObjHookSet(MBSHOPOBJHOOK hook);
 
-static BOOL ev_ShopEnableF;
-static MBSHOPOBJHOOK ev_ShopExObjHook;
 static int ev_ShopNum;
+static MBSHOPOBJHOOK ev_ShopExObjHook;
+static BOOL ev_ShopEnableF;
 
 void mbev_ShopEnableSet(BOOL enableF)
 {
@@ -1110,19 +1110,19 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
     int pulseTime = 0;
     int previous = pulseTime;
     int selected = previous;
+    int panelGrpId;
+    int cursorSprId;
+    int panelSprId;
     int button;
     int buttonDown;
     int padNo;
-    int frame;
     int i;
     int j;
     int helpWinId;
     BOOL doneF;
-    int panelGrpId;
-    int panelSprId;
-    int cursorSprId;
     float scale;
     float panelRotation;
+    float weight;
     float oldWindowOffset;
     float newWindowOffset;
 
@@ -1140,8 +1140,8 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
     HuSprAttrSet(panelGrpId, 0, SHOP_SELECT_SPR_ATTR);
     HuSpr3DSet(panelSprId);
     HuSpr3DRotSet(panelSprId, 90.0f, 0.0f, 0.0f);
-    for (frame = 1; frame <= SHOP_SELECT_ROTATE_FRAMES; frame++) {
-        panelRotation = 90.0 - (9.0 * frame);
+    for (i = 1; i <= SHOP_SELECT_ROTATE_FRAMES; i++) {
+        panelRotation = 90.0 - (9.0 * i);
         HuSpr3DRotSet(panelSprId, panelRotation, 0.0f, 0.0f);
         HuPrcVSleep();
     }
@@ -1162,7 +1162,10 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
         capsuleObjId[i] = mbCapObjCreate(offer[i].capsuleNo, FALSE);
         mbObjLayerSet(capsuleObjId[i], SHOP_SELECT_MODEL_LAYER);
         mbObjCameraSet(capsuleObjId[i], SHOP_SELECT_CAMERA);
-        mbObjAttrSet(capsuleObjId[i], HU3D_MOTATTR_LOOP);
+        {
+            MBMODELID modelId = capsuleObjId[i];
+            mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        }
         mbObjMotionSpeedSet(capsuleObjId[i], 0.0f);
         Hu3D2Dto3D(&ev_ShopCapsulePos[offerNum - 1][i],
             SHOP_SELECT_CAMERA, &modelPos);
@@ -1185,8 +1188,8 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
                 SHOP_SELECT_ESP_PRIORITY, 0);
             espDrawNoSet(digitSprId[i][j], 0);
             espAttrSet(digitSprId[i][j], SHOP_SELECT_SPR_ATTR);
-            espPosSet(digitSprId[i][j], position.x + j,
-                position.y + SHOP_SELECT_CURSOR_OFFSET);
+            espPosSet(digitSprId[i][j], position.x + (16 * j),
+                position.y + 32.0f);
         }
         espBankSet(digitSprId[i][1], 10);
         if (offer[i].cost >= 10) {
@@ -1201,17 +1204,17 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
     for (i = 0; i < offerNum; i++) {
         descWinId[i] = mbCapDescWinCreate(offer[i].capsuleNo);
         mbWinPosGet(descWinId[i], &windowPosition);
-        winPos[i].x = windowPosition.x + (SHOP_SELECT_WINDOW_SPACING * i);
+        winPos[i].x = (SHOP_SELECT_WINDOW_SPACING * i) + windowPosition.x;
         winPos[i].y = windowPosition.y;
         winPos[i].z = 0.0f;
         PSVECAdd(&winPos[i], &movePos, &position);
         mbWinPosSet(descWinId[i], position.x, position.y);
     }
     helpWinId = mbWinCreateHelp(MESSNUM(MESS_SHOP_EVENT, 29));
-    mbWinAttrSet(helpWinId, HUWIN_ATTR_ALIGN_CENTER);
+    mbWinAttrSet(+(s16)helpWinId, HUWIN_ATTR_ALIGN_CENTER);
 
-    doneF = FALSE;
     do {
+        doneF = FALSE;
         padNo = GwPlayer[work->playerNo].padNo;
         button = HuPadBtn[padNo];
         buttonDown = HuPadBtnDown[padNo];
@@ -1220,14 +1223,14 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
         } else if (mbPadStkXGet(padNo) > SHOP_SELECT_STICK_THRESHOLD) {
             button |= PAD_BUTTON_RIGHT;
         }
-        if (GwPlayer[work->playerNo].comF) {
-            buttonDown = PAD_BUTTON_A;
-            selected = previous;
-        }
         if (button & PAD_BUTTON_LEFT) {
             selected--;
         } else if (button & PAD_BUTTON_RIGHT) {
             selected++;
+        }
+        if (GwPlayer[work->playerNo].comF) {
+            buttonDown = PAD_BUTTON_A;
+            selected = previous;
         }
         if (selected < 0) {
             selected = 0;
@@ -1238,14 +1241,14 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
         if (selected != previous) {
             oldPos = ev_ShopCapsulePos[offerNum - 1][previous];
             newPos = ev_ShopCapsulePos[offerNum - 1][selected];
-            oldWindowOffset = -SHOP_SELECT_WINDOW_SPACING * previous;
-            newWindowOffset = -SHOP_SELECT_WINDOW_SPACING * selected;
+            oldWindowOffset = SHOP_SELECT_WINDOW_SPACING * -previous;
+            newWindowOffset = SHOP_SELECT_WINDOW_SPACING * -selected;
             mbObjMotionSpeedSet(capsuleObjId[previous], 0.0f);
             mbObjMotionTimeSet(capsuleObjId[previous], 0.0f);
             mbObjScaleSet(capsuleObjId[previous], 1.0f, 1.0f, 1.0f);
             mbAudFXPlay(0);
-            for (frame = 1; frame <= SHOP_SELECT_MOVE_FRAMES; frame++) {
-                float weight = frame / 20.0f;
+            for (i = 1; i <= SHOP_SELECT_MOVE_FRAMES; i++) {
+                weight = i / 20.0f;
 
                 mbev_CapVecChase(sin((M_PI * (90.0f * weight)) / 180.0),
                     &oldPos, &newPos, &position);
@@ -1255,9 +1258,9 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
                 movePos.x = oldWindowOffset
                     + ((newWindowOffset - oldWindowOffset)
                         * sin((M_PI * (90.0f * weight)) / 180.0));
-                for (i = 0; i < offerNum; i++) {
-                    PSVECAdd(&winPos[i], &movePos, &position);
-                    mbWinPosSet(descWinId[i], position.x, position.y);
+                for (j = 0; j < offerNum; j++) {
+                    PSVECAdd(&winPos[j], &movePos, &position);
+                    mbWinPosSet(descWinId[j], position.x, position.y);
                 }
                 HuPrcVSleep();
             }
@@ -1295,8 +1298,8 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
         mbWinKill(descWinId[i]);
     }
     mbWinKill(helpWinId);
-    for (frame = 1; frame <= SHOP_SELECT_ROTATE_FRAMES; frame++) {
-        panelRotation = 9.0 * frame;
+    for (i = 1; i <= SHOP_SELECT_ROTATE_FRAMES; i++) {
+        panelRotation = 9.0 * i;
         HuSpr3DRotSet(panelSprId, panelRotation, 0.0f, 0.0f);
         HuPrcVSleep();
     }
