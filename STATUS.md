@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 14.90% | 38.97% | 350 / 925 |
-| Main DOL | 53.96% | 89.37% | 313 / 396 |
+| Entire project | 15.01% | 38.99% | 351 / 925 |
+| Main DOL | 54.61% | 89.43% | 314 / 396 |
 | REL modules | 6.61% | 7.03% | 37 / 529 |
 
 `Matching build objects` is a reconstruction/configuration metric, not a count

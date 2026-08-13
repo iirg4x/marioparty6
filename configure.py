@@ -1074,7 +1074,7 @@ config.libs = [
             Object(Matching, "board/gate.c"),
             Object(NonMatching, "board/last5.c"),
             Object(NonMatching, "board/telop.c"),
-            Object(NonMatching, "board/wipe.c"),
+            Object(Matching, "board/wipe.c"),
             Object(NonMatching, "board/single.c"),
         ],
     },
