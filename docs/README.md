@@ -15,6 +15,7 @@
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md): AI workspace proof and handoff
 - [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
 - [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, evidence
+- [`match_workbench.md`](match_workbench.md): authenticated matching deduplication and bounded read-only diagnosis
 - [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): sealed holdouts and organicity
 - [`../benchmarks/blind_recovery/README.md`](../benchmarks/blind_recovery/README.md): benchmark replay
 - [`getting_started.md`](getting_started.md): local toolchain and retail build setup
@@ -123,6 +124,7 @@ build/context/recovery.sqlite
 build/context/recovery-report.md
 build/context/*context*.md
 build/blind-recovery/
+build/match/
 build/promotion/
 ```
 

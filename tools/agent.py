@@ -40,6 +40,7 @@ from tools.knowledge_freshness import (
     render_freshness_report,
     validate_freshness,
 )
+from tools.match_workbench import MatchError, add_match_parser, run_match_command
 from tools.owner_catalog import CatalogError, build_catalog, find_owner, write_catalog
 from tools.recovery_pass import (
     add_recovery_pass_parser,
@@ -70,6 +71,7 @@ REQUIRED_AGENT_FILES = [
     "AGENTS.md",
     "CONTRIBUTING.md",
     "docs/agent_quickstart.md",
+    "docs/match_workbench.md",
     "docs/recovery_standard.md",
     "docs/concurrent_agents.md",
     "config/recovery/project.json",
@@ -79,6 +81,7 @@ REQUIRED_AGENT_FILES = [
     "tools/owner_catalog.py",
     "tools/context_engine.py",
     "tools/local_evidence.py",
+    "tools/match_workbench.py",
     "tools/knowledge_freshness.py",
     "tools/integration_finalize.py",
     "tools/worktree_manager.py",
@@ -832,6 +835,7 @@ def main() -> int:
     _add_probe_parser(sub)
     _add_catalog_parser(sub)
     add_recovery_pass_parser(sub)
+    add_match_parser(sub)
 
     context = sub.add_parser("context")
     context.add_argument("kind", choices=["function", "owner"])
@@ -861,6 +865,18 @@ def main() -> int:
 
     args = parser.parse_args()
     try:
+        if args.command == "match":
+            if args.root:
+                selected = Path(args.root).expanduser().resolve()
+                try:
+                    root = root_from(selected)
+                except RecoveryError:
+                    # The standalone workbench is also useful for authenticated
+                    # scratch fixtures that intentionally have no project file.
+                    root = selected
+            else:
+                root = root_from()
+            return run_match_command(args, root=root)
         root = root_from(args.root)
         if args.command == "probe":
             if args.probe_command == "lookup":
@@ -976,6 +992,7 @@ def main() -> int:
         FreshnessError,
         HookError,
         OSError,
+        MatchError,
         ProbeError,
         QueueError,
         RecoveryError,

@@ -58,6 +58,11 @@ The packet reserves space for selected cards, freshness state, local objdiff
 summaries, target source, constraints, and acceptance criteria. Expand only one
 named missing dependency.
 
+For the authenticated matching experiment loop (`init` → precompile `lookup`
+→ CAS-backed `record` → bounded read-only `diagnose` → deterministic `matrix`),
+see [`match_workbench.md`](match_workbench.md). Its outputs belong beneath the
+ignored `build/` tree and do not replace serial proof or closure.
+
 ## 5. Research, then edit
 
 Before editing, record:
