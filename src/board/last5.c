@@ -4,9 +4,9 @@
 #include "game/board/camera.h"
 #include "game/board/capsule.h"
 #include "game/board/coin.h"
-#include "game/board/guide.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
+#include "game/board/object_data.h"
 #include "game/board/player.h"
 #include "game/board/status.h"
 #include "game/board/window.h"
@@ -18,6 +18,52 @@
 #include "game/process.h"
 
 #include "string.h"
+
+OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF,
+    BOOL altMtxF, BOOL layerF);
+void mbGuideKill(OMOBJ *obj);
+void mbGuideEnd(OMOBJ *obj, BOOL endF);
+MBMODELID mbGuideModelGet(OMOBJ *obj);
+void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
+void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
+void mbGuideMotionShiftSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
+void mbGuideMotionStop(OMOBJ *obj);
+BOOL mbGuideMotionCheck(OMOBJ *obj);
+int mbGuideSpeakerNoGet(void);
+float mbSinDeg(float deg);
+
+static inline void Last5VecCopy(register HuVecF *src,
+    register HuVecF *dst)
+{
+    register __vec2x32float__ xy;
+    register float z;
+
+    asm {
+        psq_l xy, 0(src), 0, 0
+        lfs z, 8(src)
+        psq_st xy, 0(dst), 0, 0
+        stfs z, 8(dst)
+    }
+}
+
+MBMODELID mbObjCreate(int dataNum, int *motData, BOOL link);
+BOOL mbObjMotionEndCheck(int modelId);
+void mbObjMotionSet(int modelId, int motNo, u32 attr);
+void mbObjMotionShiftSet(int modelId, int motNo, float start, float end,
+    BOOL loopF);
+void mbObjMotionTimeSet(int modelId, float time);
+void mbObjMotionSpeedSet(int modelId, float speed);
+void mbObjPosSetV(int modelId, HuVecF *pos);
+void mbObjPosSet(int modelId, float x, float y, float z);
+void mbObjPosGet(int modelId, HuVecF *pos);
+void mbObjRotSet(int modelId, float rotX, float rotY, float rotZ);
+void mbObjScaleSet(int modelId, float x, float y, float z);
+void mbObjLayerSet(int modelId, int layer);
+void mbObjAttrSet(int modelId, u32 attr);
+void mbObjDispSet(int modelId, BOOL dispF);
+void mbObjKill(int modelId);
+void mbObjHookSet(int modelId, char *objName, int hookMdlId);
+void mbObjHookReset(int modelId);
 
 #define LAST5_COIN_NUM 40
 #define LAST5_COIN_SCATTER_RANGE (100.0f * 0.6f)
@@ -120,9 +166,6 @@ extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
 extern void mbDiceMotHookSet(int playerNo, void (*hook)(int));
 extern BOOL mbDiceKillCheck(int playerNo);
 extern void mbDiceObjHit(int playerNo);
-extern void mbObjPosSet(int modelId, float x, float y, float z);
-extern void mbObjMotionTimeSet(int modelId, float time);
-extern void mbObjMotionSpeedSet(int modelId, float speed);
 extern void mbSNpcDispSet(BOOL dispF);
 extern void mbWipeFadeIn(void);
 extern void mbWipeFadeOut(void);
@@ -140,8 +183,7 @@ static void ev_Last5Dice(int playerNo);
 static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj);
 static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     OMOBJ *guideObj);
-static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj,
-    MBMODELID modelId);
+static void ev_Last5Koopa();
 
 static inline void Last5RouletteResultSet(OMOBJ *obj)
 {
@@ -239,24 +281,24 @@ static s8 guideMotTbl[7] = {
 
 void mbev_Last5(void)
 {
-    int playerOrder[GW_PLAYER_MAX];
-    int teamOrder[2];
-    int teamPlayers[2];
-    int firstTeamNo = 0;
-    int secondTeamNo = 1;
     HuVecF pos;
     HuVecF target;
+    int playerOrder[GW_PLAYER_MAX];
+    int teamPlayers[GW_PLAYER_MAX];
+    int teamOrder[2];
     int masuId;
+    OMOBJ *rouletteObj;
+    int firstTeamNo = 0;
+    int secondTeamNo = 1;
     int otherPlayerNo = 0;
+    OMOBJ *guideObj;
     int playerNo = 3;
     int messageOffset;
-    int result;
-    int koopaModelId = -1;
     int i;
     int j;
+    int koopaModelId = -1;
+    int result;
     int winId;
-    OMOBJ *rouletteObj;
-    OMOBJ *guideObj;
     MBMODELID guideModelId;
 
     masuId = mbMasuFind_AttrIdGet(MASU_NULL, MASU_FLAG_START);
@@ -362,14 +404,14 @@ void mbev_Last5(void)
     if (!GWTeamFGet()) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             mbStatusPosGet(i, &pos);
-            target = pos;
+            Last5VecCopy(&pos, &target);
             target.x = statusPosTbl[0][0].x;
             mbStatusMoveSet(i, &pos, &target, TRUE, 15);
         }
     } else {
         for (i = 0; i < 2; i++) {
             mbStatusNoPosGet(i, &pos);
-            target = pos;
+            Last5VecCopy(&pos, &target);
             target.x = statusTeamPosTbl[0][0].x;
             mbStatusNoMoveSet(i, &pos, &target, TRUE, 15);
         }
@@ -392,22 +434,21 @@ void mbev_Last5(void)
     pos.x -= 200.0f;
     pos.z += 100.0f;
     {
-        int moveTime;
-
-        target = pos;
+        Last5VecCopy(&pos, &target);
         mbPlayerColSnapPlayerSet(playerNo, FALSE);
         mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
         mbPlayerMotionSet(playerNo, 6, HU3D_MOTATTR_LOOP);
         HuPrcVSleep();
         mbPlayerDispSet(playerNo, TRUE);
-        moveTime = 30;
-        for (i = 0; i <= moveTime; i++) {
+        j = 30;
+        for (i = 0; i <= j; i++) {
             float arcOffset;
 
             arcOffset = 100.0f * (6.0f * mbSinDeg(
-                80.0f * ((float)(moveTime - i) / (float)moveTime)));
+                80.0f * ((float)(j - i) / (float)j)));
             target.y = pos.y + arcOffset;
             mbPlayerPosSetV(playerNo, &target);
+            i == j - 4;
             HuPrcVSleep();
         }
     }
@@ -504,13 +545,13 @@ void mbev_Last5(void)
         HuPrcSleep(2);
         koopaModelId = mbObjCreate(LAST5_KOOPA_DATA_MODEL, koopaMotTbl, TRUE);
         mbObjLayerSet(koopaModelId, 3);
-        mbObjDispSet(koopaModelId, FALSE);
-        mbObjPosSetV(koopaModelId, &pos);
+        mbObjDispSet((MBMODELID)koopaModelId, FALSE);
+        mbObjPosSetV((MBMODELID)koopaModelId, &pos);
         ev_Last5Koopa(playerNo, rouletteObj, koopaModelId);
         winId = mbWinCreate(2, LAST5_MESS_KOOPA_INTRO, 13);
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
-        mbObjMotionShiftSet(koopaModelId, 2, 0.0f, 12.0f,
+        mbObjMotionShiftSet((MBMODELID)koopaModelId, 2, 0.0f, 12.0f,
             HU3D_MOTATTR_NONE);
         mbAudFXPlay(LAST5_KOOPA_EXIT_SFX);
         winId = mbWinCreate(2, LAST5_MESS_KOOPA_EXIT, 13);
@@ -535,7 +576,7 @@ void mbev_Last5(void)
         guideObj = NULL;
     }
     if (koopaModelId >= 0) {
-        mbObjKill(koopaModelId);
+        mbObjKill((MBMODELID)koopaModelId);
         koopaModelId = -1;
     }
     HuPrcVSleep();
@@ -546,7 +587,6 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     LAST5ROULETTEWORK *work;
     OMOBJ *obj;
     HuVecF pos;
-    int modelId;
     int chanceNum;
     void *tableP;
     s8 *tableP2;
@@ -562,10 +602,12 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     memset(work, 0, sizeof(*work));
 
     for (i = 0; i < LAST5_ROULETTE_MODEL_NUM; i++) {
-        modelId = mbObjCreate(rouletteFileTbl[i], NULL, FALSE);
-        obj->mdlId[i] = modelId;
-        mbObjLayerSet(modelId, LAST5_ROULETTE_MODEL_LAYER);
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        int modelId;
+
+        obj->mdlId[i] = modelId =
+            mbObjCreate(rouletteFileTbl[i], NULL, FALSE);
+        mbObjLayerSet((MBMODELID)modelId, LAST5_ROULETTE_MODEL_LAYER);
+        mbObjAttrSet((MBMODELID)modelId, HU3D_MOTATTR_LOOP);
     }
 
     mbMasuPosGet(masuId, &pos);
@@ -585,11 +627,12 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     chanceNum = work->chanceNum;
     tableP = HuMemDirectMallocNum(HEAP_HEAP, chanceNum, HU_MEMNUM_OVL);
     tableP2 = tableP;
-    obj->data = table = tableP2;
+    table = tableP2;
+    obj->data = table;
 
-    for (i = 0, num = 0; i < LAST5_ROULETTE_RESULT_NUM; i++) {
-        for (j = 0; j < rouletteChanceTbl[i]; j++) {
-            table[num++] = i;
+    for (i = 0, j = 0; i < LAST5_ROULETTE_RESULT_NUM; i++) {
+        for (num = 0; num < rouletteChanceTbl[i]; num++) {
+            table[j++] = i;
         }
     }
 
@@ -740,9 +783,10 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
     MBCOINOBJ *coinObj;
     LAST5COINWORK *coinWork;
     s16 coinObjId[LAST5_COIN_NUM];
+    int validNum = 0;
     int activeNum;
     int coinNum = 1;
-    int i = 0;
+    int i;
 
     mbGuideMotionShiftSet(guideObj, 6, TRUE);
     mbGuideMotionStop(guideObj);
@@ -806,13 +850,15 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     HuVecF startPos;
     s16 *masuList[LAST5_CAPSULE_MASU_LIST_NUM];
     int masuNum[LAST5_CAPSULE_MASU_LIST_NUM];
+    int type;
     int validNum = 0;
+    int index;
     int capsuleNum = 1;
+    int capsuleCount;
     int useMode;
     int listNo;
     int i;
     int capsuleNo;
-    int index;
     int masuId;
 
     mbGuideMotionShiftSet(guideObj, 6, TRUE);
@@ -834,32 +880,35 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
         }
     }
 
-    capsuleNum = mbCapRandomListGet(capsuleList, LAST5_CAPSULE_LIST_MAX);
-    validNum = 0;
-    for (i = 0; i < capsuleNum; i++) {
+    capsuleCount = mbCapRandomListGet(capsuleList, LAST5_CAPSULE_LIST_MAX);
+    for (i = 0, index = 0; i < capsuleCount; i++) {
         useMode = mbCapUseModeGet(capsuleList[i]);
         if (useMode == 1 || useMode == 2) {
-            capsuleList[validNum++] = capsuleList[i];
+            capsuleList[index++] = capsuleList[i];
         }
     }
-    capsuleNum = validNum;
-    if (capsuleNum < LAST5_CAPSULE_ADD_NUM) {
-        while (capsuleNum < LAST5_CAPSULE_ADD_NUM) {
-            capsuleList[capsuleNum] = capsuleList[0];
-            capsuleNum++;
+    capsuleCount = index;
+    if (capsuleCount < LAST5_CAPSULE_ADD_NUM) {
+        while (capsuleCount < LAST5_CAPSULE_ADD_NUM) {
+            capsuleList[capsuleCount] = capsuleList[0];
+            capsuleCount++;
         }
     }
 
-    for (i = 0; i < LAST5_CAPSULE_MASU_LIST_NUM; i++) {
+    {
+        s16 *freeMasuP;
+        LAST5ROULETTEWORK *finalRouletteWork;
+
+    for (listNo = 0; listNo < LAST5_CAPSULE_MASU_LIST_NUM; listNo++) {
         s16 *masuP;
 
         masuP = HuMemDirectMallocNum(HEAP_HEAP,
             LAST5_CAPSULE_MASU_LIST_MAX * sizeof(s16), HU_MEMNUM_OVL);
-        masuList[i] = masuP;
-        masuNum[i] = 0;
+        masuList[listNo] = masuP;
+        masuNum[listNo] = 0;
     }
 
-    for (i = 1; i < mbMasuNumGet(); i++) {
+    for (i = 1, type = 0; i < mbMasuNumGet(); i++) {
         if (mbCapThrowMasuCheck(i)) {
             listNo = 0;
             if (mbCapMasuDispTypeGet(i) == 0) {
@@ -892,9 +941,9 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
         index = mbRandMod(masuNum[listNo]--);
         masuId = masuP[index];
         masuP[index] = masuP[masuNum[listNo]];
-        index = mbRandMod(capsuleNum--);
+        index = mbRandMod(capsuleCount--);
         capsuleNo = capsuleList[index];
-        capsuleList[index] = capsuleList[capsuleNum];
+        capsuleList[index] = capsuleList[capsuleCount];
 
         mbCameraFocusMasuSet(masuId);
         mbCameraRotSet(-30.0f, 0.0f, 0.0f);
@@ -908,23 +957,21 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
         mbWipeDissolveFadeOut();
     }
 
-    for (i = 0; i < LAST5_CAPSULE_MASU_LIST_NUM; i++) {
-        s16 *masuP;
-
-        masuP = masuList[i];
-        HuMemDirectFree(masuP);
+    for (listNo = 0; listNo < LAST5_CAPSULE_MASU_LIST_NUM; listNo++) {
+        freeMasuP = masuList[listNo];
+        HuMemDirectFree(freeMasuP);
     }
     mbPlayerDispSet(playerNo, TRUE);
     {
-        LAST5ROULETTEWORK *rouletteWork =
-            omObjGetWork(rouletteObj, LAST5ROULETTEWORK);
+        finalRouletteWork = omObjGetWork(rouletteObj, LAST5ROULETTEWORK);
 
         mbObjDispSet(rouletteObj->mdlId[0], TRUE);
-        if (rouletteWork->diceF) {
+        if (finalRouletteWork->diceF) {
             mbObjDispSet(rouletteObj->mdlId[2], TRUE);
         } else {
             mbObjDispSet(rouletteObj->mdlId[1], TRUE);
         }
+    }
     }
     mbCameraFocusReset();
     HuPrcVSleep();
@@ -938,8 +985,10 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     mbPlayerMotIdleSet(playerNo);
 }
 
-static void ev_Last5Koopa(int playerNo, OMOBJ *rouletteObj,
-    MBMODELID modelId)
+static void ev_Last5Koopa(playerNo, rouletteObj, modelId)
+int playerNo;
+OMOBJ *rouletteObj;
+MBMODELID modelId;
 {
     HuVecF modelPos;
     HuVecF playerPos;
