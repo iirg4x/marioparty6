@@ -255,22 +255,41 @@ class _PinnedTargetParent:
     so a path swap cannot redirect the write.
     """
 
-    def __init__(self, target: Path) -> None:
+    def __init__(
+        self,
+        target: Path,
+        *,
+        expected_parent_identity: tuple[int, int, int] | None = None,
+    ) -> None:
         self.target = Path(os.path.abspath(target))
         self.parent = self.target.parent
         self.fd: int | None = None
         self._handles: list[Any] = []
         self._kernel32: Any = None
         self._parent_identity: tuple[int, int, int] | None = None
+        self._expected_parent_identity = expected_parent_identity
 
     def __enter__(self) -> "_PinnedTargetParent":
         try:
             _safe_parent(self.target)
             _assert_no_indirection(self.parent)
+            current_identity = _directory_identity(
+                self.parent, "session target parent"
+            )
+            if (
+                self._expected_parent_identity is not None
+                and current_identity != self._expected_parent_identity
+            ):
+                _fail(f"session target parent changed before pin: {self.parent}")
             if os.name == "nt":
                 self._open_windows()
             else:
                 self._open_posix()
+            if (
+                self._expected_parent_identity is not None
+                and self._parent_identity != self._expected_parent_identity
+            ):
+                _fail(f"session target parent changed before pin: {self.parent}")
             self.verify()
             return self
         except BaseException:
@@ -523,6 +542,20 @@ def _validate_target_path(
         _fail(f"{label} must have exactly one hard link: {path}")
 
 
+def _directory_identity(path: Path, label: str) -> tuple[int, int, int]:
+    """Return the authenticated identity of a non-indirected directory."""
+    _assert_no_indirection(path)
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise MatchError(f"cannot inspect {label}: {path}: {exc}") from exc
+    if not stat.S_ISDIR(info.st_mode):
+        _fail(f"{label} is not a directory: {path}")
+    if info.st_nlink != 1:
+        _fail(f"{label} must have exactly one hard link: {path}")
+    return (info.st_dev, info.st_ino, info.st_nlink)
+
+
 def _descriptor(value: Any, *, base: Path, label: str) -> dict[str, Any]:
     item = _closed(
         value,
@@ -651,7 +684,12 @@ def _restore_target_from_cas(
 
     digest = hashlib.sha256()
     size = 0
-    with _PinnedTargetParent(target) as parent:
+    intended_parent_identity = _directory_identity(
+        target.parent, "session target parent"
+    )
+    with _PinnedTargetParent(
+        target, expected_parent_identity=intended_parent_identity
+    ) as parent:
         _validate_target_path(target, allow_missing_leaf=True, label="session target")
         with _temporary_file_in_pinned_parent(parent, target.name) as (temporary, stream):
             with cas_path.open("rb") as source:

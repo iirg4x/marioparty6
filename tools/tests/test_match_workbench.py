@@ -310,6 +310,45 @@ class MatchWorkbenchTests(unittest.TestCase):
                 self.assertTrue(swap_attempted)
                 self.assertEqual(redirected_target.read_bytes(), b"outside-target")
 
+    def test_repair_target_parent_replacement_before_pin_fails_closed(self) -> None:
+        target_parent = self.root / "target-parent-before-pin"
+        target_parent.mkdir()
+        target = target_parent / "target.o"
+        target.write_bytes(b"target-bytes")
+        _write_json(self.manifest, self._manifest(target=_descriptor(target)))
+        workspace = self.root / "build" / "match-parent-before-pin"
+        module.init_workspace(self.root, self.manifest, workspace)
+        target.write_bytes(b"mutated-target")
+
+        displaced_parent = self.root / "displaced-target-parent-before-pin"
+        method_name = "_open_windows" if module.os.name == "nt" else "_open_posix"
+        real_open = getattr(module._PinnedTargetParent, method_name)
+        swap_attempted = False
+
+        def swapping_open(parent: object) -> object:
+            nonlocal swap_attempted
+            swap_attempted = True
+            target_parent.rename(displaced_parent)
+            target_parent.mkdir()
+            return real_open(parent)
+
+        with mock.patch.object(
+            module._PinnedTargetParent,
+            method_name,
+            autospec=True,
+            side_effect=swapping_open,
+        ):
+            with self.assertRaisesRegex(
+                module.MatchError, "session target parent changed before pin"
+            ):
+                module.repair_target(self.root, workspace)
+
+        self.assertTrue(swap_attempted)
+        self.assertEqual(
+            (displaced_parent / "target.o").read_bytes(), b"mutated-target"
+        )
+        self.assertFalse((target_parent / "target.o").exists())
+
     def test_repair_target_rejects_corrupt_cas(self) -> None:
         initialized = self._init()
         target_cas = self.workspace / initialized["session"]["target_blob"]["cas_path"]
