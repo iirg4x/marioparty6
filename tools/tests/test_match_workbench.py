@@ -123,6 +123,9 @@ class MatchWorkbenchTests(unittest.TestCase):
         data_report: Path | None = None,
         hypothesis: str = "natural candidate",
         axis: str = "register-lifetime",
+        status: str = "measured",
+        reason: str = "candidate measured",
+        focus_symbol: str | None = None,
     ) -> dict[str, object]:
         return module.record_candidate(
             self.root,
@@ -134,6 +137,9 @@ class MatchWorkbenchTests(unittest.TestCase):
             data_report=data_report,
             hypothesis=hypothesis,
             axis=axis,
+            status=status,
+            reason=reason,
+            focus_symbol=focus_symbol,
         )
 
     def _job_script(self, name: str = "probe.py", body: str | None = None) -> Path:
@@ -1071,6 +1077,134 @@ class MatchWorkbenchTests(unittest.TestCase):
             "authenticate_report_binding_then_run_serial_proof_and_closure",
         )
         self.assertEqual(matrix, module.build_matrix(self.root, self.workspace))
+
+    def test_matrix_rejected_is_fail_closed_but_retained_keeps_closure_action(self) -> None:
+        self._init()
+        rejected = self._record(
+            "rejected",
+            data_report=self.data,
+            status="rejected",
+            reason="target-shaped probe is a no-go",
+        )
+        source2 = self.root / "retained-source.c"
+        source2.write_text("int fn(void) { return 2; }\n", encoding="utf-8")
+        object2 = self.root / "retained-object.o"
+        object2.write_bytes(b"retained-object")
+        strict2 = self.root / "retained-strict.json"
+        _write_json(strict2, _report("fn", exact=True))
+        retained = self._record(
+            "retained",
+            source=source2,
+            object_path=object2,
+            strict_report=strict2,
+            data_report=self.data,
+            status="retained",
+            reason="natural exact candidate",
+        )
+
+        matrix = module.build_matrix(self.root, self.workspace)
+        rows = {row["candidate_id"]: row for row in matrix["rows"]}
+        self.assertEqual(rejected["record"]["outcome"]["status"], "rejected")
+        self.assertEqual(rows["rejected"]["next_action"], "do_not_advance_rejected_candidate")
+        self.assertEqual(
+            rows["retained"]["next_action"],
+            "authenticate_report_binding_then_run_serial_proof_and_closure",
+        )
+        self.assertFalse(rows["rejected"]["next_action"].startswith("authenticate"))
+        self.assertEqual(retained["record"]["outcome"]["status"], "retained")
+
+    def test_record_focus_symbol_drives_compacts_and_legacy_defaults_to_session(self) -> None:
+        self._init()
+        focused_strict = self.root / "focused-strict.json"
+        focused_data = self.root / "focused-data.json"
+        _write_json(focused_strict, _report("other", exact=False))
+        _write_json(focused_data, _report("other", exact=True))
+        focused = self._record(
+            "focused",
+            strict_report=focused_strict,
+            data_report=focused_data,
+            focus_symbol="other",
+        )
+        record = focused["record"]
+        self.assertEqual(record["focus_symbol"], "other")
+        self.assertEqual(record["reports"]["strict"]["compact"]["focus"]["name"], "other")
+        self.assertEqual(record["reports"]["data"]["compact"]["focus"]["name"], "other")
+
+        focused_body = dict(record)
+        focused_hash = focused_body.pop("record_sha256")
+        canonical = json.dumps(
+            focused_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ) + "\n"
+        self.assertEqual(focused_hash, hashlib.sha256(canonical.encode("utf-8")).hexdigest())
+        self.assertEqual(
+            module.record_candidate(
+                self.root,
+                self.workspace,
+                candidate_id="focused",
+                source=self.source,
+                object_path=self.object,
+                strict_report=focused_strict,
+                data_report=focused_data,
+                hypothesis="natural candidate",
+                axis="register-lifetime",
+                focus_symbol="other",
+            )["status"],
+            "unchanged",
+        )
+        cli_output = io.StringIO()
+        with contextlib.redirect_stdout(cli_output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "record",
+                        "--workspace",
+                        str(self.workspace),
+                        "--candidate-id",
+                        "cli",
+                        "--source",
+                        str(self.source),
+                        "--object",
+                        str(self.object),
+                        "--strict-report",
+                        str(focused_strict),
+                        "--data-report",
+                        str(focused_data),
+                        "--hypothesis",
+                        "natural candidate",
+                        "--axis",
+                        "register-lifetime",
+                        "--focus-symbol",
+                        "other",
+                        "--json",
+                    ]
+                ),
+                0,
+            )
+        cli_record = json.loads(cli_output.getvalue())["record"]
+        self.assertEqual(cli_record["focus_symbol"], "other")
+
+        legacy = self._record("legacy")
+        self.assertNotIn("focus_symbol", legacy["record"])
+        matrix = module.build_matrix(self.root, self.workspace)
+        rows = {row["candidate_id"]: row for row in matrix["rows"]}
+        self.assertEqual(rows["legacy"]["focus_symbol"], "fn")
+        self.assertEqual(rows["legacy"]["strict_focus"]["name"], "fn")
+
+    def test_focus_symbol_is_optional_but_candidate_schema_remains_closed(self) -> None:
+        self._init()
+        self._record("c1", focus_symbol="other")
+        candidate_path = self.workspace / "candidates" / "c1.json"
+        candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+        candidate["unexpected"] = True
+        _write_json(candidate_path, _rehash(candidate, "record_sha256"))
+        index_path = self.workspace / "index.json"
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        index["last_record_sha256"] = json.loads(candidate_path.read_text(encoding="utf-8"))["record_sha256"]
+        _write_json(index_path, _rehash(index, "index_sha256"))
+        with self.assertRaisesRegex(module.MatchError, "candidate record contains unknown field"):
+            module.build_matrix(self.root, self.workspace)
 
     def test_matrix_rejects_malformed_compact_focus_without_raw_exception(self) -> None:
         self._init()

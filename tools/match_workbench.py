@@ -1102,7 +1102,13 @@ def _copy_blob(workspace: Path, source: Path, kind: str, snapshot: Mapping[str, 
     }
 
 
-def _report_summary(path: Path, session: Mapping[str, Any], label: str) -> dict[str, Any]:
+def _report_summary(
+    path: Path,
+    session: Mapping[str, Any],
+    label: str,
+    *,
+    focus_symbol: str | None = None,
+) -> dict[str, Any]:
     limit = int(session["request"]["policy"]["max_report_bytes"])
     if path.stat().st_size > limit:
         _fail(f"{label} exceeds max_report_bytes ({path.stat().st_size} > {limit})")
@@ -1143,7 +1149,7 @@ def _report_summary(path: Path, session: Mapping[str, Any], label: str) -> dict[
     right = value.get("right", {})
     left_symbols = left.get("symbols", []) if isinstance(left, Mapping) else []
     right_symbols = right.get("symbols", []) if isinstance(right, Mapping) else []
-    focus = str(session["request"]["function"])
+    focus = focus_symbol if focus_symbol is not None else str(session["request"]["function"])
     total = 0
     exact = 0
     focus_row: dict[str, Any] | None = None
@@ -1193,7 +1199,14 @@ def _report_summary(path: Path, session: Mapping[str, Any], label: str) -> dict[
     return result
 
 
-def _store_report(workspace: Path, path: Path, session: Mapping[str, Any], label: str) -> dict[str, Any]:
+def _store_report(
+    workspace: Path,
+    path: Path,
+    session: Mapping[str, Any],
+    label: str,
+    *,
+    focus_symbol: str | None = None,
+) -> dict[str, Any]:
     source = _snapshot(path, label)
     sha = source["sha256"]
     output = workspace / "cas" / "reports" / sha[:2] / f"{sha}.json.gz"
@@ -1234,7 +1247,7 @@ def _store_report(workspace: Path, path: Path, session: Mapping[str, Any], label
         "compressed_size_bytes": compressed["size_bytes"],
         "cas_path": output.relative_to(workspace).as_posix(),
         "dedup_hit": dedup_hit,
-        "compact": _report_summary(path, session, label),
+        "compact": _report_summary(path, session, label, focus_symbol=focus_symbol),
     }
 
 
@@ -1337,7 +1350,7 @@ def _load_candidate(
             "source", "object", "compile_input_identity", "source_context_key", "object_result_key",
             "source_blob", "object_blob", "reports", "hypothesis", "outcome",
             "report_binding", "telemetry", "duplicate_of", "previous_record_sha256", "authority_advanced",
-            "record_sha256",
+            "focus_symbol", "record_sha256",
         },
         required={
             "schema", "schema_version", "session_sha256", "candidate_id", "ordinal",
@@ -1357,6 +1370,8 @@ def _load_candidate(
         _fail("candidate record must not advance authority")
     if value.get("report_binding") != "caller_supplied_diagnostic_unverified":
         _fail("candidate report binding classification is invalid")
+    if "focus_symbol" in value:
+        _text(value.get("focus_symbol"), "candidate focus_symbol")
     if not isinstance(value.get("source"), Mapping) or not isinstance(value.get("object"), Mapping):
         _fail("candidate source/object descriptors are missing")
     _sha256(value["source"].get("sha256"), "candidate source.sha256")
@@ -1473,6 +1488,7 @@ def record_candidate(
     status: str = "measured",
     reason: str = "candidate measured",
     heavy_seconds: float | None = None,
+    focus_symbol: str | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     destination = _workspace(workspace, root)
@@ -1495,6 +1511,11 @@ def record_candidate(
     lock_path = destination / ".workbench.lock"
     with _workbench_lock(lock_path, 8.0):
         session = _load_session(destination, root)
+        selected_focus = (
+            _text(focus_symbol, "focus_symbol")
+            if focus_symbol is not None
+            else str(session["request"]["function"])
+        )
         index = _load_index(destination, session)
         source_key = _context_key(
             session, source_snapshot["sha256"], compile_input_identity
@@ -1532,6 +1553,8 @@ def record_candidate(
                 and existing["hypothesis"]["axis"] == _text(axis, "axis")
                 and existing["hypothesis"].get("residual_fingerprint")
                 == residual_digest
+                and existing.get("focus_symbol", str(session["request"]["function"]))
+                == selected_focus
                 and existing["reports"]["strict"]["raw_sha256"]
                 == _snapshot(strict_path, "strict report")["sha256"]
                 and (
@@ -1555,8 +1578,24 @@ def record_candidate(
             _fail(f"candidate_id already records different evidence: {candidate_id}")
         source_blob = _copy_blob(destination, source_path, "source", source_snapshot)
         object_blob = _copy_blob(destination, object_file, "object", object_snapshot)
-        strict = _store_report(destination, strict_path, session, "strict report")
-        data = _store_report(destination, data_path, session, "data report") if data_path else None
+        strict = _store_report(
+            destination,
+            strict_path,
+            session,
+            "strict report",
+            focus_symbol=selected_focus,
+        )
+        data = (
+            _store_report(
+                destination,
+                data_path,
+                session,
+                "data report",
+                focus_symbol=selected_focus,
+            )
+            if data_path
+            else None
+        )
         object_duplicate = index["object_index"].get(object_key)
         _, source_duplicate, _ = _source_index_match(
             destination, index, session, source_snapshot, compile_input_identity
@@ -1583,6 +1622,7 @@ def record_candidate(
                 "source_blob": source_blob,
                 "object_blob": object_blob,
                 "reports": {"strict": strict, "data": data},
+                **({"focus_symbol": selected_focus} if focus_symbol is not None else {}),
                 "report_binding": "caller_supplied_diagnostic_unverified",
                 "hypothesis": {
                     "name": _text(hypothesis, "hypothesis"),
@@ -2452,6 +2492,28 @@ def diagnose_candidate(
     }
 
 
+def _candidate_is_no_go(candidate: Mapping[str, Any]) -> bool:
+    """Return whether an outcome is explicitly closed against advancement.
+
+    Older ledgers used both a plain ``rejected`` status and free-form no-go
+    reasons.  Keep those records readable, but make the matrix conservative:
+    neither spelling may turn into a proof/closure recommendation.
+    """
+
+    outcome = candidate.get("outcome")
+    if not isinstance(outcome, Mapping):
+        return False
+    status = str(outcome.get("status", "")).strip().casefold()
+    reason = str(outcome.get("reason", "")).strip().casefold()
+    normalized_status = re.sub(r"[_/ ]+", "-", status)
+    normalized_reason = re.sub(r"[_/ ]+", "-", reason)
+    return (
+        normalized_status.startswith("reject")
+        or "no-go" in normalized_status
+        or "no-go" in normalized_reason
+    )
+
+
 def build_matrix(root: Path, workspace: Path | str) -> dict[str, Any]:
     destination = _workspace(workspace, root.resolve())
     session = _load_session(destination, root.resolve())
@@ -2550,7 +2612,9 @@ def build_matrix(root: Path, workspace: Path | str) -> dict[str, Any]:
                 for name, report in candidate.get("reports", {}).items()
             }
         )
-        if duplicate_same_evidence:
+        if _candidate_is_no_go(candidate):
+            next_action = "do_not_advance_rejected_candidate"
+        elif duplicate_same_evidence:
             next_action = "reuse_existing_evidence"
         elif candidate.get("duplicate_of") and diagnostic_status == "not_run":
             next_action = "run_read_only_diagnostics_for_source_context"
@@ -2570,6 +2634,9 @@ def build_matrix(root: Path, workspace: Path | str) -> dict[str, Any]:
                 "hypothesis_axis": candidate["hypothesis"]["axis"],
                 "axis_fingerprint": candidate["hypothesis"]["axis_fingerprint"],
                 "residual_fingerprint": candidate["hypothesis"].get("residual_fingerprint"),
+                "focus_symbol": candidate.get(
+                    "focus_symbol", str(session["request"]["function"])
+                ),
                 "strict_focus": strict_focus,
                 "data_focus": data_focus,
                 "report_binding": candidate["report_binding"],
@@ -2634,7 +2701,8 @@ def build_matrix(root: Path, workspace: Path | str) -> dict[str, Any]:
         "columns": [
             "ordinal", "candidate_id", "source_sha256", "object_sha256", "duplicate_of",
             "hypothesis_axis", "axis_fingerprint", "residual_fingerprint", "strict_focus",
-            "data_focus", "report_binding", "diagnostic_status", "available_read_only_evidence", "next_action",
+            "focus_symbol", "data_focus", "report_binding", "diagnostic_status",
+            "available_read_only_evidence", "next_action",
             "heavy_seconds",
         ],
         "rows": rows,
@@ -2710,6 +2778,7 @@ def _add_commands(commands: Any) -> None:
     record.add_argument("--status", default="measured")
     record.add_argument("--reason", default="candidate measured")
     record.add_argument("--heavy-seconds", type=float)
+    record.add_argument("--focus-symbol")
     record.add_argument("--json", action="store_true")
 
     diagnose = commands.add_parser("diagnose", help="run bounded authenticated read-only diagnostics")
@@ -2751,6 +2820,7 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             status=args.status,
             reason=args.reason,
             heavy_seconds=args.heavy_seconds,
+            focus_symbol=args.focus_symbol,
         )
     elif args.match_command == "diagnose":
         result = diagnose_candidate(
