@@ -244,6 +244,207 @@ def _safe_parent(path: Path) -> None:
     _safe_mkdir(path.parent)
 
 
+class _PinnedTargetParent:
+    """Hold the target parent against path replacement for a repair.
+
+    A final ``lstat`` immediately before ``os.replace`` is not sufficient on
+    Windows: another process can replace the parent with a junction between
+    that check and the path-based rename.  Windows directory handles opened
+    without ``FILE_SHARE_DELETE`` prevent that replacement.  POSIX hosts use
+    a directory descriptor and perform the rename relative to that descriptor
+    so a path swap cannot redirect the write.
+    """
+
+    def __init__(self, target: Path) -> None:
+        self.target = Path(os.path.abspath(target))
+        self.parent = self.target.parent
+        self.fd: int | None = None
+        self._handles: list[Any] = []
+        self._kernel32: Any = None
+        self._parent_identity: tuple[int, int, int] | None = None
+
+    def __enter__(self) -> "_PinnedTargetParent":
+        try:
+            _safe_parent(self.target)
+            _assert_no_indirection(self.parent)
+            if os.name == "nt":
+                self._open_windows()
+            else:
+                self._open_posix()
+            self.verify()
+            return self
+        except BaseException:
+            self.close()
+            raise
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()
+
+    def _open_posix(self) -> None:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            flags |= os.O_DIRECTORY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            self.fd = os.open(self.parent, flags)
+        except OSError as exc:
+            raise MatchError(f"cannot pin session target parent {self.parent}: {exc}") from exc
+        info = os.fstat(self.fd)
+        if not stat.S_ISDIR(info.st_mode):
+            _fail(f"session target parent is not a directory: {self.parent}")
+        self._parent_identity = (info.st_dev, info.st_ino, info.st_nlink)
+
+    def _open_windows(self) -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        ]
+        kernel32.CreateFileW.restype = wintypes.HANDLE
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        self._kernel32 = kernel32
+
+        # GENERIC_READ is required for Windows to enforce the no-delete share
+        # on directory rename.  FILE_READ_ATTRIBUTES alone does not pin a
+        # directory against MoveFileEx/ junction replacement.
+        generic_read = 0x80000000
+        share_read = 0x00000001
+        share_write = 0x00000002
+        open_existing = 3
+        backup_semantics = 0x02000000
+        open_reparse_point = 0x00200000
+        invalid_handle = ctypes.c_void_p(-1).value
+
+        parts = self.parent.parts
+        current = Path(parts[0])
+        try:
+            for index, part in enumerate(parts):
+                if index:
+                    current = current / part
+                handle = kernel32.CreateFileW(
+                    os.fspath(current),
+                    generic_read,
+                    share_read | share_write,
+                    None,
+                    open_existing,
+                    backup_semantics | open_reparse_point,
+                    None,
+                )
+                if handle in (None, invalid_handle):
+                    error = ctypes.get_last_error()
+                    raise MatchError(
+                        f"cannot pin session target parent component {current}: "
+                        f"WinError {error}"
+                    )
+                self._handles.append(handle)
+                try:
+                    info = current.lstat()
+                except OSError as exc:
+                    raise MatchError(
+                        f"cannot verify session target parent component {current}: {exc}"
+                    ) from exc
+                if not stat.S_ISDIR(info.st_mode):
+                    _fail(f"session target parent component is not a directory: {current}")
+                if bool(getattr(info, "st_file_attributes", 0) & REPARSE_ATTRIBUTE):
+                    _fail(f"path indirection is forbidden: {current}")
+        except BaseException:
+            self.close()
+            raise
+        info = self.parent.lstat()
+        self._parent_identity = (info.st_dev, info.st_ino, info.st_nlink)
+
+    def verify(self) -> None:
+        """Verify that the named parent still denotes the pinned directory."""
+        _assert_no_indirection(self.parent)
+        try:
+            info = self.parent.lstat()
+        except OSError as exc:
+            raise MatchError(f"session target parent changed during repair: {self.parent}") from exc
+        if not stat.S_ISDIR(info.st_mode):
+            _fail(f"session target parent is not a directory: {self.parent}")
+        identity = (info.st_dev, info.st_ino, info.st_nlink)
+        if self._parent_identity is not None and identity != self._parent_identity:
+            _fail(f"session target parent changed during repair: {self.parent}")
+        if self.fd is not None:
+            current = os.fstat(self.fd)
+            if (current.st_dev, current.st_ino, current.st_nlink) != identity:
+                _fail(f"session target parent changed during repair: {self.parent}")
+
+    def close(self) -> None:
+        if self.fd is not None:
+            try:
+                os.close(self.fd)
+            finally:
+                self.fd = None
+        if self._handles and self._kernel32 is not None:
+            for handle in reversed(self._handles):
+                self._kernel32.CloseHandle(handle)
+            self._handles.clear()
+
+
+@contextlib.contextmanager
+def _temporary_file_in_pinned_parent(
+    parent: _PinnedTargetParent, target_name: str
+) -> Any:
+    """Create a repair temporary in the pinned directory.
+
+    POSIX uses ``openat`` semantics through the pinned descriptor.  Windows
+    uses the ordinary path only while all parent components are held open with
+    delete sharing denied, so a junction/path swap cannot redirect creation.
+    """
+    temporary: str | Path | None = None
+    stream: Any = None
+    if parent.fd is not None:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
+        names = tempfile._get_candidate_names()
+        for _ in range(100):
+            name = f".{target_name}.{next(names)}.tmp"
+            try:
+                fd = os.open(name, flags, 0o600, dir_fd=parent.fd)
+            except FileExistsError:
+                continue
+            stream = os.fdopen(fd, "wb")
+            temporary = name
+            break
+        if stream is None or temporary is None:
+            _fail(f"cannot create repair temporary in {parent.parent}")
+    else:
+        stream = tempfile.NamedTemporaryFile(
+            "wb", dir=parent.parent, prefix=f".{target_name}.", suffix=".tmp", delete=False
+        )
+        temporary = Path(stream.name)
+    try:
+        yield temporary, stream
+    finally:
+        if stream is not None and not stream.closed:
+            stream.close()
+        if temporary is not None:
+            try:
+                if parent.fd is not None:
+                    os.unlink(temporary, dir_fd=parent.fd)
+                else:
+                    temporary.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError:
+                # Keep the original repair failure.  The temporary remains
+                # recoverable for a caller to clean up after the parent is
+                # released, and no authority is advanced by this path.
+                pass
+
+
 def _snapshot(path: Path, label: str) -> dict[str, Any]:
     _assert_no_indirection(path)
     try:
@@ -448,15 +649,11 @@ def _restore_target_from_cas(
     ):
         _fail("session target CAS does not match its frozen descriptor")
 
-    temporary: Path | None = None
     digest = hashlib.sha256()
     size = 0
-    try:
-        _safe_parent(target)
-        with tempfile.NamedTemporaryFile(
-            "wb", dir=target.parent, prefix=f".{target.name}.", suffix=".tmp", delete=False
-        ) as stream:
-            temporary = Path(stream.name)
+    with _PinnedTargetParent(target) as parent:
+        _validate_target_path(target, allow_missing_leaf=True, label="session target")
+        with _temporary_file_in_pinned_parent(parent, target.name) as (temporary, stream):
             with cas_path.open("rb") as source:
                 for block in iter(lambda: source.read(1024 * 1024), b""):
                     stream.write(block)
@@ -464,36 +661,47 @@ def _restore_target_from_cas(
                     size += len(block)
             stream.flush()
             os.fsync(stream.fileno())
+            stream.close()
 
-        cas_after = _snapshot(cas_path, "session target CAS")
-        if (
-            cas_after["sha256"] != expected_sha
-            or cas_after["size_bytes"] != expected_size
-            or cas_after["sha256"] != cas_before["sha256"]
-            or cas_after["size_bytes"] != cas_before["size_bytes"]
-        ):
-            _fail("session target CAS changed during repair")
-        if digest.hexdigest() != expected_sha or size != expected_size:
-            _fail("session target CAS bytes failed repair verification")
+            cas_after = _snapshot(cas_path, "session target CAS")
+            if (
+                cas_after["sha256"] != expected_sha
+                or cas_after["size_bytes"] != expected_size
+                or cas_after["sha256"] != cas_before["sha256"]
+                or cas_after["size_bytes"] != cas_before["size_bytes"]
+            ):
+                _fail("session target CAS changed during repair")
+            if digest.hexdigest() != expected_sha or size != expected_size:
+                _fail("session target CAS bytes failed repair verification")
 
-        # Validate immediately before replacement as well as after it.  A
-        # symlink/reparse/hard-link target is never an accepted repair sink.
-        _validate_target_path(target, allow_missing_leaf=True, label="session target")
-        os.replace(temporary, target)
-        temporary = None
-        _validate_target_path(target, label="restored session target")
-        restored = _snapshot(target, "restored session target")
-        if (
-            restored["sha256"] != expected_sha
-            or restored["size_bytes"] != expected_size
-        ):
-            _fail("restored session target does not match its frozen descriptor")
-        return {
-            key: restored[key] for key in ("path", "size_bytes", "sha256")
-        }
-    finally:
-        if temporary is not None and temporary.exists():
-            temporary.unlink()
+            # The parent is pinned for the entire copy and rename.  This
+            # verification is useful on POSIX when a directory was renamed
+            # concurrently; Windows' no-delete directory handles prevent the
+            # replacement itself.
+            parent.verify()
+            _validate_target_path(target, allow_missing_leaf=True, label="session target")
+            try:
+                if parent.fd is not None:
+                    os.replace(
+                        temporary,
+                        target.name,
+                        src_dir_fd=parent.fd,
+                        dst_dir_fd=parent.fd,
+                    )
+                else:
+                    os.replace(temporary, target)
+            except (NotImplementedError, TypeError) as exc:
+                _fail(f"cannot perform pinned session target replacement: {exc}")
+            _validate_target_path(target, label="restored session target")
+            restored = _snapshot(target, "restored session target")
+            if (
+                restored["sha256"] != expected_sha
+                or restored["size_bytes"] != expected_size
+            ):
+                _fail("restored session target does not match its frozen descriptor")
+            return {
+                key: restored[key] for key in ("path", "size_bytes", "sha256")
+            }
 
 
 @contextlib.contextmanager

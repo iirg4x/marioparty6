@@ -267,6 +267,49 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(self.target.read_bytes(), b"target-bytes")
         self.assertEqual(module._sha256_file(self.target), repaired["target"]["sha256"])
 
+    def test_repair_target_parent_replacement_cannot_redirect_write(self) -> None:
+        target_parent = self.root / "target-parent"
+        target_parent.mkdir()
+        target = target_parent / "target.o"
+        target.write_bytes(b"target-bytes")
+        _write_json(self.manifest, self._manifest(target=_descriptor(target)))
+        workspace = self.root / "build" / "match-parent-replacement"
+        module.init_workspace(self.root, self.manifest, workspace)
+        target.write_bytes(b"mutated-target")
+
+        displaced_parent = self.root / "displaced-target-parent"
+        redirected_target = target_parent / "target.o"
+        swap_attempted = False
+        swap_blocked = False
+        real_replace = module.os.replace
+
+        def swapping_replace(src: object, dst: object, *args: object, **kwargs: object) -> None:
+            nonlocal swap_attempted, swap_blocked
+            if not swap_attempted:
+                swap_attempted = True
+                try:
+                    target_parent.rename(displaced_parent)
+                except OSError:
+                    # Windows directory handles held without delete sharing
+                    # must make the path replacement itself fail.
+                    swap_blocked = True
+                else:
+                    target_parent.mkdir()
+                    redirected_target.write_bytes(b"outside-target")
+            real_replace(src, dst, *args, **kwargs)
+
+        with mock.patch.object(module.os, "replace", side_effect=swapping_replace):
+            if module.os.name == "nt":
+                repaired = module.repair_target(self.root, workspace)
+                self.assertEqual(repaired["status"], "restored")
+                self.assertTrue(swap_blocked)
+                self.assertEqual(target.read_bytes(), b"target-bytes")
+            else:
+                with self.assertRaises(module.MatchError):
+                    module.repair_target(self.root, workspace)
+                self.assertTrue(swap_attempted)
+                self.assertEqual(redirected_target.read_bytes(), b"outside-target")
+
     def test_repair_target_rejects_corrupt_cas(self) -> None:
         initialized = self._init()
         target_cas = self.workspace / initialized["session"]["target_blob"]["cas_path"]
