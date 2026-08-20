@@ -757,6 +757,7 @@ extern const float lbl_802C4544;
 extern const float lbl_802C455C;
 extern const float lbl_802C45C0;
 extern const float lbl_802C45D0;
+extern const float lbl_802C45F8;
 extern const float lbl_802C4574;
 extern const float lbl_802C4570;
 extern const float lbl_802C4578;
@@ -2986,10 +2987,14 @@ static void CapEffRemoveAddAll(HuVecF *pos)
 
 static void CapEffCrackOMExec(OMOBJ *obj)
 {
-    CAP_EFF_CRACK_WORK *work = obj->data;
+    CAP_EFF_CRACK_WORK *work;
     CAP_EFF_CRACK_DATA *data;
     float scale;
     int i;
+    int no;
+
+    no = -1;
+    work = obj->data;
 
     if (mbExitCheck() || capEffCrackOMObj == NULL) {
         HuSprAnimKill(work->animP);
@@ -2998,11 +3003,14 @@ static void CapEffCrackOMExec(OMOBJ *obj)
         capEffCrackOMObj = NULL;
         return;
     }
+    data = work->data;
     switch (work->state) {
+        case 0:
+            break;
+
         case 1:
-            data = work->data;
-            for (i = 0; i < work->num; i++, data++) {
-                data->color.a = (u8)lbl_802C4660;
+            for (i = 0, data = work->data; i < work->num; i++, data++) {
+                data->color.a = 64;
                 data->vel.y = 0.0f;
                 data->pos[0].y = 0.0f;
                 data->pos[1].y = 0.0f;
@@ -3014,50 +3022,45 @@ static void CapEffCrackOMExec(OMOBJ *obj)
             break;
 
         case 2:
-            work->time++;
-            scale = (float)work->time / 6.0f;
+            scale = (float)++work->time / 6.0f;
             if (scale >= 1.0f) {
                 scale = 1.0f;
             }
             Hu3DModelScaleSet(work->modelId, scale, 1.0f, scale);
-            if (work->time >= 6) {
+            if ((float)work->time >= 6.0f) {
                 work->time = 0;
                 work->state++;
             }
             break;
 
         case 3:
-            work->time++;
-            scale = lbl_802C465C * (float)work->time;
+            scale = lbl_802C465C * (float)++work->time;
             if (scale >= 1.0f) {
                 scale = 1.0f;
             }
-            data = work->data;
-            for (i = 0; i < work->num; i++, data++) {
+            for (i = 0, data = work->data; i < work->num; i++, data++) {
                 data->color.a = (u8)(lbl_802C4660 + (lbl_802C4664 * scale));
                 data->vel.y = data->prevVel.y * scale;
                 data->pos[0].y = data->prevPos[0].y * scale;
                 data->pos[1].y = data->prevPos[1].y * scale;
                 data->pos[2].y = data->prevPos[2].y * scale;
             }
-            work->color.r = (u8)(lbl_802C4660 * scale);
-            work->color.g = (u8)(lbl_802C4660 * scale);
-            work->color.b = (u8)(lbl_802C4660 * scale);
+            work->color.r = work->color.g = work->color.b =
+                (u8)(lbl_802C4660 * scale);
             work->color.a = (u8)(lbl_802C4668 * scale);
-            if (work->time >= 18) {
+            if ((float)work->time >= 18.0f) {
                 work->time = 0;
                 work->state++;
             }
             break;
 
         case 4:
-            if (work->color.a < 21) {
-                work->color.a = 0;
-            } else {
+            if (work->color.a > 20) {
                 work->color.a -= 20;
+            } else {
+                work->color.a = 0;
             }
-            data = work->data;
-            for (i = 0; i < work->num; i++, data++) {
+            for (i = 0, data = work->data; i < work->num; i++, data++) {
                 if (!data->flag) {
                     continue;
                 }
@@ -3067,17 +3070,19 @@ static void CapEffCrackOMExec(OMOBJ *obj)
                 }
                 PSVECAdd(&data->vel, &data->accel, &data->vel);
                 data->angle += data->angleSpeed;
-                data->scale -= data->scaleSpeed;
-                if (data->scale > 0.0f) {
-                    if (data->scale <= 1.0f) {
-                        data->color.a = (u8)(lbl_802C4668 * data->scale);
-                    } else {
-                        data->color.a = (u8)lbl_802C4668;
-                    }
-                } else {
+                if ((data->scale -= data->scaleSpeed) <= 0.0f) {
                     data->flag = FALSE;
+                    continue;
+                }
+                if (data->scale > 1.0f) {
+                    data->color.a = 255;
+                } else {
+                    data->color.a = (u8)(lbl_802C4668 * data->scale);
                 }
             }
+            break;
+
+        case 5:
             break;
     }
 }
@@ -4960,7 +4965,8 @@ static void CapEffMasuOkPosSet(HuVecF *pos, int masuId)
     pos2.y += 10.0f;
     mbObjPosSetV(work->modelId, &pos2);
     mbObjDispSet(work->modelId, TRUE);
-    mbObjScaleSet(work->modelId, 0.001f, 0.001f, 0.001f);
+    mbObjScaleSet(work->modelId, lbl_802C4618, lbl_802C4618,
+        lbl_802C4618);
     work->masuId = masuId;
     work->state = 1;
     work->scale = 0.0f;
@@ -5572,6 +5578,7 @@ int mbCapBonusCoinNumGet(int playerNo, int capsuleNo)
     int bonus;
     int rank;
 
+    rank = 0;
     bonus = 0;
     switch (GwPlayer[playerNo].rank) {
         case 0:
@@ -5586,29 +5593,28 @@ int mbCapBonusCoinNumGet(int playerNo, int capsuleNo)
             rank = 2;
             break;
 
-        default:
+        case 3:
             rank = 3;
             break;
     }
-    capsuleNo = mbCapValueTypeGet(capsuleNo);
-    switch (capsuleData[capsuleNo].useMode) {
+    switch (mbCapUseModeGet(capsuleNo)) {
         case 0:
             if ((lbl_802C4530 * MBCapsuleEffRandF()) <
-                (lbl_802C4540 + (lbl_802C4544 * rank))) {
+                (lbl_802C4540 + (10 * rank))) {
                 bonus = mbRandMod(rank + 1) + 1;
             }
             break;
 
         case 1:
             if ((lbl_802C4530 * MBCapsuleEffRandF()) <
-                (40.0f + (lbl_802C4544 * rank))) {
+                (lbl_802C45F8 + (10 * rank))) {
                 bonus = mbRandMod(rank + 3) + 5;
             }
             break;
 
         case 2:
             if ((lbl_802C4530 * MBCapsuleEffRandF()) <
-                (40.0f + (lbl_802C4544 * rank))) {
+                (lbl_802C45F8 + (10 * rank))) {
                 bonus = mbRandMod(rank + 2) + 3;
             }
             break;
@@ -5792,100 +5798,213 @@ static void CapEffHiliteCreate(void)
     }
 }
 
+static inline float CapEffCrackSqrt(
+    float value, volatile float *result)
+{
+    const double sqrtHalf = .5;
+    const double sqrtThree = 3.0;
+    if (value > 0.0f) {
+        double sqrtGuess = __frsqrte((double)value);
+        sqrtGuess = sqrtHalf * sqrtGuess
+            * (sqrtThree - (sqrtGuess * sqrtGuess * value));
+        sqrtGuess = sqrtHalf * sqrtGuess
+            * (sqrtThree - (sqrtGuess * sqrtGuess * value));
+        sqrtGuess = sqrtHalf * sqrtGuess
+            * (sqrtThree - (sqrtGuess * sqrtGuess * value));
+        *result = (float)(value * sqrtGuess);
+        return *result;
+    }
+    return value;
+}
+
+static inline void CapEffCrackSqrtStore(
+    float value, volatile float *result, volatile float *output)
+{
+    const double sqrtHalf = .5;
+    const double sqrtThree = 3.0;
+    if (value > 0.0f) {
+        double sqrtGuess = __frsqrte((double)value);
+        sqrtGuess = sqrtHalf * sqrtGuess
+            * (sqrtThree - (sqrtGuess * sqrtGuess * value));
+        sqrtGuess = sqrtHalf * sqrtGuess
+            * (sqrtThree - (sqrtGuess * sqrtGuess * value));
+        sqrtGuess = sqrtHalf * sqrtGuess
+            * (sqrtThree - (sqrtGuess * sqrtGuess * value));
+        *result = (float)(value * sqrtGuess);
+        *output = *result;
+    } else {
+        *output = value;
+    }
+}
+
 static void CapEffCrackCreate(void)
 {
-    CAP_EFF_CRACK_WORK *work;
     CAP_EFF_CRACK_DATA *data;
-    HU3D_MODEL *model;
-    HuVecF pos;
-    void *dl;
-    int i;
-    int j;
-    int k;
+    CAP_EFF_CRACK_WORK *work;
     int l;
-    float x;
-    float z;
-    float length;
-    float crackScale;
+    int i;
+    HU3D_MODEL *model;
+    int k;
+    int j;
+    void *dlBuf;
+    OMOBJ *obj;
+    void *dlBegin;
+    int dataSize;
+    u32 dataHeap;
+    int vtxSize;
+    u32 vtxHeap;
+    int stSize;
+    u32 stHeap;
+    volatile float sqrtScaleResult;
+    volatile float sqrtHeightResult;
+    volatile float sqrtVelocityValue;
+    volatile float sqrtVelocityResult;
+    u32 dlBufHeap;
+    u32 dlSizeData;
+    u32 dlDataHeap;
+    CAP_EFF_CRACK_WORK *workData;
+    CAP_EFF_CRACK_DATA *dataBuf;
+    CAP_EFF_CRACK_DATA *dataP;
+    HuVecF *vtxBuf;
+    HuVecF *vtxP;
+    HuVec2f *stBuf;
+    HuVec2f *stP;
+    void *dlBufData;
+    void *dlBeginData;
+    void *dlData;
+    void *dlP;
+    float yOfs;
+    float y;
+    float ofsX;
+    float ofsZ;
+    float scale;
+    float scaleX;
+    float scaleZ;
+    HuVecF vtxPos;
+    float scaleTbl[3];
 
-    capEffCrackOMObj = omAddObjEx(mbObjMan, -32768, 0, 0, OM_GRP_NONE,
-        CapEffCrackOMExec);
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
-    capEffCrackOMObj->data = work;
+    obj = capEffCrackOMObj = omAddObjEx(mbObjMan, -32768, 0, 0,
+        OM_GRP_NONE, CapEffCrackOMExec);
+    workData = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+    work = obj->data = workData;
     memset(work, 0, sizeof(*work));
     work->modelId = Hu3DHookFuncCreate(CapEffCrackDraw);
     Hu3DModelCameraSet(work->modelId, 1);
     Hu3DModelLayerSet(work->modelId, 3);
     model = &Hu3DData[work->modelId];
     model->hookData = work;
+    work->state = 0;
+    work->time = 0;
     work->num = 24 * 24 * 2;
     work->vtxNum = work->num * 3;
-    work->data = HuMemDirectMallocNum(HEAP_MODEL,
-        work->num * sizeof(*work->data), model->mallocNo);
-    memset(work->data, 0, work->num * sizeof(*work->data));
-    work->vtx = HuMemDirectMallocNum(HEAP_MODEL,
-        work->vtxNum * sizeof(*work->vtx), model->mallocNo);
+    dataHeap = model->mallocNo;
+    dataSize = work->num * sizeof(*work->data);
+    dataBuf = HuMemDirectMallocNum(HEAP_MODEL, dataSize, dataHeap);
+    dataP = dataBuf;
+    data = work->data = dataP;
+    memset(data, 0, work->num * sizeof(*work->data));
+    vtxHeap = model->mallocNo;
+    vtxSize = work->vtxNum * sizeof(*work->vtx);
+    vtxBuf = HuMemDirectMallocNum(HEAP_MODEL, vtxSize, vtxHeap);
+    vtxP = vtxBuf;
+    work->vtx = vtxP;
     memset(work->vtx, 0, work->vtxNum * sizeof(*work->vtx));
-    work->st = HuMemDirectMallocNum(HEAP_MODEL,
-        work->vtxNum * sizeof(*work->st), model->mallocNo);
+    stHeap = model->mallocNo;
+    stSize = work->vtxNum * sizeof(*work->st);
+    stBuf = HuMemDirectMallocNum(HEAP_MODEL, stSize, stHeap);
+    stP = stBuf;
+    work->st = stP;
     memset(work->st, 0, work->vtxNum * sizeof(*work->st));
     work->animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_capsule, 43),
         HU_MEMNUM_OVL));
-    work->color.r = work->color.g = work->color.b = work->color.a = 0;
+    work->color.r = 0;
+    work->color.g = 0;
+    work->color.b = 0;
+    work->color.a = 0;
 
-    crackScale = 200.0f / 24.0f;
-    data = work->data;
-    z = -100.0f;
-    for (i = 0; i < 24; i++, z += crackScale) {
-        x = -100.0f;
-        for (j = 0; j < 24; j++, x += crackScale) {
-            for (k = 0; k < 2; k++, data++) {
+    scaleX = 8.333334f;
+    scaleZ = 8.333334f;
+    ofsX = -100.0f;
+    ofsZ = -100.0f;
+    for (i = 0; i < 24; i++) {
+        for (j = 0; j < 24; j++) {
+            for (k = 0; k < 2; data++, k++) {
                 data->flag = TRUE;
                 data->scale = 1.0f;
                 data->angle = 0.0f;
-                data->angleSpeed = 5.0f + (200.0f * MBCapsuleEffRandF());
                 if (mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 1) {
-                    data->angleSpeed = -data->angleSpeed;
+                    data->angleSpeed = (2.0f * MBCapsuleEffRandF()) + 5.0f;
+                } else {
+                    data->angleSpeed = -((2.0f * MBCapsuleEffRandF()) + 5.0f);
                 }
                 data->scaleSpeed = 0.035f + (0.035f * MBCapsuleEffRandF());
                 data->delay = mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 15;
                 for (l = 0; l < 3; l++) {
-                    data->pos[l].x = x + (crackScale * capsuleCrackScaleTbl[k][l].x);
+                    data->pos[l].x = ofsX + (scaleX * capsuleCrackScaleTbl[k][l].x);
+                    data->pos[l].z = ofsZ + (scaleZ * capsuleCrackScaleTbl[k][l].z);
                     data->pos[l].y = 0.0f;
-                    data->pos[l].z = z + (crackScale * capsuleCrackScaleTbl[k][l].z);
-                    length = PSVECMag(&data->pos[l]);
-                    if (length > 100.0f) {
-                        PSVECNormalize(&data->pos[l], &data->pos[l]);
+                    scale = CapEffCrackSqrt(
+                        (data->pos[l].x * data->pos[l].x)
+                            + (data->pos[l].z * data->pos[l].z),
+                        &sqrtScaleResult) / 100.0f;
+                    scaleTbl[l] = scale;
+                    if (scaleTbl[l] > 1.0f) {
+                        scale = 1.0f;
+                        if (PSVECMag(&data->pos[l]) > 0.0f) {
+                            PSVECNormalize(&data->pos[l], &data->pos[l]);
+                        }
                         PSVECScale(&data->pos[l], &data->pos[l], 100.0f);
-                        length = 100.0f;
                     }
-                    data->pos[l].y = sqrtf((100.0f * 100.0f) - (length * length));
-                    data->uv[l].x = (data->pos[l].x + 100.0f) / 200.0f;
-                    data->uv[l].y = (data->pos[l].z + 100.0f) / 200.0f;
+                    yOfs = 100.0f;
+                    y = 100.0f * scale;
+                    data->pos[l].y = CapEffCrackSqrt(
+                        (yOfs * yOfs) - (y * y), &sqrtHeightResult);
+                    yOfs = 100.0f;
+                    data->uv[l].x = (data->pos[l].x + yOfs) / 200.0f;
+                    data->uv[l].y = (data->pos[l].z + yOfs) / 200.0f;
                 }
-                pos = data->pos[0];
-                PSVECAdd(&pos, &data->pos[1], &pos);
-                PSVECAdd(&pos, &data->pos[2], &pos);
-                PSVECScale(&pos, &data->vel, 1.0f / 3.0f);
+                vtxPos = data->pos[0];
+                PSVECAdd(&vtxPos, &data->pos[1], &vtxPos);
+                PSVECAdd(&vtxPos, &data->pos[2], &vtxPos);
+                PSVECScale(&vtxPos, &data->vel, 0.333333f);
+                CapEffCrackSqrtStore(
+                    (data->vel.x * data->vel.x)
+                        + (data->vel.z * data->vel.z),
+                    &sqrtVelocityResult, &sqrtVelocityValue);
+                yOfs = sqrtVelocityValue / 100;
+                data->delay = mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 7;
                 if (PSVECMag(&data->vel) > 0.0f) {
                     PSVECNormalize(&data->vel, &data->accel);
                 }
                 PSVECScale(&data->accel, &data->accel,
-                    3.0f * (0.5f + (0.5f * MBCapsuleEffRandF())));
+                    (0.5f + (0.5f * MBCapsuleEffRandF())) * 10.0f);
                 data->prevVel = data->vel;
                 for (l = 0; l < 3; l++) {
-                    PSVECAdd(&data->pos[l], &data->vel, &pos);
-                    data->prevPos[l] = pos;
+                    PSVECSubtract(&data->pos[l], &data->vel, &data->pos[l]);
+                    data->prevPos[l] = data->pos[l];
                 }
                 data->color = capsuleCrackEffColor;
+                if (scaleTbl[0] > 1.0f && scaleTbl[1] > 1.0f
+                    && scaleTbl[2] > 1.0f) {
+                    data->flag = FALSE;
+                    data->scale = 0.0f;
+                }
             }
+            ofsX += scaleX;
         }
+        ofsX = -100.0f;
+        ofsZ += scaleZ;
     }
 
-    dl = HuMemDirectMallocNum(HEAP_MODEL, 65536, model->mallocNo);
-    GXBeginDisplayList(dl, 65536);
+    dlBufHeap = model->mallocNo;
+    dlBufData = HuMemDirectMallocNum(HEAP_MODEL, 65536, dlBufHeap);
+    dlBeginData = dlBufData;
+    dlBegin = dlBuf = dlBeginData;
+    DCFlushRange(dlBuf, 65536);
+    GXBeginDisplayList(dlBegin, 65536);
     GXBegin(GX_TRIANGLES, GX_VTXFMT0, work->vtxNum);
-    for (i = 0; i < work->num; i++) {
+    for (i = 0; i < work->vtxNum / 3; i++) {
         GXPosition1x16(3 * i);
         GXColor1x16(i);
         GXTexCoord1x16(3 * i);
@@ -5896,11 +6015,17 @@ static void CapEffCrackCreate(void)
         GXColor1x16(i);
         GXTexCoord1x16((3 * i) + 2);
     }
+    GXEnd();
     work->dlSize = GXEndDisplayList();
-    work->dl = HuMemDirectMallocNum(HEAP_MODEL, work->dlSize, model->mallocNo);
-    memcpy(work->dl, dl, work->dlSize);
+    work->dlSize > 0x10000;
+    dlDataHeap = model->mallocNo;
+    dlSizeData = work->dlSize;
+    dlData = HuMemDirectMallocNum(HEAP_MODEL, dlSizeData, dlDataHeap);
+    dlP = dlData;
+    work->dl = dlP;
+    memcpy(work->dl, dlBuf, work->dlSize);
     DCFlushRange(work->dl, work->dlSize);
-    HuMemDirectFree(dl);
+    HuMemDirectFree(dlBuf);
 }
 
 static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
