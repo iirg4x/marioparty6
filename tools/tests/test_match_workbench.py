@@ -238,6 +238,92 @@ class MatchWorkbenchTests(unittest.TestCase):
         with self.assertRaisesRegex(module.MatchError, "session target CAS"):
             module.lookup_matches(self.root, self.workspace, self.source)
 
+    def test_repair_target_restores_mutation_and_second_repair_is_unchanged(self) -> None:
+        self._init()
+        self.target.write_bytes(b"mutated-target")
+        with self.assertRaisesRegex(module.MatchError, "session target changed"):
+            module.lookup_matches(self.root, self.workspace, self.source)
+
+        repaired = module.repair_target(self.root, self.workspace)
+        self.assertEqual(repaired["status"], "restored")
+        self.assertFalse(repaired["authority_advanced"])
+        self.assertEqual(self.target.read_bytes(), b"target-bytes")
+        self.assertEqual(
+            module.lookup_matches(self.root, self.workspace, self.source)["status"],
+            "new",
+        )
+
+        repeated = module.repair_target(self.root, self.workspace)
+        self.assertEqual(repeated["status"], "unchanged")
+        self.assertFalse(repeated["authority_advanced"])
+        self.assertEqual(repeated["target"], repaired["target"])
+
+    def test_repair_target_restores_missing_target(self) -> None:
+        self._init()
+        self.target.unlink()
+        repaired = module.repair_target(self.root, self.workspace)
+        self.assertEqual(repaired["status"], "restored")
+        self.assertFalse(repaired["authority_advanced"])
+        self.assertEqual(self.target.read_bytes(), b"target-bytes")
+        self.assertEqual(module._sha256_file(self.target), repaired["target"]["sha256"])
+
+    def test_repair_target_rejects_corrupt_cas(self) -> None:
+        initialized = self._init()
+        target_cas = self.workspace / initialized["session"]["target_blob"]["cas_path"]
+        target_cas.write_bytes(b"tampered-target-cas")
+        self.target.write_bytes(b"mutated-target")
+        with self.assertRaisesRegex(module.MatchError, "session target CAS"):
+            module.repair_target(self.root, self.workspace)
+
+    def test_repair_target_reauthenticates_compiler_and_compile_inputs(self) -> None:
+        compiler = self.root / "compiler.bin"
+        compile_input = self.root / "compile-input.h"
+        compiler.write_bytes(b"compiler")
+        compile_input.write_bytes(b"#define VALUE 1\n")
+        manifest_value = self._manifest()
+        manifest_value["context"] = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/1.3.2",
+            "compiler": _descriptor(compiler),
+            "compile_argv": [str(compiler)],
+            "compile_inputs": [_descriptor(compile_input)],
+            "context_complete": True,
+        }
+        _write_json(self.manifest, manifest_value)
+        workspace = self.root / "build" / "match-context"
+        module.init_workspace(self.root, self.manifest, workspace)
+        self.target.unlink()
+        compile_input.write_bytes(b"#define VALUE 2\n")
+        with self.assertRaisesRegex(module.MatchError, "session compile input 0"):
+            module.repair_target(self.root, workspace)
+
+    def test_repair_target_rejects_target_indirection_and_hardlink(self) -> None:
+        self._init()
+        replacement = self.root / "replacement-target.o"
+        replacement.write_bytes(b"replacement-target")
+        self.target.unlink()
+        try:
+            self.target.symlink_to(replacement)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"symlink creation unavailable: {exc}")
+        with self.assertRaisesRegex(module.MatchError, "indirection"):
+            module.repair_target(self.root, self.workspace)
+
+        self.target.unlink()
+        os.link(replacement, self.target)
+        with self.assertRaisesRegex(module.MatchError, "hard link"):
+            module.repair_target(self.root, self.workspace)
+
+    def test_repair_target_rejects_self_hashed_request_target_rebinding(self) -> None:
+        self._init()
+        self.target.unlink()
+        session_path = self.workspace / "session.json"
+        session = json.loads(session_path.read_text(encoding="utf-8"))
+        session["request"]["target"]["sha256"] = "0" * 64
+        _write_json(session_path, _rehash(session, "session_sha256"))
+        with self.assertRaisesRegex(module.MatchError, "session target CAS is not bound"):
+            module.repair_target(self.root, self.workspace)
+
     def test_self_hashed_session_cannot_rebind_target_away_from_manifest(self) -> None:
         self._init()
         replacement = self.root / "replacement-target.o"
@@ -1028,6 +1114,28 @@ class MatchWorkbenchTests(unittest.TestCase):
         )
         self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
         self.assertEqual(json.loads(process.stdout)["status"], "new")
+
+        self.target.write_bytes(b"mutated-target")
+        repair = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "repair-target",
+                "--workspace",
+                str(self.workspace),
+                "--json",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(repair.returncode, 0, repair.stderr or repair.stdout)
+        self.assertEqual(json.loads(repair.stdout)["status"], "restored")
+        self.assertFalse(json.loads(repair.stdout)["authority_advanced"])
 
     def test_default_text_diagnose_and_matrix_output_has_operational_counts(self) -> None:
         self._init()

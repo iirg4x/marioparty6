@@ -299,6 +299,29 @@ def _snapshot(path: Path, label: str) -> dict[str, Any]:
     }
 
 
+def _validate_target_path(
+    path: Path, *, allow_missing_leaf: bool = False, label: str = "target"
+) -> None:
+    """Validate target path identity without reading its content.
+
+    Repair is allowed to observe a missing target, but it must never treat a
+    symlink/reparse point, directory, or hard-link alias as a repair target.
+    Normal artifact validation continues to use :func:`_snapshot`, which also
+    authenticates the bytes and detects read-time changes.
+    """
+    _assert_no_indirection(path, allow_missing_leaf=allow_missing_leaf)
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        if allow_missing_leaf:
+            return
+        raise MatchError(f"{label} does not exist: {path}") from None
+    if not stat.S_ISREG(info.st_mode):
+        _fail(f"{label} is not a regular file: {path}")
+    if info.st_nlink != 1:
+        _fail(f"{label} must have exactly one hard link: {path}")
+
+
 def _descriptor(value: Any, *, base: Path, label: str) -> dict[str, Any]:
     item = _closed(
         value,
@@ -319,6 +342,34 @@ def descriptor(path: Path | str) -> dict[str, Any]:
     """Return an authenticated descriptor for a regular single-link file."""
     actual = _snapshot(Path(path).expanduser(), "artifact")
     return {key: actual[key] for key in ("path", "size_bytes", "sha256")}
+
+
+def _frozen_target_descriptor(
+    value: Any, *, base: Path, expected: Mapping[str, Any], label: str
+) -> dict[str, Any]:
+    """Validate a request target against a frozen descriptor without reading it.
+
+    This narrowly scoped path is used only while repairing the live target.
+    The request manifest, path shape, claimed size/SHA, and target identity are
+    still authenticated; only the live target-content snapshot is deferred to
+    the CAS-backed restore/check performed by ``repair_target``.
+    """
+    item = _closed(
+        value,
+        allowed={"path", "size_bytes", "sha256"},
+        required={"path", "size_bytes", "sha256"},
+        label=label,
+    )
+    path = _resolve(_text(item["path"], f"{label}.path"), base)
+    size = _integer(item["size_bytes"], f"{label}.size_bytes")
+    sha = _sha256(item["sha256"], f"{label}.sha256")
+    expected_path = _resolve(_text(expected["path"], f"{label}.expected_path"), base)
+    expected_size = _integer(expected["size_bytes"], f"{label}.expected_size_bytes")
+    expected_sha = _sha256(expected["sha256"], f"{label}.expected_sha256")
+    if path != expected_path or size != expected_size or sha != expected_sha:
+        _fail(f"frozen request target does not match {label}")
+    _validate_target_path(path, allow_missing_leaf=True, label=label)
+    return {"path": os.fspath(path), "size_bytes": size, "sha256": sha}
 
 
 def _with_self_hash(value: Mapping[str, Any], field: str) -> dict[str, Any]:
@@ -379,6 +430,69 @@ def _atomic_replace(path: Path, payload: bytes) -> None:
         os.replace(temporary, path)
     finally:
         if temporary.exists():
+            temporary.unlink()
+
+
+def _restore_target_from_cas(
+    target: Path, cas_path: Path, expected: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Atomically restore a target from an authenticated CAS blob."""
+    expected_sha = _sha256(expected.get("sha256"), "target restore.sha256")
+    expected_size = _integer(expected.get("size_bytes"), "target restore.size_bytes")
+    _validate_target_path(target, allow_missing_leaf=True, label="session target")
+
+    cas_before = _snapshot(cas_path, "session target CAS")
+    if (
+        cas_before["sha256"] != expected_sha
+        or cas_before["size_bytes"] != expected_size
+    ):
+        _fail("session target CAS does not match its frozen descriptor")
+
+    temporary: Path | None = None
+    digest = hashlib.sha256()
+    size = 0
+    try:
+        _safe_parent(target)
+        with tempfile.NamedTemporaryFile(
+            "wb", dir=target.parent, prefix=f".{target.name}.", suffix=".tmp", delete=False
+        ) as stream:
+            temporary = Path(stream.name)
+            with cas_path.open("rb") as source:
+                for block in iter(lambda: source.read(1024 * 1024), b""):
+                    stream.write(block)
+                    digest.update(block)
+                    size += len(block)
+            stream.flush()
+            os.fsync(stream.fileno())
+
+        cas_after = _snapshot(cas_path, "session target CAS")
+        if (
+            cas_after["sha256"] != expected_sha
+            or cas_after["size_bytes"] != expected_size
+            or cas_after["sha256"] != cas_before["sha256"]
+            or cas_after["size_bytes"] != cas_before["size_bytes"]
+        ):
+            _fail("session target CAS changed during repair")
+        if digest.hexdigest() != expected_sha or size != expected_size:
+            _fail("session target CAS bytes failed repair verification")
+
+        # Validate immediately before replacement as well as after it.  A
+        # symlink/reparse/hard-link target is never an accepted repair sink.
+        _validate_target_path(target, allow_missing_leaf=True, label="session target")
+        os.replace(temporary, target)
+        temporary = None
+        _validate_target_path(target, label="restored session target")
+        restored = _snapshot(target, "restored session target")
+        if (
+            restored["sha256"] != expected_sha
+            or restored["size_bytes"] != expected_size
+        ):
+            _fail("restored session target does not match its frozen descriptor")
+        return {
+            key: restored[key] for key in ("path", "size_bytes", "sha256")
+        }
+    finally:
+        if temporary is not None and temporary.exists():
             temporary.unlink()
 
 
@@ -469,7 +583,9 @@ def _recheck_descriptor(value: Mapping[str, Any], label: str) -> None:
         _fail(f"{label} changed from its authenticated descriptor")
 
 
-def _load_session(workspace: Path, root: Path) -> Mapping[str, Any]:
+def _load_session(
+    workspace: Path, root: Path, *, skip_live_target_check: bool = False
+) -> Mapping[str, Any]:
     session = _load_json(workspace / "session.json", "session")
     _verify_self_hash(session, "session_sha256", "session")
     _closed(
@@ -521,7 +637,14 @@ def _load_session(workspace: Path, root: Path) -> Mapping[str, Any]:
     _text(target.get("path"), "session target.path")
     _integer(target.get("size_bytes"), "session target.size_bytes")
     _sha256(target.get("sha256"), "session target.sha256")
-    _recheck_descriptor(target, "session target")
+    if skip_live_target_check:
+        _validate_target_path(
+            _resolve(str(target["path"]), root),
+            allow_missing_leaf=True,
+            label="session target",
+        )
+    else:
+        _recheck_descriptor(target, "session target")
     target_blob = session.get("target_blob")
     if not isinstance(target_blob, Mapping):
         _fail("session target CAS is missing")
@@ -599,6 +722,7 @@ def _load_session(workspace: Path, root: Path) -> Mapping[str, Any]:
     manifest_request = _request(
         _load_json(Path(str(manifest["path"])), "session request manifest"),
         root=root,
+        frozen_target=target if skip_live_target_check else None,
     )
     if manifest_request != request:
         _fail("session request no longer matches its authenticated request manifest")
@@ -668,7 +792,9 @@ def _persist_diagnostic_index(
         _atomic_replace(workspace / "index.json", _canonical(_with_self_hash(index, "index_sha256")))
 
 
-def _request(value: Any, *, root: Path) -> dict[str, Any]:
+def _request(
+    value: Any, *, root: Path, frozen_target: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     item = _closed(
         value,
         allowed={
@@ -723,6 +849,16 @@ def _request(value: Any, *, root: Path) -> dict[str, Any]:
     ):
         _fail("request.policy.allowed_job_kinds must be a non-empty unique array")
     kinds = [_identifier(kind, "request.policy.allowed_job_kinds item") for kind in kinds]
+    target = (
+        _descriptor(item["target"], base=root, label="request.target")
+        if frozen_target is None
+        else _frozen_target_descriptor(
+            item["target"],
+            base=root,
+            expected=frozen_target,
+            label="request.target",
+        )
+    )
     return {
         "schema": REQUEST_SCHEMA,
         "schema_version": 1,
@@ -730,7 +866,7 @@ def _request(value: Any, *, root: Path) -> dict[str, Any]:
         "owner": _text(item["owner"], "request.owner"),
         "unit": _text(item["unit"], "request.unit"),
         "function": _text(item["function"], "request.function"),
-        "target": _descriptor(item["target"], base=root, label="request.target"),
+        "target": target,
         "context": {
             "base_commit": _text(context["base_commit"], "request.context.base_commit"),
             "toolchain_key": _text(context["toolchain_key"], "request.context.toolchain_key"),
@@ -785,6 +921,57 @@ def init_workspace(root: Path, manifest: Path | str, workspace: Path | str) -> d
         _write_new(session_path, _canonical(session))
         _write_new(destination / "index.json", _canonical(_empty_index(session["session_sha256"])))
     return {"status": "initialized", "workspace": os.fspath(destination), "session": session}
+
+
+def repair_target(root: Path, workspace: Path | str) -> dict[str, Any]:
+    """Restore a missing or mutated original target from the session CAS.
+
+    All session, manifest, compiler-input, request-binding, and CAS checks are
+    still performed.  The only relaxed check is the live original target
+    content snapshot, which is precisely the state this operation repairs.
+    """
+    root = root.resolve()
+    destination = _workspace(workspace, root)
+    with _workbench_lock(destination / ".workbench.lock", 8.0):
+        session = _load_session(destination, root, skip_live_target_check=True)
+        target = session["request"]["target"]
+        target_path = _resolve(str(target["path"]), root)
+        target_cas = _contained(
+            destination,
+            session["target_blob"]["cas_path"],
+            "session target CAS path",
+        )
+        cas = _snapshot(target_cas, "session target CAS")
+        if cas["sha256"] != target["sha256"] or cas["size_bytes"] != target["size_bytes"]:
+            _fail("session target CAS does not match its frozen descriptor")
+
+        _validate_target_path(
+            target_path, allow_missing_leaf=True, label="session target"
+        )
+        if os.path.lexists(target_path):
+            current = _snapshot(target_path, "session target")
+            if (
+                current["sha256"] == target["sha256"]
+                and current["size_bytes"] == target["size_bytes"]
+            ):
+                return {
+                    "status": "unchanged",
+                    "workspace": os.fspath(destination),
+                    "session_id": session["session_id"],
+                    "target": {
+                        key: current[key] for key in ("path", "size_bytes", "sha256")
+                    },
+                    "authority_advanced": False,
+                }
+
+        restored = _restore_target_from_cas(target_path, target_cas, target)
+        return {
+            "status": "restored",
+            "workspace": os.fspath(destination),
+            "session_id": session["session_id"],
+            "target": restored,
+            "authority_advanced": False,
+        }
 
 
 def _context_key(session: Mapping[str, Any], source_sha: str) -> str:
@@ -2480,6 +2667,12 @@ def _add_commands(commands: Any) -> None:
     init.add_argument("--workspace", required=True)
     init.add_argument("--json", action="store_true")
 
+    repair_target_parser = commands.add_parser(
+        "repair-target", help="restore a missing or mutated target from session CAS"
+    )
+    repair_target_parser.add_argument("--workspace", required=True)
+    repair_target_parser.add_argument("--json", action="store_true")
+
     lookup = commands.add_parser("lookup", help="reject a duplicate source/context before compile")
     lookup.add_argument("--workspace", required=True)
     lookup.add_argument("--source")
@@ -2523,6 +2716,8 @@ def add_match_parser(subparsers: Any) -> argparse.ArgumentParser:
 def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
     if args.match_command == "init":
         result = init_workspace(root, args.manifest, args.workspace)
+    elif args.match_command == "repair-target":
+        result = repair_target(root, args.workspace)
     elif args.match_command == "lookup":
         result = lookup_matches(root, args.workspace, args.source, args.object)
     elif args.match_command == "record":
