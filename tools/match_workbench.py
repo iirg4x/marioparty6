@@ -259,14 +259,14 @@ class _PinnedTargetParent:
         self,
         target: Path,
         *,
-        expected_parent_identity: tuple[int, int, int] | None = None,
+        expected_parent_identity: tuple[int, int] | None = None,
     ) -> None:
         self.target = Path(os.path.abspath(target))
         self.parent = self.target.parent
         self.fd: int | None = None
         self._handles: list[Any] = []
         self._kernel32: Any = None
-        self._parent_identity: tuple[int, int, int] | None = None
+        self._parent_identity: tuple[int, int] | None = None
         self._expected_parent_identity = expected_parent_identity
 
     def __enter__(self) -> "_PinnedTargetParent":
@@ -312,7 +312,7 @@ class _PinnedTargetParent:
         info = os.fstat(self.fd)
         if not stat.S_ISDIR(info.st_mode):
             _fail(f"session target parent is not a directory: {self.parent}")
-        self._parent_identity = (info.st_dev, info.st_ino, info.st_nlink)
+        self._parent_identity = (info.st_dev, info.st_ino)
 
     def _open_windows(self) -> None:
         import ctypes
@@ -380,7 +380,7 @@ class _PinnedTargetParent:
             self.close()
             raise
         info = self.parent.lstat()
-        self._parent_identity = (info.st_dev, info.st_ino, info.st_nlink)
+        self._parent_identity = (info.st_dev, info.st_ino)
 
     def verify(self) -> None:
         """Verify that the named parent still denotes the pinned directory."""
@@ -391,12 +391,12 @@ class _PinnedTargetParent:
             raise MatchError(f"session target parent changed during repair: {self.parent}") from exc
         if not stat.S_ISDIR(info.st_mode):
             _fail(f"session target parent is not a directory: {self.parent}")
-        identity = (info.st_dev, info.st_ino, info.st_nlink)
+        identity = (info.st_dev, info.st_ino)
         if self._parent_identity is not None and identity != self._parent_identity:
             _fail(f"session target parent changed during repair: {self.parent}")
         if self.fd is not None:
             current = os.fstat(self.fd)
-            if (current.st_dev, current.st_ino, current.st_nlink) != identity:
+            if (current.st_dev, current.st_ino) != identity:
                 _fail(f"session target parent changed during repair: {self.parent}")
 
     def close(self) -> None:
@@ -542,7 +542,7 @@ def _validate_target_path(
         _fail(f"{label} must have exactly one hard link: {path}")
 
 
-def _directory_identity(path: Path, label: str) -> tuple[int, int, int]:
+def _directory_identity(path: Path, label: str) -> tuple[int, int]:
     """Return the authenticated identity of a non-indirected directory."""
     _assert_no_indirection(path)
     try:
@@ -551,9 +551,28 @@ def _directory_identity(path: Path, label: str) -> tuple[int, int, int]:
         raise MatchError(f"cannot inspect {label}: {path}: {exc}") from exc
     if not stat.S_ISDIR(info.st_mode):
         _fail(f"{label} is not a directory: {path}")
-    if info.st_nlink != 1:
-        _fail(f"{label} must have exactly one hard link: {path}")
-    return (info.st_dev, info.st_ino, info.st_nlink)
+    # Directory link counts are structural metadata, not a safe identity:
+    # normal POSIX directories commonly have nlink >= 2 and the count changes
+    # when child directories are added or removed.  Regular-file hard-link
+    # checks remain enforced by _snapshot/_validate_target_path.
+    return (info.st_dev, info.st_ino)
+
+
+def _directory_identity_payload(identity: tuple[int, int]) -> dict[str, int]:
+    return {"device": identity[0], "inode": identity[1]}
+
+
+def _parse_directory_identity(value: Any, label: str) -> tuple[int, int]:
+    item = _closed(
+        value,
+        allowed={"device", "inode"},
+        required={"device", "inode"},
+        label=label,
+    )
+    return (
+        _integer(item["device"], f"{label}.device"),
+        _integer(item["inode"], f"{label}.inode"),
+    )
 
 
 def _descriptor(value: Any, *, base: Path, label: str) -> dict[str, Any]:
@@ -668,7 +687,10 @@ def _atomic_replace(path: Path, payload: bytes) -> None:
 
 
 def _restore_target_from_cas(
-    target: Path, cas_path: Path, expected: Mapping[str, Any]
+    target: Path,
+    cas_path: Path,
+    expected: Mapping[str, Any],
+    expected_parent_identity: tuple[int, int],
 ) -> dict[str, Any]:
     """Atomically restore a target from an authenticated CAS blob."""
     expected_sha = _sha256(expected.get("sha256"), "target restore.sha256")
@@ -684,11 +706,8 @@ def _restore_target_from_cas(
 
     digest = hashlib.sha256()
     size = 0
-    intended_parent_identity = _directory_identity(
-        target.parent, "session target parent"
-    )
     with _PinnedTargetParent(
-        target, expected_parent_identity=intended_parent_identity
+        target, expected_parent_identity=expected_parent_identity
     ) as parent:
         _validate_target_path(target, allow_missing_leaf=True, label="session target")
         with _temporary_file_in_pinned_parent(parent, target.name) as (temporary, stream):
@@ -838,7 +857,8 @@ def _load_session(
         session,
         allowed={
             "schema", "schema_version", "session_id", "root", "workspace", "request",
-            "request_manifest", "target_blob", "authority_advanced", "session_sha256",
+            "request_manifest", "target_blob", "target_parent_identity",
+            "authority_advanced", "session_sha256",
         },
         required={
             "schema", "schema_version", "session_id", "root", "workspace", "request",
@@ -883,14 +903,32 @@ def _load_session(
     _text(target.get("path"), "session target.path")
     _integer(target.get("size_bytes"), "session target.size_bytes")
     _sha256(target.get("sha256"), "session target.sha256")
+    target_parent_identity_value = session.get("target_parent_identity")
+    target_parent_identity = None
+    if target_parent_identity_value is not None:
+        target_parent_identity = _parse_directory_identity(
+            target_parent_identity_value, "session target parent identity"
+        )
+    elif skip_live_target_check:
+        _fail("session target parent identity is missing")
+    target_path = _resolve(str(target["path"]), root)
     if skip_live_target_check:
         _validate_target_path(
-            _resolve(str(target["path"]), root),
+            target_path,
             allow_missing_leaf=True,
             label="session target",
         )
     else:
         _recheck_descriptor(target, "session target")
+    if target_parent_identity is not None:
+        current_parent_identity = _directory_identity(
+            target_path.parent, "session target parent"
+        )
+        if current_parent_identity != target_parent_identity:
+            _fail(
+                "session target parent changed from its authenticated identity: "
+                f"{target_path.parent}"
+            )
     target_blob = session.get("target_blob")
     if not isinstance(target_blob, Mapping):
         _fail("session target CAS is missing")
@@ -1151,6 +1189,9 @@ def init_workspace(root: Path, manifest: Path | str, workspace: Path | str) -> d
             _fail("workspace is non-empty but does not contain an immutable session")
         for relative in ("candidates", "diagnostics", "cas/blobs", "cas/reports", "job-output"):
             _safe_mkdir(destination / relative)
+        target_parent_identity = _directory_identity(
+            Path(request["target"]["path"]).parent, "session target parent"
+        )
         target_blob = _copy_blob(destination, Path(request["target"]["path"]), "target", request["target"])
         body = {
             "schema": SESSION_SCHEMA,
@@ -1161,6 +1202,7 @@ def init_workspace(root: Path, manifest: Path | str, workspace: Path | str) -> d
             "request": request,
             "request_manifest": {key: manifest_snapshot[key] for key in ("path", "size_bytes", "sha256")},
             "target_blob": target_blob,
+            "target_parent_identity": _directory_identity_payload(target_parent_identity),
             "authority_advanced": False,
         }
         session = _with_self_hash(body, "session_sha256")
@@ -1210,7 +1252,16 @@ def repair_target(root: Path, workspace: Path | str) -> dict[str, Any]:
                     "authority_advanced": False,
                 }
 
-        restored = _restore_target_from_cas(target_path, target_cas, target)
+        expected_parent_identity = _parse_directory_identity(
+            session.get("target_parent_identity"),
+            "session target parent identity",
+        )
+        restored = _restore_target_from_cas(
+            target_path,
+            target_cas,
+            target,
+            expected_parent_identity,
+        )
         return {
             "status": "restored",
             "workspace": os.fspath(destination),

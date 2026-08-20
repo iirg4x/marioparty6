@@ -238,6 +238,17 @@ class MatchWorkbenchTests(unittest.TestCase):
         with self.assertRaisesRegex(module.MatchError, "session target CAS"):
             module.lookup_matches(self.root, self.workspace, self.source)
 
+    def test_repair_requires_authenticated_target_parent_identity(self) -> None:
+        self._init()
+        session_path = self.workspace / "session.json"
+        session = json.loads(session_path.read_text(encoding="utf-8"))
+        session.pop("target_parent_identity")
+        _write_json(session_path, _rehash(session, "session_sha256"))
+        with self.assertRaisesRegex(
+            module.MatchError, "session target parent identity is missing"
+        ):
+            module.repair_target(self.root, self.workspace)
+
     def test_repair_target_restores_mutation_and_second_repair_is_unchanged(self) -> None:
         self._init()
         self.target.write_bytes(b"mutated-target")
@@ -348,6 +359,51 @@ class MatchWorkbenchTests(unittest.TestCase):
             (displaced_parent / "target.o").read_bytes(), b"mutated-target"
         )
         self.assertFalse((target_parent / "target.o").exists())
+
+    def test_repair_target_parent_replacement_after_session_auth_fails_closed(self) -> None:
+        target_parent = self.root / "target-parent-after-session-auth"
+        target_parent.mkdir()
+        target = target_parent / "target.o"
+        target.write_bytes(b"target-bytes")
+        _write_json(self.manifest, self._manifest(target=_descriptor(target)))
+        workspace = self.root / "build" / "match-parent-after-session-auth"
+        module.init_workspace(self.root, self.manifest, workspace)
+        target.write_bytes(b"mutated-target")
+
+        displaced_parent = self.root / "displaced-target-parent-after-session-auth"
+        real_load_session = module._load_session
+        swap_attempted = False
+
+        def swapping_load_session(*args: object, **kwargs: object) -> object:
+            nonlocal swap_attempted
+            session = real_load_session(*args, **kwargs)
+            swap_attempted = True
+            target_parent.rename(displaced_parent)
+            target_parent.mkdir()
+            return session
+
+        with mock.patch.object(
+            module, "_load_session", side_effect=swapping_load_session
+        ):
+            with self.assertRaisesRegex(
+                module.MatchError,
+                "session target parent changed from its authenticated identity|"
+                "session target parent changed before pin",
+            ):
+                module.repair_target(self.root, workspace)
+
+        self.assertTrue(swap_attempted)
+        self.assertEqual(
+            (displaced_parent / "target.o").read_bytes(), b"mutated-target"
+        )
+        self.assertFalse((target_parent / "target.o").exists())
+
+    def test_directory_identity_accepts_normal_posix_link_count(self) -> None:
+        directory = self.root / "normal-directory"
+        directory.mkdir()
+        (directory / "child-directory").mkdir()
+        identity = module._directory_identity(directory, "normal directory")
+        self.assertEqual(identity, (directory.stat().st_dev, directory.stat().st_ino))
 
     def test_repair_target_rejects_corrupt_cas(self) -> None:
         initialized = self._init()
