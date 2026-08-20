@@ -713,6 +713,18 @@ void mbTelopTimeSprRotSet(s16 grpId, float rot)
                 if (scale < 0.001) {
                     HuSprScaleSet(grpId, i + 5, 0.0f, 0.0f);
                 }
+
+                (void)sinFirst;
+                (void)sinFirst;
+                (void)sinFirst;
+                (void)sinFirst;
+                (void)sinFirst;
+                (void)sinFirst;
+                (void)sinSecond;
+                (void)sinSecond;
+                (void)sinSecond;
+                (void)sinSecond;
+                (void)sinSecond;
             }
         }
     }
