@@ -44,6 +44,7 @@ JOBS_SCHEMA = "match_workbench_jobs/v1"
 DIAGNOSTIC_SCHEMA = "match_workbench_diagnostic/v1"
 MATRIX_SCHEMA = "match_workbench_matrix/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
+COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 SCHEMA_VERSION = 1
 
 SAFE_RESOURCE_CLASSES = frozenset(
@@ -196,6 +197,13 @@ def _resolve(value: str | os.PathLike[str], base: Path) -> Path:
     return Path(os.path.abspath(path if path.is_absolute() else base / path))
 
 
+def _normalized_compile_input_path(value: str | os.PathLike[str]) -> str:
+    """Return the stable lexical identity used for a compiler source input."""
+    absolute = os.path.abspath(os.fspath(value))
+    normalized = os.path.normcase(os.path.normpath(absolute))
+    return Path(normalized).as_posix()
+
+
 def _assert_no_indirection(path: Path, *, allow_missing_leaf: bool = False) -> None:
     absolute = Path(os.path.abspath(path))
     parts = absolute.parts
@@ -296,6 +304,59 @@ def _snapshot(path: Path, label: str) -> dict[str, Any]:
             "nlink": before.st_nlink,
             "mtime_ns": before.st_mtime_ns,
         },
+    }
+
+
+def _recheck_live_snapshot(path: Path, expected: Mapping[str, Any], label: str) -> None:
+    """Reject content changes and same-byte file replacement within one operation."""
+    current = _snapshot(path, label)
+    if current["size_bytes"] != expected.get("size_bytes") or current["sha256"] != expected.get("sha256"):
+        _fail(f"{label} changed from its authenticated snapshot")
+    expected_identity = expected.get("identity")
+    if isinstance(expected_identity, Mapping) and current.get("identity") != expected_identity:
+        _fail(f"{label} identity changed from its authenticated snapshot")
+
+
+def _compile_input_identity(source_snapshot: Mapping[str, Any]) -> dict[str, str]:
+    """Bind a context key only to a path authenticated by a live source snapshot."""
+    if not isinstance(source_snapshot.get("identity"), Mapping):
+        _fail("candidate source path lacks an authenticated file identity")
+    source_path = _text(source_snapshot.get("path"), "candidate source.path")
+    if not Path(source_path).is_absolute():
+        _fail("candidate source path must be absolute before context binding")
+    return {
+        "schema": COMPILE_INPUT_SCHEMA,
+        "normalized_path": _normalized_compile_input_path(source_path),
+        "source_sha256": _sha256(source_snapshot.get("sha256"), "candidate source.sha256"),
+    }
+
+
+def _validate_compile_input_identity(
+    value: Any, source: Mapping[str, Any], label: str = "candidate compile_input_identity"
+) -> dict[str, str]:
+    item = _closed(
+        value,
+        allowed={"schema", "normalized_path", "source_sha256"},
+        required={"schema", "normalized_path", "source_sha256"},
+        label=label,
+    )
+    if item["schema"] != COMPILE_INPUT_SCHEMA:
+        _fail(f"{label}.schema is unsupported")
+    normalized_path = _text(item["normalized_path"], f"{label}.normalized_path")
+    if normalized_path != _normalized_compile_input_path(normalized_path):
+        _fail(f"{label}.normalized_path is not canonical")
+    expected_path = _normalized_compile_input_path(
+        _text(source.get("path"), "candidate source.path")
+    )
+    if normalized_path != expected_path:
+        _fail(f"{label} is not bound to the candidate source path")
+    source_sha = _sha256(item["source_sha256"], f"{label}.source_sha256")
+    if source_sha != _sha256(source.get("sha256"), "candidate source.sha256"):
+        _fail(f"{label} is not bound to the candidate source bytes")
+    return {
+        "schema": COMPILE_INPUT_SCHEMA,
+        "normalized_path": normalized_path,
+        "source_sha256": source_sha,
     }
 
 
@@ -787,7 +848,7 @@ def init_workspace(root: Path, manifest: Path | str, workspace: Path | str) -> d
     return {"status": "initialized", "workspace": os.fspath(destination), "session": session}
 
 
-def _context_key(session: Mapping[str, Any], source_sha: str) -> str:
+def _legacy_context_key(session: Mapping[str, Any], source_sha: str) -> str:
     value = {
         "session_sha256": session["session_sha256"],
         "source_sha256": source_sha,
@@ -795,6 +856,53 @@ def _context_key(session: Mapping[str, Any], source_sha: str) -> str:
         "context": session["request"]["context"],
     }
     return _sha256_bytes(_canonical(value))
+
+
+def _context_key(
+    session: Mapping[str, Any], source_sha: str, compile_input_identity: Mapping[str, Any]
+) -> str:
+    value = {
+        "session_sha256": session["session_sha256"],
+        "source_sha256": source_sha,
+        "target_sha256": session["request"]["target"]["sha256"],
+        "context": session["request"]["context"],
+        "compile_input_identity": dict(compile_input_identity),
+    }
+    return _sha256_bytes(_canonical(value))
+
+
+def _source_index_match(
+    workspace: Path,
+    index: Mapping[str, Any],
+    session: Mapping[str, Any],
+    source_snapshot: Mapping[str, Any],
+    compile_input_identity: Mapping[str, Any],
+) -> tuple[str, str | None, Mapping[str, Any] | None]:
+    """Find a path-bound source record, with a narrow legacy-record fallback."""
+    source_sha = str(source_snapshot["sha256"])
+    source_key = _context_key(session, source_sha, compile_input_identity)
+    candidate_id = index["source_context_index"].get(source_key)
+    if candidate_id is not None:
+        candidate = _load_candidate(workspace, candidate_id, session)
+        if candidate.get("source_context_key") != source_key:
+            _fail("source/context index does not match its immutable candidate record")
+        return source_key, candidate_id, candidate
+
+    # Records written before compile-input path binding remain readable and
+    # reusable only at the exact normalized path they originally recorded.
+    legacy_key = _legacy_context_key(session, source_sha)
+    legacy_id = index["source_context_index"].get(legacy_key)
+    if legacy_id is None:
+        return source_key, None, None
+    legacy = _load_candidate(workspace, legacy_id, session)
+    if legacy.get("source_context_key") != legacy_key:
+        _fail("legacy source/context index does not match its immutable candidate record")
+    if legacy.get("compile_input_identity") is not None:
+        _fail("path-bound candidate is indexed by a legacy source/context key")
+    legacy_path = _normalized_compile_input_path(legacy["source"]["path"])
+    if legacy_path == compile_input_identity["normalized_path"]:
+        return legacy_key, legacy_id, legacy
+    return source_key, None, None
 
 
 def _object_key(session: Mapping[str, Any], object_sha: str) -> str:
@@ -817,18 +925,28 @@ def lookup_matches(
     index = _load_index(destination, session)
     source_snapshot = None
     source_key = None
+    source_candidate = None
     if source is not None:
-        source_snapshot = _snapshot(_resolve(source, root), "candidate source")
-        source_key = _context_key(session, source_snapshot["sha256"])
-    source_match = index["source_context_index"].get(source_key) if source_key else None
+        source_path = _resolve(source, root)
+        source_snapshot = _snapshot(source_path, "candidate source")
+        compile_input_identity = _compile_input_identity(source_snapshot)
+        source_key, source_match, source_candidate = _source_index_match(
+            destination, index, session, source_snapshot, compile_input_identity
+        )
+    else:
+        source_path = None
+        source_match = None
     object_match = None
     object_snapshot = None
     if object_path is not None:
         object_snapshot = _snapshot(_resolve(object_path, root), "candidate object")
         object_match = index["object_index"].get(_object_key(session, object_snapshot["sha256"]))
     loaded_matches: dict[str, Mapping[str, Any]] = {}
+    if source_match is not None and source_candidate is not None:
+        loaded_matches[source_match] = source_candidate
     for matched_id in {item for item in (source_match, object_match) if item is not None}:
-        loaded_matches[matched_id] = _load_candidate(destination, matched_id, session)
+        if matched_id not in loaded_matches:
+            loaded_matches[matched_id] = _load_candidate(destination, matched_id, session)
     if source_match and loaded_matches[source_match].get("source_context_key") != source_key:
         _fail("source/context index does not match its immutable candidate record")
     if object_match and loaded_matches[object_match].get("object_result_key") != _object_key(
@@ -848,12 +966,17 @@ def lookup_matches(
         status = "known_source"
     elif object_match:
         status = "known_object"
+    if source_snapshot is not None and source_path is not None:
+        _recheck_live_snapshot(source_path, source_snapshot, "candidate source")
+    if object_snapshot is not None and object_path is not None:
+        _recheck_live_snapshot(_resolve(object_path, root), object_snapshot, "candidate object")
     return {
         "status": status,
         "source_sha256": source_snapshot["sha256"] if source_snapshot else None,
         "object_sha256": object_snapshot["sha256"] if object_snapshot else None,
         "source_candidate_id": source_match,
         "object_candidate_id": object_match,
+        "source_context_key": source_key,
         "skip_compile": bool(source_match) and bool(session["request"]["context"].get("context_complete", False)) and not conflict,
         # A known object alone does not prove that the requested diagnostic
         # manifest has run.  Diagnose remains cheap because exact fingerprints
@@ -873,6 +996,76 @@ def lookup_matches(
     }
 
 
+def _copy_authenticated_file(
+    source: Path, target: Any, expected: Mapping[str, Any], label: str
+) -> None:
+    """Copy one authenticated file through a stable handle and path identity."""
+    _assert_no_indirection(source)
+    try:
+        before_link = source.lstat()
+        flags = os.O_RDONLY
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
+        handle = os.open(os.fspath(source), flags)
+    except OSError as exc:
+        raise MatchError(f"cannot open {label}: {source}: {exc}") from exc
+    try:
+        before = os.fstat(handle)
+        if not stat.S_ISREG(before.st_mode):
+            _fail(f"{label} is not a regular file: {source}")
+        if before.st_nlink != 1:
+            _fail(f"{label} must have exactly one hard link: {source}")
+        path_identity = (before_link.st_dev, before_link.st_ino, before_link.st_nlink)
+        handle_identity = (before.st_dev, before.st_ino, before.st_nlink)
+        if path_identity != handle_identity:
+            _fail(f"{label} changed before it was copied: {source}")
+        expected_identity = expected.get("identity")
+        if isinstance(expected_identity, Mapping):
+            authenticated_identity = {
+                "device": before.st_dev,
+                "inode": before.st_ino,
+                "nlink": before.st_nlink,
+                "mtime_ns": before.st_mtime_ns,
+            }
+            if authenticated_identity != expected_identity:
+                _fail(f"{label} identity changed from its authenticated snapshot")
+        digest = hashlib.sha256()
+        size = 0
+        with os.fdopen(handle, "rb", closefd=False) as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+                size += len(block)
+                target.write(block)
+        after = os.fstat(handle)
+        after_link = source.lstat()
+    finally:
+        os.close(handle)
+    stable_before = (
+        before.st_dev,
+        before.st_ino,
+        before.st_nlink,
+        before.st_size,
+        before.st_mtime_ns,
+    )
+    stable_after = (
+        after.st_dev,
+        after.st_ino,
+        after.st_nlink,
+        after.st_size,
+        after.st_mtime_ns,
+    )
+    if stable_before != stable_after:
+        _fail(f"{label} changed while it was copied: {source}")
+    if (after_link.st_dev, after_link.st_ino, after_link.st_nlink) != (
+        after.st_dev,
+        after.st_ino,
+        after.st_nlink,
+    ):
+        _fail(f"{label} path changed while it was copied: {source}")
+    if size != expected.get("size_bytes") or digest.hexdigest() != expected.get("sha256"):
+        _fail(f"{label} changed from its authenticated snapshot")
+
+
 def _copy_blob(workspace: Path, source: Path, kind: str, snapshot: Mapping[str, Any]) -> dict[str, Any]:
     sha = str(snapshot["sha256"])
     output = workspace / "cas" / "blobs" / kind / sha[:2] / f"{sha}.bin"
@@ -883,22 +1076,22 @@ def _copy_blob(workspace: Path, source: Path, kind: str, snapshot: Mapping[str, 
         if current["sha256"] != sha or current["size_bytes"] != snapshot["size_bytes"]:
             _fail(f"content-addressed {kind} blob collision: {output}")
     else:
-        with tempfile.NamedTemporaryFile(
-            "wb", dir=output.parent, prefix=f".{sha}.", suffix=".tmp", delete=False
-        ) as target:
-            temporary = Path(target.name)
-            with source.open("rb") as stream:
-                for block in iter(lambda: stream.read(1024 * 1024), b""):
-                    target.write(block)
-            target.flush()
-            os.fsync(target.fileno())
-        if _sha256_file(temporary) != sha or temporary.stat().st_size != snapshot["size_bytes"]:
-            temporary.unlink(missing_ok=True)
-            _fail(f"{kind} changed while copying to content-addressed storage")
-        os.replace(temporary, output)
-    after = _snapshot(source, f"candidate {kind}")
-    if after["sha256"] != sha or after["size_bytes"] != snapshot["size_bytes"]:
-        _fail(f"candidate {kind} changed during content-addressed copy")
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "wb", dir=output.parent, prefix=f".{sha}.", suffix=".tmp", delete=False
+            ) as target:
+                temporary = Path(target.name)
+                _copy_authenticated_file(source, target, snapshot, f"candidate {kind}")
+                target.flush()
+                os.fsync(target.fileno())
+            if _sha256_file(temporary) != sha or temporary.stat().st_size != snapshot["size_bytes"]:
+                _fail(f"{kind} changed while copying to content-addressed storage")
+            os.replace(temporary, output)
+        finally:
+            if temporary is not None and temporary.exists():
+                temporary.unlink()
+    _recheck_live_snapshot(source, snapshot, f"candidate {kind}")
     cached = _snapshot(output, f"cached {kind} blob")
     return {
         "kind": kind,
@@ -1141,7 +1334,7 @@ def _load_candidate(
         value,
         allowed={
             "schema", "schema_version", "session_sha256", "candidate_id", "ordinal",
-            "source", "object", "source_context_key", "object_result_key",
+            "source", "object", "compile_input_identity", "source_context_key", "object_result_key",
             "source_blob", "object_blob", "reports", "hypothesis", "outcome",
             "report_binding", "telemetry", "duplicate_of", "previous_record_sha256", "authority_advanced",
             "record_sha256",
@@ -1173,7 +1366,15 @@ def _load_candidate(
         _closed(descriptor_value, allowed={"path", "size_bytes", "sha256"}, required={"path", "size_bytes", "sha256"}, label=f"candidate {label}")
         _text(descriptor_value["path"], f"candidate {label}.path")
         _integer(descriptor_value["size_bytes"], f"candidate {label}.size_bytes")
-    if value.get("source_context_key") != _context_key(session, value["source"]["sha256"]):
+    compile_input_value = value.get("compile_input_identity")
+    if compile_input_value is None:
+        expected_source_key = _legacy_context_key(session, value["source"]["sha256"])
+    else:
+        compile_input = _validate_compile_input_identity(compile_input_value, value["source"])
+        expected_source_key = _context_key(
+            session, value["source"]["sha256"], compile_input
+        )
+    if value.get("source_context_key") != expected_source_key:
         _fail("candidate source context key mismatch")
     if value.get("object_result_key") != _object_key(session, value["object"]["sha256"]):
         _fail("candidate object result key mismatch")
@@ -1286,6 +1487,7 @@ def record_candidate(
     strict_path = _resolve(strict_report, root)
     data_path = _resolve(data_report, root) if data_report is not None else None
     source_snapshot = _snapshot(source_path, "candidate source")
+    compile_input_identity = _compile_input_identity(source_snapshot)
     object_snapshot = _snapshot(object_file, "candidate object")
     _snapshot(strict_path, "strict report")
     if data_path is not None:
@@ -1294,7 +1496,9 @@ def record_candidate(
     with _workbench_lock(lock_path, 8.0):
         session = _load_session(destination, root)
         index = _load_index(destination, session)
-        source_key = _context_key(session, source_snapshot["sha256"])
+        source_key = _context_key(
+            session, source_snapshot["sha256"], compile_input_identity
+        )
         object_key = _object_key(session, object_snapshot["sha256"])
         existing_path = _candidate_path(destination, candidate_id)
         if candidate_id in index["candidates"] and not existing_path.is_file():
@@ -1321,6 +1525,8 @@ def record_candidate(
                 _atomic_replace(destination / "index.json", _canonical(_with_self_hash(index, "index_sha256")))
             same = (
                 existing["source"]["sha256"] == source_snapshot["sha256"]
+                and _normalized_compile_input_path(existing["source"]["path"])
+                == compile_input_identity["normalized_path"]
                 and existing["object"]["sha256"] == object_snapshot["sha256"]
                 and existing["hypothesis"]["name"] == _text(hypothesis, "hypothesis")
                 and existing["hypothesis"]["axis"] == _text(axis, "axis")
@@ -1343,6 +1549,8 @@ def record_candidate(
                 == _seconds(heavy_seconds, "heavy_seconds")
             )
             if same:
+                _recheck_live_snapshot(source_path, source_snapshot, "candidate source")
+                _recheck_live_snapshot(object_file, object_snapshot, "candidate object")
                 return {"status": "unchanged", "record": existing}
             _fail(f"candidate_id already records different evidence: {candidate_id}")
         source_blob = _copy_blob(destination, source_path, "source", source_snapshot)
@@ -1350,7 +1558,9 @@ def record_candidate(
         strict = _store_report(destination, strict_path, session, "strict report")
         data = _store_report(destination, data_path, session, "data report") if data_path else None
         object_duplicate = index["object_index"].get(object_key)
-        source_duplicate = index["source_context_index"].get(source_key)
+        _, source_duplicate, _ = _source_index_match(
+            destination, index, session, source_snapshot, compile_input_identity
+        )
         if source_duplicate and source_duplicate != object_duplicate:
             _fail(
                 "the same frozen source/context produced a different object; "
@@ -1367,6 +1577,7 @@ def record_candidate(
                 "ordinal": ordinal,
                 "source": {key: source_snapshot[key] for key in ("path", "size_bytes", "sha256")},
                 "object": {key: object_snapshot[key] for key in ("path", "size_bytes", "sha256")},
+                "compile_input_identity": compile_input_identity,
                 "source_context_key": source_key,
                 "object_result_key": object_key,
                 "source_blob": source_blob,

@@ -358,14 +358,17 @@ class MatchWorkbenchTests(unittest.TestCase):
         duplicate = self._record("c2", source=source2, object_path=object2, strict_report=strict2, data_report=self.data)
         self.assertEqual(duplicate["status"], "duplicate")
         self.assertEqual(duplicate["record"]["duplicate_of"], "c1")
+        self.assertNotEqual(
+            duplicate["record"]["source_context_key"], record["source_context_key"]
+        )
         self.assertTrue(duplicate["record"]["reports"]["strict"]["dedup_hit"])
         self.assertEqual(duplicate["record"]["reports"]["strict"]["cas_path"], strict_info["cas_path"])
 
         jobs = self._jobs(self._job_script(), job_ids=("reuse",))
         module.diagnose_candidate(self.root, self.workspace, "c1", jobs)
         reused = module.diagnose_candidate(self.root, self.workspace, "c2", jobs)
-        self.assertEqual(reused["summary"], {"ran": 0, "cached": 1, "failed": 0})
-        self.assertEqual(reused["jobs"][0]["cache_status"], "cached")
+        self.assertEqual(reused["summary"], {"ran": 1, "cached": 0, "failed": 0})
+        self.assertEqual(reused["jobs"][0]["cache_status"], "ran")
 
     def test_missing_or_corrupt_report_cas_fails_matrix(self) -> None:
         self._init()
@@ -396,16 +399,39 @@ class MatchWorkbenchTests(unittest.TestCase):
     def test_lookup_source_and_object_indexes_skip_work(self) -> None:
         self._init()
         self.assertEqual(module.lookup_matches(self.root, self.workspace, self.source)["status"], "new")
-        self._record()
+        first = self._record()
+        normalized_alias = module.lookup_matches(
+            self.root, self.workspace, self.source.relative_to(self.root)
+        )
+        self.assertEqual(normalized_alias["status"], "known_source")
+        self.assertEqual(
+            normalized_alias["source_context_key"], first["record"]["source_context_key"]
+        )
         source_copy = self.root / "source-copy.c"
         source_copy.write_bytes(self.source.read_bytes())
         object_other = self.root / "other.o"
         object_other.write_bytes(b"different-object")
         source_hit = module.lookup_matches(self.root, self.workspace, source_copy, object_other)
-        self.assertEqual(source_hit["status"], "conflict")
+        self.assertEqual(source_hit["status"], "new")
         self.assertFalse(source_hit["skip_compile"])
         self.assertFalse(source_hit["skip_diagnostics"])
-        self.assertIn("same frozen source/context", source_hit["reason"])
+        self.assertNotEqual(source_hit["source_context_key"], first["record"]["source_context_key"])
+
+        # The same bytes are a distinct compile context when the compiler sees
+        # a different source path/basename, so a different object is permitted.
+        second = self._record("c2", source=source_copy, object_path=object_other)
+        self.assertEqual(second["status"], "recorded")
+        self.assertNotEqual(
+            second["record"]["source_context_key"], first["record"]["source_context_key"]
+        )
+
+        object_third = self.root / "third.o"
+        object_third.write_bytes(b"third-object")
+        original_path_conflict = module.lookup_matches(
+            self.root, self.workspace, self.source, object_third
+        )
+        self.assertEqual(original_path_conflict["status"], "conflict")
+        self.assertIn("same frozen source/context", original_path_conflict["reason"])
 
         other_source = self.root / "other.c"
         other_source.write_text("int fn(void) { return 2; }\n", encoding="utf-8")
@@ -414,6 +440,74 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertFalse(object_hit["skip_compile"])
         self.assertFalse(object_hit["skip_diagnostics"])
         self.assertEqual(object_hit["diagnostic_reuse_candidate_id"], "c1")
+
+    def test_legacy_source_context_record_remains_readable_only_at_its_recorded_path(self) -> None:
+        self._init()
+        recorded = self._record()
+        candidate_path = self.workspace / "candidates" / "c1.json"
+        candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+        candidate.pop("compile_input_identity")
+        session = module._load_session(self.workspace, self.root)
+        legacy_key = module._legacy_context_key(session, candidate["source"]["sha256"])
+        candidate["source_context_key"] = legacy_key
+        candidate = _rehash(candidate, "record_sha256")
+        _write_json(candidate_path, candidate)
+
+        index_path = self.workspace / "index.json"
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        index["source_context_index"] = {legacy_key: "c1"}
+        index["last_record_sha256"] = candidate["record_sha256"]
+        _write_json(index_path, _rehash(index, "index_sha256"))
+
+        same_path = module.lookup_matches(self.root, self.workspace, self.source)
+        self.assertEqual(same_path["status"], "known_source")
+        self.assertEqual(same_path["source_context_key"], legacy_key)
+        self.assertEqual(module.build_matrix(self.root, self.workspace)["aggregate"]["candidate_count"], 1)
+
+        copied = self.root / "legacy-copy.c"
+        copied.write_bytes(self.source.read_bytes())
+        copied_lookup = module.lookup_matches(self.root, self.workspace, copied)
+        self.assertEqual(copied_lookup["status"], "new")
+        self.assertNotEqual(copied_lookup["source_context_key"], legacy_key)
+
+    def test_lookup_rejects_same_byte_source_replacement_during_identity_check(self) -> None:
+        self._init()
+        self._record()
+        original_loader = module._load_candidate
+        replaced = False
+
+        def replace_source(*args: object, **kwargs: object) -> object:
+            nonlocal replaced
+            if not replaced:
+                replacement = self.root / "lookup-replacement.c"
+                replacement.write_bytes(self.source.read_bytes())
+                os.replace(replacement, self.source)
+                replaced = True
+            return original_loader(*args, **kwargs)
+
+        with mock.patch.object(module, "_load_candidate", side_effect=replace_source):
+            with self.assertRaisesRegex(module.MatchError, "identity changed"):
+                module.lookup_matches(self.root, self.workspace, self.source)
+
+    def test_record_rejects_same_byte_source_replacement_before_cas_copy(self) -> None:
+        self._init()
+        original_load_index = module._load_index
+        replaced = False
+
+        def replace_source(*args: object, **kwargs: object) -> object:
+            nonlocal replaced
+            if not replaced:
+                replacement = self.root / "record-replacement.c"
+                replacement.write_bytes(self.source.read_bytes())
+                os.replace(replacement, self.source)
+                replaced = True
+            return original_load_index(*args, **kwargs)
+
+        with mock.patch.object(module, "_load_index", side_effect=replace_source):
+            with self.assertRaisesRegex(module.MatchError, "identity changed"):
+                self._record()
+        self.assertFalse((self.workspace / "candidates" / "c1.json").exists())
+        self.assertFalse(any(path.name.endswith(".tmp") for path in self.workspace.rglob("*")))
 
     def test_lookup_fails_closed_for_missing_indexed_record_or_candidate_cas(self) -> None:
         self._init()
