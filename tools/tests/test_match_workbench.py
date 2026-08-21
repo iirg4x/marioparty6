@@ -293,6 +293,230 @@ class MatchWorkbenchTests(unittest.TestCase):
         with self.assertRaisesRegex(module.MatchError, "session target CAS"):
             module.lookup_matches(self.root, self.workspace, self.source)
 
+    def test_repair_requires_authenticated_target_parent_identity(self) -> None:
+        self._init()
+        session_path = self.workspace / "session.json"
+        session = json.loads(session_path.read_text(encoding="utf-8"))
+        session.pop("target_parent_identity")
+        _write_json(session_path, _rehash(session, "session_sha256"))
+        with self.assertRaisesRegex(
+            module.MatchError, "session target parent identity is missing"
+        ):
+            module.repair_target(self.root, self.workspace)
+
+    def test_repair_target_restores_mutation_and_second_repair_is_unchanged(self) -> None:
+        self._init()
+        self.target.write_bytes(b"mutated-target")
+        with self.assertRaisesRegex(module.MatchError, "session target changed"):
+            module.lookup_matches(self.root, self.workspace, self.source)
+
+        repaired = module.repair_target(self.root, self.workspace)
+        self.assertEqual(repaired["status"], "restored")
+        self.assertFalse(repaired["authority_advanced"])
+        self.assertEqual(self.target.read_bytes(), b"target-bytes")
+        self.assertEqual(
+            module.lookup_matches(self.root, self.workspace, self.source)["status"],
+            "new",
+        )
+
+        repeated = module.repair_target(self.root, self.workspace)
+        self.assertEqual(repeated["status"], "unchanged")
+        self.assertFalse(repeated["authority_advanced"])
+        self.assertEqual(repeated["target"], repaired["target"])
+
+    def test_repair_target_restores_missing_target(self) -> None:
+        self._init()
+        self.target.unlink()
+        repaired = module.repair_target(self.root, self.workspace)
+        self.assertEqual(repaired["status"], "restored")
+        self.assertFalse(repaired["authority_advanced"])
+        self.assertEqual(self.target.read_bytes(), b"target-bytes")
+        self.assertEqual(module._sha256_file(self.target), repaired["target"]["sha256"])
+
+    def test_repair_target_parent_replacement_cannot_redirect_write(self) -> None:
+        target_parent = self.root / "target-parent"
+        target_parent.mkdir()
+        target = target_parent / "target.o"
+        target.write_bytes(b"target-bytes")
+        _write_json(self.manifest, self._manifest(target=_descriptor(target)))
+        workspace = self.root / "build" / "match-parent-replacement"
+        module.init_workspace(self.root, self.manifest, workspace)
+        target.write_bytes(b"mutated-target")
+
+        displaced_parent = self.root / "displaced-target-parent"
+        redirected_target = target_parent / "target.o"
+        swap_attempted = False
+        swap_blocked = False
+        real_replace = module.os.replace
+
+        def swapping_replace(src: object, dst: object, *args: object, **kwargs: object) -> None:
+            nonlocal swap_attempted, swap_blocked
+            if not swap_attempted:
+                swap_attempted = True
+                try:
+                    target_parent.rename(displaced_parent)
+                except OSError:
+                    # Windows directory handles held without delete sharing
+                    # must make the path replacement itself fail.
+                    swap_blocked = True
+                else:
+                    target_parent.mkdir()
+                    redirected_target.write_bytes(b"outside-target")
+            real_replace(src, dst, *args, **kwargs)
+
+        with mock.patch.object(module.os, "replace", side_effect=swapping_replace):
+            if module.os.name == "nt":
+                repaired = module.repair_target(self.root, workspace)
+                self.assertEqual(repaired["status"], "restored")
+                self.assertTrue(swap_blocked)
+                self.assertEqual(target.read_bytes(), b"target-bytes")
+            else:
+                with self.assertRaises(module.MatchError):
+                    module.repair_target(self.root, workspace)
+                self.assertTrue(swap_attempted)
+                self.assertEqual(redirected_target.read_bytes(), b"outside-target")
+
+    def test_repair_target_parent_replacement_before_pin_fails_closed(self) -> None:
+        target_parent = self.root / "target-parent-before-pin"
+        target_parent.mkdir()
+        target = target_parent / "target.o"
+        target.write_bytes(b"target-bytes")
+        _write_json(self.manifest, self._manifest(target=_descriptor(target)))
+        workspace = self.root / "build" / "match-parent-before-pin"
+        module.init_workspace(self.root, self.manifest, workspace)
+        target.write_bytes(b"mutated-target")
+
+        displaced_parent = self.root / "displaced-target-parent-before-pin"
+        method_name = "_open_windows" if module.os.name == "nt" else "_open_posix"
+        real_open = getattr(module._PinnedTargetParent, method_name)
+        swap_attempted = False
+
+        def swapping_open(parent: object) -> object:
+            nonlocal swap_attempted
+            swap_attempted = True
+            target_parent.rename(displaced_parent)
+            target_parent.mkdir()
+            return real_open(parent)
+
+        with mock.patch.object(
+            module._PinnedTargetParent,
+            method_name,
+            autospec=True,
+            side_effect=swapping_open,
+        ):
+            with self.assertRaisesRegex(
+                module.MatchError, "session target parent changed before pin"
+            ):
+                module.repair_target(self.root, workspace)
+
+        self.assertTrue(swap_attempted)
+        self.assertEqual(
+            (displaced_parent / "target.o").read_bytes(), b"mutated-target"
+        )
+        self.assertFalse((target_parent / "target.o").exists())
+
+    def test_repair_target_parent_replacement_after_session_auth_fails_closed(self) -> None:
+        target_parent = self.root / "target-parent-after-session-auth"
+        target_parent.mkdir()
+        target = target_parent / "target.o"
+        target.write_bytes(b"target-bytes")
+        _write_json(self.manifest, self._manifest(target=_descriptor(target)))
+        workspace = self.root / "build" / "match-parent-after-session-auth"
+        module.init_workspace(self.root, self.manifest, workspace)
+        target.write_bytes(b"mutated-target")
+
+        displaced_parent = self.root / "displaced-target-parent-after-session-auth"
+        real_load_session = module._load_session
+        swap_attempted = False
+
+        def swapping_load_session(*args: object, **kwargs: object) -> object:
+            nonlocal swap_attempted
+            session = real_load_session(*args, **kwargs)
+            swap_attempted = True
+            target_parent.rename(displaced_parent)
+            target_parent.mkdir()
+            return session
+
+        with mock.patch.object(
+            module, "_load_session", side_effect=swapping_load_session
+        ):
+            with self.assertRaisesRegex(
+                module.MatchError,
+                "session target parent changed from its authenticated identity|"
+                "session target parent changed before pin",
+            ):
+                module.repair_target(self.root, workspace)
+
+        self.assertTrue(swap_attempted)
+        self.assertEqual(
+            (displaced_parent / "target.o").read_bytes(), b"mutated-target"
+        )
+        self.assertFalse((target_parent / "target.o").exists())
+
+    def test_directory_identity_accepts_normal_posix_link_count(self) -> None:
+        directory = self.root / "normal-directory"
+        directory.mkdir()
+        (directory / "child-directory").mkdir()
+        identity = module._directory_identity(directory, "normal directory")
+        self.assertEqual(identity, (directory.stat().st_dev, directory.stat().st_ino))
+
+    def test_repair_target_rejects_corrupt_cas(self) -> None:
+        initialized = self._init()
+        target_cas = self.workspace / initialized["session"]["target_blob"]["cas_path"]
+        target_cas.write_bytes(b"tampered-target-cas")
+        self.target.write_bytes(b"mutated-target")
+        with self.assertRaisesRegex(module.MatchError, "session target CAS"):
+            module.repair_target(self.root, self.workspace)
+
+    def test_repair_target_reauthenticates_compiler_and_compile_inputs(self) -> None:
+        compiler = self.root / "compiler.bin"
+        compile_input = self.root / "compile-input.h"
+        compiler.write_bytes(b"compiler")
+        compile_input.write_bytes(b"#define VALUE 1\n")
+        manifest_value = self._manifest()
+        manifest_value["context"] = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/1.3.2",
+            "compiler": _descriptor(compiler),
+            "compile_argv": [str(compiler)],
+            "compile_inputs": [_descriptor(compile_input)],
+            "context_complete": True,
+        }
+        _write_json(self.manifest, manifest_value)
+        workspace = self.root / "build" / "match-context"
+        module.init_workspace(self.root, self.manifest, workspace)
+        self.target.unlink()
+        compile_input.write_bytes(b"#define VALUE 2\n")
+        with self.assertRaisesRegex(module.MatchError, "session compile input 0"):
+            module.repair_target(self.root, workspace)
+
+    def test_repair_target_rejects_target_indirection_and_hardlink(self) -> None:
+        self._init()
+        replacement = self.root / "replacement-target.o"
+        replacement.write_bytes(b"replacement-target")
+        self.target.unlink()
+        try:
+            self.target.symlink_to(replacement)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"symlink creation unavailable: {exc}")
+        with self.assertRaisesRegex(module.MatchError, "indirection"):
+            module.repair_target(self.root, self.workspace)
+
+        self.target.unlink()
+        os.link(replacement, self.target)
+        with self.assertRaisesRegex(module.MatchError, "hard link"):
+            module.repair_target(self.root, self.workspace)
+
+    def test_repair_target_rejects_self_hashed_request_target_rebinding(self) -> None:
+        self._init()
+        self.target.unlink()
+        session_path = self.workspace / "session.json"
+        session = json.loads(session_path.read_text(encoding="utf-8"))
+        session["request"]["target"]["sha256"] = "0" * 64
+        _write_json(session_path, _rehash(session, "session_sha256"))
+        with self.assertRaisesRegex(module.MatchError, "session target CAS is not bound"):
+            module.repair_target(self.root, self.workspace)
+
     def test_self_hashed_session_cannot_rebind_target_away_from_manifest(self) -> None:
         self._init()
         replacement = self.root / "replacement-target.o"
@@ -1570,6 +1794,28 @@ class MatchWorkbenchTests(unittest.TestCase):
         )
         self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
         self.assertEqual(json.loads(process.stdout)["status"], "new")
+
+        self.target.write_bytes(b"mutated-target")
+        repair = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "repair-target",
+                "--workspace",
+                str(self.workspace),
+                "--json",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(repair.returncode, 0, repair.stderr or repair.stdout)
+        self.assertEqual(json.loads(repair.stdout)["status"], "restored")
+        self.assertFalse(json.loads(repair.stdout)["authority_advanced"])
 
     def test_default_text_diagnose_and_matrix_output_has_operational_counts(self) -> None:
         self._init()

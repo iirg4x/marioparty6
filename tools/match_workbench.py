@@ -253,6 +253,226 @@ def _safe_parent(path: Path) -> None:
     _safe_mkdir(path.parent)
 
 
+class _PinnedTargetParent:
+    """Hold the target parent against path replacement for a repair.
+
+    A final ``lstat`` immediately before ``os.replace`` is not sufficient on
+    Windows: another process can replace the parent with a junction between
+    that check and the path-based rename.  Windows directory handles opened
+    without ``FILE_SHARE_DELETE`` prevent that replacement.  POSIX hosts use
+    a directory descriptor and perform the rename relative to that descriptor
+    so a path swap cannot redirect the write.
+    """
+
+    def __init__(
+        self,
+        target: Path,
+        *,
+        expected_parent_identity: tuple[int, int] | None = None,
+    ) -> None:
+        self.target = Path(os.path.abspath(target))
+        self.parent = self.target.parent
+        self.fd: int | None = None
+        self._handles: list[Any] = []
+        self._kernel32: Any = None
+        self._parent_identity: tuple[int, int] | None = None
+        self._expected_parent_identity = expected_parent_identity
+
+    def __enter__(self) -> "_PinnedTargetParent":
+        try:
+            _safe_parent(self.target)
+            _assert_no_indirection(self.parent)
+            current_identity = _directory_identity(
+                self.parent, "session target parent"
+            )
+            if (
+                self._expected_parent_identity is not None
+                and current_identity != self._expected_parent_identity
+            ):
+                _fail(f"session target parent changed before pin: {self.parent}")
+            if os.name == "nt":
+                self._open_windows()
+            else:
+                self._open_posix()
+            if (
+                self._expected_parent_identity is not None
+                and self._parent_identity != self._expected_parent_identity
+            ):
+                _fail(f"session target parent changed before pin: {self.parent}")
+            self.verify()
+            return self
+        except BaseException:
+            self.close()
+            raise
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()
+
+    def _open_posix(self) -> None:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            flags |= os.O_DIRECTORY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            self.fd = os.open(self.parent, flags)
+        except OSError as exc:
+            raise MatchError(f"cannot pin session target parent {self.parent}: {exc}") from exc
+        info = os.fstat(self.fd)
+        if not stat.S_ISDIR(info.st_mode):
+            _fail(f"session target parent is not a directory: {self.parent}")
+        self._parent_identity = (info.st_dev, info.st_ino)
+
+    def _open_windows(self) -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        ]
+        kernel32.CreateFileW.restype = wintypes.HANDLE
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        self._kernel32 = kernel32
+
+        # GENERIC_READ is required for Windows to enforce the no-delete share
+        # on directory rename.  FILE_READ_ATTRIBUTES alone does not pin a
+        # directory against MoveFileEx/ junction replacement.
+        generic_read = 0x80000000
+        share_read = 0x00000001
+        share_write = 0x00000002
+        open_existing = 3
+        backup_semantics = 0x02000000
+        open_reparse_point = 0x00200000
+        invalid_handle = ctypes.c_void_p(-1).value
+
+        parts = self.parent.parts
+        current = Path(parts[0])
+        try:
+            for index, part in enumerate(parts):
+                if index:
+                    current = current / part
+                handle = kernel32.CreateFileW(
+                    os.fspath(current),
+                    generic_read,
+                    share_read | share_write,
+                    None,
+                    open_existing,
+                    backup_semantics | open_reparse_point,
+                    None,
+                )
+                if handle in (None, invalid_handle):
+                    error = ctypes.get_last_error()
+                    raise MatchError(
+                        f"cannot pin session target parent component {current}: "
+                        f"WinError {error}"
+                    )
+                self._handles.append(handle)
+                try:
+                    info = current.lstat()
+                except OSError as exc:
+                    raise MatchError(
+                        f"cannot verify session target parent component {current}: {exc}"
+                    ) from exc
+                if not stat.S_ISDIR(info.st_mode):
+                    _fail(f"session target parent component is not a directory: {current}")
+                if bool(getattr(info, "st_file_attributes", 0) & REPARSE_ATTRIBUTE):
+                    _fail(f"path indirection is forbidden: {current}")
+        except BaseException:
+            self.close()
+            raise
+        info = self.parent.lstat()
+        self._parent_identity = (info.st_dev, info.st_ino)
+
+    def verify(self) -> None:
+        """Verify that the named parent still denotes the pinned directory."""
+        _assert_no_indirection(self.parent)
+        try:
+            info = self.parent.lstat()
+        except OSError as exc:
+            raise MatchError(f"session target parent changed during repair: {self.parent}") from exc
+        if not stat.S_ISDIR(info.st_mode):
+            _fail(f"session target parent is not a directory: {self.parent}")
+        identity = (info.st_dev, info.st_ino)
+        if self._parent_identity is not None and identity != self._parent_identity:
+            _fail(f"session target parent changed during repair: {self.parent}")
+        if self.fd is not None:
+            current = os.fstat(self.fd)
+            if (current.st_dev, current.st_ino) != identity:
+                _fail(f"session target parent changed during repair: {self.parent}")
+
+    def close(self) -> None:
+        if self.fd is not None:
+            try:
+                os.close(self.fd)
+            finally:
+                self.fd = None
+        if self._handles and self._kernel32 is not None:
+            for handle in reversed(self._handles):
+                self._kernel32.CloseHandle(handle)
+            self._handles.clear()
+
+
+@contextlib.contextmanager
+def _temporary_file_in_pinned_parent(
+    parent: _PinnedTargetParent, target_name: str
+) -> Any:
+    """Create a repair temporary in the pinned directory.
+
+    POSIX uses ``openat`` semantics through the pinned descriptor.  Windows
+    uses the ordinary path only while all parent components are held open with
+    delete sharing denied, so a junction/path swap cannot redirect creation.
+    """
+    temporary: str | Path | None = None
+    stream: Any = None
+    if parent.fd is not None:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
+        names = tempfile._get_candidate_names()
+        for _ in range(100):
+            name = f".{target_name}.{next(names)}.tmp"
+            try:
+                fd = os.open(name, flags, 0o600, dir_fd=parent.fd)
+            except FileExistsError:
+                continue
+            stream = os.fdopen(fd, "wb")
+            temporary = name
+            break
+        if stream is None or temporary is None:
+            _fail(f"cannot create repair temporary in {parent.parent}")
+    else:
+        stream = tempfile.NamedTemporaryFile(
+            "wb", dir=parent.parent, prefix=f".{target_name}.", suffix=".tmp", delete=False
+        )
+        temporary = Path(stream.name)
+    try:
+        yield temporary, stream
+    finally:
+        if stream is not None and not stream.closed:
+            stream.close()
+        if temporary is not None:
+            try:
+                if parent.fd is not None:
+                    os.unlink(temporary, dir_fd=parent.fd)
+                else:
+                    temporary.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError:
+                # Keep the original repair failure.  The temporary remains
+                # recoverable for a caller to clean up after the parent is
+                # released, and no authority is advanced by this path.
+                pass
+
+
 def _snapshot(path: Path, label: str) -> dict[str, Any]:
     _assert_no_indirection(path)
     try:
@@ -361,6 +581,62 @@ def _validate_compile_input_identity(
     }
 
 
+def _validate_target_path(
+    path: Path, *, allow_missing_leaf: bool = False, label: str = "target"
+) -> None:
+    """Validate target path identity without reading its content.
+
+    Repair is allowed to observe a missing target, but it must never treat a
+    symlink/reparse point, directory, or hard-link alias as a repair target.
+    Normal artifact validation continues to use :func:`_snapshot`, which also
+    authenticates the bytes and detects read-time changes.
+    """
+    _assert_no_indirection(path, allow_missing_leaf=allow_missing_leaf)
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        if allow_missing_leaf:
+            return
+        raise MatchError(f"{label} does not exist: {path}") from None
+    if not stat.S_ISREG(info.st_mode):
+        _fail(f"{label} is not a regular file: {path}")
+    if info.st_nlink != 1:
+        _fail(f"{label} must have exactly one hard link: {path}")
+
+
+def _directory_identity(path: Path, label: str) -> tuple[int, int]:
+    """Return the authenticated identity of a non-indirected directory."""
+    _assert_no_indirection(path)
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise MatchError(f"cannot inspect {label}: {path}: {exc}") from exc
+    if not stat.S_ISDIR(info.st_mode):
+        _fail(f"{label} is not a directory: {path}")
+    # Directory link counts are structural metadata, not a safe identity:
+    # normal POSIX directories commonly have nlink >= 2 and the count changes
+    # when child directories are added or removed.  Regular-file hard-link
+    # checks remain enforced by _snapshot/_validate_target_path.
+    return (info.st_dev, info.st_ino)
+
+
+def _directory_identity_payload(identity: tuple[int, int]) -> dict[str, int]:
+    return {"device": identity[0], "inode": identity[1]}
+
+
+def _parse_directory_identity(value: Any, label: str) -> tuple[int, int]:
+    item = _closed(
+        value,
+        allowed={"device", "inode"},
+        required={"device", "inode"},
+        label=label,
+    )
+    return (
+        _integer(item["device"], f"{label}.device"),
+        _integer(item["inode"], f"{label}.inode"),
+    )
+
+
 def _descriptor(value: Any, *, base: Path, label: str) -> dict[str, Any]:
     item = _closed(
         value,
@@ -381,6 +657,34 @@ def descriptor(path: Path | str) -> dict[str, Any]:
     """Return an authenticated descriptor for a regular single-link file."""
     actual = _snapshot(Path(path).expanduser(), "artifact")
     return {key: actual[key] for key in ("path", "size_bytes", "sha256")}
+
+
+def _frozen_target_descriptor(
+    value: Any, *, base: Path, expected: Mapping[str, Any], label: str
+) -> dict[str, Any]:
+    """Validate a request target against a frozen descriptor without reading it.
+
+    This narrowly scoped path is used only while repairing the live target.
+    The request manifest, path shape, claimed size/SHA, and target identity are
+    still authenticated; only the live target-content snapshot is deferred to
+    the CAS-backed restore/check performed by ``repair_target``.
+    """
+    item = _closed(
+        value,
+        allowed={"path", "size_bytes", "sha256"},
+        required={"path", "size_bytes", "sha256"},
+        label=label,
+    )
+    path = _resolve(_text(item["path"], f"{label}.path"), base)
+    size = _integer(item["size_bytes"], f"{label}.size_bytes")
+    sha = _sha256(item["sha256"], f"{label}.sha256")
+    expected_path = _resolve(_text(expected["path"], f"{label}.expected_path"), base)
+    expected_size = _integer(expected["size_bytes"], f"{label}.expected_size_bytes")
+    expected_sha = _sha256(expected["sha256"], f"{label}.expected_sha256")
+    if path != expected_path or size != expected_size or sha != expected_sha:
+        _fail(f"frozen request target does not match {label}")
+    _validate_target_path(path, allow_missing_leaf=True, label=label)
+    return {"path": os.fspath(path), "size_bytes": size, "sha256": sha}
 
 
 def _with_self_hash(value: Mapping[str, Any], field: str) -> dict[str, Any]:
@@ -442,6 +746,81 @@ def _atomic_replace(path: Path, payload: bytes) -> None:
     finally:
         if temporary.exists():
             temporary.unlink()
+
+
+def _restore_target_from_cas(
+    target: Path,
+    cas_path: Path,
+    expected: Mapping[str, Any],
+    expected_parent_identity: tuple[int, int],
+) -> dict[str, Any]:
+    """Atomically restore a target from an authenticated CAS blob."""
+    expected_sha = _sha256(expected.get("sha256"), "target restore.sha256")
+    expected_size = _integer(expected.get("size_bytes"), "target restore.size_bytes")
+    _validate_target_path(target, allow_missing_leaf=True, label="session target")
+
+    cas_before = _snapshot(cas_path, "session target CAS")
+    if (
+        cas_before["sha256"] != expected_sha
+        or cas_before["size_bytes"] != expected_size
+    ):
+        _fail("session target CAS does not match its frozen descriptor")
+
+    digest = hashlib.sha256()
+    size = 0
+    with _PinnedTargetParent(
+        target, expected_parent_identity=expected_parent_identity
+    ) as parent:
+        _validate_target_path(target, allow_missing_leaf=True, label="session target")
+        with _temporary_file_in_pinned_parent(parent, target.name) as (temporary, stream):
+            with cas_path.open("rb") as source:
+                for block in iter(lambda: source.read(1024 * 1024), b""):
+                    stream.write(block)
+                    digest.update(block)
+                    size += len(block)
+            stream.flush()
+            os.fsync(stream.fileno())
+            stream.close()
+
+            cas_after = _snapshot(cas_path, "session target CAS")
+            if (
+                cas_after["sha256"] != expected_sha
+                or cas_after["size_bytes"] != expected_size
+                or cas_after["sha256"] != cas_before["sha256"]
+                or cas_after["size_bytes"] != cas_before["size_bytes"]
+            ):
+                _fail("session target CAS changed during repair")
+            if digest.hexdigest() != expected_sha or size != expected_size:
+                _fail("session target CAS bytes failed repair verification")
+
+            # The parent is pinned for the entire copy and rename.  This
+            # verification is useful on POSIX when a directory was renamed
+            # concurrently; Windows' no-delete directory handles prevent the
+            # replacement itself.
+            parent.verify()
+            _validate_target_path(target, allow_missing_leaf=True, label="session target")
+            try:
+                if parent.fd is not None:
+                    os.replace(
+                        temporary,
+                        target.name,
+                        src_dir_fd=parent.fd,
+                        dst_dir_fd=parent.fd,
+                    )
+                else:
+                    os.replace(temporary, target)
+            except (NotImplementedError, TypeError) as exc:
+                _fail(f"cannot perform pinned session target replacement: {exc}")
+            _validate_target_path(target, label="restored session target")
+            restored = _snapshot(target, "restored session target")
+            if (
+                restored["sha256"] != expected_sha
+                or restored["size_bytes"] != expected_size
+            ):
+                _fail("restored session target does not match its frozen descriptor")
+            return {
+                key: restored[key] for key in ("path", "size_bytes", "sha256")
+            }
 
 
 @contextlib.contextmanager
@@ -531,14 +910,17 @@ def _recheck_descriptor(value: Mapping[str, Any], label: str) -> None:
         _fail(f"{label} changed from its authenticated descriptor")
 
 
-def _load_session(workspace: Path, root: Path) -> Mapping[str, Any]:
+def _load_session(
+    workspace: Path, root: Path, *, skip_live_target_check: bool = False
+) -> Mapping[str, Any]:
     session = _load_json(workspace / "session.json", "session")
     _verify_self_hash(session, "session_sha256", "session")
     _closed(
         session,
         allowed={
             "schema", "schema_version", "session_id", "root", "workspace", "request",
-            "request_manifest", "target_blob", "authority_advanced", "session_sha256",
+            "request_manifest", "target_blob", "target_parent_identity",
+            "authority_advanced", "session_sha256",
         },
         required={
             "schema", "schema_version", "session_id", "root", "workspace", "request",
@@ -583,7 +965,32 @@ def _load_session(workspace: Path, root: Path) -> Mapping[str, Any]:
     _text(target.get("path"), "session target.path")
     _integer(target.get("size_bytes"), "session target.size_bytes")
     _sha256(target.get("sha256"), "session target.sha256")
-    _recheck_descriptor(target, "session target")
+    target_parent_identity_value = session.get("target_parent_identity")
+    target_parent_identity = None
+    if target_parent_identity_value is not None:
+        target_parent_identity = _parse_directory_identity(
+            target_parent_identity_value, "session target parent identity"
+        )
+    elif skip_live_target_check:
+        _fail("session target parent identity is missing")
+    target_path = _resolve(str(target["path"]), root)
+    if skip_live_target_check:
+        _validate_target_path(
+            target_path,
+            allow_missing_leaf=True,
+            label="session target",
+        )
+    else:
+        _recheck_descriptor(target, "session target")
+    if target_parent_identity is not None:
+        current_parent_identity = _directory_identity(
+            target_path.parent, "session target parent"
+        )
+        if current_parent_identity != target_parent_identity:
+            _fail(
+                "session target parent changed from its authenticated identity: "
+                f"{target_path.parent}"
+            )
     target_blob = session.get("target_blob")
     if not isinstance(target_blob, Mapping):
         _fail("session target CAS is missing")
@@ -661,6 +1068,7 @@ def _load_session(workspace: Path, root: Path) -> Mapping[str, Any]:
     manifest_request = _request(
         _load_json(Path(str(manifest["path"])), "session request manifest"),
         root=root,
+        frozen_target=target if skip_live_target_check else None,
     )
     if manifest_request != request:
         _fail("session request no longer matches its authenticated request manifest")
@@ -730,7 +1138,9 @@ def _persist_diagnostic_index(
         _atomic_replace(workspace / "index.json", _canonical(_with_self_hash(index, "index_sha256")))
 
 
-def _request(value: Any, *, root: Path) -> dict[str, Any]:
+def _request(
+    value: Any, *, root: Path, frozen_target: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     item = _closed(
         value,
         allowed={
@@ -785,6 +1195,16 @@ def _request(value: Any, *, root: Path) -> dict[str, Any]:
     ):
         _fail("request.policy.allowed_job_kinds must be a non-empty unique array")
     kinds = [_identifier(kind, "request.policy.allowed_job_kinds item") for kind in kinds]
+    target = (
+        _descriptor(item["target"], base=root, label="request.target")
+        if frozen_target is None
+        else _frozen_target_descriptor(
+            item["target"],
+            base=root,
+            expected=frozen_target,
+            label="request.target",
+        )
+    )
     return {
         "schema": REQUEST_SCHEMA,
         "schema_version": 1,
@@ -792,7 +1212,7 @@ def _request(value: Any, *, root: Path) -> dict[str, Any]:
         "owner": _text(item["owner"], "request.owner"),
         "unit": _text(item["unit"], "request.unit"),
         "function": _text(item["function"], "request.function"),
-        "target": _descriptor(item["target"], base=root, label="request.target"),
+        "target": target,
         "context": {
             "base_commit": _text(context["base_commit"], "request.context.base_commit"),
             "toolchain_key": _text(context["toolchain_key"], "request.context.toolchain_key"),
@@ -831,6 +1251,9 @@ def init_workspace(root: Path, manifest: Path | str, workspace: Path | str) -> d
             _fail("workspace is non-empty but does not contain an immutable session")
         for relative in ("candidates", "diagnostics", "cas/blobs", "cas/reports", "job-output"):
             _safe_mkdir(destination / relative)
+        target_parent_identity = _directory_identity(
+            Path(request["target"]["path"]).parent, "session target parent"
+        )
         target_blob = _copy_blob(destination, Path(request["target"]["path"]), "target", request["target"])
         body = {
             "schema": SESSION_SCHEMA,
@@ -841,12 +1264,73 @@ def init_workspace(root: Path, manifest: Path | str, workspace: Path | str) -> d
             "request": request,
             "request_manifest": {key: manifest_snapshot[key] for key in ("path", "size_bytes", "sha256")},
             "target_blob": target_blob,
+            "target_parent_identity": _directory_identity_payload(target_parent_identity),
             "authority_advanced": False,
         }
         session = _with_self_hash(body, "session_sha256")
         _write_new(session_path, _canonical(session))
         _write_new(destination / "index.json", _canonical(_empty_index(session["session_sha256"])))
     return {"status": "initialized", "workspace": os.fspath(destination), "session": session}
+
+
+def repair_target(root: Path, workspace: Path | str) -> dict[str, Any]:
+    """Restore a missing or mutated original target from the session CAS.
+
+    All session, manifest, compiler-input, request-binding, and CAS checks are
+    still performed.  The only relaxed check is the live original target
+    content snapshot, which is precisely the state this operation repairs.
+    """
+    root = root.resolve()
+    destination = _workspace(workspace, root)
+    with _workbench_lock(destination / ".workbench.lock", 8.0):
+        session = _load_session(destination, root, skip_live_target_check=True)
+        target = session["request"]["target"]
+        target_path = _resolve(str(target["path"]), root)
+        target_cas = _contained(
+            destination,
+            session["target_blob"]["cas_path"],
+            "session target CAS path",
+        )
+        cas = _snapshot(target_cas, "session target CAS")
+        if cas["sha256"] != target["sha256"] or cas["size_bytes"] != target["size_bytes"]:
+            _fail("session target CAS does not match its frozen descriptor")
+
+        _validate_target_path(
+            target_path, allow_missing_leaf=True, label="session target"
+        )
+        if os.path.lexists(target_path):
+            current = _snapshot(target_path, "session target")
+            if (
+                current["sha256"] == target["sha256"]
+                and current["size_bytes"] == target["size_bytes"]
+            ):
+                return {
+                    "status": "unchanged",
+                    "workspace": os.fspath(destination),
+                    "session_id": session["session_id"],
+                    "target": {
+                        key: current[key] for key in ("path", "size_bytes", "sha256")
+                    },
+                    "authority_advanced": False,
+                }
+
+        expected_parent_identity = _parse_directory_identity(
+            session.get("target_parent_identity"),
+            "session target parent identity",
+        )
+        restored = _restore_target_from_cas(
+            target_path,
+            target_cas,
+            target,
+            expected_parent_identity,
+        )
+        return {
+            "status": "restored",
+            "workspace": os.fspath(destination),
+            "session_id": session["session_id"],
+            "target": restored,
+            "authority_advanced": False,
+        }
 
 
 def _legacy_context_key(session: Mapping[str, Any], source_sha: str) -> str:
@@ -3221,6 +3705,12 @@ def _add_commands(commands: Any) -> None:
     init.add_argument("--workspace", required=True)
     init.add_argument("--json", action="store_true")
 
+    repair_target_parser = commands.add_parser(
+        "repair-target", help="restore a missing or mutated target from session CAS"
+    )
+    repair_target_parser.add_argument("--workspace", required=True)
+    repair_target_parser.add_argument("--json", action="store_true")
+
     lookup = commands.add_parser("lookup", help="reject a duplicate source/context before compile")
     lookup.add_argument("--workspace", required=True)
     lookup.add_argument("--source")
@@ -3309,6 +3799,8 @@ def add_match_parser(subparsers: Any) -> argparse.ArgumentParser:
 def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
     if args.match_command == "init":
         result = init_workspace(root, args.manifest, args.workspace)
+    elif args.match_command == "repair-target":
+        result = repair_target(root, args.workspace)
     elif args.match_command == "lookup":
         result = lookup_matches(root, args.workspace, args.source, args.object)
     elif args.match_command == "record":
