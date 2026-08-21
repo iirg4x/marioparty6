@@ -1705,6 +1705,153 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
         self.assertEqual(json.loads(process.stdout)["verdict"], "accepted")
 
+    def test_prepare_composes_record_request_without_mutating_workspace(self) -> None:
+        baseline_strict = self.root / "prepare-baseline-strict.json"
+        candidate_strict = self.root / "prepare-candidate-strict.json"
+        baseline_data = self.root / "prepare-baseline-data.json"
+        candidate_data = self.root / "prepare-candidate-data.json"
+        _write_json(baseline_strict, _assessment_report(focus_match=75.0))
+        _write_json(candidate_strict, _assessment_report(focus_match=100.0))
+        _write_json(baseline_data, _assessment_report(focus_match=75.0))
+        _write_json(candidate_data, _assessment_report(focus_match=100.0))
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "prepare",
+                    "--baseline-strict",
+                    str(baseline_strict),
+                    "--candidate-strict",
+                    str(candidate_strict),
+                    "--baseline-data",
+                    str(baseline_data),
+                    "--candidate-data",
+                    str(candidate_data),
+                    "--focus-symbol",
+                    "focus",
+                    "--workspace",
+                    str(self.workspace),
+                    "--candidate-id",
+                    "prepared",
+                    "--source",
+                    str(self.source),
+                    "--object",
+                    str(self.object),
+                    "--hypothesis",
+                    "natural candidate",
+                    "--axis",
+                    "register-lifetime",
+                    "--reason",
+                    "accepted report pair",
+                    "--json",
+                ]
+            )
+        self.assertEqual(status, 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["schema"], module.PREPARATION_SCHEMA)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["assessment"]["verdict"], "accepted")
+        request = result["record_request"]
+        self.assertEqual(request["candidate_id"], "prepared")
+        self.assertEqual(request["strict_report"], str(candidate_strict.resolve()))
+        self.assertEqual(request["data_report"], str(candidate_data.resolve()))
+        self.assertEqual(request["focus_symbol"], "focus")
+        self.assertEqual(request["reason"], "accepted report pair")
+        self.assertEqual(result["artifacts"]["source"]["sha256"], _sha256(self.source))
+        self.assertEqual(result["artifacts"]["object"]["sha256"], _sha256(self.object))
+        self.assertFalse(self.workspace.exists())
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "prepare",
+                "--baseline-strict",
+                str(baseline_strict),
+                "--candidate-strict",
+                str(candidate_strict),
+                "--focus-symbol",
+                "focus",
+                "--workspace",
+                str(self.workspace),
+                "--candidate-id",
+                "prepared-central",
+                "--source",
+                str(self.source),
+                "--object",
+                str(self.object),
+                "--hypothesis",
+                "natural candidate",
+                "--axis",
+                "register-lifetime",
+                "--json",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout)["status"], "ready")
+
+    def test_prepare_withholds_record_request_on_sibling_regression(self) -> None:
+        baseline_strict = self.root / "prepare-regression-baseline.json"
+        candidate_strict = self.root / "prepare-regression-candidate.json"
+        _write_json(
+            baseline_strict,
+            _assessment_report(focus_match=75.0, sibling_match=100.0),
+        )
+        _write_json(
+            candidate_strict,
+            _assessment_report(focus_match=100.0, sibling_match=95.0),
+        )
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "prepare",
+                    "--baseline-strict",
+                    str(baseline_strict),
+                    "--candidate-strict",
+                    str(candidate_strict),
+                    "--focus-symbol",
+                    "focus",
+                    "--workspace",
+                    str(self.workspace),
+                    "--candidate-id",
+                    "rejected",
+                    "--source",
+                    str(self.source),
+                    "--object",
+                    str(self.object),
+                    "--hypothesis",
+                    "natural candidate",
+                    "--axis",
+                    "register-lifetime",
+                    "--json",
+                ]
+            )
+        self.assertEqual(status, 1)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "rejected")
+        self.assertIsNone(result["record_request"])
+        self.assertEqual(result["assessment"]["verdict"], "rejected")
+        self.assertEqual(
+            result["assessment"]["regressions"][0]["reason"],
+            "previously_exact_sibling_regressed",
+        )
+        self.assertFalse(self.workspace.exists())
+
     def test_assess_rejects_previously_exact_sibling_regression(self) -> None:
         baseline = self.root / "regression-baseline.json"
         candidate = self.root / "regression-candidate.json"

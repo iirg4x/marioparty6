@@ -46,6 +46,7 @@ MATRIX_SCHEMA = "match_workbench_matrix/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
+PREPARATION_SCHEMA = "match_workbench_preparation/v1"
 SCHEMA_VERSION = 1
 
 SAFE_RESOURCE_CLASSES = frozenset(
@@ -2207,6 +2208,102 @@ def assess_reports(
     }
 
 
+def prepare_candidate_record(
+    root: Path,
+    *,
+    baseline_strict: Path | str,
+    candidate_strict: Path | str,
+    baseline_data: Path | str | None = None,
+    candidate_data: Path | str | None = None,
+    focus_symbol: str,
+    workspace: Path | str,
+    candidate_id: str,
+    source: Path | str,
+    object_path: Path | str,
+    hypothesis: str,
+    axis: str,
+    residual: str | None = None,
+    status: str = "measured",
+    reason: str = "candidate measured",
+    heavy_seconds: float | None = None,
+) -> dict[str, Any]:
+    """Prepare a guarded ``record`` request without mutating the workbench.
+
+    The strict/data assessment is the same gate exposed by ``assess``.  A
+    rejected assessment deliberately omits the record request so callers
+    cannot accidentally record a candidate after a sibling or focus
+    regression.  The final ``record`` command remains the authority that
+    writes candidate/CAS state.
+    """
+    root = root.resolve()
+    focus = _text(focus_symbol, "preparation focus_symbol")
+    assessment = assess_reports(
+        root,
+        baseline_strict=baseline_strict,
+        candidate_strict=candidate_strict,
+        baseline_data=baseline_data,
+        candidate_data=candidate_data,
+        focus_symbol=focus,
+    )
+
+    workspace_path = _workspace(workspace, root)
+    candidate_value = _identifier(candidate_id, "candidate_id")
+    source_path = _resolve(source, root)
+    object_file = _resolve(object_path, root)
+    source_snapshot = _snapshot(source_path, "candidate source")
+    object_snapshot = _snapshot(object_file, "candidate object")
+    strict_path = _resolve(candidate_strict, root)
+    data_path = _resolve(candidate_data, root) if candidate_data is not None else None
+    hypothesis_value = _text(hypothesis, "hypothesis")
+    axis_value = _text(axis, "axis")
+    residual_value = _text(residual, "residual") if residual is not None else None
+    status_value = _text(status, "status")
+    reason_value = _text(reason, "reason")
+    heavy_value = _seconds(heavy_seconds, "heavy_seconds")
+
+    ready = assessment["verdict"] == "accepted"
+    record_request = None
+    if ready:
+        record_request = {
+            "workspace": os.fspath(workspace_path),
+            "candidate_id": candidate_value,
+            "source": os.fspath(source_path),
+            "object": os.fspath(object_file),
+            "strict_report": os.fspath(strict_path),
+            "data_report": os.fspath(data_path) if data_path is not None else None,
+            "hypothesis": hypothesis_value,
+            "axis": axis_value,
+            "residual": residual_value,
+            "status": status_value,
+            "reason": reason_value,
+            "heavy_seconds": heavy_value,
+            "focus_symbol": focus,
+        }
+
+    return {
+        "schema": PREPARATION_SCHEMA,
+        "schema_version": SCHEMA_VERSION,
+        "focus_symbol": focus,
+        "assessment": assessment,
+        "artifacts": {
+            "source": {
+                key: source_snapshot[key]
+                for key in ("path", "size_bytes", "sha256")
+            },
+            "object": {
+                key: object_snapshot[key]
+                for key in ("path", "size_bytes", "sha256")
+            },
+        },
+        "record_request": record_request,
+        "status": "ready" if ready else "rejected",
+        "reason": None
+        if ready
+        else "assessment rejected; record request withheld",
+        "authority_advanced": False,
+    }
+
+
 def _report_summary(
     path: Path,
     session: Mapping[str, Any],
@@ -3821,6 +3918,13 @@ def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
     if as_json or value.get("schema") == ASSESSMENT_SCHEMA:
         print(json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True))
         return
+    if value.get("schema") == PREPARATION_SCHEMA:
+        print(
+            f"prepare status={value.get('status')} "
+            f"focus={value.get('focus_symbol')} "
+            f"record_request={'ready' if value.get('record_request') else 'withheld'}"
+        )
+        return
     if value.get("schema") == "match_workbench_diagnostic_batch/v1":
         summary = value.get("summary", {})
         print(
@@ -3957,6 +4061,58 @@ def _add_commands(commands: Any) -> None:
     # switch so scripts can share argument builders with the other commands.
     assess.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
 
+    prepare = commands.add_parser(
+        "prepare",
+        help="assess reports and compose a guarded record request without mutation",
+    )
+    prepare.add_argument(
+        "--baseline-strict",
+        "--strict-baseline",
+        "--baseline-strict-report",
+        "--baseline",
+        dest="baseline_strict",
+        required=True,
+    )
+    prepare.add_argument(
+        "--candidate-strict",
+        "--strict-candidate",
+        "--candidate-strict-report",
+        "--candidate",
+        dest="candidate_strict",
+        required=True,
+    )
+    prepare.add_argument(
+        "--baseline-data",
+        "--data-baseline",
+        "--baseline-data-report",
+        dest="baseline_data",
+    )
+    prepare.add_argument(
+        "--candidate-data",
+        "--data-candidate",
+        "--candidate-data-report",
+        dest="candidate_data",
+    )
+    prepare.add_argument(
+        "--focus-symbol",
+        "--symbol",
+        "--function",
+        "--focus",
+        dest="focus_symbol",
+        required=True,
+    )
+    prepare.add_argument("--workspace", required=True)
+    prepare.add_argument("--candidate-id", required=True)
+    prepare.add_argument("--source", required=True)
+    prepare.add_argument("--object", required=True)
+    prepare.add_argument("--hypothesis", required=True)
+    prepare.add_argument("--axis", required=True)
+    prepare.add_argument("--residual")
+    prepare.add_argument("--status", default="measured")
+    prepare.add_argument("--reason", default="candidate measured")
+    prepare.add_argument("--heavy-seconds", type=float)
+    prepare.add_argument("--json", action="store_true")
+
 
 def add_match_parser(subparsers: Any) -> argparse.ArgumentParser:
     parser = subparsers.add_parser("match", help="deduplicate candidates and parallelize read-only diagnosis")
@@ -4010,10 +4166,32 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             candidate_data=args.candidate_data,
             focus_symbol=args.focus_symbol,
         )
+    elif args.match_command == "prepare":
+        result = prepare_candidate_record(
+            root,
+            baseline_strict=args.baseline_strict,
+            candidate_strict=args.candidate_strict,
+            baseline_data=args.baseline_data,
+            candidate_data=args.candidate_data,
+            focus_symbol=args.focus_symbol,
+            workspace=args.workspace,
+            candidate_id=args.candidate_id,
+            source=args.source,
+            object_path=args.object,
+            hypothesis=args.hypothesis,
+            axis=args.axis,
+            residual=args.residual,
+            status=args.status,
+            reason=args.reason,
+            heavy_seconds=args.heavy_seconds,
+        )
     else:
         result = build_matrix(root, args.workspace)
     _print(result, as_json=args.json)
-    if args.match_command == "assess" and result.get("verdict") == "rejected":
+    if args.match_command in {"assess", "prepare"} and (
+        result.get("verdict") == "rejected"
+        or result.get("status") == "rejected"
+    ):
         return 1
     return 0
 
