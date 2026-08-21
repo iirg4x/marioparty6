@@ -61,6 +61,55 @@ def _report(function: str, *, exact: bool = False, large: bool = False) -> dict[
     }
 
 
+def _assessment_report(
+    *,
+    focus_match: float = 75.0,
+    focus_size: str = "4",
+    focus_candidate_size: str = "4",
+    sibling_match: float = 100.0,
+    sibling_size: str = "8",
+    sibling_candidate_size: str = "8",
+    sibling_diff_kind: str | None = None,
+) -> dict[str, object]:
+    focus_rows = [] if focus_match == 100.0 else [
+        {"diff_kind": "REG_SWAP", "instruction": {"formatted": "mr r3,r4"}}
+    ]
+    sibling_rows = [] if sibling_match == 100.0 and sibling_diff_kind is None else [
+        {
+            "diff_kind": sibling_diff_kind or "REG_SWAP",
+            "instruction": {"formatted": "mr r5,r6"},
+        }
+    ]
+    return {
+        "left": {
+            "symbols": [
+                {
+                    "name": "focus",
+                    "kind": "SYMBOL_FUNCTION",
+                    "size": focus_size,
+                    "target_symbol": 0,
+                    "match_percent": focus_match,
+                    "instructions": focus_rows,
+                },
+                {
+                    "name": "sibling",
+                    "kind": "SYMBOL_FUNCTION",
+                    "size": sibling_size,
+                    "target_symbol": 1,
+                    "match_percent": sibling_match,
+                    "instructions": sibling_rows,
+                },
+            ]
+        },
+        "right": {
+            "symbols": [
+                {"name": "focus", "kind": "SYMBOL_FUNCTION", "size": focus_candidate_size},
+                {"name": "sibling", "kind": "SYMBOL_FUNCTION", "size": sibling_candidate_size},
+            ]
+        },
+    }
+
+
 class MatchWorkbenchTests(unittest.TestCase):
     maxDiff = None
 
@@ -1234,6 +1283,271 @@ class MatchWorkbenchTests(unittest.TestCase):
             rows["c2"]["next_action"],
             "run_read_only_diagnostics_for_source_context",
         )
+
+    def test_assess_reports_focus_delta_counts_changed_siblings_and_central_json(self) -> None:
+        baseline_strict = self.root / "baseline-strict.json"
+        candidate_strict = self.root / "candidate-strict.json"
+        baseline_data = self.root / "baseline-data.json"
+        candidate_data = self.root / "candidate-data.json"
+        _write_json(
+            baseline_strict,
+            _assessment_report(
+                focus_match=75.0,
+                focus_size="4",
+                focus_candidate_size="4",
+                sibling_match=100.0,
+                sibling_size="8",
+                sibling_candidate_size="8",
+            ),
+        )
+        _write_json(
+            candidate_strict,
+            _assessment_report(
+                focus_match=100.0,
+                focus_size="4",
+                focus_candidate_size="6",
+                sibling_match=100.0,
+                sibling_size="8",
+                sibling_candidate_size="9",
+            ),
+        )
+        _write_json(baseline_data, _assessment_report(focus_match=75.0))
+        _write_json(candidate_data, _assessment_report(focus_match=100.0))
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "assess",
+                        "--baseline-strict",
+                        str(baseline_strict),
+                        "--candidate-strict",
+                        str(candidate_strict),
+                        "--baseline-data",
+                        str(baseline_data),
+                        "--candidate-data",
+                        str(candidate_data),
+                        "--focus-symbol",
+                        "focus",
+                    ]
+                ),
+                0,
+            )
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["schema"], module.ASSESSMENT_SCHEMA)
+        self.assertEqual(result["verdict"], "accepted")
+        strict = result["reports"]["strict"]
+        self.assertEqual(strict["exact_function_counts"], {"before": {"exact": 1, "total": 2}, "after": {"exact": 2, "total": 2}})
+        self.assertEqual(strict["focus"]["before"]["size"], 4)
+        self.assertEqual(strict["focus"]["after"]["candidate_size"], 6)
+        self.assertEqual(strict["focus"]["delta"]["match_percent"], 25)
+        self.assertEqual(strict["focus"]["delta"]["diff_kind_delta"], {"REG_SWAP": -1})
+        changed = [row for row in result["changed_siblings"] if row["report"] == "strict"]
+        self.assertEqual([row["symbol"] for row in changed], ["sibling"])
+        self.assertEqual(changed[0]["delta"]["candidate_size"], 1)
+        self.assertEqual(result["regressions"], [])
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "assess",
+                "--baseline-strict",
+                str(baseline_strict),
+                "--candidate-strict",
+                str(candidate_strict),
+                "--focus-symbol",
+                "focus",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout)["verdict"], "accepted")
+
+    def test_assess_rejects_previously_exact_sibling_regression(self) -> None:
+        baseline = self.root / "regression-baseline.json"
+        candidate = self.root / "regression-candidate.json"
+        _write_json(baseline, _assessment_report(focus_match=75.0, sibling_match=100.0))
+        _write_json(candidate, _assessment_report(focus_match=100.0, sibling_match=95.0))
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "assess",
+                        "--baseline-strict",
+                        str(baseline),
+                        "--candidate-strict",
+                        str(candidate),
+                        "--focus-symbol",
+                        "focus",
+                        "--json",
+                    ]
+                ),
+                1,
+            )
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["verdict"], "rejected")
+        self.assertEqual(len(result["regressions"]), 1)
+        self.assertEqual(result["regressions"][0]["symbol"], "sibling")
+        self.assertEqual(result["regressions"][0]["reason"], "previously_exact_sibling_regressed")
+
+    def test_assess_rejects_missing_or_unpaired_focus(self) -> None:
+        baseline = self.root / "focus-baseline.json"
+        candidate = self.root / "focus-candidate.json"
+        _write_json(baseline, _assessment_report())
+        _write_json(candidate, _assessment_report())
+
+        missing_output = io.StringIO()
+        with contextlib.redirect_stdout(missing_output):
+            missing_status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "assess",
+                    "--baseline-strict",
+                    str(baseline),
+                    "--candidate-strict",
+                    str(candidate),
+                    "--focus-symbol",
+                    "missing",
+                ]
+            )
+        self.assertEqual(missing_status, 2)
+        self.assertIn("lacks requested focus symbol", missing_output.getvalue())
+
+        unpaired = _assessment_report()
+        unpaired["right"]["symbols"][0]["name"] = "different"
+        unpaired["left"]["symbols"][0]["target_symbol"] = 99
+        _write_json(candidate, unpaired)
+        unpaired_output = io.StringIO()
+        with contextlib.redirect_stdout(unpaired_output):
+            unpaired_status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "assess",
+                    "--baseline-strict",
+                    str(baseline),
+                    "--candidate-strict",
+                    str(candidate),
+                    "--focus-symbol",
+                    "focus",
+                ]
+            )
+        self.assertEqual(unpaired_status, 2)
+        self.assertIn("is not paired", unpaired_output.getvalue())
+
+    def test_assess_rejects_invalid_target_index_even_with_same_name(self) -> None:
+        baseline = self.root / "target-index-baseline.json"
+        candidate = self.root / "target-index-candidate.json"
+        _write_json(baseline, _assessment_report())
+
+        missing = object()
+        for label, target_index in (
+            ("absent", missing),
+            ("null", None),
+            ("out-of-range", 99),
+        ):
+            malformed = _assessment_report()
+            focus = malformed["left"]["symbols"][0]
+            if target_index is missing:
+                del focus["target_symbol"]
+            else:
+                focus["target_symbol"] = target_index
+            # The right-side symbol deliberately keeps the same name.  A
+            # canonical objdiff report must trust only target_symbol.
+            _write_json(candidate, malformed)
+            output = io.StringIO()
+            with self.subTest(target_symbol=label), contextlib.redirect_stdout(output):
+                status = module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "assess",
+                        "--baseline-strict",
+                        str(baseline),
+                        "--candidate-strict",
+                        str(candidate),
+                        "--focus-symbol",
+                        "focus",
+                    ]
+                )
+            self.assertEqual(status, 2)
+            self.assertIn("is not paired", output.getvalue())
+
+    def test_assess_rejects_metadata_or_symbol_free_reports(self) -> None:
+        baseline = self.root / "shape-baseline.json"
+        candidate = self.root / "shape-candidate.json"
+        _write_json(candidate, _assessment_report())
+        for malformed in (
+            {"metadata": {"tool": "objdiff"}},
+            {"left": {"symbols": []}, "right": {"symbols": []}},
+        ):
+            _write_json(baseline, malformed)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                status = module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "assess",
+                        "--baseline-strict",
+                        str(baseline),
+                        "--candidate-strict",
+                        str(candidate),
+                        "--focus-symbol",
+                        "focus",
+                    ]
+                )
+            self.assertEqual(status, 2)
+            self.assertIn("error:", output.getvalue())
+
+    def test_assess_rejects_strict_data_focus_pairing_mismatch(self) -> None:
+        baseline_strict = self.root / "pair-baseline-strict.json"
+        candidate_strict = self.root / "pair-candidate-strict.json"
+        baseline_data = self.root / "pair-baseline-data.json"
+        candidate_data = self.root / "pair-candidate-data.json"
+        _write_json(baseline_strict, _assessment_report())
+        _write_json(candidate_strict, _assessment_report())
+        data_baseline = _assessment_report()
+        data_candidate = _assessment_report()
+        data_baseline["right"]["symbols"][0]["name"] = "different"
+        data_candidate["right"]["symbols"][0]["name"] = "different"
+        _write_json(baseline_data, data_baseline)
+        _write_json(candidate_data, data_candidate)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "assess",
+                    "--baseline-strict",
+                    str(baseline_strict),
+                    "--candidate-strict",
+                    str(candidate_strict),
+                    "--baseline-data",
+                    str(baseline_data),
+                    "--candidate-data",
+                    str(candidate_data),
+                    "--focus-symbol",
+                    "focus",
+                ]
+            )
+        self.assertEqual(status, 2)
+        self.assertIn("strict/data focus pairing mismatch", output.getvalue())
 
     def test_missing_index_with_existing_records_fails_closed(self) -> None:
         self._init()

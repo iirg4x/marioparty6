@@ -45,6 +45,7 @@ DIAGNOSTIC_SCHEMA = "match_workbench_diagnostic/v1"
 MATRIX_SCHEMA = "match_workbench_matrix/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
+ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
 SCHEMA_VERSION = 1
 
 SAFE_RESOURCE_CLASSES = frozenset(
@@ -1099,6 +1100,467 @@ def _copy_blob(workspace: Path, source: Path, kind: str, snapshot: Mapping[str, 
         "size_bytes": cached["size_bytes"],
         "cas_path": output.relative_to(workspace).as_posix(),
         "dedup_hit": dedup_hit,
+    }
+
+
+def _assessment_number(value: Any) -> int | float | None:
+    """Normalize the numeric fields emitted by the objdiff JSON variants."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if not isinstance(value, str):
+        return None
+    text = value.strip().replace(",", "")
+    if text.endswith("%"):
+        text = text[:-1].strip()
+    if not text:
+        return None
+    try:
+        if re.fullmatch(r"[+-]?0[xX][0-9a-fA-F]+", text):
+            return int(text, 0)
+        number = float(text)
+    except ValueError:
+        return None
+    if not math.isfinite(number):
+        return None
+    return int(number) if number.is_integer() else number
+
+
+def _assessment_field(value: Mapping[str, Any], *names: str) -> Any:
+    for name in names:
+        if name in value:
+            return value[name]
+    return None
+
+
+def _assessment_report_sides(value: Any, label: str) -> tuple[list[Any], list[Any]]:
+    """Return target/source symbol arrays, rejecting unknown report shapes."""
+    if not isinstance(value, Mapping):
+        _fail(f"{label} root must be an object with paired left/right sides")
+
+    nested = value.get("report")
+    if "left" not in value and "right" not in value and isinstance(nested, Mapping):
+        return _assessment_report_sides(nested, label)
+    if "left" not in value or "right" not in value:
+        _fail(f"{label} lacks paired left/right symbol sides")
+
+    def symbols(side: Any, side_label: str) -> list[Any]:
+        if not isinstance(side, Mapping):
+            _fail(f"{label} {side_label} side must be an object")
+        if "symbols" not in side or not isinstance(side["symbols"], list):
+            _fail(f"{label} {side_label} side lacks a symbol array")
+        rows = side["symbols"]
+        if any(not isinstance(row, Mapping) for row in rows):
+            _fail(f"{label} {side_label} symbol array contains a non-object row")
+        return rows
+
+    return symbols(value["left"], "left"), symbols(value["right"], "right")
+
+
+def _assessment_is_function(value: Any) -> bool:
+    if not isinstance(value, Mapping):
+        return False
+    kind = value.get("kind")
+    if isinstance(kind, str):
+        normalized = kind.upper().replace("-", "_")
+        if normalized in {"SYMBOL_FUNCTION", "FUNCTION"}:
+            return True
+        if normalized and normalized != "SYMBOL":
+            return False
+    # Flat ``functions`` report variants commonly omit ``kind``.
+    return any(
+        name in value
+        for name in ("match_percent", "matchPercent", "similarity", "instructions", "target_symbol")
+    )
+
+
+def _assessment_name(value: Mapping[str, Any], index: int) -> str:
+    name = _assessment_field(value, "name", "symbol", "function")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    return f"<unnamed:{index}>"
+
+
+def _assessment_pair_right(left: Mapping[str, Any], right: list[Any]) -> tuple[int | None, Mapping[str, Any] | None]:
+    """Pair a canonical objdiff left symbol by its target-side index.
+
+    Canonical reports carry an explicit ``target_symbol`` relation.  Never
+    infer that relation from a matching name: a stale, missing, null, or
+    out-of-range index must remain unpaired and be rejected by focus checks.
+    Flat report adapters, if added later, must opt into their own pairing
+    policy before reaching this canonical helper.
+    """
+    target_index = left.get("target_symbol")
+    if isinstance(target_index, int) and not isinstance(target_index, bool):
+        if (
+            0 <= target_index < len(right)
+            and isinstance(right[target_index], Mapping)
+            and _assessment_is_function(right[target_index])
+        ):
+            return target_index, right[target_index]
+    return None, None
+
+
+def _assessment_diff_kinds(value: Mapping[str, Any]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    rows = value.get("instructions")
+    if not isinstance(rows, list):
+        rows = value.get("diffs")
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            kind = row.get("diff_kind")
+            if isinstance(kind, str) and kind:
+                counts[kind] = counts.get(kind, 0) + 1
+    raw = _assessment_field(value, "diff_kinds", "diffKinds")
+    if isinstance(raw, Mapping):
+        for kind, count in raw.items():
+            if not isinstance(kind, str):
+                continue
+            number = _assessment_number(count)
+            if number is not None:
+                counts[kind] = int(number)
+    return dict(sorted(counts.items()))
+
+
+def _assessment_metric(
+    left: Mapping[str, Any],
+    right: Mapping[str, Any] | None,
+    name: str,
+) -> dict[str, Any]:
+    right_value = right if isinstance(right, Mapping) else {}
+    diff_kinds = _assessment_diff_kinds(left)
+    target_size = _assessment_number(_assessment_field(left, "size", "target_size", "size_bytes"))
+    candidate_size = _assessment_number(
+        _assessment_field(right_value, "size", "candidate_size", "size_bytes")
+    ) if right is not None else None
+    paired_symbol = (
+        _assessment_field(right_value, "name", "symbol", "function")
+        if right is not None
+        else None
+    )
+    if not isinstance(paired_symbol, str) or not paired_symbol.strip():
+        paired_symbol = None
+    else:
+        paired_symbol = paired_symbol.strip()
+    match_percent = _assessment_number(
+        _assessment_field(left, "match_percent", "matchPercent", "similarity")
+    )
+    diff_rows = sum(diff_kinds.values())
+    paired = right is not None
+    exact = paired and match_percent == 100.0 and diff_rows == 0
+    return {
+        "symbol": name,
+        # ``size`` is the target-side size, while both sides are retained for
+        # callers that need to see source expansion/shrinkage explicitly.
+        "size": target_size,
+        "target_size": target_size,
+        "candidate_size": candidate_size,
+        "paired_symbol": paired_symbol,
+        "match_percent": match_percent,
+        "match": match_percent,
+        "diff_rows": diff_rows,
+        "diff_kinds": diff_kinds,
+        "diff_kind": diff_kinds,
+        "exact": bool(exact),
+        "paired": paired,
+    }
+
+
+def _assessment_records(value: Any, label: str) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    left, right = _assessment_report_sides(value, label)
+    records: list[dict[str, Any]] = []
+    occurrences: dict[str, int] = {}
+    exact_count = 0
+    for index, item in enumerate(left):
+        if not isinstance(item, Mapping):
+            _fail(f"{label} left symbol array contains a non-object row")
+        if not _assessment_is_function(item):
+            continue
+        left_value = item
+        name = _assessment_name(left_value, index)
+        occurrence = occurrences.get(name, 0) + 1
+        occurrences[name] = occurrence
+        identity = name if occurrence == 1 else f"{name}#{occurrence}"
+        _, right_value = _assessment_pair_right(left_value, right)
+        metric = _assessment_metric(left_value, right_value, name)
+        exact_count += int(metric["exact"])
+        records.append(
+            {
+                "identity": identity,
+                "name": name,
+                "occurrence": occurrence,
+                "metric": metric,
+            }
+        )
+    if not records:
+        _fail(f"{label} contains no function symbols")
+    return records, {"exact": exact_count, "total": len(records)}
+
+
+def _assessment_signature(value: Mapping[str, Any] | None) -> tuple[Any, ...] | None:
+    if value is None:
+        return None
+    return (
+        value.get("size"),
+        value.get("target_size"),
+        value.get("candidate_size"),
+        value.get("paired_symbol"),
+        value.get("match_percent"),
+        value.get("diff_rows"),
+        tuple(sorted(dict(value.get("diff_kinds", {})).items())),
+        value.get("exact"),
+        value.get("paired"),
+    )
+
+
+def _assessment_numeric_delta(before: Any, after: Any) -> int | float | None:
+    if isinstance(before, bool) or isinstance(after, bool):
+        return None
+    if not isinstance(before, (int, float)) or not isinstance(after, (int, float)):
+        return None
+    if not math.isfinite(float(before)) or not math.isfinite(float(after)):
+        return None
+    result = after - before
+    return int(result) if isinstance(result, float) and result.is_integer() else result
+
+
+def _assessment_diff_kind_delta(
+    before: Mapping[str, Any] | None, after: Mapping[str, Any] | None
+) -> dict[str, int]:
+    before_kinds = before.get("diff_kinds", {}) if isinstance(before, Mapping) else {}
+    after_kinds = after.get("diff_kinds", {}) if isinstance(after, Mapping) else {}
+    keys = set(before_kinds) | set(after_kinds)
+    result = {
+        str(key): int(after_kinds.get(key, 0)) - int(before_kinds.get(key, 0))
+        for key in keys
+        if int(after_kinds.get(key, 0)) - int(before_kinds.get(key, 0))
+    }
+    return dict(sorted(result.items()))
+
+
+def _assessment_metric_delta(
+    before: Mapping[str, Any] | None, after: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    before_value = before or {}
+    after_value = after or {}
+    diff_kind_delta = _assessment_diff_kind_delta(before, after)
+    return {
+        "size": _assessment_numeric_delta(before_value.get("size"), after_value.get("size")),
+        "target_size": _assessment_numeric_delta(
+            before_value.get("target_size"), after_value.get("target_size")
+        ),
+        "candidate_size": _assessment_numeric_delta(
+            before_value.get("candidate_size"), after_value.get("candidate_size")
+        ),
+        "match_percent": _assessment_numeric_delta(
+            before_value.get("match_percent"), after_value.get("match_percent")
+        ),
+        "match": _assessment_numeric_delta(
+            before_value.get("match_percent"), after_value.get("match_percent")
+        ),
+        "diff_rows": _assessment_numeric_delta(
+            before_value.get("diff_rows"), after_value.get("diff_rows")
+        ),
+        "diff_kinds": diff_kind_delta,
+        # Keep a singular spelling for consumers that describe a single
+        # instruction's kind transition.
+        "diff_kind_delta": diff_kind_delta,
+        "exact": _assessment_numeric_delta(
+            int(bool(before_value.get("exact"))), int(bool(after_value.get("exact")))
+        ),
+    }
+
+
+def _assessment_file(path: Path | str, root: Path, label: str) -> tuple[Path, dict[str, Any], Any]:
+    resolved = _resolve(path, root)
+    snapshot = _snapshot(resolved, label)
+    value = _load_json(resolved, label)
+    _recheck_live_snapshot(resolved, snapshot, label)
+    descriptor = {
+        "path": snapshot["path"],
+        "size_bytes": snapshot["size_bytes"],
+        "sha256": snapshot["sha256"],
+    }
+    return resolved, descriptor, value
+
+
+def _assessment_report_pair(
+    root: Path,
+    label: str,
+    baseline_path: Path | str,
+    candidate_path: Path | str,
+    focus_symbol: str,
+) -> dict[str, Any]:
+    _, baseline_descriptor, baseline_value = _assessment_file(
+        baseline_path, root, f"baseline {label} report"
+    )
+    _, candidate_descriptor, candidate_value = _assessment_file(
+        candidate_path, root, f"candidate {label} report"
+    )
+    baseline_records, baseline_counts = _assessment_records(
+        baseline_value, f"baseline {label} report"
+    )
+    candidate_records, candidate_counts = _assessment_records(
+        candidate_value, f"candidate {label} report"
+    )
+    baseline_by_id = {record["identity"]: record for record in baseline_records}
+    candidate_by_id = {record["identity"]: record for record in candidate_records}
+
+    def focus_metric(
+        records: list[dict[str, Any]], report_path: str, phase: str
+    ) -> Mapping[str, Any]:
+        matches = [record for record in records if record["name"] == focus_symbol]
+        if not matches:
+            _fail(
+                f"{report_path} lacks requested focus symbol {focus_symbol!r} in {phase} report"
+            )
+        if len(matches) != 1:
+            _fail(
+                f"{report_path} contains duplicate requested focus symbol {focus_symbol!r}"
+            )
+        metric = matches[0]["metric"]
+        if not metric.get("paired"):
+            _fail(
+                f"{report_path} focus symbol {focus_symbol!r} is not paired in {phase} report"
+            )
+        return metric
+
+    before_focus = focus_metric(
+        baseline_records, str(baseline_descriptor["path"]), "baseline"
+    )
+    after_focus = focus_metric(
+        candidate_records, str(candidate_descriptor["path"]), "candidate"
+    )
+    changed_siblings: list[dict[str, Any]] = []
+    regressions: list[dict[str, Any]] = []
+    for identity in sorted(set(baseline_by_id) | set(candidate_by_id)):
+        before_record = baseline_by_id.get(identity)
+        after_record = candidate_by_id.get(identity)
+        name = (before_record or after_record or {}).get("name")
+        if name == focus_symbol:
+            continue
+        before = before_record.get("metric") if before_record else None
+        after = after_record.get("metric") if after_record else None
+        if _assessment_signature(before) == _assessment_signature(after):
+            continue
+        row: dict[str, Any] = {
+            "symbol": name,
+            "before": before,
+            "after": after,
+            "delta": _assessment_metric_delta(before, after),
+        }
+        occurrence = (before_record or after_record or {}).get("occurrence", 1)
+        if occurrence != 1:
+            row["occurrence"] = occurrence
+        changed_siblings.append(row)
+        if before is not None and before.get("exact") and not (after is not None and after.get("exact")):
+            regressions.append(
+                {
+                    "symbol": name,
+                    "before": before,
+                    "after": after,
+                    "reason": "previously_exact_sibling_regressed",
+                }
+            )
+    changed_siblings.sort(key=lambda row: (str(row["symbol"]), int(row.get("occurrence", 1))))
+    regressions.sort(key=lambda row: str(row["symbol"]))
+    return {
+        "baseline": {"report": baseline_descriptor, "function_counts": baseline_counts},
+        "candidate": {"report": candidate_descriptor, "function_counts": candidate_counts},
+        "exact_function_counts": {"before": baseline_counts, "after": candidate_counts},
+        "function_counts": {"before": baseline_counts, "after": candidate_counts},
+        "focus": {
+            "symbol": focus_symbol,
+            "before": before_focus,
+            "after": after_focus,
+            "delta": _assessment_metric_delta(before_focus, after_focus),
+        },
+        "changed_siblings": changed_siblings,
+        "regressions": regressions,
+    }
+
+
+def assess_reports(
+    root: Path,
+    *,
+    baseline_strict: Path | str,
+    candidate_strict: Path | str,
+    baseline_data: Path | str | None = None,
+    candidate_data: Path | str | None = None,
+    focus_symbol: str,
+) -> dict[str, Any]:
+    """Compare two strict/data report pairs without changing any workbench state."""
+    root = root.resolve()
+    focus = _text(focus_symbol, "assessment focus_symbol")
+    if (baseline_data is None) != (candidate_data is None):
+        _fail("baseline and candidate data reports must be supplied together")
+    strict = _assessment_report_pair(
+        root, "strict", baseline_strict, candidate_strict, focus
+    )
+    data = (
+        _assessment_report_pair(root, "data", baseline_data, candidate_data, focus)
+        if baseline_data is not None and candidate_data is not None
+        else None
+    )
+    if data is not None:
+        for phase in ("before", "after"):
+            strict_focus = strict["focus"][phase]
+            data_focus = data["focus"][phase]
+            if (
+                not strict_focus
+                or not data_focus
+                or not strict_focus.get("paired")
+                or not data_focus.get("paired")
+                or strict_focus.get("symbol") != focus
+                or data_focus.get("symbol") != focus
+                or strict_focus.get("paired_symbol")
+                != data_focus.get("paired_symbol")
+            ):
+                _fail(
+                    f"strict/data focus pairing mismatch for {focus!r} in {phase} report"
+                )
+    reports = {"strict": strict, "data": data}
+    changed_siblings: list[dict[str, Any]] = []
+    regressions: list[dict[str, Any]] = []
+    function_counts: dict[str, Any] = {}
+    focus_reports: dict[str, Any] = {}
+    for label, report in reports.items():
+        if report is None:
+            function_counts[label] = None
+            focus_reports[label] = None
+            continue
+        function_counts[label] = report["exact_function_counts"]
+        focus_reports[label] = report["focus"]
+        changed_siblings.extend(
+            {"report": label, **row} for row in report["changed_siblings"]
+        )
+        regressions.extend({"report": label, **row} for row in report["regressions"])
+    changed_siblings.sort(
+        key=lambda row: (str(row["report"]), str(row["symbol"]), int(row.get("occurrence", 1)))
+    )
+    regressions.sort(key=lambda row: (str(row["report"]), str(row["symbol"])))
+    verdict = "rejected" if regressions else "accepted"
+    return {
+        "schema": ASSESSMENT_SCHEMA,
+        "schema_version": SCHEMA_VERSION,
+        "focus_symbol": focus,
+        "reports": reports,
+        "focus": {"symbol": focus, **focus_reports},
+        # Keep report names at the top level as well as under ``reports`` so
+        # small shell consumers do not need a special-case traversal.
+        "strict": strict,
+        "data": data,
+        "exact_function_counts": function_counts,
+        "changed_siblings": changed_siblings,
+        "regressions": regressions,
+        "verdict": verdict,
+        "status": verdict,
+        "authority_advanced": False,
     }
 
 
@@ -2713,7 +3175,7 @@ def build_matrix(root: Path, workspace: Path | str) -> dict[str, Any]:
 
 
 def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
-    if as_json:
+    if as_json or value.get("schema") == ASSESSMENT_SCHEMA:
         print(json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True))
         return
     if value.get("schema") == "match_workbench_diagnostic_batch/v1":
@@ -2792,6 +3254,50 @@ def _add_commands(commands: Any) -> None:
     matrix.add_argument("--workspace", required=True)
     matrix.add_argument("--json", action="store_true")
 
+    assess = commands.add_parser(
+        "assess",
+        help="compare baseline/candidate strict and data objdiff reports",
+    )
+    assess.add_argument(
+        "--baseline-strict",
+        "--strict-baseline",
+        "--baseline-strict-report",
+        "--baseline",
+        dest="baseline_strict",
+        required=True,
+    )
+    assess.add_argument(
+        "--candidate-strict",
+        "--strict-candidate",
+        "--candidate-strict-report",
+        "--candidate",
+        dest="candidate_strict",
+        required=True,
+    )
+    assess.add_argument(
+        "--baseline-data",
+        "--data-baseline",
+        "--baseline-data-report",
+        dest="baseline_data",
+    )
+    assess.add_argument(
+        "--candidate-data",
+        "--data-candidate",
+        "--candidate-data-report",
+        dest="candidate_data",
+    )
+    assess.add_argument(
+        "--focus-symbol",
+        "--symbol",
+        "--function",
+        "--focus",
+        dest="focus_symbol",
+        required=True,
+    )
+    # Assessment is intentionally JSON-only.  Accept the common workbench
+    # switch so scripts can share argument builders with the other commands.
+    assess.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
+
 
 def add_match_parser(subparsers: Any) -> argparse.ArgumentParser:
     parser = subparsers.add_parser("match", help="deduplicate candidates and parallelize read-only diagnosis")
@@ -2826,9 +3332,20 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
         result = diagnose_candidate(
             root, args.workspace, args.candidate_id, args.jobs, max_workers=args.max_workers
         )
+    elif args.match_command == "assess":
+        result = assess_reports(
+            root,
+            baseline_strict=args.baseline_strict,
+            candidate_strict=args.candidate_strict,
+            baseline_data=args.baseline_data,
+            candidate_data=args.candidate_data,
+            focus_symbol=args.focus_symbol,
+        )
     else:
         result = build_matrix(root, args.workspace)
     _print(result, as_json=args.json)
+    if args.match_command == "assess" and result.get("verdict") == "rejected":
+        return 1
     return 0
 
 
