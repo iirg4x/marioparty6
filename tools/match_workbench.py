@@ -1975,6 +1975,43 @@ def _assessment_metric_delta(
     }
 
 
+def _assessment_focus_regression(
+    symbol: str,
+    before: Mapping[str, Any],
+    after: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Return a fail-closed regression row when the requested focus worsens."""
+    if before.get("exact") and not after.get("exact"):
+        reason = "previously_exact_focus_regressed"
+    else:
+        before_match = _assessment_number(before.get("match_percent"))
+        after_match = _assessment_number(after.get("match_percent"))
+        if (
+            before_match is not None
+            and after_match is not None
+            and after_match < before_match
+        ):
+            reason = "focus_match_percent_regressed"
+        else:
+            before_rows = _assessment_number(before.get("diff_rows"))
+            after_rows = _assessment_number(after.get("diff_rows"))
+            if (
+                (before_match is None or after_match is None or after_match == before_match)
+                and before_rows is not None
+                and after_rows is not None
+                and after_rows > before_rows
+            ):
+                reason = "focus_diff_rows_regressed"
+            else:
+                return None
+    return {
+        "symbol": symbol,
+        "before": before,
+        "after": after,
+        "reason": reason,
+    }
+
+
 def _assessment_file(path: Path | str, root: Path, label: str) -> tuple[Path, dict[str, Any], Any]:
     resolved = _resolve(path, root)
     snapshot = _snapshot(resolved, label)
@@ -2139,6 +2176,13 @@ def assess_reports(
             {"report": label, **row} for row in report["changed_siblings"]
         )
         regressions.extend({"report": label, **row} for row in report["regressions"])
+        focus_regression = _assessment_focus_regression(
+            focus,
+            report["focus"]["before"],
+            report["focus"]["after"],
+        )
+        if focus_regression is not None:
+            regressions.append({"report": label, **focus_regression})
     changed_siblings.sort(
         key=lambda row: (str(row["report"]), str(row["symbol"]), int(row.get("occurrence", 1)))
     )

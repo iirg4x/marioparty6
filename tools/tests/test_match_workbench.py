@@ -1735,6 +1735,36 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["regressions"][0]["symbol"], "sibling")
         self.assertEqual(result["regressions"][0]["reason"], "previously_exact_sibling_regressed")
 
+    def test_assess_rejects_focus_regression_without_sibling_loss(self) -> None:
+        baseline = self.root / "focus-regression-baseline.json"
+        candidate = self.root / "focus-regression-candidate.json"
+        _write_json(baseline, _assessment_report(focus_match=99.95, sibling_match=100.0))
+        _write_json(candidate, _assessment_report(focus_match=99.74, sibling_match=100.0))
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "assess",
+                        "--baseline-strict",
+                        str(baseline),
+                        "--candidate-strict",
+                        str(candidate),
+                        "--focus-symbol",
+                        "focus",
+                        "--json",
+                    ]
+                ),
+                1,
+            )
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["verdict"], "rejected")
+        self.assertEqual(len(result["regressions"]), 1)
+        self.assertEqual(result["regressions"][0]["symbol"], "focus")
+        self.assertEqual(result["regressions"][0]["reason"], "focus_match_percent_regressed")
+
     def test_assess_rejects_missing_or_unpaired_focus(self) -> None:
         baseline = self.root / "focus-baseline.json"
         candidate = self.root / "focus-candidate.json"
