@@ -720,6 +720,114 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertFalse(object_hit["skip_diagnostics"])
         self.assertEqual(object_hit["diagnostic_reuse_candidate_id"], "c1")
 
+    def test_incomplete_context_advertises_explicit_object_materialization(self) -> None:
+        compiler = self.root / "compiler.bin"
+        compiler.write_bytes(b"compiler")
+        manifest = self._manifest()
+        manifest["context"] = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/2.6",
+            "compiler": _descriptor(compiler),
+            "compile_argv": [str(compiler)],
+            "compile_inputs": [],
+        }
+        _write_json(self.manifest, manifest)
+        self._init()
+        recorded = self._record()
+
+        lookup = module.lookup_matches(self.root, self.workspace, self.source)
+        self.assertEqual(lookup["status"], "known_source")
+        self.assertFalse(lookup["skip_compile"])
+        self.assertFalse(
+            json.loads((self.workspace / "session.json").read_text(encoding="utf-8"))["request"]["context"]["context_complete"]
+        )
+        self.assertEqual(
+            lookup["object_reuse_candidate_id"],
+            recorded["record"]["candidate_id"],
+        )
+        self.assertTrue(lookup["object_reuse_available"])
+        self.assertIn("explicit materialize", lookup["reason"])
+
+        materialized_path = self.root / "materialized.o"
+        materialized = module.materialize_candidate_object(
+            self.root,
+            self.workspace,
+            "c1",
+            self.source,
+            materialized_path,
+        )
+        self.assertEqual(materialized["status"], "materialized")
+        self.assertEqual(materialized_path.read_bytes(), self.object.read_bytes())
+        repeated = module.materialize_candidate_object(
+            self.root,
+            self.workspace,
+            "c1",
+            self.source,
+            materialized_path,
+        )
+        self.assertEqual(repeated["status"], "unchanged")
+
+        source_copy = self.root / "source-copy.c"
+        source_copy.write_bytes(self.source.read_bytes())
+        with self.assertRaisesRegex(module.MatchError, "source/context does not match"):
+            module.materialize_candidate_object(
+                self.root,
+                self.workspace,
+                "c1",
+                source_copy,
+                self.root / "wrong-context.o",
+            )
+
+    def test_materialize_rejects_tampered_candidate_object_cas(self) -> None:
+        self._init()
+        recorded = self._record()
+        object_cas = self.workspace / recorded["record"]["object_blob"]["cas_path"]
+        object_cas.write_bytes(b"tampered-object-cas")
+        with self.assertRaisesRegex(module.MatchError, "candidate object_blob CAS"):
+            module.materialize_candidate_object(
+                self.root,
+                self.workspace,
+                "c1",
+                self.source,
+                self.root / "tampered-materialized.o",
+            )
+
+    def test_materialize_rejects_workbench_destination_and_indirection(self) -> None:
+        self._init()
+        self._record()
+        with self.assertRaisesRegex(module.MatchError, "differ from the source"):
+            module.materialize_candidate_object(
+                self.root,
+                self.workspace,
+                "c1",
+                self.source,
+                self.source,
+            )
+        with self.assertRaisesRegex(module.MatchError, "outside the workbench"):
+            module.materialize_candidate_object(
+                self.root,
+                self.workspace,
+                "c1",
+                self.source,
+                self.workspace / "should-not-write.o",
+            )
+
+        replacement = self.root / "replacement.o"
+        replacement.write_bytes(b"replacement")
+        destination = self.root / "linked-materialized.o"
+        try:
+            destination.symlink_to(replacement)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"symlink creation unavailable: {exc}")
+        with self.assertRaisesRegex(module.MatchError, "indirection"):
+            module.materialize_candidate_object(
+                self.root,
+                self.workspace,
+                "c1",
+                self.source,
+                destination,
+            )
+
     def test_legacy_source_context_record_remains_readable_only_at_its_recorded_path(self) -> None:
         self._init()
         recorded = self._record()

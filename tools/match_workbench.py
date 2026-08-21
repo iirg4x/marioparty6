@@ -1455,6 +1455,11 @@ def lookup_matches(
         _recheck_live_snapshot(source_path, source_snapshot, "candidate source")
     if object_snapshot is not None and object_path is not None:
         _recheck_live_snapshot(_resolve(object_path, root), object_snapshot, "candidate object")
+    object_reuse_candidate_id = (
+        source_match
+        if source_match is not None and not conflict
+        else None
+    )
     return {
         "status": status,
         "source_sha256": source_snapshot["sha256"] if source_snapshot else None,
@@ -1468,15 +1473,125 @@ def lookup_matches(
         # are content-addressed and return cached results.
         "skip_diagnostics": False,
         "diagnostic_reuse_candidate_id": object_match,
+        # A source/context hit has an authenticated object CAS even when the
+        # request omitted compiler dependency descriptors.  Keep compilation
+        # conservative, but advertise the explicit materialization command so
+        # callers do not pay for a redundant compile merely to recover bytes
+        # that are already bound to this exact source/context key.
+        "object_reuse_candidate_id": object_reuse_candidate_id,
+        "object_reuse_available": object_reuse_candidate_id is not None,
         "reason": (
             "the same frozen source/context produced a different object; compiler inputs must be re-authenticated"
             if conflict
-            else "source/context is known but the frozen compile context is incomplete"
+            else "source/context is known but the frozen compile context is incomplete; exact object is available for explicit materialize"
             if source_match and not session["request"]["context"].get("context_complete", False)
             else "object bytes are known; run diagnose to reuse matching fingerprints"
             if object_match
             else None
         ),
+        "authority_advanced": False,
+    }
+
+
+def materialize_candidate_object(
+    root: Path,
+    workspace: Path | str,
+    candidate_id: str,
+    source: Path | str,
+    object_path: Path | str,
+) -> dict[str, Any]:
+    """Materialize an authenticated candidate object without compiling.
+
+    This operation is deliberately separate from ``lookup`` and never changes
+    ``skip_compile``.  It is safe with an incomplete compiler context because
+    it copies only the candidate's already-recorded object CAS, after binding
+    the live source path and bytes back to the immutable source/context key.
+    """
+    root = root.resolve()
+    destination = _workspace(workspace, root)
+    session = _load_session(destination, root)
+    candidate_id = _identifier(candidate_id, "candidate_id")
+    candidate = _load_candidate(destination, candidate_id, session)
+
+    source_path = _resolve(source, root)
+    source_snapshot = _snapshot(source_path, "materialize source")
+    compile_input_identity = _compile_input_identity(source_snapshot)
+    source_key = _context_key(
+        session, source_snapshot["sha256"], compile_input_identity
+    )
+    if (
+        candidate.get("source", {}).get("sha256") != source_snapshot["sha256"]
+        or candidate.get("source_context_key") != source_key
+    ):
+        _fail(
+            "candidate source/context does not match the requested source; "
+            "materialization is refused"
+        )
+    _recheck_live_snapshot(source_path, source_snapshot, "materialize source")
+
+    target = _resolve(object_path, root)
+    frozen_target = _resolve(
+        str(session["request"]["target"]["path"]), root
+    )
+    if target == source_path:
+        _fail("materialization destination must differ from the source")
+    if target == frozen_target:
+        _fail("materialization destination must differ from the frozen target")
+    try:
+        target.relative_to(destination)
+    except ValueError:
+        pass
+    else:
+        _fail("materialization destination must be outside the workbench")
+    _validate_target_path(target, allow_missing_leaf=True, label="materialization destination")
+    expected_parent_identity = _directory_identity(
+        target.parent, "materialization destination parent"
+    )
+    object_blob = candidate.get("object_blob")
+    if not isinstance(object_blob, Mapping):
+        _fail("candidate object CAS descriptor is missing")
+    cas_path = _contained(
+        destination, object_blob.get("cas_path"), "candidate object CAS"
+    )
+
+    if target.exists():
+        current = _snapshot(target, "materialization destination")
+        if (
+            current["sha256"] == candidate["object"]["sha256"]
+            and current["size_bytes"] == candidate["object"]["size_bytes"]
+        ):
+            _recheck_live_snapshot(source_path, source_snapshot, "materialize source")
+            return {
+                "status": "unchanged",
+                "workspace": os.fspath(destination),
+                "candidate_id": candidate_id,
+                "source": {
+                    key: source_snapshot[key]
+                    for key in ("path", "size_bytes", "sha256")
+                },
+                "object": {
+                    key: current[key] for key in ("path", "size_bytes", "sha256")
+                },
+                "source_context_key": source_key,
+                "authority_advanced": False,
+            }
+
+    restored = _restore_target_from_cas(
+        target,
+        cas_path,
+        candidate["object"],
+        expected_parent_identity,
+    )
+    _recheck_live_snapshot(source_path, source_snapshot, "materialize source")
+    return {
+        "status": "materialized",
+        "workspace": os.fspath(destination),
+        "candidate_id": candidate_id,
+        "source": {
+            key: source_snapshot[key] for key in ("path", "size_bytes", "sha256")
+        },
+        "object": restored,
+        "source_context_key": source_key,
         "authority_advanced": False,
     }
 
@@ -3717,6 +3832,16 @@ def _add_commands(commands: Any) -> None:
     lookup.add_argument("--object")
     lookup.add_argument("--json", action="store_true")
 
+    materialize = commands.add_parser(
+        "materialize",
+        help="copy an authenticated candidate object CAS to an explicit output path",
+    )
+    materialize.add_argument("--workspace", required=True)
+    materialize.add_argument("--candidate-id", required=True)
+    materialize.add_argument("--source", required=True)
+    materialize.add_argument("--object", required=True)
+    materialize.add_argument("--json", action="store_true")
+
     record = commands.add_parser("record", help="record and content-address one measured candidate")
     record.add_argument("--workspace", required=True)
     record.add_argument("--candidate-id", required=True)
@@ -3803,6 +3928,14 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
         result = repair_target(root, args.workspace)
     elif args.match_command == "lookup":
         result = lookup_matches(root, args.workspace, args.source, args.object)
+    elif args.match_command == "materialize":
+        result = materialize_candidate_object(
+            root,
+            args.workspace,
+            args.candidate_id,
+            args.source,
+            args.object,
+        )
     elif args.match_command == "record":
         result = record_candidate(
             root,
