@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mwcc_fe_chronology/v1",
+  "title": "MWCC front-end chronology v1",
+  "description": "Fail-closed, pointer-free AST EOBJREF to PCode to IG to allocator/home_join evidence. Native producer support remains blocked until an authenticated compiler capture emits this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "producer",
+    "provenance",
+    "objects"
+  ],
+  "properties": {
+    "schema": {
+      "const": "mwcc_fe_chronology/v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "producer": {
+      "$ref": "#/$defs/producer"
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/object"
+      }
+    }
+  },
+  "$defs": {
+    "pointerFreeToken": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+      "description": "A stable source/trace identifier; raw process pointers are rejected by the Python validator."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "status": {
+          "const": "blocked"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "compiler_sha256",
+        "trace_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "compiler_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "trace_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "id"
+      ],
+      "properties": {
+        "uid": {
+          "$ref": "#/$defs/pointerFreeToken"
+        },
+        "id": {
+          "$ref": "#/$defs/pointerFreeToken"
+        }
+      }
+    },
+    "pcodeEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "id",
+        "operation"
+      ],
+      "properties": {
+        "uid": {
+          "$ref": "#/$defs/pointerFreeToken"
+        },
+        "id": {
+          "$ref": "#/$defs/pointerFreeToken"
+        },
+        "operation": {
+          "enum": [
+            "create",
+            "reuse"
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_sha256",
+        "compiler_sha256",
+        "trace_sha256"
+      ],
+      "properties": {
+        "source_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "compiler_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "trace_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "homeCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "offset",
+        "size",
+        "authenticated",
+        "evidence"
+      ],
+      "properties": {
+        "uid": {
+          "$ref": "#/$defs/pointerFreeToken"
+        },
+        "offset": {
+          "type": "integer",
+          "multipleOf": 4
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "authenticated": {
+          "const": true
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "homeJoin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "candidates"
+      ],
+      "properties": {
+        "uid": {
+          "$ref": "#/$defs/pointerFreeToken"
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/homeCandidate"
+          }
+        }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "ast_eobjref",
+        "pcode",
+        "ig_node",
+        "allocator",
+        "home_join"
+      ],
+      "properties": {
+        "uid": {
+          "$ref": "#/$defs/pointerFreeToken"
+        },
+        "ast_eobjref": {
+          "$ref": "#/$defs/node"
+        },
+        "pcode": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/pcodeEvent"
+          }
+        },
+        "ig_node": {
+          "$ref": "#/$defs/node"
+        },
+        "allocator": {
+          "$ref": "#/$defs/node"
+        },
+        "home_join": {
+          "$ref": "#/$defs/homeJoin"
+        }
+      }
+    }
+  }
+}
