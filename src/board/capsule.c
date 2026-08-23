@@ -536,11 +536,45 @@ typedef struct CapsuleComChance_s {
     CAPSULE_COM_CHANCE_RANK rank[11];
 } CAPSULE_COM_CHANCE;
 
-static HUPROCESS *capsulePlayerThrowProc;
-
 static CAPSULE_THROW_HOOK capsuleThrowHook;
 
+static s16 *capsuleBorderObjId;
+
+static OMOBJ *capsuleThrowGlowOMObj;
+
+static OMOBJ *capsuleThrowRingOMObj;
+
+static OMOBJ *capsuleThrowRayOMObj;
+
+static OMOBJ *capsuleThrowMasuHitOMObj;
+
+static OMOBJ *capsuleThrowMasuCoinOMObj;
+
+static BOOL capsuleUseRemoveOnF;
+
+static BOOL capsuleMasuSelectEndF;
+
+static int capsuleComChoice;
+
+static OMOBJ *capEffTrailOMObj;
+
+static OMOBJ *capEffCrackOMObj;
+
+static OMOBJ *capEffHiliteOMObj;
+
+static OMOBJ *capEffRemoveAddOMObj;
+
+static OMOBJ *capEffRemoveOMObj;
+
+static BOOL capsuleSelectComBack;
+
+static OMOBJ *capEffMasuOkOMObj;
+
 static OMOBJ *capsuleGuideOMObj;
+
+static BOOL capsuleComSearchF;
+
+static HUPROCESS *capsulePlayerThrowProc;
 
 static int capsuleMasuSelectResult = MB_MODEL_NONE;
 
@@ -759,36 +793,6 @@ static int capsuleListColW[16] = {
     32, 32, 32, 48,
 };
 
-static OMOBJ *capEffMasuOkOMObj;
-
-static OMOBJ *capEffRemoveOMObj;
-
-static OMOBJ *capEffRemoveAddOMObj;
-
-static OMOBJ *capEffHiliteOMObj;
-
-static OMOBJ *capEffCrackOMObj;
-
-static OMOBJ *capEffTrailOMObj;
-
-static OMOBJ *capsuleThrowMasuCoinOMObj;
-
-static OMOBJ *capsuleThrowMasuHitOMObj;
-
-static OMOBJ *capsuleThrowRayOMObj;
-
-static OMOBJ *capsuleThrowRingOMObj;
-
-static OMOBJ *capsuleThrowGlowOMObj;
-
-static BOOL capsuleMasuSelectEndF;
-
-static BOOL capsuleComSearchF;
-
-static int capsuleComChoice;
-
-static BOOL capsuleUseRemoveOnF;
-
 extern int mbev_CapEffCoinNumGet(OMOBJ *obj);
 
 extern int mbev_CapEffGlowDispGet(OMOBJ *obj);
@@ -908,23 +912,9 @@ extern float mbCosDeg(float angle);
 
 extern BOOL mbSaveNewF;
 
-extern const float lbl_802C44F8;
-
 extern const float lbl_802C4514;
 
 extern const float lbl_802C4524;
-
-extern const float lbl_802C4530;
-
-extern const float lbl_802C4540;
-
-extern const float lbl_802C4544;
-
-extern const float lbl_802C455C;
-
-extern const float lbl_802C45C0;
-
-extern const float lbl_802C45D0;
 
 extern const float lbl_802C45F8;
 
@@ -933,14 +923,6 @@ extern const double lbl_802C4600;
 extern const double lbl_802C4608;
 
 extern const double lbl_802C4610;
-
-extern const float lbl_802C4574;
-
-extern const float lbl_802C4570;
-
-extern const float lbl_802C4578;
-
-extern const float lbl_802C4598;
 
 extern const float lbl_802C4618;
 
@@ -967,8 +949,6 @@ extern const float lbl_802C4664;
 extern const float lbl_802C4668;
 
 extern const float lbl_802C466C;
-
-extern const float lbl_802C4670;
 
 extern const float lbl_802C4674;
 
@@ -1153,8 +1133,6 @@ static s16 capsuleNum[33][2];
 
 static CAPSULE_LIST capsuleList[33];
 
-static BOOL capsuleSelectComBack;
-
 static CAPSULE_OBJ_COLOR capsuleObjColorData[CAPSULE_OBJ_COLOR_MAX];
 
 static s16 capsuleObjBorderId[6];
@@ -1168,8 +1146,6 @@ static float capsuleBezierX[8];
 static float capsuleBezierY[8];
 
 static float capsuleBezierZ[8];
-
-static s16 *capsuleBorderObjId;
 
 extern s8 mbPadStkXGet(s32 playerNo);
 
@@ -1871,7 +1847,7 @@ static void CapPlayerThrow(void)
     work->objColorId = mbCapObjColorCreate(work->capsuleNo, FALSE);
     mbPlayerPosGet(work->playerNo, &pos);
     mbCapObjColorPosSet(
-        work->objColorId, pos.x, lbl_802C4530 + pos.y, pos.z);
+        work->objColorId, pos.x, 100.0f + pos.y, pos.z);
     mbCapObjColorScaleSet(work->objColorId, 1.0f, 1.0f, 1.0f);
     mbCapObjColorLayerSet(work->objColorId, 4);
     CapEffTrailAdd(&work->pos, work->capsuleNo);
@@ -1911,11 +1887,11 @@ static void CapPlayerThrow(void)
         mbCameraFocusObjSet(work->capObjId1);
         if (capsuleThrowGlowOMObj != NULL) {
             pos.x = effPos.x +
-                ((0.5f - MBCapsuleEffRandF()) * lbl_802C4530 * 0.75f);
+                ((0.5f - MBCapsuleEffRandF()) * 100.0f * 0.75f);
             pos.y = effPos.y +
-                ((0.5f - MBCapsuleEffRandF()) * lbl_802C4530 * 0.75f);
+                ((0.5f - MBCapsuleEffRandF()) * 100.0f * 0.75f);
             pos.z = effPos.z +
-                ((0.5f - MBCapsuleEffRandF()) * lbl_802C4530 * 0.75f);
+                ((0.5f - MBCapsuleEffRandF()) * 100.0f * 0.75f);
             vel.x = vel.y = vel.z = 0.0f;
             color = capsulePlayerThrowColorTbl[
                 mbCapColorGet(work->capsuleNo)];
@@ -1928,7 +1904,7 @@ static void CapPlayerThrow(void)
             glowPosP = &glowPos;
             mbev_CapEffGlowAdd(capsuleThrowGlowOMObj, glowPosP, glowVelP,
                 (int)(60.0f * (1.0f + MBCapsuleEffRandF())),
-                lbl_802C4530 *
+                100.0f *
                     (0.2f + (0.025f * MBCapsuleEffRandF())),
                 0.0f, 0.025f, glowColorP);
         }
@@ -2541,9 +2517,9 @@ void mbCapEffThrowCreate(HuVecF *startPos, HuVecF *endPos)
     z[2] = endPos->z;
     PSVECSubtract(endPos, startPos, &delta);
     dist = PSVECMag(&delta);
-    yOfs = lbl_802C4570 + (lbl_802C4574 * dist);
-    if (yOfs > lbl_802C4578) {
-        yOfs = lbl_802C4578;
+    yOfs = 50.0f + (0.1f * dist);
+    if (yOfs > 700.0f) {
+        yOfs = 700.0f;
     }
     CapEffThrowCreate(-1, x, y, z, yOfs, -1);
 }
@@ -3792,7 +3768,7 @@ static int CapSelectMasuWinCreate(int unused)
     mbWinMesSpeedSet(winId, 0);
     mbWinPause(winId);
     mbWinTopPosGet(&pos);
-    mbWinTopPosSet(pos.x, pos.y - lbl_802C4598);
+    mbWinTopPosSet(pos.x, pos.y - 8.0f);
     return winId;
 }
 
@@ -4019,7 +3995,6 @@ int mbCapListCopy(CAPSULE_LIST *list)
 
 void mbCapListDebug(void)
 {
-    extern char lbl_802BFD90[5];
     static GXColor winColor = { 0, 0, 144, 192 };
     CAPSULE_LIST *listBase;
     CAPSULE_LIST *list;
@@ -4113,7 +4088,7 @@ void mbCapListDebug(void)
                         print8((s16)x, (s16)y, 1.5f, "%s",
                             mbCapDebugNameGet(list->id));
                     } else {
-                        print8((s16)x, (s16)y, 1.5f, lbl_802BFD90);
+                        print8((s16)x, (s16)y, 1.5f, "NULL");
                     }
                 } else {
                     print8((s16)x, (s16)y, 1.5f, "%02d",
@@ -4300,7 +4275,6 @@ static int capsuleNumColW[16] = {
 
 void mbCapNumDebug(void)
 {
-    extern char lbl_802BFD90[5];
     static GXColor winColor = { 0, 0, 144, 192 };
     CAPSULE_LIST *list;
     float x;
@@ -4329,7 +4303,7 @@ void mbCapNumDebug(void)
                     if (list->id != -1) {
                         print8(x, y, 1.5f, "%s", mbCapDebugNameGet(list->id));
                     } else {
-                        print8(x, y, 1.5f, lbl_802BFD90);
+                        print8(x, y, 1.5f, "NULL");
                     }
                 } else if (j == 3) {
                     print8(x, y, 1.5f, "%02d",
@@ -4843,7 +4817,7 @@ int mbCapSelectComGet(int playerNo, int *capsuleTbl, int capsuleNum)
         }
     }
     if (mbPlayerCapsuleNumGet(playerNo) < mbPlayerCapsuleMaxGet() &&
-        (lbl_802C4530 * MBCapsuleEffRandF()) < 30.0f) {
+        (100.0f * MBCapsuleEffRandF()) < 30.0f) {
         return -1;
     }
     i = 0;
@@ -5567,21 +5541,21 @@ int mbCapBonusCoinNumGet(int playerNo, int capsuleNo)
     }
     switch (mbCapUseModeGet(capsuleNo)) {
         case 0:
-            if ((lbl_802C4530 * MBCapsuleEffRandF()) <
-                (lbl_802C4540 + (10 * rank))) {
+            if ((100.0f * MBCapsuleEffRandF()) <
+                (20.0f + (10 * rank))) {
                 bonus = mbRandMod(rank + 1) + 1;
             }
             break;
 
         case 1:
-            if ((lbl_802C4530 * MBCapsuleEffRandF()) <
+            if ((100.0f * MBCapsuleEffRandF()) <
                 (40.0f + (10 * rank))) {
                 bonus = mbRandMod(rank + 3) + 5;
             }
             break;
 
         case 2:
-            if ((lbl_802C4530 * MBCapsuleEffRandF()) <
+            if ((100.0f * MBCapsuleEffRandF()) <
                 (40.0f + (10 * rank))) {
                 bonus = mbRandMod(rank + 2) + 3;
             }
@@ -5600,7 +5574,7 @@ int mbCapDescWinCreate(int capsuleNo)
     mbWinMesSpeedSet(winId, 0);
     mbWinPause(winId);
     mbWinPosGet(winId, &pos);
-    pos.y -= lbl_802C4598;
+    pos.y -= 8.0f;
     mbWinPosSet(winId, (s16)pos.x, (s16)pos.y);
     return winId;
 }
@@ -6153,10 +6127,10 @@ static void CapGuideOMExec(OMOBJ *obj)
         if (capsuleGuideOMObj->work[0] == 0) {
             switch (work->state) {
             case 0:
-                if (work->scale < lbl_802C45C0) {
+                if (work->scale < 2.0f) {
             work->scale += 0.2;
                 } else {
-                    work->scale = lbl_802C45C0;
+                    work->scale = 2.0f;
                     work->state = 1;
                 }
                 mbObjScaleSet(work->objId, work->scale, work->scale, work->scale);
@@ -6170,7 +6144,7 @@ static void CapGuideOMExec(OMOBJ *obj)
                 break;
             }
         } else {
-            if ((work->scale -= lbl_802C455C) < 0.0f) {
+            if ((work->scale -= 0.2f) < 0.0f) {
                 work->state = 0;
                 mbObjDispSet(work->objId, FALSE);
             }
@@ -6276,7 +6250,7 @@ static void CapEffMasuOkOMExec(OMOBJ *obj)
         if (work->masuId > 0) {
             mbMasuPosGet(work->masuId, &pos);
             mbMasuRotGet(work->masuId, &rot);
-            pos.y += lbl_802C4544;
+            pos.y += 10.0f;
             mbObjPosSetV(work->modelId, &pos);
             mbObjRotSetV(work->modelId, &rot);
         }
@@ -6284,7 +6258,7 @@ static void CapEffMasuOkOMExec(OMOBJ *obj)
     if (work->masuId > 0) {
         mbMasuPosGet(work->masuId, &pos);
         mbMasuRotGet(work->masuId, &rot);
-        pos.y += lbl_802C4544;
+        pos.y += 10.0f;
         mbObjPosSetV(work->modelId, &pos);
         mbObjRotSetV(work->modelId, &rot);
     }
@@ -6294,7 +6268,7 @@ static void CapEffMasuOkOMExec(OMOBJ *obj)
             break;
 
         case 2:
-            work->scale += lbl_802C455C;
+            work->scale += 0.2f;
             if (work->scale >= 1.0f) {
                 work->scale = 1.0f;
                 work->state++;
@@ -6303,7 +6277,7 @@ static void CapEffMasuOkOMExec(OMOBJ *obj)
             break;
 
         case 10:
-            work->scale -= lbl_802C455C;
+            work->scale -= 0.2f;
             if (work->scale <= 0.001f) {
                 mbObjDispSet(work->modelId, FALSE);
                 work->scale = 0.001f;
@@ -7223,7 +7197,7 @@ static void CapEffCrackDraw(HU3D_MODEL *modelP, Mtx *mtx)
         i < work->num;
          i++, data++) {
         if (data->flag) {
-            if (data->angle == lbl_802C44F8) {
+            if (!data->angle) {
                 for (j = 0; j < 3; j++) {
                     PSVECScale(&data->pos[j], &pos, data->scale);
                     PSVECAdd(&pos, &data->vel, vtx);
@@ -7302,7 +7276,7 @@ static void CapEffTrailCreate(int capsuleNo)
     memset(work, 0, sizeof(*work));
     for (i = 0; i < 12; i++) {
         obj->mdlId[i] = MB_MODEL_NONE;
-        work->prevPos[i].x = work->prevPos[i].y = work->prevPos[i].z = lbl_802C44F8;
+        work->prevPos[i].x = work->prevPos[i].y = work->prevPos[i].z = 0.0f;
     }
     obj->mdlId[12] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
         DATANUM(DATA_capsule, 42), HU_MEMNUM_OVL)), 24);
@@ -7313,8 +7287,8 @@ static void CapEffTrailCreate(int capsuleNo)
     particleData = particle->data;
     particle->blendMode = MB_PARTICLE_BLEND_ADDCOL;
     for (i = 0; i < particle->num; i++, particleData++) {
-        particleData->scale = lbl_802C44F8;
-        particleData->pos.x = particleData->pos.y = particleData->pos.z = lbl_802C44F8;
+        particleData->scale = 0.0f;
+        particleData->pos.x = particleData->pos.y = particleData->pos.z = 0.0f;
     }
     obj->stat |= OM_STAT_MODELPAUSE;
     obj->work[0] = 0;
@@ -7462,7 +7436,7 @@ static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
     work = obj->data;
     color = capsuleTrailColorTbl[mbCapColorGet(capsuleNo)][0];
     for (i = 0; i < particle->num / 2; i++, data++) {
-        time = (float)i / lbl_802C4670;
+        time = (float)i / 12.0f;
         data->scale = 100.0f *
             (0.9f + ((0.4f - 0.9f) * time));
         data->pos.x = pos->x;
@@ -7475,7 +7449,7 @@ static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
     }
     color = capsuleTrailColorTbl[mbCapColorGet(capsuleNo)][1];
     for (i = 0; i < particle->num / 2; i++, data++) {
-        time = (float)i / lbl_802C4670;
+        time = (float)i / 12.0f;
         data->scale = 0.75f * (100.0f *
             (0.9f + ((0.4f - 0.9f) * time)));
         data->pos.x = pos->x;
@@ -8001,11 +7975,11 @@ static void CapThrowCameraCalc(float t, float *x, float *y, float *z,
     spanX = capsuleTime[lowX + 1] - capsuleTime[lowX];
     relX = t - capsuleTime[lowX];
     outX = x[lowX] + (relX *
-        ((relX * ((lbl_802C45D0 * capsuleBezierX[lowX]) +
+        ((relX * ((3.0f * capsuleBezierX[lowX]) +
             ((relX * (capsuleBezierX[lowX + 1] - capsuleBezierX[lowX])) /
                 spanX))) +
             (((x[lowX + 1] - x[lowX]) / spanX) -
-                (spanX * ((lbl_802C45C0 * capsuleBezierX[lowX]) +
+                (spanX * ((2.0f * capsuleBezierX[lowX]) +
                     capsuleBezierX[lowX + 1])))));
     out->x = outX;
 
@@ -8025,11 +7999,11 @@ static void CapThrowCameraCalc(float t, float *x, float *y, float *z,
     spanY = capsuleTime[lowY + 1] - capsuleTime[lowY];
     relY = t - capsuleTime[lowY];
     outY = y[lowY] + (relY *
-        ((relY * ((lbl_802C45D0 * capsuleBezierY[lowY]) +
+        ((relY * ((3.0f * capsuleBezierY[lowY]) +
             ((relY * (capsuleBezierY[lowY + 1] - capsuleBezierY[lowY])) /
                 spanY))) +
             (((y[lowY + 1] - y[lowY]) / spanY) -
-                (spanY * ((lbl_802C45C0 * capsuleBezierY[lowY]) +
+                (spanY * ((2.0f * capsuleBezierY[lowY]) +
                     capsuleBezierY[lowY + 1])))));
     out->y = outY;
 
@@ -8049,11 +8023,11 @@ static void CapThrowCameraCalc(float t, float *x, float *y, float *z,
     spanZ = capsuleTime[lowZ + 1] - capsuleTime[lowZ];
     relZ = t - capsuleTime[lowZ];
     outZ = z[lowZ] + (relZ *
-        ((relZ * ((lbl_802C45D0 * capsuleBezierZ[lowZ]) +
+        ((relZ * ((3.0f * capsuleBezierZ[lowZ]) +
             ((relZ * (capsuleBezierZ[lowZ + 1] - capsuleBezierZ[lowZ])) /
                 spanZ))) +
             (((z[lowZ + 1] - z[lowZ]) / spanZ) -
-                (spanZ * ((lbl_802C45C0 * capsuleBezierZ[lowZ]) +
+                (spanZ * ((2.0f * capsuleBezierZ[lowZ]) +
                     capsuleBezierZ[lowZ + 1])))));
     out->z = outZ;
 }
