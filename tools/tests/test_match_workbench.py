@@ -603,6 +603,131 @@ class MatchWorkbenchTests(unittest.TestCase):
                 self.root, self.workspace, focus_symbol="fn", elapsed_seconds=0
             )
 
+    def test_causal_reducer_ranks_explicit_else_return_and_routes_centrally(self) -> None:
+        def instruction(
+            address: int,
+            formatted: str,
+            *,
+            diff_kind: str | None = None,
+            branch_dest: int | None = None,
+        ) -> dict[str, object]:
+            row: dict[str, object] = {
+                "instruction": {
+                    "address": str(address),
+                    "size": 4,
+                    "formatted": formatted,
+                }
+            }
+            if diff_kind is not None:
+                row["diff_kind"] = diff_kind
+            if branch_dest is not None:
+                row["instruction"]["branch_dest"] = str(branch_dest)  # type: ignore[index]
+                row["branch_dest"] = str(branch_dest)
+            return row
+
+        target = [
+            instruction(100, "cmpwi r3, 1"),
+            instruction(104, "bne 0x74", diff_kind="DIFF_ARG_MISMATCH", branch_dest=116),
+            instruction(108, "bl body"),
+            instruction(112, "b 0x78", diff_kind="DIFF_DELETE", branch_dest=120),
+            instruction(116, "b 0x78", diff_kind="DIFF_DELETE", branch_dest=120),
+            instruction(120, "blr"),
+        ]
+        candidate = [
+            instruction(500, "cmpwi r3, 1"),
+            instruction(504, "bne 0x204", diff_kind="DIFF_ARG_MISMATCH", branch_dest=516),
+            instruction(508, "bl body"),
+            {"diff_kind": "DIFF_DELETE"},
+            {"diff_kind": "DIFF_DELETE"},
+            instruction(516, "blr"),
+        ]
+        report_path = self.root / "cascade-report.json"
+        _write_json(
+            report_path,
+            {
+                "left": {
+                    "symbols": [
+                        {
+                            "name": "hook",
+                            "kind": "SYMBOL_FUNCTION",
+                            "address": "100",
+                            "size": "24",
+                            "target_symbol": 0,
+                            "match_percent": 90.0,
+                            "instructions": target,
+                        }
+                    ]
+                },
+                "right": {
+                    "symbols": [
+                        {
+                            "name": "hook",
+                            "kind": "SYMBOL_FUNCTION",
+                            "address": "500",
+                            "size": "16",
+                            "match_percent": 90.0,
+                            "instructions": candidate,
+                        }
+                    ]
+                },
+            },
+        )
+        result = module.reduce_objdiff_cascades(
+            self.root, report=report_path, focus_symbol="hook"
+        )
+        self.assertEqual(result["schema"], module.CAUSAL_REDUCER_SCHEMA)
+        self.assertFalse(result["authority_advanced"])
+        self.assertEqual(
+            result["audit"]["hypotheses"][0]["classification"],
+            "explicit_else_return_epilogue",
+        )
+        self.assertIn(
+            "else-return",
+            result["audit"]["causal_groups"][0]["recommended_source_axis"],
+        )
+        self.assertRegex(result["causal_reducer_sha256"], r"^[0-9a-f]{64}$")
+
+        argv = [
+            "--root",
+            str(self.root),
+            "cascade",
+            "--report",
+            str(report_path),
+            "--function",
+            "hook",
+        ]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(module.main(argv), 0)
+        self.assertEqual(json.loads(output.getvalue()), result)
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "cascade",
+                "--report",
+                str(report_path),
+                "--function",
+                "hook",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), result)
+
+        with self.assertRaisesRegex(module.MatchError, "focus_not_found"):
+            module.reduce_objdiff_cascades(
+                self.root, report=report_path, focus_symbol="missing"
+            )
+
     def _job_script(self, name: str = "probe.py", body: str | None = None) -> Path:
         path = self.root / name
         path.write_text(

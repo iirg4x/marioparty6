@@ -137,6 +137,30 @@ is reported separately from compiler/process throughput. This report is
 diagnostic telemetry only; it does not authenticate physical relocations,
 consumer closure, or promotion authority.
 
+### 7. Reduce one function's objdiff cascade
+
+```sh
+rtk python tools/agent.py match cascade \
+  --report build/GP6E01/reports/candidate.strict.json \
+  --function ev_CapTeresaFadeMatHook
+```
+
+`cascade` binds the report bytes and reducer implementation, then emits
+self-hashed `match_workbench_causal_reducer/v1` JSON. It clusters adjacent
+instruction residuals, collapses repeated structural signatures into causal
+families, and ranks bounded diagnostics for uniform stack-home deltas,
+sign-extension/prototype seams, aggregate-copy lifetimes, branch topology, and
+relocation/data mismatches. Optional `--target-asm` and `--candidate-asm` add
+hashed listing context; `--full` retains bounded instruction pairs.
+
+The explicit-else rule recognizes a narrow MWCC topology: a target conditional
+branch enters the second of two adjacent branches to one epilogue while the
+candidate branches directly to that epilogue. It recommends testing
+`if (condition) { body } else { return; }`, the shortest successful axis for
+`ev_CapTeresaFadeMatHook` c17. Recommendations remain diagnostic evidence, not
+source provenance or retention authority; strict/data/physical-relocation,
+section, consumer, and protected-sibling gates remain mandatory.
+
 Compact objdiff summaries are explicitly diagnostic-only, not canonical proof.
 Even an exact compact focus produces the next action
 `authenticate_report_binding_then_run_serial_proof_and_closure`; first bind the

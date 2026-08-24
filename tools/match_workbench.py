@@ -46,6 +46,7 @@ JOBS_SCHEMA = "match_workbench_jobs/v1"
 DIAGNOSTIC_SCHEMA = "match_workbench_diagnostic/v1"
 MATRIX_SCHEMA = "match_workbench_matrix/v1"
 FUNCTION_TELEMETRY_SCHEMA = "match_workbench_function_telemetry/v1"
+CAUSAL_REDUCER_SCHEMA = "match_workbench_causal_reducer/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
@@ -7952,6 +7953,99 @@ def build_matrix(
     return _with_self_hash(compact_body, "matrix_sha256")
 
 
+def reduce_objdiff_cascades(
+    root: Path,
+    *,
+    report: Path | str,
+    focus_symbol: str,
+    target_assembly: Path | str | None = None,
+    candidate_assembly: Path | str | None = None,
+    summary_only: bool = True,
+    max_hypotheses: int = 20,
+    include_exact_residuals: bool = False,
+) -> dict[str, Any]:
+    """Bind and reduce one authenticated objdiff function residual.
+
+    The reducer is deliberately read-only and authority-free.  It groups
+    repeated structural mismatch signatures and may rank bounded natural-C
+    diagnostics, but it never claims source provenance or candidate retention.
+    """
+
+    from tools.mismatch_cluster_audit import AuditInputError, audit_document
+
+    root = root.resolve()
+    symbol = _text(focus_symbol, "focus_symbol")
+    if isinstance(max_hypotheses, bool) or not isinstance(max_hypotheses, int):
+        _fail("max_hypotheses must be an integer")
+    resolved_report, report_descriptor, report_value = _assessment_file(
+        report, root, "causal reducer objdiff report"
+    )
+
+    assembly_inputs: dict[str, dict[str, Any] | None] = {
+        "target": None,
+        "candidate": None,
+    }
+    assembly_paths: dict[str, Path | None] = {"target": None, "candidate": None}
+    assembly_snapshots: dict[str, Mapping[str, Any]] = {}
+    for side, value in (("target", target_assembly), ("candidate", candidate_assembly)):
+        if value is None:
+            continue
+        path = _resolve(value, root)
+        snapshot = _snapshot(path, f"causal reducer {side} assembly")
+        assembly_paths[side] = path
+        assembly_snapshots[side] = snapshot
+        assembly_inputs[side] = {
+            "path": snapshot["path"],
+            "size_bytes": snapshot["size_bytes"],
+            "sha256": snapshot["sha256"],
+        }
+
+    try:
+        audit = audit_document(
+            report_value,
+            target_assembly=assembly_paths["target"],
+            candidate_assembly=assembly_paths["candidate"],
+            focus_symbol=symbol,
+            include_exact_residuals=include_exact_residuals,
+            summary_only=summary_only,
+            max_hypotheses=max_hypotheses,
+        )
+    except AuditInputError as exc:
+        _fail(f"causal reducer rejected objdiff report ({exc.code}): {exc.message}")
+    for side, snapshot in assembly_snapshots.items():
+        path = assembly_paths[side]
+        assert path is not None
+        _recheck_live_snapshot(path, snapshot, f"causal reducer {side} assembly")
+    if audit.get("fail_closed") or audit.get("status") != "ok":
+        _fail("causal reducer did not produce a closed successful audit")
+
+    tool_path = Path(__file__).with_name("mismatch_cluster_audit.py").resolve()
+    tool_snapshot = _snapshot(tool_path, "causal reducer implementation")
+    body = {
+        "schema": CAUSAL_REDUCER_SCHEMA,
+        "schema_version": 1,
+        "focus_symbol": symbol,
+        "inputs": {
+            "report": report_descriptor,
+            "target_assembly": assembly_inputs["target"],
+            "candidate_assembly": assembly_inputs["candidate"],
+        },
+        "tool": {
+            "path": tool_snapshot["path"],
+            "size_bytes": tool_snapshot["size_bytes"],
+            "sha256": tool_snapshot["sha256"],
+        },
+        "audit": audit,
+        "limitations": [
+            "Structural grouping and recommended axes are diagnostic evidence, not original-source provenance.",
+            "Retention requires independent strict/data/physical-relocation/section and sibling gates.",
+        ],
+        "authority_advanced": False,
+    }
+    _recheck_live_snapshot(tool_path, tool_snapshot, "causal reducer implementation")
+    return _with_self_hash(body, "causal_reducer_sha256")
+
+
 def build_function_telemetry(
     root: Path,
     workspace: Path | str,
@@ -8133,6 +8227,7 @@ def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
         RESIDUALS_SCHEMA,
         STACK_RESIDUE_SCHEMA,
         FUNCTION_TELEMETRY_SCHEMA,
+        CAUSAL_REDUCER_SCHEMA,
         DONOR_SHAPES_SCHEMA,
         DONOR_REGISTRY_SCHEMA,
         DONOR_REGISTRY_LIST_SCHEMA,
@@ -8338,6 +8433,30 @@ def _add_commands(commands: Any) -> None:
     telemetry.add_argument("--tracer-runs", type=int)
     telemetry.add_argument("--donor-searches", type=int)
     telemetry.add_argument("--json", action="store_true")
+
+    cascade = commands.add_parser(
+        "cascade",
+        aliases=("causal-reduce",),
+        help="reduce one function's objdiff rows into bounded causal groups",
+    )
+    cascade.add_argument("--report", "--objdiff-report", dest="report", required=True)
+    cascade.add_argument(
+        "--focus-symbol",
+        "--symbol",
+        "--function",
+        dest="focus_symbol",
+        required=True,
+    )
+    cascade.add_argument("--target-asm")
+    cascade.add_argument("--candidate-asm")
+    cascade.add_argument("--max-hypotheses", type=int, default=20)
+    cascade.add_argument(
+        "--full",
+        action="store_true",
+        help="include bounded instruction-pair evidence instead of compact summary output",
+    )
+    cascade.add_argument("--include-exact-residuals", action="store_true")
+    cascade.add_argument("--json", action="store_true")
 
     assess = commands.add_parser(
         "assess",
@@ -8634,6 +8753,17 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             active_seconds=args.active_seconds,
             tracer_runs=args.tracer_runs,
             donor_searches=args.donor_searches,
+        )
+    elif args.match_command in {"cascade", "causal-reduce"}:
+        result = reduce_objdiff_cascades(
+            root,
+            report=args.report,
+            focus_symbol=args.focus_symbol,
+            target_assembly=args.target_asm,
+            candidate_assembly=args.candidate_asm,
+            summary_only=not args.full,
+            max_hypotheses=args.max_hypotheses,
+            include_exact_residuals=args.include_exact_residuals,
         )
     elif args.match_command == "assess":
         result = assess_reports(
