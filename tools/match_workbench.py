@@ -6577,12 +6577,18 @@ def record_candidate(
         _, source_duplicate, _ = _source_index_match(
             destination, index, session, source_snapshot, compile_input_identity
         )
-        if source_duplicate and source_duplicate != object_duplicate:
-            _fail(
-                "the same frozen source/context produced a different object; "
-                "recording it would hide a nondeterministic or incomplete cache key"
-            )
-        duplicate_id = object_duplicate or source_duplicate
+        if source_duplicate:
+            source_record = _load_candidate(destination, source_duplicate, session)
+            if source_record.get("object_result_key") != object_key:
+                _fail(
+                    "the same frozen source/context produced a different object; "
+                    "recording it would hide a nondeterministic or incomplete cache key"
+                )
+        # Prefer the same source/context producer when both indexes legitimately
+        # name different earlier records for one object.  The object index is
+        # intentionally canonical-first, while the source index identifies the
+        # evidence that is actually eligible for same-context reuse.
+        duplicate_id = source_duplicate or object_duplicate
         ordinal = int(index["sequence"]) + 1
         record = _with_self_hash(
             {
@@ -7658,7 +7664,22 @@ def build_matrix(
         for candidate_id in sorted(index["candidates"])
     ]
     indexed_candidate_paths = {Path(relative).name for relative in index["candidates"].values()}
-    actual_candidate_paths = {path.name for path in (destination / "candidates").glob("*.json")}
+    candidate_directory = destination / "candidates"
+    actual_candidate_paths = {
+        path.name
+        for path in candidate_directory.glob("*.json")
+        if path.name != "manifest.json"
+    }
+    candidate_manifest = candidate_directory / "manifest.json"
+    if candidate_manifest.exists():
+        manifest_value = _load_json(candidate_manifest, "candidate generation manifest")
+        if not isinstance(manifest_value, Mapping):
+            _fail("candidate generation manifest must be an object")
+        manifest_schema = _text(
+            manifest_value.get("schema"), "candidate generation manifest schema"
+        )
+        if manifest_schema == CANDIDATE_SCHEMA:
+            _fail("candidate generation manifest cannot contain an immutable candidate record")
     if actual_candidate_paths != indexed_candidate_paths:
         _fail("candidate index does not cover every immutable candidate record")
     if any(candidate.get("session_sha256") != session.get("session_sha256") for candidate in candidates):

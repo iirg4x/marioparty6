@@ -2218,6 +2218,66 @@ class MatchWorkbenchTests(unittest.TestCase):
             "run_read_only_diagnostics_for_source_context",
         )
 
+    def test_duplicate_object_chain_prefers_same_source_context_evidence(self) -> None:
+        self._init()
+        self._record("c1")
+
+        source2 = self.root / "candidate-copy.c"
+        source2.write_bytes(self.source.read_bytes())
+        object2 = self.root / "candidate-copy.o"
+        object2.write_bytes(self.object.read_bytes())
+        second = self._record("c2", source=source2, object_path=object2)
+        self.assertEqual(second["record"]["duplicate_of"], "c1")
+
+        third = self._record(
+            "c3",
+            source=source2,
+            object_path=object2,
+            hypothesis="same source context measured again",
+        )
+        self.assertEqual(third["status"], "duplicate")
+        self.assertEqual(third["record"]["duplicate_of"], "c2")
+        matrix = module.build_matrix(self.root, self.workspace)
+        rows = {row["candidate_id"]: row for row in matrix["rows"]}
+        self.assertEqual(rows["c2"]["next_action"], "run_read_only_diagnostics_for_source_context")
+        self.assertEqual(rows["c3"]["next_action"], "reuse_existing_evidence")
+
+    def test_matrix_allows_generation_manifest_but_not_unindexed_candidate_record(self) -> None:
+        self._init()
+        recorded = self._record("c1")
+        candidate_directory = self.workspace / "candidates"
+        _write_json(
+            candidate_directory / "manifest.json",
+            {
+                "schema": "private-candidate-generation-manifest/v1",
+                "production_modified": False,
+                "candidates": [{"id": "c1"}],
+            },
+        )
+        matrix = module.build_matrix(self.root, self.workspace)
+        self.assertEqual(matrix["aggregate"]["candidate_count"], 1)
+
+        orphan = json.loads(
+            (candidate_directory / "c1.json").read_text(encoding="utf-8")
+        )
+        orphan["candidate_id"] = "orphan"
+        orphan["ordinal"] = 2
+        orphan["previous_record_sha256"] = recorded["record"]["record_sha256"]
+        _write_json(candidate_directory / "orphan.json", _rehash(orphan, "record_sha256"))
+        with self.assertRaisesRegex(
+            module.MatchError,
+            "candidate index does not cover every immutable candidate record",
+        ):
+            module.build_matrix(self.root, self.workspace)
+
+        (candidate_directory / "orphan.json").unlink()
+        _write_json(candidate_directory / "manifest.json", {"schema": module.CANDIDATE_SCHEMA})
+        with self.assertRaisesRegex(
+            module.MatchError,
+            "candidate generation manifest cannot contain an immutable candidate record",
+        ):
+            module.build_matrix(self.root, self.workspace)
+
     def test_assess_reports_focus_delta_counts_changed_siblings_and_central_json(self) -> None:
         baseline_strict = self.root / "baseline-strict.json"
         candidate_strict = self.root / "candidate-strict.json"
