@@ -56,6 +56,23 @@ CapSpecial DiceExec +0x18 typed pool gap extends the installed `match pools`
 decoder and the queued pool-prefix diagnosis task—it is not a second pool
 decoder.
 
+## Graph-first source discovery gate
+
+All Board source and interface discovery starts from the shared canonical
+Graphify graph at:
+
+```text
+D:\Games\Emulation\GameCube-Wii\_mp6_rebuild\port\mp6-native\graphify-out\graph.json
+```
+
+Run `rtk graphify query`, `rtk graphify path`, and `rtk graphify explain` from
+that `mp6-native` repository before searching files. Owner worktrees must not
+rebuild or copy the graph. A narrowly scoped named-file or named-symbol search
+may verify a returned `source_location`; broad recursive searches of a whole
+repository or `C:\Users\Anony\.codex` are forbidden. Evidence packets record
+the graph query and source location, or explicitly report that the graph had no
+relevant node.
+
 ## Installed Manager A-G program
 
 | Program | Command | Installed commit | Purpose | Detailed reference |
@@ -68,7 +85,7 @@ decoder.
 | compiler-context repair | `match attest-compile`, `provenance-audit`, `provenance-migrate` | `ce95e5d4e9f5d0e8777c2fe793e5de21c555fc9f` | Prevents cross-toolchain records and migrates only externally attested legacy attempts into the correct session. | [Compiler attestation](match_workbench.md#3-seal-the-compiler-provenance), [audit/migration](match_workbench.md#5-audit-and-migrate-legacy-compiler-provenance) |
 | stack-home native producer | `capsule_stack_home_native.py prepare/preflight/capture/validate/summarize` | pending installation commit | Captures pointer-free, authority-bound Object↔VarInfo names and stack-home chronology, then deterministically joins exact requested names to physical slots without advancing ownership. | [Authenticated MWCC stack-home capture](capsule_stack_home_native.md) |
 | A — source-aware MWCC causal tracer | not installed | pending | Will join authenticated source/frontend identity to physical GPR/FPR/stack/call/evaluation chronology. No command should be inferred yet. | This index will be updated at the installed checkpoint. |
-| G — full-owner causal map | not installed | pending | Will compose inventory, residual causes, provenance, rejected axes, and ranked next evidence for one owner. No command should be inferred yet. | This index will be updated at the installed checkpoint. |
+| G — full-owner causal map | `python tools/board_causal_map.py REQUEST.json --root .` | branch-local checkpoint G | Composes the installed matrix/telemetry, causal reducer, typed pool decoder, factorial planner, compiler bindings, and optional donor/tracer/Graphify context into a self-hashed inventory for every residual function. Always read-only and non-authoritative. | [Full-owner causal map](board_owner_causal_map.md) |
 
 ## Supporting workbench commands
 

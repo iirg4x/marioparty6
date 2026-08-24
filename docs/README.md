@@ -16,6 +16,7 @@
 - [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
 - [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, evidence
 - [`match_workbench.md`](match_workbench.md): authenticated matching deduplication and bounded read-only diagnosis
+- [`board_owner_causal_map.md`](board_owner_causal_map.md): checkpoint G full-owner residual inventory, causal joins, and ranked next evidence
 - [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): sealed holdouts and organicity
 - [`../benchmarks/blind_recovery/README.md`](../benchmarks/blind_recovery/README.md): benchmark replay
 - [`getting_started.md`](getting_started.md): local toolchain and retail build setup
