@@ -89,6 +89,13 @@ relevant node.
 
 ## Supporting workbench commands
 
+The standalone read-only stack-object/lifetime reducer is documented in
+[Stack-object/lifetime reducer](stack_object_lifetime_reducer.md). Its `bind`
+command hashes concrete objdiff/source/VarInfo evidence; its `reduce` command
+composes the generic stack-home packet and summary without duplicating the
+native capture boundary. It emits diagnostic natural-C axes only and never
+advances recovery authority.
+
 The complete workflow and safety model are documented in
 [Match workbench](match_workbench.md). The normal sequence is:
 
