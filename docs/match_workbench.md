@@ -161,6 +161,30 @@ candidate branches directly to that epilogue. It recommends testing
 source provenance or retention authority; strict/data/physical-relocation,
 section, consumer, and protected-sibling gates remain mandatory.
 
+### 8. Decode typed pool-owner mismatches
+
+```sh
+rtk python tools/agent.py match pools \
+  --report build/GP6E01/reports/candidate.strict.json \
+  --function ev_CapKoopaReturn
+```
+
+`pools` (aliases `pool-decode` and `pool-owners`) emits self-hashed
+`match_workbench_pool_decoder/v1` JSON. It resolves each side's object-local
+relocation owner, decodes 16/32/64-bit big-endian values, infers the consumer
+type from `lfs`/`lfd`/integer loads, and recognizes MWCC signed/unsigned
+integer-to-double bias constants. Mismatches are ranked by causal severity:
+relocation type/addend, literal type/value, missing consumer, unresolved bytes,
+then value-equivalent owner identity or pool chronology.
+
+This distinction prevents a strict label-only residual from being mistaken for
+a semantic constant mismatch. For example, the CapSpecial c23
+`ev_CapKoopaReturn` receipt classifies all 16 pool consumers as byte- and
+relocation-equivalent named-target versus anonymous-candidate owners, with zero
+semantic/contract mismatches. Such a result directs investigation toward
+authenticated constant binding or TU first-use chronology; it never authorizes
+inventing an extern label or reordering unrelated source.
+
 Compact objdiff summaries are explicitly diagnostic-only, not canonical proof.
 Even an exact compact focus produces the next action
 `authenticate_report_binding_then_run_serial_proof_and_closure`; first bind the

@@ -47,6 +47,7 @@ DIAGNOSTIC_SCHEMA = "match_workbench_diagnostic/v1"
 MATRIX_SCHEMA = "match_workbench_matrix/v1"
 FUNCTION_TELEMETRY_SCHEMA = "match_workbench_function_telemetry/v1"
 CAUSAL_REDUCER_SCHEMA = "match_workbench_causal_reducer/v1"
+POOL_DECODER_SCHEMA = "match_workbench_pool_decoder/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
@@ -8046,6 +8047,73 @@ def reduce_objdiff_cascades(
     return _with_self_hash(body, "causal_reducer_sha256")
 
 
+def decode_pool_ownership(
+    root: Path,
+    *,
+    report: Path | str,
+    focus_symbol: str,
+    include_exact: bool = False,
+    group_limit: int = 24,
+    row_limit: int = 12,
+) -> dict[str, Any]:
+    """Bind and type-decode one function's literal-pool relocations.
+
+    Symbol indices and anonymous labels are object-local.  This command binds
+    the report and decoder implementation, then separates literal bit/type or
+    relocation-contract differences from value-equivalent owner identity and
+    pool chronology.  It is read-only and never authenticates a source label.
+    """
+
+    from tools.pool_reloc_summary import PoolDecodeError, decode_function
+
+    root = root.resolve()
+    symbol = _text(focus_symbol, "focus_symbol")
+    if isinstance(group_limit, bool) or not isinstance(group_limit, int):
+        _fail("group_limit must be an integer")
+    if isinstance(row_limit, bool) or not isinstance(row_limit, int):
+        _fail("row_limit must be an integer")
+    _, report_descriptor, report_value = _assessment_file(
+        report, root, "typed pool decoder objdiff report"
+    )
+    try:
+        decoded = decode_function(
+            report_value,
+            symbol,
+            include_exact=include_exact,
+            group_limit=group_limit,
+            row_limit=row_limit,
+        )
+    except PoolDecodeError as exc:
+        _fail(f"typed pool decoder rejected objdiff report: {exc}")
+    if decoded.get("schema") != "typed_pool_owner_decoder/v1":
+        _fail("typed pool decoder returned an unsupported schema")
+    if decoded.get("authority_advanced") is not False:
+        _fail("typed pool decoder attempted to advance authority")
+
+    tool_path = Path(__file__).with_name("pool_reloc_summary.py").resolve()
+    tool_snapshot = _snapshot(tool_path, "typed pool decoder implementation")
+    body = {
+        "schema": POOL_DECODER_SCHEMA,
+        "schema_version": 1,
+        "focus_symbol": symbol,
+        "inputs": {"report": report_descriptor},
+        "tool": {
+            "path": tool_snapshot["path"],
+            "size_bytes": tool_snapshot["size_bytes"],
+            "sha256": tool_snapshot["sha256"],
+        },
+        "decode": decoded,
+        "limitations": [
+            "Literal bits, consumer types, relocations, and object-local owner facts are report-derived; source names are not recovered.",
+            "A value-equivalent owner-only mismatch is not permission to add an extern label or reorder unrelated source.",
+            "Retention still requires strict/data/physical-relocation/section and protected-sibling proof.",
+        ],
+        "authority_advanced": False,
+    }
+    _recheck_live_snapshot(tool_path, tool_snapshot, "typed pool decoder implementation")
+    return _with_self_hash(body, "pool_decoder_sha256")
+
+
 def build_function_telemetry(
     root: Path,
     workspace: Path | str,
@@ -8228,6 +8296,7 @@ def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
         STACK_RESIDUE_SCHEMA,
         FUNCTION_TELEMETRY_SCHEMA,
         CAUSAL_REDUCER_SCHEMA,
+        POOL_DECODER_SCHEMA,
         DONOR_SHAPES_SCHEMA,
         DONOR_REGISTRY_SCHEMA,
         DONOR_REGISTRY_LIST_SCHEMA,
@@ -8457,6 +8526,24 @@ def _add_commands(commands: Any) -> None:
     )
     cascade.add_argument("--include-exact-residuals", action="store_true")
     cascade.add_argument("--json", action="store_true")
+
+    pools = commands.add_parser(
+        "pools",
+        aliases=("pool-decode", "pool-owners"),
+        help="decode typed literal-pool value, relocation, and owner mismatches",
+    )
+    pools.add_argument("--report", "--objdiff-report", dest="report", required=True)
+    pools.add_argument(
+        "--focus-symbol",
+        "--symbol",
+        "--function",
+        dest="focus_symbol",
+        required=True,
+    )
+    pools.add_argument("--include-exact", action="store_true")
+    pools.add_argument("--group-limit", type=int, default=24)
+    pools.add_argument("--row-limit", type=int, default=12)
+    pools.add_argument("--json", action="store_true")
 
     assess = commands.add_parser(
         "assess",
@@ -8764,6 +8851,15 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             summary_only=not args.full,
             max_hypotheses=args.max_hypotheses,
             include_exact_residuals=args.include_exact_residuals,
+        )
+    elif args.match_command in {"pools", "pool-decode", "pool-owners"}:
+        result = decode_pool_ownership(
+            root,
+            report=args.report,
+            focus_symbol=args.focus_symbol,
+            include_exact=args.include_exact,
+            group_limit=args.group_limit,
+            row_limit=args.row_limit,
         )
     elif args.match_command == "assess":
         result = assess_reports(

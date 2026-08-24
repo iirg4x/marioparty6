@@ -728,6 +728,76 @@ class MatchWorkbenchTests(unittest.TestCase):
                 self.root, report=report_path, focus_symbol="missing"
             )
 
+    def test_pool_decoder_types_owner_only_mismatches_and_routes_centrally(self) -> None:
+        from tools.tests.test_pool_reloc_summary import _report as pool_report
+
+        report_path = self.root / "pool-report.json"
+        _write_json(report_path, pool_report())
+        result = module.decode_pool_ownership(
+            self.root,
+            report=report_path,
+            focus_symbol="PoolFocus",
+        )
+        self.assertEqual(result["schema"], module.POOL_DECODER_SCHEMA)
+        self.assertFalse(result["authority_advanced"])
+        self.assertRegex(result["pool_decoder_sha256"], r"^[0-9a-f]{64}$")
+        decoded = result["decode"]
+        self.assertEqual(
+            decoded["summary"]["classification_counts"]["owner_identity_mismatch"],
+            2,
+        )
+        self.assertTrue(
+            any(
+                group["target"]["owner"]["typed"].get("mwcc_role")
+                == "signed-int-to-double-bias"
+                for group in decoded["groups"]
+                if group.get("target")
+            )
+        )
+
+        argv = [
+            "--root",
+            str(self.root),
+            "pools",
+            "--report",
+            str(report_path),
+            "--function",
+            "PoolFocus",
+        ]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(module.main(argv), 0)
+        self.assertEqual(json.loads(output.getvalue()), result)
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "pool-decode",
+                "--report",
+                str(report_path),
+                "--function",
+                "PoolFocus",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), result)
+
+        with self.assertRaisesRegex(module.MatchError, "candidate function not found"):
+            module.decode_pool_ownership(
+                self.root,
+                report=report_path,
+                focus_symbol="missing",
+            )
+
     def _job_script(self, name: str = "probe.py", body: str | None = None) -> Path:
         path = self.root / name
         path.write_text(
