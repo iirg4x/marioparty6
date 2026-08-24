@@ -45,6 +45,7 @@ CANDIDATE_SCHEMA = "match_workbench_candidate/v1"
 JOBS_SCHEMA = "match_workbench_jobs/v1"
 DIAGNOSTIC_SCHEMA = "match_workbench_diagnostic/v1"
 MATRIX_SCHEMA = "match_workbench_matrix/v1"
+FUNCTION_TELEMETRY_SCHEMA = "match_workbench_function_telemetry/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
@@ -7792,6 +7793,7 @@ def build_matrix(
             "hypothesis_axis": candidate["hypothesis"]["axis"],
             "axis_fingerprint": candidate["hypothesis"]["axis_fingerprint"],
             "residual_fingerprint": candidate["hypothesis"].get("residual_fingerprint"),
+            "outcome": candidate["outcome"],
             "focus_symbol": record_focuses[0] if len(record_focuses) == 1 else None,
             "strict_focus": strict_focus,
             "data_focus": data_focus,
@@ -7867,7 +7869,7 @@ def build_matrix(
             "ordinal", "candidate_id", "source_sha256", "object_sha256", "duplicate_of",
             "hypothesis_axis", "axis_fingerprint", "residual_fingerprint", "strict_focus",
             "focus_symbol", "focus_symbols", "data_focus", "strict_focuses", "data_focuses",
-            "report_binding", "diagnostic_status",
+            "outcome", "report_binding", "diagnostic_status",
             "available_read_only_evidence", "next_action",
             "heavy_seconds",
         ],
@@ -7950,11 +7952,187 @@ def build_matrix(
     return _with_self_hash(compact_body, "matrix_sha256")
 
 
+def build_function_telemetry(
+    root: Path,
+    workspace: Path | str,
+    *,
+    focus_symbol: str,
+    elapsed_seconds: float | None = None,
+    active_seconds: float | None = None,
+    tracer_runs: int | None = None,
+    donor_searches: int | None = None,
+) -> dict[str, Any]:
+    """Summarize one function's recovery campaign without inventing time.
+
+    Candidate counts, convergence, objects, and heavy-process time come from
+    immutable workbench records.  Human wall/active time and activity counts
+    are caller-attested and remain explicitly separated from derived facts.
+    Missing candidate ``heavy_seconds`` values make heavy-throughput unknown;
+    they are never silently treated as zero.
+    """
+
+    symbol = _text(focus_symbol, "focus_symbol")
+    elapsed = _seconds(elapsed_seconds, "elapsed_seconds")
+    active = _seconds(active_seconds, "active_seconds")
+    if elapsed is not None and elapsed <= 0:
+        _fail("elapsed_seconds must be greater than zero when provided")
+    if active is not None and active <= 0:
+        _fail("active_seconds must be greater than zero when provided")
+    tracer_count = (
+        _integer(tracer_runs, "tracer_runs") if tracer_runs is not None else None
+    )
+    donor_count = (
+        _integer(donor_searches, "donor_searches")
+        if donor_searches is not None
+        else None
+    )
+
+    matrix = build_matrix(
+        root,
+        workspace,
+        focus_symbol=[symbol],
+        compact=False,
+        order="oldest",
+    )
+    rows = list(matrix.get("rows", []))
+    if not rows:
+        _fail(f"no candidate history is recorded for focus symbol {symbol}")
+
+    exact_rows: list[Mapping[str, Any]] = []
+    target_sizes: set[int] = set()
+    heavy_values: list[float] = []
+    missing_heavy: list[str] = []
+    outcome_counts: dict[str, int] = {}
+    for row in rows:
+        strict = _matrix_focus_row(row, symbol, "strict_focus")
+        data = _matrix_focus_row(row, symbol, "data_focus")
+        if strict is None and data is None:
+            _fail(f"matrix returned a row without focus evidence for {symbol}")
+        if isinstance(strict, Mapping):
+            target_size = _assessment_number(strict.get("target_size"))
+            if target_size is not None:
+                target_sizes.add(target_size)
+        if (
+            isinstance(strict, Mapping)
+            and strict.get("exact") is True
+            and isinstance(data, Mapping)
+            and data.get("exact") is True
+        ):
+            exact_rows.append(row)
+        heavy = row.get("heavy_seconds")
+        if heavy is None:
+            missing_heavy.append(str(row.get("candidate_id")))
+        else:
+            heavy_values.append(float(_seconds(heavy, "matrix row heavy_seconds")))
+        outcome = row.get("outcome")
+        status = (
+            str(outcome.get("status"))
+            if isinstance(outcome, Mapping) and outcome.get("status") is not None
+            else "unknown"
+        )
+        outcome_counts[status] = outcome_counts.get(status, 0) + 1
+
+    if len(target_sizes) > 1:
+        _fail(f"focus symbol {symbol} has inconsistent target sizes")
+    target_size = next(iter(target_sizes), None)
+    first_exact = exact_rows[0] if exact_rows else None
+    first_exact_index = rows.index(first_exact) if first_exact is not None else None
+    crack_count = 1 if first_exact is not None else 0
+    heavy_total = round(sum(heavy_values), 6)
+    heavy_complete = not missing_heavy
+
+    def rate(seconds: float | None, unit: int = 1) -> float | None:
+        if crack_count == 0 or seconds is None or seconds <= 0:
+            return None
+        return round((crack_count * unit * 3600.0) / seconds, 6)
+
+    elapsed_rate = rate(elapsed)
+    active_rate = rate(active)
+    heavy_rate = rate(heavy_total) if heavy_complete else None
+    exact_bytes = target_size if crack_count and target_size is not None else 0
+
+    if crack_count == 0:
+        status = "not_exact"
+    elif elapsed is not None and active is not None and heavy_complete:
+        status = "exact_with_complete_time_coverage"
+    else:
+        status = "exact_with_partial_time_coverage"
+
+    body = {
+        "schema": FUNCTION_TELEMETRY_SCHEMA,
+        "schema_version": 1,
+        "session_id": matrix["session_id"],
+        "focus_symbol": symbol,
+        "status": status,
+        "campaign": {
+            "candidate_count": len(rows),
+            "unique_source_count": len({str(row.get("source_sha256")) for row in rows}),
+            "unique_object_count": len({str(row.get("object_sha256")) for row in rows}),
+            "duplicate_candidate_count": sum(bool(row.get("duplicate_of")) for row in rows),
+            "outcome_counts": dict(sorted(outcome_counts.items())),
+            "strict_data_exact_candidate_count": len(exact_rows),
+            "first_exact_candidate_id": (
+                str(first_exact.get("candidate_id")) if first_exact is not None else None
+            ),
+            "first_exact_ordinal": (
+                int(first_exact.get("ordinal")) if first_exact is not None else None
+            ),
+            "candidates_through_first_exact": (
+                first_exact_index + 1 if first_exact_index is not None else None
+            ),
+            "nonexact_candidates_before_first_exact": first_exact_index,
+            "target_size_bytes": target_size,
+            "exact_focus_bytes": exact_bytes,
+        },
+        "time": {
+            "heavy_seconds": heavy_total,
+            "heavy_seconds_known_candidate_count": len(heavy_values),
+            "heavy_seconds_missing_candidate_ids": missing_heavy,
+            "heavy_seconds_complete": heavy_complete,
+            "elapsed_seconds": elapsed,
+            "active_seconds": active,
+            "elapsed_active_source": "caller_attested" if elapsed is not None or active is not None else None,
+        },
+        "activity": {
+            "tracer_runs": tracer_count,
+            "donor_searches": donor_count,
+            "source": "caller_attested" if tracer_count is not None or donor_count is not None else None,
+        },
+        "throughput": {
+            "exact_functions": crack_count,
+            "exact_functions_per_elapsed_hour": elapsed_rate,
+            "exact_functions_per_active_hour": active_rate,
+            "exact_functions_per_heavy_process_hour": heavy_rate,
+            "exact_bytes_per_elapsed_hour": (
+                round(exact_bytes * elapsed_rate, 6) if elapsed_rate is not None else None
+            ),
+            "exact_bytes_per_active_hour": (
+                round(exact_bytes * active_rate, 6) if active_rate is not None else None
+            ),
+            "exact_bytes_per_heavy_process_hour": (
+                round(exact_bytes * heavy_rate, 6) if heavy_rate is not None else None
+            ),
+        },
+        "coverage": {
+            "candidate_history": "complete_indexed_workbench_history",
+            "heavy_process_time": "complete" if heavy_complete else "partial",
+            "elapsed_time": "caller_attested" if elapsed is not None else "missing",
+            "active_time": "caller_attested" if active is not None else "missing",
+            "physical_relocations": "not_authenticated_by_candidate_telemetry",
+            "consumer_closure": "not_authenticated_by_candidate_telemetry",
+        },
+        "matrix_sha256": matrix["matrix_sha256"],
+        "authority_advanced": False,
+    }
+    return _with_self_hash(body, "telemetry_sha256")
+
+
 def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
     if as_json or value.get("schema") in {
         ASSESSMENT_SCHEMA,
         RESIDUALS_SCHEMA,
         STACK_RESIDUE_SCHEMA,
+        FUNCTION_TELEMETRY_SCHEMA,
         DONOR_SHAPES_SCHEMA,
         DONOR_REGISTRY_SCHEMA,
         DONOR_REGISTRY_LIST_SCHEMA,
@@ -8142,6 +8320,24 @@ def _add_commands(commands: Any) -> None:
         help="emit the bounded focus-history view as JSON",
     )
     matrix.add_argument("--json", action="store_true")
+
+    telemetry = commands.add_parser(
+        "telemetry",
+        help="summarize one function's recovery attempts and crack/hour coverage",
+    )
+    telemetry.add_argument("--workspace", required=True)
+    telemetry.add_argument(
+        "--focus-symbol",
+        "--symbol",
+        "--function",
+        dest="focus_symbol",
+        required=True,
+    )
+    telemetry.add_argument("--elapsed-seconds", type=float)
+    telemetry.add_argument("--active-seconds", type=float)
+    telemetry.add_argument("--tracer-runs", type=int)
+    telemetry.add_argument("--donor-searches", type=int)
+    telemetry.add_argument("--json", action="store_true")
 
     assess = commands.add_parser(
         "assess",
@@ -8428,6 +8624,16 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
     elif args.match_command == "diagnose":
         result = diagnose_candidate(
             root, args.workspace, args.candidate_id, args.jobs, max_workers=args.max_workers
+        )
+    elif args.match_command == "telemetry":
+        result = build_function_telemetry(
+            root,
+            args.workspace,
+            focus_symbol=args.focus_symbol,
+            elapsed_seconds=args.elapsed_seconds,
+            active_seconds=args.active_seconds,
+            tracer_runs=args.tracer_runs,
+            donor_searches=args.donor_searches,
         )
     elif args.match_command == "assess":
         result = assess_reports(

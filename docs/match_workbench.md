@@ -115,6 +115,28 @@ order. Rows include strict/data compact focus, diagnostic status, and a
 duplicate/diagnosed counts, raw versus unique compressed report bytes and
 storage reduction, diagnostic seconds, and exact-focus bytes per heavy minute.
 
+### 6. Measure one function's recovery campaign
+
+```sh
+rtk python tools/agent.py match telemetry \
+  --workspace build/match \
+  --function ev_CapKamekkuOMExec \
+  --elapsed-seconds 21600 \
+  --active-seconds 7200 \
+  --tracer-runs 0 \
+  --donor-searches 1
+```
+
+`telemetry` emits self-hashed `match_workbench_function_telemetry/v1` JSON.
+Candidate/source/object counts, convergence, exact candidate identity, and
+heavy-process seconds are derived from immutable workbench records. Elapsed and
+active time plus tracer/donor counts are explicitly caller-attested. Missing
+candidate timings remain missing: heavy-process crack/hour is withheld unless
+every selected candidate has `heavy_seconds`. Human elapsed/active crack/hour
+is reported separately from compiler/process throughput. This report is
+diagnostic telemetry only; it does not authenticate physical relocations,
+consumer closure, or promotion authority.
+
 Compact objdiff summaries are explicitly diagnostic-only, not canonical proof.
 Even an exact compact focus produces the next action
 `authenticate_report_binding_then_run_serial_proof_and_closure`; first bind the

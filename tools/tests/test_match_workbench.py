@@ -462,6 +462,7 @@ class MatchWorkbenchTests(unittest.TestCase):
         status: str = "measured",
         reason: str = "candidate measured",
         focus_symbol: str | list[str] | None = None,
+        heavy_seconds: float | None = None,
     ) -> dict[str, object]:
         return module.record_candidate(
             self.root,
@@ -476,7 +477,131 @@ class MatchWorkbenchTests(unittest.TestCase):
             status=status,
             reason=reason,
             focus_symbol=focus_symbol,
+            heavy_seconds=heavy_seconds,
         )
+
+    def test_function_telemetry_reports_coverage_rates_and_routes_centrally(self) -> None:
+        self._init()
+        self._record("c1", data_report=self.data, heavy_seconds=1.5)
+
+        exact_source = self.root / "exact.c"
+        exact_object = self.root / "exact.o"
+        exact_strict = self.root / "exact-strict.json"
+        exact_data = self.root / "exact-data.json"
+        exact_source.write_text("int fn(void) { return 2; }\n", encoding="utf-8")
+        exact_object.write_bytes(b"exact-object")
+        _write_json(exact_strict, _report("fn", exact=True))
+        _write_json(exact_data, _report("fn", exact=True))
+        self._record(
+            "c2",
+            source=exact_source,
+            object_path=exact_object,
+            strict_report=exact_strict,
+            data_report=exact_data,
+            hypothesis="exact natural candidate",
+            axis="cfg-and-lifetime",
+            status="retained",
+            reason="strict and data exact",
+            heavy_seconds=2.5,
+        )
+
+        result = module.build_function_telemetry(
+            self.root,
+            self.workspace,
+            focus_symbol="fn",
+            elapsed_seconds=7200,
+            active_seconds=3600,
+            tracer_runs=2,
+            donor_searches=1,
+        )
+        self.assertEqual(result["schema"], module.FUNCTION_TELEMETRY_SCHEMA)
+        self.assertEqual(result["status"], "exact_with_complete_time_coverage")
+        self.assertEqual(result["campaign"]["candidate_count"], 2)
+        self.assertEqual(result["campaign"]["first_exact_candidate_id"], "c2")
+        self.assertEqual(result["campaign"]["candidates_through_first_exact"], 2)
+        self.assertEqual(result["campaign"]["nonexact_candidates_before_first_exact"], 1)
+        self.assertEqual(result["campaign"]["outcome_counts"], {"measured": 1, "retained": 1})
+        self.assertEqual(result["time"]["heavy_seconds"], 4.0)
+        self.assertTrue(result["time"]["heavy_seconds_complete"])
+        self.assertEqual(result["throughput"]["exact_functions_per_elapsed_hour"], 0.5)
+        self.assertEqual(result["throughput"]["exact_functions_per_active_hour"], 1.0)
+        self.assertEqual(result["throughput"]["exact_functions_per_heavy_process_hour"], 900.0)
+        self.assertEqual(result["throughput"]["exact_bytes_per_elapsed_hour"], 2.0)
+        self.assertEqual(result["activity"], {"tracer_runs": 2, "donor_searches": 1, "source": "caller_attested"})
+        self.assertEqual(result["coverage"]["physical_relocations"], "not_authenticated_by_candidate_telemetry")
+        self.assertFalse(result["authority_advanced"])
+
+        argv = [
+            "--root",
+            str(self.root),
+            "telemetry",
+            "--workspace",
+            str(self.workspace),
+            "--function",
+            "fn",
+            "--elapsed-seconds",
+            "7200",
+            "--active-seconds",
+            "3600",
+            "--tracer-runs",
+            "2",
+            "--donor-searches",
+            "1",
+        ]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(module.main(argv), 0)
+        self.assertEqual(json.loads(output.getvalue()), result)
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "telemetry",
+                "--workspace",
+                str(self.workspace),
+                "--function",
+                "fn",
+                "--elapsed-seconds",
+                "7200",
+                "--active-seconds",
+                "3600",
+                "--tracer-runs",
+                "2",
+                "--donor-searches",
+                "1",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), result)
+
+    def test_function_telemetry_keeps_missing_time_unknown_and_rejects_empty_focus(self) -> None:
+        self._init()
+        self._record("c1", data_report=self.data)
+        result = module.build_function_telemetry(
+            self.root, self.workspace, focus_symbol="fn"
+        )
+        self.assertEqual(result["status"], "not_exact")
+        self.assertFalse(result["time"]["heavy_seconds_complete"])
+        self.assertEqual(result["time"]["heavy_seconds_missing_candidate_ids"], ["c1"])
+        self.assertIsNone(result["throughput"]["exact_functions_per_elapsed_hour"])
+        self.assertIsNone(result["throughput"]["exact_functions_per_heavy_process_hour"])
+        with self.assertRaisesRegex(module.MatchError, "no candidate history"):
+            module.build_function_telemetry(
+                self.root, self.workspace, focus_symbol="missing"
+            )
+        with self.assertRaisesRegex(module.MatchError, "greater than zero"):
+            module.build_function_telemetry(
+                self.root, self.workspace, focus_symbol="fn", elapsed_seconds=0
+            )
 
     def _job_script(self, name: str = "probe.py", body: str | None = None) -> Path:
         path = self.root / name
