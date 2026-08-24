@@ -197,16 +197,19 @@ python tools/agent.py queue release <owner> \
   --agent claude --status released
 ```
 
-## Serialized integration
+## Parallel private builds and serialized integration
 
-Object work may run in parallel. The integration worktree must acquire exclusive
-machine resources before a full build:
+Object compilation, Ninja object targets, DTK/objdiff reports, tracers, and
+checksums may run concurrently when every lane uses a distinct registered
+worktree and a private build directory. They require no global queue resource.
+Each worktree still serializes its own mutating build transaction with
+`build/.compiler-lane.lock` and uses Ninja `-j1`.
+
+Only work that mutates the shared integration/finalization state acquires the
+exclusive `integration` resource:
 
 ```sh
 python tools/agent.py queue acquire-resource integration \
-  --agent integrator --owner <owner>
-
-python tools/agent.py queue acquire-resource retail-build \
   --agent integrator --owner <owner>
 ```
 
@@ -228,10 +231,9 @@ and the integration commit. It refuses completion when integration changed or
 omitted the verified source. The integration commit and proof are stored in the
 queue before the task becomes `done`.
 
-Release machine resources afterward:
+Release the integration resource afterward:
 
 ```sh
-python tools/agent.py queue release-resource retail-build --agent integrator
 python tools/agent.py queue release-resource integration --agent integrator
 ```
 

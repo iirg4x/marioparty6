@@ -105,7 +105,6 @@
     "default_base_ref": "agent/recovery-context-workflow",
     "stale_hours": 24,
     "default_resources": [
-      "retail-build",
       "integration",
       "symbol-regeneration",
       "configure-shared"

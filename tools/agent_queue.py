@@ -51,10 +51,16 @@ CHANGE_CLASSES = {
     "build-configuration",
 }
 DEFAULT_RESOURCES = {
-    "retail-build",
     "integration",
     "symbol-regeneration",
     "configure-shared",
+}
+RETIRED_RESOURCES = {
+    "retail-build": (
+        "resource retail-build is retired: isolated worktree compile, Ninja object, "
+        "DTK, objdiff, tracer, and checksum probes require no global queue lease; "
+        "acquire integration only when mutating the shared integration/finalization state"
+    ),
 }
 STALE_HOURS = 24.0
 
@@ -1655,6 +1661,9 @@ def acquire_resource(
     owner: str | None = None,
     queue_file: str | Path | None = None,
 ) -> dict[str, Any]:
+    retired_reason = RETIRED_RESOURCES.get(name)
+    if retired_reason is not None:
+        raise QueueError(retired_reason)
     path = queue_path(root, queue_file)
     with locked_queue(path) as queue:
         resources = queue.setdefault("resources", {})

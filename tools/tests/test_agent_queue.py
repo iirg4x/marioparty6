@@ -10,6 +10,7 @@ from unittest import mock
 import tools.agent_queue as agent_queue
 
 from tools.agent_queue import (
+    DEFAULT_RESOURCES,
     QueueError,
     QUEUE_AUDIT_PENDING_SUFFIX,
     QUEUE_AUDIT_SUFFIX,
@@ -253,14 +254,21 @@ class AgentQueueTests(unittest.TestCase):
 
     def test_resource_lock(self) -> None:
         record = acquire_resource(
-            self.claude, "retail-build", agent="claude", owner="a"
+            self.claude, "integration", agent="claude", owner="a"
         )
         self.assertEqual(record["agent"], "claude")
         with self.assertRaisesRegex(QueueError, "held"):
             acquire_resource(
-                self.codex, "retail-build", agent="codex", owner="b"
+                self.codex, "integration", agent="codex", owner="b"
             )
-        release_resource(self.claude, "retail-build", agent="claude")
+        release_resource(self.claude, "integration", agent="claude")
+
+    def test_retail_build_resource_is_retired(self) -> None:
+        self.assertNotIn("retail-build", DEFAULT_RESOURCES)
+        with self.assertRaisesRegex(QueueError, "retail-build is retired"):
+            acquire_resource(
+                self.claude, "retail-build", agent="claude", owner="a"
+            )
 
     def test_simultaneous_distinct_claims_are_atomic(self) -> None:
         def claim(path: Path, owner: str, agent: str, source: str) -> None:

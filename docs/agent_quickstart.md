@@ -124,12 +124,13 @@ Any later edit requires re-verification.
 
 ## 9. Run private integration serially
 
-The AI integration worktree acquires exclusive resources and runs the full
-private gates:
+Private owner worktrees compile and compare independently without a global
+resource lease. The AI integration worktree acquires only the exclusive
+`integration` resource before it mutates shared finalization state and runs the
+full private gates:
 
 ```sh
 python tools/agent.py queue acquire-resource integration --agent integrator
-python tools/agent.py queue acquire-resource retail-build --agent integrator
 ```
 
 This verifies the worker commit. It still does not make the AI branch mergeable.
@@ -180,7 +181,6 @@ AI attribution or operational details.
 ## 12. Cleanup
 
 ```sh
-python tools/agent.py queue release-resource retail-build --agent integrator
 python tools/agent.py queue release-resource integration --agent integrator
 python tools/agent.py worktree close <owner>
 ```

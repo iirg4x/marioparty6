@@ -42,8 +42,9 @@ Use this handoff checklist:
 5. If identity, source, or base changes, stop and re-slice before editing.
 
 At most five editor lanes may run concurrently, with exactly one editor per C
-translation unit. Queue claims, shared-path checks, and serialized build/retail
-resources remain authoritative.
+translation unit. Queue claims and shared-path checks remain authoritative.
+Private build directories use worktree-local compiler locks and may compile in
+parallel; only shared integration/finalization uses the `integration` resource.
 
 ## Operational owner catalog
 

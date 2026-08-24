@@ -76,12 +76,11 @@ A successful public AI-workspace run is not a successful retail build.
 ## Serialized private verification
 
 Use a local integration or clean promotion worktree with legally provisioned
-inputs. Acquire exclusive AI-workspace resources before the full build:
+inputs. Private worktree builds need no global lease. Acquire `integration`
+only when mutating shared integration/finalization state:
 
 ```sh
 python tools/agent.py queue acquire-resource integration \
-  --agent integrator --owner <owner>
-python tools/agent.py queue acquire-resource retail-build \
   --agent integrator --owner <owner>
 ```
 

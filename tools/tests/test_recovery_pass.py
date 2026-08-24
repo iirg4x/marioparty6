@@ -449,23 +449,32 @@ class RecoveryPassTests(unittest.TestCase):
         self.assertEqual(result["records"][0]["status"], "rejected-neutral")
     def test_serialized_build_lock_releases_for_the_next_process(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            lock = Path(directory) / "retail-build.lock"
+            lock = Path(directory) / "compiler-lane.lock"
             with module.serialized_build_lock(lock, 0.1):
                 self.assertTrue(lock.is_file())
             with module.serialized_build_lock(lock, 0.1):
                 self.assertTrue(lock.is_file())
 
+    def test_distinct_worktree_build_locks_can_be_held_concurrently(self) -> None:
+        with tempfile.TemporaryDirectory() as first_directory, tempfile.TemporaryDirectory() as second_directory:
+            first_lock = Path(first_directory) / "build/.compiler-lane.lock"
+            second_lock = Path(second_directory) / "build/.compiler-lane.lock"
+            with module.serialized_build_lock(first_lock, 0.0):
+                with module.serialized_build_lock(second_lock, 0.0):
+                    self.assertTrue(first_lock.is_file())
+                    self.assertTrue(second_lock.is_file())
+
     def test_serialized_build_lock_reports_bounded_contention(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            lock = Path(directory) / "retail-build.lock"
+            lock = Path(directory) / "compiler-lane.lock"
             with patch.object(module, "_lock_file_nonblocking", return_value=False):
-                with self.assertRaisesRegex(ValueError, "retail build lock remained busy"):
+                with self.assertRaisesRegex(ValueError, "worktree build lock remained busy"):
                     with module.serialized_build_lock(lock, 0.0):
                         self.fail("busy lock must not enter the build section")
 
     def test_serialized_build_lock_excludes_another_process(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            lock = Path(directory) / "retail-build.lock"
+            lock = Path(directory) / "compiler-lane.lock"
             script = (
                 "import sys,time; from pathlib import Path; "
                 "from tools.recovery_pass import serialized_build_lock; "
@@ -482,7 +491,7 @@ class RecoveryPassTests(unittest.TestCase):
             try:
                 assert child.stdout is not None
                 self.assertEqual(child.stdout.readline().strip(), "locked")
-                with self.assertRaisesRegex(ValueError, "retail build lock remained busy"):
+                with self.assertRaisesRegex(ValueError, "worktree build lock remained busy"):
                     with module.serialized_build_lock(lock, 0.0):
                         self.fail("second process must not enter the build section")
                 self.assertEqual(child.wait(timeout=5), 0, child.stderr.read() if child.stderr else "")

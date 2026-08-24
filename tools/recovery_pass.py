@@ -53,8 +53,11 @@ COMMUTATIVE = {"add", "add.", "and", "and.", "or", "or.", "xor", "xor.",
                "mullw", "mullw.", "fadd", "fadds", "fmul", "fmuls"}
 BRANCH_ONLY = {"b"}
 CALL_KEYWORDS = {"if", "for", "while", "switch", "sizeof", "return"}
-BUILD_LOCK_ENV = "MP6_RETAIL_BUILD_LOCK"
-DEFAULT_BUILD_LOCK = Path.home() / ".codex" / "mp6-retail-build.lock"
+BUILD_LOCK_ENV = "MP6_BUILD_LOCK"
+# Relative to the selected repository root.  Different isolated worktrees must
+# not serialize each other; this lock only protects concurrent mutation of one
+# worktree's build tree.
+DEFAULT_BUILD_LOCK = Path("build") / ".compiler-lane.lock"
 TARGET_CALL_CLUSTER_CARD = "target-call-skeleton-before-shared-accessor-abstraction"
 PAIRED_SINGLE_QUARANTINE_CARD = "gc26-paired-single-huvecf-copy-spelling-negative"
 POOL_OWNERSHIP_CARD = "mwcc-conversion-pool-relocation-ownership-before-text-retention"
@@ -122,7 +125,7 @@ def _unlock_file(handle: Any) -> None:
 
 @contextlib.contextmanager
 def serialized_build_lock(path: Path, timeout_seconds: float) -> Iterable[None]:
-    """Serialize retail builds across repositories and orchestrator processes."""
+    """Serialize one mutable build transaction that shares a build tree."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+b") as handle:
         if path.stat().st_size == 0:
@@ -132,7 +135,7 @@ def serialized_build_lock(path: Path, timeout_seconds: float) -> Iterable[None]:
         while not _lock_file_nonblocking(handle):
             if time.monotonic() >= deadline:
                 raise ValueError(
-                    f"retail build lock remained busy for {timeout_seconds:g}s: {path}"
+                    f"worktree build lock remained busy for {timeout_seconds:g}s: {path}"
                 )
             time.sleep(0.1)
         try:
@@ -2854,22 +2857,25 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--baseline-value")
     parser.add_argument("--objdiff", default="build/tools/objdiff-cli.exe")
     build_group = parser.add_mutually_exclusive_group()
-    build_group.add_argument("--build", action="store_true", help="run exactly one serialized ninja object build before reports")
+    build_group.add_argument("--build", action="store_true", help="run exactly one worktree-local ninja object build before reports")
     build_group.add_argument(
         "--no-build",
         action="store_true",
-        help="explicit report-only mode; safe to prepare while another serialized build owns the machine",
+        help="explicit report-only mode; skip mutation of this worktree's build tree",
     )
     parser.add_argument(
         "--build-lock",
-        default=os.environ.get(BUILD_LOCK_ENV, str(DEFAULT_BUILD_LOCK)),
-        help=f"machine-wide build lock path (default: {BUILD_LOCK_ENV} or ~/.codex/mp6-retail-build.lock)",
+        default=os.environ.get(BUILD_LOCK_ENV),
+        help=(
+            "same-worktree build lock path (default: <root>/build/.compiler-lane.lock; "
+            f"override with {BUILD_LOCK_ENV})"
+        ),
     )
     parser.add_argument(
         "--build-lock-timeout",
         type=float,
         default=55.0,
-        help="seconds to wait for the cross-orchestrator build lock (default: 55)",
+        help="seconds to wait for this worktree's build lock (default: 55)",
     )
     parser.add_argument("--donor-root", action="append", default=[])
     parser.add_argument("--graph", default="build/board-autonomy/graphify-board/graph.json")
@@ -2901,7 +2907,11 @@ def run_recovery_pass(args: argparse.Namespace, *, root: Path) -> int:
         output = (root / output_dir).resolve()
         output.mkdir(parents=True, exist_ok=True)
         if args.build:
-            lock_path = Path(args.build_lock).expanduser().resolve()
+            lock_path = (
+                Path(args.build_lock).expanduser().resolve()
+                if args.build_lock
+                else (root / DEFAULT_BUILD_LOCK).resolve()
+            )
             with serialized_build_lock(lock_path, args.build_lock_timeout):
                 result = subprocess.run(["ninja", "-j1", str(unit["base_path"])], cwd=root, text=True, capture_output=True, check=False)
             if result.returncode:

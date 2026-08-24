@@ -16,9 +16,9 @@ class SerializedBuildTests(unittest.TestCase):
                 result = run(
                     root,
                     ["build/object.o"],
-                    lock_path=root / "retail-build.lock",
                 )
             self.assertEqual(result, 0)
+            self.assertTrue((root / "build/.compiler-lane.lock").is_file())
             invoke.assert_called_once_with(
                 ["ninja", "-j1", "build/object.o"],
                 cwd=root.resolve(),
@@ -31,8 +31,23 @@ class SerializedBuildTests(unittest.TestCase):
                 run(
                     Path(directory),
                     ["build/object.o"],
-                    lock_path=Path(directory) / "retail-build.lock",
                 )
+
+    def test_distinct_worktrees_do_not_share_the_default_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as first_directory, tempfile.TemporaryDirectory() as second_directory:
+            first = Path(first_directory)
+            second = Path(second_directory)
+            (first / "build.ninja").touch()
+            (second / "build.ninja").touch()
+            with mock.patch("tools.serialized_build.subprocess.run") as invoke:
+                invoke.return_value.returncode = 0
+                self.assertEqual(run(first, ["build/first.o"]), 0)
+                self.assertEqual(run(second, ["build/second.o"]), 0)
+            first_lock = first / "build/.compiler-lane.lock"
+            second_lock = second / "build/.compiler-lane.lock"
+            self.assertTrue(first_lock.is_file())
+            self.assertTrue(second_lock.is_file())
+            self.assertNotEqual(first_lock.resolve(), second_lock.resolve())
 
 
 if __name__ == "__main__":
