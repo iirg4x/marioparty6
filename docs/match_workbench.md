@@ -25,7 +25,10 @@ outside the workspace because `init` requires a new or otherwise empty one.
 
 Prepare an authenticated `match_workbench_request/v1` manifest containing the
 target descriptor, owner/function identity, base commit and toolchain context,
-and the diagnostic policy. Then initialize the immutable session:
+and the diagnostic policy. A complete executable context must bind the real
+`compile_cwd`, the outer `compiler`, every additional executable in
+`compile_tools` (for example a compiler behind a wrapper), the exact
+`compile_argv`, and all `compile_inputs`. Then initialize the immutable session:
 
 ```sh
 rtk python tools/agent.py match init build/match-request.json \
@@ -117,9 +120,17 @@ Even an exact compact focus produces the next action
 `authenticate_report_binding_then_run_serial_proof_and_closure`; first bind the
 caller-supplied report to the frozen target, object, and toolchain, then perform
 serial proof and closure before making any authority, integration, or
-retail-link claim. Set `context_complete: true` only when `compile_inputs`
-authenticate the complete compiler dependency context; it is a caller-attested
-closure, not something inferred from a partial list.
+retail-link claim. Set `context_complete: true` only when the request seals the
+complete executable context: full persistent file identities for the compiler,
+tool chain, exact dependency path set and fresh dependency provenance, the
+build/rule descriptor, every include root and its name-tree fingerprint, the
+selected environment/codepage/locale, runtime DLLs, canonical output/depfile,
+and source-tree state plus any dirty-patch descriptor. Response-file arguments
+must also carry an expanded-argv binding and descriptors for every response
+file. These fields are caller-attested and rechecked before reuse; a v1/v2/v3
+session that lacks any of them remains readable but can never set `skip_compile`.
+File bytes alone are not sufficient: same-byte replacement, hard-link changes,
+and reparse/junction substitution fail closed.
 
 Timeout and output enforcement terminates the direct diagnostic process. This
 trusted diagnostic runner is not an OS sandbox or process-tree jail; jobs must

@@ -110,6 +110,181 @@ def _assessment_report(
     }
 
 
+def _assessment_multi_report(
+    symbols: tuple[tuple[str, float], ...],
+) -> dict[str, object]:
+    left_symbols: list[dict[str, object]] = []
+    right_symbols: list[dict[str, object]] = []
+    for index, (name, match_percent) in enumerate(symbols):
+        left_symbols.append(
+            {
+                "name": name,
+                "kind": "SYMBOL_FUNCTION",
+                "size": "4",
+                "target_symbol": index,
+                "match_percent": match_percent,
+                "instructions": (
+                    []
+                    if match_percent == 100.0
+                    else [{"diff_kind": "REG_SWAP", "instruction": {"formatted": "mr r3,r4"}}]
+                ),
+            }
+        )
+        right_symbols.append({"name": name, "kind": "SYMBOL_FUNCTION", "size": "4"})
+    return {
+        "left": {"symbols": left_symbols},
+        "right": {"symbols": right_symbols},
+    }
+
+
+def _residual_report(
+    entries: tuple[tuple[str, float, str, str, tuple[str, ...]], ...],
+) -> dict[str, object]:
+    left_symbols: list[dict[str, object]] = []
+    right_symbols: list[dict[str, object]] = []
+    for index, (name, match_percent, target_size, candidate_size, diff_kinds) in enumerate(entries):
+        rows = [
+            {"diff_kind": kind, "instruction": {"formatted": "mr r3,r4"}}
+            for kind in diff_kinds
+        ]
+        left_symbols.append(
+            {
+                "name": name,
+                "kind": "SYMBOL_FUNCTION",
+                "size": target_size,
+                "target_symbol": index,
+                "match_percent": match_percent,
+                "instructions": rows,
+            }
+        )
+        right_symbols.append(
+            {
+                "name": name,
+                "kind": "SYMBOL_FUNCTION",
+                "size": candidate_size,
+            }
+        )
+    return {
+        "left": {"symbols": left_symbols},
+        "right": {"symbols": right_symbols},
+    }
+
+
+def _stack_instruction(
+    address: int,
+    mnemonic: str,
+    register: str,
+    offset: int,
+    base: str = "r1",
+) -> dict[str, object]:
+    return {
+        "address": address,
+        "size": 4,
+        "formatted": f"{mnemonic} {register},{offset}({base})",
+        "parts": [
+            {"opcode": {"mnemonic": mnemonic, "opcode": 0}},
+            {"arg": {"opaque": register}},
+            {"separator": True},
+            {"arg": {"signed": offset}},
+            {"basic": "("},
+            {"arg": {"opaque": base}},
+            {"basic": ")"},
+        ],
+    }
+
+
+def _stack_paired_single_instruction(
+    address: int,
+    mnemonic: str,
+    register: str,
+    offset: int,
+    w: object = 0,
+    quantization_register: object = "qr0",
+    base: str = "r1",
+) -> dict[str, object]:
+    """Build the canonical objdiff shape used by real CrackOM psq rows."""
+    return {
+        "address": address,
+        "size": 4,
+        "formatted": (
+            f"{mnemonic} {register}, 0x{offset:x}({base}), "
+            f"{w}, {quantization_register}"
+        ),
+        "parts": [
+            {"opcode": {"mnemonic": mnemonic, "opcode": 478}},
+            {"arg": {"opaque": register}},
+            {"separator": True},
+            {"arg": {"signed": offset}},
+            {"basic": "("},
+            {"arg": {"opaque": base}},
+            {"basic": ")"},
+            {"separator": True},
+            {"arg": {"opaque": str(w)}},
+            {"separator": True},
+            {"arg": {"opaque": str(quantization_register)}},
+        ],
+    }
+
+
+def _stack_register_instruction(
+    address: int,
+    mnemonic: str,
+    register: str,
+) -> dict[str, object]:
+    return {
+        "address": address,
+        "size": 4,
+        "formatted": f"{mnemonic} {register}",
+        "parts": [
+            {"opcode": {"mnemonic": mnemonic, "opcode": 0}},
+            {"arg": {"opaque": register}},
+        ],
+    }
+
+
+def _stack_direct_call_instruction(
+    address: int,
+    target: str = "OSReport",
+) -> dict[str, object]:
+    return {
+        "address": address,
+        "size": 4,
+        "formatted": f"bl {target}",
+        "parts": [
+            {"opcode": {"mnemonic": "bl", "opcode": 267}},
+            {"arg": {"reloc": True}},
+        ],
+    }
+
+
+def _stack_residue_report(
+    instructions: list[dict[str, object]],
+) -> dict[str, object]:
+    return {
+        "left": {
+            "symbols": [
+                {
+                    "name": "focus",
+                    "kind": "SYMBOL_FUNCTION",
+                    "size": "16",
+                    "target_symbol": 0,
+                    "match_percent": 75.0,
+                    "instructions": [{"instruction": item} for item in instructions],
+                }
+            ]
+        },
+        "right": {
+            "symbols": [
+                {
+                    "name": "focus",
+                    "kind": "SYMBOL_FUNCTION",
+                    "size": "16",
+                }
+            ]
+        },
+    }
+
+
 class MatchWorkbenchTests(unittest.TestCase):
     maxDiff = None
 
@@ -159,6 +334,118 @@ class MatchWorkbenchTests(unittest.TestCase):
         value.update(request_overrides)
         return value
 
+    def _complete_context(self, *, response_file: bool = False, dirty: bool = False) -> dict[str, object]:
+        """Build a fully sealed executable context for compiler-reuse tests."""
+        compiler = self.root / "complete-compiler.bin"
+        wrapper = self.root / "complete-wrapper.bin"
+        dependency = self.root / "complete-dependency.h"
+        build_rule = self.root / "complete-build.ninja"
+        runtime = self.root / "complete-runtime.dll"
+        output = self.root / "complete-output.o"
+        depfile = self.root / "complete-output.d"
+        for path, contents in (
+            (compiler, b"compiler"),
+            (wrapper, b"wrapper"),
+            (dependency, b"#define VALUE 1\n"),
+            (build_rule, b"rule cc\n  command = compiler\n"),
+            (runtime, b"runtime"),
+            (output, b"output"),
+            (depfile, b"complete-output.o: candidate.c complete-dependency.h\n"),
+        ):
+            path.write_bytes(contents)
+        compile_cwd = self.root / "complete-cwd"
+        include_root = self.root / "complete-include"
+        source_tree_root = self.root / "complete-source-tree"
+        compile_cwd.mkdir(exist_ok=True)
+        include_root.mkdir(exist_ok=True)
+        (include_root / "header.h").write_bytes(b"header\n")
+        source_tree_root.mkdir(exist_ok=True)
+        (source_tree_root / "tracked.c").write_bytes(b"tracked\n")
+        dirty_patch = None
+        state = "clean"
+        if dirty:
+            patch = self.root / "complete-dirty.patch"
+            patch.write_bytes(b"diff --git a/tracked.c b/tracked.c\n")
+            dirty_patch = module.descriptor(patch)
+            state = "dirty"
+        source_descriptor = module.descriptor(self.source)
+        dependency_descriptor = module.descriptor(dependency)
+        compile_inputs = [source_descriptor, dependency_descriptor]
+        input_paths = sorted(item["path"] for item in compile_inputs)
+        environment = module._current_environment()
+        selected_environment = {
+            "PATH": environment["variables"]["PATH"],
+        }
+        argv = [str(compiler), "-c", str(self.source)]
+        argv_binding = None
+        if response_file:
+            response = compile_cwd / "complete.rsp"
+            response.write_text("-c candidate.c\n", encoding="utf-8")
+            argv = [str(compiler), "@complete.rsp"]
+            argv_binding = {
+                "schema": module.ARGV_BINDING_SCHEMA,
+                "expanded": True,
+                "expanded_argv": [str(compiler), "-c", str(self.source)],
+                "response_files": [module.descriptor(response)],
+            }
+        context: dict[str, object] = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/complete",
+            "compiler": module.descriptor(compiler),
+            "compile_argv": argv,
+            "compile_cwd": module._directory_descriptor(
+                {"path": str(compile_cwd)},
+                root=self.root,
+                label="test compile cwd",
+                tree_names=False,
+            ),
+            "compile_tools": [module.descriptor(wrapper)],
+            "compile_inputs": compile_inputs,
+            "dependency_provenance": {
+                "schema": module.DEPENDENCY_PROVENANCE_SCHEMA,
+                "fresh": True,
+                "depfile": module.descriptor(depfile),
+                "input_paths": input_paths,
+                "path_set_sha256": module._sha256_bytes(module._canonical(input_paths)),
+            },
+            "build_rule": module.descriptor(build_rule),
+            "include_roots": [
+                module._directory_descriptor(
+                    {"path": str(include_root)},
+                    root=self.root,
+                    label="test include root",
+                    tree_names=True,
+                )
+            ],
+            "environment": {
+                "schema": module.ENVIRONMENT_SCHEMA,
+                "variables": selected_environment,
+                "codepage": environment["codepage"],
+                "locale": environment["locale"],
+            },
+            "runtime_dlls": [module.descriptor(runtime)],
+            "compile_outputs": {
+                "schema": module.OUTPUT_BINDING_SCHEMA,
+                "output": module.descriptor(output),
+                "depfile": module.descriptor(depfile),
+            },
+            "source_tree": {
+                "schema": module.SOURCE_TREE_SCHEMA,
+                "root": module._directory_descriptor(
+                    {"path": str(source_tree_root)},
+                    root=self.root,
+                    label="test source tree",
+                    tree_names=True,
+                ),
+                "state": state,
+                "dirty_patch": dirty_patch,
+            },
+            "context_complete": True,
+        }
+        if argv_binding is not None:
+            context["argv_binding"] = argv_binding
+        return context
+
     def _init(self, *, workspace: Path | None = None) -> dict[str, object]:
         return module.init_workspace(self.root, self.manifest, workspace or self.workspace)
 
@@ -174,7 +461,7 @@ class MatchWorkbenchTests(unittest.TestCase):
         axis: str = "register-lifetime",
         status: str = "measured",
         reason: str = "candidate measured",
-        focus_symbol: str | None = None,
+        focus_symbol: str | list[str] | None = None,
     ) -> dict[str, object]:
         return module.record_candidate(
             self.root,
@@ -470,8 +757,10 @@ class MatchWorkbenchTests(unittest.TestCase):
 
     def test_repair_target_reauthenticates_compiler_and_compile_inputs(self) -> None:
         compiler = self.root / "compiler.bin"
+        wrapper = self.root / "wrapper.bin"
         compile_input = self.root / "compile-input.h"
         compiler.write_bytes(b"compiler")
+        wrapper.write_bytes(b"wrapper")
         compile_input.write_bytes(b"#define VALUE 1\n")
         manifest_value = self._manifest()
         manifest_value["context"] = {
@@ -479,6 +768,8 @@ class MatchWorkbenchTests(unittest.TestCase):
             "toolchain_key": "GC/1.3.2",
             "compiler": _descriptor(compiler),
             "compile_argv": [str(compiler)],
+            "compile_cwd": str(self.root),
+            "compile_tools": [_descriptor(wrapper)],
             "compile_inputs": [_descriptor(compile_input)],
             "context_complete": True,
         }
@@ -489,6 +780,165 @@ class MatchWorkbenchTests(unittest.TestCase):
         compile_input.write_bytes(b"#define VALUE 2\n")
         with self.assertRaisesRegex(module.MatchError, "session compile input 0"):
             module.repair_target(self.root, workspace)
+
+    def test_complete_context_requires_cwd_and_authenticates_tool_chain(self) -> None:
+        compiler = self.root / "compiler.bin"
+        wrapper = self.root / "wrapper.bin"
+        compile_input = self.root / "compile-input.h"
+        compiler.write_bytes(b"compiler")
+        wrapper.write_bytes(b"wrapper")
+        compile_input.write_bytes(b"#define VALUE 1\n")
+        manifest_value = self._manifest()
+        manifest_value["context"] = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/2.6",
+            "compiler": _descriptor(wrapper),
+            "compile_argv": [str(compiler), "-c", str(self.source)],
+            "compile_tools": [_descriptor(compiler)],
+            "compile_inputs": [_descriptor(self.source), _descriptor(compile_input)],
+            "context_complete": True,
+        }
+        _write_json(self.manifest, manifest_value)
+        with self.assertRaisesRegex(module.MatchError, "compile_cwd"):
+            self._init()
+
+        manifest_value["context"]["compile_cwd"] = str(self.root)
+        _write_json(self.manifest, manifest_value)
+        initialized = self._init()
+        context = initialized["session"]["request"]["context"]
+        self.assertFalse(module._compile_context_complete(context))
+        self.assertEqual(Path(context["compile_cwd"]["path"]), self.root.resolve())
+        self._record()
+        self.assertFalse(
+            module.lookup_matches(self.root, self.workspace, self.source)["skip_compile"]
+        )
+
+        compiler.write_bytes(b"mutated-compiler")
+        with self.assertRaisesRegex(module.MatchError, "session compile tool 0"):
+            module.lookup_matches(self.root, self.workspace, self.source)
+
+    def test_complete_context_seals_every_reuse_gate_and_mutations_fail_closed(self) -> None:
+        context = self._complete_context()
+        self.assertTrue(module._compile_context_complete(context))
+
+        def clone() -> dict[str, object]:
+            return json.loads(json.dumps(context))
+
+        mutations = {
+            "compiler identity": lambda value: value["compiler"]["identity"].update({"inode": 0}),
+            "dependency freshness": lambda value: value["dependency_provenance"].update({"fresh": False}),
+            "dependency path set": lambda value: value["dependency_provenance"]["input_paths"].pop(),
+            "build rule": lambda value: value["build_rule"].update({"sha256": "0" * 64}),
+            "include tree": lambda value: value["include_roots"][0].update({"tree_name_fingerprint": "0" * 64}),
+            "environment": lambda value: value["environment"].update({"codepage": "forged"}),
+            "runtime DLL": lambda value: value["runtime_dlls"].clear(),
+            "output binding": lambda value: value["compile_outputs"]["output"].update({"sha256": "0" * 64}),
+            "source tree state": lambda value: value["source_tree"].update({"state": "dirty", "dirty_patch": None}),
+            "cwd identity": lambda value: value["compile_cwd"]["identity"].update({"inode": 0}),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                mutated = clone()
+                mutate(mutated)
+                self.assertFalse(module._compile_context_complete(mutated))
+
+        manifest_value = self._manifest()
+        manifest_value["context"] = context
+        _write_json(self.manifest, manifest_value)
+        self._init()
+        self._record()
+        self.assertTrue(module.lookup_matches(self.root, self.workspace, self.source)["skip_compile"])
+
+        runtime = self.root / "complete-runtime.dll"
+        runtime.write_bytes(b"runtime-mutated")
+        with self.assertRaisesRegex(module.MatchError, "session runtime DLL 0"):
+            module.lookup_matches(self.root, self.workspace, self.source)
+
+    def test_complete_context_seals_environment_and_dirty_patch_identity(self) -> None:
+        context = self._complete_context(dirty=True)
+        self.assertTrue(module._compile_context_complete(context))
+        patch = self.root / "complete-dirty.patch"
+        patch.write_bytes(b"forged patch")
+        self.assertFalse(module._compile_context_complete(context))
+
+        context = self._complete_context()
+        manifest_value = self._manifest()
+        manifest_value["context"] = context
+        _write_json(self.manifest, manifest_value)
+        self._init()
+        self._record()
+        with mock.patch.dict(os.environ, {"PATH": "forged-path"}, clear=False):
+            with self.assertRaisesRegex(module.MatchError, "session environment"):
+                module.lookup_matches(self.root, self.workspace, self.source)
+
+    def test_response_file_argv_requires_expanded_authenticated_binding(self) -> None:
+        context = self._complete_context(response_file=True)
+        context.pop("argv_binding")
+        manifest_value = self._manifest()
+        manifest_value["context"] = context
+        _write_json(self.manifest, manifest_value)
+        with self.assertRaisesRegex(module.MatchError, "argv_binding"):
+            self._init(workspace=self.root / "build" / "response-missing")
+
+        context = self._complete_context(response_file=True)
+        manifest_value["context"] = context
+        _write_json(self.manifest, manifest_value)
+        initialized = self._init(workspace=self.root / "build" / "response-bound")
+        self.assertTrue(module._compile_context_complete(initialized["session"]["request"]["context"]))
+
+    def test_complete_context_rejects_same_path_replacement_of_compile_cwd(self) -> None:
+        compiler = self.root / "compiler.bin"
+        compile_input = self.root / "compile-input.h"
+        compile_cwd = self.root / "compiler-cwd"
+        compiler.write_bytes(b"compiler")
+        compile_input.write_bytes(b"#define VALUE 1\n")
+        compile_cwd.mkdir()
+        manifest_value = self._manifest()
+        manifest_value["context"] = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/2.6",
+            "compiler": _descriptor(compiler),
+            "compile_argv": [str(compiler), "-c", str(self.source)],
+            "compile_cwd": str(compile_cwd),
+            "compile_inputs": [_descriptor(self.source), _descriptor(compile_input)],
+            "context_complete": True,
+        }
+        _write_json(self.manifest, manifest_value)
+        self._init()
+
+        original = self.root / "original-compiler-cwd"
+        compile_cwd.rename(original)
+        compile_cwd.mkdir()
+        with self.assertRaisesRegex(module.MatchError, "session compile cwd changed"):
+            module.lookup_matches(self.root, self.workspace, self.source)
+
+    def test_legacy_context_shape_remains_readable_but_cannot_claim_executable_reuse(self) -> None:
+        manifest_value = self._manifest()
+        normalized = module._request(manifest_value, root=self.root)
+        self.assertNotIn("compile_cwd", normalized["context"])
+        self.assertNotIn("compile_tools", normalized["context"])
+        self.assertFalse(module._compile_context_complete(normalized["context"]))
+        # A v3 session persisted a normalized cwd object with only the
+        # device/inode pair; it must remain byte-for-byte readable.
+        self.assertEqual(module._request(normalized, root=self.root), normalized)
+
+        compiler = self.root / "legacy-compiler.bin"
+        compiler.write_bytes(b"compiler")
+        legacy_executable = {
+            "base_commit": "abcdef1234567890",
+            "toolchain_key": "GC/2.6",
+            "compiler": _descriptor(compiler),
+            "compile_argv": [str(compiler)],
+            "compile_inputs": [_descriptor(self.source)],
+            "context_complete": False,
+        }
+        manifest_value["context"] = legacy_executable
+        _write_json(self.manifest, manifest_value)
+        initialized = self._init()
+        context = initialized["session"]["request"]["context"]
+        self.assertNotIn("compile_cwd", context)
+        self.assertNotIn("compile_tools", context)
+        self.assertFalse(module._compile_context_complete(context))
 
     def test_repair_target_rejects_target_indirection_and_hardlink(self) -> None:
         self._init()
@@ -649,6 +1099,36 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(reused["summary"], {"ran": 1, "cached": 0, "failed": 0})
         self.assertEqual(reused["jobs"][0]["cache_status"], "ran")
 
+    def test_candidate_guard_rejects_extracted_target_layout(self) -> None:
+        self._init()
+        extracted_target = (
+            self.root / "build" / "capsule-v376" / "GP6E01" / "obj" / "board" / "capsule.o"
+        )
+        extracted_target.parent.mkdir(parents=True)
+        extracted_target.write_bytes(b"extracted-target-bytes")
+
+        with self.assertRaisesRegex(module.MatchError, "target role.*candidate/donor role"):
+            self._record("extracted-target", object_path=extracted_target)
+
+    def test_candidate_guard_rejects_target_hash_at_candidate_path(self) -> None:
+        self._init()
+        candidate_root = self.root / "build" / "capsule-v376" / "GP6E01" / "src" / "board"
+        candidate_root.mkdir(parents=True)
+        candidate_source = candidate_root / "capsule.c"
+        candidate_source.write_bytes(self.source.read_bytes())
+        candidate_object = candidate_root / "capsule.o"
+        candidate_object.write_bytes(self.target.read_bytes())
+
+        with self.assertRaisesRegex(
+            module.MatchError,
+            "candidate/donor path role candidate.*already registered with target role",
+        ):
+            self._record(
+                "target-hash",
+                source=candidate_source,
+                object_path=candidate_object,
+            )
+
     def test_missing_or_corrupt_report_cas_fails_matrix(self) -> None:
         self._init()
         recorded = self._record(data_report=self.data)
@@ -709,8 +1189,8 @@ class MatchWorkbenchTests(unittest.TestCase):
         original_path_conflict = module.lookup_matches(
             self.root, self.workspace, self.source, object_third
         )
-        self.assertEqual(original_path_conflict["status"], "conflict")
-        self.assertIn("same frozen source/context", original_path_conflict["reason"])
+        self.assertEqual(original_path_conflict["status"], "known_source")
+        self.assertIn("frozen compile context is incomplete", original_path_conflict["reason"])
 
         other_source = self.root / "other.c"
         other_source.write_text("int fn(void) { return 2; }\n", encoding="utf-8")
@@ -1223,6 +1703,128 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(rows["c2"]["diagnostic_status"], "not_run")
         self.assertEqual(rows["c2"]["next_action"], "run_read_only_diagnostics_for_source_context")
 
+    def test_matrix_focus_history_is_bounded_and_deterministic(self) -> None:
+        self._init()
+
+        def add_candidate(candidate_id: str, focus: str, status: str) -> None:
+            source = self.root / f"{candidate_id}.c"
+            source.write_text(f"int {candidate_id}(void) {{ return 1; }}\n", encoding="utf-8")
+            object_path = self.root / f"{candidate_id}.o"
+            object_path.write_bytes(candidate_id.encode("ascii"))
+            strict = self.root / f"{candidate_id}-strict.json"
+            data = self.root / f"{candidate_id}-data.json"
+            _write_json(strict, _report(focus))
+            _write_json(data, _report(focus, exact=True))
+            self._record(
+                candidate_id,
+                source=source,
+                object_path=object_path,
+                strict_report=strict,
+                data_report=data,
+                hypothesis=f"{focus} source shape",
+                axis=f"{focus}-axis",
+                status=status,
+                reason=f"{status} candidate",
+                focus_symbol=focus,
+            )
+
+        add_candidate("c1", "CapSelectMasuPlayer", "measured")
+        add_candidate("c2", "CapSelectMasuCom", "rejected")
+        add_candidate("c3", "CapSelectMasuPlayer", "retained")
+
+        full = module.build_matrix(self.root, self.workspace)
+        self.assertNotIn("view", full)
+        compact = module.build_matrix(
+            self.root,
+            self.workspace,
+            focus_symbol="CapSelectMasuPlayer",
+            limit=1,
+            compact=True,
+        )
+        self.assertEqual(compact["view"], "compact")
+        self.assertEqual(compact["query"]["total_candidate_count"], 3)
+        self.assertEqual(compact["query"]["selected_candidate_count"], 1)
+        row = compact["rows"][0]
+        self.assertEqual(row["candidate_id"], "c1")
+        self.assertEqual(row["focus_symbol"], "CapSelectMasuPlayer")
+        self.assertEqual(row["strict_percent"], 75.0)
+        self.assertEqual(row["data_percent"], 100.0)
+        self.assertEqual(row["strict_diff_rows"], 1)
+        self.assertEqual(row["data_diff_rows"], 0)
+        self.assertEqual(row["target_size"], 4)
+        self.assertEqual(row["candidate_size"], 4)
+        self.assertEqual(row["outcome"]["status"], "measured")
+        self.assertEqual(row["axis"], "CapSelectMasuPlayer-axis")
+        self.assertEqual(row["name"], "CapSelectMasuPlayer source shape")
+        self.assertEqual(
+            [item["candidate_id"] for item in module.build_matrix(
+                self.root,
+                self.workspace,
+                focus_symbol="CapSelectMasuPlayer",
+                compact=True,
+            )["rows"]],
+            ["c1", "c3"],
+        )
+        latest = module.build_matrix(
+            self.root,
+            self.workspace,
+            focus_symbol="CapSelectMasuPlayer",
+            limit=1,
+            compact=True,
+            latest=True,
+        )
+        self.assertEqual(latest["query"]["order"], "newest")
+        self.assertEqual(latest["rows"][0]["candidate_id"], "c3")
+        ordered = module.build_matrix(
+            self.root,
+            self.workspace,
+            focus_symbol="CapSelectMasuPlayer",
+            compact=True,
+            order="newest",
+        )
+        self.assertEqual(
+            [item["candidate_id"] for item in ordered["rows"]],
+            ["c3", "c1"],
+        )
+
+    def test_matrix_focus_history_text_cli(self) -> None:
+        self._init()
+        self._record()
+        with mock.patch("builtins.print") as printer:
+            result = module.main([
+                "--root",
+                str(self.root),
+                "matrix",
+                "--workspace",
+                str(self.workspace),
+                "--focus-symbol",
+                "fn",
+                "--limit",
+                "1",
+                "--compact",
+            ])
+        self.assertEqual(result, 0)
+        rendered = "\n".join(str(call.args[0]) for call in printer.call_args_list)
+        self.assertIn("matrix-focus", rendered)
+        self.assertIn("c1", rendered)
+        with mock.patch("builtins.print") as printer:
+            result = module.main([
+                "--root",
+                str(self.root),
+                "matrix",
+                "--workspace",
+                str(self.workspace),
+                "--focus-symbol",
+                "fn",
+                "--limit",
+                "1",
+                "--compact-json",
+            ])
+        self.assertEqual(result, 0)
+        payload = json.loads(str(printer.call_args.args[0]))
+        self.assertEqual(payload["view"], "compact")
+        self.assertEqual(payload["rows"][0]["candidate_id"], "c1")
+
     def test_matrix_ignores_unindexed_diagnostic_result(self) -> None:
         self._init()
         self._record()
@@ -1705,6 +2307,840 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
         self.assertEqual(json.loads(process.stdout)["verdict"], "accepted")
 
+    def test_residuals_rank_classify_exclude_and_route_centrally(self) -> None:
+        strict_path = self.root / "residual-strict.json"
+        data_path = self.root / "residual-data.json"
+        entries = (
+            ("both", 40.0, "24", "20", ("ARG", "ARG", "REG")),
+            ("strict_only", 90.0, "16", "20", ("REG",)),
+            ("data_only", 100.0, "8", "8", ()),
+            ("known", 70.0, "12", "12", ("NOP",)),
+            ("exact", 100.0, "4", "4", ()),
+        )
+        data_entries = (
+            ("both", 50.0, "24", "20", ("ARG", "REG")),
+            ("strict_only", 100.0, "16", "20", ()),
+            ("data_only", 90.0, "8", "8", ("CALL",)),
+            ("known", 95.0, "12", "12", ("NOP",)),
+            ("exact", 100.0, "4", "4", ()),
+        )
+        _write_json(strict_path, _residual_report(entries))
+        _write_json(data_path, _residual_report(data_entries))
+
+        argv = [
+            "--root",
+            str(self.root),
+            "residuals",
+            "--strict-report",
+            str(strict_path),
+            "--data-report",
+            str(data_path),
+            "--exclude-known-exact",
+            "known",
+        ]
+        first_output = io.StringIO()
+        with contextlib.redirect_stdout(first_output):
+            self.assertEqual(module.main(argv), 0)
+        second_output = io.StringIO()
+        with contextlib.redirect_stdout(second_output):
+            self.assertEqual(module.main(argv), 0)
+        self.assertEqual(first_output.getvalue(), second_output.getvalue())
+
+        result = json.loads(first_output.getvalue())
+        self.assertEqual(result["schema"], module.RESIDUALS_SCHEMA)
+        self.assertEqual(result["excluded_symbols"], ["known"])
+        self.assertEqual(result["function_counts"]["strict"], {"exact": 2, "total": 5, "nonexact": 3})
+        self.assertEqual(result["function_counts"]["data"], {"exact": 2, "total": 5, "nonexact": 3})
+        self.assertEqual(
+            result["classification_counts"],
+            {"both": 1, "data_only": 1, "strict_only": 1},
+        )
+        self.assertEqual(result["residual_count"], 3)
+        self.assertEqual(result["excluded_function_count"], 1)
+        self.assertEqual(result["excluded_residual_count"], 1)
+        residuals = result["residuals"]
+        self.assertEqual(
+            [(row["rank"], row["symbol"], row["classification"]) for row in residuals],
+            [
+                (1, "both", "both"),
+                (2, "strict_only", "strict_only"),
+                (3, "data_only", "data_only"),
+            ],
+        )
+        self.assertEqual(residuals[0]["strict"]["target_size"], 24)
+        self.assertEqual(residuals[0]["strict"]["candidate_size"], 20)
+        self.assertEqual(residuals[0]["strict"]["match_percent"], 40)
+        self.assertEqual(residuals[0]["strict"]["diff_kinds"], {"ARG": 2, "REG": 1})
+        self.assertEqual(residuals[0]["data"]["diff_kinds"], {"ARG": 1, "REG": 1})
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "residuals",
+                "--strict",
+                str(strict_path),
+                "--data",
+                str(data_path),
+                "--exclude-symbol",
+                "known",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), result)
+
+    def test_stack_residue_reports_authenticated_target_zero_read_slots(self) -> None:
+        report = self.root / "stack-residue.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x100, "stw", "r3", -4),
+                    _stack_instruction(0x104, "stwu", "r1", -8),
+                    _stack_instruction(0x108, "lwz", "r4", -8),
+                    _stack_instruction(0x10C, "stfd", "f2", -12),
+                ]
+            ),
+        )
+
+        first = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        second = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        self.assertEqual(first, second)
+        self.assertEqual(first["target_stack_access_count"], 4)
+        self.assertEqual(
+            [
+                (row["offset"], row["write_count"], row["read_count"])
+                for row in first["stack_slots"]
+            ],
+            [(-12, 1, 0), (-8, 1, 1), (-4, 1, 0)],
+        )
+        self.assertEqual(first["zero_read_slot_count"], 1)
+        self.assertEqual(
+            [row["offset"] for row in first["zero_read_slots"]],
+            [-4],
+        )
+        self.assertEqual(first["slots"], first["zero_read_slots"])
+        self.assertEqual(first["zero_read_slots"][0]["writes"][0]["address"], 0x100)
+        self.assertEqual(first["stack_slots"][0]["width"], 8)
+        self.assertEqual(first["stack_slots"][0]["overlap_read_count"], 1)
+        self.assertEqual(
+            first["stack_slots"][0]["byte_range"], {"start": -12, "end": -4}
+        )
+        self.assertEqual(
+            first["stack_slots"][0]["writes"][0]["overlap_evidence"][0]["offset"],
+            -8,
+        )
+        self.assertEqual(first["authority_advanced"], False)
+        self.assertEqual(first["report"]["sha256"], _sha256(report))
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "stack-residue",
+                "--report",
+                str(report),
+                "--focus-symbol",
+                "focus",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), first)
+
+    def test_stack_residue_rejects_unsupported_target_operand_shape(self) -> None:
+        report = self.root / "stack-residue-unsupported.json"
+        instruction = _stack_instruction(0x200, "stw", "r3", -4)
+        instruction["parts"] = [
+            {"opcode": {"mnemonic": "stw", "opcode": 0}},
+            {"arg": {"opaque": "r3"}},
+            {"separator": True},
+            {"arg": {"opaque": "-4(r1)"}},
+        ]
+        _write_json(report, _stack_residue_report([instruction]))
+
+        with self.assertRaisesRegex(module.MatchError, "unsupported.*operand shape"):
+            module.inspect_stack_residue(
+                self.root,
+                report=report,
+                focus_symbol="focus",
+            )
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "stack-residue",
+                    "--report",
+                    str(report),
+                    "--focus-symbol",
+                    "focus",
+                ]
+            )
+        self.assertEqual(status, 2)
+        self.assertIn("unsupported", output.getvalue())
+
+    def test_stack_residue_classifies_wide_overlap_in_both_instruction_orders(self) -> None:
+        for name, instructions in (
+            (
+                "wide-write-narrow-read",
+                [
+                    _stack_instruction(0x220, "stfd", "f2", 0x18),
+                    _stack_instruction(0x224, "lwz", "r3", 0x1C),
+                ],
+            ),
+            (
+                "narrow-write-wide-read",
+                [
+                    _stack_instruction(0x230, "stw", "r3", 0x1C),
+                    _stack_instruction(0x234, "lfd", "f2", 0x18),
+                ],
+            ),
+        ):
+            report = self.root / f"stack-residue-{name}.json"
+            _write_json(report, _stack_residue_report(instructions))
+            result = module.inspect_stack_residue(
+                self.root,
+                report=report,
+                focus_symbol="focus",
+            )
+
+            write_slot = next(row for row in result["stack_slots"] if row["write_count"])
+            self.assertEqual(result["zero_read_slot_count"], 0)
+            self.assertFalse(write_slot["residue_candidate"])
+            self.assertFalse(write_slot["writes"][0]["zero_read"])
+            self.assertEqual(write_slot["writes"][0]["zero_read_reason"], "read_byte_range_overlap")
+            self.assertEqual(len(write_slot["writes"][0]["overlap_evidence"]), 1)
+            self.assertEqual(
+                write_slot["writes"][0]["overlap_evidence"][0]["byte_range"],
+                {"start": 0x1C, "end": 0x20}
+                if name == "wide-write-narrow-read"
+                else {"start": 0x18, "end": 0x20},
+            )
+
+    def test_stack_residue_respects_byte_and_halfword_boundaries(self) -> None:
+        report = self.root / "stack-residue-byte-boundaries.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x240, "stb", "r3", 0x20),
+                    _stack_instruction(0x244, "lhz", "r4", 0x1F),
+                    _stack_instruction(0x248, "stb", "r5", 0x30),
+                    _stack_instruction(0x24C, "lhz", "r6", 0x2E),
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        by_offset = {row["offset"]: row for row in result["stack_slots"]}
+        self.assertEqual(by_offset[0x20]["width"], 1)
+        self.assertEqual(by_offset[0x20]["read_count"], 0)
+        self.assertEqual(by_offset[0x20]["overlap_read_count"], 1)
+        self.assertFalse(by_offset[0x20]["residue_candidate"])
+        self.assertEqual(by_offset[0x30]["width"], 1)
+        self.assertEqual(by_offset[0x30]["read_count"], 0)
+        self.assertTrue(by_offset[0x30]["residue_candidate"])
+        self.assertEqual(result["zero_read_slot_count"], 1)
+
+    def test_stack_residue_canonicalizes_sp_and_r1_for_overlap(self) -> None:
+        report = self.root / "stack-residue-sp-r1.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x260, "stw", "r3", 0x40, base="sp"),
+                    _stack_instruction(0x264, "lwz", "r4", 0x40, base="r1"),
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        self.assertEqual(len(result["stack_slots"]), 1)
+        slot = result["stack_slots"][0]
+        self.assertEqual(slot["base_register"], "r1")
+        self.assertEqual(slot["read_count"], 1)
+        self.assertFalse(slot["residue_candidate"])
+        self.assertEqual(slot["writes"][0]["base_register"], "sp")
+        self.assertEqual(slot["reads"][0]["base_register"], "r1")
+
+    def test_stack_residue_supported_direct_d_form_mnemonics_have_widths(self) -> None:
+        supported = {
+            "lbz": ("read", 1),
+            "lha": ("read", 2),
+            "lhz": ("read", 2),
+            "lwz": ("read", 4),
+            "ld": ("read", 8),
+            "lfs": ("read", 4),
+            "lfd": ("read", 8),
+            "stb": ("write", 1),
+            "sth": ("write", 2),
+            "stw": ("write", 4),
+            "std": ("write", 8),
+            "stfs": ("write", 4),
+            "stfd": ("write", 8),
+        }
+        for index, (mnemonic, (kind, width)) in enumerate(supported.items()):
+            arguments = [("opaque", "r3"), ("signed", index * 16), ("opaque", "r1")]
+            self.assertEqual(module._stack_memory_kind(mnemonic), kind)
+            self.assertEqual(
+                module._stack_d_form_stack_access(mnemonic, arguments),
+                (kind, "r1", index * 16),
+            )
+            self.assertEqual(module._STACK_DFORM_WIDTHS[mnemonic], width)
+
+    def test_stack_residue_handles_real_crackom_paired_single_shapes(self) -> None:
+        report = self.root / "stack-residue-crackom-psq.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_paired_single_instruction(
+                        0x300, "psq_st", "f31", 0x28, 0, "qr0"
+                    ),
+                    _stack_paired_single_instruction(
+                        0x304, "psq_l", "f31", 0x28, 0, "qr0"
+                    ),
+                    _stack_paired_single_instruction(
+                        0x308, "psq_st", "f30", 0x40, 1, "qr0"
+                    ),
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        by_offset = {row["offset"]: row for row in result["stack_slots"]}
+        wide = by_offset[0x28]
+        narrow = by_offset[0x40]
+        self.assertEqual(wide["width"], 8)
+        self.assertEqual(wide["byte_range"], {"start": 0x28, "end": 0x30})
+        self.assertEqual(wide["write_count"], 1)
+        self.assertEqual(wide["read_count"], 1)
+        self.assertFalse(wide["residue_candidate"])
+        self.assertEqual(wide["writes"][0]["formatted"], "psq_st f31, 0x28(r1), 0, qr0")
+        self.assertEqual(wide["writes"][0]["operand_form"], "paired_single")
+        self.assertEqual(wide["writes"][0]["paired_single_w"], 0)
+        self.assertEqual(wide["writes"][0]["quantization_register"], "qr0")
+        self.assertEqual(narrow["width"], 4)
+        self.assertEqual(narrow["byte_range"], {"start": 0x40, "end": 0x44})
+        self.assertTrue(narrow["residue_candidate"])
+        self.assertEqual(narrow["writes"][0]["paired_single_w"], 1)
+
+    def test_stack_residue_paired_single_widths_use_byte_overlap(self) -> None:
+        report = self.root / "stack-residue-psq-byte-overlap.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_paired_single_instruction(
+                        0x320, "psq_st", "f2", 0x50, 0, "qr0"
+                    ),
+                    _stack_instruction(0x324, "lwz", "r3", 0x54),
+                    _stack_paired_single_instruction(
+                        0x328, "psq_st", "f3", 0x60, 1, "qr0"
+                    ),
+                    _stack_instruction(0x32C, "lwz", "r4", 0x64),
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        by_offset = {row["offset"]: row for row in result["stack_slots"]}
+        self.assertEqual(by_offset[0x50]["width"], 8)
+        self.assertEqual(by_offset[0x50]["overlap_read_count"], 1)
+        self.assertFalse(by_offset[0x50]["residue_candidate"])
+        self.assertEqual(by_offset[0x60]["width"], 4)
+        self.assertEqual(by_offset[0x60]["overlap_read_count"], 0)
+        self.assertTrue(by_offset[0x60]["residue_candidate"])
+        self.assertEqual(result["zero_read_slot_count"], 1)
+
+    def test_stack_residue_rejects_ambiguous_paired_single_selectors(self) -> None:
+        for index, (selector, value) in enumerate(
+            (("W", 2), ("W", "w"), ("I", "qrx"), ("I", "qr8"))
+        ):
+            instruction = _stack_paired_single_instruction(
+                0x340 + index * 4,
+                "psq_st",
+                "f2",
+                -0x20,
+                0 if selector == "I" else value,
+                value if selector == "I" else "qr0",
+            )
+            report = self.root / f"stack-residue-psq-ambiguous-{index}.json"
+            _write_json(report, _stack_residue_report([instruction]))
+            with self.subTest(selector=selector, value=value), self.assertRaisesRegex(
+                module.MatchError,
+                selector,
+            ):
+                module.inspect_stack_residue(
+                    self.root,
+                    report=report,
+                    focus_symbol="focus",
+                )
+
+    def test_stack_residue_rejects_ambiguous_paired_single_operand_shape(self) -> None:
+        for suffix, mutate in (
+            ("missing-selector", lambda parts: parts[:-2]),
+            ("non-fpr-destination", lambda parts: parts[:1] + [{"arg": {"opaque": "r3"}}] + parts[2:]),
+        ):
+            instruction = _stack_paired_single_instruction(
+                0x360, "psq_l", "f2", 0x20, 0, "qr0"
+            )
+            instruction["parts"] = mutate(instruction["parts"])
+            report = self.root / f"stack-residue-psq-ambiguous-shape-{suffix}.json"
+            _write_json(report, _stack_residue_report([instruction]))
+            with self.subTest(shape=suffix), self.assertRaisesRegex(
+                module.MatchError,
+                "unsupported.*operand shape",
+            ):
+                module.inspect_stack_residue(
+                    self.root,
+                    report=report,
+                    focus_symbol="focus",
+                )
+
+    def test_stack_residue_rejects_unsupported_memory_forms_and_updates(self) -> None:
+        unsupported = {
+            "lwzx": [
+                ("opaque", "r3"),
+                ("opaque", "r4"),
+                ("opaque", "r1"),
+            ],
+            "lswi": [
+                ("opaque", "r3"),
+                ("opaque", "r1"),
+                ("unsigned", 4),
+            ],
+            "lwarx": [
+                ("opaque", "r3"),
+                ("opaque", "r1"),
+                ("opaque", "r4"),
+            ],
+            "lvx": [
+                ("opaque", "r3"),
+                ("opaque", "r4"),
+                ("opaque", "r1"),
+            ],
+            "psq_l": [
+                ("opaque", "f2"),
+                ("signed", 0),
+                ("opaque", "r1"),
+            ],
+            "lwzu": [
+                ("opaque", "r3"),
+                ("signed", -4),
+                ("opaque", "r1"),
+            ],
+            "stwu": [
+                ("opaque", "r3"),
+                ("signed", 8),
+                ("opaque", "r1"),
+            ],
+        }
+        for index, (mnemonic, arguments) in enumerate(unsupported.items()):
+            parts: list[dict[str, object]] = [
+                {"opcode": {"mnemonic": mnemonic, "opcode": 0}}
+            ]
+            for kind, value in arguments:
+                parts.append({"arg": {kind: value}})
+            instruction = _stack_instruction(0x280 + index * 4, "r3", "r3", -4)
+            instruction["formatted"] = f"{mnemonic} ..."
+            instruction["parts"] = parts
+            report = self.root / f"stack-residue-unsupported-{mnemonic}.json"
+            _write_json(report, _stack_residue_report([instruction]))
+            with self.subTest(mnemonic=mnemonic), self.assertRaisesRegex(
+                module.MatchError, "unsupported"
+            ):
+                module.inspect_stack_residue(
+                    self.root,
+                    report=report,
+                    focus_symbol="focus",
+                )
+
+    def test_stack_residue_keeps_true_named_crackom_listdebug_capcheck_candidates(self) -> None:
+        for index, name in enumerate(
+            ("CapEffCrackOMExec", "mbCapListDebug", "CapCheckComPath")
+        ):
+            report_value = _stack_residue_report(
+                [_stack_instruction(0x2C0 + index * 0x10, "stw", "r0", -4)]
+            )
+            report_value["left"]["symbols"][0]["name"] = name
+            report_value["right"]["symbols"][0]["name"] = name
+            report = self.root / f"stack-residue-{name}.json"
+            _write_json(report, report_value)
+            with self.subTest(symbol=name):
+                result = module.inspect_stack_residue(
+                    self.root,
+                    report=report,
+                    focus_symbol=name,
+                )
+                self.assertEqual([row["offset"] for row in result["slots"]], [-4])
+                self.assertEqual(result["zero_read_slot_count"], 1)
+
+    def test_stack_residue_excludes_negative_frame_pointer_update(self) -> None:
+        report = self.root / "stack-residue-frame-update.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x300, "stwu", "r1", -32),
+                    _stack_instruction(0x304, "stw", "r3", 8),
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+
+        self.assertEqual(
+            [
+                (
+                    row["offset"],
+                    row["write_count"],
+                    row["residue_write_count"],
+                    row["excluded_write_count"],
+                    row["residue_candidate"],
+                    row["excluded_from_residue"],
+                )
+                for row in result["stack_slots"]
+            ],
+            [(-32, 1, 0, 1, False, True), (8, 1, 1, 0, True, False)],
+        )
+        frame_write = result["stack_slots"][0]["writes"][0]
+        self.assertEqual(frame_write["classification"], "frame_pointer_update")
+        self.assertTrue(frame_write["excluded_from_residue"])
+        self.assertEqual([row["offset"] for row in result["slots"]], [8])
+        self.assertEqual(result["slots"], result["zero_read_slots"])
+        self.assertEqual(result["excluded_stack_access_count"], 1)
+        self.assertEqual(result["excluded_stack_slot_count"], 1)
+
+    def test_stack_residue_excludes_outgoing_argument_store_only_with_call_context(self) -> None:
+        report = self.root / "stack-residue-outgoing-argument.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x400, "stw", "r0", 8),
+                    _stack_register_instruction(0x404, "addi", "r3"),
+                    _stack_register_instruction(0x408, "li", "r4"),
+                    _stack_direct_call_instruction(0x40C),
+                ]
+            ),
+        )
+
+        first = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        second = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+        self.assertEqual(first, second)
+        self.assertEqual(first["zero_read_slot_count"], 0)
+        self.assertEqual(first["outgoing_call_argument_access_count"], 1)
+        self.assertEqual(first["outgoing_call_argument_slot_count"], 1)
+        slot = first["stack_slots"][0]
+        self.assertEqual(slot["offset"], 8)
+        self.assertEqual(slot["write_count"], 1)
+        self.assertEqual(slot["residue_write_count"], 0)
+        self.assertEqual(slot["excluded_write_count"], 1)
+        self.assertFalse(slot["residue_candidate"])
+        self.assertTrue(slot["excluded_from_residue"])
+        write = slot["writes"][0]
+        self.assertEqual(write["classification"], "outgoing_call_argument")
+        self.assertTrue(write["excluded_from_residue"])
+        self.assertEqual(
+            write["call_context"]["argument_destinations"], ["r3", "r4"]
+        )
+        self.assertEqual(write["call_context"]["call_instruction_index"], 3)
+        self.assertEqual(
+            write["call_context"]["proof"],
+            "direct_bl_reloc_after_contiguous_argument_setup",
+        )
+
+    def test_stack_residue_keeps_offset_eight_without_proven_call_context(self) -> None:
+        report = self.root / "stack-residue-offset-eight-local.json"
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x500, "stw", "r0", 8),
+                    _stack_register_instruction(0x504, "lwz", "r30"),
+                    _stack_direct_call_instruction(0x508, "mbExitCheck"),
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+
+        slot = result["stack_slots"][0]
+        self.assertEqual(slot["offset"], 8)
+        self.assertEqual(slot["residue_write_count"], 1)
+        self.assertEqual(slot["excluded_write_count"], 0)
+        self.assertTrue(slot["residue_candidate"])
+        self.assertEqual(result["outgoing_call_argument_access_count"], 0)
+        self.assertEqual(result["slots"], result["zero_read_slots"])
+
+    def test_stack_residue_keeps_positive_store_without_direct_reloc_call(self) -> None:
+        report = self.root / "stack-residue-no-direct-call.json"
+        bad_call = _stack_direct_call_instruction(0x60C)
+        bad_call["parts"] = [
+            {"opcode": {"mnemonic": "bl", "opcode": 267}},
+            {"arg": {"opaque": "OSReport"}},
+        ]
+        _write_json(
+            report,
+            _stack_residue_report(
+                [
+                    _stack_instruction(0x600, "stw", "r0", 0x10),
+                    _stack_register_instruction(0x604, "li", "r3"),
+                    _stack_register_instruction(0x608, "li", "r4"),
+                    bad_call,
+                ]
+            ),
+        )
+
+        result = module.inspect_stack_residue(
+            self.root,
+            report=report,
+            focus_symbol="focus",
+        )
+
+        slot = result["stack_slots"][0]
+        self.assertEqual(slot["offset"], 0x10)
+        self.assertTrue(slot["residue_candidate"])
+        self.assertEqual(slot["writes"][0]["classification"], "stack_write")
+        self.assertEqual(result["outgoing_call_argument_access_count"], 0)
+
+    def test_residuals_reject_strict_data_identity_or_pairing_mismatch(self) -> None:
+        strict_path = self.root / "residual-mismatch-strict.json"
+        data_path = self.root / "residual-mismatch-data.json"
+        _write_json(
+            strict_path,
+            _residual_report((("alpha", 75.0, "4", "4", ("REG",)),)),
+        )
+        _write_json(
+            data_path,
+            _residual_report((("beta", 75.0, "4", "4", ("REG",)),)),
+        )
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "residuals",
+                    "--strict-report",
+                    str(strict_path),
+                    "--data-report",
+                    str(data_path),
+                ]
+            )
+        self.assertEqual(status, 2)
+        self.assertIn("strict/data function identity mismatch", output.getvalue())
+
+        unpaired = _residual_report(
+            (("alpha", 75.0, "4", "4", ("REG",)),)
+        )
+        unpaired["left"]["symbols"][0]["target_symbol"] = 99
+        _write_json(data_path, unpaired)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "residuals",
+                    "--strict-report",
+                    str(strict_path),
+                    "--data-report",
+                    str(data_path),
+                ]
+            )
+        self.assertEqual(status, 2)
+        self.assertIn("is not paired", output.getvalue())
+
+    def test_assess_repeatable_focus_symbols_are_sorted_and_each_focus_is_checked(self) -> None:
+        baseline_strict = self.root / "multi-baseline-strict.json"
+        candidate_strict = self.root / "multi-candidate-strict.json"
+        baseline_data = self.root / "multi-baseline-data.json"
+        candidate_data = self.root / "multi-candidate-data.json"
+        baseline = _assessment_multi_report(
+            (("beta", 75.0), ("alpha", 75.0), ("sibling", 100.0))
+        )
+        candidate = _assessment_multi_report(
+            (("beta", 100.0), ("alpha", 100.0), ("sibling", 100.0))
+        )
+        _write_json(baseline_strict, baseline)
+        _write_json(candidate_strict, candidate)
+        _write_json(baseline_data, baseline)
+        _write_json(candidate_data, candidate)
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "assess",
+                    "--baseline-strict",
+                    str(baseline_strict),
+                    "--candidate-strict",
+                    str(candidate_strict),
+                    "--baseline-data",
+                    str(baseline_data),
+                    "--candidate-data",
+                    str(candidate_data),
+                    "--focus-symbol",
+                    "beta",
+                    "--focus-symbol",
+                    "alpha",
+                ]
+            )
+        self.assertEqual(status, 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["verdict"], "accepted")
+        self.assertEqual(result["focus_symbols"], ["alpha", "beta"])
+        self.assertNotIn("focus_symbol", result)
+        self.assertNotIn("focus", result)
+        self.assertEqual(
+            [row["symbol"] for row in result["focuses"]], ["alpha", "beta"]
+        )
+        self.assertEqual(
+            [row["symbol"] for row in result["strict"]["focuses"]], ["alpha", "beta"]
+        )
+        self.assertNotIn("focus", result["strict"])
+        self.assertEqual(result["data"]["focuses"][0]["symbol"], "alpha")
+
+    def test_assess_multi_focus_rejects_one_focus_regression(self) -> None:
+        baseline = self.root / "multi-regression-baseline.json"
+        candidate = self.root / "multi-regression-candidate.json"
+        _write_json(
+            baseline,
+            _assessment_multi_report((("alpha", 100.0), ("beta", 75.0))),
+        )
+        _write_json(
+            candidate,
+            _assessment_multi_report((("alpha", 95.0), ("beta", 100.0))),
+        )
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = module.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "assess",
+                    "--baseline-strict",
+                    str(baseline),
+                    "--candidate-strict",
+                    str(candidate),
+                    "--focus-symbol",
+                    "alpha",
+                    "--focus-symbol",
+                    "beta",
+                ]
+            )
+        self.assertEqual(status, 1)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["verdict"], "rejected")
+        self.assertEqual(
+            [(row["symbol"], row["reason"]) for row in result["regressions"]],
+            [("alpha", "previously_exact_focus_regressed")],
+        )
+
+    def test_record_multi_focus_persists_sorted_symbols_and_matrix_compacts(self) -> None:
+        self._init()
+        strict = self.root / "multi-strict.json"
+        data = self.root / "multi-data.json"
+        _write_json(strict, _assessment_multi_report((("beta", 100.0), ("alpha", 100.0))))
+        _write_json(data, _assessment_multi_report((("beta", 100.0), ("alpha", 100.0))))
+        first = self._record(
+            "multi",
+            strict_report=strict,
+            data_report=data,
+            focus_symbol=["beta", "alpha"],
+        )
+        record = first["record"]
+        self.assertEqual(record["focus_symbols"], ["alpha", "beta"])
+        self.assertNotIn("focus_symbol", record)
+        self.assertEqual(
+            [row["name"] for row in record["reports"]["strict"]["compact"]["focuses"]],
+            ["alpha", "beta"],
+        )
+        self.assertNotIn("focus", record["reports"]["strict"]["compact"])
+
+        unchanged = module.record_candidate(
+            self.root,
+            self.workspace,
+            candidate_id="multi",
+            source=self.source,
+            object_path=self.object,
+            strict_report=strict,
+            data_report=data,
+            hypothesis="natural candidate",
+            axis="register-lifetime",
+            focus_symbol=["alpha", "beta"],
+        )
+        self.assertEqual(unchanged["status"], "unchanged")
+        matrix = module.build_matrix(self.root, self.workspace)
+        row = matrix["rows"][0]
+        self.assertEqual(row["focus_symbols"], ["alpha", "beta"])
+        self.assertEqual(
+            [focus["name"] for focus in row["strict_focuses"]], ["alpha", "beta"]
+        )
+        self.assertTrue(row["next_action"].startswith("authenticate"))
+
     def test_prepare_composes_record_request_without_mutating_workspace(self) -> None:
         baseline_strict = self.root / "prepare-baseline-strict.json"
         candidate_strict = self.root / "prepare-candidate-strict.json"
@@ -2137,6 +3573,363 @@ class MatchWorkbenchTests(unittest.TestCase):
         matrix_output = matrix_text.getvalue().lower()
         self.assertIn("candidate", matrix_output)
         self.assertIn("next", matrix_output)
+
+    def test_donor_shapes_handles_nested_braces_comments_and_string_literals(self) -> None:
+        current = self.root / "capsule.c"
+        donor = self.root / "donor.c"
+        current.write_text(
+            'int CapShopNextGet(int value) {\n'
+            '    const char *text = "}"; /* a brace in a comment: { } */\n'
+            '    if (value) {\n'
+            '        return value;\n'
+            '    }\n'
+            '    return 0;\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        donor.write_text(
+            'int CapShopNextGet(int value) {\n'
+            '  const char* text = "}"; // comment with }\n'
+            '  if (value) {\n'
+            '    return value + 1;\n'
+            '  }\n'
+            '  return 0;\n'
+            '}\n',
+            encoding="utf-8",
+        )
+
+        result = module.donor_shapes(
+            self.root,
+            source=current,
+            focus_symbol="CapShopNextGet",
+            donor_files=[str(donor)],
+        )
+
+        self.assertEqual(result["schema"], module.DONOR_SHAPES_SCHEMA)
+        self.assertEqual(result["focus_symbol"], "CapShopNextGet")
+        self.assertEqual(result["current"]["source"]["sha256"], _sha256(current))
+        self.assertEqual(result["variant_count"], 1)
+        self.assertEqual(result["donor_definition_count"], 1)
+        variant = result["variants"][0]
+        self.assertEqual(variant["rank"], 1)
+        self.assertGreater(variant["source_shape_diff_line_count"], 0)
+        self.assertEqual(variant["representative"]["path"], "donor.c")
+        self.assertFalse(result["target_proof"])
+        self.assertFalse(result["auto_edit"])
+        self.assertEqual(result["evidence_class"], "donor_source_shape_only")
+
+    def test_donor_shapes_deduplicates_normalized_bodies_and_ranks_deterministically(self) -> None:
+        current = self.root / "current.c"
+        donor_a = self.root / "z-donor.c"
+        donor_b = self.root / "a-donor.c"
+        donor_c = self.root / "m-donor.c"
+        current.write_text(
+            "int CapShopNextGet(int value) { return value; }\n",
+            encoding="utf-8",
+        )
+        duplicate_body = "int CapShopNextGet(int value) { /* same */ return value; }\n"
+        donor_a.write_text(duplicate_body, encoding="utf-8")
+        donor_b.write_text(duplicate_body.replace("/* same */", "// same\n"), encoding="utf-8")
+        donor_c.write_text(
+            "int CapShopNextGet(int value) { return value + 1; }\n",
+            encoding="utf-8",
+        )
+
+        first = module.donor_shapes(
+            self.root,
+            source=current,
+            focus_symbol="CapShopNextGet",
+            donor_files=[str(donor_a), str(donor_c), str(donor_b)],
+        )
+        second = module.donor_shapes(
+            self.root,
+            source=current,
+            focus_symbol="CapShopNextGet",
+            donor_files=[str(donor_b), str(donor_a), str(donor_c)],
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["variant_count"], 2)
+        self.assertEqual(first["donor_definition_count"], 3)
+        self.assertEqual(first["variants"][0]["donor_count"], 2)
+        self.assertEqual(
+            first["variants"][0]["representative"]["path"], "a-donor.c"
+        )
+        self.assertEqual(first["variants"][0]["rank"], 1)
+        self.assertEqual(first["variants"][1]["rank"], 2)
+        self.assertEqual(
+            [item["source"]["path"] for item in first["variants"][0]["donors"]],
+            ["a-donor.c", "z-donor.c"],
+        )
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "donor-shapes",
+                "--source",
+                str(current),
+                "--focus-symbol",
+                "CapShopNextGet",
+                "--donor-file",
+                str(donor_a),
+                "--donor-file",
+                str(donor_b),
+                "--donor-file",
+                str(donor_c),
+                "--json",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), first)
+
+    def test_donor_shapes_search_root_is_explicit_and_does_not_escape_scope(self) -> None:
+        current = self.root / "current.c"
+        scope = self.root / "scope"
+        outside = self.root / "outside"
+        scope.mkdir()
+        outside.mkdir()
+        in_scope = scope / "capsule.c"
+        out_scope = outside / "capsule.c"
+        current.write_text(
+            "int CapShopNextGet(void) { return 0; }\n", encoding="utf-8"
+        )
+        in_scope.write_text(
+            "int CapShopNextGet(void) { return 1; }\n", encoding="utf-8"
+        )
+        out_scope.write_text(
+            "int CapShopNextGet(void) { return 2; }\n", encoding="utf-8"
+        )
+        (scope / "ignored.txt").write_text(
+            "int CapShopNextGet(void) { return 3; }\n", encoding="utf-8"
+        )
+
+        result = module.donor_shapes(
+            self.root,
+            source=current,
+            focus_symbol="CapShopNextGet",
+            search_roots=[str(scope)],
+        )
+
+        self.assertEqual(result["scope"]["search_roots"], ["scope"])
+        self.assertEqual(result["scope"]["scanned_file_count"], 1)
+        self.assertEqual(result["scope"]["matched_file_count"], 1)
+        self.assertEqual(result["variants"][0]["representative"]["path"], "scope/capsule.c")
+        serialized = json.dumps(result, sort_keys=True)
+        self.assertNotIn("outside/capsule.c", serialized)
+
+    def test_donor_shapes_fails_closed_for_missing_and_ambiguous_focus(self) -> None:
+        missing = self.root / "missing.c"
+        current = self.root / "current.c"
+        ambiguous = self.root / "ambiguous.c"
+        current.write_text("int CapShopNextGet(void) { return 0; }\n", encoding="utf-8")
+        missing.write_text("int Other(void) { return 0; }\n", encoding="utf-8")
+        with self.assertRaisesRegex(module.MatchError, "not found"):
+            module.donor_shapes(
+                self.root,
+                source=current,
+                focus_symbol="CapShopNextGet",
+                donor_files=[str(missing)],
+            )
+
+        ambiguous.write_text(
+            "int CapShopNextGet(void) { return 0; }\n"
+            "int CapShopNextGet(void) { return 1; }\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(module.MatchError, "ambiguous"):
+            module.donor_shapes(
+                self.root,
+                source=current,
+                focus_symbol="CapShopNextGet",
+                donor_files=[str(ambiguous)],
+            )
+        with self.assertRaisesRegex(module.MatchError, "ambiguous"):
+            module.donor_shapes(
+                self.root,
+                source=ambiguous,
+                focus_symbol="CapShopNextGet",
+                donor_files=[str(current)],
+            )
+
+    def test_donor_shapes_rejects_extracted_target_path(self) -> None:
+        current = self.root / "current.c"
+        extracted_target = (
+            self.root / "build" / "capsule-v376" / "GP6E01" / "obj" / "board" / "donor.c"
+        )
+        extracted_target.parent.mkdir(parents=True)
+        current.write_text("int CapShopNextGet(void) { return 0; }\n", encoding="utf-8")
+        extracted_target.write_text(
+            "int CapShopNextGet(void) { return 1; }\n", encoding="utf-8"
+        )
+
+        with self.assertRaisesRegex(module.MatchError, "target role.*candidate/donor role"):
+            module.donor_shapes(
+                self.root,
+                source=current,
+                focus_symbol="CapShopNextGet",
+                donor_files=[str(extracted_target)],
+            )
+
+    def test_donor_registry_aliases_converge_by_authenticated_shape(self) -> None:
+        source = self.root / "capsule.c"
+        source.write_text("int CapShopNextGet(void) { return 0; }\n", encoding="utf-8")
+        registry = self.root / "build" / "donors.json"
+
+        first = module.register_donor_shape(
+            self.root,
+            registry,
+            source=source,
+            focus_symbol="CapShopNextGet",
+            source_kind="same-TU",
+            donor_id="shop-list-donor",
+            aliases=["shop-list-natural"],
+            used_by_candidate_ids=["candidate-a"],
+        )
+        second = module.register_donor_shape(
+            self.root,
+            registry,
+            source=source,
+            focus_symbol="CapShopNextGet",
+            source_kind="same_tu",
+            donor_id="shop-list-alias",
+            aliases=["shop-list-retry"],
+            queried_by_candidate_ids=["candidate-a"],
+        )
+
+        self.assertEqual(first["status"], "registered")
+        self.assertEqual(second["status"], "duplicate")
+        self.assertEqual(first["canonical_id"], second["canonical_id"])
+        listed = module.list_donor_shapes(self.root, registry)
+        self.assertEqual(listed["record_count"], 1)
+        record = listed["records"][0]
+        self.assertEqual(
+            set(record["aliases"]),
+            {"shop-list-donor", "shop-list-natural", "shop-list-alias", "shop-list-retry"},
+        )
+        self.assertEqual(record["used_by_candidate_ids"], ["candidate-a"])
+        self.assertEqual(record["queried_by_candidate_ids"], ["candidate-a"])
+        looked_up = module.lookup_donor_shapes(
+            self.root,
+            registry,
+            donor_id="SHOP-LIST-RETRY",
+            candidate_id="candidate-b",
+        )
+        self.assertEqual(looked_up["record_count"], 1)
+        self.assertIn("candidate-b", looked_up["records"][0]["queried_by_candidate_ids"])
+
+    def test_donor_registry_target_objects_are_rejected_before_persistence(self) -> None:
+        source = self.root / "capsule.c"
+        source.write_text("int CapShopNextGet(void) { return 0; }\n", encoding="utf-8")
+        registry = self.root / "build" / "donors.json"
+        target_object = (
+            self.root / "build" / "GP6E01" / "obj" / "board" / "capsule.o"
+        )
+        target_object.parent.mkdir(parents=True)
+        target_object.write_bytes(b"extracted-target")
+
+        with self.assertRaisesRegex(module.MatchError, "target-derived source"):
+            module.register_donor_shape(
+                self.root,
+                registry,
+                source=source,
+                focus_symbol="CapShopNextGet",
+                source_kind="target-derived",
+                donor_id="bad-target",
+            )
+        with self.assertRaisesRegex(module.MatchError, "target role"):
+            module.register_donor_shape(
+                self.root,
+                registry,
+                source=target_object,
+                focus_symbol="CapShopNextGet",
+                source_kind="same-tu",
+                donor_id="bad-object",
+            )
+        rejected = module.reject_donor_shape(
+            self.root,
+            registry,
+            source=target_object,
+            reason="extracted target object is never a source donor",
+        )
+        self.assertEqual(rejected["status"], "target-rejected")
+        listed = module.list_donor_shapes(self.root, registry, include_rejections=True)
+        self.assertEqual(listed["record_count"], 0)
+        self.assertEqual(len(listed["rejections"]), 1)
+        self.assertEqual(listed["rejections"][0]["source_kind"], "target-derived")
+
+    def test_donor_registry_preserves_explicit_duplicate_record_link(self) -> None:
+        canonical_source = self.root / "canonical.c"
+        alternate_source = self.root / "alternate.c"
+        canonical_source.write_text(
+            "int CapShopNextGet(void) { return 0; }\n", encoding="utf-8"
+        )
+        alternate_source.write_text(
+            "int CapShopNextGet(void) { return 1; }\n", encoding="utf-8"
+        )
+        registry = self.root / "build" / "donors.json"
+        canonical = module.register_donor_shape(
+            self.root,
+            registry,
+            source=canonical_source,
+            focus_symbol="CapShopNextGet",
+            source_kind="diagnostic-only",
+            donor_id="canonical-candidate",
+            status="rejected",
+            admissibility="inadmissible",
+        )
+        alternate = module.register_donor_shape(
+            self.root,
+            registry,
+            source=alternate_source,
+            focus_symbol="CapShopNextGet",
+            source_kind="diagnostic-only",
+            donor_id="alternate-candidate",
+            duplicate_of=canonical["canonical_id"],
+            status="rejected",
+            admissibility="inadmissible",
+        )
+
+        self.assertEqual(alternate["record"]["duplicate_of"], canonical["canonical_id"])
+        listed = module.list_donor_shapes(self.root, registry)
+        self.assertEqual(listed["record_count"], 2)
+        alternate_record = next(
+            row for row in listed["records"] if row["canonical_id"] == alternate["canonical_id"]
+        )
+        self.assertEqual(alternate_record["duplicate_of"], canonical["canonical_id"])
+
+    def test_donor_registry_rejects_conflicting_alias_without_mutation(self) -> None:
+        source_a = self.root / "a.c"
+        source_b = self.root / "b.c"
+        source_a.write_text("int CapShopNextGet(void) { return 0; }\n", encoding="utf-8")
+        source_b.write_text("int CapShopNextGet(void) { return 1; }\n", encoding="utf-8")
+        registry = self.root / "build" / "donors.json"
+        module.register_donor_shape(
+            self.root,
+            registry,
+            source=source_a,
+            focus_symbol="CapShopNextGet",
+            source_kind="same-tu",
+            donor_id="shared-alias",
+        )
+        with self.assertRaisesRegex(module.MatchError, "already belongs"):
+            module.register_donor_shape(
+                self.root,
+                registry,
+                source=source_b,
+                focus_symbol="CapShopNextGet",
+                source_kind="same-tu",
+                donor_id="shared-alias",
+            )
+        self.assertEqual(module.list_donor_shapes(self.root, registry)["record_count"], 1)
 
 
 if __name__ == "__main__":
