@@ -517,6 +517,90 @@ class MatchWorkbenchTests(unittest.TestCase):
         )
         return output
 
+    def _telemetry_receipt(
+        self,
+        name: str,
+        *,
+        symbol: str,
+        session_id: str,
+        candidate_count: int = 2,
+        heavy_seconds: float | None = 60.0,
+        target_size: int | None = 4,
+    ) -> Path:
+        heavy_complete = heavy_seconds is not None
+        exact_bytes = target_size or 0
+        body: dict[str, object] = {
+            "schema": module.FUNCTION_TELEMETRY_SCHEMA,
+            "schema_version": 1,
+            "session_id": session_id,
+            "focus_symbol": symbol,
+            "status": "exact_with_partial_time_coverage",
+            "campaign": {
+                "candidate_count": candidate_count,
+                "unique_source_count": candidate_count,
+                "unique_object_count": candidate_count,
+                "duplicate_candidate_count": 0,
+                "outcome_counts": {"measured": candidate_count - 1, "retained": 1},
+                "strict_data_exact_candidate_count": 1,
+                "first_exact_candidate_id": f"{name}-exact",
+                "first_exact_ordinal": candidate_count,
+                "candidates_through_first_exact": candidate_count,
+                "nonexact_candidates_before_first_exact": candidate_count - 1,
+                "target_size_bytes": target_size,
+                "exact_focus_bytes": exact_bytes,
+            },
+            "time": {
+                "heavy_seconds": heavy_seconds or 0.0,
+                "heavy_seconds_known_candidate_count": (
+                    candidate_count if heavy_complete else 0
+                ),
+                "heavy_seconds_missing_candidate_ids": (
+                    [] if heavy_complete else [f"{name}-missing"]
+                ),
+                "heavy_seconds_complete": heavy_complete,
+                "elapsed_seconds": None,
+                "active_seconds": None,
+                "elapsed_active_source": None,
+            },
+            "activity": {
+                "tracer_runs": 1,
+                "donor_searches": 1,
+                "source": "caller_attested",
+            },
+            "throughput": {
+                "exact_functions": 1,
+                "exact_functions_per_elapsed_hour": None,
+                "exact_functions_per_active_hour": None,
+                "exact_functions_per_heavy_process_hour": (
+                    round(3600.0 / heavy_seconds, 6)
+                    if heavy_seconds
+                    else None
+                ),
+                "exact_bytes_per_elapsed_hour": None,
+                "exact_bytes_per_active_hour": None,
+                "exact_bytes_per_heavy_process_hour": (
+                    round(exact_bytes * 3600.0 / heavy_seconds, 6)
+                    if heavy_seconds
+                    else None
+                ),
+            },
+            "coverage": {
+                "candidate_history": "complete_indexed_workbench_history",
+                "heavy_process_time": "complete" if heavy_complete else "partial",
+                "elapsed_time": "missing",
+                "active_time": "missing",
+                "physical_relocations": "not_authenticated_by_candidate_telemetry",
+                "consumer_closure": "not_authenticated_by_candidate_telemetry",
+            },
+            "matrix_sha256": hashlib.sha256(
+                f"{session_id}:{symbol}".encode("utf-8")
+            ).hexdigest(),
+            "authority_advanced": False,
+        }
+        receipt = self.root / f"{name}-telemetry.json"
+        _write_json(receipt, _rehash(body, "telemetry_sha256"))
+        return receipt
+
     def test_function_telemetry_reports_coverage_rates_and_routes_centrally(self) -> None:
         self._init()
         self._record("c1", data_report=self.data, heavy_seconds=1.5)
@@ -568,6 +652,7 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(result["coverage"]["physical_relocations"], "not_authenticated_by_candidate_telemetry")
         self.assertFalse(result["authority_advanced"])
 
+        telemetry_output = self.root / "fn-telemetry.json"
         argv = [
             "--root",
             str(self.root),
@@ -584,11 +669,16 @@ class MatchWorkbenchTests(unittest.TestCase):
             "2",
             "--donor-searches",
             "1",
+            "--output",
+            str(telemetry_output),
         ]
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             self.assertEqual(module.main(argv), 0)
         self.assertEqual(json.loads(output.getvalue()), result)
+        self.assertEqual(
+            json.loads(telemetry_output.read_text(encoding="utf-8")), result
+        )
 
         central = Path(__file__).resolve().parents[1] / "agent.py"
         process = subprocess.run(
@@ -611,6 +701,8 @@ class MatchWorkbenchTests(unittest.TestCase):
                 "2",
                 "--donor-searches",
                 "1",
+                "--output",
+                str(telemetry_output),
             ],
             cwd=central.parent.parent,
             text=True,
@@ -638,6 +730,439 @@ class MatchWorkbenchTests(unittest.TestCase):
         with self.assertRaisesRegex(module.MatchError, "greater than zero"):
             module.build_function_telemetry(
                 self.root, self.workspace, focus_symbol="fn", elapsed_seconds=0
+            )
+
+    def test_campaign_timing_derives_boundaries_and_rejects_invalid_or_duplicate_events(self) -> None:
+        checkpoint = self.root / "checkpoint-f.md"
+        checkpoint.write_text("checkpoint F before adoption\n", encoding="utf-8")
+        campaign = self.root / "before-campaign.json"
+        receipt = self._telemetry_receipt(
+            "before-one", symbol="fn_one", session_id="session-before-one"
+        )
+        started = module.start_campaign_timing(
+            self.root,
+            campaign,
+            campaign_id="before-1",
+            adoption_phase="before",
+            checkpoint_id="checkpoint-f-before",
+            workflow_checkpoint=checkpoint,
+            at="2026-08-24T00:00:00+00:00",
+        )
+        self.assertEqual(started["summary"]["status"], "collecting")
+        self.assertFalse(started["authority_advanced"])
+        with self.assertRaisesRegex(module.MatchError, "resume requires paused"):
+            module.append_campaign_event(
+                self.root,
+                campaign,
+                event="resume",
+                at="2026-08-24T00:05:00Z",
+            )
+        module.append_campaign_event(
+            self.root,
+            campaign,
+            event="pause",
+            at="2026-08-24T00:10:00Z",
+        )
+        with self.assertRaisesRegex(module.MatchError, "pause requires active"):
+            module.append_campaign_event(
+                self.root,
+                campaign,
+                event="pause",
+                at="2026-08-24T00:11:00Z",
+            )
+        module.append_campaign_event(
+            self.root,
+            campaign,
+            event="resume",
+            at="2026-08-24T00:20:00Z",
+        )
+        exact = module.append_campaign_event(
+            self.root,
+            campaign,
+            event="exact",
+            at="2026-08-24T01:00:00Z",
+            telemetry_receipt=receipt,
+        )
+        self.assertEqual(exact["summary"]["wall_seconds"], 3600.0)
+        self.assertEqual(exact["summary"]["active_sol_seconds"], 3000.0)
+        self.assertEqual(
+            exact["summary"]["throughput"]["exact_functions_per_wall_hour"],
+            1.0,
+        )
+        self.assertEqual(
+            exact["summary"]["throughput"]["exact_functions_per_active_sol_hour"],
+            1.2,
+        )
+        self.assertEqual(exact, module._verify_campaign_timing(exact, "campaign"))
+        with self.assertRaisesRegex(module.MatchError, "duplicate exact telemetry receipt"):
+            module.append_campaign_event(
+                self.root,
+                campaign,
+                event="exact",
+                at="2026-08-24T01:10:00Z",
+                telemetry_receipt=receipt,
+            )
+        with self.assertRaisesRegex(module.MatchError, "explicit UTC offset"):
+            module.start_campaign_timing(
+                self.root,
+                self.root / "missing-time.json",
+                campaign_id="missing-time",
+                adoption_phase="before",
+                checkpoint_id="checkpoint-f-before",
+                workflow_checkpoint=checkpoint,
+                at="2026-08-24T02:00:00",
+            )
+
+    def test_campaign_timing_rejects_ledger_and_receipt_tampering(self) -> None:
+        checkpoint = self.root / "checkpoint-f.md"
+        checkpoint.write_text("checkpoint F\n", encoding="utf-8")
+        campaign = self.root / "tampered-campaign.json"
+        module.start_campaign_timing(
+            self.root,
+            campaign,
+            campaign_id="tamper-1",
+            adoption_phase="before",
+            checkpoint_id="checkpoint-f-before",
+            workflow_checkpoint=checkpoint,
+            at="2026-08-24T00:00:00Z",
+        )
+        tampered = json.loads(campaign.read_text(encoding="utf-8"))
+        tampered["events"][0]["at_utc"] = "2026-08-24T00:00:01.000000Z"
+        _write_json(campaign, tampered)
+        with self.assertRaisesRegex(module.MatchError, "self-hash mismatch"):
+            module.append_campaign_event(
+                self.root,
+                campaign,
+                event="pause",
+                at="2026-08-24T00:10:00Z",
+            )
+
+        clean_campaign = self.root / "clean-campaign.json"
+        module.start_campaign_timing(
+            self.root,
+            clean_campaign,
+            campaign_id="tamper-2",
+            adoption_phase="before",
+            checkpoint_id="checkpoint-f-before",
+            workflow_checkpoint=checkpoint,
+            at="2026-08-24T01:00:00Z",
+        )
+        receipt = self._telemetry_receipt(
+            "tampered", symbol="fn_tampered", session_id="session-tampered"
+        )
+        original_receipt = receipt.read_bytes()
+        value = json.loads(receipt.read_text(encoding="utf-8"))
+        value["campaign"]["candidate_count"] = 99
+        _write_json(receipt, value)
+        with self.assertRaisesRegex(module.MatchError, "self-hash mismatch"):
+            module.append_campaign_event(
+                self.root,
+                clean_campaign,
+                event="exact",
+                at="2026-08-24T01:30:00Z",
+                telemetry_receipt=receipt,
+            )
+        receipt.write_bytes(original_receipt)
+        module.append_campaign_event(
+            self.root,
+            clean_campaign,
+            event="exact",
+            at="2026-08-24T01:30:00Z",
+            telemetry_receipt=receipt,
+        )
+        receipt.write_bytes(original_receipt + b" ")
+        with self.assertRaisesRegex(
+            module.MatchError,
+            "historical event 2 function telemetry receipt changed from its exact binding",
+        ):
+            module.append_campaign_event(
+                self.root,
+                clean_campaign,
+                event="pause",
+                at="2026-08-24T01:40:00Z",
+            )
+        receipt.write_bytes(original_receipt)
+        checkpoint.write_text("checkpoint F drifted\n", encoding="utf-8")
+        with self.assertRaisesRegex(
+            module.MatchError,
+            "workflow checkpoint changed from the campaign workflow binding",
+        ):
+            module.append_campaign_event(
+                self.root,
+                clean_campaign,
+                event="pause",
+                at="2026-08-24T01:40:00Z",
+            )
+
+    def test_campaign_comparison_aggregates_before_after_without_causal_claim(self) -> None:
+        before_checkpoint = self.root / "checkpoint-before.md"
+        after_checkpoint = self.root / "checkpoint-after.md"
+        before_checkpoint.write_text("checkpoint F before\n", encoding="utf-8")
+        after_checkpoint.write_text("checkpoint F adopted\n", encoding="utf-8")
+        before_campaign = self.root / "before.json"
+        after_campaign = self.root / "after.json"
+        module.start_campaign_timing(
+            self.root,
+            before_campaign,
+            campaign_id="before-fixture",
+            adoption_phase="before",
+            checkpoint_id="checkpoint-f-before",
+            workflow_checkpoint=before_checkpoint,
+            at="2026-08-24T00:00:00Z",
+        )
+        before_one = self._telemetry_receipt(
+            "before-a",
+            symbol="before_a",
+            session_id="session-before-a",
+            candidate_count=3,
+            heavy_seconds=60.0,
+        )
+        before_two = self._telemetry_receipt(
+            "before-b",
+            symbol="before_b",
+            session_id="session-before-b",
+            candidate_count=3,
+            heavy_seconds=60.0,
+        )
+        module.append_campaign_event(
+            self.root,
+            before_campaign,
+            event="exact",
+            at="2026-08-24T01:00:00Z",
+            telemetry_receipt=before_one,
+        )
+        module.append_campaign_event(
+            self.root,
+            before_campaign,
+            event="pause",
+            at="2026-08-24T01:10:00Z",
+        )
+        module.append_campaign_event(
+            self.root,
+            before_campaign,
+            event="resume",
+            at="2026-08-24T01:20:00Z",
+        )
+        module.append_campaign_event(
+            self.root,
+            before_campaign,
+            event="exact",
+            at="2026-08-24T02:20:00Z",
+            telemetry_receipt=before_two,
+        )
+
+        module.start_campaign_timing(
+            self.root,
+            after_campaign,
+            campaign_id="after-fixture",
+            adoption_phase="after",
+            checkpoint_id="checkpoint-f-after",
+            workflow_checkpoint=after_checkpoint,
+            at="2026-08-24T03:00:00Z",
+        )
+        after_one = self._telemetry_receipt(
+            "after-a",
+            symbol="after_a",
+            session_id="session-after-a",
+            candidate_count=2,
+            heavy_seconds=30.0,
+        )
+        after_two = self._telemetry_receipt(
+            "after-b",
+            symbol="after_b",
+            session_id="session-after-b",
+            candidate_count=2,
+            heavy_seconds=30.0,
+        )
+        module.append_campaign_event(
+            self.root,
+            after_campaign,
+            event="exact",
+            at="2026-08-24T03:30:00Z",
+            telemetry_receipt=after_one,
+        )
+        module.append_campaign_event(
+            self.root,
+            after_campaign,
+            event="pause",
+            at="2026-08-24T03:40:00Z",
+        )
+        module.append_campaign_event(
+            self.root,
+            after_campaign,
+            event="resume",
+            at="2026-08-24T03:45:00Z",
+        )
+        module.append_campaign_event(
+            self.root,
+            after_campaign,
+            event="exact",
+            at="2026-08-24T04:00:00Z",
+            telemetry_receipt=after_two,
+        )
+
+        result = module.compare_campaign_timing(
+            self.root,
+            before_campaigns=[before_campaign],
+            after_campaigns=[after_campaign],
+        )
+        self.assertEqual(result["schema"], module.CAMPAIGN_COMPARISON_SCHEMA)
+        self.assertEqual(result["before"]["exact_function_count"], 2)
+        self.assertEqual(result["before"]["candidate_metrics"]["candidate_count"], 6)
+        self.assertEqual(result["after"]["candidate_metrics"]["candidate_count"], 4)
+        self.assertEqual(
+            result["observed_change"]["exact_functions_per_heavy_process_hour"]["ratio"],
+            2.0,
+        )
+        self.assertFalse(result["attribution"]["causal_attribution"])
+        self.assertEqual(result["coverage"]["wall_active_rate_claims"], "complete")
+        self.assertFalse(result["authority_advanced"])
+        self.assertEqual(
+            result,
+            module.compare_campaign_timing(
+                self.root,
+                before_campaigns=[before_campaign],
+                after_campaigns=[after_campaign],
+            ),
+        )
+
+        comparison_output = self.root / "observed-comparison.json"
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "campaign-compare",
+                        "--before-campaign",
+                        str(before_campaign),
+                        "--after-campaign",
+                        str(after_campaign),
+                        "--output",
+                        str(comparison_output),
+                    ]
+                ),
+                0,
+            )
+        self.assertEqual(json.loads(output.getvalue()), result)
+        self.assertEqual(
+            json.loads(comparison_output.read_text(encoding="utf-8")), result
+        )
+
+        duplicate_after = self.root / "duplicate-after.json"
+        module.start_campaign_timing(
+            self.root,
+            duplicate_after,
+            campaign_id="after-duplicate",
+            adoption_phase="after",
+            checkpoint_id="checkpoint-f-after",
+            workflow_checkpoint=after_checkpoint,
+            at="2026-08-24T05:00:00Z",
+        )
+        module.append_campaign_event(
+            self.root,
+            duplicate_after,
+            event="exact",
+            at="2026-08-24T05:30:00Z",
+            telemetry_receipt=before_one,
+        )
+        with self.assertRaisesRegex(module.MatchError, "double-counts a telemetry receipt"):
+            module.compare_campaign_timing(
+                self.root,
+                before_campaigns=[before_campaign],
+                after_campaigns=[duplicate_after],
+            )
+
+        collecting = self.root / "collecting-after.json"
+        module.start_campaign_timing(
+            self.root,
+            collecting,
+            campaign_id="after-collecting",
+            adoption_phase="after",
+            checkpoint_id="checkpoint-f-after",
+            workflow_checkpoint=after_checkpoint,
+            at="2026-08-24T06:00:00Z",
+        )
+        with self.assertRaisesRegex(module.MatchError, "no exact boundary"):
+            module.compare_campaign_timing(
+                self.root,
+                before_campaigns=[before_campaign],
+                after_campaigns=[collecting],
+            )
+
+        laundered_after = self.root / "laundered-after.json"
+        module.start_campaign_timing(
+            self.root,
+            laundered_after,
+            campaign_id="after-laundered-identity",
+            adoption_phase="after",
+            checkpoint_id="checkpoint-f-after",
+            workflow_checkpoint=after_checkpoint,
+            at="2026-08-24T07:00:00Z",
+        )
+        laundered_receipt = self._telemetry_receipt(
+            "laundered-candidate-id",
+            symbol="before_a",
+            session_id="session-before-a",
+            candidate_count=4,
+            heavy_seconds=45.0,
+        )
+        module.append_campaign_event(
+            self.root,
+            laundered_after,
+            event="exact",
+            at="2026-08-24T07:30:00Z",
+            telemetry_receipt=laundered_receipt,
+        )
+        with self.assertRaisesRegex(
+            module.MatchError, "double-counts an exact function identity"
+        ):
+            module.compare_campaign_timing(
+                self.root,
+                before_campaigns=[before_campaign],
+                after_campaigns=[laundered_after],
+            )
+
+        original_after_receipt = after_one.read_bytes()
+        after_one.write_bytes(original_after_receipt + b" ")
+        with self.assertRaisesRegex(
+            module.MatchError, "function telemetry receipt changed from its exact binding"
+        ):
+            module.compare_campaign_timing(
+                self.root,
+                before_campaigns=[before_campaign],
+                after_campaigns=[after_campaign],
+            )
+        after_one.write_bytes(original_after_receipt)
+
+        real_snapshot = module._snapshot
+
+        def drift_tool_snapshot(path: Path, label: str) -> dict[str, object]:
+            value = real_snapshot(path, label)
+            if Path(path) == Path(module.__file__).resolve():
+                value = dict(value)
+                value["sha256"] = "0" * 64
+            return value
+
+        with mock.patch.object(module, "_snapshot", side_effect=drift_tool_snapshot):
+            with self.assertRaisesRegex(
+                module.MatchError, "match telemetry tool changed from the campaign workflow binding"
+            ):
+                module.compare_campaign_timing(
+                    self.root,
+                    before_campaigns=[before_campaign],
+                    after_campaigns=[after_campaign],
+                )
+
+        before_checkpoint.write_text("checkpoint F drifted\n", encoding="utf-8")
+        with self.assertRaisesRegex(
+            module.MatchError, "workflow checkpoint changed from the campaign workflow binding"
+        ):
+            module.compare_campaign_timing(
+                self.root,
+                before_campaigns=[before_campaign],
+                after_campaigns=[after_campaign],
             )
 
     def test_causal_reducer_ranks_explicit_else_return_and_routes_centrally(self) -> None:

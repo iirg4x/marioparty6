@@ -235,10 +235,13 @@ rtk python tools/agent.py match telemetry \
   --elapsed-seconds 21600 \
   --active-seconds 7200 \
   --tracer-runs 0 \
-  --donor-searches 1
+  --donor-searches 1 \
+  --output build/throughput/ev_CapKamekkuOMExec.telemetry.json
 ```
 
 `telemetry` emits self-hashed `match_workbench_function_telemetry/v1` JSON.
+`--output` optionally writes the same receipt once; identical replay is
+idempotent and conflicting existing bytes are rejected.
 Candidate/source/object counts, convergence, exact candidate identity, and
 heavy-process seconds are derived from immutable workbench records. Elapsed and
 active time plus tracer/donor counts are explicitly caller-attested. Missing
@@ -247,6 +250,97 @@ every selected candidate has `heavy_seconds`. Human elapsed/active crack/hour
 is reported separately from compiler/process throughput. This report is
 diagnostic telemetry only; it does not authenticate physical relocations,
 consumer closure, or promotion authority.
+
+### 8a. Record event-derived campaign time at checkpoint F
+
+Create a small, reviewed checkpoint file for each process definition. The file
+must already exist and remain byte-exact for the duration of that campaign; its
+path, size, SHA-256, checkpoint ID, and the current match telemetry tool are
+bound into every event.
+
+```sh
+rtk python tools/agent.py match campaign-start \
+  --campaign build/throughput/checkpoint-f-before.json \
+  --campaign-id checkpoint-f-before-01 \
+  --adoption-phase before \
+  --checkpoint-id checkpoint-f-before \
+  --workflow-checkpoint process/checkpoint-f-before.json \
+  --at 2026-08-24T08:00:00+04:00
+
+rtk python tools/agent.py match campaign-event \
+  --campaign build/throughput/checkpoint-f-before.json \
+  --event pause \
+  --at 2026-08-24T09:15:00+04:00
+
+rtk python tools/agent.py match campaign-event \
+  --campaign build/throughput/checkpoint-f-before.json \
+  --event resume \
+  --at 2026-08-24T09:30:00+04:00
+
+rtk python tools/agent.py match campaign-event \
+  --campaign build/throughput/checkpoint-f-before.json \
+  --event exact \
+  --at 2026-08-24T10:10:00+04:00 \
+  --telemetry-receipt build/throughput/ev_CapKamekkuOMExec.telemetry.json
+```
+
+All `--at` boundaries are required ISO-8601 timestamps with an explicit UTC
+offset and are canonicalized to microsecond UTC. Events must be strictly
+increasing. The only valid transitions are `start -> pause -> resume`; `exact`
+requires active state and leaves the campaign active so the next function can
+begin immediately. A repeated receipt or repeated exact function identity is
+rejected.
+
+The durable, self-hashed `match_workbench_campaign_timing/v1` ledger derives
+wall time from `start` through the latest `exact` boundary and derives active
+Sol time from only active intervals, excluding every recorded pause. It never
+uses the function receipt's caller-attested elapsed or active fields. Each
+`exact` event embeds and validates the existing function telemetry receipt, so
+candidate counts, convergence, tracer/donor activity, exact bytes, and
+heavy-process timing keep their existing definitions. Heavy-process rates stay
+withheld if any embedded receipt lacks complete `heavy_seconds` coverage.
+
+Tampered self-hashes, broken event chains, changed workflow/tool bytes,
+duplicate receipts, invalid transitions, non-increasing or missing timestamps,
+and exact events without receipts fail closed. Before appending any event, the
+command also reopens the bound workflow/tool and every historical exact receipt;
+drift in earlier live evidence blocks the append. Every ledger reports
+`authority_advanced:false` and remains observational telemetry, not matching or
+promotion proof.
+
+### 8b. Compare observed crack/hour before and after adoption
+
+Record the `after` sample with `campaign-start --adoption-phase after` and its
+own adopted checkpoint file, then compare one or more non-overlapping campaign
+receipts per phase:
+
+```sh
+rtk python tools/agent.py match campaign-compare \
+  --before-campaign build/throughput/checkpoint-f-before.json \
+  --after-campaign build/throughput/checkpoint-f-after.json \
+  --output build/throughput/checkpoint-f-observed-comparison.json
+```
+
+Repeat `--before-campaign` or `--after-campaign` to combine serial campaign
+segments. All inputs in one phase must bind the same exact workflow checkpoint;
+the before and after bindings must differ, intervals must not overlap, after
+must not start before the before measurement boundary, and no telemetry receipt
+or exact function identity may appear twice. Exact function identity is the
+session/function pair, so changing the recorded first-exact candidate ID cannot
+launder a duplicate into either phase. At comparison time, the command reopens
+and rehashes each bound workflow checkpoint, the match telemetry tool, and every
+referenced function telemetry receipt; missing, changed, or differently parsed
+live evidence is rejected. Campaigns without a positive event-derived exact
+boundary are rejected rather than used in a rate claim.
+
+`campaign-compare` emits deterministic, self-hashed
+`match_workbench_campaign_comparison/v1` JSON with aggregate function,
+candidate, exact-byte, wall, active-Sol, and (when completely covered)
+heavy-process rates. Its `observed_change` reports absolute, ratio, and percent
+changes. `attribution.causal_attribution` is always `false`: the checkpoint
+binding supports an observed pre/post association, while function mix and other
+uncontrolled campaign conditions prevent causal attribution. Output is
+write-once/idempotent and always reports `authority_advanced:false`.
 
 ### 9. Reduce one function's objdiff cascade
 

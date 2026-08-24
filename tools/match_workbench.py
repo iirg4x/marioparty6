@@ -33,6 +33,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -46,6 +47,8 @@ JOBS_SCHEMA = "match_workbench_jobs/v1"
 DIAGNOSTIC_SCHEMA = "match_workbench_diagnostic/v1"
 MATRIX_SCHEMA = "match_workbench_matrix/v1"
 FUNCTION_TELEMETRY_SCHEMA = "match_workbench_function_telemetry/v1"
+CAMPAIGN_TIMING_SCHEMA = "match_workbench_campaign_timing/v1"
+CAMPAIGN_COMPARISON_SCHEMA = "match_workbench_campaign_comparison/v1"
 CAUSAL_REDUCER_SCHEMA = "match_workbench_causal_reducer/v1"
 POOL_DECODER_SCHEMA = "match_workbench_pool_decoder/v1"
 INTERACTION_PLANNER_SCHEMA = "match_workbench_interaction_plan/v1"
@@ -9240,12 +9243,949 @@ def build_function_telemetry(
     return _with_self_hash(body, "telemetry_sha256")
 
 
+def _campaign_path(root: Path, value: Path | str, label: str) -> Path:
+    path = _resolve(value, root)
+    try:
+        path.relative_to(root.resolve())
+    except ValueError:
+        _fail(f"{label} must stay beneath the selected repository: {path}")
+    if path.suffix.casefold() != ".json":
+        _fail(f"{label} must be a JSON file: {path}")
+    _safe_parent(path)
+    _assert_no_indirection(path, allow_missing_leaf=True)
+    return path
+
+
+def _campaign_descriptor(
+    value: Any, label: str, *, require_absolute: bool = True
+) -> dict[str, Any]:
+    item = _closed(
+        value,
+        allowed={"path", "size_bytes", "sha256"},
+        required={"path", "size_bytes", "sha256"},
+        label=label,
+    )
+    raw_path = _text(item["path"], f"{label}.path")
+    if require_absolute and not Path(raw_path).is_absolute():
+        _fail(f"{label}.path must be absolute")
+    return {
+        "path": raw_path,
+        "size_bytes": _integer(item["size_bytes"], f"{label}.size_bytes"),
+        "sha256": _sha256(item["sha256"], f"{label}.sha256"),
+    }
+
+
+def _campaign_snapshot_descriptor(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "path": str(snapshot["path"]),
+        "size_bytes": int(snapshot["size_bytes"]),
+        "sha256": str(snapshot["sha256"]),
+    }
+
+
+def _campaign_timestamp(value: Any, label: str) -> tuple[str, int]:
+    raw = _text(value, label)
+    candidate = raw[:-1] + "+00:00" if raw.endswith(("Z", "z")) else raw
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError as exc:
+        raise MatchError(f"{label} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        _fail(f"{label} must include an explicit UTC offset")
+    normalized = parsed.astimezone(timezone.utc)
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    delta = normalized - epoch
+    microseconds = (
+        delta.days * 86_400_000_000
+        + delta.seconds * 1_000_000
+        + delta.microseconds
+    )
+    rendered = normalized.isoformat(timespec="microseconds").replace("+00:00", "Z")
+    return rendered, microseconds
+
+
+def _campaign_workflow(value: Any, label: str) -> Mapping[str, Any]:
+    item = _verify_self_hash(value, "workflow_binding_sha256", label)
+    item = _closed(
+        item,
+        allowed={
+            "checkpoint_id",
+            "checkpoint",
+            "telemetry_tool",
+            "workflow_binding_sha256",
+        },
+        required={
+            "checkpoint_id",
+            "checkpoint",
+            "telemetry_tool",
+            "workflow_binding_sha256",
+        },
+        label=label,
+    )
+    _identifier(item["checkpoint_id"], f"{label}.checkpoint_id")
+    _campaign_descriptor(item["checkpoint"], f"{label}.checkpoint")
+    _campaign_descriptor(item["telemetry_tool"], f"{label}.telemetry_tool")
+    return item
+
+
+def _validate_function_telemetry_receipt(value: Any, label: str) -> Mapping[str, Any]:
+    item = _verify_self_hash(value, "telemetry_sha256", label)
+    item = _closed(
+        item,
+        allowed={
+            "schema",
+            "schema_version",
+            "session_id",
+            "focus_symbol",
+            "status",
+            "campaign",
+            "time",
+            "activity",
+            "throughput",
+            "coverage",
+            "matrix_sha256",
+            "authority_advanced",
+            "telemetry_sha256",
+        },
+        required={
+            "schema",
+            "schema_version",
+            "session_id",
+            "focus_symbol",
+            "status",
+            "campaign",
+            "time",
+            "activity",
+            "throughput",
+            "coverage",
+            "matrix_sha256",
+            "authority_advanced",
+            "telemetry_sha256",
+        },
+        label=label,
+    )
+    if item["schema"] != FUNCTION_TELEMETRY_SCHEMA or item["schema_version"] != 1:
+        _fail(f"{label} has unsupported function telemetry schema")
+    if item["authority_advanced"] is not False:
+        _fail(f"{label} attempted to advance authority")
+    _text(item["session_id"], f"{label}.session_id")
+    _text(item["focus_symbol"], f"{label}.focus_symbol")
+    _sha256(item["matrix_sha256"], f"{label}.matrix_sha256")
+    if not isinstance(item["campaign"], Mapping):
+        _fail(f"{label}.campaign must be an object")
+    if not isinstance(item["time"], Mapping):
+        _fail(f"{label}.time must be an object")
+    if not isinstance(item["activity"], Mapping):
+        _fail(f"{label}.activity must be an object")
+    if not isinstance(item["throughput"], Mapping):
+        _fail(f"{label}.throughput must be an object")
+    campaign = item["campaign"]
+    throughput = item["throughput"]
+    if _integer(
+        throughput.get("exact_functions"), f"{label}.throughput.exact_functions"
+    ) != 1:
+        _fail(f"{label} must record exactly one exact function")
+    if _integer(
+        campaign.get("strict_data_exact_candidate_count"),
+        f"{label}.campaign.strict_data_exact_candidate_count",
+    ) < 1:
+        _fail(f"{label} lacks strict/data exact evidence")
+    _identifier(
+        campaign.get("first_exact_candidate_id"),
+        f"{label}.campaign.first_exact_candidate_id",
+    )
+    if not str(item["status"]).startswith("exact_with_"):
+        _fail(f"{label}.status is not exact")
+    return item
+
+
+def _campaign_event(value: Any, label: str) -> Mapping[str, Any]:
+    item = _verify_self_hash(value, "event_sha256", label)
+    item = _closed(
+        item,
+        allowed={
+            "sequence",
+            "kind",
+            "at_utc",
+            "at_unix_microseconds",
+            "workflow_binding_sha256",
+            "previous_event_sha256",
+            "receipt",
+            "telemetry",
+            "event_sha256",
+        },
+        required={
+            "sequence",
+            "kind",
+            "at_utc",
+            "at_unix_microseconds",
+            "workflow_binding_sha256",
+            "previous_event_sha256",
+            "event_sha256",
+        },
+        label=label,
+    )
+    _integer(item["sequence"], f"{label}.sequence", minimum=1)
+    kind = _text(item["kind"], f"{label}.kind")
+    if kind not in {"start", "pause", "resume", "exact"}:
+        _fail(f"{label}.kind must be start, pause, resume, or exact")
+    normalized, micros = _campaign_timestamp(item["at_utc"], f"{label}.at_utc")
+    if normalized != item["at_utc"]:
+        _fail(f"{label}.at_utc is not canonical UTC")
+    if _integer(
+        item["at_unix_microseconds"], f"{label}.at_unix_microseconds"
+    ) != micros:
+        _fail(f"{label}.at_unix_microseconds does not match at_utc")
+    _sha256(
+        item["workflow_binding_sha256"],
+        f"{label}.workflow_binding_sha256",
+    )
+    previous = item["previous_event_sha256"]
+    if previous is not None:
+        _sha256(previous, f"{label}.previous_event_sha256")
+    if kind == "exact":
+        if "receipt" not in item or "telemetry" not in item:
+            _fail(f"{label} exact event requires a telemetry receipt")
+        _campaign_descriptor(item["receipt"], f"{label}.receipt")
+        _validate_function_telemetry_receipt(item["telemetry"], f"{label}.telemetry")
+    elif "receipt" in item or "telemetry" in item:
+        _fail(f"{label} {kind} event cannot carry a telemetry receipt")
+    return item
+
+
+def _campaign_number(value: Any, label: str) -> float:
+    result = _seconds(value, label)
+    if result is None:
+        _fail(f"{label} is missing")
+    return result
+
+
+def _campaign_rate(count: int, seconds: float | None, unit: float = 1.0) -> float | None:
+    if count < 1 or seconds is None or seconds <= 0:
+        return None
+    return round((count * unit * 3600.0) / seconds, 6)
+
+
+def _derive_campaign_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    if not events:
+        _fail("campaign timing requires a start event")
+    state: str | None = None
+    start_at: str | None = None
+    start_micros: int | None = None
+    active_started: int | None = None
+    active_accumulated = 0
+    last_micros: int | None = None
+    previous_hash: str | None = None
+    last_exact_at: str | None = None
+    last_exact_micros: int | None = None
+    last_exact_active_micros: int | None = None
+    telemetry_hashes: set[str] = set()
+    receipt_hashes: set[str] = set()
+    exact_identities: set[tuple[str, str]] = set()
+    exact_receipts: list[Mapping[str, Any]] = []
+
+    for index, raw_event in enumerate(events, 1):
+        event = _campaign_event(raw_event, f"campaign.events[{index - 1}]")
+        if event["sequence"] != index:
+            _fail("campaign event sequence is not contiguous")
+        if event["previous_event_sha256"] != previous_hash:
+            _fail("campaign event hash chain is broken")
+        micros = int(event["at_unix_microseconds"])
+        if last_micros is not None and micros <= last_micros:
+            _fail("campaign event timestamps must be strictly increasing")
+        kind = str(event["kind"])
+        if index == 1:
+            if kind != "start":
+                _fail("campaign first event must be start")
+            state = "active"
+            start_at = str(event["at_utc"])
+            start_micros = micros
+            active_started = micros
+        elif kind == "start":
+            _fail("campaign cannot contain a second start event")
+        elif kind == "pause":
+            if state != "active" or active_started is None:
+                _fail("campaign pause requires active state")
+            active_accumulated += micros - active_started
+            active_started = None
+            state = "paused"
+        elif kind == "resume":
+            if state != "paused" or active_started is not None:
+                _fail("campaign resume requires paused state")
+            active_started = micros
+            state = "active"
+        elif kind == "exact":
+            if state != "active" or active_started is None:
+                _fail("campaign exact boundary requires active state")
+            telemetry = event["telemetry"]
+            telemetry_hash = str(telemetry["telemetry_sha256"])
+            receipt_hash = str(event["receipt"]["sha256"])
+            identity = (
+                str(telemetry["session_id"]),
+                str(telemetry["focus_symbol"]),
+            )
+            if telemetry_hash in telemetry_hashes or receipt_hash in receipt_hashes:
+                _fail("campaign contains a duplicate exact telemetry receipt")
+            if identity in exact_identities:
+                _fail("campaign double-counts one exact function identity")
+            telemetry_hashes.add(telemetry_hash)
+            receipt_hashes.add(receipt_hash)
+            exact_identities.add(identity)
+            exact_receipts.append(telemetry)
+            last_exact_at = str(event["at_utc"])
+            last_exact_micros = micros
+            last_exact_active_micros = active_accumulated + micros - active_started
+        previous_hash = str(event["event_sha256"])
+        last_micros = micros
+
+    if start_at is None or start_micros is None or state is None:
+        _fail("campaign start boundary is missing")
+    wall_seconds = (
+        round((last_exact_micros - start_micros) / 1_000_000.0, 6)
+        if last_exact_micros is not None
+        else None
+    )
+    active_seconds = (
+        round(last_exact_active_micros / 1_000_000.0, 6)
+        if last_exact_active_micros is not None
+        else None
+    )
+    if wall_seconds is not None and (wall_seconds <= 0 or active_seconds is None or active_seconds <= 0):
+        _fail("campaign exact boundary must provide positive wall and active Sol time")
+
+    candidate_keys = (
+        "candidate_count",
+        "unique_source_count",
+        "unique_object_count",
+        "duplicate_candidate_count",
+        "strict_data_exact_candidate_count",
+        "nonexact_candidates_before_first_exact",
+    )
+    candidate_totals = {key: 0 for key in candidate_keys}
+    heavy_total = 0.0
+    heavy_complete = bool(exact_receipts)
+    missing_heavy: list[str] = []
+    exact_bytes_total = 0
+    exact_bytes_complete = bool(exact_receipts)
+    tracer_total = 0
+    tracer_complete = bool(exact_receipts)
+    donor_total = 0
+    donor_complete = bool(exact_receipts)
+    for receipt in exact_receipts:
+        campaign = receipt["campaign"]
+        for key in candidate_keys:
+            candidate_totals[key] += _integer(
+                campaign.get(key), f"telemetry.campaign.{key}"
+            )
+        timing = receipt["time"]
+        if timing.get("heavy_seconds_complete") is not True:
+            heavy_complete = False
+            missing_heavy.append(str(receipt["telemetry_sha256"]))
+        else:
+            heavy_total += _campaign_number(
+                timing.get("heavy_seconds"), "telemetry.time.heavy_seconds"
+            )
+        target_size = campaign.get("target_size_bytes")
+        if target_size is None:
+            exact_bytes_complete = False
+        else:
+            exact_bytes_total += _integer(
+                campaign.get("exact_focus_bytes"),
+                "telemetry.campaign.exact_focus_bytes",
+            )
+        tracer_runs = receipt["activity"].get("tracer_runs")
+        donor_searches = receipt["activity"].get("donor_searches")
+        if tracer_runs is None:
+            tracer_complete = False
+        else:
+            tracer_total += _integer(tracer_runs, "telemetry.activity.tracer_runs")
+        if donor_searches is None:
+            donor_complete = False
+        else:
+            donor_total += _integer(
+                donor_searches, "telemetry.activity.donor_searches"
+            )
+
+    exact_count = len(exact_receipts)
+    heavy_seconds = round(heavy_total, 6) if heavy_complete else None
+    heavy_rate_covered = heavy_complete and heavy_seconds is not None and heavy_seconds > 0
+    return {
+        "status": "measured_exact" if exact_count else "collecting",
+        "state": state,
+        "start_at_utc": start_at,
+        "exact_boundary_at_utc": last_exact_at,
+        "wall_seconds": wall_seconds,
+        "active_sol_seconds": active_seconds,
+        "paused_seconds": (
+            round(wall_seconds - active_seconds, 6)
+            if wall_seconds is not None and active_seconds is not None
+            else None
+        ),
+        "exact_function_count": exact_count,
+        "exact_telemetry_sha256s": sorted(telemetry_hashes),
+        "candidate_metrics": candidate_totals,
+        "heavy_process": {
+            "seconds": heavy_seconds,
+            "complete": heavy_complete,
+            "missing_telemetry_sha256s": sorted(missing_heavy),
+        },
+        "activity": {
+            "tracer_runs": tracer_total if tracer_complete else None,
+            "tracer_runs_complete": tracer_complete,
+            "donor_searches": donor_total if donor_complete else None,
+            "donor_searches_complete": donor_complete,
+        },
+        "throughput": {
+            "exact_functions_per_wall_hour": _campaign_rate(exact_count, wall_seconds),
+            "exact_functions_per_active_sol_hour": _campaign_rate(
+                exact_count, active_seconds
+            ),
+            "exact_functions_per_heavy_process_hour": (
+                _campaign_rate(exact_count, heavy_seconds)
+                if heavy_rate_covered
+                else None
+            ),
+            "exact_focus_bytes": exact_bytes_total if exact_bytes_complete else None,
+            "exact_bytes_per_wall_hour": (
+                _campaign_rate(exact_count, wall_seconds, exact_bytes_total / exact_count)
+                if exact_count and exact_bytes_complete
+                else None
+            ),
+            "exact_bytes_per_active_sol_hour": (
+                _campaign_rate(exact_count, active_seconds, exact_bytes_total / exact_count)
+                if exact_count and exact_bytes_complete
+                else None
+            ),
+        },
+        "coverage": {
+            "wall_time": "complete_event_derived" if exact_count else "missing_exact_boundary",
+            "active_sol_time": "complete_event_derived" if exact_count else "missing_exact_boundary",
+            "heavy_process_time": "complete" if heavy_complete else "partial",
+            "heavy_process_rate_claim": "complete" if heavy_rate_covered else "withheld",
+            "exact_focus_bytes": "complete" if exact_bytes_complete else "partial",
+        },
+    }
+
+
+def _verify_campaign_timing(value: Any, label: str) -> Mapping[str, Any]:
+    item = _verify_self_hash(value, "campaign_sha256", label)
+    item = _closed(
+        item,
+        allowed={
+            "schema",
+            "schema_version",
+            "campaign_id",
+            "adoption_phase",
+            "workflow",
+            "events",
+            "summary",
+            "limitations",
+            "authority_advanced",
+            "campaign_sha256",
+        },
+        required={
+            "schema",
+            "schema_version",
+            "campaign_id",
+            "adoption_phase",
+            "workflow",
+            "events",
+            "summary",
+            "limitations",
+            "authority_advanced",
+            "campaign_sha256",
+        },
+        label=label,
+    )
+    if item["schema"] != CAMPAIGN_TIMING_SCHEMA or item["schema_version"] != 1:
+        _fail(f"{label} has unsupported campaign timing schema")
+    _identifier(item["campaign_id"], f"{label}.campaign_id")
+    phase = _text(item["adoption_phase"], f"{label}.adoption_phase")
+    if phase not in {"before", "after"}:
+        _fail(f"{label}.adoption_phase must be before or after")
+    workflow = _campaign_workflow(item["workflow"], f"{label}.workflow")
+    if not isinstance(item["events"], list):
+        _fail(f"{label}.events must be an array")
+    for index, event in enumerate(item["events"]):
+        checked = _campaign_event(event, f"{label}.events[{index}]")
+        if checked["workflow_binding_sha256"] != workflow["workflow_binding_sha256"]:
+            _fail(f"{label}.events[{index}] is bound to a different workflow")
+    derived = _derive_campaign_summary(item["events"])
+    if item["summary"] != derived:
+        _fail(f"{label}.summary does not match its event-derived timing")
+    if not isinstance(item["limitations"], list) or not all(
+        isinstance(entry, str) and entry for entry in item["limitations"]
+    ):
+        _fail(f"{label}.limitations must be an array of strings")
+    if item["authority_advanced"] is not False:
+        _fail(f"{label} attempted to advance authority")
+    return item
+
+
+def _campaign_limitations() -> list[str]:
+    return [
+        "Wall and active Sol time are derived only through the latest exact event; function telemetry caller-attested elapsed/active fields are not reused.",
+        "Candidate and heavy-process metrics are copied from validated function telemetry receipts and are not compiler, relocation, or linked-binary proof.",
+        "Before/after rates are observations bound to workflow checkpoints; the ledger does not establish causal attribution.",
+    ]
+
+
+def start_campaign_timing(
+    root: Path,
+    campaign: Path | str,
+    *,
+    campaign_id: str,
+    adoption_phase: str,
+    checkpoint_id: str,
+    workflow_checkpoint: Path | str,
+    at: str,
+) -> dict[str, Any]:
+    root = root.resolve()
+    path = _campaign_path(root, campaign, "campaign timing file")
+    identifier = _identifier(campaign_id, "campaign_id")
+    phase = _text(adoption_phase, "adoption_phase").casefold()
+    if phase not in {"before", "after"}:
+        _fail("adoption_phase must be before or after")
+    checkpoint_name = _identifier(checkpoint_id, "checkpoint_id")
+    checkpoint_path = _resolve(workflow_checkpoint, root)
+    if checkpoint_path == path:
+        _fail("workflow checkpoint cannot be the campaign timing file")
+    checkpoint_snapshot = _snapshot(checkpoint_path, "workflow checkpoint")
+    tool_path = Path(__file__).resolve()
+    tool_snapshot = _snapshot(tool_path, "match telemetry tool")
+    timestamp, micros = _campaign_timestamp(at, "at")
+    workflow = _with_self_hash(
+        {
+            "checkpoint_id": checkpoint_name,
+            "checkpoint": _campaign_snapshot_descriptor(checkpoint_snapshot),
+            "telemetry_tool": _campaign_snapshot_descriptor(tool_snapshot),
+        },
+        "workflow_binding_sha256",
+    )
+    event = _with_self_hash(
+        {
+            "sequence": 1,
+            "kind": "start",
+            "at_utc": timestamp,
+            "at_unix_microseconds": micros,
+            "workflow_binding_sha256": workflow["workflow_binding_sha256"],
+            "previous_event_sha256": None,
+        },
+        "event_sha256",
+    )
+    body = {
+        "schema": CAMPAIGN_TIMING_SCHEMA,
+        "schema_version": 1,
+        "campaign_id": identifier,
+        "adoption_phase": phase,
+        "workflow": workflow,
+        "events": [event],
+        "summary": _derive_campaign_summary([event]),
+        "limitations": _campaign_limitations(),
+        "authority_advanced": False,
+    }
+    result = _with_self_hash(body, "campaign_sha256")
+    _recheck_live_snapshot(checkpoint_path, checkpoint_snapshot, "workflow checkpoint")
+    _recheck_live_snapshot(tool_path, tool_snapshot, "match telemetry tool")
+    _write_new(path, _canonical(result))
+    return result
+
+
+def _read_campaign_timing(
+    root: Path, campaign: Path | str, label: str
+) -> tuple[Path, dict[str, Any], Mapping[str, Any]]:
+    path = _campaign_path(root, campaign, label)
+    snapshot = _snapshot(path, label)
+    value = _load_json(path, label)
+    verified = _verify_campaign_timing(value, label)
+    _recheck_live_snapshot(path, snapshot, label)
+    return path, _campaign_snapshot_descriptor(snapshot), verified
+
+
+def _recheck_campaign_workflow(workflow: Mapping[str, Any]) -> None:
+    checkpoint = _campaign_descriptor(workflow["checkpoint"], "workflow checkpoint")
+    tool = _campaign_descriptor(workflow["telemetry_tool"], "match telemetry tool")
+    tool_path = Path(str(tool["path"]))
+    if tool_path != Path(__file__).resolve():
+        _fail("campaign is bound to a different match telemetry tool path")
+    for descriptor_value, label in (
+        (checkpoint, "workflow checkpoint"),
+        (tool, "match telemetry tool"),
+    ):
+        snapshot = _snapshot(Path(str(descriptor_value["path"])), label)
+        if (
+            snapshot["size_bytes"] != descriptor_value["size_bytes"]
+            or snapshot["sha256"] != descriptor_value["sha256"]
+        ):
+            _fail(f"{label} changed from the campaign workflow binding")
+
+
+def _recheck_campaign_exact_receipt(event: Mapping[str, Any], label: str) -> None:
+    descriptor_value = _campaign_descriptor(event["receipt"], f"{label}.receipt")
+    path = Path(str(descriptor_value["path"]))
+    snapshot = _snapshot(path, f"{label} function telemetry receipt")
+    if (
+        snapshot["size_bytes"] != descriptor_value["size_bytes"]
+        or snapshot["sha256"] != descriptor_value["sha256"]
+    ):
+        _fail(f"{label} function telemetry receipt changed from its exact binding")
+    live = _validate_function_telemetry_receipt(
+        _load_json(path, f"{label} function telemetry receipt"),
+        f"{label} function telemetry receipt",
+    )
+    _recheck_live_snapshot(path, snapshot, f"{label} function telemetry receipt")
+    if live != event["telemetry"]:
+        _fail(f"{label} embedded telemetry differs from its live receipt")
+
+
+def append_campaign_event(
+    root: Path,
+    campaign: Path | str,
+    *,
+    event: str,
+    at: str,
+    telemetry_receipt: Path | str | None = None,
+) -> dict[str, Any]:
+    root = root.resolve()
+    path = _campaign_path(root, campaign, "campaign timing file")
+    kind = _text(event, "event").casefold()
+    if kind not in {"pause", "resume", "exact"}:
+        _fail("event must be pause, resume, or exact")
+    if kind == "exact" and telemetry_receipt is None:
+        _fail("exact event requires telemetry_receipt")
+    if kind != "exact" and telemetry_receipt is not None:
+        _fail(f"{kind} event cannot include telemetry_receipt")
+    timestamp, micros = _campaign_timestamp(at, "at")
+    lock_path = path.with_name(f".{path.name}.lock")
+    with _workbench_lock(lock_path, 30.0):
+        before = _snapshot(path, "campaign timing file")
+        current = _verify_campaign_timing(
+            _load_json(path, "campaign timing file"), "campaign timing file"
+        )
+        _recheck_live_snapshot(path, before, "campaign timing file")
+        _recheck_campaign_workflow(current["workflow"])
+        events = list(copy.deepcopy(current["events"]))
+        for event_index, historical_event in enumerate(events):
+            if historical_event["kind"] == "exact":
+                _recheck_campaign_exact_receipt(
+                    historical_event,
+                    f"campaign historical event {event_index + 1}",
+                )
+        last = events[-1]
+        if micros <= int(last["at_unix_microseconds"]):
+            _fail("campaign event timestamps must be strictly increasing")
+        event_body: dict[str, Any] = {
+            "sequence": len(events) + 1,
+            "kind": kind,
+            "at_utc": timestamp,
+            "at_unix_microseconds": micros,
+            "workflow_binding_sha256": current["workflow"]["workflow_binding_sha256"],
+            "previous_event_sha256": last["event_sha256"],
+        }
+        if telemetry_receipt is not None:
+            receipt_path = _resolve(telemetry_receipt, root)
+            receipt_snapshot = _snapshot(receipt_path, "function telemetry receipt")
+            receipt = _validate_function_telemetry_receipt(
+                _load_json(receipt_path, "function telemetry receipt"),
+                "function telemetry receipt",
+            )
+            _recheck_live_snapshot(
+                receipt_path, receipt_snapshot, "function telemetry receipt"
+            )
+            event_body["receipt"] = _campaign_snapshot_descriptor(receipt_snapshot)
+            event_body["telemetry"] = copy.deepcopy(receipt)
+        new_event = _with_self_hash(event_body, "event_sha256")
+        events.append(new_event)
+        result = _with_self_hash(
+            {
+                key: copy.deepcopy(value)
+                for key, value in current.items()
+                if key not in {"events", "summary", "campaign_sha256"}
+            }
+            | {
+                "events": events,
+                "summary": _derive_campaign_summary(events),
+            },
+            "campaign_sha256",
+        )
+        payload = _canonical(result)
+        _atomic_replace(path, payload)
+        written = _snapshot(path, "updated campaign timing file")
+        if written["sha256"] != _sha256_bytes(payload):
+            _fail("updated campaign timing file does not match the derived receipt")
+    return result
+
+
+def _campaign_interval(campaign: Mapping[str, Any]) -> tuple[int, int]:
+    summary = campaign["summary"]
+    if summary["exact_function_count"] < 1:
+        _fail(f"campaign {campaign['campaign_id']} has no exact boundary")
+    _, start = _campaign_timestamp(summary["start_at_utc"], "campaign start")
+    _, end = _campaign_timestamp(
+        summary["exact_boundary_at_utc"], "campaign exact boundary"
+    )
+    if end <= start:
+        _fail(f"campaign {campaign['campaign_id']} has missing or invalid timing")
+    return start, end
+
+
+def _campaign_phase_aggregate(
+    phase: str, campaigns: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    exact_count = sum(int(item["summary"]["exact_function_count"]) for item in campaigns)
+    wall_seconds = round(sum(float(item["summary"]["wall_seconds"]) for item in campaigns), 6)
+    active_seconds = round(
+        sum(float(item["summary"]["active_sol_seconds"]) for item in campaigns), 6
+    )
+    if exact_count < 1 or wall_seconds <= 0 or active_seconds <= 0:
+        _fail(f"{phase} campaigns lack complete positive wall/active timing")
+    candidate_keys = tuple(campaigns[0]["summary"]["candidate_metrics"])
+    candidates = {
+        key: sum(int(item["summary"]["candidate_metrics"][key]) for item in campaigns)
+        for key in candidate_keys
+    }
+    heavy_complete = all(
+        item["summary"]["coverage"]["heavy_process_rate_claim"] == "complete"
+        for item in campaigns
+    )
+    heavy_seconds = (
+        round(
+            sum(float(item["summary"]["heavy_process"]["seconds"]) for item in campaigns),
+            6,
+        )
+        if heavy_complete
+        else None
+    )
+    bytes_complete = all(
+        item["summary"]["coverage"]["exact_focus_bytes"] == "complete"
+        for item in campaigns
+    )
+    exact_bytes = (
+        sum(int(item["summary"]["throughput"]["exact_focus_bytes"]) for item in campaigns)
+        if bytes_complete
+        else None
+    )
+    return {
+        "adoption_phase": phase,
+        "campaign_count": len(campaigns),
+        "campaign_ids": sorted(str(item["campaign_id"]) for item in campaigns),
+        "exact_function_count": exact_count,
+        "time": {
+            "wall_seconds": wall_seconds,
+            "active_sol_seconds": active_seconds,
+            "heavy_process_seconds": heavy_seconds,
+        },
+        "candidate_metrics": candidates,
+        "throughput": {
+            "exact_functions_per_wall_hour": _campaign_rate(exact_count, wall_seconds),
+            "exact_functions_per_active_sol_hour": _campaign_rate(
+                exact_count, active_seconds
+            ),
+            "exact_functions_per_heavy_process_hour": (
+                _campaign_rate(exact_count, heavy_seconds) if heavy_complete else None
+            ),
+            "exact_focus_bytes": exact_bytes,
+            "exact_bytes_per_wall_hour": (
+                round(exact_bytes * 3600.0 / wall_seconds, 6)
+                if exact_bytes is not None
+                else None
+            ),
+            "exact_bytes_per_active_sol_hour": (
+                round(exact_bytes * 3600.0 / active_seconds, 6)
+                if exact_bytes is not None
+                else None
+            ),
+        },
+        "coverage": {
+            "campaign_timing": "complete_event_derived",
+            "exact_receipts": "complete_unique",
+            "heavy_process_rate_claim": "complete" if heavy_complete else "withheld",
+            "exact_focus_bytes": "complete" if bytes_complete else "partial",
+        },
+    }
+
+
+def _observed_change(before: float, after: float) -> dict[str, float]:
+    return {
+        "before": before,
+        "after": after,
+        "absolute": round(after - before, 6),
+        "ratio": round(after / before, 6),
+        "percent": round(((after / before) - 1.0) * 100.0, 6),
+    }
+
+
+def compare_campaign_timing(
+    root: Path,
+    *,
+    before_campaigns: Sequence[Path | str],
+    after_campaigns: Sequence[Path | str],
+) -> dict[str, Any]:
+    root = root.resolve()
+    if not before_campaigns or not after_campaigns:
+        _fail("campaign comparison requires before and after campaign files")
+    loaded: dict[str, list[tuple[dict[str, Any], Mapping[str, Any]]]] = {
+        "before": [],
+        "after": [],
+    }
+    seen_paths: set[str] = set()
+    seen_campaign_hashes: set[str] = set()
+    seen_campaign_ids: set[str] = set()
+    seen_telemetry_hashes: set[str] = set()
+    seen_exact_identities: set[tuple[str, str]] = set()
+    for phase, paths in (("before", before_campaigns), ("after", after_campaigns)):
+        for raw_path in paths:
+            path, descriptor_value, campaign = _read_campaign_timing(
+                root, raw_path, f"{phase} campaign"
+            )
+            path_key = os.path.normcase(os.path.abspath(path))
+            campaign_hash = str(campaign["campaign_sha256"])
+            campaign_id = str(campaign["campaign_id"])
+            if path_key in seen_paths or campaign_hash in seen_campaign_hashes:
+                _fail("campaign comparison contains a duplicate campaign input")
+            if campaign_id in seen_campaign_ids:
+                _fail("campaign comparison contains a duplicate campaign_id")
+            if campaign["adoption_phase"] != phase:
+                _fail(f"{phase} input {campaign_id} has the wrong adoption phase")
+            _campaign_interval(campaign)
+            _recheck_campaign_workflow(campaign["workflow"])
+            for event_index, event in enumerate(campaign["events"]):
+                if event["kind"] != "exact":
+                    continue
+                _recheck_campaign_exact_receipt(
+                    event, f"{phase} campaign {campaign_id} event {event_index + 1}"
+                )
+                telemetry = event["telemetry"]
+                telemetry_hash = str(telemetry["telemetry_sha256"])
+                identity = (
+                    str(telemetry["session_id"]),
+                    str(telemetry["focus_symbol"]),
+                )
+                if telemetry_hash in seen_telemetry_hashes:
+                    _fail("campaign comparison double-counts a telemetry receipt")
+                if identity in seen_exact_identities:
+                    _fail("campaign comparison double-counts an exact function identity")
+                seen_telemetry_hashes.add(telemetry_hash)
+                seen_exact_identities.add(identity)
+            seen_paths.add(path_key)
+            seen_campaign_hashes.add(campaign_hash)
+            seen_campaign_ids.add(campaign_id)
+            loaded[phase].append((descriptor_value, campaign))
+
+    for phase in ("before", "after"):
+        loaded[phase].sort(key=lambda item: str(item[1]["campaign_id"]))
+        workflows = {
+            str(item[1]["workflow"]["workflow_binding_sha256"])
+            for item in loaded[phase]
+        }
+        if len(workflows) != 1:
+            _fail(f"{phase} campaigns do not share one exact workflow checkpoint")
+        intervals = sorted(
+            (_campaign_interval(item[1]), str(item[1]["campaign_id"]))
+            for item in loaded[phase]
+        )
+        for previous, current in zip(intervals, intervals[1:]):
+            if current[0][0] < previous[0][1]:
+                _fail(f"{phase} campaign timing intervals overlap")
+
+    before_workflow = str(
+        loaded["before"][0][1]["workflow"]["workflow_binding_sha256"]
+    )
+    after_workflow = str(
+        loaded["after"][0][1]["workflow"]["workflow_binding_sha256"]
+    )
+    if before_workflow == after_workflow:
+        _fail("before and after campaigns must bind different workflow checkpoints")
+    before_end = max(_campaign_interval(item[1])[1] for item in loaded["before"])
+    after_start = min(_campaign_interval(item[1])[0] for item in loaded["after"])
+    if after_start < before_end:
+        _fail("after campaign timing starts before the before measurement boundary")
+
+    phase_values = {
+        phase: _campaign_phase_aggregate(
+            phase, [item[1] for item in loaded[phase]]
+        )
+        for phase in ("before", "after")
+    }
+    changes: dict[str, Any] = {}
+    for key in (
+        "exact_functions_per_wall_hour",
+        "exact_functions_per_active_sol_hour",
+        "exact_functions_per_heavy_process_hour",
+        "exact_bytes_per_wall_hour",
+        "exact_bytes_per_active_sol_hour",
+    ):
+        before_value = phase_values["before"]["throughput"][key]
+        after_value = phase_values["after"]["throughput"][key]
+        if (
+            before_value is not None
+            and after_value is not None
+            and float(before_value) > 0
+            and float(after_value) >= 0
+        ):
+            changes[key] = _observed_change(float(before_value), float(after_value))
+
+    tool_path = Path(__file__).resolve()
+    tool_snapshot = _snapshot(tool_path, "campaign comparison tool")
+    body = {
+        "schema": CAMPAIGN_COMPARISON_SCHEMA,
+        "schema_version": 1,
+        "inputs": {
+            phase: [item[0] for item in loaded[phase]]
+            for phase in ("before", "after")
+        },
+        "workflow_bindings": {
+            phase: copy.deepcopy(loaded[phase][0][1]["workflow"])
+            for phase in ("before", "after")
+        },
+        "comparison_tool": _campaign_snapshot_descriptor(tool_snapshot),
+        "before": phase_values["before"],
+        "after": phase_values["after"],
+        "observed_change": changes,
+        "coverage": {
+            "wall_active_rate_claims": "complete",
+            "campaign_intervals": "complete_nonoverlapping",
+            "telemetry_receipts": "complete_unique",
+            "heavy_process_rate_claim": (
+                "complete"
+                if "exact_functions_per_heavy_process_hour" in changes
+                else "withheld"
+            ),
+        },
+        "attribution": {
+            "classification": "observed_before_after_association",
+            "causal_attribution": False,
+            "workflow_adoption_boundary_bound": True,
+            "statement": "The rate delta is observed at the bound workflow checkpoint; uncontrolled function mix and campaign conditions prevent a causal claim.",
+        },
+        "authority_advanced": False,
+    }
+    _recheck_live_snapshot(tool_path, tool_snapshot, "campaign comparison tool")
+    return _with_self_hash(body, "comparison_sha256")
+
+
+def _persist_campaign_comparison(
+    root: Path, output: Path | str | None, result: Mapping[str, Any]
+) -> None:
+    if output is None:
+        return
+    path = _campaign_path(root, output, "campaign comparison output")
+    if path.exists():
+        existing = _load_json(path, "campaign comparison output")
+        if existing == result:
+            return
+        _fail("campaign comparison output already records different evidence")
+    _write_new(path, _canonical(result))
+
+
 def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
     if as_json or value.get("schema") in {
         ASSESSMENT_SCHEMA,
         RESIDUALS_SCHEMA,
         STACK_RESIDUE_SCHEMA,
         FUNCTION_TELEMETRY_SCHEMA,
+        CAMPAIGN_TIMING_SCHEMA,
+        CAMPAIGN_COMPARISON_SCHEMA,
         CAUSAL_REDUCER_SCHEMA,
         POOL_DECODER_SCHEMA,
         INTERACTION_PLANNER_SCHEMA,
@@ -9504,7 +10444,58 @@ def _add_commands(commands: Any) -> None:
     telemetry.add_argument("--active-seconds", type=float)
     telemetry.add_argument("--tracer-runs", type=int)
     telemetry.add_argument("--donor-searches", type=int)
+    telemetry.add_argument(
+        "--output", help="optional immutable self-hashed function telemetry receipt"
+    )
     telemetry.add_argument("--json", action="store_true")
+
+    campaign_start = commands.add_parser(
+        "campaign-start",
+        help="start a durable event-timed before/after crack-rate campaign",
+    )
+    campaign_start.add_argument("--campaign", required=True)
+    campaign_start.add_argument("--campaign-id", required=True)
+    campaign_start.add_argument(
+        "--adoption-phase", choices=("before", "after"), required=True
+    )
+    campaign_start.add_argument("--checkpoint-id", required=True)
+    campaign_start.add_argument("--workflow-checkpoint", required=True)
+    campaign_start.add_argument(
+        "--at", required=True, help="ISO-8601 start boundary with explicit UTC offset"
+    )
+    campaign_start.add_argument("--json", action="store_true")
+
+    campaign_event = commands.add_parser(
+        "campaign-event",
+        help="append a strict pause, resume, or exact boundary to a campaign",
+    )
+    campaign_event.add_argument("--campaign", required=True)
+    campaign_event.add_argument(
+        "--event", choices=("pause", "resume", "exact"), required=True
+    )
+    campaign_event.add_argument(
+        "--at", required=True, help="ISO-8601 event boundary with explicit UTC offset"
+    )
+    campaign_event.add_argument(
+        "--telemetry-receipt",
+        help="self-hashed function telemetry JSON; required only for exact",
+    )
+    campaign_event.add_argument("--json", action="store_true")
+
+    campaign_compare = commands.add_parser(
+        "campaign-compare",
+        help="compare fully covered observed crack/hour rates before and after adoption",
+    )
+    campaign_compare.add_argument(
+        "--before-campaign", action="append", required=True
+    )
+    campaign_compare.add_argument(
+        "--after-campaign", action="append", required=True
+    )
+    campaign_compare.add_argument(
+        "--output", help="optional immutable self-hashed comparison receipt"
+    )
+    campaign_compare.add_argument("--json", action="store_true")
 
     cascade = commands.add_parser(
         "cascade",
@@ -9886,6 +10877,34 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             tracer_runs=args.tracer_runs,
             donor_searches=args.donor_searches,
         )
+        _persist_provenance_result(
+            root, args.output, result, label="function telemetry output"
+        )
+    elif args.match_command == "campaign-start":
+        result = start_campaign_timing(
+            root,
+            args.campaign,
+            campaign_id=args.campaign_id,
+            adoption_phase=args.adoption_phase,
+            checkpoint_id=args.checkpoint_id,
+            workflow_checkpoint=args.workflow_checkpoint,
+            at=args.at,
+        )
+    elif args.match_command == "campaign-event":
+        result = append_campaign_event(
+            root,
+            args.campaign,
+            event=args.event,
+            at=args.at,
+            telemetry_receipt=args.telemetry_receipt,
+        )
+    elif args.match_command == "campaign-compare":
+        result = compare_campaign_timing(
+            root,
+            before_campaigns=args.before_campaign,
+            after_campaigns=args.after_campaign,
+        )
+        _persist_campaign_comparison(root, args.output, result)
     elif args.match_command in {"cascade", "causal-reduce"}:
         result = reduce_objdiff_cascades(
             root,
