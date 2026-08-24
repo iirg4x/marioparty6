@@ -48,6 +48,7 @@ MATRIX_SCHEMA = "match_workbench_matrix/v1"
 FUNCTION_TELEMETRY_SCHEMA = "match_workbench_function_telemetry/v1"
 CAUSAL_REDUCER_SCHEMA = "match_workbench_causal_reducer/v1"
 POOL_DECODER_SCHEMA = "match_workbench_pool_decoder/v1"
+INTERACTION_PLANNER_SCHEMA = "match_workbench_interaction_plan/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
@@ -8114,6 +8115,65 @@ def decode_pool_ownership(
     return _with_self_hash(body, "pool_decoder_sha256")
 
 
+def plan_candidate_interactions(
+    root: Path,
+    *,
+    request: Path | str,
+) -> dict[str, Any]:
+    """Bind and expand a bounded, evidence-declared factorial candidate plan.
+
+    The standalone planner owns the closed request schema and topology rules;
+    this wrapper attests the request/tool bytes and exposes it through the
+    central match CLI.  Neither layer generates source or invokes a compiler.
+    """
+
+    from tools.candidate_interaction_planner import (
+        InteractionPlanError,
+        PLAN_SCHEMA,
+        build_interaction_plan,
+    )
+
+    root = root.resolve()
+    request_path = _resolve(request, root)
+    request_snapshot = _snapshot(request_path, "candidate interaction request")
+    tool_path = Path(__file__).with_name("candidate_interaction_planner.py").resolve()
+    tool_snapshot = _snapshot(tool_path, "candidate interaction planner implementation")
+    try:
+        plan = build_interaction_plan(request_path)
+    except InteractionPlanError as exc:
+        _fail(f"candidate interaction planner rejected request: {exc}")
+    if plan.get("schema") != PLAN_SCHEMA:
+        _fail("candidate interaction planner returned an unsupported schema")
+    if plan.get("request_sha256") != request_snapshot["sha256"]:
+        _fail("candidate interaction planner request binding mismatch")
+    if plan.get("authority_advanced") is not False:
+        _fail("candidate interaction planner attempted to advance authority")
+    if plan.get("production_modified") is not False:
+        _fail("candidate interaction planner attempted to modify production")
+
+    body = {
+        "schema": INTERACTION_PLANNER_SCHEMA,
+        "schema_version": 1,
+        "input": request_snapshot,
+        "tool": {
+            "path": tool_snapshot["path"],
+            "size_bytes": tool_snapshot["size_bytes"],
+            "sha256": tool_snapshot["sha256"],
+        },
+        "plan": plan,
+        "limitations": [
+            "Explicit topology tokens and authenticated hashes are the only deduplication authorities.",
+            "A generated cell still requires natural-source review and strict/data/relocation/sibling gates.",
+            "The command is read-only and never invokes candidate generation or compilation.",
+        ],
+        "production_modified": False,
+        "authority_advanced": False,
+    }
+    _recheck_live_snapshot(request_path, request_snapshot, "candidate interaction request")
+    _recheck_live_snapshot(tool_path, tool_snapshot, "candidate interaction planner implementation")
+    return _with_self_hash(body, "interaction_planner_sha256")
+
+
 def build_function_telemetry(
     root: Path,
     workspace: Path | str,
@@ -8297,6 +8357,7 @@ def _print(value: Mapping[str, Any], *, as_json: bool) -> None:
         FUNCTION_TELEMETRY_SCHEMA,
         CAUSAL_REDUCER_SCHEMA,
         POOL_DECODER_SCHEMA,
+        INTERACTION_PLANNER_SCHEMA,
         DONOR_SHAPES_SCHEMA,
         DONOR_REGISTRY_SCHEMA,
         DONOR_REGISTRY_LIST_SCHEMA,
@@ -8544,6 +8605,14 @@ def _add_commands(commands: Any) -> None:
     pools.add_argument("--group-limit", type=int, default=24)
     pools.add_argument("--row-limit", type=int, default=12)
     pools.add_argument("--json", action="store_true")
+
+    interactions = commands.add_parser(
+        "interactions",
+        aliases=("factorial-plan", "interaction-plan"),
+        help="expand evidence-backed source axes into a deduplicated factorial batch",
+    )
+    interactions.add_argument("--request", required=True)
+    interactions.add_argument("--json", action="store_true")
 
     assess = commands.add_parser(
         "assess",
@@ -8860,6 +8929,11 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             include_exact=args.include_exact,
             group_limit=args.group_limit,
             row_limit=args.row_limit,
+        )
+    elif args.match_command in {"interactions", "factorial-plan", "interaction-plan"}:
+        result = plan_candidate_interactions(
+            root,
+            request=args.request,
         )
     elif args.match_command == "assess":
         result = assess_reports(

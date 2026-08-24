@@ -798,6 +798,61 @@ class MatchWorkbenchTests(unittest.TestCase):
                 focus_symbol="missing",
             )
 
+    def test_interaction_planner_builds_kamekku_factorial_and_routes_centrally(self) -> None:
+        from tools.tests.test_candidate_interaction_planner import _request
+
+        request_path = self.root / "kamekku-interactions.json"
+        _write_json(request_path, _request())
+        request_before = request_path.read_bytes()
+        result = module.plan_candidate_interactions(
+            self.root,
+            request=request_path,
+        )
+        self.assertEqual(result["schema"], module.INTERACTION_PLANNER_SCHEMA)
+        self.assertFalse(result["production_modified"])
+        self.assertFalse(result["authority_advanced"])
+        self.assertRegex(result["interaction_planner_sha256"], r"^[0-9a-f]{64}$")
+        plan = result["plan"]
+        self.assertEqual(plan["summary"]["raw_cell_count"], 4)
+        self.assertEqual(plan["summary"]["unique_topology_count"], 4)
+        self.assertEqual(plan["summary"]["generate_and_compile_count"], 4)
+        self.assertTrue(
+            any(cell["interaction_order"] == 2 for cell in plan["cells"])
+        )
+        self.assertEqual(request_path.read_bytes(), request_before)
+
+        argv = [
+            "--root",
+            str(self.root),
+            "interaction-plan",
+            "--request",
+            str(request_path),
+        ]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(module.main(argv), 0)
+        self.assertEqual(json.loads(output.getvalue()), result)
+
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "factorial-plan",
+                "--request",
+                str(request_path),
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        self.assertEqual(json.loads(process.stdout), result)
+
     def _job_script(self, name: str = "probe.py", body: str | None = None) -> Path:
         path = self.root / name
         path.write_text(

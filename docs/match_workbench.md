@@ -185,6 +185,42 @@ semantic/contract mismatches. Such a result directs investigation toward
 authenticated constant binding or TU first-use chronology; it never authorizes
 inventing an extern label or reordering unrelated source.
 
+### 9. Plan factorial source-axis interactions
+
+```sh
+rtk python tools/agent.py match interactions \
+  --request build/owner/function-interactions.json
+```
+
+`interactions` (aliases `factorial-plan` and `interaction-plan`) accepts a
+closed `candidate_interaction_request/v1` manifest and emits self-hashed
+`match_workbench_interaction_plan/v1` JSON. Each axis declares one measured
+control, two or more levels, the natural source action, evidence,
+admissibility, and an explicit normalized topology token. The planner expands
+the bounded Cartesian product and orders controls, single-axis cells, then
+higher-order interactions. This makes the combined cell mandatory when two
+individually neutral axes may interact.
+
+Optional observations bind a complete selection to authenticated source and
+object SHA-256 values. The output distinguishes identical source from merely
+identical object code. A cell is skipped only when its complete explicit
+topology matches another cell or measured hashes prove reuse; names and prose
+are never treated as equivalence. Constraints and blocked source levels remain
+visible but are not scheduled. The request is capped at eight axes, eight
+levels per axis, and a caller-bounded product (256 cells by default).
+
+The CapThrow Kamekku receipt encodes `{36.0f, 60.0f}` by
+`{discard RNG result, assign result to existing time}`. It yields the four
+required cells: baseline, two single controls, and the exact combined
+interaction. Replaying the completed campaign reuses all four measured hashes;
+the counterfactual unmeasured request schedules all four rather than stopping
+after the two 99.990710% single controls.
+
+This command is a read-only batch planner. It does not generate source,
+compile, record candidates, decide source admissibility, retain a candidate,
+or advance authority. Every generated cell still needs natural-source review
+and strict/data/physical-relocation/section/protected-sibling gates.
+
 Compact objdiff summaries are explicitly diagnostic-only, not canonical proof.
 Even an exact compact focus produces the next action
 `authenticate_report_binding_then_run_serial_proof_and_closure`; first bind the
