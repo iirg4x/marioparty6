@@ -443,7 +443,23 @@ def _pointer_key_name(key: str) -> bool:
     return False
 
 
-def _reject_pointer_material(value: Any, where: str = "$", *, _path_allowed: bool = False) -> None:
+def _absolute_path_text(value: str) -> bool:
+    """Recognize path-shaped argv elements without interpreting their bytes."""
+
+    return bool(
+        re.match(r"^[A-Za-z]:[\\/]", value)
+        or value.startswith("/")
+        or value.startswith("\\\\")
+    )
+
+
+def _reject_pointer_material(
+    value: Any,
+    where: str = "$",
+    *,
+    _path_allowed: bool = False,
+    _argv_element: bool = False,
+) -> None:
     """Reject raw pointer keys, values, and free-text address spellings.
 
     This is intentionally independent of the closed-schema validator.  The
@@ -474,13 +490,25 @@ def _reject_pointer_material(value: Any, where: str = "$", *, _path_allowed: boo
                 child,
                 f"{where}.{raw_key}",
                 _path_allowed=child_path_allowed,
+                _argv_element=(key == "argv"),
             )
         return
     if isinstance(value, list):
         for index, child in enumerate(value):
-            _reject_pointer_material(child, f"{where}[{index}]", _path_allowed=_path_allowed)
+            _reject_pointer_material(
+                child,
+                f"{where}[{index}]",
+                _path_allowed=_path_allowed,
+                _argv_element=_argv_element,
+            )
         return
     if isinstance(value, str) and not _path_allowed and RAW_POINTER_TEXT_PATTERN.search(value):
+        if _argv_element and _absolute_path_text(value):
+            # Exact argv is subsequently compared with the external trust
+            # root.  Permit a hexadecimal-looking directory component only
+            # when the complete element is path-shaped; bare address text or
+            # flag payloads remain forbidden.
+            return
         raise CorrelatorError(f"{where}: raw pointer/address text is forbidden")
 
 

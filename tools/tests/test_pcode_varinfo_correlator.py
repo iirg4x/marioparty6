@@ -508,10 +508,17 @@ class PCodeVarInfoCorrelatorTests(unittest.TestCase):
                 **kwargs,
             )
 
-    def correlate_v3_primary(self, allocator=None, *, pcode_v3=None, **kwargs):
+    def correlate_v3_primary(
+        self,
+        allocator=None,
+        *,
+        pcode_v3=None,
+        temporary_parent=None,
+        **kwargs,
+    ):
         allocator = allocator or allocator_trace()
         pcode_v3 = pcode_v3 or pcode_v3_authenticated_trace()
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=temporary_parent) as directory:
             root = Path(directory)
             allocator_path = root / "allocator.json"
             pcode_path = root / "pcode-v3.json"
@@ -701,6 +708,14 @@ class PCodeVarInfoCorrelatorTests(unittest.TestCase):
         alpha = next(row for row in report["mappings"] if row["allocator"]["name"] == "alpha")
         self.assertEqual(alpha["status"], "UNKNOWN")
         self.assertFalse(report["authentication_gate"]["valid"])
+
+    def test_v3_anchored_argv_path_with_hex_component_is_order_independent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory) / "fixture-0x1234"
+            parent.mkdir()
+            report = self.correlate_v3_primary(temporary_parent=parent)
+        alpha = next(row for row in report["mappings"] if row["allocator"]["name"] == "alpha")
+        self.assertEqual(alpha["status"], "MATCHED_AUTHENTICATED")
 
     def test_v3_duplicate_missing_reused_and_one_to_many_rows_fail_closed(self):
         mutations = {
@@ -1135,6 +1150,8 @@ class PCodeVarInfoCorrelatorTests(unittest.TestCase):
                     self.correlate_v3_primary(
                         pcode_v3=pcode_v3_authenticated_trace(mutate=mutate)
                     )
+        with self.assertRaises(module.CorrelatorError):
+            module._reject_pointer_material({"argv": ["mwcc", "-c", "0x123"]})
 
     def test_conflicting_primary_v3_aliases_return_structured_fail_closed_error(self):
         with tempfile.TemporaryDirectory() as directory:
