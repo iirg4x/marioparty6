@@ -463,13 +463,23 @@ class MatchWorkbenchTests(unittest.TestCase):
         reason: str = "candidate measured",
         focus_symbol: str | list[str] | None = None,
         heavy_seconds: float | None = None,
+        compile_attestation: Path | None = None,
     ) -> dict[str, object]:
+        source_path = source or self.source
+        object_file = object_path or self.object
+        if compile_attestation is None:
+            compile_attestation = self._attestation(
+                candidate_id,
+                source=source_path,
+                object_path=object_file,
+            )
         return module.record_candidate(
             self.root,
             self.workspace,
             candidate_id=candidate_id,
-            source=source or self.source,
-            object_path=object_path or self.object,
+            source=source_path,
+            object_path=object_file,
+            compile_attestation=compile_attestation,
             strict_report=strict_report or self.strict,
             data_report=data_report,
             hypothesis=hypothesis,
@@ -479,6 +489,33 @@ class MatchWorkbenchTests(unittest.TestCase):
             focus_symbol=focus_symbol,
             heavy_seconds=heavy_seconds,
         )
+
+    def _attestation(
+        self,
+        label: str,
+        *,
+        source: Path | None = None,
+        object_path: Path | None = None,
+        workspace: Path | None = None,
+    ) -> Path:
+        workspace_path = workspace or self.workspace
+        session = json.loads((workspace_path / "session.json").read_text(encoding="utf-8"))
+        context = session["request"]["context"]
+        compiler = context.get("compiler")
+        output = self.root / f"{label}-compile-attestation.json"
+        module.create_compile_attestation(
+            self.root,
+            workspace_path,
+            source=source or self.source,
+            object_path=object_path or self.object,
+            output=output,
+            producer_kind=(
+                "external-compile-attestation" if compiler is not None else "test-fixture"
+            ),
+            producer_command=list(context.get("compile_argv", [])),
+            notes="test fixture",
+        )
+        return output
 
     def test_function_telemetry_reports_coverage_rates_and_routes_centrally(self) -> None:
         self._init()
@@ -1520,6 +1557,9 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="c1",
             source=self.source,
             object_path=self.object,
+            compile_attestation=self._attestation(
+                "corrupt-report-c1", workspace=second_workspace
+            ),
             strict_report=self.strict,
             data_report=self.data,
             hypothesis="natural candidate",
@@ -1575,7 +1615,7 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertFalse(object_hit["skip_diagnostics"])
         self.assertEqual(object_hit["diagnostic_reuse_candidate_id"], "c1")
 
-    def test_incomplete_context_advertises_explicit_object_materialization(self) -> None:
+    def test_incomplete_real_compiler_context_cannot_mint_new_evidence(self) -> None:
         compiler = self.root / "compiler.bin"
         compiler.write_bytes(b"compiler")
         manifest = self._manifest()
@@ -1588,50 +1628,382 @@ class MatchWorkbenchTests(unittest.TestCase):
         }
         _write_json(self.manifest, manifest)
         self._init()
-        recorded = self._record()
-
+        with self.assertRaisesRegex(
+            module.MatchError, "authenticated wrapper/tool chain"
+        ):
+            self._attestation("incomplete-context")
         lookup = module.lookup_matches(self.root, self.workspace, self.source)
-        self.assertEqual(lookup["status"], "known_source")
+        self.assertEqual(lookup["status"], "new")
         self.assertFalse(lookup["skip_compile"])
         self.assertFalse(
             json.loads((self.workspace / "session.json").read_text(encoding="utf-8"))["request"]["context"]["context_complete"]
         )
+
+    def test_record_rejects_cross_toolchain_attestation_before_mutation(self) -> None:
+        context_a = self._complete_context()
+        manifest_a = self._manifest(session_id="context-a")
+        manifest_a["context"] = context_a
+        _write_json(self.manifest, manifest_a)
+        workspace_a = self.root / "build" / "context-a"
+        module.init_workspace(self.root, self.manifest, workspace_a)
+
+        compiler_b = self.root / "compiler-b.bin"
+        compiler_b.write_bytes(b"compiler-b")
+        context_b = json.loads(json.dumps(context_a))
+        context_b["toolchain_key"] = "GC/context-b"
+        context_b["compiler"] = _descriptor(compiler_b)
+        context_b["compile_argv"][0] = str(compiler_b)
+        manifest_b_path = self.root / "manifest-b.json"
+        manifest_b = self._manifest(session_id="context-b")
+        manifest_b["context"] = context_b
+        _write_json(manifest_b_path, manifest_b)
+        workspace_b = self.root / "build" / "context-b"
+        module.init_workspace(self.root, manifest_b_path, workspace_b)
+        attestation_b = self._attestation(
+            "context-b-candidate", workspace=workspace_b
+        )
+
+        with self.assertRaisesRegex(
+            module.MatchError, "compiler/wrapper/argv context does not match"
+        ):
+            module.record_candidate(
+                self.root,
+                workspace_a,
+                candidate_id="cross-context",
+                source=self.source,
+                object_path=self.object,
+                compile_attestation=attestation_b,
+                strict_report=self.strict,
+                data_report=self.data,
+                hypothesis="cross-context evidence",
+                axis="compiler-context",
+            )
+        self.assertEqual(list((workspace_a / "candidates").glob("*.json")), [])
         self.assertEqual(
-            lookup["object_reuse_candidate_id"],
-            recorded["record"]["candidate_id"],
+            json.loads((workspace_a / "index.json").read_text(encoding="utf-8"))["sequence"],
+            0,
         )
-        self.assertTrue(lookup["object_reuse_available"])
-        self.assertIn("explicit materialize", lookup["reason"])
 
-        materialized_path = self.root / "materialized.o"
-        materialized = module.materialize_candidate_object(
-            self.root,
-            self.workspace,
-            "c1",
-            self.source,
-            materialized_path,
-        )
-        self.assertEqual(materialized["status"], "materialized")
-        self.assertEqual(materialized_path.read_bytes(), self.object.read_bytes())
-        repeated = module.materialize_candidate_object(
-            self.root,
-            self.workspace,
-            "c1",
-            self.source,
-            materialized_path,
-        )
-        self.assertEqual(repeated["status"], "unchanged")
-
-        source_copy = self.root / "source-copy.c"
-        source_copy.write_bytes(self.source.read_bytes())
-        with self.assertRaisesRegex(module.MatchError, "source/context does not match"):
-            module.materialize_candidate_object(
+    def test_compile_attestation_requires_the_exact_session_argv(self) -> None:
+        manifest = self._manifest(session_id="argv-binding")
+        manifest["context"] = self._complete_context()
+        _write_json(self.manifest, manifest)
+        self._init()
+        with self.assertRaisesRegex(
+            module.MatchError, "exactly equal the immutable session compile_argv"
+        ):
+            module.create_compile_attestation(
                 self.root,
                 self.workspace,
-                "c1",
-                source_copy,
-                self.root / "wrong-context.o",
+                source=self.source,
+                object_path=self.object,
+                output=self.root / "wrong-argv-attestation.json",
+                producer_kind="external-compile-attestation",
+                producer_command=["different-compiler", "-c", str(self.source)],
             )
+        self.assertFalse((self.root / "wrong-argv-attestation.json").exists())
+
+    def test_provenance_audit_flags_unattested_and_cross_context_records(self) -> None:
+        context_a = self._complete_context()
+        manifest_a = self._manifest(session_id="audit-a")
+        manifest_a["context"] = context_a
+        _write_json(self.manifest, manifest_a)
+        workspace_a = self.root / "build" / "audit-a"
+        module.init_workspace(self.root, self.manifest, workspace_a)
+        record_a = module.record_candidate(
+            self.root,
+            workspace_a,
+            candidate_id="legacy",
+            source=self.source,
+            object_path=self.object,
+            compile_attestation=self._attestation(
+                "audit-a-legacy", workspace=workspace_a
+            ),
+            strict_report=self.strict,
+            data_report=self.data,
+            hypothesis="legacy candidate",
+            axis="compiler-context",
+        )["record"]
+
+        candidate_path = workspace_a / "candidates" / "legacy.json"
+        legacy = json.loads(candidate_path.read_text(encoding="utf-8"))
+        legacy.pop("compile_attestation")
+        legacy = _rehash(legacy, "record_sha256")
+        _write_json(candidate_path, legacy)
+        index_path = workspace_a / "index.json"
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        index["last_record_sha256"] = legacy["record_sha256"]
+        _write_json(index_path, _rehash(index, "index_sha256"))
+        audit = module.audit_candidate_provenance(self.root, workspace_a)
+        self.assertEqual(audit["status"], "requires_migration")
+        self.assertEqual(audit["counts"], {
+            "context_match": 0,
+            "cross_context": 0,
+            "unattested": 1,
+        })
+        self.assertEqual(audit["rows"][0]["ordinal"], record_a["ordinal"])
+
+        compiler_b = self.root / "audit-compiler-b.bin"
+        compiler_b.write_bytes(b"compiler-b")
+        context_b = json.loads(json.dumps(context_a))
+        context_b["toolchain_key"] = "GC/audit-b"
+        context_b["compiler"] = _descriptor(compiler_b)
+        context_b["compile_argv"][0] = str(compiler_b)
+        manifest_b_path = self.root / "audit-manifest-b.json"
+        manifest_b = self._manifest(session_id="audit-b")
+        manifest_b["context"] = context_b
+        _write_json(manifest_b_path, manifest_b)
+        workspace_b = self.root / "build" / "audit-b"
+        module.init_workspace(self.root, manifest_b_path, workspace_b)
+        attestation_b = self._attestation(
+            "audit-b-legacy", workspace=workspace_b
+        )
+        provenance_path = self.root / "audit-provenance.json"
+        _write_json(
+            provenance_path,
+            _rehash(
+                {
+                    "schema": module.PROVENANCE_MANIFEST_SCHEMA,
+                    "schema_version": 1,
+                    "candidates": [
+                        {"candidate_id": "legacy", "attestation": str(attestation_b)}
+                    ],
+                },
+                "manifest_sha256",
+            ),
+        )
+        cross = module.audit_candidate_provenance(
+            self.root, workspace_a, manifest=provenance_path
+        )
+        self.assertEqual(cross["counts"]["cross_context"], 1)
+        self.assertEqual(cross["rows"][0]["actual_toolchain_key"], "GC/audit-b")
+        self.assertEqual(cross["rows"][0]["evidence"], "external_manifest")
+
+    def test_provenance_migration_preserves_attempts_and_duplicate_relations(self) -> None:
+        context_a = self._complete_context()
+        manifest_a = self._manifest(session_id="migration-a")
+        manifest_a["context"] = context_a
+        _write_json(self.manifest, manifest_a)
+        workspace_a = self.root / "build" / "migration-a"
+        module.init_workspace(self.root, self.manifest, workspace_a)
+        attestation_a = self._attestation("migration-a", workspace=workspace_a)
+        for candidate_id, seconds in (("first", 1.25), ("duplicate", 2.5), ("wrong", 3.75)):
+            module.record_candidate(
+                self.root,
+                workspace_a,
+                candidate_id=candidate_id,
+                source=self.source,
+                object_path=self.object,
+                compile_attestation=attestation_a,
+                strict_report=self.strict,
+                data_report=self.data,
+                hypothesis=f"attempt {candidate_id}",
+                axis="compiler-context",
+                heavy_seconds=seconds,
+            )
+
+        compiler_b = self.root / "migration-compiler-b.bin"
+        compiler_b.write_bytes(b"compiler-b")
+        context_b = json.loads(json.dumps(context_a))
+        context_b["toolchain_key"] = "GC/migration-b"
+        context_b["compiler"] = _descriptor(compiler_b)
+        context_b["compile_argv"][0] = str(compiler_b)
+        manifest_b_path = self.root / "migration-manifest-b.json"
+        manifest_b = self._manifest(session_id="migration-b")
+        manifest_b["context"] = context_b
+        _write_json(manifest_b_path, manifest_b)
+        workspace_b = self.root / "build" / "migration-b"
+        module.init_workspace(self.root, manifest_b_path, workspace_b)
+        attestation_b = self._attestation("migration-b", workspace=workspace_b)
+        provenance_path = self.root / "migration-provenance.json"
+        _write_json(
+            provenance_path,
+            _rehash(
+                {
+                    "schema": module.PROVENANCE_MANIFEST_SCHEMA,
+                    "schema_version": 1,
+                    "candidates": [
+                        {"candidate_id": "first", "attestation": str(attestation_b)},
+                        {"candidate_id": "duplicate", "attestation": str(attestation_b)},
+                        {"candidate_id": "wrong", "attestation": str(attestation_a)},
+                    ],
+                },
+                "manifest_sha256",
+            ),
+        )
+        migrated = module.migrate_candidate_provenance(
+            self.root,
+            workspace_a,
+            workspace_b,
+            manifest=provenance_path,
+        )
+        self.assertEqual(migrated["counts"], {
+            "imported": 2,
+            "skipped_cross_context": 1,
+        })
+        matrix = module.build_matrix(self.root, workspace_b)
+        rows = {row["candidate_id"]: row for row in matrix["rows"]}
+        self.assertEqual(set(rows), {"first", "duplicate"})
+        self.assertEqual(rows["first"]["heavy_seconds"], 1.25)
+        self.assertEqual(rows["duplicate"]["heavy_seconds"], 2.5)
+        self.assertEqual(rows["duplicate"]["duplicate_of"], "first")
+        repeated = module.migrate_candidate_provenance(
+            self.root,
+            workspace_a,
+            workspace_b,
+            manifest=provenance_path,
+        )
+        self.assertEqual(repeated, migrated)
+
+    def test_compile_provenance_commands_route_directly_and_centrally(self) -> None:
+        context = self._complete_context()
+        manifest = self._manifest(session_id="provenance-cli-source")
+        manifest["context"] = context
+        _write_json(self.manifest, manifest)
+        source_workspace = self.root / "build" / "provenance-cli-source"
+        module.init_workspace(self.root, self.manifest, source_workspace)
+        attestation = self.root / "provenance-cli-attestation.json"
+        output = io.StringIO()
+        argv = [
+            "--root",
+            str(self.root),
+            "attest-compile",
+            "--workspace",
+            str(source_workspace),
+            "--source",
+            str(self.source),
+            "--object",
+            str(self.object),
+            "--output",
+            str(attestation),
+            "--producer-kind",
+            "external-compile-attestation",
+        ]
+        for argument in context["compile_argv"]:
+            argv.append(f"--producer-arg={argument}")
+        argv.append("--json")
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(module.main(argv), 0)
+        self.assertEqual(json.loads(output.getvalue())["status"], "attested")
+        module.record_candidate(
+            self.root,
+            source_workspace,
+            candidate_id="cli-candidate",
+            source=self.source,
+            object_path=self.object,
+            compile_attestation=attestation,
+            strict_report=self.strict,
+            data_report=self.data,
+            hypothesis="CLI provenance candidate",
+            axis="compiler-context",
+        )
+        central = Path(__file__).resolve().parents[1] / "agent.py"
+        audit_receipt = self.root / "provenance-cli-audit.json"
+        process = subprocess.run(
+            [
+                sys.executable,
+                str(central),
+                "--root",
+                str(self.root),
+                "match",
+                "provenance-audit",
+                "--workspace",
+                str(source_workspace),
+                "--output",
+                str(audit_receipt),
+                "--json",
+            ],
+            cwd=central.parent.parent,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr or process.stdout)
+        audit_result = json.loads(process.stdout)
+        self.assertEqual(audit_result["status"], "clean")
+        self.assertEqual(
+            json.loads(audit_receipt.read_text(encoding="utf-8")), audit_result
+        )
+
+        destination_manifest_path = self.root / "provenance-cli-destination.json"
+        destination_manifest = self._manifest(session_id="provenance-cli-destination")
+        destination_manifest["context"] = context
+        _write_json(destination_manifest_path, destination_manifest)
+        destination_workspace = self.root / "build" / "provenance-cli-destination"
+        module.init_workspace(
+            self.root, destination_manifest_path, destination_workspace
+        )
+        provenance_manifest = self.root / "provenance-cli-manifest.json"
+        _write_json(
+            provenance_manifest,
+            _rehash(
+                {
+                    "schema": module.PROVENANCE_MANIFEST_SCHEMA,
+                    "schema_version": 1,
+                    "candidates": [
+                        {
+                            "candidate_id": "cli-candidate",
+                            "attestation": str(attestation),
+                        }
+                    ],
+                },
+                "manifest_sha256",
+            ),
+        )
+        migration_receipt = self.root / "provenance-cli-migration.json"
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "provenance-migrate",
+                        "--source-workspace",
+                        str(source_workspace),
+                        "--destination-workspace",
+                        str(destination_workspace),
+                        "--manifest",
+                        str(provenance_manifest),
+                        "--output",
+                        str(migration_receipt),
+                        "--json",
+                    ]
+                ),
+                0,
+            )
+        migration_result = json.loads(output.getvalue())
+        self.assertEqual(migration_result["counts"]["imported"], 1)
+        self.assertEqual(
+            json.loads(migration_receipt.read_text(encoding="utf-8")),
+            migration_result,
+        )
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(
+                module.main(
+                    [
+                        "--root",
+                        str(self.root),
+                        "provenance-migrate",
+                        "--source-workspace",
+                        str(source_workspace),
+                        "--destination-workspace",
+                        str(destination_workspace),
+                        "--manifest",
+                        str(provenance_manifest),
+                        "--output",
+                        str(migration_receipt),
+                        "--json",
+                    ]
+                ),
+                0,
+            )
+        self.assertEqual(json.loads(output.getvalue()), migration_result)
+        self.assertEqual(
+            json.loads(migration_receipt.read_text(encoding="utf-8")),
+            migration_result,
+        )
 
     def test_materialize_rejects_tampered_candidate_object_cas(self) -> None:
         self._init()
@@ -1768,6 +2140,9 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="c1",
             source=self.source,
             object_path=self.object,
+            compile_attestation=self._attestation(
+                "lookup-cas-c1", workspace=cas_workspace
+            ),
             strict_report=self.strict,
             data_report=self.data,
             hypothesis="natural candidate",
@@ -1786,6 +2161,9 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="c1",
             source=self.source,
             object_path=self.object,
+            compile_attestation=self._attestation(
+                "lookup-corrupt-c1", workspace=corrupt_workspace
+            ),
             strict_report=self.strict,
             data_report=self.data,
             hypothesis="natural candidate",
@@ -1798,8 +2176,9 @@ class MatchWorkbenchTests(unittest.TestCase):
 
     def test_concurrent_record_calls_have_one_record_and_no_partial_state(self) -> None:
         self._init()
+        compile_attestation = self._attestation("concurrent-c1")
         def record() -> dict[str, object]:
-            return self._record()
+            return self._record(compile_attestation=compile_attestation)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             results = list(pool.map(lambda _: record(), range(4)))
@@ -1827,6 +2206,9 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="c1",
             source=self.source,
             object_path=self.object,
+            compile_attestation=self._attestation(
+                "recover-c1", workspace=recovery_workspace
+            ),
             strict_report=self.strict,
             data_report=self.data,
             hypothesis="natural candidate",
@@ -1844,6 +2226,12 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="c2",
             source=source2,
             object_path=object2,
+            compile_attestation=self._attestation(
+                "recover-c2",
+                source=source2,
+                object_path=object2,
+                workspace=recovery_workspace,
+            ),
             strict_report=strict2,
             data_report=None,
             hypothesis="natural candidate",
@@ -1867,6 +2255,12 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="c2",
             source=source2,
             object_path=object2,
+            compile_attestation=self._attestation(
+                "recover-c2",
+                source=source2,
+                object_path=object2,
+                workspace=recovery_workspace,
+            ),
             strict_report=strict2,
             data_report=None,
             hypothesis="natural candidate",
@@ -2501,6 +2895,7 @@ class MatchWorkbenchTests(unittest.TestCase):
                 candidate_id="focused",
                 source=self.source,
                 object_path=self.object,
+                compile_attestation=self._attestation("focused"),
                 strict_report=focused_strict,
                 data_report=focused_data,
                 hypothesis="natural candidate",
@@ -2510,6 +2905,7 @@ class MatchWorkbenchTests(unittest.TestCase):
             "unchanged",
         )
         cli_output = io.StringIO()
+        cli_attestation = self._attestation("cli-focused")
         with contextlib.redirect_stdout(cli_output):
             self.assertEqual(
                 module.main(
@@ -2525,6 +2921,8 @@ class MatchWorkbenchTests(unittest.TestCase):
                         str(self.source),
                         "--object",
                         str(self.object),
+                        "--compile-attestation",
+                        str(cli_attestation),
                         "--strict-report",
                         str(focused_strict),
                         "--data-report",
@@ -3561,6 +3959,7 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_id="multi",
             source=self.source,
             object_path=self.object,
+            compile_attestation=self._attestation("multi"),
             strict_report=strict,
             data_report=data,
             hypothesis="natural candidate",
@@ -3585,6 +3984,8 @@ class MatchWorkbenchTests(unittest.TestCase):
         _write_json(candidate_strict, _assessment_report(focus_match=100.0))
         _write_json(baseline_data, _assessment_report(focus_match=75.0))
         _write_json(candidate_data, _assessment_report(focus_match=100.0))
+        self._init()
+        compile_attestation = self._attestation("prepare-ready")
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
@@ -3611,6 +4012,8 @@ class MatchWorkbenchTests(unittest.TestCase):
                     str(self.source),
                     "--object",
                     str(self.object),
+                    "--compile-attestation",
+                    str(compile_attestation),
                     "--hypothesis",
                     "natural candidate",
                     "--axis",
@@ -3633,7 +4036,11 @@ class MatchWorkbenchTests(unittest.TestCase):
         self.assertEqual(request["reason"], "accepted report pair")
         self.assertEqual(result["artifacts"]["source"]["sha256"], _sha256(self.source))
         self.assertEqual(result["artifacts"]["object"]["sha256"], _sha256(self.object))
-        self.assertFalse(self.workspace.exists())
+        self.assertEqual(list((self.workspace / "candidates").glob("*.json")), [])
+        self.assertEqual(
+            json.loads((self.workspace / "index.json").read_text(encoding="utf-8"))["sequence"],
+            0,
+        )
 
         central = Path(__file__).resolve().parents[1] / "agent.py"
         process = subprocess.run(
@@ -3658,6 +4065,8 @@ class MatchWorkbenchTests(unittest.TestCase):
                 str(self.source),
                 "--object",
                 str(self.object),
+                "--compile-attestation",
+                str(compile_attestation),
                 "--hypothesis",
                 "natural candidate",
                 "--axis",
@@ -3683,6 +4092,8 @@ class MatchWorkbenchTests(unittest.TestCase):
             candidate_strict,
             _assessment_report(focus_match=100.0, sibling_match=95.0),
         )
+        self._init()
+        compile_attestation = self._attestation("prepare-rejected")
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
@@ -3705,6 +4116,8 @@ class MatchWorkbenchTests(unittest.TestCase):
                     str(self.source),
                     "--object",
                     str(self.object),
+                    "--compile-attestation",
+                    str(compile_attestation),
                     "--hypothesis",
                     "natural candidate",
                     "--axis",
@@ -3721,7 +4134,11 @@ class MatchWorkbenchTests(unittest.TestCase):
             result["assessment"]["regressions"][0]["reason"],
             "previously_exact_sibling_regressed",
         )
-        self.assertFalse(self.workspace.exists())
+        self.assertEqual(list((self.workspace / "candidates").glob("*.json")), [])
+        self.assertEqual(
+            json.loads((self.workspace / "index.json").read_text(encoding="utf-8"))["sequence"],
+            0,
+        )
 
     def test_assess_rejects_previously_exact_sibling_regression(self) -> None:
         baseline = self.root / "regression-baseline.json"

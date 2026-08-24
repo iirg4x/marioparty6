@@ -60,7 +60,42 @@ be re-authenticated. With complete frozen compile context, a known
 source/context can skip compilation; a known object can skip diagnostics.
 Neither result advances proof authority.
 
-### 3. Record one candidate and its reports
+### 3. Seal the compiler provenance
+
+Before a compiled object can be recorded, seal its producer context in a
+`match_workbench_compile_attestation/v1` file:
+
+```sh
+rtk python tools/agent.py match attest-compile \
+  --workspace build/match \
+  --source build/match-candidate.c \
+  --object build/match-candidate.o \
+  --output build/match-candidate.compile-attestation.json \
+  --producer-kind serialized-build \
+  --producer-argv-from-session --json
+```
+
+`--producer-argv-from-session` copies the immutable session argument vector.
+Alternatively, repeat `--producer-arg` in exact argument order; for a real
+compiler, the resulting array must equal the immutable session's
+`compile_argv` exactly. The compiler and wrapper executables remain separately
+bound by `compiler` and `compile_tools`, so `compile_argv` follows the session's
+documented convention (arguments only or a wrapper-inclusive vector).
+The attestation also binds the session's toolchain key, compiler descriptor,
+all wrapper/tool descriptors in `compile_tools`, compile working directory,
+response-file expansion binding, source bytes, and object bytes. The document
+is self-hashed with `attestation_sha256` and always has
+`authority_advanced:false`.
+
+`attest-compile` is an attestation boundary, not a compiler launcher and not a
+proof that an operating-system process ran. The caller is responsible for
+running the declared producer command in the declared working directory. A
+real compiler session with missing `compile_tools`, missing `compile_cwd`, an
+empty command, a command different from `compile_argv`, changed source/object
+bytes, or a changed compiler/wrapper descriptor fails before writing an
+attestation. Legacy incomplete sessions therefore cannot mint new evidence.
+
+### 4. Record one candidate and its reports
 
 After the independently run compile/comparison, record the candidate:
 
@@ -70,18 +105,94 @@ rtk python tools/agent.py match record \
   --candidate-id c1 \
   --source build/match-candidate.c \
   --object build/match-candidate.o \
+  --compile-attestation build/match-candidate.compile-attestation.json \
   --strict-report build/match-strict.json \
   --data-report build/match-data.json \
   --hypothesis "natural candidate" \
   --axis "register-lifetime" --json
 ```
 
-`--data-report` is optional; `--strict-report`, `--hypothesis`, and `--axis`
-are required. Source and object blobs are reused by SHA-256. Reports are
-stored once in deterministic gzip form, with their raw and compressed hashes,
-and candidate records are immutable, self-hashed, and linked in order.
+`--data-report` is optional; `--compile-attestation`, `--strict-report`,
+`--hypothesis`, and `--axis` are required. The record operation validates the
+attestation against the destination session before mutating the candidate
+index or CAS. A GC/2.7 object therefore cannot be recorded in a GC/2.6 session,
+even when the source, function, or object name is identical. Source and object
+blobs are reused by SHA-256. Reports are stored once in deterministic gzip
+form, with their raw and compressed hashes, and candidate records are
+immutable, self-hashed, and linked in order.
 
-### 4. Diagnose bounded, authenticated read-only jobs
+`prepare` uses the same boundary and requires `--compile-attestation`; it
+validates the immutable initialized workspace and only emits a guarded record
+request. It never creates the workspace or records the candidate.
+
+### 5. Audit and migrate legacy compiler provenance
+
+Older workbenches remain readable for history and matrix telemetry, but an
+unattested legacy record cannot drive `lookup`, `materialize`, or diagnosis
+reuse. Classify a workspace first:
+
+```sh
+rtk python tools/agent.py match provenance-audit \
+  --workspace build/legacy-match \
+  --manifest build/legacy-provenance.json \
+  --output build/legacy-provenance-audit.json --json
+```
+
+The optional closed, self-hashed `match_workbench_provenance_manifest/v1`
+maps candidate IDs to independently reconstructed compile attestations:
+
+```json
+{
+  "schema": "match_workbench_provenance_manifest/v1",
+  "schema_version": 1,
+  "candidates": [
+    {
+      "candidate_id": "player-movenum-memcpy-rotx-v495",
+      "attestation": "build/v495.compile-attestation.json"
+    }
+  ],
+  "manifest_sha256": "SELF_HASH"
+}
+```
+
+`provenance-audit` emits self-hashed
+`match_workbench_provenance_audit/v1` JSON in immutable ordinal order. Every
+row is `context_match`, `cross_context`, or `unattested`, and reports the
+session/actual context hashes, toolchain key, compiler SHA-256, object/source
+hashes, duplicate relation, and evidence source. Unknown or repeated candidate
+IDs, malformed attestations, artifact mismatches, and manifest tampering fail
+closed.
+When `--output` is supplied, the exact result is written once as a durable
+receipt. Repeating identical evidence is idempotent; conflicting bytes at that
+path fail closed.
+
+Create a clean destination session for the actual compiler context, then
+import only records whose external attestations match it:
+
+```sh
+rtk python tools/agent.py match provenance-migrate \
+  --source-workspace build/legacy-match \
+  --destination-workspace build/match-gc27 \
+  --manifest build/legacy-provenance.json \
+  --output build/legacy-provenance-migration.json --json
+```
+
+`provenance-migrate` emits self-hashed
+`match_workbench_provenance_migration/v1` JSON. It never changes the source
+workspace. Imported records retain hypotheses, outcomes, focus symbols,
+reports, heavy-time telemetry, source ordinals, and source-record receipts;
+source/object/report CAS is revalidated, and duplicate-object/source relations
+are deterministically re-derived in source ordinal order. Cross-context rows
+are listed as `skipped_cross_context`, not coerced. Repeating the same migration
+is idempotent. A destination candidate collision, source/context producing a
+different object, CAS tampering, report corruption, unknown manifest entry, or
+non-final partial append fails closed. Migration and audit remain diagnostic
+and always report `authority_advanced:false`. Migration `--output` uses the
+same write-once receipt contract as the audit command. Results describe the
+authenticated final imported set, so an idempotent rerun is byte-identical; a
+different session, manifest, or candidate set fails closed.
+
+### 6. Diagnose bounded, authenticated read-only jobs
 
 Declare jobs in a `match_workbench_jobs/v1` file. Each job must identify its
 kind and safe resource class, authenticated executable, `argv`, real `cwd`,
@@ -102,7 +213,7 @@ content fingerprint. Identical fingerprints are reused or deduplicated within
 the run. The `MATCH_WORKBENCH_READ_ONLY=1` environment marker expresses intent;
 it is not enforcement or a sandbox boundary.
 
-### 5. Render the deterministic matrix
+### 7. Render the deterministic matrix
 
 ```sh
 rtk python tools/agent.py match matrix \
@@ -115,7 +226,7 @@ order. Rows include strict/data compact focus, diagnostic status, and a
 duplicate/diagnosed counts, raw versus unique compressed report bytes and
 storage reduction, diagnostic seconds, and exact-focus bytes per heavy minute.
 
-### 6. Measure one function's recovery campaign
+### 8. Measure one function's recovery campaign
 
 ```sh
 rtk python tools/agent.py match telemetry \
@@ -137,7 +248,7 @@ is reported separately from compiler/process throughput. This report is
 diagnostic telemetry only; it does not authenticate physical relocations,
 consumer closure, or promotion authority.
 
-### 7. Reduce one function's objdiff cascade
+### 9. Reduce one function's objdiff cascade
 
 ```sh
 rtk python tools/agent.py match cascade \
@@ -161,7 +272,7 @@ candidate branches directly to that epilogue. It recommends testing
 source provenance or retention authority; strict/data/physical-relocation,
 section, consumer, and protected-sibling gates remain mandatory.
 
-### 8. Decode typed pool-owner mismatches
+### 10. Decode typed pool-owner mismatches
 
 ```sh
 rtk python tools/agent.py match pools \
@@ -185,7 +296,7 @@ semantic/contract mismatches. Such a result directs investigation toward
 authenticated constant binding or TU first-use chronology; it never authorizes
 inventing an extern label or reordering unrelated source.
 
-### 9. Plan factorial source-axis interactions
+### 11. Plan factorial source-axis interactions
 
 ```sh
 rtk python tools/agent.py match interactions \

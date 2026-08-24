@@ -49,6 +49,10 @@ FUNCTION_TELEMETRY_SCHEMA = "match_workbench_function_telemetry/v1"
 CAUSAL_REDUCER_SCHEMA = "match_workbench_causal_reducer/v1"
 POOL_DECODER_SCHEMA = "match_workbench_pool_decoder/v1"
 INTERACTION_PLANNER_SCHEMA = "match_workbench_interaction_plan/v1"
+COMPILE_ATTESTATION_SCHEMA = "match_workbench_compile_attestation/v1"
+PROVENANCE_MANIFEST_SCHEMA = "match_workbench_provenance_manifest/v1"
+PROVENANCE_AUDIT_SCHEMA = "match_workbench_provenance_audit/v1"
+PROVENANCE_MIGRATION_SCHEMA = "match_workbench_provenance_migration/v1"
 INDEX_SCHEMA = "match_workbench_index/v1"
 COMPILE_INPUT_SCHEMA = "match_workbench_compile_input/v1"
 ASSESSMENT_SCHEMA = "match_workbench_assessment/v1"
@@ -2404,6 +2408,836 @@ def _context_key(
     return _sha256_bytes(_canonical(value))
 
 
+def _compile_context_projection(context: Mapping[str, Any], label: str) -> dict[str, Any]:
+    """Return the compile-producer identity that candidate records must attest.
+
+    The full session context contains dependency and output bindings used for
+    compile reuse.  Candidate provenance has a narrower purpose: prove which
+    compiler/tool wrapper/argv/cwd produced the supplied object.  Keeping this
+    projection explicit lets old incomplete sessions remain auditable while
+    preventing an object made by another compiler from inheriting the session
+    identity merely because it was recorded there.
+    """
+
+    toolchain_key = _text(context.get("toolchain_key"), f"{label}.toolchain_key")
+    compiler = context.get("compiler")
+    if compiler is not None:
+        _closed(
+            compiler,
+            allowed={"path", "size_bytes", "sha256", "identity"},
+            required={"path", "size_bytes", "sha256"},
+            label=f"{label}.compiler",
+        )
+        _text(compiler.get("path"), f"{label}.compiler.path")
+        _integer(compiler.get("size_bytes"), f"{label}.compiler.size_bytes")
+        _sha256(compiler.get("sha256"), f"{label}.compiler.sha256")
+    argv = context.get("compile_argv", [])
+    if not isinstance(argv, list) or any(not isinstance(arg, str) for arg in argv):
+        _fail(f"{label}.compile_argv must be an array of strings")
+    tools = context.get("compile_tools", [])
+    if tools is None:
+        tools = []
+    if not isinstance(tools, list):
+        _fail(f"{label}.compile_tools must be an array")
+    normalized_tools: list[dict[str, Any]] = []
+    for index, tool in enumerate(tools):
+        _closed(
+            tool,
+            allowed={"path", "size_bytes", "sha256", "identity"},
+            required={"path", "size_bytes", "sha256"},
+            label=f"{label}.compile_tools[{index}]",
+        )
+        _text(tool.get("path"), f"{label}.compile_tools[{index}].path")
+        _integer(tool.get("size_bytes"), f"{label}.compile_tools[{index}].size_bytes")
+        _sha256(tool.get("sha256"), f"{label}.compile_tools[{index}].sha256")
+        normalized_tools.append(copy.deepcopy(dict(tool)))
+    cwd = context.get("compile_cwd")
+    if cwd is not None and not isinstance(cwd, Mapping):
+        _fail(f"{label}.compile_cwd must be an object or null")
+    argv_binding = context.get("argv_binding")
+    if argv_binding is not None and not isinstance(argv_binding, Mapping):
+        _fail(f"{label}.argv_binding must be an object or null")
+    return {
+        "toolchain_key": toolchain_key,
+        "compiler": copy.deepcopy(dict(compiler)) if isinstance(compiler, Mapping) else None,
+        "compile_tools": normalized_tools,
+        "compile_argv": list(argv),
+        "compile_cwd": copy.deepcopy(dict(cwd)) if isinstance(cwd, Mapping) else None,
+        "argv_binding": (
+            copy.deepcopy(dict(argv_binding))
+            if isinstance(argv_binding, Mapping)
+            else None
+        ),
+    }
+
+
+def _compile_context_sha256(context: Mapping[str, Any], label: str) -> str:
+    return _sha256_bytes(_canonical(_compile_context_projection(context, label)))
+
+
+def _artifact_descriptor_matches(
+    descriptor_value: Mapping[str, Any], snapshot: Mapping[str, Any], label: str
+) -> None:
+    _closed(
+        descriptor_value,
+        allowed={"path", "size_bytes", "sha256"},
+        required={"path", "size_bytes", "sha256"},
+        label=label,
+    )
+    if (
+        _normalized_compile_input_path(_text(descriptor_value.get("path"), f"{label}.path"))
+        != _normalized_compile_input_path(_text(snapshot.get("path"), f"{label} snapshot.path"))
+        or _integer(descriptor_value.get("size_bytes"), f"{label}.size_bytes")
+        != _integer(snapshot.get("size_bytes"), f"{label} snapshot.size_bytes")
+        or _sha256(descriptor_value.get("sha256"), f"{label}.sha256")
+        != _sha256(snapshot.get("sha256"), f"{label} snapshot.sha256")
+    ):
+        _fail(f"{label} is not bound to the supplied artifact")
+
+
+def _validate_compile_attestation(
+    value: Any,
+    *,
+    source_snapshot: Mapping[str, Any],
+    object_snapshot: Mapping[str, Any],
+    expected_context: Mapping[str, Any] | None,
+    label: str,
+) -> dict[str, Any]:
+    _verify_self_hash(value, "attestation_sha256", label)
+    item = _closed(
+        value,
+        allowed={
+            "schema", "schema_version", "context", "context_sha256",
+            "source", "object", "producer", "authority_advanced",
+            "attestation_sha256",
+        },
+        required={
+            "schema", "schema_version", "context", "context_sha256",
+            "source", "object", "producer", "authority_advanced",
+            "attestation_sha256",
+        },
+        label=label,
+    )
+    if item.get("schema") != COMPILE_ATTESTATION_SCHEMA or item.get("schema_version") != 1:
+        _fail(f"{label} schema is unsupported")
+    if item.get("authority_advanced") is not False:
+        _fail(f"{label} must not advance authority")
+    context = _compile_context_projection(
+        _closed(
+            item.get("context"),
+            allowed={
+                "toolchain_key", "compiler", "compile_tools", "compile_argv",
+                "compile_cwd", "argv_binding",
+            },
+            required={
+                "toolchain_key", "compiler", "compile_tools", "compile_argv",
+                "compile_cwd", "argv_binding",
+            },
+            label=f"{label}.context",
+        ),
+        f"{label}.context",
+    )
+    context_sha = _sha256(item.get("context_sha256"), f"{label}.context_sha256")
+    if context_sha != _sha256_bytes(_canonical(context)):
+        _fail(f"{label}.context_sha256 does not match context")
+    if expected_context is not None:
+        expected = _compile_context_projection(expected_context, "session compile context")
+        if context != expected:
+            _fail(
+                f"{label} compiler/wrapper/argv context does not match the immutable session"
+            )
+    source_value = item.get("source")
+    object_value = item.get("object")
+    if not isinstance(source_value, Mapping) or not isinstance(object_value, Mapping):
+        _fail(f"{label} source/object descriptors are required")
+    _artifact_descriptor_matches(source_value, source_snapshot, f"{label}.source")
+    _artifact_descriptor_matches(object_value, object_snapshot, f"{label}.object")
+    producer = _closed(
+        item.get("producer"),
+        allowed={"kind", "command", "command_sha256", "notes"},
+        required={"kind", "command", "command_sha256", "notes"},
+        label=f"{label}.producer",
+    )
+    kind = _text(producer.get("kind"), f"{label}.producer.kind")
+    if kind not in {"serialized-build", "external-compile-attestation", "test-fixture"}:
+        _fail(f"{label}.producer.kind is unsupported")
+    if kind == "test-fixture" and context.get("compiler") is not None:
+        _fail(f"{label} test-fixture producer cannot attest a real compiler")
+    command = producer.get("command")
+    if not isinstance(command, list) or any(not isinstance(arg, str) for arg in command):
+        _fail(f"{label}.producer.command must be an array of strings")
+    if context.get("compiler") is not None and not command:
+        _fail(f"{label}.producer.command cannot be empty for a compiled object")
+    if context.get("compiler") is not None and command != context["compile_argv"]:
+        _fail(
+            f"{label}.producer.command must exactly equal the attested compile_argv"
+        )
+    if _sha256(producer.get("command_sha256"), f"{label}.producer.command_sha256") != _sha256_bytes(
+        _canonical(command)
+    ):
+        _fail(f"{label}.producer.command_sha256 does not match command")
+    notes = producer.get("notes")
+    if notes is not None and not isinstance(notes, str):
+        _fail(f"{label}.producer.notes must be a string or null")
+    return copy.deepcopy(dict(item))
+
+
+def _load_compile_attestation(
+    root: Path,
+    path: Path | str,
+    *,
+    source_snapshot: Mapping[str, Any],
+    object_snapshot: Mapping[str, Any],
+    expected_context: Mapping[str, Any] | None,
+    label: str = "compile attestation",
+) -> dict[str, Any]:
+    attestation_path = _resolve(path, root)
+    snapshot = _snapshot(attestation_path, label)
+    result = _validate_compile_attestation(
+        _load_json(attestation_path, label),
+        source_snapshot=source_snapshot,
+        object_snapshot=object_snapshot,
+        expected_context=expected_context,
+        label=label,
+    )
+    _recheck_live_snapshot(attestation_path, snapshot, label)
+    return result
+
+
+def _require_candidate_compile_attestation(
+    candidate: Mapping[str, Any], session: Mapping[str, Any]
+) -> Mapping[str, Any]:
+    attestation = candidate.get("compile_attestation")
+    if not isinstance(attestation, Mapping):
+        _fail(
+            "candidate compile provenance is unavailable; run provenance-audit "
+            "and migrate authenticated records before lookup/reuse"
+        )
+    return _validate_compile_attestation(
+        attestation,
+        source_snapshot=candidate["source"],
+        object_snapshot=candidate["object"],
+        expected_context=session["request"]["context"],
+        label="candidate compile attestation",
+    )
+
+
+def create_compile_attestation(
+    root: Path,
+    workspace: Path | str,
+    *,
+    source: Path | str,
+    object_path: Path | str,
+    output: Path | str,
+    producer_kind: str,
+    producer_command: Sequence[str] | None,
+    notes: str | None = None,
+) -> dict[str, Any]:
+    """Seal the actual producer context before a candidate can be recorded.
+
+    This is an attestation boundary, not a compiler launcher.  The caller must
+    name the workspace that describes the compiler invocation actually used.
+    Recording into any other session then fails on the context fingerprint.
+    Real compiler attestations require the wrapper/tool chain and cwd to be
+    explicit; the incomplete legacy session shape cannot mint new evidence.
+    """
+
+    root = root.resolve()
+    destination = _workspace(workspace, root)
+    session = _load_session(destination, root)
+    source_path = _resolve(source, root)
+    object_file = _resolve(object_path, root)
+    source_snapshot = _snapshot(source_path, "attested candidate source")
+    object_snapshot = _snapshot(object_file, "attested candidate object")
+    _validate_candidate_artifact(
+        source_path, source_snapshot, session, "attested candidate source"
+    )
+    _validate_candidate_artifact(
+        object_file, object_snapshot, session, "attested candidate object"
+    )
+    context = _compile_context_projection(
+        session["request"]["context"], "session compile context"
+    )
+    kind = _text(producer_kind, "producer_kind")
+    if kind not in {"serialized-build", "external-compile-attestation", "test-fixture"}:
+        _fail("producer_kind is unsupported")
+    if context.get("compiler") is not None:
+        if not context.get("compile_tools"):
+            _fail(
+                "real compiler attestation requires an authenticated wrapper/tool chain"
+            )
+        if context.get("compile_cwd") is None:
+            _fail("real compiler attestation requires an authenticated compile cwd")
+    command = list(
+        context["compile_argv"]
+        if producer_command is None
+        else producer_command
+    )
+    if any(not isinstance(arg, str) for arg in command):
+        _fail("producer_command must contain only strings")
+    if context.get("compiler") is not None and not command:
+        _fail("producer_command cannot be empty for a compiled object")
+    if context.get("compiler") is not None and command != context["compile_argv"]:
+        _fail("producer_command must exactly equal the immutable session compile_argv")
+    if notes is not None and not isinstance(notes, str):
+        _fail("attestation notes must be a string or null")
+    body = {
+        "schema": COMPILE_ATTESTATION_SCHEMA,
+        "schema_version": 1,
+        "context": context,
+        "context_sha256": _sha256_bytes(_canonical(context)),
+        "source": {
+            key: source_snapshot[key] for key in ("path", "size_bytes", "sha256")
+        },
+        "object": {
+            key: object_snapshot[key] for key in ("path", "size_bytes", "sha256")
+        },
+        "producer": {
+            "kind": kind,
+            "command": command,
+            "command_sha256": _sha256_bytes(_canonical(command)),
+            "notes": notes,
+        },
+        "authority_advanced": False,
+    }
+    attestation = _with_self_hash(body, "attestation_sha256")
+    output_path = _resolve(output, root)
+    _validate_target_path(
+        output_path, allow_missing_leaf=True, label="compile attestation output"
+    )
+    if output_path.exists():
+        existing = _load_json(output_path, "compile attestation output")
+        if existing == attestation:
+            return {
+                "status": "unchanged",
+                "path": os.fspath(output_path),
+                "attestation": attestation,
+                "authority_advanced": False,
+            }
+        _fail("compile attestation output already records different evidence")
+    _write_new(output_path, _canonical(attestation))
+    _recheck_live_snapshot(source_path, source_snapshot, "attested candidate source")
+    _recheck_live_snapshot(object_file, object_snapshot, "attested candidate object")
+    return {
+        "status": "attested",
+        "path": os.fspath(output_path),
+        "attestation": attestation,
+        "authority_advanced": False,
+    }
+
+
+def _provenance_manifest(root: Path, path: Path | str) -> tuple[dict[str, Path], dict[str, Any]]:
+    manifest_path = _resolve(path, root)
+    snapshot = _snapshot(manifest_path, "provenance manifest")
+    value = _load_json(manifest_path, "provenance manifest")
+    _verify_self_hash(value, "manifest_sha256", "provenance manifest")
+    item = _closed(
+        value,
+        allowed={"schema", "schema_version", "candidates", "manifest_sha256"},
+        required={"schema", "schema_version", "candidates", "manifest_sha256"},
+        label="provenance manifest",
+    )
+    if item.get("schema") != PROVENANCE_MANIFEST_SCHEMA or item.get("schema_version") != 1:
+        _fail("provenance manifest schema is unsupported")
+    candidates = item.get("candidates")
+    if not isinstance(candidates, list):
+        _fail("provenance manifest candidates must be an array")
+    result: dict[str, Path] = {}
+    for index, row in enumerate(candidates):
+        entry = _closed(
+            row,
+            allowed={"candidate_id", "attestation"},
+            required={"candidate_id", "attestation"},
+            label=f"provenance manifest candidates[{index}]",
+        )
+        candidate_id = _identifier(entry.get("candidate_id"), f"provenance manifest candidates[{index}].candidate_id")
+        if candidate_id in result:
+            _fail(f"provenance manifest repeats candidate_id {candidate_id}")
+        result[candidate_id] = _resolve(
+            _text(entry.get("attestation"), f"provenance manifest candidates[{index}].attestation"),
+            root,
+        )
+    _recheck_live_snapshot(manifest_path, snapshot, "provenance manifest")
+    return result, copy.deepcopy(dict(item))
+
+
+def audit_candidate_provenance(
+    root: Path,
+    workspace: Path | str,
+    *,
+    manifest: Path | str | None = None,
+) -> dict[str, Any]:
+    """Classify immutable records by their attested producer context."""
+
+    root = root.resolve()
+    destination = _workspace(workspace, root)
+    session = _load_session(destination, root)
+    index = _load_index(destination, session)
+    attestations: dict[str, Path] = {}
+    manifest_value = None
+    if manifest is not None:
+        attestations, manifest_value = _provenance_manifest(root, manifest)
+    unknown = sorted(set(attestations) - set(index["candidates"]))
+    if unknown:
+        _fail(f"provenance manifest names unknown candidate {unknown[0]}")
+    expected_context = _compile_context_projection(
+        session["request"]["context"], "session compile context"
+    )
+    expected_sha = _sha256_bytes(_canonical(expected_context))
+    rows: list[dict[str, Any]] = []
+    counts = {"context_match": 0, "cross_context": 0, "unattested": 0}
+    candidates = sorted(
+        (
+            _load_candidate(destination, candidate_id, session)
+            for candidate_id in index["candidates"]
+        ),
+        key=lambda row: (int(row["ordinal"]), str(row["candidate_id"])),
+    )
+    for candidate in candidates:
+        candidate_id = str(candidate["candidate_id"])
+        attestation: Mapping[str, Any] | None = None
+        evidence = "none"
+        if candidate_id in attestations:
+            attestation = _load_compile_attestation(
+                root,
+                attestations[candidate_id],
+                source_snapshot=candidate["source"],
+                object_snapshot=candidate["object"],
+                expected_context=None,
+                label=f"compile attestation for {candidate_id}",
+            )
+            evidence = "external_manifest"
+        elif isinstance(candidate.get("compile_attestation"), Mapping):
+            attestation = _validate_compile_attestation(
+                candidate["compile_attestation"],
+                source_snapshot=candidate["source"],
+                object_snapshot=candidate["object"],
+                expected_context=None,
+                label=f"embedded compile attestation for {candidate_id}",
+            )
+            evidence = "embedded_record"
+        if attestation is None:
+            status = "unattested"
+            actual_sha = None
+            actual_toolchain = None
+            actual_compiler_sha = None
+        else:
+            actual_sha = str(attestation["context_sha256"])
+            status = "context_match" if actual_sha == expected_sha else "cross_context"
+            actual_context = attestation["context"]
+            actual_toolchain = actual_context.get("toolchain_key")
+            compiler = actual_context.get("compiler")
+            actual_compiler_sha = (
+                compiler.get("sha256") if isinstance(compiler, Mapping) else None
+            )
+        counts[status] += 1
+        rows.append(
+            {
+                "candidate_id": candidate_id,
+                "ordinal": candidate["ordinal"],
+                "status": status,
+                "evidence": evidence,
+                "source_sha256": candidate["source"]["sha256"],
+                "object_sha256": candidate["object"]["sha256"],
+                "duplicate_of": candidate.get("duplicate_of"),
+                "session_context_sha256": expected_sha,
+                "actual_context_sha256": actual_sha,
+                "session_toolchain_key": expected_context["toolchain_key"],
+                "actual_toolchain_key": actual_toolchain,
+                "actual_compiler_sha256": actual_compiler_sha,
+            }
+        )
+    result = _with_self_hash(
+        {
+            "schema": PROVENANCE_AUDIT_SCHEMA,
+            "schema_version": 1,
+            "session_id": session["session_id"],
+            "session_sha256": session["session_sha256"],
+            "workspace": os.fspath(destination),
+            "manifest_sha256": (
+                manifest_value.get("manifest_sha256")
+                if isinstance(manifest_value, Mapping)
+                else None
+            ),
+            "counts": counts,
+            "rows": rows,
+            "status": (
+                "clean"
+                if counts["cross_context"] == 0 and counts["unattested"] == 0
+                else "requires_migration"
+            ),
+            "authority_advanced": False,
+        },
+        "audit_sha256",
+    )
+    return result
+
+
+def _persist_provenance_result(
+    root: Path,
+    output: Path | str | None,
+    result: Mapping[str, Any],
+    *,
+    label: str,
+) -> None:
+    """Optionally persist one self-hashed provenance receipt fail-closed."""
+
+    if output is None:
+        return
+    output_path = _resolve(output, root)
+    _validate_target_path(output_path, allow_missing_leaf=True, label=label)
+    if output_path.exists():
+        existing = _load_json(output_path, label)
+        if existing == result:
+            return
+        _fail(f"{label} already records different evidence")
+    _write_new(output_path, _canonical(result))
+
+
+def _migrate_report_binding(
+    source_workspace: Path,
+    destination_workspace: Path,
+    report: Mapping[str, Any] | None,
+    destination_session: Mapping[str, Any],
+    *,
+    label: str,
+    focus_symbols: Sequence[str],
+) -> dict[str, Any] | None:
+    if report is None:
+        return None
+    compressed_path = _contained(
+        source_workspace, report.get("cas_path"), f"source {label} report CAS"
+    )
+    # Decompress through a private temporary file and let _store_report apply
+    # the destination session's size/compact-summary gates.  The source gzip
+    # descriptor was already verified by _load_candidate.
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "wb",
+            dir=destination_workspace / "job-output",
+            prefix=f".migration-{label}.",
+            suffix=".json",
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            try:
+                with gzip.open(compressed_path, "rb") as source_stream:
+                    for block in iter(lambda: source_stream.read(1024 * 1024), b""):
+                        stream.write(block)
+            except (OSError, EOFError) as exc:
+                raise MatchError(f"source {label} report CAS is invalid gzip: {exc}") from exc
+            stream.flush()
+            os.fsync(stream.fileno())
+        raw_snapshot = _snapshot(temporary, f"migrated {label} report")
+        if (
+            raw_snapshot["sha256"] != report.get("raw_sha256")
+            or raw_snapshot["size_bytes"] != report.get("raw_size_bytes")
+        ):
+            _fail(f"source {label} report raw binding mismatch")
+        return _store_report(
+            destination_workspace,
+            temporary,
+            destination_session,
+            f"migrated {label} report",
+            focus_symbol=focus_symbols,
+        )
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+
+
+def migrate_candidate_provenance(
+    root: Path,
+    source_workspace: Path | str,
+    destination_workspace: Path | str,
+    *,
+    manifest: Path | str,
+) -> dict[str, Any]:
+    """Import only records attested for the destination compiler context.
+
+    Source history is immutable and remains untouched.  Imported records are
+    re-keyed to the destination session, retain attempt metadata and report
+    CAS evidence, and carry an explicit receipt back to the source record.
+    Duplicate relations are re-derived in source ordinal order and checked
+    against imported predecessors.
+    """
+
+    root = root.resolve()
+    source_path = _workspace(source_workspace, root)
+    destination_path = _workspace(destination_workspace, root)
+    if source_path == destination_path:
+        _fail("provenance migration requires distinct source and destination workspaces")
+    source_session = _load_session(source_path, root)
+    source_index = _load_index(source_path, source_session)
+    destination_session = _load_session(destination_path, root)
+    attestations, manifest_value = _provenance_manifest(root, manifest)
+    unknown = sorted(set(attestations) - set(source_index["candidates"]))
+    if unknown:
+        _fail(f"provenance manifest names unknown candidate {unknown[0]}")
+    if not attestations:
+        _fail("provenance migration manifest contains no candidates")
+    expected_context = _compile_context_projection(
+        destination_session["request"]["context"], "destination compile context"
+    )
+    expected_sha = _sha256_bytes(_canonical(expected_context))
+    source_candidates = sorted(
+        (
+            _load_candidate(source_path, candidate_id, source_session)
+            for candidate_id in attestations
+        ),
+        key=lambda row: (int(row["ordinal"]), str(row["candidate_id"])),
+    )
+    rows: list[dict[str, Any]] = []
+    counts = {"imported": 0, "skipped_cross_context": 0}
+    with _workbench_lock(destination_path / ".workbench.lock", 8.0):
+        destination_index = _load_index(destination_path, destination_session)
+        for source_candidate in source_candidates:
+            candidate_id = str(source_candidate["candidate_id"])
+            attestation = _load_compile_attestation(
+                root,
+                attestations[candidate_id],
+                source_snapshot=source_candidate["source"],
+                object_snapshot=source_candidate["object"],
+                expected_context=None,
+                label=f"compile attestation for {candidate_id}",
+            )
+            if attestation["context_sha256"] != expected_sha:
+                counts["skipped_cross_context"] += 1
+                rows.append(
+                    {
+                        "candidate_id": candidate_id,
+                        "source_ordinal": source_candidate["ordinal"],
+                        "status": "skipped_cross_context",
+                        "actual_context_sha256": attestation["context_sha256"],
+                        "destination_context_sha256": expected_sha,
+                    }
+                )
+                continue
+            existing_path = _candidate_path(destination_path, candidate_id)
+            if existing_path.is_file():
+                existing = _load_candidate(
+                    destination_path, candidate_id, destination_session
+                )
+                if candidate_id not in destination_index["candidates"]:
+                    if (
+                        existing.get("ordinal") != int(destination_index["sequence"]) + 1
+                        or existing.get("previous_record_sha256")
+                        != destination_index.get("last_record_sha256")
+                    ):
+                        _fail(
+                            "unindexed migrated candidate is not a recoverable final append"
+                        )
+                    for key, mapped_candidate in (
+                        (
+                            existing["source_context_key"],
+                            destination_index["source_context_index"].get(
+                                existing["source_context_key"]
+                            ),
+                        ),
+                        (
+                            existing["object_result_key"],
+                            destination_index["object_index"].get(
+                                existing["object_result_key"]
+                            ),
+                        ),
+                    ):
+                        if mapped_candidate is not None and mapped_candidate != candidate_id:
+                            _fail(f"unindexed migrated candidate collides with {key}")
+                    destination_index["sequence"] = existing["ordinal"]
+                    destination_index["candidates"][candidate_id] = (
+                        existing_path.relative_to(destination_path).as_posix()
+                    )
+                    destination_index["source_context_index"].setdefault(
+                        existing["source_context_key"], candidate_id
+                    )
+                    destination_index["object_index"].setdefault(
+                        existing["object_result_key"], candidate_id
+                    )
+                    destination_index["last_record_sha256"] = existing[
+                        "record_sha256"
+                    ]
+                    _atomic_replace(
+                        destination_path / "index.json",
+                        _canonical(
+                            _with_self_hash(destination_index, "index_sha256")
+                        ),
+                    )
+                migration = existing.get("migration")
+                if not isinstance(migration, Mapping) or (
+                    migration.get("source_session_sha256")
+                    != source_session["session_sha256"]
+                    or migration.get("source_record_sha256")
+                    != source_candidate["record_sha256"]
+                    or existing.get("compile_attestation", {}).get("attestation_sha256")
+                    != attestation["attestation_sha256"]
+                ):
+                    _fail(
+                        f"destination candidate_id already records different evidence: {candidate_id}"
+                    )
+                counts["imported"] += 1
+                rows.append(
+                    {
+                        "candidate_id": candidate_id,
+                        "source_ordinal": source_candidate["ordinal"],
+                        "destination_ordinal": existing["ordinal"],
+                        "status": "imported",
+                        "duplicate_of": existing.get("duplicate_of"),
+                        "source_duplicate_of": source_candidate.get("duplicate_of"),
+                        "actual_context_sha256": expected_sha,
+                        "destination_context_sha256": expected_sha,
+                    }
+                )
+                continue
+            compile_input = _validate_compile_input_identity(
+                source_candidate.get("compile_input_identity"),
+                source_candidate["source"],
+            )
+            source_key = _context_key(
+                destination_session,
+                source_candidate["source"]["sha256"],
+                compile_input,
+            )
+            object_key = _object_key(
+                destination_session, source_candidate["object"]["sha256"]
+            )
+            source_duplicate = destination_index["source_context_index"].get(source_key)
+            object_duplicate = destination_index["object_index"].get(object_key)
+            if source_duplicate is not None:
+                producer = _load_candidate(
+                    destination_path, source_duplicate, destination_session
+                )
+                _require_candidate_compile_attestation(producer, destination_session)
+                if producer.get("object_result_key") != object_key:
+                    _fail(
+                        "migration found one source/context producing different objects"
+                    )
+            duplicate_id = source_duplicate or object_duplicate
+            source_cas = _contained(
+                source_path,
+                source_candidate["source_blob"]["cas_path"],
+                f"source candidate {candidate_id} source CAS",
+            )
+            object_cas = _contained(
+                source_path,
+                source_candidate["object_blob"]["cas_path"],
+                f"source candidate {candidate_id} object CAS",
+            )
+            source_blob = _copy_blob(
+                destination_path,
+                source_cas,
+                "source",
+                source_candidate["source"],
+            )
+            object_blob = _copy_blob(
+                destination_path,
+                object_cas,
+                "object",
+                source_candidate["object"],
+            )
+            focuses = _stored_focus_symbols(
+                source_candidate,
+                default=str(source_session["request"]["function"]),
+            )
+            strict = _migrate_report_binding(
+                source_path,
+                destination_path,
+                source_candidate["reports"]["strict"],
+                destination_session,
+                label=f"{candidate_id}-strict",
+                focus_symbols=focuses,
+            )
+            data = _migrate_report_binding(
+                source_path,
+                destination_path,
+                source_candidate["reports"].get("data"),
+                destination_session,
+                label=f"{candidate_id}-data",
+                focus_symbols=focuses,
+            )
+            ordinal = int(destination_index["sequence"]) + 1
+            migration = {
+                "source_session_sha256": source_session["session_sha256"],
+                "source_candidate_id": candidate_id,
+                "source_record_sha256": source_candidate["record_sha256"],
+                "source_ordinal": source_candidate["ordinal"],
+                "source_duplicate_of": source_candidate.get("duplicate_of"),
+            }
+            record_body = {
+                "schema": CANDIDATE_SCHEMA,
+                "schema_version": 1,
+                "session_sha256": destination_session["session_sha256"],
+                "candidate_id": candidate_id,
+                "ordinal": ordinal,
+                "source": copy.deepcopy(source_candidate["source"]),
+                "object": copy.deepcopy(source_candidate["object"]),
+                "compile_input_identity": compile_input,
+                "compile_attestation": attestation,
+                "migration": migration,
+                "source_context_key": source_key,
+                "object_result_key": object_key,
+                "source_blob": source_blob,
+                "object_blob": object_blob,
+                "reports": {"strict": strict, "data": data},
+                "report_binding": source_candidate["report_binding"],
+                "hypothesis": copy.deepcopy(source_candidate["hypothesis"]),
+                "outcome": copy.deepcopy(source_candidate["outcome"]),
+                "telemetry": copy.deepcopy(source_candidate["telemetry"]),
+                "duplicate_of": duplicate_id,
+                "previous_record_sha256": destination_index.get("last_record_sha256"),
+                "authority_advanced": False,
+            }
+            if "focus_symbol" in source_candidate:
+                record_body["focus_symbol"] = source_candidate["focus_symbol"]
+            if "focus_symbols" in source_candidate:
+                record_body["focus_symbols"] = copy.deepcopy(
+                    source_candidate["focus_symbols"]
+                )
+            record = _with_self_hash(record_body, "record_sha256")
+            _write_new(existing_path, _canonical(record))
+            destination_index["sequence"] = ordinal
+            destination_index["candidates"][candidate_id] = existing_path.relative_to(
+                destination_path
+            ).as_posix()
+            destination_index["source_context_index"].setdefault(
+                source_key, candidate_id
+            )
+            destination_index["object_index"].setdefault(object_key, candidate_id)
+            destination_index["last_record_sha256"] = record["record_sha256"]
+            _atomic_replace(
+                destination_path / "index.json",
+                _canonical(_with_self_hash(destination_index, "index_sha256")),
+            )
+            counts["imported"] += 1
+            rows.append(
+                {
+                    "candidate_id": candidate_id,
+                    "source_ordinal": source_candidate["ordinal"],
+                    "destination_ordinal": ordinal,
+                    "status": "imported",
+                    "duplicate_of": duplicate_id,
+                    "source_duplicate_of": source_candidate.get("duplicate_of"),
+                    "actual_context_sha256": expected_sha,
+                    "destination_context_sha256": expected_sha,
+                }
+            )
+    return _with_self_hash(
+        {
+            "schema": PROVENANCE_MIGRATION_SCHEMA,
+            "schema_version": 1,
+            "source_session_sha256": source_session["session_sha256"],
+            "destination_session_sha256": destination_session["session_sha256"],
+            "manifest_sha256": manifest_value["manifest_sha256"],
+            "counts": counts,
+            "rows": rows,
+            "status": "migrated" if counts["imported"] else "unchanged",
+            "production_modified": False,
+            "authority_advanced": False,
+        },
+        "migration_sha256",
+    )
+
+
 def _source_index_match(
     workspace: Path,
     index: Mapping[str, Any],
@@ -2419,6 +3253,7 @@ def _source_index_match(
         candidate = _load_candidate(workspace, candidate_id, session)
         if candidate.get("source_context_key") != source_key:
             _fail("source/context index does not match its immutable candidate record")
+        _require_candidate_compile_attestation(candidate, session)
         return source_key, candidate_id, candidate
 
     # Records written before compile-input path binding remain readable and
@@ -2432,6 +3267,7 @@ def _source_index_match(
         _fail("legacy source/context index does not match its immutable candidate record")
     if legacy.get("compile_input_identity") is not None:
         _fail("path-bound candidate is indexed by a legacy source/context key")
+    _require_candidate_compile_attestation(legacy, session)
     legacy_path = _normalized_compile_input_path(legacy["source"]["path"])
     if legacy_path == compile_input_identity["normalized_path"]:
         return legacy_key, legacy_id, legacy
@@ -2487,6 +3323,7 @@ def lookup_matches(
     for matched_id in {item for item in (source_match, object_match) if item is not None}:
         if matched_id not in loaded_matches:
             loaded_matches[matched_id] = _load_candidate(destination, matched_id, session)
+        _require_candidate_compile_attestation(loaded_matches[matched_id], session)
     if source_match and loaded_matches[source_match].get("source_context_key") != source_key:
         _fail("source/context index does not match its immutable candidate record")
     if object_match and loaded_matches[object_match].get("object_result_key") != _object_key(
@@ -2567,6 +3404,7 @@ def materialize_candidate_object(
     session = _load_session(destination, root)
     candidate_id = _identifier(candidate_id, "candidate_id")
     candidate = _load_candidate(destination, candidate_id, session)
+    _require_candidate_compile_attestation(candidate, session)
 
     source_path = _resolve(source, root)
     source_snapshot = _snapshot(source_path, "materialize source")
@@ -5926,6 +6764,7 @@ def prepare_candidate_record(
     candidate_id: str,
     source: Path | str,
     object_path: Path | str,
+    compile_attestation: Path | str,
     hypothesis: str,
     axis: str,
     residual: str | None = None,
@@ -5960,6 +6799,15 @@ def prepare_candidate_record(
         _validate_candidate_artifact(
             object_file, object_snapshot, session, "candidate object"
         )
+        _load_compile_attestation(
+            root,
+            compile_attestation,
+            source_snapshot=source_snapshot,
+            object_snapshot=object_snapshot,
+            expected_context=session["request"]["context"],
+        )
+    else:
+        _fail("prepare requires an initialized immutable workspace")
     assessment = assess_reports(
         root,
         baseline_strict=baseline_strict,
@@ -5986,6 +6834,7 @@ def prepare_candidate_record(
             "candidate_id": candidate_value,
             "source": os.fspath(source_path),
             "object": os.fspath(object_file),
+            "compile_attestation": os.fspath(_resolve(compile_attestation, root)),
             "strict_report": os.fspath(strict_path),
             "data_report": os.fspath(data_path) if data_path is not None else None,
             "hypothesis": hypothesis_value,
@@ -6303,6 +7152,7 @@ def _load_candidate(
         allowed={
             "schema", "schema_version", "session_sha256", "candidate_id", "ordinal",
             "source", "object", "compile_input_identity", "source_context_key", "object_result_key",
+            "compile_attestation", "migration",
             "source_blob", "object_blob", "reports", "hypothesis", "outcome",
             "report_binding", "telemetry", "duplicate_of", "previous_record_sha256", "authority_advanced",
             "focus_symbol", "focus_symbols", "record_sha256",
@@ -6350,6 +7200,35 @@ def _load_candidate(
         _fail("candidate source context key mismatch")
     if value.get("object_result_key") != _object_key(session, value["object"]["sha256"]):
         _fail("candidate object result key mismatch")
+    attestation = value.get("compile_attestation")
+    if attestation is not None:
+        _validate_compile_attestation(
+            attestation,
+            source_snapshot=value["source"],
+            object_snapshot=value["object"],
+            expected_context=session["request"]["context"],
+            label="candidate compile attestation",
+        )
+    migration = value.get("migration")
+    if migration is not None:
+        migration_value = _closed(
+            migration,
+            allowed={
+                "source_session_sha256", "source_candidate_id",
+                "source_record_sha256", "source_ordinal", "source_duplicate_of",
+            },
+            required={
+                "source_session_sha256", "source_candidate_id",
+                "source_record_sha256", "source_ordinal", "source_duplicate_of",
+            },
+            label="candidate migration",
+        )
+        _sha256(migration_value.get("source_session_sha256"), "candidate migration.source_session_sha256")
+        _identifier(migration_value.get("source_candidate_id"), "candidate migration.source_candidate_id")
+        _sha256(migration_value.get("source_record_sha256"), "candidate migration.source_record_sha256")
+        _integer(migration_value.get("source_ordinal"), "candidate migration.source_ordinal", minimum=1)
+        if migration_value.get("source_duplicate_of") is not None:
+            _identifier(migration_value.get("source_duplicate_of"), "candidate migration.source_duplicate_of")
     reports = value.get("reports")
     if not isinstance(reports, Mapping) or set(reports) != {"strict", "data"}:
         _fail("candidate reports must contain only strict and data")
@@ -6452,6 +7331,7 @@ def record_candidate(
     candidate_id: str,
     source: Path | str,
     object_path: Path | str,
+    compile_attestation: Path | str,
     strict_report: Path | str,
     data_report: Path | str | None,
     hypothesis: str,
@@ -6488,6 +7368,13 @@ def record_candidate(
         )
         _validate_candidate_artifact(
             object_file, object_snapshot, session, "candidate object"
+        )
+        attestation = _load_compile_attestation(
+            root,
+            compile_attestation,
+            source_snapshot=source_snapshot,
+            object_snapshot=object_snapshot,
+            expected_context=session["request"]["context"],
         )
         selected_focuses = _focus_symbols(
             focus_symbol,
@@ -6527,6 +7414,8 @@ def record_candidate(
                 and _normalized_compile_input_path(existing["source"]["path"])
                 == compile_input_identity["normalized_path"]
                 and existing["object"]["sha256"] == object_snapshot["sha256"]
+                and existing.get("compile_attestation", {}).get("attestation_sha256")
+                == attestation["attestation_sha256"]
                 and existing["hypothesis"]["name"] == _text(hypothesis, "hypothesis")
                 and existing["hypothesis"]["axis"] == _text(axis, "axis")
                 and existing["hypothesis"].get("residual_fingerprint")
@@ -6604,6 +7493,7 @@ def record_candidate(
                 "source": {key: source_snapshot[key] for key in ("path", "size_bytes", "sha256")},
                 "object": {key: object_snapshot[key] for key in ("path", "size_bytes", "sha256")},
                 "compile_input_identity": compile_input_identity,
+                "compile_attestation": attestation,
                 "source_context_key": source_key,
                 "object_result_key": object_key,
                 "source_blob": source_blob,
@@ -7369,6 +8259,7 @@ def diagnose_candidate(
     session = _load_session(destination, root)
     candidate_id = _identifier(candidate_id, "candidate_id")
     candidate = _load_candidate(destination, candidate_id, session)
+    _require_candidate_compile_attestation(candidate, session)
     jobs = _jobs(_resolve(jobs_path, root), root=root, workspace=destination, session=session)
     workers = max_workers if max_workers is not None else session["request"]["policy"]["max_workers"]
     workers = _integer(workers, "max_workers", minimum=1, maximum=session["request"]["policy"]["max_workers"])
@@ -8480,11 +9371,62 @@ def _add_commands(commands: Any) -> None:
     materialize.add_argument("--object", required=True)
     materialize.add_argument("--json", action="store_true")
 
+    attest_compile = commands.add_parser(
+        "attest-compile",
+        help="seal source/object bytes with the actual compiler, wrapper, argv, and cwd context",
+    )
+    attest_compile.add_argument("--workspace", required=True)
+    attest_compile.add_argument("--source", required=True)
+    attest_compile.add_argument("--object", required=True)
+    attest_compile.add_argument("--output", required=True)
+    attest_compile.add_argument(
+        "--producer-kind",
+        choices=("serialized-build", "external-compile-attestation"),
+        required=True,
+    )
+    producer_argv = attest_compile.add_mutually_exclusive_group(required=True)
+    producer_argv.add_argument(
+        "--producer-arg",
+        action="append",
+        help="one actual producer command argument; repeat in exact order",
+    )
+    producer_argv.add_argument(
+        "--producer-argv-from-session",
+        action="store_true",
+        help="copy the immutable session compile_argv into the attestation",
+    )
+    attest_compile.add_argument("--notes")
+    attest_compile.add_argument("--json", action="store_true")
+
+    provenance_audit = commands.add_parser(
+        "provenance-audit",
+        help="classify candidate records as context-matched, cross-context, or unattested",
+    )
+    provenance_audit.add_argument("--workspace", required=True)
+    provenance_audit.add_argument("--manifest")
+    provenance_audit.add_argument(
+        "--output", help="optional immutable self-hashed audit receipt"
+    )
+    provenance_audit.add_argument("--json", action="store_true")
+
+    provenance_migrate = commands.add_parser(
+        "provenance-migrate",
+        help="import only compiler-context-matched candidate history into a clean session",
+    )
+    provenance_migrate.add_argument("--source-workspace", required=True)
+    provenance_migrate.add_argument("--destination-workspace", required=True)
+    provenance_migrate.add_argument("--manifest", required=True)
+    provenance_migrate.add_argument(
+        "--output", help="optional immutable self-hashed migration receipt"
+    )
+    provenance_migrate.add_argument("--json", action="store_true")
+
     record = commands.add_parser("record", help="record and content-address one measured candidate")
     record.add_argument("--workspace", required=True)
     record.add_argument("--candidate-id", required=True)
     record.add_argument("--source", required=True)
     record.add_argument("--object", required=True)
+    record.add_argument("--compile-attestation", required=True)
     record.add_argument("--strict-report", required=True)
     record.add_argument("--data-report")
     record.add_argument("--hypothesis", required=True)
@@ -8848,6 +9790,7 @@ def _add_commands(commands: Any) -> None:
     prepare.add_argument("--candidate-id", required=True)
     prepare.add_argument("--source", required=True)
     prepare.add_argument("--object", required=True)
+    prepare.add_argument("--compile-attestation", required=True)
     prepare.add_argument("--hypothesis", required=True)
     prepare.add_argument("--axis", required=True)
     prepare.add_argument("--residual")
@@ -8879,6 +9822,38 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             args.source,
             args.object,
         )
+    elif args.match_command == "attest-compile":
+        result = create_compile_attestation(
+            root,
+            args.workspace,
+            source=args.source,
+            object_path=args.object,
+            output=args.output,
+            producer_kind=args.producer_kind,
+            producer_command=(
+                None if args.producer_argv_from_session else args.producer_arg
+            ),
+            notes=args.notes,
+        )
+    elif args.match_command == "provenance-audit":
+        result = audit_candidate_provenance(
+            root,
+            args.workspace,
+            manifest=args.manifest,
+        )
+        _persist_provenance_result(
+            root, args.output, result, label="provenance audit output"
+        )
+    elif args.match_command == "provenance-migrate":
+        result = migrate_candidate_provenance(
+            root,
+            args.source_workspace,
+            args.destination_workspace,
+            manifest=args.manifest,
+        )
+        _persist_provenance_result(
+            root, args.output, result, label="provenance migration output"
+        )
     elif args.match_command == "record":
         result = record_candidate(
             root,
@@ -8886,6 +9861,7 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             candidate_id=args.candidate_id,
             source=args.source,
             object_path=args.object,
+            compile_attestation=args.compile_attestation,
             strict_report=args.strict_report,
             data_report=args.data_report,
             hypothesis=args.hypothesis,
@@ -9024,6 +10000,7 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
             candidate_id=args.candidate_id,
             source=args.source,
             object_path=args.object,
+            compile_attestation=args.compile_attestation,
             hypothesis=args.hypothesis,
             axis=args.axis,
             residual=args.residual,
