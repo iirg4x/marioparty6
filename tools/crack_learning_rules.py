@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import re
+import struct
 import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -30,6 +31,7 @@ HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
+RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
 
 _REGISTER_RE = re.compile(r"\b(?P<kind>[rRfF])(?P<number>[0-9]|[12][0-9]|3[01])\b")
 _STACK_RE = re.compile(
@@ -110,6 +112,22 @@ _BRANCH_PROOF_HASHES = (
     "physical_relocation_receipt_sha256",
     "branch_destination_receipt_sha256",
 )
+_RECIPROCAL_PROOF_FLAGS = (
+    "function_size_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "all_non_window_rows_exact",
+    "protected_siblings_preserved",
+)
+_RECIPROCAL_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "typed_constant_receipt_sha256",
+    "neutral_observation_receipt_sha256",
+)
 
 _RULE_ORDER = (
     "explicit_else_return_cfg",
@@ -117,6 +135,7 @@ _RULE_ORDER = (
     "assignment_condition_saved_gpr_cycle",
     "allocator_two_register_swap_interaction",
     "stack_extent_interface_capacity",
+    "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
     "aggregate_self_copy_final_consumer",
 )
@@ -681,6 +700,146 @@ def _parse_branch_context(value: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _parse_reciprocal_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "window", "neutral_observation"},
+        required={"schema", "proofs", "window", "neutral_observation"},
+        label="reciprocal context",
+    )
+    if (
+        _context_text(context.get("schema"), "reciprocal context schema")
+        != RECIPROCAL_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"reciprocal context schema must be {RECIPROCAL_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_RECIPROCAL_PROOF_FLAGS) | set(_RECIPROCAL_PROOF_HASHES)
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="reciprocal context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _RECIPROCAL_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"reciprocal context proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _RECIPROCAL_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"reciprocal context proofs.{field}"
+        )
+
+    row_fields = {
+        "target_variable_row",
+        "candidate_variable_row",
+        "target_reciprocal_row",
+        "candidate_reciprocal_row",
+        "multiply_row",
+    }
+    window = _closed_context(
+        context.get("window"),
+        allowed=row_fields
+        | {"invariant_constant_rows", "denominator", "reciprocal_f32_bits"},
+        required=row_fields
+        | {"invariant_constant_rows", "denominator", "reciprocal_f32_bits"},
+        label="reciprocal context window",
+    )
+    normalized_window = {
+        field: _context_uint(window.get(field), f"reciprocal context window.{field}")
+        for field in sorted(row_fields)
+    }
+    raw_invariants = window.get("invariant_constant_rows")
+    if not isinstance(raw_invariants, list) or not 1 <= len(raw_invariants) <= 8:
+        raise LearningInputError(
+            "reciprocal context window.invariant_constant_rows must contain 1-8 entries"
+        )
+    invariant_rows = [
+        _context_uint(
+            item,
+            f"reciprocal context window.invariant_constant_rows[{index}]",
+        )
+        for index, item in enumerate(raw_invariants)
+    ]
+    if len(set(invariant_rows)) != len(invariant_rows):
+        raise LearningInputError(
+            "reciprocal context window.invariant_constant_rows must be unique"
+        )
+    bits = _context_text(
+        window.get("reciprocal_f32_bits"),
+        "reciprocal context window.reciprocal_f32_bits",
+        limit=8,
+    )
+    if re.fullmatch(r"[0-9a-f]{8}", bits) is None:
+        raise LearningInputError(
+            "reciprocal context window.reciprocal_f32_bits must be eight lowercase hex digits"
+        )
+    normalized_window.update(
+        {
+            "invariant_constant_rows": invariant_rows,
+            "denominator": _context_uint(
+                window.get("denominator"),
+                "reciprocal context window.denominator",
+                minimum=2,
+                maximum=1 << 24,
+            ),
+            "reciprocal_f32_bits": bits,
+        }
+    )
+    if not (
+        normalized_window["target_variable_row"]
+        == normalized_window["candidate_reciprocal_row"]
+        and normalized_window["target_reciprocal_row"]
+        == normalized_window["candidate_variable_row"]
+        and normalized_window["target_variable_row"]
+        != normalized_window["target_reciprocal_row"]
+    ):
+        raise LearningInputError(
+            "reciprocal context rows must describe one variable/reciprocal load-order swap"
+        )
+    variable_rows = {
+        normalized_window["target_variable_row"],
+        normalized_window["target_reciprocal_row"],
+        normalized_window["multiply_row"],
+    }
+    if len(variable_rows) != 3 or variable_rows & set(invariant_rows):
+        raise LearningInputError(
+            "reciprocal context window rows must be distinct and disjoint"
+        )
+
+    neutral = _closed_context(
+        context.get("neutral_observation"),
+        allowed={"axis", "baseline_object_sha256", "candidate_object_sha256"},
+        required={"axis", "baseline_object_sha256", "candidate_object_sha256"},
+        label="reciprocal context neutral_observation",
+    )
+    axis = _context_identifier(
+        neutral.get("axis"), "reciprocal context neutral_observation.axis"
+    )
+    if axis != "commuted_multiply":
+        raise LearningInputError(
+            "reciprocal context neutral_observation.axis must be commuted_multiply"
+        )
+    return {
+        "schema": RECIPROCAL_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "window": normalized_window,
+        "neutral_observation": {
+            "axis": axis,
+            "baseline_object_sha256": _context_sha256(
+                neutral.get("baseline_object_sha256"),
+                "reciprocal context neutral_observation.baseline_object_sha256",
+            ),
+            "candidate_object_sha256": _context_sha256(
+                neutral.get("candidate_object_sha256"),
+                "reciprocal context neutral_observation.candidate_object_sha256",
+            ),
+        },
+    }
+
+
 def _evaluation(
     rule_id: str,
     *,
@@ -993,6 +1152,273 @@ def _stack_extent_interface_capacity_evaluation(
             "predicted_capacity": predicted_capacity,
             "producer_contracts": context["producer_contracts"],
             "declaration_positions": context["declaration_positions"],
+            "proofs": context["proofs"],
+        },
+    )
+
+
+def _relocation_type_signature(
+    item: causal_reducer.Instruction,
+) -> tuple[tuple[str, Any], ...] | None:
+    if item.relocation is None:
+        return None
+    return tuple(
+        (field, item.relocation[field])
+        for field in ("type", "type_name")
+        if field in item.relocation
+    )
+
+
+def _equivalent_outside_learning_window(
+    left: causal_reducer.Instruction | None,
+    right: causal_reducer.Instruction | None,
+) -> bool:
+    if left is None or right is None:
+        return left is right
+    if left.has_instruction != right.has_instruction:
+        return False
+    if not left.has_instruction:
+        return True
+    if left.mnemonic != right.mnemonic or causal_reducer._relocation_diff(left, right):
+        return False
+    if left.mnemonic in causal_reducer._BRANCH_MNEMONICS:
+        return causal_reducer._branch_relative(left) == causal_reducer._branch_relative(
+            right
+        )
+    return left.formatted == right.formatted
+
+
+def _reciprocal_source_shape_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "reciprocal_source_shape"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated reciprocal-source-shape context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the reciprocal context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if target_size is None or target_size != candidate_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate function sizes are not exact",
+            evidence={"target_size": target_size, "candidate_size": candidate_size},
+        )
+
+    window = context["window"]
+    denominator = window["denominator"]
+    if denominator & (denominator - 1):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed denominator is not a power of two with an exact binary reciprocal",
+            evidence={"denominator": denominator},
+        )
+    reciprocal_bits = struct.pack(">f", 1.0 / denominator).hex()
+    if reciprocal_bits != window["reciprocal_f32_bits"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed f32 literal is not the exact reciprocal of the denominator",
+            evidence={
+                "denominator": denominator,
+                "computed_reciprocal_f32_bits": reciprocal_bits,
+                "context_reciprocal_f32_bits": window["reciprocal_f32_bits"],
+            },
+        )
+    neutral = context["neutral_observation"]
+    if neutral["baseline_object_sha256"] != neutral["candidate_object_sha256"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the commuted-multiply control was not proved compiler-neutral by object identity",
+            evidence={"neutral_observation": neutral},
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    all_window_rows = set(window["invariant_constant_rows"]) | {
+        window["target_variable_row"],
+        window["target_reciprocal_row"],
+        window["multiply_row"],
+    }
+    if not all(index < len(rows) for index in all_window_rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="one or more reciprocal window rows are outside the focus function",
+        )
+    outside_residuals = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if index not in all_window_rows
+        and not _equivalent_outside_learning_window(left, right)
+    ]
+    if outside_residuals:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the report has physical residuals outside the sealed reciprocal window",
+            evidence={"outside_residual_rows": outside_residuals},
+        )
+
+    invariant_evidence: list[dict[str, Any]] = []
+    for index in window["invariant_constant_rows"]:
+        left, right = rows[index]
+        if (
+            left is None
+            or right is None
+            or not left.has_instruction
+            or not right.has_instruction
+            or left.mnemonic != "lfs"
+            or right.mnemonic != "lfs"
+            or left.relocation is None
+            or right.relocation is None
+            or _relocation_type_signature(left) != _relocation_type_signature(right)
+            or _registers(left.formatted, "f")[:1]
+            != _registers(right.formatted, "f")[:1]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="an invariant constant row is not one typed, relocation-compatible f32 load",
+                evidence={"row_index": index},
+            )
+        invariant_evidence.append(
+            {
+                "row_index": index,
+                "target_formatted": left.formatted,
+                "candidate_formatted": right.formatted,
+                "relocation_type": [
+                    list(item) for item in (_relocation_type_signature(left) or ())
+                ],
+            }
+        )
+
+    target_variable, candidate_reciprocal = rows[window["target_variable_row"]]
+    target_reciprocal, candidate_variable = rows[window["target_reciprocal_row"]]
+    multiply_target, multiply_candidate = rows[window["multiply_row"]]
+    load_items = (
+        target_variable,
+        candidate_reciprocal,
+        target_reciprocal,
+        candidate_variable,
+    )
+    if any(
+        item is None or not item.has_instruction or item.mnemonic != "lfs"
+        for item in load_items
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the reciprocal seam is not a two-row f32 load-order swap",
+        )
+    assert target_variable is not None
+    assert candidate_reciprocal is not None
+    assert target_reciprocal is not None
+    assert candidate_variable is not None
+    if (
+        target_variable.relocation is not None
+        or candidate_variable.relocation is not None
+        or target_reciprocal.relocation is None
+        or candidate_reciprocal.relocation is None
+        or _relocation_type_signature(target_reciprocal)
+        != _relocation_type_signature(candidate_reciprocal)
+        or _without_registers(target_variable.formatted)
+        != _without_registers(candidate_variable.formatted)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="variable and reciprocal operands do not preserve their authenticated physical classes",
+        )
+    target_variable_register = _registers(target_variable.formatted, "f")[:1]
+    candidate_variable_register = _registers(candidate_variable.formatted, "f")[:1]
+    target_reciprocal_register = _registers(target_reciprocal.formatted, "f")[:1]
+    candidate_reciprocal_register = _registers(candidate_reciprocal.formatted, "f")[:1]
+    if (
+        len(target_variable_register) != 1
+        or len(candidate_variable_register) != 1
+        or len(target_reciprocal_register) != 1
+        or len(candidate_reciprocal_register) != 1
+        or target_variable_register != candidate_reciprocal_register
+        or target_reciprocal_register != candidate_variable_register
+        or target_variable_register == target_reciprocal_register
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the two swapped loads do not exchange the exact multiply input registers",
+        )
+    if (
+        multiply_target is None
+        or multiply_candidate is None
+        or not multiply_target.has_instruction
+        or not multiply_candidate.has_instruction
+        or multiply_target.mnemonic != "fmuls"
+        or multiply_target.formatted != multiply_candidate.formatted
+        or causal_reducer._relocation_diff(multiply_target, multiply_candidate)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the consuming single-precision multiply is not physically exact",
+        )
+    multiply_registers = _registers(multiply_target.formatted, "f")
+    if len(multiply_registers) != 3 or set(multiply_registers[1:]) != {
+        target_variable_register[0],
+        target_reciprocal_register[0],
+    }:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the swapped loads do not feed both operands of the sealed fmuls",
+            evidence={"multiply_formatted": multiply_target.formatted},
+        )
+
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an otherwise exact function has one authenticated variable/reciprocal f32 "
+            "load-order swap, an exact fmuls consumer, and an object-identical commuted control"
+        ),
+        confidence=0.99,
+        source_class="exact_power_of_two_division_source_shape",
+        recommendation=(
+            f"Test one natural division by {denominator}.0f cell and suppress further "
+            "commutative multiply permutations."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "denominator": denominator,
+            "reciprocal_f32_bits": reciprocal_bits,
+            "target_variable_row": window["target_variable_row"],
+            "target_reciprocal_row": window["target_reciprocal_row"],
+            "multiply_row": window["multiply_row"],
+            "target_variable_register": target_variable_register[0],
+            "target_reciprocal_register": target_reciprocal_register[0],
+            "invariant_constant_rows": invariant_evidence,
+            "neutral_observation": neutral,
             "proofs": context["proofs"],
         },
     )
@@ -1826,6 +2252,7 @@ def diagnose_document(
     allocator_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
+    reciprocal_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a self-hashed, authority-free diagnosis for one function."""
 
@@ -1852,6 +2279,11 @@ def diagnose_document(
     )
     normalized_branch_context = (
         _parse_branch_context(branch_context) if branch_context is not None else None
+    )
+    normalized_reciprocal_context = (
+        _parse_reciprocal_context(reciprocal_context)
+        if reciprocal_context is not None
+        else None
     )
     pair = _pair(document, focus)
     target, candidate = _entries(pair)
@@ -1894,6 +2326,13 @@ def diagnose_document(
             normalized_capacity_context,
             objdiff_canonical_sha256,
         ),
+        _reciprocal_source_shape_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_reciprocal_context,
+            objdiff_canonical_sha256,
+        ),
         _switch_fpr_evaluation(pair, target, candidate, audit),
         _aggregate_self_copy_evaluation(document, target, candidate, donors),
     ]
@@ -1921,6 +2360,11 @@ def diagnose_document(
             "branch_context_canonical_sha256": (
                 _sha256(_canonical(normalized_branch_context))
                 if normalized_branch_context is not None
+                else None
+            ),
+            "reciprocal_context_canonical_sha256": (
+                _sha256(_canonical(normalized_reciprocal_context))
+                if normalized_reciprocal_context is not None
                 else None
             ),
         },
@@ -2001,6 +2445,14 @@ def _build_parser() -> argparse.ArgumentParser:
             "conditional row and increment/exit destination proof"
         ),
     )
+    parser.add_argument(
+        "--reciprocal-context",
+        type=Path,
+        help=(
+            "authenticated reciprocal_source_shape_context/v1 JSON with exact-size, "
+            "typed-literal, load-window, relocation, and compiler-neutral control proof"
+        ),
+    )
     return parser
 
 
@@ -2024,6 +2476,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             branch_context=(
                 _load_json(args.branch_context, label="branch context")
                 if args.branch_context is not None
+                else None
+            ),
+            reciprocal_context=(
+                _load_json(args.reciprocal_context, label="reciprocal context")
+                if args.reciprocal_context is not None
                 else None
             ),
         )

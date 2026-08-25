@@ -1,6 +1,6 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns seven reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns eight reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
 reducer and emits self-hashed `crack_learning_diagnosis/v3` JSON with
 `authority_advanced:false`.
@@ -135,6 +135,26 @@ function-relative targets. The detector verifies that the report has exactly
 that one relocation-identical conditional-branch residual before ranking one
 natural `else { break; }` cell.
 
+The reciprocal-source-shape rule likewise requires a closed evidence context:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/explode-small001.strict.json \
+  --function mbev_CapEffExplodeOMExec \
+  --reciprocal-context work/explode-small001.reciprocal-context.json \
+  > work/explode-small001.learning.json
+```
+
+`reciprocal_source_shape_context/v1` seals exact size/data/CFG/physical-
+relocation/sibling gates, a typed-literal receipt, the zero-based rows for two
+invariant constants plus the swapped variable/reciprocal loads and exact
+`fmuls`, and a measured compiler-neutral commuted-multiply control. The rule
+independently recomputes the f32 reciprocal bits, accepts only a power-of-two
+denominator, verifies that no physical residual exists outside the sealed
+window, and requires the commuted control objects to be byte-identical. It then
+ranks exactly one natural `/ N.0f` cell and suppresses further commutative
+multiply permutations.
+
 Minimal capacity context shape:
 
 ```json
@@ -204,6 +224,43 @@ the branch instruction address):
 }
 ```
 
+Minimal reciprocal context shape:
+
+```json
+{
+  "schema": "reciprocal_source_shape_context/v1",
+  "proofs": {
+    "objdiff_canonical_sha256": "<64 lowercase hex>",
+    "function_size_exact": true,
+    "data_values_exact": true,
+    "physical_relocations_exact": true,
+    "cfg_calls_exact": true,
+    "all_non_window_rows_exact": true,
+    "protected_siblings_preserved": true,
+    "strict_report_sha256": "<64 lowercase hex>",
+    "data_report_sha256": "<64 lowercase hex>",
+    "physical_relocation_receipt_sha256": "<64 lowercase hex>",
+    "typed_constant_receipt_sha256": "<64 lowercase hex>",
+    "neutral_observation_receipt_sha256": "<64 lowercase hex>"
+  },
+  "window": {
+    "invariant_constant_rows": [95, 96],
+    "target_variable_row": 97,
+    "candidate_variable_row": 98,
+    "target_reciprocal_row": 98,
+    "candidate_reciprocal_row": 97,
+    "multiply_row": 99,
+    "denominator": 16,
+    "reciprocal_f32_bits": "3d800000"
+  },
+  "neutral_observation": {
+    "axis": "commuted_multiply",
+    "baseline_object_sha256": "<64 lowercase hex>",
+    "candidate_object_sha256": "<same 64 lowercase hex>"
+  }
+}
+```
+
 Python callers can use:
 
 ```python
@@ -217,8 +274,8 @@ result = diagnose_document(
 ```
 
 For the context-bound rules, pass parsed objects as `allocator_context=`,
-`capacity_context=`, or `branch_context=`. The same closed validation used by
-the CLI is applied to Python callers.
+`capacity_context=`, `branch_context=`, or `reciprocal_context=`. The same
+closed validation used by the CLI is applied to Python callers.
 
 ## Installed-functionality audit
 
@@ -228,7 +285,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The four additional joins are narrower than those generic classifications:
+The five additional joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -237,13 +294,14 @@ The four additional joins are narrower than those generic classifications:
 | assignment/condition saved-GPR cycle | Equal function size; identical operations, relative branches, relocations, and non-register operands; a closed cycle of at least three nonvolatile GPRs; and a call result copied to the cycled register immediately before comparison and conditional branch | Assignment in its consuming condition |
 | allocator two-register swap interaction | Equal function size and measurable frame; identical operations, relative branches, relocations, immediates, data values, physical relocations, and protected siblings; exactly one closed two-nonvolatile-GPR swap; exact VarInfo owner-to-register mapping; and one authenticated producer/consumer identity boundary | A bounded 2x2 interaction of natural declaration chronology and natural producer/consumer expression fusion |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
+| reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
 | aggregate self-copy at final consumer | A target-only three-or-more-component aggregate load/store self-copy, no later call after its bounded final consumers, and an explicitly named same-report donor that is 100% on both sides with the same copy signature | Used aggregate self-assignment at the final-consumer boundary |
 
 These joins preserve the reviewed boundaries from
 `ev_CapTeresaFadeMatHook`, `ev_CapMiracleCoinTrade`,
-`mbev_CapKuribo`, `mbev_CapKokamekku`, `ev_CapBobleOMExec`, and
-`mbev_CapBomheiMove`. The names identify acceptance
+`mbev_CapKuribo`, `mbev_CapKokamekku`, `mbev_CapEffExplodeOMExec`,
+`ev_CapBobleOMExec`, and `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
 same physical signature.
 
@@ -264,6 +322,9 @@ The focused fixtures reject the tempting incomplete variants:
 - a loop-destination claim with multiple residual rows, a non-conditional or
   relocated branch, wrong relative targets, an inexact frame, or destination
   classes other than candidate increment versus target exit;
+- a reciprocal claim with a non-power-of-two denominator, wrong f32 bits,
+  mismatched relocation types, a non-exact `fmuls`, any residual outside the
+  sealed window, or a commuted control whose objects differ;
 - FPR captures and a frame delta without indirect switch dispatch;
 - a final-consumer aggregate self-copy whose named donor is not exact.
 
@@ -283,9 +344,9 @@ donors, and donor signature drift.
 The document binds canonical objdiff input, donor names, this implementation,
 and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
-allocator, capacity, or branch evidence by SHA-256; the allocator path also
-binds the installed interaction planner. Rule order and JSON serialization are
-stable.
+allocator, capacity, branch, or reciprocal evidence by SHA-256; the allocator
+path also binds the installed interaction planner. Rule order and JSON
+serialization are stable.
 
 No diagnosis establishes semantic names, original spelling, or source
 provenance. It never authorizes a source edit, candidate retention, promotion,

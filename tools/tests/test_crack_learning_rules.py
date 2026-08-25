@@ -18,6 +18,7 @@ def _instruction(
     *,
     diff_kind: str | None = None,
     branch_dest: int | None = None,
+    relocation: dict[str, object] | None = None,
 ) -> dict[str, object]:
     nested: dict[str, object] = {
         "address": str(address),
@@ -26,6 +27,8 @@ def _instruction(
     }
     if branch_dest is not None:
         nested["branch_dest"] = str(branch_dest)
+    if relocation is not None:
+        nested["relocation"] = relocation
     row: dict[str, object] = {"instruction": nested}
     if diff_kind is not None:
         row["diff_kind"] = diff_kind
@@ -367,6 +370,112 @@ def _branch_context(
             "candidate_destination": "loop_increment",
             "target_relative_target": 44,
             "candidate_relative_target": 24,
+        },
+    }
+
+
+def _reciprocal_report() -> dict[str, object]:
+    sda_target_a = {"type_name": "SDA21", "target_name": "lbl_alpha"}
+    sda_candidate_a = {"type_name": "SDA21", "target_name": "@alpha"}
+    sda_target_b = {"type_name": "SDA21", "target_name": "lbl_one"}
+    sda_candidate_b = {"type_name": "SDA21", "target_name": "@one"}
+    sda_target_recip = {"type_name": "SDA21", "target_name": "lbl_recip"}
+    sda_candidate_recip = {"type_name": "SDA21", "target_name": "@recip"}
+    target = [
+        _instruction(100, "stwu r1, -64(r1)"),
+        _instruction(
+            104,
+            "lfs f3, lbl_alpha@sda21",
+            diff_kind="DIFF_ARG_MISMATCH",
+            relocation=sda_target_a,
+        ),
+        _instruction(
+            108,
+            "lfs f2, lbl_one@sda21",
+            diff_kind="DIFF_ARG_MISMATCH",
+            relocation=sda_target_b,
+        ),
+        _instruction(112, "lfs f1, 56(r31)", diff_kind="DIFF_REPLACE"),
+        _instruction(
+            116,
+            "lfs f0, lbl_recip@sda21",
+            diff_kind="DIFF_REPLACE",
+            relocation=sda_target_recip,
+        ),
+        _instruction(120, "fmuls f0, f1, f0"),
+        _instruction(124, "fsubs f0, f2, f0"),
+        _instruction(128, "fmuls f1, f3, f0"),
+        _instruction(132, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "stwu r1, -64(r1)"),
+        _instruction(
+            104,
+            "lfs f3, @alpha@sda21",
+            diff_kind="DIFF_ARG_MISMATCH",
+            relocation=sda_candidate_a,
+        ),
+        _instruction(
+            108,
+            "lfs f2, @one@sda21",
+            diff_kind="DIFF_ARG_MISMATCH",
+            relocation=sda_candidate_b,
+        ),
+        _instruction(
+            112,
+            "lfs f1, @recip@sda21",
+            diff_kind="DIFF_REPLACE",
+            relocation=sda_candidate_recip,
+        ),
+        _instruction(116, "lfs f0, 56(r31)", diff_kind="DIFF_REPLACE"),
+        _instruction(120, "fmuls f0, f1, f0"),
+        _instruction(124, "fsubs f0, f2, f0"),
+        _instruction(128, "fmuls f1, f3, f0"),
+        _instruction(132, "blr"),
+    ]
+    return _report(
+        "mbev_CapEffExplodeOMExec",
+        target,
+        candidate,
+        target_size=524,
+        candidate_size=524,
+    )
+
+
+def _reciprocal_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _reciprocal_report()
+    return {
+        "schema": rules.RECIPROCAL_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "all_non_window_rows_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "typed_constant_receipt_sha256": "4" * 64,
+            "neutral_observation_receipt_sha256": "5" * 64,
+        },
+        "window": {
+            "invariant_constant_rows": [1, 2],
+            "target_variable_row": 3,
+            "candidate_variable_row": 4,
+            "target_reciprocal_row": 4,
+            "candidate_reciprocal_row": 3,
+            "multiply_row": 5,
+            "denominator": 16,
+            "reciprocal_f32_bits": "3d800000",
+        },
+        "neutral_observation": {
+            "axis": "commuted_multiply",
+            "baseline_object_sha256": "6" * 64,
+            "candidate_object_sha256": "6" * 64,
         },
     }
 
@@ -718,6 +827,88 @@ class CrackLearningRulesTest(unittest.TestCase):
                 branch_context=invalid_destination,
             )
 
+    def test_reciprocal_source_shape_ranks_one_division_cell(self) -> None:
+        report = _reciprocal_report()
+        context = _reciprocal_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffExplodeOMExec",
+            reciprocal_context=context,
+        )
+        diagnosis = _evaluation(result, "reciprocal_source_shape")
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["denominator"], 16)
+        self.assertEqual(evidence["reciprocal_f32_bits"], "3d800000")
+        self.assertEqual(evidence["target_variable_row"], 3)
+        self.assertEqual(evidence["target_reciprocal_row"], 4)
+        self.assertEqual(evidence["multiply_row"], 5)
+        self.assertIn("division by 16.0f", diagnosis["recommendation"])
+        self.assertIn("suppress", diagnosis["recommendation"])
+
+    def test_reciprocal_source_shape_fails_closed(self) -> None:
+        no_context = rules.diagnose_document(
+            _reciprocal_report(), focus_symbol="mbev_CapEffExplodeOMExec"
+        )
+        self.assertFalse(_evaluation(no_context, "reciprocal_source_shape")["matched"])
+
+        non_power_of_two = _reciprocal_context()
+        non_power_of_two["window"]["denominator"] = 10  # type: ignore[index]
+        non_power_of_two["window"]["reciprocal_f32_bits"] = "3dcccccd"  # type: ignore[index]
+        result = rules.diagnose_document(
+            _reciprocal_report(),
+            focus_symbol="mbev_CapEffExplodeOMExec",
+            reciprocal_context=non_power_of_two,
+        )
+        self.assertFalse(_evaluation(result, "reciprocal_source_shape")["matched"])
+
+        wrong_bits = _reciprocal_context()
+        wrong_bits["window"]["reciprocal_f32_bits"] = "3f000000"  # type: ignore[index]
+        result = rules.diagnose_document(
+            _reciprocal_report(),
+            focus_symbol="mbev_CapEffExplodeOMExec",
+            reciprocal_context=wrong_bits,
+        )
+        self.assertFalse(_evaluation(result, "reciprocal_source_shape")["matched"])
+
+        nonneutral = _reciprocal_context()
+        nonneutral["neutral_observation"]["candidate_object_sha256"] = "7" * 64  # type: ignore[index]
+        result = rules.diagnose_document(
+            _reciprocal_report(),
+            focus_symbol="mbev_CapEffExplodeOMExec",
+            reciprocal_context=nonneutral,
+        )
+        self.assertFalse(_evaluation(result, "reciprocal_source_shape")["matched"])
+
+        extra_residual = _reciprocal_report()
+        extra_residual["right"]["symbols"][0]["instructions"][7]["instruction"]["formatted"] = "fmuls f1, f2, f0"  # type: ignore[index]
+        context = _reciprocal_context(extra_residual)
+        result = rules.diagnose_document(
+            extra_residual,
+            focus_symbol="mbev_CapEffExplodeOMExec",
+            reciprocal_context=context,
+        )
+        self.assertFalse(_evaluation(result, "reciprocal_source_shape")["matched"])
+
+        wrong_relocation = _reciprocal_report()
+        wrong_relocation["right"]["symbols"][0]["instructions"][3]["instruction"]["relocation"]["type_name"] = "ADDR16_HA"  # type: ignore[index]
+        context = _reciprocal_context(wrong_relocation)
+        result = rules.diagnose_document(
+            wrong_relocation,
+            focus_symbol="mbev_CapEffExplodeOMExec",
+            reciprocal_context=context,
+        )
+        self.assertFalse(_evaluation(result, "reciprocal_source_shape")["matched"])
+
+        false_proof = _reciprocal_context()
+        false_proof["proofs"]["cfg_calls_exact"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "cfg_calls_exact"):
+            rules.diagnose_document(
+                _reciprocal_report(),
+                focus_symbol="mbev_CapEffExplodeOMExec",
+                reciprocal_context=false_proof,
+            )
+
     def test_switch_case_scoped_fpr_lifetimes_require_frame_join(self) -> None:
         result = rules.diagnose_document(
             _switch_fpr_report(), focus_symbol="ev_CapBobleOMExec"
@@ -898,6 +1089,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 focus_symbol="mbev_CapKokamekku",
                 capacity_context=capacity,
                 branch_context=branch,
+            ),
+        )
+
+    def test_reciprocal_context_cli_emits_the_same_closed_document(self) -> None:
+        report = _reciprocal_report()
+        context = _reciprocal_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "reciprocal.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffExplodeOMExec",
+                            "--reciprocal-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffExplodeOMExec",
+                reciprocal_context=context,
             ),
         )
 
