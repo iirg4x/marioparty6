@@ -60,9 +60,7 @@ def _report(
     *,
     target_size: int | None = None,
     candidate_size: int | None = None,
-    extra_pairs: tuple[
-        tuple[dict[str, object], dict[str, object]], ...
-    ] = (),
+    extra_pairs: tuple[tuple[dict[str, object], dict[str, object]], ...] = (),
 ) -> dict[str, object]:
     return {
         "left": {
@@ -229,6 +227,147 @@ def _allocator_context(
             }
             for candidate_id, declaration, boundary, source_digit in selections
         ],
+    }
+
+
+def _capacity_report() -> dict[str, object]:
+    instructions = [
+        _instruction(100, "stwu r1, -720(r1)"),
+        _instruction(104, "addi r3, r1, 224"),
+        _instruction(108, "bl consume_capsules"),
+        _instruction(112, "blr"),
+    ]
+    return _report(
+        "mbev_CapKokamekku",
+        instructions,
+        instructions,
+        target_size=6424,
+        candidate_size=6424,
+    )
+
+
+def _capacity_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _capacity_report()
+    return {
+        "schema": rules.CAPACITY_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "all_non_extent_structure_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "stack_extent_receipt_sha256": "4" * 64,
+            "interface_contract_receipt_sha256": "5" * 64,
+        },
+        "array": {
+            "name": "capsuleObjId",
+            "element_size": 4,
+            "candidate_capacity": 3,
+            "used_prefix_elements": 3,
+            "candidate_extent_bytes": 12,
+            "target_extent_bytes": 20,
+        },
+        "producer_contracts": [
+            {
+                "provider": "mbPlayerCapsuleMaxGet",
+                "source_location": "game/src/board/player.c:L3838-L3841",
+                "maximum": 5,
+                "evidence_sha256": "6" * 64,
+            },
+            {
+                "provider": "mbPlayerCapsuleNumGet",
+                "source_location": "game/src/board/player.c:L3942-L3954",
+                "maximum": 5,
+                "evidence_sha256": "7" * 64,
+            },
+        ],
+        "declaration_positions": [
+            "before_moveDir",
+            "after_moveDir",
+            "after_next_aggregate",
+        ],
+    }
+
+
+def _loop_branch_report() -> dict[str, object]:
+    target_text = [
+        "stwu r1, -720(r1)",
+        "cmpwi r3, 0",
+        "beq 0x98",
+        "bl movement_body",
+        "addi r27, r27, 1",
+        "cmpw r27, r30",
+        "blt 0x74",
+        "bl post_path_sleep",
+        "blr",
+    ]
+    candidate_text = [
+        "stwu r1, -720(r1)",
+        "cmpwi r3, 0",
+        "beq 0x84",
+        "bl movement_body",
+        "addi r27, r27, 1",
+        "cmpw r27, r30",
+        "blt 0x74",
+        "bl post_path_sleep",
+        "blr",
+    ]
+    target: list[dict[str, object]] = []
+    candidate: list[dict[str, object]] = []
+    for index, (left, right) in enumerate(zip(target_text, candidate_text)):
+        address = 100 + index * 4
+        kind = "DIFF_ARG_MISMATCH" if left != right else None
+        target_dest = 152 if index == 2 else (116 if index == 6 else None)
+        candidate_dest = 132 if index == 2 else (116 if index == 6 else None)
+        target.append(
+            _instruction(address, left, diff_kind=kind, branch_dest=target_dest)
+        )
+        candidate.append(
+            _instruction(address, right, diff_kind=kind, branch_dest=candidate_dest)
+        )
+    return _report(
+        "mbev_CapKokamekku",
+        target,
+        candidate,
+        target_size=6424,
+        candidate_size=6424,
+    )
+
+
+def _branch_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _loop_branch_report()
+    return {
+        "schema": rules.BRANCH_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "all_non_branch_rows_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "branch_destination_receipt_sha256": "4" * 64,
+        },
+        "branch": {
+            "row_index": 2,
+            "guard_class": "zero_terminator",
+            "target_destination": "loop_exit",
+            "candidate_destination": "loop_increment",
+            "target_relative_target": 44,
+            "candidate_relative_target": 24,
+        },
     }
 
 
@@ -423,7 +562,9 @@ class CrackLearningRulesTest(unittest.TestCase):
             _allocator_swap_report(), focus_symbol="mbev_CapKuribo"
         )
         self.assertFalse(
-            _evaluation(no_context, "allocator_two_register_swap_interaction")["matched"]
+            _evaluation(no_context, "allocator_two_register_swap_interaction")[
+                "matched"
+            ]
         )
 
         false_proof = _allocator_context()
@@ -464,6 +605,117 @@ class CrackLearningRulesTest(unittest.TestCase):
                 _allocator_swap_report(),
                 focus_symbol="mbev_CapKuribo",
                 allocator_context=uppercase_hash,
+            )
+
+    def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
+        report = _capacity_report()
+        context = _capacity_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapKokamekku",
+            capacity_context=context,
+        )
+        diagnosis = _evaluation(result, "stack_extent_interface_capacity")
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["candidate_capacity"], 3)
+        self.assertEqual(evidence["missing_extent_bytes"], 8)
+        self.assertEqual(evidence["extra_elements"], 2)
+        self.assertEqual(evidence["predicted_capacity"], 5)
+        self.assertEqual(
+            [item["provider"] for item in evidence["producer_contracts"]],
+            ["mbPlayerCapsuleMaxGet", "mbPlayerCapsuleNumGet"],
+        )
+        self.assertEqual(
+            evidence["declaration_positions"],
+            ["before_moveDir", "after_moveDir", "after_next_aggregate"],
+        )
+
+    def test_stack_extent_interface_capacity_fails_closed(self) -> None:
+        no_context = rules.diagnose_document(
+            _capacity_report(), focus_symbol="mbev_CapKokamekku"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "stack_extent_interface_capacity")["matched"]
+        )
+
+        contradictory_contract = _capacity_context()
+        contradictory_contract["producer_contracts"][0]["maximum"] = 4  # type: ignore[index]
+        result = rules.diagnose_document(
+            _capacity_report(),
+            focus_symbol="mbev_CapKokamekku",
+            capacity_context=contradictory_contract,
+        )
+        self.assertFalse(
+            _evaluation(result, "stack_extent_interface_capacity")["matched"]
+        )
+
+        partial_element = _capacity_context()
+        partial_element["array"]["target_extent_bytes"] = 19  # type: ignore[index]
+        result = rules.diagnose_document(
+            _capacity_report(),
+            focus_symbol="mbev_CapKokamekku",
+            capacity_context=partial_element,
+        )
+        self.assertFalse(
+            _evaluation(result, "stack_extent_interface_capacity")["matched"]
+        )
+
+        false_proof = _capacity_context()
+        false_proof["proofs"]["physical_relocations_exact"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "physical_relocations_exact"
+        ):
+            rules.diagnose_document(
+                _capacity_report(),
+                focus_symbol="mbev_CapKokamekku",
+                capacity_context=false_proof,
+            )
+
+    def test_loop_branch_destination_ranks_one_else_break_cell(self) -> None:
+        report = _loop_branch_report()
+        context = _branch_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapKokamekku",
+            branch_context=context,
+        )
+        diagnosis = _evaluation(result, "loop_branch_destination")
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["row_index"], 2)
+        self.assertEqual(evidence["candidate_destination"], "loop_increment")
+        self.assertEqual(evidence["target_destination"], "loop_exit")
+        self.assertEqual(evidence["candidate_relative_target"], 24)
+        self.assertEqual(evidence["target_relative_target"], 44)
+
+    def test_loop_branch_destination_fails_closed(self) -> None:
+        wrong_target = _branch_context()
+        wrong_target["branch"]["target_relative_target"] = 40  # type: ignore[index]
+        result = rules.diagnose_document(
+            _loop_branch_report(),
+            focus_symbol="mbev_CapKokamekku",
+            branch_context=wrong_target,
+        )
+        self.assertFalse(_evaluation(result, "loop_branch_destination")["matched"])
+
+        extra_residual = _loop_branch_report()
+        extra_residual["left"]["symbols"][0]["instructions"][1]["diff_kind"] = "DIFF_ARG_MISMATCH"  # type: ignore[index]
+        context = _branch_context(extra_residual)
+        result = rules.diagnose_document(
+            extra_residual,
+            focus_symbol="mbev_CapKokamekku",
+            branch_context=context,
+        )
+        self.assertFalse(_evaluation(result, "loop_branch_destination")["matched"])
+
+        invalid_destination = _branch_context()
+        invalid_destination["branch"]["target_destination"] = "epilogue"  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "destinations"):
+            rules.diagnose_document(
+                _loop_branch_report(),
+                focus_symbol="mbev_CapKokamekku",
+                branch_context=invalid_destination,
             )
 
     def test_switch_case_scoped_fpr_lifetimes_require_frame_join(self) -> None:
@@ -542,12 +794,8 @@ class CrackLearningRulesTest(unittest.TestCase):
 
     def test_output_is_deterministic_self_hashed_and_authority_free(self) -> None:
         report = _assignment_cycle_report()
-        first = rules.diagnose_document(
-            report, focus_symbol="ev_CapMiracleCoinTrade"
-        )
-        second = rules.diagnose_document(
-            report, focus_symbol="ev_CapMiracleCoinTrade"
-        )
+        first = rules.diagnose_document(report, focus_symbol="ev_CapMiracleCoinTrade")
+        second = rules.diagnose_document(report, focus_symbol="ev_CapMiracleCoinTrade")
         self.assertEqual(first, second)
         self.assertEqual(first["schema"], rules.SCHEMA)
         self.assertFalse(first["authority_advanced"])
@@ -612,6 +860,44 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapKuribo",
                 allocator_context=context,
+            ),
+        )
+
+    def test_kokamekku_context_cli_emits_the_same_closed_document(self) -> None:
+        report = _loop_branch_report()
+        capacity = _capacity_context(report)
+        branch = _branch_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            capacity_path = Path(directory) / "capacity.json"
+            branch_path = Path(directory) / "branch.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            capacity_path.write_text(json.dumps(capacity), encoding="utf-8")
+            branch_path.write_text(json.dumps(branch), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapKokamekku",
+                            "--capacity-context",
+                            str(capacity_path),
+                            "--branch-context",
+                            str(branch_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapKokamekku",
+                capacity_context=capacity,
+                branch_context=branch,
             ),
         )
 

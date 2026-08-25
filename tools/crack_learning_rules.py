@@ -24,10 +24,12 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v2"
-SCHEMA_VERSION = 2
+SCHEMA = "crack_learning_diagnosis/v3"
+SCHEMA_VERSION = 3
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
+CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
+BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 
 _REGISTER_RE = re.compile(r"\b(?P<kind>[rRfF])(?P<number>[0-9]|[12][0-9]|3[01])\b")
 _STACK_RE = re.compile(
@@ -77,11 +79,44 @@ _ALLOCATOR_PROOF_HASHES = (
     "varinfo_receipt_sha256",
     "source_boundary_receipt_sha256",
 )
+_CAPACITY_PROOF_FLAGS = (
+    "function_size_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "all_non_extent_structure_exact",
+    "protected_siblings_preserved",
+)
+_CAPACITY_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "stack_extent_receipt_sha256",
+    "interface_contract_receipt_sha256",
+)
+_BRANCH_PROOF_FLAGS = (
+    "function_size_exact",
+    "stack_frame_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "all_non_branch_rows_exact",
+    "protected_siblings_preserved",
+)
+_BRANCH_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "branch_destination_receipt_sha256",
+)
 
 _RULE_ORDER = (
     "explicit_else_return_cfg",
+    "loop_branch_destination",
     "assignment_condition_saved_gpr_cycle",
     "allocator_two_register_swap_interaction",
+    "stack_extent_interface_capacity",
     "switch_case_scoped_fpr_lifetimes",
     "aggregate_self_copy_final_consumer",
 )
@@ -145,7 +180,9 @@ def _pair(document: Mapping[str, Any], symbol: str) -> causal_reducer.FunctionPa
             causal_reducer._paired_functions(document), symbol
         )[0]
     except causal_reducer.AuditInputError as exc:
-        raise LearningInputError(f"objdiff report rejected ({exc.code}): {exc.message}") from exc
+        raise LearningInputError(
+            f"objdiff report rejected ({exc.code}): {exc.message}"
+        ) from exc
 
 
 def _entries(
@@ -157,7 +194,9 @@ def _entries(
             causal_reducer._entries(pair.candidate, "candidate", pair.name),
         )
     except causal_reducer.AuditInputError as exc:
-        raise LearningInputError(f"objdiff report rejected ({exc.code}): {exc.message}") from exc
+        raise LearningInputError(
+            f"objdiff report rejected ({exc.code}): {exc.message}"
+        ) from exc
 
 
 def _function_size(symbol: Mapping[str, Any] | None) -> int | None:
@@ -209,6 +248,24 @@ def _context_sha256(value: Any, label: str) -> str:
     return result
 
 
+def _context_uint(
+    value: Any,
+    label: str,
+    *,
+    minimum: int = 0,
+    maximum: int = 1_000_000,
+) -> int:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not minimum <= value <= maximum
+    ):
+        raise LearningInputError(
+            f"{label} must be an integer from {minimum} through {maximum}"
+        )
+    return value
+
+
 def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
     context = _closed_context(
         value,
@@ -216,7 +273,10 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
         required={"schema", "proofs", "owners", "boundary"},
         label="allocator context",
     )
-    if _context_text(context.get("schema"), "allocator context schema") != ALLOCATOR_CONTEXT_SCHEMA:
+    if (
+        _context_text(context.get("schema"), "allocator context schema")
+        != ALLOCATOR_CONTEXT_SCHEMA
+    ):
         raise LearningInputError(
             f"allocator context schema must be {ALLOCATOR_CONTEXT_SCHEMA}"
         )
@@ -240,7 +300,9 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
 
     raw_owners = context.get("owners")
     if not isinstance(raw_owners, list) or len(raw_owners) != 2:
-        raise LearningInputError("allocator context owners must contain exactly two entries")
+        raise LearningInputError(
+            "allocator context owners must contain exactly two entries"
+        )
     owners: list[dict[str, Any]] = []
     owner_fields = {
         "name",
@@ -303,9 +365,17 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
                 ),
             }
         )
-    for field in ("name", "usage_class", "target_register", "candidate_register", "lifetime_role"):
+    for field in (
+        "name",
+        "usage_class",
+        "target_register",
+        "candidate_register",
+        "lifetime_role",
+    ):
         if len({owner[field] for owner in owners}) != 2:
-            raise LearningInputError(f"allocator context owner {field} values must be distinct")
+            raise LearningInputError(
+                f"allocator context owner {field} values must be distinct"
+            )
 
     boundary = _closed_context(
         context.get("boundary"),
@@ -319,7 +389,9 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
             "allocator context boundary.transformations must contain 1-8 entries"
         )
     normalized_transformations = [
-        _context_text(item, f"allocator context boundary.transformations[{index}]", limit=128)
+        _context_text(
+            item, f"allocator context boundary.transformations[{index}]", limit=128
+        )
         for index, item in enumerate(transformations)
     ]
     if len(set(normalized_transformations)) != len(normalized_transformations):
@@ -327,8 +399,12 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
             "allocator context boundary.transformations must be unique"
         )
     normalized_boundary = {
-        "producer": _context_text(boundary.get("producer"), "allocator context boundary.producer"),
-        "consumer": _context_text(boundary.get("consumer"), "allocator context boundary.consumer"),
+        "producer": _context_text(
+            boundary.get("producer"), "allocator context boundary.producer"
+        ),
+        "consumer": _context_text(
+            boundary.get("consumer"), "allocator context boundary.consumer"
+        ),
         "transformations": normalized_transformations,
         "evidence_sha256": _context_sha256(
             boundary.get("evidence_sha256"),
@@ -338,7 +414,9 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
 
     observations = context.get("observations", [])
     if not isinstance(observations, list) or len(observations) > 4:
-        raise LearningInputError("allocator context observations must contain at most four entries")
+        raise LearningInputError(
+            "allocator context observations must contain at most four entries"
+        )
     if any(not isinstance(item, dict) for item in observations):
         raise LearningInputError("allocator context observations must contain objects")
     return {
@@ -347,6 +425,259 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "owners": sorted(owners, key=lambda item: item["name"]),
         "boundary": normalized_boundary,
         "observations": [dict(item) for item in observations],
+    }
+
+
+def _parse_capacity_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "array",
+            "producer_contracts",
+            "declaration_positions",
+        },
+        required={
+            "schema",
+            "proofs",
+            "array",
+            "producer_contracts",
+            "declaration_positions",
+        },
+        label="capacity context",
+    )
+    if (
+        _context_text(context.get("schema"), "capacity context schema")
+        != CAPACITY_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"capacity context schema must be {CAPACITY_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_CAPACITY_PROOF_FLAGS) | set(_CAPACITY_PROOF_HASHES)
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="capacity context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _CAPACITY_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"capacity context proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _CAPACITY_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"capacity context proofs.{field}"
+        )
+
+    array = _closed_context(
+        context.get("array"),
+        allowed={
+            "name",
+            "element_size",
+            "candidate_capacity",
+            "used_prefix_elements",
+            "candidate_extent_bytes",
+            "target_extent_bytes",
+        },
+        required={
+            "name",
+            "element_size",
+            "candidate_capacity",
+            "used_prefix_elements",
+            "candidate_extent_bytes",
+            "target_extent_bytes",
+        },
+        label="capacity context array",
+    )
+    normalized_array = {
+        "name": _context_identifier(array.get("name"), "capacity context array.name"),
+        "element_size": _context_uint(
+            array.get("element_size"),
+            "capacity context array.element_size",
+            minimum=1,
+            maximum=4096,
+        ),
+        "candidate_capacity": _context_uint(
+            array.get("candidate_capacity"),
+            "capacity context array.candidate_capacity",
+            minimum=1,
+        ),
+        "used_prefix_elements": _context_uint(
+            array.get("used_prefix_elements"),
+            "capacity context array.used_prefix_elements",
+            minimum=1,
+        ),
+        "candidate_extent_bytes": _context_uint(
+            array.get("candidate_extent_bytes"),
+            "capacity context array.candidate_extent_bytes",
+            minimum=1,
+        ),
+        "target_extent_bytes": _context_uint(
+            array.get("target_extent_bytes"),
+            "capacity context array.target_extent_bytes",
+            minimum=1,
+        ),
+    }
+
+    raw_contracts = context.get("producer_contracts")
+    if not isinstance(raw_contracts, list) or not 1 <= len(raw_contracts) <= 8:
+        raise LearningInputError(
+            "capacity context producer_contracts must contain 1-8 entries"
+        )
+    contracts: list[dict[str, Any]] = []
+    contract_fields = {"provider", "source_location", "maximum", "evidence_sha256"}
+    for index, raw_contract in enumerate(raw_contracts):
+        contract = _closed_context(
+            raw_contract,
+            allowed=contract_fields,
+            required=contract_fields,
+            label=f"capacity context producer_contracts[{index}]",
+        )
+        contracts.append(
+            {
+                "provider": _context_identifier(
+                    contract.get("provider"),
+                    f"capacity context producer_contracts[{index}].provider",
+                ),
+                "source_location": _context_text(
+                    contract.get("source_location"),
+                    f"capacity context producer_contracts[{index}].source_location",
+                    limit=512,
+                ),
+                "maximum": _context_uint(
+                    contract.get("maximum"),
+                    f"capacity context producer_contracts[{index}].maximum",
+                    minimum=1,
+                ),
+                "evidence_sha256": _context_sha256(
+                    contract.get("evidence_sha256"),
+                    f"capacity context producer_contracts[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if len({item["provider"] for item in contracts}) != len(contracts):
+        raise LearningInputError("capacity context producer providers must be unique")
+
+    raw_positions = context.get("declaration_positions")
+    if not isinstance(raw_positions, list) or not 1 <= len(raw_positions) <= 8:
+        raise LearningInputError(
+            "capacity context declaration_positions must contain 1-8 entries"
+        )
+    positions = [
+        _context_identifier(item, f"capacity context declaration_positions[{index}]")
+        for index, item in enumerate(raw_positions)
+    ]
+    if len(set(positions)) != len(positions):
+        raise LearningInputError(
+            "capacity context declaration_positions must be unique"
+        )
+    return {
+        "schema": CAPACITY_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "array": normalized_array,
+        "producer_contracts": sorted(contracts, key=lambda item: item["provider"]),
+        "declaration_positions": positions,
+    }
+
+
+def _parse_branch_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "branch"},
+        required={"schema", "proofs", "branch"},
+        label="branch context",
+    )
+    if (
+        _context_text(context.get("schema"), "branch context schema")
+        != BRANCH_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"branch context schema must be {BRANCH_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_BRANCH_PROOF_FLAGS) | set(_BRANCH_PROOF_HASHES)
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="branch context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _BRANCH_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"branch context proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _BRANCH_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"branch context proofs.{field}"
+        )
+
+    branch = _closed_context(
+        context.get("branch"),
+        allowed={
+            "row_index",
+            "guard_class",
+            "target_destination",
+            "candidate_destination",
+            "target_relative_target",
+            "candidate_relative_target",
+        },
+        required={
+            "row_index",
+            "guard_class",
+            "target_destination",
+            "candidate_destination",
+            "target_relative_target",
+            "candidate_relative_target",
+        },
+        label="branch context branch",
+    )
+    guard_class = _context_identifier(
+        branch.get("guard_class"), "branch context branch.guard_class"
+    )
+    if guard_class != "zero_terminator":
+        raise LearningInputError(
+            "branch context branch.guard_class must be zero_terminator"
+        )
+    target_destination = _context_identifier(
+        branch.get("target_destination"),
+        "branch context branch.target_destination",
+    )
+    candidate_destination = _context_identifier(
+        branch.get("candidate_destination"),
+        "branch context branch.candidate_destination",
+    )
+    destination_classes = {"loop_increment", "loop_exit"}
+    if {target_destination, candidate_destination} - destination_classes:
+        raise LearningInputError(
+            "branch context destinations must be loop_increment or loop_exit"
+        )
+    if target_destination == candidate_destination:
+        raise LearningInputError("branch context destinations must differ")
+    return {
+        "schema": BRANCH_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "branch": {
+            "row_index": _context_uint(
+                branch.get("row_index"), "branch context branch.row_index"
+            ),
+            "guard_class": guard_class,
+            "target_destination": target_destination,
+            "candidate_destination": candidate_destination,
+            "target_relative_target": _context_uint(
+                branch.get("target_relative_target"),
+                "branch context branch.target_relative_target",
+                maximum=0x7FFFFFFF,
+            ),
+            "candidate_relative_target": _context_uint(
+                branch.get("candidate_relative_target"),
+                "branch context branch.candidate_relative_target",
+                maximum=0x7FFFFFFF,
+            ),
+        },
     }
 
 
@@ -414,6 +745,259 @@ def _explicit_else_evaluation(audit: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
+def _loop_branch_destination_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "loop_branch_destination"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated loop branch-destination context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the branch context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if target_size is None or target_size != candidate_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate function sizes are not exact",
+            evidence={"target_size": target_size, "candidate_size": candidate_size},
+        )
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if target_frame is None or target_frame != candidate_frame:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate stack frames are not exact and measurable",
+            evidence={"target_frame": target_frame, "candidate_frame": candidate_frame},
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    mismatch_rows = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if causal_reducer._instruction_mismatch(left, right)
+    ]
+    row_index = context["branch"]["row_index"]
+    if mismatch_rows != [row_index] or row_index >= len(rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the report does not contain exactly the context-bound branch residual",
+            evidence={
+                "context_row_index": row_index,
+                "mismatch_rows": mismatch_rows,
+            },
+        )
+    left, right = rows[row_index]
+    if (
+        left is None
+        or right is None
+        or not left.has_instruction
+        or not right.has_instruction
+        or left.mnemonic != right.mnemonic
+        or left.mnemonic not in _CONDITIONAL_MNEMONICS
+        or causal_reducer._relocation_diff(left, right)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sole residual is not one relocation-identical conditional branch",
+        )
+    target_relative = causal_reducer._branch_relative(left)
+    candidate_relative = causal_reducer._branch_relative(right)
+    if (
+        target_relative is None
+        or candidate_relative is None
+        or target_relative == candidate_relative
+        or target_relative != context["branch"]["target_relative_target"]
+        or candidate_relative != context["branch"]["candidate_relative_target"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the physical branch destinations do not match the sealed semantic classification",
+            evidence={
+                "target_relative_target": target_relative,
+                "candidate_relative_target": candidate_relative,
+                "context_branch": context["branch"],
+            },
+        )
+    if not (
+        context["branch"]["target_destination"] == "loop_exit"
+        and context["branch"]["candidate_destination"] == "loop_increment"
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the context is not the reviewed candidate-increment versus target-exit class",
+            evidence={"context_branch": context["branch"]},
+        )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an otherwise exact loop has one authenticated zero-terminator branch whose "
+            "candidate destination is the increment and target destination is the loop exit"
+        ),
+        confidence=0.99,
+        source_class="explicit_else_break_loop_terminator",
+        recommendation=(
+            "Test one natural explicit else-break cell for the zero terminator; do not run "
+            "generic CFG or identical-arm permutations."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "row_index": row_index,
+            "mnemonic": left.mnemonic,
+            "target_relative_target": target_relative,
+            "candidate_relative_target": candidate_relative,
+            "guard_class": context["branch"]["guard_class"],
+            "target_destination": context["branch"]["target_destination"],
+            "candidate_destination": context["branch"]["candidate_destination"],
+            "proofs": context["proofs"],
+        },
+    )
+
+
+def _stack_extent_interface_capacity_evaluation(
+    pair: causal_reducer.FunctionPair,
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "stack_extent_interface_capacity"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated stack-extent/interface-capacity context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the capacity context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if target_size is None or target_size != candidate_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate function sizes are not exact",
+            evidence={"target_size": target_size, "candidate_size": candidate_size},
+        )
+
+    array = context["array"]
+    element_size = array["element_size"]
+    candidate_extent = array["candidate_extent_bytes"]
+    target_extent = array["target_extent_bytes"]
+    if candidate_extent != array["candidate_capacity"] * element_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the candidate array capacity does not reproduce its sealed byte extent",
+            evidence={"array": array},
+        )
+    if array["used_prefix_elements"] > array["candidate_capacity"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the used prefix exceeds the candidate array capacity",
+            evidence={"array": array},
+        )
+    missing_extent = target_extent - candidate_extent
+    if (
+        missing_extent <= 0
+        or target_extent % element_size != 0
+        or missing_extent % element_size != 0
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target-only extent is not a positive whole-element capacity delta",
+            evidence={
+                "element_size": element_size,
+                "candidate_extent_bytes": candidate_extent,
+                "target_extent_bytes": target_extent,
+                "missing_extent_bytes": missing_extent,
+            },
+        )
+    predicted_capacity = target_extent // element_size
+    extra_elements = missing_extent // element_size
+    contract_maxima = sorted(
+        {int(item["maximum"]) for item in context["producer_contracts"]}
+    )
+    if contract_maxima != [predicted_capacity]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the authenticated producer maxima do not converge on the measured target capacity",
+            evidence={
+                "predicted_capacity": predicted_capacity,
+                "contract_maxima": contract_maxima,
+                "producer_contracts": context["producer_contracts"],
+            },
+        )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "a positive whole-element target stack extent and authenticated producer maxima "
+            "independently converge on one live array capacity"
+        ),
+        confidence=0.99,
+        source_class="live_array_capacity_from_stack_extent_and_interface_contract",
+        recommendation=(
+            "Test only the predicted live capacity across the sealed declaration positions; "
+            "do not model the extent as padding, dead storage, or register shaping."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "array_name": array["name"],
+            "element_size": element_size,
+            "used_prefix_elements": array["used_prefix_elements"],
+            "candidate_capacity": array["candidate_capacity"],
+            "candidate_extent_bytes": candidate_extent,
+            "target_extent_bytes": target_extent,
+            "missing_extent_bytes": missing_extent,
+            "extra_elements": extra_elements,
+            "predicted_capacity": predicted_capacity,
+            "producer_contracts": context["producer_contracts"],
+            "declaration_positions": context["declaration_positions"],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _compatible_register_only_pair(
     left: causal_reducer.Instruction,
     right: causal_reducer.Instruction,
@@ -425,7 +1009,9 @@ def _compatible_register_only_pair(
     if causal_reducer._relocation_diff(left, right):
         return False
     if left.mnemonic in causal_reducer._BRANCH_MNEMONICS:
-        return causal_reducer._branch_relative(left) == causal_reducer._branch_relative(right)
+        return causal_reducer._branch_relative(left) == causal_reducer._branch_relative(
+            right
+        )
     return _without_registers(left.formatted) == _without_registers(right.formatted)
 
 
@@ -481,7 +1067,9 @@ def _call_result_consumers(
                 or mapping.get(left_regs[0]) != right_regs[0]
             ):
                 continue
-            for compare_index in range(capture_index + 1, min(len(rows), capture_index + 4)):
+            for compare_index in range(
+                capture_index + 1, min(len(rows), capture_index + 4)
+            ):
                 left_compare, right_compare = rows[compare_index]
                 if left_compare is None or right_compare is None:
                     continue
@@ -495,7 +1083,9 @@ def _call_result_consumers(
                 branch_index = next(
                     (
                         index
-                        for index in range(compare_index + 1, min(len(rows), compare_index + 3))
+                        for index in range(
+                            compare_index + 1, min(len(rows), compare_index + 3)
+                        )
                         if rows[index][0] is not None
                         and rows[index][1] is not None
                         and rows[index][0].mnemonic in _CONDITIONAL_MNEMONICS
@@ -535,9 +1125,7 @@ def _assignment_condition_evaluation(
         )
     rows = causal_reducer._paired_records(target, candidate)
     if any(
-        left is None
-        or right is None
-        or not _compatible_register_only_pair(left, right)
+        left is None or right is None or not _compatible_register_only_pair(left, right)
         for left, right in rows
     ):
         return _evaluation(
@@ -775,9 +1363,7 @@ def _allocator_two_register_swap_evaluation(
 
     rows = causal_reducer._paired_records(target, candidate)
     if not rows or any(
-        left is None
-        or right is None
-        or not _compatible_register_only_pair(left, right)
+        left is None or right is None or not _compatible_register_only_pair(left, right)
         for left, right in rows
     ):
         return _evaluation(
@@ -806,9 +1392,7 @@ def _allocator_two_register_swap_evaluation(
         for target_register, candidate_register in zip(left_registers, right_registers):
             if target_register == candidate_register:
                 continue
-            if not (
-                _saved(target_register, "r") and _saved(candidate_register, "r")
-            ):
+            if not (_saved(target_register, "r") and _saved(candidate_register, "r")):
                 return _evaluation(
                     rule_id,
                     matched=False,
@@ -882,9 +1466,7 @@ def _allocator_two_register_swap_evaluation(
         for selection in selections
         if tuple(sorted(selection.items())) not in observed
     ]
-    owners_by_role = {
-        str(item["lifetime_role"]): item for item in context["owners"]
-    }
+    owners_by_role = {str(item["lifetime_role"]): item for item in context["owners"]}
     return _evaluation(
         rule_id,
         matched=True,
@@ -940,7 +1522,10 @@ def _frame_size(entries: Sequence[causal_reducer.Instruction]) -> int | None:
 def _causal_stack_deltas(audit: Mapping[str, Any]) -> list[int]:
     result: set[int] = set()
     for group in audit.get("causal_groups", []):
-        if not isinstance(group, Mapping) or group.get("classification") != "stack_home_uniform_delta":
+        if (
+            not isinstance(group, Mapping)
+            or group.get("classification") != "stack_home_uniform_delta"
+        ):
             continue
         signature = group.get("signature", [])
         if not isinstance(signature, list):
@@ -949,13 +1534,17 @@ def _causal_stack_deltas(audit: Mapping[str, Any]) -> list[int]:
             # The reducer deliberately uses tuple signatures internally and
             # only converts the outer tuple when building its JSON object.
             if isinstance(part, (list, tuple)):
-                result.update(value for value in part if isinstance(value, int) and value != 0)
+                result.update(
+                    value for value in part if isinstance(value, int) and value != 0
+                )
             elif isinstance(part, int) and part != 0:
                 result.add(part)
     return sorted(result)
 
 
-def _preceded_by_call(entries: Sequence[causal_reducer.Instruction], index: int) -> bool:
+def _preceded_by_call(
+    entries: Sequence[causal_reducer.Instruction], index: int
+) -> bool:
     return any(
         entries[prior].has_instruction and entries[prior].mnemonic in _CALL_MNEMONICS
         for prior in range(max(0, index - 3), index)
@@ -970,7 +1559,11 @@ def _switch_fpr_evaluation(
 ) -> dict[str, Any]:
     target_frame = _frame_size(target)
     candidate_frame = _frame_size(candidate)
-    if target_frame is None or candidate_frame is None or target_frame <= candidate_frame:
+    if (
+        target_frame is None
+        or candidate_frame is None
+        or target_frame <= candidate_frame
+    ):
         return _evaluation(
             "switch_case_scoped_fpr_lifetimes",
             matched=False,
@@ -978,7 +1571,9 @@ def _switch_fpr_evaluation(
         )
     frame_delta = target_frame - candidate_frame
     stack_deltas = _causal_stack_deltas(audit)
-    if frame_delta > 256 or not any(abs(value) == frame_delta for value in stack_deltas):
+    if frame_delta > 256 or not any(
+        abs(value) == frame_delta for value in stack_deltas
+    ):
         return _evaluation(
             "switch_case_scoped_fpr_lifetimes",
             matched=False,
@@ -1001,12 +1596,18 @@ def _switch_fpr_evaluation(
     captures: list[dict[str, Any]] = []
     rows = causal_reducer._paired_records(target, candidate)
     for index, (left, right) in enumerate(rows):
-        if left is None or left.mnemonic != "fmr" or not _preceded_by_call(target, index):
+        if (
+            left is None
+            or left.mnemonic != "fmr"
+            or not _preceded_by_call(target, index)
+        ):
             continue
         registers = _registers(left.formatted, "f")
         if len(registers) < 2 or registers[1] != "f1" or not _saved(registers[0], "f"):
             continue
-        candidate_registers = _registers(right.formatted, "f") if right is not None else []
+        candidate_registers = (
+            _registers(right.formatted, "f") if right is not None else []
+        )
         if (
             right is not None
             and right.has_instruction
@@ -1018,7 +1619,11 @@ def _switch_fpr_evaluation(
             {
                 "index": index,
                 "target_result_register": registers[0],
-                "candidate_mnemonic": right.mnemonic if right is not None and right.has_instruction else None,
+                "candidate_mnemonic": (
+                    right.mnemonic
+                    if right is not None and right.has_instruction
+                    else None
+                ),
             }
         )
     if len(captures) < 3:
@@ -1090,14 +1695,20 @@ def _copy_run(
                 for item, offset in zip(window, offsets)
                 if item.mnemonic in _AGGREGATE_STORES
             ]
-            if len(loads) < 3 or len(loads) != len(stores) or sorted(loads) != sorted(stores):
+            if (
+                len(loads) < 3
+                or len(loads) != len(stores)
+                or sorted(loads) != sorted(stores)
+            ):
                 continue
             if len(loads) + len(stores) != len(window):
                 continue
             if require_asymmetry:
                 assert corresponding is not None
                 other = corresponding[start:end]
-                if len(other) != len(window) or any(item.has_instruction for item in other):
+                if len(other) != len(window) or any(
+                    item.has_instruction for item in other
+                ):
                     continue
             consumers = [
                 {
@@ -1105,7 +1716,8 @@ def _copy_run(
                     "formatted": entries[index].formatted,
                 }
                 for index in range(end, min(len(entries), end + 12))
-                if entries[index].has_instruction and entries[index].mnemonic in _CALL_MNEMONICS
+                if entries[index].has_instruction
+                and entries[index].mnemonic in _CALL_MNEMONICS
             ]
             if not consumers:
                 continue
@@ -1145,8 +1757,12 @@ def _exact_donor_evidence(
         result.append(
             {
                 "symbol": symbol,
-                "target_match_percent": pair.target.get("match_percent") if pair.target else None,
-                "candidate_match_percent": pair.candidate.get("match_percent") if pair.candidate else None,
+                "target_match_percent": (
+                    pair.target.get("match_percent") if pair.target else None
+                ),
+                "candidate_match_percent": (
+                    pair.candidate.get("match_percent") if pair.candidate else None
+                ),
                 "copy": target_copy,
                 "signature_sha256": _sha256(
                     _canonical({key: target_copy[key] for key in signature_keys})
@@ -1162,9 +1778,7 @@ def _aggregate_self_copy_evaluation(
     candidate: Sequence[causal_reducer.Instruction],
     donor_symbols: Sequence[str],
 ) -> dict[str, Any]:
-    focus_copy = _copy_run(
-        target, corresponding=candidate, require_asymmetry=True
-    )
+    focus_copy = _copy_run(target, corresponding=candidate, require_asymmetry=True)
     if focus_copy is None:
         return _evaluation(
             "aggregate_self_copy_final_consumer",
@@ -1210,6 +1824,8 @@ def diagnose_document(
     focus_symbol: str,
     same_tu_donor_symbols: Sequence[str] = (),
     allocator_context: Mapping[str, Any] | None = None,
+    capacity_context: Mapping[str, Any] | None = None,
+    branch_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a self-hashed, authority-free diagnosis for one function."""
 
@@ -1218,13 +1834,24 @@ def diagnose_document(
     if not isinstance(focus_symbol, str) or not focus_symbol.strip():
         raise LearningInputError("focus_symbol must be non-empty text")
     focus = focus_symbol.strip()
-    if any(not isinstance(value, str) or not value.strip() for value in same_tu_donor_symbols):
+    if any(
+        not isinstance(value, str) or not value.strip()
+        for value in same_tu_donor_symbols
+    ):
         raise LearningInputError("same_tu_donor_symbols must contain non-empty text")
     donors = tuple(value.strip() for value in same_tu_donor_symbols)
     normalized_allocator_context = (
         _parse_allocator_context(allocator_context)
         if allocator_context is not None
         else None
+    )
+    normalized_capacity_context = (
+        _parse_capacity_context(capacity_context)
+        if capacity_context is not None
+        else None
+    )
+    normalized_branch_context = (
+        _parse_branch_context(branch_context) if branch_context is not None else None
     )
     pair = _pair(document, focus)
     target, candidate = _entries(pair)
@@ -1237,18 +1864,34 @@ def diagnose_document(
             summary_only=False,
         )
     except causal_reducer.AuditInputError as exc:
-        raise LearningInputError(f"causal reducer rejected report ({exc.code}): {exc.message}") from exc
+        raise LearningInputError(
+            f"causal reducer rejected report ({exc.code}): {exc.message}"
+        ) from exc
     if audit.get("fail_closed") or audit.get("status") != "ok":
-        raise LearningInputError("causal reducer did not produce a closed successful audit")
+        raise LearningInputError(
+            "causal reducer did not produce a closed successful audit"
+        )
 
     evaluations = [
         _explicit_else_evaluation(audit),
+        _loop_branch_destination_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_branch_context,
+            objdiff_canonical_sha256,
+        ),
         _assignment_condition_evaluation(pair, target, candidate),
         _allocator_two_register_swap_evaluation(
             pair,
             target,
             candidate,
             normalized_allocator_context,
+            objdiff_canonical_sha256,
+        ),
+        _stack_extent_interface_capacity_evaluation(
+            pair,
+            normalized_capacity_context,
             objdiff_canonical_sha256,
         ),
         _switch_fpr_evaluation(pair, target, candidate, audit),
@@ -1268,6 +1911,16 @@ def diagnose_document(
             "allocator_context_canonical_sha256": (
                 _sha256(_canonical(normalized_allocator_context))
                 if normalized_allocator_context is not None
+                else None
+            ),
+            "capacity_context_canonical_sha256": (
+                _sha256(_canonical(normalized_capacity_context))
+                if normalized_capacity_context is not None
+                else None
+            ),
+            "branch_context_canonical_sha256": (
+                _sha256(_canonical(normalized_branch_context))
+                if normalized_branch_context is not None
                 else None
             ),
         },
@@ -1332,6 +1985,22 @@ def _build_parser() -> argparse.ArgumentParser:
             "VarInfo owner, boundary, and optional measured-cell evidence"
         ),
     )
+    parser.add_argument(
+        "--capacity-context",
+        type=Path,
+        help=(
+            "authenticated stack_extent_interface_capacity_context/v1 JSON with "
+            "stack extent, live array, producer maxima, and bounded declaration positions"
+        ),
+    )
+    parser.add_argument(
+        "--branch-context",
+        type=Path,
+        help=(
+            "authenticated loop_branch_destination_context/v1 JSON with the sole "
+            "conditional row and increment/exit destination proof"
+        ),
+    )
     return parser
 
 
@@ -1345,6 +2014,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             allocator_context=(
                 _load_json(args.allocator_context, label="allocator context")
                 if args.allocator_context is not None
+                else None
+            ),
+            capacity_context=(
+                _load_json(args.capacity_context, label="capacity context")
+                if args.capacity_context is not None
+                else None
+            ),
+            branch_context=(
+                _load_json(args.branch_context, label="branch context")
+                if args.branch_context is not None
                 else None
             ),
         )
