@@ -30,6 +30,7 @@ SCHEMA_VERSION = 3
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
+AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -66,6 +67,9 @@ _SWITCH_MNEMONICS = frozenset({"bctr", "bcctr"})
 _AGGREGATE_LOADS = frozenset({"lfs", "lfd", "lwz", "lhz", "lha", "lbz"})
 _AGGREGATE_STORES = frozenset({"stfs", "stfd", "stw", "sth", "stb"})
 _SOURCE_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
+_SOURCE_LVALUE_RE = re.compile(
+    r"[A-Za-z_][A-Za-z0-9_]{0,127}(?:(?:->|\.)[A-Za-z_][A-Za-z0-9_]{0,127}){0,4}"
+)
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _ALLOCATOR_PROOF_FLAGS = (
     "data_values_exact",
@@ -98,6 +102,23 @@ _PARAMETER_ALLOCATION_PROOF_HASHES = (
     "trace_receipt_sha256",
     "source_boundary_receipt_sha256",
     "same_tu_donor_receipt_sha256",
+)
+_AGGREGATE_USE_PROOF_FLAGS = (
+    "function_size_exact",
+    "stack_frame_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+)
+_AGGREGATE_USE_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "source_use_receipt_sha256",
+    "trace_receipt_sha256",
+    "exact_precedent_receipt_sha256",
 )
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
@@ -153,6 +174,7 @@ _RULE_ORDER = (
     "assignment_condition_saved_gpr_cycle",
     "allocator_two_register_swap_interaction",
     "parameter_allocation_consumer_chain",
+    "aggregate_use_multiplicity",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -274,6 +296,15 @@ def _context_identifier(value: Any, label: str) -> str:
     result = _context_text(value, label, limit=128)
     if _SOURCE_IDENTIFIER_RE.fullmatch(result) is None:
         raise LearningInputError(f"{label} must be a C source identifier")
+    return result
+
+
+def _context_lvalue(value: Any, label: str) -> str:
+    result = _context_text(value, label, limit=512)
+    if _SOURCE_LVALUE_RE.fullmatch(result) is None:
+        raise LearningInputError(
+            f"{label} must be a bounded C identifier/member lvalue"
+        )
     return result
 
 
@@ -694,6 +725,356 @@ def _parse_parameter_allocation_context(
         "owners": normalized_owners,
         "producer": normalized_producer,
         "consumer_chain": normalized_chain,
+    }
+
+
+def _parse_aggregate_use_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "owners",
+            "aggregate_parameter",
+            "copy_groups",
+            "independent_consumers",
+            "rejected_axes",
+        },
+        required={
+            "schema",
+            "proofs",
+            "owners",
+            "aggregate_parameter",
+            "copy_groups",
+            "independent_consumers",
+            "rejected_axes",
+        },
+        label="aggregate-use context",
+    )
+    if (
+        _context_text(context.get("schema"), "aggregate-use context schema")
+        != AGGREGATE_USE_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"aggregate-use context schema must be {AGGREGATE_USE_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_AGGREGATE_USE_PROOF_FLAGS) | set(_AGGREGATE_USE_PROOF_HASHES)
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="aggregate-use context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _AGGREGATE_USE_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"aggregate-use context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _AGGREGATE_USE_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"aggregate-use context proofs.{field}"
+        )
+
+    raw_owners = context.get("owners")
+    if not isinstance(raw_owners, list) or not 2 <= len(raw_owners) <= 16:
+        raise LearningInputError(
+            "aggregate-use context owners must contain two through sixteen entries"
+        )
+    owner_fields = {
+        "name",
+        "target_register",
+        "candidate_register",
+        "evidence_sha256",
+    }
+    owners: list[dict[str, Any]] = []
+    for index, raw_owner in enumerate(raw_owners):
+        owner = _closed_context(
+            raw_owner,
+            allowed=owner_fields,
+            required=owner_fields,
+            label=f"aggregate-use context owners[{index}]",
+        )
+        target_register = _context_text(
+            owner.get("target_register"),
+            f"aggregate-use context owners[{index}].target_register",
+            limit=3,
+        ).lower()
+        candidate_register = _context_text(
+            owner.get("candidate_register"),
+            f"aggregate-use context owners[{index}].candidate_register",
+            limit=3,
+        ).lower()
+        if not _saved(target_register, "r") or not _saved(candidate_register, "r"):
+            raise LearningInputError(
+                "aggregate-use context owner registers must be nonvolatile GPRs"
+            )
+        owners.append(
+            {
+                "name": _context_identifier(
+                    owner.get("name"), f"aggregate-use context owners[{index}].name"
+                ),
+                "target_register": target_register,
+                "candidate_register": candidate_register,
+                "evidence_sha256": _context_sha256(
+                    owner.get("evidence_sha256"),
+                    f"aggregate-use context owners[{index}].evidence_sha256",
+                ),
+            }
+        )
+    for field in ("name", "target_register", "candidate_register"):
+        if len({owner[field] for owner in owners}) != len(owners):
+            raise LearningInputError(
+                f"aggregate-use context owner {field} values must be unique"
+            )
+    owner_mapping = {
+        str(owner["target_register"]): str(owner["candidate_register"])
+        for owner in owners
+    }
+    cycles = _closed_cycles(owner_mapping)
+    if len(cycles) != 1 or len(cycles[0]) != len(owners):
+        raise LearningInputError(
+            "aggregate-use context owners must describe one complete register cycle"
+        )
+
+    aggregate = _closed_context(
+        context.get("aggregate_parameter"),
+        allowed={
+            "name",
+            "type",
+            "fields",
+            "target_register",
+            "candidate_register",
+            "evidence_sha256",
+        },
+        required={
+            "name",
+            "type",
+            "fields",
+            "target_register",
+            "candidate_register",
+            "evidence_sha256",
+        },
+        label="aggregate-use context aggregate_parameter",
+    )
+    aggregate_name = _context_identifier(
+        aggregate.get("name"), "aggregate-use context aggregate_parameter.name"
+    )
+    aggregate_type = _context_identifier(
+        aggregate.get("type"), "aggregate-use context aggregate_parameter.type"
+    )
+    raw_fields = aggregate.get("fields")
+    if not isinstance(raw_fields, list) or not 2 <= len(raw_fields) <= 32:
+        raise LearningInputError(
+            "aggregate-use context aggregate_parameter.fields must contain two through thirty-two entries"
+        )
+    fields = [
+        _context_identifier(
+            item, f"aggregate-use context aggregate_parameter.fields[{index}]"
+        )
+        for index, item in enumerate(raw_fields)
+    ]
+    if len(set(fields)) != len(fields):
+        raise LearningInputError(
+            "aggregate-use context aggregate_parameter.fields must be unique"
+        )
+    aggregate_target = _context_text(
+        aggregate.get("target_register"),
+        "aggregate-use context aggregate_parameter.target_register",
+        limit=3,
+    ).lower()
+    aggregate_candidate = _context_text(
+        aggregate.get("candidate_register"),
+        "aggregate-use context aggregate_parameter.candidate_register",
+        limit=3,
+    ).lower()
+    matching_owner = next(
+        (owner for owner in owners if owner["name"] == aggregate_name), None
+    )
+    if matching_owner is None or (
+        matching_owner["target_register"] != aggregate_target
+        or matching_owner["candidate_register"] != aggregate_candidate
+    ):
+        raise LearningInputError(
+            "aggregate-use context aggregate parameter must match one sealed owner"
+        )
+    normalized_aggregate = {
+        "name": aggregate_name,
+        "type": aggregate_type,
+        "fields": fields,
+        "target_register": aggregate_target,
+        "candidate_register": aggregate_candidate,
+        "evidence_sha256": _context_sha256(
+            aggregate.get("evidence_sha256"),
+            "aggregate-use context aggregate_parameter.evidence_sha256",
+        ),
+    }
+
+    raw_groups = context.get("copy_groups")
+    if not isinstance(raw_groups, list) or not 1 <= len(raw_groups) <= 16:
+        raise LearningInputError(
+            "aggregate-use context copy_groups must contain one through sixteen entries"
+        )
+    group_fields = {
+        "destination",
+        "destination_type",
+        "source",
+        "fields",
+        "consumer",
+        "evidence_sha256",
+    }
+    groups: list[dict[str, Any]] = []
+    for index, raw_group in enumerate(raw_groups):
+        group = _closed_context(
+            raw_group,
+            allowed=group_fields,
+            required=group_fields,
+            label=f"aggregate-use context copy_groups[{index}]",
+        )
+        group_source = _context_identifier(
+            group.get("source"),
+            f"aggregate-use context copy_groups[{index}].source",
+        )
+        group_type = _context_identifier(
+            group.get("destination_type"),
+            f"aggregate-use context copy_groups[{index}].destination_type",
+        )
+        group_raw_fields = group.get("fields")
+        if not isinstance(group_raw_fields, list):
+            raise LearningInputError(
+                f"aggregate-use context copy_groups[{index}].fields must be an array"
+            )
+        group_normalized_fields = [
+            _context_identifier(
+                item,
+                f"aggregate-use context copy_groups[{index}].fields[{field_index}]",
+            )
+            for field_index, item in enumerate(group_raw_fields)
+        ]
+        if (
+            group_source != aggregate_name
+            or group_type != aggregate_type
+            or group_normalized_fields != fields
+        ):
+            raise LearningInputError(
+                "aggregate-use context copy groups must cover the complete sealed aggregate in field order"
+            )
+        groups.append(
+            {
+                "destination": _context_lvalue(
+                    group.get("destination"),
+                    f"aggregate-use context copy_groups[{index}].destination",
+                ),
+                "destination_type": group_type,
+                "source": group_source,
+                "fields": group_normalized_fields,
+                "consumer": _context_text(
+                    group.get("consumer"),
+                    f"aggregate-use context copy_groups[{index}].consumer",
+                    limit=256,
+                ),
+                "evidence_sha256": _context_sha256(
+                    group.get("evidence_sha256"),
+                    f"aggregate-use context copy_groups[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if len({group["destination"] for group in groups}) != len(groups):
+        raise LearningInputError(
+            "aggregate-use context copy group destinations must be unique"
+        )
+
+    raw_consumers = context.get("independent_consumers")
+    if not isinstance(raw_consumers, list) or len(raw_consumers) > 16:
+        raise LearningInputError(
+            "aggregate-use context independent_consumers must contain at most sixteen entries"
+        )
+    consumers: list[dict[str, Any]] = []
+    for index, raw_consumer in enumerate(raw_consumers):
+        consumer = _closed_context(
+            raw_consumer,
+            allowed={"expression", "fields", "evidence_sha256"},
+            required={"expression", "fields", "evidence_sha256"},
+            label=f"aggregate-use context independent_consumers[{index}]",
+        )
+        consumer_fields = consumer.get("fields")
+        if not isinstance(consumer_fields, list) or not consumer_fields:
+            raise LearningInputError(
+                f"aggregate-use context independent_consumers[{index}].fields must be non-empty"
+            )
+        normalized_consumer_fields = [
+            _context_identifier(
+                item,
+                f"aggregate-use context independent_consumers[{index}].fields[{field_index}]",
+            )
+            for field_index, item in enumerate(consumer_fields)
+        ]
+        if len(set(normalized_consumer_fields)) != len(
+            normalized_consumer_fields
+        ) or not set(normalized_consumer_fields).issubset(fields):
+            raise LearningInputError(
+                "aggregate-use context independent consumer fields must be a unique subset of aggregate fields"
+            )
+        consumers.append(
+            {
+                "expression": _context_text(
+                    consumer.get("expression"),
+                    f"aggregate-use context independent_consumers[{index}].expression",
+                    limit=512,
+                ),
+                "fields": normalized_consumer_fields,
+                "evidence_sha256": _context_sha256(
+                    consumer.get("evidence_sha256"),
+                    f"aggregate-use context independent_consumers[{index}].evidence_sha256",
+                ),
+            }
+        )
+
+    raw_axes = context.get("rejected_axes")
+    if not isinstance(raw_axes, list) or len(raw_axes) > 8:
+        raise LearningInputError(
+            "aggregate-use context rejected_axes must contain at most eight entries"
+        )
+    axes: list[dict[str, Any]] = []
+    for index, raw_axis in enumerate(raw_axes):
+        axis = _closed_context(
+            raw_axis,
+            allowed={"axis", "candidate_record_sha256", "regressed"},
+            required={"axis", "candidate_record_sha256", "regressed"},
+            label=f"aggregate-use context rejected_axes[{index}]",
+        )
+        if axis.get("regressed") is not True:
+            raise LearningInputError(
+                f"aggregate-use context rejected_axes[{index}].regressed must be true"
+            )
+        axes.append(
+            {
+                "axis": _context_identifier(
+                    axis.get("axis"),
+                    f"aggregate-use context rejected_axes[{index}].axis",
+                ),
+                "candidate_record_sha256": _context_sha256(
+                    axis.get("candidate_record_sha256"),
+                    f"aggregate-use context rejected_axes[{index}].candidate_record_sha256",
+                ),
+                "regressed": True,
+            }
+        )
+    if len({axis["axis"] for axis in axes}) != len(axes):
+        raise LearningInputError(
+            "aggregate-use context rejected axis names must be unique"
+        )
+
+    return {
+        "schema": AGGREGATE_USE_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "owners": sorted(owners, key=lambda item: item["name"]),
+        "aggregate_parameter": normalized_aggregate,
+        "copy_groups": groups,
+        "independent_consumers": consumers,
+        "rejected_axes": axes,
     }
 
 
@@ -2553,6 +2934,185 @@ def _preceded_by_call(
     )
 
 
+def _aggregate_use_multiplicity_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "aggregate_use_multiplicity"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated aggregate-use multiplicity context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the aggregate-use context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if (
+        target_size is None
+        or target_size != candidate_size
+        or target_frame is None
+        or target_frame != candidate_frame
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate size/frame are not exact and measurable",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    if not rows or any(
+        left is None or right is None or not _compatible_register_only_pair(left, right)
+        for left, right in rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the residual is not operation-, CFG-, relocation-, immediate-, "
+                "and row-count-identical register-only evidence"
+            ),
+        )
+
+    mapping: dict[str, str] = {}
+    reverse: dict[str, str] = {}
+    mismatch_rows: list[int] = []
+    for index, (left, right) in enumerate(rows):
+        assert left is not None and right is not None
+        left_registers = _registers(left.formatted)
+        right_registers = _registers(right.formatted)
+        if len(left_registers) != len(right_registers):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a register-only row has a different operand count",
+            )
+        row_mismatch = False
+        for target_register, candidate_register in zip(left_registers, right_registers):
+            if target_register == candidate_register:
+                continue
+            if not (_saved(target_register, "r") and _saved(candidate_register, "r")):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the residual is not confined to nonvolatile GPR ownership",
+                )
+            if mapping.get(target_register, candidate_register) != candidate_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is inconsistent",
+                )
+            if reverse.get(candidate_register, target_register) != target_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is not one-to-one",
+                )
+            mapping[target_register] = candidate_register
+            reverse[candidate_register] = target_register
+            row_mismatch = True
+        if row_mismatch:
+            mismatch_rows.append(index)
+
+    cycles = _closed_cycles(mapping)
+    if len(cycles) != 1 or len(cycles[0]) != len(mapping) or len(mapping) < 2:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the residual is not one complete saved-GPR ownership cycle",
+            evidence={
+                "register_mapping": dict(sorted(mapping.items())),
+                "cycles": cycles,
+                "mismatch_rows": mismatch_rows,
+            },
+        )
+    context_mapping = {
+        str(owner["target_register"]): str(owner["candidate_register"])
+        for owner in context["owners"]
+    }
+    if mapping != context_mapping:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the authenticated aggregate owners do not match the physical cycle",
+            evidence={
+                "physical_mapping": dict(sorted(mapping.items())),
+                "context_mapping": dict(sorted(context_mapping.items())),
+            },
+        )
+
+    aggregate = context["aggregate_parameter"]
+    source_expressions = [
+        f"{group['destination']} = *{group['source']}"
+        for group in context["copy_groups"]
+    ]
+    independent_expressions = [
+        consumer["expression"] for consumer in context["independent_consumers"]
+    ]
+    expression_text = "`; `".join(source_expressions)
+    preserve_text = (
+        " Preserve the independently authenticated consumers unchanged."
+        if independent_expressions
+        else ""
+    )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an otherwise exact function has one complete saved-GPR ownership cycle, "
+            "and the sealed source-use receipt identifies complete member-wise copies "
+            "from one live aggregate parameter into real same-type destinations"
+        ),
+        confidence=0.99,
+        source_class="complete_aggregate_copy_use_boundary",
+        recommendation=(
+            f"Test only the complete aggregate-copy cells `{expression_text};`."
+            f"{preserve_text} Suppress input aliases and declaration-order shaping."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "register_mapping": dict(sorted(mapping.items())),
+            "cycle": cycles[0],
+            "mismatch_rows": mismatch_rows,
+            "owners": context["owners"],
+            "aggregate_parameter": aggregate,
+            "copy_groups": context["copy_groups"],
+            "source_expressions": source_expressions,
+            "preserved_independent_consumers": context["independent_consumers"],
+            "rejected_axes": context["rejected_axes"],
+            "suppressed_axes": ["input_pointer_aliases", "parameter_declaration_order"],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -2827,6 +3387,7 @@ def diagnose_document(
     same_tu_donor_symbols: Sequence[str] = (),
     allocator_context: Mapping[str, Any] | None = None,
     parameter_allocation_context: Mapping[str, Any] | None = None,
+    aggregate_use_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -2852,6 +3413,11 @@ def diagnose_document(
     normalized_parameter_allocation_context = (
         _parse_parameter_allocation_context(parameter_allocation_context)
         if parameter_allocation_context is not None
+        else None
+    )
+    normalized_aggregate_use_context = (
+        _parse_aggregate_use_context(aggregate_use_context)
+        if aggregate_use_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -2910,6 +3476,13 @@ def diagnose_document(
             normalized_parameter_allocation_context,
             objdiff_canonical_sha256,
         ),
+        _aggregate_use_multiplicity_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_aggregate_use_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -2944,6 +3517,11 @@ def diagnose_document(
             "parameter_allocation_context_canonical_sha256": (
                 _sha256(_canonical(normalized_parameter_allocation_context))
                 if normalized_parameter_allocation_context is not None
+                else None
+            ),
+            "aggregate_use_context_canonical_sha256": (
+                _sha256(_canonical(normalized_aggregate_use_context))
+                if normalized_aggregate_use_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -3032,6 +3610,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--aggregate-use-context",
+        type=Path,
+        help=(
+            "authenticated aggregate_use_multiplicity_context/v1 JSON with exact "
+            "saved-GPR owners, complete member-copy groups, and preserved consumers"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -3076,6 +3662,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="parameter allocation context",
                 )
                 if args.parameter_allocation_context is not None
+                else None
+            ),
+            aggregate_use_context=(
+                _load_json(args.aggregate_use_context, label="aggregate-use context")
+                if args.aggregate_use_context is not None
                 else None
             ),
             capacity_context=(

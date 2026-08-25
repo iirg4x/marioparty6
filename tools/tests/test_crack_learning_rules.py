@@ -340,6 +340,130 @@ def _parameter_allocation_context(
     }
 
 
+def _aggregate_use_report() -> dict[str, object]:
+    target_text = [
+        "stwu r1, -64(r1)",
+        "mr r31, r4",
+        "mr r30, r5",
+        "mr r29, r6",
+        "mr r3, r31",
+        "mr r4, r30",
+        "mr r5, r29",
+        "bl mbev_CapEffExplodeAdd",
+        "mr r3, r31",
+        "mr r4, r30",
+        "mr r5, r29",
+        "bl mbev_CapEffExplodeAdd",
+        "blr",
+    ]
+    candidate_text = [
+        "stwu r1, -64(r1)",
+        "mr r30, r4",
+        "mr r29, r5",
+        "mr r31, r6",
+        "mr r3, r30",
+        "mr r4, r29",
+        "mr r5, r31",
+        "bl mbev_CapEffExplodeAdd",
+        "mr r3, r30",
+        "mr r4, r29",
+        "mr r5, r31",
+        "bl mbev_CapEffExplodeAdd",
+        "blr",
+    ]
+    target: list[dict[str, object]] = []
+    candidate: list[dict[str, object]] = []
+    for index, (left, right) in enumerate(zip(target_text, candidate_text)):
+        address = 100 + index * 4
+        kind = "DIFF_ARG_MISMATCH" if left != right else None
+        target.append(_instruction(address, left, diff_kind=kind))
+        candidate.append(_instruction(address, right, diff_kind=kind))
+    return _report(
+        "mbev_CapEffExplodeKillerAdd",
+        target,
+        candidate,
+        target_size=592,
+        candidate_size=592,
+    )
+
+
+def _aggregate_use_context(
+    report: dict[str, object] | None = None,
+    *,
+    copy_count: int = 2,
+    independent_consumers: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _aggregate_use_report()
+    destinations = ["color1", "color2"][:copy_count]
+    return {
+        "schema": rules.AGGREGATE_USE_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "source_use_receipt_sha256": "4" * 64,
+            "trace_receipt_sha256": "5" * 64,
+            "exact_precedent_receipt_sha256": "6" * 64,
+        },
+        "owners": [
+            {
+                "name": "pos",
+                "target_register": "r31",
+                "candidate_register": "r30",
+                "evidence_sha256": "7" * 64,
+            },
+            {
+                "name": "vel",
+                "target_register": "r30",
+                "candidate_register": "r29",
+                "evidence_sha256": "8" * 64,
+            },
+            {
+                "name": "color",
+                "target_register": "r29",
+                "candidate_register": "r31",
+                "evidence_sha256": "9" * 64,
+            },
+        ],
+        "aggregate_parameter": {
+            "name": "color",
+            "type": "GXColor",
+            "fields": ["r", "g", "b", "a"],
+            "target_register": "r29",
+            "candidate_register": "r31",
+            "evidence_sha256": "a" * 64,
+        },
+        "copy_groups": [
+            {
+                "destination": destination,
+                "destination_type": "GXColor",
+                "source": "color",
+                "fields": ["r", "g", "b", "a"],
+                "consumer": "mbev_CapEffExplodeAdd",
+                "evidence_sha256": chr(ord("b") + index) * 64,
+            }
+            for index, destination in enumerate(destinations)
+        ],
+        "independent_consumers": (
+            independent_consumers if independent_consumers is not None else []
+        ),
+        "rejected_axes": [
+            {
+                "axis": "input_pointer_aliases",
+                "candidate_record_sha256": "d" * 64,
+                "regressed": True,
+            }
+        ],
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -950,6 +1074,161 @@ class CrackLearningRulesTest(unittest.TestCase):
             _evaluation(result, "parameter_allocation_consumer_chain")["matched"]
         )
 
+    def test_aggregate_use_multiplicity_ranks_complete_copy_groups(self) -> None:
+        report = _aggregate_use_report()
+        context = _aggregate_use_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffExplodeKillerAdd",
+            aggregate_use_context=context,
+        )
+        diagnosis = _evaluation(result, "aggregate_use_multiplicity")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["evidence"]["register_mapping"],
+            {"r29": "r31", "r30": "r29", "r31": "r30"},
+        )
+        self.assertEqual(
+            diagnosis["evidence"]["source_expressions"],
+            ["color1 = *color", "color2 = *color"],
+        )
+        self.assertEqual(
+            diagnosis["evidence"]["suppressed_axes"],
+            ["input_pointer_aliases", "parameter_declaration_order"],
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_aggregate_use_multiplicity_preserves_independent_consumers(self) -> None:
+        report = _aggregate_use_report()
+        for side in ("left", "right"):
+            report[side]["symbols"][0]["name"] = "mbev_CapEffBoostAdd"  # type: ignore[index]
+            report[side]["symbols"][0]["size"] = "436"  # type: ignore[index]
+        context = _aggregate_use_context(
+            report,
+            copy_count=1,
+            independent_consumers=[
+                {
+                    "expression": "particleWorkP->alpha = color->a",
+                    "fields": ["a"],
+                    "evidence_sha256": "e" * 64,
+                }
+            ],
+        )
+        context["copy_groups"][0]["destination"] = "particleWorkP->color"  # type: ignore[index]
+        context["copy_groups"][0]["consumer"] = "particleWorkP->color"  # type: ignore[index]
+
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffBoostAdd",
+            aggregate_use_context=context,
+        )
+        diagnosis = _evaluation(result, "aggregate_use_multiplicity")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["evidence"]["source_expressions"],
+            ["particleWorkP->color = *color"],
+        )
+        self.assertEqual(
+            diagnosis["evidence"]["preserved_independent_consumers"][0]["expression"],
+            "particleWorkP->alpha = color->a",
+        )
+        self.assertIn("Preserve", diagnosis["recommendation"])
+
+    def test_aggregate_use_multiplicity_transfers_to_glow_add(self) -> None:
+        report = _aggregate_use_report()
+        for side in ("left", "right"):
+            report[side]["symbols"][0]["name"] = "mbev_CapEffGlowAdd"  # type: ignore[index]
+            report[side]["symbols"][0]["size"] = "504"  # type: ignore[index]
+        context = _aggregate_use_context(report, copy_count=1)
+        context["copy_groups"][0]["destination"] = "particleWorkP->color"  # type: ignore[index]
+        context["copy_groups"][0]["consumer"] = "particle work color"  # type: ignore[index]
+
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffGlowAdd",
+            aggregate_use_context=context,
+        )
+        diagnosis = _evaluation(result, "aggregate_use_multiplicity")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["evidence"]["source_expressions"],
+            ["particleWorkP->color = *color"],
+        )
+        self.assertEqual(diagnosis["evidence"]["preserved_independent_consumers"], [])
+
+    def test_aggregate_use_multiplicity_fails_closed(self) -> None:
+        report = _aggregate_use_report()
+        no_context = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffExplodeKillerAdd",
+        )
+        self.assertFalse(
+            _evaluation(no_context, "aggregate_use_multiplicity")["matched"]
+        )
+
+        incomplete_copy = _aggregate_use_context(report)
+        incomplete_copy["copy_groups"][0]["fields"] = ["r", "g", "b"]  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "complete sealed aggregate"
+        ):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffExplodeKillerAdd",
+                aggregate_use_context=incomplete_copy,
+            )
+
+        wrong_owner = _aggregate_use_context(report)
+        wrong_owner["owners"][0]["candidate_register"] = "r28"  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "complete register cycle"
+        ):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffExplodeKillerAdd",
+                aggregate_use_context=wrong_owner,
+            )
+
+        operation_difference = _aggregate_use_report()
+        operation_difference["right"]["symbols"][0]["instructions"][4]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "addi r3, r30, 0"
+        context = _aggregate_use_context(operation_difference)
+        result = rules.diagnose_document(
+            operation_difference,
+            focus_symbol="mbev_CapEffExplodeKillerAdd",
+            aggregate_use_context=context,
+        )
+        self.assertFalse(_evaluation(result, "aggregate_use_multiplicity")["matched"])
+
+        malformed_consumer = _aggregate_use_context(report)
+        malformed_consumer["independent_consumers"] = [
+            {
+                "expression": "particleWorkP->alpha = color->unknown",
+                "fields": ["unknown"],
+                "evidence_sha256": "e" * 64,
+            }
+        ]
+        with self.assertRaisesRegex(rules.LearningInputError, "unique subset"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffExplodeKillerAdd",
+                aggregate_use_context=malformed_consumer,
+            )
+
+        unsafe_destination = _aggregate_use_context(report)
+        unsafe_destination["copy_groups"][0]["destination"] = "color1; injected()"  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "identifier/member lvalue"
+        ):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffExplodeKillerAdd",
+                aggregate_use_context=unsafe_destination,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -1387,6 +1666,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffExplodeOMExec",
                 reciprocal_context=context,
+            ),
+        )
+
+    def test_aggregate_use_context_cli_emits_the_same_closed_document(self) -> None:
+        report = _aggregate_use_report()
+        context = _aggregate_use_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "aggregate-use.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffExplodeKillerAdd",
+                            "--aggregate-use-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffExplodeKillerAdd",
+                aggregate_use_context=context,
             ),
         )
 

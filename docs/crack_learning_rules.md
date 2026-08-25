@@ -1,6 +1,6 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns nine reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns ten reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
 reducer and emits self-hashed `crack_learning_diagnosis/v3` JSON with
 `authority_advanced:false`.
@@ -186,6 +186,65 @@ Minimal context:
 }
 ```
 
+For an exact-size register-only cycle caused by repeated complete member-wise
+copies of one aggregate parameter, supply a closed aggregate-use context:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/explodekiller-baseline.strict.json \
+  --function mbev_CapEffExplodeKillerAdd \
+  --aggregate-use-context work/explodekiller.aggregate-use-context.json \
+  > work/explodekiller.learning.json
+```
+
+`aggregate_use_multiplicity_context/v1` binds the canonical report, exact
+size/frame/data/CFG/physical-relocation/sibling gates, the complete saved-GPR
+cycle, the aggregate type and ordered fields, and every complete copy group.
+The rule ranks only `destination = *source` for those sealed groups. It never
+removes or rewrites separately authenticated consumers; BoostAdd's independent
+`particleWorkP->alpha = color->a` read is preserved while only its full color
+copy is reconstructed. Input aliases and parameter declaration-order shaping
+remain suppressed. A prior same-owner exact crack is ranking evidence only;
+the new function still needs its own closed physical and source-use receipts.
+
+Minimal source-use portion (all proof receipts are also required):
+
+```json
+{
+  "schema": "aggregate_use_multiplicity_context/v1",
+  "proofs": {
+    "objdiff_canonical_sha256": "<64 lowercase hex>",
+    "function_size_exact": true,
+    "stack_frame_exact": true,
+    "data_values_exact": true,
+    "physical_relocations_exact": true,
+    "cfg_calls_exact": true,
+    "protected_siblings_preserved": true,
+    "strict_report_sha256": "<64 lowercase hex>",
+    "data_report_sha256": "<64 lowercase hex>",
+    "physical_relocation_receipt_sha256": "<64 lowercase hex>",
+    "source_use_receipt_sha256": "<64 lowercase hex>",
+    "trace_receipt_sha256": "<64 lowercase hex>",
+    "exact_precedent_receipt_sha256": "<64 lowercase hex>"
+  },
+  "owners": [
+    {"name":"pos","target_register":"r31","candidate_register":"r30","evidence_sha256":"<64 lowercase hex>"},
+    {"name":"vel","target_register":"r30","candidate_register":"r29","evidence_sha256":"<64 lowercase hex>"},
+    {"name":"color","target_register":"r29","candidate_register":"r31","evidence_sha256":"<64 lowercase hex>"}
+  ],
+  "aggregate_parameter": {
+    "name":"color", "type":"GXColor", "fields":["r","g","b","a"],
+    "target_register":"r29", "candidate_register":"r31",
+    "evidence_sha256":"<64 lowercase hex>"
+  },
+  "copy_groups": [
+    {"destination":"color1","destination_type":"GXColor","source":"color","fields":["r","g","b","a"],"consumer":"mbev_CapEffExplodeAdd","evidence_sha256":"<64 lowercase hex>"}
+  ],
+  "independent_consumers": [],
+  "rejected_axes": []
+}
+```
+
 The Kokamekku-derived capacity and loop-destination rules are also unavailable
 from objdiff rows alone. Supply either or both closed evidence contexts:
 
@@ -353,9 +412,9 @@ result = diagnose_document(
 ```
 
 For the context-bound rules, pass parsed objects as `allocator_context=`,
-`parameter_allocation_context=`, `capacity_context=`, `branch_context=`, or
-`reciprocal_context=`. The same closed validation used by the CLI is applied
-to Python callers.
+`parameter_allocation_context=`, `aggregate_use_context=`, `capacity_context=`,
+`branch_context=`, or `reciprocal_context=`. The same closed validation used by
+the CLI is applied to Python callers.
 
 ## Installed-functionality audit
 
@@ -365,7 +424,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The six additional joins are narrower than those generic classifications:
+The seven additional joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -374,6 +433,7 @@ The six additional joins are narrower than those generic classifications:
 | assignment/condition saved-GPR cycle | Equal function size; identical operations, relative branches, relocations, and non-register operands; a closed cycle of at least three nonvolatile GPRs; and a call result copied to the cycled register immediately before comparison and conditional branch | Assignment in its consuming condition |
 | allocator two-register swap interaction | Equal function size and measurable frame; identical operations, relative branches, relocations, immediates, data values, physical relocations, and protected siblings; exactly one closed two-nonvolatile-GPR swap; exact VarInfo owner-to-register mapping; and one authenticated producer/consumer identity boundary | A bounded 2x2 interaction of natural declaration chronology and natural producer/consumer expression fusion |
 | parameter/allocation consumer chain | Equal size/frame; a complete parameter versus allocation-result saved-GPR swap; exact data/CFG/physical relocations/siblings; an authenticated allocation call followed immediately by a saved-owner `mr`; and adjacent field-store then typed-pointer-copy consumers | Preserve the explicit allocation-result identity and fuse only its consumers as a right-associative assignment |
+| aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
