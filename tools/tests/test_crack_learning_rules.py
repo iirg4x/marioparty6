@@ -464,6 +464,97 @@ def _aggregate_use_context(
     }
 
 
+def _aggregate_followup_report() -> dict[str, object]:
+    target_text = [
+        "stwu r1, -64(r1)",
+        "mr r24, r3",
+        "mr r23, r4",
+        "mr r3, r24",
+        "mr r4, r23",
+        "bl Hu3DModelAttrSet",
+        "blr",
+    ]
+    candidate_text = [
+        "stwu r1, -64(r1)",
+        "mr r23, r3",
+        "mr r24, r4",
+        "mr r3, r23",
+        "mr r4, r24",
+        "bl Hu3DModelAttrSet",
+        "blr",
+    ]
+    target: list[dict[str, object]] = []
+    candidate: list[dict[str, object]] = []
+    for index, (left, right) in enumerate(zip(target_text, candidate_text)):
+        address = 100 + index * 4
+        kind = "DIFF_ARG_MISMATCH" if left != right else None
+        target.append(_instruction(address, left, diff_kind=kind))
+        candidate.append(_instruction(address, right, diff_kind=kind))
+    return _report(
+        "mbev_CapEffElectricAdd",
+        target,
+        candidate,
+        target_size=496,
+        candidate_size=496,
+    )
+
+
+def _aggregate_followup_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _aggregate_followup_report()
+    return {
+        "schema": rules.AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "aggregate_reconstruction_receipt_sha256": "4" * 64,
+            "fusion_observation_receipt_sha256": "5" * 64,
+        },
+        "owners": [
+            {
+                "name": "particleSystemP",
+                "type": "CAPEFFPARTICLESYSTEMWORK",
+                "target_register": "r24",
+                "candidate_register": "r23",
+                "evidence_sha256": "6" * 64,
+            },
+            {
+                "name": "modelP",
+                "type": "HU3D_MODEL",
+                "target_register": "r23",
+                "candidate_register": "r24",
+                "evidence_sha256": "7" * 64,
+            },
+        ],
+        "aggregate_boundary": {
+            "expression": "particleWorkP->color = ev_CapEffElectricColor[mbRandMod(4)]",
+            "already_applied": True,
+            "evidence_sha256": "8" * 64,
+        },
+        "declaration_axis": {
+            "recommended_order": ["particleSystemP", "modelP"],
+            "evidence_sha256": "9" * 64,
+        },
+        "fusion_observation": {
+            "source_shape": "fused modelP producer and consumer",
+            "target_size": 496,
+            "candidate_size": 500,
+            "strict_regressed": True,
+            "topology_changed": True,
+            "candidate_record_sha256": "a" * 64,
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -1229,6 +1320,75 @@ class CrackLearningRulesTest(unittest.TestCase):
                 aggregate_use_context=unsafe_destination,
             )
 
+    def test_aggregate_two_owner_followup_schedules_declaration_only(self) -> None:
+        report = _aggregate_followup_report()
+        context = _aggregate_followup_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffElectricAdd",
+            aggregate_followup_context=context,
+        )
+        diagnosis = _evaluation(result, "aggregate_two_owner_followup")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["evidence"]["register_mapping"],
+            {"r23": "r24", "r24": "r23"},
+        )
+        self.assertEqual(
+            diagnosis["evidence"]["recommended_cells"],
+            [
+                {
+                    "declaration_chronology": ["particleSystemP", "modelP"],
+                    "expression_topology": "split",
+                }
+            ],
+        )
+        self.assertEqual(len(diagnosis["evidence"]["suppressed_cells"]), 2)
+        self.assertIn("do not combine", diagnosis["recommendation"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_aggregate_two_owner_followup_fails_closed(self) -> None:
+        report = _aggregate_followup_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapEffElectricAdd"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "aggregate_two_owner_followup")["matched"]
+        )
+
+        unmeasured_fusion = _aggregate_followup_context(report)
+        unmeasured_fusion["fusion_observation"]["candidate_size"] = 496  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "measured size change"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffElectricAdd",
+                aggregate_followup_context=unmeasured_fusion,
+            )
+
+        wrong_mapping = _aggregate_followup_context(report)
+        wrong_mapping["owners"][0]["candidate_register"] = "r22"  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "complete two-register swap"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffElectricAdd",
+                aggregate_followup_context=wrong_mapping,
+            )
+
+        operation_difference = _aggregate_followup_report()
+        operation_difference["right"]["symbols"][0]["instructions"][3]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "addi r3, r23, 0"
+        context = _aggregate_followup_context(operation_difference)
+        result = rules.diagnose_document(
+            operation_difference,
+            focus_symbol="mbev_CapEffElectricAdd",
+            aggregate_followup_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "aggregate_two_owner_followup")["matched"]
+        )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -1698,6 +1858,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffExplodeKillerAdd",
                 aggregate_use_context=context,
+            ),
+        )
+
+    def test_aggregate_followup_context_cli_emits_same_document(self) -> None:
+        report = _aggregate_followup_report()
+        context = _aggregate_followup_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "aggregate-followup.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffElectricAdd",
+                            "--aggregate-followup-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffElectricAdd",
+                aggregate_followup_context=context,
             ),
         )
 

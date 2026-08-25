@@ -25,12 +25,13 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v3"
-SCHEMA_VERSION = 3
+SCHEMA = "crack_learning_diagnosis/v4"
+SCHEMA_VERSION = 4
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
 AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
+AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -120,6 +121,15 @@ _AGGREGATE_USE_PROOF_HASHES = (
     "trace_receipt_sha256",
     "exact_precedent_receipt_sha256",
 )
+_AGGREGATE_FOLLOWUP_PROOF_FLAGS = _AGGREGATE_USE_PROOF_FLAGS
+_AGGREGATE_FOLLOWUP_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "aggregate_reconstruction_receipt_sha256",
+    "fusion_observation_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -175,6 +185,7 @@ _RULE_ORDER = (
     "allocator_two_register_swap_interaction",
     "parameter_allocation_consumer_chain",
     "aggregate_use_multiplicity",
+    "aggregate_two_owner_followup",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -1075,6 +1086,238 @@ def _parse_aggregate_use_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "copy_groups": groups,
         "independent_consumers": consumers,
         "rejected_axes": axes,
+    }
+
+
+def _parse_aggregate_followup_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "owners",
+            "aggregate_boundary",
+            "declaration_axis",
+            "fusion_observation",
+        },
+        required={
+            "schema",
+            "proofs",
+            "owners",
+            "aggregate_boundary",
+            "declaration_axis",
+            "fusion_observation",
+        },
+        label="aggregate follow-up context",
+    )
+    if (
+        _context_text(context.get("schema"), "aggregate follow-up context schema")
+        != AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"aggregate follow-up context schema must be {AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_AGGREGATE_FOLLOWUP_PROOF_FLAGS) | set(
+        _AGGREGATE_FOLLOWUP_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="aggregate follow-up context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _AGGREGATE_FOLLOWUP_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"aggregate follow-up context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _AGGREGATE_FOLLOWUP_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"aggregate follow-up context proofs.{field}"
+        )
+
+    raw_owners = context.get("owners")
+    if not isinstance(raw_owners, list) or len(raw_owners) != 2:
+        raise LearningInputError(
+            "aggregate follow-up context owners must contain exactly two entries"
+        )
+    owners: list[dict[str, Any]] = []
+    owner_fields = {
+        "name",
+        "type",
+        "target_register",
+        "candidate_register",
+        "evidence_sha256",
+    }
+    for index, raw_owner in enumerate(raw_owners):
+        owner = _closed_context(
+            raw_owner,
+            allowed=owner_fields,
+            required=owner_fields,
+            label=f"aggregate follow-up context owners[{index}]",
+        )
+        target_register = _context_text(
+            owner.get("target_register"),
+            f"aggregate follow-up context owners[{index}].target_register",
+            limit=3,
+        ).lower()
+        candidate_register = _context_text(
+            owner.get("candidate_register"),
+            f"aggregate follow-up context owners[{index}].candidate_register",
+            limit=3,
+        ).lower()
+        if not _saved(target_register, "r") or not _saved(candidate_register, "r"):
+            raise LearningInputError(
+                "aggregate follow-up context owner registers must be nonvolatile GPRs"
+            )
+        owners.append(
+            {
+                "name": _context_identifier(
+                    owner.get("name"),
+                    f"aggregate follow-up context owners[{index}].name",
+                ),
+                "type": _context_identifier(
+                    owner.get("type"),
+                    f"aggregate follow-up context owners[{index}].type",
+                ),
+                "target_register": target_register,
+                "candidate_register": candidate_register,
+                "evidence_sha256": _context_sha256(
+                    owner.get("evidence_sha256"),
+                    f"aggregate follow-up context owners[{index}].evidence_sha256",
+                ),
+            }
+        )
+    for field in ("name", "target_register", "candidate_register"):
+        if len({owner[field] for owner in owners}) != 2:
+            raise LearningInputError(
+                f"aggregate follow-up context owner {field} values must be unique"
+            )
+    owner_mapping = {
+        str(owner["target_register"]): str(owner["candidate_register"])
+        for owner in owners
+    }
+    cycles = _closed_cycles(owner_mapping)
+    if len(cycles) != 1 or len(cycles[0]) != 2:
+        raise LearningInputError(
+            "aggregate follow-up context owners must describe one complete two-register swap"
+        )
+
+    aggregate_boundary = _closed_context(
+        context.get("aggregate_boundary"),
+        allowed={"expression", "already_applied", "evidence_sha256"},
+        required={"expression", "already_applied", "evidence_sha256"},
+        label="aggregate follow-up context aggregate_boundary",
+    )
+    if aggregate_boundary.get("already_applied") is not True:
+        raise LearningInputError(
+            "aggregate follow-up context aggregate_boundary.already_applied must be true"
+        )
+    normalized_boundary = {
+        "expression": _context_text(
+            aggregate_boundary.get("expression"),
+            "aggregate follow-up context aggregate_boundary.expression",
+            limit=512,
+        ),
+        "already_applied": True,
+        "evidence_sha256": _context_sha256(
+            aggregate_boundary.get("evidence_sha256"),
+            "aggregate follow-up context aggregate_boundary.evidence_sha256",
+        ),
+    }
+
+    declaration_axis = _closed_context(
+        context.get("declaration_axis"),
+        allowed={"recommended_order", "evidence_sha256"},
+        required={"recommended_order", "evidence_sha256"},
+        label="aggregate follow-up context declaration_axis",
+    )
+    raw_order = declaration_axis.get("recommended_order")
+    if not isinstance(raw_order, list) or len(raw_order) != 2:
+        raise LearningInputError(
+            "aggregate follow-up context declaration_axis.recommended_order must contain two entries"
+        )
+    recommended_order = [
+        _context_identifier(
+            item,
+            f"aggregate follow-up context declaration_axis.recommended_order[{index}]",
+        )
+        for index, item in enumerate(raw_order)
+    ]
+    if set(recommended_order) != {str(owner["name"]) for owner in owners}:
+        raise LearningInputError(
+            "aggregate follow-up declaration order must contain exactly the two sealed owners"
+        )
+    normalized_declaration = {
+        "recommended_order": recommended_order,
+        "evidence_sha256": _context_sha256(
+            declaration_axis.get("evidence_sha256"),
+            "aggregate follow-up context declaration_axis.evidence_sha256",
+        ),
+    }
+
+    fusion = _closed_context(
+        context.get("fusion_observation"),
+        allowed={
+            "source_shape",
+            "target_size",
+            "candidate_size",
+            "strict_regressed",
+            "topology_changed",
+            "candidate_record_sha256",
+        },
+        required={
+            "source_shape",
+            "target_size",
+            "candidate_size",
+            "strict_regressed",
+            "topology_changed",
+            "candidate_record_sha256",
+        },
+        label="aggregate follow-up context fusion_observation",
+    )
+    if fusion.get("strict_regressed") is not True or fusion.get("topology_changed") is not True:
+        raise LearningInputError(
+            "aggregate follow-up fusion observation must prove both regression and topology change"
+        )
+    fusion_target_size = _context_uint(
+        fusion.get("target_size"),
+        "aggregate follow-up context fusion_observation.target_size",
+    )
+    fusion_candidate_size = _context_uint(
+        fusion.get("candidate_size"),
+        "aggregate follow-up context fusion_observation.candidate_size",
+    )
+    if fusion_target_size == fusion_candidate_size:
+        raise LearningInputError(
+            "aggregate follow-up fusion observation must have a measured size change"
+        )
+    normalized_fusion = {
+        "source_shape": _context_text(
+            fusion.get("source_shape"),
+            "aggregate follow-up context fusion_observation.source_shape",
+            limit=512,
+        ),
+        "target_size": fusion_target_size,
+        "candidate_size": fusion_candidate_size,
+        "strict_regressed": True,
+        "topology_changed": True,
+        "candidate_record_sha256": _context_sha256(
+            fusion.get("candidate_record_sha256"),
+            "aggregate follow-up context fusion_observation.candidate_record_sha256",
+        ),
+    }
+
+    return {
+        "schema": AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "owners": sorted(owners, key=lambda item: item["name"]),
+        "aggregate_boundary": normalized_boundary,
+        "declaration_axis": normalized_declaration,
+        "fusion_observation": normalized_fusion,
     }
 
 
@@ -3113,6 +3356,199 @@ def _aggregate_use_multiplicity_evaluation(
     )
 
 
+def _aggregate_two_owner_followup_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "aggregate_two_owner_followup"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated aggregate two-owner follow-up context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the aggregate follow-up context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if (
+        target_size is None
+        or target_size != candidate_size
+        or target_frame is None
+        or target_frame != candidate_frame
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the post-aggregate target and candidate size/frame are not exact and measurable",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+    fusion = context["fusion_observation"]
+    if fusion["target_size"] != target_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the rejected fusion observation is bound to a different target size",
+            evidence={
+                "report_target_size": target_size,
+                "fusion_target_size": fusion["target_size"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    if not rows or any(
+        left is None or right is None or not _compatible_register_only_pair(left, right)
+        for left, right in rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the post-aggregate residual is not operation-, CFG-, relocation-, "
+                "immediate-, and row-count-identical register-only evidence"
+            ),
+        )
+
+    mapping: dict[str, str] = {}
+    reverse: dict[str, str] = {}
+    mismatch_rows: list[int] = []
+    for index, (left, right) in enumerate(rows):
+        assert left is not None and right is not None
+        left_registers = _registers(left.formatted)
+        right_registers = _registers(right.formatted)
+        if len(left_registers) != len(right_registers):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a post-aggregate register-only row has a different operand count",
+            )
+        row_mismatch = False
+        for target_register, candidate_register in zip(left_registers, right_registers):
+            if target_register == candidate_register:
+                continue
+            if not (_saved(target_register, "r") and _saved(candidate_register, "r")):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the post-aggregate residual is not confined to nonvolatile GPR ownership",
+                )
+            if mapping.get(target_register, candidate_register) != candidate_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is inconsistent",
+                )
+            if reverse.get(candidate_register, target_register) != target_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is not one-to-one",
+                )
+            mapping[target_register] = candidate_register
+            reverse[candidate_register] = target_register
+            row_mismatch = True
+        if row_mismatch:
+            mismatch_rows.append(index)
+
+    cycles = _closed_cycles(mapping)
+    if len(cycles) != 1 or len(cycles[0]) != 2 or len(mapping) != 2:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the post-aggregate residual is not one complete two-register swap",
+            evidence={
+                "register_mapping": dict(sorted(mapping.items())),
+                "cycles": cycles,
+                "mismatch_rows": mismatch_rows,
+            },
+        )
+    context_mapping = {
+        str(owner["target_register"]): str(owner["candidate_register"])
+        for owner in context["owners"]
+    }
+    if mapping != context_mapping:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the authenticated typed owners do not match the physical two-register swap",
+            evidence={
+                "physical_mapping": dict(sorted(mapping.items())),
+                "context_mapping": dict(sorted(context_mapping.items())),
+            },
+        )
+
+    order = context["declaration_axis"]["recommended_order"]
+    recommended_cell = {
+        "declaration_chronology": list(order),
+        "expression_topology": "split",
+    }
+    suppressed_cells = [
+        {
+            "declaration_chronology": "existing",
+            "expression_topology": "fused",
+            "reason": "measured topology change and strict regression",
+        },
+        {
+            "declaration_chronology": list(order),
+            "expression_topology": "fused",
+            "reason": "do not combine a rejected topology-changing axis",
+        },
+    ]
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "after an authenticated aggregate reconstruction, the otherwise exact "
+            "function has one complete typed two-owner GPR swap and a separately "
+            "measured expression-fusion axis changes topology and regresses strictness"
+        ),
+        confidence=0.99,
+        source_class="post_aggregate_typed_owner_declaration_chronology",
+        recommendation=(
+            f"Keep `{context['aggregate_boundary']['expression']}` and the split "
+            f"producer/consumer statements. Compile only the declaration-order cell "
+            f"{order[0]} before {order[1]}; do not combine it with expression fusion."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "register_mapping": dict(sorted(mapping.items())),
+            "cycle": cycles[0],
+            "mismatch_rows": mismatch_rows,
+            "owners": context["owners"],
+            "aggregate_boundary": context["aggregate_boundary"],
+            "declaration_axis": context["declaration_axis"],
+            "fusion_observation": fusion,
+            "recommended_cells": [recommended_cell],
+            "suppressed_cells": suppressed_cells,
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -3388,6 +3824,7 @@ def diagnose_document(
     allocator_context: Mapping[str, Any] | None = None,
     parameter_allocation_context: Mapping[str, Any] | None = None,
     aggregate_use_context: Mapping[str, Any] | None = None,
+    aggregate_followup_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -3418,6 +3855,11 @@ def diagnose_document(
     normalized_aggregate_use_context = (
         _parse_aggregate_use_context(aggregate_use_context)
         if aggregate_use_context is not None
+        else None
+    )
+    normalized_aggregate_followup_context = (
+        _parse_aggregate_followup_context(aggregate_followup_context)
+        if aggregate_followup_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -3483,6 +3925,13 @@ def diagnose_document(
             normalized_aggregate_use_context,
             objdiff_canonical_sha256,
         ),
+        _aggregate_two_owner_followup_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_aggregate_followup_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -3522,6 +3971,11 @@ def diagnose_document(
             "aggregate_use_context_canonical_sha256": (
                 _sha256(_canonical(normalized_aggregate_use_context))
                 if normalized_aggregate_use_context is not None
+                else None
+            ),
+            "aggregate_followup_context_canonical_sha256": (
+                _sha256(_canonical(normalized_aggregate_followup_context))
+                if normalized_aggregate_followup_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -3618,6 +4072,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--aggregate-followup-context",
+        type=Path,
+        help=(
+            "authenticated aggregate_two_owner_followup_context/v1 JSON with a "
+            "post-aggregate two-owner swap, declaration order, and rejected fusion proof"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -3667,6 +4129,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             aggregate_use_context=(
                 _load_json(args.aggregate_use_context, label="aggregate-use context")
                 if args.aggregate_use_context is not None
+                else None
+            ),
+            aggregate_followup_context=(
+                _load_json(
+                    args.aggregate_followup_context,
+                    label="aggregate follow-up context",
+                )
+                if args.aggregate_followup_context is not None
                 else None
             ),
             capacity_context=(

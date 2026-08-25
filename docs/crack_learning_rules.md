@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns ten reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns eleven reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v3` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v4` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -245,6 +245,27 @@ Minimal source-use portion (all proof receipts are also required):
 }
 ```
 
+When aggregate reconstruction leaves exactly one typed two-owner saved-GPR
+swap, use a separate post-aggregate context rather than overloading the
+aggregate-copy rule:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/electricadd002.strict.json \
+  --function mbev_CapEffElectricAdd \
+  --aggregate-followup-context work/electricadd.aggregate-followup-context.json \
+  > work/electricadd.learning.json
+```
+
+`aggregate_two_owner_followup_context/v1` seals the exact size/frame/data/CFG/
+physical-relocation/sibling gates, both typed owner colors, the aggregate
+expression already applied, the bounded declaration order, and a separately
+measured expression-fusion regression. The detector accepts only one complete
+two-register swap. If fusion changed size/topology and regressed strictness, it
+schedules exactly the declaration-only, split-expression cell and suppresses
+both fused cells. This prevents the ElectricAdd failure mode where combining a
+good declaration axis with a rejected fusion axis grew the function.
+
 The Kokamekku-derived capacity and loop-destination rules are also unavailable
 from objdiff rows alone. Supply either or both closed evidence contexts:
 
@@ -424,7 +445,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The seven additional joins are narrower than those generic classifications:
+The eight additional joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -434,6 +455,7 @@ The seven additional joins are narrower than those generic classifications:
 | allocator two-register swap interaction | Equal function size and measurable frame; identical operations, relative branches, relocations, immediates, data values, physical relocations, and protected siblings; exactly one closed two-nonvolatile-GPR swap; exact VarInfo owner-to-register mapping; and one authenticated producer/consumer identity boundary | A bounded 2x2 interaction of natural declaration chronology and natural producer/consumer expression fusion |
 | parameter/allocation consumer chain | Equal size/frame; a complete parameter versus allocation-result saved-GPR swap; exact data/CFG/physical relocations/siblings; an authenticated allocation call followed immediately by a saved-owner `mr`; and adjacent field-store then typed-pointer-copy consumers | Preserve the explicit allocation-result identity and fuse only its consumers as a right-associative assignment |
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
+| aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
@@ -461,6 +483,10 @@ The focused fixtures reject the tempting incomplete variants:
 - a parameter/allocation claim without an immediate target `r3` capture, with
   a different owner mapping, with non-adjacent or reversed consumer rows, or
   with any structural residual beyond the complete saved-GPR swap;
+- a post-aggregate two-owner claim without an exact physical swap, without the
+  already-applied aggregate receipt, with a fusion observation that preserved
+  size/topology, or with a declaration order naming anything beyond the two
+  sealed typed owners;
 - an unaligned, zero/negative, or internally inconsistent stack extent; a used
   prefix larger than the candidate capacity; or producer maxima that disagree
   with the computed target capacity;
