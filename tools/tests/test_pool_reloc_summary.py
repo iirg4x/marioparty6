@@ -173,6 +173,43 @@ class PoolRelocSummaryTests(unittest.TestCase):
         mapped = next(item for item in full["groups"] if 0 in item["rows"])
         self.assertEqual(mapped["classification"], "mapped_pool_contract")
         self.assertEqual(mapped["interpretation"], "exact_relocation_mapping_with_external_owner_contract")
+        self.assertNotIn(
+            0,
+            [
+                row
+                for owner in full["tu_owner_consumer_census"]["owners"]
+                for row in owner["focus_rows"]
+            ],
+        )
+
+    def test_tu_owner_census_detects_named_subset_of_anonymous_pool(self) -> None:
+        report = _report()
+        for side_name, names in (
+            ("left", ["ev_CapKettouStart"]),
+            ("right", ["ev_CapKettouStart", "ev_CapDonkeyStart", "ev_CapKoopaStart"]),
+        ):
+            for name in names:
+                report[side_name]["symbols"].append(
+                    {
+                        "name": name,
+                        "kind": "SYMBOL_FUNCTION",
+                        "instructions": [_instruction("lfs f0, pool@sda21", 3)],
+                    }
+                )
+
+        census = module.decode_function(report, "PoolFocus")["tu_owner_consumer_census"]
+        owner = next(item for item in census["owners"] if 0 in item["focus_rows"])
+        self.assertEqual(
+            owner["interpretation"],
+            "target_named_owner_is_strict_consumer_subset_of_candidate_anonymous_pool",
+        )
+        self.assertEqual(owner["target"]["consumer_function_count"], 2)
+        self.assertEqual(owner["candidate"]["consumer_function_count"], 4)
+        self.assertEqual(
+            [item["function"] for item in owner["target"]["consumers"]],
+            ["PoolFocus", "ev_CapKettouStart"],
+        )
+        self.assertFalse(census["authority_advanced"])
 
     def test_detects_exact_weak_sqrtf_prefix_and_predicts_section_shift(self) -> None:
         report = _report()

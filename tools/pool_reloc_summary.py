@@ -636,6 +636,123 @@ def _section_prefix_diagnosis(
     }
 
 
+def _owner_consumers(side: Mapping[str, Any], owner_index: int | None) -> list[dict[str, Any]]:
+    if owner_index is None:
+        return []
+    consumers: list[dict[str, Any]] = []
+    for symbol in _symbols(side):
+        if symbol.get("kind") != "SYMBOL_FUNCTION":
+            continue
+        function_name = symbol.get("name")
+        if not isinstance(function_name, str) or not function_name:
+            continue
+        rows: list[dict[str, Any]] = []
+        for row_index, row in enumerate(_sequence(symbol.get("instructions"))):
+            if not isinstance(row, Mapping):
+                continue
+            relocation = _relocation(row)
+            if relocation is None or _int(relocation.get("target_symbol")) != owner_index:
+                continue
+            instruction = _instruction(row) or {}
+            rows.append(
+                {
+                    "row": row_index,
+                    "instruction_address": _int(instruction.get("address")),
+                    "instruction": _formatted(row),
+                    "relocation_type": relocation.get("type_name"),
+                    "relocation_addend": _int(relocation.get("addend"), 0),
+                }
+            )
+        if rows:
+            consumers.append(
+                {
+                    "function": function_name,
+                    "count": len(rows),
+                    "rows": rows,
+                }
+            )
+    return sorted(consumers, key=lambda item: str(item["function"]))
+
+
+def _census_side(
+    side: Mapping[str, Any], row: Mapping[str, Any] | None
+) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    owner = row.get("owner") if isinstance(row.get("owner"), Mapping) else {}
+    owner_index = _int(owner.get("symbol_index"))
+    consumers = _owner_consumers(side, owner_index)
+    return {
+        "symbol_index": owner_index,
+        "name": owner.get("name"),
+        "owner_class": owner.get("owner_class"),
+        "section": owner.get("section"),
+        "address": owner.get("address"),
+        "size_bytes": owner.get("size_bytes"),
+        "bytes": owner.get("bytes"),
+        "typed": owner.get("typed"),
+        "consumer_function_count": len(consumers),
+        "consumer_relocation_count": sum(int(item["count"]) for item in consumers),
+        "consumers": consumers,
+    }
+
+
+def _tu_owner_consumer_census(
+    target_side: Mapping[str, Any],
+    candidate_side: Mapping[str, Any],
+    pairs: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    grouped: dict[tuple[int | None, int | None], list[Mapping[str, Any]]] = defaultdict(list)
+    for pair in pairs:
+        target = pair.get("target") if isinstance(pair.get("target"), Mapping) else None
+        candidate = pair.get("candidate") if isinstance(pair.get("candidate"), Mapping) else None
+        target_owner = target.get("owner") if target and isinstance(target.get("owner"), Mapping) else {}
+        candidate_owner = candidate.get("owner") if candidate and isinstance(candidate.get("owner"), Mapping) else {}
+        grouped[(_int(target_owner.get("symbol_index")), _int(candidate_owner.get("symbol_index")))].append(pair)
+    owners: list[dict[str, Any]] = []
+    for (target_index, candidate_index), owner_pairs in sorted(
+        grouped.items(), key=lambda item: (item[0][0] is None, item[0][0] or -1, item[0][1] is None, item[0][1] or -1)
+    ):
+        first = owner_pairs[0]
+        target = first.get("target") if isinstance(first.get("target"), Mapping) else None
+        candidate = first.get("candidate") if isinstance(first.get("candidate"), Mapping) else None
+        target_census = _census_side(target_side, target)
+        candidate_census = _census_side(candidate_side, candidate)
+        target_functions = {
+            str(item["function"])
+            for item in (target_census or {}).get("consumers", [])
+        }
+        candidate_functions = {
+            str(item["function"])
+            for item in (candidate_census or {}).get("consumers", [])
+        }
+        interpretation = "consumer_sets_equal"
+        if (
+            target_census is not None
+            and candidate_census is not None
+            and target_census.get("owner_class") == "named_label"
+            and candidate_census.get("owner_class") == "compiler_anonymous"
+            and target_functions < candidate_functions
+        ):
+            interpretation = "target_named_owner_is_strict_consumer_subset_of_candidate_anonymous_pool"
+        elif target_functions != candidate_functions:
+            interpretation = "owner_consumer_sets_differ"
+        owners.append(
+            {
+                "focus_rows": sorted(int(pair["row"]) for pair in owner_pairs),
+                "focus_classifications": sorted({str(pair["classification"]) for pair in owner_pairs}),
+                "interpretation": interpretation,
+                "target": target_census,
+                "candidate": candidate_census,
+            }
+        )
+    return {
+        "status": "available" if owners else "none",
+        "owners": owners,
+        "authority_advanced": False,
+    }
+
+
 def decode_function(
     report: Mapping[str, Any],
     function: str,
@@ -655,10 +772,11 @@ def decode_function(
     left, right, target_function, candidate_function = _function_pair(report, function.strip())
     target_rows = _pool_rows(left, target_function)
     candidate_rows = _pool_rows(right, candidate_function)
-    pairs = [
+    all_pairs = [
         _pair_record(row, target_rows.get(row), candidate_rows.get(row))
         for row in sorted(set(target_rows) | set(candidate_rows))
     ]
+    pairs = list(all_pairs)
     if not include_exact:
         pairs = [
             item
@@ -747,6 +865,15 @@ def decode_function(
         "groups": groups,
         "groups_omitted": max(0, len(ordered) - group_limit),
         "section_prefix_diagnosis": _section_prefix_diagnosis(left, right),
+        "tu_owner_consumer_census": _tu_owner_consumer_census(
+            left,
+            right,
+            [
+                pair
+                for pair in all_pairs
+                if pair["classification"] not in {"exact_pool_contract", "mapped_pool_contract"}
+            ],
+        ),
         "include_exact": include_exact,
         "authority_advanced": False,
     }
