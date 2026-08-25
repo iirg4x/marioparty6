@@ -1794,16 +1794,26 @@ class Gc27PcodeColorCrosswalkTests(unittest.TestCase):
     SESSION_ID = "session-0000000000000001"
 
     @staticmethod
-    def _raw(*, object_pointer: int = 0x1010, operand_index: int = 17, pcode_pointer: int = 0x12345678, ig_pointer: int = 0x87654321) -> dict[str, object]:
+    def _raw(
+        *,
+        object_pointer: int = 0x1010,
+        operand_index: int = 17,
+        pcode_pointer: int = 0x12345678,
+        ig_pointer: int = 0x87654321,
+        operand_ordinal: int = 1,
+        operand_count: int = 3,
+        register_class: int = 4,
+        final_color: int = 17,
+    ) -> dict[str, object]:
         return {
             "pcode_pointer": pcode_pointer,
             "ig_pointer": ig_pointer,
-            "operand_ordinal": 1,
-            "operand_count": 3,
+            "operand_ordinal": operand_ordinal,
+            "operand_count": operand_count,
             "operand_kind": 2,
-            "register_class": 4,
+            "register_class": register_class,
             "operand_index": operand_index,
-            "final_color": 17,
+            "final_color": final_color,
             "ig_flags": 0,
             "object_pointer": object_pointer,
         }
@@ -1824,7 +1834,7 @@ class Gc27PcodeColorCrosswalkTests(unittest.TestCase):
                 {"status": "PENDING", **raw},
                 {"status": "CAPTURED", **raw},
             ])
-            word = MachineEmissionDecoderTests._addi(3, 1, 8)
+            word = MachineEmissionDecoderTests._addi(17, 1, 8)
             backend.capture_machine_emission = mock.Mock(return_value={
                 "pcode_pointer": raw["pcode_pointer"],
                 "emitted_offset": 12,
@@ -1841,10 +1851,97 @@ class Gc27PcodeColorCrosswalkTests(unittest.TestCase):
         self.assertEqual(color["object_token"], f"local-{self.SESSION_ID}-000000")
         self.assertEqual(color["operand_index"], 17)
         self.assertNotIn("vreg_id", color)
+        self.assertEqual(machine["owner_joins"], [])
+        self.assertEqual(machine["physical_owner_joins"], [{
+            "physical_register": "r17",
+            "object_token": f"local-{self.SESSION_ID}-000000",
+        }])
         serialized = json.dumps(color, sort_keys=True)
         self.assertNotIn("0x12345678", serialized)
         self.assertNotIn("305419896", serialized)
         self.assertNotIn("2271560481", serialized)
+
+    def test_arithmetic_machine_event_joins_same_pcode_fpr_objects(self) -> None:
+        with TemporaryDirectory() as directory:
+            backend = FakeBackend()
+            multiply_pointer = 0x12345678
+            left = self._raw(
+                object_pointer=0x1010,
+                operand_index=30,
+                pcode_pointer=multiply_pointer,
+                ig_pointer=0x87654321,
+                operand_ordinal=0,
+                operand_count=2,
+                register_class=3,
+                final_color=30,
+            )
+            right = self._raw(
+                object_pointer=0x1020,
+                operand_index=31,
+                pcode_pointer=multiply_pointer,
+                ig_pointer=0x87654322,
+                operand_ordinal=1,
+                operand_count=2,
+                register_class=3,
+                final_color=31,
+            )
+            backend.capture_pcode = mock.Mock(side_effect=[
+                {"status": "PENDING", **left},
+                {"status": "CAPTURED", **left},
+                {"status": "PENDING", **right},
+                {"status": "CAPTURED", **right},
+            ])
+            lfs_left = MachineEmissionDecoderTests._d(48, 30, 1, 0)
+            lfs_right = MachineEmissionDecoderTests._d(48, 31, 1, 4)
+            fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 11) | (25 << 1)
+            backend.capture_machine_emission = mock.Mock(side_effect=[
+                {
+                    "pcode_pointer": 0x11111111,
+                    "emitted_offset": 0,
+                    "opcode_enum": 1,
+                    "encoded_value": MachineEmissionDecoderTests._encoded(lfs_left),
+                    "descriptor_base": lfs_left & 0xFC000000,
+                },
+                {
+                    "pcode_pointer": 0x22222222,
+                    "emitted_offset": 4,
+                    "opcode_enum": 1,
+                    "encoded_value": MachineEmissionDecoderTests._encoded(lfs_right),
+                    "descriptor_base": lfs_right & 0xFC000000,
+                },
+                {
+                    "pcode_pointer": multiply_pointer,
+                    "emitted_offset": 8,
+                    "opcode_enum": 1,
+                    "encoded_value": MachineEmissionDecoderTests._encoded(fmuls),
+                    "descriptor_base": fmuls & 0xFC000000,
+                },
+            ])
+            session = self._session(Path(directory), backend)
+            session.ledger.register("local", 0x1020)
+            for _row in (left, right):
+                self.assertIsNone(session._capture_pcode_color(MODULE.GC27_PCODE_COLOR_HOOKS[0], 7))
+                self.assertIsNotNone(session._capture_pcode_color(MODULE.GC27_PCODE_COLOR_HOOKS[1], 7))
+            session._capture_machine_emission(MODULE.GC27_MACHINE_EMIT_HOOK, 7)
+            session._capture_machine_emission(MODULE.GC27_MACHINE_EMIT_HOOK, 7)
+            arithmetic = session._capture_machine_emission(MODULE.GC27_MACHINE_EMIT_HOOK, 7)
+
+        self.assertEqual(arithmetic["mnemonic"], "fmuls")
+        self.assertEqual(arithmetic["arithmetic_type"], "f32")
+        self.assertEqual(arithmetic["owner_joins"], [])
+        self.assertEqual(arithmetic["physical_owner_joins"], [
+            {
+                "physical_register": "f30",
+                "object_token": f"local-{self.SESSION_ID}-000000",
+            },
+            {
+                "physical_register": "f31",
+                "object_token": f"local-{self.SESSION_ID}-000001",
+            },
+        ])
+        serialized = json.dumps(arithmetic, sort_keys=True)
+        self.assertNotIn("0x12345678", serialized)
+        self.assertNotIn(str(multiply_pointer), serialized)
 
     def test_hidden_owner_and_nonregister_post_noop_are_explicit_and_nonpoisoning(self) -> None:
         with TemporaryDirectory() as directory:
@@ -2221,6 +2318,84 @@ class MachineEmissionDecoderTests(unittest.TestCase):
         )
         self.assertEqual(missing["status"], "UNKNOWN")
         self.assertEqual(missing["reason"], "ambiguous reaching definition")
+
+    def test_machine_decoder_tracks_fmuls_operands_result_and_type(self) -> None:
+        decoder = MODULE.MachineEmissionDecoder()
+        self.assertEqual(self._decode(decoder, 0, self._d(48, 30, 1, 0))["status"], "CAPTURED")
+        self.assertEqual(self._decode(decoder, 1, self._d(48, 31, 1, 4))["status"], "CAPTURED")
+        fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 11) | (25 << 1)
+        row = self._decode(decoder, 2, fmuls)
+        self.assertEqual(row["status"], "CAPTURED")
+        self.assertEqual(row["mnemonic"], "fmuls")
+        self.assertEqual(
+            row["registers"],
+            {"destination": "f28", "source_a": "f30", "source_b": "f31"},
+        )
+        self.assertEqual(row["arithmetic_op"], "multiply")
+        self.assertEqual(row["arithmetic_type"], "f32")
+        self.assertEqual(row["reaching_definitions"], [0, 1])
+
+        missing = MODULE.MachineEmissionDecoder().decode(
+            pcode_token=f"pcode-{self.SESSION_ID}-000000",
+            emitted_offset=0,
+            opcode_enum=1,
+            encoded_value=self._encoded(fmuls),
+            descriptor_base=fmuls & 0xFC000000,
+        )
+        self.assertEqual(missing["status"], "UNKNOWN")
+        self.assertEqual(missing["reason"], "ambiguous reaching definition")
+
+    def test_machine_decoder_tracks_ps_mul_operands_result_and_type(self) -> None:
+        decoder = MODULE.MachineEmissionDecoder()
+        self.assertEqual(self._decode(decoder, 0, self._d(48, 28, 1, 0))["status"], "CAPTURED")
+        self.assertEqual(self._decode(decoder, 1, self._d(48, 29, 1, 4))["status"], "CAPTURED")
+        ps_mul = 0x139C0772  # ps_mul f28,f28,f29
+        row = self._decode(decoder, 2, ps_mul)
+        self.assertEqual(row["status"], "CAPTURED")
+        self.assertEqual(row["mnemonic"], "ps_mul")
+        self.assertEqual(
+            row["registers"],
+            {"destination": "f28", "source_a": "f28", "source_b": "f29"},
+        )
+        self.assertEqual(row["arithmetic_op"], "multiply")
+        self.assertEqual(row["arithmetic_type"], "paired-single")
+        self.assertEqual(row["reaching_definitions"], [0, 1])
+
+        second = 0x13DE07F2  # ps_mul f30,f30,f31
+        decoded = MODULE.MachineEmissionDecoder()
+        self.assertEqual(self._decode(decoded, 0, self._d(48, 30, 1, 0))["status"], "CAPTURED")
+        self.assertEqual(self._decode(decoded, 1, self._d(48, 31, 1, 4))["status"], "CAPTURED")
+        self.assertEqual(self._decode(decoded, 2, second)["registers"]["destination"], "f30")
+
+    def test_machine_arithmetic_event_schema_accepts_complete_effect_only(self) -> None:
+        decoder = MODULE.MachineEmissionDecoder()
+        self.assertEqual(self._decode(decoder, 0, self._d(48, 30, 1, 0))["status"], "CAPTURED")
+        self.assertEqual(self._decode(decoder, 1, self._d(48, 31, 1, 4))["status"], "CAPTURED")
+        fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 11) | (25 << 1)
+        row = {
+            "hook_id": "gc27_machine_emit",
+            **self._decode(decoder, 2, fmuls),
+            "owner_joins": [],
+        }
+        with TemporaryDirectory() as directory:
+            session = MODULE.CombinedCaptureSession(auth(Path(directory)), FakeBackend())
+            session.bus.bind_process(1)
+            event = session.bus.emit("pcode", "machine_emission", row)
+        context = {
+            "session_id": self.SESSION_ID,
+            "process_id": 1,
+            "function": "mbCapListDebug",
+            "compiler": {"sha256": MODULE.GC27_COMPILER_SHA256},
+        }
+        MODULE._validate_event(event, 0, context)
+
+        incomplete = dict(event)
+        del incomplete["arithmetic_type"]
+        with self.assertRaisesRegex(MODULE.Rejected, "arithmetic effect is incomplete"):
+            MODULE._validate_event(incomplete, 0, context)
+        invalid = dict(event, arithmetic_type="f64")
+        with self.assertRaisesRegex(MODULE.Rejected, "arithmetic effect is invalid"):
+            MODULE._validate_event(invalid, 0, context)
 
     def test_machine_event_joins_existing_physical_owner_without_serializing_pointer(self) -> None:
         with TemporaryDirectory() as directory:

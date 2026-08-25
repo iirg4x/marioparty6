@@ -95,15 +95,23 @@ It records:
 - memory operation, width, and effective `r1`-relative stack offset when the
   address is provable;
 - prior emitted instruction indices that supply the address or stored value;
-- Object/vreg/physical-register joins only when every ownership edge is exact.
+- `owner_joins` only when the complete Object/vreg/physical-register chain is
+  exact; `physical_owner_joins` may also use the same-PCode-token
+  Object/IG/final-color observation when no vreg identity is authenticated.
+  Operand indices are never promoted to vreg identities.
 
-The decoder supports the bounded stack forms needed by the current evidence:
-`addi`, scalar D-form loads/stores, and non-quantized PSQ loads/stores. It
-returns UNKNOWN and clears reaching-definition state for a missing/reused
-PCode token, reversed or duplicate output offset, unsupported opcode/operand,
-descriptor mismatch, ambiguous address definition, nonzero indexed base, or
-PSQ quantization other than zero. UNKNOWN is evidence, never an inferred
-owner. Objdiff reports the retail MoveNum seam at aligned rows 117--122. The
+The decoder supports the bounded stack and arithmetic forms needed by the
+current evidence: `addi`, scalar D-form loads/stores, non-quantized PSQ
+loads/stores, scalar `fmuls`, and paired-single `ps_mul`. Arithmetic events
+record two source FPRs, one destination FPR, exact reaching definitions,
+`arithmetic_op = multiply`, and `arithmetic_type = f32` or `paired-single`.
+The same capture-local PCode token joins authenticated Object/IG final colors
+to those physical operands without serializing compiler addresses. It returns
+UNKNOWN and clears reaching-definition state for a missing/reused PCode token,
+reversed or duplicate output offset, unsupported opcode/operand, descriptor
+mismatch, ambiguous address definition, nonzero indexed base, or PSQ
+quantization other than zero. UNKNOWN is evidence, never an inferred owner.
+Objdiff reports the retail MoveNum seam at aligned rows 117--122. The
 fresh candidate capture numbers the corresponding six scalar machine events
 113--118: loads 113/114/117 cover `[0x08,0x14)` and stores 115/116/118 cover
 `[0x14,0x20)`. Binding plans must use capture-local indices, never copy
@@ -518,9 +526,12 @@ required for source joins.
 Each `joined_objects` row contains verified source spans, the authenticated
 virtual register, at most one physical GPR/FPR assignment, stack write/home
 chronology, and source call-return chronology for the exact assigned identity.
-`machine_emission` events add the emitted instruction/stack/lifetime edge;
-their `owner_joins` list stays empty unless the same session authenticated the
-complete Object→vreg→physical-register chain.
+`machine_emission` events add the emitted instruction/stack/lifetime or
+arithmetic edge. Their `owner_joins` list stays empty unless the same session
+authenticated the complete Object→vreg→physical-register chain. A
+`physical_owner_joins` row may still be exact when the same PCode token's
+authenticated color observation directly binds an Object/IG owner to that
+physical operand; this never invents the missing vreg edge.
 `source_evaluation_chronology` records call evaluation order from the bound
 function text. The report also hashes every composing tool source. The
 correlator's deterministic `report_sha256` is SHA-256 over canonical JSON of

@@ -559,6 +559,8 @@ _EVENT_EXTRA_KEYS = {
     "memory_width",
     "effective_stack_offset",
     "address_definition",
+    "arithmetic_op",
+    "arithmetic_type",
     "reaching_definitions",
     "owner_joins",
     "physical_owner_joins",
@@ -611,7 +613,7 @@ _EVENT_ALLOWED_FIELDS = {
         "instruction_index", "opcode_enum", "ppc_word", "ppc_bytes", "mnemonic",
         "registers", "immediate", "memory_op", "memory_width",
         "effective_stack_offset", "address_definition", "reaching_definitions",
-        "owner_joins", "physical_owner_joins",
+        "arithmetic_op", "arithmetic_type", "owner_joins", "physical_owner_joins",
     },
     "lane_unknown": {"reason"},
     "function_exit": {"exit_code"},
@@ -1667,6 +1669,44 @@ class MachineEmissionDecoder:
                 registers={"destination": f"f{destination}", "source": f"f{source}"},
             )
             self.value_defs[("FPR", destination)] = instruction_index
+        elif primary == 59 and ((word >> 1) & 0x3FF) == 25:  # fmuls
+            destination = (word >> 21) & 31
+            source_a = (word >> 16) & 31
+            source_b = (word >> 11) & 31
+            source_keys = (("FPR", source_a), ("FPR", source_b))
+            if any(key not in self.value_defs for key in source_keys):
+                return self._unknown("ambiguous reaching definition", result)
+            reaching.update(self.value_defs[key] for key in source_keys)
+            result.update(
+                mnemonic="fmuls",
+                registers={
+                    "destination": f"f{destination}",
+                    "source_a": f"f{source_a}",
+                    "source_b": f"f{source_b}",
+                },
+                arithmetic_op="multiply",
+                arithmetic_type="f32",
+            )
+            self.value_defs[("FPR", destination)] = instruction_index
+        elif primary == 4 and ((word >> 1) & 0x1F) == 25:  # ps_mul
+            destination = (word >> 21) & 31
+            source_a = (word >> 16) & 31
+            source_b = (word >> 6) & 31
+            source_keys = (("FPR", source_a), ("FPR", source_b))
+            if any(key not in self.value_defs for key in source_keys):
+                return self._unknown("ambiguous reaching definition", result)
+            reaching.update(self.value_defs[key] for key in source_keys)
+            result.update(
+                mnemonic="ps_mul",
+                registers={
+                    "destination": f"f{destination}",
+                    "source_a": f"f{source_a}",
+                    "source_b": f"f{source_b}",
+                },
+                arithmetic_op="multiply",
+                arithmetic_type="paired-single",
+            )
+            self.value_defs[("FPR", destination)] = instruction_index
         else:
             return self._unknown("unsupported machine opcode", result)
 
@@ -1876,6 +1916,11 @@ class CombinedCaptureSession:
         self.hidden_ig_tokens: dict[str, str] = {}
         self.pending_pcode_colors: dict[int, dict[str, Any]] = {}
         self.pcode_color_evidence: set[tuple[str, int]] = set()
+        # PCode-color evidence is scoped to one capture-local PCode token.
+        # It may authenticate an Object's physical color for that instruction
+        # even when the separate Object-to-vreg reader is unavailable.  Never
+        # promote the operand index to a virtual-register identity.
+        self.pcode_color_owners: dict[tuple[str, str, int], str] = {}
 
     def _check_process(self, process_id: Any | None) -> None:
         if process_id is None:
@@ -2014,10 +2059,17 @@ class CombinedCaptureSession:
         if evidence_key in self.pcode_color_evidence:
             raise Rejected("duplicate PCode color evidence")
         self.pcode_color_evidence.add(evidence_key)
+        if "object_token" in payload:
+            color_key = (pcode_token, bank, values["final_color"])
+            prior_owner = self.pcode_color_owners.get(color_key)
+            if prior_owner not in (None, payload["object_token"]):
+                raise Rejected("PCode color evidence maps one physical color to multiple Objects")
+            self.pcode_color_owners[color_key] = str(payload["object_token"])
         return payload
 
     def _machine_owner_joins(
         self,
+        pcode_token: str,
         registers: Mapping[str, Any],
     ) -> tuple[list[dict[str, str]], list[dict[str, str]], str | None]:
         joins: list[dict[str, str]] = []
@@ -2027,12 +2079,23 @@ class CombinedCaptureSession:
             if not isinstance(register, str) or re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register) is None:
                 continue
             bank = "GPR" if register.startswith("r") else "FPR"
-            token = self.physical_reg_owners.get((bank, int(register[1:])))
-            physical = self.physical_mappings.get(token or "")
-            if token is None or not isinstance(physical, Mapping) or physical.get("status") != "EXACT":
-                continue
-            if physical.get("bank") != bank or int(physical.get("physical_reg", -1)) != int(register[1:]):
+            physical_index = int(register[1:])
+            assigned_token = self.physical_reg_owners.get((bank, physical_index))
+            color_token = self.pcode_color_owners.get((pcode_token, bank, physical_index))
+            if assigned_token is not None and color_token is not None and assigned_token != color_token:
                 return [], [], "machine owner register-bank mismatch"
+            token = assigned_token or color_token
+            if token is None:
+                continue
+            if assigned_token is not None:
+                physical = self.physical_mappings.get(assigned_token)
+                if (
+                    not isinstance(physical, Mapping)
+                    or physical.get("status") != "EXACT"
+                    or physical.get("bank") != bank
+                    or int(physical.get("physical_reg", -1)) != physical_index
+                ):
+                    return [], [], "machine owner register-bank mismatch"
             key = (register, token)
             if key in seen:
                 continue
@@ -2088,7 +2151,10 @@ class CombinedCaptureSession:
         if decoded["status"] == "UNKNOWN":
             self._unknown(str(decoded["reason"]))
             return {"hook_id": row["id"], **decoded}
-        owner_joins, physical_owner_joins, join_reason = self._machine_owner_joins(decoded["registers"])
+        owner_joins, physical_owner_joins, join_reason = self._machine_owner_joins(
+            token,
+            decoded["registers"],
+        )
         if join_reason is not None:
             return self._unknown_machine_emission(row["id"], join_reason)
         decoded["owner_joins"] = owner_joins
@@ -3739,13 +3805,13 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
             ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
             if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
                 raise Rejected(f"event[{index}] PPC bytes/word mismatch")
-            if event["mnemonic"] not in {"addi", *[row[0] for row in MachineEmissionDecoder._D_MEMORY.values()], "psq_l", "psq_st", "psq_lx", "psq_stx", "bl", "fneg"}:
+            if event["mnemonic"] not in {"addi", *[row[0] for row in MachineEmissionDecoder._D_MEMORY.values()], "psq_l", "psq_st", "psq_lx", "psq_stx", "bl", "fneg", "fmuls", "ps_mul"}:
                 raise Rejected(f"event[{index}] machine mnemonic is unsupported")
             registers = event["registers"]
             if not isinstance(registers, Mapping) or (not registers and event["mnemonic"] != "bl"):
                 raise Rejected(f"event[{index}] machine registers are malformed")
             for role, register in registers.items():
-                if role not in {"destination", "source", "data", "base", "index"} or not isinstance(register, str) or re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register) is None:
+                if role not in {"destination", "source", "source_a", "source_b", "data", "base", "index"} or not isinstance(register, str) or re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register) is None:
                     raise Rejected(f"event[{index}] machine register operand is malformed")
             reaching = event["reaching_definitions"]
             if not isinstance(reaching, list) or any(not isinstance(value, int) or isinstance(value, bool) or value < 0 or value >= instruction_index for value in reaching) or reaching != sorted(set(reaching)):
@@ -3764,6 +3830,18 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 if not isinstance(definition, Mapping) or set(definition) != {"register", "stack_offset"} or definition["register"] not in registers.values():
                     raise Rejected(f"event[{index}] address definition is malformed")
                 _integer(definition["stack_offset"], f"event[{index}].address_definition.stack_offset")
+            arithmetic_fields = {"arithmetic_op", "arithmetic_type"} & fields
+            arithmetic_mnemonics = {"fmuls", "ps_mul"}
+            if event["mnemonic"] in arithmetic_mnemonics:
+                if arithmetic_fields != {"arithmetic_op", "arithmetic_type"}:
+                    raise Rejected(f"event[{index}] machine arithmetic effect is incomplete")
+                expected_type = "f32" if event["mnemonic"] == "fmuls" else "paired-single"
+                if event["arithmetic_op"] != "multiply" or event["arithmetic_type"] != expected_type:
+                    raise Rejected(f"event[{index}] machine arithmetic effect is invalid")
+                if set(registers) != {"destination", "source_a", "source_b"}:
+                    raise Rejected(f"event[{index}] machine arithmetic operands are malformed")
+            elif arithmetic_fields:
+                raise Rejected(f"event[{index}] non-arithmetic machine event carries arithmetic fields")
             joins = event["owner_joins"]
             if not isinstance(joins, list):
                 raise Rejected(f"event[{index}] owner joins are malformed")
