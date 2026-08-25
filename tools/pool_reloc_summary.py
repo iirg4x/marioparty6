@@ -384,6 +384,30 @@ def _classification(target: Mapping[str, Any] | None, candidate: Mapping[str, An
             "No pool source axis is indicated by this consumer.",
         )
     observed_diff = bool(target.get("diff_kind") or candidate.get("diff_kind"))
+    exact_external_contract_differences = {
+        "literal_width",
+        "literal_bytes_unresolved",
+        "owner_section",
+        "owner_offset",
+    }
+    if (
+        not observed_diff
+        and t_reloc.get("type") == c_reloc.get("type")
+        and t_reloc.get("addend") == c_reloc.get("addend")
+        and t_owner.get("name") == c_owner.get("name")
+        and t_owner.get("bytes") is not None
+        and c_owner.get("bytes") is None
+        and t_owner.get("consumer_type") == c_owner.get("consumer_type")
+        and t_owner.get("kind") == "SYMBOL_OBJECT"
+        and c_owner.get("kind") is None
+        and set(differences).issubset(exact_external_contract_differences)
+    ):
+        return (
+            "mapped_pool_contract",
+            differences,
+            "exact_relocation_mapping_with_external_owner_contract",
+            "The candidate references the exact named external pool owner; no source axis is indicated by absent local bytes.",
+        )
     if not observed_diff and set(differences).issubset(
         {"owner_name", "owner_section", "owner_offset"}
     ):
@@ -508,6 +532,110 @@ def _compact_side(item: Mapping[str, Any] | None) -> dict[str, Any] | None:
     }
 
 
+def _section_size(side: Mapping[str, Any], name: str) -> int | None:
+    for section in _sequence(side.get("sections")):
+        if isinstance(section, Mapping) and section.get("name") == name:
+            return _int(section.get("size"))
+    for symbol in _symbols(side):
+        if symbol.get("kind") == "SYMBOL_SECTION" and symbol.get("name") == f"[{name}]":
+            return _int(symbol.get("size"))
+    return None
+
+
+def _sdata2_objects(side: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    symbols = _symbols(side)
+    membership = _section_membership(symbols)
+    return [
+        symbol
+        for index, symbol in enumerate(symbols)
+        if membership.get(index) == ".sdata2" and symbol.get("kind") == "SYMBOL_OBJECT"
+    ]
+
+
+def _weak_flag(symbol: Mapping[str, Any]) -> bool:
+    flags = symbol.get("flags")
+    return isinstance(flags, Mapping) and flags.get("weak") is True
+
+
+def _sqrtf_prefix_role(symbol: Mapping[str, Any], role: str) -> bool:
+    name = symbol.get("name")
+    return (
+        isinstance(name, str)
+        and name.startswith(f"_{role}$localstatic")
+        and name.endswith("$sqrtf__Ff")
+    )
+
+
+def _section_prefix_diagnosis(
+    target_side: Mapping[str, Any], candidate_side: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Diagnose only the authenticated GC/2.6 weak sqrtf two-object prefix."""
+
+    target_objects = _sdata2_objects(target_side)
+    candidate_objects = _sdata2_objects(candidate_side)
+    no_match = {
+        "status": "none",
+        "classification": None,
+        "authority_advanced": False,
+    }
+    if len(candidate_objects) < 2:
+        return no_match
+    half, three = candidate_objects[:2]
+    half_address = _int(half.get("address"), 0)
+    three_address = _int(three.get("address"))
+    if not (
+        half_address == 0
+        and three_address == 8
+        and _int(half.get("size")) == 8
+        and _int(three.get("size")) == 8
+        and _weak_flag(half)
+        and _weak_flag(three)
+        and _sqrtf_prefix_role(half, "half")
+        and _sqrtf_prefix_role(three, "three")
+        and _decode_data(half) == bytes.fromhex("3fe0000000000000")
+        and _decode_data(three) == bytes.fromhex("4008000000000000")
+    ):
+        return no_match
+    candidate_names = {str(half.get("name")), str(three.get("name"))}
+    target_names = {str(symbol.get("name")) for symbol in target_objects}
+    if candidate_names & target_names:
+        return no_match
+    candidate_size = _section_size(candidate_side, ".sdata2")
+    target_size = _section_size(target_side, ".sdata2")
+    if candidate_size is None or candidate_size < 16:
+        return no_match
+    return {
+        "status": "matched",
+        "classification": "candidate_only_weak_sqrtf_prefix",
+        "section": ".sdata2",
+        "target_section_size_bytes": target_size,
+        "candidate_section_size_bytes": candidate_size,
+        "removable_prefix_bytes": 16,
+        "predicted_candidate_section_size_bytes": candidate_size - 16,
+        "predicted_downstream_owner_offset_delta_bytes": -16,
+        "objects": [
+            {
+                "name": half.get("name"),
+                "address": half_address,
+                "size_bytes": 8,
+                "typed": _typed_interpretations(_decode_data(half)),
+            },
+            {
+                "name": three.get("name"),
+                "address": three_address,
+                "size_bytes": 8,
+                "typed": _typed_interpretations(_decode_data(three)),
+            },
+        ],
+        "interpretation": "candidate_only_weak_sqrtf_prefix_shifts_all_downstream_sdata2_owners",
+        "recommended_source_axis": (
+            "Audit the authenticated include/dependency closure that instantiated sqrtf; preserve truthful prototypes and ABI. "
+            "Do not add recovered-C header guards or edit literal ownership merely to move the pool."
+        ),
+        "authority_advanced": False,
+    }
+
+
 def decode_function(
     report: Mapping[str, Any],
     function: str,
@@ -609,6 +737,8 @@ def decode_function(
                 for item in pairs
                 if item["interpretation"] not in {
                     "exact",
+                    "exact_relocation_mapping_with_external_owner_contract",
+                    "exact_relocation_mapping_with_object_local_owner_identity",
                     "body_value_equivalent_owner_identity_only",
                     "body_value_equivalent_pool_chronology_only",
                 }
@@ -616,6 +746,7 @@ def decode_function(
         },
         "groups": groups,
         "groups_omitted": max(0, len(ordered) - group_limit),
+        "section_prefix_diagnosis": _section_prefix_diagnosis(left, right),
         "include_exact": include_exact,
         "authority_advanced": False,
     }

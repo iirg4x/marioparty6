@@ -22,6 +22,14 @@ def _symbol(name: str, raw: bytes, address: int) -> dict[str, object]:
     }
 
 
+def _weak_symbol(name: str, raw: bytes, address: int | None) -> dict[str, object]:
+    symbol = _symbol(name, raw, 0 if address is None else address)
+    if address is None:
+        symbol.pop("address")
+    symbol["flags"] = {"global": True, "weak": True}
+    return symbol
+
+
 def _instruction(
     formatted: str,
     owner: int | None,
@@ -148,6 +156,85 @@ class PoolRelocSummaryTests(unittest.TestCase):
         mapped = next(item for item in full["groups"] if 0 in item["rows"])
         self.assertEqual(mapped["classification"], "mapped_pool_contract")
         self.assertEqual(mapped["interpretation"], "exact_relocation_mapping_with_object_local_owner_identity")
+
+    def test_exact_external_pool_contract_is_not_unresolved(self) -> None:
+        report = _report()
+        target_owner = report["left"]["symbols"][3]
+        target_owner["name"] = "lbl_external"
+        candidate_owner = report["right"]["symbols"][3]
+        candidate_owner.clear()
+        candidate_owner.update({"name": "lbl_external", "flags": {"global": True}})
+        report["left"]["symbols"][1]["instructions"][0].pop("diff_kind")
+        report["right"]["symbols"][1]["instructions"][0].pop("diff_kind")
+
+        default = module.decode_function(report, "PoolFocus")
+        self.assertNotIn(0, [row for group in default["groups"] for row in group["rows"]])
+        full = module.decode_function(report, "PoolFocus", include_exact=True)
+        mapped = next(item for item in full["groups"] if 0 in item["rows"])
+        self.assertEqual(mapped["classification"], "mapped_pool_contract")
+        self.assertEqual(mapped["interpretation"], "exact_relocation_mapping_with_external_owner_contract")
+
+    def test_detects_exact_weak_sqrtf_prefix_and_predicts_section_shift(self) -> None:
+        report = _report()
+        target = report["left"]
+        candidate = report["right"]
+        target["sections"] = [{"name": ".sdata2", "size": "560"}]
+        candidate["sections"] = [{"name": ".sdata2", "size": "480"}]
+        section_index = next(
+            index for index, symbol in enumerate(candidate["symbols"])
+            if symbol.get("name") == "[.sdata2]"
+        )
+        candidate["symbols"][section_index + 1:section_index + 1] = [
+            _weak_symbol("_half$localstatic3$sqrtf__Ff", bytes.fromhex("3fe0000000000000"), None),
+            _weak_symbol("_three$localstatic4$sqrtf__Ff", bytes.fromhex("4008000000000000"), 8),
+        ]
+
+        diagnosis = module.decode_function(report, "PoolFocus")["section_prefix_diagnosis"]
+        self.assertEqual(diagnosis["status"], "matched")
+        self.assertEqual(diagnosis["classification"], "candidate_only_weak_sqrtf_prefix")
+        self.assertEqual(diagnosis["removable_prefix_bytes"], 16)
+        self.assertEqual(diagnosis["predicted_candidate_section_size_bytes"], 464)
+        self.assertEqual(diagnosis["predicted_downstream_owner_offset_delta_bytes"], -16)
+        self.assertFalse(diagnosis["authority_advanced"])
+
+    def test_sqrtf_prefix_diagnosis_fails_closed_on_inexact_evidence(self) -> None:
+        base = _report()
+        base["left"]["sections"] = [{"name": ".sdata2", "size": "560"}]
+        base["right"]["sections"] = [{"name": ".sdata2", "size": "480"}]
+        section_index = next(
+            index for index, symbol in enumerate(base["right"]["symbols"])
+            if symbol.get("name") == "[.sdata2]"
+        )
+        base["right"]["symbols"][section_index + 1:section_index + 1] = [
+            _weak_symbol("_half$localstatic3$sqrtf__Ff", bytes.fromhex("3fe0000000000000"), None),
+            _weak_symbol("_three$localstatic4$sqrtf__Ff", bytes.fromhex("4008000000000000"), 8),
+        ]
+
+        mutations = {
+            "wrong_bits": lambda report: report["right"]["symbols"][section_index + 1].update(
+                _weak_symbol("_half$localstatic3$sqrtf__Ff", bytes.fromhex("3ff0000000000000"), None)
+            ),
+            "wrong_name": lambda report: report["right"]["symbols"][section_index + 1].update(
+                {"name": "_half$localstatic3$other__Ff"}
+            ),
+            "wrong_order": lambda report: report["right"]["symbols"].__setitem__(
+                slice(section_index + 1, section_index + 3),
+                list(reversed(report["right"]["symbols"][section_index + 1:section_index + 3])),
+            ),
+            "not_weak": lambda report: report["right"]["symbols"][section_index + 1].update(
+                {"flags": {"global": True}}
+            ),
+            "target_also_owns": lambda report: report["left"]["symbols"].append(
+                copy.deepcopy(report["right"]["symbols"][section_index + 1])
+            ),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                report = copy.deepcopy(base)
+                mutate(report)
+                diagnosis = module.decode_function(report, "PoolFocus")["section_prefix_diagnosis"]
+                self.assertEqual(diagnosis["status"], "none")
+                self.assertIsNone(diagnosis["classification"])
 
     def test_nonpool_addr_relocations_are_excluded(self) -> None:
         report = _report()
