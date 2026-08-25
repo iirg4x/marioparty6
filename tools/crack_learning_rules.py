@@ -29,6 +29,7 @@ SCHEMA = "crack_learning_diagnosis/v3"
 SCHEMA_VERSION = 3
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
+PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -80,6 +81,23 @@ _ALLOCATOR_PROOF_HASHES = (
     "physical_relocation_receipt_sha256",
     "varinfo_receipt_sha256",
     "source_boundary_receipt_sha256",
+)
+_PARAMETER_ALLOCATION_PROOF_FLAGS = (
+    "function_size_exact",
+    "stack_frame_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+)
+_PARAMETER_ALLOCATION_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "trace_receipt_sha256",
+    "source_boundary_receipt_sha256",
+    "same_tu_donor_receipt_sha256",
 )
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
@@ -134,6 +152,7 @@ _RULE_ORDER = (
     "loop_branch_destination",
     "assignment_condition_saved_gpr_cycle",
     "allocator_two_register_swap_interaction",
+    "parameter_allocation_consumer_chain",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -444,6 +463,237 @@ def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "owners": sorted(owners, key=lambda item: item["name"]),
         "boundary": normalized_boundary,
         "observations": [dict(item) for item in observations],
+    }
+
+
+def _parse_parameter_allocation_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "owners", "producer", "consumer_chain"},
+        required={"schema", "proofs", "owners", "producer", "consumer_chain"},
+        label="parameter allocation context",
+    )
+    if (
+        _context_text(context.get("schema"), "parameter allocation context schema")
+        != PARAMETER_ALLOCATION_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            "parameter allocation context schema must be "
+            f"{PARAMETER_ALLOCATION_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_PARAMETER_ALLOCATION_PROOF_FLAGS) | set(
+        _PARAMETER_ALLOCATION_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="parameter allocation context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _PARAMETER_ALLOCATION_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"parameter allocation context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _PARAMETER_ALLOCATION_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"parameter allocation context proofs.{field}"
+        )
+
+    owners = _closed_context(
+        context.get("owners"),
+        allowed={"parameter", "allocation_result"},
+        required={"parameter", "allocation_result"},
+        label="parameter allocation context owners",
+    )
+    normalized_owners: dict[str, dict[str, Any]] = {}
+    owner_fields = {
+        "name",
+        "target_register",
+        "candidate_register",
+        "evidence_sha256",
+    }
+    for role in ("parameter", "allocation_result"):
+        owner = _closed_context(
+            owners.get(role),
+            allowed=owner_fields,
+            required=owner_fields,
+            label=f"parameter allocation context owners.{role}",
+        )
+        target_register = _context_text(
+            owner.get("target_register"),
+            f"parameter allocation context owners.{role}.target_register",
+            limit=3,
+        ).lower()
+        candidate_register = _context_text(
+            owner.get("candidate_register"),
+            f"parameter allocation context owners.{role}.candidate_register",
+            limit=3,
+        ).lower()
+        if not _saved(target_register, "r") or not _saved(candidate_register, "r"):
+            raise LearningInputError(
+                f"parameter allocation context owners.{role} registers must be nonvolatile GPRs"
+            )
+        normalized_owners[role] = {
+            "name": _context_identifier(
+                owner.get("name"),
+                f"parameter allocation context owners.{role}.name",
+            ),
+            "target_register": target_register,
+            "candidate_register": candidate_register,
+            "evidence_sha256": _context_sha256(
+                owner.get("evidence_sha256"),
+                f"parameter allocation context owners.{role}.evidence_sha256",
+            ),
+        }
+    for field in ("name", "target_register", "candidate_register"):
+        if len({owner[field] for owner in normalized_owners.values()}) != 2:
+            raise LearningInputError(
+                f"parameter allocation context owner {field} values must be distinct"
+            )
+
+    producer = _closed_context(
+        context.get("producer"),
+        allowed={
+            "call_name",
+            "call_row",
+            "capture_row",
+            "return_register",
+            "preserve_explicit_identity",
+            "evidence_sha256",
+        },
+        required={
+            "call_name",
+            "call_row",
+            "capture_row",
+            "return_register",
+            "preserve_explicit_identity",
+            "evidence_sha256",
+        },
+        label="parameter allocation context producer",
+    )
+    return_register = _context_text(
+        producer.get("return_register"),
+        "parameter allocation context producer.return_register",
+        limit=3,
+    ).lower()
+    if return_register != "r3":
+        raise LearningInputError(
+            "parameter allocation context producer.return_register must be r3"
+        )
+    if producer.get("preserve_explicit_identity") is not True:
+        raise LearningInputError(
+            "parameter allocation context producer.preserve_explicit_identity must be true"
+        )
+    normalized_producer = {
+        "call_name": _context_identifier(
+            producer.get("call_name"),
+            "parameter allocation context producer.call_name",
+        ),
+        "call_row": _context_uint(
+            producer.get("call_row"),
+            "parameter allocation context producer.call_row",
+        ),
+        "capture_row": _context_uint(
+            producer.get("capture_row"),
+            "parameter allocation context producer.capture_row",
+        ),
+        "return_register": return_register,
+        "preserve_explicit_identity": True,
+        "evidence_sha256": _context_sha256(
+            producer.get("evidence_sha256"),
+            "parameter allocation context producer.evidence_sha256",
+        ),
+    }
+    if normalized_producer["capture_row"] != normalized_producer["call_row"] + 1:
+        raise LearningInputError(
+            "parameter allocation context producer capture must immediately follow the call"
+        )
+
+    chain = _closed_context(
+        context.get("consumer_chain"),
+        allowed={
+            "typed_pointer",
+            "field_owner",
+            "field_name",
+            "allocation_result",
+            "evaluation_order",
+            "consumer_rows",
+            "evidence_sha256",
+        },
+        required={
+            "typed_pointer",
+            "field_owner",
+            "field_name",
+            "allocation_result",
+            "evaluation_order",
+            "consumer_rows",
+            "evidence_sha256",
+        },
+        label="parameter allocation context consumer_chain",
+    )
+    evaluation_order = chain.get("evaluation_order")
+    if evaluation_order != ["field_store", "typed_pointer_copy"]:
+        raise LearningInputError(
+            "parameter allocation context consumer_chain.evaluation_order must be "
+            "['field_store', 'typed_pointer_copy']"
+        )
+    raw_rows = chain.get("consumer_rows")
+    if not isinstance(raw_rows, list) or len(raw_rows) != 2:
+        raise LearningInputError(
+            "parameter allocation context consumer_chain.consumer_rows must contain two entries"
+        )
+    consumer_rows = [
+        _context_uint(
+            item,
+            f"parameter allocation context consumer_chain.consumer_rows[{index}]",
+        )
+        for index, item in enumerate(raw_rows)
+    ]
+    if consumer_rows[1] != consumer_rows[0] + 1:
+        raise LearningInputError(
+            "parameter allocation context consumer rows must be adjacent and ordered"
+        )
+    allocation_name = _context_identifier(
+        chain.get("allocation_result"),
+        "parameter allocation context consumer_chain.allocation_result",
+    )
+    if allocation_name != normalized_owners["allocation_result"]["name"]:
+        raise LearningInputError(
+            "parameter allocation context consumer allocation identity must match its owner"
+        )
+    normalized_chain = {
+        "typed_pointer": _context_identifier(
+            chain.get("typed_pointer"),
+            "parameter allocation context consumer_chain.typed_pointer",
+        ),
+        "field_owner": _context_identifier(
+            chain.get("field_owner"),
+            "parameter allocation context consumer_chain.field_owner",
+        ),
+        "field_name": _context_identifier(
+            chain.get("field_name"),
+            "parameter allocation context consumer_chain.field_name",
+        ),
+        "allocation_result": allocation_name,
+        "evaluation_order": list(evaluation_order),
+        "consumer_rows": consumer_rows,
+        "evidence_sha256": _context_sha256(
+            chain.get("evidence_sha256"),
+            "parameter allocation context consumer_chain.evidence_sha256",
+        ),
+    }
+    return {
+        "schema": PARAMETER_ALLOCATION_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "owners": normalized_owners,
+        "producer": normalized_producer,
+        "consumer_chain": normalized_chain,
     }
 
 
@@ -1169,6 +1419,38 @@ def _relocation_type_signature(
     )
 
 
+def _mapped_pool_relocation_text(item: causal_reducer.Instruction) -> str | None:
+    """Normalize only report-authenticated SDA21 pool-owner aliases."""
+
+    if item.relocation is None or item.relocation.get("type_name") != "R_PPC_EMB_SDA21":
+        return None
+    return re.sub(
+        r"[A-Za-z_.$@][A-Za-z0-9_.$@]*@sda21",
+        "<pool-owner>@sda21",
+        item.formatted.lower(),
+    )
+
+
+def _mapped_pool_relocation_alias_pair(
+    left: causal_reducer.Instruction,
+    right: causal_reducer.Instruction,
+) -> bool:
+    left_text = _mapped_pool_relocation_text(left)
+    right_text = _mapped_pool_relocation_text(right)
+    return (
+        left.diff_kind is None
+        and right.diff_kind is None
+        and left_text is not None
+        and right_text is not None
+        and _relocation_type_signature(left) == _relocation_type_signature(right)
+        and left.relocation is not None
+        and right.relocation is not None
+        and left.relocation.get("addend") == right.relocation.get("addend")
+        and _registers(left.formatted) == _registers(right.formatted)
+        and left_text == right_text
+    )
+
+
 def _equivalent_outside_learning_window(
     left: causal_reducer.Instruction | None,
     right: causal_reducer.Instruction | None,
@@ -1433,12 +1715,20 @@ def _compatible_register_only_pair(
     if left.mnemonic != right.mnemonic:
         return False
     if causal_reducer._relocation_diff(left, right):
-        return False
+        # Objdiff can map two physical pool-owner names to one exact value and
+        # therefore emit no residual row even though the normalized target_name
+        # strings differ.  Accept only that report-authenticated alias class:
+        # both rows must be unmarked, have the same relocation type/addend, and
+        # use the same registers.  A real strict relocation residual remains
+        # rejected.
+        return _mapped_pool_relocation_alias_pair(left, right)
     if left.mnemonic in causal_reducer._BRANCH_MNEMONICS:
         return causal_reducer._branch_relative(left) == causal_reducer._branch_relative(
             right
         )
-    return _without_registers(left.formatted) == _without_registers(right.formatted)
+    return _without_registers(left.formatted) == _without_registers(
+        right.formatted
+    ) or _mapped_pool_relocation_alias_pair(left, right)
 
 
 def _closed_cycles(mapping: Mapping[str, str]) -> list[list[str]]:
@@ -1935,6 +2225,292 @@ def _allocator_two_register_swap_evaluation(
     )
 
 
+def _parameter_allocation_consumer_chain_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "parameter_allocation_consumer_chain"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated parameter/allocation consumer-chain context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the parameter/allocation context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if (
+        target_size is None
+        or target_size != candidate_size
+        or target_frame is None
+        or target_frame != candidate_frame
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate size/frame are not exact and measurable",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    if not rows or any(
+        left is None or right is None or not _compatible_register_only_pair(left, right)
+        for left, right in rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the residual is not an operation-, CFG-, relocation-, immediate-, "
+                "and row-count-identical register-only difference"
+            ),
+        )
+    mapping: dict[str, str] = {}
+    reverse: dict[str, str] = {}
+    mismatch_rows: list[int] = []
+    for index, (left, right) in enumerate(rows):
+        assert left is not None and right is not None
+        left_registers = _registers(left.formatted)
+        right_registers = _registers(right.formatted)
+        if len(left_registers) != len(right_registers):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a register-only row has a different operand count",
+            )
+        row_mismatch = False
+        for target_register, candidate_register in zip(left_registers, right_registers):
+            if target_register == candidate_register:
+                continue
+            if not (_saved(target_register, "r") and _saved(candidate_register, "r")):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the residual is not confined to nonvolatile GPR ownership",
+                )
+            if mapping.get(target_register, candidate_register) != candidate_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is inconsistent",
+                )
+            if reverse.get(candidate_register, target_register) != target_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is not one-to-one",
+                )
+            mapping[target_register] = candidate_register
+            reverse[candidate_register] = target_register
+            row_mismatch = True
+        if row_mismatch:
+            mismatch_rows.append(index)
+    cycles = _closed_cycles(mapping)
+    if len(cycles) != 1 or len(cycles[0]) != 2 or len(mapping) != 2:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the register residual is not one complete two-register swap",
+            evidence={
+                "register_mapping": dict(sorted(mapping.items())),
+                "cycles": cycles,
+                "mismatch_rows": mismatch_rows,
+            },
+        )
+    context_mapping = {
+        str(owner["target_register"]): str(owner["candidate_register"])
+        for owner in context["owners"].values()
+    }
+    if mapping != context_mapping:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the authenticated parameter/allocation owners do not match the physical swap",
+            evidence={
+                "physical_mapping": dict(sorted(mapping.items())),
+                "context_mapping": dict(sorted(context_mapping.items())),
+            },
+        )
+
+    producer = context["producer"]
+    chain = context["consumer_chain"]
+    relevant_rows = {
+        producer["call_row"],
+        producer["capture_row"],
+        *chain["consumer_rows"],
+    }
+    if not all(index < len(rows) for index in relevant_rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="a producer/consumer boundary row lies outside the function",
+        )
+    call_target, call_candidate = rows[producer["call_row"]]
+    if (
+        call_target is None
+        or call_candidate is None
+        or call_target.mnemonic != "bl"
+        or call_candidate.formatted != call_target.formatted
+        or call_target.formatted != f"bl {producer['call_name']}"
+        or causal_reducer._relocation_diff(call_target, call_candidate)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed allocation producer call is not physically exact",
+        )
+    allocation_owner = context["owners"]["allocation_result"]
+    capture_target, capture_candidate = rows[producer["capture_row"]]
+    expected_target_capture = (
+        f"mr {allocation_owner['target_register']}, {producer['return_register']}"
+    )
+    expected_candidate_capture = (
+        f"mr {allocation_owner['candidate_register']}, {producer['return_register']}"
+    )
+    if (
+        capture_target is None
+        or capture_candidate is None
+        or capture_target.formatted != expected_target_capture
+        or capture_candidate.formatted != expected_candidate_capture
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the target does not preserve the producer return in the authenticated "
+                "allocation-result identity"
+            ),
+            evidence={
+                "expected_target_capture": expected_target_capture,
+                "expected_candidate_capture": expected_candidate_capture,
+            },
+        )
+    if chain["consumer_rows"][0] != producer["capture_row"] + 1:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed consumers are not immediately adjacent to the producer capture",
+        )
+    field_target, field_candidate = rows[chain["consumer_rows"][0]]
+    copy_target, copy_candidate = rows[chain["consumer_rows"][1]]
+    target_alloc = allocation_owner["target_register"]
+    candidate_alloc = allocation_owner["candidate_register"]
+    if (
+        field_target is None
+        or field_candidate is None
+        or field_target.mnemonic != "stw"
+        or field_candidate.mnemonic != "stw"
+        or _registers(field_target.formatted, "r")[:1] != [target_alloc]
+        or _registers(field_candidate.formatted, "r")[:1] != [candidate_alloc]
+        or _without_registers(field_target.formatted)
+        != _without_registers(field_candidate.formatted)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the first consumer is not the authenticated allocation-result field store",
+        )
+    target_copy_registers = (
+        _registers(copy_target.formatted, "r") if copy_target is not None else []
+    )
+    candidate_copy_registers = (
+        _registers(copy_candidate.formatted, "r") if copy_candidate is not None else []
+    )
+    if (
+        copy_target is None
+        or copy_candidate is None
+        or copy_target.mnemonic != "mr"
+        or copy_candidate.mnemonic != "mr"
+        or len(target_copy_registers) != 2
+        or len(candidate_copy_registers) != 2
+        or target_copy_registers[1] != target_alloc
+        or candidate_copy_registers[1] != candidate_alloc
+        or target_copy_registers[0] != candidate_copy_registers[0]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the second consumer is not the authenticated typed-pointer copy",
+        )
+
+    source_expression = (
+        f"{chain['typed_pointer']} = {chain['field_owner']}->{chain['field_name']} = "
+        f"{chain['allocation_result']}"
+    )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an otherwise exact function has one complete parameter/allocation-result GPR "
+            "swap, while the target preserves the producer identity across an adjacent field "
+            "store and typed-pointer copy"
+        ),
+        confidence=0.99,
+        source_class="parameter_allocation_result_consumer_chain",
+        recommendation=(
+            f"Test one natural consumer-chain cell `{source_expression};`; preserve the "
+            "explicit allocation-result local, suppress parameter declaration-order cells, "
+            "and suppress producer-eliminating fusion."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "register_mapping": dict(sorted(mapping.items())),
+            "cycle": cycles[0],
+            "mismatch_rows": mismatch_rows,
+            "owners": context["owners"],
+            "producer": producer,
+            "consumer_chain": chain,
+            "source_expression": source_expression,
+            "physical_boundary": {
+                "call_row": producer["call_row"],
+                "capture_row": producer["capture_row"],
+                "consumer_rows": chain["consumer_rows"],
+                "target_capture": capture_target.formatted,
+                "candidate_capture": capture_candidate.formatted,
+                "target_field_store": field_target.formatted,
+                "candidate_field_store": field_candidate.formatted,
+                "target_typed_copy": copy_target.formatted,
+                "candidate_typed_copy": copy_candidate.formatted,
+            },
+            "suppressed_axes": [
+                {
+                    "axis": "parameter_declaration_chronology",
+                    "reason": "a function parameter cannot be redeclared to perturb local chronology",
+                },
+                {
+                    "axis": "producer_elimination",
+                    "reason": "the target immediately captures r3 into the saved allocation-result owner",
+                },
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _frame_size(entries: Sequence[causal_reducer.Instruction]) -> int | None:
     for item in entries[:24]:
         if item.mnemonic not in {"stwu", "stdu"}:
@@ -2250,6 +2826,7 @@ def diagnose_document(
     focus_symbol: str,
     same_tu_donor_symbols: Sequence[str] = (),
     allocator_context: Mapping[str, Any] | None = None,
+    parameter_allocation_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -2270,6 +2847,11 @@ def diagnose_document(
     normalized_allocator_context = (
         _parse_allocator_context(allocator_context)
         if allocator_context is not None
+        else None
+    )
+    normalized_parameter_allocation_context = (
+        _parse_parameter_allocation_context(parameter_allocation_context)
+        if parameter_allocation_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -2321,6 +2903,13 @@ def diagnose_document(
             normalized_allocator_context,
             objdiff_canonical_sha256,
         ),
+        _parameter_allocation_consumer_chain_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_parameter_allocation_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -2350,6 +2939,11 @@ def diagnose_document(
             "allocator_context_canonical_sha256": (
                 _sha256(_canonical(normalized_allocator_context))
                 if normalized_allocator_context is not None
+                else None
+            ),
+            "parameter_allocation_context_canonical_sha256": (
+                _sha256(_canonical(normalized_parameter_allocation_context))
+                if normalized_parameter_allocation_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -2430,6 +3024,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--parameter-allocation-context",
+        type=Path,
+        help=(
+            "authenticated parameter_allocation_consumer_chain_context/v1 JSON "
+            "with parameter/allocation owner, producer capture, and ordered consumer proof"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -2466,6 +3068,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             allocator_context=(
                 _load_json(args.allocator_context, label="allocator context")
                 if args.allocator_context is not None
+                else None
+            ),
+            parameter_allocation_context=(
+                _load_json(
+                    args.parameter_allocation_context,
+                    label="parameter allocation context",
+                )
+                if args.parameter_allocation_context is not None
                 else None
             ),
             capacity_context=(

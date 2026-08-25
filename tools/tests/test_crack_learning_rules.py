@@ -233,6 +233,113 @@ def _allocator_context(
     }
 
 
+def _parameter_allocation_report() -> dict[str, object]:
+    target_text = [
+        "stwu r1, -48(r1)",
+        "mr r29, r3",
+        "slwi r5, r29, 2",
+        "bl HuMemDirectMallocNum",
+        "mr r28, r3",
+        "stw r28, 92(r30)",
+        "mr r31, r28",
+        "stw r29, 0(r31)",
+        "mr r3, r29",
+        "bl mbPlayerColSnapPlayerSet",
+        "lfs f0, lbl_802C476C@sda21",
+        "blr",
+    ]
+    candidate_text = [
+        "stwu r1, -48(r1)",
+        "mr r28, r3",
+        "slwi r5, r28, 2",
+        "bl HuMemDirectMallocNum",
+        "mr r29, r3",
+        "stw r29, 92(r30)",
+        "mr r31, r29",
+        "stw r28, 0(r31)",
+        "mr r3, r28",
+        "bl mbPlayerColSnapPlayerSet",
+        "lfs f0, @1326@sda21",
+        "blr",
+    ]
+    target: list[dict[str, object]] = []
+    candidate: list[dict[str, object]] = []
+    for index, (left, right) in enumerate(zip(target_text, candidate_text)):
+        address = 100 + index * 4
+        kind = "DIFF_ARG_MISMATCH" if left != right and "@sda21" not in left else None
+        relocation = (
+            {"type": 109, "type_name": "R_PPC_EMB_SDA21"} if "@sda21" in left else None
+        )
+        target.append(
+            _instruction(address, left, diff_kind=kind, relocation=relocation)
+        )
+        candidate.append(
+            _instruction(address, right, diff_kind=kind, relocation=relocation)
+        )
+    return _report(
+        "mbev_CapPlayerMoveEjectCreate",
+        target,
+        candidate,
+        target_size=288,
+        candidate_size=288,
+    )
+
+
+def _parameter_allocation_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _parameter_allocation_report()
+    return {
+        "schema": rules.PARAMETER_ALLOCATION_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "trace_receipt_sha256": "4" * 64,
+            "source_boundary_receipt_sha256": "5" * 64,
+            "same_tu_donor_receipt_sha256": "6" * 64,
+        },
+        "owners": {
+            "parameter": {
+                "name": "playerNo",
+                "target_register": "r29",
+                "candidate_register": "r28",
+                "evidence_sha256": "7" * 64,
+            },
+            "allocation_result": {
+                "name": "workData",
+                "target_register": "r28",
+                "candidate_register": "r29",
+                "evidence_sha256": "8" * 64,
+            },
+        },
+        "producer": {
+            "call_name": "HuMemDirectMallocNum",
+            "call_row": 3,
+            "capture_row": 4,
+            "return_register": "r3",
+            "preserve_explicit_identity": True,
+            "evidence_sha256": "9" * 64,
+        },
+        "consumer_chain": {
+            "typed_pointer": "workP",
+            "field_owner": "obj",
+            "field_name": "data",
+            "allocation_result": "workData",
+            "evaluation_order": ["field_store", "typed_pointer_copy"],
+            "consumer_rows": [5, 6],
+            "evidence_sha256": "a" * 64,
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -716,6 +823,110 @@ class CrackLearningRulesTest(unittest.TestCase):
                 allocator_context=uppercase_hash,
             )
 
+    def test_parameter_allocation_swap_ranks_consumer_chain_only(self) -> None:
+        report = _parameter_allocation_report()
+        context = _parameter_allocation_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapPlayerMoveEjectCreate",
+            parameter_allocation_context=context,
+        )
+        diagnosis = _evaluation(result, "parameter_allocation_consumer_chain")
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(
+            evidence["register_mapping"],
+            {"r28": "r29", "r29": "r28"},
+        )
+        self.assertEqual(evidence["source_expression"], "workP = obj->data = workData")
+        self.assertEqual(
+            evidence["physical_boundary"]["target_capture"],  # type: ignore[index]
+            "mr r28, r3",
+        )
+        self.assertEqual(
+            [item["axis"] for item in evidence["suppressed_axes"]],
+            ["parameter_declaration_chronology", "producer_elimination"],
+        )
+        self.assertIn("preserve", diagnosis["recommendation"])
+        self.assertIn("suppress", diagnosis["recommendation"])
+
+    def test_parameter_allocation_swap_fails_closed(self) -> None:
+        no_context = rules.diagnose_document(
+            _parameter_allocation_report(),
+            focus_symbol="mbev_CapPlayerMoveEjectCreate",
+        )
+        self.assertFalse(
+            _evaluation(no_context, "parameter_allocation_consumer_chain")["matched"]
+        )
+
+        removed_identity = _parameter_allocation_report()
+        removed_identity["left"]["symbols"][0]["instructions"][4]["instruction"]["formatted"] = "mr r31, r3"  # type: ignore[index]
+        context = _parameter_allocation_context(removed_identity)
+        result = rules.diagnose_document(
+            removed_identity,
+            focus_symbol="mbev_CapPlayerMoveEjectCreate",
+            parameter_allocation_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "parameter_allocation_consumer_chain")["matched"]
+        )
+
+        wrong_consumer = _parameter_allocation_context()
+        wrong_consumer["consumer_chain"]["consumer_rows"] = [6, 7]  # type: ignore[index]
+        result = rules.diagnose_document(
+            _parameter_allocation_report(),
+            focus_symbol="mbev_CapPlayerMoveEjectCreate",
+            parameter_allocation_context=wrong_consumer,
+        )
+        self.assertFalse(
+            _evaluation(result, "parameter_allocation_consumer_chain")["matched"]
+        )
+
+        wrong_owner = _parameter_allocation_context()
+        wrong_owner["owners"]["parameter"]["target_register"] = "r27"  # type: ignore[index]
+        result = rules.diagnose_document(
+            _parameter_allocation_report(),
+            focus_symbol="mbev_CapPlayerMoveEjectCreate",
+            parameter_allocation_context=wrong_owner,
+        )
+        self.assertFalse(
+            _evaluation(result, "parameter_allocation_consumer_chain")["matched"]
+        )
+
+        false_proof = _parameter_allocation_context()
+        false_proof["proofs"]["physical_relocations_exact"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "physical_relocations_exact"
+        ):
+            rules.diagnose_document(
+                _parameter_allocation_report(),
+                focus_symbol="mbev_CapPlayerMoveEjectCreate",
+                parameter_allocation_context=false_proof,
+            )
+
+        malformed_order = _parameter_allocation_context()
+        malformed_order["consumer_chain"]["evaluation_order"] = ["typed_pointer_copy", "field_store"]  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "evaluation_order"):
+            rules.diagnose_document(
+                _parameter_allocation_report(),
+                focus_symbol="mbev_CapPlayerMoveEjectCreate",
+                parameter_allocation_context=malformed_order,
+            )
+
+        strict_pool_residual = _parameter_allocation_report()
+        strict_pool_residual["right"]["symbols"][0]["instructions"][10][  # type: ignore[index]
+            "diff_kind"
+        ] = "DIFF_ARG_MISMATCH"
+        context = _parameter_allocation_context(strict_pool_residual)
+        result = rules.diagnose_document(
+            strict_pool_residual,
+            focus_symbol="mbev_CapPlayerMoveEjectCreate",
+            parameter_allocation_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "parameter_allocation_consumer_chain")["matched"]
+        )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -1051,6 +1262,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapKuribo",
                 allocator_context=context,
+            ),
+        )
+
+    def test_parameter_allocation_context_cli_emits_same_document(self) -> None:
+        report = _parameter_allocation_report()
+        context = _parameter_allocation_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "parameter-allocation.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapPlayerMoveEjectCreate",
+                            "--parameter-allocation-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapPlayerMoveEjectCreate",
+                parameter_allocation_context=context,
             ),
         )
 
