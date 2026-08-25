@@ -126,6 +126,11 @@ the ordered field-store/typed-pointer-copy rows. The rule verifies a complete
 two-saved-GPR swap but never proposes redeclaring the parameter. If the target
 captures `r3` into the allocation-result owner, it also suppresses direct
 producer fusion and ranks only the natural right-associative consumer chain.
+The owner and field identifiers come from the authenticated context rather than
+from a hard-coded function template. This lets an exact same-TU precedent such
+as PlayerMoveEject transfer to BonusCoin's `process->property` consumer while
+keeping the physical allocation/capture/consumer proof mandatory for the new
+function.
 
 Minimal context:
 

@@ -850,6 +850,29 @@ class CrackLearningRulesTest(unittest.TestCase):
         self.assertIn("preserve", diagnosis["recommendation"])
         self.assertIn("suppress", diagnosis["recommendation"])
 
+    def test_parameter_allocation_rule_transfers_to_same_tu_bonus_coin(self) -> None:
+        report = _parameter_allocation_report()
+        for side in ("left", "right"):
+            report[side]["symbols"][0]["name"] = "mbev_CapBonusCoin"  # type: ignore[index]
+            report[side]["symbols"][0]["size"] = "244"  # type: ignore[index]
+        context = _parameter_allocation_context(report)
+        context["consumer_chain"]["field_owner"] = "process"  # type: ignore[index]
+        context["consumer_chain"]["field_name"] = "property"  # type: ignore[index]
+
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapBonusCoin",
+            parameter_allocation_context=context,
+        )
+        diagnosis = _evaluation(result, "parameter_allocation_consumer_chain")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["evidence"]["source_expression"],
+            "workP = process->property = workData",
+        )
+        self.assertFalse(result["authority_advanced"])
+
     def test_parameter_allocation_swap_fails_closed(self) -> None:
         no_context = rules.diagnose_document(
             _parameter_allocation_report(),
