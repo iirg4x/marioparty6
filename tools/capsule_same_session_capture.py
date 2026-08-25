@@ -28,33 +28,79 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from typing import Any, Protocol
 
-try:  # Package import under unittest/agent tooling.
-    from . import capsule_stack_home_native as _stack_home
-    from . import donor_cfg_align as _donor_cfg
-    from . import mwcc_fe_chronology_native as _frontend_chronology
-    from . import pcode_varinfo_correlator as _correlator
-except ImportError:  # Direct ``python tools/...`` execution.
-    try:  # importlib file loading under the repository test harness.
-        from tools import capsule_stack_home_native as _stack_home
-        from tools import donor_cfg_align as _donor_cfg
-        from tools import mwcc_fe_chronology_native as _frontend_chronology
-        from tools import pcode_varinfo_correlator as _correlator
-    except ImportError:
-        import capsule_stack_home_native as _stack_home
-        import donor_cfg_align as _donor_cfg
-        import mwcc_fe_chronology_native as _frontend_chronology
-        import pcode_varinfo_correlator as _correlator
+def _load_sibling_modules(names: Sequence[str]) -> tuple[Any, ...]:
+    """Load tool dependencies as one private package rooted beside this file."""
+
+    tool_dir = Path(__file__).resolve().parent
+    paths: list[tuple[str, Path]] = []
+    for name in names:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise ImportError(f"invalid same-directory tool dependency name: {name!r}")
+        path = (tool_dir / f"{name}.py").resolve()
+        if path.parent != tool_dir or not path.is_file():
+            raise ImportError(f"missing same-directory tool dependency: {path}")
+        paths.append((name, path))
+
+    bundle_key = f"_capsule_same_session_capture_bundle_{uuid.uuid4().hex}"
+    if bundle_key in sys.modules:
+        raise ImportError("private same-directory tool package alias collision")
+    bundle_spec = importlib.util.spec_from_loader(bundle_key, loader=None, is_package=True)
+    if bundle_spec is None:
+        raise ImportError(f"cannot create same-directory tool package: {tool_dir}")
+    bundle = importlib.util.module_from_spec(bundle_spec)
+    bundle.__path__ = [str(tool_dir)]
+    sys.modules[bundle_key] = bundle
+    loaded_keys: list[str] = []
+    loaded_modules: list[Any] = []
+    try:
+        for name, path in paths:
+            module_key = f"{bundle_key}.{name}"
+            if module_key in sys.modules:
+                raise ImportError(f"private tool dependency alias collision: {module_key}")
+            spec = importlib.util.spec_from_file_location(module_key, path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"cannot load same-directory tool dependency: {path}")
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_key] = module
+            loaded_keys.append(module_key)
+            spec.loader.exec_module(module)
+            setattr(bundle, name, module)
+            loaded_modules.append(module)
+    except BaseException:
+        for module_key in reversed(loaded_keys):
+            sys.modules.pop(module_key, None)
+        sys.modules.pop(bundle_key, None)
+        raise
+    return tuple(loaded_modules)
+
+
+(
+    _stack_home,
+    _donor_cfg,
+    _frontend_chronology,
+    _correlator,
+) = _load_sibling_modules(
+    (
+        "capsule_stack_home_native",
+        "donor_cfg_align",
+        "mwcc_fe_chronology_native",
+        "pcode_varinfo_correlator",
+    )
+)
 
 
 SCHEMA = "mwcc_capsule_same_session_capture/v1"
 REQUEST_SCHEMA = "mwcc_capsule_same_session_capture_request/v1"
 EVENT_SCHEMA = "mwcc_capsule_same_session_capture_event/v1"
 SOURCE_SPAN_SCHEMA = "mwcc_source_span_bindings/v1"
+SOURCE_SPAN_SCHEMA_V2 = "mwcc_source_span_bindings/v2"
+SOURCE_SPAN_PLAN_SCHEMA = "mwcc_source_span_binding_plan/v1"
 CAUSAL_MAP_SCHEMA = "mwcc_source_aware_causal_map/v1"
 # The pinned hook union changed: old requests/envelopes must not be
 # interpreted as captures from this repaired transport.
@@ -81,6 +127,18 @@ MEMEXEC_STARTUP_TIMEOUT_SECONDS = 30.0
 # is delivered; permit one follow-up observation after that event, but never
 # turn a missing map into an unbounded stream of debug breaks.
 MEMEXEC_MAX_PROBES = 2
+# sjiswrap v1.1.1 and the pinned GC/2.7 compiler both prefer 0x00400000.
+# The wrapper therefore manual-maps a relocated compiler image into its own
+# PID.  On loaded Windows hosts that private-map handoff can be delayed beyond
+# the bounded debugger observation window even though the authenticated
+# compiler invocation is otherwise unchanged.  This closed pair may bypass
+# only the wrapper transport; the immutable request argv remains the authority
+# and the executed argv is derived by removing exactly argv[0].
+SJISWRAP_V111_SHA256 = "27a3c5d4f263e4eb96e5619cfcda22f45d33ccd121104c7ff6a37e15b3f427cd"
+GC27_COMPILER_SHA256 = "04ece8178961bdbaeebe2d4e5922ed542c4d82b2fc3de996c41c9e193bd49eea"
+AUTHENTICATED_DIRECT_COMPILER_PAIRS = frozenset(
+    {(SJISWRAP_V111_SHA256, GC27_COMPILER_SHA256)}
+)
 LOCALS_LIST_HEAD = 0x005EA8D4
 ARGUMENTS_LIST_HEAD = 0x005EAA28
 # Import the authenticated stack-home producer's compiler globals and
@@ -137,6 +195,9 @@ SESSION_RE = re.compile(r"session-[0-9a-f]{16}\Z")
 # identity.  Include the authenticated session in every serialized token so a
 # token copied from another capture cannot silently claim ownership here.
 TOKEN_RE = re.compile(r"(?P<kind>local|argument)-(?P<session>session-[0-9a-f]{16})-(?P<ordinal>[0-9]{6})\Z")
+PCODE_TOKEN_RE = re.compile(r"pcode-(?P<session>session-[0-9a-f]{16})-(?P<ordinal>[0-9]{6})\Z")
+IG_TOKEN_RE = re.compile(r"ig-(?P<session>session-[0-9a-f]{16})-(?P<ordinal>[0-9]{6})\Z")
+HIDDEN_IG_TOKEN_RE = re.compile(r"hidden-ig-(?P<session>session-[0-9a-f]{16})-(?P<ordinal>[0-9]{6})\Z")
 VREG_RE = re.compile(r"[rf][0-9]+\Z")
 CANONICAL_DECIMAL = re.compile(r"(?:0|-?[1-9][0-9]*)\Z")
 CANONICAL_HEX = re.compile(r"(?:0[xX]0|-?0[xX][1-9a-fA-F][0-9a-fA-F]*)\Z")
@@ -208,14 +269,212 @@ HOOKS: tuple[dict[str, Any], ...] = tuple(
         "role": "regalloc_post",
     },
 )
-HOOK_BY_ID = {str(row["id"]): row for row in HOOKS}
-HOOK_BY_ADDRESS = {int(row["address"]): row for row in HOOKS}
+# Preserve the central legacy authority even when an explicitly imported
+# private backend replaces the public ``HOOKS`` compatibility variable.
+LEGACY_HOOKS = HOOKS
+# GC/2.7 keeps the same stack-hook meanings, but its allocator helper is
+# 0xe0 bytes earlier than the authenticated GC/2.6 image.  Three Object-write
+# sites therefore move with that helper, while the call at allocation_pre
+# stays put and receives a different relative displacement.  Keep these
+# compiler-specific bytes out of ``capsule_stack_home_native`` so its GC/2.6
+# authority remains immutable.
+GC27_STACK_HOOK_OVERRIDES: Mapping[str, Mapping[str, Any]] = {
+    "allocation_pre": {
+        "address": 0x0043367E,
+        "prefix": "e87d650c00598a44240450",
+    },
+    "object_write_0": {
+        "address": 0x004F9D74,
+        "prefix": "89432e8b530e8b420201e84821f00105e40c",
+    },
+    "object_write_1": {
+        "address": 0x004F9E11,
+        "prefix": "89432e8b4b0e8b410201e84821f00105dc0c",
+    },
+    "object_write_2": {
+        "address": 0x004F9E98,
+        "prefix": "89432e8b4b0e8b410201e84821f00105d80c",
+    },
+}
+GC27_PHYSICAL_HOOKS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "physical_pair_commit",
+        "address": 0x004D0E65,
+        "prefix": "5d5f5e5bc3",
+        "lane": "pcode",
+        "role": "regalloc_post",
+    },
+    {
+        "id": "physical_single_commit",
+        "address": 0x004D0F6E,
+        "prefix": "5d5f5e5bc3",
+        "lane": "pcode",
+        "role": "regalloc_post",
+    },
+    {
+        "id": "precolored_commit",
+        "address": 0x004D0A7B,
+        "prefix": "eb768d4000",
+        "lane": "pcode",
+        "role": "regalloc_post",
+    },
+)
+GC27_PCODE_COLOR_HOOKS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "pcode_color_pre",
+        "address": 0x005086C4,
+        "prefix": "6689420483c20c83",
+        "lane": "pcode",
+        "role": "pcode_color_diagnostic",
+    },
+    {
+        "id": "pcode_color_post",
+        "address": 0x005086C8,
+        "prefix": "83c20c83ed0173d3",
+        "lane": "pcode",
+        "role": "pcode_color_diagnostic",
+    },
+)
+GC27_MACHINE_EMIT_HOOK: dict[str, Any] = {
+    "id": "gc27_machine_emit",
+    "address": 0x004EB21F,
+    "prefix": "8b178b0a030dd00b5e0001e989018b43",
+    "lane": "pcode",
+    "role": "machine_emit",
+}
+# GC/2.7 shares the stack-hook contract and direct-allocation meaning, not all
+# physical addresses.  Apply the four image-authenticated overrides above,
+# then replace the stale GC/2.6 0x4D03E8 post-assignment hook with a closed
+# three-site physical-commit profile.  A private backend may implement capture
+# behavior, never change the request's authenticated hook authority.
+GC27_BASE_HOOKS: tuple[dict[str, Any], ...] = tuple(
+    {
+        **row,
+        **GC27_STACK_HOOK_OVERRIDES.get(str(row["id"]), {}),
+    }
+    for row in HOOKS
+    if row["id"] != "regalloc_post"
+)
+GC27_HOOKS: tuple[dict[str, Any], ...] = (
+    GC27_BASE_HOOKS
+    + GC27_PHYSICAL_HOOKS
+    + GC27_PCODE_COLOR_HOOKS
+    + (GC27_MACHINE_EMIT_HOOK,)
+)
+GC27_OPCODE_DESCRIPTOR_TABLE = 0x005C0FA8
+GC27_OPCODE_DESCRIPTOR_STRIDE = 18
+GC27_OPCODE_DESCRIPTOR_BASE_OFFSET = 0x0E
+_HOOK_SETS: tuple[tuple[dict[str, Any], ...], ...] = (HOOKS, GC27_HOOKS)
+HOOK_BY_ID = {str(row["id"]): row for rows in _HOOK_SETS for row in rows}
+HOOK_BY_ADDRESS = {int(row["address"]): row for rows in _HOOK_SETS for row in rows}
 WRITE_HOOK_IDS = tuple(row["id"] for row in HOOKS if row["role"] == "object_stack_write")
 PCODE_HOOK_IDS = tuple(
     row["id"]
     for row in HOOKS
-    if row["lane"] == "pcode" and row["role"] not in {"regalloc", "regalloc_post"}
+    if row["lane"] == "pcode" and row["role"] not in {"regalloc", "regalloc_post", "machine_emit"}
 )
+MACHINE_HOOK_IDS = (GC27_MACHINE_EMIT_HOOK["id"],)
+
+
+def _pcode_stage_hook_ids(hooks: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
+    """Return required generic PCode-stage hooks for one closed profile."""
+
+    excluded = {"regalloc", "regalloc_post", "pcode_color_diagnostic", "machine_emit"}
+    return tuple(
+        str(row["id"])
+        for row in hooks
+        if row["lane"] == "pcode" and row["role"] not in excluded
+    )
+
+
+def _hooks_for_compiler(compiler_sha256: str) -> tuple[dict[str, Any], ...]:
+    """Select only hook sites authenticated for the request compiler."""
+
+    return GC27_HOOKS if compiler_sha256.lower() == GC27_COMPILER_SHA256 else LEGACY_HOOKS
+
+
+def _validate_runtime_hook_patch(compiler_sha256: str) -> None:
+    """Reject private hook-table patches that are not one exact profile."""
+
+    # The module's original tuple is an explicit unpatched sentinel.  A
+    # backend-provided copy of the legacy rows is not that sentinel and must
+    # therefore satisfy the selected compiler profile exactly.
+    if HOOKS is LEGACY_HOOKS:
+        return
+    runtime = tuple(HOOKS)
+    expected = _hooks_for_compiler(compiler_sha256)
+    if runtime != expected:
+        raise Rejected("private backend hook patch does not match the compiler profile")
+
+
+def _pe32_file_image_bytes(path: Path, absolute_address: int, size: int) -> bytes:
+    """Read preferred-base image bytes from one authenticated PE32 file."""
+
+    if size <= 0:
+        raise Rejected("hook prefix is empty")
+    data = path.read_bytes()
+    try:
+        pe_offset = int.from_bytes(data[0x3C:0x40], "little")
+        if data[:2] != b"MZ" or pe_offset < 0x40 or pe_offset + 24 > len(data):
+            raise ValueError
+        if data[pe_offset:pe_offset + 4] != b"PE\0\0":
+            raise ValueError
+        file_header = pe_offset + 4
+        section_count = int.from_bytes(data[file_header + 2:file_header + 4], "little")
+        optional_size = int.from_bytes(data[file_header + 16:file_header + 18], "little")
+        optional = file_header + 20
+        if section_count <= 0 or optional_size < 64 or optional + optional_size > len(data):
+            raise ValueError
+        if int.from_bytes(data[optional:optional + 2], "little") != 0x10B:
+            raise ValueError
+        image_base = int.from_bytes(data[optional + 28:optional + 32], "little")
+        size_of_headers = int.from_bytes(data[optional + 60:optional + 64], "little")
+        rva = int(absolute_address) - image_base
+        if rva < 0:
+            raise ValueError
+        if rva + size <= size_of_headers:
+            if rva + size > len(data):
+                raise ValueError
+            return data[rva:rva + size]
+        section_table = optional + optional_size
+        for index in range(section_count):
+            start = section_table + index * 40
+            if start + 40 > len(data):
+                raise ValueError
+            virtual_size = int.from_bytes(data[start + 8:start + 12], "little")
+            virtual_address = int.from_bytes(data[start + 12:start + 16], "little")
+            raw_size = int.from_bytes(data[start + 16:start + 20], "little")
+            raw_pointer = int.from_bytes(data[start + 20:start + 24], "little")
+            span = max(virtual_size, raw_size)
+            if not (virtual_address <= rva and rva + size <= virtual_address + span):
+                continue
+            offset = rva - virtual_address
+            copied = min(size, max(0, raw_size - offset))
+            if raw_pointer + offset + copied > len(data):
+                raise ValueError
+            return data[raw_pointer + offset:raw_pointer + offset + copied] + b"\0" * (size - copied)
+    except (IndexError, OSError, TypeError, ValueError):
+        raise Rejected("authenticated compiler image is not a valid PE32 image") from None
+    raise Rejected(f"hook address 0x{int(absolute_address):08x} is outside authenticated compiler sections")
+
+
+def _validate_authenticated_compiler_hook_image(
+    compiler: Mapping[str, Any],
+    hooks: Sequence[Mapping[str, Any]],
+) -> None:
+    """Fail before launch when the pinned GC/2.7 profile is stale on disk."""
+
+    if str(compiler["sha256"]).lower() != GC27_COMPILER_SHA256:
+        return
+    path = Path(str(compiler["path"]))
+    mismatches: list[str] = []
+    for row in hooks:
+        expected = bytes.fromhex(str(row["prefix"]))
+        actual = _pe32_file_image_bytes(path, int(row["address"]), len(expected))
+        if actual != expected:
+            mismatches.append(f"0x{int(row['address']):08x}")
+    if mismatches:
+        raise Rejected("authenticated compiler hook prefix mismatch on disk: " + ", ".join(mismatches))
 
 # The three compiler write hooks all begin with the authenticated
 # ``mov [ebx+0x2e], eax`` sequence.  Register names are kept in a closed
@@ -288,6 +547,32 @@ _EVENT_EXTRA_KEYS = {
     "order",
     "operands",
     "physical_reg",
+    "emitted_offset",
+    "instruction_index",
+    "opcode_enum",
+    "ppc_word",
+    "ppc_bytes",
+    "mnemonic",
+    "registers",
+    "immediate",
+    "memory_op",
+    "memory_width",
+    "effective_stack_offset",
+    "address_definition",
+    "reaching_definitions",
+    "owner_joins",
+    "physical_owner_joins",
+    "ig_token",
+    "hidden_owner_token",
+    "operand_ordinal",
+    "operand_count",
+    "operand_kind",
+    "operand_class",
+    "operand_bank",
+    "operand_index",
+    "final_color",
+    "ig_flags",
+    "confirmed",
     "exit_code",
 }
 _LANES = ("stack", "pcode")
@@ -301,6 +586,7 @@ _EVENT_KINDS = {
     "pcode_capture",
     "regalloc_assignment",
     "physical_reg_assignment",
+    "machine_emission",
     "lane_unknown",
     "function_exit",
 }
@@ -314,9 +600,19 @@ _EVENT_ALLOWED_FIELDS = {
     "pcode_capture": {
         "hook_id", "status", "reason", "stage", "opcode", "instruction",
         "pcode_token", "source_offset", "block", "order", "operands",
+        "ig_token", "object_token", "hidden_owner_token", "operand_ordinal",
+        "operand_count", "operand_kind", "operand_class", "operand_bank",
+        "operand_index", "final_color", "ig_flags", "confirmed",
     },
     "regalloc_assignment": {"object_token", "status", "reason", "vreg_id", "bank"},
     "physical_reg_assignment": {"object_token", "status", "reason", "physical_reg", "bank"},
+    "machine_emission": {
+        "hook_id", "status", "reason", "pcode_token", "emitted_offset",
+        "instruction_index", "opcode_enum", "ppc_word", "ppc_bytes", "mnemonic",
+        "registers", "immediate", "memory_op", "memory_width",
+        "effective_stack_offset", "address_definition", "reaching_definitions",
+        "owner_joins", "physical_owner_joins",
+    },
     "lane_unknown": {"reason"},
     "function_exit": {"exit_code"},
 }
@@ -330,6 +626,7 @@ _EVENT_REQUIRED_FIELDS = {
     "pcode_capture": {"hook_id", "status"},
     "regalloc_assignment": {"status"},
     "physical_reg_assignment": {"status"},
+    "machine_emission": {"hook_id", "status"},
     "lane_unknown": {"reason"},
     "function_exit": {"exit_code"},
 }
@@ -365,6 +662,16 @@ _KNOWN_UNKNOWN_REASONS = frozenset(
         "one-to-many physical-register-to-object claim",
         "duplicate physical-register assignment",
         "incomplete physical register evidence",
+        "incomplete machine emission evidence",
+        "missing PCode token",
+        "ambiguous PCode token",
+        "ambiguous reaching definition",
+        "indexed base is nonzero",
+        "quantized PSQ is unsupported",
+        "unsupported machine opcode",
+        "unsupported machine operand",
+        "descriptor opcode mismatch",
+        "machine owner register-bank mismatch",
     )
 )
 
@@ -580,20 +887,32 @@ def _descriptor(value: Any, label: str, *, verify: bool = True) -> dict[str, Any
     return {"path": str(path), "size": actual_size, "sha256": actual_digest}
 
 
-def _path_descriptor(value: Any, label: str, *, must_exist: bool) -> dict[str, Any]:
+def _path_descriptor(
+    value: Any,
+    label: str,
+    *,
+    must_exist: bool,
+    verify_live: bool = True,
+) -> dict[str, Any]:
     """Read a descriptor while allowing direct fake-auth fixtures."""
 
     if isinstance(value, Mapping) and set(value) == {"path", "size", "sha256"}:
         raw_path = _text(value["path"], f"{label}.path")
-        path = _canonical_path(raw_path, f"{label}.path", must_exist=must_exist)
+        path = _canonical_path(
+            raw_path,
+            f"{label}.path",
+            must_exist=must_exist if verify_live else False,
+        )
         size = _integer(value["size"], f"{label}.size", nonnegative=True)
         digest = _text(value["sha256"], f"{label}.sha256").lower()
         if not SHA256_RE.fullmatch(digest):
             raise Rejected(f"{label}.sha256 is malformed")
-        if path.exists():
+        if verify_live and path.exists():
             if path.stat().st_size != size or sha256(path) != digest:
                 raise Rejected(f"{label} identity mismatch")
         return {"path": str(path), "size": size, "sha256": digest}
+    if not verify_live:
+        raise Rejected(f"{label} requires a sealed descriptor when live verification is disabled")
     return _descriptor(value, label, verify=True)
 
 
@@ -606,7 +925,13 @@ def _digest(value: Any, label: str) -> str:
     return digest
 
 
-def _trust_root_descriptor(root: ExternalTrustRoot, name: str, *, required: bool = True) -> dict[str, Any] | None:
+def _trust_root_descriptor(
+    root: ExternalTrustRoot,
+    name: str,
+    *,
+    required: bool = True,
+    verify_live: bool = True,
+) -> dict[str, Any] | None:
     values = {
         "path": getattr(root, f"{name}_path", None),
         "sha256": getattr(root, f"{name}_sha256", None),
@@ -618,9 +943,15 @@ def _trust_root_descriptor(root: ExternalTrustRoot, name: str, *, required: bool
         return None
     if any(value is None for value in values.values()):
         raise Rejected(f"external trust root.{name} anchor is incomplete")
-    path = _canonical_path(values["path"], f"external trust root.{name}.path", must_exist=True)
+    path = _canonical_path(
+        values["path"],
+        f"external trust root.{name}.path",
+        must_exist=verify_live,
+    )
     size = _integer(values["size"], f"external trust root.{name}.size", nonnegative=True)
     digest = _digest(values["sha256"], f"external trust root.{name}.sha256")
+    if not verify_live:
+        return {"path": str(path), "size": size, "sha256": digest}
     actual = {"path": str(path), "size": path.stat().st_size, "sha256": sha256(path)}
     if size != actual["size"] or digest != actual["sha256"]:
         raise Rejected(f"external trust root.{name} bytes do not match")
@@ -739,12 +1070,86 @@ def _native_launch_argv(request: Mapping[str, Any]) -> list[str]:
     return values
 
 
+def _authenticated_direct_compiler_argv(
+    request: Mapping[str, Any],
+    *,
+    observed_wrapper_map: bool = False,
+) -> list[str]:
+    """Derive one closed direct-compiler transport from wrapper authority.
+
+    This is a transport substitution, not an argv rewrite or compiler
+    identity fallback. It is available only for the pinned sjiswrap v1.1.1
+    and GC/2.7 pair and only before any wrapper map has been observed. Every
+    request/cwd/source byte that the wrapper could transcode must be ASCII, so
+    removing argv[0] is byte-equivalent at the process boundary. Hook/image
+    authentication still occurs against the compiler selected by its path,
+    complete SHA-256, and pinned prefixes.
+    """
+
+    if observed_wrapper_map:
+        raise Rejected("direct compiler transport cannot follow an observed wrapper map")
+    values = _native_launch_argv(request)
+    wrapper = request.get("wrapper")
+    compiler = request.get("compiler")
+    source = request.get("source")
+    if not isinstance(wrapper, Mapping) or not isinstance(compiler, Mapping) or not isinstance(source, Mapping):
+        raise Rejected("direct compiler transport lacks authenticated identities")
+    wrapper_sha = _digest(wrapper.get("sha256"), "request.wrapper.sha256")
+    compiler_sha = _digest(compiler.get("sha256"), "request.compiler.sha256")
+    if (wrapper_sha, compiler_sha) not in AUTHENTICATED_DIRECT_COMPILER_PAIRS:
+        raise Rejected("wrapper/compiler pair is not authorized for direct transport")
+    wrapper_path = _canonical_path(wrapper.get("path"), "request.wrapper.path", must_exist=True)
+    compiler_path = _canonical_path(compiler.get("path"), "request.compiler.path", must_exist=True)
+    if sha256(wrapper_path) != wrapper_sha or sha256(compiler_path) != compiler_sha:
+        raise Rejected("direct transport executable bytes do not match authority")
+
+    cwd = _canonical_cwd(request.get("cwd"), must_exist=False)
+    try:
+        for value in (str(cwd), *values):
+            value.encode("ascii", errors="strict")
+    except UnicodeEncodeError:
+        raise Rejected("direct compiler transport requires ASCII-equivalent cwd and argv") from None
+
+    source_path = _canonical_path(source.get("path"), "request.source.path", must_exist=True)
+    try:
+        source_path.read_bytes().decode("ascii", errors="strict")
+    except UnicodeDecodeError:
+        raise Rejected("direct compiler transport requires ASCII-equivalent source bytes") from None
+    if sha256(source_path) != _digest(source.get("sha256"), "request.source.sha256"):
+        raise Rejected("source bytes changed before direct compiler transport")
+
+    executed = values[1:]
+    if not executed:
+        raise Rejected("direct compiler transport lost its compiler argv")
+    if str(_canonical_path(executed[0], "direct compiler argv[0]", must_exist=True)) != str(compiler_path):
+        raise Rejected("direct compiler transport did not preserve compiler identity")
+    return executed
+
+
+def _native_transport_plan(request: Mapping[str, Any]) -> tuple[str, list[str]]:
+    """Choose the authenticated native transport before process creation."""
+
+    request_argv = _native_launch_argv(request)
+    wrapper = request.get("wrapper")
+    compiler = request.get("compiler")
+    if not isinstance(wrapper, Mapping) or not isinstance(compiler, Mapping):
+        raise Rejected("native transport plan lacks wrapper/compiler identities")
+    pair = (
+        _digest(wrapper.get("sha256"), "request.wrapper.sha256"),
+        _digest(compiler.get("sha256"), "request.compiler.sha256"),
+    )
+    if pair in AUTHENTICATED_DIRECT_COMPILER_PAIRS:
+        return "authenticated_direct_compiler", _authenticated_direct_compiler_argv(request)
+    return "wrapper_memexec", request_argv
+
+
 def _validate_external_root_against_request(
     root: ExternalTrustRoot,
     request: Mapping[str, Any],
     *,
     request_path: Path | None,
     allow_outputs: bool = False,
+    post_capture_analysis: bool = False,
 ) -> None:
     """Check all independently retained identities against a request."""
 
@@ -753,7 +1158,14 @@ def _validate_external_root_against_request(
         expected = request.get(name)
         if not isinstance(expected, Mapping):
             raise Rejected(f"request.{name} identity is missing")
-        actual = _trust_root_descriptor(root, name, required=True)
+        actual = _trust_root_descriptor(
+            root,
+            name,
+            required=True,
+            verify_live=not (
+                post_capture_analysis and name in {"debugger", "transport"}
+            ),
+        )
         if actual != dict(expected):
             raise Rejected(f"external trust root.{name} does not match request")
     if request_path is not None:
@@ -768,18 +1180,36 @@ def _validate_external_root_against_request(
         values = [getattr(root, f"request_{suffix}", None) for suffix in ("path", "sha256", "size")]
         if not all(value is None for value in values):
             raise Rejected("external trust root.request anchor cannot bind before request creation")
+    if post_capture_analysis:
+        # Historical analysis may outlive the exact debugger source path, but
+        # only after all immutable producer outputs remain present and bound.
+        for name in ("event_stream_stack", "event_stream_pcode", "envelope"):
+            _trust_root_descriptor(root, name, required=True, verify_live=True)
     if allow_outputs:
         return
     for name in ("event_stream_stack", "event_stream_pcode", "envelope"):
         _trust_root_descriptor(root, name, required=True)
 
 
-def _validate_hook_rows(value: Any, label: str = "hooks") -> list[dict[str, Any]]:
-    if not isinstance(value, list) or len(value) != len(HOOKS):
+def _validate_hook_rows(
+    value: Any,
+    label: str = "hooks",
+    *,
+    compiler_sha256: str | None = None,
+) -> list[dict[str, Any]]:
+    expected_sets = (
+        (_hooks_for_compiler(compiler_sha256),)
+        if compiler_sha256 is not None
+        else _HOOK_SETS
+    )
+    if not isinstance(value, list):
+        raise Rejected(f"{label} must contain the complete pinned hook union")
+    expected = next((rows for rows in expected_sets if len(rows) == len(value)), None)
+    if expected is None:
         raise Rejected(f"{label} must contain the complete pinned hook union")
     result: list[dict[str, Any]] = []
     seen_addresses: set[int] = set()
-    for index, (raw, expected) in enumerate(zip(value, HOOKS)):
+    for index, (raw, expected_row) in enumerate(zip(value, expected)):
         if not isinstance(raw, Mapping) or set(raw) != {"id", "address", "prefix", "lane", "role"}:
             raise Rejected(f"{label}[{index}] has unsupported fields")
         if not isinstance(raw["address"], int) or isinstance(raw["address"], bool):
@@ -791,7 +1221,7 @@ def _validate_hook_rows(value: Any, label: str = "hooks") -> list[dict[str, Any]
             "lane": _text(raw["lane"], f"{label}[{index}].lane"),
             "role": _text(raw["role"], f"{label}[{index}].role"),
         }
-        if normalized != expected:
+        if normalized != expected_row:
             raise Rejected(f"{label}[{index}] does not match the pinned hook union")
         prefix = normalized["prefix"]
         if len(prefix) == 0 or len(prefix) % 2 or not re.fullmatch(r"[0-9a-f]+", prefix):
@@ -998,6 +1428,252 @@ class EventBus:
         return event
 
 
+def _signed_field(value: int, bits: int) -> int:
+    sign = 1 << (bits - 1)
+    return (value & (sign - 1)) - (value & sign)
+
+
+class MachineEmissionDecoder:
+    """Deterministically reduce emitted PPC words to proven stack effects."""
+
+    _D_MEMORY = {
+        32: ("lwz", "load", 4, "GPR"),
+        34: ("lbz", "load", 1, "GPR"),
+        36: ("stw", "store", 4, "GPR"),
+        38: ("stb", "store", 1, "GPR"),
+        40: ("lhz", "load", 2, "GPR"),
+        42: ("lha", "load", 2, "GPR"),
+        44: ("sth", "store", 2, "GPR"),
+        48: ("lfs", "load", 4, "FPR"),
+        50: ("lfd", "load", 8, "FPR"),
+        52: ("stfs", "store", 4, "FPR"),
+        54: ("stfd", "store", 8, "FPR"),
+    }
+
+    def __init__(self) -> None:
+        self.address_defs: dict[int, tuple[int, int]] = {}
+        self.value_defs: dict[tuple[str, int], int] = {}
+        self.last_offset = -4
+
+    def invalidate(self) -> None:
+        self.address_defs.clear()
+        self.value_defs.clear()
+
+    def _unknown(
+        self,
+        reason: str,
+        located: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if located is None or not isinstance(located.get("ppc_word"), int):
+            # Without a located instruction there is no safe register-local
+            # invalidation boundary.
+            self.invalidate()
+        else:
+            # A located but unsupported instruction must not erase unrelated
+            # stack/address chains.  Conservatively invalidate the encoded
+            # destination field in both tracked banks; for update-form memory
+            # instructions also invalidate the updated base register.  The
+            # UNKNOWN event itself remains dependency-local in the causal map.
+            word = int(located["ppc_word"])
+            primary = word >> 26
+            destination = (word >> 21) & 31
+            self.address_defs.pop(destination, None)
+            self.value_defs.pop(("GPR", destination), None)
+            self.value_defs.pop(("FPR", destination), None)
+            if primary in {33, 35, 37, 39, 41, 43, 45, 49, 51, 53, 55}:
+                updated_base = (word >> 16) & 31
+                self.address_defs.pop(updated_base, None)
+                self.value_defs.pop(("GPR", updated_base), None)
+        result = {"status": "UNKNOWN", "reason": reason}
+        if located is not None:
+            for key in (
+                "pcode_token",
+                "emitted_offset",
+                "instruction_index",
+                "opcode_enum",
+                "ppc_word",
+                "ppc_bytes",
+            ):
+                if key in located:
+                    result[key] = located[key]
+        return result
+
+    def _clear_call_volatile_definitions(self) -> None:
+        """Invalidate only caller-clobbered register definitions at ``bl``.
+
+        The REL24 field in an unlinked object may be zero, so the decoder does
+        not invent a branch target.  Stack intervals and nonvolatile register
+        definitions survive the call boundary.
+        """
+
+        for register in (0, *range(3, 13)):
+            self.address_defs.pop(register, None)
+            self.value_defs.pop(("GPR", register), None)
+        for register in range(14):
+            self.value_defs.pop(("FPR", register), None)
+
+    def _stack_base(self, register: int) -> tuple[int, int] | None:
+        if register == 1:
+            return (0, -1)
+        return self.address_defs.get(register)
+
+    def decode(
+        self,
+        *,
+        pcode_token: str,
+        emitted_offset: int,
+        opcode_enum: int,
+        encoded_value: int,
+        descriptor_base: int,
+    ) -> dict[str, Any]:
+        if PCODE_TOKEN_RE.fullmatch(pcode_token) is None:
+            return self._unknown("missing PCode token")
+        if emitted_offset < 0 or emitted_offset % 4 or emitted_offset <= self.last_offset:
+            return self._unknown("ambiguous PCode token")
+        self.last_offset = emitted_offset
+        instruction_index = emitted_offset // 4
+        if not 0 <= opcode_enum <= 0x1D4 or not 0 <= encoded_value <= 0xFFFFFFFF:
+            return self._unknown("unsupported machine operand")
+        emitted_bytes = encoded_value.to_bytes(4, "little", signed=False)
+        word = int.from_bytes(emitted_bytes, "big", signed=False)
+        result: dict[str, Any] = {
+            "status": "CAPTURED",
+            "pcode_token": pcode_token,
+            "emitted_offset": emitted_offset,
+            "instruction_index": instruction_index,
+            "opcode_enum": opcode_enum,
+            "ppc_word": word,
+            "ppc_bytes": emitted_bytes.hex(),
+            "reaching_definitions": [],
+        }
+        if (word & 0xFC000000) != (descriptor_base & 0xFC000000):
+            return self._unknown("descriptor opcode mismatch", result)
+        primary = word >> 26
+        reaching: set[int] = set()
+
+        if primary == 14:  # addi
+            destination = (word >> 21) & 31
+            base = (word >> 16) & 31
+            immediate = _signed_field(word, 16)
+            result.update(
+                mnemonic="addi",
+                registers={"destination": f"r{destination}", "base": f"r{base}"},
+                immediate=immediate,
+            )
+            base_def = self._stack_base(base)
+            self.address_defs.pop(destination, None)
+            if base_def is not None:
+                stack_offset = base_def[0] + immediate
+                result["address_definition"] = {
+                    "register": f"r{destination}",
+                    "stack_offset": stack_offset,
+                }
+                self.address_defs[destination] = (stack_offset, instruction_index)
+                if base_def[1] >= 0:
+                    reaching.add(base_def[1])
+            self.value_defs[("GPR", destination)] = instruction_index
+        elif primary in self._D_MEMORY:
+            mnemonic, memory_op, width, bank = self._D_MEMORY[primary]
+            data_register = (word >> 21) & 31
+            base = (word >> 16) & 31
+            displacement = _signed_field(word, 16)
+            base_def = self._stack_base(base)
+            if base_def is None:
+                return self._unknown("ambiguous reaching definition", result)
+            stack_offset = base_def[0] + displacement
+            result.update(
+                mnemonic=mnemonic,
+                registers={"data": f"{'r' if bank == 'GPR' else 'f'}{data_register}", "base": f"r{base}"},
+                immediate=displacement,
+                memory_op=memory_op,
+                memory_width=width,
+                effective_stack_offset=stack_offset,
+            )
+            if base_def[1] >= 0:
+                reaching.add(base_def[1])
+            key = (bank, data_register)
+            if memory_op == "load":
+                self.value_defs[key] = instruction_index
+                if bank == "GPR":
+                    self.address_defs.pop(data_register, None)
+            elif key in self.value_defs:
+                reaching.add(self.value_defs[key])
+        elif primary in {56, 60}:  # psq_l / psq_st
+            data_register = (word >> 21) & 31
+            base = (word >> 16) & 31
+            quantization = (word >> 12) & 7
+            single = (word >> 15) & 1
+            if quantization != 0:
+                return self._unknown("quantized PSQ is unsupported", result)
+            base_def = self._stack_base(base)
+            if base_def is None:
+                return self._unknown("ambiguous reaching definition", result)
+            displacement = _signed_field(word, 12)
+            memory_op = "load" if primary == 56 else "store"
+            result.update(
+                mnemonic="psq_l" if memory_op == "load" else "psq_st",
+                registers={"data": f"f{data_register}", "base": f"r{base}"},
+                immediate=displacement,
+                memory_op=memory_op,
+                memory_width=4 if single else 8,
+                effective_stack_offset=base_def[0] + displacement,
+            )
+            if base_def[1] >= 0:
+                reaching.add(base_def[1])
+            key = ("FPR", data_register)
+            if memory_op == "load":
+                self.value_defs[key] = instruction_index
+            elif key in self.value_defs:
+                reaching.add(self.value_defs[key])
+        elif primary == 4 and (word & 0x7F) in {0x0C, 0x0E}:  # psq_lx / psq_stx
+            data_register = (word >> 21) & 31
+            base = (word >> 16) & 31
+            index = (word >> 11) & 31
+            single = (word >> 10) & 1
+            quantization = (word >> 7) & 7
+            if quantization != 0:
+                return self._unknown("quantized PSQ is unsupported", result)
+            if base != 0:
+                return self._unknown("indexed base is nonzero", result)
+            index_def = self.address_defs.get(index)
+            if index_def is None:
+                return self._unknown("ambiguous reaching definition", result)
+            memory_op = "load" if (word & 0x7F) == 0x0C else "store"
+            result.update(
+                mnemonic="psq_lx" if memory_op == "load" else "psq_stx",
+                registers={"data": f"f{data_register}", "base": "r0", "index": f"r{index}"},
+                memory_op=memory_op,
+                memory_width=4 if single else 8,
+                effective_stack_offset=index_def[0],
+            )
+            reaching.add(index_def[1])
+            key = ("FPR", data_register)
+            if memory_op == "load":
+                self.value_defs[key] = instruction_index
+            elif key in self.value_defs:
+                reaching.add(self.value_defs[key])
+        elif primary == 18 and (word & 1) == 1:  # bl
+            result.update(mnemonic="bl", registers={})
+            self._clear_call_volatile_definitions()
+        elif primary == 63 and ((word >> 1) & 0x3FF) == 40:  # fneg
+            destination = (word >> 21) & 31
+            source = (word >> 11) & 31
+            source_key = ("FPR", source)
+            if source_key not in self.value_defs:
+                return self._unknown("ambiguous reaching definition", result)
+            reaching.add(self.value_defs[source_key])
+            result.update(
+                mnemonic="fneg",
+                registers={"destination": f"f{destination}", "source": f"f{source}"},
+            )
+            self.value_defs[("FPR", destination)] = instruction_index
+        else:
+            return self._unknown("unsupported machine opcode", result)
+
+        result["reaching_definitions"] = sorted(reaching)
+        return result
+
+
 class CaptureBackend(Protocol):
     """Protocol for both the native adapter and deterministic fake backends."""
 
@@ -1160,7 +1836,7 @@ class CombinedCaptureSession:
             raise Rejected("backend capability gap: " + ", ".join(missing))
         self.bus = EventBus(session_id=self.session_id, function=self.function)
         self.ledger = PointerLedger(self.session_id)
-        self.dispatcher = SharedBreakpointDispatcher(backend, self)
+        self.dispatcher = SharedBreakpointDispatcher(backend, self, hooks=self.auth["hooks"])
         self.started = False
         self.exited = False
         self.exit_code: int | None = None
@@ -1174,6 +1850,7 @@ class CombinedCaptureSession:
         self.inventory_captured = False
         self.inventory_complete = False
         self.inventory_structure_ready = False
+        self.inventory_snapshot_reasons: set[str] = set()
         self.stack_allocation_pre_seen = False
         self.inventory_event_emitted = False
         self.inventory_rows: dict[str, list[dict[str, Any]]] = {"locals": [], "arguments": []}
@@ -1191,6 +1868,14 @@ class CombinedCaptureSession:
         self.pending_physical_rows: list[dict[str, Any]] = []
         self.unknown: list[str] = []
         self.pending_writes: dict[int, dict[str, Any]] = {}
+        self.machine_decoder = MachineEmissionDecoder()
+        self.pcode_tokens: dict[int, str] = {}
+        self.pcode_offsets: dict[str, int] = {}
+        self.pcode_offset_owners: dict[int, str] = {}
+        self.ig_tokens: dict[int, str] = {}
+        self.hidden_ig_tokens: dict[str, str] = {}
+        self.pending_pcode_colors: dict[int, dict[str, Any]] = {}
+        self.pcode_color_evidence: set[tuple[str, int]] = set()
 
     def _check_process(self, process_id: Any | None) -> None:
         if process_id is None:
@@ -1201,6 +1886,214 @@ class CombinedCaptureSession:
         reason = _text(reason, "unknown reason")
         if reason not in self.unknown:
             self.unknown.append(reason)
+
+    def _pcode_token(self, pointer: Any, emitted_offset: int | None = None) -> str | None:
+        try:
+            value = _integer(pointer, "PCode node pointer", nonnegative=True)
+        except Rejected:
+            self._unknown("missing PCode token")
+            return None
+        if value == 0:
+            self._unknown("missing PCode token")
+            return None
+        token = self.pcode_tokens.get(value)
+        if token is None:
+            token = f"pcode-{self.session_id}-{len(self.pcode_tokens):06d}"
+            self.pcode_tokens[value] = token
+        if emitted_offset is None:
+            return token
+        return self._bind_pcode_offset(token, emitted_offset)
+
+    def _bind_pcode_offset(self, token: str, emitted_offset: int) -> str | None:
+        match = PCODE_TOKEN_RE.fullmatch(token)
+        if match is None or match.group("session") != self.session_id:
+            self._unknown("missing PCode token")
+            return None
+        prior_offset = self.pcode_offsets.get(token)
+        if prior_offset not in (None, emitted_offset):
+            self._unknown("ambiguous PCode token")
+            return None
+        prior_token = self.pcode_offset_owners.get(emitted_offset)
+        if prior_token not in (None, token):
+            self._unknown("ambiguous PCode token")
+            return None
+        self.pcode_offsets[token] = emitted_offset
+        self.pcode_offset_owners[emitted_offset] = token
+        return token
+
+    def _ig_token(self, pointer: Any) -> str | None:
+        try:
+            value = _integer(pointer, "IG node pointer", nonnegative=True)
+        except Rejected:
+            self._unknown("missing IG-node identity")
+            return None
+        if value == 0:
+            self._unknown("missing IG-node identity")
+            return None
+        token = self.ig_tokens.get(value)
+        if token is None:
+            token = f"ig-{self.session_id}-{len(self.ig_tokens):06d}"
+            self.ig_tokens[value] = token
+        return token
+
+    def _hidden_ig_token(self, ig_token: str) -> str:
+        token = self.hidden_ig_tokens.get(ig_token)
+        if token is None:
+            token = f"hidden-ig-{self.session_id}-{len(self.hidden_ig_tokens):06d}"
+            self.hidden_ig_tokens[ig_token] = token
+        return token
+
+    def _capture_pcode_color(self, row: Mapping[str, Any], thread: int) -> dict[str, Any] | None:
+        method = getattr(self.backend, "capture_pcode", None)
+        raw = method(row["id"], thread) if callable(method) else None
+        if not isinstance(raw, Mapping):
+            raise Rejected("PCode color backend returned a non-object")
+        status = raw.get("status")
+        if status == "NOOP":
+            if row["id"] != "pcode_color_post" or thread in self.pending_pcode_colors:
+                raise Rejected("PCode color NOOP is not a non-register post path")
+            return None
+        required = {
+            "pcode_pointer", "ig_pointer", "operand_ordinal", "operand_count",
+            "operand_kind", "register_class", "operand_index", "final_color",
+            "ig_flags", "object_pointer",
+        }
+        if status not in {"PENDING", "CAPTURED"} or not required.issubset(raw):
+            raise Rejected("PCode color evidence is incomplete")
+        values = {
+            key: _integer(raw[key], f"PCode color {key}", nonnegative=key not in {"final_color"})
+            for key in required
+        }
+        if not 0 <= values["operand_ordinal"] < values["operand_count"] <= 256:
+            raise Rejected("PCode color operand chronology is invalid")
+        if not 0 <= values["operand_kind"] <= 0xFF or not 0 <= values["operand_index"] <= 0x7FFF:
+            raise Rejected("PCode color operand identity is invalid")
+        if values["register_class"] not in {3, 4}:
+            raise Rejected("PCode color operand class is not GPR/FPR")
+        if not 0 <= values["final_color"] <= 31 or not 0 <= values["ig_flags"] <= 0xFFFF:
+            raise Rejected("PCode color result is invalid")
+        pcode_token = self._pcode_token(values["pcode_pointer"])
+        ig_token = self._ig_token(values["ig_pointer"])
+        if pcode_token is None or ig_token is None:
+            raise Rejected(self.unknown[-1])
+        bank = "GPR" if values["register_class"] == 4 else "FPR"
+        payload: dict[str, Any] = {
+            "hook_id": "pcode_color_post",
+            "status": "CAPTURED",
+            "stage": "pcode_color_post",
+            "pcode_token": pcode_token,
+            "ig_token": ig_token,
+            "operand_ordinal": values["operand_ordinal"],
+            "operand_count": values["operand_count"],
+            "operand_kind": values["operand_kind"],
+            "operand_class": values["register_class"],
+            "operand_bank": bank,
+            "operand_index": values["operand_index"],
+            "final_color": values["final_color"],
+            "ig_flags": values["ig_flags"],
+            "confirmed": True,
+        }
+        object_pointer = values["object_pointer"]
+        binding = self.ledger.kind_for(object_pointer) if object_pointer else None
+        if binding is None:
+            payload["hidden_owner_token"] = self._hidden_ig_token(ig_token)
+        else:
+            _kind, object_token = binding
+            payload["object_token"] = object_token
+        if row["id"] == "pcode_color_pre":
+            if status != "PENDING" or thread in self.pending_pcode_colors:
+                raise Rejected("nested PCode color writeback")
+            self.pending_pcode_colors[thread] = {"raw": values, "payload": payload}
+            return None
+        if row["id"] != "pcode_color_post" or status != "CAPTURED":
+            raise Rejected("PCode color hook/status mismatch")
+        pending = self.pending_pcode_colors.pop(thread, None)
+        if pending is None or pending["raw"] != values or pending["payload"] != payload:
+            raise Rejected("PCode color pre/post evidence conflicts")
+        evidence_key = (pcode_token, values["operand_ordinal"])
+        if evidence_key in self.pcode_color_evidence:
+            raise Rejected("duplicate PCode color evidence")
+        self.pcode_color_evidence.add(evidence_key)
+        return payload
+
+    def _machine_owner_joins(
+        self,
+        registers: Mapping[str, Any],
+    ) -> tuple[list[dict[str, str]], list[dict[str, str]], str | None]:
+        joins: list[dict[str, str]] = []
+        physical_joins: list[dict[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for register in registers.values():
+            if not isinstance(register, str) or re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register) is None:
+                continue
+            bank = "GPR" if register.startswith("r") else "FPR"
+            token = self.physical_reg_owners.get((bank, int(register[1:])))
+            physical = self.physical_mappings.get(token or "")
+            if token is None or not isinstance(physical, Mapping) or physical.get("status") != "EXACT":
+                continue
+            if physical.get("bank") != bank or int(physical.get("physical_reg", -1)) != int(register[1:]):
+                return [], [], "machine owner register-bank mismatch"
+            key = (register, token)
+            if key in seen:
+                continue
+            seen.add(key)
+            physical_joins.append({"physical_register": register, "object_token": token})
+            mapping = self.mappings.get(token)
+            if not isinstance(mapping, Mapping) or mapping.get("status") != "EXACT":
+                continue
+            vreg_id = str(mapping.get("vreg_id", ""))
+            if mapping.get("bank") != bank or not vreg_id.startswith("r" if bank == "GPR" else "f"):
+                return [], [], "machine owner register-bank mismatch"
+            joins.append({"physical_register": register, "object_token": token, "vreg_id": vreg_id})
+        key = lambda row: (row["physical_register"], row["object_token"])
+        return sorted(joins, key=key), sorted(physical_joins, key=key), None
+
+    def _unknown_machine_emission(self, hook_id: str, reason: str) -> dict[str, Any]:
+        self._unknown(reason)
+        self.machine_decoder.invalidate()
+        return {"hook_id": hook_id, "status": "UNKNOWN", "reason": reason}
+
+    def _capture_machine_emission(self, row: Mapping[str, Any], thread: int) -> dict[str, Any]:
+        method = getattr(self.backend, "capture_machine_emission", None)
+        raw = method(row["id"], thread) if callable(method) else None
+        if not isinstance(raw, Mapping):
+            return self._unknown_machine_emission(row["id"], "incomplete machine emission evidence")
+        if raw.get("status") == "UNKNOWN":
+            reason = str(raw.get("reason", "incomplete machine emission evidence"))
+            if reason not in _KNOWN_UNKNOWN_REASONS:
+                reason = "incomplete machine emission evidence"
+            return self._unknown_machine_emission(row["id"], reason)
+        required = {"pcode_pointer", "emitted_offset", "opcode_enum", "encoded_value", "descriptor_base"}
+        if not required.issubset(raw):
+            return self._unknown_machine_emission(row["id"], "incomplete machine emission evidence")
+        try:
+            emitted_offset = _integer(raw["emitted_offset"], "machine emitted offset", nonnegative=True)
+            opcode_enum = _integer(raw["opcode_enum"], "machine opcode enum", nonnegative=True)
+            encoded_value = _integer(raw["encoded_value"], "machine encoded value", nonnegative=True)
+            descriptor_base = _integer(raw["descriptor_base"], "machine descriptor base", nonnegative=True)
+        except Rejected:
+            reason = "unsupported machine operand"
+            return self._unknown_machine_emission(row["id"], reason)
+        token = self._pcode_token(raw["pcode_pointer"], emitted_offset)
+        if token is None:
+            self.machine_decoder.invalidate()
+            return {"hook_id": row["id"], "status": "UNKNOWN", "reason": self.unknown[-1]}
+        decoded = self.machine_decoder.decode(
+            pcode_token=token,
+            emitted_offset=emitted_offset,
+            opcode_enum=opcode_enum,
+            encoded_value=encoded_value,
+            descriptor_base=descriptor_base,
+        )
+        if decoded["status"] == "UNKNOWN":
+            self._unknown(str(decoded["reason"]))
+            return {"hook_id": row["id"], **decoded}
+        owner_joins, physical_owner_joins, join_reason = self._machine_owner_joins(decoded["registers"])
+        if join_reason is not None:
+            return self._unknown_machine_emission(row["id"], join_reason)
+        decoded["owner_joins"] = owner_joins
+        decoded["physical_owner_joins"] = physical_owner_joins
+        return {"hook_id": row["id"], **decoded}
 
     def on_process_started(self, process_id: Any | None = None) -> None:
         if self.started:
@@ -1235,6 +2128,7 @@ class CombinedCaptureSession:
         if self.inventory_captured and self.inventory_structure_ready and not force:
             return
         raw: Any = None
+        snapshot_reasons: set[str] = set()
         method = getattr(self.backend, "snapshot_inventory", None)
         if callable(method):
             raw = method()
@@ -1256,7 +2150,7 @@ class CombinedCaptureSession:
                     except TypeError:
                         raw = objects_method()
         if not isinstance(raw, Mapping):
-            self._unknown("incomplete inventory")
+            self.inventory_snapshot_reasons = {"incomplete inventory"}
             self.inventory_captured = True
             self.inventory_structure_ready = False
             self.inventory_complete = False
@@ -1268,23 +2162,25 @@ class CombinedCaptureSession:
         for kind, key in (("local", "locals"), ("argument", "arguments")):
             rows = raw.get(key)
             if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes, bytearray)):
-                self._unknown("incomplete inventory")
+                snapshot_reasons.add("incomplete inventory")
                 self.inventory_complete = False
                 continue
             normalized_rows: list[dict[str, Any]] = []
             seen_tokens: set[str] = set()
             for index, item in enumerate(rows):
                 if not isinstance(item, Mapping):
-                    self._unknown("null object identity")
+                    snapshot_reasons.add("null object identity")
                     continue
                 pointer = item.get("pointer", item.get("object"))
                 token = self.ledger.register(kind, pointer)
                 if token is None:
-                    self._unknown("null object identity" if pointer in (None, 0) else "duplicate object identity")
+                    snapshot_reasons.add(
+                        "null object identity" if pointer in (None, 0) else "duplicate object identity"
+                    )
                     continue
                 if token in seen_tokens:
                     self.ledger.mark_unknown(token, "duplicate object identity")
-                    self._unknown("duplicate object identity")
+                    snapshot_reasons.add("duplicate object identity")
                     continue
                 seen_tokens.add(token)
                 row: dict[str, Any] = {"token": token, "kind": kind}
@@ -1297,21 +2193,22 @@ class CombinedCaptureSession:
                     try:
                         varinfo_pointer = _integer(raw_varinfo, "Object VarInfo pointer", nonnegative=True)
                     except Rejected:
-                        self._unknown("missing or invalid Object VarInfo pointer")
+                        snapshot_reasons.add("missing or invalid Object VarInfo pointer")
                     else:
                         if varinfo_pointer == 0:
-                            self._unknown("missing or invalid Object VarInfo pointer")
+                            snapshot_reasons.add("missing or invalid Object VarInfo pointer")
                         else:
                             prior_token = self.varinfo_owners.get(varinfo_pointer)
                             if prior_token not in (None, token):
-                                self._unknown("duplicate Object VarInfo identity")
+                                snapshot_reasons.add("duplicate Object VarInfo identity")
                             else:
                                 self.varinfo_by_token[token] = varinfo_pointer
                                 self.varinfo_owners[varinfo_pointer] = token
                 normalized_rows.append(row)
             self.inventory_rows[key] = normalized_rows
         self.inventory_captured = True
-        self.inventory_complete = not self.unknown and self.inventory_structure_ready
+        self.inventory_snapshot_reasons = snapshot_reasons
+        self.inventory_complete = not snapshot_reasons and self.inventory_structure_ready
         # Keep compiler_list at the allocator phase boundary.  A physical
         # post hook may arrive earlier and can force a provisional snapshot;
         # serializing that provisional list would make the later refreshed
@@ -1688,6 +2585,15 @@ class CombinedCaptureSession:
             self.pending_writes[thread] = payload
             self.bus.emit("stack", "object_stack_write_pre", payload)
             return True
+        if role == "machine_emit":
+            payload = self._capture_machine_emission(row, thread)
+            self.bus.emit("pcode", "machine_emission", payload)
+            return True
+        if role == "pcode_color_diagnostic":
+            payload = self._capture_pcode_color(row, thread)
+            if payload is not None:
+                self.bus.emit("pcode", "pcode_capture", payload)
+            return True
         if row.get("lane") == "pcode" and role not in {"regalloc", "regalloc_post"}:
             method = getattr(self.backend, "capture_pcode", None)
             raw = method(row["id"], thread) if callable(method) else {"hook_id": row["id"], "status": "UNKNOWN"}
@@ -1713,6 +2619,12 @@ class CombinedCaptureSession:
                 else:
                     self._unknown("missing or invalid vreg identity")
                     self.bus.emit("pcode", "regalloc_assignment", {"status": "UNKNOWN", "reason": "missing or invalid vreg identity"})
+            if not raw and self.auth["request"]["compiler"]["sha256"] == GC27_COMPILER_SHA256:
+                # GC/2.7's authenticated 0x43598B site is chronology-only.  It
+                # does not expose a canonical Object-to-vreg identity; direct
+                # operand/IG evidence is captured at 0x5086C4/0x5086C8 instead.
+                self._maybe_complete_target()
+                return True
             if not raw:
                 self._unknown("incomplete regalloc")
                 self.bus.emit("pcode", "regalloc_assignment", {"status": "UNKNOWN", "reason": "incomplete regalloc"})
@@ -1792,17 +2704,28 @@ class CombinedCaptureSession:
             for event in events
             if event["lane"] == "pcode" and "hook_id" in event
         }
+        profile_hooks = tuple(self.auth["hooks"])
         expected_stack = {
             "function_filter", "allocation_pre", "allocation_post",
-            *WRITE_HOOK_IDS,
         }
-        expected_pcode = set(PCODE_HOOK_IDS)
+        expected_pcode = set(_pcode_stage_hook_ids(profile_hooks))
         missing_stack = expected_stack - stack_hook_ids
         missing_pcode = expected_pcode - pcode_hook_ids
-        if "regalloc_assignment" not in pcode_kinds:
+        gc27_profile = (
+            str(self.auth["request"]["compiler"]["sha256"]).lower()
+            == GC27_COMPILER_SHA256
+        )
+        # GC/2.7's retained ``regalloc`` site is chronology-only.  The direct
+        # Object-to-IG/vreg claim must come from separately authenticated
+        # evidence; its absence is therefore not a missing lane edge.  This
+        # mirrors ``_validate_chronology`` and, critically, does not synthesize
+        # a virtual-register assignment from the physical result.
+        if "regalloc_assignment" not in pcode_kinds and not gc27_profile:
             missing_pcode.add("regalloc")
         if "physical_reg_assignment" not in pcode_kinds:
             missing_pcode.add("regalloc_post")
+        if any(row.get("role") == "machine_emit" for row in profile_hooks) and "machine_emission" not in pcode_kinds:
+            missing_pcode.add("gc27_machine_emit")
         if missing_stack and "lane_unknown" not in stack_kinds:
             reason = "incomplete stack evidence"
             self._unknown(reason)
@@ -1848,29 +2771,117 @@ class CombinedCaptureSession:
     def on_disconnect(self, reason: Any) -> None:
         raise Rejected(f"native debug transport disconnected: {_text(reason, 'disconnect reason')}")
 
+    def _exact_stack_home(self, token: str) -> dict[str, Any] | None:
+        """Return one authenticated final-epoch stack home for ``token``.
+
+        A VarInfo home write authenticates an offset, not an aggregate width.
+        Width and lifetime remain a source-aware causal-map concern.
+        """
+
+        allocation_posts = [
+            event
+            for event in self.bus.events
+            if event["event_kind"] == "numeric_stack_alloc_post"
+        ]
+        if len(allocation_posts) != 1:
+            return None
+        boundary = int(allocation_posts[0]["sequence"])
+        pending: dict[tuple[str, str, int], list[Mapping[str, Any]]] = {}
+        pairs: list[tuple[Mapping[str, Any], Mapping[str, Any]]] = []
+        for event in self.bus.events:
+            if int(event["sequence"]) <= boundary:
+                continue
+            kind = event["event_kind"]
+            if kind not in {"object_stack_write_pre", "object_stack_write_post"}:
+                continue
+            if event.get("object_token") != token:
+                continue
+            key = (
+                str(event["hook_id"]),
+                str(event["object_token"]),
+                int(event["target_slot"]),
+            )
+            if kind == "object_stack_write_pre":
+                pending.setdefault(key, []).append(event)
+                continue
+            before_rows = pending.get(key, [])
+            if not before_rows:
+                return None
+            before = before_rows.pop(0)
+            pairs.append((before, event))
+        if any(rows for rows in pending.values()) or not pairs:
+            return None
+        slots = {int(after["target_slot"]) for _before, after in pairs}
+        if len(slots) != 1:
+            return None
+        evidence_ids = [
+            str(event["event_id"])
+            for before, after in pairs
+            for event in (before, after)
+        ]
+        return {
+            "status": "EXACT",
+            "mode": "stack_home",
+            "evidence_event_ids": evidence_ids,
+            "stack_home": {"base": "r1", "offset": slots.pop()},
+        }
+
+    def _exact_event_ids(self, event_kind: str, token: str) -> list[str]:
+        return [
+            str(event["event_id"])
+            for event in self.bus.events
+            if event["event_kind"] == event_kind
+            and event.get("status") == "EXACT"
+            and event.get("object_token") == token
+        ]
+
+    def _resolved_ownership(self, token: str) -> dict[str, Any] | None:
+        virtual = self.mappings.get(token)
+        if isinstance(virtual, Mapping) and virtual.get("status") == "EXACT":
+            # Preserve the historical schema byte-for-byte.  The same-session
+            # physical observation remains separately validated chronology.
+            return dict(virtual)
+        physical = self.physical_mappings.get(token)
+        if isinstance(physical, Mapping) and physical.get("status") == "EXACT":
+            evidence_ids = self._exact_event_ids("physical_reg_assignment", token)
+            if len(evidence_ids) != 1:
+                return None
+            return {
+                "status": "EXACT",
+                "mode": "physical_register",
+                "evidence_event_ids": evidence_ids,
+                "physical_reg": int(physical["physical_reg"]),
+                "bank": str(physical["bank"]),
+            }
+        return self._exact_stack_home(token)
+
     def _finalize_inventory(self) -> None:
         self._capture_inventory()
         for token in self.ledger.tokens("local") + self.ledger.tokens("argument"):
-            if token not in self.mappings:
+            if self._resolved_ownership(token) is None:
                 self.ledger.mark_unknown(token, "incomplete regalloc")
                 self._unknown("incomplete regalloc")
         if not self.inventory_complete:
+            for reason in sorted(self.inventory_snapshot_reasons):
+                self._unknown(reason)
             self._unknown("incomplete inventory")
 
     def _inventory(self) -> dict[str, Any]:
         self._finalize_inventory()
         rows: dict[str, list[dict[str, Any]]] = {"locals": [], "arguments": []}
+        complete = self.inventory_complete
         for key, kind in (("locals", "local"), ("arguments", "argument")):
             for raw in self.inventory_rows[key]:
                 token = raw["token"]
                 row = dict(raw)
-                mapping = self.mappings.get(token)
-                if mapping is None or self.ledger._by_token.get(token, {}).get("status") == "UNKNOWN":
+                mapping = self._resolved_ownership(token)
+                if mapping is None:
+                    complete = False
                     row["ownership"] = {"status": "UNKNOWN", "reason": self.ledger._by_token.get(token, {}).get("reason", "incomplete regalloc")}
                 else:
                     row["ownership"] = dict(mapping)
                 rows[key].append(row)
-        return {"status": "COMPLETE" if self.inventory_complete and not self.unknown else "UNKNOWN", **rows}
+        return {"status": "COMPLETE" if complete else "UNKNOWN", **rows}
 
     def run(self) -> dict[str, Any]:
         try:
@@ -1938,6 +2949,12 @@ class CombinedCaptureSession:
             "request": {"path": str(request_path), "size": request_size, "sha256": self.auth["request_sha256"]},
             "authority": dict(request["authority"]),
         }
+        transport_provenance = getattr(self.backend, "transport_provenance", None)
+        if callable(transport_provenance):
+            execution = transport_provenance(request["argv"])
+            if not isinstance(execution, Mapping):
+                raise Rejected("native transport execution provenance is malformed")
+            context["execution"] = dict(execution)
         outputs = {
             key: {
                 "path": str(self.auth["paths"][key]),
@@ -1957,7 +2974,7 @@ class CombinedCaptureSession:
             "context": context,
             "authority": dict(request["authority"]),
             "outputs": outputs,
-            "hooks": [dict(row) for row in HOOKS],
+            "hooks": [dict(row) for row in self.auth["hooks"]],
             "events": events,
             "event_count": len(events),
             "lanes": lanes,
@@ -2002,6 +3019,11 @@ def _normalize_auth(auth: Mapping[str, Any]) -> dict[str, Any]:
     if not _authorized_board_function(function, source):
         raise Rejected("unsupported target function")
     compiler = _path_descriptor(compiler_value, "request.compiler", must_exist=False)
+    hooks = _validate_hook_rows(
+        auth.get("hooks", [dict(row) for row in _hooks_for_compiler(str(compiler["sha256"]))]),
+        "authenticated hooks",
+        compiler_sha256=str(compiler["sha256"]),
+    )
     authority = _path_descriptor(authority_value, "request.authority", must_exist=False)
     normalized_tools: dict[str, dict[str, Any]] = {}
     explicit_tool_keys: set[str] = set()
@@ -2077,6 +3099,7 @@ def _normalize_auth(auth: Mapping[str, Any]) -> dict[str, Any]:
         "paths": paths,
         "output_dir": request_path.parent,
         "explicit_tools": explicit_tool_keys,
+        "hooks": hooks,
     }
 
 
@@ -2127,7 +3150,12 @@ def prepare_request(
     cwd = _canonical_cwd(raw.get("cwd"), must_exist=True)
     _validate_compile_argv(argv, cwd=cwd, source=source, compiler=compiler, wrapper=tools["wrapper"])
     session_id = _safe_session_id(raw.get("session_id", _new_session_id()))
-    hooks = _validate_hook_rows(raw.get("hooks", [dict(row) for row in HOOKS]), "manifest.hooks")
+    expected_hooks = _hooks_for_compiler(str(compiler["sha256"]))
+    hooks = _validate_hook_rows(
+        raw.get("hooks", [dict(row) for row in expected_hooks]),
+        "manifest.hooks",
+        compiler_sha256=str(compiler["sha256"]),
+    )
     output_dir = _canonical_path(output_dir, "output_dir", directory=True, must_exist=False)
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = {
@@ -2183,18 +3211,44 @@ def _request_paths(request: Mapping[str, Any]) -> dict[str, Path]:
     return result
 
 
+def _compiler_output_paths(request: Mapping[str, Any]) -> tuple[Path, ...]:
+    """Derive only explicit compiler-owned ``-o`` paths from bound argv."""
+
+    argv = _canonical_argv(request.get("argv"), "request.argv")
+    cwd = Path(_canonical_cwd(request.get("cwd"), must_exist=True))
+    outputs: list[Path] = []
+    for index, value in enumerate(argv):
+        operand: str | None = None
+        if value == "-o":
+            if index + 1 >= len(argv) or argv[index + 1].startswith("-"):
+                raise Rejected("compiler -o operand is missing")
+            operand = argv[index + 1]
+        if operand is None:
+            continue
+        path = Path(operand)
+        if not path.is_absolute():
+            path = cwd / path
+        outputs.append(_canonical_path(path, "compiler -o output", must_exist=False))
+    if len(outputs) > 1:
+        raise Rejected("compiler argv contains multiple -o outputs")
+    return tuple(outputs)
+
+
 def authenticate_request(
     request_path: Path | str,
     *,
     require_empty: bool = False,
     external_trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
     trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
+    post_capture_analysis: bool = False,
 ) -> dict[str, Any]:
     if external_trust_root is not None and trust_root is not None:
         raise Rejected("conflicting external trust root arguments")
     root = _coerce_external_trust_root(external_trust_root if external_trust_root is not None else trust_root)
     if root is None:
         raise Rejected("external trust root is required for authenticated request")
+    if post_capture_analysis and require_empty:
+        raise Rejected("post-capture analysis cannot authenticate a prelaunch request")
     request_path = _canonical_path(request_path, "request")
     try:
         parsed = strict_json_loads(request_path.read_text(encoding="utf-8"), "request")
@@ -2209,16 +3263,29 @@ def authenticate_request(
         raise Rejected("request self-digest mismatch")
     if parsed["diagnostic_only"] is not True or parsed["board_admission"] is not False or parsed["exactness_claim"] is not False:
         raise Rejected("request policy mismatch")
-    _validate_hook_rows(parsed["hooks"], "request.hooks")
     function = _text(parsed["function"], "request.function")
     source = _descriptor(parsed["source"], "request.source")
     if not _authorized_board_function(function, source):
         raise Rejected("unsupported target function")
     compiler = _descriptor(parsed["compiler"], "request.compiler")
-    tools = {
-        key: _descriptor(parsed[key], f"request.{key}")
-        for key in _TOOL_IDENTITY_KEYS
-    }
+    _validate_runtime_hook_patch(str(compiler["sha256"]))
+    hooks = _validate_hook_rows(
+        parsed["hooks"],
+        "request.hooks",
+        compiler_sha256=str(compiler["sha256"]),
+    )
+    _validate_authenticated_compiler_hook_image(compiler, hooks)
+    tools = {}
+    for key in _TOOL_IDENTITY_KEYS:
+        if post_capture_analysis and key in {"debugger", "transport"}:
+            tools[key] = _path_descriptor(
+                parsed[key],
+                f"request.{key}",
+                must_exist=False,
+                verify_live=False,
+            )
+        else:
+            tools[key] = _descriptor(parsed[key], f"request.{key}")
     authority = _descriptor(parsed["authority"], "request.authority")
     request = {
         "function": function,
@@ -2244,17 +3311,46 @@ def authenticate_request(
     output_dir = _canonical_path(parsed["output_dir"], "request.output_dir", directory=True, must_exist=True)
     if request_path.parent != output_dir or request_path.name != "request.json":
         raise Rejected("request/output directory binding mismatch")
+    compiler_output_paths = _compiler_output_paths(request)
+    capture_outputs = set(paths.values())
+    for compiler_output in compiler_output_paths:
+        if compiler_output == request_path or compiler_output in capture_outputs:
+            raise Rejected("compiler -o output collides with request or capture evidence")
+    prelaunch_empty_output_proof: dict[str, Any] | None = None
     if require_empty:
         extras = [entry for entry in output_dir.iterdir() if entry.name != request_path.name]
         if extras:
             raise Rejected("capture output directory contains stale or partial files")
-    _validate_external_root_against_request(root, request, request_path=request_path, allow_outputs=True)
+        if any(path.exists() or path.is_symlink() for path in compiler_output_paths):
+            raise Rejected("compiler -o output existed before authenticated process launch")
+        proof_unsigned = {
+            "schema": "mwcc_prelaunch_empty_output_proof/v1",
+            "output_dir": str(output_dir),
+            "request_path": str(request_path),
+            "request_sha256": sha256(request_path),
+            "verified_entries": [request_path.name],
+            "compiler_outputs_absent": [str(path) for path in compiler_output_paths],
+        }
+        prelaunch_empty_output_proof = {
+            **proof_unsigned,
+            "proof_sha256": canonical_hash(proof_unsigned),
+        }
+    _validate_external_root_against_request(
+        root,
+        request,
+        request_path=request_path,
+        allow_outputs=True,
+        post_capture_analysis=post_capture_analysis,
+    )
     return {
         "request": request,
         "request_path": request_path,
         "request_sha256": sha256(request_path),
         "paths": paths,
-        "hooks": [dict(row) for row in HOOKS],
+        "output_dir": output_dir,
+        "compiler_output_paths": compiler_output_paths,
+        "prelaunch_empty_output_proof": prelaunch_empty_output_proof,
+        "hooks": hooks,
         "trust_root": root,
     }
 
@@ -2270,18 +3366,56 @@ def revalidate_request(auth: Mapping[str, Any]) -> None:
         raise Rejected("request identity changed during capture")
 
 
+def _validate_post_launch_output_handoff(auth: Mapping[str, Any]) -> None:
+    """Preserve the prelaunch empty proof across compiler process creation.
+
+    The authenticated compiler may create its exact ``-o`` object before the
+    debug backend enters ``capture_with_backend``.  No capture stream,
+    envelope, unrelated file, symlink, or unowned compiler output is accepted
+    across that handoff.
+    """
+
+    output_dir = Path(auth["output_dir"])
+    request_path = Path(auth["request_path"])
+    proof = auth.get("prelaunch_empty_output_proof")
+    proof_unsigned = {
+        "schema": "mwcc_prelaunch_empty_output_proof/v1",
+        "output_dir": str(output_dir),
+        "request_path": str(request_path),
+        "request_sha256": auth.get("request_sha256"),
+        "verified_entries": [request_path.name],
+        "compiler_outputs_absent": [str(path) for path in auth.get("compiler_output_paths", ())],
+    }
+    if not isinstance(proof, Mapping) or dict(proof) != {
+        **proof_unsigned,
+        "proof_sha256": canonical_hash(proof_unsigned),
+    }:
+        raise Rejected("preauthenticated handoff lacks the prelaunch empty-output proof")
+    capture_paths = {Path(path) for path in auth["paths"].values()}
+    compiler_outputs = {Path(path) for path in auth.get("compiler_output_paths", ())}
+    if capture_paths & compiler_outputs:
+        raise Rejected("compiler -o output collides with capture evidence")
+    extra_entries = [entry for entry in output_dir.iterdir() if entry.name != request_path.name]
+    for entry in extra_entries:
+        if entry.is_symlink() or not entry.is_file():
+            raise Rejected("authenticated compiler output handoff is not a regular file")
+    extras = {entry.resolve() for entry in extra_entries}
+    unexpected = extras - compiler_outputs
+    if unexpected:
+        raise Rejected("capture output directory contains stale or partial files")
+    for compiler_output in compiler_outputs:
+        if compiler_output.exists() or compiler_output.is_symlink():
+            if compiler_output.is_symlink() or not compiler_output.is_file():
+                raise Rejected("authenticated compiler output handoff is not a regular file")
+
+
 def _remove_partial_outputs(auth: Mapping[str, Any] | None) -> None:
     if not isinstance(auth, Mapping):
         return
     paths = auth.get("paths")
     if not isinstance(paths, Mapping):
         return
-    output_dir = auth.get("output_dir")
     candidates: list[Path] = [Path(value) for value in paths.values()]
-    if output_dir is not None:
-        directory = Path(output_dir)
-        if directory.exists() and directory.is_dir():
-            candidates.extend(entry for entry in directory.iterdir() if entry.name != "request.json")
     seen: set[Path] = set()
     for path in candidates:
         if path in seen:
@@ -2303,6 +3437,7 @@ def capture_with_backend(
     external_trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
     *,
     trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
+    preauthenticated_auth: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run one fake/native backend and atomically publish its complete envelope."""
 
@@ -2311,11 +3446,29 @@ def capture_with_backend(
         if external_trust_root is not None and trust_root is not None:
             raise Rejected("conflicting external trust root arguments")
         root = _coerce_external_trust_root(external_trust_root if external_trust_root is not None else trust_root)
-        auth = authenticate_request(request_path, require_empty=True, external_trust_root=root)
+        if preauthenticated_auth is None:
+            auth = authenticate_request(request_path, require_empty=True, external_trust_root=root)
+        else:
+            auth = dict(preauthenticated_auth)
+            if _canonical_path(request_path, "request") != Path(auth.get("request_path", "")).resolve():
+                raise Rejected("preauthenticated request handoff path changed")
+            if root != auth.get("trust_root"):
+                raise Rejected("preauthenticated request handoff trust root changed")
+            fresh = authenticate_request(request_path, external_trust_root=root)
+            for key in (
+                "request", "request_path", "request_sha256", "paths", "output_dir",
+                "compiler_output_paths", "hooks", "trust_root",
+            ):
+                if fresh.get(key) != auth.get(key):
+                    raise Rejected("preauthenticated request handoff metadata changed")
+            revalidate_request(auth)
+            _validate_post_launch_output_handoff(auth)
         revalidate_request(auth)
         session = CombinedCaptureSession(auth, backend)
         envelope = session.run()
         revalidate_request(auth)
+        if preauthenticated_auth is not None:
+            _validate_post_launch_output_handoff(auth)
         paths = auth["paths"]
         stack_events = [event for event in envelope["events"] if event["lane"] == "stack"]
         pcode_events = [event for event in envelope["events"] if event["lane"] == "pcode"]
@@ -2424,11 +3577,13 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
         missing = sorted(required - fields)
         extra = sorted(fields - allowed)
         raise Rejected(f"event[{index}] {event_kind} payload is not closed (missing={missing}, extra={extra})")
-    if event_kind in {"function_entry", "numeric_stack_alloc_pre", "numeric_stack_alloc_post", "object_stack_write_pre", "object_stack_write_post", "pcode_capture"}:
+    profile_hooks = _hooks_for_compiler(str(context["compiler"]["sha256"]))
+    profile_hook_by_id = {str(row["id"]): row for row in profile_hooks}
+    if event_kind in {"function_entry", "numeric_stack_alloc_pre", "numeric_stack_alloc_post", "object_stack_write_pre", "object_stack_write_post", "pcode_capture", "machine_emission"}:
         hook_id = _text(event["hook_id"], f"event[{index}].hook_id")
-        hook = HOOK_BY_ID.get(hook_id)
+        hook = profile_hook_by_id.get(hook_id)
         if hook is None:
-            raise Rejected(f"event[{index}] hook_id is not owned")
+            raise Rejected(f"event[{index}] hook_id is not owned by the compiler profile")
         if hook["lane"] != event["lane"]:
             raise Rejected(f"event[{index}] hook lane mismatch")
     if event_kind in {"compiler_list", "numeric_stack_alloc_pre", "numeric_stack_alloc_post"}:
@@ -2459,6 +3614,36 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
             raise Rejected(f"event[{index}].operands must be a list")
         if status == "UNKNOWN" and ("reason" not in event or not event["reason"]):
             raise Rejected(f"event[{index}] UNKNOWN PCode evidence lacks a reason")
+        color_fields = {
+            "ig_token", "operand_ordinal", "operand_count", "operand_kind",
+            "operand_class", "operand_bank", "operand_index", "final_color",
+            "ig_flags", "confirmed",
+        }
+        if color_fields & fields:
+            required = {"hook_id", "status", "stage", "pcode_token", *color_fields}
+            if status != "CAPTURED" or not required.issubset(fields):
+                raise Rejected(f"event[{index}] PCode color evidence is incomplete")
+            pcode_match = PCODE_TOKEN_RE.fullmatch(str(event["pcode_token"]))
+            ig_match = IG_TOKEN_RE.fullmatch(str(event["ig_token"]))
+            if pcode_match is None or ig_match is None or pcode_match.group("session") != context["session_id"] or ig_match.group("session") != context["session_id"]:
+                raise Rejected(f"event[{index}] PCode/IG token provenance is invalid")
+            owner_fields = {"object_token", "hidden_owner_token"} & fields
+            if len(owner_fields) != 1:
+                raise Rejected(f"event[{index}] PCode color owner is not exclusive")
+            if "object_token" in owner_fields:
+                _token_parts(event["object_token"], f"event[{index}].object_token", context["session_id"])
+            else:
+                hidden_match = HIDDEN_IG_TOKEN_RE.fullmatch(str(event["hidden_owner_token"]))
+                if hidden_match is None or hidden_match.group("session") != context["session_id"]:
+                    raise Rejected(f"event[{index}] hidden IG token provenance is invalid")
+            for key in ("operand_ordinal", "operand_count", "operand_kind", "operand_class", "operand_index", "final_color", "ig_flags"):
+                if not isinstance(event[key], int) or isinstance(event[key], bool):
+                    raise Rejected(f"event[{index}].{key} is not type-canonical")
+            if not 0 <= event["operand_ordinal"] < event["operand_count"] <= 256 or event["operand_class"] not in {3, 4}:
+                raise Rejected(f"event[{index}] PCode color chronology/class is invalid")
+            expected_bank = "GPR" if event["operand_class"] == 4 else "FPR"
+            if event["operand_bank"] != expected_bank or not 0 <= event["operand_index"] <= 0x7FFF or not 0 <= event["final_color"] <= 31 or event["confirmed"] is not True:
+                raise Rejected(f"event[{index}] PCode color operand/result is invalid")
     if event_kind == "regalloc_assignment":
         status = _text(event["status"], f"event[{index}].status")
         if status not in {"EXACT", "UNKNOWN"}:
@@ -2497,6 +3682,125 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 raise Rejected(f"event[{index}] UNKNOWN physical ownership is not closed")
             if not isinstance(event["reason"], str) or not event["reason"]:
                 raise Rejected(f"event[{index}] UNKNOWN physical ownership lacks a reason")
+    if event_kind == "machine_emission":
+        machine_hook_ids = {
+            str(row["id"]) for row in profile_hooks if row["role"] == "machine_emit"
+        }
+        if event["lane"] != "pcode" or event["hook_id"] not in machine_hook_ids:
+            raise Rejected(f"event[{index}] machine-emission hook is invalid")
+        status = _text(event["status"], f"event[{index}].status")
+        if status == "UNKNOWN":
+            minimal_unknown = {"hook_id", "status", "reason"}
+            located_unknown = minimal_unknown | {
+                "pcode_token", "emitted_offset", "instruction_index",
+                "opcode_enum", "ppc_word", "ppc_bytes",
+            }
+            unknown_fields = frozenset(fields)
+            if unknown_fields not in {frozenset(minimal_unknown), frozenset(located_unknown)}:
+                raise Rejected(f"event[{index}] UNKNOWN machine emission is not closed")
+            if event["reason"] not in _KNOWN_UNKNOWN_REASONS:
+                raise Rejected(f"event[{index}] UNKNOWN machine reason is unsupported")
+            if unknown_fields == frozenset(located_unknown):
+                token = _text(event["pcode_token"], f"event[{index}].pcode_token")
+                match = PCODE_TOKEN_RE.fullmatch(token)
+                if match is None or match.group("session") != context["session_id"]:
+                    raise Rejected(f"event[{index}] located UNKNOWN PCode token provenance is invalid")
+                emitted_offset = _integer(event["emitted_offset"], f"event[{index}].emitted_offset", nonnegative=True)
+                instruction_index = _integer(event["instruction_index"], f"event[{index}].instruction_index", nonnegative=True)
+                if emitted_offset % 4 or instruction_index != emitted_offset // 4:
+                    raise Rejected(f"event[{index}] located UNKNOWN instruction index is invalid")
+                opcode_enum = _integer(event["opcode_enum"], f"event[{index}].opcode_enum", nonnegative=True)
+                word = _integer(event["ppc_word"], f"event[{index}].ppc_word", nonnegative=True)
+                if opcode_enum > 0x1D4 or word > 0xFFFFFFFF:
+                    raise Rejected(f"event[{index}] located UNKNOWN opcode is outside bounds")
+                ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
+                if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
+                    raise Rejected(f"event[{index}] located UNKNOWN PPC bytes/word mismatch")
+        elif status == "CAPTURED":
+            required_machine = {
+                "hook_id", "status", "pcode_token", "emitted_offset",
+                "instruction_index", "opcode_enum", "ppc_word", "ppc_bytes",
+                "mnemonic", "registers", "reaching_definitions", "owner_joins",
+            }
+            if not required_machine.issubset(fields) or "reason" in fields:
+                raise Rejected(f"event[{index}] captured machine emission is incomplete")
+            token = _text(event["pcode_token"], f"event[{index}].pcode_token")
+            match = PCODE_TOKEN_RE.fullmatch(token)
+            if match is None or match.group("session") != context["session_id"]:
+                raise Rejected(f"event[{index}] PCode token provenance is invalid")
+            emitted_offset = _integer(event["emitted_offset"], f"event[{index}].emitted_offset", nonnegative=True)
+            instruction_index = _integer(event["instruction_index"], f"event[{index}].instruction_index", nonnegative=True)
+            if emitted_offset % 4 or instruction_index != emitted_offset // 4:
+                raise Rejected(f"event[{index}] machine instruction index is invalid")
+            opcode_enum = _integer(event["opcode_enum"], f"event[{index}].opcode_enum", nonnegative=True)
+            word = _integer(event["ppc_word"], f"event[{index}].ppc_word", nonnegative=True)
+            if opcode_enum > 0x1D4 or word > 0xFFFFFFFF:
+                raise Rejected(f"event[{index}] machine opcode is outside bounds")
+            ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
+            if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
+                raise Rejected(f"event[{index}] PPC bytes/word mismatch")
+            if event["mnemonic"] not in {"addi", *[row[0] for row in MachineEmissionDecoder._D_MEMORY.values()], "psq_l", "psq_st", "psq_lx", "psq_stx", "bl", "fneg"}:
+                raise Rejected(f"event[{index}] machine mnemonic is unsupported")
+            registers = event["registers"]
+            if not isinstance(registers, Mapping) or (not registers and event["mnemonic"] != "bl"):
+                raise Rejected(f"event[{index}] machine registers are malformed")
+            for role, register in registers.items():
+                if role not in {"destination", "source", "data", "base", "index"} or not isinstance(register, str) or re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register) is None:
+                    raise Rejected(f"event[{index}] machine register operand is malformed")
+            reaching = event["reaching_definitions"]
+            if not isinstance(reaching, list) or any(not isinstance(value, int) or isinstance(value, bool) or value < 0 or value >= instruction_index for value in reaching) or reaching != sorted(set(reaching)):
+                raise Rejected(f"event[{index}] reaching definitions are malformed")
+            memory_fields = {"memory_op", "memory_width", "effective_stack_offset"} & fields
+            if memory_fields and memory_fields != {"memory_op", "memory_width", "effective_stack_offset"}:
+                raise Rejected(f"event[{index}] machine memory effect is incomplete")
+            if memory_fields:
+                if event["memory_op"] not in {"load", "store"} or event["memory_width"] not in {1, 2, 4, 8}:
+                    raise Rejected(f"event[{index}] machine memory effect is invalid")
+                _integer(event["effective_stack_offset"], f"event[{index}].effective_stack_offset")
+            if "immediate" in fields:
+                _integer(event["immediate"], f"event[{index}].immediate")
+            if "address_definition" in fields:
+                definition = event["address_definition"]
+                if not isinstance(definition, Mapping) or set(definition) != {"register", "stack_offset"} or definition["register"] not in registers.values():
+                    raise Rejected(f"event[{index}] address definition is malformed")
+                _integer(definition["stack_offset"], f"event[{index}].address_definition.stack_offset")
+            joins = event["owner_joins"]
+            if not isinstance(joins, list):
+                raise Rejected(f"event[{index}] owner joins are malformed")
+            join_registers: set[str] = set()
+            join_tokens: set[str] = set()
+            for join in joins:
+                if not isinstance(join, Mapping) or set(join) != {"physical_register", "object_token", "vreg_id"}:
+                    raise Rejected(f"event[{index}] owner join is malformed")
+                _token_parts(join["object_token"], f"event[{index}].owner_join.object_token", context["session_id"])
+                vreg_id = _validate_vreg(join["vreg_id"], f"event[{index}].owner_join.vreg_id")
+                physical_register = _text(join["physical_register"], f"event[{index}].owner_join.physical_register")
+                if physical_register not in registers.values():
+                    raise Rejected(f"event[{index}] owner join references an absent machine register")
+                if physical_register.startswith("r") != vreg_id.startswith("r"):
+                    raise Rejected(f"event[{index}] owner join register bank is inconsistent")
+                if physical_register in join_registers or join["object_token"] in join_tokens:
+                    raise Rejected(f"event[{index}] owner join is ambiguous")
+                join_registers.add(physical_register)
+                join_tokens.add(str(join["object_token"]))
+            physical_joins = event.get("physical_owner_joins", [])
+            if not isinstance(physical_joins, list):
+                raise Rejected(f"event[{index}] physical owner joins are malformed")
+            physical_join_registers: set[str] = set()
+            physical_join_tokens: set[str] = set()
+            for join in physical_joins:
+                if not isinstance(join, Mapping) or set(join) != {"physical_register", "object_token"}:
+                    raise Rejected(f"event[{index}] physical owner join is malformed")
+                _token_parts(join["object_token"], f"event[{index}].physical_owner_join.object_token", context["session_id"])
+                physical_register = _text(join["physical_register"], f"event[{index}].physical_owner_join.physical_register")
+                if physical_register not in registers.values():
+                    raise Rejected(f"event[{index}] physical owner join references an absent machine register")
+                if physical_register in physical_join_registers or join["object_token"] in physical_join_tokens:
+                    raise Rejected(f"event[{index}] physical owner join is ambiguous")
+                physical_join_registers.add(physical_register)
+                physical_join_tokens.add(str(join["object_token"]))
+        else:
+            raise Rejected(f"event[{index}] machine status is invalid")
     if event_kind == "lane_unknown":
         reason = _text(event["reason"], f"event[{index}].reason")
         if event["lane"] not in _LANES:
@@ -2535,18 +3839,58 @@ def _validate_inventory(inventory: Any, session_id: str) -> set[str]:
             if "name" in row and (not isinstance(row["name"], str) or not row["name"]):
                 raise Rejected(f"inventory.{key}[{index}] name is invalid")
             ownership = row.get("ownership")
-            if not isinstance(ownership, Mapping) or not set(ownership).issubset({"status", "reason", "vreg_id", "bank"}):
+            ownership_fields = {
+                "status", "reason", "mode", "evidence_event_ids", "vreg_id",
+                "physical_reg", "bank", "stack_home",
+            }
+            if not isinstance(ownership, Mapping) or not set(ownership).issubset(ownership_fields):
                 raise Rejected(f"inventory.{key}[{index}] ownership is invalid")
             if ownership.get("status") == "EXACT":
-                if set(ownership) != {"status", "vreg_id", "bank"}:
-                    raise Rejected(f"inventory.{key}[{index}] exact ownership is incomplete")
-                vreg = _validate_vreg(ownership["vreg_id"], "inventory vreg_id")
-                bank = ownership["bank"]
-                if bank not in {"GPR", "FPR"} or not vreg.startswith("r" if bank == "GPR" else "f"):
-                    raise Rejected(f"inventory.{key}[{index}] bank/vreg mismatch")
+                mode = ownership.get("mode")
+                if mode is None:
+                    if set(ownership) != {"status", "vreg_id", "bank"}:
+                        raise Rejected(f"inventory.{key}[{index}] legacy exact ownership is incomplete")
+                    vreg = _validate_vreg(ownership["vreg_id"], "inventory vreg_id")
+                    bank = ownership["bank"]
+                    if bank not in {"GPR", "FPR"} or not vreg.startswith("r" if bank == "GPR" else "f"):
+                        raise Rejected(f"inventory.{key}[{index}] bank/vreg mismatch")
+                else:
+                    evidence_ids = ownership.get("evidence_event_ids")
+                    if not isinstance(evidence_ids, list) or not evidence_ids or evidence_ids != list(dict.fromkeys(evidence_ids)):
+                        raise Rejected(f"inventory.{key}[{index}] ownership evidence ids are invalid")
+                    for event_id in evidence_ids:
+                        if not isinstance(event_id, str) or re.fullmatch(rf"{re.escape(session_id)}-e[0-9]{{6}}", event_id) is None:
+                            raise Rejected(f"inventory.{key}[{index}] ownership evidence id is cross-session or malformed")
+                    if mode == "virtual_register":
+                        expected = {"status", "mode", "evidence_event_ids", "vreg_id", "bank"}
+                        if set(ownership) != expected:
+                            raise Rejected(f"inventory.{key}[{index}] virtual ownership is incomplete")
+                        vreg = _validate_vreg(ownership["vreg_id"], "inventory vreg_id")
+                        bank = ownership["bank"]
+                        if bank not in {"GPR", "FPR"} or not vreg.startswith("r" if bank == "GPR" else "f"):
+                            raise Rejected(f"inventory.{key}[{index}] virtual bank/vreg mismatch")
+                    elif mode == "physical_register":
+                        expected = {"status", "mode", "evidence_event_ids", "physical_reg", "bank"}
+                        if set(ownership) != expected or len(evidence_ids) != 1:
+                            raise Rejected(f"inventory.{key}[{index}] physical ownership is incomplete")
+                        if not isinstance(ownership["physical_reg"], int) or isinstance(ownership["physical_reg"], bool) or not 0 <= ownership["physical_reg"] <= 31:
+                            raise Rejected(f"inventory.{key}[{index}] physical register is invalid")
+                        if ownership["bank"] not in {"GPR", "FPR"}:
+                            raise Rejected(f"inventory.{key}[{index}] physical bank is invalid")
+                    elif mode == "stack_home":
+                        expected = {"status", "mode", "evidence_event_ids", "stack_home"}
+                        home = ownership.get("stack_home")
+                        if set(ownership) != expected or len(evidence_ids) < 2 or len(evidence_ids) % 2:
+                            raise Rejected(f"inventory.{key}[{index}] stack ownership is incomplete")
+                        if not isinstance(home, Mapping) or set(home) != {"base", "offset"} or home.get("base") != "r1":
+                            raise Rejected(f"inventory.{key}[{index}] stack home is malformed")
+                        if not isinstance(home.get("offset"), int) or isinstance(home.get("offset"), bool):
+                            raise Rejected(f"inventory.{key}[{index}] stack offset is not type-canonical")
+                    else:
+                        raise Rejected(f"inventory.{key}[{index}] ownership mode is unsupported")
             elif ownership.get("status") != "UNKNOWN":
                 raise Rejected(f"inventory.{key}[{index}] ownership status is invalid")
-            elif "reason" not in ownership or not isinstance(ownership["reason"], str) or not ownership["reason"]:
+            elif set(ownership) != {"status", "reason"} or not isinstance(ownership["reason"], str) or not ownership["reason"]:
                 raise Rejected(f"inventory.{key}[{index}] UNKNOWN ownership lacks a reason")
             else:
                 ownership_unknown = True
@@ -2565,6 +3909,14 @@ def _validate_chronology(
 
     if not events:
         raise Rejected("capture event chronology is empty")
+    profile_hooks = _hooks_for_compiler(str(context["compiler"]["sha256"]))
+    profile_write_ids = tuple(
+        str(row["id"]) for row in profile_hooks if row["role"] == "object_stack_write"
+    )
+    profile_pcode_ids = _pcode_stage_hook_ids(profile_hooks)
+    profile_machine_ids = tuple(
+        str(row["id"]) for row in profile_hooks if row["role"] == "machine_emit"
+    )
     kinds = [str(event["event_kind"]) for event in events]
     if kinds[0] != "function_entry" or kinds[-1] != "function_exit":
         raise Rejected("capture chronology must begin at function entry and end at function exit")
@@ -2612,13 +3964,12 @@ def _validate_chronology(
         elif kind == "object_stack_write_post":
             hook = str(event["hook_id"])
             post_by_hook.setdefault(hook, []).append((index, event))
-    expected_writes = set(WRITE_HOOK_IDS)
     present_write_order = [
         str(event["hook_id"])
         for event in events
         if event["event_kind"] == "object_stack_write_pre"
     ]
-    canonical_write_order = [hook for hook in WRITE_HOOK_IDS if hook in set(present_write_order)]
+    canonical_write_order = [hook for hook in profile_write_ids if hook in set(present_write_order)]
     present_write_order = list(dict.fromkeys(present_write_order))
     if present_write_order != canonical_write_order:
         raise Rejected("object write hook chronology is reversed")
@@ -2627,15 +3978,22 @@ def _validate_chronology(
         for event in events
         if event["event_kind"] == "object_stack_write_post"
     ]
-    canonical_post_order = [hook for hook in WRITE_HOOK_IDS if hook in set(present_post_order)]
+    canonical_post_order = [hook for hook in profile_write_ids if hook in set(present_post_order)]
     present_post_order = list(dict.fromkeys(present_post_order))
     if present_post_order != canonical_post_order:
         raise Rejected("object write post chronology is reversed")
-    missing_writes = expected_writes - set(pre_by_hook) - set(post_by_hook)
     stack_unknown = [event for event in events if event["lane"] == "stack" and event["event_kind"] == "lane_unknown"]
-    if missing_writes and not stack_unknown:
-        raise Rejected("stack write chronology is incomplete without UNKNOWN")
-    if stack_unknown and not missing_writes and set(pre_by_hook) == expected_writes and set(post_by_hook) == expected_writes:
+    # The three authenticated write hooks are alternate compiler paths, not
+    # three mandatory per-function events.  A normal target-function exit
+    # proves which installed sites executed.  Require every observed write to
+    # be balanced and ordered below, but do not relabel an unexecuted path as
+    # missing evidence.  An UNKNOWN marker is justified only by an actually
+    # unbalanced observed path.
+    balanced_counts = all(
+        len(pre_by_hook[hook]) == len(post_by_hook[hook])
+        for hook in set(pre_by_hook) & set(post_by_hook)
+    )
+    if stack_unknown and set(pre_by_hook) == set(post_by_hook) and balanced_counts:
         raise Rejected("stack UNKNOWN marker is not justified by missing edges")
     if set(pre_by_hook) != set(post_by_hook):
         if not any(event["lane"] == "stack" and event["event_kind"] == "lane_unknown" for event in events):
@@ -2658,33 +4016,66 @@ def _validate_chronology(
         event for event in events
         if event["event_kind"] == "pcode_capture"
     ]
+    pcode_color_rows = [event for event in pcode_rows if event.get("confirmed") is True]
+    pcode_stage_rows = [event for event in pcode_rows if event.get("confirmed") is not True]
     pcode_by_hook: dict[str, Mapping[str, Any]] = {}
     pcode_order: list[int] = []
-    for event in pcode_rows:
+    for event in pcode_stage_rows:
         hook = str(event["hook_id"])
         if hook in pcode_by_hook:
             raise Rejected(f"duplicate PCode edge for {hook}")
         pcode_by_hook[hook] = event
         pcode_order.append(int(event["sequence"]))
-    missing_pcode = set(PCODE_HOOK_IDS) - set(pcode_by_hook)
+    color_keys: set[tuple[str, int]] = set()
+    for event in pcode_color_rows:
+        key = (str(event["pcode_token"]), int(event["operand_ordinal"]))
+        if key in color_keys:
+            raise Rejected("duplicate PCode color chronology edge")
+        color_keys.add(key)
+    missing_pcode = set(profile_pcode_ids) - set(pcode_by_hook)
     pcode_unknown = [event for event in events if event["lane"] == "pcode" and event["event_kind"] == "lane_unknown"]
     regalloc_present = any(event["event_kind"] == "regalloc_assignment" for event in events)
     physical_present = any(event["event_kind"] == "physical_reg_assignment" for event in events)
-    missing_allocator_edges = not regalloc_present or not physical_present
+    gc27_profile = str(context["compiler"]["sha256"]) == GC27_COMPILER_SHA256
+    missing_allocator_edges = not physical_present or (not gc27_profile and not regalloc_present)
+    machine_rows = [event for event in events if event["event_kind"] == "machine_emission"]
+    machine_required = bool(profile_machine_ids)
+    missing_machine = machine_required and not machine_rows
+    if machine_rows and not machine_required:
+        raise Rejected("machine-emission chronology is forbidden by the compiler profile")
+    if any(str(event["hook_id"]) not in profile_machine_ids for event in machine_rows):
+        raise Rejected("machine-emission chronology uses a cross-profile hook")
+    if missing_machine:
+        raise Rejected("machine-emission chronology is required by the compiler profile")
     if missing_pcode and not pcode_unknown:
         raise Rejected("PCode chronology is incomplete without UNKNOWN")
     if missing_allocator_edges and not pcode_unknown:
         raise Rejected("PCode chronology is incomplete without UNKNOWN")
-    if pcode_unknown and not missing_pcode and len(pcode_rows) == len(PCODE_HOOK_IDS) and regalloc_present and physical_present:
+    if pcode_unknown and not missing_pcode and not missing_machine and len(pcode_stage_rows) == len(profile_pcode_ids) and (gc27_profile or regalloc_present) and physical_present:
         raise Rejected("PCode UNKNOWN marker is not justified by missing edges")
-    present_order = [hook for hook in PCODE_HOOK_IDS if hook in pcode_by_hook]
-    if [event["hook_id"] for event in pcode_rows] != present_order:
+    present_order = [hook for hook in profile_pcode_ids if hook in pcode_by_hook]
+    if [event["hook_id"] for event in pcode_stage_rows] != present_order:
         raise Rejected("PCode hook chronology is reversed")
     if pcode_rows and any(event["status"] == "UNKNOWN" for event in pcode_rows):
         if not any(event["lane"] == "pcode" and event["event_kind"] == "lane_unknown" for event in events):
             # An individual UNKNOWN PCode record carries its own reason and is
             # sufficient; no lane marker is needed for a complete hook set.
             pass
+
+    captured_machine = [event for event in machine_rows if event["status"] == "CAPTURED"]
+    offsets = [int(event["emitted_offset"]) for event in captured_machine]
+    if offsets != sorted(set(offsets)):
+        raise Rejected("machine-emission offsets are duplicated or reversed")
+    machine_indices = {int(event["instruction_index"]) for event in captured_machine}
+    machine_tokens: dict[str, int] = {}
+    for event in captured_machine:
+        token = str(event["pcode_token"])
+        offset = int(event["emitted_offset"])
+        if token in machine_tokens and machine_tokens[token] != offset:
+            raise Rejected("PCode token maps to multiple machine offsets")
+        machine_tokens[token] = offset
+        if any(int(definition) not in machine_indices for definition in event["reaching_definitions"]):
+            raise Rejected("machine lifetime edge references an absent emission")
 
     exact_vregs: dict[str, str] = {}
     exact_objects: dict[str, str] = {}
@@ -2699,16 +4090,6 @@ def _validate_chronology(
             raise Rejected("duplicate token or virtual-register ownership claim")
         exact_objects[token] = vreg
         exact_vregs[vreg] = token
-    for key in ("locals", "arguments"):
-        for row in inventory[key]:
-            ownership = row["ownership"]
-            if ownership["status"] == "EXACT":
-                token = str(row["token"])
-                vreg = str(ownership["vreg_id"])
-                if exact_objects.get(token) != vreg:
-                    raise Rejected("inventory ownership is not backed by a same-session regalloc edge")
-            elif row["token"] in exact_objects:
-                raise Rejected("UNKNOWN inventory ownership has an exact event claim")
 
     physical_exact_objects: dict[str, tuple[str, int]] = {}
     physical_exact_regs: dict[tuple[str, int], str] = {}
@@ -2728,6 +4109,78 @@ def _validate_chronology(
             raise Rejected("duplicate physical-register ownership claim")
         physical_exact_regs[key] = token
 
+    events_by_id = {str(event["event_id"]): event for event in events}
+    allocation_post_sequence = int(allocation_post["sequence"])
+    for container in ("locals", "arguments"):
+        for row in inventory[container]:
+            token = str(row["token"])
+            ownership = row["ownership"]
+            if ownership["status"] != "EXACT":
+                if token in exact_objects:
+                    raise Rejected("UNKNOWN inventory ownership has an exact event claim")
+                continue
+            mode = ownership.get("mode")
+            if mode in {None, "virtual_register"}:
+                vreg = str(ownership["vreg_id"])
+                if exact_objects.get(token) != vreg:
+                    raise Rejected("inventory ownership is not backed by a same-session regalloc edge")
+            elif mode == "physical_register":
+                physical = (str(ownership["bank"]), int(ownership["physical_reg"]))
+                if physical_exact_objects.get(token) != physical:
+                    raise Rejected("inventory physical ownership lacks a same-session assignment")
+                evidence_ids = list(ownership["evidence_event_ids"])
+                if len(evidence_ids) != 1:
+                    raise Rejected("inventory physical ownership has ambiguous evidence")
+                evidence = events_by_id.get(str(evidence_ids[0]))
+                if evidence is None or evidence["event_kind"] != "physical_reg_assignment" or evidence.get("object_token") != token or evidence.get("status") != "EXACT":
+                    raise Rejected("inventory physical evidence id is not an exact same-session edge")
+            elif mode == "stack_home":
+                evidence_ids = list(ownership["evidence_event_ids"])
+                evidence = [events_by_id.get(str(event_id)) for event_id in evidence_ids]
+                if any(event is None for event in evidence):
+                    raise Rejected("inventory stack evidence id is absent")
+                assert all(event is not None for event in evidence)
+                offsets: set[int] = set()
+                for pair_index in range(0, len(evidence), 2):
+                    before = evidence[pair_index]
+                    after = evidence[pair_index + 1]
+                    assert before is not None and after is not None
+                    if before["event_kind"] != "object_stack_write_pre" or after["event_kind"] != "object_stack_write_post":
+                        raise Rejected("inventory stack evidence is not a pre/post pair")
+                    if int(before["sequence"]) <= allocation_post_sequence or int(before["sequence"]) >= int(after["sequence"]):
+                        raise Rejected("inventory stack evidence is outside the final allocation epoch")
+                    if before.get("object_token") != token or after.get("object_token") != token or before["hook_id"] != after["hook_id"] or before["target_slot"] != after["target_slot"]:
+                        raise Rejected("inventory stack evidence changes token, hook, or slot")
+                    offsets.add(int(after["target_slot"]))
+                if offsets != {int(ownership["stack_home"]["offset"])}:
+                    raise Rejected("inventory stack evidence does not match its claimed home")
+            else:  # Structural inventory validation should already reject this.
+                raise Rejected("inventory ownership mode is unsupported")
+
+    for event in captured_machine:
+        machine_registers = set(event["registers"].values())
+        for join in event["owner_joins"]:
+            register = str(join["physical_register"])
+            token = str(join["object_token"])
+            vreg = str(join["vreg_id"])
+            if register not in machine_registers:
+                raise Rejected("machine owner join references an absent operand")
+            if token not in inventory_tokens or exact_objects.get(token) != vreg:
+                raise Rejected("machine owner join lacks an exact Object/vreg edge")
+            bank = "GPR" if register.startswith("r") else "FPR"
+            physical = (bank, int(register[1:]))
+            if physical_exact_objects.get(token) != physical:
+                raise Rejected("machine owner join lacks an exact physical-register edge")
+        for join in event.get("physical_owner_joins", []):
+            register = str(join["physical_register"])
+            token = str(join["object_token"])
+            if register not in machine_registers:
+                raise Rejected("machine physical owner join references an absent operand")
+            bank = "GPR" if register.startswith("r") else "FPR"
+            physical = (bank, int(register[1:]))
+            if physical_exact_objects.get(token) != physical:
+                raise Rejected("machine physical owner join lacks an exact same-session assignment")
+
 
 def validate_envelope(
     envelope_path: Path | str,
@@ -2735,6 +4188,7 @@ def validate_envelope(
     *,
     trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
     request_path: Path | str | None = None,
+    post_capture_analysis: bool = False,
 ) -> dict[str, Any]:
     if external_trust_root is not None and trust_root is not None:
         raise Rejected("conflicting external trust root arguments")
@@ -2762,7 +4216,8 @@ def validate_envelope(
     if envelope["diagnostic_only"] is not True or envelope["board_admission"] is not False or envelope["exactness_claim"] is not False or envelope["authority_advanced"] is not False:
         raise Rejected("envelope policy mismatch")
     context = envelope["context"]
-    if not isinstance(context, Mapping) or set(context) != {"session_id", "process_id", "function", "function_sha256", "argv", "cwd", "source", "compiler", "wrapper", "debugger", "transport", "request", "authority"}:
+    base_context_keys = {"session_id", "process_id", "function", "function_sha256", "argv", "cwd", "source", "compiler", "wrapper", "debugger", "transport", "request", "authority"}
+    if not isinstance(context, Mapping) or set(context) not in {frozenset(base_context_keys), frozenset(base_context_keys | {"execution"})}:
         raise Rejected("envelope context shape mismatch")
     session_id = _safe_session_id(context["session_id"])
     if not isinstance(context["process_id"], int) or isinstance(context["process_id"], bool):
@@ -2776,7 +4231,14 @@ def validate_envelope(
     _canonical_argv(context["argv"], "envelope argv")
     _canonical_cwd(context["cwd"], must_exist=False)
     for name in ("source", "compiler", *_TOOL_IDENTITY_KEYS, "authority"):
-        _path_descriptor(context[name], f"envelope context {name}", must_exist=False)
+        _path_descriptor(
+            context[name],
+            f"envelope context {name}",
+            must_exist=False,
+            verify_live=not (
+                post_capture_analysis and name in {"debugger", "transport"}
+            ),
+        )
     _path_descriptor(envelope["authority"], "envelope authority", must_exist=False)
     if context["authority"] != envelope["authority"]:
         raise Rejected("envelope authority descriptor is not shared with context")
@@ -2789,6 +4251,7 @@ def validate_envelope(
     authenticated_request = authenticate_request(
         request_path_value,
         external_trust_root=root,
+        post_capture_analysis=post_capture_analysis,
     )
     authenticated_request_path = Path(authenticated_request["request_path"])
     if str(_canonical_path(request_descriptor["path"], "envelope context request.path")) != str(authenticated_request_path):
@@ -2803,7 +4266,31 @@ def validate_envelope(
     for name in ("source", "compiler", *_TOOL_IDENTITY_KEYS, "authority"):
         if context[name] != expected_context[name]:
             raise Rejected(f"envelope context {name} does not match authenticated request")
-    _validate_hook_rows(envelope["hooks"], "envelope.hooks")
+    execution = context.get("execution")
+    if execution is not None:
+        if not isinstance(execution, Mapping) or set(execution) != {"mode", "argv", "request_argv_sha256", "wrapper_bypassed"}:
+            raise Rejected("envelope execution provenance is malformed")
+        mode = _text(execution["mode"], "envelope execution mode")
+        executed_argv = _canonical_argv(execution["argv"], "envelope executed argv")
+        request_argv_digest = _digest(execution["request_argv_sha256"], "envelope request argv digest")
+        if request_argv_digest != canonical_hash({"argv": list(expected_context["argv"])}):
+            raise Rejected("envelope execution request argv digest mismatch")
+        if mode == "authenticated_direct_compiler":
+            if execution["wrapper_bypassed"] is not True:
+                raise Rejected("direct compiler execution did not record wrapper bypass")
+            if executed_argv != list(expected_context["argv"])[1:]:
+                raise Rejected("direct compiler execution argv is not the authenticated derivation")
+            _authenticated_direct_compiler_argv(expected_context)
+        elif mode == "wrapper_memexec":
+            if execution["wrapper_bypassed"] is not False or executed_argv != list(expected_context["argv"]):
+                raise Rejected("wrapper execution provenance does not match authenticated argv")
+        else:
+            raise Rejected("envelope execution mode is unsupported")
+    _validate_hook_rows(
+        envelope["hooks"],
+        "envelope.hooks",
+        compiler_sha256=str(context["compiler"]["sha256"]),
+    )
     events = envelope["events"]
     if not isinstance(events, list) or envelope["event_count"] != len(events):
         raise Rejected("envelope event count mismatch")
@@ -2831,7 +4318,7 @@ def validate_envelope(
     for event in events:
         if event["event_kind"] == "lane_unknown":
             derived_unknown.add(str(event["reason"]))
-        elif event["event_kind"] in {"pcode_capture", "regalloc_assignment", "physical_reg_assignment"} and event.get("status") == "UNKNOWN":
+        elif event["event_kind"] in {"pcode_capture", "regalloc_assignment", "physical_reg_assignment", "machine_emission"} and event.get("status") == "UNKNOWN":
             derived_unknown.add(str(event["reason"]))
     if not isinstance(envelope["unknown"], list) or envelope["unknown"] != sorted(set(envelope["unknown"])) or not all(isinstance(item, str) and item in _KNOWN_UNKNOWN_REASONS for item in envelope["unknown"]):
         raise Rejected("envelope unknown list is invalid")
@@ -2878,13 +4365,44 @@ _SOURCE_SPAN_FIELDS = {
     "object_token", "identity", "role", "byte_start", "byte_end",
     "line_start", "line_end", "text_sha256",
 }
+_SOURCE_SPAN_V2_FIELDS = _SOURCE_SPAN_FIELDS | {
+    "dependency_id", "machine_instruction_indices",
+}
+_SOURCE_OBJECT_FIELDS = {
+    "object_token", "identity", "ownership_mode", "object_type", "byte_size",
+}
 _SOURCE_SPAN_ROLES = {"declaration", "read", "write", "call_return", "evaluation"}
+_SOURCE_OWNERSHIP_MODES = {"scalar_register", "stack_interval"}
+_SOURCE_DEPENDENCY_RE = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,127}")
+_SOURCE_PLAN_OBJECT_FIELDS = {
+    "identity", "ownership_mode", "object_type", "byte_size",
+}
+_SOURCE_PLAN_BINDING_FIELDS = {
+    "identity", "role", "byte_start", "byte_end", "dependency_id",
+    "machine_instruction_indices",
+}
+_SOURCE_TEMPLATE_REQUIRED_FIELDS = {
+    "schema", "template_schema", "function", "function_sha256", "session_id",
+    "source", "spans", "diagnostic_only", "board_admission", "exactness_claim",
+    "authority_advanced", "unsealed",
+}
+_SOURCE_TEMPLATE_ALLOWED_FIELDS = _SOURCE_TEMPLATE_REQUIRED_FIELDS | {
+    "capture_placeholders", "notes", "source_aliases", "source_anchor",
+    "span_template", "stack_interval_provenance",
+}
+_SOURCE_TEMPLATE_SPAN_ALLOWED_FIELDS = _SOURCE_SPAN_FIELDS | {
+    "ownership_mode", "stack_interval",
+}
 
 
 def seal_source_span_manifest(value: Mapping[str, Any]) -> dict[str, Any]:
     """Seal a source-span binding manifest without granting source authority."""
 
     result = dict(value)
+    if result.get("schema") not in {SOURCE_SPAN_SCHEMA, SOURCE_SPAN_SCHEMA_V2}:
+        raise Rejected("unsealed source span manifest schema is unsupported")
+    if result.get("authority_advanced") is not False:
+        raise Rejected("unsealed source span manifest may not advance authority")
     result.pop("manifest_sha256", None)
     result["manifest_sha256"] = canonical_hash(result)
     return result
@@ -2901,11 +4419,212 @@ def seal_source_span_file(input_path: Path | str, output_path: Path | str) -> di
         raise Rejected("sealed source span output already exists")
     write_new(output, (json.dumps(sealed, indent=2, sort_keys=True) + "\n").encode("utf-8"))
     return {
-        "schema": f"{SOURCE_SPAN_SCHEMA}/seal",
+        "schema": f"{sealed['schema']}/seal",
         "status": "READY",
         "input": _path_descriptor(source, "unsealed source span manifest", must_exist=True),
         "output": _path_descriptor(output, "sealed source span manifest", must_exist=True),
         "manifest_sha256": sealed["manifest_sha256"],
+        "authority_advanced": False,
+    }
+
+
+def normalize_source_span_template(
+    envelope_path: Path | str,
+    template_path: Path | str,
+    binding_plan_path: Path | str,
+    output_path: Path | str,
+    *,
+    trust_root: ExternalTrustRoot | Mapping[str, Any],
+) -> dict[str, Any]:
+    """Normalize reviewed placeholder metadata into one capture-local v2 manifest."""
+
+    envelope = validate_envelope(envelope_path, trust_root=trust_root)
+    template_descriptor = _descriptor(template_path, "source span template")
+    envelope_descriptor = _descriptor(envelope_path, "source span envelope")
+    plan_descriptor = _descriptor(binding_plan_path, "source span binding plan")
+    template = strict_json_loads(
+        Path(template_descriptor["path"]).read_text(encoding="utf-8"),
+        "source span template",
+    )
+    plan = strict_json_loads(
+        Path(plan_descriptor["path"]).read_text(encoding="utf-8"),
+        "source span binding plan",
+    )
+    if (
+        not isinstance(template, Mapping)
+        or not _SOURCE_TEMPLATE_REQUIRED_FIELDS.issubset(template)
+        or not set(template).issubset(_SOURCE_TEMPLATE_ALLOWED_FIELDS)
+    ):
+        raise Rejected("source span template shape is unsupported")
+    if (
+        template.get("diagnostic_only") is not True
+        or template.get("board_admission") is not False
+        or template.get("exactness_claim") is not False
+        or template.get("authority_advanced") is not False
+        or template.get("unsealed") is not True
+    ):
+        raise Rejected("source span template policy is not fail-closed")
+    expected_plan_fields = {
+        "schema", "function", "function_sha256", "session_id", "source",
+        "envelope", "template", "objects", "bindings", "authority_advanced",
+    }
+    if not isinstance(plan, Mapping) or set(plan) != expected_plan_fields:
+        raise Rejected("source span binding plan shape is unsupported")
+    if plan.get("schema") != SOURCE_SPAN_PLAN_SCHEMA or plan.get("authority_advanced") is not False:
+        raise Rejected("source span binding plan schema/policy mismatch")
+    context = envelope["context"]
+    for key in ("function", "function_sha256", "session_id"):
+        template_value = template.get(key)
+        template_matches = (
+            template_value in {context.get(key), "<CAPTURE_SESSION_ID>"}
+            if key == "session_id"
+            else template_value == context.get(key)
+        )
+        if plan.get(key) != context.get(key) or not template_matches:
+            raise Rejected(f"source span binding plan/template {key} is not capture-bound")
+    if _descriptor(plan["source"], "source span plan source") != dict(context["source"]):
+        raise Rejected("source span binding plan source is not capture-bound")
+    if _descriptor(template["source"], "source span template source") != dict(context["source"]):
+        raise Rejected("source span template source is not capture-bound")
+    if _descriptor(plan["envelope"], "source span plan envelope") != envelope_descriptor:
+        raise Rejected("source span binding plan envelope identity changed")
+    if _descriptor(plan["template"], "source span plan template") != template_descriptor:
+        raise Rejected("source span binding plan template identity changed")
+
+    inventory = [
+        row
+        for container in ("locals", "arguments")
+        for row in envelope["inventory"][container]
+    ]
+    inventory_by_name: dict[str, list[Mapping[str, Any]]] = {}
+    for row in inventory:
+        if isinstance(row.get("name"), str):
+            inventory_by_name.setdefault(str(row["name"]), []).append(row)
+
+    raw_objects = plan.get("objects")
+    if not isinstance(raw_objects, list) or not raw_objects:
+        raise Rejected("source span binding plan requires objects")
+    planned_objects: dict[str, dict[str, Any]] = {}
+    for index, raw_object in enumerate(raw_objects):
+        if not isinstance(raw_object, Mapping) or set(raw_object) != _SOURCE_PLAN_OBJECT_FIELDS:
+            raise Rejected(f"source span binding plan objects[{index}] shape mismatch")
+        identity = _text(raw_object["identity"], f"source span binding plan objects[{index}].identity")
+        if identity in planned_objects:
+            raise Rejected("source span binding plan contains duplicate identities")
+        rows = inventory_by_name.get(identity, [])
+        if len(rows) != 1:
+            raise Rejected("source span identity does not bind one unique compiler inventory row")
+        planned_objects[identity] = {
+            **dict(raw_object),
+            "object_token": str(rows[0]["token"]),
+        }
+
+    raw_bindings = plan.get("bindings")
+    if not isinstance(raw_bindings, list) or not raw_bindings:
+        raise Rejected("source span binding plan requires at least one dependency binding")
+    bindings: dict[tuple[str, str, int, int], dict[str, Any]] = {}
+    for index, raw_binding in enumerate(raw_bindings):
+        if not isinstance(raw_binding, Mapping) or set(raw_binding) != _SOURCE_PLAN_BINDING_FIELDS:
+            raise Rejected(f"source span binding plan bindings[{index}] shape mismatch")
+        identity = _text(raw_binding["identity"], f"source span binding plan bindings[{index}].identity")
+        role = _text(raw_binding["role"], f"source span binding plan bindings[{index}].role")
+        start = _integer(raw_binding["byte_start"], "source span binding byte_start", nonnegative=True)
+        end = _integer(raw_binding["byte_end"], "source span binding byte_end", nonnegative=True)
+        key = (identity, role, start, end)
+        if key in bindings:
+            raise Rejected("source span binding plan contains duplicate span bindings")
+        bindings[key] = dict(raw_binding)
+
+    raw_spans = template.get("spans")
+    if not isinstance(raw_spans, list) or not raw_spans:
+        raise Rejected("source span template has no spans")
+    normalized_spans: list[dict[str, Any]] = []
+    matched_bindings: set[tuple[str, str, int, int]] = set()
+    template_identities: set[str] = set()
+    for index, raw_span in enumerate(raw_spans):
+        if not isinstance(raw_span, Mapping) or not _SOURCE_SPAN_FIELDS.issubset(raw_span) or not set(raw_span).issubset(_SOURCE_TEMPLATE_SPAN_ALLOWED_FIELDS):
+            raise Rejected(f"source span template spans[{index}] shape mismatch")
+        identity = _text(raw_span["identity"], f"source span template spans[{index}].identity")
+        object_spec = planned_objects.get(identity)
+        if object_spec is None:
+            raise Rejected("source span template identity is absent from the binding plan")
+        template_identities.add(identity)
+        key = (
+            identity,
+            str(raw_span["role"]),
+            int(raw_span["byte_start"]),
+            int(raw_span["byte_end"]),
+        )
+        binding = bindings.get(key)
+        if binding is not None:
+            matched_bindings.add(key)
+        normalized_spans.append({
+            **{field: raw_span[field] for field in _SOURCE_SPAN_FIELDS if field != "object_token"},
+            "object_token": object_spec["object_token"],
+            "dependency_id": binding["dependency_id"] if binding is not None else None,
+            "machine_instruction_indices": list(binding["machine_instruction_indices"]) if binding is not None else [],
+        })
+    if template_identities != set(planned_objects) or matched_bindings != set(bindings):
+        raise Rejected("source span template/plan identity or dependency coverage is not closed")
+
+    normalized_objects = [
+        {
+            "object_token": raw_object["object_token"],
+            "identity": identity,
+            "ownership_mode": raw_object["ownership_mode"],
+            "object_type": raw_object["object_type"],
+            "byte_size": raw_object["byte_size"],
+        }
+        for identity, raw_object in planned_objects.items()
+    ]
+    normalized_objects.sort(key=lambda row: str(row["object_token"]))
+    manifest = seal_source_span_manifest({
+        "schema": SOURCE_SPAN_SCHEMA_V2,
+        "function": context["function"],
+        "function_sha256": context["function_sha256"],
+        "session_id": context["session_id"],
+        "source": dict(context["source"]),
+        "objects": normalized_objects,
+        "spans": normalized_spans,
+        "authority_advanced": False,
+    })
+    output = Path(output_path).resolve()
+    if output.exists() or output.is_symlink():
+        raise Rejected("normalized source span output already exists")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=output.parent,
+            prefix=".source-spans-",
+            suffix=".json",
+            delete=False,
+        ) as temporary:
+            json.dump(manifest, temporary, indent=2, sort_keys=True)
+            temporary.write("\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+            temporary_name = temporary.name
+        _validate_source_span_manifest(temporary_name, envelope)
+        os.rename(temporary_name, output)
+        temporary_name = None
+    finally:
+        if temporary_name is not None:
+            try:
+                Path(temporary_name).unlink()
+            except OSError:
+                pass
+    return {
+        "schema": f"{SOURCE_SPAN_SCHEMA_V2}/normalize",
+        "status": "READY",
+        "envelope": envelope_descriptor,
+        "template": template_descriptor,
+        "binding_plan": plan_descriptor,
+        "output": _descriptor(output, "normalized source span output"),
+        "manifest_sha256": manifest["manifest_sha256"],
         "authority_advanced": False,
     }
 
@@ -2921,16 +4640,25 @@ def _validate_source_span_manifest(
         raise Rejected(f"cannot read source span manifest: {exc}") from exc
     if not isinstance(value, Mapping):
         raise Rejected("source span manifest must be an object")
-    expected = {
-        "schema", "function", "function_sha256", "session_id", "source",
-        "spans", "authority_advanced", "manifest_sha256",
-    }
+    schema = value.get("schema")
+    if schema == SOURCE_SPAN_SCHEMA:
+        expected = {
+            "schema", "function", "function_sha256", "session_id", "source",
+            "spans", "authority_advanced", "manifest_sha256",
+        }
+    elif schema == SOURCE_SPAN_SCHEMA_V2:
+        expected = {
+            "schema", "function", "function_sha256", "session_id", "source",
+            "objects", "spans", "authority_advanced", "manifest_sha256",
+        }
+    else:
+        raise Rejected("source span manifest schema/policy mismatch")
     if set(value) != expected:
         raise Rejected("source span manifest contains unsupported or missing fields")
     unsigned = {key: item for key, item in value.items() if key != "manifest_sha256"}
     if value.get("manifest_sha256") != canonical_hash(unsigned):
         raise Rejected("source span manifest self-digest mismatch")
-    if value.get("schema") != SOURCE_SPAN_SCHEMA or value.get("authority_advanced") is not False:
+    if value.get("authority_advanced") is not False:
         raise Rejected("source span manifest schema/policy mismatch")
 
     context = envelope["context"]
@@ -2957,13 +4685,67 @@ def _validate_source_span_manifest(
         for row in envelope["inventory"][container]
     ]
     inventory_by_token = {str(row["token"]): row for row in inventory}
+    objects_by_token: dict[str, dict[str, Any]] = {}
+    if schema == SOURCE_SPAN_SCHEMA_V2:
+        objects = value.get("objects")
+        if not isinstance(objects, list) or not objects:
+            raise Rejected("source span v2 manifest requires at least one object")
+        for index, raw_object in enumerate(objects):
+            if not isinstance(raw_object, Mapping) or set(raw_object) != _SOURCE_OBJECT_FIELDS:
+                raise Rejected(f"source span manifest objects[{index}] shape mismatch")
+            token = _text(
+                raw_object["object_token"],
+                f"source span manifest objects[{index}].object_token",
+            )
+            token_match = TOKEN_RE.fullmatch(token)
+            if token_match is None or token_match.group("session") != context["session_id"]:
+                raise Rejected("source span manifest object token is not capture-local")
+            if token in objects_by_token:
+                raise Rejected("source span manifest contains a duplicate object token")
+            inventory_row = inventory_by_token.get(token)
+            if inventory_row is None:
+                raise Rejected("source span manifest object token is not in the authenticated inventory")
+            identity = _text(
+                raw_object["identity"],
+                f"source span manifest objects[{index}].identity",
+            )
+            if SAFE_FUNCTION.fullmatch(identity) is None or inventory_row.get("name") != identity:
+                raise Rejected("source span manifest object identity does not match compiler inventory metadata")
+            mode = _text(
+                raw_object["ownership_mode"],
+                f"source span manifest objects[{index}].ownership_mode",
+            )
+            if mode not in _SOURCE_OWNERSHIP_MODES:
+                raise Rejected("source span manifest object ownership mode is unsupported")
+            object_type = raw_object["object_type"]
+            byte_size = raw_object["byte_size"]
+            ownership = inventory_row.get("ownership")
+            if not isinstance(ownership, Mapping) or ownership.get("status") != "EXACT":
+                raise Rejected("source span manifest object lacks exact authenticated ownership")
+            if mode == "scalar_register":
+                if object_type is not None or byte_size is not None:
+                    raise Rejected("scalar source span object must not assert aggregate type or size")
+                if ownership.get("mode") == "stack_home":
+                    raise Rejected("scalar source span object is backed only by a stack home")
+            else:
+                if object_type != "HuVecF" or byte_size != 12:
+                    raise Rejected("stack interval source span object must be an exact 12-byte HuVecF")
+                if ownership.get("mode") != "stack_home":
+                    raise Rejected("stack interval source span object lacks an authenticated final stack home")
+            objects_by_token[token] = dict(raw_object)
     spans = value.get("spans")
     if not isinstance(spans, list) or not spans:
         raise Rejected("source span manifest requires at least one span")
-    claimed_ranges: dict[tuple[int, int], str] = {}
+    claimed_ranges: list[tuple[int, int, str]] = []
     seen: set[tuple[str, str, int, int]] = set()
+    dependency_claims: dict[int, str] = {}
+    stack_declarations: set[str] = set()
+    stack_dependencies: set[str] = set()
+    dependency_indices_by_token: dict[tuple[str, str], tuple[int, ...]] = {}
+    referenced_tokens: set[str] = set()
+    expected_span_fields = _SOURCE_SPAN_FIELDS if schema == SOURCE_SPAN_SCHEMA else _SOURCE_SPAN_V2_FIELDS
     for index, raw in enumerate(spans):
-        if not isinstance(raw, Mapping) or set(raw) != _SOURCE_SPAN_FIELDS:
+        if not isinstance(raw, Mapping) or set(raw) != expected_span_fields:
             raise Rejected(f"source span manifest spans[{index}] shape mismatch")
         token = _text(raw["object_token"], f"source span manifest spans[{index}].object_token")
         token_match = TOKEN_RE.fullmatch(token)
@@ -2972,6 +4754,9 @@ def _validate_source_span_manifest(
         inventory_row = inventory_by_token.get(token)
         if inventory_row is None:
             raise Rejected("source span manifest token is not in the authenticated inventory")
+        if schema == SOURCE_SPAN_SCHEMA_V2 and token not in objects_by_token:
+            raise Rejected("source span manifest span lacks a closed object declaration")
+        referenced_tokens.add(token)
         identity = _text(raw["identity"], f"source span manifest spans[{index}].identity")
         if SAFE_FUNCTION.fullmatch(identity) is None or inventory_row.get("name") != identity:
             raise Rejected("source span manifest identity does not match compiler inventory metadata")
@@ -2995,15 +4780,74 @@ def _validate_source_span_manifest(
         actual_line_end = actual_line_start + snippet.count("\n")
         if raw["line_start"] != actual_line_start or raw["line_end"] != actual_line_end:
             raise Rejected("source span manifest line range mismatch")
-        range_key = (start, end)
-        prior = claimed_ranges.get(range_key)
-        if prior not in (None, token):
-            raise Rejected("one source span is claimed by multiple Object tokens")
-        claimed_ranges[range_key] = token
+        if schema == SOURCE_SPAN_SCHEMA_V2:
+            dependency_id = raw["dependency_id"]
+            instruction_indices = raw["machine_instruction_indices"]
+            if dependency_id is None:
+                if instruction_indices != []:
+                    raise Rejected("source span manifest unbound dependency has machine indices")
+            else:
+                dependency_id = _text(
+                    dependency_id,
+                    f"source span manifest spans[{index}].dependency_id",
+                )
+                if _SOURCE_DEPENDENCY_RE.fullmatch(dependency_id) is None:
+                    raise Rejected("source span manifest dependency id is malformed")
+                if (
+                    not isinstance(instruction_indices, list)
+                    or not instruction_indices
+                    or any(
+                        not isinstance(item, int) or isinstance(item, bool) or item < 0
+                        for item in instruction_indices
+                    )
+                    or instruction_indices != sorted(set(instruction_indices))
+                ):
+                    raise Rejected("source span manifest dependency instruction indices are invalid")
+                key = (token, dependency_id)
+                canonical_indices = tuple(instruction_indices)
+                prior_indices = dependency_indices_by_token.get(key)
+                if prior_indices not in (None, canonical_indices):
+                    raise Rejected("one source object dependency has conflicting machine indices")
+                dependency_indices_by_token[key] = canonical_indices
+                for instruction_index in instruction_indices:
+                    prior_dependency = dependency_claims.get(instruction_index)
+                    if prior_dependency not in (None, dependency_id):
+                        raise Rejected("one machine instruction is claimed by multiple source dependencies")
+                    dependency_claims[instruction_index] = dependency_id
+                if objects_by_token[token]["ownership_mode"] == "stack_interval":
+                    stack_dependencies.add(token)
+            if (
+                objects_by_token[token]["ownership_mode"] == "stack_interval"
+                and role == "declaration"
+            ):
+                if "HuVecF" not in snippet:
+                    raise Rejected("stack interval declaration span does not prove HuVecF source type")
+                stack_declarations.add(token)
+        for prior_start, prior_end, prior_token in claimed_ranges:
+            if start < prior_end and prior_start < end and prior_token != token:
+                # One exact source object may legitimately own nested source
+                # roles over the same expression (for example, an initialized
+                # declaration is both a declaration and a call-return span).
+                # Crossing that range into a different Object identity is an
+                # ambiguous alias and remains fail-closed.
+                raise Rejected("different source object bindings overlap")
+        claimed_ranges.append((start, end, token))
         unique = (token, role, start, end)
         if unique in seen:
             raise Rejected("source span manifest contains a duplicate binding")
         seen.add(unique)
+    if schema == SOURCE_SPAN_SCHEMA_V2:
+        if referenced_tokens != set(objects_by_token):
+            raise Rejected("source span manifest object/span coverage is not closed")
+        stack_tokens = {
+            token
+            for token, raw_object in objects_by_token.items()
+            if raw_object["ownership_mode"] == "stack_interval"
+        }
+        if stack_tokens - stack_declarations:
+            raise Rejected("stack interval source span object lacks a typed declaration span")
+        if stack_tokens - stack_dependencies:
+            raise Rejected("stack interval source span object lacks a machine dependency")
     chronology = _donor_cfg.source_chronology(source_path, symbol=str(context["function"]))
     if chronology["source"]["sha256"] != source["sha256"]:
         raise Rejected("source chronology parser did not consume the capture-bound source")
@@ -3015,16 +4859,366 @@ def _tool_source_descriptor(module: Any) -> dict[str, Any]:
     return _path_descriptor(path, f"tool {module.__name__}", must_exist=True)
 
 
+def _source_machine_index(events: Sequence[Mapping[str, Any]]) -> dict[int, dict[str, Any]]:
+    """Index located machine evidence without inventing missing rows."""
+
+    result: dict[int, dict[str, Any]] = {}
+    for event in events:
+        if event.get("event_kind") != "machine_emission":
+            continue
+        instruction_index = event.get("instruction_index")
+        if not isinstance(instruction_index, int) or isinstance(instruction_index, bool):
+            continue
+        if instruction_index in result:
+            raise Rejected("machine-emission chronology contains duplicate instruction indices")
+        result[instruction_index] = dict(event)
+    return result
+
+
+def _source_pcode_owners(events: Sequence[Mapping[str, Any]]) -> dict[str, str]:
+    """Return only unique, confirmed same-session Object-to-PCode owners."""
+
+    claims: dict[str, set[str]] = {}
+    for event in events:
+        if (
+            event.get("event_kind") == "pcode_capture"
+            and event.get("status") == "CAPTURED"
+            and event.get("confirmed") is True
+            and isinstance(event.get("pcode_token"), str)
+            and isinstance(event.get("object_token"), str)
+        ):
+            claims.setdefault(str(event["pcode_token"]), set()).add(str(event["object_token"]))
+    return {
+        pcode_token: next(iter(tokens))
+        for pcode_token, tokens in claims.items()
+        if len(tokens) == 1
+    }
+
+
+def _closed_memory_coverage(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    byte_size: int,
+) -> tuple[int, int] | None:
+    """Return a whole, nonoverlapping stack interval or ``None``."""
+
+    intervals: list[tuple[int, int]] = []
+    for row in rows:
+        if "memory_op" not in row:
+            continue
+        start = row.get("effective_stack_offset")
+        width = row.get("memory_width")
+        if (
+            not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(width, int)
+            or isinstance(width, bool)
+            or width <= 0
+        ):
+            return None
+        intervals.append((start, start + width))
+    if not intervals:
+        return None
+    intervals.sort()
+    cursor = intervals[0][0]
+    first = cursor
+    for start, end in intervals:
+        if start != cursor or end <= start:
+            return None
+        cursor = end
+    if cursor - first != byte_size:
+        return None
+    return first, cursor
+
+
+def _stack_interval_object_join(
+    *,
+    token: str,
+    object_spec: Mapping[str, Any],
+    spans: Sequence[Mapping[str, Any]],
+    inventory_row: Mapping[str, Any],
+    machine_by_index: Mapping[int, Mapping[str, Any]],
+    pcode_owners: Mapping[str, str],
+) -> dict[str, Any]:
+    """Bind one typed source aggregate to final stack-home dependencies."""
+
+    ownership = inventory_row.get("ownership")
+    if (
+        not isinstance(ownership, Mapping)
+        or ownership.get("status") != "EXACT"
+        or ownership.get("mode") != "stack_home"
+        or not isinstance(ownership.get("stack_home"), Mapping)
+    ):
+        return {
+            "status": "UNKNOWN",
+            "evidence": ["authenticated final stack home is absent"],
+            "stack_interval_dependencies": [],
+        }
+    raw_home = int(ownership["stack_home"]["offset"])
+    byte_size = int(object_spec["byte_size"])
+    grouped: dict[str, dict[str, Any]] = {}
+    for span in spans:
+        dependency_id = span.get("dependency_id")
+        if not isinstance(dependency_id, str):
+            continue
+        group = grouped.setdefault(
+            dependency_id,
+            {"roles": set(), "indices": tuple(span["machine_instruction_indices"])},
+        )
+        group["roles"].add(str(span["role"]))
+
+    dependency_rows: list[dict[str, Any]] = []
+    reasons: list[str] = []
+    biases: set[int] = set()
+    for dependency_id in sorted(grouped):
+        group = grouped[dependency_id]
+        indices = list(group["indices"])
+        selected: list[dict[str, Any]] = []
+        missing = [index for index in indices if index not in machine_by_index]
+        if missing:
+            reason = f"dependency {dependency_id} lacks located machine rows {missing}"
+            reasons.append(reason)
+            dependency_rows.append({
+                "dependency_id": dependency_id,
+                "status": "UNKNOWN",
+                "reason": reason,
+                "instruction_indices": indices,
+            })
+            continue
+        selected = [dict(machine_by_index[index]) for index in indices]
+        unknown = [row for row in selected if row.get("status") != "CAPTURED"]
+        if unknown:
+            reason = f"dependency {dependency_id} contains UNKNOWN machine evidence"
+            reasons.append(reason)
+            dependency_rows.append({
+                "dependency_id": dependency_id,
+                "status": "UNKNOWN",
+                "reason": reason,
+                "instruction_indices": indices,
+                "unknown_instruction_indices": [row["instruction_index"] for row in unknown],
+            })
+            continue
+        memory_rows = [row for row in selected if "memory_op" in row]
+        roles = set(group["roles"])
+        expected_op = "load" if "read" in roles and "write" not in roles else "store" if "write" in roles and "read" not in roles else None
+        if expected_op is None or any(row.get("memory_op") != expected_op for row in memory_rows):
+            reason = f"dependency {dependency_id} source role does not match one machine memory direction"
+            reasons.append(reason)
+            dependency_rows.append({
+                "dependency_id": dependency_id,
+                "status": "UNKNOWN",
+                "reason": reason,
+                "instruction_indices": indices,
+            })
+            continue
+        coverage = _closed_memory_coverage(memory_rows, byte_size=byte_size)
+        if coverage is None:
+            reason = f"dependency {dependency_id} does not wholly cover one {byte_size}-byte aggregate"
+            reasons.append(reason)
+            dependency_rows.append({
+                "dependency_id": dependency_id,
+                "status": "UNKNOWN",
+                "reason": reason,
+                "instruction_indices": indices,
+            })
+            continue
+        start, end = coverage
+        bias = start - raw_home
+        if bias < 0 or bias % 4:
+            reason = f"dependency {dependency_id} has an invalid final-home ABI adjustment"
+            reasons.append(reason)
+            dependency_rows.append({
+                "dependency_id": dependency_id,
+                "status": "UNKNOWN",
+                "reason": reason,
+                "instruction_indices": indices,
+            })
+            continue
+        biases.add(bias)
+        pcode_tokens = sorted({
+            str(row["pcode_token"])
+            for row in memory_rows
+            if isinstance(row.get("pcode_token"), str)
+        })
+        conflicting_pcode_owner = any(
+            pcode_owners.get(pcode_token) not in {None, token}
+            for pcode_token in pcode_tokens
+        )
+        exact_direct_pcode = bool(pcode_tokens) and all(
+            pcode_owners.get(pcode_token) == token for pcode_token in pcode_tokens
+        )
+        exact_interval_pcode = (
+            bool(pcode_tokens)
+            and len(pcode_tokens) == len(memory_rows)
+            and not conflicting_pcode_owner
+        )
+        dependency_rows.append({
+            "dependency_id": dependency_id,
+            "status": "MATCHED_AUTHENTICATED",
+            "instruction_indices": indices,
+            "memory_direction": expected_op,
+            "raw_stack_home": raw_home,
+            "abi_adjustment_bytes": bias,
+            "effective_interval": {"start": start, "end": end, "size": byte_size},
+            "whole_access": True,
+            "machine_events": selected,
+            "pcode_crosswalk": {
+                "status": "MATCHED_AUTHENTICATED" if exact_interval_pcode else "UNKNOWN",
+                "pcode_tokens": pcode_tokens,
+                "ownership_edge": (
+                    "direct_object_to_pcode"
+                    if exact_direct_pcode
+                    else "final_stack_home_to_machine_pcode"
+                    if exact_interval_pcode
+                    else None
+                ),
+                "reason": (
+                    None
+                    if exact_interval_pcode
+                    else "machine PCode rows are missing or conflict with direct Object ownership"
+                ),
+            },
+        })
+    if len(biases) > 1:
+        reasons.append("one stack object has inconsistent final-home ABI adjustments")
+    exact = bool(dependency_rows) and not reasons and all(
+        row["status"] == "MATCHED_AUTHENTICATED" for row in dependency_rows
+    )
+    return {
+        "status": "MATCHED_AUTHENTICATED" if exact else "UNKNOWN",
+        "evidence": ["typed whole-access stack interval is authenticated"] if exact else reasons,
+        "stack_interval_dependencies": dependency_rows,
+        "abi_adjustment_bytes": next(iter(biases)) if exact and len(biases) == 1 else None,
+    }
+
+
+def _stack_copy_dependencies(joined: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Prove only exact read-to-write aggregate copies within one dependency."""
+
+    by_dependency: dict[str, list[tuple[Mapping[str, Any], Mapping[str, Any]]]] = {}
+    for row in joined:
+        for dependency in row.get("stack_interval_dependencies", []):
+            if dependency.get("status") == "MATCHED_AUTHENTICATED":
+                by_dependency.setdefault(str(dependency["dependency_id"]), []).append((row, dependency))
+    result: list[dict[str, Any]] = []
+    for dependency_id in sorted(by_dependency):
+        rows = by_dependency[dependency_id]
+        reads = [(obj, dep) for obj, dep in rows if dep.get("memory_direction") == "load"]
+        writes = [(obj, dep) for obj, dep in rows if dep.get("memory_direction") == "store"]
+        if len(reads) != 1 or len(writes) != 1:
+            continue
+        source, source_dep = reads[0]
+        destination, destination_dep = writes[0]
+        source_interval = source_dep["effective_interval"]
+        destination_interval = destination_dep["effective_interval"]
+        loads = {
+            int(event["instruction_index"]): event
+            for event in source_dep["machine_events"]
+            if event.get("memory_op") == "load"
+        }
+        stores = [
+            event
+            for event in destination_dep["machine_events"]
+            if event.get("memory_op") == "store"
+        ]
+        pairs: list[dict[str, Any]] = []
+        reason: str | None = None
+        for store in stores:
+            candidates = [
+                load
+                for index, load in loads.items()
+                if index in store.get("reaching_definitions", [])
+                and load.get("memory_width") == store.get("memory_width")
+                and load.get("registers", {}).get("data") == store.get("registers", {}).get("data")
+                and int(load["effective_stack_offset"]) - int(source_interval["start"])
+                == int(store["effective_stack_offset"]) - int(destination_interval["start"])
+            ]
+            if len(candidates) != 1:
+                reason = "copy store lacks one exact same-width reaching source load"
+                break
+            load = candidates[0]
+            pairs.append({
+                "load_instruction_index": load["instruction_index"],
+                "store_instruction_index": store["instruction_index"],
+                "relative_offset": int(load["effective_stack_offset"]) - int(source_interval["start"]),
+                "width": load["memory_width"],
+            })
+        exact = reason is None and sum(int(pair["width"]) for pair in pairs) == int(source_interval["size"])
+        selected = [
+            event
+            for _obj, dependency in rows
+            for event in dependency["machine_events"]
+        ]
+        def address_producer(interval_start: int) -> Mapping[str, Any] | None:
+            candidates = [
+                event
+                for event in selected
+                if event.get("mnemonic") == "addi"
+                and isinstance(event.get("address_definition"), Mapping)
+                and int(event["address_definition"].get("stack_offset", -1)) == interval_start
+                and event.get("registers", {}).get("base") == "r1"
+                and event.get("registers", {}).get("destination")
+                == event["address_definition"].get("register")
+            ]
+            return candidates[0] if len(candidates) == 1 else None
+
+        source_producer = address_producer(int(source_interval["start"]))
+        destination_producer = address_producer(int(destination_interval["start"]))
+
+        def memory_uses_producer(
+            events: Sequence[Mapping[str, Any]],
+            producer: Mapping[str, Any] | None,
+        ) -> bool:
+            if producer is None:
+                return False
+            produced_register = producer["registers"]["destination"]
+            producer_index = int(producer["instruction_index"])
+            memory_events = [event for event in events if "memory_op" in event]
+            return bool(memory_events) and all(
+                event.get("registers", {}).get("base") == produced_register
+                and producer_index in event.get("reaching_definitions", [])
+                for event in memory_events
+            )
+
+        paired_mnemonics = {"psq_l", "lfs", "psq_st", "stfs"}
+        paired_proof = (
+            exact
+            and paired_mnemonics.issubset({str(event.get("mnemonic")) for event in selected})
+            and memory_uses_producer(source_dep["machine_events"], source_producer)
+            and memory_uses_producer(destination_dep["machine_events"], destination_producer)
+        )
+        result.append({
+            "dependency_id": dependency_id,
+            "status": "MATCHED_AUTHENTICATED" if exact else "UNKNOWN",
+            "source_object_token": source["object_token"],
+            "destination_object_token": destination["object_token"],
+            "copy_pairs": pairs,
+            "paired_codegen_proof": paired_proof,
+            "paired_codegen_reason": (
+                None
+                if paired_proof
+                else "paired proof requires exact r1-derived addi address producers and memory-use edges"
+            ),
+            "reason": None if exact else reason or "copy coverage is incomplete",
+        })
+    return result
+
+
 def build_source_aware_causal_map(
     envelope_path: Path | str,
     source_span_manifest: Path | str,
     *,
     trust_root: ExternalTrustRoot | Mapping[str, Any],
     frontend_chronology: Path | str | None = None,
+    post_capture_analysis: bool = False,
 ) -> dict[str, Any]:
     """Join source spans to same-session physical/stack evidence fail-closed."""
 
-    envelope = validate_envelope(envelope_path, trust_root=trust_root)
+    envelope = validate_envelope(
+        envelope_path,
+        trust_root=trust_root,
+        post_capture_analysis=post_capture_analysis,
+    )
     manifest, source_chronology = _validate_source_span_manifest(source_span_manifest, envelope)
     events = envelope["events"]
     spans_by_token: dict[str, list[dict[str, Any]]] = {}
@@ -3033,7 +5227,29 @@ def build_source_aware_causal_map(
 
     physical_by_token: dict[str, list[dict[str, Any]]] = {}
     stack_by_token: dict[str, list[dict[str, Any]]] = {}
+    machine_by_token: dict[str, list[dict[str, Any]]] = {}
+    machine_ambiguous_tokens: set[str] = set()
+    machine_by_index = _source_machine_index(events)
+    pcode_owners = _source_pcode_owners(events)
     for event in events:
+        if event["event_kind"] == "machine_emission":
+            if event.get("status") != "CAPTURED":
+                continue
+            event_claims: set[tuple[str, str]] = set()
+            token_registers: dict[str, set[str]] = {}
+            for join in [*event.get("owner_joins", []), *event.get("physical_owner_joins", [])]:
+                token = str(join["object_token"])
+                register = str(join["physical_register"])
+                claim = (token, register)
+                if claim in event_claims:
+                    continue
+                event_claims.add(claim)
+                token_registers.setdefault(token, set()).add(register)
+                if len(token_registers[token]) > 1:
+                    machine_ambiguous_tokens.add(token)
+                    continue
+                machine_by_token.setdefault(token, []).append(dict(event))
+            continue
         token = event.get("object_token")
         if not isinstance(token, str):
             continue
@@ -3051,13 +5267,25 @@ def build_source_aware_causal_map(
     for row in inventory_rows:
         if isinstance(row.get("name"), str):
             name_counts[row["name"]] = name_counts.get(row["name"], 0) + 1
+    inventory_by_token = {str(row["token"]): row for row in inventory_rows}
+    object_specs = {
+        str(raw["object_token"]): dict(raw)
+        for raw in manifest.get("objects", [])
+    }
 
     joined: list[dict[str, Any]] = []
+    machine_required = str(envelope["context"]["compiler"]["sha256"]) == GC27_COMPILER_SHA256
     for row in inventory_rows:
         token = str(row["token"])
         name = row.get("name") if isinstance(row.get("name"), str) else ""
         ownership = row.get("ownership") if isinstance(row.get("ownership"), Mapping) else {}
-        vreg_id = ownership.get("vreg_id") if ownership.get("status") == "EXACT" else None
+        ownership_mode = ownership.get("mode")
+        vreg_id = (
+            ownership.get("vreg_id")
+            if ownership.get("status") == "EXACT"
+            and ownership_mode in {None, "virtual_register"}
+            else None
+        )
         direct_inventory = {
             "vreg_ids": [vreg_id] if isinstance(vreg_id, str) else [],
             "vreg_status": "AUTHENTICATED" if isinstance(vreg_id, str) else "UNKNOWN",
@@ -3075,12 +5303,56 @@ def build_source_aware_causal_map(
         )
         bound_spans = spans_by_token.get(token, [])
         physical = physical_by_token.get(token, [])
+        object_spec = object_specs.get(token)
+        requested_mode = object_spec.get("ownership_mode") if object_spec is not None else "scalar_register"
+        stack_join: dict[str, Any] | None = None
         if not bound_spans:
             status, confidence, score = "UNKNOWN", "none", 0.0
             reasons = ["authenticated source-span binding is absent"]
+        elif requested_mode == "stack_interval":
+            stack_join = _stack_interval_object_join(
+                token=token,
+                object_spec=object_spec,
+                spans=bound_spans,
+                inventory_row=inventory_by_token[token],
+                machine_by_index=machine_by_index,
+                pcode_owners=pcode_owners,
+            )
+            status = str(stack_join["status"])
+            confidence = "exact" if status == "MATCHED_AUTHENTICATED" else "none"
+            score = 1.0 if status == "MATCHED_AUTHENTICATED" else 0.0
+            reasons = list(stack_join["evidence"])
         elif len(physical) > 1:
             status, confidence, score = "UNKNOWN", "none", 0.0
             reasons = ["one Object token has multiple physical-register assignments"]
+        elif not isinstance(vreg_id, str) and len(physical) == 1:
+            if manifest.get("schema") == SOURCE_SPAN_SCHEMA_V2:
+                status, confidence, score = "UNKNOWN", "none", 0.0
+                reasons = ["scalar source object lacks an authenticated Object-to-vreg ownership edge"]
+            else:
+                status, confidence, score = "MATCHED_AUTHENTICATED", "exact", 1.0
+                reasons = ["source span and unique same-session physical register are authenticated"]
+        machine = machine_by_token.get(token, [])
+        if machine_required and bound_spans and requested_mode == "scalar_register":
+            if token in machine_ambiguous_tokens:
+                status, confidence, score = "UNKNOWN", "none", 0.0
+                reasons = ["machine-emission owner join is ambiguous"]
+            elif len(physical) != 1:
+                status, confidence, score = "UNKNOWN", "none", 0.0
+                reasons = ["exact physical-register evidence is absent for machine join"]
+            elif not machine:
+                status, confidence, score = "UNKNOWN", "none", 0.0
+                reasons = ["authenticated machine-emission owner join is absent"]
+        stack_machine = []
+        if stack_join is not None:
+            stack_machine = [
+                event
+                for dependency in stack_join["stack_interval_dependencies"]
+                if dependency.get("status") == "MATCHED_AUTHENTICATED"
+                for event in dependency["machine_events"]
+            ]
+            stack_machine = list({int(event["instruction_index"]): event for event in stack_machine}.values())
+            stack_machine.sort(key=lambda event: int(event["instruction_index"]))
         related_calls = [
             call
             for call in source_chronology["calls"]
@@ -3089,6 +5361,7 @@ def build_source_aware_causal_map(
         joined.append({
             "object_token": token,
             "identity": name or None,
+            "ownership_mode": requested_mode,
             "status": status,
             "confidence": confidence,
             "score": score,
@@ -3097,8 +5370,59 @@ def build_source_aware_causal_map(
             "virtual_register": vreg_id,
             "physical_register": physical[0] if len(physical) == 1 else None,
             "stack_chronology": stack_by_token.get(token, []),
+            "stack_interval_dependencies": stack_join["stack_interval_dependencies"] if stack_join is not None else [],
+            "abi_adjustment_bytes": stack_join.get("abi_adjustment_bytes") if stack_join is not None else None,
+            "machine_emission_chronology": stack_machine if stack_join is not None else machine,
             "call_return_chronology": related_calls,
         })
+
+    stack_biases = {
+        int(row["abi_adjustment_bytes"])
+        for row in joined
+        if row["ownership_mode"] == "stack_interval"
+        and row["status"] == "MATCHED_AUTHENTICATED"
+        and isinstance(row.get("abi_adjustment_bytes"), int)
+    }
+    if len(stack_biases) > 1:
+        for row in joined:
+            if row["ownership_mode"] == "stack_interval" and row["status"] == "MATCHED_AUTHENTICATED":
+                row["status"] = "UNKNOWN"
+                row["confidence"] = "none"
+                row["score"] = 0.0
+                row["evidence"] = ["stack interval objects disagree on the final-home ABI adjustment"]
+                for dependency in row["stack_interval_dependencies"]:
+                    dependency["status"] = "UNKNOWN"
+                    dependency["reason"] = "stack interval objects disagree on the final-home ABI adjustment"
+
+    interval_claims: list[tuple[int, int, dict[str, Any]]] = []
+    for row in joined:
+        if row["ownership_mode"] != "stack_interval" or row["status"] != "MATCHED_AUTHENTICATED":
+            continue
+        for dependency in row["stack_interval_dependencies"]:
+            if dependency.get("status") != "MATCHED_AUTHENTICATED":
+                continue
+            interval = dependency.get("effective_interval")
+            if isinstance(interval, Mapping):
+                interval_claims.append((int(interval["start"]), int(interval["end"]), row))
+    conflicting_stack_rows: set[str] = set()
+    for index, (left_start, left_end, left_row) in enumerate(interval_claims):
+        for right_start, right_end, right_row in interval_claims[index + 1:]:
+            if left_row["object_token"] == right_row["object_token"]:
+                continue
+            if max(left_start, right_start) < min(left_end, right_end):
+                conflicting_stack_rows.update((left_row["object_token"], right_row["object_token"]))
+    if conflicting_stack_rows:
+        for row in joined:
+            if row["object_token"] not in conflicting_stack_rows:
+                continue
+            row["status"] = "UNKNOWN"
+            row["confidence"] = "none"
+            row["score"] = 0.0
+            row["evidence"] = ["different source objects claim overlapping effective stack intervals"]
+            for dependency in row["stack_interval_dependencies"]:
+                dependency["status"] = "UNKNOWN"
+                dependency["reason"] = "different source objects claim overlapping effective stack intervals"
+    stack_copy_dependencies = _stack_copy_dependencies(joined)
 
     frontend: dict[str, Any]
     if frontend_chronology is None:
@@ -3135,6 +5459,15 @@ def build_source_aware_causal_map(
         "context": dict(envelope["context"]),
         "capture": {"path": str(_canonical_path(envelope_path, "envelope")), "sha256": envelope["envelope_sha256"]},
         "source_span_manifest": {"path": str(_canonical_path(source_span_manifest, "source span manifest")), "sha256": manifest["manifest_sha256"]},
+        "capture_tool_validation": {
+            "mode": (
+                "sealed_post_capture_descriptor"
+                if post_capture_analysis
+                else "live_bytes"
+            ),
+            "debugger": dict(envelope["context"]["debugger"]),
+            "transport": dict(envelope["context"]["transport"]),
+        },
         "tools": {
             "same_session": _path_descriptor(Path(__file__).resolve(), "tool same_session", must_exist=True),
             "stack_home": _tool_source_descriptor(_stack_home),
@@ -3143,9 +5476,25 @@ def build_source_aware_causal_map(
             "donor_cfg": _tool_source_descriptor(_donor_cfg),
         },
         "joined_objects": joined,
+        "stack_copy_dependencies": stack_copy_dependencies,
         "source_evaluation_chronology": source_chronology,
         "frontend_chronology": frontend,
-        "unknown": sorted({reason for row in joined if row["status"] != "MATCHED_AUTHENTICATED" for reason in row["evidence"]} | ({frontend["reason"]} if frontend["status"] == "UNKNOWN" else set())),
+        "unknown": sorted(
+            {
+                reason
+                for row in joined
+                if row["status"] != "MATCHED_AUTHENTICATED"
+                for reason in row["evidence"]
+            }
+            | {
+                str(dependency["pcode_crosswalk"]["reason"])
+                for row in joined
+                for dependency in row.get("stack_interval_dependencies", [])
+                if dependency.get("status") == "MATCHED_AUTHENTICATED"
+                and dependency.get("pcode_crosswalk", {}).get("status") == "UNKNOWN"
+            }
+            | ({frontend["reason"]} if frontend["status"] == "UNKNOWN" else set())
+        ),
     }
     _correlator._reject_pointer_material(result)
     result["causal_map_sha256"] = canonical_hash(result)
@@ -3179,6 +5528,7 @@ class NativeWow64Backend:
             "read_register",
             "capture_stack_write",
             "capture_pcode",
+            "capture_machine_emission",
             "capture_regalloc",
             "capture_physical_regalloc",
             "capture_regalloc_post",
@@ -3198,6 +5548,8 @@ class NativeWow64Backend:
         compiler_sha256: str | None = None,
         wrapper_path: str | None = None,
         wrapper_sha256: str | None = None,
+        transport_mode: str = "wrapper_memexec",
+        executed_argv: Sequence[str] | None = None,
     ) -> None:
         self.native = native
         self.process = int(process)
@@ -3216,6 +5568,13 @@ class NativeWow64Backend:
         self.compiler_sha256 = compiler_sha256.lower() if isinstance(compiler_sha256, str) else None
         self.wrapper_path = self._normalize_image_path(wrapper_path) if wrapper_path else None
         self.wrapper_sha256 = wrapper_sha256.lower() if isinstance(wrapper_sha256, str) else None
+        if transport_mode not in {"wrapper_memexec", "authenticated_direct_compiler"}:
+            raise Rejected("native transport mode is unsupported")
+        self.transport_mode = transport_mode
+        self.executed_argv = [str(value) for value in (executed_argv or ())]
+        if transport_mode == "authenticated_direct_compiler" and not self.executed_argv:
+            raise Rejected("native transport lacks its executed argv")
+        self.direct_compiler_transport = transport_mode == "authenticated_direct_compiler"
         self._owned_handles: set[int] = {value for value in (int(process or 0), int(initial_thread or 0)) if value}
         self.transport_threads: dict[int, int] = {}
         if initial_thread:
@@ -3226,6 +5585,7 @@ class NativeWow64Backend:
         self.pending_steps: dict[int, int] = {}
         self.exited = False
         self.loader_breakpoint_pending = False
+        self.loader_breakpoints_remaining = 0
         # These maps are process-local and never cross the event boundary.
         # They also make duplicate/cross-kind identities fail closed before
         # CombinedCaptureSession assigns its capture-local tokens.
@@ -3234,6 +5594,7 @@ class NativeWow64Backend:
         self._varinfo_object: dict[int, int] = {}
         self._direct_vreg_evidence: dict[int, dict[str, Any]] = {}
         self._pcode_events: list[dict[str, Any]] = []
+        self._pending_pcode_color: dict[int, dict[str, int]] = {}
         self._transport_image_seen = False
         self._transport_exited = False
         self._memexec_probe_requested = False
@@ -3252,6 +5613,22 @@ class NativeWow64Backend:
 
     def _runtime(self, absolute: int) -> int:
         return absolute - KNOWN_IMAGE_BASE + self.base
+
+    def _consume_initial_system_breakpoint(self, address: int) -> bool:
+        """Consume one bounded debugger-init breakpoint outside the compiler image."""
+
+        if self.loader_breakpoints_remaining <= 0:
+            return False
+        if self._compiler_image_size is None:
+            self._compiler_pe_shape()
+        image_size = int(self._compiler_image_size or 0)
+        if image_size <= 0:
+            raise Rejected("authenticated compiler image size is unavailable")
+        if self.base <= int(address) < self.base + image_size:
+            return False
+        self.loader_breakpoints_remaining -= 1
+        self.loader_breakpoint_pending = self.loader_breakpoints_remaining > 0
+        return True
 
     @staticmethod
     def _normalize_image_path(value: str | Path | None) -> str:
@@ -3335,6 +5712,14 @@ class NativeWow64Backend:
         """Classify one debugged image, accepting only wrapper or compiler."""
 
         if int(process_id) == self.transport_process_id:
+            if self.direct_compiler_transport:
+                if not self._same_image_path(image_path, self.compiler_path):
+                    raise Rejected("direct debug transport image is not the authenticated compiler")
+                if self.compiler_sha256:
+                    compiler_file = Path(str(self.compiler_path))
+                    if not compiler_file.exists() or sha256(compiler_file) != self.compiler_sha256:
+                        raise Rejected("direct debug compiler bytes do not match authority")
+                return "compiler"
             if not self._same_image_path(image_path, self.wrapper_path):
                 raise Rejected("debug transport image is not the authenticated wrapper")
             if self.wrapper_sha256:
@@ -3378,8 +5763,10 @@ class NativeWow64Backend:
     ) -> None:
         if self.compiler_selected:
             raise Rejected("compiler child was created more than once")
-        if not self._transport_image_seen:
+        if not self.direct_compiler_transport and not self._transport_image_seen:
             raise Rejected("compiler child appeared before wrapper authentication")
+        if self.direct_compiler_transport and int(process_id) != self.transport_process_id:
+            raise Rejected("direct compiler transport changed process identity")
         if self._authenticate_debug_image(process_id, image_path) != "compiler":
             raise Rejected("debug child is not the authenticated compiler")
         process_handle = _native_value(getattr(info, "hProcess", 0))
@@ -3391,13 +5778,36 @@ class NativeWow64Backend:
         self.process_id = int(process_id)
         self.compiler_process_id = int(process_id)
         self.compiler_selected = True
+        self._selection_mode = self.transport_mode
+        if self.direct_compiler_transport:
+            self._transport_image_seen = True
         self.base = image_base
         self.threads[int(thread_id)] = thread_handle
         self._owned_handles.update((process_handle, thread_handle))
+        # A native 32-bit process under WOW64 produces both the native and
+        # WOW64 debugger-init breakpoints before user code.  A normal child
+        # transport has one.  Only same-PID, out-of-compiler-image events may
+        # consume this bounded budget; any third or later breakpoint remains
+        # a hard failure.
+        self.loader_breakpoints_remaining = 2 if self.direct_compiler_transport else 1
         self.loader_breakpoint_pending = True
         self._pending_create_event = (int(process_id), int(thread_id))
         self._close_debug_file(info)
         session.on_process_started(int(process_id))
+
+    def transport_provenance(self, request_argv: Sequence[str]) -> dict[str, Any]:
+        """Return pointer-free execution provenance for the sealed context."""
+
+        original = [str(value) for value in request_argv]
+        expected = original[1:] if self.direct_compiler_transport else original
+        if self.executed_argv != expected:
+            raise Rejected("native executed argv diverged from authenticated transport plan")
+        return {
+            "mode": self.transport_mode,
+            "argv": list(self.executed_argv),
+            "request_argv_sha256": canonical_hash({"argv": original}),
+            "wrapper_bypassed": self.direct_compiler_transport,
+        }
 
     def _compiler_pe_shape(self) -> tuple[int, int]:
         """Authenticate and parse the compiler image metadata from disk."""
@@ -3732,6 +6142,7 @@ class NativeWow64Backend:
         self._selection_mode = "same_process_memexec"
         self.base = int(image_base)
         self.loader_breakpoint_pending = False
+        self.loader_breakpoints_remaining = 0
         session.on_process_started(self.process_id)
         self._pause_same_process_target(event_type)
         # A same-PID compiler can create its worker before the bounded pause.
@@ -3756,7 +6167,7 @@ class NativeWow64Backend:
 
         if self.compiler_selected:
             return
-        if not self.compiler_path or not self.wrapper_path:
+        if not self.compiler_path or (not self.direct_compiler_transport and not self.wrapper_path):
             raise Rejected("native capture lacks authenticated wrapper/compiler paths")
         event_type = getattr(self.native, "DEBUG_EVENT", None)
         if event_type is None:
@@ -4113,6 +6524,8 @@ class NativeWow64Backend:
         hook = HOOK_BY_ID.get(str(hook_id))
         if hook is None or hook.get("lane") != "pcode" or hook.get("role") == "regalloc":
             raise Rejected("unowned PCode hook")
+        if hook.get("role") == "pcode_color_diagnostic":
+            return self._capture_pcode_color(str(hook_id), int(thread_id))
         # A stage marker is useful chronology, but it is not direct ownership
         # evidence.  The latter is emitted only by capture_regalloc after a
         # one-to-one Object/IG/vreg table has been validated.
@@ -4137,6 +6550,92 @@ class NativeWow64Backend:
                 result[key] = raw[key]
         _pointer_free(result)
         return result
+
+    def _capture_pcode_color(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
+        if self.compiler_sha256 != GC27_COMPILER_SHA256:
+            raise Rejected("PCode color hook is not authenticated for this compiler")
+        if hook_id == "pcode_color_pre":
+            if thread_id in self._pending_pcode_color:
+                raise Rejected("nested PCode color writeback")
+            operand_pointer = self.read_register(thread_id, "edx")
+            pcode_pointer = self.read_register(thread_id, "esi")
+            ig_pointer = self.read_register(thread_id, "ecx")
+            remaining = self.read_register(thread_id, "ebp")
+            if min(operand_pointer, pcode_pointer, ig_pointer) <= 0:
+                raise Rejected("PCode color writeback has a null identity")
+            header = self._read(pcode_pointer + 0x22, 2)
+            operand = self._read(operand_pointer, 6)
+            if len(header) != 2 or len(operand) != 6:
+                raise Rejected("PCode color writeback record is truncated")
+            operand_count = int.from_bytes(header, "little", signed=True)
+            if not 1 <= operand_count <= 256 or not 0 <= remaining < operand_count:
+                raise Rejected("PCode color writeback count is invalid")
+            ordinal = operand_count - 1 - remaining
+            if operand_pointer != pcode_pointer + 0x24 + ordinal * 0xC:
+                raise Rejected("PCode color operand chronology is misaligned")
+            operand_index = int.from_bytes(operand[4:6], "little", signed=True)
+            final_color = self.read_register(thread_id, "eax") & 0xFFFF
+            if final_color >= 0x8000:
+                final_color -= 0x10000
+            node = self._read(ig_pointer, 0x18)
+            if len(node) != 0x18:
+                raise Rejected("PCode IG node is truncated")
+            row = {
+                "pcode_pointer": pcode_pointer,
+                "ig_pointer": ig_pointer,
+                "operand_ordinal": ordinal,
+                "operand_count": operand_count,
+                "operand_kind": int(operand[0]),
+                "register_class": int(operand[1]),
+                "operand_index": operand_index,
+                "final_color": final_color,
+                "ig_flags": int.from_bytes(node[0x16:0x18], "little", signed=False),
+                "object_pointer": int.from_bytes(node[0x4:0x8], "little", signed=False),
+            }
+            ig_color = int.from_bytes(node[0x14:0x16], "little", signed=True)
+            if not 0 <= operand_index <= 0x7FFF or not 0 <= final_color <= 31 or ig_color != final_color:
+                raise Rejected("PCode color operand/result conflicts with its IG node")
+            self._pending_pcode_color[thread_id] = {**row, "operand_pointer": operand_pointer}
+            return {"status": "PENDING", **row}
+        if hook_id != "pcode_color_post":
+            raise Rejected("unowned PCode color hook")
+        row = self._pending_pcode_color.pop(thread_id, None)
+        if row is None:
+            return {"status": "NOOP"}
+        stored = self._read(int(row.pop("operand_pointer")) + 4, 2)
+        if len(stored) != 2 or int.from_bytes(stored, "little", signed=True) != row["final_color"]:
+            raise Rejected("PCode color post-write value mismatch")
+        return {"status": "CAPTURED", **row}
+
+    def capture_machine_emission(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
+        """Read the authenticated GC/2.7 post-encoder machine event."""
+
+        hook = HOOK_BY_ID.get(str(hook_id))
+        if hook is None or hook.get("role") != "machine_emit":
+            raise Rejected("unowned machine-emission hook")
+        if self.compiler_sha256 != GC27_COMPILER_SHA256:
+            raise Rejected("machine-emission hook is not authenticated for this compiler")
+        pcode_pointer = self.read_register(thread_id, "ebx")
+        emitted_offset = self.read_register(thread_id, "ebp")
+        encoded_value = self.read_register(thread_id, "eax")
+        if pcode_pointer == 0:
+            return {"status": "UNKNOWN", "reason": "missing PCode token"}
+        opcode_enum = int.from_bytes(self._read(pcode_pointer + 0x20, 2), "little", signed=True)
+        if not 0 <= opcode_enum <= 0x1D4:
+            return {"status": "UNKNOWN", "reason": "unsupported machine operand"}
+        descriptor = self._runtime(
+            GC27_OPCODE_DESCRIPTOR_TABLE
+            + opcode_enum * GC27_OPCODE_DESCRIPTOR_STRIDE
+            + GC27_OPCODE_DESCRIPTOR_BASE_OFFSET
+        )
+        descriptor_base = int.from_bytes(self._read(descriptor, 4), "little", signed=False)
+        return {
+            "pcode_pointer": pcode_pointer,
+            "emitted_offset": emitted_offset,
+            "opcode_enum": opcode_enum,
+            "encoded_value": encoded_value,
+            "descriptor_base": descriptor_base,
+        }
 
     def capture_regalloc(self, hook_id: str, thread_id: int) -> Sequence[Mapping[str, Any]]:
         """Return direct Object-to-vreg rows only when the table is proven."""
@@ -4261,6 +6760,26 @@ class NativeWow64Backend:
         if not self.native.kernel32.Wow64SetThreadContext(handle, ctypes.byref(context)):
             raise Rejected("Wow64SetThreadContext failed")
 
+    def _handle_breakpoint_exception(
+        self,
+        session: CombinedCaptureSession,
+        address: int,
+        thread_id: int,
+        process_id: int,
+    ) -> None:
+        normalized = int(address) - self.base + KNOWN_IMAGE_BASE
+        if normalized in session.dispatcher.by_address:
+            self.loader_breakpoint_pending = False
+            self.loader_breakpoints_remaining = 0
+            session.on_breakpoint(normalized, thread_id, process_id)
+        elif self._consume_initial_system_breakpoint(address):
+            # Windows emits bounded native/WOW64 initialization breakpoints
+            # outside the authenticated compiler image.  They are transport
+            # noise and never enter the event ledger.
+            return
+        else:
+            raise Rejected(f"unexpected non-loader breakpoint 0x{normalized:08x}")
+
     def run(self, session: CombinedCaptureSession) -> None:
         # The native structure definitions are supplied by the existing
         # standard-library-only adapter.  Importing it does not launch a
@@ -4335,20 +6854,10 @@ class NativeWow64Backend:
                 record = event.u.Exception.ExceptionRecord
                 exception_code = int(record.ExceptionCode)
                 address = int(record.ExceptionAddress or 0)
-                normalized = address - self.base + KNOWN_IMAGE_BASE
                 if exception_code in (getattr(self.native, "EXCEPTION_SINGLE_STEP", 0x80000004), getattr(self.native, "EXCEPTION_WX86_SINGLE_STEP", 0x4000001E)):
                     session.on_single_step(tid, pid)
                 elif exception_code in (getattr(self.native, "EXCEPTION_BREAKPOINT", 0x80000003), getattr(self.native, "EXCEPTION_WX86_BREAKPOINT", 0x4000001F)):
-                    if normalized in session.dispatcher.by_address:
-                        self.loader_breakpoint_pending = False
-                        session.on_breakpoint(normalized, tid, pid)
-                    elif self.loader_breakpoint_pending:
-                        # Windows emits an initial loader breakpoint before
-                        # user code.  It is transport noise, not an owned
-                        # compiler hook, and must not enter the event ledger.
-                        self.loader_breakpoint_pending = False
-                    else:
-                        raise Rejected(f"unexpected non-loader breakpoint 0x{normalized:08x}")
+                    self._handle_breakpoint_exception(session, address, tid, pid)
                 else:
                     raise Rejected(f"unsupported native exception 0x{exception_code:08x}")
             else:
@@ -4417,16 +6926,17 @@ def launch_native_capture(
     debug_break.argtypes = [ctypes.c_void_p]
     debug_break.restype = wintypes.BOOL
     request = auth["request"]
-    argv = _native_launch_argv(request)
-    command = subprocess.list2cmdline(argv)
+    transport_mode, executed_argv = _native_transport_plan(request)
+    command = subprocess.list2cmdline(executed_argv)
     startup = native.STARTUPINFOW(cb=ctypes.sizeof(native.STARTUPINFOW), dwFlags=native.STARTF_USESHOWWINDOW, wShowWindow=native.SW_HIDE)
     process_info = native.PROCESS_INFORMATION()
     buffer = ctypes.create_unicode_buffer(command)
-    # The authenticated argv starts with sjiswrap.exe.  DEBUG_ONLY_THIS_PROCESS
-    # would still be sufficient for sjiswrap's manual-map handoff, but
-    # DEBUG_PROCESS also covers launchers that create a real compiler child;
-    # the backend authenticates either the child image or sjiswrap's private
-    # mwcceppc mapping before any hook read.
+    # The immutable request argv remains wrapper-first. For the one closed
+    # sjiswrap/GC2.7 pair above, the process command is its authenticated
+    # ASCII-equivalent argv[1:] derivation; every other pair remains wrapper
+    # based. DEBUG_PROCESS covers both the direct compiler and launchers that
+    # create a real compiler child. The backend authenticates the selected
+    # image before any hook read.
     created = native.kernel32.CreateProcessW(None, buffer, None, None, False, DEBUG_PROCESS | native.CREATE_NO_WINDOW, None, request["cwd"], ctypes.byref(startup), ctypes.byref(process_info))
     if not created:
         raise Rejected(f"CreateProcessW failed: {ctypes.WinError(ctypes.get_last_error())}")
@@ -4443,8 +6953,15 @@ def launch_native_capture(
         compiler_sha256=str(request["compiler"]["sha256"]),
         wrapper_path=str(request["wrapper"]["path"]),
         wrapper_sha256=str(request["wrapper"]["sha256"]),
+        transport_mode=transport_mode,
+        executed_argv=executed_argv,
     )
-    return capture_with_backend(request_path, backend, external_trust_root=root)
+    return capture_with_backend(
+        request_path,
+        backend,
+        external_trust_root=root,
+        preauthenticated_auth=auth,
+    )
 
 
 def unknown_result(reason: str) -> dict[str, Any]:
@@ -4459,8 +6976,12 @@ def unknown_result(reason: str) -> dict[str, Any]:
 
 
 def self_test() -> dict[str, Any]:
-    if len(HOOKS) != 8 or len(HOOK_BY_ADDRESS) != 8:
+    if len(LEGACY_HOOKS) != 8 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 17:
         raise Rejected("hook union is not closed")
+    if tuple(HOOKS) not in (LEGACY_HOOKS, GC27_HOOKS):
+        raise Rejected("private backend hook patch does not match a closed profile")
+    if any(row["address"] == 0x004D03E8 for row in GC27_HOOKS):
+        raise Rejected("GC/2.7 profile contains stale GC/2.6 regalloc hook")
     if LOCALS_LIST_HEAD == ARGUMENTS_LIST_HEAD:
         raise Rejected("locals and arguments list heads collapsed")
     duplicate = '{"schema":"one","schema":"two"}'
@@ -4494,10 +7015,27 @@ def parser() -> argparse.ArgumentParser:
     causal.add_argument("--trust-root", type=Path, required=True)
     causal.add_argument("--source-spans", type=Path, required=True)
     causal.add_argument("--frontend-chronology", type=Path)
+    causal.add_argument(
+        "--post-capture-analysis",
+        action="store_true",
+        help=(
+            "accept capture-time debugger/transport descriptors from a sealed "
+            "post-capture root while still authenticating every producer output"
+        ),
+    )
     causal.add_argument("--output", type=Path)
     seal_spans = sub.add_parser("seal-source-spans", help="seal a reviewed capture-local source-span manifest")
     seal_spans.add_argument("--input", type=Path, required=True)
     seal_spans.add_argument("--output", type=Path, required=True)
+    normalize_spans = sub.add_parser(
+        "normalize-source-spans",
+        help="bind a reviewed placeholder template to one authenticated capture",
+    )
+    normalize_spans.add_argument("--envelope", type=Path, required=True)
+    normalize_spans.add_argument("--trust-root", type=Path, required=True)
+    normalize_spans.add_argument("--template", type=Path, required=True)
+    normalize_spans.add_argument("--binding-plan", type=Path, required=True)
+    normalize_spans.add_argument("--output", type=Path, required=True)
     sub.add_parser("self-test")
     return parser
 
@@ -4519,7 +7057,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = {"schema": f"{REQUEST_SCHEMA}/prepare", "status": "READY", "request": str(prepare_request(args.manifest, args.output_dir, external_trust_root=_load_trust_root(args.trust_root))), "diagnostic_only": True, "board_admission": False}
         elif args.command == "preflight":
             auth = authenticate_request(args.request, external_trust_root=_load_trust_root(args.trust_root))
-            result = {"schema": f"{REQUEST_SCHEMA}/preflight", "status": "READY", "session_id": auth["request"]["session_id"], "function": auth["request"]["function"], "request_sha256": auth["request_sha256"], "hooks": [dict(row) for row in HOOKS], "diagnostic_only": True, "board_admission": False}
+            result = {"schema": f"{REQUEST_SCHEMA}/preflight", "status": "READY", "session_id": auth["request"]["session_id"], "function": auth["request"]["function"], "request_sha256": auth["request_sha256"], "hooks": [dict(row) for row in auth["hooks"]], "diagnostic_only": True, "board_admission": False}
         elif args.command == "capture":
             result = launch_native_capture(args.request, external_trust_root=_load_trust_root(args.trust_root))
         elif args.command == "validate":
@@ -4533,6 +7071,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.source_spans,
                 trust_root=root,
                 frontend_chronology=args.frontend_chronology,
+                post_capture_analysis=args.post_capture_analysis,
             )
             if args.output is not None:
                 output = args.output.resolve()
@@ -4541,6 +7080,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 write_new(output, (json.dumps(result, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         elif args.command == "seal-source-spans":
             result = seal_source_span_file(args.input, args.output)
+        elif args.command == "normalize-source-spans":
+            root = _load_trust_root(args.trust_root)
+            if root is None:
+                raise Rejected("normalize-source-spans requires an external trust root")
+            result = normalize_source_span_template(
+                args.envelope,
+                args.template,
+                args.binding_plan,
+                args.output,
+                trust_root=root,
+            )
         else:
             result = self_test()
         print(json.dumps(result, indent=2, sort_keys=True))

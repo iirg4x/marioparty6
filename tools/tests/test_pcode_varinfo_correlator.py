@@ -1153,6 +1153,204 @@ class PCodeVarInfoCorrelatorTests(unittest.TestCase):
         with self.assertRaises(module.CorrelatorError):
             module._reject_pointer_material({"argv": ["mwcc", "-c", "0x123"]})
 
+    def test_pointer_free_boundary_accepts_only_canonical_capture_identifiers(self):
+        module._reject_pointer_material({
+            "session_id": "session-0123456789abcdef",
+            "object_token": "local-session-0123456789abcdef-000001",
+            "source_object_token": "argument-session-0123456789abcdef-000002",
+            "pcode_tokens": ["pcode-session-0123456789abcdef-000003"],
+            "ig_token": "ig-session-0123456789abcdef-000004",
+            "hidden_owner_token": "hidden-ig-session-0123456789abcdef-000005",
+            "event_ids": ["session-0123456789abcdef-e000006"],
+            "generation_ids": ["object-generation-000007"],
+            "varinfo_generation_id": "varinfo-generation-000008",
+            "ppc_bytes": "80123456",
+            "address_definition": {"base_register": "r1", "stack_offset": 8},
+        })
+        for label, packet in (
+            ("session", {"session_id": "session-80123456"}),
+            ("object token", {"object_token": "local-80123456"}),
+            ("PCode token", {"pcode_tokens": ["pcode-80123456"]}),
+            ("event", {"event_id": "80123456"}),
+            ("generation", {"generation_id": "object-generation-80123456"}),
+            ("PPC width", {"ppc_bytes": "801234567"}),
+            ("PPC uppercase", {"ppc_bytes": "8012ABCD"}),
+            ("nested pointer", {"address_definition": {"raw_pointer": "80123456"}}),
+        ):
+            with self.subTest(label=label):
+                with self.assertRaises(module.CorrelatorError):
+                    module._reject_pointer_material(packet)
+
+    def test_pointer_free_boundary_allows_hex_looking_canonical_descriptor_path_only(self):
+        module._reject_pointer_material({
+            "context": {
+                "authority": {
+                    "path": r"C:\proof\801ab02c\authority.json",
+                    "sha256": "a" * 64,
+                    "size": 123,
+                },
+            },
+        })
+        for label, packet in (
+            (
+                "bare address in descriptor path",
+                {"authority": {"path": "801AB02C", "sha256": "a" * 64, "size": 1}},
+            ),
+            (
+                "path-shaped free text outside descriptor",
+                {"reason": r"C:\proof\801ab02c\authority.json"},
+            ),
+            (
+                "descriptor-shaped mapping with extra field",
+                {
+                    "authority": {
+                        "path": r"C:\proof\801ab02c\authority.json",
+                        "sha256": "a" * 64,
+                        "size": 1,
+                        "note": "untrusted",
+                    },
+                },
+            ),
+        ):
+            with self.subTest(label=label):
+                with self.assertRaises(module.CorrelatorError):
+                    module._reject_pointer_material(packet)
+
+    def test_pointer_free_boundary_allows_only_closed_causal_map_artifact_paths(self):
+        module._reject_pointer_material({
+            "capture": {
+                "path": r"C:\proof\6b12463009464b819542b94c840e686a\capture.json",
+                "sha256": "a" * 64,
+            },
+            "source_span_manifest": {
+                "path": r"C:\proof\801ab02c\source-spans.json",
+                "sha256": "b" * 64,
+            },
+            "frontend_chronology": {
+                "status": "CAPTURED_UNKNOWN_OWNERSHIP",
+                "path": r"C:\proof\deadbeef\frontend.json",
+                "sha256": "c" * 64,
+                "packet_sha256": "d" * 64,
+                "events": [],
+            },
+            "source_evaluation_chronology": {
+                "source": {
+                    "path": r"C:\proof\6b12463009464b819542b94c840e686a\player.c",
+                    "sha256": "e" * 64,
+                    "function": "MoveNumOMExec",
+                    "function_lines": {"start": 1, "end": 2},
+                    "body_lines": {"start": 1, "end": 2},
+                },
+            },
+        })
+        for label, packet in (
+            (
+                "bare capture address",
+                {"capture": {"path": "801AB02C", "sha256": "a" * 64}},
+            ),
+            (
+                "capture record with extra field",
+                {
+                    "capture": {
+                        "path": r"C:\proof\801ab02c\capture.json",
+                        "sha256": "a" * 64,
+                        "note": "untrusted",
+                    },
+                },
+            ),
+            (
+                "same spelling at an unknown schema path",
+                {
+                    "artifact": {
+                        "path": r"C:\proof\801ab02c\capture.json",
+                        "sha256": "a" * 64,
+                    },
+                },
+            ),
+        ):
+            with self.subTest(label=label):
+                with self.assertRaises(module.CorrelatorError):
+                    module._reject_pointer_material(packet)
+
+    def test_source_chronology_expressions_allow_only_reviewed_c_address_of(self):
+        # These are source expressions emitted by donor_cfg_align, not native
+        # pointer identities.  The allowance is deliberately tied to the two
+        # causal-map source-expression paths rather than to every string
+        # containing '&'.
+        module._reject_pointer_material({
+            "source_evaluation_chronology": {
+                "calls": [{
+                    "arguments": ["&savedPos[playerNo]", "&masuPos", "playerNo", "100.0"],
+                }],
+                "assignments": [
+                    {
+                        "rhs": "&Hu3DCamera[0]",
+                        "span": {"snippet": "HU3D_CAMERA *cameraP = &Hu3DCamera[0];"},
+                    },
+                    {"rhs": "&work->pos"},
+                ],
+                "control_events": [{
+                    "condition": "workP->killF && (flags & mask)",
+                    "span": {"snippet": "if (workP->killF && (flags & mask))"},
+                }],
+            },
+            "joined_objects": [{
+                "call_return_chronology": [{
+                    "arguments": ["&work->pos", "&obj.position[0]"],
+                }],
+            }],
+        })
+
+    def test_source_chronology_address_of_allowance_remains_fail_closed(self):
+        for label, packet in (
+            ("hex address", {
+                "source_evaluation_chronology": {
+                    "calls": [{"arguments": ["0x801AB02C"]}],
+                },
+            }),
+            ("decimal pointer", {
+                "source_evaluation_chronology": {
+                    "calls": [{"arguments": ["134217728"]}],
+                },
+            }),
+            ("bare address", {
+                "joined_objects": [{
+                    "call_return_chronology": [{"arguments": ["801AB02C"]}],
+                }],
+            }),
+            ("double address-of", {
+                "source_evaluation_chronology": {
+                    "calls": [{"arguments": ["&&savedPos"]}],
+                },
+            }),
+            ("bitwise and", {
+                "joined_objects": [{
+                    "call_return_chronology": [{"arguments": ["savedPos & playerNo"]}],
+                }],
+            }),
+            ("assignment hex address", {
+                "source_evaluation_chronology": {
+                    "assignments": [{"rhs": "0x801AB02C"}],
+                },
+            }),
+            ("assignment pointer arithmetic", {
+                "source_evaluation_chronology": {
+                    "assignments": [{"rhs": "&savedPos[playerNo] + 4"}],
+                },
+            }),
+            ("source snippet hex address", {
+                "source_evaluation_chronology": {
+                    "assignments": [{
+                        "span": {"snippet": "cameraP = (void *)0x801AB02C;"},
+                    }],
+                },
+            }),
+            ("address-of outside reviewed path", {"reason": "&masuPos"}),
+        ):
+            with self.subTest(label=label):
+                with self.assertRaises(module.CorrelatorError):
+                    module._reject_pointer_material(packet)
+
     def test_conflicting_primary_v3_aliases_return_structured_fail_closed_error(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

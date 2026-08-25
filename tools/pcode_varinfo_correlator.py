@@ -239,6 +239,58 @@ V3_STAGE_NAMES = {
 # a directory/file component such as ``0x0``; only the explicitly anchored
 # path fields below are allowed to do so.
 RAW_POINTER_TEXT_PATTERN = re.compile(r"0[xX][0-9a-fA-F]+")
+# A bare address is not allowed to rely on a ``0x`` prefix.  Runtime traces
+# commonly expose Wii addresses as eight-digit hexadecimal strings and some
+# transports stringify native addresses as decimal.  Keep this deliberately
+# conservative (digit-leading, six or more characters) so ordinary source
+# identifiers and authenticated SHA-256 values are not classified as
+# addresses; digest fields are exempted explicitly below.
+RAW_BARE_ADDRESS_TEXT_PATTERN = re.compile(r"(?<![A-Za-z0-9_.])[0-9][0-9A-Fa-f]{5,}(?![A-Za-z0-9_.])")
+# Capture-local identifiers deliberately contain long hexadecimal components,
+# but they are closed, typed identifiers rather than serialized native
+# addresses.  Permit them only under their schema-known field names and only
+# when the complete value matches the producer's fail-closed token grammar.
+SESSION_ID_PATTERN = re.compile(r"session-[0-9a-f]{16}\Z")
+OBJECT_TOKEN_PATTERN = re.compile(
+    r"(?:local|argument)-session-[0-9a-f]{16}-[0-9]{6}\Z"
+)
+PCODE_TOKEN_PATTERN = re.compile(r"pcode-session-[0-9a-f]{16}-[0-9]{6}\Z")
+IG_TOKEN_PATTERN = re.compile(
+    r"(?:hidden-)?ig-session-[0-9a-f]{16}-[0-9]{6}\Z"
+)
+EVENT_ID_PATTERN = re.compile(r"session-[0-9a-f]{16}-e[0-9]{6}\Z")
+GENERATION_ID_PATTERN = re.compile(r"(?:object|varinfo)-generation-[0-9]{6}\Z")
+OPAQUE_CAPTURE_ID_PATTERNS = {
+    "session_id": SESSION_ID_PATTERN,
+    "object_token": OBJECT_TOKEN_PATTERN,
+    "source_object_token": OBJECT_TOKEN_PATTERN,
+    "destination_object_token": OBJECT_TOKEN_PATTERN,
+    "pcode_token": PCODE_TOKEN_PATTERN,
+    "pcode_tokens": PCODE_TOKEN_PATTERN,
+    "ig_token": IG_TOKEN_PATTERN,
+    "hidden_owner_token": IG_TOKEN_PATTERN,
+    "event_id": EVENT_ID_PATTERN,
+    "event_ids": EVENT_ID_PATTERN,
+    "evidence_event_ids": EVENT_ID_PATTERN,
+    "generation_id": GENERATION_ID_PATTERN,
+    "generation_ids": GENERATION_ID_PATTERN,
+    "object_generation_id": GENERATION_ID_PATTERN,
+    "varinfo_generation_id": GENERATION_ID_PATTERN,
+    # Authenticated four-byte instruction encoding, cross-checked against the
+    # integer PPC word by the machine-event validator.
+    "ppc_bytes": re.compile(r"[0-9a-f]{8}\Z"),
+}
+# Only a reviewed C lvalue address-of expression is allowed in the two source
+# chronology argument paths.  This is intentionally narrower than a general
+# C expression: it accepts ``&masuPos`` and ``&savedPos[playerNo]`` (plus
+# member/index suffixes), but not ``&&x``, bitwise ``a & b``, pointer arithmetic,
+# calls, casts, or hexadecimal/decimal address payloads.
+SOURCE_ADDRESS_OF_EXPRESSION_PATTERN = re.compile(
+    r"\s*&\s*[A-Za-z_][A-Za-z0-9_]*"
+    r"(?:\s*(?:->|\.)\s*[A-Za-z_][A-Za-z0-9_]*"
+    r"|\s*\[\s*(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]+)\s*\])*\s*"
+    r"$"
+)
 POINTER_KEY_PARTS = frozenset(
     {
         "address",
@@ -286,8 +338,51 @@ EXTERNALLY_ANCHORED_PATH_KEYS = frozenset(
         "cwd",
     }
 )
+# These causal-map artifact records intentionally omit ``size`` because their
+# payload digest is already carried by the authenticated producer packet.  A
+# bare ``path`` key must not become a general escape hatch, so admit it only at
+# these exact schema locations and only when its containing mapping has the
+# complete expected shape.
+SCHEMA_ANCHORED_PATH_RECORDS = {
+    ("capture", "path"): frozenset({"path", "sha256"}),
+    ("source_span_manifest", "path"): frozenset({"path", "sha256"}),
+    ("frontend_chronology", "path"): frozenset(
+        {"status", "path", "sha256", "packet_sha256", "events"}
+    ),
+    ("source_evaluation_chronology", "source", "path"): frozenset(
+        {"path", "sha256", "function", "function_lines", "body_lines"}
+    ),
+}
 TEXT_REASON_KEYS = frozenset({"reason", "reasons"})
 TEXT_LIMITATION_KEYS = frozenset({"limitation", "limitations"})
+
+
+def _source_address_of_expression_path(path: tuple[str, ...]) -> bool:
+    """Return whether *path* is a reviewed source-expression container.
+
+    Source chronology is the only place where a unary ``&`` is source syntax
+    rather than a serialized runtime address.  Keep the allowance tied to the
+    authenticated causal-map field names; generic ``arguments`` or ``rhs``
+    keys are not sufficient because they could carry arbitrary payload text.
+    """
+
+    return path[-3:] in {
+        ("source_evaluation_chronology", "calls", "arguments"),
+        ("source_evaluation_chronology", "assignments", "rhs"),
+        ("joined_objects", "call_return_chronology", "arguments"),
+    } or path[-2:] == ("call_return_chronology", "arguments")
+
+
+def _reviewed_source_text_path(path: tuple[str, ...]) -> bool:
+    """Identify exact donor_cfg source slices, never generic free text."""
+
+    return path[-4:] in {
+        ("source_evaluation_chronology", "assignments", "span", "snippet"),
+        ("source_evaluation_chronology", "calls", "span", "snippet"),
+        ("source_evaluation_chronology", "control_events", "span", "snippet"),
+    } or path[-3:] == (
+        "source_evaluation_chronology", "control_events", "condition"
+    )
 
 
 @dataclass(frozen=True)
@@ -459,6 +554,8 @@ def _reject_pointer_material(
     *,
     _path_allowed: bool = False,
     _argv_element: bool = False,
+    _path: tuple[str, ...] = (),
+    _field_key: str | None = None,
 ) -> None:
     """Reject raw pointer keys, values, and free-text address spellings.
 
@@ -470,11 +567,26 @@ def _reject_pointer_material(
     """
 
     if isinstance(value, Mapping):
+        descriptor_path_field = (
+            set(value) == {"path", "sha256", "size"}
+            and isinstance(value.get("path"), str)
+            and isinstance(value.get("sha256"), str)
+            and isinstance(value.get("size"), int)
+            and not isinstance(value.get("size"), bool)
+        )
         for raw_key, child in value.items():
             if not isinstance(raw_key, str):
                 raise CorrelatorError(f"{where}: JSON object keys must be strings")
             key = raw_key.casefold()
-            if _pointer_key_name(raw_key) and key not in {"process_id", "thread_id"}:
+            if _pointer_key_name(raw_key) and key not in {
+                "process_id",
+                "thread_id",
+                # A closed machine-emission structure containing a stack
+                # base-register identity and signed stack offset.  It never
+                # contains a native address and is validated before this
+                # defense-in-depth walk.
+                "address_definition",
+            }:
                 raise CorrelatorError(f"{where}: raw pointer/address key is forbidden")
             if key in TEXT_REASON_KEYS:
                 if child is not None and not isinstance(child, str):
@@ -485,12 +597,23 @@ def _reject_pointer_material(
                     or any(not isinstance(item, str) for item in child)
                 ):
                     raise CorrelatorError(f"{where}.{raw_key}: limitations must be a string list or null")
-            child_path_allowed = key in EXTERNALLY_ANCHORED_PATH_KEYS
+            child_path = (*_path, key)
+            expected_record_keys = SCHEMA_ANCHORED_PATH_RECORDS.get(child_path)
+            schema_path_field = (
+                key == "path"
+                and expected_record_keys is not None
+                and set(value) == expected_record_keys
+            )
+            child_path_allowed = key in EXTERNALLY_ANCHORED_PATH_KEYS or (
+                key == "path" and (descriptor_path_field or schema_path_field)
+            )
             _reject_pointer_material(
                 child,
                 f"{where}.{raw_key}",
                 _path_allowed=child_path_allowed,
                 _argv_element=(key == "argv"),
+                _path=child_path,
+                _field_key=key,
             )
         return
     if isinstance(value, list):
@@ -500,15 +623,56 @@ def _reject_pointer_material(
                 f"{where}[{index}]",
                 _path_allowed=_path_allowed,
                 _argv_element=_argv_element,
+                _path=_path,
+                _field_key=_field_key,
             )
         return
-    if isinstance(value, str) and not _path_allowed and RAW_POINTER_TEXT_PATTERN.search(value):
-        if _argv_element and _absolute_path_text(value):
-            # Exact argv is subsequently compared with the external trust
-            # root.  Permit a hexadecimal-looking directory component only
-            # when the complete element is path-shaped; bare address text or
-            # flag payloads remain forbidden.
+    if not isinstance(value, str):
+        return
+
+    # Source chronology call arguments and assignment RHS values are reviewed
+    # C source text, not a debugger transport.  Permit only the narrow
+    # address-of grammar and only at authenticated source-expression paths.
+    # Ordinary arguments such as ``playerNo`` or ``100.0`` continue through
+    # the normal text checks.
+    if "&" in value:
+        if _source_address_of_expression_path(_path):
+            if SOURCE_ADDRESS_OF_EXPRESSION_PATTERN.fullmatch(value) is not None:
+                return
+            raise CorrelatorError(f"{where}: raw pointer/address text is forbidden")
+        elif _reviewed_source_text_path(_path):
+            # The full text is still checked below for hexadecimal/decimal
+            # address material.  This exception covers only C operators in an
+            # authenticated source slice (``&``, ``&&`` or bitwise ``&``).
+            pass
+        else:
+            raise CorrelatorError(f"{where}: raw pointer/address text is forbidden")
+
+    if _argv_element and _absolute_path_text(value):
+        # Exact argv is subsequently compared with the external trust root.
+        # Permit a hexadecimal-looking directory component only when the
+        # complete element is path-shaped; bare address text or flag payloads
+        # remain forbidden.
+        return
+
+    if _path_allowed:
+        # A path field is allowed to contain an address-looking component, but
+        # a bare address is still not a path and must not be smuggled through
+        # the path exception.
+        if _absolute_path_text(value):
             return
+
+    # SHA-256 values are authenticated digests, not runtime addresses.  They
+    # are accepted only in explicitly named digest fields; all other bare
+    # digit-leading address spellings remain fail-closed.
+    opaque_pattern = OPAQUE_CAPTURE_ID_PATTERNS.get(_field_key or "")
+    if opaque_pattern is not None and opaque_pattern.fullmatch(value) is not None:
+        return
+    digest_field = bool(_field_key and _field_key.casefold().endswith("sha256"))
+    if not digest_field and (
+        RAW_POINTER_TEXT_PATTERN.search(value)
+        or RAW_BARE_ADDRESS_TEXT_PATTERN.search(value)
+    ):
         raise CorrelatorError(f"{where}: raw pointer/address text is forbidden")
 
 
