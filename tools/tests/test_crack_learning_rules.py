@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tools import candidate_interaction_planner as planner
 from tools import crack_learning_rules as rules
 
 
@@ -127,6 +128,108 @@ def _assignment_cycle_report() -> dict[str, object]:
             _instruction(address, right, diff_kind=kind, branch_dest=branch_dest)
         )
     return _report("ev_CapMiracleCoinTrade", target, candidate)
+
+
+def _allocator_swap_report() -> dict[str, object]:
+    target_text = [
+        "stwu r1, -64(r1)",
+        "mr r27, r3",
+        "mr r26, r4",
+        "addi r3, r27, 1",
+        "addi r4, r26, -1",
+        "bl mbDiceExec",
+        "mr r26, r3",
+        "add r3, r27, r26",
+        "blr",
+    ]
+    candidate_text = [
+        "stwu r1, -64(r1)",
+        "mr r26, r3",
+        "mr r27, r4",
+        "addi r3, r26, 1",
+        "addi r4, r27, -1",
+        "bl mbDiceExec",
+        "mr r27, r3",
+        "add r3, r26, r27",
+        "blr",
+    ]
+    target: list[dict[str, object]] = []
+    candidate: list[dict[str, object]] = []
+    for index, (left, right) in enumerate(zip(target_text, candidate_text)):
+        address = 100 + index * 4
+        kind = "DIFF_ARG_MISMATCH" if left != right else None
+        target.append(_instruction(address, left, diff_kind=kind))
+        candidate.append(_instruction(address, right, diff_kind=kind))
+    return _report(
+        "mbev_CapKuribo",
+        target,
+        candidate,
+        target_size=2612,
+        candidate_size=2612,
+    )
+
+
+def _allocator_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _allocator_swap_report()
+    selections = [
+        ("control", "existing", "split", "1"),
+        ("declaration-only", "long-lived-first", "split", "2"),
+        ("boundary-only", "existing", "fused", "3"),
+    ]
+    return {
+        "schema": rules.ALLOCATOR_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "stack_frame_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "varinfo_receipt_sha256": "4" * 64,
+            "source_boundary_receipt_sha256": "5" * 64,
+        },
+        "owners": [
+            {
+                "name": "playerNo",
+                "usage_class": 13,
+                "target_register": "r27",
+                "candidate_register": "r26",
+                "lifetime_role": "long_lived",
+                "evidence_sha256": "6" * 64,
+            },
+            {
+                "name": "diceValue",
+                "usage_class": 14,
+                "target_register": "r26",
+                "candidate_register": "r27",
+                "lifetime_role": "producer_consumer_boundary",
+                "evidence_sha256": "7" * 64,
+            },
+        ],
+        "boundary": {
+            "producer": "mbDiceExec return value",
+            "consumer": "kuriboCoinTbl indexed load",
+            "transformations": ["subtract one", "table lookup"],
+            "evidence_sha256": "8" * 64,
+        },
+        "observations": [
+            {
+                "selection": {
+                    "declaration_chronology": declaration,
+                    "value_identity_boundary": boundary,
+                },
+                "candidate_id": candidate_id,
+                "source_sha256": source_digit * 64,
+                "object_sha256": "d" * 64,
+            }
+            for candidate_id, declaration, boundary, source_digit in selections
+        ],
+    }
 
 
 def _switch_fpr_report(*, include_switch: bool = True) -> dict[str, object]:
@@ -269,6 +372,100 @@ class CrackLearningRulesTest(unittest.TestCase):
             1,
         )
 
+    def test_allocator_two_register_swap_emits_only_missing_interaction(self) -> None:
+        report = _allocator_swap_report()
+        context = _allocator_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapKuribo",
+            allocator_context=context,
+        )
+        diagnosis = _evaluation(result, "allocator_two_register_swap_interaction")
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(
+            evidence["register_mapping"],
+            {"r26": "r27", "r27": "r26"},
+        )
+        self.assertEqual(evidence["observed_selection_count"], 3)
+        self.assertEqual(
+            evidence["missing_selections"],
+            [
+                {
+                    "declaration_chronology": "long-lived-first",
+                    "value_identity_boundary": "fused",
+                }
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            request_path = Path(directory) / "request.json"
+            request_path.write_text(
+                json.dumps(evidence["interaction_request"]), encoding="utf-8"
+            )
+            plan = planner.build_interaction_plan(request_path)
+        self.assertEqual(plan["summary"]["raw_cell_count"], 4)
+        self.assertEqual(plan["summary"]["observed_cell_count"], 3)
+        self.assertEqual(plan["summary"]["generate_and_compile_count"], 1)
+        runnable = [
+            cell for cell in plan["cells"] if cell["action"] == "generate_and_compile"
+        ]
+        self.assertEqual(
+            runnable[0]["selection"],
+            {
+                "declaration_chronology": "long-lived-first",
+                "value_identity_boundary": "fused",
+            },
+        )
+
+    def test_allocator_two_register_swap_fails_closed_on_unproved_context(self) -> None:
+        no_context = rules.diagnose_document(
+            _allocator_swap_report(), focus_symbol="mbev_CapKuribo"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "allocator_two_register_swap_interaction")["matched"]
+        )
+
+        false_proof = _allocator_context()
+        false_proof["proofs"]["data_values_exact"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "data_values_exact"):
+            rules.diagnose_document(
+                _allocator_swap_report(),
+                focus_symbol="mbev_CapKuribo",
+                allocator_context=false_proof,
+            )
+
+        wrong_owner = _allocator_context()
+        wrong_owner["owners"][0]["target_register"] = "r25"  # type: ignore[index]
+        result = rules.diagnose_document(
+            _allocator_swap_report(),
+            focus_symbol="mbev_CapKuribo",
+            allocator_context=wrong_owner,
+        )
+        self.assertFalse(
+            _evaluation(result, "allocator_two_register_swap_interaction")["matched"]
+        )
+
+        wrong_report = _allocator_context()
+        wrong_report["proofs"]["objdiff_canonical_sha256"] = "0" * 64  # type: ignore[index]
+        result = rules.diagnose_document(
+            _allocator_swap_report(),
+            focus_symbol="mbev_CapKuribo",
+            allocator_context=wrong_report,
+        )
+        self.assertFalse(
+            _evaluation(result, "allocator_two_register_swap_interaction")["matched"]
+        )
+
+        uppercase_hash = _allocator_context()
+        uppercase_hash["proofs"]["strict_report_sha256"] = "A" * 64  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "lowercase"):
+            rules.diagnose_document(
+                _allocator_swap_report(),
+                focus_symbol="mbev_CapKuribo",
+                allocator_context=uppercase_hash,
+            )
+
     def test_switch_case_scoped_fpr_lifetimes_require_frame_join(self) -> None:
         result = rules.diagnose_document(
             _switch_fpr_report(), focus_symbol="ev_CapBobleOMExec"
@@ -384,6 +581,38 @@ class CrackLearningRulesTest(unittest.TestCase):
         self.assertEqual(
             json.loads(output.getvalue()),
             rules.diagnose_document(report, focus_symbol="ev_CapMiracleCoinTrade"),
+        )
+
+    def test_allocator_context_cli_emits_the_same_closed_document(self) -> None:
+        report = _allocator_swap_report()
+        context = _allocator_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "context.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapKuribo",
+                            "--allocator-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapKuribo",
+                allocator_context=context,
+            ),
         )
 
 

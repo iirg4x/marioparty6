@@ -20,12 +20,14 @@ from typing import Any, Mapping, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v1"
-SCHEMA_VERSION = 1
+SCHEMA = "crack_learning_diagnosis/v2"
+SCHEMA_VERSION = 2
 HASH_FIELD = "diagnosis_sha256"
+ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 
 _REGISTER_RE = re.compile(r"\b(?P<kind>[rRfF])(?P<number>[0-9]|[12][0-9]|3[01])\b")
 _STACK_RE = re.compile(
@@ -58,10 +60,28 @@ _CONDITIONAL_MNEMONICS = frozenset(
 _SWITCH_MNEMONICS = frozenset({"bctr", "bcctr"})
 _AGGREGATE_LOADS = frozenset({"lfs", "lfd", "lwz", "lhz", "lha", "lbz"})
 _AGGREGATE_STORES = frozenset({"stfs", "stfd", "stw", "sth", "stb"})
+_SOURCE_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
+_ALLOCATOR_PROOF_FLAGS = (
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "stack_frame_exact",
+    "protected_siblings_preserved",
+)
+_ALLOCATOR_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "varinfo_receipt_sha256",
+    "source_boundary_receipt_sha256",
+)
 
 _RULE_ORDER = (
     "explicit_else_return_cfg",
     "assignment_condition_saved_gpr_cycle",
+    "allocator_two_register_swap_interaction",
     "switch_case_scoped_fpr_lifetimes",
     "aggregate_self_copy_final_consumer",
 )
@@ -144,6 +164,190 @@ def _function_size(symbol: Mapping[str, Any] | None) -> int | None:
     if symbol is None:
         return None
     return causal_reducer._parse_number(symbol.get("size"))
+
+
+def _closed_context(
+    value: Any,
+    *,
+    allowed: set[str],
+    required: set[str],
+    label: str,
+) -> Mapping[str, Any]:
+    if not isinstance(value, dict):
+        raise LearningInputError(f"{label} must be an object")
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise LearningInputError(f"{label} contains unknown field {unknown[0]!r}")
+    missing = sorted(required - set(value))
+    if missing:
+        raise LearningInputError(f"{label} lacks required field {missing[0]!r}")
+    return value
+
+
+def _context_text(value: Any, label: str, *, limit: int = 256) -> str:
+    if not isinstance(value, str) or not value.strip() or "\x00" in value:
+        raise LearningInputError(f"{label} must be non-empty text")
+    result = value.strip()
+    if len(result) > limit:
+        raise LearningInputError(f"{label} exceeds {limit} characters")
+    return result
+
+
+def _context_identifier(value: Any, label: str) -> str:
+    result = _context_text(value, label, limit=128)
+    if _SOURCE_IDENTIFIER_RE.fullmatch(result) is None:
+        raise LearningInputError(f"{label} must be a C source identifier")
+    return result
+
+
+def _context_sha256(value: Any, label: str) -> str:
+    result = _context_text(value, label, limit=64)
+    if result != result.lower():
+        raise LearningInputError(f"{label} must be lowercase")
+    if _SHA256_RE.fullmatch(result) is None:
+        raise LearningInputError(f"{label} must be a lowercase SHA-256 digest")
+    return result
+
+
+def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "owners", "boundary", "observations"},
+        required={"schema", "proofs", "owners", "boundary"},
+        label="allocator context",
+    )
+    if _context_text(context.get("schema"), "allocator context schema") != ALLOCATOR_CONTEXT_SCHEMA:
+        raise LearningInputError(
+            f"allocator context schema must be {ALLOCATOR_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_ALLOCATOR_PROOF_FLAGS) | set(_ALLOCATOR_PROOF_HASHES)
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="allocator context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _ALLOCATOR_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"allocator context proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _ALLOCATOR_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"allocator context proofs.{field}"
+        )
+
+    raw_owners = context.get("owners")
+    if not isinstance(raw_owners, list) or len(raw_owners) != 2:
+        raise LearningInputError("allocator context owners must contain exactly two entries")
+    owners: list[dict[str, Any]] = []
+    owner_fields = {
+        "name",
+        "usage_class",
+        "target_register",
+        "candidate_register",
+        "lifetime_role",
+        "evidence_sha256",
+    }
+    for index, raw_owner in enumerate(raw_owners):
+        owner = _closed_context(
+            raw_owner,
+            allowed=owner_fields,
+            required=owner_fields,
+            label=f"allocator context owners[{index}]",
+        )
+        usage_class = owner.get("usage_class")
+        if (
+            isinstance(usage_class, bool)
+            or not isinstance(usage_class, int)
+            or not 0 <= usage_class <= 1_000_000
+        ):
+            raise LearningInputError(
+                f"allocator context owners[{index}].usage_class must be a non-negative integer"
+            )
+        target_register = _context_text(
+            owner.get("target_register"),
+            f"allocator context owners[{index}].target_register",
+            limit=3,
+        ).lower()
+        candidate_register = _context_text(
+            owner.get("candidate_register"),
+            f"allocator context owners[{index}].candidate_register",
+            limit=3,
+        ).lower()
+        if not _saved(target_register, "r") or not _saved(candidate_register, "r"):
+            raise LearningInputError(
+                f"allocator context owners[{index}] registers must be nonvolatile GPRs"
+            )
+        lifetime_role = _context_text(
+            owner.get("lifetime_role"),
+            f"allocator context owners[{index}].lifetime_role",
+        )
+        if lifetime_role not in {"long_lived", "producer_consumer_boundary"}:
+            raise LearningInputError(
+                f"allocator context owners[{index}].lifetime_role is unsupported"
+            )
+        owners.append(
+            {
+                "name": _context_identifier(
+                    owner.get("name"), f"allocator context owners[{index}].name"
+                ),
+                "usage_class": usage_class,
+                "target_register": target_register,
+                "candidate_register": candidate_register,
+                "lifetime_role": lifetime_role,
+                "evidence_sha256": _context_sha256(
+                    owner.get("evidence_sha256"),
+                    f"allocator context owners[{index}].evidence_sha256",
+                ),
+            }
+        )
+    for field in ("name", "usage_class", "target_register", "candidate_register", "lifetime_role"):
+        if len({owner[field] for owner in owners}) != 2:
+            raise LearningInputError(f"allocator context owner {field} values must be distinct")
+
+    boundary = _closed_context(
+        context.get("boundary"),
+        allowed={"producer", "consumer", "transformations", "evidence_sha256"},
+        required={"producer", "consumer", "transformations", "evidence_sha256"},
+        label="allocator context boundary",
+    )
+    transformations = boundary.get("transformations")
+    if not isinstance(transformations, list) or not 1 <= len(transformations) <= 8:
+        raise LearningInputError(
+            "allocator context boundary.transformations must contain 1-8 entries"
+        )
+    normalized_transformations = [
+        _context_text(item, f"allocator context boundary.transformations[{index}]", limit=128)
+        for index, item in enumerate(transformations)
+    ]
+    if len(set(normalized_transformations)) != len(normalized_transformations):
+        raise LearningInputError(
+            "allocator context boundary.transformations must be unique"
+        )
+    normalized_boundary = {
+        "producer": _context_text(boundary.get("producer"), "allocator context boundary.producer"),
+        "consumer": _context_text(boundary.get("consumer"), "allocator context boundary.consumer"),
+        "transformations": normalized_transformations,
+        "evidence_sha256": _context_sha256(
+            boundary.get("evidence_sha256"),
+            "allocator context boundary.evidence_sha256",
+        ),
+    }
+
+    observations = context.get("observations", [])
+    if not isinstance(observations, list) or len(observations) > 4:
+        raise LearningInputError("allocator context observations must contain at most four entries")
+    if any(not isinstance(item, dict) for item in observations):
+        raise LearningInputError("allocator context observations must contain objects")
+    return {
+        "schema": ALLOCATOR_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "owners": sorted(owners, key=lambda item: item["name"]),
+        "boundary": normalized_boundary,
+        "observations": [dict(item) for item in observations],
+    }
 
 
 def _evaluation(
@@ -422,6 +626,302 @@ def _assignment_condition_evaluation(
                 "branch_relative_targets",
                 "relocations",
                 "non_register_operands",
+            ],
+        },
+    )
+
+
+def _allocator_interaction_request(
+    *,
+    focus_symbol: str,
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    owners = {str(item["lifetime_role"]): item for item in context["owners"]}
+    long_lived = owners["long_lived"]
+    boundary_owner = owners["producer_consumer_boundary"]
+    boundary = context["boundary"]
+    request = {
+        "schema": interaction_planner.REQUEST_SCHEMA,
+        "planner_id": f"allocator-two-register-swap-{focus_symbol}",
+        "focus_symbols": [focus_symbol],
+        "axes": [
+            {
+                "id": "declaration_chronology",
+                "hypothesis": (
+                    "The authenticated long-lived owner must enter frontend chronology "
+                    "before the owner born at the producer-consumer boundary."
+                ),
+                "control_level": "existing",
+                "levels": [
+                    {
+                        "id": "existing",
+                        "topology_token": "existing-declaration-chronology",
+                        "source_action": "Keep the measured declaration chronology.",
+                        "evidence": [
+                            f"VarInfo usage class {long_lived['usage_class']} for {long_lived['name']}",
+                            str(long_lived["evidence_sha256"]),
+                        ],
+                        "admissibility": "natural",
+                    },
+                    {
+                        "id": "long-lived-first",
+                        "topology_token": "long-lived-owner-declared-first",
+                        "source_action": (
+                            f"Declare the authenticated long-lived owner {long_lived['name']} "
+                            f"before {boundary_owner['name']}."
+                        ),
+                        "evidence": [
+                            (
+                                f"target {long_lived['name']}={long_lived['target_register']} "
+                                f"candidate={long_lived['candidate_register']}"
+                            ),
+                            str(context["proofs"]["varinfo_receipt_sha256"]),
+                        ],
+                        "admissibility": "natural",
+                    },
+                ],
+            },
+            {
+                "id": "value_identity_boundary",
+                "hypothesis": (
+                    "The producer result must die where the retained consumer value is born, "
+                    "at the authenticated source boundary."
+                ),
+                "control_level": "split",
+                "levels": [
+                    {
+                        "id": "split",
+                        "topology_token": "split-producer-consumer-identity",
+                        "source_action": "Keep the measured split producer and consumer identities.",
+                        "evidence": [
+                            f"producer {boundary['producer']}",
+                            str(boundary["evidence_sha256"]),
+                        ],
+                        "admissibility": "natural",
+                    },
+                    {
+                        "id": "fused",
+                        "topology_token": "fused-producer-consumer-boundary",
+                        "source_action": (
+                            f"Fuse {boundary['producer']} into {boundary['consumer']} across "
+                            f"the authenticated transformations: {', '.join(boundary['transformations'])}."
+                        ),
+                        "evidence": [
+                            f"boundary owner {boundary_owner['name']} usage class {boundary_owner['usage_class']}",
+                            str(context["proofs"]["source_boundary_receipt_sha256"]),
+                        ],
+                        "admissibility": "natural",
+                    },
+                ],
+            },
+        ],
+        "constraints": [],
+        "observations": context["observations"],
+        "max_cells": 4,
+    }
+    try:
+        interaction_planner._parse_request(request)
+    except interaction_planner.InteractionPlanError as exc:
+        raise LearningInputError(
+            f"allocator context cannot form a closed interaction request: {exc}"
+        ) from exc
+    return request
+
+
+def _allocator_two_register_swap_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "allocator_two_register_swap_interaction"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated allocator two-register-swap context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the allocator context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if target_size is None or target_size != candidate_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate function sizes are not exact",
+            evidence={"target_size": target_size, "candidate_size": candidate_size},
+        )
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if target_frame is None or target_frame != candidate_frame:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate stack frames are not exact and measurable",
+            evidence={"target_frame": target_frame, "candidate_frame": candidate_frame},
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    if not rows or any(
+        left is None
+        or right is None
+        or not _compatible_register_only_pair(left, right)
+        for left, right in rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the residual is not an operation-, CFG-, relocation-, immediate-, "
+                "and row-count-identical register-only difference"
+            ),
+        )
+
+    mapping: dict[str, str] = {}
+    reverse: dict[str, str] = {}
+    mismatch_rows: list[int] = []
+    for index, (left, right) in enumerate(rows):
+        assert left is not None and right is not None
+        left_registers = _registers(left.formatted)
+        right_registers = _registers(right.formatted)
+        if len(left_registers) != len(right_registers):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a register-only row has a different operand count",
+            )
+        row_mismatch = False
+        for target_register, candidate_register in zip(left_registers, right_registers):
+            if target_register == candidate_register:
+                continue
+            if not (
+                _saved(target_register, "r") and _saved(candidate_register, "r")
+            ):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the residual is not confined to nonvolatile GPR ownership",
+                )
+            if mapping.get(target_register, candidate_register) != candidate_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is inconsistent",
+                )
+            if reverse.get(candidate_register, target_register) != target_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the target-to-candidate register mapping is not one-to-one",
+                )
+            mapping[target_register] = candidate_register
+            reverse[candidate_register] = target_register
+            row_mismatch = True
+        if row_mismatch:
+            mismatch_rows.append(index)
+
+    cycles = _closed_cycles(mapping)
+    if len(cycles) != 1 or len(cycles[0]) != 2 or len(mapping) != 2:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the register residual is not one complete two-register swap",
+            evidence={
+                "register_mapping": dict(sorted(mapping.items())),
+                "cycles": cycles,
+                "mismatch_rows": mismatch_rows,
+            },
+        )
+    context_mapping = {
+        str(owner["target_register"]): str(owner["candidate_register"])
+        for owner in context["owners"]
+    }
+    if mapping != context_mapping:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the VarInfo owner mapping does not authenticate the physical swap",
+            evidence={
+                "physical_mapping": dict(sorted(mapping.items())),
+                "context_mapping": dict(sorted(context_mapping.items())),
+            },
+        )
+
+    request = _allocator_interaction_request(
+        focus_symbol=pair.name,
+        context=context,
+    )
+    normalized_request = interaction_planner._parse_request(request)
+    observed = {
+        tuple(sorted(item["selection"].items()))
+        for item in normalized_request["observations"]
+    }
+    axes = normalized_request["axes"]
+    selections = [
+        {
+            axes[0]["id"]: left["id"],
+            axes[1]["id"]: right["id"],
+        }
+        for left in axes[0]["levels"]
+        for right in axes[1]["levels"]
+    ]
+    missing = [
+        dict(sorted(selection.items()))
+        for selection in selections
+        if tuple(sorted(selection.items())) not in observed
+    ]
+    owners_by_role = {
+        str(item["lifetime_role"]): item for item in context["owners"]
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an otherwise exact function contains one complete two-register GPR swap, "
+            "authenticated by VarInfo owners and a producer-consumer identity boundary"
+        ),
+        confidence=0.99,
+        source_class="allocator_two_register_swap_factorial_interaction",
+        recommendation=(
+            "Run the emitted bounded interaction request; compile only missing cells and "
+            "do not perform global declaration or register-shaping permutations."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "register_mapping": dict(sorted(mapping.items())),
+            "cycle": cycles[0],
+            "mismatch_rows": mismatch_rows,
+            "owners": owners_by_role,
+            "boundary": context["boundary"],
+            "proofs": context["proofs"],
+            "interaction_request": request,
+            "interaction_request_canonical_sha256": _sha256(_canonical(request)),
+            "observed_selection_count": len(observed),
+            "missing_selections": missing,
+            "structural_invariants": [
+                "function_size",
+                "stack_frame",
+                "mnemonic_sequence",
+                "branch_relative_targets",
+                "relocations",
+                "non_register_operands",
+                "data_values",
+                "protected_siblings",
             ],
         },
     )
@@ -709,6 +1209,7 @@ def diagnose_document(
     *,
     focus_symbol: str,
     same_tu_donor_symbols: Sequence[str] = (),
+    allocator_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a self-hashed, authority-free diagnosis for one function."""
 
@@ -720,8 +1221,14 @@ def diagnose_document(
     if any(not isinstance(value, str) or not value.strip() for value in same_tu_donor_symbols):
         raise LearningInputError("same_tu_donor_symbols must contain non-empty text")
     donors = tuple(value.strip() for value in same_tu_donor_symbols)
+    normalized_allocator_context = (
+        _parse_allocator_context(allocator_context)
+        if allocator_context is not None
+        else None
+    )
     pair = _pair(document, focus)
     target, candidate = _entries(pair)
+    objdiff_canonical_sha256 = _sha256(_canonical(document))
     try:
         audit = causal_reducer.audit_document(
             document,
@@ -737,6 +1244,13 @@ def diagnose_document(
     evaluations = [
         _explicit_else_evaluation(audit),
         _assignment_condition_evaluation(pair, target, candidate),
+        _allocator_two_register_swap_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_allocator_context,
+            objdiff_canonical_sha256,
+        ),
         _switch_fpr_evaluation(pair, target, candidate, audit),
         _aggregate_self_copy_evaluation(document, target, candidate, donors),
     ]
@@ -749,8 +1263,13 @@ def diagnose_document(
         "schema_version": SCHEMA_VERSION,
         "focus_symbol": focus,
         "inputs": {
-            "objdiff_canonical_sha256": _sha256(_canonical(document)),
+            "objdiff_canonical_sha256": objdiff_canonical_sha256,
             "same_tu_donor_symbols": list(dict.fromkeys(donors)),
+            "allocator_context_canonical_sha256": (
+                _sha256(_canonical(normalized_allocator_context))
+                if normalized_allocator_context is not None
+                else None
+            ),
         },
         "implementations": {
             "learning_rules": {
@@ -761,6 +1280,11 @@ def diagnose_document(
                 "path": reducer_path.name,
                 "schema_version": audit.get("schema_version"),
                 "sha256": _sha256(reducer_path.read_bytes()),
+            },
+            "interaction_planner": {
+                "path": Path(interaction_planner.__file__).name,
+                "schema": interaction_planner.REQUEST_SCHEMA,
+                "sha256": _sha256(Path(interaction_planner.__file__).read_bytes()),
             },
         },
         "evaluations": evaluations,
@@ -775,15 +1299,15 @@ def diagnose_document(
     return _with_self_hash(body)
 
 
-def _load_json(path: Path) -> Mapping[str, Any]:
+def _load_json(path: Path, *, label: str = "objdiff report") -> Mapping[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise LearningInputError(f"cannot read objdiff report {path}: {exc}") from exc
+        raise LearningInputError(f"cannot read {label} {path}: {exc}") from exc
     except json.JSONDecodeError as exc:
-        raise LearningInputError(f"invalid JSON in objdiff report {path}: {exc}") from exc
+        raise LearningInputError(f"invalid JSON in {label} {path}: {exc}") from exc
     if not isinstance(value, Mapping):
-        raise LearningInputError(f"objdiff report {path} must contain a JSON object")
+        raise LearningInputError(f"{label} {path} must contain a JSON object")
     return value
 
 
@@ -800,6 +1324,14 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="same_tu_donors",
         help="explicitly named exact donor function from the same object report",
     )
+    parser.add_argument(
+        "--allocator-context",
+        type=Path,
+        help=(
+            "authenticated allocator_two_register_swap_context/v1 JSON with proof, "
+            "VarInfo owner, boundary, and optional measured-cell evidence"
+        ),
+    )
     return parser
 
 
@@ -810,6 +1342,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             _load_json(args.report),
             focus_symbol=args.focus_symbol,
             same_tu_donor_symbols=args.same_tu_donors,
+            allocator_context=(
+                _load_json(args.allocator_context, label="allocator context")
+                if args.allocator_context is not None
+                else None
+            ),
         )
     except LearningInputError as exc:
         print(f"error: {exc}", file=sys.stderr)
