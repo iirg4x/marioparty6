@@ -818,11 +818,76 @@ def _value_equivalent_owner_shift(pair: Mapping[str, Any]) -> int | None:
     return target_address - candidate_address
 
 
+def _pair_mentions_section(pair: Mapping[str, Any], section: str) -> bool:
+    for side_name in ("target", "candidate"):
+        side = pair.get(side_name) if isinstance(pair.get(side_name), Mapping) else {}
+        owner = side.get("owner") if isinstance(side.get("owner"), Mapping) else {}
+        if owner.get("section") == section:
+            return True
+    return False
+
+
+def _missing_owner_extent_contract(
+    producer_pair: Mapping[str, Any],
+    delta: int,
+    all_tu_pairs: Sequence[Mapping[str, Any]],
+) -> str | None:
+    target = producer_pair.get("target") if isinstance(producer_pair.get("target"), Mapping) else {}
+    target_owner = target.get("owner") if isinstance(target.get("owner"), Mapping) else {}
+    producer_address = _int(target_owner.get("address"))
+    producer_size = _int(target_owner.get("size_bytes"))
+    if producer_address is None or producer_size is None or producer_size <= 0:
+        return None
+    if producer_size == delta:
+        return "exact_owner_size_equals_downstream_delta"
+    if producer_size > delta:
+        return None
+    witnesses: set[tuple[int, int, int]] = set()
+    for pair in all_tu_pairs:
+        if _value_equivalent_owner_shift(pair) != delta:
+            continue
+        downstream_target = pair.get("target") if isinstance(pair.get("target"), Mapping) else {}
+        downstream_candidate = (
+            pair.get("candidate") if isinstance(pair.get("candidate"), Mapping) else {}
+        )
+        target_successor = (
+            downstream_target.get("owner")
+            if isinstance(downstream_target.get("owner"), Mapping)
+            else {}
+        )
+        candidate_successor = (
+            downstream_candidate.get("owner")
+            if isinstance(downstream_candidate.get("owner"), Mapping)
+            else {}
+        )
+        target_address = _int(target_successor.get("address"))
+        candidate_address = _int(candidate_successor.get("address"))
+        successor_size = _int(target_successor.get("size_bytes"))
+        if (
+            target_address is None
+            or candidate_address is None
+            or successor_size is None
+            or successor_size not in {4, 8}
+            or candidate_address != producer_address
+        ):
+            continue
+        expected_target_address = (
+            (producer_address + producer_size + successor_size - 1) // successor_size
+        ) * successor_size
+        if target_address == expected_target_address == producer_address + delta:
+            witnesses.add((target_address, candidate_address, successor_size))
+    if len(witnesses) == 1:
+        return "owner_size_plus_natural_successor_alignment"
+    return None
+
+
 def _tu_pool_chronology_diagnosis(
     target_side: Mapping[str, Any],
     candidate_side: Mapping[str, Any],
     function: str,
     focus_pairs: Sequence[Mapping[str, Any]],
+    *,
+    all_tu_pairs: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Attribute a uniform downstream pool shift to one authenticated missing producer."""
 
@@ -864,9 +929,10 @@ def _tu_pool_chronology_diagnosis(
         for symbol in _sdata2_objects(candidate_side)
         if (raw := _decode_data(symbol)) is not None
     }
-    producer_candidates: list[tuple[Mapping[str, Any], dict[str, Any]]] = []
-    for pair in _all_function_pool_pairs(target_side, candidate_side):
-        if pair.get("classification") != "literal_value_mismatch":
+    producer_candidates: list[tuple[Mapping[str, Any], dict[str, Any], str, str]] = []
+    for pair in all_tu_pairs or _all_function_pool_pairs(target_side, candidate_side):
+        classification = pair.get("classification")
+        if classification not in {"literal_value_mismatch", "mapped_pool_contract"}:
             continue
         target = pair.get("target") if isinstance(pair.get("target"), Mapping) else None
         candidate = pair.get("candidate") if isinstance(pair.get("candidate"), Mapping) else None
@@ -878,6 +944,16 @@ def _tu_pool_chronology_diagnosis(
         candidate_relocation = candidate.get("relocation") if isinstance(candidate.get("relocation"), Mapping) else {}
         target_address = _int(target_owner.get("address"))
         target_raw_hex = target_owner.get("bytes")
+        candidate_external_contract = (
+            classification == "mapped_pool_contract"
+            and target_owner.get("name") == candidate_owner.get("name")
+            and target_owner.get("owner_class") == candidate_owner.get("owner_class") == "named_label"
+            and candidate_owner.get("section") is None
+            and candidate_owner.get("address") is None
+            and candidate_owner.get("bytes") is None
+            and candidate_owner.get("size_bytes") is None
+        )
+        literal_value_mismatch = classification == "literal_value_mismatch"
         try:
             target_raw = bytes.fromhex(target_raw_hex) if isinstance(target_raw_hex, str) else None
         except ValueError:
@@ -888,9 +964,19 @@ def _tu_pool_chronology_diagnosis(
         producer_instruction_address = (
             _int(consumer_rows[0].get("instruction_address")) if len(consumer_rows) == 1 else None
         )
-        if not (
-            target_owner.get("section") == candidate_owner.get("section") == ".sdata2"
-            and target_owner.get("size_bytes") == candidate_owner.get("size_bytes") == delta
+        basic_producer_contract = (
+            target_owner.get("section") == ".sdata2"
+            and (
+                (literal_value_mismatch and candidate_owner.get("section") == ".sdata2")
+                or candidate_external_contract
+            )
+            and (
+                (
+                    literal_value_mismatch
+                    and candidate_owner.get("size_bytes") == target_owner.get("size_bytes")
+                )
+                or candidate_external_contract
+            )
             and target_owner.get("consumer_type") == candidate_owner.get("consumer_type")
             and target_relocation == candidate_relocation
             and target_address is not None
@@ -902,14 +988,31 @@ def _tu_pool_chronology_diagnosis(
             and target_census.get("consumer_relocation_count") == 1
             and producer_instruction_address is not None
             and producer_instruction_address < first_target_instruction_address
-        ):
+        )
+        if not basic_producer_contract:
             continue
-        producer_candidates.append((pair, target_census))
+        extent_contract = _missing_owner_extent_contract(
+            pair,
+            delta,
+            all_tu_pairs or _all_function_pool_pairs(target_side, candidate_side),
+        )
+        if extent_contract is None:
+            continue
+        producer_candidates.append(
+            (
+                pair,
+                target_census,
+                "exact_external_contract_missing_physical_owner"
+                if candidate_external_contract
+                else "literal_value_mismatch",
+                extent_contract,
+            )
+        )
     if not producer_candidates:
         return no_match
     latest_address = max(
         int((((pair.get("target") or {}).get("owner") or {}).get("address")))
-        for pair, _ in producer_candidates
+        for pair, _, _, _ in producer_candidates
     )
     latest = [
         item
@@ -918,7 +1021,7 @@ def _tu_pool_chronology_diagnosis(
     ]
     if len(latest) != 1:
         return no_match
-    producer_pair, producer_census = latest[0]
+    producer_pair, producer_census, producer_source_contract, producer_extent_contract = latest[0]
 
     allowed_focus_ids = {(id(pair)) for pair, _ in shifted}
     producer_is_focus = (
@@ -929,7 +1032,11 @@ def _tu_pool_chronology_diagnosis(
             for pair in nonexact_focus
         )
     )
-    extra_focus = [pair for pair in nonexact_focus if id(pair) not in allowed_focus_ids]
+    extra_focus = [
+        pair
+        for pair in nonexact_focus
+        if id(pair) not in allowed_focus_ids and _pair_mentions_section(pair, ".sdata2")
+    ]
     if extra_focus and not (
         producer_is_focus
         and len(extra_focus) == 1
@@ -975,6 +1082,8 @@ def _tu_pool_chronology_diagnosis(
         "producer": {
             "function": producer_function,
             "row": int(producer_pair["row"]),
+            "source_contract": producer_source_contract,
+            "physical_extent_contract": producer_extent_contract,
             "target": _compact_side(producer_target),
             "candidate": _compact_side(producer_candidate),
             "target_consumer_census": producer_census,
@@ -992,6 +1101,110 @@ def _tu_pool_chronology_diagnosis(
                 if suppress_downstream_edit
                 else "Do not edit the value-equivalent downstream consumer expressions."
             )
+        ),
+        "authority_advanced": False,
+    }
+
+
+def _tu_pool_chronology_family(
+    target_side: Mapping[str, Any],
+    candidate_side: Mapping[str, Any],
+    focus_diagnosis: Mapping[str, Any],
+    all_tu_pairs: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    no_match = {
+        "status": "none",
+        "classification": None,
+        "authority_advanced": False,
+    }
+    if focus_diagnosis.get("status") != "matched":
+        return no_match
+    focus_producer = focus_diagnosis.get("producer")
+    if not isinstance(focus_producer, Mapping):
+        return no_match
+    producer_key = (
+        focus_producer.get("function"),
+        focus_producer.get("row"),
+        focus_producer.get("source_contract"),
+        focus_diagnosis.get("downstream_offset_delta_bytes"),
+    )
+    by_function: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for pair in all_tu_pairs:
+        pair_function = pair.get("function")
+        if isinstance(pair_function, str) and pair_function:
+            by_function[pair_function].append(pair)
+    affected_functions: list[dict[str, Any]] = []
+    for pair_function in sorted(by_function):
+        function_nonexact_sdata2 = [
+            pair
+            for pair in by_function[pair_function]
+            if pair.get("classification") not in {"exact_pool_contract", "mapped_pool_contract"}
+            and _pair_mentions_section(pair, ".sdata2")
+        ]
+        function_shifts = [
+            shift
+            for pair in function_nonexact_sdata2
+            if (shift := _value_equivalent_owner_shift(pair)) is not None
+        ]
+        if (
+            not function_shifts
+            or set(function_shifts) != {focus_diagnosis.get("downstream_offset_delta_bytes")}
+            or len(function_shifts) != len(function_nonexact_sdata2)
+        ):
+            continue
+        diagnosis = _tu_pool_chronology_diagnosis(
+            target_side,
+            candidate_side,
+            pair_function,
+            by_function[pair_function],
+            all_tu_pairs=all_tu_pairs,
+        )
+        producer = diagnosis.get("producer")
+        if diagnosis.get("status") != "matched" or not isinstance(producer, Mapping):
+            continue
+        candidate_key = (
+            producer.get("function"),
+            producer.get("row"),
+            producer.get("source_contract"),
+            diagnosis.get("downstream_offset_delta_bytes"),
+        )
+        if candidate_key != producer_key:
+            continue
+        affected_consumer = diagnosis.get("affected_consumer")
+        if not isinstance(affected_consumer, Mapping):
+            continue
+        rows = affected_consumer.get("rows")
+        if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes)):
+            continue
+        affected_functions.append(
+            {
+                "function": pair_function,
+                "row_count": len(rows),
+                "rows": [int(row["row"]) for row in rows if isinstance(row, Mapping)],
+                "body_edit_suppressed": affected_consumer.get("body_edit_suppressed") is True,
+            }
+        )
+    if len(affected_functions) < 2:
+        return no_match
+    producer_function = str(focus_producer.get("function"))
+    suppressed = [
+        item["function"] for item in affected_functions if item["body_edit_suppressed"]
+    ]
+    return {
+        "status": "matched",
+        "classification": "one_missing_pool_producer_explains_multiple_downstream_functions",
+        "section": ".sdata2",
+        "downstream_offset_delta_bytes": focus_diagnosis.get("downstream_offset_delta_bytes"),
+        "producer": dict(focus_producer),
+        "affected_functions": affected_functions,
+        "affected_function_count": len(affected_functions),
+        "affected_row_count": sum(item["row_count"] for item in affected_functions),
+        "producer_edit_functions": [producer_function],
+        "downstream_body_edit_suppressed_functions": suppressed,
+        "report_deduplication": "treat_as_one_tu_pool_producer_family",
+        "recommended_source_axis": (
+            f"Restore the one authenticated {producer_function} physical pool producer, then recompile once. "
+            "Do not schedule per-function edits for the downstream owner-only residuals."
         ),
         "authority_advanced": False,
     }
@@ -1070,6 +1283,14 @@ def decode_function(
     classifications = Counter(str(item["classification"]) for item in pairs)
     target_size = _int(target_function.get("size"))
     candidate_size = _int(candidate_function.get("size"))
+    all_tu_pairs = _all_function_pool_pairs(left, right)
+    chronology_diagnosis = _tu_pool_chronology_diagnosis(
+        left,
+        right,
+        function.strip(),
+        all_pairs,
+        all_tu_pairs=all_tu_pairs,
+    )
     return {
         "schema": SCHEMA,
         "schema_version": 1,
@@ -1118,11 +1339,12 @@ def decode_function(
                 if pair["classification"] not in {"exact_pool_contract", "mapped_pool_contract"}
             ],
         ),
-        "tu_pool_chronology_diagnosis": _tu_pool_chronology_diagnosis(
+        "tu_pool_chronology_diagnosis": chronology_diagnosis,
+        "tu_pool_chronology_family": _tu_pool_chronology_family(
             left,
             right,
-            function.strip(),
-            all_pairs,
+            chronology_diagnosis,
+            all_tu_pairs,
         ),
         "include_exact": include_exact,
         "authority_advanced": False,

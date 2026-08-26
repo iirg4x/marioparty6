@@ -173,6 +173,91 @@ def _chronology_report() -> dict[str, object]:
     return {"left": {"symbols": target_symbols}, "right": {"symbols": candidate_symbols}}
 
 
+def _external_pool_family_report() -> dict[str, object]:
+    target_symbols: list[dict[str, object]] = [
+        {"name": "[.text]", "kind": "SYMBOL_SECTION"},
+        {
+            "name": "Producer",
+            "kind": "SYMBOL_FUNCTION",
+            "size": "4",
+            "instructions": [_instruction("lfs f2, lbl_missing@sda21", 6)],
+        },
+        {
+            "name": "DownstreamA",
+            "kind": "SYMBOL_FUNCTION",
+            "size": "4",
+            "instructions": [_instruction("lfs f0, lbl_later_a@sda21", 8)],
+        },
+        {
+            "name": "DownstreamB",
+            "kind": "SYMBOL_FUNCTION",
+            "size": "4",
+            "instructions": [_instruction("lfs f1, lbl_later_b@sda21", 9)],
+        },
+        {
+            "name": "DownstreamC",
+            "kind": "SYMBOL_FUNCTION",
+            "size": "8",
+            "instructions": [
+                _instruction("lfd f0, lbl_successor@sda21", 7),
+                _instruction("lfs f1, lbl_later_a@sda21", 8),
+            ],
+        },
+        {"name": "[.sdata2]", "kind": "SYMBOL_SECTION", "size": "32"},
+        _symbol("lbl_missing", bytes.fromhex("c1f00000"), 8),
+        _symbol("lbl_successor", bytes.fromhex("3ff0000000000000"), 16),
+        _symbol("lbl_later_a", bytes.fromhex("42a00000"), 24),
+        _symbol("lbl_later_b", bytes.fromhex("42c80000"), 28),
+    ]
+    candidate_symbols: list[dict[str, object]] = [
+        {"name": "[.text]", "kind": "SYMBOL_SECTION"},
+        {
+            "name": "Producer",
+            "kind": "SYMBOL_FUNCTION",
+            "target_symbol": 1,
+            "size": "4",
+            "instructions": [_instruction("lfs f2, lbl_missing@sda21", 6)],
+        },
+        {
+            "name": "DownstreamA",
+            "kind": "SYMBOL_FUNCTION",
+            "target_symbol": 2,
+            "size": "4",
+            "instructions": [_instruction("lfs f0, @later_a@sda21", 9)],
+        },
+        {
+            "name": "DownstreamB",
+            "kind": "SYMBOL_FUNCTION",
+            "target_symbol": 3,
+            "size": "4",
+            "instructions": [_instruction("lfs f1, @later_b@sda21", 10)],
+        },
+        {
+            "name": "DownstreamC",
+            "kind": "SYMBOL_FUNCTION",
+            "target_symbol": 4,
+            "size": "8",
+            "instructions": [
+                _instruction("lfd f0, @successor@sda21", 8),
+                _instruction("lfs f1, @later_a@sda21", 9),
+            ],
+        },
+        {"name": "unused_external", "flags": {"global": True}},
+        {"name": "lbl_missing", "flags": {"global": True}},
+        {"name": "[.sdata2]", "kind": "SYMBOL_SECTION", "size": "24"},
+        _symbol("@successor", bytes.fromhex("3ff0000000000000"), 8),
+        _symbol("@later_a", bytes.fromhex("42a00000"), 16),
+        _symbol("@later_b", bytes.fromhex("42c80000"), 20),
+    ]
+    for side in (target_symbols, candidate_symbols):
+        for function_index in range(1, 5):
+            for row, instruction in enumerate(side[function_index]["instructions"]):
+                instruction["instruction"]["address"] = (function_index * 100) + (row * 4)
+    target_symbols[1]["instructions"][0].pop("diff_kind")
+    candidate_symbols[1]["instructions"][0].pop("diff_kind")
+    return {"left": {"symbols": target_symbols}, "right": {"symbols": candidate_symbols}}
+
+
 class PoolRelocSummaryTests(unittest.TestCase):
     def test_decodes_owner_only_groups_and_mwcc_bias(self) -> None:
         result = module.decode_function(_report(), "PoolFocus")
@@ -386,6 +471,68 @@ class PoolRelocSummaryTests(unittest.TestCase):
                 report = _chronology_report()
                 mutate(report)
                 diagnosis = module.decode_function(report, "Downstream")["tu_pool_chronology_diagnosis"]
+                self.assertEqual(diagnosis["status"], "none")
+                self.assertIsNone(diagnosis["classification"])
+
+    def test_external_contract_missing_physical_owner_groups_downstream_family(self) -> None:
+        report = _external_pool_family_report()
+        result = module.decode_function(report, "DownstreamA")
+        diagnosis = result["tu_pool_chronology_diagnosis"]
+        self.assertEqual(diagnosis["status"], "matched")
+        self.assertEqual(diagnosis["producer"]["function"], "Producer")
+        self.assertEqual(
+            diagnosis["producer"]["source_contract"],
+            "exact_external_contract_missing_physical_owner",
+        )
+        self.assertEqual(
+            diagnosis["producer"]["physical_extent_contract"],
+            "owner_size_plus_natural_successor_alignment",
+        )
+        self.assertEqual(diagnosis["downstream_offset_delta_bytes"], 8)
+        self.assertTrue(diagnosis["affected_consumer"]["body_edit_suppressed"])
+
+        family = result["tu_pool_chronology_family"]
+        self.assertEqual(family["status"], "matched")
+        self.assertEqual(
+            family["classification"],
+            "one_missing_pool_producer_explains_multiple_downstream_functions",
+        )
+        self.assertEqual(family["producer_edit_functions"], ["Producer"])
+        self.assertEqual(
+            [item["function"] for item in family["affected_functions"]],
+            ["DownstreamA", "DownstreamB", "DownstreamC"],
+        )
+        self.assertEqual(
+            family["downstream_body_edit_suppressed_functions"],
+            ["DownstreamA", "DownstreamB", "DownstreamC"],
+        )
+        self.assertEqual(family["report_deduplication"], "treat_as_one_tu_pool_producer_family")
+        self.assertFalse(family["authority_advanced"])
+
+    def test_external_contract_family_fails_closed_without_physical_uniqueness(self) -> None:
+        mutations = {
+            "target_bytes_already_present": lambda report: report["right"]["symbols"].append(
+                _symbol("@duplicate_missing", bytes.fromhex("c1f00000"), 24)
+            ),
+            "producer_has_multiple_consumers": lambda report: (
+                report["left"]["symbols"][1]["instructions"].append(
+                    _instruction("lfs f3, lbl_missing@sda21", 6)
+                ),
+                report["right"]["symbols"][1]["instructions"].append(
+                    _instruction("lfs f3, lbl_missing@sda21", 6)
+                ),
+            ),
+            "no_natural_alignment_witness": lambda report: report["right"]["symbols"][8].update(
+                {"address": "4"}
+            ),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                report = _external_pool_family_report()
+                mutate(report)
+                diagnosis = module.decode_function(report, "DownstreamA")[
+                    "tu_pool_chronology_diagnosis"
+                ]
                 self.assertEqual(diagnosis["status"], "none")
                 self.assertIsNone(diagnosis["classification"])
 
