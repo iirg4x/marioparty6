@@ -753,6 +753,250 @@ def _tu_owner_consumer_census(
     }
 
 
+def _all_function_pool_pairs(
+    target_side: Mapping[str, Any], candidate_side: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Return paired pool rows for every unambiguously mapped function in the TU."""
+
+    target_symbols = _symbols(target_side)
+    candidate_symbols = _symbols(candidate_side)
+    candidate_name_counts = Counter(
+        str(symbol.get("name"))
+        for symbol in candidate_symbols
+        if symbol.get("kind") == "SYMBOL_FUNCTION" and isinstance(symbol.get("name"), str)
+    )
+    pairs: list[dict[str, Any]] = []
+    for candidate in candidate_symbols:
+        name = candidate.get("name")
+        target_index = _int(candidate.get("target_symbol"))
+        if (
+            candidate.get("kind") != "SYMBOL_FUNCTION"
+            or not isinstance(name, str)
+            or not name
+            or candidate_name_counts[name] != 1
+            or target_index is None
+            or not 0 <= target_index < len(target_symbols)
+        ):
+            continue
+        target = target_symbols[target_index]
+        if target.get("kind") != "SYMBOL_FUNCTION" or target.get("name") != name:
+            continue
+        target_rows = _pool_rows(target_side, target)
+        candidate_rows = _pool_rows(candidate_side, candidate)
+        for row in sorted(set(target_rows) | set(candidate_rows)):
+            pair = _pair_record(row, target_rows.get(row), candidate_rows.get(row))
+            pair["function"] = name
+            pairs.append(pair)
+    return pairs
+
+
+def _value_equivalent_owner_shift(pair: Mapping[str, Any]) -> int | None:
+    if pair.get("classification") not in {"owner_identity_mismatch", "owner_chronology_mismatch"}:
+        return None
+    target = pair.get("target") if isinstance(pair.get("target"), Mapping) else None
+    candidate = pair.get("candidate") if isinstance(pair.get("candidate"), Mapping) else None
+    if target is None or candidate is None:
+        return None
+    target_owner = target.get("owner") if isinstance(target.get("owner"), Mapping) else {}
+    candidate_owner = candidate.get("owner") if isinstance(candidate.get("owner"), Mapping) else {}
+    target_relocation = target.get("relocation") if isinstance(target.get("relocation"), Mapping) else {}
+    candidate_relocation = candidate.get("relocation") if isinstance(candidate.get("relocation"), Mapping) else {}
+    target_address = _int(target_owner.get("address"))
+    candidate_address = _int(candidate_owner.get("address"))
+    if not (
+        target_owner.get("section") == candidate_owner.get("section") == ".sdata2"
+        and target_owner.get("bytes") is not None
+        and target_owner.get("bytes") == candidate_owner.get("bytes")
+        and target_owner.get("size_bytes") == candidate_owner.get("size_bytes")
+        and target_owner.get("consumer_type") == candidate_owner.get("consumer_type")
+        and target_relocation == candidate_relocation
+        and target_address is not None
+        and candidate_address is not None
+        and target_address > candidate_address
+    ):
+        return None
+    return target_address - candidate_address
+
+
+def _tu_pool_chronology_diagnosis(
+    target_side: Mapping[str, Any],
+    candidate_side: Mapping[str, Any],
+    function: str,
+    focus_pairs: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Attribute a uniform downstream pool shift to one authenticated missing producer."""
+
+    no_match = {
+        "status": "none",
+        "classification": None,
+        "authority_advanced": False,
+    }
+    nonexact_focus = [
+        pair
+        for pair in focus_pairs
+        if pair.get("classification") not in {"exact_pool_contract", "mapped_pool_contract"}
+    ]
+    shifted = [(pair, _value_equivalent_owner_shift(pair)) for pair in nonexact_focus]
+    shifted = [(pair, delta) for pair, delta in shifted if delta is not None]
+    if not shifted:
+        return no_match
+    deltas = {int(delta) for _, delta in shifted}
+    if len(deltas) != 1:
+        return no_match
+    delta = next(iter(deltas))
+    affected_target_addresses = [
+        _int(((pair.get("target") or {}).get("owner") or {}).get("address"))
+        for pair, _ in shifted
+    ]
+    affected_instruction_addresses = [
+        _int((pair.get("target") or {}).get("instruction_address"))
+        for pair, _ in shifted
+    ]
+    if any(address is None for address in affected_target_addresses + affected_instruction_addresses):
+        return no_match
+    first_target_owner_address = min(int(address) for address in affected_target_addresses if address is not None)
+    first_target_instruction_address = min(
+        int(address) for address in affected_instruction_addresses if address is not None
+    )
+
+    candidate_pool_bytes = {
+        raw
+        for symbol in _sdata2_objects(candidate_side)
+        if (raw := _decode_data(symbol)) is not None
+    }
+    producer_candidates: list[tuple[Mapping[str, Any], dict[str, Any]]] = []
+    for pair in _all_function_pool_pairs(target_side, candidate_side):
+        if pair.get("classification") != "literal_value_mismatch":
+            continue
+        target = pair.get("target") if isinstance(pair.get("target"), Mapping) else None
+        candidate = pair.get("candidate") if isinstance(pair.get("candidate"), Mapping) else None
+        if target is None or candidate is None:
+            continue
+        target_owner = target.get("owner") if isinstance(target.get("owner"), Mapping) else {}
+        candidate_owner = candidate.get("owner") if isinstance(candidate.get("owner"), Mapping) else {}
+        target_relocation = target.get("relocation") if isinstance(target.get("relocation"), Mapping) else {}
+        candidate_relocation = candidate.get("relocation") if isinstance(candidate.get("relocation"), Mapping) else {}
+        target_address = _int(target_owner.get("address"))
+        target_raw_hex = target_owner.get("bytes")
+        try:
+            target_raw = bytes.fromhex(target_raw_hex) if isinstance(target_raw_hex, str) else None
+        except ValueError:
+            target_raw = None
+        target_census = _census_side(target_side, target)
+        consumers = (target_census or {}).get("consumers", [])
+        consumer_rows = consumers[0].get("rows", []) if len(consumers) == 1 else []
+        producer_instruction_address = (
+            _int(consumer_rows[0].get("instruction_address")) if len(consumer_rows) == 1 else None
+        )
+        if not (
+            target_owner.get("section") == candidate_owner.get("section") == ".sdata2"
+            and target_owner.get("size_bytes") == candidate_owner.get("size_bytes") == delta
+            and target_owner.get("consumer_type") == candidate_owner.get("consumer_type")
+            and target_relocation == candidate_relocation
+            and target_address is not None
+            and target_address < first_target_owner_address
+            and target_raw is not None
+            and target_raw not in candidate_pool_bytes
+            and target_census is not None
+            and target_census.get("consumer_function_count") == 1
+            and target_census.get("consumer_relocation_count") == 1
+            and producer_instruction_address is not None
+            and producer_instruction_address < first_target_instruction_address
+        ):
+            continue
+        producer_candidates.append((pair, target_census))
+    if not producer_candidates:
+        return no_match
+    latest_address = max(
+        int((((pair.get("target") or {}).get("owner") or {}).get("address")))
+        for pair, _ in producer_candidates
+    )
+    latest = [
+        item
+        for item in producer_candidates
+        if _int((((item[0].get("target") or {}).get("owner") or {}).get("address"))) == latest_address
+    ]
+    if len(latest) != 1:
+        return no_match
+    producer_pair, producer_census = latest[0]
+
+    allowed_focus_ids = {(id(pair)) for pair, _ in shifted}
+    producer_is_focus = (
+        producer_pair.get("function") == function
+        and any(
+            pair.get("row") == producer_pair.get("row")
+            and pair.get("classification") == "literal_value_mismatch"
+            for pair in nonexact_focus
+        )
+    )
+    extra_focus = [pair for pair in nonexact_focus if id(pair) not in allowed_focus_ids]
+    if extra_focus and not (
+        producer_is_focus
+        and len(extra_focus) == 1
+        and extra_focus[0].get("row") == producer_pair.get("row")
+        and extra_focus[0].get("classification") == "literal_value_mismatch"
+    ):
+        return no_match
+
+    affected = []
+    for pair, _ in shifted:
+        target = pair.get("target") if isinstance(pair.get("target"), Mapping) else {}
+        candidate = pair.get("candidate") if isinstance(pair.get("candidate"), Mapping) else {}
+        target_owner = target.get("owner") if isinstance(target.get("owner"), Mapping) else {}
+        candidate_owner = candidate.get("owner") if isinstance(candidate.get("owner"), Mapping) else {}
+        affected.append(
+            {
+                "row": int(pair["row"]),
+                "target_owner": {
+                    "name": target_owner.get("name"),
+                    "address": target_owner.get("address"),
+                    "bytes": target_owner.get("bytes"),
+                    "typed": target_owner.get("typed"),
+                },
+                "candidate_owner": {
+                    "name": candidate_owner.get("name"),
+                    "address": candidate_owner.get("address"),
+                    "bytes": candidate_owner.get("bytes"),
+                    "typed": candidate_owner.get("typed"),
+                },
+            }
+        )
+    producer_target = producer_pair.get("target") if isinstance(producer_pair.get("target"), Mapping) else {}
+    producer_candidate = (
+        producer_pair.get("candidate") if isinstance(producer_pair.get("candidate"), Mapping) else {}
+    )
+    producer_function = str(producer_pair.get("function"))
+    suppress_downstream_edit = producer_function != function
+    return {
+        "status": "matched",
+        "classification": "missing_predecessor_pool_owner_causes_uniform_downstream_shift",
+        "section": ".sdata2",
+        "downstream_offset_delta_bytes": delta,
+        "producer": {
+            "function": producer_function,
+            "row": int(producer_pair["row"]),
+            "target": _compact_side(producer_target),
+            "candidate": _compact_side(producer_candidate),
+            "target_consumer_census": producer_census,
+        },
+        "affected_consumer": {
+            "function": function,
+            "rows": affected,
+            "body_edit_suppressed": suppress_downstream_edit,
+        },
+        "interpretation": "restore_missing_predecessor_owner_then_propagate_uniform_downstream_pool_offsets",
+        "recommended_source_axis": (
+            f"Restore the authenticated {producer_function} producer value and TU first-use chronology. "
+            + (
+                f"Do not edit {function}; its value-equivalent consumers are downstream relocation effects."
+                if suppress_downstream_edit
+                else "Do not edit the value-equivalent downstream consumer expressions."
+            )
+        ),
+        "authority_advanced": False,
+    }
+
+
 def decode_function(
     report: Mapping[str, Any],
     function: str,
@@ -873,6 +1117,12 @@ def decode_function(
                 for pair in all_pairs
                 if pair["classification"] not in {"exact_pool_contract", "mapped_pool_contract"}
             ],
+        ),
+        "tu_pool_chronology_diagnosis": _tu_pool_chronology_diagnosis(
+            left,
+            right,
+            function.strip(),
+            all_pairs,
         ),
         "include_exact": include_exact,
         "authority_advanced": False,

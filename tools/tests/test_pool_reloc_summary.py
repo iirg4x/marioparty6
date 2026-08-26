@@ -100,6 +100,79 @@ def _report() -> dict[str, object]:
     return {"left": {"symbols": target_symbols}, "right": {"symbols": candidate_symbols}}
 
 
+def _chronology_report() -> dict[str, object]:
+    target_symbols: list[dict[str, object]] = [
+        {"name": "[.text]", "kind": "SYMBOL_SECTION"},
+        {
+            "name": "Producer",
+            "kind": "SYMBOL_FUNCTION",
+            "size": "8",
+            "instructions": [
+                _instruction("lfs f0, lbl_missing@sda21", 4),
+                _instruction("lfs f1, lbl_following@sda21", 5),
+            ],
+        },
+        {
+            "name": "Downstream",
+            "kind": "SYMBOL_FUNCTION",
+            "size": "12",
+            "instructions": [
+                _instruction("lfs f1, lbl_1800@sda21", 7),
+                _instruction("lfs f1, lbl_2100@sda21", 8),
+                _instruction("lfs f1, lbl_3200@sda21", 9),
+            ],
+        },
+        {"name": "[.sdata2]", "kind": "SYMBOL_SECTION", "size": "32"},
+        _symbol("lbl_missing", bytes.fromhex("409cccce"), 8),
+        _symbol("lbl_following", bytes.fromhex("3f7ae148"), 12),
+        _symbol("lbl_middle", bytes.fromhex("3f800000"), 16),
+        _symbol("lbl_1800", bytes.fromhex("44e10000"), 20),
+        _symbol("lbl_2100", bytes.fromhex("45034000"), 24),
+        _symbol("lbl_3200", bytes.fromhex("45480000"), 28),
+    ]
+    for address, symbol in enumerate(target_symbols[1]["instructions"]):
+        symbol["instruction"]["address"] = 100 + (address * 4)
+    for address, symbol in enumerate(target_symbols[2]["instructions"]):
+        symbol["instruction"]["address"] = 200 + (address * 4)
+
+    candidate_symbols: list[dict[str, object]] = [
+        {"name": "[.text]", "kind": "SYMBOL_SECTION"},
+        {
+            "name": "Producer",
+            "kind": "SYMBOL_FUNCTION",
+            "target_symbol": 1,
+            "size": "8",
+            "instructions": [
+                _instruction("lfs f0, @old_shared@sda21", 4),
+                _instruction("lfs f1, @following@sda21", 5),
+            ],
+        },
+        {
+            "name": "Downstream",
+            "kind": "SYMBOL_FUNCTION",
+            "target_symbol": 2,
+            "size": "12",
+            "instructions": [
+                _instruction("lfs f1, @1800@sda21", 7),
+                _instruction("lfs f1, @2100@sda21", 8),
+                _instruction("lfs f1, @3200@sda21", 9),
+            ],
+        },
+        {"name": "[.sdata2]", "kind": "SYMBOL_SECTION", "size": "28"},
+        _symbol("@old_shared", bytes.fromhex("409ccccd"), 0),
+        _symbol("@following", bytes.fromhex("3f7ae148"), 8),
+        _symbol("@middle", bytes.fromhex("3f800000"), 12),
+        _symbol("@1800", bytes.fromhex("44e10000"), 16),
+        _symbol("@2100", bytes.fromhex("45034000"), 20),
+        _symbol("@3200", bytes.fromhex("45480000"), 24),
+    ]
+    for address, symbol in enumerate(candidate_symbols[1]["instructions"]):
+        symbol["instruction"]["address"] = 80 + (address * 4)
+    for address, symbol in enumerate(candidate_symbols[2]["instructions"]):
+        symbol["instruction"]["address"] = 180 + (address * 4)
+    return {"left": {"symbols": target_symbols}, "right": {"symbols": candidate_symbols}}
+
+
 class PoolRelocSummaryTests(unittest.TestCase):
     def test_decodes_owner_only_groups_and_mwcc_bias(self) -> None:
         result = module.decode_function(_report(), "PoolFocus")
@@ -270,6 +343,49 @@ class PoolRelocSummaryTests(unittest.TestCase):
                 report = copy.deepcopy(base)
                 mutate(report)
                 diagnosis = module.decode_function(report, "PoolFocus")["section_prefix_diagnosis"]
+                self.assertEqual(diagnosis["status"], "none")
+                self.assertIsNone(diagnosis["classification"])
+
+    def test_tu_chronology_attributes_uniform_shift_to_missing_predecessor(self) -> None:
+        report = _chronology_report()
+        downstream = module.decode_function(report, "Downstream")["tu_pool_chronology_diagnosis"]
+        self.assertEqual(downstream["status"], "matched")
+        self.assertEqual(
+            downstream["classification"],
+            "missing_predecessor_pool_owner_causes_uniform_downstream_shift",
+        )
+        self.assertEqual(downstream["downstream_offset_delta_bytes"], 4)
+        self.assertEqual(downstream["producer"]["function"], "Producer")
+        self.assertEqual(downstream["producer"]["target"]["owner"]["bytes"], "409cccce")
+        self.assertEqual(
+            [item["row"] for item in downstream["affected_consumer"]["rows"]],
+            [0, 1, 2],
+        )
+        self.assertTrue(downstream["affected_consumer"]["body_edit_suppressed"])
+        self.assertIn("Do not edit Downstream", downstream["recommended_source_axis"])
+        self.assertFalse(downstream["authority_advanced"])
+
+        producer = module.decode_function(report, "Producer")["tu_pool_chronology_diagnosis"]
+        self.assertEqual(producer["status"], "matched")
+        self.assertEqual(producer["producer"]["function"], "Producer")
+        self.assertEqual([item["row"] for item in producer["affected_consumer"]["rows"]], [1])
+        self.assertFalse(producer["affected_consumer"]["body_edit_suppressed"])
+
+    def test_tu_chronology_fails_closed_on_inexact_or_ambiguous_evidence(self) -> None:
+        mutations = {
+            "nonuniform_delta": lambda report: report["right"]["symbols"][8].update({"address": "21"}),
+            "target_value_already_present": lambda report: report["right"]["symbols"].append(
+                _symbol("@duplicate", bytes.fromhex("409cccce"), 28)
+            ),
+            "downstream_relocation_mismatch": lambda report: report["right"]["symbols"][2][
+                "instructions"
+            ][0]["instruction"]["relocation"].update({"type_name": "R_PPC_ADDR32"}),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                report = _chronology_report()
+                mutate(report)
+                diagnosis = module.decode_function(report, "Downstream")["tu_pool_chronology_diagnosis"]
                 self.assertEqual(diagnosis["status"], "none")
                 self.assertIsNone(diagnosis["classification"])
 

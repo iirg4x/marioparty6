@@ -41,6 +41,29 @@ The retained gate remains exact instructions, exact relocation ownership,
 organic source, and linked consumer proof. A text-only 100% score does not
 satisfy that gate.
 
+### Uniform downstream offset propagation
+
+Do not edit a value-exact consumer when all of its pool relocations are displaced
+by the same positive byte count. First compare the complete TU pool and find the
+latest earlier target value that is absent from the candidate pool. The missing
+producer may explain the whole downstream cluster when its typed width equals the
+uniform displacement, its target consumer is unique and earlier, and relocation
+type, addend, literal width, consumer type, and downstream literal bytes are all
+otherwise exact.
+
+`tools/pool_reloc_summary.py` reports this sealed case as
+`tu_pool_chronology_diagnosis`. It names the missing producer, the uniform delta,
+and every affected consumer row. When the producer belongs to another function,
+the diagnosis explicitly suppresses edits to the downstream function. It fails
+closed on mixed deltas, unresolved or already-present target bytes, ambiguous
+producers, non-unique producer consumers, relocation drift, or any additional
+focus residual.
+
+The CapEvent acceptance fixture binds a missing four-byte f32 owner
+`0x409cccce` in `mbev_CapEffCapLoseOMExec`. Restoring that semantic producer
+shifts the value-exact 1800.0f, 2100.0f, and 3200.0f owners in
+`mbev_CapCameraViewSet` by `+4`; no Camera body edit is indicated.
+
 ## Owner-level cluster evidence
 
 Later application-owner work reproduced the same failure at larger scale:
