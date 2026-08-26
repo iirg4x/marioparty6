@@ -25,10 +25,11 @@ if __package__ in {None, ""}:
 
 from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
+from tools import mixed_bank_home_cycle
 
 
-SCHEMA = "crack_learning_diagnosis/v17"
-SCHEMA_VERSION = 17
+SCHEMA = "crack_learning_diagnosis/v18"
+SCHEMA_VERSION = 18
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -44,6 +45,9 @@ AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA = (
 )
 TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA = "typed_aggregate_copy_lowering_context/v1"
 DFORM_COPY_HELPER_CONTEXT_SCHEMA = "dform_aggregate_copy_helper_context/v1"
+MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
+    mixed_bank_home_cycle.CONTEXT_SCHEMA
+)
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
@@ -501,6 +505,7 @@ _RULE_ORDER = (
     "aggregate_snapshot_pointer_chain",
     "typed_aggregate_copy_lowering",
     "dform_aggregate_copy_helper_boundary",
+    mixed_bank_home_cycle.RULE_ID,
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -3773,6 +3778,17 @@ def _parse_dform_copy_helper_context(value: Mapping[str, Any]) -> dict[str, Any]
         "evidence": normalized_evidence,
         "exact_result": normalized_exact,
     }
+
+
+def _parse_mixed_bank_home_cycle_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return mixed_bank_home_cycle.parse_context(value)
+    except mixed_bank_home_cycle.MixedBankInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
 def _parse_same_tu_shape_context(value: Mapping[str, Any]) -> dict[str, Any]:
     context = _closed_context(
         value,
@@ -10283,6 +10299,25 @@ def _dform_copy_helper_evaluation(
         ),
         evidence=common_evidence,
     )
+
+
+def _mixed_bank_home_cycle_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = mixed_bank_home_cycle.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(mixed_bank_home_cycle.RULE_ID, **result)
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12282,6 +12317,7 @@ def diagnose_document(
     aggregate_snapshot_pointer_context: Mapping[str, Any] | None = None,
     typed_aggregate_copy_context: Mapping[str, Any] | None = None,
     dform_copy_helper_context: Mapping[str, Any] | None = None,
+    mixed_bank_home_cycle_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -12350,6 +12386,11 @@ def diagnose_document(
     normalized_dform_copy_helper_context = (
         _parse_dform_copy_helper_context(dform_copy_helper_context)
         if dform_copy_helper_context is not None
+        else None
+    )
+    normalized_mixed_bank_home_cycle_context = (
+        _parse_mixed_bank_home_cycle_context(mixed_bank_home_cycle_context)
+        if mixed_bank_home_cycle_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -12497,6 +12538,13 @@ def diagnose_document(
             normalized_dform_copy_helper_context,
             objdiff_canonical_sha256,
         ),
+        _mixed_bank_home_cycle_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_mixed_bank_home_cycle_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -12612,6 +12660,11 @@ def diagnose_document(
             "dform_copy_helper_context_canonical_sha256": (
                 _sha256(_canonical(normalized_dform_copy_helper_context))
                 if normalized_dform_copy_helper_context is not None
+                else None
+            ),
+            "mixed_bank_home_cycle_context_canonical_sha256": (
+                _sha256(_canonical(normalized_mixed_bank_home_cycle_context))
+                if normalized_mixed_bank_home_cycle_context is not None
                 else None
             ),
             "aggregate_snapshot_pointer_context_canonical_sha256": (
@@ -12802,6 +12855,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--mixed-bank-home-cycle-context",
+        type=Path,
+        help=(
+            "authenticated mixed_bank_argument_aggregate_home_cycle_context/v1 JSON "
+            "with a right-to-left mixed-bank call seam, frozen homes, and one typed cycle"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-snapshot-pointer-context",
         type=Path,
         help=(
@@ -12962,6 +13023,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="D-form aggregate-copy helper context",
                 )
                 if args.dform_copy_helper_context is not None
+                else None
+            ),
+            mixed_bank_home_cycle_context=(
+                _load_json(
+                    args.mixed_bank_home_cycle_context,
+                    label="mixed-bank aggregate-home context",
+                )
+                if args.mixed_bank_home_cycle_context is not None
                 else None
             ),
             address_taken_context=(

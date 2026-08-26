@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v17` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v18` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -882,6 +882,11 @@ The focused fixtures reject the tempting incomplete variants:
   sealed window, or a commuted control whose objects differ;
 - FPR captures and a frame delta without indirect switch dispatch;
 - a final-consumer aggregate self-copy whose named donor is not exact.
+- a mixed-bank call claim without a pinned right-to-left frontend proof, live
+  GPR/FPR expressions, preserved ABI banks, exact size/frame/calls/data/relocs,
+  one or more frozen owners, disjoint 12-byte HuVecF homes, or one unique
+  complete permutation of the same target/candidate home set; any residual
+  outside ARG-only same-owner stack transfers also closes the rule.
 
 Other structural differences also close a rule. The assignment/condition rule
 rejects inserts, deletes, opcode or relocation changes, inconsistent mappings,
@@ -893,6 +898,40 @@ interaction observations. The switch rule rejects
 an uncorroborated or excessively large frame delta. The aggregate rule rejects
 early copies, unequal load/store offset multisets, non-final consumers, unnamed
 donors, and donor signature drift.
+
+## Mixed-bank call chronology and frozen aggregate-home cycles
+
+When an exact-size/frame/CFG/data/relocation precursor retains only typed
+aggregate-home ARG rows, seal the helper call and home map before testing more
+declaration orders:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/capeffopen-v93.strict.json \
+  --function ev_CapEffOpen \
+  --mixed-bank-home-cycle-context work/capeffopen.mixed-bank-home-cycle.json \
+  > work/capeffopen.learning.json
+```
+
+`mixed_bank_argument_aggregate_home_cycle_context/v1` requires an authenticated
+GC/2.6 right-to-left evaluation boundary containing live expressions from both
+ABI banks. Source argument chronology changes frontend evaluation priority; it
+does not change the GPR/FPR ABI assignments. The context separately freezes
+every already-exact typed stack owner, then binds each remaining semantic owner
+to its target and candidate 12-byte HuVecF homes. The two home sets must be
+identical, disjoint, and form exactly one complete cycle.
+
+For `ev_CapEffOpen`, this reports source order `scale,time` and evaluation order
+`time,scale`, freezes `pos` at `0xfc`, and closes only the cycle
+`particlePos -> scale -> vel -> rot -> particlePos` over homes
+`0xcc/0xd8/0xe4/0xf0`. It schedules two ordered cells: preserve the direct
+mixed-bank helper interface, then compile only the sealed declaration chronology
+while keeping `pos` fixed. It suppresses global permutations, aliases, dead or
+fake locals, padding, register shaping, repeat tracing, and retention.
+
+This rule is evidence-only. A matching diagnosis remains
+`authority_advanced:false`; the lane still owns natural-source review and the
+strict/data/physical-relocation/protected-sibling proof.
 
 ## Output and authority boundary
 
