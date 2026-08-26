@@ -555,6 +555,80 @@ def _aggregate_followup_context(
     }
 
 
+def _address_taken_report() -> dict[str, object]:
+    target = [
+        _instruction(100, "stwu r1, -48(r1)", diff_kind="DIFF_INSERT"),
+        _instruction(104, "stw r3, 8(r1)", diff_kind="DIFF_INSERT"),
+        _instruction(108, "mr r30, r4", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(112, "stfs f1, 16(r1)"),
+        _instruction(116, "addi r31, r1, 16", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(120, "mr r4, r31", diff_kind="DIFF_INSERT"),
+        _instruction(124, "bl mbev_CapEffGlowKinokoAdd"),
+        _instruction(128, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "stwu r1, -32(r1)", diff_kind="DIFF_DELETE"),
+        _instruction(104, "mr r31, r4", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "stfs f1, 16(r1)"),
+        _instruction(112, "addi r4, r1, 16", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "bl mbev_CapEffGlowKinokoAdd"),
+        _instruction(120, "blr"),
+    ]
+    return _report(
+        "mbev_CapEffGlowKinokoAddAlt",
+        target,
+        candidate,
+        target_size=272,
+        candidate_size=260,
+    )
+
+
+def _address_taken_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _address_taken_report()
+    return {
+        "schema": rules.ADDRESS_TAKEN_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "source_boundary_receipt_sha256": "4" * 64,
+            "typed_consumer_receipt_sha256": "5" * 64,
+        },
+        "expected_size_delta": 12,
+        "aggregate": {
+            "name": "pos",
+            "type": "HuVecF",
+            "stack_offset": 16,
+            "evidence_sha256": "6" * 64,
+        },
+        "incoming_pointer": {
+            "name": "posP",
+            "target_register": "r30",
+            "candidate_register": "r31",
+            "evidence_sha256": "7" * 64,
+        },
+        "local_pointer": {
+            "name": "posLocalP",
+            "target_register": "r31",
+            "argument_register": "r4",
+            "consumer": "mbev_CapEffGlowKinokoAdd",
+            "evidence_sha256": "8" * 64,
+        },
+        "object_home": {
+            "parameter": "obj",
+            "target_stack_offset": 8,
+            "evidence_sha256": "9" * 64,
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -1389,6 +1463,80 @@ class CrackLearningRulesTest(unittest.TestCase):
             _evaluation(result, "aggregate_two_owner_followup")["matched"]
         )
 
+    def test_address_taken_local_pointer_ranks_one_live_typed_owner(self) -> None:
+        report = _address_taken_report()
+        context = _address_taken_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffGlowKinokoAddAlt",
+            address_taken_context=context,
+        )
+        diagnosis = _evaluation(result, "address_taken_local_pointer_consumer")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(diagnosis["evidence"]["size_delta"], 12)
+        self.assertEqual(diagnosis["evidence"]["target_home_row"], 1)
+        self.assertEqual(diagnosis["evidence"]["target_incoming_row"], 2)
+        self.assertEqual(diagnosis["evidence"]["candidate_incoming_row"], 1)
+        self.assertEqual(diagnosis["evidence"]["target_materialization_row"], 4)
+        self.assertEqual(diagnosis["evidence"]["target_copy_row"], 5)
+        self.assertEqual(
+            diagnosis["evidence"]["candidate_direct_materialization_row"], 3
+        )
+        self.assertIn("posLocalP = &pos", diagnosis["evidence"]["source_expression"])
+        self.assertEqual(
+            diagnosis["evidence"]["suppressed_axes"],
+            [
+                "declaration_order_only",
+                "dead_pointer_storage",
+                "artificial_lifetime_extension",
+            ],
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_address_taken_local_pointer_fails_closed(self) -> None:
+        report = _address_taken_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapEffGlowKinokoAddAlt"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "address_taken_local_pointer_consumer")["matched"]
+        )
+
+        wrong_offset = _address_taken_context(report)
+        wrong_offset["aggregate"]["stack_offset"] = 20  # type: ignore[index]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffGlowKinokoAddAlt",
+            address_taken_context=wrong_offset,
+        )
+        self.assertFalse(
+            _evaluation(result, "address_taken_local_pointer_consumer")["matched"]
+        )
+
+        missing_home = _address_taken_report()
+        missing_home["left"]["symbols"][0]["instructions"][1]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "stw r3, 12(r1)"
+        context = _address_taken_context(missing_home)
+        result = rules.diagnose_document(
+            missing_home,
+            focus_symbol="mbev_CapEffGlowKinokoAddAlt",
+            address_taken_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "address_taken_local_pointer_consumer")["matched"]
+        )
+
+        wrong_owner = _address_taken_context(report)
+        wrong_owner["local_pointer"]["target_register"] = "r29"  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "candidate incoming-pointer color"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowKinokoAddAlt",
+                address_taken_context=wrong_owner,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -1890,6 +2038,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffElectricAdd",
                 aggregate_followup_context=context,
+            ),
+        )
+
+    def test_address_taken_context_cli_emits_same_document(self) -> None:
+        report = _address_taken_report()
+        context = _address_taken_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "address-taken.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffGlowKinokoAddAlt",
+                            "--address-taken-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowKinokoAddAlt",
+                address_taken_context=context,
             ),
         )
 

@@ -25,13 +25,14 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v4"
-SCHEMA_VERSION = 4
+SCHEMA = "crack_learning_diagnosis/v5"
+SCHEMA_VERSION = 5
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
 AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
 AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
+ADDRESS_TAKEN_CONTEXT_SCHEMA = "address_taken_local_pointer_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -39,6 +40,11 @@ RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
 _REGISTER_RE = re.compile(r"\b(?P<kind>[rRfF])(?P<number>[0-9]|[12][0-9]|3[01])\b")
 _STACK_RE = re.compile(
     r"(?P<offset>[+-]?(?:0[xX][0-9a-fA-F]+|\d+))\s*\(\s*r1\s*\)",
+    re.IGNORECASE,
+)
+_ADDI_R1_RE = re.compile(
+    r"^\s*addi\s+(?P<destination>r(?:[0-9]|[12][0-9]|3[01]))\s*,\s*r1\s*,\s*"
+    r"(?P<offset>[+-]?(?:0[xX][0-9a-fA-F]+|\d+))\s*$",
     re.IGNORECASE,
 )
 _CALL_MNEMONICS = frozenset({"bl", "bla", "bctrl", "blrl"})
@@ -130,6 +136,20 @@ _AGGREGATE_FOLLOWUP_PROOF_HASHES = (
     "aggregate_reconstruction_receipt_sha256",
     "fusion_observation_receipt_sha256",
 )
+_ADDRESS_TAKEN_PROOF_FLAGS = (
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+)
+_ADDRESS_TAKEN_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "source_boundary_receipt_sha256",
+    "typed_consumer_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -186,6 +206,7 @@ _RULE_ORDER = (
     "parameter_allocation_consumer_chain",
     "aggregate_use_multiplicity",
     "aggregate_two_owner_followup",
+    "address_taken_local_pointer_consumer",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -243,6 +264,13 @@ def _stack_offset(text: str) -> int | None:
     if match is None:
         return None
     return causal_reducer._parse_number(match.group("offset"))
+
+
+def _addi_r1_materialization(text: str) -> tuple[str, int] | None:
+    match = _ADDI_R1_RE.fullmatch(text)
+    if match is None:
+        return None
+    return match.group("destination").lower(), int(match.group("offset"), 0)
 
 
 def _pair(document: Mapping[str, Any], symbol: str) -> causal_reducer.FunctionPair:
@@ -1318,6 +1346,215 @@ def _parse_aggregate_followup_context(value: Mapping[str, Any]) -> dict[str, Any
         "aggregate_boundary": normalized_boundary,
         "declaration_axis": normalized_declaration,
         "fusion_observation": normalized_fusion,
+    }
+
+
+def _parse_address_taken_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "expected_size_delta",
+            "aggregate",
+            "incoming_pointer",
+            "local_pointer",
+            "object_home",
+        },
+        required={
+            "schema",
+            "proofs",
+            "expected_size_delta",
+            "aggregate",
+            "incoming_pointer",
+            "local_pointer",
+            "object_home",
+        },
+        label="address-taken local pointer context",
+    )
+    if (
+        _context_text(context.get("schema"), "address-taken context schema")
+        != ADDRESS_TAKEN_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"address-taken context schema must be {ADDRESS_TAKEN_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_ADDRESS_TAKEN_PROOF_FLAGS) | set(
+        _ADDRESS_TAKEN_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="address-taken context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _ADDRESS_TAKEN_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"address-taken context proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _ADDRESS_TAKEN_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"address-taken context proofs.{field}"
+        )
+
+    expected_size_delta = _context_uint(
+        context.get("expected_size_delta"),
+        "address-taken context expected_size_delta",
+    )
+    if expected_size_delta == 0 or expected_size_delta > 64 or expected_size_delta % 4:
+        raise LearningInputError(
+            "address-taken context expected_size_delta must be 4..64 and instruction-aligned"
+        )
+
+    aggregate = _closed_context(
+        context.get("aggregate"),
+        allowed={"name", "type", "stack_offset", "evidence_sha256"},
+        required={"name", "type", "stack_offset", "evidence_sha256"},
+        label="address-taken context aggregate",
+    )
+    aggregate_offset = _context_uint(
+        aggregate.get("stack_offset"), "address-taken context aggregate.stack_offset"
+    )
+    normalized_aggregate = {
+        "name": _context_identifier(
+            aggregate.get("name"), "address-taken context aggregate.name"
+        ),
+        "type": _context_identifier(
+            aggregate.get("type"), "address-taken context aggregate.type"
+        ),
+        "stack_offset": aggregate_offset,
+        "evidence_sha256": _context_sha256(
+            aggregate.get("evidence_sha256"),
+            "address-taken context aggregate.evidence_sha256",
+        ),
+    }
+
+    incoming = _closed_context(
+        context.get("incoming_pointer"),
+        allowed={
+            "name",
+            "target_register",
+            "candidate_register",
+            "evidence_sha256",
+        },
+        required={
+            "name",
+            "target_register",
+            "candidate_register",
+            "evidence_sha256",
+        },
+        label="address-taken context incoming_pointer",
+    )
+    incoming_target = _context_text(
+        incoming.get("target_register"),
+        "address-taken context incoming_pointer.target_register",
+        limit=3,
+    ).lower()
+    incoming_candidate = _context_text(
+        incoming.get("candidate_register"),
+        "address-taken context incoming_pointer.candidate_register",
+        limit=3,
+    ).lower()
+    if not _saved(incoming_target, "r") or not _saved(incoming_candidate, "r"):
+        raise LearningInputError(
+            "address-taken incoming pointer registers must be nonvolatile GPRs"
+        )
+    normalized_incoming = {
+        "name": _context_identifier(
+            incoming.get("name"), "address-taken context incoming_pointer.name"
+        ),
+        "target_register": incoming_target,
+        "candidate_register": incoming_candidate,
+        "evidence_sha256": _context_sha256(
+            incoming.get("evidence_sha256"),
+            "address-taken context incoming_pointer.evidence_sha256",
+        ),
+    }
+
+    local = _closed_context(
+        context.get("local_pointer"),
+        allowed={
+            "name",
+            "target_register",
+            "argument_register",
+            "consumer",
+            "evidence_sha256",
+        },
+        required={
+            "name",
+            "target_register",
+            "argument_register",
+            "consumer",
+            "evidence_sha256",
+        },
+        label="address-taken context local_pointer",
+    )
+    local_target = _context_text(
+        local.get("target_register"),
+        "address-taken context local_pointer.target_register",
+        limit=3,
+    ).lower()
+    argument_register = _context_text(
+        local.get("argument_register"),
+        "address-taken context local_pointer.argument_register",
+        limit=3,
+    ).lower()
+    if not _saved(local_target, "r") or argument_register not in {
+        f"r{number}" for number in range(3, 11)
+    }:
+        raise LearningInputError(
+            "address-taken local pointer must use a nonvolatile owner and a GPR argument register"
+        )
+    if local_target != incoming_candidate or local_target == incoming_target:
+        raise LearningInputError(
+            "address-taken local pointer must take the candidate incoming-pointer color while target incoming ownership moves"
+        )
+    normalized_local = {
+        "name": _context_identifier(
+            local.get("name"), "address-taken context local_pointer.name"
+        ),
+        "target_register": local_target,
+        "argument_register": argument_register,
+        "consumer": _context_identifier(
+            local.get("consumer"), "address-taken context local_pointer.consumer"
+        ),
+        "evidence_sha256": _context_sha256(
+            local.get("evidence_sha256"),
+            "address-taken context local_pointer.evidence_sha256",
+        ),
+    }
+
+    object_home = _closed_context(
+        context.get("object_home"),
+        allowed={"parameter", "target_stack_offset", "evidence_sha256"},
+        required={"parameter", "target_stack_offset", "evidence_sha256"},
+        label="address-taken context object_home",
+    )
+    normalized_home = {
+        "parameter": _context_identifier(
+            object_home.get("parameter"),
+            "address-taken context object_home.parameter",
+        ),
+        "target_stack_offset": _context_uint(
+            object_home.get("target_stack_offset"),
+            "address-taken context object_home.target_stack_offset",
+        ),
+        "evidence_sha256": _context_sha256(
+            object_home.get("evidence_sha256"),
+            "address-taken context object_home.evidence_sha256",
+        ),
+    }
+
+    return {
+        "schema": ADDRESS_TAKEN_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "expected_size_delta": expected_size_delta,
+        "aggregate": normalized_aggregate,
+        "incoming_pointer": normalized_incoming,
+        "local_pointer": normalized_local,
+        "object_home": normalized_home,
     }
 
 
@@ -3549,6 +3786,250 @@ def _aggregate_two_owner_followup_evaluation(
     )
 
 
+def _address_taken_local_pointer_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "address_taken_local_pointer_consumer"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated address-taken local pointer context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the address-taken context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if (
+        target_size is None
+        or candidate_size is None
+        or target_size - candidate_size != context["expected_size_delta"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the measured function-size delta does not match the sealed pointer-lifetime seam",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "expected_size_delta": context["expected_size_delta"],
+            },
+        )
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if (
+        target_frame is None
+        or candidate_frame is None
+        or target_frame <= candidate_frame
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target does not have the larger measurable frame required by the named local pointer lifetime",
+            evidence={
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+
+    aggregate_offset = int(context["aggregate"]["stack_offset"])
+    incoming = context["incoming_pointer"]
+    local = context["local_pointer"]
+    object_home = context["object_home"]
+    consumer = str(local["consumer"])
+
+    def call_rows(entries: Sequence[causal_reducer.Instruction]) -> list[int]:
+        pattern = re.compile(rf"\b{re.escape(consumer)}\b")
+        return [
+            index
+            for index, item in enumerate(entries)
+            if item.has_instruction
+            and item.mnemonic in _CALL_MNEMONICS
+            and pattern.search(item.formatted) is not None
+        ]
+
+    target_calls = call_rows(target)
+    candidate_calls = call_rows(candidate)
+    if len(target_calls) != 1 or len(candidate_calls) != 1:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the typed consumer call is not uniquely present on both report sides",
+            evidence={
+                "consumer": consumer,
+                "target_call_rows": target_calls,
+                "candidate_call_rows": candidate_calls,
+            },
+        )
+
+    target_materializations = [
+        (index, materialization)
+        for index, item in enumerate(target)
+        if item.has_instruction
+        and (materialization := _addi_r1_materialization(item.formatted)) is not None
+        and materialization
+        == (str(local["target_register"]), aggregate_offset)
+    ]
+    candidate_materializations = [
+        (index, materialization)
+        for index, item in enumerate(candidate)
+        if item.has_instruction
+        and (materialization := _addi_r1_materialization(item.formatted)) is not None
+        and materialization
+        == (str(local["argument_register"]), aggregate_offset)
+    ]
+    if len(target_materializations) != 1 or len(candidate_materializations) != 1:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the saved target address and direct candidate argument materializations are not unique and exact",
+            evidence={
+                "aggregate_stack_offset": aggregate_offset,
+                "target_materializations": target_materializations,
+                "candidate_materializations": candidate_materializations,
+            },
+        )
+
+    target_materialization_row = target_materializations[0][0]
+    candidate_materialization_row = candidate_materializations[0][0]
+    target_call_row = target_calls[0]
+    candidate_call_row = candidate_calls[0]
+    target_copy_rows = [
+        index
+        for index, item in enumerate(target)
+        if target_materialization_row < index < target_call_row
+        and item.mnemonic == "mr"
+        and _registers(item.formatted)
+        == [str(local["argument_register"]), str(local["target_register"])]
+    ]
+    if (
+        len(target_copy_rows) != 1
+        or not 0 < target_call_row - target_materialization_row <= 12
+        or not 0 < candidate_call_row - candidate_materialization_row <= 12
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target saved-pointer copy or bounded call chronology is absent",
+            evidence={
+                "target_materialization_row": target_materialization_row,
+                "target_copy_rows": target_copy_rows,
+                "target_call_row": target_call_row,
+                "candidate_materialization_row": candidate_materialization_row,
+                "candidate_call_row": candidate_call_row,
+            },
+        )
+
+    target_incoming_rows = [
+        index
+        for index, item in enumerate(target)
+        if item.mnemonic == "mr"
+        and _registers(item.formatted)
+        == [str(incoming["target_register"]), str(local["argument_register"])]
+    ]
+    candidate_incoming_rows = [
+        index
+        for index, item in enumerate(candidate)
+        if item.mnemonic == "mr"
+        and _registers(item.formatted)
+        == [str(incoming["candidate_register"]), str(local["argument_register"])]
+    ]
+    if len(target_incoming_rows) != 1 or len(candidate_incoming_rows) != 1:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the incoming aggregate-pointer owner colors are not uniquely authenticated",
+            evidence={
+                "target_incoming_rows": target_incoming_rows,
+                "candidate_incoming_rows": candidate_incoming_rows,
+            },
+        )
+
+    home_offset = int(object_home["target_stack_offset"])
+    target_home_rows = [
+        index
+        for index, item in enumerate(target[:32])
+        if item.mnemonic == "stw"
+        and _registers(item.formatted)[:1] == ["r3"]
+        and _stack_offset(item.formatted) == home_offset
+    ]
+    candidate_home_rows = [
+        index
+        for index, item in enumerate(candidate[:32])
+        if item.mnemonic == "stw"
+        and _registers(item.formatted)[:1] == ["r3"]
+        and _stack_offset(item.formatted) == home_offset
+    ]
+    if len(target_home_rows) != 1 or candidate_home_rows:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target-only parameter home is not uniquely present",
+            evidence={
+                "target_home_rows": target_home_rows,
+                "candidate_home_rows": candidate_home_rows,
+                "target_stack_offset": home_offset,
+            },
+        )
+
+    expression = (
+        f"{local['name']} = &{context['aggregate']['name']}; "
+        f"pass {local['name']} to {consumer}"
+    )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the target uniquely materializes an address-taken local aggregate in a "
+            "saved GPR, copies that owner into the typed call argument, moves the "
+            "incoming pointer to a different saved owner, and adds one target-only "
+            "parameter home while the candidate passes the local address directly"
+        ),
+        confidence=0.99,
+        source_class="live_typed_pointer_to_address_taken_local_at_consumer_boundary",
+        recommendation=(
+            f"Test exactly one live `{context['aggregate']['type']} *{local['name']}` "
+            f"bound to `&{context['aggregate']['name']}` immediately before {consumer}; "
+            "suppress declaration-only and artificial-lifetime permutations."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "size_delta": target_size - candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "aggregate": context["aggregate"],
+            "incoming_pointer": incoming,
+            "local_pointer": local,
+            "object_home": object_home,
+            "target_home_row": target_home_rows[0],
+            "target_incoming_row": target_incoming_rows[0],
+            "candidate_incoming_row": candidate_incoming_rows[0],
+            "target_materialization_row": target_materialization_row,
+            "target_copy_row": target_copy_rows[0],
+            "candidate_direct_materialization_row": candidate_materialization_row,
+            "target_call_row": target_call_row,
+            "candidate_call_row": candidate_call_row,
+            "source_expression": expression,
+            "suppressed_axes": [
+                "declaration_order_only",
+                "dead_pointer_storage",
+                "artificial_lifetime_extension",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -3825,6 +4306,7 @@ def diagnose_document(
     parameter_allocation_context: Mapping[str, Any] | None = None,
     aggregate_use_context: Mapping[str, Any] | None = None,
     aggregate_followup_context: Mapping[str, Any] | None = None,
+    address_taken_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -3860,6 +4342,11 @@ def diagnose_document(
     normalized_aggregate_followup_context = (
         _parse_aggregate_followup_context(aggregate_followup_context)
         if aggregate_followup_context is not None
+        else None
+    )
+    normalized_address_taken_context = (
+        _parse_address_taken_context(address_taken_context)
+        if address_taken_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -3932,6 +4419,13 @@ def diagnose_document(
             normalized_aggregate_followup_context,
             objdiff_canonical_sha256,
         ),
+        _address_taken_local_pointer_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_address_taken_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -3976,6 +4470,11 @@ def diagnose_document(
             "aggregate_followup_context_canonical_sha256": (
                 _sha256(_canonical(normalized_aggregate_followup_context))
                 if normalized_aggregate_followup_context is not None
+                else None
+            ),
+            "address_taken_context_canonical_sha256": (
+                _sha256(_canonical(normalized_address_taken_context))
+                if normalized_address_taken_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -4080,6 +4579,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--address-taken-context",
+        type=Path,
+        help=(
+            "authenticated address_taken_local_pointer_context/v1 JSON with the "
+            "target home, incoming owner, local address owner, and typed call boundary"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -4137,6 +4644,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="aggregate follow-up context",
                 )
                 if args.aggregate_followup_context is not None
+                else None
+            ),
+            address_taken_context=(
+                _load_json(
+                    args.address_taken_context,
+                    label="address-taken local pointer context",
+                )
+                if args.address_taken_context is not None
                 else None
             ),
             capacity_context=(

@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns eleven reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns twelve reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v4` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v5` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -266,6 +266,27 @@ schedules exactly the declaration-only, split-expression cell and suppresses
 both fused cells. This prevents the ElectricAdd failure mode where combining a
 good declaration axis with a rejected fusion axis grew the function.
 
+For a target that names a saved pointer to an address-taken local while the
+candidate passes `&local` directly, provide the physical owner seam explicitly:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/glowkinokoalt-baseline.strict.json \
+  --function mbev_CapEffGlowKinokoAddAlt \
+  --address-taken-context work/glowkinokoalt.address-taken-context.json \
+  > work/glowkinokoalt.learning.json
+```
+
+`address_taken_local_pointer_context/v1` binds the report, exact CFG/data/
+physical-relocation/sibling receipts, the measured size delta, local aggregate
+stack offset, incoming pointer colors, saved local-address color, typed argument
+register/callee, and target-only parameter home. The detector independently
+requires the candidate's direct `addi argument,r1,offset`, the target's saved
+`addi` plus `mr` into that same argument, the incoming-owner move on each side,
+one larger target frame, and one unique target-only home. It then ranks exactly
+one live typed pointer at the consumer boundary and suppresses dead pointer
+storage, declaration-only edits, and artificial lifetime extension.
+
 The Kokamekku-derived capacity and loop-destination rules are also unavailable
 from objdiff rows alone. Supply either or both closed evidence contexts:
 
@@ -445,7 +466,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The eight additional joins are narrower than those generic classifications:
+The nine additional joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -456,6 +477,7 @@ The eight additional joins are narrower than those generic classifications:
 | parameter/allocation consumer chain | Equal size/frame; a complete parameter versus allocation-result saved-GPR swap; exact data/CFG/physical relocations/siblings; an authenticated allocation call followed immediately by a saved-owner `mr`; and adjacent field-store then typed-pointer-copy consumers | Preserve the explicit allocation-result identity and fuse only its consumers as a right-associative assignment |
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
+| address-taken local pointer consumer | Exact CFG/data/physical relocations/siblings; a bounded positive size delta and larger target frame; matching local stack address; target saved-address materialization/copy versus candidate direct argument materialization; authenticated incoming-owner colors; and one target-only parameter home | Introduce one live typed pointer to the already live local aggregate immediately before the typed consumer |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
@@ -464,7 +486,7 @@ The eight additional joins are narrower than those generic classifications:
 These joins preserve the reviewed boundaries from
 `ev_CapTeresaFadeMatHook`, `ev_CapMiracleCoinTrade`,
 `mbev_CapKuribo`, `mbev_CapPlayerMoveEjectCreate`, `mbev_CapKokamekku`,
-`mbev_CapEffExplodeOMExec`, `ev_CapBobleOMExec`, and
+`mbev_CapEffExplodeOMExec`, `mbev_CapEffGlowKinokoAddAlt`, `ev_CapBobleOMExec`, and
 `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
 same physical signature.
@@ -487,6 +509,10 @@ The focused fixtures reject the tempting incomplete variants:
   already-applied aggregate receipt, with a fusion observation that preserved
   size/topology, or with a declaration order naming anything beyond the two
   sealed typed owners;
+- an address-taken pointer claim with a non-unique consumer, no larger target
+  frame, a mismatched aggregate offset, no saved-address-to-argument copy,
+  absent incoming-owner colors, or a candidate that already has the target
+  parameter home;
 - an unaligned, zero/negative, or internally inconsistent stack extent; a used
   prefix larger than the candidate capacity; or producer maxima that disagree
   with the computed target capacity;
