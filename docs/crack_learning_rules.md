@@ -779,7 +779,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The nineteen joins are narrower than those generic classifications:
+The twenty joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -798,6 +798,7 @@ The nineteen joins are narrower than those generic classifications:
 | dependency-equivalent exact-sibling transfer | Distinct strict/data-exact sibling; authenticated equivalent dependency graph and capacity; the same sealed target/candidate call-order inversion and shared Boolean destinations; and three target-only adjacent `extsh`/s16-consumer pairs normalizing one owner | Transfer the sibling's semantic Boolean source and combine it only with the independently proved `int` owner and live array capacity in one cell |
 | typed pool/live-range interaction | Larger-target baseline; exact data/CFG/physical relocations/siblings; disjoint sealed live-range, two-row `lfs` comparison, and value-equivalent SDA21 owner groups; authenticated same-TU named f32 owner; and measured size-exact precursor/exact cells | Reuse the live temporaries and preincrement, use natural float truthiness, and bind the authenticated pool owner in one combined cell |
 | saved-owner semantic split composer | Equal size/frame and exact CFG/data/physical relocations/siblings; a sealed multi-owner GPR cycle; canonical same-session Object inventory with zero UNKNOWN; measured block/function/direct callback controls; object-neutral loop declaration control; and one authenticated missing interaction cell | Keep the typed callback in its proven guard block and split the early truthful `s16 dataFmt` owner in one compile; suppress callback-scope, direct-call, loop-order, and repeat-tracer retries |
+| saved-FPR stack/pool composer | A larger c009-style candidate with equal physical relocations, one authenticated candidate-only stack owner and broad +4 home cascade, a bounded UNKNOWN trace whose Object/offset facts remain authoritative, an exact same-TU source-shape donor, a measured three-axis interaction, and a later exact-size three-row pool-only seam | Compile only the sealed donor-backed saved-FPR composition; once topology closes, stop owner experiments and hand exactly the remaining typed-pool rows to one semantic value batch |
 | float truthiness comparison ranking | Equal size/frame and exact CFG/data/physical relocations/siblings; exactly two swapped field/zero `lfs` rows feeding an exact adjacent `fcmpu`/conditional branch; an object-identical commuted explicit-zero control; and an authenticated exact truthiness precedent | Compile `if (field)` first and suppress both explicit zero-comparison operand orders |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
@@ -1197,6 +1198,51 @@ tracing. Dead/fake locals, padding, register shaping, retention, and promotion
 remain forbidden. Active-time telemetry is mandatory; incomplete heavy-runtime
 coverage is reported without imputation. Authority is always false.
 
+## Saved-FPR stack-owner composition and pool handoff
+
+For repeated particle constructors, a candidate-only stack owner can create a
+large saved-FPR and stack-home cascade even when CFG, calls, and physical
+relocation counts are already closed. Bind that evidence before generating
+more declarations:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/dustcloud-c009.strict.json \
+  --function mbev_CapEffDustCloudAdd \
+  --saved-fpr-stack-pool-context work/dustcloud.saved-fpr-pool.json \
+  > work/dustcloud.learning.json
+```
+
+`saved_fpr_stack_pool_composer_context/v1` deliberately preserves the tracer
+boundary. `CAPTURED_UNKNOWN_OWNERSHIP` is valid only when the authenticated
+Object inventory and stack offset are the claimed facts; incomplete regalloc
+or null Object identity remains UNKNOWN. The rule must not upgrade that capture
+to complete ownership.
+
+At the composition stage, the context binds the candidate-only `posSin` store,
+the downstream word-sized home cascade, the exact same-TU DustExplode scalar
+reuse precedent, and four measured regressions. It emits one bounded cell,
+ranked within the first three candidates:
+
+```text
+reuse_value x distinct_distance2 x exact_donor_extended
+```
+
+Distance-only, broad historical/FPR declaration groupings, direct trig
+consumption, repeat tracing, padding, dead locals, and register shaping are
+suppressed. The tool does not generate source or authorize retention.
+
+At the pool-handoff stage, code size, data, CFG, stack ownership, and physical
+relocations must be closed. Exactly three `lfs` rows must remain with one sealed
+candidate owner/value and one target owner/value. The rule then stops all
+owner/lifetime experimentation and emits one typed-pool semantic-value batch;
+DustCloud binds rows 478/486/494 as `192.0f` to `32.0f`. Any fourth row, owner
+drift, or changed instruction fails closed.
+
+Telemetry is part of the context. Incomplete heavy/active coverage remains
+excluded from measured crack/hour, uncovered time is never imputed, and
+`authority_advanced` is always false.
+
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,
@@ -1204,8 +1250,8 @@ and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
 allocator, parameter/allocation, aggregate-pointer branch, typed-pool/live-range,
 capacity, branch, reciprocal, mixed-bank home-cycle, historical live-alias, or
-scalar return-consumer owner evidence by SHA-256. The traced numbered-aggregate
-path and saved-owner semantic-split path also bind their standalone implementations; the allocator path binds the installed
+scalar return-consumer owner evidence by SHA-256. The traced numbered-aggregate, saved-owner semantic-split, and saved-FPR
+stack/pool paths also bind their standalone implementations; the allocator path binds the installed
 interaction planner, and the typed-pool path binds the installed pool decoder.
 Rule order and JSON serialization are stable.
 
