@@ -137,6 +137,58 @@ read-only graph. It anchors `capthrow.c` at `game/src/board/capthrow.c:L1`, the
 `game/src/game/process.c:L134`, `HuPrcSleep`/`HuPrcVSleep` at lines 191/203,
 and `Hu3DModelObjMtxGet` at `game/src/game/hsfdraw.c:L3641`.
 
+## Bound CapTrap Bomhei interaction evidence
+
+Graphify resolves `mbev_CapBomhei` to `src/board/captrap.c:L1615`. A single
+Graft lookup returned no indexed node, so the bounded review continued only in
+that named function and its authenticated artifacts. The retained exact result
+is candidate 67: source
+`a6d09391133935c45bc102e5580c2bdc89b1caac9fa92bf07824ac934676a4cb`,
+object `6e44d75b3bc1f077946e84662e07b715c76306733e0693a3bcbcaa2d7a1a0bc3`,
+strict report
+`b8664886f585d755e9bbd3cf34ba2a7244c767df0eea42ab9e3ffbf1d85af75a`,
+and record
+`e4cbdca49b4d3d819dfa0b7913a1252123fac347fa48d668a447074e633f3171`.
+The function is 3176/3176 bytes with zero strict/data rows and 292/292 physical
+relocations; all twelve protected siblings remain exact.
+
+The causal precursor is candidate 61. Its same-session diagnostic binds source
+`aa3de2349082d76712897f04ae44025e6499173cf6eba115cf015dd5168ad562`
+to envelope
+`4673ea466f50501460e66fe94eeccd8712fbe4cb92b4f1f627ac097d167b717a`,
+stack stream
+`9878535da407ccfa0de5214c657b6415de7a56a1971ff1be802482f626109b18`,
+PCode stream
+`8b25237a6523c2ae9f2f80d00fccfef422122c6db4fc620a30cbe18265057a53`,
+sealed source spans
+`558256df0a21eb4aa93780840ee87e0907e917a923ebd065fb9222626d714f4f`,
+and causal map
+`4e1b4c2b8319d82feb217d9af00140280c08535b2ee2d440c229178932cec97d`.
+That historical capture remains `UNKNOWN`: it lacks the current authenticated
+frontend/vreg join and cannot itself advance ownership or source authority.
+
+It does prove enough physical structure to rank one bounded interaction after a
+fresh current-producer join:
+
+- candidate `itemHook` occupies `r25`, while retail uses `r19` only across the
+  nested hook call. Moving the same named local into branch scope was
+  object-neutral, so another lexical-scope permutation is suppressed; rank the
+  direct nested `CharModelItemHookGet(...)` consumer instead;
+- retail's two trajectory loops write the `0x50/0x54/0x58` aggregate home bound
+  to candidate `ringPos`, while candidate 61 writes `effectPos` at
+  `0x8c/0x90/0x94`; rank reuse of the already-live `ringPos` aggregate for both
+  loops rather than inventing another object; and
+- the two causes are disjoint. Submit both singles and their combined cell to
+  the interaction planner before declaration, scope, or register experiments.
+
+The measured factorial confirms the ranking: direct nested consumption alone
+reached 99.989920%, `ringPos` reuse alone reached 99.911840%, and their combined
+cell was exact. This is acceptance evidence for the existing generic
+stack-home/source-owner join, not a reason to create another capture producer.
+Fresh uses must still enter through `capsule_stack_home_native.py`, validate its
+packet and deterministic summary here, and remain `UNKNOWN` when the current
+Object-to-source join is incomplete.
+
 ## Verification
 
 Run only the focused module while expensive background scans are active:
