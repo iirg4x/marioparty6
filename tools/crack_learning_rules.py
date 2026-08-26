@@ -27,8 +27,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v15"
-SCHEMA_VERSION = 15
+SCHEMA = "crack_learning_diagnosis/v16"
+SCHEMA_VERSION = 16
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -54,6 +54,7 @@ WIDE_VALIDATION_NARROW_RESULT_CONTEXT_SCHEMA = (
 POOL_LIVE_RANGE_CONTEXT_SCHEMA = "pool_live_range_interaction_context/v1"
 FLOAT_TRUTHINESS_CONTEXT_SCHEMA = "float_truthiness_comparison_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
+STACK_GAP_CAPACITY_CONTEXT_SCHEMA = "stack_gap_capacity_attribution_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
 
@@ -384,6 +385,26 @@ _CAPACITY_PROOF_HASHES = (
     "stack_extent_receipt_sha256",
     "interface_contract_receipt_sha256",
 )
+_STACK_GAP_CAPACITY_PROOF_FLAGS = (
+    "function_size_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "pinned_mwcc_frontend",
+    "capacity_result_verified",
+    "exact_result_verified",
+)
+_STACK_GAP_CAPACITY_PROOF_HASHES = (
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "stack_gap_receipt_sha256",
+    "capacity_provenance_receipt_sha256",
+    "capacity_candidate_record_sha256",
+    "exact_result_report_sha256",
+    "exact_result_record_sha256",
+)
 _BRANCH_PROOF_FLAGS = (
     "function_size_exact",
     "stack_frame_exact",
@@ -460,6 +481,7 @@ _RULE_ORDER = (
     "pool_live_range_interaction",
     "float_truthiness_comparison_ranking",
     "stack_extent_interface_capacity",
+    "stack_gap_capacity_expression_attribution",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
     "aggregate_self_copy_final_consumer",
@@ -5478,6 +5500,373 @@ def _parse_capacity_context(value: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _parse_stack_gap_capacity_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "capacity_stage", "attribution_stage"},
+        required={"schema", "proofs", "capacity_stage", "attribution_stage"},
+        label="stack-gap capacity context",
+    )
+    if (
+        _context_text(context.get("schema"), "stack-gap capacity context schema")
+        != STACK_GAP_CAPACITY_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            "stack-gap capacity context schema must be "
+            f"{STACK_GAP_CAPACITY_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_STACK_GAP_CAPACITY_PROOF_FLAGS) | set(
+        _STACK_GAP_CAPACITY_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="stack-gap capacity context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _STACK_GAP_CAPACITY_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"stack-gap capacity context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _STACK_GAP_CAPACITY_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"stack-gap capacity context proofs.{field}"
+        )
+
+    capacity = _closed_context(
+        context.get("capacity_stage"),
+        allowed={
+            "objdiff_canonical_sha256",
+            "uniform_gap",
+            "array",
+            "capacity_sources",
+        },
+        required={
+            "objdiff_canonical_sha256",
+            "uniform_gap",
+            "array",
+            "capacity_sources",
+        },
+        label="stack-gap capacity context capacity_stage",
+    )
+    uniform_gap = _closed_context(
+        capacity.get("uniform_gap"),
+        allowed={"target_minus_candidate_bytes", "minimum_row_count"},
+        required={"target_minus_candidate_bytes", "minimum_row_count"},
+        label="stack-gap capacity context capacity_stage.uniform_gap",
+    )
+    normalized_gap = {
+        "target_minus_candidate_bytes": _context_uint(
+            uniform_gap.get("target_minus_candidate_bytes"),
+            "stack-gap capacity context capacity_stage.uniform_gap.target_minus_candidate_bytes",
+            minimum=1,
+            maximum=65536,
+        ),
+        "minimum_row_count": _context_uint(
+            uniform_gap.get("minimum_row_count"),
+            "stack-gap capacity context capacity_stage.uniform_gap.minimum_row_count",
+            minimum=1,
+            maximum=100000,
+        ),
+    }
+    array = _closed_context(
+        capacity.get("array"),
+        allowed={
+            "name",
+            "element_size",
+            "candidate_capacity",
+            "used_prefix_elements",
+            "candidate_extent_bytes",
+            "target_extent_bytes",
+            "source_expression",
+        },
+        required={
+            "name",
+            "element_size",
+            "candidate_capacity",
+            "used_prefix_elements",
+            "candidate_extent_bytes",
+            "target_extent_bytes",
+            "source_expression",
+        },
+        label="stack-gap capacity context capacity_stage.array",
+    )
+    normalized_array = {
+        "name": _context_identifier(
+            array.get("name"),
+            "stack-gap capacity context capacity_stage.array.name",
+        ),
+        "element_size": _context_uint(
+            array.get("element_size"),
+            "stack-gap capacity context capacity_stage.array.element_size",
+            minimum=1,
+            maximum=4096,
+        ),
+        "candidate_capacity": _context_uint(
+            array.get("candidate_capacity"),
+            "stack-gap capacity context capacity_stage.array.candidate_capacity",
+            minimum=1,
+        ),
+        "used_prefix_elements": _context_uint(
+            array.get("used_prefix_elements"),
+            "stack-gap capacity context capacity_stage.array.used_prefix_elements",
+            minimum=1,
+        ),
+        "candidate_extent_bytes": _context_uint(
+            array.get("candidate_extent_bytes"),
+            "stack-gap capacity context capacity_stage.array.candidate_extent_bytes",
+            minimum=1,
+        ),
+        "target_extent_bytes": _context_uint(
+            array.get("target_extent_bytes"),
+            "stack-gap capacity context capacity_stage.array.target_extent_bytes",
+            minimum=1,
+        ),
+        "source_expression": _context_text(
+            array.get("source_expression"),
+            "stack-gap capacity context capacity_stage.array.source_expression",
+            limit=512,
+        ),
+    }
+
+    raw_sources = capacity.get("capacity_sources")
+    if not isinstance(raw_sources, list) or not 1 <= len(raw_sources) <= 8:
+        raise LearningInputError(
+            "stack-gap capacity context capacity_stage.capacity_sources must contain 1-8 entries"
+        )
+    source_fields = {
+        "provider",
+        "source_location",
+        "capacity",
+        "relationship",
+        "strict_exact",
+        "evidence_sha256",
+    }
+    relationships = {"same_game_exact", "same_owner_exact"}
+    normalized_sources: list[dict[str, Any]] = []
+    for index, raw_source in enumerate(raw_sources):
+        source = _closed_context(
+            raw_source,
+            allowed=source_fields,
+            required=source_fields,
+            label=(
+                "stack-gap capacity context capacity_stage.capacity_sources"
+                f"[{index}]"
+            ),
+        )
+        relationship = _context_text(
+            source.get("relationship"),
+            "stack-gap capacity context capacity_stage.capacity_sources"
+            f"[{index}].relationship",
+            limit=64,
+        )
+        if relationship not in relationships:
+            raise LearningInputError(
+                "stack-gap capacity source relationship must be same_game_exact "
+                "or same_owner_exact"
+            )
+        if source.get("strict_exact") is not True:
+            raise LearningInputError(
+                "stack-gap capacity source strict_exact must be true"
+            )
+        normalized_sources.append(
+            {
+                "provider": _context_identifier(
+                    source.get("provider"),
+                    "stack-gap capacity context capacity_stage.capacity_sources"
+                    f"[{index}].provider",
+                ),
+                "source_location": _context_text(
+                    source.get("source_location"),
+                    "stack-gap capacity context capacity_stage.capacity_sources"
+                    f"[{index}].source_location",
+                    limit=512,
+                ),
+                "capacity": _context_uint(
+                    source.get("capacity"),
+                    "stack-gap capacity context capacity_stage.capacity_sources"
+                    f"[{index}].capacity",
+                    minimum=1,
+                ),
+                "relationship": relationship,
+                "strict_exact": True,
+                "evidence_sha256": _context_sha256(
+                    source.get("evidence_sha256"),
+                    "stack-gap capacity context capacity_stage.capacity_sources"
+                    f"[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if len({item["provider"] for item in normalized_sources}) != len(
+        normalized_sources
+    ):
+        raise LearningInputError("stack-gap capacity source providers must be unique")
+
+    attribution = _closed_context(
+        context.get("attribution_stage"),
+        allowed={"objdiff_canonical_sha256", "residual_rows", "attributions"},
+        required={"objdiff_canonical_sha256", "residual_rows", "attributions"},
+        label="stack-gap capacity context attribution_stage",
+    )
+    raw_residual_rows = attribution.get("residual_rows")
+    if not isinstance(raw_residual_rows, list) or not raw_residual_rows:
+        raise LearningInputError(
+            "stack-gap capacity context attribution_stage.residual_rows must be non-empty"
+        )
+    residual_rows = [
+        _context_uint(
+            row,
+            f"stack-gap capacity context attribution_stage.residual_rows[{index}]",
+        )
+        for index, row in enumerate(raw_residual_rows)
+    ]
+    if residual_rows != sorted(set(residual_rows)):
+        raise LearningInputError(
+            "stack-gap capacity attribution residual rows must be sorted and unique"
+        )
+
+    raw_attributions = attribution.get("attributions")
+    if not isinstance(raw_attributions, list) or not 1 <= len(raw_attributions) <= 8:
+        raise LearningInputError(
+            "stack-gap capacity context attribution_stage.attributions must contain 1-8 entries"
+        )
+    attribution_fields = {
+        "kind",
+        "target_owner",
+        "candidate_owner",
+        "row_indices",
+        "source_expression",
+        "source_location",
+        "provenance_refs",
+        "evidence_sha256",
+    }
+    attribution_kinds = {
+        "live_value_reuse",
+        "live_stack_object_reuse",
+        "historical_condition_owner",
+    }
+    normalized_attributions: list[dict[str, Any]] = []
+    attributed_rows: list[int] = []
+    for index, raw_attribution in enumerate(raw_attributions):
+        item = _closed_context(
+            raw_attribution,
+            allowed=attribution_fields,
+            required=attribution_fields,
+            label=f"stack-gap capacity context attribution_stage.attributions[{index}]",
+        )
+        kind = _context_text(
+            item.get("kind"),
+            f"stack-gap capacity context attribution_stage.attributions[{index}].kind",
+            limit=64,
+        )
+        if kind not in attribution_kinds:
+            raise LearningInputError(
+                "stack-gap capacity attribution kind is not recognized"
+            )
+        raw_rows = item.get("row_indices")
+        if not isinstance(raw_rows, list) or not raw_rows:
+            raise LearningInputError(
+                "stack-gap capacity attribution row_indices must be non-empty"
+            )
+        rows = [
+            _context_uint(
+                row,
+                "stack-gap capacity context attribution_stage.attributions"
+                f"[{index}].row_indices[{row_index}]",
+            )
+            for row_index, row in enumerate(raw_rows)
+        ]
+        if rows != sorted(set(rows)):
+            raise LearningInputError(
+                "stack-gap capacity attribution row_indices must be sorted and unique"
+            )
+        raw_refs = item.get("provenance_refs")
+        if not isinstance(raw_refs, list) or not 1 <= len(raw_refs) <= 8:
+            raise LearningInputError(
+                "stack-gap capacity attribution provenance_refs must contain 1-8 entries"
+            )
+        refs = [
+            _context_text(
+                ref,
+                "stack-gap capacity context attribution_stage.attributions"
+                f"[{index}].provenance_refs[{ref_index}]",
+                limit=256,
+            )
+            for ref_index, ref in enumerate(raw_refs)
+        ]
+        if len(set(refs)) != len(refs):
+            raise LearningInputError(
+                "stack-gap capacity attribution provenance_refs must be unique"
+            )
+        attributed_rows.extend(rows)
+        normalized_attributions.append(
+            {
+                "kind": kind,
+                "target_owner": _context_identifier(
+                    item.get("target_owner"),
+                    "stack-gap capacity context attribution_stage.attributions"
+                    f"[{index}].target_owner",
+                ),
+                "candidate_owner": _context_identifier(
+                    item.get("candidate_owner"),
+                    "stack-gap capacity context attribution_stage.attributions"
+                    f"[{index}].candidate_owner",
+                ),
+                "row_indices": rows,
+                "source_expression": _context_text(
+                    item.get("source_expression"),
+                    "stack-gap capacity context attribution_stage.attributions"
+                    f"[{index}].source_expression",
+                    limit=512,
+                ),
+                "source_location": _context_text(
+                    item.get("source_location"),
+                    "stack-gap capacity context attribution_stage.attributions"
+                    f"[{index}].source_location",
+                    limit=512,
+                ),
+                "provenance_refs": refs,
+                "evidence_sha256": _context_sha256(
+                    item.get("evidence_sha256"),
+                    "stack-gap capacity context attribution_stage.attributions"
+                    f"[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if sorted(attributed_rows) != residual_rows:
+        raise LearningInputError(
+            "stack-gap capacity attributions must partition every residual row exactly once"
+        )
+
+    return {
+        "schema": STACK_GAP_CAPACITY_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "capacity_stage": {
+            "objdiff_canonical_sha256": _context_sha256(
+                capacity.get("objdiff_canonical_sha256"),
+                "stack-gap capacity context capacity_stage.objdiff_canonical_sha256",
+            ),
+            "uniform_gap": normalized_gap,
+            "array": normalized_array,
+            "capacity_sources": sorted(
+                normalized_sources, key=lambda item: item["provider"]
+            ),
+        },
+        "attribution_stage": {
+            "objdiff_canonical_sha256": _context_sha256(
+                attribution.get("objdiff_canonical_sha256"),
+                "stack-gap capacity context attribution_stage.objdiff_canonical_sha256",
+            ),
+            "residual_rows": residual_rows,
+            "attributions": normalized_attributions,
+        },
+    }
+
+
 def _parse_branch_context(value: Mapping[str, Any]) -> dict[str, Any]:
     context = _closed_context(
         value,
@@ -6191,6 +6580,46 @@ def _loop_branch_destination_evaluation(
     )
 
 
+def _capacity_equation(
+    array: Mapping[str, Any],
+) -> tuple[dict[str, int] | None, str | None]:
+    element_size = int(array["element_size"])
+    candidate_capacity = int(array["candidate_capacity"])
+    used_prefix = int(array["used_prefix_elements"])
+    candidate_extent = int(array["candidate_extent_bytes"])
+    target_extent = int(array["target_extent_bytes"])
+    if candidate_extent != candidate_capacity * element_size:
+        return (
+            None,
+            "the candidate array capacity does not reproduce its sealed byte extent",
+        )
+    if used_prefix > candidate_capacity:
+        return None, "the used prefix exceeds the candidate array capacity"
+    missing_extent = target_extent - candidate_extent
+    if (
+        missing_extent <= 0
+        or target_extent % element_size != 0
+        or missing_extent % element_size != 0
+    ):
+        return (
+            None,
+            "the target-only extent is not a positive whole-element capacity delta",
+        )
+    return (
+        {
+            "element_size": element_size,
+            "used_prefix_elements": used_prefix,
+            "candidate_capacity": candidate_capacity,
+            "candidate_extent_bytes": candidate_extent,
+            "target_extent_bytes": target_extent,
+            "missing_extent_bytes": missing_extent,
+            "extra_elements": missing_extent // element_size,
+            "predicted_capacity": target_extent // element_size,
+        },
+        None,
+    )
+
+
 def _stack_extent_interface_capacity_evaluation(
     pair: causal_reducer.FunctionPair,
     context: Mapping[str, Any] | None,
@@ -6226,42 +6655,15 @@ def _stack_extent_interface_capacity_evaluation(
         )
 
     array = context["array"]
-    element_size = array["element_size"]
-    candidate_extent = array["candidate_extent_bytes"]
-    target_extent = array["target_extent_bytes"]
-    if candidate_extent != array["candidate_capacity"] * element_size:
+    equation, equation_error = _capacity_equation(array)
+    if equation is None:
         return _evaluation(
             rule_id,
             matched=False,
-            reason="the candidate array capacity does not reproduce its sealed byte extent",
+            reason=str(equation_error),
             evidence={"array": array},
         )
-    if array["used_prefix_elements"] > array["candidate_capacity"]:
-        return _evaluation(
-            rule_id,
-            matched=False,
-            reason="the used prefix exceeds the candidate array capacity",
-            evidence={"array": array},
-        )
-    missing_extent = target_extent - candidate_extent
-    if (
-        missing_extent <= 0
-        or target_extent % element_size != 0
-        or missing_extent % element_size != 0
-    ):
-        return _evaluation(
-            rule_id,
-            matched=False,
-            reason="the target-only extent is not a positive whole-element capacity delta",
-            evidence={
-                "element_size": element_size,
-                "candidate_extent_bytes": candidate_extent,
-                "target_extent_bytes": target_extent,
-                "missing_extent_bytes": missing_extent,
-            },
-        )
-    predicted_capacity = target_extent // element_size
-    extra_elements = missing_extent // element_size
+    predicted_capacity = equation["predicted_capacity"]
     contract_maxima = sorted(
         {int(item["maximum"]) for item in context["producer_contracts"]}
     )
@@ -6293,16 +6695,265 @@ def _stack_extent_interface_capacity_evaluation(
             "target_size": target_size,
             "candidate_size": candidate_size,
             "array_name": array["name"],
-            "element_size": element_size,
-            "used_prefix_elements": array["used_prefix_elements"],
-            "candidate_capacity": array["candidate_capacity"],
-            "candidate_extent_bytes": candidate_extent,
-            "target_extent_bytes": target_extent,
-            "missing_extent_bytes": missing_extent,
-            "extra_elements": extra_elements,
-            "predicted_capacity": predicted_capacity,
+            **equation,
             "producer_contracts": context["producer_contracts"],
             "declaration_positions": context["declaration_positions"],
+            "proofs": context["proofs"],
+        },
+    )
+
+
+def _stack_gap_capacity_expression_attribution_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "stack_gap_capacity_expression_attribution"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated stack-gap capacity/attribution context was supplied",
+        )
+    capacity = context["capacity_stage"]
+    attribution = context["attribution_stage"]
+    if objdiff_canonical_sha256 == capacity["objdiff_canonical_sha256"]:
+        stage = "capacity"
+    elif objdiff_canonical_sha256 == attribution["objdiff_canonical_sha256"]:
+        stage = "attribution"
+    else:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the report is bound to neither sealed stack-gap stage",
+            evidence={
+                "objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "capacity_objdiff_canonical_sha256": capacity[
+                    "objdiff_canonical_sha256"
+                ],
+                "attribution_objdiff_canonical_sha256": attribution[
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if target_size is None or target_size != candidate_size:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="target and candidate function sizes are not exact",
+            evidence={"target_size": target_size, "candidate_size": candidate_size},
+        )
+    array = capacity["array"]
+    equation, equation_error = _capacity_equation(array)
+    if equation is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=str(equation_error),
+            evidence={"array": array},
+        )
+    source_capacities = sorted(
+        {int(item["capacity"]) for item in capacity["capacity_sources"]}
+    )
+    if source_capacities != [equation["predicted_capacity"]]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the authenticated exact-source capacities do not converge on the "
+                "measured target capacity"
+            ),
+            evidence={
+                "predicted_capacity": equation["predicted_capacity"],
+                "source_capacities": source_capacities,
+                "capacity_sources": capacity["capacity_sources"],
+            },
+        )
+
+    if stage == "capacity":
+        gap = capacity["uniform_gap"]
+        if equation["missing_extent_bytes"] != gap["target_minus_candidate_bytes"]:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the array capacity delta does not equal the sealed uniform stack gap",
+                evidence={"capacity_equation": equation, "uniform_gap": gap},
+            )
+        deltas: dict[int, int] = {}
+        for left, right in zip(target, candidate, strict=True):
+            if left.diff_kind is None and right.diff_kind is None:
+                continue
+            left_offset = _stack_offset(left.formatted)
+            right_offset = _stack_offset(right.formatted)
+            if left_offset is None or right_offset is None:
+                continue
+            delta = left_offset - right_offset
+            deltas[delta] = deltas.get(delta, 0) + 1
+        expected_gap = gap["target_minus_candidate_bytes"]
+        observed_count = deltas.get(expected_gap, 0)
+        stack_delta_histogram = {
+            str(delta): count for delta, count in sorted(deltas.items())
+        }
+        if observed_count < gap["minimum_row_count"]:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the report does not reproduce the sealed dominant stack-gap class",
+                evidence={
+                    "stack_delta_histogram": stack_delta_histogram,
+                    "expected_gap": expected_gap,
+                    "minimum_row_count": gap["minimum_row_count"],
+                },
+            )
+        larger_classes = {
+            delta: count
+            for delta, count in deltas.items()
+            if delta != expected_gap and count >= observed_count
+        }
+        if larger_classes:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the sealed stack gap is not the unique dominant stack-home class",
+                evidence={"stack_delta_histogram": stack_delta_histogram},
+            )
+        return _evaluation(
+            rule_id,
+            matched=True,
+            reason=(
+                "the dominant target stack-home delta equals a whole-element live-array "
+                "capacity increase authenticated by exact natural-source donors"
+            ),
+            confidence=0.99,
+            source_class="live_array_capacity_from_stack_gap_and_exact_source_donor",
+            recommendation=(
+                "Compile exactly the predicted live-array declaration and suppress padding, "
+                "dead storage, declaration permutations, and register shaping."
+            ),
+            evidence={
+                "stage": stage,
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "array_name": array["name"],
+                **equation,
+                "stack_delta_histogram": stack_delta_histogram,
+                "uniform_gap_row_count": observed_count,
+                "capacity_sources": capacity["capacity_sources"],
+                "bounded_source_cells": [array["source_expression"]],
+                "suppressed_actions": [
+                    "padding",
+                    "dead_storage",
+                    "declaration_permutations",
+                    "register_shaping",
+                ],
+                "proofs": context["proofs"],
+            },
+        )
+
+    observed_residual_rows = [
+        index
+        for index, (left, right) in enumerate(zip(target, candidate, strict=True))
+        if left.diff_kind is not None or right.diff_kind is not None
+    ]
+    if observed_residual_rows != attribution["residual_rows"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the post-capacity residual rows do not equal the sealed attribution set",
+            evidence={
+                "observed_residual_rows": observed_residual_rows,
+                "expected_residual_rows": attribution["residual_rows"],
+            },
+        )
+    mismatched_kinds = {
+        kind
+        for row in observed_residual_rows
+        for kind in (target[row].diff_kind, candidate[row].diff_kind)
+        if kind is not None
+    }
+    if mismatched_kinds != {"DIFF_ARG_MISMATCH"}:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the post-capacity residual is not exclusively owner/operand identity",
+            evidence={"diff_kinds": sorted(mismatched_kinds)},
+        )
+    for item in attribution["attributions"]:
+        rows = item["row_indices"]
+        if item["kind"] == "live_value_reuse":
+            if not all(
+                _registers(target[row].formatted, "f")
+                and _registers(candidate[row].formatted, "f")
+                and _without_registers(target[row].formatted)
+                == _without_registers(candidate[row].formatted)
+                for row in rows
+            ):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="a live-value attribution does not cover a pure FPR owner seam",
+                    evidence={"attribution": item},
+                )
+        elif item["kind"] == "historical_condition_owner":
+            if len(rows) != 1 or not target[rows[0]].formatted.lower().startswith(
+                "cmpwi "
+            ):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="a historical condition attribution is not one cmpwi owner seam",
+                    evidence={"attribution": item},
+                )
+        else:
+            for row in rows:
+                left_memory = _stack_offset(target[row].formatted)
+                right_memory = _stack_offset(candidate[row].formatted)
+                left_address = _addi_r1_materialization(target[row].formatted)
+                right_address = _addi_r1_materialization(candidate[row].formatted)
+                if not (
+                    (left_memory is not None and right_memory is not None)
+                    or (left_address is not None and right_address is not None)
+                ):
+                    return _evaluation(
+                        rule_id,
+                        matched=False,
+                        reason=(
+                            "a live stack-object attribution contains a non-stack owner row"
+                        ),
+                        evidence={"attribution": item, "row": row},
+                    )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the exact post-capacity residual partitions into authenticated live-value, "
+            "live-stack-object, and historical-condition source owners"
+        ),
+        confidence=0.99,
+        source_class="post_capacity_source_expression_attribution",
+        recommendation=(
+            "Compile only the sealed natural source expressions as one bounded cell; "
+            "do not resume global declaration or scope permutations."
+        ),
+        evidence={
+            "stage": stage,
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "capacity_equation": equation,
+            "capacity_sources": capacity["capacity_sources"],
+            "residual_rows": observed_residual_rows,
+            "source_causes": attribution["attributions"],
+            "suppressed_actions": [
+                "global_declaration_permutations",
+                "scope_permutations",
+                "dead_storage",
+                "register_shaping",
+            ],
             "proofs": context["proofs"],
         },
     )
@@ -10758,6 +11409,7 @@ def diagnose_document(
     pool_live_range_context: Mapping[str, Any] | None = None,
     float_truthiness_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
+    stack_gap_capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -10854,6 +11506,11 @@ def diagnose_document(
     normalized_capacity_context = (
         _parse_capacity_context(capacity_context)
         if capacity_context is not None
+        else None
+    )
+    normalized_stack_gap_capacity_context = (
+        _parse_stack_gap_capacity_context(stack_gap_capacity_context)
+        if stack_gap_capacity_context is not None
         else None
     )
     normalized_branch_context = (
@@ -11001,6 +11658,13 @@ def diagnose_document(
             normalized_capacity_context,
             objdiff_canonical_sha256,
         ),
+        _stack_gap_capacity_expression_attribution_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_stack_gap_capacity_context,
+            objdiff_canonical_sha256,
+        ),
         _reciprocal_source_shape_evaluation(
             pair,
             target,
@@ -11100,6 +11764,11 @@ def diagnose_document(
             "capacity_context_canonical_sha256": (
                 _sha256(_canonical(normalized_capacity_context))
                 if normalized_capacity_context is not None
+                else None
+            ),
+            "stack_gap_capacity_context_canonical_sha256": (
+                _sha256(_canonical(normalized_stack_gap_capacity_context))
+                if normalized_stack_gap_capacity_context is not None
                 else None
             ),
             "branch_context_canonical_sha256": (
@@ -11313,6 +11982,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--stack-gap-capacity-context",
+        type=Path,
+        help=(
+            "authenticated stack_gap_capacity_attribution_context/v1 JSON with "
+            "a dominant stack-home gap, exact-source capacity donors, and a sealed "
+            "post-capacity source-expression attribution"
+        ),
+    )
+    parser.add_argument(
         "--branch-context",
         type=Path,
         help=(
@@ -11455,6 +12133,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             capacity_context=(
                 _load_json(args.capacity_context, label="capacity context")
                 if args.capacity_context is not None
+                else None
+            ),
+            stack_gap_capacity_context=(
+                _load_json(
+                    args.stack_gap_capacity_context,
+                    label="stack-gap capacity/attribution context",
+                )
+                if args.stack_gap_capacity_context is not None
                 else None
             ),
             branch_context=(

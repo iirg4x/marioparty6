@@ -1,0 +1,116 @@
+{
+  "schema": "stack_gap_capacity_attribution_context/v1",
+  "proofs": {
+    "function_size_exact": true,
+    "data_values_exact": true,
+    "physical_relocations_exact": true,
+    "cfg_calls_exact": true,
+    "protected_siblings_preserved": true,
+    "pinned_mwcc_frontend": true,
+    "capacity_result_verified": true,
+    "exact_result_verified": true,
+    "strict_report_sha256": "543715fcd0e5108d2fa34d1e826a2af68d7a43f05cc2fdf620bac1b21fa7e74f",
+    "data_report_sha256": "a343847cef04c13cd039e3859549b223fbc587e4f18561c05b43c2896d4f1e32",
+    "physical_relocation_receipt_sha256": "45a6653a573e10432d426397855a8482cf63992abf43a2c85ff0a24cfca06473",
+    "stack_gap_receipt_sha256": "da99f0cfcfd1b7209e31411558f98a4f204beca5a0985d2199a7d4b6b9cd84f3",
+    "capacity_provenance_receipt_sha256": "9f4e75609f56f6820aa39d9bc11f68aaf9ab09fc02a59c171e1378b76fac4bf4",
+    "capacity_candidate_record_sha256": "f5bf1ef9b2d122f02c3eb3afd4d2ddb0de775e9619e0ea014341f847e59694b2",
+    "exact_result_report_sha256": "90ee71cb8cc23b14654cbda883af9286b822165b901ce15ae72979b5b62220a1",
+    "exact_result_record_sha256": "756c40f95c570c69c2bd0e767cc9de19ca1b203cf2ca75160230056a0694ed36"
+  },
+  "capacity_stage": {
+    "objdiff_canonical_sha256": "0378e21121670f35eba7475aea86d44ceefc75c88720c5a89c17ee2cac32bf95",
+    "uniform_gap": {
+      "target_minus_candidate_bytes": 48,
+      "minimum_row_count": 90
+    },
+    "array": {
+      "name": "motFile",
+      "element_size": 4,
+      "candidate_capacity": 4,
+      "used_prefix_elements": 4,
+      "candidate_extent_bytes": 16,
+      "target_extent_bytes": 64,
+      "source_expression": "int motFile[16]"
+    },
+    "capacity_sources": [
+      {
+        "provider": "mbev_CapBomheiTrap",
+        "source_location": "game/src/board/captrap.c:L1803",
+        "capacity": 16,
+        "relationship": "same_game_exact",
+        "strict_exact": true,
+        "evidence_sha256": "fe02c7159fa923d03f8a13a038808e855e477e126d0cd75399497503e199b862"
+      },
+      {
+        "provider": "mbev_CapJango",
+        "source_location": "game/src/board/capthrow.c:L187@862af8d27cbbc72e9a2327b326b1d64967308b77",
+        "capacity": 16,
+        "relationship": "same_owner_exact",
+        "strict_exact": true,
+        "evidence_sha256": "1132a120531990abf1ef79221f19ceddab4b9ce6bff44abca488475028e83454"
+      }
+    ]
+  },
+  "attribution_stage": {
+    "objdiff_canonical_sha256": "80281bf11708b6ab31284917b78df1ae9b41e60f861f44bf7735302fe2ced64c",
+    "residual_rows": [
+      907,
+      914,
+      924,
+      956,
+      958,
+      959,
+      962
+    ],
+    "attributions": [
+      {
+        "kind": "live_value_reuse",
+        "target_owner": "t",
+        "candidate_owner": "weight",
+        "row_indices": [
+          907,
+          914
+        ],
+        "source_expression": "reuse t for the cosine result",
+        "source_location": "game/src/board/capthrow.c:L1223:mbev_CapPatapata",
+        "provenance_refs": [
+          "patapata-v39-live-t-tempPos-reuse"
+        ],
+        "evidence_sha256": "10da9d3041515f7b10f117d04c2756f9680cec5ab4c4ffba46fde8c45c247722"
+      },
+      {
+        "kind": "historical_condition_owner",
+        "target_owner": "i",
+        "candidate_owner": "j",
+        "row_indices": [
+          924
+        ],
+        "source_expression": "if (i == 10)",
+        "source_location": "game/src/board/capthrow.c:L1223:mbev_CapPatapata",
+        "provenance_refs": [
+          "02bc5244",
+          "9bf815b9"
+        ],
+        "evidence_sha256": "0a899efeac6de2a2577c86c5b01c7837994ddcb15f675780e7f60e006ef0136f"
+      },
+      {
+        "kind": "live_stack_object_reuse",
+        "target_owner": "tempPos",
+        "candidate_owner": "landingPos",
+        "row_indices": [
+          956,
+          958,
+          959,
+          962
+        ],
+        "source_expression": "reuse tempPos as chase target/output and dust position",
+        "source_location": "game/src/board/capthrow.c:L1223:mbev_CapPatapata",
+        "provenance_refs": [
+          "patapata-v39-live-t-tempPos-reuse"
+        ],
+        "evidence_sha256": "10da9d3041515f7b10f117d04c2756f9680cec5ab4c4ffba46fde8c45c247722"
+      }
+    ]
+  }
+}

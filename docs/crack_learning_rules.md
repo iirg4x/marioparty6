@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v15` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v16` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -560,6 +560,31 @@ The detector computes the missing bytes and elements itself. It matches only
 when the candidate extent equals `candidate_capacity * element_size`, the
 target-only extent is a positive whole-element delta, and every producer
 contract converges on the computed target capacity.
+
+For a dominant stack-home gap whose natural capacity is authenticated by
+exact same-owner or same-game source rather than a producer API, bind both the
+pre-capacity and post-capacity reports in one closed context:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/patapata-v31.strict.json.gz \
+  --function mbev_CapPatapata \
+  --stack-gap-capacity-context \
+    docs/examples/patapata_stack_gap_capacity_context.json \
+  > work/patapata-v31.learning.json
+```
+
+`stack_gap_capacity_attribution_context/v1` reuses the same capacity equation,
+requires the missing array extent to equal the unique dominant stack-home
+delta, and requires every exact-source donor to converge on the predicted
+capacity. On the capacity-stage report it schedules one live-array source cell
+and suppresses padding, dead storage, declaration permutations, and register
+shaping. On the sealed post-capacity report it requires an ARG-only residual
+whose rows are partitioned exactly into authenticated live-value reuse,
+live-stack-object reuse, and historical-condition ownership. It then emits only
+those natural source causes as one bounded follow-up. The Patapata example binds
+the real v31 `+48` class, predicts `motFile[16]`, and attributes v38's seven rows
+to `t`, `tempPos`, and the historical `i == 10` condition.
 
 `loop_branch_destination_context/v1` seals exact size/frame/data/relocation/
 sibling gates plus one zero-based residual row. It records the independently

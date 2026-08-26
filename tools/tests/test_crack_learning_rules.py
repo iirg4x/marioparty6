@@ -1808,6 +1808,179 @@ def _capacity_context(
     }
 
 
+def _stack_gap_capacity_report() -> dict[str, object]:
+    target_text = [
+        "lwz r3, 0x58(r1)",
+        "lfs f1, 0x5c(r1)",
+        "addi r4, r1, 0x60",
+        "stw r5, 0x64(r1)",
+        "blr",
+    ]
+    candidate_text = [
+        "lwz r3, 0x28(r1)",
+        "lfs f1, 0x2c(r1)",
+        "addi r4, r1, 0x30",
+        "stw r5, 0x34(r1)",
+        "blr",
+    ]
+    target: list[dict[str, object]] = []
+    candidate: list[dict[str, object]] = []
+    for index, (left, right) in enumerate(zip(target_text, candidate_text)):
+        kind = "DIFF_ARG_MISMATCH" if left != right else None
+        target.append(_instruction(100 + index * 4, left, diff_kind=kind))
+        candidate.append(_instruction(100 + index * 4, right, diff_kind=kind))
+    return _report(
+        "mbev_CapPatapata",
+        target,
+        candidate,
+        target_size=6868,
+        candidate_size=6868,
+    )
+
+
+def _stack_gap_attribution_report() -> dict[str, object]:
+    target_text = [
+        "frsp f31, f1",
+        "fmr f1, f31",
+        "cmpwi r31, 0xa",
+        "addi r4, r1, 0x58",
+        "lfs f0, 0x58(r1)",
+        "lfs f1, 0x5c(r1)",
+        "lfs f2, 0x60(r1)",
+    ]
+    candidate_text = [
+        "frsp f30, f1",
+        "fmr f1, f30",
+        "cmpwi r30, 0xa",
+        "addi r4, r1, 0x4c",
+        "lfs f0, 0x4c(r1)",
+        "lfs f1, 0x50(r1)",
+        "lfs f2, 0x54(r1)",
+    ]
+    target = [
+        _instruction(100 + index * 4, text, diff_kind="DIFF_ARG_MISMATCH")
+        for index, text in enumerate(target_text)
+    ]
+    candidate = [
+        _instruction(100 + index * 4, text, diff_kind="DIFF_ARG_MISMATCH")
+        for index, text in enumerate(candidate_text)
+    ]
+    return _report(
+        "mbev_CapPatapata",
+        target,
+        candidate,
+        target_size=6868,
+        candidate_size=6868,
+    )
+
+
+def _stack_gap_capacity_context(
+    capacity_report: dict[str, object] | None = None,
+    attribution_report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    capacity_bound = (
+        capacity_report if capacity_report is not None else _stack_gap_capacity_report()
+    )
+    attribution_bound = (
+        attribution_report
+        if attribution_report is not None
+        else _stack_gap_attribution_report()
+    )
+    return {
+        "schema": rules.STACK_GAP_CAPACITY_CONTEXT_SCHEMA,
+        "proofs": {
+            "function_size_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "pinned_mwcc_frontend": True,
+            "capacity_result_verified": True,
+            "exact_result_verified": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "stack_gap_receipt_sha256": "4" * 64,
+            "capacity_provenance_receipt_sha256": "5" * 64,
+            "capacity_candidate_record_sha256": "6" * 64,
+            "exact_result_report_sha256": "7" * 64,
+            "exact_result_record_sha256": "8" * 64,
+        },
+        "capacity_stage": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(capacity_bound)),
+            "uniform_gap": {
+                "target_minus_candidate_bytes": 48,
+                "minimum_row_count": 3,
+            },
+            "array": {
+                "name": "motFile",
+                "element_size": 4,
+                "candidate_capacity": 4,
+                "used_prefix_elements": 4,
+                "candidate_extent_bytes": 16,
+                "target_extent_bytes": 64,
+                "source_expression": "int motFile[16]",
+            },
+            "capacity_sources": [
+                {
+                    "provider": "mbev_CapBomheiTrap",
+                    "source_location": "game/src/board/captrap.c:L1803",
+                    "capacity": 16,
+                    "relationship": "same_game_exact",
+                    "strict_exact": True,
+                    "evidence_sha256": "9" * 64,
+                },
+                {
+                    "provider": "mbev_CapJango",
+                    "source_location": "game/src/board/capthrow.c:L900",
+                    "capacity": 16,
+                    "relationship": "same_owner_exact",
+                    "strict_exact": True,
+                    "evidence_sha256": "a" * 64,
+                },
+            ],
+        },
+        "attribution_stage": {
+            "objdiff_canonical_sha256": rules._sha256(
+                rules._canonical(attribution_bound)
+            ),
+            "residual_rows": [0, 1, 2, 3, 4, 5, 6],
+            "attributions": [
+                {
+                    "kind": "live_value_reuse",
+                    "target_owner": "t",
+                    "candidate_owner": "weight",
+                    "row_indices": [0, 1],
+                    "source_expression": "t = cosResult",
+                    "source_location": "game/src/board/capthrow.c:L1400",
+                    "provenance_refs": ["same_owner_live_value"],
+                    "evidence_sha256": "b" * 64,
+                },
+                {
+                    "kind": "historical_condition_owner",
+                    "target_owner": "i",
+                    "candidate_owner": "j",
+                    "row_indices": [2],
+                    "source_expression": "if (i == 10)",
+                    "source_location": "game/src/board/capthrow.c:L1450",
+                    "provenance_refs": ["02bc5244", "9bf815b9"],
+                    "evidence_sha256": "c" * 64,
+                },
+                {
+                    "kind": "live_stack_object_reuse",
+                    "target_owner": "tempPos",
+                    "candidate_owner": "landingPos",
+                    "row_indices": [3, 4, 5, 6],
+                    "source_expression": "tempPos = chaseTarget",
+                    "source_location": "game/src/board/capthrow.c:L1460",
+                    "provenance_refs": ["same_owner_live_stack_object"],
+                    "evidence_sha256": "d" * 64,
+                },
+            ],
+        },
+    }
+
+
 def _loop_branch_report() -> dict[str, object]:
     target_text = [
         "stwu r1, -720(r1)",
@@ -3984,6 +4157,109 @@ class CrackLearningRulesTest(unittest.TestCase):
                 capacity_context=false_proof,
             )
 
+    def test_stack_gap_capacity_stage_ranks_one_capacity_cell(self) -> None:
+        report = _stack_gap_capacity_report()
+        context = _stack_gap_capacity_context(capacity_report=report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapPatapata",
+            stack_gap_capacity_context=context,
+        )
+        diagnosis = _evaluation(result, "stack_gap_capacity_expression_attribution")
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["stage"], "capacity")
+        self.assertEqual(evidence["missing_extent_bytes"], 48)
+        self.assertEqual(evidence["extra_elements"], 12)
+        self.assertEqual(evidence["predicted_capacity"], 16)
+        self.assertEqual(evidence["stack_delta_histogram"], {"48": 3})
+        self.assertEqual(evidence["bounded_source_cells"], ["int motFile[16]"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_stack_gap_attribution_stage_emits_three_source_causes(self) -> None:
+        report = _stack_gap_attribution_report()
+        context = _stack_gap_capacity_context(attribution_report=report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapPatapata",
+            stack_gap_capacity_context=context,
+        )
+        diagnosis = _evaluation(result, "stack_gap_capacity_expression_attribution")
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["stage"], "attribution")
+        self.assertEqual(evidence["residual_rows"], [0, 1, 2, 3, 4, 5, 6])
+        self.assertEqual(
+            [item["kind"] for item in evidence["source_causes"]],
+            [
+                "live_value_reuse",
+                "historical_condition_owner",
+                "live_stack_object_reuse",
+            ],
+        )
+        self.assertIn("global_declaration_permutations", evidence["suppressed_actions"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_stack_gap_capacity_attribution_fails_closed(self) -> None:
+        no_context = rules.diagnose_document(
+            _stack_gap_capacity_report(), focus_symbol="mbev_CapPatapata"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "stack_gap_capacity_expression_attribution")[
+                "matched"
+            ]
+        )
+
+        contradictory_donor = _stack_gap_capacity_context()
+        contradictory_donor["capacity_stage"]["capacity_sources"][0][  # type: ignore[index]
+            "capacity"
+        ] = 15
+        result = rules.diagnose_document(
+            _stack_gap_capacity_report(),
+            focus_symbol="mbev_CapPatapata",
+            stack_gap_capacity_context=contradictory_donor,
+        )
+        self.assertFalse(
+            _evaluation(result, "stack_gap_capacity_expression_attribution")["matched"]
+        )
+
+        wrong_gap = _stack_gap_capacity_context()
+        wrong_gap["capacity_stage"]["uniform_gap"][  # type: ignore[index]
+            "target_minus_candidate_bytes"
+        ] = 44
+        result = rules.diagnose_document(
+            _stack_gap_capacity_report(),
+            focus_symbol="mbev_CapPatapata",
+            stack_gap_capacity_context=wrong_gap,
+        )
+        self.assertFalse(
+            _evaluation(result, "stack_gap_capacity_expression_attribution")["matched"]
+        )
+
+        bad_partition = _stack_gap_capacity_context()
+        bad_partition["attribution_stage"]["attributions"][2][  # type: ignore[index]
+            "row_indices"
+        ] = [3, 4, 5]
+        with self.assertRaisesRegex(rules.LearningInputError, "partition"):
+            rules.diagnose_document(
+                _stack_gap_attribution_report(),
+                focus_symbol="mbev_CapPatapata",
+                stack_gap_capacity_context=bad_partition,
+            )
+
+        false_proof = _stack_gap_capacity_context()
+        false_proof["proofs"]["capacity_result_verified"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "capacity_result_verified"
+        ):
+            rules.diagnose_document(
+                _stack_gap_capacity_report(),
+                focus_symbol="mbev_CapPatapata",
+                stack_gap_capacity_context=false_proof,
+            )
+
     def test_loop_branch_destination_ranks_one_else_break_cell(self) -> None:
         report = _loop_branch_report()
         context = _branch_context(report)
@@ -4324,6 +4600,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 focus_symbol="mbev_CapKokamekku",
                 capacity_context=capacity,
                 branch_context=branch,
+            ),
+        )
+
+    def test_stack_gap_capacity_context_cli_emits_same_document(self) -> None:
+        report = _stack_gap_capacity_report()
+        context = _stack_gap_capacity_context(capacity_report=report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "stack-gap-capacity.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapPatapata",
+                            "--stack-gap-capacity-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapPatapata",
+                stack_gap_capacity_context=context,
             ),
         )
 
