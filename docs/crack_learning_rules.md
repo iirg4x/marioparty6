@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v13` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v14` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -375,6 +375,31 @@ one larger target frame, and one unique target-only home. It then ranks exactly
 one live typed pointer at the consumer boundary and suppresses dead pointer
 storage, declaration-only edits, and artificial lifetime extension.
 
+For a wrapper that snapshots three vector parameters into stack locals and
+passes their saved local-address owners to one typed consumer, bind all three
+layers before compiling another partial cell:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/ringhit-c002.strict.json.gz \
+  --function mbev_CapEffRingHitAdd \
+  --aggregate-snapshot-pointer-context \
+    docs/examples/ringhit_aggregate_snapshot_pointer_context.json \
+  > work/ringhit.learning.json
+```
+
+`aggregate_snapshot_pointer_chain_context/v1` seals exact size/frame/data/CFG/
+physical-relocation/sibling proof, the three complete 12-byte source-to-stack
+copies, one already-exact color-local pointer, each saved vector-local address,
+and the final argument/call rows. It also binds the measured snapshots-only and
+typed-pointer controls plus the independently exact combined cell. The detector
+requires the snapshot intervals and rows to be disjoint, verifies all eighteen
+copy instructions and all four pointer arguments, and accepts only one complete
+two-saved-GPR cycle among the vector pointers. It then schedules a single
+semantic snapshot + typed-pointer + sealed declaration-chronology cell, while
+suppressing direct-pointer, partial snapshot, pointer-only, dead-alias, and broad
+declaration permutations.
+
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one
 branch result copied to the wrong aggregate home, bind both stages together:
@@ -673,7 +698,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The seventeen joins are narrower than those generic classifications:
+The eighteen joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -685,6 +710,7 @@ The seventeen joins are narrower than those generic classifications:
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
 | address-taken local pointer consumer | Exact CFG/data/physical relocations/siblings; a bounded positive size delta and larger target frame; matching local stack address; target saved-address materialization/copy versus candidate direct argument materialization; authenticated incoming-owner colors; and one target-only parameter home | Introduce one live typed pointer to the already live local aggregate immediately before the typed consumer |
+| aggregate snapshot/pointer wrapper | Equal size/frame and exact CFG/data/physical relocations/siblings; three disjoint complete 12-byte source-to-stack snapshots; four saved typed local-address owners feeding one consumer; snapshots-only and pointer-chain controls; and exactly one sealed two-owner pointer-register cycle | Compile one composed wrapper cell with semantic snapshots, live typed local pointers, and the authenticated pointer declaration chronology |
 | aggregate/pointer branch convergence | Exact-size/data/CFG/physical-relocation precursor; authenticated same-TU temp-to-final aggregates and typed pointer owners; explicit negative-one multiply; residual exactly four byte-copy home rows plus one unconditional destination row | Compile the composed aggregate/pointer cell first, then one shared branch temporary with an unconditional temp-to-final aggregate copy |
 | same-TU exact-sibling source shapes | Exact data/CFG/physical relocations/siblings; exact same-TU donor and caller receipts; one target-only fixed-array Boolean lowering; one candidate-only callee `extsh` feeding the same consumer store; one-load reverse-order aggregate zero stores; and no residual outside those groups | Compile one combined cell using the exact donor expression, authenticated wide callee view, and right-associative zero chain |
 | short-circuit Boolean call order | Larger baseline candidate; two sealed target call pairs in branch-getter then masu-getter order; target `bne`/`beq` destinations converging on one true/false assignment pair; duplicated candidate true assignments; pinned MWCC frontend receipt; and one later exact-topology closed four-owner GPR cycle | Explicit shared `if/else` with source-commuted AND operands, followed only by the sealed declaration chronology after topology is exact |
@@ -700,6 +726,7 @@ These joins preserve the reviewed boundaries from
 `ev_CapTeresaFadeMatHook`, `ev_CapMiracleCoinTrade`,
 `mbev_CapKuribo`, `mbev_CapPlayerMoveEjectCreate`, `mbev_CapKokamekku`,
 `mbev_CapEffExplodeOMExec`, `mbev_CapEffGlowKinokoAddAlt`,
+`mbev_CapEffRingHitAdd`,
 `mbev_CapEffElectricModelSet`, `mbev_CapMasuLinkNextGet`,
 `mbev_CapMasuLinkNextRandomGet`,
 `mbev_CapEffGlowOMExec`,
@@ -731,6 +758,11 @@ The focused fixtures reject the tempting incomplete variants:
   frame, a mismatched aggregate offset, no saved-address-to-argument copy,
   absent incoming-owner colors, or a candidate that already has the target
   parameter home;
+- an aggregate snapshot/pointer claim with overlapping stack intervals or row
+  sets, a partial/nonexact six-row copy, a wrong source or stack offset, a
+  missing saved-address argument, extra residual rows, an unclosed pointer
+  cycle, controls that do not match their proof roots, or an unverified exact
+  combined cell;
 - an aggregate/pointer branch claim with overlapping aggregate identities,
   duplicate saved owners, an unproved negative-one expression, extra residual
   rows, wrong byte-load/store offsets, partial copy coverage, equal stack homes,

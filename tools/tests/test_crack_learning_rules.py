@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import gzip
 import io
 import json
@@ -679,6 +680,229 @@ def _aggregate_pointer_branch_report() -> dict[str, object]:
     report["left"]["symbols"][0]["match_percent"] = 99.9701  # type: ignore[index]
     report["right"]["symbols"][0]["match_percent"] = 99.9701  # type: ignore[index]
     return report
+
+
+def _aggregate_snapshot_pointer_report() -> dict[str, object]:
+    target = [_instruction(100 + (index * 4), "nop") for index in range(48)]
+    candidate = copy.deepcopy(target)
+    target[0] = _instruction(100, "stwu r1, -0x60(r1)")
+    candidate[0] = _instruction(100, "stwu r1, -0x60(r1)")
+    target[17] = _instruction(168, "addi r31, r1, 0xc")
+    candidate[17] = _instruction(168, "addi r31, r1, 0xc")
+    copy_groups = [
+        (18, "r27", 0x10),
+        (25, "r26", 0x1C),
+        (32, "r25", 0x28),
+    ]
+    for start, source, stack_offset in copy_groups:
+        instructions = [
+            f"lwz r3, 0x0({source})",
+            f"lwz r0, 0x4({source})",
+            f"stw r3, 0x{stack_offset:x}(r1)",
+            f"stw r0, 0x{stack_offset + 4:x}(r1)",
+            f"lwz r0, 0x8({source})",
+            f"stw r0, 0x{stack_offset + 8:x}(r1)",
+        ]
+        for offset, formatted in enumerate(instructions):
+            target[start + offset] = _instruction(
+                100 + ((start + offset) * 4), formatted
+            )
+            candidate[start + offset] = copy.deepcopy(target[start + offset])
+    target[24] = _instruction(
+        196, "addi r30, r1, 0x10", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    candidate[24] = _instruction(
+        196, "addi r28, r1, 0x10", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    target[31] = _instruction(224, "addi r29, r1, 0x1c")
+    candidate[31] = _instruction(224, "addi r29, r1, 0x1c")
+    target[38] = _instruction(
+        252, "addi r28, r1, 0x28", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    candidate[38] = _instruction(
+        252, "addi r30, r1, 0x28", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    target[40] = _instruction(260, "mr r4, r28", diff_kind="DIFF_ARG_MISMATCH")
+    candidate[40] = _instruction(
+        260, "mr r4, r30", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    target[41] = _instruction(264, "mr r5, r29")
+    candidate[41] = _instruction(264, "mr r5, r29")
+    target[42] = _instruction(268, "mr r6, r30", diff_kind="DIFF_ARG_MISMATCH")
+    candidate[42] = _instruction(
+        268, "mr r6, r28", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    target[46] = _instruction(284, "mr r10, r31")
+    candidate[46] = _instruction(284, "mr r10, r31")
+    target[47] = _instruction(288, "bl mbev_CapEffRingAdd")
+    candidate[47] = _instruction(288, "bl mbev_CapEffRingAdd")
+    report = _report(
+        "mbev_CapEffRingHitAdd",
+        target,
+        candidate,
+        target_size=216,
+        candidate_size=216,
+    )
+    report["left"]["symbols"][0]["match_percent"] = 99.62963  # type: ignore[index]
+    report["right"]["symbols"][0]["match_percent"] = 99.62963  # type: ignore[index]
+    return report
+
+
+def _aggregate_snapshot_pointer_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _aggregate_snapshot_pointer_report()
+    snapshot_record = "1" * 64
+    pointer_record = "2" * 64
+    exact_record = "3" * 64
+    return {
+        "schema": rules.AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA,
+        "proofs": {
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "aggregate_snapshots_authenticated": True,
+            "typed_pointer_consumers_authenticated": True,
+            "pointer_owner_cycle_authenticated": True,
+            "pinned_mwcc_frontend": True,
+            "exact_result_verified": True,
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "strict_report_sha256": "4" * 64,
+            "data_report_sha256": "5" * 64,
+            "physical_relocation_receipt_sha256": "6" * 64,
+            "graph_receipt_sha256": "7" * 64,
+            "graft_receipt_sha256": "8" * 64,
+            "source_range_receipt_sha256": "9" * 64,
+            "snapshot_control_record_sha256": snapshot_record,
+            "pointer_control_record_sha256": pointer_record,
+            "exact_result_report_sha256": "a" * 64,
+            "exact_result_record_sha256": exact_record,
+        },
+        "precursor": {
+            "candidate_id": "ringhit-c002",
+            "target_bytes": 216,
+            "candidate_bytes": 216,
+            "match_percent": 99.62963,
+            "physical_relocations": 7,
+            "residual_rows": [24, 38, 40, 42],
+        },
+        "consumer": {
+            "symbol": "mbev_CapEffRingAdd",
+            "call_row": 47,
+            "evidence_sha256": "b" * 64,
+        },
+        "color_pointer": {
+            "local": "color",
+            "type": "GXColor",
+            "stack_offset": 12,
+            "pointer_owner": "colorLocalP",
+            "pointer_row": 17,
+            "target_register": "r31",
+            "candidate_register": "r31",
+            "argument_row": 46,
+            "argument_register": "r10",
+            "source_expression": "color = capsuleRingColor; colorLocalP = &color",
+            "evidence_sha256": "c" * 64,
+        },
+        "snapshots": [
+            {
+                "source_pointer": "scale",
+                "source_register": "r27",
+                "local": "scaleLocal",
+                "type": "HuVecF",
+                "size": 12,
+                "stack_offset": 16,
+                "copy_rows": [18, 19, 20, 21, 22, 23],
+                "pointer_owner": "scaleLocalP",
+                "pointer_row": 24,
+                "target_pointer_register": "r30",
+                "candidate_pointer_register": "r28",
+                "argument_row": 42,
+                "argument_register": "r6",
+                "source_expression": "scaleLocal = *scale; scaleLocalP = &scaleLocal",
+                "evidence_sha256": "d" * 64,
+            },
+            {
+                "source_pointer": "rot",
+                "source_register": "r26",
+                "local": "rotLocal",
+                "type": "HuVecF",
+                "size": 12,
+                "stack_offset": 28,
+                "copy_rows": [25, 26, 27, 28, 29, 30],
+                "pointer_owner": "rotLocalP",
+                "pointer_row": 31,
+                "target_pointer_register": "r29",
+                "candidate_pointer_register": "r29",
+                "argument_row": 41,
+                "argument_register": "r5",
+                "source_expression": "rotLocal = *rot; rotLocalP = &rotLocal",
+                "evidence_sha256": "e" * 64,
+            },
+            {
+                "source_pointer": "pos",
+                "source_register": "r25",
+                "local": "posLocal",
+                "type": "HuVecF",
+                "size": 12,
+                "stack_offset": 40,
+                "copy_rows": [32, 33, 34, 35, 36, 37],
+                "pointer_owner": "posLocalP",
+                "pointer_row": 38,
+                "target_pointer_register": "r28",
+                "candidate_pointer_register": "r30",
+                "argument_row": 40,
+                "argument_register": "r4",
+                "source_expression": "posLocal = *pos; posLocalP = &posLocal",
+                "evidence_sha256": "f" * 64,
+            },
+        ],
+        "controls": [
+            {
+                "kind": "snapshots_only",
+                "candidate_id": "ringhit-c001",
+                "target_bytes": 216,
+                "candidate_bytes": 208,
+                "strict_exact": False,
+                "source_sha256": "1" * 64,
+                "object_sha256": "2" * 64,
+                "strict_report_sha256": "3" * 64,
+                "data_report_sha256": "4" * 64,
+                "candidate_record_sha256": snapshot_record,
+                "unresolved_boundary": "saved_local_address_owners",
+            },
+            {
+                "kind": "typed_pointer_chain",
+                "candidate_id": "ringhit-c002",
+                "target_bytes": 216,
+                "candidate_bytes": 216,
+                "strict_exact": False,
+                "residual_rows": [24, 38, 40, 42],
+                "source_sha256": "5" * 64,
+                "object_sha256": "6" * 64,
+                "strict_report_sha256": "7" * 64,
+                "data_report_sha256": "8" * 64,
+                "candidate_record_sha256": pointer_record,
+                "unresolved_boundary": "scale_position_pointer_owner_cycle",
+            },
+        ],
+        "combined_cell": {
+            "candidate_id": "ringhit-c003-exact",
+            "target_bytes": 216,
+            "candidate_bytes": 216,
+            "strict_exact": True,
+            "data_exact": True,
+            "physical_relocations": 7,
+            "source_sha256": "9" * 64,
+            "object_sha256": "a" * 64,
+            "strict_report_sha256": "b" * 64,
+            "data_report_sha256": "c" * 64,
+            "candidate_record_sha256": exact_record,
+        },
+    }
 
 
 def _aggregate_pointer_branch_context(
@@ -2711,6 +2935,85 @@ class CrackLearningRulesTest(unittest.TestCase):
                 address_taken_context=wrong_owner,
             )
 
+    def test_aggregate_snapshot_pointer_chain_schedules_one_composed_cell(
+        self,
+    ) -> None:
+        report = _aggregate_snapshot_pointer_report()
+        context = _aggregate_snapshot_pointer_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffRingHitAdd",
+            aggregate_snapshot_pointer_context=context,
+        )
+        diagnosis = _evaluation(result, "aggregate_snapshot_pointer_chain")
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(diagnosis["evidence"]["target_frame"], 96)
+        self.assertEqual(
+            diagnosis["evidence"]["mismatch_rows"], [24, 38, 40, 42]
+        )
+        self.assertEqual(
+            diagnosis["evidence"]["register_mapping"],
+            {"r28": "r30", "r30": "r28"},
+        )
+        self.assertEqual(
+            diagnosis["evidence"]["recommended_cells"][0][
+                "pointer_declaration_chronology"
+            ],
+            ["scaleLocalP", "rotLocalP", "posLocalP"],
+        )
+        self.assertIn("aggregate_snapshot_only", diagnosis["evidence"]["suppressed_axes"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_aggregate_snapshot_pointer_chain_fails_closed(self) -> None:
+        report = _aggregate_snapshot_pointer_report()
+        no_context = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffRingHitAdd",
+        )
+        self.assertFalse(
+            _evaluation(no_context, "aggregate_snapshot_pointer_chain")["matched"]
+        )
+
+        wrong_copy = copy.deepcopy(report)
+        wrong_copy["left"]["symbols"][0]["instructions"][18]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = (
+            "lwz r3, 0x0(r26)"
+        )
+        context = _aggregate_snapshot_pointer_context(wrong_copy)
+        result = rules.diagnose_document(
+            wrong_copy,
+            focus_symbol="mbev_CapEffRingHitAdd",
+            aggregate_snapshot_pointer_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "aggregate_snapshot_pointer_chain")["matched"]
+        )
+
+        extra_residual = copy.deepcopy(report)
+        for side in ("left", "right"):
+            extra_residual[side]["symbols"][0]["instructions"][41]["diff_kind"] = (  # type: ignore[index]
+                "DIFF_ARG_MISMATCH"
+            )
+        context = _aggregate_snapshot_pointer_context(extra_residual)
+        result = rules.diagnose_document(
+            extra_residual,
+            focus_symbol="mbev_CapEffRingHitAdd",
+            aggregate_snapshot_pointer_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "aggregate_snapshot_pointer_chain")["matched"]
+        )
+
+        invalid_control = _aggregate_snapshot_pointer_context(report)
+        invalid_control["controls"][1]["candidate_record_sha256"] = "f" * 64  # type: ignore[index]
+        with self.assertRaises(rules.LearningInputError):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffRingHitAdd",
+                aggregate_snapshot_pointer_context=invalid_control,
+            )
+
     def test_aggregate_pointer_branch_convergence_schedules_two_cells(self) -> None:
         report = _aggregate_pointer_branch_report()
         context = _aggregate_pointer_branch_context(report)
@@ -4049,6 +4352,40 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapMasuLinkNextRandomGet",
                 exact_sibling_transfer_context=context,
+            ),
+        )
+
+    def test_aggregate_snapshot_pointer_context_cli_emits_same_document(
+        self,
+    ) -> None:
+        report = _aggregate_snapshot_pointer_report()
+        context = _aggregate_snapshot_pointer_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "aggregate-snapshot-pointer.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffRingHitAdd",
+                            "--aggregate-snapshot-pointer-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffRingHitAdd",
+                aggregate_snapshot_pointer_context=context,
             ),
         )
 

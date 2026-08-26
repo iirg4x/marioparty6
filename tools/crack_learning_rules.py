@@ -27,8 +27,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v13"
-SCHEMA_VERSION = 13
+SCHEMA = "crack_learning_diagnosis/v14"
+SCHEMA_VERSION = 14
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -38,6 +38,9 @@ AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
 ADDRESS_TAKEN_CONTEXT_SCHEMA = "address_taken_local_pointer_context/v1"
 AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA = (
     "aggregate_pointer_branch_convergence_context/v1"
+)
+AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA = (
+    "aggregate_snapshot_pointer_chain_context/v1"
 )
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
@@ -191,6 +194,32 @@ _AGGREGATE_POINTER_BRANCH_PROOF_HASHES = (
     "precursor_candidate_record_sha256",
     "exact_result_report_sha256",
     "exact_result_candidate_record_sha256",
+)
+_AGGREGATE_SNAPSHOT_POINTER_PROOF_FLAGS = (
+    "function_size_exact",
+    "stack_frame_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "aggregate_snapshots_authenticated",
+    "typed_pointer_consumers_authenticated",
+    "pointer_owner_cycle_authenticated",
+    "pinned_mwcc_frontend",
+    "exact_result_verified",
+)
+_AGGREGATE_SNAPSHOT_POINTER_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "graph_receipt_sha256",
+    "graft_receipt_sha256",
+    "source_range_receipt_sha256",
+    "snapshot_control_record_sha256",
+    "pointer_control_record_sha256",
+    "exact_result_report_sha256",
+    "exact_result_record_sha256",
 )
 _SAME_TU_SHAPE_PROOF_FLAGS = (
     "data_values_exact",
@@ -391,6 +420,7 @@ _RULE_ORDER = (
     "aggregate_use_multiplicity",
     "aggregate_two_owner_followup",
     "address_taken_local_pointer_consumer",
+    "aggregate_snapshot_pointer_chain",
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -2266,6 +2296,599 @@ def _parse_aggregate_pointer_branch_context(
         "aggregate_chain": normalized_chain,
         "branch_result": normalized_branch,
         "exact_result": normalized_exact,
+    }
+
+
+def _parse_aggregate_snapshot_pointer_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    label = "aggregate snapshot/pointer context"
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "precursor",
+            "consumer",
+            "color_pointer",
+            "snapshots",
+            "controls",
+            "combined_cell",
+        },
+        required={
+            "schema",
+            "proofs",
+            "precursor",
+            "consumer",
+            "color_pointer",
+            "snapshots",
+            "controls",
+            "combined_cell",
+        },
+        label=label,
+    )
+    if (
+        _context_text(context.get("schema"), f"{label} schema")
+        != AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"{label} schema must be {AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_AGGREGATE_SNAPSHOT_POINTER_PROOF_FLAGS) | set(
+        _AGGREGATE_SNAPSHOT_POINTER_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label=f"{label} proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _AGGREGATE_SNAPSHOT_POINTER_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"{label} proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _AGGREGATE_SNAPSHOT_POINTER_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"{label} proofs.{field}"
+        )
+
+    precursor = _closed_context(
+        context.get("precursor"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        label=f"{label} precursor",
+    )
+    target_bytes = _context_uint(
+        precursor.get("target_bytes"), f"{label} precursor.target_bytes", minimum=4
+    )
+    candidate_bytes = _context_uint(
+        precursor.get("candidate_bytes"),
+        f"{label} precursor.candidate_bytes",
+        minimum=4,
+    )
+    if target_bytes != candidate_bytes:
+        raise LearningInputError(f"{label} precursor function size must be exact")
+    match_percent = precursor.get("match_percent")
+    if (
+        isinstance(match_percent, bool)
+        or not isinstance(match_percent, (int, float))
+        or not math.isfinite(float(match_percent))
+        or not 0.0 < float(match_percent) < 100.0
+    ):
+        raise LearningInputError(
+            f"{label} precursor.match_percent must be finite and nonexact"
+        )
+    normalized_precursor = {
+        "candidate_id": _context_text(
+            precursor.get("candidate_id"), f"{label} precursor.candidate_id", limit=128
+        ),
+        "target_bytes": target_bytes,
+        "candidate_bytes": candidate_bytes,
+        "match_percent": float(match_percent),
+        "physical_relocations": _context_uint(
+            precursor.get("physical_relocations"),
+            f"{label} precursor.physical_relocations",
+            minimum=1,
+        ),
+        "residual_rows": _context_rows(
+            precursor.get("residual_rows"),
+            f"{label} precursor.residual_rows",
+            minimum_count=2,
+            maximum_count=16,
+        ),
+    }
+
+    consumer = _closed_context(
+        context.get("consumer"),
+        allowed={"symbol", "call_row", "evidence_sha256"},
+        required={"symbol", "call_row", "evidence_sha256"},
+        label=f"{label} consumer",
+    )
+    normalized_consumer = {
+        "symbol": _context_identifier(
+            consumer.get("symbol"), f"{label} consumer.symbol"
+        ),
+        "call_row": _context_uint(
+            consumer.get("call_row"), f"{label} consumer.call_row"
+        ),
+        "evidence_sha256": _context_sha256(
+            consumer.get("evidence_sha256"), f"{label} consumer.evidence_sha256"
+        ),
+    }
+
+    def register(
+        raw: Any, field: str, *, saved: bool = False, argument: bool = False
+    ) -> str:
+        result = _context_text(raw, field, limit=3).lower()
+        if saved and not _saved(result, "r"):
+            raise LearningInputError(f"{field} must be a nonvolatile GPR")
+        if argument and re.fullmatch(r"r(?:[3-9]|10)", result) is None:
+            raise LearningInputError(f"{field} must be a GPR argument register r3-r10")
+        return result
+
+    color = _closed_context(
+        context.get("color_pointer"),
+        allowed={
+            "local",
+            "type",
+            "stack_offset",
+            "pointer_owner",
+            "pointer_row",
+            "target_register",
+            "candidate_register",
+            "argument_row",
+            "argument_register",
+            "source_expression",
+            "evidence_sha256",
+        },
+        required={
+            "local",
+            "type",
+            "stack_offset",
+            "pointer_owner",
+            "pointer_row",
+            "target_register",
+            "candidate_register",
+            "argument_row",
+            "argument_register",
+            "source_expression",
+            "evidence_sha256",
+        },
+        label=f"{label} color_pointer",
+    )
+    normalized_color = {
+        "local": _context_identifier(color.get("local"), f"{label} color.local"),
+        "type": _context_identifier(color.get("type"), f"{label} color.type"),
+        "stack_offset": _context_uint(
+            color.get("stack_offset"), f"{label} color.stack_offset"
+        ),
+        "pointer_owner": _context_identifier(
+            color.get("pointer_owner"), f"{label} color.pointer_owner"
+        ),
+        "pointer_row": _context_uint(
+            color.get("pointer_row"), f"{label} color.pointer_row"
+        ),
+        "target_register": register(
+            color.get("target_register"), f"{label} color.target_register", saved=True
+        ),
+        "candidate_register": register(
+            color.get("candidate_register"),
+            f"{label} color.candidate_register",
+            saved=True,
+        ),
+        "argument_row": _context_uint(
+            color.get("argument_row"), f"{label} color.argument_row"
+        ),
+        "argument_register": register(
+            color.get("argument_register"),
+            f"{label} color.argument_register",
+            argument=True,
+        ),
+        "source_expression": _context_text(
+            color.get("source_expression"),
+            f"{label} color.source_expression",
+            limit=512,
+        ),
+        "evidence_sha256": _context_sha256(
+            color.get("evidence_sha256"), f"{label} color.evidence_sha256"
+        ),
+    }
+    if normalized_color["target_register"] != normalized_color["candidate_register"]:
+        raise LearningInputError(f"{label} color pointer owner must already be exact")
+
+    raw_snapshots = context.get("snapshots")
+    if not isinstance(raw_snapshots, list) or len(raw_snapshots) != 3:
+        raise LearningInputError(f"{label} snapshots must contain exactly three vectors")
+    snapshots: list[dict[str, Any]] = []
+    names: set[str] = set()
+    source_registers: set[str] = set()
+    target_pointer_registers: set[str] = {normalized_color["target_register"]}
+    candidate_pointer_registers: set[str] = {normalized_color["candidate_register"]}
+    occupied_rows: set[int] = {
+        normalized_color["pointer_row"],
+        normalized_color["argument_row"],
+        normalized_consumer["call_row"],
+    }
+    stack_intervals: list[tuple[int, int]] = []
+    for index, raw_snapshot in enumerate(raw_snapshots):
+        snapshot = _closed_context(
+            raw_snapshot,
+            allowed={
+                "source_pointer",
+                "source_register",
+                "local",
+                "type",
+                "size",
+                "stack_offset",
+                "copy_rows",
+                "pointer_owner",
+                "pointer_row",
+                "target_pointer_register",
+                "candidate_pointer_register",
+                "argument_row",
+                "argument_register",
+                "source_expression",
+                "evidence_sha256",
+            },
+            required={
+                "source_pointer",
+                "source_register",
+                "local",
+                "type",
+                "size",
+                "stack_offset",
+                "copy_rows",
+                "pointer_owner",
+                "pointer_row",
+                "target_pointer_register",
+                "candidate_pointer_register",
+                "argument_row",
+                "argument_register",
+                "source_expression",
+                "evidence_sha256",
+            },
+            label=f"{label} snapshots[{index}]",
+        )
+        source_pointer = _context_identifier(
+            snapshot.get("source_pointer"), f"{label} snapshots[{index}].source_pointer"
+        )
+        local = _context_identifier(
+            snapshot.get("local"), f"{label} snapshots[{index}].local"
+        )
+        pointer_owner = _context_identifier(
+            snapshot.get("pointer_owner"),
+            f"{label} snapshots[{index}].pointer_owner",
+        )
+        if names & {source_pointer, local, pointer_owner}:
+            raise LearningInputError(f"{label} snapshot identities must be unique")
+        names.update({source_pointer, local, pointer_owner})
+        source_register = register(
+            snapshot.get("source_register"),
+            f"{label} snapshots[{index}].source_register",
+            saved=True,
+        )
+        if source_register in source_registers:
+            raise LearningInputError(f"{label} source registers must be unique")
+        source_registers.add(source_register)
+        size = _context_uint(
+            snapshot.get("size"),
+            f"{label} snapshots[{index}].size",
+            minimum=12,
+            maximum=12,
+        )
+        stack_offset = _context_uint(
+            snapshot.get("stack_offset"), f"{label} snapshots[{index}].stack_offset"
+        )
+        interval = (stack_offset, stack_offset + size)
+        if any(interval[0] < end and start < interval[1] for start, end in stack_intervals):
+            raise LearningInputError(f"{label} snapshot stack intervals must be disjoint")
+        stack_intervals.append(interval)
+        copy_rows = _context_rows(
+            snapshot.get("copy_rows"),
+            f"{label} snapshots[{index}].copy_rows",
+            minimum_count=6,
+            maximum_count=6,
+        )
+        pointer_row = _context_uint(
+            snapshot.get("pointer_row"), f"{label} snapshots[{index}].pointer_row"
+        )
+        argument_row = _context_uint(
+            snapshot.get("argument_row"), f"{label} snapshots[{index}].argument_row"
+        )
+        row_set = set(copy_rows) | {pointer_row, argument_row}
+        if occupied_rows & row_set:
+            raise LearningInputError(f"{label} snapshot rows must be unique")
+        occupied_rows.update(row_set)
+        target_pointer_register = register(
+            snapshot.get("target_pointer_register"),
+            f"{label} snapshots[{index}].target_pointer_register",
+            saved=True,
+        )
+        candidate_pointer_register = register(
+            snapshot.get("candidate_pointer_register"),
+            f"{label} snapshots[{index}].candidate_pointer_register",
+            saved=True,
+        )
+        if target_pointer_register in target_pointer_registers:
+            raise LearningInputError(f"{label} target pointer registers must be unique")
+        if candidate_pointer_register in candidate_pointer_registers:
+            raise LearningInputError(f"{label} candidate pointer registers must be unique")
+        target_pointer_registers.add(target_pointer_register)
+        candidate_pointer_registers.add(candidate_pointer_register)
+        snapshots.append(
+            {
+                "source_pointer": source_pointer,
+                "source_register": source_register,
+                "local": local,
+                "type": _context_identifier(
+                    snapshot.get("type"), f"{label} snapshots[{index}].type"
+                ),
+                "size": size,
+                "stack_offset": stack_offset,
+                "copy_rows": copy_rows,
+                "pointer_owner": pointer_owner,
+                "pointer_row": pointer_row,
+                "target_pointer_register": target_pointer_register,
+                "candidate_pointer_register": candidate_pointer_register,
+                "argument_row": argument_row,
+                "argument_register": register(
+                    snapshot.get("argument_register"),
+                    f"{label} snapshots[{index}].argument_register",
+                    argument=True,
+                ),
+                "source_expression": _context_text(
+                    snapshot.get("source_expression"),
+                    f"{label} snapshots[{index}].source_expression",
+                    limit=512,
+                ),
+                "evidence_sha256": _context_sha256(
+                    snapshot.get("evidence_sha256"),
+                    f"{label} snapshots[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if stack_intervals != sorted(stack_intervals):
+        raise LearningInputError(f"{label} snapshots must follow ascending stack order")
+    mapping = {
+        item["target_pointer_register"]: item["candidate_pointer_register"]
+        for item in snapshots
+        if item["target_pointer_register"] != item["candidate_pointer_register"]
+    }
+    cycles = _closed_cycles(mapping)
+    if len(mapping) != 2 or len(cycles) != 1 or len(cycles[0]) != 2:
+        raise LearningInputError(
+            f"{label} must seal one complete two-owner pointer-register cycle"
+        )
+
+    raw_controls = context.get("controls")
+    if not isinstance(raw_controls, list) or len(raw_controls) != 2:
+        raise LearningInputError(f"{label} controls must contain exactly two entries")
+    controls: list[dict[str, Any]] = []
+    kinds: set[str] = set()
+    for index, raw_control in enumerate(raw_controls):
+        control = _closed_context(
+            raw_control,
+            allowed={
+                "kind",
+                "candidate_id",
+                "target_bytes",
+                "candidate_bytes",
+                "strict_exact",
+                "residual_rows",
+                "source_sha256",
+                "object_sha256",
+                "strict_report_sha256",
+                "data_report_sha256",
+                "candidate_record_sha256",
+                "unresolved_boundary",
+            },
+            required={
+                "kind",
+                "candidate_id",
+                "target_bytes",
+                "candidate_bytes",
+                "strict_exact",
+                "source_sha256",
+                "object_sha256",
+                "strict_report_sha256",
+                "data_report_sha256",
+                "candidate_record_sha256",
+                "unresolved_boundary",
+            },
+            label=f"{label} controls[{index}]",
+        )
+        kind = _context_text(control.get("kind"), f"{label} controls[{index}].kind")
+        if kind not in {"snapshots_only", "typed_pointer_chain"} or kind in kinds:
+            raise LearningInputError(
+                f"{label} controls must contain snapshots_only and typed_pointer_chain"
+            )
+        kinds.add(kind)
+        if control.get("strict_exact") is not False:
+            raise LearningInputError(f"{label} controls[{index}].strict_exact must be false")
+        raw_residual_rows = control.get("residual_rows")
+        if kind == "typed_pointer_chain" and raw_residual_rows is None:
+            raise LearningInputError(
+                f"{label} typed_pointer_chain control requires residual_rows"
+            )
+        normalized_control_rows = (
+            _context_rows(
+                raw_residual_rows,
+                f"{label} controls[{index}].residual_rows",
+                minimum_count=1,
+                maximum_count=16,
+            )
+            if raw_residual_rows is not None
+            else []
+        )
+        controls.append(
+            {
+                "kind": kind,
+                "candidate_id": _context_text(
+                    control.get("candidate_id"),
+                    f"{label} controls[{index}].candidate_id",
+                    limit=128,
+                ),
+                "target_bytes": _context_uint(
+                    control.get("target_bytes"), f"{label} controls[{index}].target_bytes"
+                ),
+                "candidate_bytes": _context_uint(
+                    control.get("candidate_bytes"),
+                    f"{label} controls[{index}].candidate_bytes",
+                ),
+                "strict_exact": False,
+                "residual_rows": normalized_control_rows,
+                "source_sha256": _context_sha256(
+                    control.get("source_sha256"),
+                    f"{label} controls[{index}].source_sha256",
+                ),
+                "object_sha256": _context_sha256(
+                    control.get("object_sha256"),
+                    f"{label} controls[{index}].object_sha256",
+                ),
+                "strict_report_sha256": _context_sha256(
+                    control.get("strict_report_sha256"),
+                    f"{label} controls[{index}].strict_report_sha256",
+                ),
+                "data_report_sha256": _context_sha256(
+                    control.get("data_report_sha256"),
+                    f"{label} controls[{index}].data_report_sha256",
+                ),
+                "candidate_record_sha256": _context_sha256(
+                    control.get("candidate_record_sha256"),
+                    f"{label} controls[{index}].candidate_record_sha256",
+                ),
+                "unresolved_boundary": _context_text(
+                    control.get("unresolved_boundary"),
+                    f"{label} controls[{index}].unresolved_boundary",
+                    limit=256,
+                ),
+            }
+        )
+    if kinds != {"snapshots_only", "typed_pointer_chain"}:
+        raise LearningInputError(
+            f"{label} controls must contain snapshots_only and typed_pointer_chain"
+        )
+    controls_by_kind = {item["kind"]: item for item in controls}
+    if (
+        controls_by_kind["snapshots_only"]["candidate_record_sha256"]
+        != normalized_proofs["snapshot_control_record_sha256"]
+        or controls_by_kind["typed_pointer_chain"]["candidate_record_sha256"]
+        != normalized_proofs["pointer_control_record_sha256"]
+    ):
+        raise LearningInputError(f"{label} control records do not match proof roots")
+    pointer_control = controls_by_kind["typed_pointer_chain"]
+    if (
+        pointer_control["target_bytes"] != target_bytes
+        or pointer_control["candidate_bytes"] != candidate_bytes
+        or pointer_control["residual_rows"] != normalized_precursor["residual_rows"]
+    ):
+        raise LearningInputError(f"{label} typed-pointer control does not bind precursor")
+
+    combined = _closed_context(
+        context.get("combined_cell"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "strict_exact",
+            "data_exact",
+            "physical_relocations",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "strict_exact",
+            "data_exact",
+            "physical_relocations",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+        },
+        label=f"{label} combined_cell",
+    )
+    if combined.get("strict_exact") is not True or combined.get("data_exact") is not True:
+        raise LearningInputError(f"{label} combined cell must be strict/data exact")
+    combined_target = _context_uint(
+        combined.get("target_bytes"), f"{label} combined_cell.target_bytes"
+    )
+    combined_candidate = _context_uint(
+        combined.get("candidate_bytes"), f"{label} combined_cell.candidate_bytes"
+    )
+    if combined_target != target_bytes or combined_candidate != candidate_bytes:
+        raise LearningInputError(f"{label} combined cell sizes must match precursor")
+    normalized_combined = {
+        "candidate_id": _context_text(
+            combined.get("candidate_id"), f"{label} combined_cell.candidate_id", limit=128
+        ),
+        "target_bytes": combined_target,
+        "candidate_bytes": combined_candidate,
+        "strict_exact": True,
+        "data_exact": True,
+        "physical_relocations": _context_uint(
+            combined.get("physical_relocations"),
+            f"{label} combined_cell.physical_relocations",
+            minimum=1,
+        ),
+        "source_sha256": _context_sha256(
+            combined.get("source_sha256"), f"{label} combined_cell.source_sha256"
+        ),
+        "object_sha256": _context_sha256(
+            combined.get("object_sha256"), f"{label} combined_cell.object_sha256"
+        ),
+        "strict_report_sha256": _context_sha256(
+            combined.get("strict_report_sha256"),
+            f"{label} combined_cell.strict_report_sha256",
+        ),
+        "data_report_sha256": _context_sha256(
+            combined.get("data_report_sha256"),
+            f"{label} combined_cell.data_report_sha256",
+        ),
+        "candidate_record_sha256": _context_sha256(
+            combined.get("candidate_record_sha256"),
+            f"{label} combined_cell.candidate_record_sha256",
+        ),
+    }
+    if (
+        normalized_combined["candidate_record_sha256"]
+        != normalized_proofs["exact_result_record_sha256"]
+        or normalized_combined["physical_relocations"]
+        != normalized_precursor["physical_relocations"]
+    ):
+        raise LearningInputError(f"{label} exact result does not match proof roots")
+
+    return {
+        "schema": AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "precursor": normalized_precursor,
+        "consumer": normalized_consumer,
+        "color_pointer": normalized_color,
+        "snapshots": snapshots,
+        "controls": controls,
+        "combined_cell": normalized_combined,
     }
 
 
@@ -7281,6 +7904,312 @@ def _address_taken_local_pointer_evaluation(
     )
 
 
+def _aggregate_snapshot_pointer_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "aggregate_snapshot_pointer_chain"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated aggregate snapshot/pointer context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the aggregate snapshot/pointer context is bound to another objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    precursor = context["precursor"]
+    if (
+        target_size is None
+        or candidate_size is None
+        or target_size != candidate_size
+        or target_size != precursor["target_bytes"]
+        or candidate_size != precursor["candidate_bytes"]
+        or target_frame is None
+        or target_frame != candidate_frame
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the typed-pointer precursor does not have the sealed exact size/frame",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    if not rows or any(
+        left is None or right is None or not _compatible_register_only_pair(left, right)
+        for left, right in rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the wrapper precursor is not operation-, CFG-, immediate-, relocation-, "
+                "and row-count-identical register-only evidence"
+            ),
+        )
+    mismatch_rows = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if left is not None
+        and right is not None
+        and (left.diff_kind is not None or right.diff_kind is not None)
+    ]
+    if mismatch_rows != precursor["residual_rows"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the physical residual rows differ from the sealed typed-pointer precursor",
+            evidence={
+                "report_residual_rows": mismatch_rows,
+                "context_residual_rows": precursor["residual_rows"],
+            },
+        )
+
+    consumer = context["consumer"]
+    call_row = consumer["call_row"]
+    if call_row >= len(rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed wrapper-consumer call row is outside the report",
+        )
+    left_call, right_call = rows[call_row]
+    if (
+        left_call is None
+        or right_call is None
+        or left_call.mnemonic not in _CALL_MNEMONICS
+        or right_call.mnemonic != left_call.mnemonic
+        or consumer["symbol"] not in left_call.formatted
+        or consumer["symbol"] not in right_call.formatted
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the uniquely sealed typed wrapper consumer is absent at its call row",
+        )
+
+    color = context["color_pointer"]
+    if color["pointer_row"] >= len(rows) or color["argument_row"] >= len(rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed color-pointer rows are outside the report",
+        )
+    left_color_pointer, right_color_pointer = rows[color["pointer_row"]]
+    left_color_argument, right_color_argument = rows[color["argument_row"]]
+    if (
+        left_color_pointer is None
+        or right_color_pointer is None
+        or _addi_r1_materialization(left_color_pointer.formatted)
+        != (color["target_register"], color["stack_offset"])
+        or _addi_r1_materialization(right_color_pointer.formatted)
+        != (color["candidate_register"], color["stack_offset"])
+        or left_color_argument is None
+        or right_color_argument is None
+        or left_color_argument.mnemonic != "mr"
+        or right_color_argument.mnemonic != "mr"
+        or _registers(left_color_argument.formatted)
+        != [color["argument_register"], color["target_register"]]
+        or _registers(right_color_argument.formatted)
+        != [color["argument_register"], color["candidate_register"]]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the already-exact live color pointer is not physically authenticated",
+        )
+
+    observed_snapshots: list[dict[str, Any]] = []
+    mapping: dict[str, str] = {}
+    expected_residual_rows: set[int] = set()
+    expected_copy_mnemonics = ["lwz", "lwz", "stw", "stw", "lwz", "stw"]
+    load_slots = {0: 0, 1: 4, 4: 8}
+    store_slots = {2: 0, 3: 4, 5: 8}
+    for snapshot in context["snapshots"]:
+        copy_rows = snapshot["copy_rows"]
+        if max(copy_rows + [snapshot["pointer_row"], snapshot["argument_row"]]) >= len(
+            rows
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="an authenticated snapshot row is outside the report",
+            )
+        copy_instructions: list[str] = []
+        for copy_index, row_index in enumerate(copy_rows):
+            left, right = rows[row_index]
+            if (
+                left is None
+                or right is None
+                or left.formatted != right.formatted
+                or left.mnemonic != expected_copy_mnemonics[copy_index]
+            ):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="a vector snapshot is not an exact six-row GC/2.6 copy",
+                    evidence={"snapshot": snapshot["local"], "row": row_index},
+                )
+            memory = _memory_operand(left.formatted)
+            if copy_index in load_slots:
+                expected = (snapshot["source_register"], load_slots[copy_index])
+            else:
+                expected = ("r1", snapshot["stack_offset"] + store_slots[copy_index])
+            if memory != expected:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="a vector snapshot does not cover the sealed source/stack interval",
+                    evidence={
+                        "snapshot": snapshot["local"],
+                        "row": row_index,
+                        "expected_memory": expected,
+                        "actual_memory": memory,
+                    },
+                )
+            copy_instructions.append(left.formatted)
+
+        left_pointer, right_pointer = rows[snapshot["pointer_row"]]
+        left_argument, right_argument = rows[snapshot["argument_row"]]
+        if (
+            left_pointer is None
+            or right_pointer is None
+            or _addi_r1_materialization(left_pointer.formatted)
+            != (snapshot["target_pointer_register"], snapshot["stack_offset"])
+            or _addi_r1_materialization(right_pointer.formatted)
+            != (snapshot["candidate_pointer_register"], snapshot["stack_offset"])
+            or left_argument is None
+            or right_argument is None
+            or left_argument.mnemonic != "mr"
+            or right_argument.mnemonic != "mr"
+            or _registers(left_argument.formatted)
+            != [snapshot["argument_register"], snapshot["target_pointer_register"]]
+            or _registers(right_argument.formatted)
+            != [snapshot["argument_register"], snapshot["candidate_pointer_register"]]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a live typed pointer does not bind its exact local address and call argument",
+                evidence={"snapshot": snapshot["local"]},
+            )
+        target_register = snapshot["target_pointer_register"]
+        candidate_register = snapshot["candidate_pointer_register"]
+        if target_register != candidate_register:
+            mapping[target_register] = candidate_register
+            expected_residual_rows.update(
+                {snapshot["pointer_row"], snapshot["argument_row"]}
+            )
+        observed_snapshots.append(
+            {
+                "local": snapshot["local"],
+                "source_pointer": snapshot["source_pointer"],
+                "source_register": snapshot["source_register"],
+                "stack_interval": [
+                    snapshot["stack_offset"],
+                    snapshot["stack_offset"] + snapshot["size"],
+                ],
+                "copy_rows": copy_rows,
+                "copy_instructions": copy_instructions,
+                "pointer_owner": snapshot["pointer_owner"],
+                "target_pointer_register": target_register,
+                "candidate_pointer_register": candidate_register,
+                "pointer_row": snapshot["pointer_row"],
+                "argument_row": snapshot["argument_row"],
+                "argument_register": snapshot["argument_register"],
+            }
+        )
+
+    cycles = _closed_cycles(mapping)
+    if (
+        len(mapping) != 2
+        or len(cycles) != 1
+        or len(cycles[0]) != 2
+        or sorted(expected_residual_rows) != mismatch_rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the remaining pointer owners are not one complete sealed two-register cycle",
+            evidence={
+                "register_mapping": dict(sorted(mapping.items())),
+                "cycles": cycles,
+                "expected_residual_rows": sorted(expected_residual_rows),
+                "report_residual_rows": mismatch_rows,
+            },
+        )
+
+    pointer_order = [item["pointer_owner"] for item in context["snapshots"]]
+    source_expressions = [item["source_expression"] for item in context["snapshots"]]
+    source_expressions.append(color["source_expression"])
+    scheduled_cell = {
+        "aggregate_snapshots": source_expressions[:-1],
+        "typed_pointer_consumers": [
+            f"{item['pointer_owner']} = &{item['local']}" for item in context["snapshots"]
+        ]
+        + [f"{color['pointer_owner']} = &{color['local']}"],
+        "pointer_declaration_chronology": pointer_order,
+        "consumer": consumer["symbol"],
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the exact-size/frame wrapper contains three authenticated 12-byte aggregate "
+            "snapshots and four live typed local-address consumers; only the scale/position "
+            "pointer owners form a complete saved-GPR cycle while rotation and color are exact"
+        ),
+        confidence=0.99,
+        source_class="aggregate_snapshot_typed_pointer_wrapper_composition",
+        recommendation=(
+            "Compile one composed wrapper cell: preserve the three semantic HuVecF snapshots, "
+            "materialize each live typed local pointer, and declare the vector pointers in "
+            f"the sealed order {', '.join(pointer_order)} before {consumer['symbol']}."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "consumer": consumer,
+            "color_pointer": color,
+            "snapshots": observed_snapshots,
+            "register_mapping": dict(sorted(mapping.items())),
+            "cycle": cycles[0],
+            "mismatch_rows": mismatch_rows,
+            "controls": context["controls"],
+            "recommended_cells": [scheduled_cell],
+            "combined_exact_result": context["combined_cell"],
+            "suppressed_axes": [
+                "direct_pointer_only",
+                "aggregate_snapshot_only",
+                "typed_pointer_only",
+                "unsealed_declaration_permutations",
+                "dead_pointer_storage",
+                "register_shaping",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -9277,6 +10206,7 @@ def diagnose_document(
     aggregate_use_context: Mapping[str, Any] | None = None,
     aggregate_followup_context: Mapping[str, Any] | None = None,
     address_taken_context: Mapping[str, Any] | None = None,
+    aggregate_snapshot_pointer_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -9329,6 +10259,11 @@ def diagnose_document(
     normalized_address_taken_context = (
         _parse_address_taken_context(address_taken_context)
         if address_taken_context is not None
+        else None
+    )
+    normalized_aggregate_snapshot_pointer_context = (
+        _parse_aggregate_snapshot_pointer_context(aggregate_snapshot_pointer_context)
+        if aggregate_snapshot_pointer_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -9450,6 +10385,13 @@ def diagnose_document(
             normalized_address_taken_context,
             objdiff_canonical_sha256,
         ),
+        _aggregate_snapshot_pointer_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_aggregate_snapshot_pointer_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -9553,6 +10495,11 @@ def diagnose_document(
             "address_taken_context_canonical_sha256": (
                 _sha256(_canonical(normalized_address_taken_context))
                 if normalized_address_taken_context is not None
+                else None
+            ),
+            "aggregate_snapshot_pointer_context_canonical_sha256": (
+                _sha256(_canonical(normalized_aggregate_snapshot_pointer_context))
+                if normalized_aggregate_snapshot_pointer_context is not None
                 else None
             ),
             "aggregate_pointer_branch_context_canonical_sha256": (
@@ -9720,6 +10667,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--aggregate-snapshot-pointer-context",
+        type=Path,
+        help=(
+            "authenticated aggregate_snapshot_pointer_chain_context/v1 JSON with "
+            "three exact vector snapshots, live local-address consumers, controls, "
+            "and one sealed pointer-owner chronology"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-pointer-branch-context",
         type=Path,
         help=(
@@ -9853,6 +10809,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="address-taken local pointer context",
                 )
                 if args.address_taken_context is not None
+                else None
+            ),
+            aggregate_snapshot_pointer_context=(
+                _load_json(
+                    args.aggregate_snapshot_pointer_context,
+                    label="aggregate snapshot/pointer wrapper context",
+                )
+                if args.aggregate_snapshot_pointer_context is not None
                 else None
             ),
             aggregate_pointer_branch_context=(
