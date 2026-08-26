@@ -25,8 +25,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v9"
-SCHEMA_VERSION = 9
+SCHEMA = "crack_learning_diagnosis/v10"
+SCHEMA_VERSION = 10
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
@@ -39,6 +39,7 @@ EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
     "dependency_equivalent_exact_sibling_transfer_context/v1"
 )
 POOL_LIVE_RANGE_CONTEXT_SCHEMA = "pool_live_range_interaction_context/v1"
+FLOAT_TRUTHINESS_CONTEXT_SCHEMA = "float_truthiness_comparison_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -235,6 +236,26 @@ _POOL_LIVE_RANGE_PROOF_HASHES = (
     "same_tu_owner_receipt_sha256",
     "source_range_receipt_sha256",
 )
+_FLOAT_TRUTHINESS_PROOF_FLAGS = (
+    "function_size_exact",
+    "stack_frame_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "all_non_comparison_rows_exact",
+    "protected_siblings_preserved",
+    "pinned_mwcc_frontend",
+    "exact_precedent_authenticated",
+)
+_FLOAT_TRUTHINESS_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "neutral_observation_receipt_sha256",
+    "exact_precedent_receipt_sha256",
+    "source_range_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -296,6 +317,7 @@ _RULE_ORDER = (
     "short_circuit_boolean_call_order",
     "dependency_equivalent_exact_sibling_transfer",
     "pool_live_range_interaction",
+    "float_truthiness_comparison_ranking",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -3200,6 +3222,310 @@ def _parse_pool_live_range_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "source_actions": normalized_actions,
         "precursor": precursor,
         "combined_cell": combined,
+    }
+
+
+def _parse_float_truthiness_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "comparison",
+            "neutral_observation",
+            "exact_precedent",
+            "exact_cell",
+        },
+        required={
+            "schema",
+            "proofs",
+            "comparison",
+            "neutral_observation",
+            "exact_precedent",
+            "exact_cell",
+        },
+        label="float-truthiness comparison context",
+    )
+    if (
+        _context_text(
+            context.get("schema"), "float-truthiness comparison context schema"
+        )
+        != FLOAT_TRUTHINESS_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            "float-truthiness comparison context schema must be "
+            f"{FLOAT_TRUTHINESS_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_FLOAT_TRUTHINESS_PROOF_FLAGS) | set(
+        _FLOAT_TRUTHINESS_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="float-truthiness comparison context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _FLOAT_TRUTHINESS_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"float-truthiness comparison context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _FLOAT_TRUTHINESS_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field),
+            f"float-truthiness comparison context proofs.{field}",
+        )
+
+    comparison = _closed_context(
+        context.get("comparison"),
+        allowed={
+            "rows",
+            "compare_row",
+            "branch_row",
+            "field_access",
+            "zero_access",
+            "field_expression",
+            "truthiness_expression",
+        },
+        required={
+            "rows",
+            "compare_row",
+            "branch_row",
+            "field_access",
+            "zero_access",
+            "field_expression",
+            "truthiness_expression",
+        },
+        label="float-truthiness comparison",
+    )
+
+    def parse_access(raw: Any, *, label: str) -> dict[str, Any]:
+        access = _closed_context(
+            raw,
+            allowed={"base_register", "offset"},
+            required={"base_register", "offset"},
+            label=label,
+        )
+        base = _context_text(
+            access.get("base_register"), f"{label}.base_register", limit=3
+        ).lower()
+        if re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", base) is None:
+            raise LearningInputError(f"{label}.base_register must be a GPR")
+        return {
+            "base_register": base,
+            "offset": _context_uint(
+                access.get("offset"), f"{label}.offset", maximum=0x7FFFFFFF
+            ),
+        }
+
+    rows = _context_rows(
+        comparison.get("rows"),
+        "float-truthiness comparison.rows",
+        minimum_count=2,
+        maximum_count=2,
+    )
+    compare_row = _context_uint(
+        comparison.get("compare_row"), "float-truthiness comparison.compare_row"
+    )
+    branch_row = _context_uint(
+        comparison.get("branch_row"), "float-truthiness comparison.branch_row"
+    )
+    if compare_row in rows or branch_row in rows or branch_row != compare_row + 1:
+        raise LearningInputError(
+            "float-truthiness compare/branch rows must be adjacent and outside the two load rows"
+        )
+    field_access = parse_access(
+        comparison.get("field_access"),
+        label="float-truthiness comparison.field_access",
+    )
+    zero_access = parse_access(
+        comparison.get("zero_access"),
+        label="float-truthiness comparison.zero_access",
+    )
+    if field_access == zero_access:
+        raise LearningInputError(
+            "float-truthiness field and zero accesses must be distinct"
+        )
+    field_expression = _context_lvalue(
+        comparison.get("field_expression"),
+        "float-truthiness comparison.field_expression",
+    )
+    truthiness_expression = _context_text(
+        comparison.get("truthiness_expression"),
+        "float-truthiness comparison.truthiness_expression",
+        limit=512,
+    )
+    if field_expression not in truthiness_expression:
+        raise LearningInputError(
+            "float-truthiness source expression must name the authenticated field"
+        )
+
+    neutral = _closed_context(
+        context.get("neutral_observation"),
+        allowed={
+            "axis",
+            "baseline_expression",
+            "commuted_expression",
+            "baseline_object_sha256",
+            "commuted_object_sha256",
+        },
+        required={
+            "axis",
+            "baseline_expression",
+            "commuted_expression",
+            "baseline_object_sha256",
+            "commuted_object_sha256",
+        },
+        label="float-truthiness neutral observation",
+    )
+    if (
+        _context_text(
+            neutral.get("axis"), "float-truthiness neutral observation.axis"
+        )
+        != "commuted_explicit_zero_comparison"
+    ):
+        raise LearningInputError(
+            "float-truthiness neutral observation axis must be commuted_explicit_zero_comparison"
+        )
+    normalized_neutral = {
+        "axis": "commuted_explicit_zero_comparison",
+        "baseline_expression": _context_text(
+            neutral.get("baseline_expression"),
+            "float-truthiness neutral observation.baseline_expression",
+            limit=512,
+        ),
+        "commuted_expression": _context_text(
+            neutral.get("commuted_expression"),
+            "float-truthiness neutral observation.commuted_expression",
+            limit=512,
+        ),
+        "baseline_object_sha256": _context_sha256(
+            neutral.get("baseline_object_sha256"),
+            "float-truthiness neutral observation.baseline_object_sha256",
+        ),
+        "commuted_object_sha256": _context_sha256(
+            neutral.get("commuted_object_sha256"),
+            "float-truthiness neutral observation.commuted_object_sha256",
+        ),
+    }
+    if (
+        normalized_neutral["baseline_expression"]
+        == normalized_neutral["commuted_expression"]
+        or normalized_neutral["baseline_object_sha256"]
+        != normalized_neutral["commuted_object_sha256"]
+    ):
+        raise LearningInputError(
+            "float-truthiness commuted explicit-zero control must be distinct source with object-identical output"
+        )
+
+    precedent = _closed_context(
+        context.get("exact_precedent"),
+        allowed={
+            "symbol",
+            "source_location",
+            "source_expression",
+            "candidate_record_sha256",
+        },
+        required={
+            "symbol",
+            "source_location",
+            "source_expression",
+            "candidate_record_sha256",
+        },
+        label="float-truthiness exact precedent",
+    )
+    normalized_precedent = {
+        "symbol": _context_identifier(
+            precedent.get("symbol"), "float-truthiness exact precedent.symbol"
+        ),
+        "source_location": _context_text(
+            precedent.get("source_location"),
+            "float-truthiness exact precedent.source_location",
+            limit=512,
+        ),
+        "source_expression": _context_text(
+            precedent.get("source_expression"),
+            "float-truthiness exact precedent.source_expression",
+            limit=512,
+        ),
+        "candidate_record_sha256": _context_sha256(
+            precedent.get("candidate_record_sha256"),
+            "float-truthiness exact precedent.candidate_record_sha256",
+        ),
+    }
+
+    cell = _closed_context(
+        context.get("exact_cell"),
+        allowed={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "object_sha256",
+            "candidate_record_sha256",
+            "residual_rows",
+        },
+        required={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "object_sha256",
+            "candidate_record_sha256",
+            "residual_rows",
+        },
+        label="float-truthiness exact cell",
+    )
+    normalized_cell = {
+        "candidate_id": _context_text(
+            cell.get("candidate_id"),
+            "float-truthiness exact cell.candidate_id",
+            limit=128,
+        ),
+        "target_size": _context_uint(
+            cell.get("target_size"),
+            "float-truthiness exact cell.target_size",
+            minimum=4,
+        ),
+        "candidate_size": _context_uint(
+            cell.get("candidate_size"),
+            "float-truthiness exact cell.candidate_size",
+            minimum=4,
+        ),
+        "object_sha256": _context_sha256(
+            cell.get("object_sha256"),
+            "float-truthiness exact cell.object_sha256",
+        ),
+        "candidate_record_sha256": _context_sha256(
+            cell.get("candidate_record_sha256"),
+            "float-truthiness exact cell.candidate_record_sha256",
+        ),
+        "residual_rows": _context_rows(
+            cell.get("residual_rows"),
+            "float-truthiness exact cell.residual_rows",
+            minimum_count=0,
+            maximum_count=0,
+        ),
+    }
+    if normalized_cell["target_size"] != normalized_cell["candidate_size"]:
+        raise LearningInputError("float-truthiness exact cell must be size exact")
+
+    return {
+        "schema": FLOAT_TRUTHINESS_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "comparison": {
+            "rows": rows,
+            "compare_row": compare_row,
+            "branch_row": branch_row,
+            "field_access": field_access,
+            "zero_access": zero_access,
+            "field_expression": field_expression,
+            "truthiness_expression": truthiness_expression,
+        },
+        "neutral_observation": normalized_neutral,
+        "exact_precedent": normalized_precedent,
+        "exact_cell": normalized_cell,
     }
 
 
@@ -6708,6 +7034,184 @@ def _pool_live_range_interaction_evaluation(
     )
 
 
+def _float_truthiness_comparison_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "float_truthiness_comparison_ranking"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated float-truthiness comparison context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the float-truthiness context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    exact_cell = context["exact_cell"]
+    if (
+        target_size is None
+        or candidate_size is None
+        or target_size != candidate_size
+        or exact_cell["target_size"] != target_size
+        or exact_cell["candidate_size"] != target_size
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the baseline and exact truthiness cell do not share one exact function size",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "exact_cell_target_size": exact_cell["target_size"],
+                "exact_cell_candidate_size": exact_cell["candidate_size"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    comparison = context["comparison"]
+    referenced_rows = set(comparison["rows"]) | {
+        comparison["compare_row"],
+        comparison["branch_row"],
+    }
+    if any(index >= len(rows) for index in referenced_rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="a sealed float-truthiness row is outside the focus function",
+        )
+
+    first, second = comparison["rows"]
+    target_first, candidate_first = rows[first]
+    target_second, candidate_second = rows[second]
+    load_rows = (target_first, candidate_first, target_second, candidate_second)
+    if any(
+        item is None or not item.has_instruction or item.mnemonic != "lfs"
+        for item in load_rows
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed float-truthiness residual is not exactly two paired lfs rows",
+        )
+
+    field_access = comparison["field_access"]
+    zero_access = comparison["zero_access"]
+    field_memory = (field_access["base_register"], field_access["offset"])
+    zero_memory = (zero_access["base_register"], zero_access["offset"])
+    observed_order = (
+        _memory_operand(target_first.formatted),
+        _memory_operand(target_second.formatted),
+        _memory_operand(candidate_first.formatted),
+        _memory_operand(candidate_second.formatted),
+    )
+    if observed_order != (field_memory, zero_memory, zero_memory, field_memory):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the lfs residual is not the sealed target field-then-zero versus candidate zero-then-field order",
+            evidence={"observed_memory_order": observed_order},
+        )
+
+    compare_target, compare_candidate = rows[comparison["compare_row"]]
+    branch_target, branch_candidate = rows[comparison["branch_row"]]
+    if (
+        compare_target is None
+        or compare_candidate is None
+        or not compare_target.has_instruction
+        or not compare_candidate.has_instruction
+        or compare_target.mnemonic != "fcmpu"
+        or compare_candidate.mnemonic != "fcmpu"
+        or not _equivalent_outside_learning_window(compare_target, compare_candidate)
+        or branch_target is None
+        or branch_candidate is None
+        or not branch_target.has_instruction
+        or not branch_candidate.has_instruction
+        or branch_target.mnemonic not in _CONDITIONAL_MNEMONICS
+        or branch_candidate.mnemonic != branch_target.mnemonic
+        or not _equivalent_outside_learning_window(branch_target, branch_candidate)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the comparison and branch consumers are not exact adjacent fcmpu/conditional rows",
+        )
+
+    outside_residuals = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if index not in comparison["rows"]
+        and not _equivalent_outside_learning_window(left, right)
+    ]
+    if outside_residuals:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the report has physical residuals outside the two sealed float-load rows",
+            evidence={"outside_residual_rows": outside_residuals},
+        )
+
+    scheduled_cell = {
+        "id": exact_cell["candidate_id"],
+        "source_class": "natural_float_truthiness",
+        "source_expression": comparison["truthiness_expression"],
+        "expected_object_sha256": exact_cell["object_sha256"],
+        "candidate_record_sha256": exact_cell["candidate_record_sha256"],
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the sole residual is field-versus-zero lfs order under an exact fcmpu/branch, "
+            "both explicit comparison orders are compiler-neutral, and an exact precedent "
+            "authenticates natural float truthiness for the same frontend signature"
+        ),
+        confidence=0.99,
+        source_class="float_truthiness_before_explicit_zero_comparisons",
+        recommendation=(
+            "Compile the emitted natural truthiness cell first and suppress both explicit "
+            "zero-comparison operand orders."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "comparison_rows": [
+                {
+                    "row_index": first,
+                    "target_formatted": target_first.formatted,
+                    "candidate_formatted": candidate_first.formatted,
+                },
+                {
+                    "row_index": second,
+                    "target_formatted": target_second.formatted,
+                    "candidate_formatted": candidate_second.formatted,
+                },
+            ],
+            "field_expression": comparison["field_expression"],
+            "compare_row": comparison["compare_row"],
+            "branch_row": comparison["branch_row"],
+            "neutral_observation": context["neutral_observation"],
+            "exact_precedent": context["exact_precedent"],
+            "scheduled_cells": [scheduled_cell],
+            "suppressed_axes": [
+                "field_not_equal_zero",
+                "zero_not_equal_field",
+                "commuted_explicit_zero_comparison",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -6989,6 +7493,7 @@ def diagnose_document(
     short_circuit_context: Mapping[str, Any] | None = None,
     exact_sibling_transfer_context: Mapping[str, Any] | None = None,
     pool_live_range_context: Mapping[str, Any] | None = None,
+    float_truthiness_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -7049,6 +7554,11 @@ def diagnose_document(
     normalized_pool_live_range_context = (
         _parse_pool_live_range_context(pool_live_range_context)
         if pool_live_range_context is not None
+        else None
+    )
+    normalized_float_truthiness_context = (
+        _parse_float_truthiness_context(float_truthiness_context)
+        if float_truthiness_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -7156,6 +7666,13 @@ def diagnose_document(
             normalized_pool_live_range_context,
             objdiff_canonical_sha256,
         ),
+        _float_truthiness_comparison_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_float_truthiness_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -7225,6 +7742,11 @@ def diagnose_document(
             "pool_live_range_context_canonical_sha256": (
                 _sha256(_canonical(normalized_pool_live_range_context))
                 if normalized_pool_live_range_context is not None
+                else None
+            ),
+            "float_truthiness_context_canonical_sha256": (
+                _sha256(_canonical(normalized_float_truthiness_context))
+                if normalized_float_truthiness_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -7378,6 +7900,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--float-truthiness-context",
+        type=Path,
+        help=(
+            "authenticated float_truthiness_comparison_context/v1 JSON with a "
+            "two-row field/zero load-order seam, object-neutral explicit comparison "
+            "control, and exact truthiness precedent"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -7475,6 +8006,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="pool/live-range interaction context",
                 )
                 if args.pool_live_range_context is not None
+                else None
+            ),
+            float_truthiness_context=(
+                _load_json(
+                    args.float_truthiness_context,
+                    label="float-truthiness comparison context",
+                )
+                if args.float_truthiness_context is not None
                 else None
             ),
             capacity_context=(

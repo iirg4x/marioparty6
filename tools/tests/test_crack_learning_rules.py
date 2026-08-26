@@ -1436,6 +1436,91 @@ def _pool_live_range_context(
     }
 
 
+def _float_truthiness_report() -> dict[str, object]:
+    target = [
+        _instruction(100, "lfs f1, 32(r31)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "lfs f0, 0(r2)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "fcmpu cr0, f1, f0"),
+        _instruction(112, "beq 128"),
+        _instruction(116, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "lfs f0, 0(r2)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "lfs f1, 32(r31)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "fcmpu cr0, f1, f0"),
+        _instruction(112, "beq 128"),
+        _instruction(116, "blr"),
+    ]
+    return _report(
+        "mbev_CapStarManOMExec",
+        target,
+        candidate,
+        target_size=632,
+        candidate_size=632,
+    )
+
+
+def _float_truthiness_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _float_truthiness_report()
+    return {
+        "schema": rules.FLOAT_TRUTHINESS_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "all_non_comparison_rows_exact": True,
+            "protected_siblings_preserved": True,
+            "pinned_mwcc_frontend": True,
+            "exact_precedent_authenticated": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "neutral_observation_receipt_sha256": "4" * 64,
+            "exact_precedent_receipt_sha256": "5" * 64,
+            "source_range_receipt_sha256": "6" * 64,
+        },
+        "comparison": {
+            "rows": [0, 1],
+            "compare_row": 2,
+            "branch_row": 3,
+            "field_access": {"base_register": "r31", "offset": 32},
+            "zero_access": {"base_register": "r2", "offset": 0},
+            "field_expression": "workP->_unk20",
+            "truthiness_expression": "if (workP->_unk20)",
+        },
+        "neutral_observation": {
+            "axis": "commuted_explicit_zero_comparison",
+            "baseline_expression": "workP->_unk20 != 0.0f",
+            "commuted_expression": "0.0f != workP->_unk20",
+            "baseline_object_sha256": "7" * 64,
+            "commuted_object_sha256": "7" * 64,
+        },
+        "exact_precedent": {
+            "symbol": "mbev_CapEffGlowOMExec",
+            "source_location": "game/src/board/capevent.c:L7778",
+            "source_expression": "if (particleWorkP->gravity)",
+            "candidate_record_sha256": "8" * 64,
+        },
+        "exact_cell": {
+            "candidate_id": "capevent-starman002-exact",
+            "target_size": 632,
+            "candidate_size": 632,
+            "object_sha256": (
+                "adb60fea3670631e7a7e2d6d10df4ecfe918c4b5b1d9315b8d5172a51f0d6395"
+            ),
+            "candidate_record_sha256": (
+                "d5c3f8edc2d69568ec1659ba4d657556759b308017fc86dd0f08e0ce099f80ad"
+            ),
+            "residual_rows": [],
+        },
+    }
+
+
 def _switch_fpr_report(*, include_switch: bool = True) -> dict[str, object]:
     target = [
         _instruction(100, "stwu r1, -160(r1)", diff_kind="DIFF_ARG_MISMATCH"),
@@ -2470,6 +2555,83 @@ class CrackLearningRulesTest(unittest.TestCase):
                 pool_live_range_context=false_proof,
             )
 
+    def test_float_truthiness_ranks_one_natural_cell(self) -> None:
+        report = _float_truthiness_report()
+        context = _float_truthiness_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapStarManOMExec",
+            float_truthiness_context=context,
+        )
+        diagnosis = _evaluation(
+            result, "float_truthiness_comparison_ranking"
+        )
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["field_expression"], "workP->_unk20")
+        self.assertEqual(len(evidence["comparison_rows"]), 2)
+        self.assertEqual(
+            evidence["exact_precedent"]["symbol"], "mbev_CapEffGlowOMExec"
+        )
+        self.assertEqual(
+            evidence["scheduled_cells"][0]["source_expression"],
+            "if (workP->_unk20)",
+        )
+        self.assertEqual(
+            evidence["suppressed_axes"],
+            [
+                "field_not_equal_zero",
+                "zero_not_equal_field",
+                "commuted_explicit_zero_comparison",
+            ],
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_float_truthiness_fails_closed(self) -> None:
+        report = _float_truthiness_report()
+        result = rules.diagnose_document(
+            report, focus_symbol="mbev_CapStarManOMExec"
+        )
+        self.assertFalse(
+            _evaluation(result, "float_truthiness_comparison_ranking")["matched"]
+        )
+
+        wrong_order = _float_truthiness_report()
+        wrong_order["right"]["symbols"][0]["instructions"][0]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "lfs f0, 4(r2)"
+        result = rules.diagnose_document(
+            wrong_order,
+            focus_symbol="mbev_CapStarManOMExec",
+            float_truthiness_context=_float_truthiness_context(wrong_order),
+        )
+        self.assertFalse(
+            _evaluation(result, "float_truthiness_comparison_ranking")["matched"]
+        )
+
+        extra_residual = _float_truthiness_report()
+        extra_residual["right"]["symbols"][0]["instructions"][4]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "nop"
+        result = rules.diagnose_document(
+            extra_residual,
+            focus_symbol="mbev_CapStarManOMExec",
+            float_truthiness_context=_float_truthiness_context(extra_residual),
+        )
+        self.assertFalse(
+            _evaluation(result, "float_truthiness_comparison_ranking")["matched"]
+        )
+
+        nonneutral = _float_truthiness_context(report)
+        nonneutral["neutral_observation"]["commuted_object_sha256"] = "9" * 64  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "object-identical"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapStarManOMExec",
+                float_truthiness_context=nonneutral,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -3131,6 +3293,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffGlowOMExec",
                 pool_live_range_context=context,
+            ),
+        )
+
+    def test_float_truthiness_context_cli_emits_same_document(self) -> None:
+        report = _float_truthiness_report()
+        context = _float_truthiness_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "float-truthiness.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapStarManOMExec",
+                            "--float-truthiness-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapStarManOMExec",
+                float_truthiness_context=context,
             ),
         )
 

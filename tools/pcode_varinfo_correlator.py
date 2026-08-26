@@ -352,6 +352,59 @@ SCHEMA_ANCHORED_PATH_RECORDS = {
     ("source_evaluation_chronology", "source", "path"): frozenset(
         {"path", "sha256", "function", "function_lines", "body_lines"}
     ),
+    # donor_cfg_align emits the same closed source-span descriptor for calls,
+    # assignments, and control events.  The call record is also copied into a
+    # joined Object row.  These are authenticated source file labels, not
+    # compiler/runtime addresses; admit path-shaped values only when the
+    # surrounding span has the complete canonical descriptor shape.
+    ("source_evaluation_chronology", "calls", "span", "path"): frozenset(
+        {
+            "side",
+            "role",
+            "path",
+            "line_start",
+            "line_end",
+            "start_line",
+            "end_line",
+            "snippet",
+        }
+    ),
+    ("source_evaluation_chronology", "assignments", "span", "path"): frozenset(
+        {
+            "side",
+            "role",
+            "path",
+            "line_start",
+            "line_end",
+            "start_line",
+            "end_line",
+            "snippet",
+        }
+    ),
+    ("source_evaluation_chronology", "control_events", "span", "path"): frozenset(
+        {
+            "side",
+            "role",
+            "path",
+            "line_start",
+            "line_end",
+            "start_line",
+            "end_line",
+            "snippet",
+        }
+    ),
+    ("joined_objects", "call_return_chronology", "span", "path"): frozenset(
+        {
+            "side",
+            "role",
+            "path",
+            "line_start",
+            "line_end",
+            "start_line",
+            "end_line",
+            "snippet",
+        }
+    ),
 }
 TEXT_REASON_KEYS = frozenset({"reason", "reasons"})
 TEXT_LIMITATION_KEYS = frozenset({"limitation", "limitations"})

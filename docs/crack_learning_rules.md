@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns sixteen reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns seventeen reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v9` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v10` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -29,6 +29,20 @@ rtk python tools/crack_learning_rules.py \
   --function mbev_CapEffGlowOMExec \
   --pool-live-range-context work/glow.pool-live-range-context.json
 ```
+
+When an otherwise exact float guard differs only in field/zero `lfs` order,
+bind the two rows, the exact `fcmpu`/branch consumers, the object-identical
+explicit-comparison control, and an exact truthiness precedent:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/starman-near-exact.strict.json \
+  --function mbev_CapStarManOMExec \
+  --float-truthiness-context work/starman.float-truthiness-context.json
+```
+
+The resulting cell ranks `if (field)` first and suppresses both explicit
+`field != 0.0f` operand orders. It remains diagnostic-only.
 
 The closed `pool_live_range_interaction_context/v1` binds the canonical objdiff,
 typed-pool decoder receipt and same-TU owner receipt; partitions every residual
@@ -569,7 +583,8 @@ For the context-bound rules, pass parsed objects as `allocator_context=`,
 `aggregate_followup_context=`, `address_taken_context=`,
 `same_tu_shape_context=`, `short_circuit_context=`,
 `exact_sibling_transfer_context=`, `capacity_context=`, `branch_context=`, or
-`reciprocal_context=`, or `pool_live_range_context=`. The same closed validation used by the CLI is applied
+`reciprocal_context=`, `pool_live_range_context=`, or
+`float_truthiness_context=`. The same closed validation used by the CLI is applied
 to Python callers.
 
 ## Installed-functionality audit
@@ -580,7 +595,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The fifteen joins are narrower than those generic classifications:
+The seventeen joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -596,6 +611,7 @@ The fifteen joins are narrower than those generic classifications:
 | short-circuit Boolean call order | Larger baseline candidate; two sealed target call pairs in branch-getter then masu-getter order; target `bne`/`beq` destinations converging on one true/false assignment pair; duplicated candidate true assignments; pinned MWCC frontend receipt; and one later exact-topology closed four-owner GPR cycle | Explicit shared `if/else` with source-commuted AND operands, followed only by the sealed declaration chronology after topology is exact |
 | dependency-equivalent exact-sibling transfer | Distinct strict/data-exact sibling; authenticated equivalent dependency graph and capacity; the same sealed target/candidate call-order inversion and shared Boolean destinations; and three target-only adjacent `extsh`/s16-consumer pairs normalizing one owner | Transfer the sibling's semantic Boolean source and combine it only with the independently proved `int` owner and live array capacity in one cell |
 | typed pool/live-range interaction | Larger-target baseline; exact data/CFG/physical relocations/siblings; disjoint sealed live-range, two-row `lfs` comparison, and value-equivalent SDA21 owner groups; authenticated same-TU named f32 owner; and measured size-exact precursor/exact cells | Reuse the live temporaries and preincrement, use natural float truthiness, and bind the authenticated pool owner in one combined cell |
+| float truthiness comparison ranking | Equal size/frame and exact CFG/data/physical relocations/siblings; exactly two swapped field/zero `lfs` rows feeding an exact adjacent `fcmpu`/conditional branch; an object-identical commuted explicit-zero control; and an authenticated exact truthiness precedent | Compile `if (field)` first and suppress both explicit zero-comparison operand orders |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
@@ -608,6 +624,7 @@ These joins preserve the reviewed boundaries from
 `mbev_CapEffElectricModelSet`, `mbev_CapMasuLinkNextGet`,
 `mbev_CapMasuLinkNextRandomGet`,
 `mbev_CapEffGlowOMExec`,
+`mbev_CapStarManOMExec`,
 `ev_CapBobleOMExec`, and
 `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
@@ -654,6 +671,10 @@ The focused fixtures reject the tempting incomplete variants:
   value-equivalent SDA21 owner aliases, whose named owner is absent from the
   target rows, whose precursor retains anything beyond comparison/pool rows,
   or whose report has a residual outside the sealed groups;
+- a float-truthiness claim whose two `lfs` accesses are not exact reversals,
+  whose `fcmpu`/branch consumers drift, whose explicit comparison control is
+  not object-identical, whose precedent is unauthenticated, or whose report has
+  any residual outside the two sealed loads;
 - an unaligned, zero/negative, or internally inconsistent stack extent; a used
   prefix larger than the candidate capacity; or producer maxima that disagree
   with the computed target capacity;

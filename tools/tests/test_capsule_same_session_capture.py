@@ -780,7 +780,10 @@ def hook_union(central):
             b"}\n"
         )
         with TemporaryDirectory() as directory:
-            root = Path(directory)
+            # Canonical source-span paths may contain a long hex-looking
+            # directory component; that is not serialized pointer material.
+            root = Path(directory) / "f67b0aa584c94b3b98b5ac13b4433886"
+            root.mkdir()
             request_path, envelope_path, envelope, trust = prepared_capture(root, source_data=source)
             context = envelope["context"]
             start = source.index(b"local_gpr", source.index(b"int "))

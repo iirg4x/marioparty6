@@ -1241,7 +1241,33 @@ class PCodeVarInfoCorrelatorTests(unittest.TestCase):
                     "function_lines": {"start": 1, "end": 2},
                     "body_lines": {"start": 1, "end": 2},
                 },
+                "calls": [{
+                    "span": {
+                        "side": "current",
+                        "role": "current-call-return",
+                        "path": r"C:\proof\6b12463009464b819542b94c840e686a\player.c",
+                        "line_start": 4,
+                        "line_end": 4,
+                        "start_line": 4,
+                        "end_line": 4,
+                        "snippet": "local_gpr = helper();",
+                    },
+                }],
             },
+            "joined_objects": [{
+                "call_return_chronology": [{
+                    "span": {
+                        "side": "current",
+                        "role": "current-call-return",
+                        "path": r"C:\proof\801ab02c\player.c",
+                        "line_start": 4,
+                        "line_end": 4,
+                        "start_line": 4,
+                        "end_line": 4,
+                        "snippet": "local_gpr = helper();",
+                    },
+                }],
+            }],
         })
         for label, packet in (
             (
@@ -1265,6 +1291,45 @@ class PCodeVarInfoCorrelatorTests(unittest.TestCase):
                         "path": r"C:\proof\801ab02c\capture.json",
                         "sha256": "a" * 64,
                     },
+                },
+            ),
+            (
+                "source span record with extra field",
+                {
+                    "joined_objects": [{
+                        "call_return_chronology": [{
+                            "span": {
+                                "side": "current",
+                                "role": "current-call-return",
+                                "path": r"C:\proof\801ab02c\player.c",
+                                "line_start": 4,
+                                "line_end": 4,
+                                "start_line": 4,
+                                "end_line": 4,
+                                "snippet": "local_gpr = helper();",
+                                "note": "untrusted",
+                            },
+                        }],
+                    }],
+                },
+            ),
+            (
+                "bare address in source span path",
+                {
+                    "joined_objects": [{
+                        "call_return_chronology": [{
+                            "span": {
+                                "side": "current",
+                                "role": "current-call-return",
+                                "path": "801AB02C",
+                                "line_start": 4,
+                                "line_end": 4,
+                                "start_line": 4,
+                                "end_line": 4,
+                                "snippet": "local_gpr = helper();",
+                            },
+                        }],
+                    }],
                 },
             ),
         ):
