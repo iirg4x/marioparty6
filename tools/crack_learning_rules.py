@@ -27,10 +27,11 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
+from tools import scalar_return_consumer_owner
 
 
-SCHEMA = "crack_learning_diagnosis/v19"
-SCHEMA_VERSION = 19
+SCHEMA = "crack_learning_diagnosis/v20"
+SCHEMA_VERSION = 20
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -51,6 +52,9 @@ MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
 )
 LIVE_ALIAS_MEMSET_CONTEXT_SCHEMA = (
     live_alias_memset_fusion.CONTEXT_SCHEMA
+)
+SCALAR_RETURN_CONSUMER_CONTEXT_SCHEMA = (
+    scalar_return_consumer_owner.CONTEXT_SCHEMA
 )
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
@@ -511,6 +515,7 @@ _RULE_ORDER = (
     "dform_aggregate_copy_helper_boundary",
     mixed_bank_home_cycle.RULE_ID,
     live_alias_memset_fusion.RULE_ID,
+    scalar_return_consumer_owner.RULE_ID,
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -3800,6 +3805,15 @@ def _parse_live_alias_memset_context(
     try:
         return live_alias_memset_fusion.parse_context(value)
     except live_alias_memset_fusion.LiveAliasInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_scalar_return_consumer_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return scalar_return_consumer_owner.parse_context(value)
+    except scalar_return_consumer_owner.ScalarReturnOwnerInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10349,6 +10363,23 @@ def _live_alias_memset_evaluation(
     return _evaluation(live_alias_memset_fusion.RULE_ID, **result)
 
 
+def _scalar_return_consumer_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = scalar_return_consumer_owner.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(scalar_return_consumer_owner.RULE_ID, **result)
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12350,6 +12381,7 @@ def diagnose_document(
     dform_copy_helper_context: Mapping[str, Any] | None = None,
     mixed_bank_home_cycle_context: Mapping[str, Any] | None = None,
     live_alias_memset_context: Mapping[str, Any] | None = None,
+    scalar_return_consumer_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -12428,6 +12460,11 @@ def diagnose_document(
     normalized_live_alias_memset_context = (
         _parse_live_alias_memset_context(live_alias_memset_context)
         if live_alias_memset_context is not None
+        else None
+    )
+    normalized_scalar_return_consumer_context = (
+        _parse_scalar_return_consumer_context(scalar_return_consumer_context)
+        if scalar_return_consumer_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -12589,6 +12626,13 @@ def diagnose_document(
             normalized_live_alias_memset_context,
             objdiff_canonical_sha256,
         ),
+        _scalar_return_consumer_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_scalar_return_consumer_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -12714,6 +12758,11 @@ def diagnose_document(
             "live_alias_memset_context_canonical_sha256": (
                 _sha256(_canonical(normalized_live_alias_memset_context))
                 if normalized_live_alias_memset_context is not None
+                else None
+            ),
+            "scalar_return_consumer_context_canonical_sha256": (
+                _sha256(_canonical(normalized_scalar_return_consumer_context))
+                if normalized_scalar_return_consumer_context is not None
                 else None
             ),
             "aggregate_snapshot_pointer_context_canonical_sha256": (
@@ -12920,6 +12969,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--scalar-return-consumer-context",
+        type=Path,
+        help=(
+            "authenticated scalar_return_consumer_owner_context/v1 JSON with an "
+            "exact saved-FPR copy/use chain and same-session owner proof"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-snapshot-pointer-context",
         type=Path,
         help=(
@@ -13096,6 +13153,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="historical live-alias memset context",
                 )
                 if args.live_alias_memset_context is not None
+                else None
+            ),
+            scalar_return_consumer_context=(
+                _load_json(
+                    args.scalar_return_consumer_context,
+                    label="scalar return consumer-owner context",
+                )
+                if args.scalar_return_consumer_context is not None
                 else None
             ),
             address_taken_context=(

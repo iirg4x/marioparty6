@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v19` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v20` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -988,14 +988,66 @@ This diagnosis is `authority_advanced:false`. Historical provenance plus the
 physical seam ranks one natural source cell; the lane still owns admissibility
 and complete strict/data/relocation/sibling proof.
 
+## Scalar helper-return to distinct saved-consumer owner
+
+When calls, CFG, data, and physical relocations are already exact but the target
+alone saves one additional FPR, copies a helper return into it, and consumes
+that copy, bind the physical chain to one authenticated same-session source
+trace before trying source permutations:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/snow-two-local.strict.json \
+  --function mbev_CapEffSnowOMExec \
+  --scalar-return-consumer-context work/snow.scalar-return-consumer.json \
+  > work/snow.learning.json
+```
+
+`scalar_return_consumer_owner_context/v1` requires the sealed saved-FPR
+signature: the target is 20 bytes larger, the aligned frame is one 16-byte step
+larger, and relocation topology is exact. The residual inventory must contain
+exactly one frame pair, one consumer-register use substitution, and the three
+target-only save/copy/restore rows. The helper call and return bind must each
+occur once, in target order:
+
+```text
+save consumer FPR -> helper call -> bind call result -> fmr consumer,result
+                  -> consume consumer FPR -> restore consumer FPR
+```
+
+The same-session trace must prove the input and call-result owners EXACT, bind
+their physical FPRs, identify the retail consumer FPR as absent from the
+candidate source-owner inventory, contain zero UNKNOWN at the dependency seam,
+and remain `authority_advanced:false`. SnowOMExec seals the source roles as
+`angle=f31`, `sinAngle=f30`, and target-only `sinValue=f29`.
+
+All six measured controls are mandatory: lexical scope/spelling is
+object-identical; call-result fusion regresses; declaration chronology is
+exhausted; copying into either existing owner selects the wrong owner; and a
+consumer-boundary assignment to an existing owner still selects the wrong
+owner. The rule therefore schedules exactly one cell:
+
+```c
+sinAngle = mbSinDeg(angle);
+sinValue = sinAngle;
+use(sinValue);
+```
+
+It suppresses scope/spelling probes, fusion, declaration permutations,
+existing-owner copy directions, dead or fake owners, padding, register shaping,
+repeat tracing, and retention. Active seconds are mandatory. Incomplete
+telemetry must remain excluded from measured crack/hour and is never imputed.
+The diagnosis is evidence-only and cannot authorize source retention or
+promotion.
+
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,
 and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
 allocator, parameter/allocation, aggregate-pointer branch, typed-pool/live-range,
-capacity, branch, reciprocal, mixed-bank home-cycle, or historical live-alias
-evidence by SHA-256; the allocator path also binds the installed
+capacity, branch, reciprocal, mixed-bank home-cycle, historical live-alias, or
+scalar return-consumer owner evidence by SHA-256; the allocator path also binds the installed
 interaction planner, and the typed-pool path binds the installed pool decoder.
 Rule order and JSON serialization are stable.
 
