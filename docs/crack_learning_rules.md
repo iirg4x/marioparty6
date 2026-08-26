@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v16` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v17` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -424,6 +424,37 @@ at the source-pointer owner. It schedules exactly one explicit `x/y/z` member-
 copy cell and suppresses declaration, alias, repeated aggregate-copy, dead-
 storage, and register-shaping probes. Exact or structurally different reports
 remain unmatched.
+
+When retail's aggregate copy uses the paired-single D-form helper boundary,
+bind either a closed static owner cycle or a previously authenticated stack-
+interval trace before compiling another source permutation:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/player-copy-baseline.strict.json \
+  --function MoveNumOMExec \
+  --dform-copy-helper-context work/player-dform-copy-helper-context.json \
+  > work/player-copy.learning.json
+```
+
+`dform_aggregate_copy_helper_context/v1` has two fail-closed modes. The
+`existing_owner_cycle` mode requires target `psq_l/lfs/psq_st/stfs`, candidate
+`psq_lx/lfs/psq_stx/stfs`, exact copy/cascade row sets, and one complete
+nonvolatile-GPR cycle whose named semantic owners remain live after the copy.
+It schedules one helper-plus-existing-owner-reuse cell and suppresses fresh
+locals, invisible helpers, lexical pointer/declaration permutations, and
+register shaping.
+
+The `stack_interval_trace` mode requires one canonical same-session capture,
+adjacent disjoint 12-byte `r1` intervals, three whole source loads, three whole
+destination stores, a bijection of all three reaching-definition pairs, zero
+seam `UNKNOWN`, authenticated address definitions, and a target D-form copy.
+Candidate scalar coverage is diagnostic only and `paired_codegen_proof` must
+remain false. The rule schedules one helper-boundary cell without requesting a
+new capture and rejects partial intervals, mixed sessions/modes, missing edges,
+or scalar-register substitution. Both modes bind source/object/report/tool
+hashes, require the exact result to restore target size without relocation or
+protected-sibling loss, and never advance source or promotion authority.
 
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one

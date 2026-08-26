@@ -27,8 +27,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v16"
-SCHEMA_VERSION = 16
+SCHEMA = "crack_learning_diagnosis/v17"
+SCHEMA_VERSION = 17
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -43,6 +43,7 @@ AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA = (
     "aggregate_snapshot_pointer_chain_context/v1"
 )
 TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA = "typed_aggregate_copy_lowering_context/v1"
+DFORM_COPY_HELPER_CONTEXT_SCHEMA = "dform_aggregate_copy_helper_context/v1"
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
@@ -249,6 +250,32 @@ _TYPED_AGGREGATE_COPY_PROOF_HASHES = (
     "exact_data_report_sha256",
     "exact_record_sha256",
     "interaction_plan_sha256",
+    "causal_reducer_sha256",
+    "report_artifact_sha256",
+)
+_DFORM_COPY_HELPER_PROOF_FLAGS = (
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "copy_semantics_authenticated",
+    "same_tu_helper_authenticated",
+    "pinned_mwcc_frontend",
+    "protected_siblings_preserved",
+    "exact_result_verified",
+)
+_DFORM_COPY_HELPER_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "precursor_source_sha256",
+    "precursor_object_sha256",
+    "precursor_record_sha256",
+    "helper_source_sha256",
+    "exact_source_sha256",
+    "exact_object_sha256",
+    "exact_strict_report_sha256",
+    "exact_data_report_sha256",
+    "exact_record_sha256",
     "causal_reducer_sha256",
     "report_artifact_sha256",
 )
@@ -473,6 +500,7 @@ _RULE_ORDER = (
     "address_taken_local_pointer_consumer",
     "aggregate_snapshot_pointer_chain",
     "typed_aggregate_copy_lowering",
+    "dform_aggregate_copy_helper_boundary",
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -3210,6 +3238,541 @@ def _parse_typed_aggregate_copy_context(value: Mapping[str, Any]) -> dict[str, A
     }
 
 
+def _parse_dform_copy_helper_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    label = "D-form aggregate-copy helper context"
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "precursor", "copy", "evidence", "exact_result"},
+        required={"schema", "proofs", "precursor", "copy", "evidence", "exact_result"},
+        label=label,
+    )
+    if (
+        _context_text(context.get("schema"), f"{label} schema")
+        != DFORM_COPY_HELPER_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"{label} schema must be {DFORM_COPY_HELPER_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_DFORM_COPY_HELPER_PROOF_FLAGS) | set(
+        _DFORM_COPY_HELPER_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label=f"{label} proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _DFORM_COPY_HELPER_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"{label} proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _DFORM_COPY_HELPER_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"{label} proofs.{field}"
+        )
+
+    precursor = _closed_context(
+        context.get("precursor"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "target_frame",
+            "candidate_frame",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "target_frame",
+            "candidate_frame",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        label=f"{label} precursor",
+    )
+    match_percent = precursor.get("match_percent")
+    if (
+        isinstance(match_percent, bool)
+        or not isinstance(match_percent, (int, float))
+        or not math.isfinite(float(match_percent))
+        or not 0.0 < float(match_percent) < 100.0
+    ):
+        raise LearningInputError(
+            f"{label} precursor.match_percent must be finite and nonexact"
+        )
+    normalized_precursor = {
+        "candidate_id": _context_text(
+            precursor.get("candidate_id"), f"{label} precursor.candidate_id", limit=128
+        ),
+        "target_bytes": _context_uint(
+            precursor.get("target_bytes"), f"{label} precursor.target_bytes", minimum=4
+        ),
+        "candidate_bytes": _context_uint(
+            precursor.get("candidate_bytes"),
+            f"{label} precursor.candidate_bytes",
+            minimum=4,
+        ),
+        "target_frame": _context_uint(
+            precursor.get("target_frame"), f"{label} precursor.target_frame", minimum=16
+        ),
+        "candidate_frame": _context_uint(
+            precursor.get("candidate_frame"),
+            f"{label} precursor.candidate_frame",
+            minimum=16,
+        ),
+        "match_percent": float(match_percent),
+        "physical_relocations": _context_uint(
+            precursor.get("physical_relocations"),
+            f"{label} precursor.physical_relocations",
+            minimum=1,
+        ),
+        "residual_rows": _context_rows(
+            precursor.get("residual_rows"),
+            f"{label} precursor.residual_rows",
+            minimum_count=2,
+            maximum_count=512,
+        ),
+    }
+
+    copy_context = _closed_context(
+        context.get("copy"),
+        allowed={
+            "type",
+            "source_identity",
+            "destination_identity",
+            "size",
+            "helper_symbol",
+            "helper_expression",
+            "target_lowering",
+            "candidate_lowering",
+        },
+        required={
+            "type",
+            "source_identity",
+            "destination_identity",
+            "size",
+            "helper_symbol",
+            "helper_expression",
+            "target_lowering",
+            "candidate_lowering",
+        },
+        label=f"{label} copy",
+    )
+
+    def opcode_list(raw: Any, field: str) -> list[str]:
+        if not isinstance(raw, list) or not raw:
+            raise LearningInputError(f"{field} must be a non-empty JSON array")
+        return [_context_text(item, field, limit=16).lower() for item in raw]
+
+    target_lowering = opcode_list(
+        copy_context.get("target_lowering"), f"{label} copy.target_lowering"
+    )
+    if target_lowering != ["psq_l", "lfs", "psq_st", "stfs"]:
+        raise LearningInputError(
+            f"{label} copy.target_lowering must be the closed D-form HuVecF sequence"
+        )
+    candidate_lowering = opcode_list(
+        copy_context.get("candidate_lowering"), f"{label} copy.candidate_lowering"
+    )
+    source_identity = _context_identifier(
+        copy_context.get("source_identity"), f"{label} copy.source_identity"
+    )
+    destination_identity = _context_identifier(
+        copy_context.get("destination_identity"),
+        f"{label} copy.destination_identity",
+    )
+    if source_identity == destination_identity:
+        raise LearningInputError(f"{label} copy identities must differ")
+    normalized_copy = {
+        "type": _context_identifier(copy_context.get("type"), f"{label} copy.type"),
+        "source_identity": source_identity,
+        "destination_identity": destination_identity,
+        "size": _context_uint(
+            copy_context.get("size"), f"{label} copy.size", minimum=12, maximum=12
+        ),
+        "helper_symbol": _context_identifier(
+            copy_context.get("helper_symbol"), f"{label} copy.helper_symbol"
+        ),
+        "helper_expression": _context_text(
+            copy_context.get("helper_expression"),
+            f"{label} copy.helper_expression",
+            limit=512,
+        ),
+        "target_lowering": target_lowering,
+        "candidate_lowering": candidate_lowering,
+    }
+    if normalized_copy["type"] != "HuVecF":
+        raise LearningInputError(f"{label} copy.type must be HuVecF")
+
+    evidence = _closed_context(
+        context.get("evidence"),
+        allowed={
+            "mode",
+            "copy_rows",
+            "cascade_rows",
+            "owner_mapping",
+            "existing_live_owners",
+            "session_id",
+            "source_interval",
+            "destination_interval",
+            "loads",
+            "stores",
+            "dependencies",
+            "target_copy_rows",
+            "seam_unknown_count",
+            "paired_codegen_proof",
+            "address_definitions_authenticated",
+            "request_sha256",
+            "causal_map_sha256",
+            "execution_receipt_sha256",
+        },
+        required={"mode"},
+        label=f"{label} evidence",
+    )
+    mode = _context_text(evidence.get("mode"), f"{label} evidence.mode", limit=32)
+    if mode not in {"existing_owner_cycle", "stack_interval_trace"}:
+        raise LearningInputError(
+            f"{label} evidence.mode must be existing_owner_cycle or stack_interval_trace"
+        )
+
+    if mode == "existing_owner_cycle":
+        required = {
+            "mode",
+            "copy_rows",
+            "cascade_rows",
+            "owner_mapping",
+            "existing_live_owners",
+        }
+        if set(evidence) != required:
+            raise LearningInputError(
+                f"{label} existing-owner evidence fields must be exactly {sorted(required)}"
+            )
+        if candidate_lowering != ["psq_lx", "lfs", "psq_stx", "stfs"]:
+            raise LearningInputError(
+                f"{label} existing-owner candidate lowering must be the X-form HuVecF sequence"
+            )
+        copy_rows = _context_rows(
+            evidence.get("copy_rows"),
+            f"{label} evidence.copy_rows",
+            minimum_count=4,
+            maximum_count=4,
+        )
+        cascade_rows = _context_rows(
+            evidence.get("cascade_rows"),
+            f"{label} evidence.cascade_rows",
+            minimum_count=3,
+            maximum_count=256,
+        )
+        if set(copy_rows) & set(cascade_rows):
+            raise LearningInputError(f"{label} copy and cascade rows must be disjoint")
+        raw_mapping = evidence.get("owner_mapping")
+        if not isinstance(raw_mapping, Mapping) or len(raw_mapping) < 3:
+            raise LearningInputError(
+                f"{label} evidence.owner_mapping must contain at least three GPR owners"
+            )
+        owner_mapping: dict[str, str] = {}
+        for raw_target, raw_candidate in raw_mapping.items():
+            target_register = _context_text(
+                raw_target, f"{label} evidence.owner_mapping target", limit=3
+            ).lower()
+            candidate_register = _context_text(
+                raw_candidate, f"{label} evidence.owner_mapping candidate", limit=3
+            ).lower()
+            if not _saved(target_register, "r") or not _saved(candidate_register, "r"):
+                raise LearningInputError(
+                    f"{label} owner mapping must use nonvolatile GPRs"
+                )
+            owner_mapping[target_register] = candidate_register
+
+        raw_owners = evidence.get("existing_live_owners")
+        if not isinstance(raw_owners, list) or len(raw_owners) != len(owner_mapping):
+            raise LearningInputError(
+                f"{label} existing_live_owners must cover the complete owner mapping"
+            )
+        owners: list[dict[str, Any]] = []
+        observed_pairs: set[tuple[str, str]] = set()
+        observed_identities: set[str] = set()
+        for index, raw_owner in enumerate(raw_owners):
+            owner = _closed_context(
+                raw_owner,
+                allowed={
+                    "identity",
+                    "target_register",
+                    "candidate_register",
+                    "used_after_copy",
+                },
+                required={
+                    "identity",
+                    "target_register",
+                    "candidate_register",
+                    "used_after_copy",
+                },
+                label=f"{label} existing_live_owners[{index}]",
+            )
+            identity = _context_identifier(
+                owner.get("identity"),
+                f"{label} existing_live_owners[{index}].identity",
+            )
+            target_register = _context_text(
+                owner.get("target_register"),
+                f"{label} existing_live_owners[{index}].target_register",
+                limit=3,
+            ).lower()
+            candidate_register = _context_text(
+                owner.get("candidate_register"),
+                f"{label} existing_live_owners[{index}].candidate_register",
+                limit=3,
+            ).lower()
+            if owner.get("used_after_copy") is not True:
+                raise LearningInputError(
+                    f"{label} existing live owners must be semantic values used after the copy"
+                )
+            if identity in observed_identities:
+                raise LearningInputError(f"{label} owner identities must be unique")
+            observed_identities.add(identity)
+            observed_pairs.add((target_register, candidate_register))
+            owners.append(
+                {
+                    "identity": identity,
+                    "target_register": target_register,
+                    "candidate_register": candidate_register,
+                    "used_after_copy": True,
+                }
+            )
+        if observed_pairs != set(owner_mapping.items()):
+            raise LearningInputError(
+                f"{label} existing live owners do not match the sealed owner mapping"
+            )
+        normalized_evidence = {
+            "mode": mode,
+            "copy_rows": copy_rows,
+            "cascade_rows": cascade_rows,
+            "owner_mapping": dict(sorted(owner_mapping.items())),
+            "existing_live_owners": owners,
+        }
+    else:
+        required = {
+            "mode",
+            "session_id",
+            "source_interval",
+            "destination_interval",
+            "loads",
+            "stores",
+            "dependencies",
+            "target_copy_rows",
+            "seam_unknown_count",
+            "paired_codegen_proof",
+            "address_definitions_authenticated",
+            "request_sha256",
+            "causal_map_sha256",
+            "execution_receipt_sha256",
+        }
+        if set(evidence) != required:
+            raise LearningInputError(
+                f"{label} stack-interval evidence fields must be exactly {sorted(required)}"
+            )
+        if candidate_lowering != ["lwz", "lwz", "stw", "stw", "lwz", "stw"]:
+            raise LearningInputError(
+                f"{label} traced candidate lowering must be the sealed scalar word sequence"
+            )
+        session_id = _context_text(
+            evidence.get("session_id"), f"{label} evidence.session_id", limit=64
+        )
+        if re.fullmatch(r"session-[0-9a-f]{16}", session_id) is None:
+            raise LearningInputError(f"{label} evidence.session_id is not canonical")
+
+        def stack_interval(raw: Any, field: str) -> dict[str, Any]:
+            interval = _closed_context(
+                raw,
+                allowed={"base", "start", "end"},
+                required={"base", "start", "end"},
+                label=field,
+            )
+            base = _context_text(interval.get("base"), f"{field}.base", limit=3).lower()
+            start = _context_uint(interval.get("start"), f"{field}.start")
+            end = _context_uint(interval.get("end"), f"{field}.end", minimum=1)
+            if base != "r1" or end - start != 12:
+                raise LearningInputError(
+                    f"{field} must be one 12-byte r1 stack interval"
+                )
+            return {"base": base, "start": start, "end": end}
+
+        source_interval = stack_interval(
+            evidence.get("source_interval"), f"{label} evidence.source_interval"
+        )
+        destination_interval = stack_interval(
+            evidence.get("destination_interval"),
+            f"{label} evidence.destination_interval",
+        )
+        if source_interval["end"] != destination_interval["start"]:
+            raise LearningInputError(
+                f"{label} source and destination intervals must be adjacent and disjoint"
+            )
+        loads = _context_rows(
+            evidence.get("loads"),
+            f"{label} evidence.loads",
+            minimum_count=3,
+            maximum_count=3,
+        )
+        stores = _context_rows(
+            evidence.get("stores"),
+            f"{label} evidence.stores",
+            minimum_count=3,
+            maximum_count=3,
+        )
+        raw_dependencies = evidence.get("dependencies")
+        if not isinstance(raw_dependencies, list) or len(raw_dependencies) != 3:
+            raise LearningInputError(
+                f"{label} evidence.dependencies must contain three load/store pairs"
+            )
+        dependencies: list[list[int]] = []
+        for index, raw_dependency in enumerate(raw_dependencies):
+            if not isinstance(raw_dependency, list) or len(raw_dependency) != 2:
+                raise LearningInputError(
+                    f"{label} evidence.dependencies[{index}] must be [load, store]"
+                )
+            dependencies.append(
+                [
+                    _context_uint(
+                        raw_dependency[0],
+                        f"{label} evidence.dependencies[{index}][0]",
+                    ),
+                    _context_uint(
+                        raw_dependency[1],
+                        f"{label} evidence.dependencies[{index}][1]",
+                    ),
+                ]
+            )
+        if dependencies != [[load, store] for load, store in zip(loads, stores, strict=True)]:
+            raise LearningInputError(
+                f"{label} dependencies must bijectively cover the three loads and stores"
+            )
+        if evidence.get("seam_unknown_count") != 0:
+            raise LearningInputError(f"{label} seam_unknown_count must be zero")
+        if evidence.get("paired_codegen_proof") is not False:
+            raise LearningInputError(
+                f"{label} candidate paired_codegen_proof must remain false"
+            )
+        if evidence.get("address_definitions_authenticated") is not True:
+            raise LearningInputError(
+                f"{label} address definitions must be authenticated"
+            )
+        normalized_evidence = {
+            "mode": mode,
+            "session_id": session_id,
+            "source_interval": source_interval,
+            "destination_interval": destination_interval,
+            "loads": loads,
+            "stores": stores,
+            "dependencies": dependencies,
+            "target_copy_rows": _context_rows(
+                evidence.get("target_copy_rows"),
+                f"{label} evidence.target_copy_rows",
+                minimum_count=4,
+                maximum_count=4,
+            ),
+            "seam_unknown_count": 0,
+            "paired_codegen_proof": False,
+            "address_definitions_authenticated": True,
+            "request_sha256": _context_sha256(
+                evidence.get("request_sha256"),
+                f"{label} evidence.request_sha256",
+            ),
+            "causal_map_sha256": _context_sha256(
+                evidence.get("causal_map_sha256"),
+                f"{label} evidence.causal_map_sha256",
+            ),
+            "execution_receipt_sha256": _context_sha256(
+                evidence.get("execution_receipt_sha256"),
+                f"{label} evidence.execution_receipt_sha256",
+            ),
+        }
+
+    exact_result = _closed_context(
+        context.get("exact_result"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "physical_relocations",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "physical_relocations",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+        },
+        label=f"{label} exact_result",
+    )
+    exact_target_bytes = _context_uint(
+        exact_result.get("target_bytes"),
+        f"{label} exact_result.target_bytes",
+        minimum=4,
+    )
+    exact_candidate_bytes = _context_uint(
+        exact_result.get("candidate_bytes"),
+        f"{label} exact_result.candidate_bytes",
+        minimum=4,
+    )
+    exact_relocations = _context_uint(
+        exact_result.get("physical_relocations"),
+        f"{label} exact_result.physical_relocations",
+        minimum=1,
+    )
+    if (
+        exact_target_bytes != normalized_precursor["target_bytes"]
+        or exact_candidate_bytes != exact_target_bytes
+        or exact_relocations != normalized_precursor["physical_relocations"]
+    ):
+        raise LearningInputError(
+            f"{label} exact result must restore target size and preserve relocations"
+        )
+    normalized_exact = {
+        "candidate_id": _context_text(
+            exact_result.get("candidate_id"),
+            f"{label} exact_result.candidate_id",
+            limit=128,
+        ),
+        "target_bytes": exact_target_bytes,
+        "candidate_bytes": exact_candidate_bytes,
+        "physical_relocations": exact_relocations,
+    }
+    for field in (
+        "source_sha256",
+        "object_sha256",
+        "strict_report_sha256",
+        "data_report_sha256",
+        "candidate_record_sha256",
+    ):
+        normalized_exact[field] = _context_sha256(
+            exact_result.get(field), f"{label} exact_result.{field}"
+        )
+
+    return {
+        "schema": DFORM_COPY_HELPER_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "precursor": normalized_precursor,
+        "copy": normalized_copy,
+        "evidence": normalized_evidence,
+        "exact_result": normalized_exact,
+    }
 def _parse_same_tu_shape_context(value: Mapping[str, Any]) -> dict[str, Any]:
     context = _closed_context(
         value,
@@ -9403,6 +9966,323 @@ def _typed_aggregate_copy_evaluation(
     )
 
 
+def _dform_copy_helper_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "dform_aggregate_copy_helper_boundary"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated D-form aggregate-copy helper context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the D-form helper context is bound to another objdiff report",
+        )
+
+    precursor = context["precursor"]
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    if (
+        target_size != precursor["target_bytes"]
+        or candidate_size != precursor["candidate_bytes"]
+        or target_frame != precursor["target_frame"]
+        or candidate_frame != precursor["candidate_frame"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the function size or frame no longer matches the sealed precursor",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    mismatch_rows = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if left is None
+        or right is None
+        or left.diff_kind is not None
+        or right.diff_kind is not None
+    ]
+    if mismatch_rows != precursor["residual_rows"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the physical residual rows differ from the sealed precursor",
+            evidence={
+                "report_residual_rows": mismatch_rows,
+                "context_residual_rows": precursor["residual_rows"],
+            },
+        )
+
+    copy_context = context["copy"]
+    evidence = context["evidence"]
+    target_copy_rows = (
+        evidence["copy_rows"]
+        if evidence["mode"] == "existing_owner_cycle"
+        else evidence["target_copy_rows"]
+    )
+    if max(target_copy_rows) >= len(target):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target D-form copy rows fall outside the function",
+        )
+    observed_target = [target[row].mnemonic for row in target_copy_rows]
+    if observed_target != copy_context["target_lowering"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target rows are not the sealed D-form HuVecF lowering",
+            evidence={
+                "target_copy_rows": target_copy_rows,
+                "observed_target_lowering": observed_target,
+            },
+        )
+
+    common_evidence = {
+        "mode": evidence["mode"],
+        "target_size": target_size,
+        "candidate_size": candidate_size,
+        "target_frame": target_frame,
+        "candidate_frame": candidate_frame,
+        "copy": copy_context,
+        "target_copy_rows": target_copy_rows,
+        "observed_target_lowering": observed_target,
+        "combined_exact_result": context["exact_result"],
+        "proofs": context["proofs"],
+    }
+
+    if evidence["mode"] == "existing_owner_cycle":
+        copy_rows = evidence["copy_rows"]
+        if max(copy_rows) >= len(candidate):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the candidate X-form copy rows fall outside the function",
+            )
+        observed_candidate = [candidate[row].mnemonic for row in copy_rows]
+        if observed_candidate != copy_context["candidate_lowering"]:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the candidate rows are not the sealed X-form HuVecF lowering",
+                evidence={
+                    "copy_rows": copy_rows,
+                    "observed_candidate_lowering": observed_candidate,
+                },
+            )
+        copy_mismatch_rows = [
+            row
+            for row in copy_rows
+            if target[row].diff_kind is not None or candidate[row].diff_kind is not None
+        ]
+        if not copy_mismatch_rows:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the D-form/X-form opcode seam is no longer present",
+            )
+        if evidence["cascade_rows"] != [
+            row for row in mismatch_rows if row not in set(copy_mismatch_rows)
+        ]:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the residual outside the copy seam differs from the sealed owner/frame cascade",
+            )
+
+        def owner_frame_shape(formatted: str) -> str:
+            normalized = _STACK_RE.sub("STACK(r1)", formatted.lower())
+            return _REGISTER_RE.sub(
+                lambda match: f"{match.group('kind').lower()}#", normalized
+            )
+
+        observed_mapping: dict[str, str] = {}
+        for row_index in evidence["cascade_rows"]:
+            left, right = rows[row_index]
+            if left is None or right is None or left.mnemonic != right.mnemonic:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the post-copy cascade changes opcode or alignment",
+                    evidence={"row": row_index},
+                )
+            if owner_frame_shape(left.formatted) != owner_frame_shape(right.formatted):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the post-copy cascade contains more than owner/frame differences",
+                    evidence={
+                        "row": row_index,
+                        "target": left.formatted,
+                        "candidate": right.formatted,
+                    },
+                )
+            for target_register, candidate_register in zip(
+                _registers(left.formatted),
+                _registers(right.formatted),
+                strict=True,
+            ):
+                if target_register == candidate_register:
+                    continue
+                if target_register == "r1" or candidate_register == "r1":
+                    return _evaluation(
+                        rule_id,
+                        matched=False,
+                        reason="the owner cascade attempts to remap the stack pointer",
+                        evidence={"row": row_index},
+                    )
+                if not _saved(target_register, "r") or not _saved(candidate_register, "r"):
+                    continue
+                prior = observed_mapping.setdefault(
+                    target_register, candidate_register
+                )
+                if prior != candidate_register:
+                    return _evaluation(
+                        rule_id,
+                        matched=False,
+                        reason="the owner cascade has an ambiguous register mapping",
+                        evidence={"row": row_index},
+                    )
+        if observed_mapping != evidence["owner_mapping"]:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the observed existing-owner mapping differs from the sealed cycle",
+                evidence={
+                    "observed_mapping": dict(sorted(observed_mapping.items())),
+                    "sealed_mapping": evidence["owner_mapping"],
+                },
+            )
+        cycles = _closed_cycles(observed_mapping)
+        if (
+            len(cycles) != 1
+            or len(cycles[0]) != len(observed_mapping)
+            or len(observed_mapping) < 3
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the post-copy owners are not one complete GPR cycle",
+                evidence={"cycles": cycles},
+            )
+        existing_identities = [
+            owner["identity"] for owner in evidence["existing_live_owners"]
+        ]
+        common_evidence.update(
+            {
+                "observed_candidate_lowering": observed_candidate,
+                "copy_mismatch_rows": copy_mismatch_rows,
+                "cascade_rows": evidence["cascade_rows"],
+                "owner_mapping": dict(sorted(observed_mapping.items())),
+                "owner_cycle": cycles[0],
+                "existing_live_owners": evidence["existing_live_owners"],
+                "recommended_cells": [
+                    {
+                        "kind": "dform_helper_and_existing_owner_reuse",
+                        "helper_expression": copy_context["helper_expression"],
+                        "reuse_existing_identities": existing_identities,
+                        "preserve_all_other_source_axes": True,
+                    }
+                ],
+                "suppressed_axes": [
+                    "fresh_local_identities",
+                    "lexical_pointer_permutations",
+                    "declaration_only_permutations",
+                    "invisible_helper_call",
+                    "repeat_xform_controls",
+                    "register_shaping",
+                ],
+            }
+        )
+        return _evaluation(
+            rule_id,
+            matched=True,
+            reason=(
+                "the exact-size precursor contains the target D-form HuVecF copy versus "
+                "the candidate X-form copy, and every remaining row is one complete "
+                "frame/GPR cascade whose target owners are existing live semantic values"
+            ),
+            confidence=0.99,
+            source_class="dform_copy_helper_existing_owner_interaction",
+            recommendation=(
+                f"Compile one interaction cell using {copy_context['helper_expression']} "
+                f"and reuse only the sealed live identities {', '.join(existing_identities)}; "
+                "do not test fresh locals or lexical pointer/declaration permutations."
+            ),
+            evidence=common_evidence,
+        )
+
+    source_interval = evidence["source_interval"]
+    destination_interval = evidence["destination_interval"]
+    common_evidence.update(
+        {
+            "session_id": evidence["session_id"],
+            "source_interval": source_interval,
+            "destination_interval": destination_interval,
+            "loads": evidence["loads"],
+            "stores": evidence["stores"],
+            "dependencies": evidence["dependencies"],
+            "seam_unknown_count": evidence["seam_unknown_count"],
+            "paired_codegen_proof": evidence["paired_codegen_proof"],
+            "address_definitions_authenticated": evidence[
+                "address_definitions_authenticated"
+            ],
+            "request_sha256": evidence["request_sha256"],
+            "causal_map_sha256": evidence["causal_map_sha256"],
+            "execution_receipt_sha256": evidence["execution_receipt_sha256"],
+            "recommended_cells": [
+                {
+                    "kind": "traced_dform_helper_boundary",
+                    "helper_expression": copy_context["helper_expression"],
+                    "source_interval": source_interval,
+                    "destination_interval": destination_interval,
+                    "preserve_all_other_source_axes": True,
+                }
+            ],
+            "suppressed_axes": [
+                "new_live_capture",
+                "lexical_pointer_permutations",
+                "declaration_only_permutations",
+                "partial_interval_claims",
+                "scalar_register_substitution",
+                "register_shaping",
+            ],
+        }
+    )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "one canonical same-session trace authenticates adjacent 12-byte source and "
+            "destination stack intervals, all three load-to-store dependencies, address "
+            "definitions, and zero seam UNKNOWN while target bytes close the D-form lowering"
+        ),
+        confidence=0.995,
+        source_class="traced_stack_interval_dform_copy_helper_boundary",
+        recommendation=(
+            f"Compile exactly one helper-boundary cell {copy_context['helper_expression']}; "
+            "the sealed trace already closes ownership and direction, so do not repeat live "
+            "capture or lexical pointer/declaration probes."
+        ),
+        evidence=common_evidence,
+    )
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -11401,6 +12281,7 @@ def diagnose_document(
     address_taken_context: Mapping[str, Any] | None = None,
     aggregate_snapshot_pointer_context: Mapping[str, Any] | None = None,
     typed_aggregate_copy_context: Mapping[str, Any] | None = None,
+    dform_copy_helper_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -11464,6 +12345,11 @@ def diagnose_document(
     normalized_typed_aggregate_copy_context = (
         _parse_typed_aggregate_copy_context(typed_aggregate_copy_context)
         if typed_aggregate_copy_context is not None
+        else None
+    )
+    normalized_dform_copy_helper_context = (
+        _parse_dform_copy_helper_context(dform_copy_helper_context)
+        if dform_copy_helper_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -11604,6 +12490,13 @@ def diagnose_document(
             normalized_typed_aggregate_copy_context,
             objdiff_canonical_sha256,
         ),
+        _dform_copy_helper_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_dform_copy_helper_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -11714,6 +12607,11 @@ def diagnose_document(
             "address_taken_context_canonical_sha256": (
                 _sha256(_canonical(normalized_address_taken_context))
                 if normalized_address_taken_context is not None
+                else None
+            ),
+            "dform_copy_helper_context_canonical_sha256": (
+                _sha256(_canonical(normalized_dform_copy_helper_context))
+                if normalized_dform_copy_helper_context is not None
                 else None
             ),
             "aggregate_snapshot_pointer_context_canonical_sha256": (
@@ -11896,6 +12794,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--dform-copy-helper-context",
+        type=Path,
+        help=(
+            "authenticated dform_aggregate_copy_helper_context/v1 JSON with either "
+            "a complete existing-owner cycle or a sealed stack-interval trace"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-snapshot-pointer-context",
         type=Path,
         help=(
@@ -12048,6 +12954,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="aggregate follow-up context",
                 )
                 if args.aggregate_followup_context is not None
+                else None
+            ),
+            dform_copy_helper_context=(
+                _load_json(
+                    args.dform_copy_helper_context,
+                    label="D-form aggregate-copy helper context",
+                )
+                if args.dform_copy_helper_context is not None
                 else None
             ),
             address_taken_context=(

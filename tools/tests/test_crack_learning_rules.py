@@ -1041,6 +1041,236 @@ def _typed_aggregate_copy_context(
     }
 
 
+def _dform_copy_owner_cycle_report() -> dict[str, object]:
+    target = [_instruction(100 + (index * 4), "nop") for index in range(14)]
+    candidate = copy.deepcopy(target)
+    target[0] = _instruction(
+        100, "stwu r1, -0x80(r1)", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    candidate[0] = _instruction(
+        100, "stwu r1, -0x70(r1)", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    target_copy = [
+        "psq_l f0, 0x0(r30)",
+        "lfs f1, 0x8(r30)",
+        "psq_st f0, 0x0(r31)",
+        "stfs f1, 0x8(r31)",
+    ]
+    candidate_copy = [
+        "psq_lx f0, r0, r23",
+        "lfs f1, 0x8(r23)",
+        "psq_stx f0, r0, r24",
+        "stfs f1, 0x8(r24)",
+    ]
+    for offset, (left, right) in enumerate(zip(target_copy, candidate_copy, strict=True)):
+        row = 1 + offset
+        target[row] = _instruction(
+            100 + (row * 4), left, diff_kind="DIFF_REPLACE"
+        )
+        candidate[row] = _instruction(
+            100 + (row * 4), right, diff_kind="DIFF_REPLACE"
+        )
+    cascade = {
+        5: ("mr r25, r3", "mr r26, r3"),
+        6: ("mr r26, r4", "mr r27, r4"),
+        7: ("mr r27, r5", "mr r25, r5"),
+        8: ("cmpw r25, r26", "cmpw r26, r27"),
+        9: ("stw r27, 0x20(r1)", "stw r25, 0x10(r1)"),
+        10: ("lwz r25, 0x24(r1)", "lwz r26, 0x14(r1)"),
+    }
+    for row, (left, right) in cascade.items():
+        target[row] = _instruction(
+            100 + (row * 4), left, diff_kind="DIFF_ARG_MISMATCH"
+        )
+        candidate[row] = _instruction(
+            100 + (row * 4), right, diff_kind="DIFF_ARG_MISMATCH"
+        )
+    target[11] = _instruction(144, "bl mbMasuPosGet")
+    candidate[11] = copy.deepcopy(target[11])
+    target[13] = _instruction(152, "blr")
+    candidate[13] = copy.deepcopy(target[13])
+    report = _report(
+        "mbev_PlayerColBall",
+        target,
+        candidate,
+        target_size=716,
+        candidate_size=716,
+    )
+    report["left"]["symbols"][0]["match_percent"] = 98.88827  # type: ignore[index]
+    report["right"]["symbols"][0]["match_percent"] = 98.88827  # type: ignore[index]
+    return report
+
+
+def _dform_copy_trace_report() -> dict[str, object]:
+    target = [_instruction(200 + (index * 4), "nop") for index in range(10)]
+    candidate = copy.deepcopy(target)
+    target[0] = _instruction(
+        200, "stwu r1, -0xd0(r1)", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    candidate[0] = _instruction(
+        200, "stwu r1, -0xa0(r1)", diff_kind="DIFF_ARG_MISMATCH"
+    )
+    target_copy = [
+        "psq_l f0, 0x8(r1)",
+        "lfs f1, 0x10(r1)",
+        "psq_st f0, 0x14(r1)",
+        "stfs f1, 0x1c(r1)",
+    ]
+    candidate_copy = [
+        "lwz r3, 0x8(r1)",
+        "lwz r0, 0xc(r1)",
+        "stw r3, 0x14(r1)",
+        "stw r0, 0x18(r1)",
+    ]
+    for offset, (left, right) in enumerate(zip(target_copy, candidate_copy, strict=True)):
+        row = 1 + offset
+        target[row] = _instruction(
+            200 + (row * 4), left, diff_kind="DIFF_REPLACE"
+        )
+        candidate[row] = _instruction(
+            200 + (row * 4), right, diff_kind="DIFF_REPLACE"
+        )
+    target[5] = _instruction(220, "nop", diff_kind="DIFF_DELETE")
+    candidate[5] = _instruction(220, "lwz r0, 0x10(r1)", diff_kind="DIFF_INSERT")
+    target[6] = _instruction(224, "nop", diff_kind="DIFF_DELETE")
+    candidate[6] = _instruction(224, "stw r0, 0x1c(r1)", diff_kind="DIFF_INSERT")
+    target[8] = _instruction(232, "bl mbObjPosSetV")
+    candidate[8] = copy.deepcopy(target[8])
+    target[9] = _instruction(236, "blr")
+    candidate[9] = copy.deepcopy(target[9])
+    report = _report(
+        "MoveNumOMExec",
+        target,
+        candidate,
+        target_size=1152,
+        candidate_size=1120,
+    )
+    report["left"]["symbols"][0]["match_percent"] = 94.270836  # type: ignore[index]
+    report["right"]["symbols"][0]["match_percent"] = 94.270836  # type: ignore[index]
+    return report
+
+
+def _dform_copy_helper_context(
+    report: dict[str, object],
+    *,
+    mode: str,
+) -> dict[str, object]:
+    is_owner_cycle = mode == "existing_owner_cycle"
+    target_bytes = 716 if is_owner_cycle else 1152
+    candidate_bytes = 716 if is_owner_cycle else 1120
+    physical_relocations = 19 if is_owner_cycle else 64
+    helper_expression = (
+        "HuVecCopy(&pos[playerNoTbl[i]], &posTbl[i])"
+        if is_owner_cycle
+        else "HuVecCopy(&posNorm, &pos)"
+    )
+    context: dict[str, object] = {
+        "schema": rules.DFORM_COPY_HELPER_CONTEXT_SCHEMA,
+        "proofs": {
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "copy_semantics_authenticated": True,
+            "same_tu_helper_authenticated": True,
+            "pinned_mwcc_frontend": True,
+            "protected_siblings_preserved": True,
+            "exact_result_verified": True,
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(report)),
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "precursor_source_sha256": "3" * 64,
+            "precursor_object_sha256": "4" * 64,
+            "precursor_record_sha256": "5" * 64,
+            "helper_source_sha256": "6" * 64,
+            "exact_source_sha256": "7" * 64,
+            "exact_object_sha256": "8" * 64,
+            "exact_strict_report_sha256": "9" * 64,
+            "exact_data_report_sha256": "a" * 64,
+            "exact_record_sha256": "b" * 64,
+            "causal_reducer_sha256": "c" * 64,
+            "report_artifact_sha256": "d" * 64,
+        },
+        "precursor": {
+            "candidate_id": "colball-helper-precursor" if is_owner_cycle else "movenum-baseline",
+            "target_bytes": target_bytes,
+            "candidate_bytes": candidate_bytes,
+            "target_frame": 128 if is_owner_cycle else 208,
+            "candidate_frame": 112 if is_owner_cycle else 160,
+            "match_percent": 98.88827 if is_owner_cycle else 94.270836,
+            "physical_relocations": physical_relocations,
+            "residual_rows": list(range(0, 11)) if is_owner_cycle else list(range(0, 7)),
+        },
+        "copy": {
+            "type": "HuVecF",
+            "source_identity": "pos" if is_owner_cycle else "posNorm",
+            "destination_identity": "posTbl" if is_owner_cycle else "pos",
+            "size": 12,
+            "helper_symbol": "HuVecCopy",
+            "helper_expression": helper_expression,
+            "target_lowering": ["psq_l", "lfs", "psq_st", "stfs"],
+            "candidate_lowering": (
+                ["psq_lx", "lfs", "psq_stx", "stfs"]
+                if is_owner_cycle
+                else ["lwz", "lwz", "stw", "stw", "lwz", "stw"]
+            ),
+        },
+        "exact_result": {
+            "candidate_id": "colball-exact" if is_owner_cycle else "movenum-exact",
+            "target_bytes": target_bytes,
+            "candidate_bytes": target_bytes,
+            "physical_relocations": physical_relocations,
+            "source_sha256": "7" * 64,
+            "object_sha256": "8" * 64,
+            "strict_report_sha256": "9" * 64,
+            "data_report_sha256": "a" * 64,
+            "candidate_record_sha256": "b" * 64,
+        },
+    }
+    if is_owner_cycle:
+        context["evidence"] = {
+            "mode": mode,
+            "copy_rows": [1, 2, 3, 4],
+            "cascade_rows": [0, 5, 6, 7, 8, 9, 10],
+            "owner_mapping": {"r25": "r26", "r26": "r27", "r27": "r25"},
+            "existing_live_owners": [
+                {
+                    "identity": "j",
+                    "target_register": "r25",
+                    "candidate_register": "r26",
+                    "used_after_copy": True,
+                },
+                {
+                    "identity": "i",
+                    "target_register": "r26",
+                    "candidate_register": "r27",
+                    "used_after_copy": True,
+                },
+                {
+                    "identity": "temp",
+                    "target_register": "r27",
+                    "candidate_register": "r25",
+                    "used_after_copy": True,
+                },
+            ],
+        }
+    else:
+        context["evidence"] = {
+            "mode": mode,
+            "session_id": "session-8e7a3c19b4d260f1",
+            "source_interval": {"base": "r1", "start": 8, "end": 20},
+            "destination_interval": {"base": "r1", "start": 20, "end": 32},
+            "loads": [113, 114, 117],
+            "stores": [115, 116, 118],
+            "dependencies": [[113, 115], [114, 116], [117, 118]],
+            "target_copy_rows": [1, 2, 3, 4],
+            "seam_unknown_count": 0,
+            "paired_codegen_proof": False,
+            "address_definitions_authenticated": True,
+            "request_sha256": "e" * 64,
+            "causal_map_sha256": "f" * 64,
+            "execution_receipt_sha256": "0" * 64,
+        }
+    return context
 def _aggregate_pointer_branch_context(
     report: dict[str, object] | None = None,
 ) -> dict[str, object]:
@@ -3416,6 +3646,144 @@ class CrackLearningRulesTest(unittest.TestCase):
                 typed_aggregate_copy_context=false_proof,
             )
 
+
+    def test_dform_copy_helper_closes_existing_owner_cycle(self) -> None:
+        report = _dform_copy_owner_cycle_report()
+        context = _dform_copy_helper_context(
+            report, mode="existing_owner_cycle"
+        )
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_PlayerColBall",
+            dform_copy_helper_context=context,
+        )
+        diagnosis = _evaluation(result, "dform_aggregate_copy_helper_boundary")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["source_class"],
+            "dform_copy_helper_existing_owner_interaction",
+        )
+        evidence = diagnosis["evidence"]
+        self.assertEqual(
+            evidence["observed_target_lowering"],
+            ["psq_l", "lfs", "psq_st", "stfs"],
+        )
+        self.assertEqual(
+            evidence["observed_candidate_lowering"],
+            ["psq_lx", "lfs", "psq_stx", "stfs"],
+        )
+        self.assertEqual(
+            evidence["owner_mapping"],
+            {"r25": "r26", "r26": "r27", "r27": "r25"},
+        )
+        self.assertEqual(
+            evidence["recommended_cells"][0]["reuse_existing_identities"],
+            ["j", "i", "temp"],
+        )
+        self.assertIn(
+            "fresh_local_identities", evidence["suppressed_axes"]
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_dform_copy_helper_closes_stack_interval_trace(self) -> None:
+        report = _dform_copy_trace_report()
+        context = _dform_copy_helper_context(
+            report, mode="stack_interval_trace"
+        )
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="MoveNumOMExec",
+            dform_copy_helper_context=context,
+        )
+        diagnosis = _evaluation(result, "dform_aggregate_copy_helper_boundary")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(
+            diagnosis["source_class"],
+            "traced_stack_interval_dform_copy_helper_boundary",
+        )
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["source_interval"], {"base": "r1", "start": 8, "end": 20})
+        self.assertEqual(
+            evidence["destination_interval"],
+            {"base": "r1", "start": 20, "end": 32},
+        )
+        self.assertEqual(
+            evidence["dependencies"],
+            [[113, 115], [114, 116], [117, 118]],
+        )
+        self.assertEqual(evidence["seam_unknown_count"], 0)
+        self.assertFalse(evidence["paired_codegen_proof"])
+        self.assertIn("new_live_capture", evidence["suppressed_axes"])
+        self.assertEqual(
+            evidence["recommended_cells"][0]["helper_expression"],
+            "HuVecCopy(&posNorm, &pos)",
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_dform_copy_helper_fails_closed(self) -> None:
+        report = _dform_copy_trace_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="MoveNumOMExec"
+        )
+        self.assertFalse(
+            _evaluation(
+                no_context, "dform_aggregate_copy_helper_boundary"
+            )["matched"]
+        )
+
+        wrong_target = copy.deepcopy(report)
+        wrong_target["left"]["symbols"][0]["instructions"][1]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "lwz r3, 0x8(r1)"
+        context = _dform_copy_helper_context(
+            wrong_target, mode="stack_interval_trace"
+        )
+        result = rules.diagnose_document(
+            wrong_target,
+            focus_symbol="MoveNumOMExec",
+            dform_copy_helper_context=context,
+        )
+        self.assertFalse(
+            _evaluation(
+                result, "dform_aggregate_copy_helper_boundary"
+            )["matched"]
+        )
+
+        for mutation in ("unknown", "missing_dependency", "paired"):
+            unsafe = _dform_copy_helper_context(
+                report, mode="stack_interval_trace"
+            )
+            evidence = unsafe["evidence"]  # type: ignore[index]
+            if mutation == "unknown":
+                evidence["seam_unknown_count"] = 1  # type: ignore[index]
+            elif mutation == "missing_dependency":
+                evidence["dependencies"] = [[113, 115], [114, 116]]  # type: ignore[index]
+            else:
+                evidence["paired_codegen_proof"] = True  # type: ignore[index]
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(rules.LearningInputError):
+                    rules.diagnose_document(
+                        report,
+                        focus_symbol="MoveNumOMExec",
+                        dform_copy_helper_context=unsafe,
+                    )
+
+        owner_report = _dform_copy_owner_cycle_report()
+        unsafe_owner = _dform_copy_helper_context(
+            owner_report, mode="existing_owner_cycle"
+        )
+        unsafe_owner["evidence"]["existing_live_owners"][0][  # type: ignore[index]
+            "used_after_copy"
+        ] = False
+        with self.assertRaisesRegex(rules.LearningInputError, "semantic values"):
+            rules.diagnose_document(
+                owner_report,
+                focus_symbol="mbev_PlayerColBall",
+                dform_copy_helper_context=unsafe_owner,
+            )
+
     def test_aggregate_pointer_branch_convergence_schedules_two_cells(self) -> None:
         report = _aggregate_pointer_branch_report()
         context = _aggregate_pointer_branch_context(report)
@@ -4955,6 +5323,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffDustMultiAdd",
                 typed_aggregate_copy_context=context,
+            ),
+        )
+
+    def test_dform_copy_helper_context_cli_emits_same_document(self) -> None:
+        report = _dform_copy_trace_report()
+        context = _dform_copy_helper_context(report, mode="stack_interval_trace")
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "dform-copy-helper.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "MoveNumOMExec",
+                            "--dform-copy-helper-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="MoveNumOMExec",
+                dform_copy_helper_context=context,
             ),
         )
 
