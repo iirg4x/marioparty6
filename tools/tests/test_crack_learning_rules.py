@@ -905,6 +905,142 @@ def _aggregate_snapshot_pointer_context(
     }
 
 
+def _typed_aggregate_copy_report() -> dict[str, object]:
+    target = [_instruction(100 + (index * 4), "nop") for index in range(22)]
+    candidate = copy.deepcopy(target)
+    target[0] = _instruction(100, "stwu r1, -0x120(r1)")
+    candidate[0] = copy.deepcopy(target[0])
+
+    register_rows = {
+        1: ("mr r30, r4", "mr r23, r4"),
+        2: ("mr r23, r6", "mr r24, r6"),
+        3: ("li r29, 0x0", "li r30, 0x0"),
+        10: ("mr r24, r7", "mr r25, r7"),
+        11: ("mr r25, r8", "mr r26, r8"),
+        12: ("mr r26, r9", "mr r27, r9"),
+        13: ("mr r27, r10", "mr r28, r10"),
+        14: ("lwz r28, 0x8c(r1)", "lwz r29, 0x8c(r1)"),
+        15: ("addi r26, r1, 0xc", "addi r27, r1, 0xc"),
+        16: ("addi r25, r1, 0x14", "addi r26, r1, 0x14"),
+        17: ("addi r24, r1, 0x20", "addi r25, r1, 0x20"),
+        18: ("cmpw r29, r23", "cmpw r30, r24"),
+    }
+    for row, (left, right) in register_rows.items():
+        target[row] = _instruction(
+            100 + (row * 4), left, diff_kind="DIFF_ARG_MISMATCH"
+        )
+        candidate[row] = _instruction(
+            100 + (row * 4), right, diff_kind="DIFF_ARG_MISMATCH"
+        )
+
+    target_copy = [
+        "lfs f0, 0x0(r30)",
+        "stfs f0, 0x38(r1)",
+        "lfs f0, 0x4(r30)",
+        "stfs f0, 0x3c(r1)",
+        "lfs f0, 0x8(r30)",
+        "stfs f0, 0x40(r1)",
+    ]
+    candidate_copy = [
+        "lwz r3, 0x0(r23)",
+        "lwz r0, 0x4(r23)",
+        "stw r3, 0x38(r1)",
+        "stw r0, 0x3c(r1)",
+        "lwz r0, 0x8(r23)",
+        "stw r0, 0x40(r1)",
+    ]
+    for offset, (left, right) in enumerate(zip(target_copy, candidate_copy)):
+        row = 4 + offset
+        target[row] = _instruction(
+            100 + (row * 4), left, diff_kind="DIFF_REPLACE"
+        )
+        candidate[row] = _instruction(
+            100 + (row * 4), right, diff_kind="DIFF_REPLACE"
+        )
+    target[19] = _instruction(176, "bl mbev_CapEffExplodeAdd")
+    candidate[19] = copy.deepcopy(target[19])
+    target[21] = _instruction(184, "blr")
+    candidate[21] = copy.deepcopy(target[21])
+    report = _report(
+        "mbev_CapEffDustMultiAdd",
+        target,
+        candidate,
+        target_size=836,
+        candidate_size=836,
+    )
+    report["left"]["symbols"][0]["match_percent"] = 97.7512  # type: ignore[index]
+    report["right"]["symbols"][0]["match_percent"] = 97.7512  # type: ignore[index]
+    return report
+
+
+def _typed_aggregate_copy_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _typed_aggregate_copy_report()
+    residual_rows = list(range(1, 19))
+    return {
+        "schema": rules.TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA,
+        "proofs": {
+            "function_size_exact": True,
+            "stack_frame_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "typed_member_copy_authenticated": True,
+            "whole_aggregate_control_authenticated": True,
+            "owner_cycle_authenticated": True,
+            "pinned_mwcc_frontend": True,
+            "exact_result_verified": True,
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "precursor_source_sha256": "3" * 64,
+            "precursor_object_sha256": "4" * 64,
+            "precursor_record_sha256": "5" * 64,
+            "exact_source_sha256": "6" * 64,
+            "exact_object_sha256": "7" * 64,
+            "exact_strict_report_sha256": "8" * 64,
+            "exact_data_report_sha256": "9" * 64,
+            "exact_record_sha256": "a" * 64,
+            "interaction_plan_sha256": "b" * 64,
+            "causal_reducer_sha256": "c" * 64,
+            "report_artifact_sha256": "d" * 64,
+        },
+        "precursor": {
+            "candidate_id": "dustmulti001-composed",
+            "target_bytes": 836,
+            "candidate_bytes": 836,
+            "match_percent": 97.7512,
+            "physical_relocations": 43,
+            "residual_rows": residual_rows,
+        },
+        "aggregate": {
+            "type": "HuVecF",
+            "source_pointer": "posP",
+            "local": "posTemp",
+            "size": 12,
+            "stack_offset": 56,
+            "member_offsets": [0, 4, 8],
+            "copy_rows": [4, 5, 6, 7, 8, 9],
+            "target_source_register": "r30",
+            "candidate_source_register": "r23",
+            "source_expression": "posTemp.x = posP->x; posTemp.y = posP->y; posTemp.z = posP->z",
+        },
+        "exact_result": {
+            "candidate_id": "dustmulti002-member-copy-exact",
+            "target_bytes": 836,
+            "candidate_bytes": 836,
+            "physical_relocations": 43,
+            "source_sha256": "6" * 64,
+            "object_sha256": "7" * 64,
+            "strict_report_sha256": "8" * 64,
+            "data_report_sha256": "9" * 64,
+            "candidate_record_sha256": "a" * 64,
+        },
+    }
+
+
 def _aggregate_pointer_branch_context(
     report: dict[str, object] | None = None,
 ) -> dict[str, object]:
@@ -3014,6 +3150,99 @@ class CrackLearningRulesTest(unittest.TestCase):
                 aggregate_snapshot_pointer_context=invalid_control,
             )
 
+    def test_typed_aggregate_copy_lowering_schedules_one_member_cell(self) -> None:
+        report = _typed_aggregate_copy_report()
+        context = _typed_aggregate_copy_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffDustMultiAdd",
+            typed_aggregate_copy_context=context,
+        )
+        diagnosis = _evaluation(result, "typed_aggregate_copy_lowering")
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(diagnosis["evidence"]["target_frame"], 288)
+        self.assertEqual(
+            diagnosis["evidence"]["register_mapping"],
+            {
+                "r23": "r24",
+                "r24": "r25",
+                "r25": "r26",
+                "r26": "r27",
+                "r27": "r28",
+                "r28": "r29",
+                "r29": "r30",
+                "r30": "r23",
+            },
+        )
+        self.assertEqual(len(diagnosis["evidence"]["typed_copy_rows"]), 6)
+        self.assertIn("posTemp.x = posP->x", diagnosis["recommendation"])
+        self.assertEqual(len(diagnosis["evidence"]["recommended_cells"]), 1)
+        self.assertIn(
+            "declaration_order_permutations",
+            diagnosis["evidence"]["suppressed_axes"],
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_typed_aggregate_copy_lowering_fails_closed(self) -> None:
+        report = _typed_aggregate_copy_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapEffDustMultiAdd"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "typed_aggregate_copy_lowering")["matched"]
+        )
+
+        exact_report = copy.deepcopy(report)
+        exact_report["right"]["symbols"][0]["instructions"] = copy.deepcopy(  # type: ignore[index]
+            exact_report["left"]["symbols"][0]["instructions"]  # type: ignore[index]
+        )
+        context = _typed_aggregate_copy_context(exact_report)
+        result = rules.diagnose_document(
+            exact_report,
+            focus_symbol="mbev_CapEffDustMultiAdd",
+            typed_aggregate_copy_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "typed_aggregate_copy_lowering")["matched"]
+        )
+
+        wrong_offset = copy.deepcopy(report)
+        wrong_offset["left"]["symbols"][0]["instructions"][8]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "lfs f0, 0xc(r30)"
+        context = _typed_aggregate_copy_context(wrong_offset)
+        result = rules.diagnose_document(
+            wrong_offset,
+            focus_symbol="mbev_CapEffDustMultiAdd",
+            typed_aggregate_copy_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "typed_aggregate_copy_lowering")["matched"]
+        )
+
+        broken_cycle = copy.deepcopy(report)
+        broken_cycle["right"]["symbols"][0]["instructions"][14]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "lwz r30, 0x8c(r1)"
+        context = _typed_aggregate_copy_context(broken_cycle)
+        result = rules.diagnose_document(
+            broken_cycle,
+            focus_symbol="mbev_CapEffDustMultiAdd",
+            typed_aggregate_copy_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "typed_aggregate_copy_lowering")["matched"]
+        )
+
+        false_proof = _typed_aggregate_copy_context(report)
+        false_proof["proofs"]["owner_cycle_authenticated"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "owner_cycle_authenticated"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffDustMultiAdd",
+                typed_aggregate_copy_context=false_proof,
+            )
+
     def test_aggregate_pointer_branch_convergence_schedules_two_cells(self) -> None:
         report = _aggregate_pointer_branch_report()
         context = _aggregate_pointer_branch_context(report)
@@ -4386,6 +4615,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffRingHitAdd",
                 aggregate_snapshot_pointer_context=context,
+            ),
+        )
+
+    def test_typed_aggregate_copy_context_cli_emits_same_document(self) -> None:
+        report = _typed_aggregate_copy_report()
+        context = _typed_aggregate_copy_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "typed-aggregate-copy.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffDustMultiAdd",
+                            "--typed-aggregate-copy-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffDustMultiAdd",
+                typed_aggregate_copy_context=context,
             ),
         )
 

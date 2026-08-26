@@ -27,8 +27,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v14"
-SCHEMA_VERSION = 14
+SCHEMA = "crack_learning_diagnosis/v15"
+SCHEMA_VERSION = 15
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -42,6 +42,7 @@ AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA = (
 AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA = (
     "aggregate_snapshot_pointer_chain_context/v1"
 )
+TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA = "typed_aggregate_copy_lowering_context/v1"
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
@@ -220,6 +221,35 @@ _AGGREGATE_SNAPSHOT_POINTER_PROOF_HASHES = (
     "pointer_control_record_sha256",
     "exact_result_report_sha256",
     "exact_result_record_sha256",
+)
+_TYPED_AGGREGATE_COPY_PROOF_FLAGS = (
+    "function_size_exact",
+    "stack_frame_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "typed_member_copy_authenticated",
+    "whole_aggregate_control_authenticated",
+    "owner_cycle_authenticated",
+    "pinned_mwcc_frontend",
+    "exact_result_verified",
+)
+_TYPED_AGGREGATE_COPY_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "precursor_source_sha256",
+    "precursor_object_sha256",
+    "precursor_record_sha256",
+    "exact_source_sha256",
+    "exact_object_sha256",
+    "exact_strict_report_sha256",
+    "exact_data_report_sha256",
+    "exact_record_sha256",
+    "interaction_plan_sha256",
+    "causal_reducer_sha256",
+    "report_artifact_sha256",
 )
 _SAME_TU_SHAPE_PROOF_FLAGS = (
     "data_values_exact",
@@ -421,6 +451,7 @@ _RULE_ORDER = (
     "aggregate_two_owner_followup",
     "address_taken_local_pointer_consumer",
     "aggregate_snapshot_pointer_chain",
+    "typed_aggregate_copy_lowering",
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -2889,6 +2920,271 @@ def _parse_aggregate_snapshot_pointer_context(
         "snapshots": snapshots,
         "controls": controls,
         "combined_cell": normalized_combined,
+    }
+
+
+def _parse_typed_aggregate_copy_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    label = "typed aggregate-copy context"
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "precursor", "aggregate", "exact_result"},
+        required={"schema", "proofs", "precursor", "aggregate", "exact_result"},
+        label=label,
+    )
+    if (
+        _context_text(context.get("schema"), f"{label} schema")
+        != TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"{label} schema must be {TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_TYPED_AGGREGATE_COPY_PROOF_FLAGS) | set(
+        _TYPED_AGGREGATE_COPY_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label=f"{label} proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _TYPED_AGGREGATE_COPY_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"{label} proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _TYPED_AGGREGATE_COPY_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"{label} proofs.{field}"
+        )
+
+    precursor = _closed_context(
+        context.get("precursor"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        label=f"{label} precursor",
+    )
+    target_bytes = _context_uint(
+        precursor.get("target_bytes"), f"{label} precursor.target_bytes", minimum=4
+    )
+    candidate_bytes = _context_uint(
+        precursor.get("candidate_bytes"),
+        f"{label} precursor.candidate_bytes",
+        minimum=4,
+    )
+    if target_bytes != candidate_bytes:
+        raise LearningInputError(f"{label} precursor function size must be exact")
+    match_percent = precursor.get("match_percent")
+    if (
+        isinstance(match_percent, bool)
+        or not isinstance(match_percent, (int, float))
+        or not math.isfinite(float(match_percent))
+        or not 0.0 < float(match_percent) < 100.0
+    ):
+        raise LearningInputError(
+            f"{label} precursor.match_percent must be finite and nonexact"
+        )
+    normalized_precursor = {
+        "candidate_id": _context_text(
+            precursor.get("candidate_id"), f"{label} precursor.candidate_id", limit=128
+        ),
+        "target_bytes": target_bytes,
+        "candidate_bytes": candidate_bytes,
+        "match_percent": float(match_percent),
+        "physical_relocations": _context_uint(
+            precursor.get("physical_relocations"),
+            f"{label} precursor.physical_relocations",
+            minimum=1,
+        ),
+        "residual_rows": _context_rows(
+            precursor.get("residual_rows"),
+            f"{label} precursor.residual_rows",
+            minimum_count=7,
+            maximum_count=96,
+        ),
+    }
+
+    aggregate = _closed_context(
+        context.get("aggregate"),
+        allowed={
+            "type",
+            "source_pointer",
+            "local",
+            "size",
+            "stack_offset",
+            "member_offsets",
+            "copy_rows",
+            "target_source_register",
+            "candidate_source_register",
+            "source_expression",
+        },
+        required={
+            "type",
+            "source_pointer",
+            "local",
+            "size",
+            "stack_offset",
+            "member_offsets",
+            "copy_rows",
+            "target_source_register",
+            "candidate_source_register",
+            "source_expression",
+        },
+        label=f"{label} aggregate",
+    )
+    size = _context_uint(
+        aggregate.get("size"), f"{label} aggregate.size", minimum=12, maximum=12
+    )
+    member_offsets = _context_rows(
+        aggregate.get("member_offsets"),
+        f"{label} aggregate.member_offsets",
+        minimum_count=3,
+        maximum_count=3,
+    )
+    if member_offsets != [0, 4, 8]:
+        raise LearningInputError(
+            f"{label} aggregate.member_offsets must be exactly [0, 4, 8]"
+        )
+    copy_rows = _context_rows(
+        aggregate.get("copy_rows"),
+        f"{label} aggregate.copy_rows",
+        minimum_count=6,
+        maximum_count=6,
+    )
+    if copy_rows != list(range(copy_rows[0], copy_rows[0] + 6)):
+        raise LearningInputError(f"{label} aggregate.copy_rows must be consecutive")
+
+    def saved_register(raw: Any, field: str) -> str:
+        result = _context_text(raw, field, limit=3).lower()
+        if not _saved(result, "r"):
+            raise LearningInputError(f"{field} must be a nonvolatile GPR")
+        return result
+
+    target_source_register = saved_register(
+        aggregate.get("target_source_register"),
+        f"{label} aggregate.target_source_register",
+    )
+    candidate_source_register = saved_register(
+        aggregate.get("candidate_source_register"),
+        f"{label} aggregate.candidate_source_register",
+    )
+    if target_source_register == candidate_source_register:
+        raise LearningInputError(f"{label} source-pointer owner must differ")
+    normalized_aggregate = {
+        "type": _context_identifier(
+            aggregate.get("type"), f"{label} aggregate.type"
+        ),
+        "source_pointer": _context_identifier(
+            aggregate.get("source_pointer"), f"{label} aggregate.source_pointer"
+        ),
+        "local": _context_identifier(
+            aggregate.get("local"), f"{label} aggregate.local"
+        ),
+        "size": size,
+        "stack_offset": _context_uint(
+            aggregate.get("stack_offset"), f"{label} aggregate.stack_offset"
+        ),
+        "member_offsets": member_offsets,
+        "copy_rows": copy_rows,
+        "target_source_register": target_source_register,
+        "candidate_source_register": candidate_source_register,
+        "source_expression": _context_text(
+            aggregate.get("source_expression"),
+            f"{label} aggregate.source_expression",
+            limit=512,
+        ),
+    }
+
+    exact_result = _closed_context(
+        context.get("exact_result"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "physical_relocations",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "physical_relocations",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+        },
+        label=f"{label} exact_result",
+    )
+    exact_target_bytes = _context_uint(
+        exact_result.get("target_bytes"),
+        f"{label} exact_result.target_bytes",
+        minimum=4,
+    )
+    exact_candidate_bytes = _context_uint(
+        exact_result.get("candidate_bytes"),
+        f"{label} exact_result.candidate_bytes",
+        minimum=4,
+    )
+    exact_relocations = _context_uint(
+        exact_result.get("physical_relocations"),
+        f"{label} exact_result.physical_relocations",
+        minimum=1,
+    )
+    if (
+        exact_target_bytes != target_bytes
+        or exact_candidate_bytes != candidate_bytes
+        or exact_relocations != normalized_precursor["physical_relocations"]
+    ):
+        raise LearningInputError(
+            f"{label} exact result must preserve size and physical relocations"
+        )
+    normalized_exact = {
+        "candidate_id": _context_text(
+            exact_result.get("candidate_id"),
+            f"{label} exact_result.candidate_id",
+            limit=128,
+        ),
+        "target_bytes": exact_target_bytes,
+        "candidate_bytes": exact_candidate_bytes,
+        "physical_relocations": exact_relocations,
+    }
+    for field in (
+        "source_sha256",
+        "object_sha256",
+        "strict_report_sha256",
+        "data_report_sha256",
+        "candidate_record_sha256",
+    ):
+        normalized_exact[field] = _context_sha256(
+            exact_result.get(field), f"{label} exact_result.{field}"
+        )
+
+    return {
+        "schema": TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "precursor": normalized_precursor,
+        "aggregate": normalized_aggregate,
+        "exact_result": normalized_exact,
     }
 
 
@@ -8210,6 +8506,252 @@ def _aggregate_snapshot_pointer_evaluation(
     )
 
 
+def _typed_aggregate_copy_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "typed_aggregate_copy_lowering"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated typed aggregate-copy context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the typed aggregate-copy context is bound to another objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    target_frame = _frame_size(target)
+    candidate_frame = _frame_size(candidate)
+    precursor = context["precursor"]
+    if (
+        target_size is None
+        or candidate_size is None
+        or target_size != candidate_size
+        or target_size != precursor["target_bytes"]
+        or candidate_size != precursor["candidate_bytes"]
+        or target_frame is None
+        or target_frame != candidate_frame
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the aggregate-copy precursor does not have sealed exact size/frame",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "target_frame": target_frame,
+                "candidate_frame": candidate_frame,
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    if not rows or any(left is None or right is None for left, right in rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the aggregate-copy precursor contains inserted or deleted instructions",
+        )
+    mismatch_rows = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if left is not None
+        and right is not None
+        and (left.diff_kind is not None or right.diff_kind is not None)
+    ]
+    if mismatch_rows != precursor["residual_rows"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the physical residual rows differ from the sealed aggregate-copy precursor",
+            evidence={
+                "report_residual_rows": mismatch_rows,
+                "context_residual_rows": precursor["residual_rows"],
+            },
+        )
+
+    aggregate = context["aggregate"]
+    copy_rows = aggregate["copy_rows"]
+    if not set(copy_rows).issubset(mismatch_rows) or max(copy_rows) >= len(rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed aggregate-copy rows are absent from the residual",
+        )
+    target_mnemonics = ["lfs", "stfs", "lfs", "stfs", "lfs", "stfs"]
+    candidate_mnemonics = ["lwz", "lwz", "stw", "stw", "lwz", "stw"]
+    member_offsets = aggregate["member_offsets"]
+    stack_offset = aggregate["stack_offset"]
+    target_memory = [
+        (aggregate["target_source_register"], member_offsets[0]),
+        ("r1", stack_offset + member_offsets[0]),
+        (aggregate["target_source_register"], member_offsets[1]),
+        ("r1", stack_offset + member_offsets[1]),
+        (aggregate["target_source_register"], member_offsets[2]),
+        ("r1", stack_offset + member_offsets[2]),
+    ]
+    candidate_memory = [
+        (aggregate["candidate_source_register"], member_offsets[0]),
+        (aggregate["candidate_source_register"], member_offsets[1]),
+        ("r1", stack_offset + member_offsets[0]),
+        ("r1", stack_offset + member_offsets[1]),
+        (aggregate["candidate_source_register"], member_offsets[2]),
+        ("r1", stack_offset + member_offsets[2]),
+    ]
+    observed_copy: list[dict[str, Any]] = []
+    for offset, row_index in enumerate(copy_rows):
+        left, right = rows[row_index]
+        assert left is not None and right is not None
+        if (
+            left.mnemonic != target_mnemonics[offset]
+            or right.mnemonic != candidate_mnemonics[offset]
+            or _memory_operand(left.formatted) != target_memory[offset]
+            or _memory_operand(right.formatted) != candidate_memory[offset]
+            or left.diff_kind != "DIFF_REPLACE"
+            or right.diff_kind != "DIFF_REPLACE"
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the first residual group is not the sealed scalar-f32 versus word-copy lowering",
+                evidence={
+                    "row": row_index,
+                    "target": left.formatted,
+                    "candidate": right.formatted,
+                },
+            )
+        observed_copy.append(
+            {
+                "row": row_index,
+                "target": left.formatted,
+                "candidate": right.formatted,
+            }
+        )
+
+    mapping: dict[str, str] = {}
+    cascade_rows = [row for row in mismatch_rows if row not in set(copy_rows)]
+    for row_index in cascade_rows:
+        left, right = rows[row_index]
+        assert left is not None and right is not None
+        if (
+            left.diff_kind != "DIFF_ARG_MISMATCH"
+            or right.diff_kind != "DIFF_ARG_MISMATCH"
+            or not _compatible_register_only_pair(left, right)
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the post-copy residual is not a pure register-owner cascade",
+                evidence={"row": row_index},
+            )
+        left_registers = _registers(left.formatted)
+        right_registers = _registers(right.formatted)
+        if len(left_registers) != len(right_registers):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a cascade row does not preserve register operand arity",
+                evidence={"row": row_index},
+            )
+        for target_register, candidate_register in zip(
+            left_registers, right_registers, strict=True
+        ):
+            if target_register == candidate_register:
+                continue
+            if not target_register.startswith("r") or not candidate_register.startswith(
+                "r"
+            ):
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the owner cascade crosses register banks",
+                    evidence={"row": row_index},
+                )
+            prior = mapping.setdefault(target_register, candidate_register)
+            if prior != candidate_register:
+                return _evaluation(
+                    rule_id,
+                    matched=False,
+                    reason="the owner cascade has an ambiguous target-to-candidate mapping",
+                    evidence={"row": row_index, "target_register": target_register},
+                )
+
+    cycles = _closed_cycles(mapping)
+    if (
+        len(mapping) < 3
+        or mapping.get(aggregate["target_source_register"])
+        != aggregate["candidate_source_register"]
+        or len(cycles) != 1
+        or len(cycles[0]) != len(mapping)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the scalar-copy source owner does not anchor one complete downstream GPR cycle",
+            evidence={"register_mapping": dict(sorted(mapping.items())), "cycles": cycles},
+        )
+
+    source_pointer = aggregate["source_pointer"]
+    local = aggregate["local"]
+    member_expression = (
+        f"{local}.x = {source_pointer}->x; "
+        f"{local}.y = {source_pointer}->y; "
+        f"{local}.z = {source_pointer}->z;"
+    )
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the exact-size/frame precursor begins with three target scalar f32 loads/stores "
+            "at the same HuVecF member offsets where the candidate emits a whole-object word "
+            "copy; that lowering difference anchors one complete downstream saved-GPR cycle"
+        ),
+        confidence=0.99,
+        source_class="typed_aggregate_scalar_member_copy_parameter_lifetime",
+        recommendation=(
+            f"Compile exactly one natural explicit-member cell `{member_expression}` in place "
+            "of the whole-aggregate copy; preserve the established CFG, calls, pointer consumers, "
+            "data, relocations, and declaration chronology."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "target_frame": target_frame,
+            "candidate_frame": candidate_frame,
+            "aggregate": aggregate,
+            "typed_copy_rows": observed_copy,
+            "cascade_rows": cascade_rows,
+            "register_mapping": dict(sorted(mapping.items())),
+            "cycle": cycles[0],
+            "source_expression": member_expression,
+            "recommended_cells": [
+                {
+                    "kind": "explicit_typed_member_copy",
+                    "expression": member_expression,
+                    "preserve_all_other_source_axes": True,
+                }
+            ],
+            "combined_exact_result": context["exact_result"],
+            "suppressed_axes": [
+                "declaration_order_permutations",
+                "pointer_alias_permutations",
+                "whole_aggregate_repeat",
+                "dead_storage",
+                "register_shaping",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -10207,6 +10749,7 @@ def diagnose_document(
     aggregate_followup_context: Mapping[str, Any] | None = None,
     address_taken_context: Mapping[str, Any] | None = None,
     aggregate_snapshot_pointer_context: Mapping[str, Any] | None = None,
+    typed_aggregate_copy_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -10264,6 +10807,11 @@ def diagnose_document(
     normalized_aggregate_snapshot_pointer_context = (
         _parse_aggregate_snapshot_pointer_context(aggregate_snapshot_pointer_context)
         if aggregate_snapshot_pointer_context is not None
+        else None
+    )
+    normalized_typed_aggregate_copy_context = (
+        _parse_typed_aggregate_copy_context(typed_aggregate_copy_context)
+        if typed_aggregate_copy_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -10392,6 +10940,13 @@ def diagnose_document(
             normalized_aggregate_snapshot_pointer_context,
             objdiff_canonical_sha256,
         ),
+        _typed_aggregate_copy_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_typed_aggregate_copy_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -10500,6 +11055,11 @@ def diagnose_document(
             "aggregate_snapshot_pointer_context_canonical_sha256": (
                 _sha256(_canonical(normalized_aggregate_snapshot_pointer_context))
                 if normalized_aggregate_snapshot_pointer_context is not None
+                else None
+            ),
+            "typed_aggregate_copy_context_canonical_sha256": (
+                _sha256(_canonical(normalized_typed_aggregate_copy_context))
+                if normalized_typed_aggregate_copy_context is not None
                 else None
             ),
             "aggregate_pointer_branch_context_canonical_sha256": (
@@ -10676,6 +11236,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--typed-aggregate-copy-context",
+        type=Path,
+        help=(
+            "authenticated typed_aggregate_copy_lowering_context/v1 JSON with an "
+            "exact-size HuVecF scalar-f32 versus whole-word copy seam and its complete "
+            "downstream saved-GPR owner cycle"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-pointer-branch-context",
         type=Path,
         help=(
@@ -10817,6 +11386,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="aggregate snapshot/pointer wrapper context",
                 )
                 if args.aggregate_snapshot_pointer_context is not None
+                else None
+            ),
+            typed_aggregate_copy_context=(
+                _load_json(
+                    args.typed_aggregate_copy_context,
+                    label="typed aggregate-copy lowering context",
+                )
+                if args.typed_aggregate_copy_context is not None
                 else None
             ),
             aggregate_pointer_branch_context=(

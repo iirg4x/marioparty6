@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v14` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v15` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -399,6 +399,31 @@ two-saved-GPR cycle among the vector pointers. It then schedules a single
 semantic snapshot + typed-pointer + sealed declaration-chronology cell, while
 suppressing direct-pointer, partial snapshot, pointer-only, dead-alias, and broad
 declaration permutations.
+
+When an exact-size/frame precursor already has the aggregate/pointer topology
+but its first residual group is a `HuVecF` copy lowered as scalar `lfs/stfs` in
+retail and word `lwz/stw` in the candidate, bind that lowering seam before
+trying another owner permutation:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/dustmulti001.strict.json.gz \
+  --function mbev_CapEffDustMultiAdd \
+  --typed-aggregate-copy-context \
+    docs/examples/dustmulti_typed_aggregate_copy_context.json \
+  > work/dustmulti.learning.json
+```
+
+`typed_aggregate_copy_lowering_context/v1` seals exact size/frame/data/CFG/
+physical-relocation/sibling proof, the three typed member offsets, the whole-
+aggregate control, the precursor and exact-result identities, and the complete
+saved-GPR owner cycle. The detector requires target `lfs/stfs` pairs and
+candidate `lwz/lwz/stw/stw/lwz/stw` over the identical 12-byte interval, then
+proves that every other residual row is one closed register-only cascade rooted
+at the source-pointer owner. It schedules exactly one explicit `x/y/z` member-
+copy cell and suppresses declaration, alias, repeated aggregate-copy, dead-
+storage, and register-shaping probes. Exact or structurally different reports
+remain unmatched.
 
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one
