@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v11` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v12` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -375,6 +375,30 @@ one larger target frame, and one unique target-only home. It then ranks exactly
 one live typed pointer at the consumer boundary and suppresses dead pointer
 storage, declaration-only edits, and artificial lifetime extension.
 
+For a large effect creator whose structural mismatch closes under authenticated
+same-TU aggregate-copy and live-pointer source forms, then leaves only one
+branch result copied to the wrong aggregate home, bind both stages together:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/glowkinokoadd-c001.strict.json \
+  --function mbev_CapEffGlowKinokoAdd \
+  --aggregate-pointer-branch-context docs/examples/glowkinokoadd_aggregate_pointer_branch_context.json \
+  > work/glowkinokoadd.learning.json
+```
+
+`aggregate_pointer_branch_convergence_context/v1` seals the exact-size,
+data/CFG/physical-relocation/protected-sibling precursor, its same-TU aggregate
+donors, the composed temporary-to-final aggregate groups, their distinct saved
+typed-pointer owners, and the explicit negative-one multiply. The detector then
+requires the residual to be exactly four `lbz`/`stb` operand rows plus the
+following unconditional branch. It verifies byte offsets, source register,
+target temporary home, candidate final home, and both branch-relative
+destinations. When all joins agree, it emits only two ordered cells: compose the
+aggregate/pointer source first, then route both branch results through the
+shared temporary followed by one unconditional aggregate copy. Isolated
+pointer-lifetime and declaration-order permutations remain suppressed.
+
 When three small residual groups already exist as exact same-TU and caller
 contracts, bind them in one closed retrieval context instead of rediscovering
 each source shape independently:
@@ -638,6 +662,7 @@ The seventeen joins are narrower than those generic classifications:
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
 | address-taken local pointer consumer | Exact CFG/data/physical relocations/siblings; a bounded positive size delta and larger target frame; matching local stack address; target saved-address materialization/copy versus candidate direct argument materialization; authenticated incoming-owner colors; and one target-only parameter home | Introduce one live typed pointer to the already live local aggregate immediately before the typed consumer |
+| aggregate/pointer branch convergence | Exact-size/data/CFG/physical-relocation precursor; authenticated same-TU temp-to-final aggregates and typed pointer owners; explicit negative-one multiply; residual exactly four byte-copy home rows plus one unconditional destination row | Compile the composed aggregate/pointer cell first, then one shared branch temporary with an unconditional temp-to-final aggregate copy |
 | same-TU exact-sibling source shapes | Exact data/CFG/physical relocations/siblings; exact same-TU donor and caller receipts; one target-only fixed-array Boolean lowering; one candidate-only callee `extsh` feeding the same consumer store; one-load reverse-order aggregate zero stores; and no residual outside those groups | Compile one combined cell using the exact donor expression, authenticated wide callee view, and right-associative zero chain |
 | short-circuit Boolean call order | Larger baseline candidate; two sealed target call pairs in branch-getter then masu-getter order; target `bne`/`beq` destinations converging on one true/false assignment pair; duplicated candidate true assignments; pinned MWCC frontend receipt; and one later exact-topology closed four-owner GPR cycle | Explicit shared `if/else` with source-commuted AND operands, followed only by the sealed declaration chronology after topology is exact |
 | dependency-equivalent exact-sibling transfer | Distinct strict/data-exact sibling; authenticated equivalent dependency graph and capacity; the same sealed target/candidate call-order inversion and shared Boolean destinations; and three target-only adjacent `extsh`/s16-consumer pairs normalizing one owner | Transfer the sibling's semantic Boolean source and combine it only with the independently proved `int` owner and live array capacity in one cell |
@@ -683,6 +708,10 @@ The focused fixtures reject the tempting incomplete variants:
   frame, a mismatched aggregate offset, no saved-address-to-argument copy,
   absent incoming-owner colors, or a candidate that already has the target
   parameter home;
+- an aggregate/pointer branch claim with overlapping aggregate identities,
+  duplicate saved owners, an unproved negative-one expression, extra residual
+  rows, wrong byte-load/store offsets, partial copy coverage, equal stack homes,
+  or branch destinations that differ from the sealed precursor;
 - a same-TU source-shape claim with an inexact donor/caller receipt, a different
   array bound or donor expression, a missing Boolean-lowering instruction, no
   candidate-only `extsh`, nonmatching consumer homes, more than one target zero
@@ -734,8 +763,8 @@ donors, and donor signature drift.
 The document binds canonical objdiff input, donor names, this implementation,
 and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
-allocator, parameter/allocation, typed-pool/live-range, capacity, branch, or
-reciprocal evidence by SHA-256; the allocator path also binds the installed
+allocator, parameter/allocation, aggregate-pointer branch, typed-pool/live-range,
+capacity, branch, or reciprocal evidence by SHA-256; the allocator path also binds the installed
 interaction planner, and the typed-pool path binds the installed pool decoder.
 Rule order and JSON serialization are stable.
 

@@ -10,8 +10,10 @@ They never edit source, retain a candidate, or advance recovery authority.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
+import math
 import re
 import struct
 import sys
@@ -25,8 +27,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v11"
-SCHEMA_VERSION = 11
+SCHEMA = "crack_learning_diagnosis/v12"
+SCHEMA_VERSION = 12
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -34,6 +36,9 @@ PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_conte
 AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
 AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
 ADDRESS_TAKEN_CONTEXT_SCHEMA = "address_taken_local_pointer_context/v1"
+AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA = (
+    "aggregate_pointer_branch_convergence_context/v1"
+)
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
@@ -162,6 +167,27 @@ _ADDRESS_TAKEN_PROOF_HASHES = (
     "physical_relocation_receipt_sha256",
     "source_boundary_receipt_sha256",
     "typed_consumer_receipt_sha256",
+)
+_AGGREGATE_POINTER_BRANCH_PROOF_FLAGS = (
+    "function_size_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "same_tu_donors_exact",
+    "precursor_structural_groups_closed",
+    "exact_result_verified",
+)
+_AGGREGATE_POINTER_BRANCH_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "graph_receipt_sha256",
+    "same_tu_donor_receipt_sha256",
+    "precursor_candidate_record_sha256",
+    "exact_result_report_sha256",
+    "exact_result_candidate_record_sha256",
 )
 _SAME_TU_SHAPE_PROOF_FLAGS = (
     "data_values_exact",
@@ -339,6 +365,7 @@ _RULE_ORDER = (
     "aggregate_use_multiplicity",
     "aggregate_two_owner_followup",
     "address_taken_local_pointer_consumer",
+    "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
     "dependency_equivalent_exact_sibling_transfer",
@@ -1722,6 +1749,496 @@ def _parse_address_taken_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "incoming_pointer": normalized_incoming,
         "local_pointer": normalized_local,
         "object_home": normalized_home,
+    }
+
+
+def _parse_aggregate_pointer_branch_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "precursor",
+            "aggregate_chain",
+            "branch_result",
+            "exact_result",
+        },
+        required={
+            "schema",
+            "proofs",
+            "precursor",
+            "aggregate_chain",
+            "branch_result",
+            "exact_result",
+        },
+        label="aggregate pointer/branch context",
+    )
+    if (
+        _context_text(
+            context.get("schema"), "aggregate pointer/branch context schema"
+        )
+        != AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            "aggregate pointer/branch context schema must be "
+            f"{AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_AGGREGATE_POINTER_BRANCH_PROOF_FLAGS) | set(
+        _AGGREGATE_POINTER_BRANCH_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="aggregate pointer/branch context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _AGGREGATE_POINTER_BRANCH_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"aggregate pointer/branch context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _AGGREGATE_POINTER_BRANCH_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field),
+            f"aggregate pointer/branch context proofs.{field}",
+        )
+
+    precursor = _closed_context(
+        context.get("precursor"),
+        allowed={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        required={
+            "candidate_id",
+            "target_bytes",
+            "candidate_bytes",
+            "match_percent",
+            "physical_relocations",
+            "residual_rows",
+        },
+        label="aggregate pointer/branch context precursor",
+    )
+    target_bytes = _context_uint(
+        precursor.get("target_bytes"),
+        "aggregate pointer/branch context precursor.target_bytes",
+        minimum=4,
+    )
+    candidate_bytes = _context_uint(
+        precursor.get("candidate_bytes"),
+        "aggregate pointer/branch context precursor.candidate_bytes",
+        minimum=4,
+    )
+    if target_bytes != candidate_bytes:
+        raise LearningInputError(
+            "aggregate pointer/branch precursor function size must be exact"
+        )
+    match_percent = precursor.get("match_percent")
+    if (
+        isinstance(match_percent, bool)
+        or not isinstance(match_percent, (int, float))
+        or not math.isfinite(float(match_percent))
+        or not 0.0 < float(match_percent) < 100.0
+    ):
+        raise LearningInputError(
+            "aggregate pointer/branch precursor.match_percent must be finite and nonexact"
+        )
+    normalized_precursor = {
+        "candidate_id": _context_text(
+            precursor.get("candidate_id"),
+            "aggregate pointer/branch context precursor.candidate_id",
+            limit=128,
+        ),
+        "target_bytes": target_bytes,
+        "candidate_bytes": candidate_bytes,
+        "match_percent": float(match_percent),
+        "physical_relocations": _context_uint(
+            precursor.get("physical_relocations"),
+            "aggregate pointer/branch context precursor.physical_relocations",
+            minimum=1,
+        ),
+        "residual_rows": _context_rows(
+            precursor.get("residual_rows"),
+            "aggregate pointer/branch context precursor.residual_rows",
+            minimum_count=3,
+            maximum_count=17,
+        ),
+    }
+
+    chain = _closed_context(
+        context.get("aggregate_chain"),
+        allowed={
+            "consumer",
+            "groups",
+            "negative_one_expression",
+            "recommended_first_cell",
+            "evidence_sha256",
+        },
+        required={
+            "consumer",
+            "groups",
+            "negative_one_expression",
+            "recommended_first_cell",
+            "evidence_sha256",
+        },
+        label="aggregate pointer/branch context aggregate_chain",
+    )
+    raw_groups = chain.get("groups")
+    if not isinstance(raw_groups, list) or not 2 <= len(raw_groups) <= 8:
+        raise LearningInputError(
+            "aggregate pointer/branch chain must contain 2-8 aggregate groups"
+        )
+    groups: list[dict[str, Any]] = []
+    identities: set[str] = set()
+    registers: set[str] = set()
+    for index, raw_group in enumerate(raw_groups):
+        group = _closed_context(
+            raw_group,
+            allowed={
+                "temporary",
+                "final",
+                "type",
+                "size",
+                "pointer_owner",
+                "target_register",
+                "evidence_sha256",
+            },
+            required={
+                "temporary",
+                "final",
+                "type",
+                "size",
+                "pointer_owner",
+                "target_register",
+                "evidence_sha256",
+            },
+            label=f"aggregate pointer/branch context aggregate_chain.groups[{index}]",
+        )
+        temporary = _context_identifier(
+            group.get("temporary"),
+            f"aggregate pointer/branch group[{index}].temporary",
+        )
+        final = _context_identifier(
+            group.get("final"), f"aggregate pointer/branch group[{index}].final"
+        )
+        pointer_owner = _context_identifier(
+            group.get("pointer_owner"),
+            f"aggregate pointer/branch group[{index}].pointer_owner",
+        )
+        if len({temporary, final, pointer_owner}) != 3:
+            raise LearningInputError(
+                "aggregate pointer/branch group identities must be distinct"
+            )
+        if identities & {temporary, final, pointer_owner}:
+            raise LearningInputError(
+                "aggregate pointer/branch identities must be unique across groups"
+            )
+        identities.update({temporary, final, pointer_owner})
+        target_register = _context_text(
+            group.get("target_register"),
+            f"aggregate pointer/branch group[{index}].target_register",
+            limit=3,
+        ).lower()
+        if not _saved(target_register, "r") or target_register in registers:
+            raise LearningInputError(
+                "aggregate pointer/branch pointer owners need unique nonvolatile GPRs"
+            )
+        registers.add(target_register)
+        groups.append(
+            {
+                "temporary": temporary,
+                "final": final,
+                "type": _context_identifier(
+                    group.get("type"),
+                    f"aggregate pointer/branch group[{index}].type",
+                ),
+                "size": _context_uint(
+                    group.get("size"),
+                    f"aggregate pointer/branch group[{index}].size",
+                    minimum=2,
+                    maximum=64,
+                ),
+                "pointer_owner": pointer_owner,
+                "target_register": target_register,
+                "evidence_sha256": _context_sha256(
+                    group.get("evidence_sha256"),
+                    f"aggregate pointer/branch group[{index}].evidence_sha256",
+                ),
+            }
+        )
+    negative_one_expression = _context_text(
+        chain.get("negative_one_expression"),
+        "aggregate pointer/branch context aggregate_chain.negative_one_expression",
+        limit=512,
+    )
+    if "-1.0f" not in negative_one_expression or "*" not in negative_one_expression:
+        raise LearningInputError(
+            "aggregate pointer/branch negative-one expression must preserve an explicit -1.0f multiply"
+        )
+    normalized_chain = {
+        "consumer": _context_identifier(
+            chain.get("consumer"),
+            "aggregate pointer/branch context aggregate_chain.consumer",
+        ),
+        "groups": groups,
+        "negative_one_expression": negative_one_expression,
+        "recommended_first_cell": _context_text(
+            chain.get("recommended_first_cell"),
+            "aggregate pointer/branch context aggregate_chain.recommended_first_cell",
+            limit=1024,
+        ),
+        "evidence_sha256": _context_sha256(
+            chain.get("evidence_sha256"),
+            "aggregate pointer/branch context aggregate_chain.evidence_sha256",
+        ),
+    }
+
+    branch = _closed_context(
+        context.get("branch_result"),
+        allowed={
+            "temporary",
+            "final",
+            "type",
+            "byte_count",
+            "source_pointer_register",
+            "source_load_rows",
+            "copy_rows",
+            "branch_row",
+            "target_stack_offset",
+            "candidate_stack_offset",
+            "target_branch_relative",
+            "candidate_branch_relative",
+            "source_shape",
+            "evidence_sha256",
+        },
+        required={
+            "temporary",
+            "final",
+            "type",
+            "byte_count",
+            "source_pointer_register",
+            "source_load_rows",
+            "copy_rows",
+            "branch_row",
+            "target_stack_offset",
+            "candidate_stack_offset",
+            "target_branch_relative",
+            "candidate_branch_relative",
+            "source_shape",
+            "evidence_sha256",
+        },
+        label="aggregate pointer/branch context branch_result",
+    )
+    byte_count = _context_uint(
+        branch.get("byte_count"),
+        "aggregate pointer/branch context branch_result.byte_count",
+        minimum=2,
+        maximum=16,
+    )
+    source_load_rows = _context_rows(
+        branch.get("source_load_rows"),
+        "aggregate pointer/branch context branch_result.source_load_rows",
+        minimum_count=byte_count,
+        maximum_count=byte_count,
+    )
+    copy_rows = _context_rows(
+        branch.get("copy_rows"),
+        "aggregate pointer/branch context branch_result.copy_rows",
+        minimum_count=byte_count,
+        maximum_count=byte_count,
+    )
+    branch_row = _context_uint(
+        branch.get("branch_row"),
+        "aggregate pointer/branch context branch_result.branch_row",
+    )
+    if source_load_rows != [row - 1 for row in copy_rows]:
+        raise LearningInputError(
+            "aggregate pointer/branch source loads must immediately precede copy stores"
+        )
+    if branch_row != copy_rows[-1] + 1:
+        raise LearningInputError(
+            "aggregate pointer/branch exit row must immediately follow the last copy store"
+        )
+    if normalized_precursor["residual_rows"] != [*copy_rows, branch_row]:
+        raise LearningInputError(
+            "aggregate pointer/branch precursor rows must be exactly the copy stores plus branch"
+        )
+    temporary = _context_identifier(
+        branch.get("temporary"),
+        "aggregate pointer/branch context branch_result.temporary",
+    )
+    final = _context_identifier(
+        branch.get("final"),
+        "aggregate pointer/branch context branch_result.final",
+    )
+    branch_type = _context_identifier(
+        branch.get("type"), "aggregate pointer/branch context branch_result.type"
+    )
+    if not any(
+        group["temporary"] == temporary
+        and group["final"] == final
+        and group["type"] == branch_type
+        and group["size"] == byte_count
+        for group in groups
+    ):
+        raise LearningInputError(
+            "aggregate pointer/branch result must name one authenticated aggregate group"
+        )
+    target_stack_offset = _context_uint(
+        branch.get("target_stack_offset"),
+        "aggregate pointer/branch context branch_result.target_stack_offset",
+    )
+    candidate_stack_offset = _context_uint(
+        branch.get("candidate_stack_offset"),
+        "aggregate pointer/branch context branch_result.candidate_stack_offset",
+    )
+    if target_stack_offset == candidate_stack_offset:
+        raise LearningInputError(
+            "aggregate pointer/branch target and candidate branch-result homes must differ"
+        )
+    target_branch_relative = _context_uint(
+        branch.get("target_branch_relative"),
+        "aggregate pointer/branch context branch_result.target_branch_relative",
+        minimum=4,
+    )
+    candidate_branch_relative = _context_uint(
+        branch.get("candidate_branch_relative"),
+        "aggregate pointer/branch context branch_result.candidate_branch_relative",
+        minimum=4,
+    )
+    if target_branch_relative == candidate_branch_relative:
+        raise LearningInputError(
+            "aggregate pointer/branch exit destinations must differ in the precursor"
+        )
+    source_pointer_register = _context_text(
+        branch.get("source_pointer_register"),
+        "aggregate pointer/branch context branch_result.source_pointer_register",
+        limit=3,
+    ).lower()
+    if not _saved(source_pointer_register, "r"):
+        raise LearningInputError(
+            "aggregate pointer/branch source pointer must be a nonvolatile GPR"
+        )
+    normalized_branch = {
+        "temporary": temporary,
+        "final": final,
+        "type": branch_type,
+        "byte_count": byte_count,
+        "source_pointer_register": source_pointer_register,
+        "source_load_rows": source_load_rows,
+        "copy_rows": copy_rows,
+        "branch_row": branch_row,
+        "target_stack_offset": target_stack_offset,
+        "candidate_stack_offset": candidate_stack_offset,
+        "target_branch_relative": target_branch_relative,
+        "candidate_branch_relative": candidate_branch_relative,
+        "source_shape": _context_text(
+            branch.get("source_shape"),
+            "aggregate pointer/branch context branch_result.source_shape",
+            limit=1024,
+        ),
+        "evidence_sha256": _context_sha256(
+            branch.get("evidence_sha256"),
+            "aggregate pointer/branch context branch_result.evidence_sha256",
+        ),
+    }
+
+    exact = _closed_context(
+        context.get("exact_result"),
+        allowed={
+            "candidate_id",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+            "target_bytes",
+            "candidate_bytes",
+            "physical_relocations",
+        },
+        required={
+            "candidate_id",
+            "source_sha256",
+            "object_sha256",
+            "strict_report_sha256",
+            "data_report_sha256",
+            "candidate_record_sha256",
+            "target_bytes",
+            "candidate_bytes",
+            "physical_relocations",
+        },
+        label="aggregate pointer/branch context exact_result",
+    )
+    exact_target_size = _context_uint(
+        exact.get("target_bytes"),
+        "aggregate pointer/branch context exact_result.target_bytes",
+        minimum=4,
+    )
+    exact_candidate_size = _context_uint(
+        exact.get("candidate_bytes"),
+        "aggregate pointer/branch context exact_result.candidate_bytes",
+        minimum=4,
+    )
+    exact_relocations = _context_uint(
+        exact.get("physical_relocations"),
+        "aggregate pointer/branch context exact_result.physical_relocations",
+        minimum=1,
+    )
+    if (
+        exact_target_size != exact_candidate_size
+        or exact_target_size != target_bytes
+        or exact_relocations != normalized_precursor["physical_relocations"]
+    ):
+        raise LearningInputError(
+            "aggregate pointer/branch exact result must preserve precursor size and relocations"
+        )
+    normalized_exact = {
+        "candidate_id": _context_text(
+            exact.get("candidate_id"),
+            "aggregate pointer/branch context exact_result.candidate_id",
+            limit=128,
+        ),
+        "source_sha256": _context_sha256(
+            exact.get("source_sha256"),
+            "aggregate pointer/branch context exact_result.source_sha256",
+        ),
+        "object_sha256": _context_sha256(
+            exact.get("object_sha256"),
+            "aggregate pointer/branch context exact_result.object_sha256",
+        ),
+        "strict_report_sha256": _context_sha256(
+            exact.get("strict_report_sha256"),
+            "aggregate pointer/branch context exact_result.strict_report_sha256",
+        ),
+        "data_report_sha256": _context_sha256(
+            exact.get("data_report_sha256"),
+            "aggregate pointer/branch context exact_result.data_report_sha256",
+        ),
+        "candidate_record_sha256": _context_sha256(
+            exact.get("candidate_record_sha256"),
+            "aggregate pointer/branch context exact_result.candidate_record_sha256",
+        ),
+        "target_bytes": exact_target_size,
+        "candidate_bytes": exact_candidate_size,
+        "physical_relocations": exact_relocations,
+    }
+
+    return {
+        "schema": AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "precursor": normalized_precursor,
+        "aggregate_chain": normalized_chain,
+        "branch_result": normalized_branch,
+        "exact_result": normalized_exact,
     }
 
 
@@ -6432,6 +6949,223 @@ def _address_taken_local_pointer_evaluation(
     )
 
 
+def _aggregate_pointer_branch_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "aggregate_pointer_branch_convergence"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated aggregate-pointer branch-convergence context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the aggregate-pointer context is bound to a different canonical objdiff report",
+        )
+
+    precursor = context["precursor"]
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    observed_match = pair.candidate.get("match_percent")
+    if (
+        target_size != precursor["target_bytes"]
+        or candidate_size != precursor["candidate_bytes"]
+        or isinstance(observed_match, bool)
+        or not isinstance(observed_match, (int, float))
+        or not math.isclose(
+            float(observed_match),
+            float(precursor["match_percent"]),
+            rel_tol=0.0,
+            abs_tol=1e-6,
+        )
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the measured precursor size or match percentage differs from the sealed context",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "candidate_match_percent": observed_match,
+                "expected_precursor": precursor,
+            },
+        )
+
+    observed_residual_rows = [
+        index
+        for index, (left, right) in enumerate(zip(target, candidate, strict=True))
+        if left.diff_kind is not None or right.diff_kind is not None
+    ]
+    if observed_residual_rows != precursor["residual_rows"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the precursor residual rows are not exactly the sealed branch-result copy rows",
+            evidence={
+                "observed_residual_rows": observed_residual_rows,
+                "expected_residual_rows": precursor["residual_rows"],
+            },
+        )
+    mismatched_kinds = {
+        kind
+        for row in observed_residual_rows
+        for kind in (target[row].diff_kind, candidate[row].diff_kind)
+        if kind is not None
+    }
+    if mismatched_kinds != {"DIFF_ARG_MISMATCH"}:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed residual is not exclusively argument/operand identity mismatch",
+            evidence={"diff_kinds": sorted(mismatched_kinds)},
+        )
+
+    branch = context["branch_result"]
+    source_register = str(branch["source_pointer_register"])
+    byte_count = int(branch["byte_count"])
+    load_rows = list(branch["source_load_rows"])
+    copy_rows = list(branch["copy_rows"])
+    target_home = int(branch["target_stack_offset"])
+    candidate_home = int(branch["candidate_stack_offset"])
+
+    measured_loads: list[dict[str, Any]] = []
+    measured_copies: list[dict[str, Any]] = []
+    for byte_index, (load_row, copy_row) in enumerate(
+        zip(load_rows, copy_rows, strict=True)
+    ):
+        left_load = target[load_row]
+        right_load = candidate[load_row]
+        left_store = target[copy_row]
+        right_store = candidate[copy_row]
+        left_load_memory = _memory_operand(left_load.formatted)
+        right_load_memory = _memory_operand(right_load.formatted)
+        left_store_memory = _memory_operand(left_store.formatted)
+        right_store_memory = _memory_operand(right_store.formatted)
+        left_load_registers = _registers(left_load.formatted, "r")
+        right_load_registers = _registers(right_load.formatted, "r")
+        left_store_registers = _registers(left_store.formatted, "r")
+        right_store_registers = _registers(right_store.formatted, "r")
+        load_ok = (
+            left_load.mnemonic == right_load.mnemonic == "lbz"
+            and left_load_memory == right_load_memory == (source_register, byte_index)
+            and len(left_load_registers) >= 2
+            and len(right_load_registers) >= 2
+            and left_load_registers[0] == right_load_registers[0]
+        )
+        loaded_register = left_load_registers[0] if left_load_registers else None
+        copy_ok = (
+            left_store.mnemonic == right_store.mnemonic == "stb"
+            and left_store_memory == ("r1", target_home + byte_index)
+            and right_store_memory == ("r1", candidate_home + byte_index)
+            and left_store_registers[:1] == right_store_registers[:1]
+            and left_store_registers[:1] == [loaded_register]
+        )
+        measured_loads.append(
+            {
+                "row": load_row,
+                "target": left_load.formatted,
+                "candidate": right_load.formatted,
+                "valid": load_ok,
+            }
+        )
+        measured_copies.append(
+            {
+                "row": copy_row,
+                "target": left_store.formatted,
+                "candidate": right_store.formatted,
+                "valid": copy_ok,
+            }
+        )
+        if not load_ok or not copy_ok:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the byte-result load/copy sequence does not match the authenticated temporary-versus-final homes",
+                evidence={
+                    "source_pointer_register": source_register,
+                    "target_stack_offset": target_home,
+                    "candidate_stack_offset": candidate_home,
+                    "measured_loads": measured_loads,
+                    "measured_copies": measured_copies,
+                },
+            )
+
+    branch_row = int(branch["branch_row"])
+    left_branch = target[branch_row]
+    right_branch = candidate[branch_row]
+    target_relative = causal_reducer._branch_relative(left_branch)
+    candidate_relative = causal_reducer._branch_relative(right_branch)
+    if (
+        left_branch.mnemonic != "b"
+        or right_branch.mnemonic != "b"
+        or target_relative != branch["target_branch_relative"]
+        or candidate_relative != branch["candidate_branch_relative"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the branch-result exit destinations do not match the sealed convergence seam",
+            evidence={
+                "branch_row": branch_row,
+                "target_branch": left_branch.formatted,
+                "candidate_branch": right_branch.formatted,
+                "target_relative": target_relative,
+                "candidate_relative": candidate_relative,
+            },
+        )
+
+    chain = context["aggregate_chain"]
+    first_cell = chain["recommended_first_cell"]
+    convergence_cell = branch["source_shape"]
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an authenticated same-TU aggregate temporary-to-final chain and live typed "
+            "pointer owners close every structural row; the remaining operand-only rows "
+            "are one byte-exact branch result stored to the final home in the candidate "
+            "but to the temporary home in retail, followed by a different unconditional "
+            "exit destination that proves retail's shared post-branch aggregate copy"
+        ),
+        confidence=0.99,
+        source_class="composed_aggregate_pointer_chain_then_shared_branch_result",
+        recommendation=(
+            f"Compile the composed aggregate/pointer cell first: {first_cell} If the "
+            f"only residual is this sealed branch-result copy, test exactly one shared "
+            f"branch temporary and unconditional temporary-to-final assignment: "
+            f"{convergence_cell} Suppress isolated pointer-lifetime and declaration-order "
+            "permutations."
+        ),
+        evidence={
+            "precursor": precursor,
+            "aggregate_chain": chain,
+            "branch_result": branch,
+            "measured_loads": measured_loads,
+            "measured_copies": measured_copies,
+            "measured_branch": {
+                "row": branch_row,
+                "target_relative": target_relative,
+                "candidate_relative": candidate_relative,
+            },
+            "two_step_schedule": [first_cell, convergence_cell],
+            "suppressed_axes": [
+                "isolated_pointer_identity_permutations",
+                "declaration_order_only",
+                "branch_local_final_aggregate_assignment",
+            ],
+            "exact_result": context["exact_result"],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _same_tu_exact_sibling_shape_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -7921,6 +8655,7 @@ def diagnose_document(
     aggregate_use_context: Mapping[str, Any] | None = None,
     aggregate_followup_context: Mapping[str, Any] | None = None,
     address_taken_context: Mapping[str, Any] | None = None,
+    aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
     exact_sibling_transfer_context: Mapping[str, Any] | None = None,
@@ -7971,6 +8706,11 @@ def diagnose_document(
     normalized_address_taken_context = (
         _parse_address_taken_context(address_taken_context)
         if address_taken_context is not None
+        else None
+    )
+    normalized_aggregate_pointer_branch_context = (
+        _parse_aggregate_pointer_branch_context(aggregate_pointer_branch_context)
+        if aggregate_pointer_branch_context is not None
         else None
     )
     normalized_same_tu_shape_context = (
@@ -8080,6 +8820,13 @@ def diagnose_document(
             normalized_address_taken_context,
             objdiff_canonical_sha256,
         ),
+        _aggregate_pointer_branch_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_aggregate_pointer_branch_context,
+            objdiff_canonical_sha256,
+        ),
         _same_tu_exact_sibling_shape_evaluation(
             pair,
             target,
@@ -8171,6 +8918,11 @@ def diagnose_document(
                 if normalized_address_taken_context is not None
                 else None
             ),
+            "aggregate_pointer_branch_context_canonical_sha256": (
+                _sha256(_canonical(normalized_aggregate_pointer_branch_context))
+                if normalized_aggregate_pointer_branch_context is not None
+                else None
+            ),
             "same_tu_shape_context_canonical_sha256": (
                 _sha256(_canonical(normalized_same_tu_shape_context))
                 if normalized_same_tu_shape_context is not None
@@ -8249,7 +9001,11 @@ def diagnose_document(
 
 def _load_json(path: Path, *, label: str = "objdiff report") -> Mapping[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        if path.suffix.lower() == ".gz":
+            with gzip.open(path, "rt", encoding="utf-8") as stream:
+                value = json.load(stream)
+        else:
+            value = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise LearningInputError(f"cannot read {label} {path}: {exc}") from exc
     except json.JSONDecodeError as exc:
@@ -8319,6 +9075,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "authenticated address_taken_local_pointer_context/v1 JSON with the "
             "target home, incoming owner, local address owner, and typed call boundary"
+        ),
+    )
+    parser.add_argument(
+        "--aggregate-pointer-branch-context",
+        type=Path,
+        help=(
+            "authenticated aggregate_pointer_branch_convergence_context/v1 JSON "
+            "with a composed aggregate/pointer precursor and shared branch-result proof"
         ),
     )
     parser.add_argument(
@@ -8438,6 +9202,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="address-taken local pointer context",
                 )
                 if args.address_taken_context is not None
+                else None
+            ),
+            aggregate_pointer_branch_context=(
+                _load_json(
+                    args.aggregate_pointer_branch_context,
+                    label="aggregate-pointer branch-convergence context",
+                )
+                if args.aggregate_pointer_branch_context is not None
                 else None
             ),
             same_tu_shape_context=(

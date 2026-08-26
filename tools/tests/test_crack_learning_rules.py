@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import gzip
 import io
 import json
 import re
@@ -625,6 +626,155 @@ def _address_taken_context(
             "parameter": "obj",
             "target_stack_offset": 8,
             "evidence_sha256": "9" * 64,
+        },
+    }
+
+
+def _aggregate_pointer_branch_report() -> dict[str, object]:
+    target = [
+        _instruction(100, "cmpwi r3, 0"),
+        _instruction(104, "beq 0x180", branch_dest=384),
+        _instruction(108, "lbz r0, 0(r29)"),
+        _instruction(112, "stb r0, 40(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "lbz r0, 1(r29)"),
+        _instruction(120, "stb r0, 41(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(124, "lbz r0, 2(r29)"),
+        _instruction(128, "stb r0, 42(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(132, "lbz r0, 3(r29)"),
+        _instruction(136, "stb r0, 43(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(
+            140,
+            "b 0x160",
+            diff_kind="DIFF_ARG_MISMATCH",
+            branch_dest=352,
+        ),
+        _instruction(144, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "cmpwi r3, 0"),
+        _instruction(104, "beq 0x180", branch_dest=384),
+        _instruction(108, "lbz r0, 0(r29)"),
+        _instruction(112, "stb r0, 36(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "lbz r0, 1(r29)"),
+        _instruction(120, "stb r0, 37(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(124, "lbz r0, 2(r29)"),
+        _instruction(128, "stb r0, 38(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(132, "lbz r0, 3(r29)"),
+        _instruction(136, "stb r0, 39(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(
+            140,
+            "b 0x180",
+            diff_kind="DIFF_ARG_MISMATCH",
+            branch_dest=384,
+        ),
+        _instruction(144, "blr"),
+    ]
+    report = _report(
+        "mbev_CapEffGlowKinokoAdd",
+        target,
+        candidate,
+        target_size=1204,
+        candidate_size=1204,
+    )
+    report["left"]["symbols"][0]["match_percent"] = 99.9701  # type: ignore[index]
+    report["right"]["symbols"][0]["match_percent"] = 99.9701  # type: ignore[index]
+    return report
+
+
+def _aggregate_pointer_branch_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _aggregate_pointer_branch_report()
+    return {
+        "schema": rules.AGGREGATE_POINTER_BRANCH_CONTEXT_SCHEMA,
+        "proofs": {
+            "function_size_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "same_tu_donors_exact": True,
+            "precursor_structural_groups_closed": True,
+            "exact_result_verified": True,
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "graph_receipt_sha256": "4" * 64,
+            "same_tu_donor_receipt_sha256": "5" * 64,
+            "precursor_candidate_record_sha256": "6" * 64,
+            "exact_result_report_sha256": "7" * 64,
+            "exact_result_candidate_record_sha256": "8" * 64,
+        },
+        "precursor": {
+            "candidate_id": "glowkinokoadd-c001-focus-v1",
+            "target_bytes": 1204,
+            "candidate_bytes": 1204,
+            "match_percent": 99.9701,
+            "physical_relocations": 69,
+            "residual_rows": [3, 5, 7, 9, 10],
+        },
+        "aggregate_chain": {
+            "consumer": "mbev_CapEffGlowAdd",
+            "groups": [
+                {
+                    "temporary": "colorTemp",
+                    "final": "color",
+                    "type": "GXColor",
+                    "size": 4,
+                    "pointer_owner": "colorLocalP",
+                    "target_register": "r28",
+                    "evidence_sha256": "9" * 64,
+                },
+                {
+                    "temporary": "velTemp",
+                    "final": "vel",
+                    "type": "HuVecF",
+                    "size": 12,
+                    "pointer_owner": "velLocalP",
+                    "target_register": "r27",
+                    "evidence_sha256": "a" * 64,
+                },
+                {
+                    "temporary": "posTemp",
+                    "final": "pos",
+                    "type": "HuVecF",
+                    "size": 12,
+                    "pointer_owner": "posLocalP",
+                    "target_register": "r26",
+                    "evidence_sha256": "b" * 64,
+                },
+            ],
+            "negative_one_expression": "-1.0f * (1.0f + 0.2f * rand)",
+            "recommended_first_cell": "compose the three temp-to-final aggregate copies, live typed pointer consumers, and explicit -1.0f multiply",
+            "evidence_sha256": "c" * 64,
+        },
+        "branch_result": {
+            "temporary": "colorTemp",
+            "final": "color",
+            "type": "GXColor",
+            "byte_count": 4,
+            "source_pointer_register": "r29",
+            "source_load_rows": [2, 4, 6, 8],
+            "copy_rows": [3, 5, 7, 9],
+            "branch_row": 10,
+            "target_stack_offset": 40,
+            "candidate_stack_offset": 36,
+            "target_branch_relative": 212,
+            "candidate_branch_relative": 244,
+            "source_shape": "both branches assign colorTemp, followed by unconditional color = colorTemp",
+            "evidence_sha256": "d" * 64,
+        },
+        "exact_result": {
+            "candidate_id": "glowkinokoadd-c002-focus-v1",
+            "source_sha256": "e" * 64,
+            "object_sha256": "f" * 64,
+            "strict_report_sha256": "0" * 64,
+            "data_report_sha256": "1" * 64,
+            "candidate_record_sha256": "2" * 64,
+            "target_bytes": 1204,
+            "candidate_bytes": 1204,
+            "physical_relocations": 69,
         },
     }
 
@@ -2402,6 +2552,134 @@ class CrackLearningRulesTest(unittest.TestCase):
                 address_taken_context=wrong_owner,
             )
 
+    def test_aggregate_pointer_branch_convergence_schedules_two_cells(self) -> None:
+        report = _aggregate_pointer_branch_report()
+        context = _aggregate_pointer_branch_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffGlowKinokoAdd",
+            aggregate_pointer_branch_context=context,
+        )
+        diagnosis = _evaluation(result, "aggregate_pointer_branch_convergence")
+
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(diagnosis["confidence"], 0.99)
+        self.assertEqual(
+            diagnosis["source_class"],
+            "composed_aggregate_pointer_chain_then_shared_branch_result",
+        )
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["precursor"]["residual_rows"], [3, 5, 7, 9, 10])
+        self.assertEqual(
+            [item["target"] for item in evidence["measured_copies"]],
+            [
+                "stb r0, 40(r1)",
+                "stb r0, 41(r1)",
+                "stb r0, 42(r1)",
+                "stb r0, 43(r1)",
+            ],
+        )
+        self.assertEqual(
+            evidence["measured_branch"],
+            {"row": 10, "target_relative": 212, "candidate_relative": 244},
+        )
+        self.assertEqual(len(evidence["two_step_schedule"]), 2)
+        self.assertIn("-1.0f", evidence["aggregate_chain"]["negative_one_expression"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_aggregate_pointer_branch_convergence_fails_closed(self) -> None:
+        report = _aggregate_pointer_branch_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapEffGlowKinokoAdd"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "aggregate_pointer_branch_convergence")["matched"]
+        )
+
+        wrong_report = _aggregate_pointer_branch_context(report)
+        wrong_report["proofs"]["objdiff_canonical_sha256"] = "f" * 64  # type: ignore[index]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffGlowKinokoAdd",
+            aggregate_pointer_branch_context=wrong_report,
+        )
+        self.assertFalse(
+            _evaluation(result, "aggregate_pointer_branch_convergence")["matched"]
+        )
+
+        wrong_load = _aggregate_pointer_branch_report()
+        wrong_load["right"]["symbols"][0]["instructions"][2]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "lbz r0, 0(r28)"
+        context = _aggregate_pointer_branch_context(wrong_load)
+        result = rules.diagnose_document(
+            wrong_load,
+            focus_symbol="mbev_CapEffGlowKinokoAdd",
+            aggregate_pointer_branch_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "aggregate_pointer_branch_convergence")["matched"]
+        )
+
+        extra_residual = _aggregate_pointer_branch_report()
+        extra_residual["left"]["symbols"][0]["instructions"][0][  # type: ignore[index]
+            "diff_kind"
+        ] = "DIFF_ARG_MISMATCH"
+        extra_residual["right"]["symbols"][0]["instructions"][0][  # type: ignore[index]
+            "diff_kind"
+        ] = "DIFF_ARG_MISMATCH"
+        context = _aggregate_pointer_branch_context(extra_residual)
+        result = rules.diagnose_document(
+            extra_residual,
+            focus_symbol="mbev_CapEffGlowKinokoAdd",
+            aggregate_pointer_branch_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "aggregate_pointer_branch_convergence")["matched"]
+        )
+
+        false_proof = _aggregate_pointer_branch_context(report)
+        false_proof["proofs"]["same_tu_donors_exact"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "same_tu_donors_exact"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowKinokoAdd",
+                aggregate_pointer_branch_context=false_proof,
+            )
+
+    def test_aggregate_pointer_branch_context_rejects_unauthenticated_shapes(self) -> None:
+        report = _aggregate_pointer_branch_report()
+        mutations: list[tuple[str, object]] = []
+
+        same_identity = _aggregate_pointer_branch_context(report)
+        same_identity["aggregate_chain"]["groups"][0]["final"] = "colorTemp"  # type: ignore[index]
+        mutations.append(("identities must be distinct", same_identity))
+
+        duplicate_register = _aggregate_pointer_branch_context(report)
+        duplicate_register["aggregate_chain"]["groups"][1]["target_register"] = "r28"  # type: ignore[index]
+        mutations.append(("unique nonvolatile GPRs", duplicate_register))
+
+        wrong_group = _aggregate_pointer_branch_context(report)
+        wrong_group["branch_result"]["temporary"] = "otherTemp"  # type: ignore[index]
+        mutations.append(("must name one authenticated aggregate group", wrong_group))
+
+        missing_negative = _aggregate_pointer_branch_context(report)
+        missing_negative["aggregate_chain"]["negative_one_expression"] = "-(1.0f + 0.2f * rand)"  # type: ignore[index]
+        mutations.append(("explicit -1.0f multiply", missing_negative))
+
+        wrong_exact_size = _aggregate_pointer_branch_context(report)
+        wrong_exact_size["exact_result"]["candidate_bytes"] = 1208  # type: ignore[index]
+        mutations.append(("preserve precursor size and relocations", wrong_exact_size))
+
+        for message, context in mutations:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(rules.LearningInputError, message):
+                    rules.diagnose_document(
+                        report,
+                        focus_symbol="mbev_CapEffGlowKinokoAdd",
+                        aggregate_pointer_branch_context=context,  # type: ignore[arg-type]
+                    )
+
     def test_same_tu_exact_sibling_shapes_schedule_only_combined_cell(self) -> None:
         report = _same_tu_shape_report()
         context = _same_tu_shape_context(report)
@@ -3385,6 +3663,39 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffGlowKinokoAddAlt",
                 address_taken_context=context,
+            ),
+        )
+
+    def test_aggregate_pointer_branch_context_cli_emits_same_document(self) -> None:
+        report = _aggregate_pointer_branch_report()
+        context = _aggregate_pointer_branch_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json.gz"
+            context_path = Path(directory) / "aggregate-pointer-branch.json"
+            with gzip.open(report_path, "wt", encoding="utf-8") as stream:
+                json.dump(report, stream)
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffGlowKinokoAdd",
+                            "--aggregate-pointer-branch-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowKinokoAdd",
+                aggregate_pointer_branch_context=context,
             ),
         )
 

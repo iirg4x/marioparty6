@@ -1,0 +1,92 @@
+{
+  "schema": "aggregate_pointer_branch_convergence_context/v1",
+  "proofs": {
+    "function_size_exact": true,
+    "data_values_exact": true,
+    "physical_relocations_exact": true,
+    "cfg_calls_exact": true,
+    "protected_siblings_preserved": true,
+    "same_tu_donors_exact": true,
+    "precursor_structural_groups_closed": true,
+    "exact_result_verified": true,
+    "objdiff_canonical_sha256": "784e98f3aea4c29db645aed6cd188a5bb092580c1072c979a619d4756ff30943",
+    "strict_report_sha256": "7c5feee4ca267ee169d97baf200146726aca837a65cb065be84790fa5ac5df0c",
+    "data_report_sha256": "da7bec812829839d7934b23b9dc4208a7654655b089c7ed66fd9bedd2c483e28",
+    "physical_relocation_receipt_sha256": "aa64f26b70282fee623364bbb455dbba3550e63cae727316b0262cff38060f16",
+    "graph_receipt_sha256": "c5f2b03d5ef678e91698b129df25f3c5e6c8e2a27a7c590c02825e1282ba0937",
+    "same_tu_donor_receipt_sha256": "8693b9066ff87e58543e454dc3442b833f2585ec87c7659cf4fe425fbcd55e1b",
+    "precursor_candidate_record_sha256": "48f1be61cef46e1a0ba0359f40d6cda00c592148c2776c961a3a782aeed6ab36",
+    "exact_result_report_sha256": "20476a6012e34d2d5b05cff09cee7c1b4f34f1d52573542880e0db1ec4f86969",
+    "exact_result_candidate_record_sha256": "324788f0421f7f94f671ddbeaf9b03f98258a2b51250d7345caddcb44f12ca01"
+  },
+  "precursor": {
+    "candidate_id": "glowkinokoadd-c001-focus-v1",
+    "target_bytes": 1204,
+    "candidate_bytes": 1204,
+    "match_percent": 99.9701,
+    "physical_relocations": 69,
+    "residual_rows": [197, 199, 201, 203, 204]
+  },
+  "aggregate_chain": {
+    "consumer": "mbev_CapEffGlowAdd",
+    "groups": [
+      {
+        "temporary": "colorTemp",
+        "final": "color",
+        "type": "GXColor",
+        "size": 4,
+        "pointer_owner": "colorLocalP",
+        "target_register": "r28",
+        "evidence_sha256": "0771eb76721a14a73279fdd457fe8fbf9897de151fd5f544b1b59ed8a8d373b4"
+      },
+      {
+        "temporary": "velTemp",
+        "final": "vel",
+        "type": "HuVecF",
+        "size": 12,
+        "pointer_owner": "velLocalP",
+        "target_register": "r27",
+        "evidence_sha256": "6ca53c08903b2cef7da9d1761d1a132bc89855212a76c6799347e653beebfbe6"
+      },
+      {
+        "temporary": "posTemp",
+        "final": "pos",
+        "type": "HuVecF",
+        "size": 12,
+        "pointer_owner": "posLocalP",
+        "target_register": "r26",
+        "evidence_sha256": "01fadcfb538abbb13267798a874fd420b4688c34a0ad151df2162ff0fd4fbc7c"
+      }
+    ],
+    "negative_one_expression": "-1.0f * (1.0f + 0.2f * rand)",
+    "recommended_first_cell": "compose posTemp/velTemp/colorTemp to final aggregate copies, their live typed pointer consumers, and the explicit -1.0f multiply",
+    "evidence_sha256": "c5f2b03d5ef678e91698b129df25f3c5e6c8e2a27a7c590c02825e1282ba0937"
+  },
+  "branch_result": {
+    "temporary": "colorTemp",
+    "final": "color",
+    "type": "GXColor",
+    "byte_count": 4,
+    "source_pointer_register": "r29",
+    "source_load_rows": [196, 198, 200, 202],
+    "copy_rows": [197, 199, 201, 203],
+    "branch_row": 204,
+    "target_stack_offset": 40,
+    "candidate_stack_offset": 36,
+    "target_branch_relative": 212,
+    "candidate_branch_relative": 244,
+    "source_shape": "both color-producing branches assign colorTemp, followed by one unconditional color = colorTemp aggregate copy",
+    "evidence_sha256": "48f1be61cef46e1a0ba0359f40d6cda00c592148c2776c961a3a782aeed6ab36"
+  },
+  "exact_result": {
+    "candidate_id": "glowkinokoadd-c002-focus-v1",
+    "source_sha256": "e46b73eed7587bb453b2be16776e4c15e42314e7aa89f8c4302fb0c1a01c1403",
+    "object_sha256": "0ef191836c7527e0a8d3c51a847867a6b9e248dafe50636da80abb72d6be9e2e",
+    "strict_report_sha256": "20476a6012e34d2d5b05cff09cee7c1b4f34f1d52573542880e0db1ec4f86969",
+    "data_report_sha256": "fd2ac01f9bc7d84d9e65c02b2c7182f295f7236422893b54ea0828521186a751",
+    "candidate_record_sha256": "324788f0421f7f94f671ddbeaf9b03f98258a2b51250d7345caddcb44f12ca01",
+    "target_bytes": 1204,
+    "candidate_bytes": 1204,
+    "physical_relocations": 69
+  }
+}
