@@ -189,6 +189,48 @@ Fresh uses must still enter through `capsule_stack_home_native.py`, validate its
 packet and deterministic summary here, and remain `UNKNOWN` when the current
 Object-to-source join is incomplete.
 
+## Bound CapTrap Tumujikun direct-helper lifetime evidence
+
+Graphify resolves `mbev_CapTumujikunTrap` to `src/board/captrap.c:L1194` and
+binds the relevant helper edges, including `mbBranchAttrGet` and
+`mbMasuMAttrGet`. A single exact-name Graft lookup returned no indexed node, so
+the review stopped searching and narrowed to that function, its strict report,
+and its retained source. Before the final source change, size, CFG, call order,
+data, and all 193 physical relocations were already exact. The residual was one
+complete lifetime exchange: long-lived `randomStart` occupied candidate `r23`
+instead of target `r24`, while a repeatedly assigned but immediately consumed
+`branchAttr` mask occupied candidate `r24` instead of target `r23`.
+
+The graph-first lifetime rule is:
+
+- when a helper result local is assigned only at the use boundary, consumed
+  exactly once by the following mask expression, and not observed elsewhere,
+  first verify the helper's call count, call position, side effects, consumer,
+  and relocation are already target-exact;
+- if the strict residual is then a complete exchange between that transient
+  helper result and one authenticated long-lived owner, rank direct helper
+  consumption at each existing boundary before declaration order, lexical
+  scope, aliases, or a runtime trace; and
+- preserve the original number and ordering of helper calls. Do not hoist,
+  merge, duplicate, or delete a helper evaluation, and do not apply this rule
+  when the local has a second consumer or crosses a call/branch boundary.
+
+Candidate 79 applies exactly that bounded transformation: it removes only the
+single-use `branchAttr` local and directly consumes `mbBranchAttrGet()` in the
+same three mask expressions. The source SHA-256 is
+`d806b8cb5483fed8c5000f92beb77af7b52e205d5c08800c8643ef9dd1a25660`,
+the object SHA-256 is
+`d623d3ddd784f9b6d5f70ba235049126a948fa966ae9e2ba7f9c3c8bb41df03c`,
+and the byte-identical strict/data report SHA-256 is
+`334b7ad8c438468b2cad62e7459063e63cba342db22b5edf01f9af85440bfdbf`.
+`mbev_CapTumujikunTrap` is 3356/3356 bytes with zero rows and 193/193
+relocations; all fourteen protected exact siblings remain exact. The causal
+receipt `5f50f0f4a034601aa407231b42a131b97b4cd385b37c79c5d8eda4adc3252921`
+contains zero residual groups. Candidate 80 independently preserves the exact
+function in the composed owner source (`b14844c85badd3405ff66f80896e5bc6ad8702ccdfbbde329f9853b463bb2718`),
+so this is a reusable source-boundary rule, not a function-specific register
+hint and not a reason to create another trace producer.
+
 ## Verification
 
 Run only the focused module while expensive background scans are active:
