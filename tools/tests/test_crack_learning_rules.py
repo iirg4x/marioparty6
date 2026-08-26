@@ -1320,6 +1320,122 @@ def _reciprocal_context(
     }
 
 
+def _pool_live_range_report() -> dict[str, object]:
+    target_relocation = {
+        "type": 109,
+        "type_name": "R_PPC_EMB_SDA21",
+        "addend": 0,
+    }
+    candidate_relocation = dict(target_relocation)
+    target = [
+        _instruction(100, "stwu r1, -96(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "fmr f30, f1", diff_kind="DIFF_DELETE"),
+        _instruction(108, "addi r3, r3, 1", diff_kind="DIFF_REPLACE"),
+        _instruction(112, "lfs f1, 32(r31)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "lfs f0, 0(r30)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(
+            120,
+            "lfs f2, lbl_802C46D8@sda21(r13)",
+            relocation=target_relocation,
+        ),
+        _instruction(
+            124,
+            "lfs f3, lbl_802C46D8@sda21(r13)",
+            relocation=target_relocation,
+        ),
+        _instruction(128, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "stwu r1, -80(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _placeholder(),
+        _instruction(108, "lwz r3, 8(r3)", diff_kind="DIFF_REPLACE"),
+        _instruction(112, "lfs f0, 0(r30)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "lfs f1, 32(r31)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(
+            120,
+            "lfs f2, @anonymous@sda21(r13)",
+            relocation=candidate_relocation,
+        ),
+        _instruction(
+            124,
+            "lfs f3, @anonymous@sda21(r13)",
+            relocation=candidate_relocation,
+        ),
+        _instruction(128, "blr"),
+    ]
+    return _report(
+        "mbev_CapEffGlowOMExec",
+        target,
+        candidate,
+        target_size=1080,
+        candidate_size=1072,
+    )
+
+
+def _pool_live_range_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _pool_live_range_report()
+    return {
+        "schema": rules.POOL_LIVE_RANGE_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "pinned_mwcc_frontend": True,
+            "row_groups_disjoint": True,
+            "pool_values_equivalent": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "pool_decoder_receipt_sha256": "4" * 64,
+            "same_tu_owner_receipt_sha256": "5" * 64,
+            "source_range_receipt_sha256": "6" * 64,
+        },
+        "residual_groups": {
+            "live_range_rows": [0, 1, 2],
+            "comparison_rows": [3, 4],
+            "pool_owner_rows": [5, 6],
+        },
+        "pool_owner": {
+            "decoder_schema": "match_workbench_pool_decoder/v1",
+            "symbol": "lbl_802C46D8",
+            "value_type": "f32",
+            "value_bits": "41200000",
+            "target_consumer_count": 2,
+            "source_location": "game/src/board/capevent.c:L4894",
+        },
+        "source_actions": {
+            "live_temporaries": ["phaseRatio", "fadeFactor", "oneMinus"],
+            "preincrement_expression": "consume ++particleWorkP->cycle directly",
+            "comparison_expression": "if (particleWorkP->gravity)",
+            "pool_expression": "use lbl_802C46D8 for both authenticated consumers",
+        },
+        "precursor": {
+            "candidate_id": "capevent-glowom001-arithmetic",
+            "target_size": 1080,
+            "candidate_size": 1080,
+            "object_sha256": "7" * 64,
+            "candidate_record_sha256": "8" * 64,
+            "residual_rows": [3, 4, 5, 6],
+        },
+        "combined_cell": {
+            "candidate_id": "capevent-glowom002-exact",
+            "target_size": 1080,
+            "candidate_size": 1080,
+            "object_sha256": (
+                "86d08e3dd8234f322ffa591c0c2d45fd35b020281483824ea70b60e16e01e5f4"
+            ),
+            "candidate_record_sha256": (
+                "1798b5e31546aeae1b796ebe110bd7d7d9b806432e50efdddf1e3a56556287c4"
+            ),
+            "residual_rows": [],
+        },
+    }
+
+
 def _switch_fpr_report(*, include_switch: bool = True) -> dict[str, object]:
     target = [
         _instruction(100, "stwu r1, -160(r1)", diff_kind="DIFF_ARG_MISMATCH"),
@@ -2269,6 +2385,91 @@ class CrackLearningRulesTest(unittest.TestCase):
                 exact_sibling_transfer_context=false_proof,
             )
 
+    def test_pool_live_range_interaction_schedules_one_combined_cell(self) -> None:
+        report = _pool_live_range_report()
+        context = _pool_live_range_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffGlowOMExec",
+            pool_live_range_context=context,
+        )
+        diagnosis = _evaluation(result, "pool_live_range_interaction")
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["pool_owner"]["symbol"], "lbl_802C46D8")
+        self.assertEqual(evidence["pool_owner"]["value_bits"], "41200000")
+        self.assertEqual(len(evidence["live_range_rows"]), 3)
+        self.assertEqual(len(evidence["comparison_rows"]), 2)
+        self.assertEqual(len(evidence["pool_owner"]["rows"]), 2)
+        self.assertEqual(
+            evidence["measured_precursor"]["candidate_id"],
+            "capevent-glowom001-arithmetic",
+        )
+        self.assertEqual(len(evidence["scheduled_cells"]), 1)
+        self.assertEqual(
+            evidence["scheduled_cells"][0]["expected_object_sha256"],
+            "86d08e3dd8234f322ffa591c0c2d45fd35b020281483824ea70b60e16e01e5f4",
+        )
+        self.assertEqual(
+            result["implementations"]["typed_pool_decoder"]["schema"],
+            "match_workbench_pool_decoder/v1",
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_pool_live_range_interaction_fails_closed(self) -> None:
+        report = _pool_live_range_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapEffGlowOMExec"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "pool_live_range_interaction")["matched"]
+        )
+
+        overlapping = _pool_live_range_context(report)
+        overlapping["residual_groups"]["comparison_rows"] = [2, 4]  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "must be disjoint"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowOMExec",
+                pool_live_range_context=overlapping,
+            )
+
+        wrong_pool = _pool_live_range_report()
+        wrong_pool["right"]["symbols"][0]["instructions"][5]["instruction"][  # type: ignore[index]
+            "relocation"
+        ]["type_name"] = "R_PPC_ADDR32"
+        result = rules.diagnose_document(
+            wrong_pool,
+            focus_symbol="mbev_CapEffGlowOMExec",
+            pool_live_range_context=_pool_live_range_context(wrong_pool),
+        )
+        self.assertFalse(
+            _evaluation(result, "pool_live_range_interaction")["matched"]
+        )
+
+        extra_residual = _pool_live_range_report()
+        extra_residual["right"]["symbols"][0]["instructions"][7]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "nop"
+        result = rules.diagnose_document(
+            extra_residual,
+            focus_symbol="mbev_CapEffGlowOMExec",
+            pool_live_range_context=_pool_live_range_context(extra_residual),
+        )
+        self.assertFalse(
+            _evaluation(result, "pool_live_range_interaction")["matched"]
+        )
+
+        false_proof = _pool_live_range_context(report)
+        false_proof["proofs"]["pool_values_equivalent"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "pool_values_equivalent"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowOMExec",
+                pool_live_range_context=false_proof,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -2898,6 +3099,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapMasuLinkNextRandomGet",
                 exact_sibling_transfer_context=context,
+            ),
+        )
+
+    def test_pool_live_range_context_cli_emits_same_document(self) -> None:
+        report = _pool_live_range_report()
+        context = _pool_live_range_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "pool-live-range.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffGlowOMExec",
+                            "--pool-live-range-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffGlowOMExec",
+                pool_live_range_context=context,
             ),
         )
 

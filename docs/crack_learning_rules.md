@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns fifteen reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns sixteen reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v8` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v9` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -19,6 +19,24 @@ rtk python tools/crack_learning_rules.py \
   --report build/GP6E01/reports/candidate.strict.json \
   --function ev_CapBobleOMExec
 ```
+
+When typed pool-owner rows are disjoint from live-range and comparison rows,
+compose the installed pool decoder evidence before compiling another cell:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/glow-baseline.strict.json \
+  --function mbev_CapEffGlowOMExec \
+  --pool-live-range-context work/glow.pool-live-range-context.json
+```
+
+The closed `pool_live_range_interaction_context/v1` binds the canonical objdiff,
+typed-pool decoder receipt and same-TU owner receipt; partitions every residual
+into disjoint live-range, two-row float-comparison, and SDA21 pool-owner groups;
+and records the measured size-exact precursor plus the first exact combined
+cell. The rule verifies value-equivalent relocation aliases itself and schedules
+one natural combined cell. It never guesses a literal owner or duplicates the
+pool decoder or interaction planner.
 
 The aggregate-copy rule additionally requires an explicitly named exact donor
 from the same object report:
@@ -526,7 +544,7 @@ For the context-bound rules, pass parsed objects as `allocator_context=`,
 `aggregate_followup_context=`, `address_taken_context=`,
 `same_tu_shape_context=`, `short_circuit_context=`,
 `exact_sibling_transfer_context=`, `capacity_context=`, `branch_context=`, or
-`reciprocal_context=`. The same closed validation used by the CLI is applied
+`reciprocal_context=`, or `pool_live_range_context=`. The same closed validation used by the CLI is applied
 to Python callers.
 
 ## Installed-functionality audit
@@ -552,6 +570,7 @@ The fifteen joins are narrower than those generic classifications:
 | same-TU exact-sibling source shapes | Exact data/CFG/physical relocations/siblings; exact same-TU donor and caller receipts; one target-only fixed-array Boolean lowering; one candidate-only callee `extsh` feeding the same consumer store; one-load reverse-order aggregate zero stores; and no residual outside those groups | Compile one combined cell using the exact donor expression, authenticated wide callee view, and right-associative zero chain |
 | short-circuit Boolean call order | Larger baseline candidate; two sealed target call pairs in branch-getter then masu-getter order; target `bne`/`beq` destinations converging on one true/false assignment pair; duplicated candidate true assignments; pinned MWCC frontend receipt; and one later exact-topology closed four-owner GPR cycle | Explicit shared `if/else` with source-commuted AND operands, followed only by the sealed declaration chronology after topology is exact |
 | dependency-equivalent exact-sibling transfer | Distinct strict/data-exact sibling; authenticated equivalent dependency graph and capacity; the same sealed target/candidate call-order inversion and shared Boolean destinations; and three target-only adjacent `extsh`/s16-consumer pairs normalizing one owner | Transfer the sibling's semantic Boolean source and combine it only with the independently proved `int` owner and live array capacity in one cell |
+| typed pool/live-range interaction | Larger-target baseline; exact data/CFG/physical relocations/siblings; disjoint sealed live-range, two-row `lfs` comparison, and value-equivalent SDA21 owner groups; authenticated same-TU named f32 owner; and measured size-exact precursor/exact cells | Reuse the live temporaries and preincrement, use natural float truthiness, and bind the authenticated pool owner in one combined cell |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
@@ -563,6 +582,7 @@ These joins preserve the reviewed boundaries from
 `mbev_CapEffExplodeOMExec`, `mbev_CapEffGlowKinokoAddAlt`,
 `mbev_CapEffElectricModelSet`, `mbev_CapMasuLinkNextGet`,
 `mbev_CapMasuLinkNextRandomGet`,
+`mbev_CapEffGlowOMExec`,
 `ev_CapBobleOMExec`, and
 `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
@@ -604,6 +624,11 @@ The focused fixtures reject the tempting incomplete variants:
   whose donor expressions differ from the sealed mask tests, whose baseline
   call/branch topology drifts, or whose three target-only `extsh` rows are not
   adjacent to the named s16 consumers and sourced from one owner;
+- a typed pool/live-range claim whose row groups overlap, whose comparison is
+  not exactly two non-relocated `lfs` rows, whose pool relocations are not
+  value-equivalent SDA21 owner aliases, whose named owner is absent from the
+  target rows, whose precursor retains anything beyond comparison/pool rows,
+  or whose report has a residual outside the sealed groups;
 - an unaligned, zero/negative, or internally inconsistent stack extent; a used
   prefix larger than the candidate capacity; or producer maxima that disagree
   with the computed target capacity;
@@ -632,9 +657,10 @@ donors, and donor signature drift.
 The document binds canonical objdiff input, donor names, this implementation,
 and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
-allocator, parameter/allocation, capacity, branch, or reciprocal evidence by
-SHA-256; the allocator path also binds the installed interaction planner. Rule
-order and JSON serialization are stable.
+allocator, parameter/allocation, typed-pool/live-range, capacity, branch, or
+reciprocal evidence by SHA-256; the allocator path also binds the installed
+interaction planner, and the typed-pool path binds the installed pool decoder.
+Rule order and JSON serialization are stable.
 
 No diagnosis establishes semantic names, original spelling, or source
 provenance. It never authorizes a source edit, candidate retention, promotion,

@@ -25,8 +25,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v8"
-SCHEMA_VERSION = 8
+SCHEMA = "crack_learning_diagnosis/v9"
+SCHEMA_VERSION = 9
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
@@ -38,6 +38,7 @@ SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
     "dependency_equivalent_exact_sibling_transfer_context/v1"
 )
+POOL_LIVE_RANGE_CONTEXT_SCHEMA = "pool_live_range_interaction_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -216,6 +217,24 @@ _EXACT_SIBLING_TRANSFER_PROOF_HASHES = (
     "capacity_receipt_sha256",
     "type_boundary_receipt_sha256",
 )
+_POOL_LIVE_RANGE_PROOF_FLAGS = (
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "pinned_mwcc_frontend",
+    "row_groups_disjoint",
+    "pool_values_equivalent",
+)
+_POOL_LIVE_RANGE_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "pool_decoder_receipt_sha256",
+    "same_tu_owner_receipt_sha256",
+    "source_range_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -276,6 +295,7 @@ _RULE_ORDER = (
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
     "dependency_equivalent_exact_sibling_transfer",
+    "pool_live_range_interaction",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -2884,6 +2904,302 @@ def _parse_exact_sibling_transfer_context(
         "type_boundary": normalized_boundary,
         "capacity": normalized_capacity,
         "combined_cell": normalized_combined,
+    }
+
+
+def _parse_pool_live_range_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "residual_groups",
+            "pool_owner",
+            "source_actions",
+            "precursor",
+            "combined_cell",
+        },
+        required={
+            "schema",
+            "proofs",
+            "residual_groups",
+            "pool_owner",
+            "source_actions",
+            "precursor",
+            "combined_cell",
+        },
+        label="pool/live-range interaction context",
+    )
+    if (
+        _context_text(
+            context.get("schema"), "pool/live-range interaction context schema"
+        )
+        != POOL_LIVE_RANGE_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            "pool/live-range interaction context schema must be "
+            f"{POOL_LIVE_RANGE_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_POOL_LIVE_RANGE_PROOF_FLAGS) | set(
+        _POOL_LIVE_RANGE_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="pool/live-range interaction context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _POOL_LIVE_RANGE_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"pool/live-range interaction context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _POOL_LIVE_RANGE_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field),
+            f"pool/live-range interaction context proofs.{field}",
+        )
+
+    residuals = _closed_context(
+        context.get("residual_groups"),
+        allowed={"live_range_rows", "comparison_rows", "pool_owner_rows"},
+        required={"live_range_rows", "comparison_rows", "pool_owner_rows"},
+        label="pool/live-range interaction residual_groups",
+    )
+    normalized_residuals = {
+        "live_range_rows": _context_rows(
+            residuals.get("live_range_rows"),
+            "pool/live-range interaction residual_groups.live_range_rows",
+            maximum_count=512,
+        ),
+        "comparison_rows": _context_rows(
+            residuals.get("comparison_rows"),
+            "pool/live-range interaction residual_groups.comparison_rows",
+            minimum_count=2,
+            maximum_count=2,
+        ),
+        "pool_owner_rows": _context_rows(
+            residuals.get("pool_owner_rows"),
+            "pool/live-range interaction residual_groups.pool_owner_rows",
+            minimum_count=1,
+            maximum_count=16,
+        ),
+    }
+    row_sets = [set(rows) for rows in normalized_residuals.values()]
+    if any(row_sets[i] & row_sets[j] for i in range(3) for j in range(i + 1, 3)):
+        raise LearningInputError(
+            "pool/live-range interaction residual row groups must be disjoint"
+        )
+
+    pool = _closed_context(
+        context.get("pool_owner"),
+        allowed={
+            "decoder_schema",
+            "symbol",
+            "value_type",
+            "value_bits",
+            "target_consumer_count",
+            "source_location",
+        },
+        required={
+            "decoder_schema",
+            "symbol",
+            "value_type",
+            "value_bits",
+            "target_consumer_count",
+            "source_location",
+        },
+        label="pool/live-range interaction pool_owner",
+    )
+    decoder_schema = _context_text(
+        pool.get("decoder_schema"),
+        "pool/live-range interaction pool_owner.decoder_schema",
+    )
+    if decoder_schema != "match_workbench_pool_decoder/v1":
+        raise LearningInputError(
+            "pool/live-range interaction requires match_workbench_pool_decoder/v1"
+        )
+    value_type = _context_text(
+        pool.get("value_type"), "pool/live-range interaction pool_owner.value_type"
+    )
+    if value_type != "f32":
+        raise LearningInputError("pool/live-range interaction pool owner must be f32")
+    value_bits = _context_text(
+        pool.get("value_bits"),
+        "pool/live-range interaction pool_owner.value_bits",
+        limit=8,
+    ).lower()
+    if re.fullmatch(r"[0-9a-f]{8}", value_bits) is None:
+        raise LearningInputError(
+            "pool/live-range interaction pool owner bits must be eight lowercase hex digits"
+        )
+    normalized_pool = {
+        "decoder_schema": decoder_schema,
+        "symbol": _context_identifier(
+            pool.get("symbol"), "pool/live-range interaction pool_owner.symbol"
+        ),
+        "value_type": value_type,
+        "value_bits": value_bits,
+        "target_consumer_count": _context_uint(
+            pool.get("target_consumer_count"),
+            "pool/live-range interaction pool_owner.target_consumer_count",
+            minimum=1,
+        ),
+        "source_location": _context_text(
+            pool.get("source_location"),
+            "pool/live-range interaction pool_owner.source_location",
+            limit=512,
+        ),
+    }
+    if normalized_pool["target_consumer_count"] != len(
+        normalized_residuals["pool_owner_rows"]
+    ):
+        raise LearningInputError(
+            "pool/live-range interaction pool consumer count must equal the sealed pool rows"
+        )
+
+    actions = _closed_context(
+        context.get("source_actions"),
+        allowed={
+            "live_temporaries",
+            "preincrement_expression",
+            "comparison_expression",
+            "pool_expression",
+        },
+        required={
+            "live_temporaries",
+            "preincrement_expression",
+            "comparison_expression",
+            "pool_expression",
+        },
+        label="pool/live-range interaction source_actions",
+    )
+    raw_temporaries = actions.get("live_temporaries")
+    if not isinstance(raw_temporaries, list) or not 1 <= len(raw_temporaries) <= 16:
+        raise LearningInputError(
+            "pool/live-range interaction live_temporaries must contain 1-16 names"
+        )
+    temporaries = [
+        _context_identifier(
+            item, f"pool/live-range interaction live_temporaries[{index}]"
+        )
+        for index, item in enumerate(raw_temporaries)
+    ]
+    if len(set(temporaries)) != len(temporaries):
+        raise LearningInputError(
+            "pool/live-range interaction live temporaries must be distinct"
+        )
+    normalized_actions = {
+        "live_temporaries": temporaries,
+        "preincrement_expression": _context_text(
+            actions.get("preincrement_expression"),
+            "pool/live-range interaction source_actions.preincrement_expression",
+            limit=512,
+        ),
+        "comparison_expression": _context_text(
+            actions.get("comparison_expression"),
+            "pool/live-range interaction source_actions.comparison_expression",
+            limit=512,
+        ),
+        "pool_expression": _context_text(
+            actions.get("pool_expression"),
+            "pool/live-range interaction source_actions.pool_expression",
+            limit=512,
+        ),
+    }
+    if normalized_pool["symbol"] not in normalized_actions["pool_expression"]:
+        raise LearningInputError(
+            "pool/live-range interaction source action must name the authenticated pool owner"
+        )
+
+    def parse_cell(raw: Any, *, label: str, exact: bool) -> dict[str, Any]:
+        cell = _closed_context(
+            raw,
+            allowed={
+                "candidate_id",
+                "target_size",
+                "candidate_size",
+                "object_sha256",
+                "candidate_record_sha256",
+                "residual_rows",
+            },
+            required={
+                "candidate_id",
+                "target_size",
+                "candidate_size",
+                "object_sha256",
+                "candidate_record_sha256",
+                "residual_rows",
+            },
+            label=label,
+        )
+        normalized = {
+            "candidate_id": _context_text(
+                cell.get("candidate_id"), f"{label}.candidate_id", limit=128
+            ),
+            "target_size": _context_uint(
+                cell.get("target_size"), f"{label}.target_size", minimum=4
+            ),
+            "candidate_size": _context_uint(
+                cell.get("candidate_size"), f"{label}.candidate_size", minimum=4
+            ),
+            "object_sha256": _context_sha256(
+                cell.get("object_sha256"), f"{label}.object_sha256"
+            ),
+            "candidate_record_sha256": _context_sha256(
+                cell.get("candidate_record_sha256"),
+                f"{label}.candidate_record_sha256",
+            ),
+            "residual_rows": _context_rows(
+                cell.get("residual_rows"),
+                f"{label}.residual_rows",
+                minimum_count=0 if exact else 1,
+                maximum_count=512,
+            ),
+        }
+        if normalized["target_size"] != normalized["candidate_size"]:
+            raise LearningInputError(f"{label} must be function-size exact")
+        if exact and normalized["residual_rows"]:
+            raise LearningInputError(f"{label} must have zero residual rows")
+        return normalized
+
+    precursor = parse_cell(
+        context.get("precursor"),
+        label="pool/live-range interaction precursor",
+        exact=False,
+    )
+    combined = parse_cell(
+        context.get("combined_cell"),
+        label="pool/live-range interaction combined_cell",
+        exact=True,
+    )
+    expected_precursor_rows = sorted(
+        set(normalized_residuals["comparison_rows"])
+        | set(normalized_residuals["pool_owner_rows"])
+    )
+    if precursor["residual_rows"] != expected_precursor_rows:
+        raise LearningInputError(
+            "pool/live-range interaction precursor residuals must be exactly the comparison and pool-owner rows"
+        )
+    if (
+        precursor["target_size"] != combined["target_size"]
+        or combined["target_size"] != combined["candidate_size"]
+    ):
+        raise LearningInputError(
+            "pool/live-range interaction precursor and exact cell must share one target size"
+        )
+
+    return {
+        "schema": POOL_LIVE_RANGE_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "residual_groups": normalized_residuals,
+        "pool_owner": normalized_pool,
+        "source_actions": normalized_actions,
+        "precursor": precursor,
+        "combined_cell": combined,
     }
 
 
@@ -6197,6 +6513,201 @@ def _dependency_equivalent_exact_sibling_transfer_evaluation(
     )
 
 
+def _pool_live_range_interaction_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "pool_live_range_interaction"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated typed-pool/live-range interaction context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the pool/live-range context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    exact_cell = context["combined_cell"]
+    if (
+        target_size != exact_cell["target_size"]
+        or candidate_size is None
+        or candidate_size >= target_size
+        or exact_cell["candidate_size"] != target_size
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the baseline and combined-cell sizes do not encode one larger-target closure",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "combined_size": exact_cell["candidate_size"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+    groups = context["residual_groups"]
+    all_learning_rows = set().union(*(set(values) for values in groups.values()))
+    if any(index >= len(rows) for index in all_learning_rows):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="a sealed pool/live-range row is outside the focus function",
+        )
+
+    live_evidence: list[dict[str, Any]] = []
+    for index in groups["live_range_rows"]:
+        left, right = rows[index]
+        if _equivalent_outside_learning_window(left, right):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a sealed live-range row is physically equivalent and cannot support the interaction",
+                evidence={"row_index": index},
+            )
+        live_evidence.append(
+            {
+                "row_index": index,
+                "target_formatted": left.formatted if left is not None else None,
+                "candidate_formatted": right.formatted if right is not None else None,
+            }
+        )
+
+    comparison_evidence: list[dict[str, Any]] = []
+    for index in groups["comparison_rows"]:
+        left, right = rows[index]
+        if (
+            left is None
+            or right is None
+            or not left.has_instruction
+            or not right.has_instruction
+            or left.mnemonic != "lfs"
+            or right.mnemonic != "lfs"
+            or left.relocation is not None
+            or right.relocation is not None
+            or _equivalent_outside_learning_window(left, right)
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the comparison group is not exactly two non-relocated lfs load-order residuals",
+                evidence={"row_index": index},
+            )
+        comparison_evidence.append(
+            {
+                "row_index": index,
+                "target_formatted": left.formatted,
+                "candidate_formatted": right.formatted,
+            }
+        )
+
+    pool = context["pool_owner"]
+    pool_evidence: list[dict[str, Any]] = []
+    for index in groups["pool_owner_rows"]:
+        left, right = rows[index]
+        if (
+            left is None
+            or right is None
+            or not left.has_instruction
+            or not right.has_instruction
+            or not _mapped_pool_relocation_alias_pair(left, right)
+            or re.search(rf"\b{re.escape(pool['symbol'])}\b", left.formatted)
+            is None
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a sealed pool row is not one value-equivalent SDA21 owner alias",
+                evidence={"row_index": index},
+            )
+        pool_evidence.append(
+            {
+                "row_index": index,
+                "target_formatted": left.formatted,
+                "candidate_formatted": right.formatted,
+                "relocation_type": dict(_relocation_type_signature(left) or ()),
+            }
+        )
+
+    outside_residuals = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if index not in all_learning_rows
+        and not _equivalent_outside_learning_window(left, right)
+    ]
+    if outside_residuals:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the report has physical residuals outside the sealed live-range, comparison, and pool groups",
+            evidence={"outside_residual_rows": outside_residuals},
+        )
+
+    actions = context["source_actions"]
+    scheduled_cell = {
+        "id": exact_cell["candidate_id"],
+        "source_class": "composed_live_range_truthiness_and_named_pool_owner",
+        "source_actions": [
+            (
+                "reuse the authenticated live temporaries in chronology: "
+                + ", ".join(actions["live_temporaries"])
+            ),
+            actions["preincrement_expression"],
+            actions["comparison_expression"],
+            actions["pool_expression"],
+        ],
+        "expected_object_sha256": exact_cell["object_sha256"],
+        "candidate_record_sha256": exact_cell["candidate_record_sha256"],
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the residual partitions into disjoint live-range topology, float-load-order, "
+            "and value-equivalent typed pool-owner groups, so the installed evidence can "
+            "be composed before the next compile"
+        ),
+        confidence=0.98,
+        source_class="typed_pool_owner_and_live_range_combined_cell",
+        recommendation=(
+            "Compile the emitted combined natural-C cell first; use the measured precursor "
+            "only as causal evidence and do not schedule literal-value, broad declaration, "
+            "or sequential single-axis permutations."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "live_range_rows": live_evidence,
+            "comparison_rows": comparison_evidence,
+            "pool_owner": {
+                **pool,
+                "rows": pool_evidence,
+                "decoder_receipt_sha256": context["proofs"][
+                    "pool_decoder_receipt_sha256"
+                ],
+            },
+            "measured_precursor": context["precursor"],
+            "scheduled_cells": [scheduled_cell],
+            "suppressed_axes": [
+                "literal_value_permutations",
+                "broad_declaration_order_permutations",
+                "sequential_pool_then_lifetime_compiles",
+                "anonymous_pool_owner_guessing",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -6477,6 +6988,7 @@ def diagnose_document(
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
     exact_sibling_transfer_context: Mapping[str, Any] | None = None,
+    pool_live_range_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -6532,6 +7044,11 @@ def diagnose_document(
     normalized_exact_sibling_transfer_context = (
         _parse_exact_sibling_transfer_context(exact_sibling_transfer_context)
         if exact_sibling_transfer_context is not None
+        else None
+    )
+    normalized_pool_live_range_context = (
+        _parse_pool_live_range_context(pool_live_range_context)
+        if pool_live_range_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -6632,6 +7149,13 @@ def diagnose_document(
             normalized_exact_sibling_transfer_context,
             objdiff_canonical_sha256,
         ),
+        _pool_live_range_interaction_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_pool_live_range_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -6698,6 +7222,11 @@ def diagnose_document(
                 if normalized_exact_sibling_transfer_context is not None
                 else None
             ),
+            "pool_live_range_context_canonical_sha256": (
+                _sha256(_canonical(normalized_pool_live_range_context))
+                if normalized_pool_live_range_context is not None
+                else None
+            ),
             "capacity_context_canonical_sha256": (
                 _sha256(_canonical(normalized_capacity_context))
                 if normalized_capacity_context is not None
@@ -6728,6 +7257,13 @@ def diagnose_document(
                 "path": Path(interaction_planner.__file__).name,
                 "schema": interaction_planner.REQUEST_SCHEMA,
                 "sha256": _sha256(Path(interaction_planner.__file__).read_bytes()),
+            },
+            "typed_pool_decoder": {
+                "path": "match_workbench.py",
+                "schema": "match_workbench_pool_decoder/v1",
+                "sha256": _sha256(
+                    Path(__file__).with_name("match_workbench.py").read_bytes()
+                ),
             },
         },
         "evaluations": evaluations,
@@ -6834,6 +7370,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--pool-live-range-context",
+        type=Path,
+        help=(
+            "authenticated pool_live_range_interaction_context/v1 JSON with "
+            "disjoint live-range, truthiness, and typed pool-owner groups"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -6923,6 +7467,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="dependency-equivalent exact-sibling transfer context",
                 )
                 if args.exact_sibling_transfer_context is not None
+                else None
+            ),
+            pool_live_range_context=(
+                _load_json(
+                    args.pool_live_range_context,
+                    label="pool/live-range interaction context",
+                )
+                if args.pool_live_range_context is not None
                 else None
             ),
             capacity_context=(
