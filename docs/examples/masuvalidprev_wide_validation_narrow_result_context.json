@@ -1,0 +1,110 @@
+{
+  "schema": "wide_validation_narrow_result_context/v1",
+  "proofs": {
+    "function_size_exact": true,
+    "data_values_exact": true,
+    "physical_relocations_exact": true,
+    "cfg_calls_exact": true,
+    "protected_siblings_preserved": true,
+    "exact_sibling_authenticated": true,
+    "repeated_index_authenticated": true,
+    "pinned_mwcc_frontend": true,
+    "exact_result_verified": true,
+    "objdiff_canonical_sha256": "27ce987e64f8ec309beb91f4180dfd62c812dc15ae728117b6c720f2c01b2d2d",
+    "strict_report_sha256": "091ad69dd7072c5839b40bf718abcfd3959b9fe750d33a8b6a4ab7fb327dd498",
+    "data_report_sha256": "61cf62cdff2c9c982ca9cf30ce2041e40093dfaf676ff50da74e76517a551f5f",
+    "physical_relocation_receipt_sha256": "18542ffdf756e9445cca151a744184931d577f14c3ab38fbb84c7d4ad492bc89",
+    "graph_receipt_sha256": "18542ffdf756e9445cca151a744184931d577f14c3ab38fbb84c7d4ad492bc89",
+    "graft_receipt_sha256": "18542ffdf756e9445cca151a744184931d577f14c3ab38fbb84c7d4ad492bc89",
+    "exact_sibling_record_sha256": "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02",
+    "wide_control_record_sha256": "7d90f425e405e4772db13660e76440ad807f9c3f96c46875c755f15caa885d6a",
+    "narrow_control_record_sha256": "afef08adbef83b354b3f7fa04205c11a40dc341aa1b66b7e1f9c2fe6ce49c069",
+    "exact_result_record_sha256": "fe8c625ce736b0c9a381354bda0db08e5def7d339b3c276789c9e5518fc4ba27"
+  },
+  "exact_sibling": {
+    "symbol": "mbev_CapMasuLinkNextGet",
+    "source_location": "game/src/board/capevent.c:L5371",
+    "transformation_class": "shared_boolean_call_order",
+    "source_expressions": [
+      "mbMasuAttrGet(linkMasu) & mbBranchAttrGet()",
+      "mbMasuMAttrGet(linkMasu) & mbBranchMAttrGet()"
+    ],
+    "candidate_record_sha256": "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02",
+    "evidence_sha256": "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02"
+  },
+  "repeated_load": {
+    "array_name": "linkTbl",
+    "index_owner": "i",
+    "element_type": "s16",
+    "target_rows": [21, 45],
+    "candidate_rows": [21, 45],
+    "target_registers": ["r27", "r30"],
+    "candidate_registers": ["r30", "r30"],
+    "address_registers": ["r3", "r0"],
+    "evidence_sha256": "5c937baf16ad8f5dbfc983cced3a9b02f3a31731c7806e53ff762465fb06f507"
+  },
+  "validation_identity": {
+    "owner": "linkMasu",
+    "source_type": "int",
+    "consumer_type": "s16",
+    "load_row": 21,
+    "target_register": "r27",
+    "candidate_register": "r30",
+    "normalization_rows": [24, 32],
+    "consumer_call_rows": [25, 33],
+    "consumer_symbols": ["mbMasuAttrGet", "mbMasuMAttrGet"],
+    "evidence_sha256": "5c937baf16ad8f5dbfc983cced3a9b02f3a31731c7806e53ff762465fb06f507"
+  },
+  "selected_identity": {
+    "owner": "prevMasu",
+    "source_type": "s16",
+    "load_row": 45,
+    "target_register": "r30",
+    "candidate_register": "r30",
+    "argument_row": 61,
+    "consumer_call_row": 63,
+    "consumer_symbol": "mbMasuPosGet",
+    "return_row": 64,
+    "target_has_no_normalization": true,
+    "evidence_sha256": "5c937baf16ad8f5dbfc983cced3a9b02f3a31731c7806e53ff762465fb06f507"
+  },
+  "controls": [
+    {
+      "kind": "wide_only",
+      "candidate_id": "capevent-masuvalidprev001-wide-local",
+      "target_size": 284,
+      "candidate_size": 284,
+      "strict_exact": false,
+      "object_sha256": "b10b0cc355711716d8df35f41a51c00215cd42fc0a905dcef0b5c5554ba25297",
+      "strict_report_sha256": "091ad69dd7072c5839b40bf718abcfd3959b9fe750d33a8b6a4ab7fb327dd498",
+      "data_report_sha256": "61cf62cdff2c9c982ca9cf30ce2041e40093dfaf676ff50da74e76517a551f5f",
+      "candidate_record_sha256": "7d90f425e405e4772db13660e76440ad807f9c3f96c46875c755f15caa885d6a",
+      "unresolved_boundary": "selected_result_normalization"
+    },
+    {
+      "kind": "narrow_only",
+      "candidate_id": "capevent-masuvalidprev002-narrow-local",
+      "target_size": 284,
+      "candidate_size": 284,
+      "strict_exact": false,
+      "object_sha256": "6a98dd54bda37a965cec3f8562fcf7ce5d70aed9db606a6210e3fa08f56b5558",
+      "strict_report_sha256": "adc33ddbaa8b396d5d3bb7c79e82be4890f70af7e97ce2249505e322d381ece1",
+      "data_report_sha256": "02ef85a9c644c05aadc75a485e096c4788594b4790010f7715bab2a01237f302",
+      "candidate_record_sha256": "afef08adbef83b354b3f7fa04205c11a40dc341aa1b66b7e1f9c2fe6ce49c069",
+      "unresolved_boundary": "validation_normalization"
+    }
+  ],
+  "combined_cell": {
+    "candidate_id": "capevent-masuvalidprev003-exact",
+    "target_size": 284,
+    "candidate_size": 284,
+    "strict_exact": true,
+    "data_exact": true,
+    "physical_relocations": "8/8",
+    "source_sha256": "ed6efefa1ac93e2d6fbe05ca4cf958827a65509bc832c7f14590621a917a7d84",
+    "object_sha256": "a923f49545b9e1cb17b80c50989d38791405884475d0cad017f1d82a72a9f5b3",
+    "strict_report_sha256": "ba99dc6f872bdddad456b16429c5dd1909b59c32287ffbc0710a84821ad79a36",
+    "data_report_sha256": "5bb8759d52a43405d13295dc9c16916830c474723cfb8bdc6c4725858a6060db",
+    "candidate_record_sha256": "fe8c625ce736b0c9a381354bda0db08e5def7d339b3c276789c9e5518fc4ba27"
+  }
+}

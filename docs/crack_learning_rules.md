@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v12` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v13` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -466,6 +466,29 @@ agree does the detector schedule one combined cell: the sibling's semantic
 Boolean source, the independently proved `int` owner, and the authenticated
 array capacity. It suppresses fresh CFG permutations, declaration-order probes,
 narrow owner guesses, and capacity guessing.
+
+When one indexed `s16` table entry is loaded twice but retail assigns the two
+loads different semantic owners, bind the wide validation identity separately
+from the narrow selected result:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/masuvalidprev-wide-only.strict.json.gz \
+  --function mbev_CapMasuValidPrevGet \
+  --wide-validation-narrow-result-context \
+    docs/examples/masuvalidprev_wide_validation_narrow_result_context.json \
+  > work/masuvalidprev.learning.json
+```
+
+`wide_validation_narrow_result_context/v1` requires two same-address `lhax`
+events with distinct target saved GPRs, a first owner normalized immediately at
+both truthful `s16` validation calls, and a second owner reaching its typed
+consumer and return without `extsh`. It also requires exact-size,
+relocation-exact wide-only and narrow-only controls that fail on complementary
+boundaries, plus an independently verified exact combined cell. The detector
+schedules only the exact-sibling Boolean transfer composed with `int linkMasu`
+and separate `s16 prevMasu`; it suppresses the two serial type probes, broad
+declaration permutations, dead duplicate loads, and guessed ABI changes.
 
 The Kokamekku-derived capacity and loop-destination rules are also unavailable
 from objdiff rows alone. Supply either or both closed evidence contexts:

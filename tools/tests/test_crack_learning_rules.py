@@ -1223,6 +1223,165 @@ def _exact_sibling_transfer_context(
     }
 
 
+def _wide_validation_narrow_result_report() -> dict[str, object]:
+    target = [
+        _instruction(100, "lhax r27, r3, r0", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "extsh r3, r27", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "bl mbMasuAttrGet"),
+        _instruction(112, "extsh r3, r27", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "bl mbMasuMAttrGet"),
+        _instruction(120, "lhax r30, r3, r0"),
+        _instruction(124, "mr r3, r30", diff_kind="DIFF_REPLACE"),
+        _instruction(128, "mr r4, r26"),
+        _instruction(132, "bl mbMasuPosGet"),
+        _instruction(136, "mr r3, r30", diff_kind="DIFF_REPLACE"),
+        _instruction(140, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "lhax r30, r3, r0", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "extsh r3, r30", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "bl mbMasuAttrGet"),
+        _instruction(112, "extsh r3, r30", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "bl mbMasuMAttrGet"),
+        _instruction(120, "lhax r30, r3, r0"),
+        _instruction(124, "extsh r3, r30", diff_kind="DIFF_REPLACE"),
+        _instruction(128, "mr r4, r26"),
+        _instruction(132, "bl mbMasuPosGet"),
+        _instruction(136, "extsh r3, r30", diff_kind="DIFF_REPLACE"),
+        _instruction(140, "blr"),
+    ]
+    return _report(
+        "mbev_CapMasuValidPrevGet",
+        target,
+        candidate,
+        target_size=284,
+        candidate_size=284,
+    )
+
+
+def _wide_validation_narrow_result_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _wide_validation_narrow_result_report()
+    wide_record = "7d90f425e405e4772db13660e76440ad807f9c3f96c46875c755f15caa885d6a"
+    narrow_record = "afef08adbef83b354b3f7fa04205c11a40dc341aa1b66b7e1f9c2fe6ce49c069"
+    exact_record = "fe8c625ce736b0c9a381354bda0db08e5def7d339b3c276789c9e5518fc4ba27"
+    return {
+        "schema": rules.WIDE_VALIDATION_NARROW_RESULT_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "function_size_exact": True,
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "exact_sibling_authenticated": True,
+            "repeated_index_authenticated": True,
+            "pinned_mwcc_frontend": True,
+            "exact_result_verified": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "graph_receipt_sha256": "4" * 64,
+            "graft_receipt_sha256": "5" * 64,
+            "exact_sibling_record_sha256": (
+                "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02"
+            ),
+            "wide_control_record_sha256": wide_record,
+            "narrow_control_record_sha256": narrow_record,
+            "exact_result_record_sha256": exact_record,
+        },
+        "exact_sibling": {
+            "symbol": "mbev_CapMasuLinkNextGet",
+            "source_location": "game/src/board/capevent.c:L5371",
+            "transformation_class": "shared_boolean_call_order",
+            "source_expressions": [
+                "mbMasuAttrGet(linkMasu) & mbBranchAttrGet()",
+                "mbMasuMAttrGet(linkMasu) & mbBranchMAttrGet()",
+            ],
+            "candidate_record_sha256": (
+                "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02"
+            ),
+            "evidence_sha256": "6" * 64,
+        },
+        "repeated_load": {
+            "array_name": "linkTbl",
+            "index_owner": "i",
+            "element_type": "s16",
+            "target_rows": [0, 5],
+            "candidate_rows": [0, 5],
+            "target_registers": ["r27", "r30"],
+            "candidate_registers": ["r30", "r30"],
+            "address_registers": ["r3", "r0"],
+            "evidence_sha256": "7" * 64,
+        },
+        "validation_identity": {
+            "owner": "linkMasu",
+            "source_type": "int",
+            "consumer_type": "s16",
+            "load_row": 0,
+            "target_register": "r27",
+            "candidate_register": "r30",
+            "normalization_rows": [1, 3],
+            "consumer_call_rows": [2, 4],
+            "consumer_symbols": ["mbMasuAttrGet", "mbMasuMAttrGet"],
+            "evidence_sha256": "8" * 64,
+        },
+        "selected_identity": {
+            "owner": "prevMasu",
+            "source_type": "s16",
+            "load_row": 5,
+            "target_register": "r30",
+            "candidate_register": "r30",
+            "argument_row": 6,
+            "consumer_call_row": 8,
+            "consumer_symbol": "mbMasuPosGet",
+            "return_row": 9,
+            "target_has_no_normalization": True,
+            "evidence_sha256": "9" * 64,
+        },
+        "controls": [
+            {
+                "kind": "wide_only",
+                "candidate_id": "capevent-masuvalidprev001-wide-local",
+                "target_size": 284,
+                "candidate_size": 284,
+                "strict_exact": False,
+                "object_sha256": "a" * 64,
+                "strict_report_sha256": "b" * 64,
+                "data_report_sha256": "c" * 64,
+                "candidate_record_sha256": wide_record,
+                "unresolved_boundary": "selected_result_normalization",
+            },
+            {
+                "kind": "narrow_only",
+                "candidate_id": "capevent-masuvalidprev002-narrow-local",
+                "target_size": 284,
+                "candidate_size": 284,
+                "strict_exact": False,
+                "object_sha256": "d" * 64,
+                "strict_report_sha256": "e" * 64,
+                "data_report_sha256": "f" * 64,
+                "candidate_record_sha256": narrow_record,
+                "unresolved_boundary": "validation_normalization",
+            },
+        ],
+        "combined_cell": {
+            "candidate_id": "capevent-masuvalidprev003-exact",
+            "target_size": 284,
+            "candidate_size": 284,
+            "strict_exact": True,
+            "data_exact": True,
+            "physical_relocations": "8/8",
+            "source_sha256": "1" * 64,
+            "object_sha256": "2" * 64,
+            "strict_report_sha256": "3" * 64,
+            "data_report_sha256": "4" * 64,
+            "candidate_record_sha256": exact_record,
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -2968,6 +3127,104 @@ class CrackLearningRulesTest(unittest.TestCase):
                 exact_sibling_transfer_context=false_proof,
             )
 
+    def test_wide_validation_narrow_selected_result_schedules_combined_cell(
+        self,
+    ) -> None:
+        report = _wide_validation_narrow_result_report()
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapMasuValidPrevGet",
+            wide_validation_narrow_result_context=(
+                _wide_validation_narrow_result_context(report)
+            ),
+        )
+        diagnosis = _evaluation(result, "wide_validation_narrow_selected_result")
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(
+            evidence["repeated_load"]["target_registers"], ["r27", "r30"]
+        )
+        self.assertEqual(
+            evidence["repeated_load"]["candidate_registers"], ["r30", "r30"]
+        )
+        self.assertEqual(
+            [item["consumer"] for item in evidence["validation_identity"]["normalization_calls"]],
+            ["mbMasuAttrGet", "mbMasuMAttrGet"],
+        )
+        cell = evidence["scheduled_cells"][0]
+        self.assertEqual(cell["declarations"], ["int linkMasu", "s16 prevMasu"])
+        self.assertIn("wide_only_serial_probe", evidence["suppressed_axes"])
+        self.assertIn("narrow_only_serial_probe", evidence["suppressed_axes"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_wide_validation_narrow_selected_result_fails_closed(self) -> None:
+        report = _wide_validation_narrow_result_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapMasuValidPrevGet"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "wide_validation_narrow_selected_result")[
+                "matched"
+            ]
+        )
+
+        wrong_second_load = _wide_validation_narrow_result_report()
+        wrong_second_load["left"]["symbols"][0]["instructions"][5]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "lhax r30, r4, r0"
+        result = rules.diagnose_document(
+            wrong_second_load,
+            focus_symbol="mbev_CapMasuValidPrevGet",
+            wide_validation_narrow_result_context=(
+                _wide_validation_narrow_result_context(wrong_second_load)
+            ),
+        )
+        self.assertFalse(
+            _evaluation(result, "wide_validation_narrow_selected_result")["matched"]
+        )
+
+        wrong_validation = _wide_validation_narrow_result_report()
+        wrong_validation["left"]["symbols"][0]["instructions"][1]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "mr r3, r27"
+        result = rules.diagnose_document(
+            wrong_validation,
+            focus_symbol="mbev_CapMasuValidPrevGet",
+            wide_validation_narrow_result_context=(
+                _wide_validation_narrow_result_context(wrong_validation)
+            ),
+        )
+        self.assertFalse(
+            _evaluation(result, "wide_validation_narrow_selected_result")["matched"]
+        )
+
+        wrong_selected = _wide_validation_narrow_result_report()
+        wrong_selected["left"]["symbols"][0]["instructions"][6]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "extsh r3, r30"
+        result = rules.diagnose_document(
+            wrong_selected,
+            focus_symbol="mbev_CapMasuValidPrevGet",
+            wide_validation_narrow_result_context=(
+                _wide_validation_narrow_result_context(wrong_selected)
+            ),
+        )
+        self.assertFalse(
+            _evaluation(result, "wide_validation_narrow_selected_result")["matched"]
+        )
+
+        false_proof = _wide_validation_narrow_result_context(report)
+        false_proof["proofs"]["repeated_index_authenticated"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(
+            rules.LearningInputError, "repeated_index_authenticated"
+        ):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuValidPrevGet",
+                wide_validation_narrow_result_context=false_proof,
+            )
+
     def test_pool_live_range_interaction_schedules_one_combined_cell(self) -> None:
         report = _pool_live_range_report()
         context = _pool_live_range_context(report)
@@ -3792,6 +4049,40 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapMasuLinkNextRandomGet",
                 exact_sibling_transfer_context=context,
+            ),
+        )
+
+    def test_wide_validation_narrow_result_context_cli_emits_same_document(
+        self,
+    ) -> None:
+        report = _wide_validation_narrow_result_report()
+        context = _wide_validation_narrow_result_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "wide-validation-narrow-result.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapMasuValidPrevGet",
+                            "--wide-validation-narrow-result-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuValidPrevGet",
+                wide_validation_narrow_result_context=context,
             ),
         )
 

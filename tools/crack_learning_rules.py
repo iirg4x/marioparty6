@@ -27,8 +27,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v12"
-SCHEMA_VERSION = 12
+SCHEMA = "crack_learning_diagnosis/v13"
+SCHEMA_VERSION = 13
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -43,6 +43,9 @@ SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
     "dependency_equivalent_exact_sibling_transfer_context/v1"
+)
+WIDE_VALIDATION_NARROW_RESULT_CONTEXT_SCHEMA = (
+    "wide_validation_narrow_result_context/v1"
 )
 POOL_LIVE_RANGE_CONTEXT_SCHEMA = "pool_live_range_interaction_context/v1"
 FLOAT_TRUTHINESS_CONTEXT_SCHEMA = "float_truthiness_comparison_context/v1"
@@ -245,6 +248,29 @@ _EXACT_SIBLING_TRANSFER_PROOF_HASHES = (
     "capacity_receipt_sha256",
     "type_boundary_receipt_sha256",
 )
+_WIDE_VALIDATION_NARROW_RESULT_PROOF_FLAGS = (
+    "function_size_exact",
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "exact_sibling_authenticated",
+    "repeated_index_authenticated",
+    "pinned_mwcc_frontend",
+    "exact_result_verified",
+)
+_WIDE_VALIDATION_NARROW_RESULT_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "graph_receipt_sha256",
+    "graft_receipt_sha256",
+    "exact_sibling_record_sha256",
+    "wide_control_record_sha256",
+    "narrow_control_record_sha256",
+    "exact_result_record_sha256",
+)
 _POOL_LIVE_RANGE_PROOF_FLAGS = (
     "data_values_exact",
     "physical_relocations_exact",
@@ -369,6 +395,7 @@ _RULE_ORDER = (
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
     "dependency_equivalent_exact_sibling_transfer",
+    "wide_validation_narrow_selected_result",
     "pool_live_range_interaction",
     "float_truthiness_comparison_ranking",
     "stack_extent_interface_capacity",
@@ -3468,6 +3495,311 @@ def _parse_exact_sibling_transfer_context(
         },
         "type_boundary": normalized_boundary,
         "capacity": normalized_capacity,
+        "combined_cell": normalized_combined,
+    }
+
+
+def _parse_wide_validation_narrow_result_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    label = "wide-validation/narrow-result context"
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "exact_sibling",
+            "repeated_load",
+            "validation_identity",
+            "selected_identity",
+            "controls",
+            "combined_cell",
+        },
+        required={
+            "schema",
+            "proofs",
+            "exact_sibling",
+            "repeated_load",
+            "validation_identity",
+            "selected_identity",
+            "controls",
+            "combined_cell",
+        },
+        label=label,
+    )
+    if _context_text(context.get("schema"), f"{label} schema") != (
+        WIDE_VALIDATION_NARROW_RESULT_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"{label} schema must be {WIDE_VALIDATION_NARROW_RESULT_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_WIDE_VALIDATION_NARROW_RESULT_PROOF_FLAGS) | set(
+        _WIDE_VALIDATION_NARROW_RESULT_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label=f"{label} proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _WIDE_VALIDATION_NARROW_RESULT_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(f"{label} proofs.{field} must be true")
+        normalized_proofs[field] = True
+    for field in _WIDE_VALIDATION_NARROW_RESULT_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"{label} proofs.{field}"
+        )
+
+    sibling = _closed_context(
+        context.get("exact_sibling"),
+        allowed={
+            "symbol",
+            "source_location",
+            "transformation_class",
+            "source_expressions",
+            "candidate_record_sha256",
+            "evidence_sha256",
+        },
+        required={
+            "symbol",
+            "source_location",
+            "transformation_class",
+            "source_expressions",
+            "candidate_record_sha256",
+            "evidence_sha256",
+        },
+        label=f"{label} exact_sibling",
+    )
+    expressions = sibling.get("source_expressions")
+    if not isinstance(expressions, list) or len(expressions) != 2:
+        raise LearningInputError(
+            f"{label} exact_sibling.source_expressions must contain two entries"
+        )
+    normalized_sibling = {
+        "symbol": _context_identifier(
+            sibling.get("symbol"), f"{label} exact_sibling.symbol"
+        ),
+        "source_location": _context_text(
+            sibling.get("source_location"),
+            f"{label} exact_sibling.source_location",
+            limit=512,
+        ),
+        "transformation_class": _context_identifier(
+            sibling.get("transformation_class"),
+            f"{label} exact_sibling.transformation_class",
+        ),
+        "source_expressions": [
+            _context_text(
+                item,
+                f"{label} exact_sibling.source_expressions[{index}]",
+                limit=512,
+            )
+            for index, item in enumerate(expressions)
+        ],
+        "candidate_record_sha256": _context_sha256(
+            sibling.get("candidate_record_sha256"),
+            f"{label} exact_sibling.candidate_record_sha256",
+        ),
+        "evidence_sha256": _context_sha256(
+            sibling.get("evidence_sha256"),
+            f"{label} exact_sibling.evidence_sha256",
+        ),
+    }
+    if normalized_sibling["transformation_class"] != "shared_boolean_call_order":
+        raise LearningInputError(
+            f"{label} exact_sibling.transformation_class must be shared_boolean_call_order"
+        )
+
+    def gpr(raw: Any, field: str, *, saved: bool = False) -> str:
+        register = _context_text(raw, f"{label} {field}", limit=4).lower()
+        if re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", register) is None:
+            raise LearningInputError(f"{label} {field} must be a GPR")
+        if saved and not _saved(register, "r"):
+            raise LearningInputError(f"{label} {field} must be a nonvolatile GPR")
+        return register
+
+    repeated = _closed_context(
+        context.get("repeated_load"),
+        allowed={
+            "array_name",
+            "index_owner",
+            "element_type",
+            "target_rows",
+            "candidate_rows",
+            "target_registers",
+            "candidate_registers",
+            "address_registers",
+            "evidence_sha256",
+        },
+        required={
+            "array_name",
+            "index_owner",
+            "element_type",
+            "target_rows",
+            "candidate_rows",
+            "target_registers",
+            "candidate_registers",
+            "address_registers",
+            "evidence_sha256",
+        },
+        label=f"{label} repeated_load",
+    )
+    target_rows = _context_rows(
+        repeated.get("target_rows"), f"{label} repeated_load.target_rows", minimum_count=2, maximum_count=2
+    )
+    candidate_rows = _context_rows(
+        repeated.get("candidate_rows"), f"{label} repeated_load.candidate_rows", minimum_count=2, maximum_count=2
+    )
+    target_registers_raw = repeated.get("target_registers")
+    candidate_registers_raw = repeated.get("candidate_registers")
+    address_registers_raw = repeated.get("address_registers")
+    if not isinstance(target_registers_raw, list) or len(target_registers_raw) != 2:
+        raise LearningInputError(f"{label} repeated_load.target_registers must contain two entries")
+    if not isinstance(candidate_registers_raw, list) or len(candidate_registers_raw) != 2:
+        raise LearningInputError(f"{label} repeated_load.candidate_registers must contain two entries")
+    if not isinstance(address_registers_raw, list) or len(address_registers_raw) != 2:
+        raise LearningInputError(f"{label} repeated_load.address_registers must contain two entries")
+    target_registers = [gpr(item, f"repeated_load.target_registers[{index}]", saved=True) for index, item in enumerate(target_registers_raw)]
+    candidate_registers = [gpr(item, f"repeated_load.candidate_registers[{index}]", saved=True) for index, item in enumerate(candidate_registers_raw)]
+    address_registers = [gpr(item, f"repeated_load.address_registers[{index}]") for index, item in enumerate(address_registers_raw)]
+    if target_registers[0] == target_registers[1] or candidate_registers[0] != candidate_registers[1]:
+        raise LearningInputError(
+            f"{label} repeated_load must bind distinct target identities collapsed into one candidate owner"
+        )
+    normalized_repeated = {
+        "array_name": _context_identifier(repeated.get("array_name"), f"{label} repeated_load.array_name"),
+        "index_owner": _context_identifier(repeated.get("index_owner"), f"{label} repeated_load.index_owner"),
+        "element_type": _context_identifier(repeated.get("element_type"), f"{label} repeated_load.element_type"),
+        "target_rows": target_rows,
+        "candidate_rows": candidate_rows,
+        "target_registers": target_registers,
+        "candidate_registers": candidate_registers,
+        "address_registers": address_registers,
+        "evidence_sha256": _context_sha256(repeated.get("evidence_sha256"), f"{label} repeated_load.evidence_sha256"),
+    }
+
+    validation = _closed_context(
+        context.get("validation_identity"),
+        allowed={"owner", "source_type", "consumer_type", "load_row", "target_register", "candidate_register", "normalization_rows", "consumer_call_rows", "consumer_symbols", "evidence_sha256"},
+        required={"owner", "source_type", "consumer_type", "load_row", "target_register", "candidate_register", "normalization_rows", "consumer_call_rows", "consumer_symbols", "evidence_sha256"},
+        label=f"{label} validation_identity",
+    )
+    normalization_rows = _context_rows(validation.get("normalization_rows"), f"{label} validation_identity.normalization_rows", minimum_count=2, maximum_count=2)
+    consumer_call_rows = _context_rows(validation.get("consumer_call_rows"), f"{label} validation_identity.consumer_call_rows", minimum_count=2, maximum_count=2)
+    consumer_symbols = validation.get("consumer_symbols")
+    if not isinstance(consumer_symbols, list) or len(consumer_symbols) != 2:
+        raise LearningInputError(f"{label} validation_identity.consumer_symbols must contain two entries")
+    normalized_validation = {
+        "owner": _context_identifier(validation.get("owner"), f"{label} validation_identity.owner"),
+        "source_type": _context_identifier(validation.get("source_type"), f"{label} validation_identity.source_type"),
+        "consumer_type": _context_identifier(validation.get("consumer_type"), f"{label} validation_identity.consumer_type"),
+        "load_row": _context_uint(validation.get("load_row"), f"{label} validation_identity.load_row"),
+        "target_register": gpr(validation.get("target_register"), "validation_identity.target_register", saved=True),
+        "candidate_register": gpr(validation.get("candidate_register"), "validation_identity.candidate_register", saved=True),
+        "normalization_rows": normalization_rows,
+        "consumer_call_rows": consumer_call_rows,
+        "consumer_symbols": [_context_identifier(item, f"{label} validation_identity.consumer_symbols[{index}]") for index, item in enumerate(consumer_symbols)],
+        "evidence_sha256": _context_sha256(validation.get("evidence_sha256"), f"{label} validation_identity.evidence_sha256"),
+    }
+    if normalized_validation["source_type"] != "int" or normalized_validation["consumer_type"] != "s16":
+        raise LearningInputError(f"{label} validation_identity must be int consumed as s16")
+
+    selected = _closed_context(
+        context.get("selected_identity"),
+        allowed={"owner", "source_type", "load_row", "target_register", "candidate_register", "argument_row", "consumer_call_row", "consumer_symbol", "return_row", "target_has_no_normalization", "evidence_sha256"},
+        required={"owner", "source_type", "load_row", "target_register", "candidate_register", "argument_row", "consumer_call_row", "consumer_symbol", "return_row", "target_has_no_normalization", "evidence_sha256"},
+        label=f"{label} selected_identity",
+    )
+    if selected.get("target_has_no_normalization") is not True:
+        raise LearningInputError(f"{label} selected_identity.target_has_no_normalization must be true")
+    normalized_selected = {
+        "owner": _context_identifier(selected.get("owner"), f"{label} selected_identity.owner"),
+        "source_type": _context_identifier(selected.get("source_type"), f"{label} selected_identity.source_type"),
+        "load_row": _context_uint(selected.get("load_row"), f"{label} selected_identity.load_row"),
+        "target_register": gpr(selected.get("target_register"), "selected_identity.target_register", saved=True),
+        "candidate_register": gpr(selected.get("candidate_register"), "selected_identity.candidate_register", saved=True),
+        "argument_row": _context_uint(selected.get("argument_row"), f"{label} selected_identity.argument_row"),
+        "consumer_call_row": _context_uint(selected.get("consumer_call_row"), f"{label} selected_identity.consumer_call_row"),
+        "consumer_symbol": _context_identifier(selected.get("consumer_symbol"), f"{label} selected_identity.consumer_symbol"),
+        "return_row": _context_uint(selected.get("return_row"), f"{label} selected_identity.return_row"),
+        "target_has_no_normalization": True,
+        "evidence_sha256": _context_sha256(selected.get("evidence_sha256"), f"{label} selected_identity.evidence_sha256"),
+    }
+    if normalized_selected["source_type"] != "s16":
+        raise LearningInputError(f"{label} selected_identity.source_type must be s16")
+    if (
+        normalized_validation["load_row"] != target_rows[0]
+        or normalized_selected["load_row"] != target_rows[1]
+        or normalized_validation["target_register"] != target_registers[0]
+        or normalized_selected["target_register"] != target_registers[1]
+        or normalized_validation["candidate_register"] != candidate_registers[0]
+        or normalized_selected["candidate_register"] != candidate_registers[1]
+    ):
+        raise LearningInputError(f"{label} identity/load bindings disagree with repeated_load")
+
+    raw_controls = context.get("controls")
+    if not isinstance(raw_controls, list) or len(raw_controls) != 2:
+        raise LearningInputError(f"{label} controls must contain wide_only and narrow_only")
+    controls: list[dict[str, Any]] = []
+    control_fields = {"kind", "candidate_id", "target_size", "candidate_size", "strict_exact", "object_sha256", "strict_report_sha256", "data_report_sha256", "candidate_record_sha256", "unresolved_boundary"}
+    for index, raw in enumerate(raw_controls):
+        control = _closed_context(raw, allowed=control_fields, required=control_fields, label=f"{label} controls[{index}]")
+        kind = _context_identifier(control.get("kind"), f"{label} controls[{index}].kind")
+        if kind not in {"wide_only", "narrow_only"} or control.get("strict_exact") is not False:
+            raise LearningInputError(f"{label} controls must be nonexact wide_only/narrow_only cells")
+        item = {
+            "kind": kind,
+            "candidate_id": _context_text(control.get("candidate_id"), f"{label} controls[{index}].candidate_id", limit=128),
+            "target_size": _context_uint(control.get("target_size"), f"{label} controls[{index}].target_size", minimum=4),
+            "candidate_size": _context_uint(control.get("candidate_size"), f"{label} controls[{index}].candidate_size", minimum=4),
+            "strict_exact": False,
+            "object_sha256": _context_sha256(control.get("object_sha256"), f"{label} controls[{index}].object_sha256"),
+            "strict_report_sha256": _context_sha256(control.get("strict_report_sha256"), f"{label} controls[{index}].strict_report_sha256"),
+            "data_report_sha256": _context_sha256(control.get("data_report_sha256"), f"{label} controls[{index}].data_report_sha256"),
+            "candidate_record_sha256": _context_sha256(control.get("candidate_record_sha256"), f"{label} controls[{index}].candidate_record_sha256"),
+            "unresolved_boundary": _context_identifier(control.get("unresolved_boundary"), f"{label} controls[{index}].unresolved_boundary"),
+        }
+        if item["target_size"] != item["candidate_size"]:
+            raise LearningInputError(f"{label} controls must be function-size exact")
+        controls.append(item)
+    if {item["kind"] for item in controls} != {"wide_only", "narrow_only"}:
+        raise LearningInputError(f"{label} controls must contain one wide_only and one narrow_only")
+
+    combined = _closed_context(
+        context.get("combined_cell"),
+        allowed={"candidate_id", "target_size", "candidate_size", "strict_exact", "data_exact", "physical_relocations", "source_sha256", "object_sha256", "strict_report_sha256", "data_report_sha256", "candidate_record_sha256"},
+        required={"candidate_id", "target_size", "candidate_size", "strict_exact", "data_exact", "physical_relocations", "source_sha256", "object_sha256", "strict_report_sha256", "data_report_sha256", "candidate_record_sha256"},
+        label=f"{label} combined_cell",
+    )
+    if combined.get("strict_exact") is not True or combined.get("data_exact") is not True:
+        raise LearningInputError(f"{label} combined_cell must be strict/data exact")
+    normalized_combined = {
+        "candidate_id": _context_text(combined.get("candidate_id"), f"{label} combined_cell.candidate_id", limit=128),
+        "target_size": _context_uint(combined.get("target_size"), f"{label} combined_cell.target_size", minimum=4),
+        "candidate_size": _context_uint(combined.get("candidate_size"), f"{label} combined_cell.candidate_size", minimum=4),
+        "strict_exact": True,
+        "data_exact": True,
+        "physical_relocations": _context_text(combined.get("physical_relocations"), f"{label} combined_cell.physical_relocations", limit=32),
+        "source_sha256": _context_sha256(combined.get("source_sha256"), f"{label} combined_cell.source_sha256"),
+        "object_sha256": _context_sha256(combined.get("object_sha256"), f"{label} combined_cell.object_sha256"),
+        "strict_report_sha256": _context_sha256(combined.get("strict_report_sha256"), f"{label} combined_cell.strict_report_sha256"),
+        "data_report_sha256": _context_sha256(combined.get("data_report_sha256"), f"{label} combined_cell.data_report_sha256"),
+        "candidate_record_sha256": _context_sha256(combined.get("candidate_record_sha256"), f"{label} combined_cell.candidate_record_sha256"),
+    }
+    if normalized_combined["target_size"] != normalized_combined["candidate_size"]:
+        raise LearningInputError(f"{label} combined_cell must be function-size exact")
+
+    return {
+        "schema": WIDE_VALIDATION_NARROW_RESULT_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "exact_sibling": normalized_sibling,
+        "repeated_load": normalized_repeated,
+        "validation_identity": normalized_validation,
+        "selected_identity": normalized_selected,
+        "controls": sorted(controls, key=lambda item: item["kind"]),
         "combined_cell": normalized_combined,
     }
 
@@ -8004,6 +8336,296 @@ def _dependency_equivalent_exact_sibling_transfer_evaluation(
     )
 
 
+def _wide_validation_narrow_result_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "wide_validation_narrow_selected_result"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated wide-validation/narrow-result context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the wide-validation/narrow-result context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    combined = context["combined_cell"]
+    if (
+        target_size is None
+        or candidate_size != target_size
+        or combined["target_size"] != target_size
+        or combined["candidate_size"] != target_size
+        or context["exact_sibling"]["symbol"] == pair.name
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the size-exact control, exact combined cell, or distinct sibling boundary is not sealed",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "combined_size": combined["candidate_size"],
+                "sibling_symbol": context["exact_sibling"]["symbol"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+
+    def side(index: int, which: int) -> causal_reducer.Instruction | None:
+        if not 0 <= index < len(rows):
+            return None
+        return rows[index][which]
+
+    repeated = context["repeated_load"]
+    load_evidence: list[dict[str, Any]] = []
+    for index, (target_row, candidate_row) in enumerate(
+        zip(repeated["target_rows"], repeated["candidate_rows"])
+    ):
+        target_load = side(target_row, 0)
+        candidate_load = side(candidate_row, 1)
+        target_registers = (
+            _registers(target_load.formatted, "r")
+            if target_load is not None and target_load.has_instruction
+            else []
+        )
+        candidate_registers = (
+            _registers(candidate_load.formatted, "r")
+            if candidate_load is not None and candidate_load.has_instruction
+            else []
+        )
+        if (
+            target_load is None
+            or candidate_load is None
+            or not target_load.has_instruction
+            or not candidate_load.has_instruction
+            or target_load.mnemonic != "lhax"
+            or candidate_load.mnemonic != "lhax"
+            or target_registers[:3]
+            != [repeated["target_registers"][index], *repeated["address_registers"]]
+            or candidate_registers[:3]
+            != [repeated["candidate_registers"][index], *repeated["address_registers"]]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the two same-index lhax events do not bind the sealed target/candidate identities",
+                evidence={"load_index": index},
+            )
+        load_evidence.append(
+            {
+                "target_row": target_row,
+                "candidate_row": candidate_row,
+                "target": target_load.formatted,
+                "candidate": candidate_load.formatted,
+            }
+        )
+
+    validation = context["validation_identity"]
+    normalization_evidence: list[dict[str, Any]] = []
+    for index, (normalization_row, call_row, consumer) in enumerate(
+        zip(
+            validation["normalization_rows"],
+            validation["consumer_call_rows"],
+            validation["consumer_symbols"],
+        )
+    ):
+        target_normalization = side(normalization_row, 0)
+        candidate_normalization = side(normalization_row, 1)
+        target_call = side(call_row, 0)
+        candidate_call = side(call_row, 1)
+        target_registers = (
+            _registers(target_normalization.formatted, "r")
+            if target_normalization is not None and target_normalization.has_instruction
+            else []
+        )
+        candidate_registers = (
+            _registers(candidate_normalization.formatted, "r")
+            if candidate_normalization is not None and candidate_normalization.has_instruction
+            else []
+        )
+        if (
+            target_normalization is None
+            or candidate_normalization is None
+            or target_call is None
+            or candidate_call is None
+            or not target_normalization.has_instruction
+            or not candidate_normalization.has_instruction
+            or not target_call.has_instruction
+            or not candidate_call.has_instruction
+            or target_normalization.mnemonic != "extsh"
+            or candidate_normalization.mnemonic != "extsh"
+            or target_registers[:2] != ["r3", validation["target_register"]]
+            or candidate_registers[:2] != ["r3", validation["candidate_register"]]
+            or call_row != normalization_row + 1
+            or target_call.mnemonic not in _CALL_MNEMONICS
+            or candidate_call.mnemonic not in _CALL_MNEMONICS
+            or re.search(rf"\b{re.escape(consumer)}\b", target_call.formatted) is None
+            or re.search(rf"\b{re.escape(consumer)}\b", candidate_call.formatted) is None
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the wide validation owner is not normalized at both sealed s16 call boundaries",
+                evidence={"boundary_index": index},
+            )
+        normalization_evidence.append(
+            {
+                "normalization_row": normalization_row,
+                "call_row": call_row,
+                "consumer": consumer,
+                "target": target_normalization.formatted,
+                "candidate": candidate_normalization.formatted,
+            }
+        )
+
+    selected = context["selected_identity"]
+    target_argument = side(selected["argument_row"], 0)
+    candidate_argument = side(selected["argument_row"], 1)
+    target_call = side(selected["consumer_call_row"], 0)
+    candidate_call = side(selected["consumer_call_row"], 1)
+    target_return = side(selected["return_row"], 0)
+    candidate_return = side(selected["return_row"], 1)
+
+    def is_owner_transfer(
+        item: causal_reducer.Instruction | None,
+        mnemonic: str,
+        source: str,
+    ) -> bool:
+        return bool(
+            item is not None
+            and item.has_instruction
+            and item.mnemonic == mnemonic
+            and _registers(item.formatted, "r")[:2] == ["r3", source]
+        )
+
+    if (
+        not is_owner_transfer(target_argument, "mr", selected["target_register"])
+        or not is_owner_transfer(candidate_argument, "extsh", selected["candidate_register"])
+        or target_call is None
+        or candidate_call is None
+        or not target_call.has_instruction
+        or not candidate_call.has_instruction
+        or target_call.mnemonic not in _CALL_MNEMONICS
+        or candidate_call.mnemonic not in _CALL_MNEMONICS
+        or re.search(rf"\b{re.escape(selected['consumer_symbol'])}\b", target_call.formatted)
+        is None
+        or re.search(rf"\b{re.escape(selected['consumer_symbol'])}\b", candidate_call.formatted)
+        is None
+        or not is_owner_transfer(target_return, "mr", selected["target_register"])
+        or not is_owner_transfer(candidate_return, "extsh", selected["candidate_register"])
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the selected result is not a target-wide/no-normalization versus candidate-extsh boundary",
+        )
+
+    for row_index in range(selected["load_row"], selected["return_row"] + 1):
+        item = side(row_index, 0)
+        if (
+            item is not None
+            and item.has_instruction
+            and item.mnemonic == "extsh"
+            and selected["target_register"] in _registers(item.formatted, "r")[1:]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the target unexpectedly normalizes the selected narrow result",
+                evidence={"row_index": row_index},
+            )
+
+    controls = {item["kind"]: item for item in context["controls"]}
+    if (
+        controls["wide_only"]["target_size"] != target_size
+        or controls["narrow_only"]["target_size"] != target_size
+        or controls["wide_only"]["candidate_record_sha256"]
+        != context["proofs"]["wide_control_record_sha256"]
+        or controls["narrow_only"]["candidate_record_sha256"]
+        != context["proofs"]["narrow_control_record_sha256"]
+        or combined["candidate_record_sha256"]
+        != context["proofs"]["exact_result_record_sha256"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the complementary controls or exact result are not bound to the proof root",
+        )
+
+    boolean_expression = (
+        f"if (({context['exact_sibling']['source_expressions'][0]}) || "
+        f"({context['exact_sibling']['source_expressions'][1]})) {{ validF = TRUE; }} "
+        "else { validF = FALSE; }"
+    )
+    scheduled_cell = {
+        "id": combined["candidate_id"],
+        "source_class": "exact_sibling_boolean_plus_wide_validation_and_narrow_selected_identity",
+        "transferred_expression": boolean_expression,
+        "declarations": [
+            f"int {validation['owner']}",
+            f"s16 {selected['owner']}",
+        ],
+        "expected_object_sha256": combined["object_sha256"],
+        "candidate_record_sha256": combined["candidate_record_sha256"],
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "two target lhax events use the same indexed address but distinct saved owners; "
+            "the first is normalized at both validation calls while the second reaches its "
+            "consumer and return without normalization, and the wide-only/narrow-only controls "
+            "fail complementarily"
+        ),
+        confidence=0.99,
+        source_class="wide_validation_identity_plus_narrow_selected_result",
+        recommendation=(
+            "Transfer the exact sibling shared-Boolean source and compile one composed cell "
+            "with an int validation local and a separate s16 selected-result local."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "exact_sibling": context["exact_sibling"],
+            "repeated_load": {
+                **repeated,
+                "machine_rows": load_evidence,
+            },
+            "validation_identity": {
+                **validation,
+                "normalization_calls": normalization_evidence,
+            },
+            "selected_identity": {
+                **selected,
+                "target_argument": target_argument.formatted,
+                "candidate_argument": candidate_argument.formatted,
+                "target_return": target_return.formatted,
+                "candidate_return": candidate_return.formatted,
+            },
+            "controls": context["controls"],
+            "scheduled_cells": [scheduled_cell],
+            "suppressed_axes": [
+                "wide_only_serial_probe",
+                "narrow_only_serial_probe",
+                "declaration_permutations",
+                "dead_duplicate_loads",
+                "guessed_abi_changes",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _pool_live_range_interaction_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -8659,6 +9281,7 @@ def diagnose_document(
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
     exact_sibling_transfer_context: Mapping[str, Any] | None = None,
+    wide_validation_narrow_result_context: Mapping[str, Any] | None = None,
     pool_live_range_context: Mapping[str, Any] | None = None,
     float_truthiness_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
@@ -8726,6 +9349,13 @@ def diagnose_document(
     normalized_exact_sibling_transfer_context = (
         _parse_exact_sibling_transfer_context(exact_sibling_transfer_context)
         if exact_sibling_transfer_context is not None
+        else None
+    )
+    normalized_wide_validation_narrow_result_context = (
+        _parse_wide_validation_narrow_result_context(
+            wide_validation_narrow_result_context
+        )
+        if wide_validation_narrow_result_context is not None
         else None
     )
     normalized_pool_live_range_context = (
@@ -8848,6 +9478,13 @@ def diagnose_document(
             normalized_exact_sibling_transfer_context,
             objdiff_canonical_sha256,
         ),
+        _wide_validation_narrow_result_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_wide_validation_narrow_result_context,
+            objdiff_canonical_sha256,
+        ),
         _pool_live_range_interaction_evaluation(
             pair,
             target,
@@ -8936,6 +9573,11 @@ def diagnose_document(
             "exact_sibling_transfer_context_canonical_sha256": (
                 _sha256(_canonical(normalized_exact_sibling_transfer_context))
                 if normalized_exact_sibling_transfer_context is not None
+                else None
+            ),
+            "wide_validation_narrow_result_context_canonical_sha256": (
+                _sha256(_canonical(normalized_wide_validation_narrow_result_context))
+                if normalized_wide_validation_narrow_result_context is not None
                 else None
             ),
             "pool_live_range_context_canonical_sha256": (
@@ -9112,6 +9754,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--wide-validation-narrow-result-context",
+        type=Path,
+        help=(
+            "authenticated wide_validation_narrow_result_context/v1 JSON with two "
+            "same-index loads, complementary wide-only/narrow-only controls, and one "
+            "verified combined exact cell"
+        ),
+    )
+    parser.add_argument(
         "--pool-live-range-context",
         type=Path,
         help=(
@@ -9234,6 +9885,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="dependency-equivalent exact-sibling transfer context",
                 )
                 if args.exact_sibling_transfer_context is not None
+                else None
+            ),
+            wide_validation_narrow_result_context=(
+                _load_json(
+                    args.wide_validation_narrow_result_context,
+                    label="wide-validation/narrow-selected-result context",
+                )
+                if args.wide_validation_narrow_result_context is not None
                 else None
             ),
             pool_live_range_context=(
