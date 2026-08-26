@@ -915,6 +915,164 @@ def _short_circuit_context(
     }
 
 
+def _exact_sibling_transfer_report() -> dict[str, object]:
+    target = [
+        _instruction(100, "stwu r1, -80(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "bl mbBranchAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "extsh r3, r26", diff_kind="DIFF_INSERT"),
+        _instruction(112, "bl mbMasuAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "bne 0x90", diff_kind="DIFF_ARG_MISMATCH", branch_dest=144),
+        _instruction(120, "bl mbBranchMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(124, "extsh r3, r26", diff_kind="DIFF_INSERT"),
+        _instruction(128, "bl mbMasuMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(132, "beq 0x94", diff_kind="DIFF_ARG_MISMATCH", branch_dest=148),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _instruction(144, "li r27, 1", diff_kind="DIFF_INSERT"),
+        _instruction(148, "li r27, 0", diff_kind="DIFF_INSERT"),
+        _instruction(152, "extsh r3, r26", diff_kind="DIFF_INSERT"),
+        _instruction(156, "bl mbMasuPosGet"),
+        _instruction(160, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "stwu r1, -96(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "bl mbMasuAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _placeholder("DIFF_INSERT"),
+        _instruction(112, "bl mbBranchAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(116, "bne 0x88", diff_kind="DIFF_ARG_MISMATCH", branch_dest=136),
+        _instruction(120, "bl mbMasuMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _placeholder("DIFF_INSERT"),
+        _instruction(128, "bl mbBranchMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(132, "beq 0x90", diff_kind="DIFF_ARG_MISMATCH", branch_dest=144),
+        _instruction(136, "li r27, 1", diff_kind="DIFF_DELETE"),
+        _instruction(140, "li r27, 1", diff_kind="DIFF_DELETE"),
+        _instruction(144, "li r27, 0", diff_kind="DIFF_DELETE"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _instruction(156, "bl mbMasuPosGet"),
+        _instruction(160, "blr"),
+    ]
+    return _report(
+        "mbev_CapMasuLinkNextRandomGet",
+        target,
+        candidate,
+        target_size=428,
+        candidate_size=436,
+    )
+
+
+def _exact_sibling_transfer_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _exact_sibling_transfer_report()
+    expressions = [
+        "mbMasuAttrGet(linkMasu) & mbBranchAttrGet()",
+        "mbMasuMAttrGet(linkMasu) & mbBranchMAttrGet()",
+    ]
+    return {
+        "schema": rules.EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "physical_relocations_exact": True,
+            "data_sections_exact": True,
+            "protected_siblings_preserved": True,
+            "donor_strict_exact": True,
+            "donor_data_exact": True,
+            "dependency_graph_equivalent": True,
+            "capacity_authenticated": True,
+            "pinned_mwcc_frontend": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "donor_record_sha256": "4" * 64,
+            "dependency_graph_receipt_sha256": "5" * 64,
+            "capacity_receipt_sha256": "6" * 64,
+            "type_boundary_receipt_sha256": "7" * 64,
+        },
+        "donor": {
+            "symbol": "mbev_CapMasuLinkNextGet",
+            "source_location": "game/src/board/capevent.c:L5371",
+            "transformation_class": "shared_boolean_call_order",
+            "source_expressions": expressions,
+            "candidate_record_sha256": (
+                "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02"
+            ),
+            "evidence_sha256": "8" * 64,
+        },
+        "baseline": {
+            "mask_tests": [
+                {
+                    "source_left": "mbMasuAttrGet(linkMasu)",
+                    "source_right": "mbBranchAttrGet()",
+                    "source_expression": expressions[0],
+                    "branch_getter": "mbBranchAttrGet",
+                    "masu_getter": "mbMasuAttrGet",
+                    "target_branch_call_row": 1,
+                    "target_masu_call_row": 3,
+                    "candidate_masu_call_row": 1,
+                    "candidate_branch_call_row": 3,
+                    "evidence_sha256": "9" * 64,
+                },
+                {
+                    "source_left": "mbMasuMAttrGet(linkMasu)",
+                    "source_right": "mbBranchMAttrGet()",
+                    "source_expression": expressions[1],
+                    "branch_getter": "mbBranchMAttrGet",
+                    "masu_getter": "mbMasuMAttrGet",
+                    "target_branch_call_row": 5,
+                    "target_masu_call_row": 7,
+                    "candidate_masu_call_row": 5,
+                    "candidate_branch_call_row": 7,
+                    "evidence_sha256": "a" * 64,
+                },
+            ],
+            "shared_boolean": {
+                "target_branch_rows": [4, 8],
+                "target_true_assignment_row": 11,
+                "target_false_assignment_row": 12,
+                "candidate_true_assignment_rows": [9, 10],
+                "candidate_false_assignment_row": 11,
+                "result_register": "r27",
+                "result_owner": "blockedF",
+                "evidence_sha256": "b" * 64,
+            },
+        },
+        "type_boundary": {
+            "owner": "linkMasu",
+            "source_type": "int",
+            "consumer_type": "s16",
+            "target_extsh_rows": [2, 6, 13],
+            "target_consumer_call_rows": [3, 7, 14],
+            "consumer_symbols": [
+                "mbMasuAttrGet",
+                "mbMasuMAttrGet",
+                "mbMasuPosGet",
+            ],
+            "evidence_sha256": "c" * 64,
+        },
+        "capacity": {
+            "array_name": "masuTbl",
+            "macro": "MASU_LINK_MAX",
+            "value": 5,
+            "element_size": 2,
+            "target_extent_bytes": 10,
+            "source_location": "include/game/board/masu.h:L6",
+            "evidence_sha256": "d" * 64,
+        },
+        "combined_cell": {
+            "candidate_id": "capevent-masurandom001-exact",
+            "target_size": 428,
+            "candidate_size": 428,
+            "object_sha256": (
+                "5d2b15050f845f6c799bcaab562f812883b5c1f2e6aace24f0a0fbb2cf894e1a"
+            ),
+            "candidate_record_sha256": (
+                "32d02ecbdd54b6eb08a34b282acf3eba750b9e60790976d5f17b4b7e834bac83"
+            ),
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -1998,6 +2156,119 @@ class CrackLearningRulesTest(unittest.TestCase):
                 short_circuit_context=false_proof,
             )
 
+    def test_dependency_equivalent_exact_sibling_transfer_schedules_one_cell(
+        self,
+    ) -> None:
+        report = _exact_sibling_transfer_report()
+        context = _exact_sibling_transfer_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapMasuLinkNextRandomGet",
+            exact_sibling_transfer_context=context,
+        )
+        diagnosis = _evaluation(
+            result, "dependency_equivalent_exact_sibling_transfer"
+        )
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["donor"]["symbol"], "mbev_CapMasuLinkNextGet")
+        self.assertEqual(
+            [item["target_call_order"] for item in evidence["call_order"]],
+            [
+                ["mbBranchAttrGet", "mbMasuAttrGet"],
+                ["mbBranchMAttrGet", "mbMasuMAttrGet"],
+            ],
+        )
+        self.assertEqual(
+            [item["consumer"] for item in evidence["type_boundary"]["extsh_calls"]],
+            ["mbMasuAttrGet", "mbMasuMAttrGet", "mbMasuPosGet"],
+        )
+        self.assertEqual(evidence["capacity"]["value"], 5)
+        self.assertEqual(len(evidence["scheduled_cells"]), 1)
+        cell = evidence["scheduled_cells"][0]
+        self.assertEqual(cell["type_declaration"], "int linkMasu")
+        self.assertEqual(cell["capacity_declaration"], "s16 masuTbl[MASU_LINK_MAX]")
+        self.assertEqual(
+            cell["expected_object_sha256"],
+            "5d2b15050f845f6c799bcaab562f812883b5c1f2e6aace24f0a0fbb2cf894e1a",
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_dependency_equivalent_exact_sibling_transfer_fails_closed(
+        self,
+    ) -> None:
+        report = _exact_sibling_transfer_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapMasuLinkNextRandomGet"
+        )
+        self.assertFalse(
+            _evaluation(
+                no_context, "dependency_equivalent_exact_sibling_transfer"
+            )["matched"]
+        )
+
+        wrong_call = _exact_sibling_transfer_report()
+        wrong_call["left"]["symbols"][0]["instructions"][1]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "bl mbMasuAttrGet"
+        result = rules.diagnose_document(
+            wrong_call,
+            focus_symbol="mbev_CapMasuLinkNextRandomGet",
+            exact_sibling_transfer_context=_exact_sibling_transfer_context(wrong_call),
+        )
+        self.assertFalse(
+            _evaluation(result, "dependency_equivalent_exact_sibling_transfer")[
+                "matched"
+            ]
+        )
+
+        wrong_extsh = _exact_sibling_transfer_report()
+        wrong_extsh["left"]["symbols"][0]["instructions"][2]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "mr r3, r26"
+        result = rules.diagnose_document(
+            wrong_extsh,
+            focus_symbol="mbev_CapMasuLinkNextRandomGet",
+            exact_sibling_transfer_context=_exact_sibling_transfer_context(wrong_extsh),
+        )
+        self.assertFalse(
+            _evaluation(result, "dependency_equivalent_exact_sibling_transfer")[
+                "matched"
+            ]
+        )
+
+        same_symbol = _exact_sibling_transfer_context(report)
+        same_symbol["donor"]["symbol"] = "mbev_CapMasuLinkNextRandomGet"  # type: ignore[index]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapMasuLinkNextRandomGet",
+            exact_sibling_transfer_context=same_symbol,
+        )
+        self.assertFalse(
+            _evaluation(result, "dependency_equivalent_exact_sibling_transfer")[
+                "matched"
+            ]
+        )
+
+        wrong_capacity = _exact_sibling_transfer_context(report)
+        wrong_capacity["capacity"]["target_extent_bytes"] = 12  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, r"value \* element_size"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuLinkNextRandomGet",
+                exact_sibling_transfer_context=wrong_capacity,
+            )
+
+        false_proof = _exact_sibling_transfer_context(report)
+        false_proof["proofs"]["donor_strict_exact"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "donor_strict_exact"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuLinkNextRandomGet",
+                exact_sibling_transfer_context=false_proof,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -2595,6 +2866,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapMasuLinkNextGet",
                 short_circuit_context=context,
+            ),
+        )
+
+    def test_exact_sibling_transfer_context_cli_emits_same_document(self) -> None:
+        report = _exact_sibling_transfer_report()
+        context = _exact_sibling_transfer_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "exact-sibling-transfer.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapMasuLinkNextRandomGet",
+                            "--exact-sibling-transfer-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuLinkNextRandomGet",
+                exact_sibling_transfer_context=context,
             ),
         )
 

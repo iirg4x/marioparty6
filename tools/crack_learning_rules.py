@@ -25,8 +25,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v7"
-SCHEMA_VERSION = 7
+SCHEMA = "crack_learning_diagnosis/v8"
+SCHEMA_VERSION = 8
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
@@ -35,6 +35,9 @@ AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
 ADDRESS_TAKEN_CONTEXT_SCHEMA = "address_taken_local_pointer_context/v1"
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
+EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
+    "dependency_equivalent_exact_sibling_transfer_context/v1"
+)
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -193,6 +196,26 @@ _SHORT_CIRCUIT_PROOF_HASHES = (
     "topology_observation_report_sha256",
     "declaration_owner_receipt_sha256",
 )
+_EXACT_SIBLING_TRANSFER_PROOF_FLAGS = (
+    "physical_relocations_exact",
+    "data_sections_exact",
+    "protected_siblings_preserved",
+    "donor_strict_exact",
+    "donor_data_exact",
+    "dependency_graph_equivalent",
+    "capacity_authenticated",
+    "pinned_mwcc_frontend",
+)
+_EXACT_SIBLING_TRANSFER_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "donor_record_sha256",
+    "dependency_graph_receipt_sha256",
+    "capacity_receipt_sha256",
+    "type_boundary_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -252,6 +275,7 @@ _RULE_ORDER = (
     "address_taken_local_pointer_consumer",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
+    "dependency_equivalent_exact_sibling_transfer",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -2368,6 +2392,498 @@ def _parse_short_circuit_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "shared_boolean": normalized_shared,
         "direct_assignment_rejection": normalized_rejection,
         "topology_observation": normalized_observation,
+    }
+
+
+def _parse_exact_sibling_transfer_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "donor",
+            "baseline",
+            "type_boundary",
+            "capacity",
+            "combined_cell",
+        },
+        required={
+            "schema",
+            "proofs",
+            "donor",
+            "baseline",
+            "type_boundary",
+            "capacity",
+            "combined_cell",
+        },
+        label="exact-sibling transfer context",
+    )
+    if (
+        _context_text(context.get("schema"), "exact-sibling transfer context schema")
+        != EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            "exact-sibling transfer context schema must be "
+            f"{EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_EXACT_SIBLING_TRANSFER_PROOF_FLAGS) | set(
+        _EXACT_SIBLING_TRANSFER_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="exact-sibling transfer context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _EXACT_SIBLING_TRANSFER_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"exact-sibling transfer context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _EXACT_SIBLING_TRANSFER_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"exact-sibling transfer context proofs.{field}"
+        )
+
+    donor = _closed_context(
+        context.get("donor"),
+        allowed={
+            "symbol",
+            "source_location",
+            "transformation_class",
+            "source_expressions",
+            "candidate_record_sha256",
+            "evidence_sha256",
+        },
+        required={
+            "symbol",
+            "source_location",
+            "transformation_class",
+            "source_expressions",
+            "candidate_record_sha256",
+            "evidence_sha256",
+        },
+        label="exact-sibling transfer context donor",
+    )
+    source_expressions = donor.get("source_expressions")
+    if not isinstance(source_expressions, list) or len(source_expressions) != 2:
+        raise LearningInputError(
+            "exact-sibling transfer donor source_expressions must contain exactly two entries"
+        )
+    normalized_donor = {
+        "symbol": _context_identifier(
+            donor.get("symbol"), "exact-sibling transfer donor symbol"
+        ),
+        "source_location": _context_text(
+            donor.get("source_location"),
+            "exact-sibling transfer donor source_location",
+            limit=512,
+        ),
+        "transformation_class": _context_identifier(
+            donor.get("transformation_class"),
+            "exact-sibling transfer donor transformation_class",
+        ),
+        "source_expressions": [
+            _context_text(
+                expression,
+                f"exact-sibling transfer donor source_expressions[{index}]",
+                limit=512,
+            )
+            for index, expression in enumerate(source_expressions)
+        ],
+        "candidate_record_sha256": _context_sha256(
+            donor.get("candidate_record_sha256"),
+            "exact-sibling transfer donor candidate_record_sha256",
+        ),
+        "evidence_sha256": _context_sha256(
+            donor.get("evidence_sha256"),
+            "exact-sibling transfer donor evidence_sha256",
+        ),
+    }
+    if normalized_donor["transformation_class"] != "shared_boolean_call_order":
+        raise LearningInputError(
+            "exact-sibling transfer donor transformation_class must be shared_boolean_call_order"
+        )
+
+    baseline = _closed_context(
+        context.get("baseline"),
+        allowed={"mask_tests", "shared_boolean"},
+        required={"mask_tests", "shared_boolean"},
+        label="exact-sibling transfer context baseline",
+    )
+    raw_tests = baseline.get("mask_tests")
+    if not isinstance(raw_tests, list) or len(raw_tests) != 2:
+        raise LearningInputError(
+            "exact-sibling transfer baseline mask_tests must contain exactly two entries"
+        )
+    normalized_tests: list[dict[str, Any]] = []
+    test_fields = {
+        "source_left",
+        "source_right",
+        "source_expression",
+        "branch_getter",
+        "masu_getter",
+        "target_branch_call_row",
+        "target_masu_call_row",
+        "candidate_masu_call_row",
+        "candidate_branch_call_row",
+        "evidence_sha256",
+    }
+    for index, raw_test in enumerate(raw_tests):
+        test = _closed_context(
+            raw_test,
+            allowed=test_fields,
+            required=test_fields,
+            label=f"exact-sibling transfer baseline mask_tests[{index}]",
+        )
+        target_branch_row = _context_uint(
+            test.get("target_branch_call_row"),
+            f"exact-sibling transfer mask_tests[{index}].target_branch_call_row",
+        )
+        target_masu_row = _context_uint(
+            test.get("target_masu_call_row"),
+            f"exact-sibling transfer mask_tests[{index}].target_masu_call_row",
+        )
+        candidate_masu_row = _context_uint(
+            test.get("candidate_masu_call_row"),
+            f"exact-sibling transfer mask_tests[{index}].candidate_masu_call_row",
+        )
+        candidate_branch_row = _context_uint(
+            test.get("candidate_branch_call_row"),
+            f"exact-sibling transfer mask_tests[{index}].candidate_branch_call_row",
+        )
+        if target_branch_row >= target_masu_row or candidate_masu_row >= candidate_branch_row:
+            raise LearningInputError(
+                "exact-sibling transfer call rows must encode target branch-before-masu "
+                "and candidate masu-before-branch order"
+            )
+        normalized_tests.append(
+            {
+                "source_left": _context_text(
+                    test.get("source_left"),
+                    f"exact-sibling transfer mask_tests[{index}].source_left",
+                    limit=512,
+                ),
+                "source_right": _context_text(
+                    test.get("source_right"),
+                    f"exact-sibling transfer mask_tests[{index}].source_right",
+                    limit=512,
+                ),
+                "source_expression": _context_text(
+                    test.get("source_expression"),
+                    f"exact-sibling transfer mask_tests[{index}].source_expression",
+                    limit=512,
+                ),
+                "branch_getter": _context_identifier(
+                    test.get("branch_getter"),
+                    f"exact-sibling transfer mask_tests[{index}].branch_getter",
+                ),
+                "masu_getter": _context_identifier(
+                    test.get("masu_getter"),
+                    f"exact-sibling transfer mask_tests[{index}].masu_getter",
+                ),
+                "target_branch_call_row": target_branch_row,
+                "target_masu_call_row": target_masu_row,
+                "candidate_masu_call_row": candidate_masu_row,
+                "candidate_branch_call_row": candidate_branch_row,
+                "evidence_sha256": _context_sha256(
+                    test.get("evidence_sha256"),
+                    f"exact-sibling transfer mask_tests[{index}].evidence_sha256",
+                ),
+            }
+        )
+
+    shared = _closed_context(
+        baseline.get("shared_boolean"),
+        allowed={
+            "target_branch_rows",
+            "target_true_assignment_row",
+            "target_false_assignment_row",
+            "candidate_true_assignment_rows",
+            "candidate_false_assignment_row",
+            "result_register",
+            "result_owner",
+            "evidence_sha256",
+        },
+        required={
+            "target_branch_rows",
+            "target_true_assignment_row",
+            "target_false_assignment_row",
+            "candidate_true_assignment_rows",
+            "candidate_false_assignment_row",
+            "result_register",
+            "result_owner",
+            "evidence_sha256",
+        },
+        label="exact-sibling transfer baseline shared_boolean",
+    )
+
+    def two_rows(raw: Any, label: str) -> list[int]:
+        if not isinstance(raw, list) or len(raw) != 2:
+            raise LearningInputError(f"{label} must contain exactly two rows")
+        result = [_context_uint(item, f"{label}[{index}]") for index, item in enumerate(raw)]
+        if len(set(result)) != 2:
+            raise LearningInputError(f"{label} rows must be distinct")
+        return result
+
+    result_register = _context_text(
+        shared.get("result_register"),
+        "exact-sibling transfer shared_boolean.result_register",
+        limit=3,
+    ).lower()
+    if not _saved(result_register, "r"):
+        raise LearningInputError(
+            "exact-sibling transfer Boolean result must use a nonvolatile GPR"
+        )
+    normalized_shared = {
+        "target_branch_rows": two_rows(
+            shared.get("target_branch_rows"),
+            "exact-sibling transfer shared_boolean.target_branch_rows",
+        ),
+        "target_true_assignment_row": _context_uint(
+            shared.get("target_true_assignment_row"),
+            "exact-sibling transfer shared_boolean.target_true_assignment_row",
+        ),
+        "target_false_assignment_row": _context_uint(
+            shared.get("target_false_assignment_row"),
+            "exact-sibling transfer shared_boolean.target_false_assignment_row",
+        ),
+        "candidate_true_assignment_rows": two_rows(
+            shared.get("candidate_true_assignment_rows"),
+            "exact-sibling transfer shared_boolean.candidate_true_assignment_rows",
+        ),
+        "candidate_false_assignment_row": _context_uint(
+            shared.get("candidate_false_assignment_row"),
+            "exact-sibling transfer shared_boolean.candidate_false_assignment_row",
+        ),
+        "result_register": result_register,
+        "result_owner": _context_identifier(
+            shared.get("result_owner"),
+            "exact-sibling transfer shared_boolean.result_owner",
+        ),
+        "evidence_sha256": _context_sha256(
+            shared.get("evidence_sha256"),
+            "exact-sibling transfer shared_boolean.evidence_sha256",
+        ),
+    }
+
+    boundary = _closed_context(
+        context.get("type_boundary"),
+        allowed={
+            "owner",
+            "source_type",
+            "consumer_type",
+            "target_extsh_rows",
+            "target_consumer_call_rows",
+            "consumer_symbols",
+            "evidence_sha256",
+        },
+        required={
+            "owner",
+            "source_type",
+            "consumer_type",
+            "target_extsh_rows",
+            "target_consumer_call_rows",
+            "consumer_symbols",
+            "evidence_sha256",
+        },
+        label="exact-sibling transfer type_boundary",
+    )
+
+    def three_rows(raw: Any, label: str) -> list[int]:
+        if not isinstance(raw, list) or len(raw) != 3:
+            raise LearningInputError(f"{label} must contain exactly three rows")
+        result = [_context_uint(item, f"{label}[{index}]") for index, item in enumerate(raw)]
+        if len(set(result)) != 3:
+            raise LearningInputError(f"{label} rows must be distinct")
+        return result
+
+    consumers = boundary.get("consumer_symbols")
+    if not isinstance(consumers, list) or len(consumers) != 3:
+        raise LearningInputError(
+            "exact-sibling transfer type_boundary.consumer_symbols must contain three entries"
+        )
+    normalized_boundary = {
+        "owner": _context_identifier(
+            boundary.get("owner"), "exact-sibling transfer type_boundary.owner"
+        ),
+        "source_type": _context_identifier(
+            boundary.get("source_type"),
+            "exact-sibling transfer type_boundary.source_type",
+        ),
+        "consumer_type": _context_identifier(
+            boundary.get("consumer_type"),
+            "exact-sibling transfer type_boundary.consumer_type",
+        ),
+        "target_extsh_rows": three_rows(
+            boundary.get("target_extsh_rows"),
+            "exact-sibling transfer type_boundary.target_extsh_rows",
+        ),
+        "target_consumer_call_rows": three_rows(
+            boundary.get("target_consumer_call_rows"),
+            "exact-sibling transfer type_boundary.target_consumer_call_rows",
+        ),
+        "consumer_symbols": [
+            _context_identifier(
+                symbol,
+                f"exact-sibling transfer type_boundary.consumer_symbols[{index}]",
+            )
+            for index, symbol in enumerate(consumers)
+        ],
+        "evidence_sha256": _context_sha256(
+            boundary.get("evidence_sha256"),
+            "exact-sibling transfer type_boundary.evidence_sha256",
+        ),
+    }
+    if (
+        normalized_boundary["source_type"] != "int"
+        or normalized_boundary["consumer_type"] != "s16"
+    ):
+        raise LearningInputError(
+            "exact-sibling transfer type boundary must be int source to s16 consumers"
+        )
+    if any(
+        extsh_row >= call_row
+        for extsh_row, call_row in zip(
+            normalized_boundary["target_extsh_rows"],
+            normalized_boundary["target_consumer_call_rows"],
+        )
+    ):
+        raise LearningInputError(
+            "each exact-sibling transfer extsh row must precede its consumer call row"
+        )
+
+    capacity = _closed_context(
+        context.get("capacity"),
+        allowed={
+            "array_name",
+            "macro",
+            "value",
+            "element_size",
+            "target_extent_bytes",
+            "source_location",
+            "evidence_sha256",
+        },
+        required={
+            "array_name",
+            "macro",
+            "value",
+            "element_size",
+            "target_extent_bytes",
+            "source_location",
+            "evidence_sha256",
+        },
+        label="exact-sibling transfer capacity",
+    )
+    normalized_capacity = {
+        "array_name": _context_identifier(
+            capacity.get("array_name"), "exact-sibling transfer capacity.array_name"
+        ),
+        "macro": _context_identifier(
+            capacity.get("macro"), "exact-sibling transfer capacity.macro"
+        ),
+        "value": _context_uint(
+            capacity.get("value"), "exact-sibling transfer capacity.value", minimum=1
+        ),
+        "element_size": _context_uint(
+            capacity.get("element_size"),
+            "exact-sibling transfer capacity.element_size",
+            minimum=1,
+        ),
+        "target_extent_bytes": _context_uint(
+            capacity.get("target_extent_bytes"),
+            "exact-sibling transfer capacity.target_extent_bytes",
+            minimum=1,
+        ),
+        "source_location": _context_text(
+            capacity.get("source_location"),
+            "exact-sibling transfer capacity.source_location",
+            limit=512,
+        ),
+        "evidence_sha256": _context_sha256(
+            capacity.get("evidence_sha256"),
+            "exact-sibling transfer capacity.evidence_sha256",
+        ),
+    }
+    if (
+        normalized_capacity["value"] * normalized_capacity["element_size"]
+        != normalized_capacity["target_extent_bytes"]
+    ):
+        raise LearningInputError(
+            "exact-sibling transfer capacity does not equal value * element_size"
+        )
+
+    combined = _closed_context(
+        context.get("combined_cell"),
+        allowed={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "object_sha256",
+            "candidate_record_sha256",
+        },
+        required={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "object_sha256",
+            "candidate_record_sha256",
+        },
+        label="exact-sibling transfer combined_cell",
+    )
+    normalized_combined = {
+        "candidate_id": _context_text(
+            combined.get("candidate_id"),
+            "exact-sibling transfer combined_cell.candidate_id",
+            limit=128,
+        ),
+        "target_size": _context_uint(
+            combined.get("target_size"),
+            "exact-sibling transfer combined_cell.target_size",
+            minimum=1,
+        ),
+        "candidate_size": _context_uint(
+            combined.get("candidate_size"),
+            "exact-sibling transfer combined_cell.candidate_size",
+            minimum=1,
+        ),
+        "object_sha256": _context_sha256(
+            combined.get("object_sha256"),
+            "exact-sibling transfer combined_cell.object_sha256",
+        ),
+        "candidate_record_sha256": _context_sha256(
+            combined.get("candidate_record_sha256"),
+            "exact-sibling transfer combined_cell.candidate_record_sha256",
+        ),
+    }
+    if normalized_combined["target_size"] != normalized_combined["candidate_size"]:
+        raise LearningInputError(
+            "exact-sibling transfer combined cell must be size exact"
+        )
+
+    if normalized_donor["source_expressions"] != [
+        test["source_expression"] for test in normalized_tests
+    ]:
+        raise LearningInputError(
+            "exact-sibling transfer donor expressions must match the transferred mask tests"
+        )
+
+    return {
+        "schema": EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "donor": normalized_donor,
+        "baseline": {
+            "mask_tests": normalized_tests,
+            "shared_boolean": normalized_shared,
+        },
+        "type_boundary": normalized_boundary,
+        "capacity": normalized_capacity,
+        "combined_cell": normalized_combined,
     }
 
 
@@ -5411,6 +5927,276 @@ def _short_circuit_boolean_call_order_evaluation(
     )
 
 
+def _dependency_equivalent_exact_sibling_transfer_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "dependency_equivalent_exact_sibling_transfer"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated dependency-equivalent exact-sibling context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the exact-sibling context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    combined = context["combined_cell"]
+    if (
+        target_size != combined["target_size"]
+        or candidate_size is None
+        or candidate_size <= target_size
+        or combined["candidate_size"] != target_size
+        or context["donor"]["symbol"] == pair.name
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the baseline size or distinct exact-donor boundary is not the sealed transfer case",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "combined_size": combined["candidate_size"],
+                "donor_symbol": context["donor"]["symbol"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+
+    def side(index: int, which: int) -> causal_reducer.Instruction | None:
+        if not 0 <= index < len(rows):
+            return None
+        return rows[index][which]
+
+    call_evidence: list[dict[str, Any]] = []
+    for index, test in enumerate(context["baseline"]["mask_tests"]):
+        target_branch = side(test["target_branch_call_row"], 0)
+        target_masu = side(test["target_masu_call_row"], 0)
+        candidate_masu = side(test["candidate_masu_call_row"], 1)
+        candidate_branch = side(test["candidate_branch_call_row"], 1)
+
+        def is_call(item: causal_reducer.Instruction | None, symbol: str) -> bool:
+            return bool(
+                item is not None
+                and item.has_instruction
+                and item.mnemonic in _CALL_MNEMONICS
+                and re.search(rf"\b{re.escape(symbol)}\b", item.formatted)
+            )
+
+        if not (
+            is_call(target_branch, test["branch_getter"])
+            and is_call(target_masu, test["masu_getter"])
+            and is_call(candidate_masu, test["masu_getter"])
+            and is_call(candidate_branch, test["branch_getter"])
+            and test["masu_getter"] in test["source_left"]
+            and test["branch_getter"] in test["source_right"]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the sibling transfer does not reproduce the sealed target/candidate call-order inversion",
+                evidence={"mask_test_index": index},
+            )
+        call_evidence.append(
+            {
+                "source_expression": test["source_expression"],
+                "target_call_order": [
+                    test["branch_getter"],
+                    test["masu_getter"],
+                ],
+                "candidate_call_order": [
+                    test["masu_getter"],
+                    test["branch_getter"],
+                ],
+            }
+        )
+
+    shared = context["baseline"]["shared_boolean"]
+    first_branch = side(shared["target_branch_rows"][0], 0)
+    second_branch = side(shared["target_branch_rows"][1], 0)
+    true_assignment = side(shared["target_true_assignment_row"], 0)
+    false_assignment = side(shared["target_false_assignment_row"], 0)
+    if any(
+        item is None or not item.has_instruction
+        for item in (first_branch, second_branch, true_assignment, false_assignment)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the transferred target shared-Boolean rows are incomplete",
+        )
+    assert first_branch is not None
+    assert second_branch is not None
+    assert true_assignment is not None
+    assert false_assignment is not None
+    result_register = shared["result_register"]
+    if (
+        first_branch.mnemonic != "bne"
+        or second_branch.mnemonic != "beq"
+        or first_branch.branch_dest != true_assignment.address
+        or second_branch.branch_dest != false_assignment.address
+        or true_assignment.mnemonic != "li"
+        or false_assignment.mnemonic != "li"
+        or _registers(true_assignment.formatted, "r")[:1] != [result_register]
+        or _registers(false_assignment.formatted, "r")[:1] != [result_register]
+        or not true_assignment.formatted.rstrip().endswith(", 1")
+        or not false_assignment.formatted.rstrip().endswith(", 0")
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the transferred target topology does not converge on one shared Boolean pair",
+        )
+    for row_index in shared["candidate_true_assignment_rows"]:
+        item = side(row_index, 1)
+        if (
+            item is None
+            or not item.has_instruction
+            or item.mnemonic != "li"
+            or _registers(item.formatted, "r")[:1] != [result_register]
+            or not item.formatted.rstrip().endswith(", 1")
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the baseline does not contain both duplicated candidate true assignments",
+                evidence={"row_index": row_index},
+            )
+    candidate_false = side(shared["candidate_false_assignment_row"], 1)
+    if (
+        candidate_false is None
+        or not candidate_false.has_instruction
+        or candidate_false.mnemonic != "li"
+        or _registers(candidate_false.formatted, "r")[:1] != [result_register]
+        or not candidate_false.formatted.rstrip().endswith(", 0")
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the baseline candidate false assignment is absent",
+        )
+
+    boundary = context["type_boundary"]
+    extsh_evidence: list[dict[str, Any]] = []
+    source_registers: set[str] = set()
+    for index, (extsh_row, call_row, consumer) in enumerate(
+        zip(
+            boundary["target_extsh_rows"],
+            boundary["target_consumer_call_rows"],
+            boundary["consumer_symbols"],
+        )
+    ):
+        target_extsh = side(extsh_row, 0)
+        candidate_extsh = side(extsh_row, 1)
+        target_consumer = side(call_row, 0)
+        registers = (
+            _registers(target_extsh.formatted, "r")
+            if target_extsh is not None and target_extsh.has_instruction
+            else []
+        )
+        if (
+            target_extsh is None
+            or not target_extsh.has_instruction
+            or target_extsh.mnemonic != "extsh"
+            or len(registers) < 2
+            or candidate_extsh is None
+            or candidate_extsh.has_instruction
+            or call_row != extsh_row + 1
+            or target_consumer is None
+            or not target_consumer.has_instruction
+            or target_consumer.mnemonic not in _CALL_MNEMONICS
+            or re.search(rf"\b{re.escape(consumer)}\b", target_consumer.formatted)
+            is None
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the int-to-s16 boundary is not three target-only adjacent extsh/call pairs",
+                evidence={"boundary_index": index},
+            )
+        source_registers.add(registers[1])
+        extsh_evidence.append(
+            {
+                "extsh_row": extsh_row,
+                "call_row": call_row,
+                "consumer": consumer,
+                "formatted": target_extsh.formatted,
+            }
+        )
+    if len(source_registers) != 1:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the three target extsh rows do not normalize one source owner",
+            evidence={"source_registers": sorted(source_registers)},
+        )
+
+    capacity = context["capacity"]
+    boolean_expression = (
+        f"if (({context['baseline']['mask_tests'][0]['source_expression']}) || "
+        f"({context['baseline']['mask_tests'][1]['source_expression']})) "
+        f"{{ {shared['result_owner']} = TRUE; }} else "
+        f"{{ {shared['result_owner']} = FALSE; }}"
+    )
+    scheduled_cell = {
+        "id": combined["candidate_id"],
+        "source_class": "dependency_equivalent_exact_sibling_plus_proved_type_boundary",
+        "donor_symbol": context["donor"]["symbol"],
+        "transferred_expression": boolean_expression,
+        "type_declaration": f"int {boundary['owner']}",
+        "capacity_declaration": (
+            f"s16 {capacity['array_name']}[{capacity['macro']}]"
+        ),
+        "expected_object_sha256": combined["object_sha256"],
+        "candidate_record_sha256": combined["candidate_record_sha256"],
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "an exact dependency-equivalent sibling supplies the complete shared-Boolean "
+            "transformation, while three target-only extsh/call pairs independently prove "
+            "the remaining int-to-s16 owner boundary"
+        ),
+        confidence=0.99,
+        source_class="exact_sibling_semantic_transfer_with_independent_type_boundary",
+        recommendation=(
+            "Transfer the exact sibling Boolean/call-order source, apply only the sealed "
+            "int owner boundary and authenticated array capacity, then compile one cell."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "donor": context["donor"],
+            "call_order": call_evidence,
+            "shared_boolean": shared,
+            "type_boundary": {
+                **boundary,
+                "source_register": next(iter(source_registers)),
+                "extsh_calls": extsh_evidence,
+            },
+            "capacity": capacity,
+            "scheduled_cells": [scheduled_cell],
+            "suppressed_axes": [
+                "fresh_boolean_cfg_permutations",
+                "declaration_order_permutations",
+                "s16_link_owner",
+                "capacity_guessing",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -5690,6 +6476,7 @@ def diagnose_document(
     address_taken_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
+    exact_sibling_transfer_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -5740,6 +6527,11 @@ def diagnose_document(
     normalized_short_circuit_context = (
         _parse_short_circuit_context(short_circuit_context)
         if short_circuit_context is not None
+        else None
+    )
+    normalized_exact_sibling_transfer_context = (
+        _parse_exact_sibling_transfer_context(exact_sibling_transfer_context)
+        if exact_sibling_transfer_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -5833,6 +6625,13 @@ def diagnose_document(
             normalized_short_circuit_context,
             objdiff_canonical_sha256,
         ),
+        _dependency_equivalent_exact_sibling_transfer_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_exact_sibling_transfer_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -5892,6 +6691,11 @@ def diagnose_document(
             "short_circuit_context_canonical_sha256": (
                 _sha256(_canonical(normalized_short_circuit_context))
                 if normalized_short_circuit_context is not None
+                else None
+            ),
+            "exact_sibling_transfer_context_canonical_sha256": (
+                _sha256(_canonical(normalized_exact_sibling_transfer_context))
+                if normalized_exact_sibling_transfer_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -6021,6 +6825,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--exact-sibling-transfer-context",
+        type=Path,
+        help=(
+            "authenticated dependency_equivalent_exact_sibling_transfer_context/v1 "
+            "JSON with exact donor, dependency-equivalent Boolean topology, capacity, "
+            "and independent int-to-s16 consumer-boundary evidence"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -6102,6 +6915,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="short-circuit Boolean call-order context",
                 )
                 if args.short_circuit_context is not None
+                else None
+            ),
+            exact_sibling_transfer_context=(
+                _load_json(
+                    args.exact_sibling_transfer_context,
+                    label="dependency-equivalent exact-sibling transfer context",
+                )
+                if args.exact_sibling_transfer_context is not None
                 else None
             ),
             capacity_context=(
