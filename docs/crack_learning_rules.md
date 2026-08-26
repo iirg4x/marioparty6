@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns twelve reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns thirteen reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v5` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v6` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -287,6 +287,29 @@ one larger target frame, and one unique target-only home. It then ranks exactly
 one live typed pointer at the consumer boundary and suppresses dead pointer
 storage, declaration-only edits, and artificial lifetime extension.
 
+When three small residual groups already exist as exact same-TU and caller
+contracts, bind them in one closed retrieval context instead of rediscovering
+each source shape independently:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/electricmodelset-baseline.strict.json \
+  --function mbev_CapEffElectricModelSet \
+  --same-tu-shape-context work/electricmodelset.same-tu-shape-context.json \
+  > work/electricmodelset.learning.json
+```
+
+`same_tu_exact_sibling_shape_context/v1` seals exact data/CFG/physical-
+relocation/sibling proof, exact strict/data status for the named same-TU donor,
+and an authenticated caller contract. The detector then independently requires
+the target-only `li/srawi/srwi/subfc/adde` fixed-array tail, a candidate-only
+`extsh` whose result and the target argument register feed the same store, and
+one target f32 load feeding three reverse-order stores where the candidate used
+three loads. It rejects any residual outside those groups and emits exactly one
+combined cell: the donor expression, the wide callee view while preserving the
+narrow producer, and the right-associative zero chain. It never treats a donor
+name, a guessed prototype, or a literal-load resemblance as sufficient proof.
+
 The Kokamekku-derived capacity and loop-destination rules are also unavailable
 from objdiff rows alone. Supply either or both closed evidence contexts:
 
@@ -478,6 +501,7 @@ The nine additional joins are narrower than those generic classifications:
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
 | address-taken local pointer consumer | Exact CFG/data/physical relocations/siblings; a bounded positive size delta and larger target frame; matching local stack address; target saved-address materialization/copy versus candidate direct argument materialization; authenticated incoming-owner colors; and one target-only parameter home | Introduce one live typed pointer to the already live local aggregate immediately before the typed consumer |
+| same-TU exact-sibling source shapes | Exact data/CFG/physical relocations/siblings; exact same-TU donor and caller receipts; one target-only fixed-array Boolean lowering; one candidate-only callee `extsh` feeding the same consumer store; one-load reverse-order aggregate zero stores; and no residual outside those groups | Compile one combined cell using the exact donor expression, authenticated wide callee view, and right-associative zero chain |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
@@ -486,7 +510,8 @@ The nine additional joins are narrower than those generic classifications:
 These joins preserve the reviewed boundaries from
 `ev_CapTeresaFadeMatHook`, `ev_CapMiracleCoinTrade`,
 `mbev_CapKuribo`, `mbev_CapPlayerMoveEjectCreate`, `mbev_CapKokamekku`,
-`mbev_CapEffExplodeOMExec`, `mbev_CapEffGlowKinokoAddAlt`, `ev_CapBobleOMExec`, and
+`mbev_CapEffExplodeOMExec`, `mbev_CapEffGlowKinokoAddAlt`,
+`mbev_CapEffElectricModelSet`, `ev_CapBobleOMExec`, and
 `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
 same physical signature.
@@ -513,6 +538,10 @@ The focused fixtures reject the tempting incomplete variants:
   frame, a mismatched aggregate offset, no saved-address-to-argument copy,
   absent incoming-owner colors, or a candidate that already has the target
   parameter home;
+- a same-TU source-shape claim with an inexact donor/caller receipt, a different
+  array bound or donor expression, a missing Boolean-lowering instruction, no
+  candidate-only `extsh`, nonmatching consumer homes, more than one target zero
+  load, or any residual outside the three sealed groups;
 - an unaligned, zero/negative, or internally inconsistent stack extent; a used
   prefix larger than the candidate capacity; or producer maxima that disagree
   with the computed target capacity;

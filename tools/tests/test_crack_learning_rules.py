@@ -629,6 +629,140 @@ def _address_taken_context(
     }
 
 
+def _same_tu_shape_report() -> dict[str, object]:
+    zero_relocation = {"type": 109, "type_name": "R_PPC_EMB_SDA21"}
+    target = [
+        _instruction(100, "stwu r1, -32(r1)"),
+        _instruction(104, "li r0, 0", diff_kind="DIFF_INSERT"),
+        _instruction(108, "srawi r3, r0, 31", diff_kind="DIFF_INSERT"),
+        _instruction(112, "srwi r3, r3, 29", diff_kind="DIFF_INSERT"),
+        _instruction(116, "subfc r0, r0, r3", diff_kind="DIFF_INSERT"),
+        _instruction(120, "adde r0, r3, r0", diff_kind="DIFF_INSERT"),
+        _placeholder("DIFF_DELETE"),
+        _instruction(128, "stw r4, 20(r5)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(132, "lfs f0, @zero@sda21", relocation=zero_relocation),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _instruction(156, "stfs f0, 8(r6)", diff_kind="DIFF_INSERT"),
+        _instruction(160, "stfs f0, 4(r6)", diff_kind="DIFF_INSERT"),
+        _instruction(164, "stfs f0, 0(r6)", diff_kind="DIFF_INSERT"),
+        _instruction(168, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "stwu r1, -32(r1)"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _instruction(124, "extsh r0, r4", diff_kind="DIFF_DELETE"),
+        _instruction(128, "stw r0, 20(r5)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(132, "lfs f0, @zero@sda21", relocation=zero_relocation),
+        _instruction(136, "stfs f0, 0(r6)", diff_kind="DIFF_DELETE"),
+        _instruction(
+            140,
+            "lfs f0, @zero@sda21",
+            diff_kind="DIFF_DELETE",
+            relocation=zero_relocation,
+        ),
+        _instruction(144, "stfs f0, 4(r6)", diff_kind="DIFF_DELETE"),
+        _instruction(
+            148,
+            "lfs f0, @zero@sda21",
+            diff_kind="DIFF_DELETE",
+            relocation=zero_relocation,
+        ),
+        _instruction(152, "stfs f0, 8(r6)", diff_kind="DIFF_DELETE"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _instruction(168, "blr"),
+    ]
+    return _report(
+        "mbev_CapEffElectricModelSet",
+        target,
+        candidate,
+        target_size=252,
+        candidate_size=244,
+    )
+
+
+def _same_tu_shape_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _same_tu_shape_report()
+    return {
+        "schema": rules.SAME_TU_SHAPE_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "data_values_exact": True,
+            "physical_relocations_exact": True,
+            "cfg_calls_exact": True,
+            "protected_siblings_preserved": True,
+            "donor_strict_exact": True,
+            "donor_data_exact": True,
+            "caller_contract_authenticated": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "same_tu_donor_receipt_sha256": "4" * 64,
+            "caller_contract_receipt_sha256": "5" * 64,
+            "source_shape_receipt_sha256": "6" * 64,
+        },
+        "donor": {
+            "symbol": "mbev_CapEffElectricAdd",
+            "source_location": "game/src/board/capevent.c:L4421",
+            "source_expression": "objIdx >= 8",
+            "array_bound": 8,
+            "evidence_sha256": "7" * 64,
+        },
+        "fixed_array_tail": {
+            "target_rows": [1, 2, 3, 4, 5],
+            "array_bound": 8,
+            "source_expression": "objIdx >= 8",
+            "evidence_sha256": "8" * 64,
+        },
+        "abi_boundary": {
+            "parameter": "modelId",
+            "parameter_register": "r4",
+            "producer_type": "s16",
+            "callee_type": "int",
+            "candidate_normalization_row": 6,
+            "store_row": 7,
+            "caller_symbol": "mbev_CapBiriQMetalShock",
+            "source_location": "game/src/board/captrap.c:L913",
+            "evidence_sha256": "9" * 64,
+        },
+        "zero_chain": {
+            "destination": "partP->modelPos",
+            "fields": ["x", "y", "z"],
+            "target_load_row": 8,
+            "target_store_rows": [14, 15, 16],
+            "candidate_load_rows": [8, 10, 12],
+            "candidate_store_rows": [9, 11, 13],
+            "source_expression": (
+                "partP->modelPos.x = partP->modelPos.y = "
+                "partP->modelPos.z = 0.0f"
+            ),
+            "evidence_sha256": "a" * 64,
+        },
+        "combined_cell": {
+            "candidate_id": "capevent-electricmodelset-exact",
+            "target_size": 252,
+            "candidate_size": 252,
+            "object_sha256": (
+                "1957f15be546225c3d6fd8e9ad4ad40cb2124e10b3b70610112572252e71d1e6"
+            ),
+            "candidate_record_sha256": (
+                "ea45ef1a151f2ba62b8f620bf70f19b86139032a4712e36607826ec16bcd1167"
+            ),
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -1537,6 +1671,78 @@ class CrackLearningRulesTest(unittest.TestCase):
                 address_taken_context=wrong_owner,
             )
 
+    def test_same_tu_exact_sibling_shapes_schedule_only_combined_cell(self) -> None:
+        report = _same_tu_shape_report()
+        context = _same_tu_shape_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffElectricModelSet",
+            same_tu_shape_context=context,
+        )
+        diagnosis = _evaluation(result, "same_tu_exact_sibling_source_shapes")
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["target_size"], 252)
+        self.assertEqual(evidence["candidate_size"], 244)
+        self.assertEqual(evidence["donor"]["symbol"], "mbev_CapEffElectricAdd")
+        self.assertEqual(
+            [item["target_formatted"].split()[0] for item in evidence["fixed_array_tail"]["target_instructions"]],
+            ["li", "srawi", "srwi", "subfc", "adde"],
+        )
+        self.assertEqual(evidence["abi_boundary"]["normalized_register"], "r0")
+        self.assertEqual(evidence["zero_chain"]["target_store_offsets"], [8, 4, 0])
+        self.assertEqual(evidence["zero_chain"]["candidate_store_offsets"], [0, 4, 8])
+        self.assertEqual(len(evidence["scheduled_cells"]), 1)
+        self.assertEqual(
+            evidence["scheduled_cells"][0]["expected_object_sha256"],
+            "1957f15be546225c3d6fd8e9ad4ad40cb2124e10b3b70610112572252e71d1e6",
+        )
+        self.assertFalse(result["authority_advanced"])
+
+    def test_same_tu_exact_sibling_shapes_fail_closed(self) -> None:
+        report = _same_tu_shape_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapEffElectricModelSet"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "same_tu_exact_sibling_source_shapes")["matched"]
+        )
+
+        wrong_donor = _same_tu_shape_context(report)
+        wrong_donor["donor"]["source_expression"] = "objIdx == 8"  # type: ignore[index]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapEffElectricModelSet",
+            same_tu_shape_context=wrong_donor,
+        )
+        self.assertFalse(
+            _evaluation(result, "same_tu_exact_sibling_source_shapes")["matched"]
+        )
+
+        wrong_tail = _same_tu_shape_report()
+        wrong_tail["left"]["symbols"][0]["instructions"][3]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "slwi r3, r3, 3"
+        context = _same_tu_shape_context(wrong_tail)
+        result = rules.diagnose_document(
+            wrong_tail,
+            focus_symbol="mbev_CapEffElectricModelSet",
+            same_tu_shape_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "same_tu_exact_sibling_source_shapes")["matched"]
+        )
+
+        false_proof = _same_tu_shape_context(report)
+        false_proof["proofs"]["caller_contract_authenticated"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "caller_contract_authenticated"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffElectricModelSet",
+                same_tu_shape_context=false_proof,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -2070,6 +2276,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffGlowKinokoAddAlt",
                 address_taken_context=context,
+            ),
+        )
+
+    def test_same_tu_shape_context_cli_emits_same_document(self) -> None:
+        report = _same_tu_shape_report()
+        context = _same_tu_shape_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "same-tu-shape.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapEffElectricModelSet",
+                            "--same-tu-shape-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapEffElectricModelSet",
+                same_tu_shape_context=context,
             ),
         )
 

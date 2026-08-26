@@ -25,14 +25,15 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v5"
-SCHEMA_VERSION = 5
+SCHEMA = "crack_learning_diagnosis/v6"
+SCHEMA_VERSION = 6
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
 AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
 AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
 ADDRESS_TAKEN_CONTEXT_SCHEMA = "address_taken_local_pointer_context/v1"
+SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -40,6 +41,11 @@ RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
 _REGISTER_RE = re.compile(r"\b(?P<kind>[rRfF])(?P<number>[0-9]|[12][0-9]|3[01])\b")
 _STACK_RE = re.compile(
     r"(?P<offset>[+-]?(?:0[xX][0-9a-fA-F]+|\d+))\s*\(\s*r1\s*\)",
+    re.IGNORECASE,
+)
+_MEMORY_RE = re.compile(
+    r"(?P<offset>[+-]?(?:0[xX][0-9a-fA-F]+|\d+))\s*\(\s*"
+    r"(?P<base>r(?:[0-9]|[12][0-9]|3[01]))\s*\)",
     re.IGNORECASE,
 )
 _ADDI_R1_RE = re.compile(
@@ -150,6 +156,24 @@ _ADDRESS_TAKEN_PROOF_HASHES = (
     "source_boundary_receipt_sha256",
     "typed_consumer_receipt_sha256",
 )
+_SAME_TU_SHAPE_PROOF_FLAGS = (
+    "data_values_exact",
+    "physical_relocations_exact",
+    "cfg_calls_exact",
+    "protected_siblings_preserved",
+    "donor_strict_exact",
+    "donor_data_exact",
+    "caller_contract_authenticated",
+)
+_SAME_TU_SHAPE_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "same_tu_donor_receipt_sha256",
+    "caller_contract_receipt_sha256",
+    "source_shape_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -207,6 +231,7 @@ _RULE_ORDER = (
     "aggregate_use_multiplicity",
     "aggregate_two_owner_followup",
     "address_taken_local_pointer_consumer",
+    "same_tu_exact_sibling_source_shapes",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -264,6 +289,16 @@ def _stack_offset(text: str) -> int | None:
     if match is None:
         return None
     return causal_reducer._parse_number(match.group("offset"))
+
+
+def _memory_operand(text: str) -> tuple[str, int] | None:
+    match = _MEMORY_RE.search(text)
+    if match is None:
+        return None
+    return (
+        match.group("base").lower(),
+        causal_reducer._parse_number(match.group("offset")),
+    )
 
 
 def _addi_r1_materialization(text: str) -> tuple[str, int] | None:
@@ -372,6 +407,26 @@ def _context_uint(
             f"{label} must be an integer from {minimum} through {maximum}"
         )
     return value
+
+
+def _context_rows(
+    value: Any,
+    label: str,
+    *,
+    minimum_count: int = 1,
+    maximum_count: int = 16,
+) -> list[int]:
+    if not isinstance(value, list) or not minimum_count <= len(value) <= maximum_count:
+        raise LearningInputError(
+            f"{label} must contain {minimum_count}-{maximum_count} row indices"
+        )
+    rows = [
+        _context_uint(item, f"{label}[{index}]")
+        for index, item in enumerate(value)
+    ]
+    if rows != sorted(set(rows)):
+        raise LearningInputError(f"{label} must be sorted and unique")
+    return rows
 
 
 def _parse_allocator_context(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -1555,6 +1610,363 @@ def _parse_address_taken_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "incoming_pointer": normalized_incoming,
         "local_pointer": normalized_local,
         "object_home": normalized_home,
+    }
+
+
+def _parse_same_tu_shape_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "donor",
+            "fixed_array_tail",
+            "abi_boundary",
+            "zero_chain",
+            "combined_cell",
+        },
+        required={
+            "schema",
+            "proofs",
+            "donor",
+            "fixed_array_tail",
+            "abi_boundary",
+            "zero_chain",
+            "combined_cell",
+        },
+        label="same-TU source-shape context",
+    )
+    if (
+        _context_text(context.get("schema"), "same-TU source-shape context schema")
+        != SAME_TU_SHAPE_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"same-TU source-shape context schema must be {SAME_TU_SHAPE_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_SAME_TU_SHAPE_PROOF_FLAGS) | set(
+        _SAME_TU_SHAPE_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="same-TU source-shape context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _SAME_TU_SHAPE_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"same-TU source-shape context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _SAME_TU_SHAPE_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"same-TU source-shape context proofs.{field}"
+        )
+
+    donor = _closed_context(
+        context.get("donor"),
+        allowed={
+            "symbol",
+            "source_location",
+            "source_expression",
+            "array_bound",
+            "evidence_sha256",
+        },
+        required={
+            "symbol",
+            "source_location",
+            "source_expression",
+            "array_bound",
+            "evidence_sha256",
+        },
+        label="same-TU source-shape context donor",
+    )
+    normalized_donor = {
+        "symbol": _context_identifier(
+            donor.get("symbol"), "same-TU source-shape context donor.symbol"
+        ),
+        "source_location": _context_text(
+            donor.get("source_location"),
+            "same-TU source-shape context donor.source_location",
+            limit=512,
+        ),
+        "source_expression": _context_text(
+            donor.get("source_expression"),
+            "same-TU source-shape context donor.source_expression",
+            limit=512,
+        ),
+        "array_bound": _context_uint(
+            donor.get("array_bound"),
+            "same-TU source-shape context donor.array_bound",
+            minimum=1,
+            maximum=65535,
+        ),
+        "evidence_sha256": _context_sha256(
+            donor.get("evidence_sha256"),
+            "same-TU source-shape context donor.evidence_sha256",
+        ),
+    }
+
+    tail = _closed_context(
+        context.get("fixed_array_tail"),
+        allowed={"target_rows", "array_bound", "source_expression", "evidence_sha256"},
+        required={"target_rows", "array_bound", "source_expression", "evidence_sha256"},
+        label="same-TU source-shape context fixed_array_tail",
+    )
+    normalized_tail = {
+        "target_rows": _context_rows(
+            tail.get("target_rows"),
+            "same-TU source-shape context fixed_array_tail.target_rows",
+            minimum_count=5,
+            maximum_count=5,
+        ),
+        "array_bound": _context_uint(
+            tail.get("array_bound"),
+            "same-TU source-shape context fixed_array_tail.array_bound",
+            minimum=1,
+            maximum=65535,
+        ),
+        "source_expression": _context_text(
+            tail.get("source_expression"),
+            "same-TU source-shape context fixed_array_tail.source_expression",
+            limit=512,
+        ),
+        "evidence_sha256": _context_sha256(
+            tail.get("evidence_sha256"),
+            "same-TU source-shape context fixed_array_tail.evidence_sha256",
+        ),
+    }
+    if normalized_tail["array_bound"] != normalized_donor["array_bound"]:
+        raise LearningInputError(
+            "same-TU donor and fixed-array tail must authenticate the same bound"
+        )
+
+    abi = _closed_context(
+        context.get("abi_boundary"),
+        allowed={
+            "parameter",
+            "parameter_register",
+            "producer_type",
+            "callee_type",
+            "candidate_normalization_row",
+            "store_row",
+            "caller_symbol",
+            "source_location",
+            "evidence_sha256",
+        },
+        required={
+            "parameter",
+            "parameter_register",
+            "producer_type",
+            "callee_type",
+            "candidate_normalization_row",
+            "store_row",
+            "caller_symbol",
+            "source_location",
+            "evidence_sha256",
+        },
+        label="same-TU source-shape context abi_boundary",
+    )
+    parameter_register = _context_text(
+        abi.get("parameter_register"),
+        "same-TU source-shape context abi_boundary.parameter_register",
+        limit=3,
+    ).lower()
+    if parameter_register not in {f"r{number}" for number in range(3, 11)}:
+        raise LearningInputError(
+            "same-TU source-shape ABI parameter must use a GPR argument register"
+        )
+    normalized_abi = {
+        "parameter": _context_identifier(
+            abi.get("parameter"), "same-TU source-shape context abi_boundary.parameter"
+        ),
+        "parameter_register": parameter_register,
+        "producer_type": _context_identifier(
+            abi.get("producer_type"),
+            "same-TU source-shape context abi_boundary.producer_type",
+        ),
+        "callee_type": _context_identifier(
+            abi.get("callee_type"),
+            "same-TU source-shape context abi_boundary.callee_type",
+        ),
+        "candidate_normalization_row": _context_uint(
+            abi.get("candidate_normalization_row"),
+            "same-TU source-shape context abi_boundary.candidate_normalization_row",
+        ),
+        "store_row": _context_uint(
+            abi.get("store_row"),
+            "same-TU source-shape context abi_boundary.store_row",
+        ),
+        "caller_symbol": _context_identifier(
+            abi.get("caller_symbol"),
+            "same-TU source-shape context abi_boundary.caller_symbol",
+        ),
+        "source_location": _context_text(
+            abi.get("source_location"),
+            "same-TU source-shape context abi_boundary.source_location",
+            limit=512,
+        ),
+        "evidence_sha256": _context_sha256(
+            abi.get("evidence_sha256"),
+            "same-TU source-shape context abi_boundary.evidence_sha256",
+        ),
+    }
+    if normalized_abi["producer_type"] == normalized_abi["callee_type"]:
+        raise LearningInputError(
+            "same-TU source-shape ABI producer and callee types must differ"
+        )
+
+    zero = _closed_context(
+        context.get("zero_chain"),
+        allowed={
+            "destination",
+            "fields",
+            "target_load_row",
+            "target_store_rows",
+            "candidate_load_rows",
+            "candidate_store_rows",
+            "source_expression",
+            "evidence_sha256",
+        },
+        required={
+            "destination",
+            "fields",
+            "target_load_row",
+            "target_store_rows",
+            "candidate_load_rows",
+            "candidate_store_rows",
+            "source_expression",
+            "evidence_sha256",
+        },
+        label="same-TU source-shape context zero_chain",
+    )
+    fields = zero.get("fields")
+    if not isinstance(fields, list) or len(fields) != 3:
+        raise LearningInputError(
+            "same-TU source-shape zero chain fields must contain exactly three names"
+        )
+    normalized_fields = [
+        _context_identifier(
+            item, f"same-TU source-shape context zero_chain.fields[{index}]"
+        )
+        for index, item in enumerate(fields)
+    ]
+    if len(set(normalized_fields)) != 3:
+        raise LearningInputError(
+            "same-TU source-shape zero chain fields must be distinct"
+        )
+    normalized_zero = {
+        "destination": _context_lvalue(
+            zero.get("destination"),
+            "same-TU source-shape context zero_chain.destination",
+        ),
+        "fields": normalized_fields,
+        "target_load_row": _context_uint(
+            zero.get("target_load_row"),
+            "same-TU source-shape context zero_chain.target_load_row",
+        ),
+        "target_store_rows": _context_rows(
+            zero.get("target_store_rows"),
+            "same-TU source-shape context zero_chain.target_store_rows",
+            minimum_count=3,
+            maximum_count=3,
+        ),
+        "candidate_load_rows": _context_rows(
+            zero.get("candidate_load_rows"),
+            "same-TU source-shape context zero_chain.candidate_load_rows",
+            minimum_count=3,
+            maximum_count=3,
+        ),
+        "candidate_store_rows": _context_rows(
+            zero.get("candidate_store_rows"),
+            "same-TU source-shape context zero_chain.candidate_store_rows",
+            minimum_count=3,
+            maximum_count=3,
+        ),
+        "source_expression": _context_text(
+            zero.get("source_expression"),
+            "same-TU source-shape context zero_chain.source_expression",
+            limit=512,
+        ),
+        "evidence_sha256": _context_sha256(
+            zero.get("evidence_sha256"),
+            "same-TU source-shape context zero_chain.evidence_sha256",
+        ),
+    }
+
+    cell = _closed_context(
+        context.get("combined_cell"),
+        allowed={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "object_sha256",
+            "candidate_record_sha256",
+        },
+        required={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "object_sha256",
+            "candidate_record_sha256",
+        },
+        label="same-TU source-shape context combined_cell",
+    )
+    normalized_cell = {
+        "candidate_id": _context_text(
+            cell.get("candidate_id"),
+            "same-TU source-shape context combined_cell.candidate_id",
+            limit=128,
+        ),
+        "target_size": _context_uint(
+            cell.get("target_size"),
+            "same-TU source-shape context combined_cell.target_size",
+            minimum=4,
+        ),
+        "candidate_size": _context_uint(
+            cell.get("candidate_size"),
+            "same-TU source-shape context combined_cell.candidate_size",
+            minimum=4,
+        ),
+        "object_sha256": _context_sha256(
+            cell.get("object_sha256"),
+            "same-TU source-shape context combined_cell.object_sha256",
+        ),
+        "candidate_record_sha256": _context_sha256(
+            cell.get("candidate_record_sha256"),
+            "same-TU source-shape context combined_cell.candidate_record_sha256",
+        ),
+    }
+    if normalized_cell["target_size"] != normalized_cell["candidate_size"]:
+        raise LearningInputError(
+            "same-TU source-shape combined cell must be function-size exact"
+        )
+
+    tail_rows = set(normalized_tail["target_rows"])
+    abi_rows = {
+        normalized_abi["candidate_normalization_row"],
+        normalized_abi["store_row"],
+    }
+    zero_rows = {
+        normalized_zero["target_load_row"],
+        *normalized_zero["target_store_rows"],
+        *normalized_zero["candidate_load_rows"],
+        *normalized_zero["candidate_store_rows"],
+    }
+    if tail_rows & abi_rows or tail_rows & zero_rows or abi_rows & zero_rows:
+        raise LearningInputError(
+            "same-TU source-shape residual row groups must be disjoint"
+        )
+    return {
+        "schema": SAME_TU_SHAPE_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "donor": normalized_donor,
+        "fixed_array_tail": normalized_tail,
+        "abi_boundary": normalized_abi,
+        "zero_chain": normalized_zero,
+        "combined_cell": normalized_cell,
     }
 
 
@@ -4030,6 +4442,326 @@ def _address_taken_local_pointer_evaluation(
     )
 
 
+def _same_tu_exact_sibling_shape_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "same_tu_exact_sibling_source_shapes"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated same-TU exact-sibling source-shape context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the same-TU source-shape context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    cell = context["combined_cell"]
+    if (
+        target_size != cell["target_size"]
+        or candidate_size is None
+        or candidate_size >= target_size
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the baseline size does not have the sealed smaller-candidate shape",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "expected_target_size": cell["target_size"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+
+    def row(index: int) -> tuple[causal_reducer.Instruction | None, causal_reducer.Instruction | None] | None:
+        if not 0 <= index < len(rows):
+            return None
+        return rows[index]
+
+    tail = context["fixed_array_tail"]
+    expected_tail_mnemonics = ["li", "srawi", "srwi", "subfc", "adde"]
+    tail_evidence: list[dict[str, Any]] = []
+    for index, expected_mnemonic in zip(
+        tail["target_rows"], expected_tail_mnemonics
+    ):
+        pair_row = row(index)
+        if pair_row is None:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a sealed fixed-array tail row is outside the focus function",
+            )
+        left, right = pair_row
+        if (
+            left is None
+            or not left.has_instruction
+            or left.mnemonic != expected_mnemonic
+            or (right is not None and right.has_instruction)
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the target-only fixed-array Boolean lowering is not li/srawi/srwi/subfc/adde",
+                evidence={"row_index": index, "expected_mnemonic": expected_mnemonic},
+            )
+        tail_evidence.append(
+            {"row_index": index, "target_formatted": left.formatted}
+        )
+
+    if tail["source_expression"] != context["donor"]["source_expression"]:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the focus tail expression does not equal the authenticated same-TU donor expression",
+        )
+
+    abi = context["abi_boundary"]
+    normalization_pair = row(abi["candidate_normalization_row"])
+    store_pair = row(abi["store_row"])
+    if normalization_pair is None or store_pair is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed ABI normalization rows are outside the focus function",
+        )
+    target_normalization, candidate_normalization = normalization_pair
+    target_store, candidate_store = store_pair
+    candidate_normalization_registers = (
+        _registers(candidate_normalization.formatted, "r")
+        if candidate_normalization is not None and candidate_normalization.has_instruction
+        else []
+    )
+    if (
+        (target_normalization is not None and target_normalization.has_instruction)
+        or candidate_normalization is None
+        or candidate_normalization.mnemonic != "extsh"
+        or len(candidate_normalization_registers) != 2
+        or candidate_normalization_registers[1] != abi["parameter_register"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the candidate-only callee normalization is not one extsh from the sealed argument register",
+        )
+    normalized_register = candidate_normalization_registers[0]
+    if (
+        target_store is None
+        or candidate_store is None
+        or not target_store.has_instruction
+        or not candidate_store.has_instruction
+        or target_store.mnemonic != "stw"
+        or candidate_store.mnemonic != "stw"
+        or _memory_operand(target_store.formatted)
+        != _memory_operand(candidate_store.formatted)
+        or _registers(target_store.formatted, "r")[:1] != [abi["parameter_register"]]
+        or _registers(candidate_store.formatted, "r")[:1] != [normalized_register]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target direct parameter store and candidate normalized store do not share one physical consumer",
+        )
+
+    zero = context["zero_chain"]
+    target_load_pair = row(zero["target_load_row"])
+    if target_load_pair is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the sealed zero-chain target load row is outside the focus function",
+        )
+    target_load = target_load_pair[0]
+    if (
+        target_load is None
+        or not target_load.has_instruction
+        or target_load.mnemonic != "lfs"
+        or target_load.relocation is None
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the zero chain does not begin with one typed target f32 load",
+        )
+    target_load_registers = _registers(target_load.formatted, "f")
+    if len(target_load_registers) != 1:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target zero load does not define one FPR",
+        )
+    target_store_items: list[causal_reducer.Instruction] = []
+    for index in zero["target_store_rows"]:
+        pair_row = row(index)
+        item = pair_row[0] if pair_row is not None else None
+        if (
+            item is None
+            or not item.has_instruction
+            or item.mnemonic != "stfs"
+            or _registers(item.formatted, "f")[:1] != target_load_registers
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the target zero stores do not all consume the single loaded FPR",
+                evidence={"row_index": index},
+            )
+        target_store_items.append(item)
+
+    candidate_load_items: list[causal_reducer.Instruction] = []
+    for index in zero["candidate_load_rows"]:
+        pair_row = row(index)
+        item = pair_row[1] if pair_row is not None else None
+        if (
+            item is None
+            or not item.has_instruction
+            or item.mnemonic != "lfs"
+            or item.relocation is None
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the candidate zero source is not three typed f32 loads",
+                evidence={"row_index": index},
+            )
+        candidate_load_items.append(item)
+    candidate_store_items: list[causal_reducer.Instruction] = []
+    for index in zero["candidate_store_rows"]:
+        pair_row = row(index)
+        item = pair_row[1] if pair_row is not None else None
+        if item is None or not item.has_instruction or item.mnemonic != "stfs":
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the candidate zero source is not three separate stores",
+                evidence={"row_index": index},
+            )
+        candidate_store_items.append(item)
+    for load_item, store_item in zip(candidate_load_items, candidate_store_items):
+        if _registers(load_item.formatted, "f")[:1] != _registers(
+            store_item.formatted, "f"
+        )[:1]:
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a candidate zero store does not consume its corresponding loaded FPR",
+            )
+
+    target_operands = [_memory_operand(item.formatted) for item in target_store_items]
+    candidate_operands = [
+        _memory_operand(item.formatted) for item in candidate_store_items
+    ]
+    target_offsets = [item[1] if item is not None else None for item in target_operands]
+    candidate_offsets = [
+        item[1] if item is not None else None for item in candidate_operands
+    ]
+    if (
+        any(offset is None for offset in target_offsets + candidate_offsets)
+        or len({item[0] for item in target_operands if item is not None}) != 1
+        or len({item[0] for item in candidate_operands if item is not None}) != 1
+        or target_operands[0][0] != candidate_operands[0][0]
+        or len(set(target_offsets)) != 3
+        or target_offsets != list(reversed(candidate_offsets))
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target does not reverse the same three candidate field homes with one shared zero value",
+            evidence={
+                "target_store_offsets": target_offsets,
+                "candidate_store_offsets": candidate_offsets,
+            },
+        )
+
+    learning_rows = set(tail["target_rows"]) | {
+        abi["candidate_normalization_row"],
+        abi["store_row"],
+        zero["target_load_row"],
+        *zero["target_store_rows"],
+        *zero["candidate_load_rows"],
+        *zero["candidate_store_rows"],
+    }
+    outside_residuals = [
+        index
+        for index, (left, right) in enumerate(rows)
+        if index not in learning_rows
+        and not _equivalent_outside_learning_window(left, right)
+    ]
+    if outside_residuals:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the report has physical residuals outside the three sealed source-shape groups",
+            evidence={"outside_residual_rows": outside_residuals},
+        )
+
+    scheduled_cell = {
+        "id": cell["candidate_id"],
+        "source_actions": [
+            tail["source_expression"],
+            f"declare callee parameter {abi['parameter']} as {abi['callee_type']} while preserving the {abi['producer_type']} producer boundary",
+            zero["source_expression"],
+        ],
+        "expected_target_size": cell["target_size"],
+        "expected_candidate_size": cell["candidate_size"],
+        "expected_object_sha256": cell["object_sha256"],
+        "candidate_record_sha256": cell["candidate_record_sha256"],
+    }
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "three nonoverlapping physical groups match an exact same-TU fixed-array "
+            "tail, a caller-authenticated narrow-producer/wide-callee boundary, and "
+            "one right-associative aggregate zero chain"
+        ),
+        confidence=0.99,
+        source_class="same_tu_exact_sibling_and_consumer_contract_combined_cell",
+        recommendation=(
+            "Compile only the emitted combined natural-C cell; do not schedule fresh "
+            "declaration, ABI, literal-load, or Boolean-CFG permutations."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "donor": context["donor"],
+            "fixed_array_tail": {
+                **tail,
+                "target_instructions": tail_evidence,
+            },
+            "abi_boundary": {
+                **abi,
+                "normalized_register": normalized_register,
+                "target_store_formatted": target_store.formatted,
+                "candidate_store_formatted": candidate_store.formatted,
+            },
+            "zero_chain": {
+                **zero,
+                "target_store_offsets": target_offsets,
+                "candidate_store_offsets": candidate_offsets,
+            },
+            "scheduled_cells": [scheduled_cell],
+            "suppressed_axes": [
+                "declaration_order_permutations",
+                "independent_boolean_materialization",
+                "guessed_prototype_changes",
+                "separate_zero_literal_loads",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -4307,6 +5039,7 @@ def diagnose_document(
     aggregate_use_context: Mapping[str, Any] | None = None,
     aggregate_followup_context: Mapping[str, Any] | None = None,
     address_taken_context: Mapping[str, Any] | None = None,
+    same_tu_shape_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -4347,6 +5080,11 @@ def diagnose_document(
     normalized_address_taken_context = (
         _parse_address_taken_context(address_taken_context)
         if address_taken_context is not None
+        else None
+    )
+    normalized_same_tu_shape_context = (
+        _parse_same_tu_shape_context(same_tu_shape_context)
+        if same_tu_shape_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -4426,6 +5164,13 @@ def diagnose_document(
             normalized_address_taken_context,
             objdiff_canonical_sha256,
         ),
+        _same_tu_exact_sibling_shape_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_same_tu_shape_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -4475,6 +5220,11 @@ def diagnose_document(
             "address_taken_context_canonical_sha256": (
                 _sha256(_canonical(normalized_address_taken_context))
                 if normalized_address_taken_context is not None
+                else None
+            ),
+            "same_tu_shape_context_canonical_sha256": (
+                _sha256(_canonical(normalized_same_tu_shape_context))
+                if normalized_same_tu_shape_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -4587,6 +5337,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--same-tu-shape-context",
+        type=Path,
+        help=(
+            "authenticated same_tu_exact_sibling_shape_context/v1 JSON with "
+            "fixed-array tail, caller ABI, zero-chain, and exact donor evidence"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -4652,6 +5410,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="address-taken local pointer context",
                 )
                 if args.address_taken_context is not None
+                else None
+            ),
+            same_tu_shape_context=(
+                _load_json(
+                    args.same_tu_shape_context,
+                    label="same-TU exact-sibling source-shape context",
+                )
+                if args.same_tu_shape_context is not None
                 else None
             ),
             capacity_context=(
