@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v20` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v21` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -1040,6 +1040,62 @@ telemetry must remain excluded from measured crack/hour and is never imputed.
 The diagnosis is evidence-only and cannot authorize source retention or
 promotion.
 
+
+## Stack extent with an overwritten initializer
+
+When size, frame, CFG, calls, data, and physical relocations are exact and only
+one paired `stw` home differs, a missing aggregate word may be diagnosable
+without authorizing dead storage:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/metal-v813.strict.json \
+  --function MetalEffectCreate \
+  --stack-extent-overwritten-initializer-context \
+    work/metal.stack-extent-overwritten-initializer.json \
+  > work/metal.learning.json
+```
+
+`stack_extent_overwritten_initializer_context/v1` requires one exact paired
+store seam whose candidate home is four bytes above the target home, plus this
+unique target sequence:
+
+```text
+li r0,-1; stw r0,0x3c(r1); stw r0,0x3c(r1)
+li r0, 0; stw r0,0x38(r1); stw r0,0x34(r1)
+```
+
+The `0x38` slot must have exactly one direct write and zero direct reads in the
+authenticated target inventory. The context must bind exact target chronology,
+the one-row precursor, exact relocation topology, protected siblings, and the
+combined exact result. It also requires the complete measured control matrix:
+
+- max-vertex overwrite and a self-chain regress;
+- address/`sizeof` and constant-bound visibility are object-identical;
+- the two-word array and two-field struct are exact and object-identical;
+- one-word and 12-byte aggregates regress;
+- particle-data aliases regress; and
+- the tracer failed closed and must not be retried for this seam.
+
+The rule deduplicates the two exact 8-byte controls and schedules one bounded
+natural-C cell:
+
+```c
+int objectNo[2];
+objectNo[0] = objectNo[0] = -1;
+```
+
+This is explicitly a path- and function-scoped target-residue reconstruction.
+The unused second word is not authenticated original-source provenance, does
+not waive the ban on dead storage, and cannot authorize retention or promotion.
+One-word retries, larger state, aliases, visibility tricks, declaration/scope
+permutations, fake locals, padding, register shaping, and repeat tracing are
+suppressed.
+
+Measured parent active seconds are mandatory. If helper or candidate-heavy
+coverage is incomplete, throughput remains fail-closed and excluded from
+measured crack/hour without imputation. The diagnosis always remains
+`authority_advanced:false`.
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,

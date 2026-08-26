@@ -28,10 +28,11 @@ from tools import mismatch_cluster_audit as causal_reducer
 from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
 from tools import scalar_return_consumer_owner
+from tools import stack_extent_overwritten_initializer
 
 
-SCHEMA = "crack_learning_diagnosis/v20"
-SCHEMA_VERSION = 20
+SCHEMA = "crack_learning_diagnosis/v21"
+SCHEMA_VERSION = 21
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -55,6 +56,9 @@ LIVE_ALIAS_MEMSET_CONTEXT_SCHEMA = (
 )
 SCALAR_RETURN_CONSUMER_CONTEXT_SCHEMA = (
     scalar_return_consumer_owner.CONTEXT_SCHEMA
+)
+STACK_EXTENT_OVERWRITTEN_INITIALIZER_CONTEXT_SCHEMA = (
+    stack_extent_overwritten_initializer.CONTEXT_SCHEMA
 )
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
@@ -516,6 +520,7 @@ _RULE_ORDER = (
     mixed_bank_home_cycle.RULE_ID,
     live_alias_memset_fusion.RULE_ID,
     scalar_return_consumer_owner.RULE_ID,
+    stack_extent_overwritten_initializer.RULE_ID,
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -3814,6 +3819,15 @@ def _parse_scalar_return_consumer_context(
     try:
         return scalar_return_consumer_owner.parse_context(value)
     except scalar_return_consumer_owner.ScalarReturnOwnerInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_stack_extent_overwritten_initializer_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return stack_extent_overwritten_initializer.parse_context(value)
+    except stack_extent_overwritten_initializer.StackExtentInitializerInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10380,6 +10394,23 @@ def _scalar_return_consumer_evaluation(
     return _evaluation(scalar_return_consumer_owner.RULE_ID, **result)
 
 
+def _stack_extent_overwritten_initializer_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = stack_extent_overwritten_initializer.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(stack_extent_overwritten_initializer.RULE_ID, **result)
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12382,6 +12413,7 @@ def diagnose_document(
     mixed_bank_home_cycle_context: Mapping[str, Any] | None = None,
     live_alias_memset_context: Mapping[str, Any] | None = None,
     scalar_return_consumer_context: Mapping[str, Any] | None = None,
+    stack_extent_overwritten_initializer_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -12465,6 +12497,13 @@ def diagnose_document(
     normalized_scalar_return_consumer_context = (
         _parse_scalar_return_consumer_context(scalar_return_consumer_context)
         if scalar_return_consumer_context is not None
+        else None
+    )
+    normalized_stack_extent_overwritten_initializer_context = (
+        _parse_stack_extent_overwritten_initializer_context(
+            stack_extent_overwritten_initializer_context
+        )
+        if stack_extent_overwritten_initializer_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -12633,6 +12672,13 @@ def diagnose_document(
             normalized_scalar_return_consumer_context,
             objdiff_canonical_sha256,
         ),
+        _stack_extent_overwritten_initializer_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_stack_extent_overwritten_initializer_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -12763,6 +12809,11 @@ def diagnose_document(
             "scalar_return_consumer_context_canonical_sha256": (
                 _sha256(_canonical(normalized_scalar_return_consumer_context))
                 if normalized_scalar_return_consumer_context is not None
+                else None
+            ),
+            "stack_extent_overwritten_initializer_context_canonical_sha256": (
+                _sha256(_canonical(normalized_stack_extent_overwritten_initializer_context))
+                if normalized_stack_extent_overwritten_initializer_context is not None
                 else None
             ),
             "aggregate_snapshot_pointer_context_canonical_sha256": (
@@ -12977,6 +13028,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--stack-extent-overwritten-initializer-context",
+        type=Path,
+        help=(
+            "authenticated stack_extent_overwritten_initializer_context/v1 JSON with "
+            "one exact +4 stack-home seam, overwritten-slot proof, and sealed controls"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-snapshot-pointer-context",
         type=Path,
         help=(
@@ -13161,6 +13220,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="scalar return consumer-owner context",
                 )
                 if args.scalar_return_consumer_context is not None
+                else None
+            ),
+            stack_extent_overwritten_initializer_context=(
+                _load_json(
+                    args.stack_extent_overwritten_initializer_context,
+                    label="stack-extent overwritten-initializer context",
+                )
+                if args.stack_extent_overwritten_initializer_context is not None
                 else None
             ),
             address_taken_context=(
