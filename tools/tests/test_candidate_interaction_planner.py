@@ -60,6 +60,50 @@ def _request() -> dict[str, object]:
     }
 
 
+def _closed_three_axis_request() -> dict[str, object]:
+    return {
+        "schema": module.REQUEST_SCHEMA,
+        "planner_id": "capevent-player-move-idle-closed-evidence-v1",
+        "focus_symbols": ["mbev_CapPlayerMoveIdleCreate"],
+        "axes": [
+            {
+                "id": "allocation_chain",
+                "hypothesis": "authenticated allocation-result consumer boundary",
+                "control_level": "split",
+                "levels": [
+                    _level("split", "allocation-consumers-split"),
+                    _level("chained", "allocation-consumers-chained"),
+                ],
+            },
+            {
+                "id": "owner_chronology",
+                "hypothesis": "complete workData/masuId saved-GPR cycle",
+                "control_level": "baseline",
+                "levels": [
+                    _level("baseline", "owners-baseline"),
+                    _level("target", "owners-target-chronology"),
+                ],
+            },
+            {
+                "id": "narrow_consumer",
+                "hypothesis": "target lha/extsh boundary at the s16 consumer",
+                "control_level": "s16",
+                "levels": [
+                    _level("s16", "masu-id-s16"),
+                    _level("int", "masu-id-int-normalized"),
+                ],
+            },
+        ],
+        "priority_selections": [
+            {
+                "allocation_chain": "chained",
+                "owner_chronology": "target",
+                "narrow_consumer": "int",
+            }
+        ],
+    }
+
+
 class CandidateInteractionPlannerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -105,6 +149,48 @@ class CandidateInteractionPlannerTests(unittest.TestCase):
         self.assertEqual(combined["interaction_order"], 2)
         self.assertEqual(combined["action"], "generate_and_compile")
         self.assertEqual(len(plan["recommended_execution_order"]), 4)
+
+    def test_closed_three_axis_evidence_prioritizes_combined_cell(self) -> None:
+        request = _closed_three_axis_request()
+        plan = self._build(request)
+
+        first_cell_id = plan["recommended_execution_order"][0]
+        first = next(cell for cell in plan["cells"] if cell["cell_id"] == first_cell_id)
+        self.assertEqual(
+            first["selection"],
+            {
+                "allocation_chain": "chained",
+                "narrow_consumer": "int",
+                "owner_chronology": "target",
+            },
+        )
+        self.assertEqual(first["interaction_order"], 3)
+        self.assertEqual(first["priority_rank"], 0)
+        self.assertEqual(first["action"], "generate_and_compile")
+        self.assertEqual(plan["priority_selections"], request["priority_selections"])
+
+    def test_priority_selections_fail_closed(self) -> None:
+        partial = _closed_three_axis_request()
+        del partial["priority_selections"][0]["narrow_consumer"]
+        with self.assertRaisesRegex(module.InteractionPlanError, "name every axis"):
+            self._build(partial)
+
+        blocked = _closed_three_axis_request()
+        blocked["axes"][2]["levels"][1]["admissibility"] = "blocked"
+        with self.assertRaisesRegex(module.InteractionPlanError, "only natural levels"):
+            self._build(blocked)
+
+        measured = _closed_three_axis_request()
+        measured["observations"] = [
+            {
+                "selection": measured["priority_selections"][0],
+                "candidate_id": "already-measured",
+                "source_sha256": SHA_A,
+                "object_sha256": SHA_B,
+            }
+        ]
+        with self.assertRaisesRegex(module.InteractionPlanError, "unmeasured"):
+            self._build(measured)
 
     def test_explicit_topology_tokens_dedupe_without_semantic_inference(self) -> None:
         request = _request()

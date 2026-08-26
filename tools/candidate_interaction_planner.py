@@ -184,6 +184,7 @@ def _parse_request(value: Mapping[str, Any]) -> dict[str, Any]:
             "axes",
             "constraints",
             "observations",
+            "priority_selections",
             "max_cells",
         },
         required={"schema", "planner_id", "focus_symbols", "axes"},
@@ -324,6 +325,49 @@ def _parse_request(value: Mapping[str, Any]) -> dict[str, Any]:
     constraint_keys = [_canonical(item) for item in constraints]
     _unique([item.hex() for item in constraint_keys], "constraints")
 
+    priority_selections: list[dict[str, str]] = []
+    axis_level_records = {
+        axis["id"]: {level["id"]: level for level in axis["levels"]}
+        for axis in axes
+    }
+    for index, raw_selection in enumerate(
+        _array(
+            request.get("priority_selections", []),
+            "priority_selections",
+            maximum=max_cells_value,
+        )
+    ):
+        if not isinstance(raw_selection, dict) or set(raw_selection) != set(
+            axis_levels
+        ):
+            _fail(
+                f"priority_selections[{index}] must name every axis exactly once"
+            )
+        selection: dict[str, str] = {}
+        for axis_id in sorted(axis_levels):
+            level_id = _identifier(
+                raw_selection.get(axis_id),
+                f"priority_selections[{index}].{axis_id}",
+            )
+            if level_id not in axis_levels[axis_id]:
+                _fail(f"priority_selections[{index}] references an unknown level")
+            level = axis_level_records[axis_id][level_id]
+            if level["admissibility"] != "natural":
+                _fail(
+                    f"priority_selections[{index}] must contain only natural levels"
+                )
+            selection[axis_id] = level_id
+        reason = _constraint_reason(selection, constraints)
+        if reason is not None:
+            _fail(
+                f"priority_selections[{index}] is blocked by a constraint: {reason}"
+            )
+        priority_selections.append(selection)
+    _unique(
+        [json.dumps(item, sort_keys=True) for item in priority_selections],
+        "priority_selections",
+    )
+
     observations: list[dict[str, Any]] = []
     for index, raw_observation in enumerate(
         _array(request.get("observations", []), "observations", maximum=max_cells_value)
@@ -371,6 +415,7 @@ def _parse_request(value: Mapping[str, Any]) -> dict[str, Any]:
         "axes": axes,
         "constraints": constraints,
         "observations": observations,
+        "priority_selections": priority_selections,
         "max_cells": max_cells_value,
         "raw_cell_count": product_size,
     }
@@ -391,11 +436,12 @@ def build_interaction_plan(request_path: Path | str) -> dict[str, Any]:
     raw_request, request_sha256 = _load_request(Path(request_path))
     request = _parse_request(raw_request)
     axes = request["axes"]
-    level_maps = {
-        axis["id"]: {level["id"]: level for level in axis["levels"]} for axis in axes
-    }
     observation_by_selection = {
         _selection_key(item["selection"]): item for item in request["observations"]
+    }
+    priority_by_selection = {
+        _selection_key(selection): index
+        for index, selection in enumerate(request["priority_selections"])
     }
 
     cells: list[dict[str, Any]] = []
@@ -436,6 +482,7 @@ def build_interaction_plan(request_path: Path | str) -> dict[str, Any]:
                     )
                 ),
                 "observation": observation,
+                "priority_rank": priority_by_selection.get(_selection_key(selection)),
             }
         )
     cells.sort(
@@ -488,7 +535,27 @@ def build_interaction_plan(request_path: Path | str) -> dict[str, Any]:
         cell["action"] = action
         cell.pop("topology_key")
 
-    runnable = [cell["cell_id"] for cell in cells if cell["action"] == "generate_and_compile"]
+    priority_cells = [cell for cell in cells if cell["priority_rank"] is not None]
+    invalid_priority = [
+        cell for cell in priority_cells if cell["action"] != "generate_and_compile"
+    ]
+    if invalid_priority:
+        cell = min(invalid_priority, key=lambda item: int(item["priority_rank"]))
+        _fail(
+            "priority selection must resolve to one unblocked, unmeasured, "
+            f"topology-canonical compile cell; {cell['cell_id']} resolves to {cell['action']}"
+        )
+
+    runnable_cells = [cell for cell in cells if cell["action"] == "generate_and_compile"]
+    runnable_cells.sort(
+        key=lambda item: (
+            item["priority_rank"] is None,
+            item["priority_rank"] if item["priority_rank"] is not None else 0,
+            item["interaction_order"],
+            tuple(item["selection"].items()),
+        )
+    )
+    runnable = [cell["cell_id"] for cell in runnable_cells]
     batches = []
     for interaction_order in sorted({cell["interaction_order"] for cell in cells}):
         batch_cells = [
@@ -525,6 +592,7 @@ def build_interaction_plan(request_path: Path | str) -> dict[str, Any]:
                 "topology_duplicate_of": cell["topology_duplicate_of"],
                 "source_actions": cell["source_actions"],
                 "admissibility": cell["admissibility"],
+                "priority_rank": cell["priority_rank"],
                 "blocked_reason": cell["blocked_reason"],
                 "action": cell["action"],
                 "observation": (
@@ -546,6 +614,7 @@ def build_interaction_plan(request_path: Path | str) -> dict[str, Any]:
         "request_sha256": request_sha256,
         "focus_symbols": request["focus_symbols"],
         "axes": axes,
+        "priority_selections": request["priority_selections"],
         "summary": {
             "raw_cell_count": len(cells),
             "unique_topology_count": len(topology_groups),

@@ -125,6 +125,31 @@ rtk python tools/candidate_interaction_planner.py \
   work/kuribo-v128.interaction-request.json
 ```
 
+The planner normally orders control, single-axis, then interaction cells. When
+independent target evidence has already closed every axis and the shortest path
+is the fully composed natural source, add an ordered `priority_selections`
+array to the request. Each entry must name every axis exactly once and may use
+only `natural` levels. A prioritized cell is rejected if it is constrained,
+blocked, already measured, or a duplicate topology; the default order is
+unchanged when the field is absent. For example, the closed
+PlayerMoveIdleCreate evidence prioritizes its allocation chain, complete owner
+cycle, and narrow-consumer normalization together:
+
+```json
+"priority_selections": [
+  {
+    "allocation_chain": "chained",
+    "owner_chronology": "target",
+    "narrow_consumer": "int"
+  }
+]
+```
+
+Use `recommended_execution_order` as the authoritative compile order, then
+record the resulting source, object, attestation, and reports in the matching
+workbench before editing another cell. Priority changes scheduling only; it
+does not generate source, relax evidence gates, or advance retention authority.
+
 When one swapped owner is a function parameter and the other is an allocation
 result that the target explicitly preserves, use the parameter-aware context
 instead of the generic allocator factorial:
