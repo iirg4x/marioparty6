@@ -29,10 +29,11 @@ from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
 from tools import scalar_return_consumer_owner
 from tools import stack_extent_overwritten_initializer
+from tools import traced_naggregate_reciprocal_fold
 
 
-SCHEMA = "crack_learning_diagnosis/v21"
-SCHEMA_VERSION = 21
+SCHEMA = "crack_learning_diagnosis/v22"
+SCHEMA_VERSION = 22
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -59,6 +60,9 @@ SCALAR_RETURN_CONSUMER_CONTEXT_SCHEMA = (
 )
 STACK_EXTENT_OVERWRITTEN_INITIALIZER_CONTEXT_SCHEMA = (
     stack_extent_overwritten_initializer.CONTEXT_SCHEMA
+)
+TRACED_NAGGREGATE_RECIPROCAL_CONTEXT_SCHEMA = (
+    traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA
 )
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
@@ -527,6 +531,7 @@ _RULE_ORDER = (
     "dependency_equivalent_exact_sibling_transfer",
     "wide_validation_narrow_selected_result",
     "pool_live_range_interaction",
+    traced_naggregate_reciprocal_fold.RULE_ID,
     "float_truthiness_comparison_ranking",
     "stack_extent_interface_capacity",
     "stack_gap_capacity_expression_attribution",
@@ -3828,6 +3833,15 @@ def _parse_stack_extent_overwritten_initializer_context(
     try:
         return stack_extent_overwritten_initializer.parse_context(value)
     except stack_extent_overwritten_initializer.StackExtentInitializerInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_traced_naggregate_reciprocal_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return traced_naggregate_reciprocal_fold.parse_context(value)
+    except traced_naggregate_reciprocal_fold.TracedAggregateFoldInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10411,6 +10425,23 @@ def _stack_extent_overwritten_initializer_evaluation(
     return _evaluation(stack_extent_overwritten_initializer.RULE_ID, **result)
 
 
+def _traced_naggregate_reciprocal_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = traced_naggregate_reciprocal_fold.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(traced_naggregate_reciprocal_fold.RULE_ID, **result)
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12414,6 +12445,7 @@ def diagnose_document(
     live_alias_memset_context: Mapping[str, Any] | None = None,
     scalar_return_consumer_context: Mapping[str, Any] | None = None,
     stack_extent_overwritten_initializer_context: Mapping[str, Any] | None = None,
+    traced_naggregate_reciprocal_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -12504,6 +12536,13 @@ def diagnose_document(
             stack_extent_overwritten_initializer_context
         )
         if stack_extent_overwritten_initializer_context is not None
+        else None
+    )
+    normalized_traced_naggregate_reciprocal_context = (
+        _parse_traced_naggregate_reciprocal_context(
+            traced_naggregate_reciprocal_context
+        )
+        if traced_naggregate_reciprocal_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -12721,6 +12760,13 @@ def diagnose_document(
             normalized_pool_live_range_context,
             objdiff_canonical_sha256,
         ),
+        _traced_naggregate_reciprocal_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_traced_naggregate_reciprocal_context,
+            objdiff_canonical_sha256,
+        ),
         _float_truthiness_comparison_evaluation(
             pair,
             target,
@@ -12856,6 +12902,11 @@ def diagnose_document(
                 if normalized_pool_live_range_context is not None
                 else None
             ),
+            "traced_naggregate_reciprocal_context_canonical_sha256": (
+                _sha256(_canonical(normalized_traced_naggregate_reciprocal_context))
+                if normalized_traced_naggregate_reciprocal_context is not None
+                else None
+            ),
             "float_truthiness_context_canonical_sha256": (
                 _sha256(_canonical(normalized_float_truthiness_context))
                 if normalized_float_truthiness_context is not None
@@ -12903,6 +12954,11 @@ def diagnose_document(
                 "sha256": _sha256(
                     Path(__file__).with_name("match_workbench.py").read_bytes()
                 ),
+            },
+            "traced_naggregate_reciprocal_fold": {
+                "path": Path(traced_naggregate_reciprocal_fold.__file__).name,
+                "schema": traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA,
+                "sha256": _sha256(Path(traced_naggregate_reciprocal_fold.__file__).read_bytes()),
             },
         },
         "evaluations": evaluations,
@@ -13105,6 +13161,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--traced-naggregate-reciprocal-context",
+        type=Path,
+        help=(
+            "authenticated traced_naggregate_reciprocal_fold_context/v1 JSON with "
+            "a same-session scalar/aggregate home swap, same-TU numbered precedent, "
+            "typed semantic pool batch, and one-ULP rounded-reciprocal fold"
+        ),
+    )
+    parser.add_argument(
         "--float-truthiness-context",
         type=Path,
         help=(
@@ -13300,6 +13365,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="pool/live-range interaction context",
                 )
                 if args.pool_live_range_context is not None
+                else None
+            ),
+            traced_naggregate_reciprocal_context=(
+                _load_json(
+                    args.traced_naggregate_reciprocal_context,
+                    label="traced numbered-aggregate reciprocal-fold context",
+                )
+                if args.traced_naggregate_reciprocal_context is not None
                 else None
             ),
             float_truthiness_context=(

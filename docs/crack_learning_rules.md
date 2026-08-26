@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v21` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v22` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -1096,6 +1096,73 @@ Measured parent active seconds are mandatory. If helper or candidate-heavy
 coverage is incomplete, throughput remains fail-closed and excluded from
 measured crack/hour without imputation. The diagnosis always remains
 `authority_advanced:false`.
+
+## Traced numbered aggregates with a one-ULP reciprocal fold
+
+When a near-exact Board state machine has one authenticated scalar/aggregate
+stack-home swap plus independent typed-pool rows, compose the evidence before
+running lexical or scope permutations:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/coinom-c037.strict.json \
+  --function mbev_CapEffCoinOMExec \
+  --traced-naggregate-reciprocal-context \
+    work/coinom.traced-naggregate-reciprocal.json \
+  > work/coinom.learning.json
+```
+
+`traced_naggregate_reciprocal_fold_context/v1` requires exact function size,
+frame, CFG/calls, and physical-relocation count. A canonical same-session trace
+must bind the scalar and aggregate owners to distinct `local-NNNNNN` tokens,
+prove their candidate/target homes form one closed swap, provide a complete
+alias summary, and contain zero UNKNOWN at the seam. The target aggregate homes
+must be adjacent, descending, and exactly one aggregate width above the scalar
+home.
+
+The same-TU evidence must authenticate gap-free numbered declarations in at
+least two exact functions. Given the target count and homes, the first cell is
+therefore bounded to:
+
+```c
+GXColor color1;
+GXColor color2;
+GXColor color3;
+```
+
+The rule does not infer those names from objdiff. It only accepts them from the
+sealed same-TU precedent and target-home plan. It suppresses lexical scopes,
+initializer-only forms, single-outer-aggregate probes, scalar declaration
+permutations, and repeat tracing once the two-owner seam is closed.
+
+After the aggregate cell, the context requires exactly three typed semantic
+pool consumers. CoinOM binds `64.0f`, the state-3 gravity value, and `50.0f` as
+one compile batch. Expressions containing opaque integer/hex bit patterns,
+unions, or `memcpy` are rejected.
+
+For the final gravity row, the existing power-of-two reciprocal rule is not
+reused. The context must prove a non-power-of-two denominator and reproduce
+both IEEE-754 paths from the authenticated numerator:
+
+```text
+direct:  f32(9.8f / 3.0f)              = 0x40511111
+staged:  f32(9.8f * f32(1.0f / 3.0f))  = 0x40511112
+```
+
+The target must equal the staged result and differ from direct division by
+exactly one ULP. Only then does the third cell rank ordinary semantic C:
+
+```c
+CAPEVENT_GRAVITY * (1.0f / 3.0f)
+```
+
+The output contains exactly three ordered cells: numbered aggregate chronology,
+the authenticated pool batch, and rounded-reciprocal multiplication. It cannot
+recommend guessed decimals, opaque bits, fake locals, padding, register
+shaping, source retention, or promotion. Measured active seconds are required;
+CoinOM's incomplete historical/helper/heavy coverage remains excluded from
+measured crack/hour without imputation. The result is always
+`authority_advanced:false`.
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,
@@ -1103,7 +1170,8 @@ and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
 allocator, parameter/allocation, aggregate-pointer branch, typed-pool/live-range,
 capacity, branch, reciprocal, mixed-bank home-cycle, historical live-alias, or
-scalar return-consumer owner evidence by SHA-256; the allocator path also binds the installed
+scalar return-consumer owner evidence by SHA-256. The traced numbered-aggregate
+path also binds its standalone implementation; the allocator path binds the installed
 interaction planner, and the typed-pool path binds the installed pool decoder.
 Rule order and JSON serialization are stable.
 
