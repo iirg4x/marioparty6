@@ -1,0 +1,84 @@
+{
+  "schema": "metadata_owner_coherence_context/v1",
+  "proofs": {
+    "objdiff_canonical_sha256": "2768ff4701abfa78c57661ac293b9818d0ce1fc293948493044e6124b2e6bd69",
+    "focus_strict_exact": true,
+    "focus_data_exact": true,
+    "source_unchanged": true,
+    "candidate_object_unchanged": true,
+    "payload_sections_equal": true,
+    "physical_relocation_keys_equal": true,
+    "effective_targets_equal": true,
+    "protected_siblings_preserved": true,
+    "linked_retail_exact": true,
+    "strict_report_sha256": "2085215911b02d3bc40cb2bb529503c0dc634b909cc3f6fd4c44f4f7748e4e29",
+    "data_report_sha256": "05ab8971ba8fd8a3bc9e68b8120970fa411480ea80d373a02decaa064243a57d",
+    "source_sha256": "d330148e5c7a4e93de7f58dc0a08df749ef76ba4d225f966b3c9d51e82fa7b5d",
+    "candidate_object_sha256": "e4058cfd9b366a16f4f42e5c56821896c6bb9f40eb94cad1bc7393bda4c63cf7",
+    "prior_target_object_sha256": "3c69d3c2af63b7174a4da5595cba8239c9d937534a06e9369091ba32370df6c8",
+    "corrected_target_object_sha256": "b609fe14d1a40162ba42a5ebc61e000a22082a9c348ca8d271a99ac15ac388dd",
+    "metadata_before_sha256": "7a6f71510ccb743c2dc13e957c641e785c02c51f31854d8938b1f674934b5a13",
+    "metadata_after_sha256": "d4c9841df7336ab4d432b7c99c34aa7b13f1d10c8c877b86468219c3d444ad7b",
+    "relocation_identity_receipt_sha256": "491218b808015a9ce35619719229aa6782d9a9e1b3beff3fcb450f221a3f06b2",
+    "linked_retail_receipt_sha256": "78da7f908cab4a2ad4fcbbddb415a8328719290c5d394ba0ef2b4a76ad66e851"
+  },
+  "metadata": {
+    "section": ".sdata",
+    "objects": [
+      {
+        "name": "lbl_802C324C",
+        "address": 2150380108,
+        "size": 4,
+        "data_kind": "byte",
+        "removed_interior_labels": [
+          {"name": "lbl_802C324D", "address": 2150380109},
+          {"name": "lbl_802C324E", "address": 2150380110},
+          {"name": "lbl_802C324F", "address": 2150380111}
+        ]
+      },
+      {
+        "name": "lbl_802C3250",
+        "address": 2150380112,
+        "size": 4,
+        "data_kind": "byte",
+        "removed_interior_labels": [
+          {"name": "lbl_802C3251", "address": 2150380113},
+          {"name": "lbl_802C3252", "address": 2150380114},
+          {"name": "lbl_802C3253", "address": 2150380115}
+        ]
+      },
+      {
+        "name": "lbl_802C3258",
+        "address": 2150380120,
+        "size": 4,
+        "data_kind": "byte",
+        "removed_interior_labels": [
+          {"name": "lbl_802C3259", "address": 2150380121},
+          {"name": "lbl_802C325A", "address": 2150380122},
+          {"name": "lbl_802C325B", "address": 2150380123}
+        ]
+      }
+    ],
+    "attribution_changes_outside_objects": 0
+  },
+  "relocations": {
+    "prior_rows": 2249,
+    "corrected_rows": 2249,
+    "name_rebindings": 9,
+    "effective_target_differences": 0
+  },
+  "focus_functions": [
+    {
+      "name": "PlayerBiriQOMExec",
+      "target_bytes": 1140,
+      "candidate_bytes": 1140,
+      "physical_relocations": 49
+    },
+    {
+      "name": "mbPlayerBiriQSet",
+      "target_bytes": 512,
+      "candidate_bytes": 512,
+      "physical_relocations": 40
+    }
+  ]
+}

@@ -25,9 +25,10 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v10"
-SCHEMA_VERSION = 10
+SCHEMA = "crack_learning_diagnosis/v11"
+SCHEMA_VERSION = 11
 HASH_FIELD = "diagnosis_sha256"
+METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
 AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
@@ -303,8 +304,33 @@ _RECIPROCAL_PROOF_HASHES = (
     "typed_constant_receipt_sha256",
     "neutral_observation_receipt_sha256",
 )
+_METADATA_OWNER_PROOF_FLAGS = (
+    "focus_strict_exact",
+    "focus_data_exact",
+    "source_unchanged",
+    "candidate_object_unchanged",
+    "payload_sections_equal",
+    "physical_relocation_keys_equal",
+    "effective_targets_equal",
+    "protected_siblings_preserved",
+    "linked_retail_exact",
+)
+_METADATA_OWNER_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "source_sha256",
+    "candidate_object_sha256",
+    "prior_target_object_sha256",
+    "corrected_target_object_sha256",
+    "metadata_before_sha256",
+    "metadata_after_sha256",
+    "relocation_identity_receipt_sha256",
+    "linked_retail_receipt_sha256",
+)
 
 _RULE_ORDER = (
+    "metadata_owner_coherence",
     "explicit_else_return_cfg",
     "loop_branch_destination",
     "assignment_condition_saved_gpr_cycle",
@@ -3782,6 +3808,281 @@ def _parse_branch_context(value: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _parse_metadata_owner_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={"schema", "proofs", "metadata", "relocations", "focus_functions"},
+        required={"schema", "proofs", "metadata", "relocations", "focus_functions"},
+        label="metadata-owner context",
+    )
+    if (
+        _context_text(context.get("schema"), "metadata-owner context schema")
+        != METADATA_OWNER_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"metadata-owner context schema must be {METADATA_OWNER_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_METADATA_OWNER_PROOF_FLAGS) | set(
+        _METADATA_OWNER_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="metadata-owner context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _METADATA_OWNER_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"metadata-owner context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _METADATA_OWNER_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"metadata-owner context proofs.{field}"
+        )
+    if (
+        normalized_proofs["prior_target_object_sha256"]
+        == normalized_proofs["corrected_target_object_sha256"]
+    ):
+        raise LearningInputError(
+            "metadata-owner context must bind distinct prior and corrected target objects"
+        )
+    if (
+        normalized_proofs["metadata_before_sha256"]
+        == normalized_proofs["metadata_after_sha256"]
+    ):
+        raise LearningInputError(
+            "metadata-owner context must bind distinct before/after metadata"
+        )
+
+    metadata = _closed_context(
+        context.get("metadata"),
+        allowed={"section", "objects", "attribution_changes_outside_objects"},
+        required={"section", "objects", "attribution_changes_outside_objects"},
+        label="metadata-owner context metadata",
+    )
+    section = _context_text(
+        metadata.get("section"), "metadata-owner context metadata.section", limit=16
+    )
+    if section not in {".rodata", ".data", ".sdata", ".sdata2"}:
+        raise LearningInputError(
+            "metadata-owner context metadata.section is not a supported data section"
+        )
+    if metadata.get("attribution_changes_outside_objects") != 0:
+        raise LearningInputError(
+            "metadata-owner context requires zero attribution changes outside merged objects"
+        )
+    raw_objects = metadata.get("objects")
+    if not isinstance(raw_objects, list) or not 1 <= len(raw_objects) <= 16:
+        raise LearningInputError(
+            "metadata-owner context metadata.objects must contain 1-16 entries"
+        )
+    objects: list[dict[str, Any]] = []
+    object_names: set[str] = set()
+    interior_names: set[str] = set()
+    ranges: list[tuple[int, int]] = []
+    for index, raw_object in enumerate(raw_objects):
+        obj = _closed_context(
+            raw_object,
+            allowed={"name", "address", "size", "data_kind", "removed_interior_labels"},
+            required={"name", "address", "size", "data_kind", "removed_interior_labels"},
+            label=f"metadata-owner context metadata.objects[{index}]",
+        )
+        name = _context_identifier(
+            obj.get("name"), f"metadata-owner context metadata.objects[{index}].name"
+        )
+        if name in object_names:
+            raise LearningInputError("metadata-owner object names must be unique")
+        object_names.add(name)
+        address = _context_uint(
+            obj.get("address"),
+            f"metadata-owner context metadata.objects[{index}].address",
+            maximum=0xFFFFFFFF,
+        )
+        size = _context_uint(
+            obj.get("size"),
+            f"metadata-owner context metadata.objects[{index}].size",
+            minimum=2,
+            maximum=64,
+        )
+        if any(start < address + size and address < end for start, end in ranges):
+            raise LearningInputError("metadata-owner objects must not overlap")
+        ranges.append((address, address + size))
+        data_kind = _context_identifier(
+            obj.get("data_kind"),
+            f"metadata-owner context metadata.objects[{index}].data_kind",
+        )
+        if data_kind not in {"byte", "halfword", "word", "float"}:
+            raise LearningInputError(
+                "metadata-owner context contains an unsupported data kind"
+            )
+        raw_labels = obj.get("removed_interior_labels")
+        if not isinstance(raw_labels, list) or len(raw_labels) != size - 1:
+            raise LearningInputError(
+                "metadata-owner object must enumerate every removed interior label"
+            )
+        labels: list[dict[str, Any]] = []
+        for label_index, raw_label in enumerate(raw_labels):
+            label = _closed_context(
+                raw_label,
+                allowed={"name", "address"},
+                required={"name", "address"},
+                label=(
+                    "metadata-owner context metadata.objects"
+                    f"[{index}].removed_interior_labels[{label_index}]"
+                ),
+            )
+            label_name = _context_identifier(
+                label.get("name"),
+                (
+                    "metadata-owner context metadata.objects"
+                    f"[{index}].removed_interior_labels[{label_index}].name"
+                ),
+            )
+            if label_name in object_names or label_name in interior_names:
+                raise LearningInputError(
+                    "metadata-owner base and interior label names must be unique"
+                )
+            interior_names.add(label_name)
+            labels.append(
+                {
+                    "name": label_name,
+                    "address": _context_uint(
+                        label.get("address"),
+                        (
+                            "metadata-owner context metadata.objects"
+                            f"[{index}].removed_interior_labels[{label_index}].address"
+                        ),
+                        maximum=0xFFFFFFFF,
+                    ),
+                }
+            )
+        if [item["address"] for item in labels] != list(
+            range(address + 1, address + size)
+        ):
+            raise LearningInputError(
+                "metadata-owner interior labels must cover every byte after the base"
+            )
+        objects.append(
+            {
+                "name": name,
+                "address": address,
+                "size": size,
+                "data_kind": data_kind,
+                "removed_interior_labels": labels,
+            }
+        )
+
+    relocations = _closed_context(
+        context.get("relocations"),
+        allowed={
+            "prior_rows",
+            "corrected_rows",
+            "name_rebindings",
+            "effective_target_differences",
+        },
+        required={
+            "prior_rows",
+            "corrected_rows",
+            "name_rebindings",
+            "effective_target_differences",
+        },
+        label="metadata-owner context relocations",
+    )
+    normalized_relocations = {
+        field: _context_uint(
+            relocations.get(field), f"metadata-owner context relocations.{field}"
+        )
+        for field in (
+            "prior_rows",
+            "corrected_rows",
+            "name_rebindings",
+            "effective_target_differences",
+        )
+    }
+    if normalized_relocations["prior_rows"] != normalized_relocations[
+        "corrected_rows"
+    ]:
+        raise LearningInputError(
+            "metadata-owner context relocation row counts must be unchanged"
+        )
+    if normalized_relocations["effective_target_differences"] != 0:
+        raise LearningInputError(
+            "metadata-owner context requires zero effective-target differences"
+        )
+    if normalized_relocations["name_rebindings"] != len(interior_names):
+        raise LearningInputError(
+            "metadata-owner name rebindings must equal removed interior labels"
+        )
+
+    raw_functions = context.get("focus_functions")
+    if not isinstance(raw_functions, list) or not 1 <= len(raw_functions) <= 32:
+        raise LearningInputError(
+            "metadata-owner context focus_functions must contain 1-32 entries"
+        )
+    functions: list[dict[str, Any]] = []
+    function_names: set[str] = set()
+    for index, raw_function in enumerate(raw_functions):
+        function = _closed_context(
+            raw_function,
+            allowed={"name", "target_bytes", "candidate_bytes", "physical_relocations"},
+            required={"name", "target_bytes", "candidate_bytes", "physical_relocations"},
+            label=f"metadata-owner context focus_functions[{index}]",
+        )
+        name = _context_identifier(
+            function.get("name"),
+            f"metadata-owner context focus_functions[{index}].name",
+        )
+        if name in function_names:
+            raise LearningInputError(
+                "metadata-owner context focus function names must be unique"
+            )
+        function_names.add(name)
+        target_bytes = _context_uint(
+            function.get("target_bytes"),
+            f"metadata-owner context focus_functions[{index}].target_bytes",
+            minimum=1,
+        )
+        candidate_bytes = _context_uint(
+            function.get("candidate_bytes"),
+            f"metadata-owner context focus_functions[{index}].candidate_bytes",
+            minimum=1,
+        )
+        if target_bytes != candidate_bytes:
+            raise LearningInputError(
+                "metadata-owner context focus function sizes must be exact"
+            )
+        functions.append(
+            {
+                "name": name,
+                "target_bytes": target_bytes,
+                "candidate_bytes": candidate_bytes,
+                "physical_relocations": _context_uint(
+                    function.get("physical_relocations"),
+                    (
+                        "metadata-owner context focus_functions"
+                        f"[{index}].physical_relocations"
+                    ),
+                ),
+            }
+        )
+
+    return {
+        "schema": METADATA_OWNER_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "metadata": {
+            "section": section,
+            "objects": objects,
+            "attribution_changes_outside_objects": 0,
+        },
+        "relocations": normalized_relocations,
+        "focus_functions": functions,
+    }
+
+
 def _parse_reciprocal_context(value: Mapping[str, Any]) -> dict[str, Any]:
     context = _closed_context(
         value,
@@ -3948,8 +4249,8 @@ def _evaluation(
                 "source_class": source_class,
                 "recommendation": recommendation,
                 "limitations": [
-                    "The diagnosis ranks a natural source-shape class; it does not prove original spelling or provenance.",
-                    "Do not edit or retain source from this result alone; strict/data/physical-relocation/section and protected-sibling gates remain required.",
+                    "The diagnosis ranks a crack/evidence class; it does not prove original spelling, metadata, or provenance.",
+                    "Do not edit source or metadata from this result alone; strict/data/physical-relocation/section and protected-sibling gates remain required.",
                 ],
             }
         )
@@ -4300,6 +4601,136 @@ def _equivalent_outside_learning_window(
             right
         )
     return left.formatted == right.formatted
+
+
+def _metadata_owner_coherence_evaluation(
+    pair: causal_reducer.FunctionPair,
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "metadata_owner_coherence"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated metadata-owner coherence context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the metadata-owner context is bound to a different canonical objdiff report",
+            evidence={
+                "expected_objdiff_canonical_sha256": objdiff_canonical_sha256,
+                "context_objdiff_canonical_sha256": context["proofs"][
+                    "objdiff_canonical_sha256"
+                ],
+            },
+        )
+
+    focus = next(
+        (
+            item
+            for item in context["focus_functions"]
+            if item["name"] == pair.name
+        ),
+        None,
+    )
+    if focus is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the focus function is absent from the sealed metadata correction",
+            evidence={
+                "focus_symbol": pair.name,
+                "sealed_functions": [
+                    item["name"] for item in context["focus_functions"]
+                ],
+            },
+        )
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    if (
+        target_size is None
+        or target_size != candidate_size
+        or target_size != focus["target_bytes"]
+        or candidate_size != focus["candidate_bytes"]
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the focus function size does not match the sealed exact correction",
+            evidence={
+                "report_target_size": target_size,
+                "report_candidate_size": candidate_size,
+                "sealed_focus": focus,
+            },
+        )
+
+    if not causal_reducer._is_exact_pair(pair):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=(
+                "the corrected-metadata focus report does not explicitly declare "
+                "100% on both authenticated sides"
+            ),
+            evidence={
+                "target_match_percent": pair.target.get("match_percent"),
+                "candidate_match_percent": pair.candidate.get("match_percent"),
+            },
+        )
+
+    removed_labels = [
+        label
+        for obj in context["metadata"]["objects"]
+        for label in obj["removed_interior_labels"]
+    ]
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the source and candidate object stayed fixed while contiguous target "
+            "metadata objects absorbed interior byte labels; physical relocation "
+            "keys, effective targets, payload sections, protected siblings, and the "
+            "linked retail image remained exact"
+        ),
+        confidence=0.99,
+        source_class="target_metadata_owner_merge",
+        recommendation=(
+            "Before source-shape experiments, audit the target metadata object extent "
+            "and merge only contiguous interior labels proved to share one typed object. "
+            "Re-split and re-diff, requiring unchanged physical relocation keys and "
+            "effective targets, identical payload sections and protected siblings, and "
+            "an exact linked retail image. Keep source and candidate code unchanged."
+        ),
+        evidence={
+            "focus": focus,
+            "section": context["metadata"]["section"],
+            "merged_objects": context["metadata"]["objects"],
+            "removed_interior_label_count": len(removed_labels),
+            "relocations": context["relocations"],
+            "source_sha256": context["proofs"]["source_sha256"],
+            "candidate_object_sha256": context["proofs"][
+                "candidate_object_sha256"
+            ],
+            "prior_target_object_sha256": context["proofs"][
+                "prior_target_object_sha256"
+            ],
+            "corrected_target_object_sha256": context["proofs"][
+                "corrected_target_object_sha256"
+            ],
+            "metadata_before_sha256": context["proofs"][
+                "metadata_before_sha256"
+            ],
+            "metadata_after_sha256": context["proofs"][
+                "metadata_after_sha256"
+            ],
+            "linked_retail_receipt_sha256": context["proofs"][
+                "linked_retail_receipt_sha256"
+            ],
+        },
+    )
 
 
 def _reciprocal_source_shape_evaluation(
@@ -7484,6 +7915,7 @@ def diagnose_document(
     *,
     focus_symbol: str,
     same_tu_donor_symbols: Sequence[str] = (),
+    metadata_owner_context: Mapping[str, Any] | None = None,
     allocator_context: Mapping[str, Any] | None = None,
     parameter_allocation_context: Mapping[str, Any] | None = None,
     aggregate_use_context: Mapping[str, Any] | None = None,
@@ -7511,6 +7943,11 @@ def diagnose_document(
     ):
         raise LearningInputError("same_tu_donor_symbols must contain non-empty text")
     donors = tuple(value.strip() for value in same_tu_donor_symbols)
+    normalized_metadata_owner_context = (
+        _parse_metadata_owner_context(metadata_owner_context)
+        if metadata_owner_context is not None
+        else None
+    )
     normalized_allocator_context = (
         _parse_allocator_context(allocator_context)
         if allocator_context is not None
@@ -7594,6 +8031,11 @@ def diagnose_document(
         )
 
     evaluations = [
+        _metadata_owner_coherence_evaluation(
+            pair,
+            normalized_metadata_owner_context,
+            objdiff_canonical_sha256,
+        ),
         _explicit_else_evaluation(audit),
         _loop_branch_destination_evaluation(
             pair,
@@ -7699,6 +8141,11 @@ def diagnose_document(
         "inputs": {
             "objdiff_canonical_sha256": objdiff_canonical_sha256,
             "same_tu_donor_symbols": list(dict.fromkeys(donors)),
+            "metadata_owner_context_canonical_sha256": (
+                _sha256(_canonical(normalized_metadata_owner_context))
+                if normalized_metadata_owner_context is not None
+                else None
+            ),
             "allocator_context_canonical_sha256": (
                 _sha256(_canonical(normalized_allocator_context))
                 if normalized_allocator_context is not None
@@ -7792,7 +8239,7 @@ def diagnose_document(
         "diagnoses": [dict(item) for item in evaluations if item["matched"]],
         "limitations": [
             "These rules compose deterministic physical signatures; they do not infer semantic variable names or original-source provenance.",
-            "Recommendations are natural source classes only and never authorize source edits, candidate retention, promotion, or authority advancement.",
+            "Recommendations are diagnostic crack/evidence classes only and never authorize source edits, candidate retention, promotion, or authority advancement.",
             "An exact donor is evidence for source shape only; the focus still requires its own complete proof chain.",
         ],
         "authority_advanced": False,
@@ -7824,6 +8271,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         dest="same_tu_donors",
         help="explicitly named exact donor function from the same object report",
+    )
+    parser.add_argument(
+        "--metadata-owner-context",
+        type=Path,
+        help=(
+            "authenticated metadata_owner_coherence_context/v1 JSON with "
+            "contiguous object extents, before/after target metadata, unchanged "
+            "physical/effective relocations, payload sections, and linked retail proof"
+        ),
     )
     parser.add_argument(
         "--allocator-context",
@@ -7942,6 +8398,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             _load_json(args.report),
             focus_symbol=args.focus_symbol,
             same_tu_donor_symbols=args.same_tu_donors,
+            metadata_owner_context=(
+                _load_json(
+                    args.metadata_owner_context,
+                    label="metadata-owner coherence context",
+                )
+                if args.metadata_owner_context is not None
+                else None
+            ),
             allocator_context=(
                 _load_json(args.allocator_context, label="allocator context")
                 if args.allocator_context is not None

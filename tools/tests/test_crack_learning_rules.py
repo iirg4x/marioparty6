@@ -1214,6 +1214,102 @@ def _branch_context(
     }
 
 
+def _metadata_owner_report() -> dict[str, object]:
+    relocation = {
+        "type": 109,
+        "type_name": "R_PPC_EMB_SDA21",
+        "addend": 0,
+    }
+    instructions = [
+        _instruction(100, "lbz r3, lbl_802C324C@sda21(r13)", relocation=relocation),
+        _instruction(104, "addi r3, r3, 1"),
+        _instruction(108, "blr"),
+    ]
+    report = _report(
+        "PlayerBiriQOMExec",
+        instructions,
+        json.loads(json.dumps(instructions)),
+        target_size=1140,
+        candidate_size=1140,
+    )
+    report["left"]["symbols"][0]["match_percent"] = 100.0  # type: ignore[index]
+    report["right"]["symbols"][0]["match_percent"] = 100.0  # type: ignore[index]
+    return report
+
+
+def _metadata_owner_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _metadata_owner_report()
+
+    def merged_object(base: int) -> dict[str, object]:
+        return {
+            "name": f"lbl_{base:08X}",
+            "address": base,
+            "size": 4,
+            "data_kind": "byte",
+            "removed_interior_labels": [
+                {"name": f"lbl_{base + offset:08X}", "address": base + offset}
+                for offset in range(1, 4)
+            ],
+        }
+
+    return {
+        "schema": rules.METADATA_OWNER_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "focus_strict_exact": True,
+            "focus_data_exact": True,
+            "source_unchanged": True,
+            "candidate_object_unchanged": True,
+            "payload_sections_equal": True,
+            "physical_relocation_keys_equal": True,
+            "effective_targets_equal": True,
+            "protected_siblings_preserved": True,
+            "linked_retail_exact": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "source_sha256": "3" * 64,
+            "candidate_object_sha256": "4" * 64,
+            "prior_target_object_sha256": "5" * 64,
+            "corrected_target_object_sha256": "6" * 64,
+            "metadata_before_sha256": "7" * 64,
+            "metadata_after_sha256": "8" * 64,
+            "relocation_identity_receipt_sha256": "9" * 64,
+            "linked_retail_receipt_sha256": "a" * 64,
+        },
+        "metadata": {
+            "section": ".sdata",
+            "objects": [
+                merged_object(0x802C324C),
+                merged_object(0x802C3250),
+                merged_object(0x802C3258),
+            ],
+            "attribution_changes_outside_objects": 0,
+        },
+        "relocations": {
+            "prior_rows": 2249,
+            "corrected_rows": 2249,
+            "name_rebindings": 9,
+            "effective_target_differences": 0,
+        },
+        "focus_functions": [
+            {
+                "name": "PlayerBiriQOMExec",
+                "target_bytes": 1140,
+                "candidate_bytes": 1140,
+                "physical_relocations": 49,
+            },
+            {
+                "name": "mbPlayerBiriQSet",
+                "target_bytes": 512,
+                "candidate_bytes": 512,
+                "physical_relocations": 40,
+            },
+        ],
+    }
+
+
 def _reciprocal_report() -> dict[str, object]:
     sda_target_a = {"type_name": "SDA21", "target_name": "lbl_alpha"}
     sda_candidate_a = {"type_name": "SDA21", "target_name": "@alpha"}
@@ -1607,6 +1703,130 @@ def _aggregate_report(*, donor_exact: bool = True) -> dict[str, object]:
 
 
 class CrackLearningRulesTest(unittest.TestCase):
+    def test_metadata_owner_coherence_ranks_target_metadata_audit(self) -> None:
+        report = _metadata_owner_report()
+        context = _metadata_owner_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="PlayerBiriQOMExec",
+            metadata_owner_context=context,
+        )
+        diagnosis = _evaluation(result, "metadata_owner_coherence")
+        self.assertTrue(diagnosis["matched"])
+        self.assertEqual(diagnosis["confidence"], 0.99)
+        self.assertEqual(
+            diagnosis["source_class"],
+            "target_metadata_owner_merge",
+        )
+        evidence = diagnosis["evidence"]
+        self.assertEqual(evidence["section"], ".sdata")
+        self.assertEqual(evidence["removed_interior_label_count"], 9)
+        self.assertEqual(evidence["relocations"]["name_rebindings"], 9)
+        self.assertFalse(result["authority_advanced"])
+
+    def test_metadata_owner_coherence_fails_closed_without_bound_proof(self) -> None:
+        report = _metadata_owner_report()
+        no_context = rules.diagnose_document(
+            report,
+            focus_symbol="PlayerBiriQOMExec",
+        )
+        self.assertFalse(
+            _evaluation(no_context, "metadata_owner_coherence")["matched"]
+        )
+
+        wrong_report = _metadata_owner_context(report)
+        wrong_report["proofs"]["objdiff_canonical_sha256"] = "0" * 64  # type: ignore[index]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="PlayerBiriQOMExec",
+            metadata_owner_context=wrong_report,
+        )
+        self.assertFalse(
+            _evaluation(result, "metadata_owner_coherence")["matched"]
+        )
+
+        false_proof = _metadata_owner_context(report)
+        false_proof["proofs"]["payload_sections_equal"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "payload_sections_equal"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=false_proof,
+            )
+
+        unlisted_focus = _metadata_owner_context(report)
+        unlisted_focus["focus_functions"] = [  # type: ignore[index]
+            unlisted_focus["focus_functions"][1]  # type: ignore[index]
+        ]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="PlayerBiriQOMExec",
+            metadata_owner_context=unlisted_focus,
+        )
+        self.assertFalse(
+            _evaluation(result, "metadata_owner_coherence")["matched"]
+        )
+
+        residual_report = _metadata_owner_report()
+        residual_report["left"]["symbols"][0]["match_percent"] = 99.0  # type: ignore[index]
+        residual_context = _metadata_owner_context(residual_report)
+        result = rules.diagnose_document(
+            residual_report,
+            focus_symbol="PlayerBiriQOMExec",
+            metadata_owner_context=residual_context,
+        )
+        self.assertFalse(
+            _evaluation(result, "metadata_owner_coherence")["matched"]
+        )
+
+    def test_metadata_owner_context_rejects_incoherent_extent_or_relocations(self) -> None:
+        report = _metadata_owner_report()
+
+        missing_label = _metadata_owner_context(report)
+        missing_label["metadata"]["objects"][0]["removed_interior_labels"].pop()  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "every removed interior"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=missing_label,
+            )
+
+        overlapping = _metadata_owner_context(report)
+        overlapping["metadata"]["objects"][1]["address"] = 0x802C324F  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "must not overlap"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=overlapping,
+            )
+
+        changed_rows = _metadata_owner_context(report)
+        changed_rows["relocations"]["corrected_rows"] = 2248  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "row counts"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=changed_rows,
+            )
+
+        changed_targets = _metadata_owner_context(report)
+        changed_targets["relocations"]["effective_target_differences"] = 1  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "effective-target"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=changed_targets,
+            )
+
+        wrong_rebindings = _metadata_owner_context(report)
+        wrong_rebindings["relocations"]["name_rebindings"] = 8  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "name rebindings"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=wrong_rebindings,
+            )
+
     def test_explicit_else_return_reuses_causal_reducer_signature(self) -> None:
         target = [
             _instruction(100, "cmpwi r3, 1"),
@@ -3325,6 +3545,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapStarManOMExec",
                 float_truthiness_context=context,
+            ),
+        )
+
+    def test_metadata_owner_context_cli_emits_same_document(self) -> None:
+        report = _metadata_owner_report()
+        context = _metadata_owner_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "metadata-owner.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "PlayerBiriQOMExec",
+                            "--metadata-owner-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="PlayerBiriQOMExec",
+                metadata_owner_context=context,
             ),
         )
 

@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns seventeen reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v10` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v11` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -19,6 +19,37 @@ rtk python tools/crack_learning_rules.py \
   --report build/GP6E01/reports/candidate.strict.json \
   --function ev_CapBobleOMExec
 ```
+
+When source and candidate bytes are already fixed but a target metadata repair
+changes only relocation label/addend attribution, audit object ownership before
+editing C:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/player-biriq.corrected.strict.json \
+  --function PlayerBiriQOMExec \
+  --metadata-owner-context work/player-biriq.metadata-owner-context.json
+```
+
+The closed `metadata_owner_coherence_context/v1` binds the corrected canonical
+objdiff and before/after target metadata, requires the source and candidate
+object to stay unchanged, enumerates every removed interior byte label within
+nonoverlapping typed data objects, and requires equal relocation row counts,
+zero effective-target changes, unchanged payload sections, zero protected loss,
+and exact linked retail proof. A match ranks a target metadata object-extent
+audit before any source-shape experiment. It never authorizes metadata edits:
+the split and strict/data/physical-relocation/section/linked-retail proof must be
+rerun independently.
+
+This rule is fail-closed. It rejects a stale report hash, a focus function not
+sealed by the correction, changed function bytes, overlapping or incomplete
+object extents, a missing interior byte label, a relocation row-count change,
+any effective-target change, or a rebinding count that differs from the removed
+labels. The Player BiriQ acceptance case merges three four-byte `.sdata` objects
+and removes exactly nine interior labels while preserving all 2,249 physical
+relocation rows and the exact linked image; both `PlayerBiriQOMExec` and
+`mbPlayerBiriQSet` use the same correction and must not be implemented as two
+source-learning rules.
 
 When typed pool-owner rows are disjoint from live-range and comparison rows,
 compose the installed pool decoder evidence before compiling another cell:
