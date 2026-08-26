@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v22` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v23` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -779,7 +779,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The eighteen joins are narrower than those generic classifications:
+The nineteen joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -797,6 +797,7 @@ The eighteen joins are narrower than those generic classifications:
 | short-circuit Boolean call order | Larger baseline candidate; two sealed target call pairs in branch-getter then masu-getter order; target `bne`/`beq` destinations converging on one true/false assignment pair; duplicated candidate true assignments; pinned MWCC frontend receipt; and one later exact-topology closed four-owner GPR cycle | Explicit shared `if/else` with source-commuted AND operands, followed only by the sealed declaration chronology after topology is exact |
 | dependency-equivalent exact-sibling transfer | Distinct strict/data-exact sibling; authenticated equivalent dependency graph and capacity; the same sealed target/candidate call-order inversion and shared Boolean destinations; and three target-only adjacent `extsh`/s16-consumer pairs normalizing one owner | Transfer the sibling's semantic Boolean source and combine it only with the independently proved `int` owner and live array capacity in one cell |
 | typed pool/live-range interaction | Larger-target baseline; exact data/CFG/physical relocations/siblings; disjoint sealed live-range, two-row `lfs` comparison, and value-equivalent SDA21 owner groups; authenticated same-TU named f32 owner; and measured size-exact precursor/exact cells | Reuse the live temporaries and preincrement, use natural float truthiness, and bind the authenticated pool owner in one combined cell |
+| saved-owner semantic split composer | Equal size/frame and exact CFG/data/physical relocations/siblings; a sealed multi-owner GPR cycle; canonical same-session Object inventory with zero UNKNOWN; measured block/function/direct callback controls; object-neutral loop declaration control; and one authenticated missing interaction cell | Keep the typed callback in its proven guard block and split the early truthful `s16 dataFmt` owner in one compile; suppress callback-scope, direct-call, loop-order, and repeat-tracer retries |
 | float truthiness comparison ranking | Equal size/frame and exact CFG/data/physical relocations/siblings; exactly two swapped field/zero `lfs` rows feeding an exact adjacent `fcmpu`/conditional branch; an object-identical commuted explicit-zero control; and an authenticated exact truthiness precedent | Compile `if (field)` first and suppress both explicit zero-comparison operand orders |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
@@ -1163,6 +1164,39 @@ shaping, source retention, or promotion. Measured active seconds are required;
 CoinOM's incomplete historical/helper/heavy coverage remains excluded from
 measured crack/hour without imputation. The result is always
 `authority_advanced:false`.
+## Saved-owner semantic split composition
+
+When an exact-size/frame/CFG/data/relocation precursor leaves one closed saved-GPR
+cycle spanning an early semantic value, a typed callback, and later loop owners, use
+the authenticated Object inventory and measured source-form controls together:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/effdraw-c005.strict.json \
+  --function ev_CapEffDraw \
+  --saved-owner-semantic-split-context work/effdraw.saved-owner.json \
+  > work/effdraw.learning.json
+```
+
+`saved_owner_semantic_split_context/v1` binds the canonical objdiff hash, exact
+size/frame and physical-relocation counts, and a complete partition of every
+physical residual row into the save range, data format, callback, outer-loop,
+pattern-X, pattern-Y, and inner-loop owner groups. The same-session inventory
+must bind `hook`, `patX`, `patY`, `i`, and `j` with zero UNKNOWN and a narrow
+verified source span. For EffDraw the target map must close exactly as
+`dataFmt=r22`, `hook=r19`, `patX=r21`, `patY=r20`, `i=r25`, `j=r26`.
+
+The measured controls prove that a function-scope callback does not solve the
+cycle, a direct callback plus distinct format owner changes size and topology,
+and the isolated loop declaration-order cell is object-neutral. The authenticated
+interaction plan therefore has exactly one missing cell: preserve the typed
+callback inside its non-null guard and introduce the truthful early
+`s16 dataFmt` owner. The rule emits only that cell and suppresses direct-field
+calls, callback-scope retries, `i`/`j` declaration permutations, and repeat
+tracing. Dead/fake locals, padding, register shaping, retention, and promotion
+remain forbidden. Active-time telemetry is mandatory; incomplete heavy-runtime
+coverage is reported without imputation. Authority is always false.
+
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,
@@ -1171,7 +1205,7 @@ document excluding that field. Context-bound paths additionally bind canonical
 allocator, parameter/allocation, aggregate-pointer branch, typed-pool/live-range,
 capacity, branch, reciprocal, mixed-bank home-cycle, historical live-alias, or
 scalar return-consumer owner evidence by SHA-256. The traced numbered-aggregate
-path also binds its standalone implementation; the allocator path binds the installed
+path and saved-owner semantic-split path also bind their standalone implementations; the allocator path binds the installed
 interaction planner, and the typed-pool path binds the installed pool decoder.
 Rule order and JSON serialization are stable.
 

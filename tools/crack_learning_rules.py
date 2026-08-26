@@ -27,13 +27,14 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
+from tools import saved_owner_semantic_split
 from tools import scalar_return_consumer_owner
 from tools import stack_extent_overwritten_initializer
 from tools import traced_naggregate_reciprocal_fold
 
 
-SCHEMA = "crack_learning_diagnosis/v22"
-SCHEMA_VERSION = 22
+SCHEMA = "crack_learning_diagnosis/v23"
+SCHEMA_VERSION = 23
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -63,6 +64,9 @@ STACK_EXTENT_OVERWRITTEN_INITIALIZER_CONTEXT_SCHEMA = (
 )
 TRACED_NAGGREGATE_RECIPROCAL_CONTEXT_SCHEMA = (
     traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA
+)
+SAVED_OWNER_SEMANTIC_SPLIT_CONTEXT_SCHEMA = (
+    saved_owner_semantic_split.CONTEXT_SCHEMA
 )
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
@@ -532,6 +536,7 @@ _RULE_ORDER = (
     "wide_validation_narrow_selected_result",
     "pool_live_range_interaction",
     traced_naggregate_reciprocal_fold.RULE_ID,
+    saved_owner_semantic_split.RULE_ID,
     "float_truthiness_comparison_ranking",
     "stack_extent_interface_capacity",
     "stack_gap_capacity_expression_attribution",
@@ -3842,6 +3847,15 @@ def _parse_traced_naggregate_reciprocal_context(
     try:
         return traced_naggregate_reciprocal_fold.parse_context(value)
     except traced_naggregate_reciprocal_fold.TracedAggregateFoldInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_saved_owner_semantic_split_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return saved_owner_semantic_split.parse_context(value)
+    except saved_owner_semantic_split.SavedOwnerSplitInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10442,6 +10456,19 @@ def _traced_naggregate_reciprocal_evaluation(
     return _evaluation(traced_naggregate_reciprocal_fold.RULE_ID, **result)
 
 
+def _saved_owner_semantic_split_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = saved_owner_semantic_split.evaluate(
+        pair, target, candidate, context, objdiff_canonical_sha256
+    )
+    return _evaluation(saved_owner_semantic_split.RULE_ID, **result)
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12446,6 +12473,7 @@ def diagnose_document(
     scalar_return_consumer_context: Mapping[str, Any] | None = None,
     stack_extent_overwritten_initializer_context: Mapping[str, Any] | None = None,
     traced_naggregate_reciprocal_context: Mapping[str, Any] | None = None,
+    saved_owner_semantic_split_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -12543,6 +12571,13 @@ def diagnose_document(
             traced_naggregate_reciprocal_context
         )
         if traced_naggregate_reciprocal_context is not None
+        else None
+    )
+    normalized_saved_owner_semantic_split_context = (
+        _parse_saved_owner_semantic_split_context(
+            saved_owner_semantic_split_context
+        )
+        if saved_owner_semantic_split_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -12767,6 +12802,13 @@ def diagnose_document(
             normalized_traced_naggregate_reciprocal_context,
             objdiff_canonical_sha256,
         ),
+        _saved_owner_semantic_split_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_saved_owner_semantic_split_context,
+            objdiff_canonical_sha256,
+        ),
         _float_truthiness_comparison_evaluation(
             pair,
             target,
@@ -12907,6 +12949,11 @@ def diagnose_document(
                 if normalized_traced_naggregate_reciprocal_context is not None
                 else None
             ),
+            "saved_owner_semantic_split_context_canonical_sha256": (
+                _sha256(_canonical(normalized_saved_owner_semantic_split_context))
+                if normalized_saved_owner_semantic_split_context is not None
+                else None
+            ),
             "float_truthiness_context_canonical_sha256": (
                 _sha256(_canonical(normalized_float_truthiness_context))
                 if normalized_float_truthiness_context is not None
@@ -12959,6 +13006,11 @@ def diagnose_document(
                 "path": Path(traced_naggregate_reciprocal_fold.__file__).name,
                 "schema": traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA,
                 "sha256": _sha256(Path(traced_naggregate_reciprocal_fold.__file__).read_bytes()),
+            },
+            "saved_owner_semantic_split": {
+                "path": Path(saved_owner_semantic_split.__file__).name,
+                "schema": saved_owner_semantic_split.CONTEXT_SCHEMA,
+                "sha256": _sha256(Path(saved_owner_semantic_split.__file__).read_bytes()),
             },
         },
         "evaluations": evaluations,
@@ -13170,6 +13222,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--saved-owner-semantic-split-context",
+        type=Path,
+        help=(
+            "authenticated saved_owner_semantic_split_context/v1 JSON with an "
+            "exact-size owner cycle, same-session Object inventory, measured callback "
+            "controls, and one sealed semantic-owner interaction cell"
+        ),
+    )
+    parser.add_argument(
         "--float-truthiness-context",
         type=Path,
         help=(
@@ -13373,6 +13434,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="traced numbered-aggregate reciprocal-fold context",
                 )
                 if args.traced_naggregate_reciprocal_context is not None
+                else None
+            ),
+            saved_owner_semantic_split_context=(
+                _load_json(
+                    args.saved_owner_semantic_split_context,
+                    label="saved-owner semantic-split context",
+                )
+                if args.saved_owner_semantic_split_context is not None
                 else None
             ),
             float_truthiness_context=(
