@@ -25,8 +25,8 @@ from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
 
 
-SCHEMA = "crack_learning_diagnosis/v6"
-SCHEMA_VERSION = 6
+SCHEMA = "crack_learning_diagnosis/v7"
+SCHEMA_VERSION = 7
 HASH_FIELD = "diagnosis_sha256"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
 PARAMETER_ALLOCATION_CONTEXT_SCHEMA = "parameter_allocation_consumer_chain_context/v1"
@@ -34,6 +34,7 @@ AGGREGATE_USE_CONTEXT_SCHEMA = "aggregate_use_multiplicity_context/v1"
 AGGREGATE_FOLLOWUP_CONTEXT_SCHEMA = "aggregate_two_owner_followup_context/v1"
 ADDRESS_TAKEN_CONTEXT_SCHEMA = "address_taken_local_pointer_context/v1"
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
+SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 CAPACITY_CONTEXT_SCHEMA = "stack_extent_interface_capacity_context/v1"
 BRANCH_CONTEXT_SCHEMA = "loop_branch_destination_context/v1"
 RECIPROCAL_CONTEXT_SCHEMA = "reciprocal_source_shape_context/v1"
@@ -174,6 +175,24 @@ _SAME_TU_SHAPE_PROOF_HASHES = (
     "caller_contract_receipt_sha256",
     "source_shape_receipt_sha256",
 )
+_SHORT_CIRCUIT_PROOF_FLAGS = (
+    "physical_relocations_exact",
+    "data_sections_exact",
+    "protected_siblings_preserved",
+    "pinned_mwcc_frontend",
+    "topology_observation_size_exact",
+    "topology_observation_cfg_exact",
+    "topology_observation_relocations_exact",
+)
+_SHORT_CIRCUIT_PROOF_HASHES = (
+    "objdiff_canonical_sha256",
+    "strict_report_sha256",
+    "data_report_sha256",
+    "physical_relocation_receipt_sha256",
+    "call_order_receipt_sha256",
+    "topology_observation_report_sha256",
+    "declaration_owner_receipt_sha256",
+)
 _CAPACITY_PROOF_FLAGS = (
     "function_size_exact",
     "data_values_exact",
@@ -232,6 +251,7 @@ _RULE_ORDER = (
     "aggregate_two_owner_followup",
     "address_taken_local_pointer_consumer",
     "same_tu_exact_sibling_source_shapes",
+    "short_circuit_boolean_call_order",
     "stack_extent_interface_capacity",
     "reciprocal_source_shape",
     "switch_case_scoped_fpr_lifetimes",
@@ -1967,6 +1987,387 @@ def _parse_same_tu_shape_context(value: Mapping[str, Any]) -> dict[str, Any]:
         "abi_boundary": normalized_abi,
         "zero_chain": normalized_zero,
         "combined_cell": normalized_cell,
+    }
+
+
+def _parse_short_circuit_context(value: Mapping[str, Any]) -> dict[str, Any]:
+    context = _closed_context(
+        value,
+        allowed={
+            "schema",
+            "proofs",
+            "mask_tests",
+            "shared_boolean",
+            "direct_assignment_rejection",
+            "topology_observation",
+        },
+        required={
+            "schema",
+            "proofs",
+            "mask_tests",
+            "shared_boolean",
+            "direct_assignment_rejection",
+            "topology_observation",
+        },
+        label="short-circuit Boolean context",
+    )
+    if (
+        _context_text(context.get("schema"), "short-circuit Boolean context schema")
+        != SHORT_CIRCUIT_CONTEXT_SCHEMA
+    ):
+        raise LearningInputError(
+            f"short-circuit Boolean context schema must be {SHORT_CIRCUIT_CONTEXT_SCHEMA}"
+        )
+
+    proof_fields = set(_SHORT_CIRCUIT_PROOF_FLAGS) | set(
+        _SHORT_CIRCUIT_PROOF_HASHES
+    )
+    proofs = _closed_context(
+        context.get("proofs"),
+        allowed=proof_fields,
+        required=proof_fields,
+        label="short-circuit Boolean context proofs",
+    )
+    normalized_proofs: dict[str, Any] = {}
+    for field in _SHORT_CIRCUIT_PROOF_FLAGS:
+        if proofs.get(field) is not True:
+            raise LearningInputError(
+                f"short-circuit Boolean context proofs.{field} must be true"
+            )
+        normalized_proofs[field] = True
+    for field in _SHORT_CIRCUIT_PROOF_HASHES:
+        normalized_proofs[field] = _context_sha256(
+            proofs.get(field), f"short-circuit Boolean context proofs.{field}"
+        )
+
+    raw_tests = context.get("mask_tests")
+    if not isinstance(raw_tests, list) or len(raw_tests) != 2:
+        raise LearningInputError(
+            "short-circuit Boolean context mask_tests must contain exactly two entries"
+        )
+    tests: list[dict[str, Any]] = []
+    test_fields = {
+        "source_left",
+        "source_right",
+        "source_expression",
+        "branch_getter",
+        "masu_getter",
+        "target_branch_call_row",
+        "target_masu_call_row",
+        "evidence_sha256",
+    }
+    for index, raw_test in enumerate(raw_tests):
+        test = _closed_context(
+            raw_test,
+            allowed=test_fields,
+            required=test_fields,
+            label=f"short-circuit Boolean context mask_tests[{index}]",
+        )
+        branch_row = _context_uint(
+            test.get("target_branch_call_row"),
+            f"short-circuit Boolean context mask_tests[{index}].target_branch_call_row",
+        )
+        masu_row = _context_uint(
+            test.get("target_masu_call_row"),
+            f"short-circuit Boolean context mask_tests[{index}].target_masu_call_row",
+        )
+        if branch_row >= masu_row:
+            raise LearningInputError(
+                "short-circuit target call order must place branch getter before masu getter"
+            )
+        tests.append(
+            {
+                "source_left": _context_text(
+                    test.get("source_left"),
+                    f"short-circuit Boolean context mask_tests[{index}].source_left",
+                    limit=512,
+                ),
+                "source_right": _context_text(
+                    test.get("source_right"),
+                    f"short-circuit Boolean context mask_tests[{index}].source_right",
+                    limit=512,
+                ),
+                "source_expression": _context_text(
+                    test.get("source_expression"),
+                    f"short-circuit Boolean context mask_tests[{index}].source_expression",
+                    limit=1024,
+                ),
+                "branch_getter": _context_identifier(
+                    test.get("branch_getter"),
+                    f"short-circuit Boolean context mask_tests[{index}].branch_getter",
+                ),
+                "masu_getter": _context_identifier(
+                    test.get("masu_getter"),
+                    f"short-circuit Boolean context mask_tests[{index}].masu_getter",
+                ),
+                "target_branch_call_row": branch_row,
+                "target_masu_call_row": masu_row,
+                "evidence_sha256": _context_sha256(
+                    test.get("evidence_sha256"),
+                    f"short-circuit Boolean context mask_tests[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if len({item["branch_getter"] for item in tests}) != 2 or len(
+        {item["masu_getter"] for item in tests}
+    ) != 2:
+        raise LearningInputError(
+            "short-circuit mask tests must name two distinct getter pairs"
+        )
+
+    shared = _closed_context(
+        context.get("shared_boolean"),
+        allowed={
+            "target_branch_rows",
+            "target_true_assignment_row",
+            "target_false_assignment_row",
+            "candidate_true_assignment_rows",
+            "candidate_false_assignment_row",
+            "result_register",
+            "evidence_sha256",
+        },
+        required={
+            "target_branch_rows",
+            "target_true_assignment_row",
+            "target_false_assignment_row",
+            "candidate_true_assignment_rows",
+            "candidate_false_assignment_row",
+            "result_register",
+            "evidence_sha256",
+        },
+        label="short-circuit Boolean context shared_boolean",
+    )
+    result_register = _context_text(
+        shared.get("result_register"),
+        "short-circuit Boolean context shared_boolean.result_register",
+        limit=3,
+    ).lower()
+    if not _saved(result_register, "r"):
+        raise LearningInputError(
+            "short-circuit Boolean result must use a nonvolatile GPR"
+        )
+    normalized_shared = {
+        "target_branch_rows": _context_rows(
+            shared.get("target_branch_rows"),
+            "short-circuit Boolean context shared_boolean.target_branch_rows",
+            minimum_count=2,
+            maximum_count=2,
+        ),
+        "target_true_assignment_row": _context_uint(
+            shared.get("target_true_assignment_row"),
+            "short-circuit Boolean context shared_boolean.target_true_assignment_row",
+        ),
+        "target_false_assignment_row": _context_uint(
+            shared.get("target_false_assignment_row"),
+            "short-circuit Boolean context shared_boolean.target_false_assignment_row",
+        ),
+        "candidate_true_assignment_rows": _context_rows(
+            shared.get("candidate_true_assignment_rows"),
+            "short-circuit Boolean context shared_boolean.candidate_true_assignment_rows",
+            minimum_count=2,
+            maximum_count=2,
+        ),
+        "candidate_false_assignment_row": _context_uint(
+            shared.get("candidate_false_assignment_row"),
+            "short-circuit Boolean context shared_boolean.candidate_false_assignment_row",
+        ),
+        "result_register": result_register,
+        "evidence_sha256": _context_sha256(
+            shared.get("evidence_sha256"),
+            "short-circuit Boolean context shared_boolean.evidence_sha256",
+        ),
+    }
+
+    rejection = _closed_context(
+        context.get("direct_assignment_rejection"),
+        allowed={
+            "candidate_record_sha256",
+            "reversed_call_order",
+            "strict_regressed",
+            "evidence_sha256",
+        },
+        required={
+            "candidate_record_sha256",
+            "reversed_call_order",
+            "strict_regressed",
+            "evidence_sha256",
+        },
+        label="short-circuit Boolean context direct_assignment_rejection",
+    )
+    if rejection.get("reversed_call_order") is not True or rejection.get(
+        "strict_regressed"
+    ) is not True:
+        raise LearningInputError(
+            "short-circuit direct-assignment rejection must prove reversed call order and strict regression"
+        )
+    normalized_rejection = {
+        "candidate_record_sha256": _context_sha256(
+            rejection.get("candidate_record_sha256"),
+            "short-circuit Boolean context direct_assignment_rejection.candidate_record_sha256",
+        ),
+        "reversed_call_order": True,
+        "strict_regressed": True,
+        "evidence_sha256": _context_sha256(
+            rejection.get("evidence_sha256"),
+            "short-circuit Boolean context direct_assignment_rejection.evidence_sha256",
+        ),
+    }
+
+    observation = _closed_context(
+        context.get("topology_observation"),
+        allowed={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "residual_kind",
+            "owners",
+            "recommended_declaration_order",
+            "candidate_record_sha256",
+            "evidence_sha256",
+        },
+        required={
+            "candidate_id",
+            "target_size",
+            "candidate_size",
+            "residual_kind",
+            "owners",
+            "recommended_declaration_order",
+            "candidate_record_sha256",
+            "evidence_sha256",
+        },
+        label="short-circuit Boolean context topology_observation",
+    )
+    raw_owners = observation.get("owners")
+    if not isinstance(raw_owners, list) or len(raw_owners) != 4:
+        raise LearningInputError(
+            "short-circuit topology observation owners must contain exactly four entries"
+        )
+    owners: list[dict[str, Any]] = []
+    owner_fields = {
+        "name",
+        "type",
+        "target_register",
+        "candidate_register",
+        "evidence_sha256",
+    }
+    for index, raw_owner in enumerate(raw_owners):
+        owner = _closed_context(
+            raw_owner,
+            allowed=owner_fields,
+            required=owner_fields,
+            label=f"short-circuit Boolean context topology_observation.owners[{index}]",
+        )
+        target_register = _context_text(
+            owner.get("target_register"),
+            f"short-circuit Boolean context topology_observation.owners[{index}].target_register",
+            limit=3,
+        ).lower()
+        candidate_register = _context_text(
+            owner.get("candidate_register"),
+            f"short-circuit Boolean context topology_observation.owners[{index}].candidate_register",
+            limit=3,
+        ).lower()
+        if (
+            not _saved(target_register, "r")
+            or not _saved(candidate_register, "r")
+            or target_register == candidate_register
+        ):
+            raise LearningInputError(
+                "short-circuit topology owners must bind distinct nonvolatile GPR colors"
+            )
+        owners.append(
+            {
+                "name": _context_identifier(
+                    owner.get("name"),
+                    f"short-circuit Boolean context topology_observation.owners[{index}].name",
+                ),
+                "type": _context_identifier(
+                    owner.get("type"),
+                    f"short-circuit Boolean context topology_observation.owners[{index}].type",
+                ),
+                "target_register": target_register,
+                "candidate_register": candidate_register,
+                "evidence_sha256": _context_sha256(
+                    owner.get("evidence_sha256"),
+                    f"short-circuit Boolean context topology_observation.owners[{index}].evidence_sha256",
+                ),
+            }
+        )
+    if (
+        len({item["name"] for item in owners}) != 4
+        or len({item["target_register"] for item in owners}) != 4
+        or len({item["candidate_register"] for item in owners}) != 4
+        or {item["target_register"] for item in owners}
+        != {item["candidate_register"] for item in owners}
+    ):
+        raise LearningInputError(
+            "short-circuit topology owners must form one closed four-owner register set"
+        )
+    raw_order = observation.get("recommended_declaration_order")
+    if not isinstance(raw_order, list) or len(raw_order) != 4:
+        raise LearningInputError(
+            "short-circuit recommended declaration order must contain four owners"
+        )
+    declaration_order = [
+        _context_identifier(
+            item,
+            f"short-circuit Boolean context topology_observation.recommended_declaration_order[{index}]",
+        )
+        for index, item in enumerate(raw_order)
+    ]
+    if set(declaration_order) != {item["name"] for item in owners}:
+        raise LearningInputError(
+            "short-circuit declaration order must name exactly the sealed owners"
+        )
+    residual_kind = _context_text(
+        observation.get("residual_kind"),
+        "short-circuit Boolean context topology_observation.residual_kind",
+        limit=32,
+    )
+    if residual_kind != "ARG_ONLY":
+        raise LearningInputError(
+            "short-circuit topology observation residual_kind must be ARG_ONLY"
+        )
+    normalized_observation = {
+        "candidate_id": _context_text(
+            observation.get("candidate_id"),
+            "short-circuit Boolean context topology_observation.candidate_id",
+            limit=128,
+        ),
+        "target_size": _context_uint(
+            observation.get("target_size"),
+            "short-circuit Boolean context topology_observation.target_size",
+            minimum=4,
+        ),
+        "candidate_size": _context_uint(
+            observation.get("candidate_size"),
+            "short-circuit Boolean context topology_observation.candidate_size",
+            minimum=4,
+        ),
+        "residual_kind": residual_kind,
+        "owners": sorted(owners, key=lambda item: item["name"]),
+        "recommended_declaration_order": declaration_order,
+        "candidate_record_sha256": _context_sha256(
+            observation.get("candidate_record_sha256"),
+            "short-circuit Boolean context topology_observation.candidate_record_sha256",
+        ),
+        "evidence_sha256": _context_sha256(
+            observation.get("evidence_sha256"),
+            "short-circuit Boolean context topology_observation.evidence_sha256",
+        ),
+    }
+    if normalized_observation["target_size"] != normalized_observation["candidate_size"]:
+        raise LearningInputError(
+            "short-circuit topology observation must be function-size exact"
+        )
+
+    return {
+        "schema": SHORT_CIRCUIT_CONTEXT_SCHEMA,
+        "proofs": normalized_proofs,
+        "mask_tests": tests,
+        "shared_boolean": normalized_shared,
+        "direct_assignment_rejection": normalized_rejection,
+        "topology_observation": normalized_observation,
     }
 
 
@@ -4762,6 +5163,254 @@ def _same_tu_exact_sibling_shape_evaluation(
     )
 
 
+def _short_circuit_boolean_call_order_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = "short_circuit_boolean_call_order"
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no authenticated short-circuit Boolean call-order context was supplied",
+        )
+    if context["proofs"]["objdiff_canonical_sha256"] != objdiff_canonical_sha256:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the short-circuit context is bound to a different canonical objdiff report",
+        )
+
+    target_size = _function_size(pair.target)
+    candidate_size = _function_size(pair.candidate)
+    observation = context["topology_observation"]
+    if (
+        target_size != observation["target_size"]
+        or candidate_size is None
+        or candidate_size <= target_size
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the baseline does not have the sealed larger-candidate Boolean topology",
+            evidence={
+                "target_size": target_size,
+                "candidate_size": candidate_size,
+                "expected_target_size": observation["target_size"],
+            },
+        )
+
+    rows = causal_reducer._paired_records(target, candidate)
+
+    def side(index: int, which: int) -> causal_reducer.Instruction | None:
+        if not 0 <= index < len(rows):
+            return None
+        return rows[index][which]
+
+    call_evidence: list[dict[str, Any]] = []
+    for index, test in enumerate(context["mask_tests"]):
+        branch_call = side(test["target_branch_call_row"], 0)
+        masu_call = side(test["target_masu_call_row"], 0)
+        branch_pattern = re.compile(rf"\b{re.escape(test['branch_getter'])}\b")
+        masu_pattern = re.compile(rf"\b{re.escape(test['masu_getter'])}\b")
+        if (
+            branch_call is None
+            or masu_call is None
+            or branch_call.mnemonic not in _CALL_MNEMONICS
+            or masu_call.mnemonic not in _CALL_MNEMONICS
+            or branch_pattern.search(branch_call.formatted) is None
+            or masu_pattern.search(masu_call.formatted) is None
+            or test["target_branch_call_row"] >= test["target_masu_call_row"]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="a target mask test does not call the branch getter before the masu getter",
+                evidence={"mask_test_index": index},
+            )
+        if (
+            test["masu_getter"] not in test["source_left"]
+            or test["branch_getter"] not in test["source_right"]
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the sealed source order does not write masu getter before branch getter for MWCC right-to-left evaluation",
+                evidence={"mask_test_index": index},
+            )
+        call_evidence.append(
+            {
+                "source_expression": test["source_expression"],
+                "written_left": test["source_left"],
+                "written_right": test["source_right"],
+                "target_call_order": [
+                    {
+                        "row": test["target_branch_call_row"],
+                        "callee": test["branch_getter"],
+                    },
+                    {
+                        "row": test["target_masu_call_row"],
+                        "callee": test["masu_getter"],
+                    },
+                ],
+            }
+        )
+
+    shared = context["shared_boolean"]
+    first_branch = side(shared["target_branch_rows"][0], 0)
+    second_branch = side(shared["target_branch_rows"][1], 0)
+    true_assignment = side(shared["target_true_assignment_row"], 0)
+    false_assignment = side(shared["target_false_assignment_row"], 0)
+    if any(
+        item is None or not item.has_instruction
+        for item in (first_branch, second_branch, true_assignment, false_assignment)
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target shared-Boolean rows are incomplete",
+        )
+    assert first_branch is not None
+    assert second_branch is not None
+    assert true_assignment is not None
+    assert false_assignment is not None
+    result_register = shared["result_register"]
+    if (
+        first_branch.mnemonic != "bne"
+        or second_branch.mnemonic != "beq"
+        or first_branch.branch_dest != true_assignment.address
+        or second_branch.branch_dest != false_assignment.address
+        or true_assignment.mnemonic != "li"
+        or false_assignment.mnemonic != "li"
+        or _registers(true_assignment.formatted, "r")[:1] != [result_register]
+        or _registers(false_assignment.formatted, "r")[:1] != [result_register]
+        or not true_assignment.formatted.rstrip().endswith(", 1")
+        or not false_assignment.formatted.rstrip().endswith(", 0")
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the target branches do not converge on one shared true/false assignment pair",
+            evidence={
+                "first_branch": first_branch.formatted,
+                "second_branch": second_branch.formatted,
+                "first_destination": first_branch.branch_dest,
+                "second_destination": second_branch.branch_dest,
+                "true_address": true_assignment.address,
+                "false_address": false_assignment.address,
+            },
+        )
+
+    candidate_true: list[dict[str, Any]] = []
+    for index in shared["candidate_true_assignment_rows"]:
+        item = side(index, 1)
+        if (
+            item is None
+            or not item.has_instruction
+            or item.mnemonic != "li"
+            or _registers(item.formatted, "r")[:1] != [result_register]
+            or not item.formatted.rstrip().endswith(", 1")
+        ):
+            return _evaluation(
+                rule_id,
+                matched=False,
+                reason="the candidate does not duplicate the true assignment at the sealed rows",
+                evidence={"row_index": index},
+            )
+        candidate_true.append({"row": index, "formatted": item.formatted})
+    candidate_false = side(shared["candidate_false_assignment_row"], 1)
+    if (
+        candidate_false is None
+        or not candidate_false.has_instruction
+        or candidate_false.mnemonic != "li"
+        or _registers(candidate_false.formatted, "r")[:1] != [result_register]
+        or not candidate_false.formatted.rstrip().endswith(", 0")
+    ):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the candidate false assignment is absent at the sealed row",
+        )
+
+    mapping = {
+        owner["target_register"]: owner["candidate_register"]
+        for owner in observation["owners"]
+    }
+    cycles = _closed_cycles(mapping)
+    if len(cycles) != 1 or len(cycles[0]) != 4:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="the exact-topology observation is not one closed four-owner GPR cycle",
+            evidence={"register_mapping": dict(sorted(mapping.items())), "cycles": cycles},
+        )
+
+    boolean_owner = next(
+        owner["name"] for owner in observation["owners"] if owner["type"] == "BOOL"
+    )
+    expression = (
+        f"if (({context['mask_tests'][0]['source_expression']}) || "
+        f"({context['mask_tests'][1]['source_expression']})) "
+        f"{{ {boolean_owner} = TRUE; }} else {{ {boolean_owner} = FALSE; }}"
+    )
+    scheduled_cells = [
+        {
+            "id": "explicit-if-else-right-to-left-call-order",
+            "source_class": "shared_true_false_short_circuit_if_else",
+            "source_expression": expression,
+            "suppressed_alternative": context["direct_assignment_rejection"],
+        },
+        {
+            "id": observation["candidate_id"],
+            "requires_previous_cell": "explicit-if-else-right-to-left-call-order",
+            "source_class": "typed_four_owner_declaration_chronology_after_exact_topology",
+            "declaration_order": observation["recommended_declaration_order"],
+            "candidate_record_sha256": observation["candidate_record_sha256"],
+        },
+    ]
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "the target calls each branch getter before its masu getter, routes bne/beq "
+            "to one shared true/false pair, and the baseline duplicates the true arm; a "
+            "measured exact-topology precursor then leaves one sealed four-owner cycle"
+        ),
+        confidence=0.99,
+        source_class="short_circuit_shared_boolean_then_typed_owner_chronology",
+        recommendation=(
+            "Compile the explicit if/else with source-commuted AND operands first; only "
+            "after topology is exact, compile the one sealed declaration-order cell."
+        ),
+        evidence={
+            "target_size": target_size,
+            "candidate_size": candidate_size,
+            "mask_tests": call_evidence,
+            "shared_boolean": {
+                **shared,
+                "first_branch_destination": first_branch.branch_dest,
+                "second_branch_destination": second_branch.branch_dest,
+                "candidate_true_assignments": candidate_true,
+                "candidate_false_assignment": candidate_false.formatted,
+            },
+            "topology_observation": observation,
+            "register_mapping": dict(sorted(mapping.items())),
+            "register_cycle": cycles[0],
+            "scheduled_cells": scheduled_cells,
+            "suppressed_axes": [
+                "direct_boolean_assignment",
+                "call_order_guessing",
+                "declaration_permutations_before_topology",
+                "dead_boolean_temporaries",
+            ],
+            "proofs": context["proofs"],
+        },
+    )
+
+
 def _switch_fpr_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -5040,6 +5689,7 @@ def diagnose_document(
     aggregate_followup_context: Mapping[str, Any] | None = None,
     address_taken_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
+    short_circuit_context: Mapping[str, Any] | None = None,
     capacity_context: Mapping[str, Any] | None = None,
     branch_context: Mapping[str, Any] | None = None,
     reciprocal_context: Mapping[str, Any] | None = None,
@@ -5085,6 +5735,11 @@ def diagnose_document(
     normalized_same_tu_shape_context = (
         _parse_same_tu_shape_context(same_tu_shape_context)
         if same_tu_shape_context is not None
+        else None
+    )
+    normalized_short_circuit_context = (
+        _parse_short_circuit_context(short_circuit_context)
+        if short_circuit_context is not None
         else None
     )
     normalized_capacity_context = (
@@ -5171,6 +5826,13 @@ def diagnose_document(
             normalized_same_tu_shape_context,
             objdiff_canonical_sha256,
         ),
+        _short_circuit_boolean_call_order_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_short_circuit_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_interface_capacity_evaluation(
             pair,
             normalized_capacity_context,
@@ -5225,6 +5887,11 @@ def diagnose_document(
             "same_tu_shape_context_canonical_sha256": (
                 _sha256(_canonical(normalized_same_tu_shape_context))
                 if normalized_same_tu_shape_context is not None
+                else None
+            ),
+            "short_circuit_context_canonical_sha256": (
+                _sha256(_canonical(normalized_short_circuit_context))
+                if normalized_short_circuit_context is not None
                 else None
             ),
             "capacity_context_canonical_sha256": (
@@ -5345,6 +6012,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--short-circuit-context",
+        type=Path,
+        help=(
+            "authenticated short_circuit_boolean_call_order_context/v1 JSON with "
+            "target call order, shared Boolean blocks, rejected direct assignment, "
+            "and exact-topology owner-cycle evidence"
+        ),
+    )
+    parser.add_argument(
         "--capacity-context",
         type=Path,
         help=(
@@ -5418,6 +6094,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="same-TU exact-sibling source-shape context",
                 )
                 if args.same_tu_shape_context is not None
+                else None
+            ),
+            short_circuit_context=(
+                _load_json(
+                    args.short_circuit_context,
+                    label="short-circuit Boolean call-order context",
+                )
+                if args.short_circuit_context is not None
                 else None
             ),
             capacity_context=(

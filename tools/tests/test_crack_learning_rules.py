@@ -763,6 +763,158 @@ def _same_tu_shape_context(
     }
 
 
+def _short_circuit_report() -> dict[str, object]:
+    target = [
+        _instruction(100, "stwu r1, -64(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "bl mbBranchAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "bl mbMasuAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(112, "bne 0x8c", diff_kind="DIFF_ARG_MISMATCH", branch_dest=140),
+        _instruction(116, "bl mbBranchMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(120, "bl mbMasuMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(124, "beq 0x90", diff_kind="DIFF_ARG_MISMATCH", branch_dest=144),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _placeholder("DIFF_DELETE"),
+        _instruction(140, "li r27, 1", diff_kind="DIFF_INSERT"),
+        _instruction(144, "li r27, 0", diff_kind="DIFF_INSERT"),
+        _instruction(148, "blr"),
+    ]
+    candidate = [
+        _instruction(100, "stwu r1, -80(r1)", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(104, "bl mbMasuAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(108, "bl mbBranchAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(112, "bne 0x80", diff_kind="DIFF_ARG_MISMATCH", branch_dest=128),
+        _instruction(116, "bl mbMasuMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(120, "bl mbBranchMAttrGet", diff_kind="DIFF_ARG_MISMATCH"),
+        _instruction(124, "beq 0x88", diff_kind="DIFF_ARG_MISMATCH", branch_dest=136),
+        _instruction(128, "li r27, 1", diff_kind="DIFF_DELETE"),
+        _instruction(132, "li r27, 1", diff_kind="DIFF_DELETE"),
+        _instruction(136, "li r27, 0", diff_kind="DIFF_DELETE"),
+        _placeholder("DIFF_INSERT"),
+        _placeholder("DIFF_INSERT"),
+        _instruction(148, "blr"),
+    ]
+    return _report(
+        "mbev_CapMasuLinkNextGet",
+        target,
+        candidate,
+        target_size=356,
+        candidate_size=364,
+    )
+
+
+def _short_circuit_context(
+    report: dict[str, object] | None = None,
+) -> dict[str, object]:
+    bound_report = report if report is not None else _short_circuit_report()
+    return {
+        "schema": rules.SHORT_CIRCUIT_CONTEXT_SCHEMA,
+        "proofs": {
+            "objdiff_canonical_sha256": rules._sha256(rules._canonical(bound_report)),
+            "physical_relocations_exact": True,
+            "data_sections_exact": True,
+            "protected_siblings_preserved": True,
+            "pinned_mwcc_frontend": True,
+            "topology_observation_size_exact": True,
+            "topology_observation_cfg_exact": True,
+            "topology_observation_relocations_exact": True,
+            "strict_report_sha256": "1" * 64,
+            "data_report_sha256": "2" * 64,
+            "physical_relocation_receipt_sha256": "3" * 64,
+            "call_order_receipt_sha256": "4" * 64,
+            "topology_observation_report_sha256": "5" * 64,
+            "declaration_owner_receipt_sha256": "6" * 64,
+        },
+        "mask_tests": [
+            {
+                "source_left": "mbMasuAttrGet(linkMasu)",
+                "source_right": "mbBranchAttrGet()",
+                "source_expression": (
+                    "mbMasuAttrGet(linkMasu) & mbBranchAttrGet()"
+                ),
+                "branch_getter": "mbBranchAttrGet",
+                "masu_getter": "mbMasuAttrGet",
+                "target_branch_call_row": 1,
+                "target_masu_call_row": 2,
+                "evidence_sha256": "7" * 64,
+            },
+            {
+                "source_left": "mbMasuMAttrGet(linkMasu)",
+                "source_right": "mbBranchMAttrGet()",
+                "source_expression": (
+                    "mbMasuMAttrGet(linkMasu) & mbBranchMAttrGet()"
+                ),
+                "branch_getter": "mbBranchMAttrGet",
+                "masu_getter": "mbMasuMAttrGet",
+                "target_branch_call_row": 4,
+                "target_masu_call_row": 5,
+                "evidence_sha256": "8" * 64,
+            },
+        ],
+        "shared_boolean": {
+            "target_branch_rows": [3, 6],
+            "target_true_assignment_row": 10,
+            "target_false_assignment_row": 11,
+            "candidate_true_assignment_rows": [7, 8],
+            "candidate_false_assignment_row": 9,
+            "result_register": "r27",
+            "evidence_sha256": "9" * 64,
+        },
+        "direct_assignment_rejection": {
+            "candidate_record_sha256": "a" * 64,
+            "reversed_call_order": True,
+            "strict_regressed": True,
+            "evidence_sha256": "b" * 64,
+        },
+        "topology_observation": {
+            "candidate_id": "capevent-masulink003-exact",
+            "target_size": 356,
+            "candidate_size": 356,
+            "residual_kind": "ARG_ONLY",
+            "owners": [
+                {
+                    "name": "nextMasu",
+                    "type": "s16",
+                    "target_register": "r29",
+                    "candidate_register": "r28",
+                    "evidence_sha256": "c" * 64,
+                },
+                {
+                    "name": "battanF",
+                    "type": "s16",
+                    "target_register": "r28",
+                    "candidate_register": "r27",
+                    "evidence_sha256": "d" * 64,
+                },
+                {
+                    "name": "blockedF",
+                    "type": "BOOL",
+                    "target_register": "r27",
+                    "candidate_register": "r26",
+                    "evidence_sha256": "e" * 64,
+                },
+                {
+                    "name": "linkMasu",
+                    "type": "int",
+                    "target_register": "r26",
+                    "candidate_register": "r29",
+                    "evidence_sha256": "f" * 64,
+                },
+            ],
+            "recommended_declaration_order": [
+                "nextMasu",
+                "battanF",
+                "blockedF",
+                "linkMasu",
+            ],
+            "candidate_record_sha256": (
+                "27be0898fc890c69111b174d7055c7e57302643c3707437d536c308a900a2d02"
+            ),
+            "evidence_sha256": "0" * 64,
+        },
+    }
+
+
 def _capacity_report() -> dict[str, object]:
     instructions = [
         _instruction(100, "stwu r1, -720(r1)"),
@@ -1743,6 +1895,109 @@ class CrackLearningRulesTest(unittest.TestCase):
                 same_tu_shape_context=false_proof,
             )
 
+    def test_short_circuit_boolean_call_order_schedules_two_bounded_cells(
+        self,
+    ) -> None:
+        report = _short_circuit_report()
+        context = _short_circuit_context(report)
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapMasuLinkNextGet",
+            short_circuit_context=context,
+        )
+        diagnosis = _evaluation(result, "short_circuit_boolean_call_order")
+
+        self.assertTrue(diagnosis["matched"])
+        evidence = diagnosis["evidence"]
+        self.assertEqual(
+            [
+                item["callee"]
+                for test in evidence["mask_tests"]
+                for item in test["target_call_order"]
+            ],
+            [
+                "mbBranchAttrGet",
+                "mbMasuAttrGet",
+                "mbBranchMAttrGet",
+                "mbMasuMAttrGet",
+            ],
+        )
+        self.assertEqual(len(evidence["scheduled_cells"]), 2)
+        self.assertEqual(
+            evidence["scheduled_cells"][0]["id"],
+            "explicit-if-else-right-to-left-call-order",
+        )
+        self.assertIn(
+            "blockedF = TRUE",
+            evidence["scheduled_cells"][0]["source_expression"],
+        )
+        self.assertEqual(
+            evidence["scheduled_cells"][1]["declaration_order"],
+            ["nextMasu", "battanF", "blockedF", "linkMasu"],
+        )
+        self.assertEqual(len(evidence["register_cycle"]), 4)
+        self.assertFalse(result["authority_advanced"])
+
+    def test_short_circuit_boolean_call_order_fails_closed(self) -> None:
+        report = _short_circuit_report()
+        no_context = rules.diagnose_document(
+            report, focus_symbol="mbev_CapMasuLinkNextGet"
+        )
+        self.assertFalse(
+            _evaluation(no_context, "short_circuit_boolean_call_order")["matched"]
+        )
+
+        wrong_call = _short_circuit_report()
+        wrong_call["left"]["symbols"][0]["instructions"][1]["instruction"][  # type: ignore[index]
+            "formatted"
+        ] = "bl mbMasuAttrGet"
+        context = _short_circuit_context(wrong_call)
+        result = rules.diagnose_document(
+            wrong_call,
+            focus_symbol="mbev_CapMasuLinkNextGet",
+            short_circuit_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "short_circuit_boolean_call_order")["matched"]
+        )
+
+        wrong_branch = _short_circuit_report()
+        wrong_branch["left"]["symbols"][0]["instructions"][3]["instruction"][  # type: ignore[index]
+            "branch_dest"
+        ] = 144
+        context = _short_circuit_context(wrong_branch)
+        result = rules.diagnose_document(
+            wrong_branch,
+            focus_symbol="mbev_CapMasuLinkNextGet",
+            short_circuit_context=context,
+        )
+        self.assertFalse(
+            _evaluation(result, "short_circuit_boolean_call_order")["matched"]
+        )
+
+        two_cycles = _short_circuit_context(report)
+        two_cycles["topology_observation"]["owners"][0]["candidate_register"] = "r28"  # type: ignore[index]
+        two_cycles["topology_observation"]["owners"][1]["candidate_register"] = "r29"  # type: ignore[index]
+        two_cycles["topology_observation"]["owners"][2]["candidate_register"] = "r26"  # type: ignore[index]
+        two_cycles["topology_observation"]["owners"][3]["candidate_register"] = "r27"  # type: ignore[index]
+        result = rules.diagnose_document(
+            report,
+            focus_symbol="mbev_CapMasuLinkNextGet",
+            short_circuit_context=two_cycles,
+        )
+        self.assertFalse(
+            _evaluation(result, "short_circuit_boolean_call_order")["matched"]
+        )
+
+        false_proof = _short_circuit_context(report)
+        false_proof["proofs"]["pinned_mwcc_frontend"] = False  # type: ignore[index]
+        with self.assertRaisesRegex(rules.LearningInputError, "pinned_mwcc_frontend"):
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuLinkNextGet",
+                short_circuit_context=false_proof,
+            )
+
     def test_stack_extent_interface_capacity_converges_on_live_capacity(self) -> None:
         report = _capacity_report()
         context = _capacity_context(report)
@@ -2308,6 +2563,38 @@ class CrackLearningRulesTest(unittest.TestCase):
                 report,
                 focus_symbol="mbev_CapEffElectricModelSet",
                 same_tu_shape_context=context,
+            ),
+        )
+
+    def test_short_circuit_context_cli_emits_same_document(self) -> None:
+        report = _short_circuit_report()
+        context = _short_circuit_context(report)
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "report.json"
+            context_path = Path(directory) / "short-circuit.json"
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            context_path.write_text(json.dumps(context), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(
+                    rules.main(
+                        [
+                            "--report",
+                            str(report_path),
+                            "--function",
+                            "mbev_CapMasuLinkNextGet",
+                            "--short-circuit-context",
+                            str(context_path),
+                        ]
+                    ),
+                    0,
+                )
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            rules.diagnose_document(
+                report,
+                focus_symbol="mbev_CapMasuLinkNextGet",
+                short_circuit_context=context,
             ),
         )
 

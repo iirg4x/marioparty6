@@ -1,8 +1,8 @@
 # CRACK_REPORT learning rules
 
-`tools/crack_learning_rules.py` turns thirteen reviewed function-level lessons into
+`tools/crack_learning_rules.py` turns fourteen reviewed function-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v6` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v7` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -310,6 +310,29 @@ combined cell: the donor expression, the wide callee view while preserving the
 narrow producer, and the right-associative zero chain. It never treats a donor
 name, a guessed prototype, or a literal-load resemblance as sufficient proof.
 
+For two call-valued mask tests whose target branches converge on one shared
+Boolean result, bind the exact call and branch destinations before testing
+source spellings:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report build/GP6E01/reports/masulink-baseline.strict.json \
+  --function mbev_CapMasuLinkNextGet \
+  --short-circuit-context work/masulink.short-circuit-context.json \
+  > work/masulink.learning.json
+```
+
+`short_circuit_boolean_call_order_context/v1` seals the canonical report,
+exact data/physical-relocation/sibling receipts, both target call pairs, the
+shared `bne`/`beq` true/false destinations, the baseline's duplicated true
+assignments, and one later exact-topology four-owner GPR cycle. The detector
+requires the target to call each branch getter before its masu getter while the
+C expression writes the masu getter first, matching the pinned MWCC frontend's
+right-to-left operand evaluation. It schedules the explicit shared `if/else`
+cell first and permits exactly one sealed declaration-chronology follow-up only
+after topology is exact. Direct Boolean assignment, call-order guessing, dead
+Boolean temporaries, and early declaration permutations remain suppressed.
+
 The Kokamekku-derived capacity and loop-destination rules are also unavailable
 from objdiff rows alone. Supply either or both closed evidence contexts:
 
@@ -477,9 +500,11 @@ result = diagnose_document(
 ```
 
 For the context-bound rules, pass parsed objects as `allocator_context=`,
-`parameter_allocation_context=`, `aggregate_use_context=`, `capacity_context=`,
-`branch_context=`, or `reciprocal_context=`. The same closed validation used by
-the CLI is applied to Python callers.
+`parameter_allocation_context=`, `aggregate_use_context=`,
+`aggregate_followup_context=`, `address_taken_context=`,
+`same_tu_shape_context=`, `short_circuit_context=`, `capacity_context=`,
+`branch_context=`, or `reciprocal_context=`. The same closed validation used
+by the CLI is applied to Python callers.
 
 ## Installed-functionality audit
 
@@ -489,7 +514,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The nine additional joins are narrower than those generic classifications:
+The fourteen joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -502,6 +527,7 @@ The nine additional joins are narrower than those generic classifications:
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
 | address-taken local pointer consumer | Exact CFG/data/physical relocations/siblings; a bounded positive size delta and larger target frame; matching local stack address; target saved-address materialization/copy versus candidate direct argument materialization; authenticated incoming-owner colors; and one target-only parameter home | Introduce one live typed pointer to the already live local aggregate immediately before the typed consumer |
 | same-TU exact-sibling source shapes | Exact data/CFG/physical relocations/siblings; exact same-TU donor and caller receipts; one target-only fixed-array Boolean lowering; one candidate-only callee `extsh` feeding the same consumer store; one-load reverse-order aggregate zero stores; and no residual outside those groups | Compile one combined cell using the exact donor expression, authenticated wide callee view, and right-associative zero chain |
+| short-circuit Boolean call order | Larger baseline candidate; two sealed target call pairs in branch-getter then masu-getter order; target `bne`/`beq` destinations converging on one true/false assignment pair; duplicated candidate true assignments; pinned MWCC frontend receipt; and one later exact-topology closed four-owner GPR cycle | Explicit shared `if/else` with source-commuted AND operands, followed only by the sealed declaration chronology after topology is exact |
 | stack extent/interface capacity | Equal function size; sealed candidate and target extents for one live array; positive whole-element delta; exact data/CFG/physical relocations/siblings; and Graphify-bound producer maxima that all equal the computed capacity | Live array capacity implied independently by target extent and producer contract |
 | reciprocal source shape | Equal function size; exact data/CFG/physical relocations/siblings; one typed power-of-two reciprocal; variable and reciprocal f32 loads swapped around an exact `fmuls`; no residual outside the sealed window; and an object-identical commuted-multiply control | Natural division by the exact denominator, with further commutative permutations suppressed |
 | switch-case FPR lifetimes | Indirect switch dispatch; larger target frame corroborated by the reducer's uniform stack-home delta; larger target function; and at least three target-only call-result copies into nonvolatile FPRs | Used floating-point result locals scoped to individual switch cases |
@@ -511,7 +537,8 @@ These joins preserve the reviewed boundaries from
 `ev_CapTeresaFadeMatHook`, `ev_CapMiracleCoinTrade`,
 `mbev_CapKuribo`, `mbev_CapPlayerMoveEjectCreate`, `mbev_CapKokamekku`,
 `mbev_CapEffExplodeOMExec`, `mbev_CapEffGlowKinokoAddAlt`,
-`mbev_CapEffElectricModelSet`, `ev_CapBobleOMExec`, and
+`mbev_CapEffElectricModelSet`, `mbev_CapMasuLinkNextGet`,
+`ev_CapBobleOMExec`, and
 `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
 same physical signature.
@@ -542,6 +569,11 @@ The focused fixtures reject the tempting incomplete variants:
   array bound or donor expression, a missing Boolean-lowering instruction, no
   candidate-only `extsh`, nonmatching consumer homes, more than one target zero
   load, or any residual outside the three sealed groups;
+- a short-circuit Boolean claim with reversed or missing target calls, source
+  operands that do not encode the pinned frontend's right-to-left call order,
+  branch destinations that do not converge on one true/false pair, absent
+  duplicated candidate true assignments, a false frontend proof, or a topology
+  observation that is not one closed four-owner GPR cycle;
 - an unaligned, zero/negative, or internally inconsistent stack extent; a used
   prefix larger than the candidate capacity; or producer maxima that disagree
   with the computed target capacity;
