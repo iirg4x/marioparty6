@@ -25,11 +25,12 @@ if __package__ in {None, ""}:
 
 from tools import candidate_interaction_planner as interaction_planner
 from tools import mismatch_cluster_audit as causal_reducer
+from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
 
 
-SCHEMA = "crack_learning_diagnosis/v18"
-SCHEMA_VERSION = 18
+SCHEMA = "crack_learning_diagnosis/v19"
+SCHEMA_VERSION = 19
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -47,6 +48,9 @@ TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA = "typed_aggregate_copy_lowering_context/v1"
 DFORM_COPY_HELPER_CONTEXT_SCHEMA = "dform_aggregate_copy_helper_context/v1"
 MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
     mixed_bank_home_cycle.CONTEXT_SCHEMA
+)
+LIVE_ALIAS_MEMSET_CONTEXT_SCHEMA = (
+    live_alias_memset_fusion.CONTEXT_SCHEMA
 )
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
@@ -506,6 +510,7 @@ _RULE_ORDER = (
     "typed_aggregate_copy_lowering",
     "dform_aggregate_copy_helper_boundary",
     mixed_bank_home_cycle.RULE_ID,
+    live_alias_memset_fusion.RULE_ID,
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
     "short_circuit_boolean_call_order",
@@ -3786,6 +3791,15 @@ def _parse_mixed_bank_home_cycle_context(
     try:
         return mixed_bank_home_cycle.parse_context(value)
     except mixed_bank_home_cycle.MixedBankInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_live_alias_memset_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return live_alias_memset_fusion.parse_context(value)
+    except live_alias_memset_fusion.LiveAliasInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10318,6 +10332,23 @@ def _mixed_bank_home_cycle_evaluation(
     return _evaluation(mixed_bank_home_cycle.RULE_ID, **result)
 
 
+def _live_alias_memset_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = live_alias_memset_fusion.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(live_alias_memset_fusion.RULE_ID, **result)
+
+
 def _aggregate_pointer_branch_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12318,6 +12349,7 @@ def diagnose_document(
     typed_aggregate_copy_context: Mapping[str, Any] | None = None,
     dform_copy_helper_context: Mapping[str, Any] | None = None,
     mixed_bank_home_cycle_context: Mapping[str, Any] | None = None,
+    live_alias_memset_context: Mapping[str, Any] | None = None,
     aggregate_pointer_branch_context: Mapping[str, Any] | None = None,
     same_tu_shape_context: Mapping[str, Any] | None = None,
     short_circuit_context: Mapping[str, Any] | None = None,
@@ -12391,6 +12423,11 @@ def diagnose_document(
     normalized_mixed_bank_home_cycle_context = (
         _parse_mixed_bank_home_cycle_context(mixed_bank_home_cycle_context)
         if mixed_bank_home_cycle_context is not None
+        else None
+    )
+    normalized_live_alias_memset_context = (
+        _parse_live_alias_memset_context(live_alias_memset_context)
+        if live_alias_memset_context is not None
         else None
     )
     normalized_aggregate_pointer_branch_context = (
@@ -12545,6 +12582,13 @@ def diagnose_document(
             normalized_mixed_bank_home_cycle_context,
             objdiff_canonical_sha256,
         ),
+        _live_alias_memset_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_live_alias_memset_context,
+            objdiff_canonical_sha256,
+        ),
         _aggregate_pointer_branch_evaluation(
             pair,
             target,
@@ -12665,6 +12709,11 @@ def diagnose_document(
             "mixed_bank_home_cycle_context_canonical_sha256": (
                 _sha256(_canonical(normalized_mixed_bank_home_cycle_context))
                 if normalized_mixed_bank_home_cycle_context is not None
+                else None
+            ),
+            "live_alias_memset_context_canonical_sha256": (
+                _sha256(_canonical(normalized_live_alias_memset_context))
+                if normalized_live_alias_memset_context is not None
                 else None
             ),
             "aggregate_snapshot_pointer_context_canonical_sha256": (
@@ -12863,6 +12912,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--live-alias-memset-context",
+        type=Path,
+        help=(
+            "authenticated historical_live_alias_memset_fusion_context/v1 JSON with "
+            "one target alias home, historical provenance, and sealed negative controls"
+        ),
+    )
+    parser.add_argument(
         "--aggregate-snapshot-pointer-context",
         type=Path,
         help=(
@@ -13031,6 +13088,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="mixed-bank aggregate-home context",
                 )
                 if args.mixed_bank_home_cycle_context is not None
+                else None
+            ),
+            live_alias_memset_context=(
+                _load_json(
+                    args.live_alias_memset_context,
+                    label="historical live-alias memset context",
+                )
+                if args.live_alias_memset_context is not None
                 else None
             ),
             address_taken_context=(

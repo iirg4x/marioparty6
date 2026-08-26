@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v18` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v19` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -887,6 +887,11 @@ The focused fixtures reject the tempting incomplete variants:
   one or more frozen owners, disjoint 12-byte HuVecF homes, or one unique
   complete permutation of the same target/candidate home set; any residual
   outside ARG-only same-owner stack transfers also closes the rule.
+- a live-alias memset claim without an exact-size-minus-four/one-frame-step
+  precursor, exactly one target-only `stw` to `r1+8`, exact allocation and
+  memset calls, an authenticated typed historical alias, the complete five-cell
+  negative-control matrix, exact relocations/protected siblings, or a bound
+  strict/data exact result.
 
 Other structural differences also close a rule. The assignment/condition rule
 rejects inserts, deletes, opcode or relocation changes, inconsistent mappings,
@@ -933,13 +938,64 @@ This rule is evidence-only. A matching diagnosis remains
 `authority_advanced:false`; the lane still owns natural-source review and the
 strict/data/physical-relocation/protected-sibling proof.
 
+## Historical live-alias fusion at an immediate memset boundary
+
+When an allocation/property creator is exactly four bytes short and the target
+alone stores the live work pointer to `r1+8`, seal the target order, history,
+and negative controls before trying more source permutations:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/coinmancreate-baseline.strict.json \
+  --function mbev_CapCoinManCreate \
+  --live-alias-memset-context work/coinmancreate.live-alias-memset.json \
+  > work/coinmancreate.learning.json
+```
+
+`historical_live_alias_memset_fusion_context/v1` requires a precursor whose
+target is four bytes larger, whose aligned frame is one 16-byte step larger,
+and whose physical relocations, calls, CFG, and data are already exact. The
+only target-only instruction must be the authenticated `stw` of the live owner
+to `8(r1)`; the only paired residual beside it must be the frame allocation.
+The allocation call, `r3`-to-live-owner bind, target home, and `memset` call
+must occur once in the sealed order.
+
+The context also requires an authenticated historical typed alias and all five
+measured controls from the CoinManCreate/StarManCreate campaign:
+
+- fusion without the historical alias is object-identical;
+- a direct allocator-result chain regresses;
+- changing only the allocation-result type is object-identical;
+- `sizeof` ownership is object-identical; and
+- a separate alias statement reaches exact size but creates a wrong saved GPR.
+
+Only the outer assignment at the immediate consumer boundary remains:
+
+```c
+memset(workBase = workP = obj->data = workData, 0,
+    count * sizeof(WORK_TYPE));
+```
+
+The rule schedules one bounded cell and suppresses every measured control,
+global declaration permutations, dead or fake aliases, padding, register
+shaping, repeat tracing, and retention. CoinManCreate and StarManCreate share
+the same rule while keeping their truthful counts and types (`64`/
+`CAPCOINMANWORK` and `8`/`CAPSTARMANWORK`). Active seconds are mandatory in the
+context. Incomplete telemetry must explicitly remain excluded from measured
+crack/hour; it is never imputed.
+
+This diagnosis is `authority_advanced:false`. Historical provenance plus the
+physical seam ranks one natural source cell; the lane still owns admissibility
+and complete strict/data/relocation/sibling proof.
+
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,
 and the installed reducer by SHA-256. `diagnosis_sha256` hashes the complete
 document excluding that field. Context-bound paths additionally bind canonical
 allocator, parameter/allocation, aggregate-pointer branch, typed-pool/live-range,
-capacity, branch, or reciprocal evidence by SHA-256; the allocator path also binds the installed
+capacity, branch, reciprocal, mixed-bank home-cycle, or historical live-alias
+evidence by SHA-256; the allocator path also binds the installed
 interaction planner, and the typed-pool path binds the installed pool decoder.
 Rule order and JSON serialization are stable.
 
