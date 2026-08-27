@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v25` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v26` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -1238,6 +1238,45 @@ calls, callback-scope retries, `i`/`j` declaration permutations, and repeat
 tracing. Dead/fake locals, padding, register shaping, retention, and promotion
 remain forbidden. Active-time telemetry is mandatory; incomplete heavy-runtime
 coverage is reported without imputation. Authority is always false.
+
+## Same-TU exact constructor-family transfer
+
+Repeated Board particle constructors should be compared as complete source
+families before local scope or declaration permutations. Use the rule only with
+an exact same-TU donor and a sealed Graphify-first/narrow-file receipt:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/explodecircle-baseline.strict.json \
+  --function mbev_CapEffExplodeCircleAdd \
+  --same-tu-constructor-family-context work/explodecircle.constructor-family.json
+```
+
+`same_tu_constructor_family_transfer_context/v1` binds three deterministic
+stages. A smaller frame plus missing physical relocations first ranks one
+complete donor-family cell: named scalar trig results, per-call typed aggregate
+snapshots, live typed addresses, and live integer result stores. Once that cell
+restores the constructor family, only the measured shared-random owner and
+aggregate/direction order seams are scheduled. Once size, frame, CFG, data, and
+relocations close, exactly one sixteen-row FPR-only cycle ranks the exact donor
+scalar declaration chronology.
+
+The ExplodeCircle acceptance sequence is `1264/1376, 52/54, frame 0x180` to the
+donor-family precursor, then `1360/1376, 54/54`, then the structurally closed
+`1376/1376, 54/54` precursor, and finally exact. The exact same-TU
+`mbev_CapEffDustExplodeAdd` donor must itself be strict/data exact. An
+unauthenticated donor, non-FPR residual, changed frame/relocation signature, or
+hash drift fails closed.
+
+No tracer is ranked before static closure. Scope/declaration permutations,
+dead or fake locals, padding, register shaping, source retention, and promotion
+are suppressed. Complete telemetry remains eligible for measured crack/hour;
+no time is ever imputed. The rule emits diagnosis only and always keeps
+`authority_advanced=false`.
+ At the closed-structure stage the rule excludes only
+value-equivalent `@sda21` owner spellings after the canonical report and exact
+physical-relocation count are sealed; every remaining row must still be the
+authenticated FPR-only register cycle.
 
 ## Saved-FPR stack-owner composition and pool handoff
 

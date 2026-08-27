@@ -30,13 +30,14 @@ from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
 from tools import saved_fpr_stack_pool_composer
 from tools import saved_owner_semantic_split
+from tools import same_tu_constructor_family_transfer
 from tools import scalar_return_consumer_owner
 from tools import stack_extent_overwritten_initializer
 from tools import traced_naggregate_reciprocal_fold
 
 
-SCHEMA = "crack_learning_diagnosis/v25"
-SCHEMA_VERSION = 25
+SCHEMA = "crack_learning_diagnosis/v26"
+SCHEMA_VERSION = 26
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -72,6 +73,7 @@ SAVED_OWNER_SEMANTIC_SPLIT_CONTEXT_SCHEMA = (
     saved_owner_semantic_split.CONTEXT_SCHEMA
 )
 SAVED_FPR_STACK_POOL_CONTEXT_SCHEMA = saved_fpr_stack_pool_composer.CONTEXT_SCHEMA
+SAME_TU_CONSTRUCTOR_FAMILY_CONTEXT_SCHEMA = same_tu_constructor_family_transfer.CONTEXT_SCHEMA
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
@@ -533,6 +535,7 @@ _RULE_ORDER = (
     live_alias_memset_fusion.RULE_ID,
     scalar_return_consumer_owner.RULE_ID,
     direct_scalar_fabs_consumer.RULE_ID,
+    same_tu_constructor_family_transfer.RULE_ID,
     stack_extent_overwritten_initializer.RULE_ID,
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
@@ -3844,6 +3847,15 @@ def _parse_direct_scalar_fabs_context(
     try:
         return direct_scalar_fabs_consumer.parse_context(value)
     except direct_scalar_fabs_consumer.DirectScalarFabsInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_same_tu_constructor_family_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return same_tu_constructor_family_transfer.parse_context(value)
+    except same_tu_constructor_family_transfer.ConstructorFamilyInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10459,6 +10471,30 @@ def _direct_scalar_fabs_evaluation(
     return _evaluation(direct_scalar_fabs_consumer.RULE_ID, **result)
 
 
+def _same_tu_constructor_family_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = same_tu_constructor_family_transfer.evaluate(
+        pair, target, candidate, context, objdiff_canonical_sha256
+    )
+    if result.get("matched"):
+        result = dict(result)
+        result.setdefault("confidence", 0.98)
+        result.setdefault(
+            "source_class",
+            "authenticated same-TU exact constructor-family transfer",
+        )
+        result.setdefault(
+            "recommendation",
+            "compile only the ranked complete family or sealed residual-closure cell",
+        )
+    return _evaluation(same_tu_constructor_family_transfer.RULE_ID, **result)
+
+
 def _stack_extent_overwritten_initializer_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12522,6 +12558,7 @@ def diagnose_document(
     live_alias_memset_context: Mapping[str, Any] | None = None,
     scalar_return_consumer_context: Mapping[str, Any] | None = None,
     direct_scalar_fabs_context: Mapping[str, Any] | None = None,
+    same_tu_constructor_family_context: Mapping[str, Any] | None = None,
     stack_extent_overwritten_initializer_context: Mapping[str, Any] | None = None,
     traced_naggregate_reciprocal_context: Mapping[str, Any] | None = None,
     saved_owner_semantic_split_context: Mapping[str, Any] | None = None,
@@ -12614,6 +12651,11 @@ def diagnose_document(
     normalized_direct_scalar_fabs_context = (
         _parse_direct_scalar_fabs_context(direct_scalar_fabs_context)
         if direct_scalar_fabs_context is not None
+        else None
+    )
+    normalized_same_tu_constructor_family_context = (
+        _parse_same_tu_constructor_family_context(same_tu_constructor_family_context)
+        if same_tu_constructor_family_context is not None
         else None
     )
     normalized_stack_extent_overwritten_initializer_context = (
@@ -12815,6 +12857,13 @@ def diagnose_document(
             normalized_direct_scalar_fabs_context,
             objdiff_canonical_sha256,
         ),
+        _same_tu_constructor_family_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_same_tu_constructor_family_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_overwritten_initializer_evaluation(
             pair,
             target,
@@ -12980,6 +13029,11 @@ def diagnose_document(
                 if normalized_direct_scalar_fabs_context is not None
                 else None
             ),
+            "same_tu_constructor_family_context_canonical_sha256": (
+                _sha256(_canonical(normalized_same_tu_constructor_family_context))
+                if normalized_same_tu_constructor_family_context is not None
+                else None
+            ),
             "stack_extent_overwritten_initializer_context_canonical_sha256": (
                 _sha256(_canonical(normalized_stack_extent_overwritten_initializer_context))
                 if normalized_stack_extent_overwritten_initializer_context is not None
@@ -13102,6 +13156,11 @@ def diagnose_document(
                 "path": Path(direct_scalar_fabs_consumer.__file__).name,
                 "schema": direct_scalar_fabs_consumer.CONTEXT_SCHEMA,
                 "sha256": _sha256(Path(direct_scalar_fabs_consumer.__file__).read_bytes()),
+            },
+            "same_tu_constructor_family_transfer": {
+                "path": Path(same_tu_constructor_family_transfer.__file__).name,
+                "schema": same_tu_constructor_family_transfer.CONTEXT_SCHEMA,
+                "sha256": _sha256(Path(same_tu_constructor_family_transfer.__file__).read_bytes()),
             },
             "saved_fpr_stack_pool_composer": {
                 "path": Path(saved_fpr_stack_pool_composer.__file__).name,
@@ -13238,6 +13297,14 @@ def _build_parser() -> argparse.ArgumentParser:
             "authenticated direct_scalar_fabs_consumer_context/v1 JSON with an "
             "exact seven-row FPR cascade, one scalar call/fabs/compare chain, "
             "and exact same-TU donor proof"
+        ),
+    )
+    parser.add_argument(
+        "--same-tu-constructor-family-context",
+        type=Path,
+        help=(
+            "authenticated same_tu_constructor_family_transfer_context/v1 JSON with "
+            "an exact same-TU donor, staged frame/relocation closure, and one FPR cycle"
         ),
     )
     parser.add_argument(
@@ -13468,6 +13535,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="direct scalar-fabs consumer context",
                 )
                 if args.direct_scalar_fabs_context is not None
+                else None
+            ),
+            same_tu_constructor_family_context=(
+                _load_json(
+                    args.same_tu_constructor_family_context,
+                    label="same-TU constructor-family context",
+                )
+                if args.same_tu_constructor_family_context is not None
                 else None
             ),
             stack_extent_overwritten_initializer_context=(
