@@ -12,6 +12,7 @@ from pathlib import Path
 
 from tools import candidate_interaction_planner as planner
 from tools import crack_learning_rules as rules
+from tools.tests import test_single_use_final_call_consumer as single_use_fixture
 
 
 def _instruction(
@@ -5486,6 +5487,21 @@ class CrackLearningRulesTest(unittest.TestCase):
                 focus_symbol="PlayerBiriQOMExec",
                 metadata_owner_context=context,
             ),
+        )
+
+    def test_single_use_final_call_rule_is_in_dispatcher_order(self) -> None:
+        report = single_use_fixture._report()
+        result = rules.diagnose_document(
+            report,
+            focus_symbol=single_use_fixture.FUNCTION,
+            single_use_final_call_context=single_use_fixture._context(report),
+        )
+        evaluation = _evaluation(result, "single_use_final_call_direct_consumption")
+        self.assertTrue(evaluation["matched"])
+        self.assertEqual(result["schema"], "crack_learning_diagnosis/v33")
+        self.assertEqual(
+            result["evaluations"][6]["rule_id"],
+            "single_use_final_call_direct_consumption",
         )
 
 

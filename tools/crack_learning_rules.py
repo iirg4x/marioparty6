@@ -34,6 +34,7 @@ from tools import saved_fpr_semantic_owner_chronology
 from tools import saved_owner_semantic_split
 from tools import same_tu_constructor_family_transfer
 from tools import scalar_return_consumer_owner
+from tools import single_use_final_call_consumer
 from tools import stack_extent_overwritten_initializer
 from tools import source_linked_owner_closure
 from tools import target_emitted_overwritten_computation
@@ -41,8 +42,8 @@ from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v32"
-SCHEMA_VERSION = 32
+SCHEMA = "crack_learning_diagnosis/v33"
+SCHEMA_VERSION = 33
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -62,6 +63,7 @@ REPEATED_OPCODE_LOW_LEVEL_READINESS_CONTEXT_SCHEMA = (
     repeated_opcode_low_level_readiness.CONTEXT_SCHEMA
 )
 SOURCE_LINKED_OWNER_CLOSURE_CONTEXT_SCHEMA = source_linked_owner_closure.CONTEXT_SCHEMA
+SINGLE_USE_FINAL_CALL_CONTEXT_SCHEMA = single_use_final_call_consumer.CONTEXT_SCHEMA
 MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
     mixed_bank_home_cycle.CONTEXT_SCHEMA
 )
@@ -544,6 +546,7 @@ _RULE_ORDER = (
     "loop_branch_destination",
     "assignment_condition_saved_gpr_cycle",
     "allocator_two_register_swap_interaction",
+    single_use_final_call_consumer.RULE_ID,
     "parameter_allocation_consumer_chain",
     "aggregate_use_multiplicity",
     "aggregate_two_owner_followup",
@@ -3862,6 +3865,15 @@ def _parse_source_linked_owner_closure_context(
     try:
         return source_linked_owner_closure.parse_context(value)
     except source_linked_owner_closure.SourceLinkedClosureInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_single_use_final_call_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return single_use_final_call_consumer.parse_context(value)
+    except single_use_final_call_consumer.SingleUseFinalCallInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10571,6 +10583,23 @@ def _source_linked_owner_closure_evaluation(
     )
 
 
+def _single_use_final_call_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = single_use_final_call_consumer.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(single_use_final_call_consumer.RULE_ID, **result)
+
+
 def _live_alias_memset_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12767,6 +12796,7 @@ def diagnose_document(
     metadata_owner_context: Mapping[str, Any] | None = None,
     source_linked_owner_closure_context: Mapping[str, Any] | None = None,
     allocator_context: Mapping[str, Any] | None = None,
+    single_use_final_call_context: Mapping[str, Any] | None = None,
     parameter_allocation_context: Mapping[str, Any] | None = None,
     aggregate_use_context: Mapping[str, Any] | None = None,
     aggregate_followup_context: Mapping[str, Any] | None = None,
@@ -12825,6 +12855,11 @@ def diagnose_document(
     normalized_allocator_context = (
         _parse_allocator_context(allocator_context)
         if allocator_context is not None
+        else None
+    )
+    normalized_single_use_final_call_context = (
+        _parse_single_use_final_call_context(single_use_final_call_context)
+        if single_use_final_call_context is not None
         else None
     )
     normalized_parameter_allocation_context = (
@@ -13034,6 +13069,13 @@ def diagnose_document(
             target,
             candidate,
             normalized_allocator_context,
+            objdiff_canonical_sha256,
+        ),
+        _single_use_final_call_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_single_use_final_call_context,
             objdiff_canonical_sha256,
         ),
         _parameter_allocation_consumer_chain_evaluation(
@@ -13271,6 +13313,11 @@ def diagnose_document(
                 if normalized_allocator_context is not None
                 else None
             ),
+            "single_use_final_call_context_canonical_sha256": (
+                _sha256(_canonical(normalized_single_use_final_call_context))
+                if normalized_single_use_final_call_context is not None
+                else None
+            ),
             "parameter_allocation_context_canonical_sha256": (
                 _sha256(_canonical(normalized_parameter_allocation_context))
                 if normalized_parameter_allocation_context is not None
@@ -13465,6 +13512,13 @@ def diagnose_document(
                 "result_schema": source_linked_owner_closure.RESULT_SCHEMA,
                 "sha256": _sha256(Path(source_linked_owner_closure.__file__).read_bytes()),
             },
+            "single_use_final_call_consumer": {
+                "path": Path(single_use_final_call_consumer.__file__).name,
+                "schema": single_use_final_call_consumer.CONTEXT_SCHEMA,
+                "sha256": _sha256(
+                    Path(single_use_final_call_consumer.__file__).read_bytes()
+                ),
+            },
             "traced_naggregate_reciprocal_fold": {
                 "path": Path(traced_naggregate_reciprocal_fold.__file__).name,
                 "schema": traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA,
@@ -13578,6 +13632,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "authenticated allocator_two_register_swap_context/v1 JSON with proof, "
             "VarInfo owner, boundary, and optional measured-cell evidence"
+        ),
+    )
+    parser.add_argument(
+        "--single-use-final-call-context",
+        type=Path,
+        help=(
+            "authenticated single_use_final_call_consumer_context/v1 JSON with an "
+            "exact four-row two-GPR swap, one scalar conversion result, one typed "
+            "final-call consumer, unaffected arguments, and sealed negative controls"
         ),
     )
     parser.add_argument(
@@ -13870,6 +13933,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             allocator_context=(
                 _load_json(args.allocator_context, label="allocator context")
                 if args.allocator_context is not None
+                else None
+            ),
+            single_use_final_call_context=(
+                _load_json(
+                    args.single_use_final_call_context,
+                    label="single-use final-call context",
+                )
+                if args.single_use_final_call_context is not None
                 else None
             ),
             parameter_allocation_context=(
