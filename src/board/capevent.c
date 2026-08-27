@@ -7831,7 +7831,7 @@ void mbev_CapPlayerShockSet(int playerNo)
     }
 }
 
-static const float lbl_802C4890[1] = {250.0f};
+static const float capCoinDispPosYOffset[1] = {250.0f};
 
 void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF)
 {
@@ -8061,7 +8061,7 @@ int mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF)
     int coinDisp;
 
     mbPlayerPosGet(playerNo, &pos);
-    pos.y += lbl_802C4890[0];
+    pos.y += capCoinDispPosYOffset[0];
     coinDisp = mbCoinDispCapsuleCreate(&pos, coinNum);
     if (winMotF) {
         if (coinNum > 0) {
