@@ -5499,7 +5499,7 @@ class CrackLearningRulesTest(unittest.TestCase):
         )
         evaluation = _evaluation(result, "single_use_final_call_direct_consumption")
         self.assertTrue(evaluation["matched"])
-        self.assertEqual(result["schema"], "crack_learning_diagnosis/v35")
+        self.assertEqual(result["schema"], "crack_learning_diagnosis/v36")
         self.assertEqual(
             result["evaluations"][8]["rule_id"],
             "single_use_final_call_direct_consumption",
@@ -5514,7 +5514,7 @@ class CrackLearningRulesTest(unittest.TestCase):
         )
         evaluation = _evaluation(result, "switch_default_typed_constant_fold")
         self.assertTrue(evaluation["matched"])
-        self.assertEqual(result["schema"], "crack_learning_diagnosis/v35")
+        self.assertEqual(result["schema"], "crack_learning_diagnosis/v36")
         self.assertEqual(
             result["evaluations"][5]["rule_id"],
             "switch_default_typed_constant_fold",

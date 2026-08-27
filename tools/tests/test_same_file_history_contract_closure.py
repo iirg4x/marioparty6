@@ -396,7 +396,7 @@ class SameFileHistoryContractClosureTests(unittest.TestCase):
             if item["rule_id"] == history_contract.RULE_ID
         )
         self.assertTrue(evaluation["matched"])
-        self.assertEqual(result["schema"], "crack_learning_diagnosis/v35")
+        self.assertEqual(result["schema"], "crack_learning_diagnosis/v36")
         self.assertEqual(result["evaluations"][2]["rule_id"], history_contract.RULE_ID)
 
         root = Path(self.temporary.name)

@@ -28,6 +28,7 @@ from tools import mismatch_cluster_audit as causal_reducer
 from tools import direct_scalar_fabs_consumer
 from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
+from tools import mwcc_score_delta_reducer
 from tools import repeated_opcode_low_level_readiness
 from tools import saved_fpr_stack_pool_composer
 from tools import saved_fpr_semantic_owner_chronology
@@ -44,8 +45,8 @@ from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v35"
-SCHEMA_VERSION = 35
+SCHEMA = "crack_learning_diagnosis/v36"
+SCHEMA_VERSION = 36
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -67,6 +68,7 @@ REPEATED_OPCODE_LOW_LEVEL_READINESS_CONTEXT_SCHEMA = (
 SOURCE_LINKED_OWNER_CLOSURE_CONTEXT_SCHEMA = source_linked_owner_closure.CONTEXT_SCHEMA
 SAME_FILE_HISTORY_CONTRACT_CONTEXT_SCHEMA = same_file_history_contract_closure.CONTEXT_SCHEMA
 SINGLE_USE_FINAL_CALL_CONTEXT_SCHEMA = single_use_final_call_consumer.CONTEXT_SCHEMA
+MWCC_SCORE_DELTA_CONTEXT_SCHEMA = mwcc_score_delta_reducer.CONTEXT_SCHEMA
 SWITCH_DEFAULT_FOLD_CONTEXT_SCHEMA = switch_default_constant_fold.CONTEXT_SCHEMA
 MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
     mixed_bank_home_cycle.CONTEXT_SCHEMA
@@ -553,6 +555,7 @@ _RULE_ORDER = (
     "assignment_condition_saved_gpr_cycle",
     "allocator_two_register_swap_interaction",
     single_use_final_call_consumer.RULE_ID,
+    mwcc_score_delta_reducer.RULE_ID,
     "parameter_allocation_consumer_chain",
     "aggregate_use_multiplicity",
     "aggregate_two_owner_followup",
@@ -3889,6 +3892,15 @@ def _parse_single_use_final_call_context(
     try:
         return single_use_final_call_consumer.parse_context(value)
     except single_use_final_call_consumer.SingleUseFinalCallInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_mwcc_score_delta_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return mwcc_score_delta_reducer.parse_context(value)
+    except mwcc_score_delta_reducer.ScoreDeltaInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10641,6 +10653,19 @@ def _single_use_final_call_evaluation(
     return _evaluation(single_use_final_call_consumer.RULE_ID, **result)
 
 
+def _mwcc_score_delta_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = mwcc_score_delta_reducer.evaluate(
+        pair, target, candidate, context, objdiff_canonical_sha256
+    )
+    return _evaluation(mwcc_score_delta_reducer.RULE_ID, **result)
+
+
 def _switch_default_fold_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12852,6 +12877,7 @@ def diagnose_document(
     same_file_history_contract_context: Mapping[str, Any] | None = None,
     allocator_context: Mapping[str, Any] | None = None,
     single_use_final_call_context: Mapping[str, Any] | None = None,
+    mwcc_score_delta_context: Mapping[str, Any] | None = None,
     switch_default_fold_context: Mapping[str, Any] | None = None,
     parameter_allocation_context: Mapping[str, Any] | None = None,
     aggregate_use_context: Mapping[str, Any] | None = None,
@@ -12921,6 +12947,11 @@ def diagnose_document(
     normalized_single_use_final_call_context = (
         _parse_single_use_final_call_context(single_use_final_call_context)
         if single_use_final_call_context is not None
+        else None
+    )
+    normalized_mwcc_score_delta_context = (
+        _parse_mwcc_score_delta_context(mwcc_score_delta_context)
+        if mwcc_score_delta_context is not None
         else None
     )
     normalized_switch_default_fold_context = (
@@ -13156,6 +13187,13 @@ def diagnose_document(
             target,
             candidate,
             normalized_single_use_final_call_context,
+            objdiff_canonical_sha256,
+        ),
+        _mwcc_score_delta_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_mwcc_score_delta_context,
             objdiff_canonical_sha256,
         ),
         _parameter_allocation_consumer_chain_evaluation(
@@ -13403,6 +13441,11 @@ def diagnose_document(
                 if normalized_single_use_final_call_context is not None
                 else None
             ),
+            "mwcc_score_delta_context_canonical_sha256": (
+                _sha256(_canonical(normalized_mwcc_score_delta_context))
+                if normalized_mwcc_score_delta_context is not None
+                else None
+            ),
             "switch_default_fold_context_canonical_sha256": (
                 _sha256(_canonical(normalized_switch_default_fold_context))
                 if normalized_switch_default_fold_context is not None
@@ -13617,6 +13660,11 @@ def diagnose_document(
                     Path(single_use_final_call_consumer.__file__).read_bytes()
                 ),
             },
+            "mwcc_score_delta_reducer": {
+                "path": Path(mwcc_score_delta_reducer.__file__).name,
+                "schema": mwcc_score_delta_reducer.CONTEXT_SCHEMA,
+                "sha256": _sha256(Path(mwcc_score_delta_reducer.__file__).read_bytes()),
+            },
             "switch_default_constant_fold": {
                 "path": Path(switch_default_constant_fold.__file__).name,
                 "schema": switch_default_constant_fold.CONTEXT_SCHEMA,
@@ -13756,6 +13804,15 @@ def _build_parser() -> argparse.ArgumentParser:
             "authenticated single_use_final_call_consumer_context/v1 JSON with an "
             "exact four-row two-GPR swap, one scalar conversion result, one typed "
             "final-call consumer, unaffected arguments, and sealed negative controls"
+        ),
+    )
+    parser.add_argument(
+        "--mwcc-score-delta-context",
+        type=Path,
+        help=(
+            "authenticated mwcc_score_delta_context/v1 JSON binding exact-size/frame/"
+            "relocation residuals, same-session allocation-score traces, a changed "
+            "physical color, and every minimal def/use increment to one source span"
         ),
     )
     parser.add_argument(
@@ -14073,6 +14130,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="single-use final-call context",
                 )
                 if args.single_use_final_call_context is not None
+                else None
+            ),
+            mwcc_score_delta_context=(
+                _load_json(
+                    args.mwcc_score_delta_context,
+                    label="MWCC score-delta context",
+                )
+                if args.mwcc_score_delta_context is not None
                 else None
             ),
             switch_default_fold_context=(
