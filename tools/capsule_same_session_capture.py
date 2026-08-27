@@ -102,6 +102,9 @@ SOURCE_SPAN_SCHEMA = "mwcc_source_span_bindings/v1"
 SOURCE_SPAN_SCHEMA_V2 = "mwcc_source_span_bindings/v2"
 SOURCE_SPAN_PLAN_SCHEMA = "mwcc_source_span_binding_plan/v1"
 CAUSAL_MAP_SCHEMA = "mwcc_source_aware_causal_map/v1"
+PARTIAL_EVIDENCE_SCHEMA = "mwcc_capsule_same_session_partial_evidence/v1"
+PARTIAL_FAILURE_GRAPH_SCHEMA = "mwcc_capsule_same_session_ownership_failure_graph/v1"
+PARTIAL_HOOK_RECEIPT_SCHEMA = "mwcc_capsule_same_session_hook_validation/v1"
 # The pinned hook union changed: old requests/envelopes must not be
 # interpreted as captures from this repaired transport.
 TOOL_VERSION = "capsule-same-session-capture-2"
@@ -109,6 +112,23 @@ DIAGNOSTIC_ONLY = True
 BOARD_ADMISSION = False
 EXACTNESS_CLAIM = False
 AUTHORITY_ADVANCED = False
+
+_PRESERVABLE_FINAL_JOIN_FAILURES = frozenset(
+    {
+        "machine owner join lacks an exact Object/vreg edge",
+        "machine owner join lacks an exact physical-register edge",
+        "machine physical owner join lacks an exact same-session assignment",
+    }
+)
+_PARTIAL_EVIDENCE_FILENAMES = {
+    "stack_events": "stack.events.jsonl",
+    "pcode_events": "pcode.events.jsonl",
+    "machine_events": "machine.events.jsonl",
+    "candidate_envelope": "candidate-envelope.json",
+    "hook_validation": "hook-validation.json",
+    "failure_graph": "ownership-failure-graph.json",
+    "manifest": "partial-evidence.json",
+}
 
 KNOWN_IMAGE_BASE = _stack_home.KNOWN_IMAGE_BASE
 # ``DEBUG_PROCESS`` follows a launcher through its descendant processes.  The
@@ -562,6 +582,8 @@ _EVENT_EXTRA_KEYS = {
     "arithmetic_op",
     "arithmetic_type",
     "reaching_definitions",
+    "known_reaching_definitions",
+    "missing_reaching_registers",
     "owner_joins",
     "physical_owner_joins",
     "ig_token",
@@ -613,6 +635,7 @@ _EVENT_ALLOWED_FIELDS = {
         "instruction_index", "opcode_enum", "ppc_word", "ppc_bytes", "mnemonic",
         "registers", "immediate", "memory_op", "memory_width",
         "effective_stack_offset", "address_definition", "reaching_definitions",
+        "known_reaching_definitions", "missing_reaching_registers",
         "arithmetic_op", "arithmetic_type", "owner_joins", "physical_owner_joins",
     },
     "lane_unknown": {"reason"},
@@ -1495,6 +1518,12 @@ class MachineEmissionDecoder:
                 "opcode_enum",
                 "ppc_word",
                 "ppc_bytes",
+                "mnemonic",
+                "registers",
+                "arithmetic_op",
+                "arithmetic_type",
+                "known_reaching_definitions",
+                "missing_reaching_registers",
             ):
                 if key in located:
                     result[key] = located[key]
@@ -1669,14 +1698,24 @@ class MachineEmissionDecoder:
                 registers={"destination": f"f{destination}", "source": f"f{source}"},
             )
             self.value_defs[("FPR", destination)] = instruction_index
-        elif primary == 59 and ((word >> 1) & 0x3FF) == 25:  # fmuls
+        elif primary == 59 and ((word >> 1) & 0x1F) == 25:  # fmuls
             destination = (word >> 21) & 31
             source_a = (word >> 16) & 31
-            source_b = (word >> 11) & 31
+            source_b = (word >> 6) & 31
             source_keys = (("FPR", source_a), ("FPR", source_b))
-            if any(key not in self.value_defs for key in source_keys):
-                return self._unknown("ambiguous reaching definition", result)
-            reaching.update(self.value_defs[key] for key in source_keys)
+            known_reaching = [
+                {
+                    "physical_register": f"f{register}",
+                    "instruction_index": self.value_defs[("FPR", register)],
+                }
+                for register in sorted({source_a, source_b})
+                if ("FPR", register) in self.value_defs
+            ]
+            missing_reaching = [
+                f"f{register}"
+                for register in sorted({source_a, source_b})
+                if ("FPR", register) not in self.value_defs
+            ]
             result.update(
                 mnemonic="fmuls",
                 registers={
@@ -1686,7 +1725,14 @@ class MachineEmissionDecoder:
                 },
                 arithmetic_op="multiply",
                 arithmetic_type="f32",
+                known_reaching_definitions=known_reaching,
+                missing_reaching_registers=missing_reaching,
             )
+            if missing_reaching:
+                return self._unknown("ambiguous reaching definition", result)
+            reaching.update(self.value_defs[key] for key in source_keys)
+            result.pop("known_reaching_definitions")
+            result.pop("missing_reaching_registers")
             self.value_defs[("FPR", destination)] = instruction_index
         elif primary == 4 and ((word >> 1) & 0x1F) == 25:  # ps_mul
             destination = (word >> 21) & 31
@@ -3475,6 +3521,454 @@ def _validate_post_launch_output_handoff(auth: Mapping[str, Any]) -> None:
                 raise Rejected("authenticated compiler output handoff is not a regular file")
 
 
+def _partial_trust_binding(root: ExternalTrustRoot) -> dict[str, Any]:
+    values = {field: getattr(root, field) for field in ExternalTrustRoot.FIELDS}
+    return {
+        "schema": f"{PARTIAL_EVIDENCE_SCHEMA}/trust-root-binding",
+        "fields": values,
+        "binding_sha256": canonical_hash(values),
+    }
+
+
+def _partial_output_dir(value: Path | str, auth: Mapping[str, Any]) -> Path:
+    raw = Path(value)
+    if not raw.is_absolute():
+        raise Rejected("partial evidence output directory must be absolute")
+    output = _canonical_path(raw, "partial evidence output directory", directory=True, must_exist=False)
+    if output.exists() or output.is_symlink():
+        raise Rejected("partial evidence output directory already exists")
+    parent = _canonical_path(output.parent, "partial evidence output parent", directory=True)
+    if output.parent != parent:
+        raise Rejected("partial evidence output parent is not canonical")
+    capture_dir = _canonical_path(auth["output_dir"], "capture output directory", directory=True)
+    if output == capture_dir or capture_dir in output.parents:
+        raise Rejected("partial evidence output must be outside the raw capture directory")
+    return output
+
+
+def _exact_edge_map(
+    events: Sequence[Mapping[str, Any]],
+    *,
+    event_kind: str,
+    value_fields: tuple[str, ...],
+    label: str,
+) -> dict[str, tuple[Any, ...]]:
+    result: dict[str, tuple[Any, ...]] = {}
+    for event in events:
+        if event.get("event_kind") != event_kind or event.get("status") != "EXACT":
+            continue
+        token = event.get("object_token")
+        if not isinstance(token, str):
+            continue
+        value = tuple(event.get(field) for field in value_fields)
+        previous = result.get(token)
+        if previous is not None:
+            raise Rejected(f"partial evidence contains ambiguous {label} token")
+        result[token] = value
+    return result
+
+
+def _build_ownership_failure_graph(
+    envelope: Mapping[str, Any],
+    validation_failure: str,
+) -> dict[str, Any]:
+    events = envelope.get("events")
+    context = envelope.get("context")
+    inventory = envelope.get("inventory")
+    if not isinstance(events, list) or not isinstance(context, Mapping) or not isinstance(inventory, Mapping):
+        raise Rejected("partial evidence envelope is structurally incomplete")
+    session_id = _safe_session_id(context.get("session_id"))
+    function = _text(context.get("function"), "partial evidence function")
+    expected_sequences = list(range(len(events)))
+    sequences = [event.get("sequence") if isinstance(event, Mapping) else None for event in events]
+    if sequences != expected_sequences:
+        raise Rejected("partial evidence chronology is noncanonical")
+    for index, event in enumerate(events):
+        if not isinstance(event, Mapping):
+            raise Rejected("partial evidence event is not an object")
+        if event.get("event_id") != f"{session_id}-e{index:06d}":
+            raise Rejected("partial evidence event identity is noncanonical")
+        if event.get("session_id") != session_id or event.get("function") != function:
+            raise Rejected("partial evidence event context changed")
+
+    inventory_tokens: set[str] = set()
+    for lane in ("locals", "arguments"):
+        rows = inventory.get(lane)
+        if not isinstance(rows, list):
+            raise Rejected("partial evidence inventory is incomplete")
+        for row in rows:
+            if not isinstance(row, Mapping):
+                raise Rejected("partial evidence inventory row is malformed")
+            token = _text(row.get("token"), "partial evidence inventory token")
+            _token_parts(token, "partial evidence inventory token", session_id)
+            if token in inventory_tokens:
+                raise Rejected("partial evidence contains a reused inventory token")
+            inventory_tokens.add(token)
+
+    object_to_vreg = _exact_edge_map(
+        events,
+        event_kind="regalloc_assignment",
+        value_fields=("vreg_id", "bank"),
+        label="Object-to-vreg",
+    )
+    object_to_physical = _exact_edge_map(
+        events,
+        event_kind="physical_reg_assignment",
+        value_fields=("bank", "physical_reg"),
+        label="Object-to-physical",
+    )
+
+    pcode_operands: dict[str, dict[int, dict[str, Any]]] = {}
+    pcode_operand_counts: dict[str, int] = {}
+    for event in events:
+        if event.get("event_kind") != "pcode_capture" or event.get("status") != "CAPTURED":
+            continue
+        pcode_token = event.get("pcode_token")
+        if not isinstance(pcode_token, str) or "operand_ordinal" not in event:
+            continue
+        match = PCODE_TOKEN_RE.fullmatch(pcode_token)
+        if match is None or match.group("session") != session_id:
+            raise Rejected("partial evidence PCode operand token provenance changed")
+        ordinal = _integer(event.get("operand_ordinal"), "partial evidence operand ordinal", nonnegative=True)
+        count = _integer(event.get("operand_count"), "partial evidence operand count", nonnegative=True)
+        if count < 1 or ordinal >= count:
+            raise Rejected("partial evidence PCode operand chronology is invalid")
+        previous_count = pcode_operand_counts.setdefault(pcode_token, count)
+        if previous_count != count:
+            raise Rejected("partial evidence PCode operand count changed")
+        operands = pcode_operands.setdefault(pcode_token, {})
+        if ordinal in operands:
+            raise Rejected("partial evidence contains a reused PCode operand token")
+        owner: dict[str, Any]
+        if isinstance(event.get("object_token"), str):
+            token = str(event["object_token"])
+            _token_parts(token, "partial evidence PCode object token", session_id)
+            owner = {"status": "PRESENT", "object_token": token}
+        elif isinstance(event.get("hidden_owner_token"), str):
+            hidden = str(event["hidden_owner_token"])
+            hidden_match = HIDDEN_IG_TOKEN_RE.fullmatch(hidden)
+            if hidden_match is None or hidden_match.group("session") != session_id:
+                raise Rejected("partial evidence hidden PCode owner provenance changed")
+            owner = {"status": "UNKNOWN", "hidden_owner_token": hidden}
+        else:
+            raise Rejected("partial evidence PCode operand lacks an owner identity")
+        operands[ordinal] = {
+            "event_id": event["event_id"],
+            "sequence": event["sequence"],
+            "operand_ordinal": ordinal,
+            "operand_count": count,
+            "operand_bank": event.get("operand_bank"),
+            "final_color": event.get("final_color"),
+            "ig_token": event.get("ig_token"),
+            "owner_identity": owner,
+        }
+
+    unresolved_machine_sites: list[dict[str, Any]] = []
+    for event in events:
+        if (
+            event.get("event_kind") != "machine_emission"
+            or event.get("status") != "UNKNOWN"
+            or "known_reaching_definitions" not in event
+        ):
+            continue
+        pcode_token = _text(event.get("pcode_token"), "partial evidence unresolved PCode token")
+        count = pcode_operand_counts.get(pcode_token)
+        operands = pcode_operands.get(pcode_token)
+        if count is None or operands is None or sorted(operands) != list(range(count)):
+            raise Rejected("partial evidence unresolved machine site lacks complete PCode operands")
+        unresolved_machine_sites.append(
+            {
+                "event_id": event["event_id"],
+                "sequence": event["sequence"],
+                "instruction_index": event["instruction_index"],
+                "pcode_token": pcode_token,
+                "ppc_bytes": event["ppc_bytes"],
+                "mnemonic": event["mnemonic"],
+                "registers": dict(event["registers"]),
+                "reason": event["reason"],
+                "known_reaching_definitions": [
+                    dict(row) for row in event["known_reaching_definitions"]
+                ],
+                "missing_reaching_registers": list(event["missing_reaching_registers"]),
+                "pcode_operands": [dict(operands[ordinal]) for ordinal in range(count)],
+            }
+        )
+
+    attempts: list[dict[str, Any]] = []
+    for event in events:
+        if event.get("event_kind") != "machine_emission" or event.get("status") != "CAPTURED":
+            continue
+        registers = event.get("registers")
+        machine_registers = set(registers.values()) if isinstance(registers, Mapping) else set()
+        raw_joins: list[tuple[str, Mapping[str, Any]]] = []
+        owner_joins = event.get("owner_joins", [])
+        physical_joins = event.get("physical_owner_joins", [])
+        if isinstance(owner_joins, list):
+            raw_joins.extend(("object_vreg_physical", row) for row in owner_joins if isinstance(row, Mapping))
+        if isinstance(physical_joins, list):
+            raw_joins.extend(("object_physical", row) for row in physical_joins if isinstance(row, Mapping))
+        seen_joins: set[tuple[str, str]] = set()
+        for join_kind, join in raw_joins:
+            token = _text(join.get("object_token"), "partial evidence machine object token")
+            register = _text(join.get("physical_register"), "partial evidence machine register")
+            _token_parts(token, "partial evidence machine object token", session_id)
+            join_key = (token, register)
+            if join_key in seen_joins:
+                if join_kind == "object_physical":
+                    continue
+                raise Rejected("partial evidence contains an ambiguous machine owner join")
+            seen_joins.add(join_key)
+            if not re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register):
+                raise Rejected("partial evidence machine register is invalid")
+            expected_bank = "GPR" if register.startswith("r") else "FPR"
+            expected_physical = int(register[1:])
+            virtual = object_to_vreg.get(token)
+            physical = object_to_physical.get(token)
+            inventory_edge = {"status": "PRESENT" if token in inventory_tokens else "MISSING"}
+            if virtual is None:
+                vreg_edge: dict[str, Any] = {"status": "MISSING"}
+            else:
+                vreg_status = "PRESENT"
+                claimed_vreg = join.get("vreg_id")
+                if claimed_vreg is not None and claimed_vreg != virtual[0]:
+                    vreg_status = "CONFLICT"
+                vreg_edge = {"status": vreg_status, "vreg_id": virtual[0], "bank": virtual[1]}
+            if physical is None:
+                physical_edge: dict[str, Any] = {
+                    "status": "MISSING",
+                    "expected_bank": expected_bank,
+                    "expected_physical_reg": expected_physical,
+                }
+            else:
+                physical_status = "PRESENT" if physical == (expected_bank, expected_physical) else "CONFLICT"
+                physical_edge = {
+                    "status": physical_status,
+                    "bank": physical[0],
+                    "physical_reg": physical[1],
+                    "expected_bank": expected_bank,
+                    "expected_physical_reg": expected_physical,
+                }
+            machine_edge = {"status": "PRESENT" if register in machine_registers else "MISSING"}
+            attempts.append(
+                {
+                    "event_id": event["event_id"],
+                    "sequence": event["sequence"],
+                    "instruction_index": event.get("instruction_index"),
+                    "mnemonic": event.get("mnemonic"),
+                    "pcode_token": event.get("pcode_token"),
+                    "reaching_definitions": list(event.get("reaching_definitions", [])),
+                    "join_kind": join_kind,
+                    "object_token": token,
+                    "physical_register": register,
+                    "edges": {
+                        "inventory_object": inventory_edge,
+                        "object_to_vreg": vreg_edge,
+                        "vreg_to_physical": physical_edge,
+                        "machine_operand": machine_edge,
+                    },
+                }
+            )
+
+    if not attempts:
+        raise Rejected("partial evidence has no machine ownership join attempts")
+    first_absent: dict[str, Any] | None = None
+    edge_order = ("inventory_object", "object_to_vreg", "vreg_to_physical", "machine_operand")
+    for attempt in attempts:
+        for edge_name in edge_order:
+            edge = attempt["edges"][edge_name]
+            if edge["status"] != "PRESENT":
+                first_absent = {
+                    "event_id": attempt["event_id"],
+                    "sequence": attempt["sequence"],
+                    "instruction_index": attempt["instruction_index"],
+                    "object_token": attempt["object_token"],
+                    "physical_register": attempt["physical_register"],
+                    "edge": edge_name,
+                    "status": edge["status"],
+                }
+                break
+        if first_absent is not None:
+            break
+    if first_absent is None:
+        raise Rejected("partial evidence failure graph did not isolate an absent ownership edge")
+
+    graph: dict[str, Any] = {
+        "schema": PARTIAL_FAILURE_GRAPH_SCHEMA,
+        "status": "UNKNOWN",
+        "diagnostic_only": True,
+        "board_admission": False,
+        "exactness_claim": False,
+        "authority_advanced": False,
+        "session_id": session_id,
+        "function": function,
+        "validation_failure": validation_failure,
+        "first_absent_edge": first_absent,
+        "join_attempts": attempts,
+        "unresolved_machine_sites": unresolved_machine_sites,
+        "machine_event_ids": [
+            event["event_id"]
+            for event in events
+            if event.get("event_kind") == "machine_emission"
+        ],
+    }
+    _pointer_free(graph)
+    graph["failure_graph_sha256"] = canonical_hash(graph)
+    return graph
+
+
+def _validate_partial_capture_boundary(auth: Mapping[str, Any]) -> dict[str, Any]:
+    output_dir = _canonical_path(auth["output_dir"], "capture output directory", directory=True)
+    request_path = _canonical_path(auth["request_path"], "capture request")
+    capture_paths = {_canonical_path(path, f"capture output {name}") for name, path in auth["paths"].items()}
+    compiler_outputs = tuple(auth.get("compiler_output_paths", ()))
+    if len(compiler_outputs) != 1:
+        raise Rejected("partial evidence requires exactly one compiler-owned -o output")
+    compiler_output = _canonical_path(compiler_outputs[0], "compiler-owned -o output")
+    if compiler_output.is_symlink() or not compiler_output.is_file():
+        raise Rejected("compiler-owned -o output is not a regular file")
+    allowed = {request_path, *capture_paths}
+    if compiler_output.parent == output_dir:
+        allowed.add(compiler_output)
+    observed: set[Path] = set()
+    for entry in output_dir.iterdir():
+        if entry.is_symlink() or not entry.is_file():
+            raise Rejected("partial evidence capture boundary contains a non-regular entry")
+        observed.add(entry.resolve())
+    if observed != allowed:
+        raise Rejected("partial evidence capture boundary contains stale or unowned output")
+    return _descriptor(compiler_output, "compiler-owned object")
+
+
+def _publish_partial_evidence(
+    output_dir: Path | str,
+    *,
+    auth: Mapping[str, Any],
+    envelope: Mapping[str, Any],
+    validation_failure: str,
+    trust_root: ExternalTrustRoot,
+) -> dict[str, Any]:
+    if validation_failure not in _PRESERVABLE_FINAL_JOIN_FAILURES:
+        raise Rejected("capture failure is not an authenticated final ownership-join UNKNOWN")
+    revalidate_request(auth)
+    destination = _partial_output_dir(output_dir, auth)
+    compiler_object = _validate_partial_capture_boundary(auth)
+    proof = auth.get("prelaunch_empty_output_proof")
+    if not isinstance(proof, Mapping) or proof.get("proof_sha256") != canonical_hash(
+        {key: value for key, value in proof.items() if key != "proof_sha256"}
+    ):
+        raise Rejected("partial evidence lacks an authenticated prelaunch empty-output proof")
+    if envelope.get("envelope_sha256") != canonical_hash(
+        {key: value for key, value in envelope.items() if key != "envelope_sha256"}
+    ):
+        raise Rejected("partial evidence candidate envelope self-digest mismatch")
+
+    events = envelope.get("events")
+    if not isinstance(events, list):
+        raise Rejected("partial evidence candidate envelope has no event stream")
+    stack_events = [event for event in events if event.get("lane") == "stack"]
+    pcode_events = [event for event in events if event.get("lane") == "pcode"]
+    machine_events = [event for event in pcode_events if event.get("event_kind") == "machine_emission"]
+    blobs: dict[str, bytes] = {
+        "stack_events": canonical_lane_bytes(stack_events),
+        "pcode_events": canonical_lane_bytes(pcode_events),
+        "machine_events": canonical_lane_bytes(machine_events),
+        "candidate_envelope": (json.dumps(envelope, ensure_ascii=True, sort_keys=True, indent=2) + "\n").encode("utf-8"),
+    }
+    for name, request_key in (("stack_events", "event_stream_stack"), ("pcode_events", "event_stream_pcode"), ("candidate_envelope", "envelope")):
+        source_path = _canonical_path(auth["paths"][request_key], f"partial evidence source {name}")
+        if source_path.read_bytes() != blobs[name]:
+            raise Rejected(f"partial evidence source {name} changed after capture")
+
+    graph = _build_ownership_failure_graph(envelope, validation_failure)
+    context = envelope.get("context")
+    if not isinstance(context, Mapping):
+        raise Rejected("partial evidence context is missing")
+    hook_receipt: dict[str, Any] = {
+        "schema": PARTIAL_HOOK_RECEIPT_SCHEMA,
+        "status": "AUTHENTICATED_PARTIAL_CAPTURE",
+        "diagnostic_only": True,
+        "board_admission": False,
+        "exactness_claim": False,
+        "authority_advanced": False,
+        "session_id": context["session_id"],
+        "function": context["function"],
+        "function_sha256": context["function_sha256"],
+        "request": dict(context["request"]),
+        "source": dict(context["source"]),
+        "compiler": dict(context["compiler"]),
+        "wrapper": dict(context["wrapper"]),
+        "debugger": dict(context["debugger"]),
+        "transport": dict(context["transport"]),
+        "argv": list(context["argv"]),
+        "cwd": context["cwd"],
+        "execution": dict(context["execution"]) if isinstance(context.get("execution"), Mapping) else None,
+        "hooks": [dict(row) for row in envelope["hooks"]],
+        "hook_count": len(envelope["hooks"]),
+        "prelaunch_empty_output_proof": dict(proof),
+        "compiler_owned_object": compiler_object,
+        "validation_failure": validation_failure,
+    }
+    _pointer_free(hook_receipt)
+    hook_receipt["receipt_sha256"] = canonical_hash(hook_receipt)
+    blobs["hook_validation"] = (json.dumps(hook_receipt, ensure_ascii=True, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    blobs["failure_graph"] = (json.dumps(graph, ensure_ascii=True, sort_keys=True, indent=2) + "\n").encode("utf-8")
+
+    artifact_descriptors = {
+        name: {
+            "path": str(destination / _PARTIAL_EVIDENCE_FILENAMES[name]),
+            "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        }
+        for name, data in blobs.items()
+    }
+    manifest: dict[str, Any] = {
+        "schema": PARTIAL_EVIDENCE_SCHEMA,
+        "status": "UNKNOWN",
+        "diagnostic_only": True,
+        "board_admission": False,
+        "exactness_claim": False,
+        "authority_advanced": False,
+        "immutable": True,
+        "package_dir": str(destination),
+        "context": dict(context),
+        "request": _descriptor(auth["request_path"], "partial evidence request"),
+        "trust_root": _partial_trust_binding(trust_root),
+        "compiler_owned_object": compiler_object,
+        "validation_failure": validation_failure,
+        "first_absent_edge": dict(graph["first_absent_edge"]),
+        "artifacts": artifact_descriptors,
+    }
+    _pointer_free(manifest)
+    manifest["manifest_sha256"] = canonical_hash(manifest)
+    manifest_bytes = (json.dumps(manifest, ensure_ascii=True, sort_keys=True, indent=2) + "\n").encode("utf-8")
+
+    with tempfile.TemporaryDirectory(prefix=".partial-evidence-", dir=destination.parent) as temporary:
+        staging = Path(temporary)
+        for name, data in blobs.items():
+            write_new(staging / _PARTIAL_EVIDENCE_FILENAMES[name], data)
+        write_new(staging / _PARTIAL_EVIDENCE_FILENAMES["manifest"], manifest_bytes)
+        for name, descriptor in artifact_descriptors.items():
+            staged = staging / _PARTIAL_EVIDENCE_FILENAMES[name]
+            if staged.stat().st_size != descriptor["size"] or sha256(staged) != descriptor["sha256"]:
+                raise Rejected(f"partial evidence staged {name} identity mismatch")
+        if sha256(staging / _PARTIAL_EVIDENCE_FILENAMES["manifest"]) != hashlib.sha256(manifest_bytes).hexdigest():
+            raise Rejected("partial evidence staged manifest identity mismatch")
+        os.rename(staging, destination)
+
+    return {
+        "schema": f"{PARTIAL_EVIDENCE_SCHEMA}/capture",
+        "status": "UNKNOWN",
+        "diagnostic_only": True,
+        "board_admission": False,
+        "exactness_claim": False,
+        "authority_advanced": False,
+        "package": _descriptor(destination / _PARTIAL_EVIDENCE_FILENAMES["manifest"], "partial evidence manifest"),
+        "manifest_sha256": manifest["manifest_sha256"],
+        "first_absent_edge": manifest["first_absent_edge"],
+        "validation_failure": validation_failure,
+    }
+
+
 def _remove_partial_outputs(auth: Mapping[str, Any] | None) -> None:
     if not isinstance(auth, Mapping):
         return
@@ -3504,10 +3998,16 @@ def capture_with_backend(
     *,
     trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
     preauthenticated_auth: Mapping[str, Any] | None = None,
+    partial_evidence_dir: Path | str | None = None,
 ) -> dict[str, Any]:
     """Run one fake/native backend and atomically publish its complete envelope."""
 
     auth: dict[str, Any] | None = None
+    root: ExternalTrustRoot | None = None
+    envelope: dict[str, Any] | None = None
+    result: dict[str, Any] | None = None
+    validation_failure: str | None = None
+    failure: Rejected | None = None
     try:
         if external_trust_root is not None and trust_root is not None:
             raise Rejected("conflicting external trust root arguments")
@@ -3560,21 +4060,52 @@ def capture_with_backend(
             output_values[f"{name}_size"] = record["size"]
             output_values[f"{name}_sha256"] = record["sha256"]
         output_root = ExternalTrustRoot(**output_values)
-        validate_envelope(paths["envelope"], external_trust_root=output_root)
-        return envelope
+        try:
+            validate_envelope(paths["envelope"], external_trust_root=output_root)
+        except Rejected as exc:
+            if partial_evidence_dir is None or str(exc) not in _PRESERVABLE_FINAL_JOIN_FAILURES:
+                raise
+            if root is None:
+                raise Rejected("partial evidence requires an external trust root") from exc
+            validation_failure = str(exc)
+        else:
+            result = envelope
     except Exception as exc:
-        _remove_partial_outputs(auth)
         if isinstance(exc, Rejected):
-            raise
-        raise Rejected(f"capture failure: {type(exc).__name__}: {exc}") from exc
+            failure = exc
+        else:
+            failure = Rejected(f"capture failure: {type(exc).__name__}: {exc}")
     finally:
         close = getattr(backend, "close", None)
         if callable(close):
             try:
                 close()
             except Exception as exc:
-                _remove_partial_outputs(auth)
-                raise Rejected(f"native cleanup failure: {type(exc).__name__}: {exc}") from exc
+                failure = Rejected(f"native cleanup failure: {type(exc).__name__}: {exc}")
+
+    if validation_failure is not None and failure is None:
+        assert auth is not None and envelope is not None and root is not None and partial_evidence_dir is not None
+        try:
+            result = _publish_partial_evidence(
+                partial_evidence_dir,
+                auth=auth,
+                envelope=envelope,
+                validation_failure=validation_failure,
+                trust_root=root,
+            )
+        except Exception as exc:
+            if isinstance(exc, Rejected):
+                failure = exc
+            else:
+                failure = Rejected(f"partial evidence publication failure: {type(exc).__name__}: {exc}")
+
+    if failure is not None or validation_failure is not None:
+        _remove_partial_outputs(auth)
+    if failure is not None:
+        raise failure
+    if result is None:
+        raise Rejected("capture produced no authenticated result")
+    return result
 
 
 def _token_parts(value: Any, label: str, session_id: str, kind: str | None = None) -> tuple[str, int]:
@@ -3761,12 +4292,20 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 "pcode_token", "emitted_offset", "instruction_index",
                 "opcode_enum", "ppc_word", "ppc_bytes",
             }
+            diagnostic_unknown = located_unknown | {
+                "mnemonic", "registers", "arithmetic_op", "arithmetic_type",
+                "known_reaching_definitions", "missing_reaching_registers",
+            }
             unknown_fields = frozenset(fields)
-            if unknown_fields not in {frozenset(minimal_unknown), frozenset(located_unknown)}:
+            if unknown_fields not in {
+                frozenset(minimal_unknown),
+                frozenset(located_unknown),
+                frozenset(diagnostic_unknown),
+            }:
                 raise Rejected(f"event[{index}] UNKNOWN machine emission is not closed")
             if event["reason"] not in _KNOWN_UNKNOWN_REASONS:
                 raise Rejected(f"event[{index}] UNKNOWN machine reason is unsupported")
-            if unknown_fields == frozenset(located_unknown):
+            if unknown_fields in {frozenset(located_unknown), frozenset(diagnostic_unknown)}:
                 token = _text(event["pcode_token"], f"event[{index}].pcode_token")
                 match = PCODE_TOKEN_RE.fullmatch(token)
                 if match is None or match.group("session") != context["session_id"]:
@@ -3782,6 +4321,52 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
                 if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
                     raise Rejected(f"event[{index}] located UNKNOWN PPC bytes/word mismatch")
+            if unknown_fields == frozenset(diagnostic_unknown):
+                if event["reason"] != "ambiguous reaching definition" or event["mnemonic"] != "fmuls":
+                    raise Rejected(f"event[{index}] diagnostic UNKNOWN machine class is invalid")
+                registers = event["registers"]
+                if not isinstance(registers, Mapping) or set(registers) != {
+                    "destination", "source_a", "source_b",
+                }:
+                    raise Rejected(f"event[{index}] diagnostic UNKNOWN machine operands are malformed")
+                for register in registers.values():
+                    if not isinstance(register, str) or re.fullmatch(r"f(?:[0-9]|[12][0-9]|3[01])", register) is None:
+                        raise Rejected(f"event[{index}] diagnostic UNKNOWN FPR is malformed")
+                if event["arithmetic_op"] != "multiply" or event["arithmetic_type"] != "f32":
+                    raise Rejected(f"event[{index}] diagnostic UNKNOWN arithmetic effect is invalid")
+                source_registers = {registers["source_a"], registers["source_b"]}
+                known = event["known_reaching_definitions"]
+                if not isinstance(known, list):
+                    raise Rejected(f"event[{index}] known reaching definitions are malformed")
+                known_registers: list[str] = []
+                for row in known:
+                    if not isinstance(row, Mapping) or set(row) != {
+                        "physical_register", "instruction_index",
+                    }:
+                        raise Rejected(f"event[{index}] known reaching definition is malformed")
+                    register = _text(
+                        row["physical_register"],
+                        f"event[{index}].known_reaching_definition.physical_register",
+                    )
+                    definition = _integer(
+                        row["instruction_index"],
+                        f"event[{index}].known_reaching_definition.instruction_index",
+                        nonnegative=True,
+                    )
+                    if register not in source_registers or definition >= instruction_index:
+                        raise Rejected(f"event[{index}] known reaching definition is inconsistent")
+                    known_registers.append(register)
+                if known_registers != sorted(set(known_registers)):
+                    raise Rejected(f"event[{index}] known reaching definitions are noncanonical")
+                missing = event["missing_reaching_registers"]
+                if (
+                    not isinstance(missing, list)
+                    or any(not isinstance(register, str) for register in missing)
+                    or missing != sorted(set(missing))
+                ):
+                    raise Rejected(f"event[{index}] missing reaching registers are noncanonical")
+                if set(known_registers).intersection(missing) or set(known_registers).union(missing) != source_registers:
+                    raise Rejected(f"event[{index}] partial reaching-definition partition is inconsistent")
         elif status == "CAPTURED":
             required_machine = {
                 "hook_id", "status", "pcode_token", "emitted_offset",
@@ -6977,6 +7562,7 @@ def launch_native_capture(
     external_trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
     *,
     trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
+    partial_evidence_dir: Path | str | None = None,
 ) -> dict[str, Any]:
     """Launch exactly one authenticated compiler under one WOW64 loop."""
 
@@ -7039,6 +7625,7 @@ def launch_native_capture(
         backend,
         external_trust_root=root,
         preauthenticated_auth=auth,
+        partial_evidence_dir=partial_evidence_dir,
     )
 
 
@@ -7085,6 +7672,14 @@ def parser() -> argparse.ArgumentParser:
     capture = sub.add_parser("capture", help="launch one native WOW64 compiler process")
     capture.add_argument("request", type=Path)
     capture.add_argument("--trust-root", type=Path, required=True)
+    capture.add_argument(
+        "--partial-evidence-dir",
+        type=Path,
+        help=(
+            "atomically preserve pointer-free raw evidence when strict validation "
+            "ends at one authenticated final ownership-join UNKNOWN"
+        ),
+    )
     validate = sub.add_parser("validate", help="validate a completed envelope")
     validate.add_argument("envelope", type=Path)
     validate.add_argument("--trust-root", type=Path, required=True)
@@ -7137,7 +7732,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             auth = authenticate_request(args.request, external_trust_root=_load_trust_root(args.trust_root))
             result = {"schema": f"{REQUEST_SCHEMA}/preflight", "status": "READY", "session_id": auth["request"]["session_id"], "function": auth["request"]["function"], "request_sha256": auth["request_sha256"], "hooks": [dict(row) for row in auth["hooks"]], "diagnostic_only": True, "board_admission": False}
         elif args.command == "capture":
-            result = launch_native_capture(args.request, external_trust_root=_load_trust_root(args.trust_root))
+            result = launch_native_capture(
+                args.request,
+                external_trust_root=_load_trust_root(args.trust_root),
+                partial_evidence_dir=args.partial_evidence_dir,
+            )
         elif args.command == "validate":
             result = validate_envelope(args.envelope, external_trust_root=_load_trust_root(args.trust_root))
         elif args.command == "causal-map":

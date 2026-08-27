@@ -1896,7 +1896,7 @@ class Gc27PcodeColorCrosswalkTests(unittest.TestCase):
             ])
             lfs_left = MachineEmissionDecoderTests._d(48, 30, 1, 0)
             lfs_right = MachineEmissionDecoderTests._d(48, 31, 1, 4)
-            fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 11) | (25 << 1)
+            fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 6) | (25 << 1)
             backend.capture_machine_emission = mock.Mock(side_effect=[
                 {
                     "pcode_pointer": 0x11111111,
@@ -2326,7 +2326,7 @@ class MachineEmissionDecoderTests(unittest.TestCase):
         decoder = MODULE.MachineEmissionDecoder()
         self.assertEqual(self._decode(decoder, 0, self._d(48, 30, 1, 0))["status"], "CAPTURED")
         self.assertEqual(self._decode(decoder, 1, self._d(48, 31, 1, 4))["status"], "CAPTURED")
-        fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 11) | (25 << 1)
+        fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 6) | (25 << 1)
         row = self._decode(decoder, 2, fmuls)
         self.assertEqual(row["status"], "CAPTURED")
         self.assertEqual(row["mnemonic"], "fmuls")
@@ -2347,6 +2347,27 @@ class MachineEmissionDecoderTests(unittest.TestCase):
         )
         self.assertEqual(missing["status"], "UNKNOWN")
         self.assertEqual(missing["reason"], "ambiguous reaching definition")
+        self.assertEqual(missing["mnemonic"], "fmuls")
+        self.assertEqual(missing["known_reaching_definitions"], [])
+        self.assertEqual(missing["missing_reaching_registers"], ["f30", "f31"])
+
+        partial = MODULE.MachineEmissionDecoder()
+        self.assertEqual(
+            self._decode(partial, 0, self._d(48, 0, 1, 0))["status"],
+            "CAPTURED",
+        )
+        residual = (59 << 26) | (0 << 21) | (31 << 16) | (0 << 6) | (25 << 1)
+        unresolved = self._decode(partial, 1, residual)
+        self.assertEqual(unresolved["status"], "UNKNOWN")
+        self.assertEqual(
+            unresolved["registers"],
+            {"destination": "f0", "source_a": "f31", "source_b": "f0"},
+        )
+        self.assertEqual(
+            unresolved["known_reaching_definitions"],
+            [{"physical_register": "f0", "instruction_index": 0}],
+        )
+        self.assertEqual(unresolved["missing_reaching_registers"], ["f31"])
 
     def test_machine_decoder_tracks_ps_mul_operands_result_and_type(self) -> None:
         decoder = MODULE.MachineEmissionDecoder()
@@ -2374,7 +2395,7 @@ class MachineEmissionDecoderTests(unittest.TestCase):
         decoder = MODULE.MachineEmissionDecoder()
         self.assertEqual(self._decode(decoder, 0, self._d(48, 30, 1, 0))["status"], "CAPTURED")
         self.assertEqual(self._decode(decoder, 1, self._d(48, 31, 1, 4))["status"], "CAPTURED")
-        fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 11) | (25 << 1)
+        fmuls = (59 << 26) | (28 << 21) | (30 << 16) | (31 << 6) | (25 << 1)
         row = {
             "hook_id": "gc27_machine_emit",
             **self._decode(decoder, 2, fmuls),
@@ -3416,6 +3437,296 @@ class SourceSpanV2StackIntervalTests(unittest.TestCase):
                     external_trust_root=trust_root,
                     preauthenticated_auth=auth_context,
                 )
+
+    def test_final_owner_join_unknown_publishes_immutable_partial_evidence(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root,
+                output,
+                session_id="session-0000000000000012",
+            )
+            trust_root = trust_root_for_request(request_path)
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root,
+            )
+            output.write_bytes(b"compiler-owned object")
+            partial_dir = root / "partial-evidence"
+            original_run = MODULE.CombinedCaptureSession.run
+
+            def run_with_repeated_fmuls(session: MODULE.CombinedCaptureSession) -> dict[str, object]:
+                envelope = original_run(session)
+                events = envelope["events"]
+                token = envelope["inventory"]["locals"][1]["token"]
+                for ordinal, instruction_index in enumerate((128, 196)):
+                    sequence = len(events)
+                    events.append({
+                        "schema": MODULE.EVENT_SCHEMA,
+                        "event_id": f"{session.session_id}-e{sequence:06d}",
+                        "session_id": session.session_id,
+                        "process_id": envelope["context"]["process_id"],
+                        "function": session.function,
+                        "lane": "pcode",
+                        "sequence": sequence,
+                        "event_kind": "machine_emission",
+                        "hook_id": "gc27_machine_emit",
+                        "status": "CAPTURED",
+                        "pcode_token": f"pcode-{session.session_id}-{ordinal:06d}",
+                        "emitted_offset": instruction_index * 4,
+                        "instruction_index": instruction_index,
+                        "opcode_enum": 1,
+                        "ppc_word": 0,
+                        "ppc_bytes": "00000000",
+                        "mnemonic": "fmuls",
+                        "registers": {
+                            "destination": "f1",
+                            "source_a": "f31",
+                            "source_b": "f0",
+                        },
+                        "reaching_definitions": [instruction_index - 2, instruction_index - 1],
+                        "owner_joins": [],
+                        "physical_owner_joins": [{
+                            "object_token": token,
+                            "physical_register": "f31",
+                        }],
+                    })
+                unresolved_token = f"pcode-{session.session_id}-009999"
+                for operand_ordinal, (color, owner) in enumerate((
+                    (0, None),
+                    (31, token),
+                    (0, None),
+                )):
+                    sequence = len(events)
+                    operand = {
+                        "schema": MODULE.EVENT_SCHEMA,
+                        "event_id": f"{session.session_id}-e{sequence:06d}",
+                        "session_id": session.session_id,
+                        "process_id": envelope["context"]["process_id"],
+                        "function": session.function,
+                        "lane": "pcode",
+                        "sequence": sequence,
+                        "event_kind": "pcode_capture",
+                        "hook_id": "pcode_color_post",
+                        "status": "CAPTURED",
+                        "stage": "pcode_color_post",
+                        "pcode_token": unresolved_token,
+                        "ig_token": f"ig-{session.session_id}-{900 + operand_ordinal:06d}",
+                        "operand_ordinal": operand_ordinal,
+                        "operand_count": 3,
+                        "operand_kind": 0,
+                        "operand_class": 3,
+                        "operand_bank": "FPR",
+                        "operand_index": 900 + operand_ordinal,
+                        "final_color": color,
+                        "ig_flags": 2 if owner is None else 0,
+                        "confirmed": True,
+                    }
+                    if owner is None:
+                        operand["hidden_owner_token"] = (
+                            f"hidden-ig-{session.session_id}-{900 + operand_ordinal:06d}"
+                        )
+                    else:
+                        operand["object_token"] = owner
+                    events.append(operand)
+                sequence = len(events)
+                events.append({
+                    "schema": MODULE.EVENT_SCHEMA,
+                    "event_id": f"{session.session_id}-e{sequence:06d}",
+                    "session_id": session.session_id,
+                    "process_id": envelope["context"]["process_id"],
+                    "function": session.function,
+                    "lane": "pcode",
+                    "sequence": sequence,
+                    "event_kind": "machine_emission",
+                    "hook_id": "gc27_machine_emit",
+                    "status": "UNKNOWN",
+                    "reason": "ambiguous reaching definition",
+                    "pcode_token": unresolved_token,
+                    "emitted_offset": 256 * 4,
+                    "instruction_index": 256,
+                    "opcode_enum": 167,
+                    "ppc_word": 0xEC1F0032,
+                    "ppc_bytes": "ec1f0032",
+                    "mnemonic": "fmuls",
+                    "registers": {
+                        "destination": "f0",
+                        "source_a": "f31",
+                        "source_b": "f0",
+                    },
+                    "arithmetic_op": "multiply",
+                    "arithmetic_type": "f32",
+                    "known_reaching_definitions": [{
+                        "physical_register": "f0",
+                        "instruction_index": 255,
+                    }],
+                    "missing_reaching_registers": ["f31"],
+                })
+                envelope["event_count"] = len(events)
+                lanes = {}
+                for lane, key in (("stack", "event_stream_stack"), ("pcode", "event_stream_pcode")):
+                    lane_events = [event for event in events if event["lane"] == lane]
+                    data = MODULE.canonical_lane_bytes(lane_events)
+                    lanes[lane] = {
+                        "event_count": len(lane_events),
+                        "event_ids": [event["event_id"] for event in lane_events],
+                        "size_bytes": len(data),
+                        "sha256": hashlib.sha256(data).hexdigest(),
+                    }
+                    envelope["outputs"][key].update({
+                        "size": len(data),
+                        "sha256": hashlib.sha256(data).hexdigest(),
+                    })
+                envelope["lanes"] = lanes
+                envelope["envelope_sha256"] = MODULE.canonical_hash({
+                    key: value
+                    for key, value in envelope.items()
+                    if key != "envelope_sha256"
+                })
+                return envelope
+
+            with mock.patch.object(MODULE.CombinedCaptureSession, "run", run_with_repeated_fmuls):
+                with mock.patch.object(
+                    MODULE,
+                    "validate_envelope",
+                    side_effect=MODULE.Rejected(
+                        "machine physical owner join lacks an exact same-session assignment"
+                    ),
+                ):
+                    result = MODULE.capture_with_backend(
+                        request_path,
+                        FakeBackend(),
+                        external_trust_root=trust_root,
+                        preauthenticated_auth=auth_context,
+                        partial_evidence_dir=partial_dir,
+                    )
+
+            self.assertEqual(result["status"], "UNKNOWN")
+            self.assertFalse(result["authority_advanced"])
+            self.assertTrue(output.exists())
+            self.assertEqual(
+                sorted(path.name for path in (root / "capture").iterdir()),
+                ["request.json"],
+            )
+            self.assertEqual(
+                sorted(path.name for path in partial_dir.iterdir()),
+                sorted(MODULE._PARTIAL_EVIDENCE_FILENAMES.values()),
+            )
+            machine_events = [
+                json.loads(line)
+                for line in (partial_dir / "machine.events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            captured_machine = [event for event in machine_events if event["status"] == "CAPTURED"]
+            self.assertEqual([event["mnemonic"] for event in captured_machine], ["fmuls", "fmuls"])
+            self.assertEqual(
+                [event["reaching_definitions"] for event in captured_machine],
+                [[126, 127], [194, 195]],
+            )
+            graph = json.loads((partial_dir / "ownership-failure-graph.json").read_text(encoding="utf-8"))
+            self.assertEqual(graph["status"], "UNKNOWN")
+            self.assertFalse(graph["authority_advanced"])
+            self.assertEqual(graph["first_absent_edge"]["edge"], "vreg_to_physical")
+            self.assertEqual(len(graph["unresolved_machine_sites"]), 1)
+            unresolved = graph["unresolved_machine_sites"][0]
+            self.assertEqual(unresolved["instruction_index"], 256)
+            self.assertEqual(
+                unresolved["known_reaching_definitions"],
+                [{"physical_register": "f0", "instruction_index": 255}],
+            )
+            self.assertEqual(unresolved["missing_reaching_registers"], ["f31"])
+            self.assertEqual(
+                [row["owner_identity"]["status"] for row in unresolved["pcode_operands"]],
+                ["UNKNOWN", "PRESENT", "UNKNOWN"],
+            )
+            manifest = json.loads((partial_dir / "partial-evidence.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["status"], "UNKNOWN")
+            self.assertFalse(manifest["authority_advanced"])
+            for name, artifact in manifest["artifacts"].items():
+                path = Path(artifact["path"])
+                self.assertEqual(path.stat().st_size, artifact["size"], name)
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), artifact["sha256"], name)
+
+    def test_partial_evidence_requires_one_compiler_owned_output_and_new_destination(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, data in (
+                ("capsule.c", b"s"), ("mwcceppc.exe", b"c"), ("authority.bin", b"a"),
+                ("wrapper.bin", b"w"), ("debugger.bin", b"d"), ("transport.bin", b"t"),
+            ):
+                (root / name).write_bytes(data)
+            request_path = MODULE.prepare_request(
+                {
+                    "function": "mbCapListDebug",
+                    "function_sha256": "a" * 64,
+                    "argv": ["wrapper.bin", "mwcceppc.exe", "-c", str(root / "capsule.c")],
+                    "cwd": str(root),
+                    "source": str(root / "capsule.c"),
+                    "compiler": str(root / "mwcceppc.exe"),
+                    "wrapper": str(root / "wrapper.bin"),
+                    "debugger": str(root / "debugger.bin"),
+                    "transport": str(root / "transport.bin"),
+                    "authority": str(root / "authority.bin"),
+                    "session_id": "session-0000000000000013",
+                },
+                root / "capture",
+            )
+            trust_root = trust_root_for_request(request_path)
+            partial_dir = root / "partial-evidence"
+            with mock.patch.object(
+                MODULE,
+                "validate_envelope",
+                side_effect=MODULE.Rejected(
+                    "machine physical owner join lacks an exact same-session assignment"
+                ),
+            ):
+                with self.assertRaisesRegex(MODULE.Rejected, "exactly one compiler-owned -o output"):
+                    MODULE.capture_with_backend(
+                        request_path,
+                        FakeBackend(),
+                        external_trust_root=trust_root,
+                        partial_evidence_dir=partial_dir,
+                    )
+            self.assertFalse(partial_dir.exists())
+            self.assertEqual(
+                sorted(path.name for path in (root / "capture").iterdir()),
+                ["request.json"],
+            )
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root,
+                output,
+                session_id="session-0000000000000014",
+            )
+            trust_root = trust_root_for_request(request_path)
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root,
+            )
+            output.write_bytes(b"compiler-owned object")
+            partial_dir = root / "partial-evidence"
+            partial_dir.mkdir()
+            with mock.patch.object(
+                MODULE,
+                "validate_envelope",
+                side_effect=MODULE.Rejected(
+                    "machine physical owner join lacks an exact same-session assignment"
+                ),
+            ):
+                with self.assertRaisesRegex(MODULE.Rejected, "already exists"):
+                    MODULE.capture_with_backend(
+                        request_path,
+                        FakeBackend(),
+                        external_trust_root=trust_root,
+                        preauthenticated_auth=auth_context,
+                        partial_evidence_dir=partial_dir,
+                    )
+            self.assertEqual(list(partial_dir.iterdir()), [])
 
     def test_preauthenticated_handoff_requires_empty_proof_and_rejects_output_aliases(self) -> None:
         for label, output, expected in (

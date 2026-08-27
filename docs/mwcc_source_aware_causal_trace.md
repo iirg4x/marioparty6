@@ -233,6 +233,56 @@ closed. Partial-output cleanup is limited to known capture evidence paths and
 does not delete arbitrary files. This race-handling rule is specific to the
 authenticated request and does not broaden the compiler or wrapper allowlist.
 
+### Diagnostic preservation at a final ownership-join UNKNOWN
+
+`capture` has one opt-in escape hatch for evidence loss, not for validation:
+`--partial-evidence-dir C:\proof\partial-evidence`. It applies only when the
+strict envelope reaches one of the three authenticated final ownership-join
+failures (missing exact Object/vreg edge, missing exact physical-register edge,
+or missing exact same-session physical assignment). Every earlier failure,
+hook/profile drift, request/trust mismatch, noncanonical chronology, ambiguous
+or reused identity, backend cleanup failure, or output-boundary violation still
+returns nonzero and publishes nothing.
+
+The partial-evidence directory must be an absolute, canonical, previously
+nonexistent path outside the raw capture directory. The compiler request must
+name exactly one explicit `-o` path, that path must contain the compiler-owned
+regular nonsymlink object created after the authenticated empty-output proof,
+and the raw capture directory may contain only `request.json`, the three
+capture-owned files, and that object when `-o` deliberately names the capture
+directory. Stale or unowned entries fail closed. Successful publication is an
+atomic directory rename; the raw stack/PCode/envelope files are then removed,
+leaving the request boundary reusable without deleting the compiler object.
+
+The immutable, hash-bound package contains:
+
+- `stack.events.jsonl`, `pcode.events.jsonl`, and the separately filtered
+  `machine.events.jsonl`;
+- the unaccepted `candidate-envelope.json`;
+- `hook-validation.json`, binding request, source, compiler, wrapper,
+  debugger, transport, argv, cwd, hook profile, empty-output proof, and
+  compiler-owned object;
+- `ownership-failure-graph.json`, preserving every observed machine join,
+  reaching definition, present/missing/conflicting
+  Object-to-vreg-to-physical edge, and the first absent edge in canonical event
+  order. Located `fmuls` events whose final reaching-definition join remains
+  ambiguous retain their decoded physical operands, every independently known
+  source-register definition, the explicit missing source registers, and the
+  complete capture-local PCode operand/IG-owner chronology. Hidden IG owners
+  remain `UNKNOWN`; the graph never promotes them to source Objects;
+- `partial-evidence.json`, the self-hashed package manifest and artifact
+  digests.
+
+The command returns status 2 because the package has `status: UNKNOWN`,
+`diagnostic_only: true`, `board_admission: false`, `exactness_claim: false`,
+and `authority_advanced: false`. It is suitable for ranking a bounded natural-C
+probe, but it cannot satisfy a causal-map ownership join, retain source, prove
+matching, or advance closure/promotion authority.
+
+```text
+rtk C:\Python313\python.exe tools\capsule_same_session_capture.py capture C:\proof\capture\request.json --trust-root C:\proof\trust-root.json --partial-evidence-dir C:\proof\partial-evidence
+```
+
 ### Source-span v2 and ownership modes
 
 The normalized manifest schema is `mwcc_source_span_bindings/v2`. It has a
