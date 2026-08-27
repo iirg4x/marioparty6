@@ -1674,8 +1674,8 @@ board/player.c:
 	.rodata     start:0x8021A828 end:0x8021A9F8
 	.data       start:0x802474A0 end:0x80247688
 	.bss        start:0x802B8540 end:0x802B8680
-	.sdata      start:0x802BFBB8 end:0x802BFC20
-	.sbss       start:0x802C0D30 end:0x802C0D50
+	.sdata      start:0x802BFBB8 end:0x802BFC1D
+	.sbss       start:0x802C0D30 end:0x802C0D4C
 	.sdata2     start:0x802C31A0 end:0x802C3270
 
 board/snpc.c:

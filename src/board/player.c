@@ -168,6 +168,41 @@ static void MetalEffectHook(
 static void PlayerBiriQKill(int playerNo);
 static void PlayerBiriQFlashSet(int playerNo);
 static void PlayerBiriQOMExec(OMOBJ *objP);
+static inline void HuVecMul(
+    register HuVecF *srcP, register HuVecF *scaleP,
+    register HuVecF *dstP)
+{
+    register float srcXY;
+    register float scaleXY;
+    register float srcZ;
+    register float scaleZ;
+
+    asm {
+        psq_l srcXY, 0(srcP), 0, 0
+        psq_l scaleXY, 0(scaleP), 0, 0
+        psq_l srcZ, 8(srcP), 1, 0
+        psq_l scaleZ, 8(scaleP), 1, 0
+        ps_mul srcXY, srcXY, scaleXY
+        ps_mul srcZ, srcZ, scaleZ
+        psq_st srcXY, 0(dstP), 0, 0
+        psq_st srcZ, 8(dstP), 1, 0
+    }
+}
+
+static inline void HuVecCopy(
+    register HuVecF *srcP, register HuVecF *dstP)
+{
+    register float xy;
+    register float z;
+
+    asm {
+        psq_l xy, 0(srcP), 0, 0
+        lfs z, 8(srcP)
+        psq_st xy, 0(dstP), 0, 0
+        stfs z, 8(dstP)
+    }
+}
+
 static float GetBiriQEffectRadius(
     OMOBJ *objP, int playerNo, int *effectCount);
 static void BiriQEffectCreate(OMOBJ *objP);
@@ -1073,20 +1108,20 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
     {
         int movePlayerNo = workP->playerNo;
 
-        if (playerWork[movePlayerNo].masuMoveF) {
-            int moveMaxTime = workP->maxTime;
-            int movePlayerNo2 = workP->playerNo;
-            MBPLAYERWORK *workP2 = mbPlayerWorkGet(movePlayerNo2);
+        if (mbPlayerWorkGet(movePlayerNo)->masuMoveF) {
+            int movePlayerNo2;
+            int moveMaxTime;
 
-            workP2->_unk08 = moveMaxTime;
+            moveMaxTime = workP->maxTime;
+            movePlayerNo2 = workP->playerNo;
+            mbPlayerWorkGet(movePlayerNo2)->_unk08 = moveMaxTime;
         }
     }
     GwPlayer[playerNo].moveF = TRUE;
-    if (!waitF) {
-        return;
-    }
-    while (GwPlayer[playerNo].moveF) {
-        HuPrcVSleep();
+    if (waitF) {
+        while (GwPlayer[playerNo].moveF) {
+            HuPrcVSleep();
+        }
     }
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
@@ -1383,9 +1418,9 @@ static void MoveNumOMExec(OMOBJ *objP)
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
     posNorm.y *= scaleY;
-    pos = posNorm;
+    HuVecCopy(&posNorm, &pos);
     mbCameraRotGet(&posNorm);
-    rotZ = -posNorm.z;
+    rotZ = -posNorm.x;
     for (i = 0; i < 20; i++) {
         mbCoinObjDispSet(objP->mdlId[i], FALSE);
     }
@@ -1702,13 +1737,14 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
 
 void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
 {
-    int useF[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
-    int playerNoSort[GW_PLAYER_MAX];
     int orderNo[GW_PLAYER_MAX];
+    int playerNoSort[GW_PLAYER_MAX];
+    int useF[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
     HuVecF pos[GW_PLAYER_MAX];
     int num;
     int i;
     int j;
+    int temp;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerNoTbl[i] >= 0) {
@@ -1730,7 +1766,7 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                int temp = orderNo[i];
+                temp = orderNo[i];
 
                 orderNo[i] = orderNo[j];
                 orderNo[j] = temp;
@@ -1740,19 +1776,19 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
             }
         }
     }
-    for (i = 0; i < num; i++) {
-        int playerNo = playerNoSort[i];
-        int cornerNo = i;
+    for (j = 0; j < num; j++) {
+        i = playerNoSort[j];
+        temp = j;
 
-        if (cornerNo != 0) {
-            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos[playerNo]);
+        if (temp != 0) {
+            mbMasuCornerRotPosGet(masuId, temp - 1, &pos[i]);
         } else {
-            mbMasuPosGet(masuId, &pos[playerNo]);
+            mbMasuPosGet(masuId, &pos[i]);
         }
     }
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerNoTbl[i] >= 0) {
-            posTbl[i] = pos[playerNoTbl[i]];
+            HuVecCopy(&pos[playerNoTbl[i]], &posTbl[i]);
         }
     }
 }
@@ -2449,50 +2485,59 @@ void mbPlayerMetalColorSet(
 static float GetBiriQEffectRadius(
     OMOBJ *objP, int playerNo, int *effectCount)
 {
+    int count;
     HSF_DATA *hsfP;
-    HSF_OBJECT *objectP;
-    HuVecF min;
     HuVecF size;
+    HuVecF min;
     HuVecF pos;
-    HuVecF *vertexP;
-    void *dataP;
-    s16 *groupP;
-    s16 *countP;
-    s16 (*vertexNoP)[8];
-    int objectNo = -1;
-    int vertexNum = 0;
+    int vertexNum;
+    int objectNo[2];
     int groupNum;
+    int maxVertexNum;
+    HSF_OBJECT *objectP;
+    HSF_OBJECT *meshP;
+    HuVecF *vertexP;
+    int randomNo;
+    s16 *countP;
+    int groupNo;
+    s16 *groupP;
+    s16 *vertexNoP;
+    void *dataP;
     int i;
     int x;
     int y;
     int z;
-    int groupNo;
-    int randomNo;
-    s16 count;
     float radius;
 
+    objectNo[0] = objectNo[0] = -1;
+    maxVertexNum = groupNum = 0;
     hsfP = Hu3DData[mbPlayerModelIDGet(playerNo)].hsf;
     objectP = hsfP->object;
     for (i = 0; i < hsfP->objectNum; i++, objectP++) {
-        if (objectP->type == HSF_OBJ_MESH
-            && objectP->mesh.vertex->count > 0
-            && vertexNum < objectP->mesh.vertex->count) {
-            vertexNum = objectP->mesh.vertex->count;
-            objectNo = i;
+        meshP = objectP;
+        if (meshP->type == HSF_OBJ_MESH
+            && meshP->mesh.vertex->count > 0) {
+            vertexNum = meshP->mesh.vertex->count;
+
+            if (maxVertexNum < vertexNum) {
+                maxVertexNum = vertexNum;
+                objectNo[0] = i;
+            }
         }
     }
-    effectCount[0] = objectNo;
+    vertexNum = maxVertexNum;
+    effectCount[0] = objectNo[0];
     dataP = HuMemDirectMallocNum(HEAP_HEAP,
         (125 + 125 + (125 * 8)) * sizeof(s16), HU_MEMNUM_OVL);
     objP->data = dataP;
     groupP = objP->data;
     countP = groupP + 125;
-    vertexNoP = (s16 (*)[8])(countP + 125);
+    vertexNoP = countP + 125;
     memset(countP, 0, 125 * sizeof(s16));
-    objectP = &hsfP->object[effectCount[0]];
-    VECScale(&objectP->mesh.mesh.min, &min, -1.0f);
-    VECSubtract(&objectP->mesh.mesh.max,
-        &objectP->mesh.mesh.min, &size);
+    meshP = &hsfP->object[effectCount[0]];
+    VECScale(&meshP->mesh.mesh.min, &min, -1.0f);
+    VECSubtract(&meshP->mesh.mesh.max,
+        &meshP->mesh.mesh.min, &size);
     size.x += 1.0f;
     size.y += 1.0f;
     size.z += 1.0f;
@@ -2505,13 +2550,11 @@ static float GetBiriQEffectRadius(
     if (size.z > 0.0f) {
         size.z = 5.0f / size.z;
     }
-    vertexNum = objectP->mesh.vertex->count;
-    vertexP = objectP->mesh.vertex->data;
+    vertexNum = meshP->mesh.vertex->count;
+    vertexP = meshP->mesh.vertex->data;
     for (i = 0; i < vertexNum; i++, vertexP++) {
         VECAdd(vertexP, &min, &pos);
-        pos.x *= size.x;
-        pos.y *= size.y;
-        pos.z *= size.z;
+        HuVecMul(&pos, &size, &pos);
         x = pos.x;
         if (x < 0) {
             x += 5;
@@ -2536,26 +2579,25 @@ static float GetBiriQEffectRadius(
         groupNo = x + (5 * y) + (25 * z);
         count = countP[groupNo];
         if (count < 8) {
-            vertexNoP[groupNo][count] = i;
+            vertexNoP[(groupNo * 8) + count] = i;
         } else {
             randomNo = mbRandMod(count + 1);
             if (randomNo < 8) {
-                vertexNoP[groupNo][randomNo] = i;
+                vertexNoP[(groupNo * 8) + randomNo] = i;
             }
         }
         countP[groupNo]++;
     }
-    groupNum = 0;
-    for (i = 0; i < 125; i++) {
+    for (i = 0, count = 0; i < 125; i++) {
         if (countP[i] > 0) {
-            groupP[groupNum++] = i;
+            groupP[count++] = i;
             if (countP[i] > 8) {
                 countP[i] = 8;
             }
         }
     }
-    effectCount[1] = groupNum;
-    radius = objectP->mesh.mesh.max.y - objectP->mesh.mesh.min.y;
+    effectCount[1] = count;
+    radius = meshP->mesh.mesh.max.y - meshP->mesh.mesh.min.y;
     return radius;
 }
 
@@ -2563,62 +2605,78 @@ static void MetalEffectCreate(OMOBJ *objP)
 {
     PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
     HSF_DATA *hsfP;
-    HSF_OBJECT *objectP;
-    MBPARTICLE *particleP;
-    MBPARTICLEDATA *particleDataP;
-    HuVecF min;
     HuVecF size;
+    HuVecF min;
     HuVecF pos;
-    HuVecF *vertexP;
-    void *dataP;
-    s16 *groupP;
-    s16 *countP;
-    s16 (*vertexNoP)[8];
-    int particleNum = 5;
-    int objectNo = -1;
-    int vertexNum = 0;
+    int objectNo[2];
     int groupNum;
+    int maxVertexNum;
+    HSF_OBJECT *searchObjectP;
+    HuVecF *vertexP;
+    int particleNum = 5;
+    int vertexNum;
+    HSF_OBJECT *meshObjectP;
+    s16 *countP;
     int i;
+    int count;
     int x;
     int y;
     int z;
-    int groupNo;
-    int randomNo;
-    s16 count;
 
     objP->mdlId[0] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
         mbBoardDataNumGet(DATANUM(DATA_board, 106)), HU_MEMNUM_OVL)),
         (s16)particleNum);
     mbParticleHookSet(objP->mdlId[0], MetalEffectHook);
     Hu3DModelLayerSet(objP->mdlId[0], 5);
+    {
+        MBPARTICLE *particleP;
+        int randomNo;
+        int groupNo;
+        s16 *groupP;
+        s16 *vertexNoP;
+        HU3D_MODELID modelId;
+        void *hookData;
+        MBPARTICLE *modelParticleP;
+        void *dataP;
+
+    objectNo[0] = objectNo[0] = -1;
+    maxVertexNum = groupNum = 0;
     hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
-    objectP = hsfP->object;
-    for (i = 0; i < hsfP->objectNum; i++, objectP++) {
-        if (objectP->type == HSF_OBJ_MESH
-            && objectP->mesh.vertex->count > 0
-            && vertexNum < objectP->mesh.vertex->count) {
-            vertexNum = objectP->mesh.vertex->count;
-            objectNo = i;
+    searchObjectP = hsfP->object;
+    for (i = 0; i < hsfP->objectNum; i++, searchObjectP++) {
+        meshObjectP = searchObjectP;
+        if (meshObjectP->type == HSF_OBJ_MESH
+            && meshObjectP->mesh.vertex->count > 0) {
+            vertexNum = meshObjectP->mesh.vertex->count;
+            if (maxVertexNum < vertexNum) {
+                maxVertexNum = vertexNum;
+                objectNo[0] = i;
+            }
         }
     }
-    workP->_unk06 = objectNo;
-    particleP = Hu3DData[objP->mdlId[0]].hookData;
-    particleP->hookData = objP;
-    particleDataP = particleP->data;
-    for (i = 0; i < particleNum; i++, particleDataP++) {
-        particleDataP->vertexNo = 0;
+    vertexNum = maxVertexNum;
+    workP->_unk06 = objectNo[0];
+    {
+        modelId = objP->mdlId[0];
+        hookData = Hu3DData[modelId].hookData;
+        modelParticleP = hookData;
+        particleP = modelParticleP;
+        particleP->hookData = objP;
+    }
+    for (i = 0; i < particleNum; i++) {
+        particleP->data[i].vertexNo = 0;
     }
     dataP = HuMemDirectMallocNum(HEAP_HEAP,
         (125 + 125 + (125 * 8)) * sizeof(s16), HU_MEMNUM_OVL);
     objP->data = dataP;
     groupP = objP->data;
     countP = groupP + 125;
-    vertexNoP = (s16 (*)[8])(countP + 125);
+    vertexNoP = countP + 125;
     memset(countP, 0, 125 * sizeof(s16));
-    objectP = &hsfP->object[workP->_unk06];
-    VECScale(&objectP->mesh.mesh.min, &min, -1.0f);
-    VECSubtract(&objectP->mesh.mesh.max,
-        &objectP->mesh.mesh.min, &size);
+    meshObjectP = &hsfP->object[workP->_unk06];
+    VECScale(&meshObjectP->mesh.mesh.min, &min, -1.0f);
+    VECSubtract(&meshObjectP->mesh.mesh.max,
+        &meshObjectP->mesh.mesh.min, &size);
     size.x += 1.0f;
     size.y += 1.0f;
     size.z += 1.0f;
@@ -2631,13 +2689,11 @@ static void MetalEffectCreate(OMOBJ *objP)
     if (size.z > 0.0f) {
         size.z = 5.0f / size.z;
     }
-    vertexNum = objectP->mesh.vertex->count;
-    vertexP = objectP->mesh.vertex->data;
+    vertexNum = meshObjectP->mesh.vertex->count;
+    vertexP = meshObjectP->mesh.vertex->data;
     for (i = 0; i < vertexNum; i++, vertexP++) {
         VECAdd(vertexP, &min, &pos);
-        pos.x *= size.x;
-        pos.y *= size.y;
-        pos.z *= size.z;
+        HuVecMul(&pos, &size, &pos);
         x = pos.x;
         if (x < 0) {
             x += 5;
@@ -2662,25 +2718,25 @@ static void MetalEffectCreate(OMOBJ *objP)
         groupNo = x + (5 * y) + (25 * z);
         count = countP[groupNo];
         if (count < 8) {
-            vertexNoP[groupNo][count] = i;
+            vertexNoP[(groupNo * 8) + count] = i;
         } else {
             randomNo = mbRandMod(count + 1);
             if (randomNo < 8) {
-                vertexNoP[groupNo][randomNo] = i;
+                vertexNoP[(groupNo * 8) + randomNo] = i;
             }
         }
         countP[groupNo]++;
     }
-    groupNum = 0;
-    for (i = 0; i < 125; i++) {
+    for (i = 0, count = 0; i < 125; i++) {
         if (countP[i] > 0) {
-            groupP[groupNum++] = i;
+            groupP[count++] = i;
             if (countP[i] > 8) {
                 countP[i] = 8;
             }
         }
     }
-    workP->_unk08 = groupNum;
+    workP->_unk08 = count;
+    }
 }
 
 static void MetalEffectHook(
@@ -3797,7 +3853,7 @@ int mbPlayerCapsuleMaxGet(void)
     return (GWTeamFGet() == FALSE) ? 3 : 5;
 }
 
-static s8 *PlayerCapsulePtrGet(int playerNo, int index)
+static inline s8 *PlayerCapsulePtrGet(int playerNo, int index)
 {
     if (!GWTeamFGet()) {
         return &GwPlayer[playerNo].capsule[index];
@@ -3884,7 +3940,7 @@ s8 mbPlayerTeamCapsuleGet(int teamNo, int index)
     return mbPlayerCapsuleGet(mbPlayerTeamFindPlayer(teamNo, 0), index);
 }
 
-static int PlayerCountCapsules(int playerNo)
+static inline int PlayerCountCapsules(int playerNo)
 {
     int i;
 
@@ -3985,6 +4041,14 @@ GXColor mbPlayerColorGet(int playerNo)
 
     return color[GwPlayer[playerNo].charNo];
 }
+
+const s8 lbl_8021A9E4[20] = {
+    -1, -1, -1, -1,
+    -1, -1, -1, -1,
+    -1, -1, -1, -1,
+    -1, -1, -1, -1,
+    0, 0, 0, 0
+};
 
 void mbPlayerBlackoutSet(BOOL value)
 {
