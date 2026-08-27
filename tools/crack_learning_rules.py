@@ -32,6 +32,7 @@ from tools import repeated_opcode_low_level_readiness
 from tools import saved_fpr_stack_pool_composer
 from tools import saved_fpr_semantic_owner_chronology
 from tools import saved_owner_semantic_split
+from tools import same_file_history_contract_closure
 from tools import same_tu_constructor_family_transfer
 from tools import scalar_return_consumer_owner
 from tools import single_use_final_call_consumer
@@ -43,8 +44,8 @@ from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v34"
-SCHEMA_VERSION = 34
+SCHEMA = "crack_learning_diagnosis/v35"
+SCHEMA_VERSION = 35
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -64,6 +65,7 @@ REPEATED_OPCODE_LOW_LEVEL_READINESS_CONTEXT_SCHEMA = (
     repeated_opcode_low_level_readiness.CONTEXT_SCHEMA
 )
 SOURCE_LINKED_OWNER_CLOSURE_CONTEXT_SCHEMA = source_linked_owner_closure.CONTEXT_SCHEMA
+SAME_FILE_HISTORY_CONTRACT_CONTEXT_SCHEMA = same_file_history_contract_closure.CONTEXT_SCHEMA
 SINGLE_USE_FINAL_CALL_CONTEXT_SCHEMA = single_use_final_call_consumer.CONTEXT_SCHEMA
 SWITCH_DEFAULT_FOLD_CONTEXT_SCHEMA = switch_default_constant_fold.CONTEXT_SCHEMA
 MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
@@ -544,6 +546,7 @@ _METADATA_OWNER_PROOF_HASHES = (
 _RULE_ORDER = (
     "metadata_owner_coherence",
     source_linked_owner_closure.RULE_ID,
+    same_file_history_contract_closure.RULE_ID,
     "explicit_else_return_cfg",
     "loop_branch_destination",
     switch_default_constant_fold.RULE_ID,
@@ -3868,6 +3871,15 @@ def _parse_source_linked_owner_closure_context(
     try:
         return source_linked_owner_closure.parse_context(value)
     except source_linked_owner_closure.SourceLinkedClosureInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_same_file_history_contract_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return same_file_history_contract_closure.parse_context(value)
+    except same_file_history_contract_closure.HistoryContractInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10595,6 +10607,23 @@ def _source_linked_owner_closure_evaluation(
     )
 
 
+def _same_file_history_contract_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = same_file_history_contract_closure.evaluate(
+        pair,
+        target,
+        candidate,
+        context,
+        objdiff_canonical_sha256,
+    )
+    return _evaluation(same_file_history_contract_closure.RULE_ID, **result)
+
+
 def _single_use_final_call_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12820,6 +12849,7 @@ def diagnose_document(
     same_tu_donor_symbols: Sequence[str] = (),
     metadata_owner_context: Mapping[str, Any] | None = None,
     source_linked_owner_closure_context: Mapping[str, Any] | None = None,
+    same_file_history_contract_context: Mapping[str, Any] | None = None,
     allocator_context: Mapping[str, Any] | None = None,
     single_use_final_call_context: Mapping[str, Any] | None = None,
     switch_default_fold_context: Mapping[str, Any] | None = None,
@@ -12876,6 +12906,11 @@ def diagnose_document(
     normalized_source_linked_owner_closure_context = (
         _parse_source_linked_owner_closure_context(source_linked_owner_closure_context)
         if source_linked_owner_closure_context is not None
+        else None
+    )
+    normalized_same_file_history_contract_context = (
+        _parse_same_file_history_contract_context(same_file_history_contract_context)
+        if same_file_history_contract_context is not None
         else None
     )
     normalized_allocator_context = (
@@ -13084,6 +13119,13 @@ def diagnose_document(
         _source_linked_owner_closure_evaluation(
             normalized_source_linked_owner_closure_context,
             focus,
+            objdiff_canonical_sha256,
+        ),
+        _same_file_history_contract_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_same_file_history_contract_context,
             objdiff_canonical_sha256,
         ),
         _explicit_else_evaluation(audit),
@@ -13346,6 +13388,11 @@ def diagnose_document(
                 if normalized_source_linked_owner_closure_context is not None
                 else None
             ),
+            "same_file_history_contract_context_canonical_sha256": (
+                _sha256(_canonical(normalized_same_file_history_contract_context))
+                if normalized_same_file_history_contract_context is not None
+                else None
+            ),
             "allocator_context_canonical_sha256": (
                 _sha256(_canonical(normalized_allocator_context))
                 if normalized_allocator_context is not None
@@ -13555,6 +13602,14 @@ def diagnose_document(
                 "result_schema": source_linked_owner_closure.RESULT_SCHEMA,
                 "sha256": _sha256(Path(source_linked_owner_closure.__file__).read_bytes()),
             },
+            "same_file_history_contract_closure": {
+                "path": Path(same_file_history_contract_closure.__file__).name,
+                "context_schema": same_file_history_contract_closure.CONTEXT_SCHEMA,
+                "manifest_schema": same_file_history_contract_closure.MANIFEST_SCHEMA,
+                "sha256": _sha256(
+                    Path(same_file_history_contract_closure.__file__).read_bytes()
+                ),
+            },
             "single_use_final_call_consumer": {
                 "path": Path(single_use_final_call_consumer.__file__).name,
                 "schema": single_use_final_call_consumer.CONTEXT_SCHEMA,
@@ -13674,6 +13729,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "configured Matching/NonMatching status, the selected link-manifest "
             "object path/hash, candidate closure proof, retail outputs, and an "
             "optional one-consumer four-byte SDA21 owner"
+        ),
+    )
+    parser.add_argument(
+        "--same-file-history-contract-context",
+        type=Path,
+        help=(
+            "authenticated same_file_history_contract_closure_context/v1 JSON "
+            "binding one immutable same-file donor body, its destination-filtered "
+            "contract package, semantic-deficit precursor, failed body-only preflight, "
+            "and independently exact result"
         ),
     )
     parser.add_argument(
@@ -13987,6 +14052,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="source-linked owner-closure context",
                 )
                 if args.source_linked_owner_closure_context is not None
+                else None
+            ),
+            same_file_history_contract_context=(
+                _load_json(
+                    args.same_file_history_contract_context,
+                    label="same-file history contract context",
+                )
+                if args.same_file_history_contract_context is not None
                 else None
             ),
             allocator_context=(
