@@ -1361,6 +1361,40 @@ Telemetry is part of the context. Incomplete heavy/active coverage remains
 excluded from measured crack/hour, uncovered time is never imputed, and
 `authority_advanced` is always false.
 
+## TU-global pool-producer linkage and chronology
+
+When target metadata proves one global pool owner with several consumers, a
+numerically equal local-static declaration is not interchangeable with the
+global producer. Diagnose that linkage seam with a sealed campaign context:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/c691.strict.json \
+  --function mbev_CapMiracle \
+  --tu-global-pool-producer-context work/capspecial.global-pool-owner.json
+```
+
+`tu_global_pool_producer_context/v1` binds the target-global f32 owner, its
+authenticated source boundary, and the complete seven-consumer census. It also
+requires the measured c691 negative control: the same seven routes through a
+local-static owner produced the baseline object byte-for-byte and left one
+strict pool-owner row. On that exact signature the rule ranks one cell only:
+the natural file-scope `const float capspecialTen = 10.0f;` producer before
+`mbev_CapMiracle`, with all seven Kettou/Donkey consumers preserved.
+
+The c692 replay must make both `mbev_CapMiracle` and `ev_CapMiracleMasu`
+strict/data exact and then schedule nothing. A missing or extra consumer,
+non-owner residual, local-static control drift, UNKNOWN provenance, extra Graft
+ask, or exact-result drift fails closed. Synthetic labels/externs, duplicate
+seeders, literal-spelling probes, downstream exact-body edits, padding, dead
+locals, register shaping, retention, and promotion are suppressed.
+
+Graphify remains first even when no usable graph exists: the context records
+that no-hit without inventing edges, permits exactly one bounded Graft ask, and
+requires narrow named-file verification. The bounded c691/c692 campaign has
+complete current telemetry; older uncovered intervals remain excluded from any
+historical denominator and are never imputed.
+
 ## Output and authority boundary
 
 The document binds canonical objdiff input, donor names, this implementation,
