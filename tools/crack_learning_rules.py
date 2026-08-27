@@ -28,6 +28,7 @@ from tools import mismatch_cluster_audit as causal_reducer
 from tools import direct_scalar_fabs_consumer
 from tools import live_alias_memset_fusion
 from tools import mixed_bank_home_cycle
+from tools import repeated_opcode_low_level_readiness
 from tools import saved_fpr_stack_pool_composer
 from tools import saved_fpr_semantic_owner_chronology
 from tools import saved_owner_semantic_split
@@ -39,8 +40,8 @@ from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v30"
-SCHEMA_VERSION = 30
+SCHEMA = "crack_learning_diagnosis/v31"
+SCHEMA_VERSION = 31
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -56,6 +57,9 @@ AGGREGATE_SNAPSHOT_POINTER_CONTEXT_SCHEMA = (
 )
 TYPED_AGGREGATE_COPY_CONTEXT_SCHEMA = "typed_aggregate_copy_lowering_context/v1"
 DFORM_COPY_HELPER_CONTEXT_SCHEMA = "dform_aggregate_copy_helper_context/v1"
+REPEATED_OPCODE_LOW_LEVEL_READINESS_CONTEXT_SCHEMA = (
+    repeated_opcode_low_level_readiness.CONTEXT_SCHEMA
+)
 MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
     mixed_bank_home_cycle.CONTEXT_SCHEMA
 )
@@ -544,6 +548,7 @@ _RULE_ORDER = (
     "aggregate_snapshot_pointer_chain",
     "typed_aggregate_copy_lowering",
     "dform_aggregate_copy_helper_boundary",
+    repeated_opcode_low_level_readiness.RULE_ID,
     mixed_bank_home_cycle.RULE_ID,
     live_alias_memset_fusion.RULE_ID,
     scalar_return_consumer_owner.RULE_ID,
@@ -3836,6 +3841,15 @@ def _parse_mixed_bank_home_cycle_context(
     try:
         return mixed_bank_home_cycle.parse_context(value)
     except mixed_bank_home_cycle.MixedBankInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_repeated_opcode_low_level_readiness_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return repeated_opcode_low_level_readiness.parse_context(value)
+    except repeated_opcode_low_level_readiness.RepeatedOpcodeReadinessInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10467,6 +10481,45 @@ def _mixed_bank_home_cycle_evaluation(
     return _evaluation(mixed_bank_home_cycle.RULE_ID, **result)
 
 
+def _repeated_opcode_low_level_readiness_evaluation(
+    context: Mapping[str, Any] | None,
+    focus_symbol: str,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = repeated_opcode_low_level_readiness.RULE_ID
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no repeated-opcode low-level-readiness context was supplied",
+        )
+    readiness = repeated_opcode_low_level_readiness.evaluate(
+        context,
+        focus_symbol=focus_symbol,
+        objdiff_canonical_sha256=objdiff_canonical_sha256,
+    )
+    if not readiness.get("matched"):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=str(readiness.get("reason", "the readiness evidence did not match")),
+        )
+    status = str(readiness["status"])
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "sealed repeated target-opcode groups, authenticated aggregate contracts, "
+            "bounded natural-C controls, and the governed instance agree at every site; "
+            f"status is {status} and authority remains false"
+        ),
+        confidence=1.0,
+        source_class=str(readiness["source_class"]),
+        recommendation=str(readiness["recommendation"]),
+        evidence={"readiness": readiness},
+    )
+
+
 def _live_alias_memset_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12669,6 +12722,7 @@ def diagnose_document(
     aggregate_snapshot_pointer_context: Mapping[str, Any] | None = None,
     typed_aggregate_copy_context: Mapping[str, Any] | None = None,
     dform_copy_helper_context: Mapping[str, Any] | None = None,
+    repeated_opcode_low_level_readiness_context: Mapping[str, Any] | None = None,
     mixed_bank_home_cycle_context: Mapping[str, Any] | None = None,
     live_alias_memset_context: Mapping[str, Any] | None = None,
     scalar_return_consumer_context: Mapping[str, Any] | None = None,
@@ -12749,6 +12803,13 @@ def diagnose_document(
     normalized_dform_copy_helper_context = (
         _parse_dform_copy_helper_context(dform_copy_helper_context)
         if dform_copy_helper_context is not None
+        else None
+    )
+    normalized_repeated_opcode_low_level_readiness_context = (
+        _parse_repeated_opcode_low_level_readiness_context(
+            repeated_opcode_low_level_readiness_context
+        )
+        if repeated_opcode_low_level_readiness_context is not None
         else None
     )
     normalized_mixed_bank_home_cycle_context = (
@@ -12962,6 +13023,11 @@ def diagnose_document(
             normalized_dform_copy_helper_context,
             objdiff_canonical_sha256,
         ),
+        _repeated_opcode_low_level_readiness_evaluation(
+            normalized_repeated_opcode_low_level_readiness_context,
+            focus,
+            objdiff_canonical_sha256,
+        ),
         _mixed_bank_home_cycle_evaluation(
             pair,
             target,
@@ -13163,6 +13229,13 @@ def diagnose_document(
                 if normalized_dform_copy_helper_context is not None
                 else None
             ),
+            "repeated_opcode_low_level_readiness_context_canonical_sha256": (
+                _sha256(
+                    _canonical(normalized_repeated_opcode_low_level_readiness_context)
+                )
+                if normalized_repeated_opcode_low_level_readiness_context is not None
+                else None
+            ),
             "mixed_bank_home_cycle_context_canonical_sha256": (
                 _sha256(_canonical(normalized_mixed_bank_home_cycle_context))
                 if normalized_mixed_bank_home_cycle_context is not None
@@ -13311,6 +13384,14 @@ def diagnose_document(
                     Path(__file__).with_name("match_workbench.py").read_bytes()
                 ),
             },
+            "repeated_opcode_low_level_readiness": {
+                "path": Path(repeated_opcode_low_level_readiness.__file__).name,
+                "schema": repeated_opcode_low_level_readiness.CONTEXT_SCHEMA,
+                "result_schema": repeated_opcode_low_level_readiness.RESULT_SCHEMA,
+                "sha256": _sha256(
+                    Path(repeated_opcode_low_level_readiness.__file__).read_bytes()
+                ),
+            },
             "traced_naggregate_reciprocal_fold": {
                 "path": Path(traced_naggregate_reciprocal_fold.__file__).name,
                 "schema": traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA,
@@ -13454,6 +13535,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "authenticated dform_aggregate_copy_helper_context/v1 JSON with either "
             "a complete existing-owner cycle or a sealed stack-interval trace"
+        ),
+    )
+    parser.add_argument(
+        "--repeated-opcode-low-level-readiness-context",
+        type=Path,
+        help=(
+            "authenticated repeated_opcode_low_level_readiness_context/v1 JSON with "
+            "sealed repeated target bytes, aggregate contracts, bounded natural-C "
+            "controls, and an optional explicitly authorized validator-PASS instance"
         ),
     )
     parser.add_argument(
@@ -13718,6 +13808,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="D-form aggregate-copy helper context",
                 )
                 if args.dform_copy_helper_context is not None
+                else None
+            ),
+            repeated_opcode_low_level_readiness_context=(
+                _load_json(
+                    args.repeated_opcode_low_level_readiness_context,
+                    label="repeated-opcode low-level-readiness context",
+                )
+                if args.repeated_opcode_low_level_readiness_context is not None
                 else None
             ),
             mixed_bank_home_cycle_context=(
