@@ -658,11 +658,55 @@ pointer probes, global declaration permutations, tracing, fake/dead locals,
 padding, and register shaping remain suppressed.
 
 The standalone rule emits no source edits and advances no authority. The
-dispatcher emits `crack_learning_diagnosis/v33`; the real immutable KillerBoost
+dispatcher emits `crack_learning_diagnosis/v34`; the real immutable KillerBoost
 replay emits diagnosis SHA-256
 `77714aef32eeffbd764b97223bc83fd24ae9bc97ab880a4af5a018ab139af5f0`.
 Focused verification ran 79 tests across the rule and dispatcher modules; the
 full central tools suite ran 918 tests with 7 skips and no failures.
+
+## Switch/default topology and typed constant-fold diagnosis
+
+Installed implementation checkpoint:
+`89dae64fafe7527751b5e8db1a6c019633962bee`. The owning files are
+`tools/switch_default_constant_fold.py`, `tools/crack_learning_rules.py`,
+`tools/tests/test_switch_default_constant_fold.py`, and the dispatcher tests in
+`tools/tests/test_crack_learning_rules.py`.
+
+Run the ordered diagnosis through the cumulative dispatcher:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/hanachanom006-two-arm-switch/strict.json \
+  --function ev_CapHanachanOMExec \
+  --switch-default-fold-context \
+    work/hanachan.switch-default-fold-context.json \
+  > work/hanachan.learning.json
+```
+
+`switch_default_constant_fold_context/v1` is a closed, hash-bound evidence
+packet. Its precursor must be exactly four bytes short with exact frame, stack
+homes, physical relocations, operation order, and protected siblings. Exactly
+two marked rows are permitted: one `lfs f3` pool operand and one target-only
+unconditional branch immediately after a sealed `omDelObjEx` default cleanup
+window. Five measured guard/if/return controls are required in their original
+order so the rule cannot reopen broad CFG permutations.
+
+The first emitted cell is only the terminal `default` cleanup/`return` switch
+shape. Its sealed result must restore `860/860` while leaving exactly the prior
+pool row. Only then can the second cell run. The typed-pool receipt must bind one
+f32 value, one `mbev_CapEffGlowAdd` consumer, exact relocation topology, and no
+owner-chronology seam. The module independently reproduces both folds:
+`f32(f32(4.9) / f32(60.0)) == 0x3DA740DB`, while
+`f32(4.9 / 60.0) == 0x3DA740DA`. It therefore ranks only the natural
+unsuffixed `4.9 / 60.0` source after topology closes. Opaque bit literals,
+arbitrary numeric search, pool-owner rearrangement, further guard permutations,
+tracing, fake/dead locals, padding, and register shaping remain suppressed.
+
+The real immutable h006 replay emits `crack_learning_diagnosis/v34`, the two
+ordered cells, `authority_advanced=false`, and diagnosis SHA-256
+`fa869893386b95b54e4dfa36ad5faf3afaa57a9deaa925876ccee8306849f060`.
+Focused verification ran 80 tests across the rule and dispatcher modules; the
+full central tools suite ran 924 tests with 7 skips and no failures.
 
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one
@@ -976,7 +1020,8 @@ For the context-bound rules, pass parsed objects as `allocator_context=`,
 `same_tu_shape_context=`, `short_circuit_context=`,
 `exact_sibling_transfer_context=`, `capacity_context=`, `branch_context=`, or
 `reciprocal_context=`, `pool_live_range_context=`,
-`float_truthiness_context=`, or `single_use_final_call_context=`. The same
+`float_truthiness_context=`, `single_use_final_call_context=`, or
+`switch_default_fold_context=`. The same
 closed validation used by the CLI is applied to Python callers.
 
 ## Installed-functionality audit
@@ -993,6 +1038,7 @@ These installed joins are narrower than those generic classifications:
 |---|---|---|
 | explicit else-return CFG | Installed reducer's conditional-to-second-exit, adjacent shared-epilogue branches, and candidate direct-epilogue signature | Explicit else-return control flow |
 | loop branch destination | Equal size/frame; exactly one relocation-identical conditional branch residual; sealed target/candidate relative destinations classified as target loop exit versus candidate loop increment; exact data, physical relocations, and siblings | Explicit else-break for an authenticated zero terminator |
+| switch/default topology then typed fold | Four-byte-short exact-frame precursor with exactly one target-only branch after a sealed default cleanup and one `lfs f3` pool row; five measured topology controls; exact-size topology result with only that pool row; unique typed f32 consumer; and independently reproduced f32-versus-f64 fold bits | Compile a terminal default cleanup/return switch first, then only the authenticated natural unsuffixed double-fold expression if topology leaves the sealed one-row pool residual |
 | assignment/condition saved-GPR cycle | Equal function size; identical operations, relative branches, relocations, and non-register operands; a closed cycle of at least three nonvolatile GPRs; and a call result copied to the cycled register immediately before comparison and conditional branch | Assignment in its consuming condition |
 | allocator two-register swap interaction | Equal function size and measurable frame; identical operations, relative branches, relocations, immediates, data values, physical relocations, and protected siblings; exactly one closed two-nonvolatile-GPR swap; exact VarInfo owner-to-register mapping; and one authenticated producer/consumer identity boundary | A bounded 2x2 interaction of natural declaration chronology and natural producer/consumer expression fusion |
 | single-use final-call direct consumption | Equal size/frame and exact data/physical relocations/siblings; exactly four register-only rows forming one closed two-saved-GPR swap; one long-lived parameter owner; one assigned-once/consumed-once scalar conversion owner; a sealed final typed semantic call; an exact unaffected argument owner; and declaration, pointer, and assignment-expression controls with their required measured outcomes | Remove only the redundant scalar identity and consume its existing truthful producer expression directly at the typed final call |
@@ -1023,7 +1069,7 @@ These joins preserve the reviewed boundaries from
 `mbev_CapMasuLinkNextRandomGet`,
 `mbev_CapEffGlowOMExec`,
 `mbev_CapStarManOMExec`,
-`ev_CapBobleOMExec`, and
+`ev_CapBobleOMExec`, `ev_CapHanachanOMExec`, and
 `mbev_CapBomheiMove`. The names identify acceptance
 fixtures, not symbol-specific allowlists: another function must reproduce the
 same physical signature.
