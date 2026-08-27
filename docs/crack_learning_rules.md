@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v23` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v25` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -1042,6 +1042,47 @@ telemetry must remain excluded from measured crack/hour and is never imputed.
 The diagnosis is evidence-only and cannot authorize source retention or
 promotion.
 
+
+
+## Direct scalar-return composition into fabs and comparison
+
+When size, frame, stack homes, CFG, calls, data, and physical relocations are
+already exact and only one closed saved-FPR argument cascade remains around a
+scalar call result, query exact same-TU source shapes before trying another
+scope, comparison, prototype, or tracer cell:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/debugwarp012.strict.json \
+  --function mbev_CapDebugWarp \
+  --direct-scalar-fabs-context work/debugwarp.direct-scalar-fabs.json
+```
+
+`direct_scalar_fabs_consumer_context/v1` seals the nonexact precursor to equal
+function size, `0x130` frames, exact stack homes and calls, equal physical
+relocations, and the exact seven-row `fabs/fcmpo/fabs/fcmpo/fabs/fmr/fcmpo`
+register-only cascade. It also binds one scalar helper call, its return `fmr`,
+the following `fabs`, the bridge `fmr`, and the immediate comparison.
+
+At least one independently strict-exact donor in the same translation unit must
+authenticate direct scalar-return-to-`fabs` source shape. DebugWarp's sealed
+donors are `mbev_CapDebugCam`, `mbev_CapPointCullCheck`, and
+`mbev_CapAngleSumLerp`. The rule then schedules one cell only:
+
+```c
+fabs((double)mbev_CapAngleWrap(...)) < threshold
+```
+
+The prior same-session trace remains `DIAGNOSTIC_UNKNOWN`: its UNKNOWN ownership
+is never used to justify the recommendation, and repeat tracing is suppressed.
+The rule also suppresses block/function-scope local permutations, comparison
+commutation, `fabsf` or prototype guesses, global declaration permutations,
+dead/fake locals, padding, register shaping, and automatic retention.
+
+Active-time evidence is fail-closed. DebugWarp's incomplete interval coverage
+remains excluded from measured crack/hour with no imputation. The diagnosis is
+`authority_advanced:false`; exact donors rank a natural source-shape cell but do
+not authorize source retention, promotion, or linked-retail claims.
 
 ## Stack extent with an overwritten initializer
 
