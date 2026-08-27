@@ -89,6 +89,12 @@ relevant node.
 | A — source-aware MWCC causal tracer | `rtk python tools/capsule_same_session_capture.py {prepare,preflight,capture,seal-source-spans,causal-map}` | `306e9710f969e1a3efc861c2fd2f0599cf206643` | Composes the installed stack-home producer, frontend chronology, direct ownership correlator, and donor source parser; joins sealed source spans to vreg, physical GPR/FPR, stack, call-return, and evaluation chronology while every missing/ambiguous edge remains UNKNOWN. | [Source-aware MWCC causal trace](mwcc_source_aware_causal_trace.md) |
 | G — full-owner causal map | `rtk python tools/board_causal_map.py REQUEST.json --root .` | `c6f6c89b0a51d9fbda0774f054a2f4a7ff0db642` | Composes the installed matrix/telemetry, causal reducer, typed pool decoder, factorial planner, compiler bindings, and optional donor/tracer/Graphify context into a self-hashed inventory for every residual function. Always read-only and non-authoritative. | [Full-owner causal map](board_owner_causal_map.md) |
 
+## Crack-report learning extensions
+
+| Capability | Commands | Installed commit | Owning files | Purpose | Detailed reference |
+|---|---|---:|---|---|---|
+| repeated target-opcode governed readiness | `rtk python tools/repeated_opcode_low_level_readiness.py --context CONTEXT.json [--focus-symbol SYMBOL --objdiff-canonical-sha256 SHA256] [--output RESULT.json]`; `rtk python tools/crack_learning_rules.py --report REPORT.json --function SYMBOL --repeated-opcode-low-level-readiness-context CONTEXT.json` | `856dd41cc20a11a28d4942d9118761e6fc4cdfdc` | `tools/repeated_opcode_low_level_readiness.py`, `tools/crack_learning_rules.py`, `tools/tests/test_repeated_opcode_low_level_readiness.py` | Validates repeated byte-identical target spans, aggregate contracts, bounded natural-C exhaustion, and an optional explicitly authorized validator-PASS instance. It schedules no candidate and never grants authority. | [Repeated target-opcode governed-readiness gate](crack_learning_rules.md#repeated-target-opcode-governed-readiness-gate) |
+
 ## Supporting workbench commands
 
 The standalone read-only stack-object/lifetime reducer is documented in

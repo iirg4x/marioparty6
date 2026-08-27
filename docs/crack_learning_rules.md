@@ -456,6 +456,92 @@ or scalar-register substitution. Both modes bind source/object/report/tool
 hashes, require the exact result to restore target size without relocation or
 protected-sibling loss, and never advance source or promotion authority.
 
+## Repeated target-opcode governed-readiness gate
+
+Installed implementation checkpoint:
+`856dd41cc20a11a28d4942d9118761e6fc4cdfdc`. The owning files are
+`tools/repeated_opcode_low_level_readiness.py`,
+`tools/crack_learning_rules.py`, and
+`tools/tests/test_repeated_opcode_low_level_readiness.py`. Central queue task
+`28f5e336fb35483c8027a7651bda39c4` carries the final verification and push
+receipt.
+
+Use the standalone validator when the evidence spans more than one function:
+
+```sh
+rtk python tools/repeated_opcode_low_level_readiness.py \
+  --context work/player.repeated-opcode-readiness.json \
+  --focus-symbol MoveNumOMExec \
+  --objdiff-canonical-sha256 <sha256> \
+  --output work/player.repeated-opcode-readiness.result.json
+```
+
+Use the cumulative crack-learning dispatcher when diagnosing one bound objdiff
+report:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/movenum.strict.json \
+  --function MoveNumOMExec \
+  --repeated-opcode-low-level-readiness-context \
+    work/player.repeated-opcode-readiness.json \
+  > work/movenum.learning.json
+```
+
+The standalone input schema is
+`repeated_opcode_low_level_readiness_context/v1`; its output schema is
+`repeated_opcode_low_level_readiness/v1` and its self-hash field is
+`readiness_sha256`. The dispatcher embeds the complete standalone result,
+binds the normalized context and implementation hashes, and emits
+`crack_learning_diagnosis/v31` with `diagnosis_sha256`. Both hashes are
+SHA-256 over canonical JSON with the respective self-hash field omitted.
+Standalone `--output` replacement is atomic. Semantic collections are sorted
+by stable function/span, operation/helper/type/fingerprint, and operation/control
+keys before hashing.
+
+The caller supplies the target/candidate/compiler/toolchain identities, raw
+target span bytes, object offsets, objdiff hashes, aggregate producer/consumer
+contracts, natural-C controls, governed-policy identities, exact-result proof,
+and telemetry disposition. This tool does not reopen the object, select the
+retail target, prove the compiler version, authenticate the caller's semantic
+names, grant source authority, or decide that low-level source is admissible.
+It verifies packet closure: each word-aligned non-overlapping span hashes its
+bytes; every repeated group contains at least two byte-identical sites with the
+same operation, aggregate type, and mnemonic sequence; every eligible site is
+assigned exactly once; every operation has a bounded admissible nonexact
+natural-C control; and the canonical control list hashes the supplied corpus
+identity.
+
+The governed instance is reported as
+`READY_FOR_EXPLICIT_AUTHORIZATION` only when authorization is absent,
+`validator_result=NOT_RUN`, and no receipt exists. It is reported as
+`AUTHORIZED_VALIDATED_INSTANCE` only when the packet records explicit user
+authorization, a `PASS` validator result, and a validation receipt SHA-256.
+The latter status confirms a bound packet; it does not create, widen, or
+transfer authorization. Both statuses schedule no candidate and keep
+`authority_advanced:false`.
+
+Parsing fails closed on unknown fields, malformed hashes, overlapping or
+non-word spans, byte/extent or byte/hash drift, singleton or partially assigned
+groups, mnemonic drift, missing producer/consumer authentication, unknown
+evidence, an incomplete operation-control census, a control-corpus hash
+mismatch, repeat-trace requests, exact-result identity or count drift,
+relocation/sibling/output loss, inconsistent telemetry exclusion, or an
+authorization/validator/receipt contradiction. Fixed-register source, raw
+opcode words, object patching, dead/fake locals, padding, repeat tracing,
+automatic retention, and promotion remain suppressed.
+
+The Player acceptance packet requires exactly two `HuVecCopy` sites
+(`MoveNumOMExec` and `mbev_PlayerColBall`) and two `HuVecMul` sites
+(`GetBiriQEffectRadius` and `MetalEffectCreate`), while an unrelated span
+stays explicitly ineligible. It also binds `165/165` functions,
+`2249/2249` physical relocations, `137/137` configured outputs, and a
+byte-identical `main.dol`. Focused verification ran 7 tests; the complete
+crack-learning module ran 73 tests; the full central tools suite ran 897 tests
+with 7 skips and no failures. Existing D-form contexts and CLI behavior remain
+compatible because the new context is optional; consumers that validate the
+dispatcher schema must accept the intentional v30-to-v31 version increment.
+
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one
 branch result copied to the wrong aggregate home, bind both stages together:
