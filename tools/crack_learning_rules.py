@@ -35,13 +35,14 @@ from tools import saved_owner_semantic_split
 from tools import same_tu_constructor_family_transfer
 from tools import scalar_return_consumer_owner
 from tools import stack_extent_overwritten_initializer
+from tools import source_linked_owner_closure
 from tools import target_emitted_overwritten_computation
 from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v31"
-SCHEMA_VERSION = 31
+SCHEMA = "crack_learning_diagnosis/v32"
+SCHEMA_VERSION = 32
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -60,6 +61,7 @@ DFORM_COPY_HELPER_CONTEXT_SCHEMA = "dform_aggregate_copy_helper_context/v1"
 REPEATED_OPCODE_LOW_LEVEL_READINESS_CONTEXT_SCHEMA = (
     repeated_opcode_low_level_readiness.CONTEXT_SCHEMA
 )
+SOURCE_LINKED_OWNER_CLOSURE_CONTEXT_SCHEMA = source_linked_owner_closure.CONTEXT_SCHEMA
 MIXED_BANK_HOME_CYCLE_CONTEXT_SCHEMA = (
     mixed_bank_home_cycle.CONTEXT_SCHEMA
 )
@@ -537,6 +539,7 @@ _METADATA_OWNER_PROOF_HASHES = (
 
 _RULE_ORDER = (
     "metadata_owner_coherence",
+    source_linked_owner_closure.RULE_ID,
     "explicit_else_return_cfg",
     "loop_branch_destination",
     "assignment_condition_saved_gpr_cycle",
@@ -3850,6 +3853,15 @@ def _parse_repeated_opcode_low_level_readiness_context(
     try:
         return repeated_opcode_low_level_readiness.parse_context(value)
     except repeated_opcode_low_level_readiness.RepeatedOpcodeReadinessInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_source_linked_owner_closure_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return source_linked_owner_closure.parse_context(value)
+    except source_linked_owner_closure.SourceLinkedClosureInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10520,6 +10532,45 @@ def _repeated_opcode_low_level_readiness_evaluation(
     )
 
 
+def _source_linked_owner_closure_evaluation(
+    context: Mapping[str, Any] | None,
+    focus_symbol: str,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    rule_id = source_linked_owner_closure.RULE_ID
+    if context is None:
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason="no source-linked owner-closure context was supplied",
+        )
+    closure = source_linked_owner_closure.evaluate(
+        context,
+        focus_symbol=focus_symbol,
+        objdiff_canonical_sha256=objdiff_canonical_sha256,
+    )
+    if not closure.get("matched"):
+        return _evaluation(
+            rule_id,
+            matched=False,
+            reason=str(closure.get("reason", "the closure context did not match the focus")),
+        )
+    status = str(closure["status"])
+    return _evaluation(
+        rule_id,
+        matched=True,
+        reason=(
+            "configured owner status, selected link-manifest object identity, candidate proof, "
+            f"and manifest-bound retail output were checked fail-closed; status is {status} "
+            "and authority remains false"
+        ),
+        confidence=1.0,
+        source_class=str(closure["source_class"]),
+        recommendation=str(closure["recommendation"]),
+        evidence={"closure": closure},
+    )
+
+
 def _live_alias_memset_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12714,6 +12765,7 @@ def diagnose_document(
     focus_symbol: str,
     same_tu_donor_symbols: Sequence[str] = (),
     metadata_owner_context: Mapping[str, Any] | None = None,
+    source_linked_owner_closure_context: Mapping[str, Any] | None = None,
     allocator_context: Mapping[str, Any] | None = None,
     parameter_allocation_context: Mapping[str, Any] | None = None,
     aggregate_use_context: Mapping[str, Any] | None = None,
@@ -12763,6 +12815,11 @@ def diagnose_document(
     normalized_metadata_owner_context = (
         _parse_metadata_owner_context(metadata_owner_context)
         if metadata_owner_context is not None
+        else None
+    )
+    normalized_source_linked_owner_closure_context = (
+        _parse_source_linked_owner_closure_context(source_linked_owner_closure_context)
+        if source_linked_owner_closure_context is not None
         else None
     )
     normalized_allocator_context = (
@@ -12956,6 +13013,11 @@ def diagnose_document(
         _metadata_owner_coherence_evaluation(
             pair,
             normalized_metadata_owner_context,
+            objdiff_canonical_sha256,
+        ),
+        _source_linked_owner_closure_evaluation(
+            normalized_source_linked_owner_closure_context,
+            focus,
             objdiff_canonical_sha256,
         ),
         _explicit_else_evaluation(audit),
@@ -13199,6 +13261,11 @@ def diagnose_document(
                 if normalized_metadata_owner_context is not None
                 else None
             ),
+            "source_linked_owner_closure_context_canonical_sha256": (
+                _sha256(_canonical(normalized_source_linked_owner_closure_context))
+                if normalized_source_linked_owner_closure_context is not None
+                else None
+            ),
             "allocator_context_canonical_sha256": (
                 _sha256(_canonical(normalized_allocator_context))
                 if normalized_allocator_context is not None
@@ -13392,6 +13459,12 @@ def diagnose_document(
                     Path(repeated_opcode_low_level_readiness.__file__).read_bytes()
                 ),
             },
+            "source_linked_owner_closure": {
+                "path": Path(source_linked_owner_closure.__file__).name,
+                "schema": source_linked_owner_closure.CONTEXT_SCHEMA,
+                "result_schema": source_linked_owner_closure.RESULT_SCHEMA,
+                "sha256": _sha256(Path(source_linked_owner_closure.__file__).read_bytes()),
+            },
             "traced_naggregate_reciprocal_fold": {
                 "path": Path(traced_naggregate_reciprocal_fold.__file__).name,
                 "schema": traced_naggregate_reciprocal_fold.CONTEXT_SCHEMA,
@@ -13487,6 +13560,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "authenticated metadata_owner_coherence_context/v1 JSON with "
             "contiguous object extents, before/after target metadata, unchanged "
             "physical/effective relocations, payload sections, and linked retail proof"
+        ),
+    )
+    parser.add_argument(
+        "--source-linked-owner-closure-context",
+        type=Path,
+        help=(
+            "authenticated source_linked_owner_closure_context/v1 JSON binding "
+            "configured Matching/NonMatching status, the selected link-manifest "
+            "object path/hash, candidate closure proof, retail outputs, and an "
+            "optional one-consumer four-byte SDA21 owner"
         ),
     )
     parser.add_argument(
@@ -13774,6 +13857,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="metadata-owner coherence context",
                 )
                 if args.metadata_owner_context is not None
+                else None
+            ),
+            source_linked_owner_closure_context=(
+                _load_json(
+                    args.source_linked_owner_closure_context,
+                    label="source-linked owner-closure context",
+                )
+                if args.source_linked_owner_closure_context is not None
                 else None
             ),
             allocator_context=(
