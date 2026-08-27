@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v26` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v27` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -1277,6 +1277,44 @@ no time is ever imputed. The rule emits diagnosis only and always keeps
 value-equivalent `@sda21` owner spellings after the canonical report and exact
 physical-relocation count are sealed; every remaining row must still be the
 authenticated FPR-only register cycle.
+
+## Saved-FPR semantic-owner reconstruction and chronology
+
+When a Board effect is short by an aligned frame region and a contiguous saved-
+FPR suffix, diagnose a missing semantic scalar-owner family before trying
+declaration order, scope, or tracing:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/masuhit003.strict.json \
+  --function mbev_CapEffMasuHitOMExec \
+  --saved-fpr-semantic-owner-context work/masuhit.saved-fpr-owners.json
+```
+
+`saved_fpr_semantic_owner_chronology_context/v1` binds two candidate stages.
+The baseline `736/860`, `0xC0/0x120` frame seam with equal verified physical
+relocations first ranks one complete cell containing distinct rotation
+snapshots, named trig results, exact same-TU post-call scalar consumer copies,
+and the authenticated integer-conversion `& 255` shape. SnowOM, RingOM, and
+ColorLerp must be strict/data-exact same-TU donors; Graphify-first provenance,
+one bounded Graft result, and narrow named-file verification are mandatory.
+
+Once the semantic-owner cell makes size, frame, CFG, calls, homes, data, and
+relocations exact, the rule removes only value-equivalent SDA owner spellings.
+The remaining report must contain exactly thirteen `DIFF_ARG_MISMATCH` rows,
+all reducible to FPR names without changing mnemonic or operands. It then ranks
+one live declaration chronology, sealing `weight=f31` through `sinWeight=f18`.
+Partial cycles, UNKNOWN ownership, aliases, generic declaration permutations,
+typed-`u8` half-axes, block-initializer retries, dead/fake locals, padding,
+register shaping, retention, and promotion fail closed.
+
+The schema records verified physical relocation occurrences separately from
+instruction-local objdiff relocation records; for MasuHit these are `34/34`
+and `30/30`, respectively. Neither may drift. The immutable c003 replay must
+rank exactly the retained fourteen-owner chronology, while c004 must report
+already exact and schedule nothing. Telemetry is deliberately ineligible for
+measured crack/hour because the source report has a `476.782377`-second gap;
+the rule requires `telemetry_complete=false`, exclusion, and no imputation.
 
 ## Saved-FPR stack-owner composition and pool handoff
 
