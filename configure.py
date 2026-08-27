@@ -1064,7 +1064,7 @@ config.libs = [
             Object(NonMatching, "board/captrap.c"),
             Object(NonMatching, "board/capspecial.c"),
             Object(Matching, "board/capsule.c"),
-            Object(NonMatching, "board/capevent.c"),
+            Object(Matching, "board/capevent.c"),
             Object(Matching, "board/shopevent.c"),
             Object(Matching, "board/guide.c"),
             Object(Matching, "board/branch.c"),
