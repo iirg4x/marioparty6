@@ -59,6 +59,12 @@ from tools.recovery_knowledge import (
     resolve_context_target,
     validate_knowledge,
 )
+from tools.recovery_memory import (
+    RecoveryMemoryError,
+    add_memory_parser,
+    run_memory_command,
+    startup_check,
+)
 from tools.worktree_manager import (
     WorktreeError,
     add_worktree_parser,
@@ -82,6 +88,8 @@ REQUIRED_AGENT_FILES = [
     "tools/context_engine.py",
     "tools/local_evidence.py",
     "tools/match_workbench.py",
+    "tools/candidate_compile_admission.py",
+    "tools/recovery_memory.py",
     "tools/knowledge_freshness.py",
     "tools/integration_finalize.py",
     "tools/worktree_manager.py",
@@ -240,6 +248,17 @@ def doctor_checks(data: dict[str, Any]) -> list[Check]:
         )
         queue_status, queue_detail = queue_health(root)
         checks.append(Check("claim queue", queue_status, queue_detail))
+        try:
+            startup = startup_check(root, sync_reports=False)
+            checks.append(
+                Check(
+                    "central recovery memory",
+                    "pass",
+                    f"canonical queue/memory; freshness {startup['knowledge_sha256'][:12]}",
+                )
+            )
+        except (OSError, QueueError, RecoveryMemoryError) as exc:
+            checks.append(Check("central recovery memory", "fail", str(exc)))
         hook_values = hook_status(root)
         managed = sum(value == "managed" for value in hook_values.values())
         checks.append(
@@ -836,6 +855,7 @@ def main() -> int:
     _add_catalog_parser(sub)
     add_recovery_pass_parser(sub)
     add_match_parser(sub)
+    add_memory_parser(sub)
 
     context = sub.add_parser("context")
     context.add_argument("kind", choices=["function", "owner"])
@@ -909,6 +929,8 @@ def main() -> int:
                 )
             _print_probe_result(result, as_json=args.json)
             return 0
+        if args.command == "memory":
+            return run_memory_command(args, root=root)
         data = load(root, validate=False)
         catalog = (
             _catalog(data)
@@ -965,6 +987,7 @@ def main() -> int:
                     )
             return 0 if matches else 1
         if args.command == "context":
+            startup_check(root, sync_reports=True, strict_reports=True)
             _write_context(data, args)
             return 0
         if args.command == "knowledge":
@@ -995,6 +1018,7 @@ def main() -> int:
         MatchError,
         ProbeError,
         QueueError,
+        RecoveryMemoryError,
         RecoveryError,
         WorktreeError,
     ) as exc:

@@ -12,11 +12,25 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from tools.agent_queue import QueueError, claim_task, queue_path, read_queue
+from tools.recovery_memory import RecoveryMemoryError, startup_check
 from tools.workspace_policy import DEFAULT_WORKER_BASE
 
 
 class WorktreeError(ValueError):
     pass
+
+
+def _recovery_startup(
+    root: Path, *, sync_reports: bool
+) -> dict[str, Any] | None:
+    """Enforce canonical memory on recovery repos, not generic Git fixtures."""
+
+    if not (root / "config/recovery/project.json").is_file():
+        return None
+    try:
+        return startup_check(root, sync_reports=sync_reports)
+    except (OSError, QueueError, RecoveryMemoryError) as exc:
+        raise WorktreeError(f"recovery lane startup failed: {exc}") from exc
 
 
 def _run(cwd: Path, *args: str) -> str:
@@ -118,6 +132,7 @@ def create_worktree(
     owners: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
+    manager_startup = _recovery_startup(root, sync_reports=True)
     slug = _slug(owner)
     assigned_branch = branch or f"agent/{_slug(agent)}-{slug}"
     assigned_path = (
@@ -154,6 +169,7 @@ def create_worktree(
                 retail_path,
                 assigned_path / "orig" / "GP6E01",
             )
+        lane_startup = _recovery_startup(assigned_path, sync_reports=False)
         task = claim_task(
             root,
             owner,
@@ -174,6 +190,8 @@ def create_worktree(
             "worktree": str(assigned_path),
             "branch": assigned_branch,
             "build_dir": str(assigned_build),
+            "manager_startup": manager_startup,
+            "lane_startup": lane_startup,
             "next": [
                 f"cd {assigned_path}",
                 f"python tools/agent.py context owner {owner}",

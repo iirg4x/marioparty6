@@ -19,11 +19,18 @@ from tools.recovery_knowledge import (
     resolve_context_target,
     select_knowledge_cards,
 )
+from tools.recovery_memory import (
+    RecoveryMemory,
+    RecoveryMemoryError,
+    recovery_memory_available,
+    render_context_memory,
+)
 
 DEFAULT_SECTION_WEIGHTS = {
     "Recovery contract": 7,
     "Owner state": 7,
     "Durable rejected-probe/blocker history": 8,
+    "Central recovery memory": 16,
     "Relevant recovered knowledge": 18,
     "Operational dependency context": 12,
     "Local object-diff evidence": 10,
@@ -42,6 +49,7 @@ MANDATORY = {
     "Recovery contract",
     "Owner state",
     "Durable rejected-probe/blocker history",
+    "Central recovery memory",
     "Relevant recovered knowledge",
     "Authenticated constraints",
     "Acceptance criteria",
@@ -985,6 +993,28 @@ def build_context(
         ),
     )
     insertion += 1
+    root = Path(data["root"])
+    try:
+        central = (
+            RecoveryMemory.for_root(root).context_memory(
+                str(owner.get("id") or owner.get("source")),
+                None,
+                limit=12,
+            )
+            if recovery_memory_available(root)
+            else {
+                "experiments": [],
+                "reports": [],
+            }
+        )
+        central_text = render_context_memory(central)
+    except (OSError, RecoveryMemoryError, QueueError) as exc:
+        central_text = (
+            "## Central recovery memory\n\n"
+            f"- Unavailable: {exc}. Do not compile until lane startup passes."
+        )
+    sections.insert(insertion, ("Central recovery memory", central_text))
+    insertion += 1
     sections.insert(insertion, ("Relevant recovered knowledge", knowledge))
     insertion += 1
     sections.insert(
@@ -1002,7 +1032,6 @@ def build_context(
                 if isinstance(path, str)
             )
     summaries = []
-    root = Path(data["root"])
     for path in dict.fromkeys(requested):
         candidate = Path(path)
         candidate = candidate if candidate.is_absolute() else root / candidate

@@ -34,6 +34,30 @@ All worktrees from the same clone see it immediately. Existing schema-v1 queues
 are migrated to schema v2 when written. Separate clones may share an explicit
 `MP6_AGENT_QUEUE` path.
 
+There is exactly one queue namespace. A legacy queue at a path produced by the
+old MSYS-to-Windows path conversion blocks every normal queue operation until
+it is migrated:
+
+```sh
+python tools/agent.py queue locations
+python tools/agent.py queue migrate-shadows
+```
+
+Migration merges nonconflicting task history into the canonical queue, retains
+the source bytes under `shadow-migrations/`, and moves the old queue to a
+hash-named archive. It never silently deletes or chooses between conflicting
+task IDs.
+
+The shared recovery-memory database lives beside the queue:
+
+```text
+<git-common-dir>/agent-coordination/recovery-memory.sqlite3
+```
+
+It is the canonical experiment, negative-control, completed crack-report, and
+lane-freshness registry. A worktree-local match workspace remains an immutable
+artifact store, but is not a separate knowledge namespace.
+
 ## Add a batch
 
 The orchestrator adds tasks with dependency and scheduling information:
@@ -98,6 +122,16 @@ python tools/agent.py worktree create REL:fileseldll:filesel \
 The queue rejects a worktree that belongs to another clone, is on the wrong
 branch, is not registered by `git worktree list`, or uses a build directory
 outside that worktree.
+
+For recovery repositories, worktree creation also runs the mandatory startup
+check before and after creation. It rejects a stale base that does not contain
+the current `origin/agent/recovery-context-workflow`, invalid knowledge or
+freshness metadata, a shadow queue, or an unavailable central registry. It also
+ingests newly queued completed `CRACK_REPORT/v1` artifacts and imports every
+immutable pre-registry candidate index found in the lane's bounded
+`.agent-coordination/match`, `work`, and `build` census. A malformed index or
+broken candidate hash chain blocks startup; historical candidates are never
+silently skipped.
 
 Workers may instead claim an existing task from their own worktree:
 
@@ -167,6 +201,46 @@ python tools/agent.py context function <symbol> \
 python tools/agent.py queue update <owner> \
   --agent claude --status coding
 ```
+
+Before compiling every distinct candidate, run a source-only lookup. Include a
+stable semantic shape key when the candidate belongs to a known rewrite class:
+
+```sh
+python tools/agent.py match lookup \
+  --workspace <workbench> \
+  --source <candidate.c> \
+  --shape-key direct-typed-consumer \
+  --axis producer-consumer-lifetime \
+  --hypothesis "remove the single-use frontend identity"
+```
+
+The lookup atomically checks all worktrees and reserves the exact source/context
+for this lane. `match record` rejects candidates without that pending admission.
+An exact source hit, a negative shape hit, or another lane's pending admission
+sets `skip_compile=true`. Non-workbench compiler scripts must use
+`tools/candidate_compile_admission.py admit` and `record` around the compile.
+Looking up a new source together with an already-produced object is rejected as
+too late for admission.
+
+Check the registry directly when diagnosing coordination:
+
+```sh
+python tools/agent.py memory status
+python tools/agent.py memory context --owner <owner> --function <symbol>
+python tools/agent.py memory sync-workbenches
+python tools/agent.py memory startup-check --strict-reports
+```
+
+`sync-workbenches` is the one-time/idempotent migration for candidate history
+created before central admission existed. It validates session, index,
+candidate, and compile-attestation self-hashes before importing exact source
+results and nonexact source controls. New candidates still require the
+source-only admission above; historical import is not an admission bypass.
+If immutable history contains the same source/context with divergent object
+hashes, every observation is retained and the input is quarantined as
+`conflicting_historical_source`. Startup remains available for diagnosis, but
+admission blocks both reuse and recompilation until the missing provenance or
+compiler identity is resolved.
 
 During verification, commit first and leave the worktree clean. Then run the
 public gate and record structured proof:

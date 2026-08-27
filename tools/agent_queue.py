@@ -37,6 +37,7 @@ QUEUE_ENV = "MP6_AGENT_QUEUE"
 QUEUE_BACKUP_SUFFIX = ".bak"
 QUEUE_AUDIT_SUFFIX = ".audit.jsonl"
 QUEUE_AUDIT_PENDING_SUFFIX = ".audit.pending"
+QUEUE_SHADOW_ARCHIVE_SUFFIX = ".migrated.json"
 ACTIVE = {"claimed", "researching", "coding", "verifying", "blocked", "ready"}
 OPEN = {"pending", *ACTIVE}
 TERMINAL = {"done", "released", "cancelled"}
@@ -91,26 +92,98 @@ def git_root(cwd: str | Path | None = None) -> Path:
 
 
 def git_common_dir(root: Path) -> Path:
+    """Return Git's common directory in native absolute form.
+
+    MSYS Git can emit a relative path such as
+    ``../../../../../home/USER/.codex/repo/.git``.  Resolving that spelling
+    relative to a native Windows worktree silently creates ``D:\\home`` (or
+    the current drive's equivalent) instead of selecting the real Windows
+    profile.  Ask Git for an absolute path first so :func:`native_git_path`
+    can translate the MSYS home prefix deterministically.
+    """
+
     return native_git_path(
         _run(
             root,
             "git",
             "rev-parse",
-            "--path-format=relative",
+            "--path-format=absolute",
             "--git-common-dir",
         ),
         relative_to=root,
     )
 
 
-def queue_path(root: Path, override: str | Path | None = None) -> Path:
+def _queue_override_path(root: Path, raw: str | Path) -> Path:
+    expanded = os.path.expandvars(os.path.expanduser(str(raw)))
+    path = native_git_path(expanded, relative_to=root)
+    return path if path.suffix.lower() == ".json" else path / "queue.json"
+
+
+def canonical_queue_path(root: Path, override: str | Path | None = None) -> Path:
     raw = override or os.environ.get(QUEUE_ENV)
     if raw:
-        path = Path(raw).expanduser()
-        path = path if path.is_absolute() else root / path
-        path = path.resolve()
-        return path if path.suffix.lower() == ".json" else path / "queue.json"
+        return _queue_override_path(root, raw)
     return git_common_dir(root) / "agent-coordination" / "queue.json"
+
+
+def legacy_queue_paths(
+    root: Path, override: str | Path | None = None
+) -> list[Path]:
+    """Return queue locations produced by the pre-canonical path logic.
+
+    This is deliberately a closed census of spellings that this tool itself
+    previously generated.  It does not crawl drives or user profiles.
+    """
+
+    root = root.resolve()
+    canonical = canonical_queue_path(root, override)
+    candidates: set[Path] = set()
+    raw = override or os.environ.get(QUEUE_ENV)
+    if raw:
+        expanded = os.path.expandvars(os.path.expanduser(str(raw)))
+        legacy = Path(expanded)
+        legacy = legacy if legacy.is_absolute() else root / legacy
+        legacy = legacy.resolve()
+        candidates.add(
+            legacy if legacy.suffix.lower() == ".json" else legacy / "queue.json"
+        )
+    else:
+        relative = _run(
+            root,
+            "git",
+            "rev-parse",
+            "--path-format=relative",
+            "--git-common-dir",
+        )
+        legacy_common = Path(relative)
+        legacy_common = (
+            legacy_common
+            if legacy_common.is_absolute()
+            else root / legacy_common
+        ).resolve()
+        candidates.add(legacy_common / "agent-coordination" / "queue.json")
+    return sorted(
+        (
+            path
+            for path in candidates
+            if path != canonical and path.is_file()
+        ),
+        key=lambda value: str(value).casefold(),
+    )
+
+
+def queue_path(root: Path, override: str | Path | None = None) -> Path:
+    path = canonical_queue_path(root, override)
+    shadows = legacy_queue_paths(root, override)
+    if shadows:
+        joined = ", ".join(str(item) for item in shadows)
+        raise QueueError(
+            "shadow recovery queue(s) detected: "
+            f"{joined}; run `python tools/agent.py queue migrate-shadows` "
+            "from the integration checkout before any queue operation"
+        )
+    return path
 
 
 def _now() -> str:
@@ -788,6 +861,143 @@ def locked_queue(path: Path, timeout: float = 8.0) -> Iterator[dict[str, Any]]:
             _write(path, queue, before=original)
     finally:
         shutil.rmtree(lock, ignore_errors=True)
+
+
+def queue_location_audit(
+    root: Path, override: str | Path | None = None
+) -> dict[str, Any]:
+    canonical = canonical_queue_path(root, override)
+    shadows = legacy_queue_paths(root, override)
+    return {
+        "canonical": str(canonical),
+        "canonical_exists": canonical.is_file(),
+        "canonical_sha256": (
+            _sha256(canonical.read_bytes()) if canonical.is_file() else None
+        ),
+        "shadows": [
+            {
+                "path": str(path),
+                "sha256": _sha256(path.read_bytes()),
+                "size_bytes": path.stat().st_size,
+            }
+            for path in shadows
+        ],
+        "status": "shadowed" if shadows else "canonical",
+    }
+
+
+def _merge_shadow_queue(
+    destination: dict[str, Any], source: Mapping[str, Any], source_path: Path
+) -> list[str]:
+    imported: list[str] = []
+    by_id = {
+        str(task.get("id")): task
+        for task in destination.get("tasks", [])
+        if isinstance(task, Mapping)
+    }
+    for task in source.get("tasks", []):
+        task_id = str(task.get("id"))
+        existing = by_id.get(task_id)
+        if existing is not None:
+            if _audit_json_bytes(existing) != _audit_json_bytes(task):
+                raise QueueError(
+                    f"shadow queue {source_path} conflicts on task id {task_id}"
+                )
+            continue
+        copied = copy.deepcopy(dict(task))
+        destination.setdefault("tasks", []).append(copied)
+        by_id[task_id] = copied
+        imported.append(task_id)
+    resources = source.get("resources", {})
+    for name, value in resources.items():
+        existing = destination.setdefault("resources", {}).get(name)
+        if existing is not None and existing != value:
+            raise QueueError(
+                f"shadow queue {source_path} conflicts on resource {name}"
+            )
+        destination["resources"][name] = copy.deepcopy(value)
+    return imported
+
+
+def migrate_shadow_queues(
+    root: Path, override: str | Path | None = None
+) -> dict[str, Any]:
+    """Merge legacy queue locations and archive their exact bytes.
+
+    The canonical queue is committed first under its ordinary lock/audit
+    transaction.  Each source queue is then moved to a sibling hash-named
+    archive and copied into the canonical ``shadow-migrations`` evidence
+    directory.  Nothing is deleted.
+    """
+
+    root = root.resolve()
+    canonical = canonical_queue_path(root, override)
+    shadows = legacy_queue_paths(root, override)
+    if not shadows:
+        return {
+            "status": "canonical",
+            "canonical": str(canonical),
+            "migrations": [],
+        }
+    sources: list[tuple[Path, bytes, dict[str, Any]]] = []
+    for shadow in shadows:
+        data = shadow.read_bytes()
+        queue = _parse_queue_bytes(data, shadow, strict=True)
+        sources.append((shadow, data, queue))
+    imports: dict[str, list[str]] = {}
+    with locked_queue(canonical) as queue:
+        for shadow, _, source in sources:
+            imports[str(shadow)] = _merge_shadow_queue(queue, source, shadow)
+        errors = validate_queue(queue)
+        if errors:
+            raise QueueError(
+                "shadow migration would create an invalid canonical queue:\n- "
+                + "\n- ".join(errors)
+            )
+        queue["updated_at"] = _now()
+    canonical_bytes = canonical.read_bytes()
+    evidence_dir = canonical.parent / "shadow-migrations"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    migrations: list[dict[str, Any]] = []
+    for shadow, data, _ in sources:
+        digest = _sha256(data)
+        evidence_path = evidence_dir / f"{digest}.queue.json"
+        if evidence_path.exists():
+            if evidence_path.read_bytes() != data:
+                raise QueueError(
+                    f"shadow migration evidence conflicts at {evidence_path}"
+                )
+        else:
+            temporary = _durable_temp(
+                evidence_path, data, label="shadow-migration"
+            )
+            os.replace(temporary, evidence_path)
+            _fsync_directory(evidence_dir)
+        archive = shadow.with_name(
+            f"{shadow.stem}.{digest}{QUEUE_SHADOW_ARCHIVE_SUFFIX}"
+        )
+        if archive.exists():
+            if archive.read_bytes() != data:
+                raise QueueError(f"shadow archive conflicts at {archive}")
+            shadow.unlink()
+        else:
+            os.replace(shadow, archive)
+        _fsync_directory(shadow.parent)
+        migrations.append(
+            {
+                "source": str(shadow),
+                "source_sha256": digest,
+                "archive": str(archive),
+                "evidence": str(evidence_path),
+                "imported_task_ids": imports[str(shadow)],
+            }
+        )
+    return {
+        "status": "migrated",
+        "canonical": str(canonical),
+        "canonical_sha256": _sha256(canonical_bytes),
+        "migrations": migrations,
+    }
 
 
 def _repo_path(value: str | None) -> str | None:
@@ -1774,8 +1984,8 @@ def queue_health(
     root: Path,
     queue_file: str | Path | None = None,
 ) -> tuple[str, str]:
-    path = queue_path(root, queue_file)
     try:
+        path = queue_path(root, queue_file)
         queue = read_queue(path)
         errors = validate_queue(queue)
     except QueueError as exc:
@@ -1821,6 +2031,11 @@ def add_queue_parser(subparsers: Any) -> argparse.ArgumentParser:
         help=f"shared JSON path; defaults to Git common dir or ${QUEUE_ENV}",
     )
     actions = queue.add_subparsers(dest="queue_command", required=True)
+
+    locations = actions.add_parser("locations")
+    locations.add_argument("--json", action="store_true")
+    migrate = actions.add_parser("migrate-shadows")
+    migrate.add_argument("--json", action="store_true")
 
     status = actions.add_parser("status")
     status.add_argument("--all", action="store_true")
@@ -1930,6 +2145,25 @@ def run_queue_command(
     root: Path,
     owners: Sequence[Mapping[str, Any]] | None = None,
 ) -> int:
+    if args.queue_command == "locations":
+        result = queue_location_audit(root, args.queue_file)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"queue {result['status']}: {result['canonical']}")
+            for shadow in result["shadows"]:
+                print(f"shadow: {shadow['path']} ({shadow['sha256']})")
+        return 1 if result["shadows"] else 0
+    if args.queue_command == "migrate-shadows":
+        result = migrate_shadow_queues(root, args.queue_file)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(
+                f"queue {result['status']}: {result['canonical']} "
+                f"({len(result['migrations'])} shadow migration(s))"
+            )
+        return 0
     path = queue_path(root, args.queue_file)
     if args.queue_command in {"status", "check"}:
         queue = read_queue(path)

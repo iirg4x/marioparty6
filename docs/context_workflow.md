@@ -81,6 +81,19 @@ config/recovery/knowledge_freshness.json
 
 Generated data remains ignored under `build/context/`.
 
+Cross-worktree operational memory is intentionally outside every worktree:
+
+```text
+<git-common-dir>/agent-coordination/recovery-memory.sqlite3
+```
+
+It stores content-keyed candidate admissions/results, explicit negative shape
+controls, completed `CRACK_REPORT/v1` records, imported immutable legacy
+workbench candidates, and synchronized lane snapshots.
+It does not replace reviewed cards or advance source/admissibility authority.
+Context generation reads it before broad compiler cards so a lane sees prior
+attempts and exact reports without opening another lane's workspace.
+
 ## Actionable knowledge cards
 
 Each card records classification, category, compiler/confidence, source trigger,
@@ -195,10 +208,45 @@ The SQLite index contains owner state, function spans, stable identities,
 includes, evidence, debt, names, exceptions, and complete searchable card
 triggers/effects/rules/actions/examples/counterexamples.
 
-## Historical wave reports
+## Completed crack reports and historical wave reports
 
-Wave reports remain forensic laboratory records. Their bodies are never
-injected automatically.
+Completed exact `CRACK_REPORT/v1` artifacts are different from unstructured
+historical waves. When their queue task contains a real report path, lane
+startup hashes, parses, and idempotently distills them into central recovery
+memory:
+
+```sh
+python tools/agent.py memory sync-reports --strict
+python tools/agent.py memory ingest-report <CRACK_REPORT-v1.json-or-md>
+```
+
+The distillation retains owner/function identity, exact proof summary, retained
+natural source, causal explanation, chronological negative controls,
+counterfactual shortest path, and generalized improvement request. Malformed or
+nonexact packets fail closed; unchanged hashes are not reprocessed. Reusable
+findings become immediately searchable context, while promotion to a reviewed
+compiler card remains a separate evidence decision.
+
+Lane startup also performs a bounded census of existing immutable match
+workbenches and validates their complete session/index/candidate record chain:
+
+```sh
+python tools/agent.py memory sync-workbenches
+python tools/agent.py memory import-workbench <workspace>
+```
+
+This migration records each historical source/context/object result as exact or
+nonexact from its strict focus proof. It is idempotent and cannot fabricate the
+pre-compile admission required for any new candidate. Consequently a different
+lane sees old candidate bytes and negative source history before it chooses a
+new source shape, even when the original workspace was never summarized in a
+crack report. Divergent object hashes for one historical source/context are
+preserved as separate observations and quarantined rather than selected or
+discarded; future admission returns `conflicting_historical_source` and blocks
+both blind reuse and recompilation until provenance is complete.
+
+Unstructured wave reports remain forensic laboratory records. Their bodies are
+never injected automatically.
 
 ```text
 historical probe
@@ -215,6 +263,21 @@ python tools/agent.py knowledge audit
 
 A wave without a card may contain only owner-specific history; the audit must not
 invent a global rule from a filename or matching percentage.
+
+## Mandatory lane freshness
+
+Every recovery lane starts with:
+
+```sh
+python tools/agent.py memory startup-check --strict-reports
+```
+
+The check requires one canonical queue, initializes/opens the shared registry,
+proves the current permanent recovery-workflow ref is an ancestor of the lane,
+validates cards and freshness metadata, synchronizes completed reports, and
+records a hash-bound lane snapshot. `agent context`, recovery worktree creation,
+and managed commit/push hooks run the relevant check automatically. A stale lane
+must update/rebase; it may not compile around the failure.
 
 ## Updating knowledge
 

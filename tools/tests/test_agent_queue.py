@@ -21,6 +21,10 @@ from tools.agent_queue import (
     check_diff_claim,
     claim_next,
     claim_task,
+    canonical_queue_path,
+    legacy_queue_paths,
+    migrate_shadow_queues,
+    queue_location_audit,
     queue_path,
     read_queue,
     record_verification,
@@ -101,6 +105,91 @@ class AgentQueueTests(unittest.TestCase):
         add_task(self.main, "a", source="src/a.c", priority="high")
         task = claim_task(self.claude, "a", agent="claude")
         self.assertEqual(task["priority"], "high")
+
+    def test_git_common_queue_is_native_absolute(self) -> None:
+        expected = self.main / ".git" / "agent-coordination" / "queue.json"
+        self.assertEqual(canonical_queue_path(self.claude), expected.resolve())
+
+    def test_shadow_queue_blocks_normal_operations(self) -> None:
+        shadow = self.base / "legacy" / "queue.json"
+        shadow.parent.mkdir(parents=True)
+        shadow.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "updated_at": "2026-01-01T00:00:00+00:00",
+                    "tasks": [],
+                    "resources": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with mock.patch.object(
+            agent_queue, "legacy_queue_paths", return_value=[shadow]
+        ):
+            with self.assertRaisesRegex(QueueError, "shadow recovery queue"):
+                queue_path(self.main)
+
+    def test_shadow_queue_migration_preserves_and_archives(self) -> None:
+        canonical = self.base / "canonical" / "queue.json"
+        shadow = self.base / "legacy" / "queue.json"
+        add_task(
+            self.main,
+            "canonical-task",
+            source="src/a.c",
+            queue_file=canonical,
+        )
+        add_task(
+            self.main,
+            "shadow-task",
+            source="src/b.c",
+            queue_file=shadow,
+        )
+        shadow_bytes = shadow.read_bytes()
+        with mock.patch.object(
+            agent_queue, "legacy_queue_paths", return_value=[shadow]
+        ):
+            result = migrate_shadow_queues(self.main, canonical)
+        self.assertEqual(result["status"], "migrated")
+        self.assertEqual(len(result["migrations"]), 1)
+        owners = {task["owner"] for task in read_queue(canonical)["tasks"]}
+        self.assertEqual(owners, {"canonical-task", "shadow-task"})
+        self.assertFalse(shadow.exists())
+        archive = Path(result["migrations"][0]["archive"])
+        evidence = Path(result["migrations"][0]["evidence"])
+        self.assertEqual(archive.read_bytes(), shadow_bytes)
+        self.assertEqual(evidence.read_bytes(), shadow_bytes)
+        audit = queue_location_audit(self.main, canonical)
+        self.assertEqual(audit["status"], "canonical")
+
+    def test_shadow_queue_conflict_fails_without_moving_source(self) -> None:
+        canonical = self.base / "canonical-conflict" / "queue.json"
+        shadow = self.base / "legacy-conflict" / "queue.json"
+        original = add_task(
+            self.main,
+            "canonical-conflict",
+            source="src/a.c",
+            queue_file=canonical,
+        )
+        add_task(
+            self.main,
+            "shadow-conflict",
+            source="src/b.c",
+            queue_file=shadow,
+        )
+        value = json.loads(shadow.read_text(encoding="utf-8"))
+        value["tasks"][0]["id"] = original["id"]
+        shadow.write_text(json.dumps(value), encoding="utf-8")
+        with mock.patch.object(
+            agent_queue, "legacy_queue_paths", return_value=[shadow]
+        ):
+            with self.assertRaisesRegex(QueueError, "conflicts on task id"):
+                migrate_shadow_queues(self.main, canonical)
+        self.assertTrue(shadow.is_file())
+        self.assertEqual(
+            [task["owner"] for task in read_queue(canonical)["tasks"]],
+            ["canonical-conflict"],
+        )
 
     def test_claimed_source_rejects_second_open_task(self) -> None:
         add_task(self.main, "a", source="src/a.c", priority="high")

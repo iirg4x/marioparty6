@@ -40,6 +40,14 @@ from typing import Any, Mapping, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.recovery_memory import (
+    RecoveryMemoryError,
+    match_precompile_admission,
+    match_record_experiment,
+    match_require_precompile_admission,
+    recovery_memory_available,
+)
+
 REQUEST_SCHEMA = "match_workbench_request/v1"
 SESSION_SCHEMA = "match_workbench_session/v1"
 CANDIDATE_SCHEMA = "match_workbench_candidate/v1"
@@ -3288,7 +3296,14 @@ def _object_key(session: Mapping[str, Any], object_sha: str) -> str:
 
 
 def lookup_matches(
-    root: Path, workspace: Path | str, source: Path | str | None = None, object_path: Path | str | None = None
+    root: Path,
+    workspace: Path | str,
+    source: Path | str | None = None,
+    object_path: Path | str | None = None,
+    *,
+    shape_key: str | None = None,
+    hypothesis: str | None = None,
+    axis: str | None = None,
 ) -> dict[str, Any]:
     if source is None and object_path is None:
         _fail("lookup requires a source or object artifact")
@@ -3346,6 +3361,38 @@ def lookup_matches(
         status = "known_source"
     elif object_match:
         status = "known_object"
+    global_memory: dict[str, Any] | None = None
+    global_reason: str | None = None
+    if source_snapshot is not None and source_match is None and not conflict:
+        if object_path is not None and recovery_memory_available(root):
+            global_memory = {
+                "status": "post_compile_lookup_not_admitted",
+                "skip_compile": True,
+                "reason": (
+                    "a new source was looked up with an object already present; "
+                    "central admission requires a source-only lookup before compile"
+                ),
+                "authority_advanced": False,
+            }
+        else:
+            try:
+                global_memory = match_precompile_admission(
+                    root,
+                    session,
+                    str(source_snapshot["sha256"]),
+                    source_path=str(source_path),
+                    shape_key=shape_key,
+                    hypothesis=hypothesis,
+                    axis=axis,
+                )
+            except RecoveryMemoryError as exc:
+                _fail(f"central recovery memory admission failed: {exc}")
+        if global_memory.get("skip_compile"):
+            status = str(global_memory["status"])
+            global_reason = str(
+                global_memory.get("reason")
+                or "candidate is already known or reserved in central recovery memory"
+            )
     if source_snapshot is not None and source_path is not None:
         _recheck_live_snapshot(source_path, source_snapshot, "candidate source")
     if object_snapshot is not None and object_path is not None:
@@ -3355,6 +3402,7 @@ def lookup_matches(
         if source_match is not None and not conflict
         else None
     )
+    local_skip_compile = bool(source_match) and _compile_context_complete(session["request"]["context"]) and not conflict
     return {
         "status": status,
         "source_sha256": source_snapshot["sha256"] if source_snapshot else None,
@@ -3362,7 +3410,8 @@ def lookup_matches(
         "source_candidate_id": source_match,
         "object_candidate_id": object_match,
         "source_context_key": source_key,
-        "skip_compile": bool(source_match) and _compile_context_complete(session["request"]["context"]) and not conflict,
+        "skip_compile": local_skip_compile
+        or bool(global_memory and global_memory.get("skip_compile")),
         # A known object alone does not prove that the requested diagnostic
         # manifest has run.  Diagnose remains cheap because exact fingerprints
         # are content-addressed and return cached results.
@@ -3375,7 +3424,7 @@ def lookup_matches(
         # that are already bound to this exact source/context key.
         "object_reuse_candidate_id": object_reuse_candidate_id,
         "object_reuse_available": object_reuse_candidate_id is not None,
-        "reason": (
+        "reason": global_reason or (
             "the same frozen source/context produced a different object; compiler inputs must be re-authenticated"
             if conflict
             else "source/context is known but the frozen compile context is incomplete; exact object is available for explicit materialize"
@@ -3384,6 +3433,7 @@ def lookup_matches(
             if object_match
             else None
         ),
+        "global_memory": global_memory,
         "authority_advanced": False,
     }
 
@@ -7447,8 +7497,27 @@ def record_candidate(
             if same:
                 _recheck_live_snapshot(source_path, source_snapshot, "candidate source")
                 _recheck_live_snapshot(object_file, object_snapshot, "candidate object")
-                return {"status": "unchanged", "record": existing}
+                try:
+                    global_memory = match_record_experiment(
+                        root,
+                        session,
+                        existing,
+                        workspace=str(destination),
+                    )
+                except RecoveryMemoryError as exc:
+                    _fail(f"central recovery memory record failed: {exc}")
+                return {
+                    "status": "unchanged",
+                    "record": existing,
+                    "global_memory": global_memory,
+                }
             _fail(f"candidate_id already records different evidence: {candidate_id}")
+        try:
+            global_admission = match_require_precompile_admission(
+                root, session, str(source_snapshot["sha256"])
+            )
+        except RecoveryMemoryError as exc:
+            _fail(f"central recovery memory admission failed: {exc}")
         source_blob = _copy_blob(destination, source_path, "source", source_snapshot)
         object_blob = _copy_blob(destination, object_file, "object", object_snapshot)
         strict = _store_report(
@@ -7534,7 +7603,21 @@ def record_candidate(
         index["object_index"].setdefault(object_key, candidate_id)
         index["last_record_sha256"] = record["record_sha256"]
         _atomic_replace(destination / "index.json", _canonical(_with_self_hash(index, "index_sha256")))
-    return {"status": "duplicate" if duplicate_id else "recorded", "record": record}
+    try:
+        global_memory = match_record_experiment(
+            root,
+            session,
+            record,
+            workspace=str(destination),
+        )
+    except RecoveryMemoryError as exc:
+        _fail(f"central recovery memory record failed: {exc}")
+    return {
+        "status": "duplicate" if duplicate_id else "recorded",
+        "record": record,
+        "global_admission": global_admission,
+        "global_memory": global_memory,
+    }
 
 
 def _validate_argv_dependencies(argv: Sequence[str], *, root: Path, base: Path, executable: Mapping[str, Any], inputs: Sequence[Mapping[str, Any]]) -> None:
@@ -10299,6 +10382,12 @@ def _add_commands(commands: Any) -> None:
     lookup.add_argument("--workspace", required=True)
     lookup.add_argument("--source")
     lookup.add_argument("--object")
+    lookup.add_argument(
+        "--shape-key",
+        help="canonical semantic source-shape key for negative-control reuse",
+    )
+    lookup.add_argument("--hypothesis")
+    lookup.add_argument("--axis")
     lookup.add_argument("--json", action="store_true")
 
     materialize = commands.add_parser(
@@ -10804,7 +10893,15 @@ def run_match_command(args: argparse.Namespace, *, root: Path) -> int:
     elif args.match_command == "repair-target":
         result = repair_target(root, args.workspace)
     elif args.match_command == "lookup":
-        result = lookup_matches(root, args.workspace, args.source, args.object)
+        result = lookup_matches(
+            root,
+            args.workspace,
+            args.source,
+            args.object,
+            shape_key=args.shape_key,
+            hypothesis=args.hypothesis,
+            axis=args.axis,
+        )
     elif args.match_command == "materialize":
         result = materialize_candidate_object(
             root,

@@ -50,7 +50,7 @@ def hooks_dir(root: Path) -> Path:
             root,
             "git",
             "rev-parse",
-            "--path-format=relative",
+            "--path-format=absolute",
             "--git-common-dir",
         ),
         relative_to=root,
@@ -64,6 +64,7 @@ def _script(kind: str) -> str:
 ROOT="$(git rev-parse --show-toplevel)"
 PYTHON_BIN="${MP6_PYTHON:-python}"
 cd "$ROOT"
+"$PYTHON_BIN" tools/agent.py memory startup-check --no-sync
 if [ -n "${MP6_AGENT_BASE:-}" ]; then
   "$PYTHON_BIN" tools/claim_diff.py --base "$MP6_AGENT_BASE"
 else
@@ -83,6 +84,7 @@ for name in $LOCAL_GIT_ENV; do
 done
 PYTHON_BIN="${MP6_PYTHON:-python}"
 cd "$ROOT"
+"$PYTHON_BIN" tools/agent.py memory startup-check --no-sync
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_ref" = "refs/heads/main" ]; then
     "$PYTHON_BIN" tools/progress_gate.py --base "$remote_sha" --head "$local_sha"
