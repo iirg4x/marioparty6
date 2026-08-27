@@ -541,9 +541,10 @@ crack-learning module ran 73 tests; the full central tools suite ran 897 tests
 with 7 skips and no failures. Existing D-form contexts and CLI behavior remain
 compatible because the context is optional. This capability introduced v31.
 The source-linked owner-closure gate below introduced v32. Consumers that
-validate the cumulative dispatcher schema must now accept v35: v33 added the
+validate the cumulative dispatcher schema must now accept v36: v33 added the
 single-use final-call consumer diagnosis, v34 added the switch/default typed
-fold, and v35 adds immutable same-file history contract closure.
+fold, v35 added immutable same-file history contract closure, and v36 adds the
+source-bound MWCC score-delta control.
 
 ## Source-linked owner-closure provenance gate
 
@@ -731,11 +732,59 @@ padding, and register shaping remain suppressed.
 
 The standalone rule emits no source edits and advances no authority. Its
 installed-checkpoint dispatcher emitted `crack_learning_diagnosis/v34`; the
-current cumulative dispatcher emits v35. The real immutable KillerBoost replay
+current cumulative dispatcher emits v36. The real immutable KillerBoost replay
 at that checkpoint emits diagnosis SHA-256
 `77714aef32eeffbd764b97223bc83fd24ae9bc97ab880a4af5a018ab139af5f0`.
 Focused verification ran 79 tests across the rule and dispatcher modules; the
 full central tools suite ran 918 tests with 7 skips and no failures.
+
+## Source-bound MWCC score-delta control
+
+Installed implementation checkpoint:
+`75812cddcbe00cdebcca47ec706ba527d159a886`. The owning files are
+`tools/mwcc_score_delta_reducer.py`, `tools/crack_learning_rules.py`,
+`tools/tests/test_mwcc_score_delta_reducer.py`, and the dispatcher tests in
+`tools/tests/test_crack_learning_rules.py`.
+
+Run the evidence-bound control through the cumulative dispatcher:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/pauseguide-c096.strict.json \
+  --function PauseGuideMain \
+  --mwcc-score-delta-context work/pauseguide.score-delta-context.json \
+  > work/pauseguide.learning.json
+```
+
+`mwcc_score_delta_context/v1` is closed and target-independent. It requires an
+exact-size, exact-frame, exact-operation/CFG/call, physical-relocation-identical
+nonexact precursor; a codegen-neutral retained control; an independently exact
+result; and same-session frontend traces for one named GPR or FPR owner. The
+retained trace must increase the allocation score by a positive even delta and
+must change the authenticated physical color. Every score point is then closed
+by source-ordered one-line def/use pairs. Each pair must be exactly
+`owner = owner;`, must bind the retained source hash and exact text hash, and
+must contribute exactly one definition plus one use. Missing, extra, duplicate,
+ambiguous, or unbound increments fail closed.
+
+The PauseGuide replay binds report SHA-256
+`a75123db425fd9395400de8709bdc68411106ff71ba68629ed39e8bff885338f`.
+It maps `weight` score `4`/`f23` to score `10`/`f27`, with the minimal `+6`
+explained by exactly three sealed def/use lines, `1243-1245`. The baseline has
+23 allocation rows and 26 independent pool rows; the retained control removes
+only the 23 allocation rows and introduces no instruction, call, store, or
+branch. The exact-result objdiff hash suppresses the rule, and the retained-
+control hash hands off only the 26 non-score rows.
+
+The self-assignments remain explicitly function-scoped source debt. The reducer
+emits one diagnostic control cell with `retention_authorized:false` and
+`authority_advanced:false`; it never claims original prose or creates a waiver
+for dead/fake locals, padding, register shaping, scope/declaration matrices,
+repeat tracing, automatic retention, or promotion. Candidate-record telemetry
+focus compaction remains owned by its separate workbench task and was not
+modified by this rule; the reducer consumes only the sealed trace comparison.
+Focused reducer/dispatcher/adjacent-contract verification ran 86 tests; the
+full central tools suite ran 935 tests with 7 skips and no failures.
 
 ## Switch/default topology and typed constant-fold diagnosis
 
@@ -1094,8 +1143,8 @@ For the context-bound rules, pass parsed objects as `allocator_context=`,
 `same_tu_shape_context=`, `short_circuit_context=`,
 `exact_sibling_transfer_context=`, `capacity_context=`, `branch_context=`, or
 `reciprocal_context=`, `pool_live_range_context=`,
-`float_truthiness_context=`, `single_use_final_call_context=`, or
-`switch_default_fold_context=`. The same
+`float_truthiness_context=`, `single_use_final_call_context=`,
+`mwcc_score_delta_context=`, or `switch_default_fold_context=`. The same
 closed validation used by the CLI is applied to Python callers.
 
 ## Installed-functionality audit
@@ -1116,6 +1165,7 @@ These installed joins are narrower than those generic classifications:
 | assignment/condition saved-GPR cycle | Equal function size; identical operations, relative branches, relocations, and non-register operands; a closed cycle of at least three nonvolatile GPRs; and a call result copied to the cycled register immediately before comparison and conditional branch | Assignment in its consuming condition |
 | allocator two-register swap interaction | Equal function size and measurable frame; identical operations, relative branches, relocations, immediates, data values, physical relocations, and protected siblings; exactly one closed two-nonvolatile-GPR swap; exact VarInfo owner-to-register mapping; and one authenticated producer/consumer identity boundary | A bounded 2x2 interaction of natural declaration chronology and natural producer/consumer expression fusion |
 | single-use final-call direct consumption | Equal size/frame and exact data/physical relocations/siblings; exactly four register-only rows forming one closed two-saved-GPR swap; one long-lived parameter owner; one assigned-once/consumed-once scalar conversion owner; a sealed final typed semantic call; an exact unaffected argument owner; and declaration, pointer, and assignment-expression controls with their required measured outcomes | Remove only the redundant scalar identity and consume its existing truthful producer expression directly at the typed final call |
+| source-bound MWCC score delta | Equal size/frame and exact operations/CFG/calls/physical relocations/siblings; one closed allocation-row partition; same-session score traces with a changed physical color; a codegen-neutral measured control; and every minimal score increment sealed to one exact source line and source hash | Compile one diagnostic-only minimal def/use score control, preserve all other axes, and treat the spelling as function-scoped source debt rather than provenance or retention authority |
 | parameter/allocation consumer chain | Equal size/frame; a complete parameter versus allocation-result saved-GPR swap; exact data/CFG/physical relocations/siblings; an authenticated allocation call followed immediately by a saved-owner `mr`; and adjacent field-store then typed-pointer-copy consumers | Preserve the explicit allocation-result identity and fuse only its consumers as a right-associative assignment |
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
