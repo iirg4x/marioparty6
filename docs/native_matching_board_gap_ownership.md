@@ -81,3 +81,21 @@ literal controls do not establish ownership.
 The practical rule is therefore to inspect ownership before editing C. Never
 widen a real declaration, add opaque storage, or insert padding solely to make
 raw section extents equal.
+
+## Register-only final-call residuals are not gaps
+
+An exact-size function whose data, physical relocations, frame, calls, and
+protected siblings are exact can still contain a real source-identity defect.
+When exactly four operand rows form a complete two-saved-GPR swap at the final
+typed semantic call, the residual belongs to frontend owner chronology, not to
+section or tail ownership. `tools/crack_learning_rules.py
+--single-use-final-call-context` validates the narrower case where one owner is
+a long-lived parameter and the other is an assigned-once, consumed-once scalar
+conversion. It ranks direct producer consumption only after the unaffected call
+argument and declaration, pointer, and assignment-expression controls are
+sealed. Compiler restore thunks after the semantic call are permitted; any
+later ordinary call fails closed.
+
+This diagnosis is read-only and authority-false. It never justifies padding,
+dead storage, fake control flow, volatile access, forced registers, or treating
+register allocation as a harmless synthetic gap.

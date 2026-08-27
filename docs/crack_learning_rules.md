@@ -539,9 +539,10 @@ stays explicitly ineligible. It also binds `165/165` functions,
 byte-identical `main.dol`. Focused verification ran 7 tests; the complete
 crack-learning module ran 73 tests; the full central tools suite ran 897 tests
 with 7 skips and no failures. Existing D-form contexts and CLI behavior remain
-compatible because the context is optional. This capability introduced v31;
-consumers that validate the cumulative dispatcher schema must now accept v32,
-which adds the source-linked owner-closure gate below.
+compatible because the context is optional. This capability introduced v31.
+The source-linked owner-closure gate below introduced v32. Consumers that
+validate the cumulative dispatcher schema must now accept v33, which adds the
+single-use final-call consumer diagnosis.
 
 ## Source-linked owner-closure provenance gate
 
@@ -616,6 +617,52 @@ one-consumer `250.0f` seam must also satisfy every addressable-owner constraint.
 Focused verification ran 15 tests; the complete crack-learning dispatcher ran
 73 tests; the full central tools suite ran 912 tests with 7 skips and no
 failures.
+
+## Single-use final-call direct-consumer diagnosis
+
+Installed implementation checkpoint:
+`7cb46ca59cfcce57a09f97f5ef993c47c4d652f5`. The owning files are
+`tools/single_use_final_call_consumer.py`, `tools/crack_learning_rules.py`,
+`tools/tests/test_single_use_final_call_consumer.py`, and the dispatcher tests
+in `tools/tests/test_crack_learning_rules.py`.
+
+Run the diagnosis through the cumulative dispatcher:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/killerboost-baseline.strict.json \
+  --function ev_CapEffKillerBoostCreate \
+  --single-use-final-call-context \
+    work/killerboost.single-use-final-call-context.json \
+  > work/killerboost.learning.json
+```
+
+`single_use_final_call_consumer_context/v1` is a closed, hash-bound evidence
+packet. It requires exact function size and frame, exact data and physical
+relocations, exactly four register-operand residual rows forming one complete
+two-nonvolatile-GPR swap, one long-lived parameter owner, and one assigned-once,
+consumed-once scalar conversion owner. The conversion must feed the final typed
+semantic call. Compiler restore thunks such as `_restgpr_N` and `_restfpr_N`
+after that call are ignored for this final-call test; any later ordinary call
+fails closed.
+
+The KillerBoost replay binds `1292/1292`, `88/88` physical relocations,
+`work` as target/candidate `r26/r25`, and `time` as target/candidate `r25/r26`.
+It also binds unaffected `colorP` in `r29` through the seventh call argument.
+Only the direct producer expression
+`(int)(60.0f * (1.0f + (0.5f * MBCapsuleEffRandF())))` is recommended.
+Declaration chronology must be object-identical, the unrelated pointer-birth
+and pointer-final-consumer controls must regress topology, and the assignment-
+expression control must grow the function. Assignment-expression retries,
+pointer probes, global declaration permutations, tracing, fake/dead locals,
+padding, and register shaping remain suppressed.
+
+The standalone rule emits no source edits and advances no authority. The
+dispatcher emits `crack_learning_diagnosis/v33`; the real immutable KillerBoost
+replay emits diagnosis SHA-256
+`77714aef32eeffbd764b97223bc83fd24ae9bc97ab880a4af5a018ab139af5f0`.
+Focused verification ran 79 tests across the rule and dispatcher modules; the
+full central tools suite ran 918 tests with 7 skips and no failures.
 
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one
@@ -928,9 +975,9 @@ For the context-bound rules, pass parsed objects as `allocator_context=`,
 `aggregate_followup_context=`, `address_taken_context=`,
 `same_tu_shape_context=`, `short_circuit_context=`,
 `exact_sibling_transfer_context=`, `capacity_context=`, `branch_context=`, or
-`reciprocal_context=`, `pool_live_range_context=`, or
-`float_truthiness_context=`. The same closed validation used by the CLI is applied
-to Python callers.
+`reciprocal_context=`, `pool_live_range_context=`,
+`float_truthiness_context=`, or `single_use_final_call_context=`. The same
+closed validation used by the CLI is applied to Python callers.
 
 ## Installed-functionality audit
 
@@ -940,7 +987,7 @@ its exact `explicit_else_return_epilogue` hypothesis; it does not duplicate the
 CFG detector. The existing reducer also remains the owner of generic stack,
 aggregate, branch, ABI, and relocation clustering.
 
-The twenty joins are narrower than those generic classifications:
+These installed joins are narrower than those generic classifications:
 
 | Rule | Required evidence join | Natural source class |
 |---|---|---|
@@ -948,6 +995,7 @@ The twenty joins are narrower than those generic classifications:
 | loop branch destination | Equal size/frame; exactly one relocation-identical conditional branch residual; sealed target/candidate relative destinations classified as target loop exit versus candidate loop increment; exact data, physical relocations, and siblings | Explicit else-break for an authenticated zero terminator |
 | assignment/condition saved-GPR cycle | Equal function size; identical operations, relative branches, relocations, and non-register operands; a closed cycle of at least three nonvolatile GPRs; and a call result copied to the cycled register immediately before comparison and conditional branch | Assignment in its consuming condition |
 | allocator two-register swap interaction | Equal function size and measurable frame; identical operations, relative branches, relocations, immediates, data values, physical relocations, and protected siblings; exactly one closed two-nonvolatile-GPR swap; exact VarInfo owner-to-register mapping; and one authenticated producer/consumer identity boundary | A bounded 2x2 interaction of natural declaration chronology and natural producer/consumer expression fusion |
+| single-use final-call direct consumption | Equal size/frame and exact data/physical relocations/siblings; exactly four register-only rows forming one closed two-saved-GPR swap; one long-lived parameter owner; one assigned-once/consumed-once scalar conversion owner; a sealed final typed semantic call; an exact unaffected argument owner; and declaration, pointer, and assignment-expression controls with their required measured outcomes | Remove only the redundant scalar identity and consume its existing truthful producer expression directly at the typed final call |
 | parameter/allocation consumer chain | Equal size/frame; a complete parameter versus allocation-result saved-GPR swap; exact data/CFG/physical relocations/siblings; an authenticated allocation call followed immediately by a saved-owner `mr`; and adjacent field-store then typed-pointer-copy consumers | Preserve the explicit allocation-result identity and fuse only its consumers as a right-associative assignment |
 | aggregate-use multiplicity | Equal size/frame; exact operations/CFG/data/physical relocations/siblings; one complete two-or-more saved-GPR ownership cycle; a sealed live aggregate parameter; and one or more complete ordered same-type member-copy groups | Replace only each complete member-wise group with a natural aggregate assignment while preserving unrelated same-owner consumers |
 | aggregate two-owner follow-up | Aggregate reconstruction already applied; equal size/frame and exact CFG/data/physical relocations/siblings; exactly one sealed typed two-saved-GPR swap; and a measured expression-fusion cell that changes size/topology and regresses strictness | Keep split producer/consumer expressions and compile only the authenticated declaration-order cell; never combine it with the rejected fusion axis |
