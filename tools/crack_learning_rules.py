@@ -39,8 +39,8 @@ from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v29"
-SCHEMA_VERSION = 29
+SCHEMA = "crack_learning_diagnosis/v30"
+SCHEMA_VERSION = 30
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -81,6 +81,9 @@ SAVED_FPR_SEMANTIC_OWNER_CONTEXT_SCHEMA = (
 )
 SAME_TU_CONSTRUCTOR_FAMILY_CONTEXT_SCHEMA = same_tu_constructor_family_transfer.CONTEXT_SCHEMA
 TU_GLOBAL_POOL_PRODUCER_CONTEXT_SCHEMA = tu_global_pool_producer.CONTEXT_SCHEMA
+TU_GLOBAL_POOL_PRODUCER_BOUNDARY_CONTEXT_SCHEMA = (
+    tu_global_pool_producer.BOUNDARY_CONTEXT_SCHEMA
+)
 TARGET_EMITTED_OVERWRITTEN_CONTEXT_SCHEMA = (
     target_emitted_overwritten_computation.CONTEXT_SCHEMA
 )
@@ -13338,6 +13341,10 @@ def diagnose_document(
             "tu_global_pool_producer": {
                 "path": Path(tu_global_pool_producer.__file__).name,
                 "schema": tu_global_pool_producer.CONTEXT_SCHEMA,
+                "supported_context_schemas": [
+                    tu_global_pool_producer.CONTEXT_SCHEMA,
+                    tu_global_pool_producer.BOUNDARY_CONTEXT_SCHEMA,
+                ],
                 "sha256": _sha256(Path(tu_global_pool_producer.__file__).read_bytes()),
             },
             "target_emitted_overwritten_computation": {
@@ -13502,8 +13509,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--tu-global-pool-producer-context",
         type=Path,
         help=(
-            "authenticated tu_global_pool_producer_context/v1 JSON with one "
-            "target-global owner, a seven-consumer census, and an object-neutral local-static control"
+            "authenticated tu_global_pool_producer_context/v1 or "
+            "tu_global_pool_producer_boundary_context/v1 JSON with either a "
+            "target-global visibility control or a sealed typed boundary gap"
         ),
     )
     parser.add_argument(

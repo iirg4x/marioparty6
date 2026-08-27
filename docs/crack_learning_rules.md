@@ -1389,6 +1389,28 @@ ask, or exact-result drift fails closed. Synthetic labels/externs, duplicate
 seeders, literal-spelling probes, downstream exact-body edits, padding, dead
 locals, register shaping, retention, and promotion are suppressed.
 
+The same rule has a second sealed stage for a missing typed producer at a
+natural TU boundary. `tu_global_pool_producer_boundary_context/v1` first
+requires the mapped `lbl_802C4370` `10.0f` consumer contract to be closed. On
+the c697 DonkeyStart precursor it then requires exactly five authenticated
+`lfs` owner rows, the target-only `.sdata2+0x1AC` f32 `0x437A0000` object, and
+the predicted four-byte displacement of the downstream `80.0f`/`135.0f`
+owners. The only ranked cell is the live file-scope producer at the verified
+Kettou-to-Donkey boundary:
+
+```c
+const float capspecialKettouHeight = 250.0f;
+```
+
+The context records four exhausted controls: mutable linkage, a forward
+external definition, a forward static/tentative definition, and a same-name
+local extern. It suppresses further linkage/redeclaration permutations,
+downstream body edits, anonymous-pool substitution, and tracing. The c698
+replay must be `4700/4700`, zero strict/data rows, and `384/384` relocation
+annotations while preserving `31/31` protected functions; it then schedules
+nothing. The owner remains open at `37/44`, and later production drift is
+explicitly excluded from this function-scoped proof.
+
 Graphify remains first even when no usable graph exists: the context records
 that no-hit without inventing edges, permits exactly one bounded Graft ask, and
 requires narrow named-file verification. The bounded c691/c692 campaign has
