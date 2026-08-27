@@ -4,7 +4,13 @@ import copy
 import unittest
 
 from tools import crack_first_pass as first_pass
+from tools import complete_stack_home_exchange as stack_home
 from tools import typed_pool_owner_manifest as manifest
+from tools.tests.test_complete_stack_home_exchange import (
+    FUNCTION as HANACHAN_FUNCTION,
+    binding as hanachan_binding,
+    reports as hanachan_reports,
+)
 from tools.tests.test_typed_pool_owner_manifest import FUNCTION, binding, reports
 
 
@@ -53,6 +59,22 @@ class CrackFirstPassTests(unittest.TestCase):
         self.assertEqual(result["route"], "causal_reducer_then_typed_pool_decoder")
         self.assertEqual(result["candidate_budget"], 3)
         self.assertEqual(result["trace_budget"], 1)
+
+    def test_routes_complete_stack_home_exchange_before_generic_causal_reducer(self) -> None:
+        strict, data = hanachan_reports()
+        owner_result = manifest.build_manifest(strict, data, HANACHAN_FUNCTION, hanachan_binding())
+        diagnosis = stack_home.build_diagnosis(
+            strict, data, HANACHAN_FUNCTION, hanachan_binding()
+        )
+        result = first_pass.route_manifest(owner_result, diagnosis)
+
+        self.assertEqual(owner_result["status"], "blocked")
+        self.assertEqual(diagnosis["status"], "matched")
+        self.assertEqual(result["route"], stack_home.ROUTE)
+        self.assertEqual(result["candidate_budget"], 3)
+        self.assertEqual(result["trace_budget"], 0)
+        self.assertEqual(result["facts"]["stack_home_row_count"], 46)
+        self.assertEqual(result["facts"]["stack_home_pool_handoff_row_count"], 1)
 
     def test_triage_hash_is_canonical(self) -> None:
         strict, data = reports()

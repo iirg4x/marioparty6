@@ -18,19 +18,30 @@ from typing import Any, Mapping, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from tools import complete_stack_home_exchange as stack_home
 from tools import typed_pool_owner_manifest as owner_manifest
 
 
 SCHEMA = "crack_first_pass/v1"
 
 
-def route_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
+def route_manifest(
+    manifest: Mapping[str, Any],
+    stack_home_diagnosis: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     facts = manifest.get("facts") if isinstance(manifest.get("facts"), Mapping) else {}
     strict_count = int(facts.get("strict_residual_row_count") or 0)
     pool_count = int(facts.get("nonexact_pool_row_count") or 0)
     classification_counts = facts.get("classification_counts")
     if not isinstance(classification_counts, Mapping):
         classification_counts = {}
+
+    stack_home_facts = (
+        stack_home_diagnosis.get("facts")
+        if isinstance(stack_home_diagnosis, Mapping)
+        and isinstance(stack_home_diagnosis.get("facts"), Mapping)
+        else {}
+    )
 
     if manifest.get("status") == "matched":
         route = "typed_pool_owner_manifest"
@@ -39,6 +50,15 @@ def route_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "Confirm each listed instruction row maps to a truthful semantic source consumer.",
             "Compile the single composed named-owner binding cell.",
             "Run strict/data/physical-relocation/protected-sibling proof and write CRACK_REPORT/v1.",
+        ]
+        trace_budget = 0
+    elif isinstance(stack_home_diagnosis, Mapping) and stack_home_diagnosis.get("status") == "matched":
+        route = stack_home.ROUTE
+        candidate_budget = 3
+        actions = [
+            "Enumerate the complete candidate-to-target stack-home mapping and observed extents.",
+            "Query Graphify plus one exact same-game donor for the live aggregate/capacity class, then compile one composed cell.",
+            "Decode only the listed remaining pool rows after home topology is exact; suppress declaration and scope permutations.",
         ]
         trace_budget = 0
     elif pool_count == strict_count and pool_count > 0:
@@ -87,6 +107,21 @@ def route_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "typed_owner_manifest_status": manifest.get("status"),
             "typed_owner_manifest_sha256": manifest.get("manifest_sha256"),
             "typed_owner_manifest_blockers": list(manifest.get("blockers", [])),
+            "stack_home_diagnosis_status": (
+                stack_home_diagnosis.get("status")
+                if isinstance(stack_home_diagnosis, Mapping)
+                else None
+            ),
+            "stack_home_diagnosis_sha256": (
+                stack_home_diagnosis.get("diagnosis_sha256")
+                if isinstance(stack_home_diagnosis, Mapping)
+                else None
+            ),
+            "stack_home_row_count": stack_home_facts.get("stack_home_row_count"),
+            "stack_home_mapping_count": stack_home_facts.get("mapping_count"),
+            "stack_home_pool_handoff_row_count": stack_home_facts.get(
+                "pool_handoff_row_count"
+            ),
         },
         "p0_scope": "crack_assigned_function_and_complete_CRACK_REPORT_v1",
         "source_patch_emitted": False,
@@ -100,7 +135,8 @@ def route_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
 
 def build_from_paths(**kwargs: Any) -> dict[str, Any]:
     manifest = owner_manifest.build_from_paths(**kwargs)
-    return route_manifest(manifest)
+    diagnosis = stack_home.build_from_paths(**kwargs)
+    return route_manifest(manifest, diagnosis)
 
 
 def _parser() -> argparse.ArgumentParser:
