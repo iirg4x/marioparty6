@@ -2,7 +2,7 @@
 
 `tools/crack_learning_rules.py` turns reviewed function- and owner-level lessons into
 deterministic, read-only diagnoses. It composes the installed causal objdiff
-reducer and emits self-hashed `crack_learning_diagnosis/v27` JSON with
+reducer and emits self-hashed `crack_learning_diagnosis/v32` JSON with
 `authority_advanced:false`.
 
 The output is not a source generator or retention receipt. Every matched rule
@@ -492,8 +492,8 @@ The standalone input schema is
 `repeated_opcode_low_level_readiness_context/v1`; its output schema is
 `repeated_opcode_low_level_readiness/v1` and its self-hash field is
 `readiness_sha256`. The dispatcher embeds the complete standalone result,
-binds the normalized context and implementation hashes, and emits
-`crack_learning_diagnosis/v31` with `diagnosis_sha256`. Both hashes are
+binds the normalized context and implementation hashes, and emits the current
+`crack_learning_diagnosis/v32` with `diagnosis_sha256`. Both hashes are
 SHA-256 over canonical JSON with the respective self-hash field omitted.
 Standalone `--output` replacement is atomic. Semantic collections are sorted
 by stable function/span, operation/helper/type/fingerprint, and operation/control
@@ -539,8 +539,83 @@ stays explicitly ineligible. It also binds `165/165` functions,
 byte-identical `main.dol`. Focused verification ran 7 tests; the complete
 crack-learning module ran 73 tests; the full central tools suite ran 897 tests
 with 7 skips and no failures. Existing D-form contexts and CLI behavior remain
-compatible because the new context is optional; consumers that validate the
-dispatcher schema must accept the intentional v30-to-v31 version increment.
+compatible because the context is optional. This capability introduced v31;
+consumers that validate the cumulative dispatcher schema must now accept v32,
+which adds the source-linked owner-closure gate below.
+
+## Source-linked owner-closure provenance gate
+
+Installed implementation checkpoint:
+`0fac65da27c93a12407de8c2f5470b13b5fcfe97`. The owning files are
+`tools/source_linked_owner_closure.py`, `tools/crack_learning_rules.py`, and
+`tools/tests/test_source_linked_owner_closure.py`.
+
+Run the standalone validator at an owner-closure boundary:
+
+```sh
+rtk python tools/source_linked_owner_closure.py \
+  --context work/capevent.source-linked-closure.json \
+  --focus-symbol mbev_CapCoinDisp \
+  --objdiff-canonical-sha256 <sha256> \
+  --output work/capevent.source-linked-closure.result.json \
+  --require-closure
+```
+
+Or embed the same closed result in the cumulative dispatcher:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/capevent.strict.json \
+  --function mbev_CapCoinDisp \
+  --source-linked-owner-closure-context \
+    work/capevent.source-linked-closure.json \
+  > work/capevent.learning.json
+```
+
+The standalone context/result schemas are
+`source_linked_owner_closure_context/v1` and
+`source_linked_owner_closure/v1`; the normalized link receipt uses
+`source_link_owner_manifest/v1`. The result self-hash is `closure_sha256`.
+The dispatcher embeds that result and emits `crack_learning_diagnosis/v32`.
+Canonical JSON, normalized paths, closed field sets, deterministic collections,
+and atomic `--output` replacement make repeated evaluation stable.
+
+`SOURCE_LINK_CLOSURE_VERIFIED` requires all of the following in one packet:
+the configured owner is `Matching`; every owner function, strict/data row,
+physical relocation, protected sibling, and owner section is closed; a clean
+link manifest selects `reconstructed_source`; its selected object path and
+SHA-256 equal the independently verified candidate; and the exact configured
+outputs bind that same manifest canonical hash and contain a byte-identical
+main binary. The result is still only an authority-false validation receipt.
+The owning orchestrator must independently decide retention, promotion,
+progress, landing, and owner closure.
+
+`BLOCKED_FALLBACK_LINKED` is mandatory when the configured owner remains
+`NonMatching`, even if every retail checksum passes. In that state the manifest
+must honestly bind `extracted_target_fallback` and the target object hash; the
+checksum proves the fallback, not reconstructed source. A `Matching` packet
+whose candidate-to-manifest-to-output chain is incomplete emits
+`BLOCKED_SOURCE_LINK_PROVENANCE`. With `--require-closure`, either valid blocked
+state exits 2; malformed, open, or contradictory input exits 1.
+
+The optional addressable-owner subpacket is narrower than a generic pool-owner
+recommendation. It requires an exact, four-byte-aligned, read-only `.sdata2`
+extent; one-element `one_element_read_only_float_array` source; exact f32 bits
+and creation chronology; exactly one physical `R_PPC_EMB_SDA21` consumer in the
+focus function; a semantic C identifier that is not an address-derived
+`lbl_...` name; and closed direct-literal, automatic/volatile, synthetic-label,
+padding, and register-shaping controls. Only then does it emit the evidence
+class `minimum_live_addressable_read_only_f32_owner`. It never authenticates
+original spelling or writes source.
+
+The corrected CoinDisp acceptance case deliberately evaluates both sides of
+the provenance boundary. Its former `NonMatching` retail-checksum packet must
+emit `BLOCKED_FALLBACK_LINKED`; the corrected `Matching` clean-link packet must
+bind the exact candidate object and emit `SOURCE_LINK_CLOSURE_VERIFIED`. The
+one-consumer `250.0f` seam must also satisfy every addressable-owner constraint.
+Focused verification ran 15 tests; the complete crack-learning dispatcher ran
+73 tests; the full central tools suite ran 912 tests with 7 skips and no
+failures.
 
 For a large effect creator whose structural mismatch closes under authenticated
 same-TU aggregate-copy and live-pointer source forms, then leaves only one

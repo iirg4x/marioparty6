@@ -60,6 +60,24 @@ only Scroll to its retail object while leaving Audio source-linked restored all
 137 checksums. Scroll therefore remains a linked data-ownership defect, not a
 harmless-gap exception.
 
+A retail checksum is also insufficient when the owner is configured
+`NonMatching`. In that state the link can select the extracted target object;
+an exact `main.dol` then authenticates the fallback path rather than the
+reconstructed source. Whole-owner closure requires a clean `Matching` build, a
+link manifest whose selected object path and SHA-256 equal the independently
+proved candidate, and a retail-output receipt bound to that same canonical
+manifest. `tools/source_linked_owner_closure.py --require-closure` enforces this
+candidate-to-manifest-to-output chain and exits 2 for a valid fallback-linked or
+otherwise provenance-blocked packet. Its output remains non-authoritative.
+
+The same gate can carry a narrowly sealed diagnosis for a genuine source-owned
+pool object. A one-f32 owner is addressable source evidence only when the target
+and source sections, exact four-byte read-only extent, f32 bits, creation
+chronology, and single physical `R_PPC_EMB_SDA21` consumer all agree. The source
+must use a live semantic identifier and one real consumer; raw target labels,
+automatic or volatile storage, padding, register shaping, and anonymous direct
+literal controls do not establish ownership.
+
 The practical rule is therefore to inspect ownership before editing C. Never
 widen a real declaration, add opaque storage, or insert padding solely to make
 raw section extents equal.
