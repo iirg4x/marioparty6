@@ -34,12 +34,13 @@ from tools import saved_owner_semantic_split
 from tools import same_tu_constructor_family_transfer
 from tools import scalar_return_consumer_owner
 from tools import stack_extent_overwritten_initializer
+from tools import target_emitted_overwritten_computation
 from tools import traced_naggregate_reciprocal_fold
 from tools import tu_global_pool_producer
 
 
-SCHEMA = "crack_learning_diagnosis/v28"
-SCHEMA_VERSION = 28
+SCHEMA = "crack_learning_diagnosis/v29"
+SCHEMA_VERSION = 29
 HASH_FIELD = "diagnosis_sha256"
 METADATA_OWNER_CONTEXT_SCHEMA = "metadata_owner_coherence_context/v1"
 ALLOCATOR_CONTEXT_SCHEMA = "allocator_two_register_swap_context/v1"
@@ -80,6 +81,9 @@ SAVED_FPR_SEMANTIC_OWNER_CONTEXT_SCHEMA = (
 )
 SAME_TU_CONSTRUCTOR_FAMILY_CONTEXT_SCHEMA = same_tu_constructor_family_transfer.CONTEXT_SCHEMA
 TU_GLOBAL_POOL_PRODUCER_CONTEXT_SCHEMA = tu_global_pool_producer.CONTEXT_SCHEMA
+TARGET_EMITTED_OVERWRITTEN_CONTEXT_SCHEMA = (
+    target_emitted_overwritten_computation.CONTEXT_SCHEMA
+)
 SAME_TU_SHAPE_CONTEXT_SCHEMA = "same_tu_exact_sibling_shape_context/v1"
 SHORT_CIRCUIT_CONTEXT_SCHEMA = "short_circuit_boolean_call_order_context/v1"
 EXACT_SIBLING_TRANSFER_CONTEXT_SCHEMA = (
@@ -544,6 +548,7 @@ _RULE_ORDER = (
     same_tu_constructor_family_transfer.RULE_ID,
     saved_fpr_semantic_owner_chronology.RULE_ID,
     tu_global_pool_producer.RULE_ID,
+    target_emitted_overwritten_computation.RULE_ID,
     stack_extent_overwritten_initializer.RULE_ID,
     "aggregate_pointer_branch_convergence",
     "same_tu_exact_sibling_source_shapes",
@@ -3882,6 +3887,15 @@ def _parse_tu_global_pool_producer_context(
     try:
         return tu_global_pool_producer.parse_context(value)
     except tu_global_pool_producer.TuGlobalPoolProducerInputError as exc:
+        raise LearningInputError(str(exc)) from exc
+
+
+def _parse_target_emitted_overwritten_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        return target_emitted_overwritten_computation.parse_context(value)
+    except target_emitted_overwritten_computation.TargetEmittedOverwrittenInputError as exc:
         raise LearningInputError(str(exc)) from exc
 
 
@@ -10569,6 +10583,30 @@ def _tu_global_pool_producer_evaluation(
     return _evaluation(tu_global_pool_producer.RULE_ID, **result)
 
 
+def _target_emitted_overwritten_evaluation(
+    pair: causal_reducer.FunctionPair,
+    target: Sequence[causal_reducer.Instruction],
+    candidate: Sequence[causal_reducer.Instruction],
+    context: Mapping[str, Any] | None,
+    objdiff_canonical_sha256: str,
+) -> dict[str, Any]:
+    result = target_emitted_overwritten_computation.evaluate(
+        pair, target, candidate, context, objdiff_canonical_sha256
+    )
+    if result.get("matched"):
+        result = dict(result)
+        result.setdefault("confidence", 0.999)
+        result.setdefault(
+            "source_class",
+            "owner-retained target-emitted computation at a sealed program point",
+        )
+        result.setdefault(
+            "recommendation",
+            "compile only the owner-retained natural computation; do not generalize to dead assignments",
+        )
+    return _evaluation(target_emitted_overwritten_computation.RULE_ID, **result)
+
+
 def _stack_extent_overwritten_initializer_evaluation(
     pair: causal_reducer.FunctionPair,
     target: Sequence[causal_reducer.Instruction],
@@ -12635,6 +12673,7 @@ def diagnose_document(
     same_tu_constructor_family_context: Mapping[str, Any] | None = None,
     saved_fpr_semantic_owner_context: Mapping[str, Any] | None = None,
     tu_global_pool_producer_context: Mapping[str, Any] | None = None,
+    target_emitted_overwritten_context: Mapping[str, Any] | None = None,
     stack_extent_overwritten_initializer_context: Mapping[str, Any] | None = None,
     traced_naggregate_reciprocal_context: Mapping[str, Any] | None = None,
     saved_owner_semantic_split_context: Mapping[str, Any] | None = None,
@@ -12742,6 +12781,11 @@ def diagnose_document(
     normalized_tu_global_pool_producer_context = (
         _parse_tu_global_pool_producer_context(tu_global_pool_producer_context)
         if tu_global_pool_producer_context is not None
+        else None
+    )
+    normalized_target_emitted_overwritten_context = (
+        _parse_target_emitted_overwritten_context(target_emitted_overwritten_context)
+        if target_emitted_overwritten_context is not None
         else None
     )
     normalized_stack_extent_overwritten_initializer_context = (
@@ -12964,6 +13008,13 @@ def diagnose_document(
             normalized_tu_global_pool_producer_context,
             objdiff_canonical_sha256,
         ),
+        _target_emitted_overwritten_evaluation(
+            pair,
+            target,
+            candidate,
+            normalized_target_emitted_overwritten_context,
+            objdiff_canonical_sha256,
+        ),
         _stack_extent_overwritten_initializer_evaluation(
             pair,
             target,
@@ -13144,6 +13195,11 @@ def diagnose_document(
                 if normalized_tu_global_pool_producer_context is not None
                 else None
             ),
+            "target_emitted_overwritten_context_canonical_sha256": (
+                _sha256(_canonical(normalized_target_emitted_overwritten_context))
+                if normalized_target_emitted_overwritten_context is not None
+                else None
+            ),
             "stack_extent_overwritten_initializer_context_canonical_sha256": (
                 _sha256(_canonical(normalized_stack_extent_overwritten_initializer_context))
                 if normalized_stack_extent_overwritten_initializer_context is not None
@@ -13283,6 +13339,11 @@ def diagnose_document(
                 "path": Path(tu_global_pool_producer.__file__).name,
                 "schema": tu_global_pool_producer.CONTEXT_SCHEMA,
                 "sha256": _sha256(Path(tu_global_pool_producer.__file__).read_bytes()),
+            },
+            "target_emitted_overwritten_computation": {
+                "path": Path(target_emitted_overwritten_computation.__file__).name,
+                "schema": target_emitted_overwritten_computation.CONTEXT_SCHEMA,
+                "sha256": _sha256(Path(target_emitted_overwritten_computation.__file__).read_bytes()),
             },
             "saved_fpr_stack_pool_composer": {
                 "path": Path(saved_fpr_stack_pool_composer.__file__).name,
@@ -13443,6 +13504,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "authenticated tu_global_pool_producer_context/v1 JSON with one "
             "target-global owner, a seven-consumer census, and an object-neutral local-static control"
+        ),
+    )
+    parser.add_argument(
+        "--target-emitted-overwritten-context",
+        type=Path,
+        help=(
+            "authenticated target_emitted_overwritten_computation_context/v1 JSON "
+            "with a sealed target-only chain and owner-retained admissibility record"
         ),
     )
     parser.add_argument(
@@ -13697,6 +13766,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                     label="TU-global pool-producer context",
                 )
                 if args.tu_global_pool_producer_context is not None
+                else None
+            ),
+            target_emitted_overwritten_context=(
+                _load_json(
+                    args.target_emitted_overwritten_context,
+                    label="target-emitted overwritten-computation context",
+                )
+                if args.target_emitted_overwritten_context is not None
                 else None
             ),
             stack_extent_overwritten_initializer_context=(
