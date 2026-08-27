@@ -541,8 +541,9 @@ crack-learning module ran 73 tests; the full central tools suite ran 897 tests
 with 7 skips and no failures. Existing D-form contexts and CLI behavior remain
 compatible because the context is optional. This capability introduced v31.
 The source-linked owner-closure gate below introduced v32. Consumers that
-validate the cumulative dispatcher schema must now accept v33, which adds the
-single-use final-call consumer diagnosis.
+validate the cumulative dispatcher schema must now accept v35: v33 added the
+single-use final-call consumer diagnosis, v34 added the switch/default typed
+fold, and v35 adds immutable same-file history contract closure.
 
 ## Source-linked owner-closure provenance gate
 
@@ -618,6 +619,77 @@ Focused verification ran 15 tests; the complete crack-learning dispatcher ran
 73 tests; the full central tools suite ran 912 tests with 7 skips and no
 failures.
 
+## Immutable same-file history contract closure
+
+Installed implementation checkpoint:
+`bea74ceb887c7fc0b719346174a76111fbf0d4ec`. The owning files are
+`tools/same_file_history_contract_closure.py`, `tools/crack_learning_rules.py`,
+`tools/tests/test_same_file_history_contract_closure.py`, and the dispatcher
+tests in `tools/tests/test_crack_learning_rules.py`.
+
+Build one manifest from an already selected immutable donor commit and an exact
+destination source. This command does not search history; the commit, path,
+function, Graphify location, destination, and expected hashes are inputs:
+
+```sh
+rtk python tools/same_file_history_contract_closure.py \
+  --repo . \
+  --commit 1be12aea5fc15f85b34092291ec183ebea8053fc \
+  --path src/board/capmove.c \
+  --function ev_CapEffKinokoOMExec \
+  --graphify-location game/src/board/capmove.c:L1912 \
+  --report-sha256 <sha256> \
+  --destination work/capmove/baseline/capmove.c \
+  --expect-function-sha256 <sha256> \
+  --expect-destination-sha256 <sha256> \
+  --require-contract lbl_802C3E28=extern \
+  --require-contract CAPMOVE_EFFECT_MIN_SCALE=macro \
+  --output work/capmove/kinoko.history-contract-manifest.json
+```
+
+The manifest schema is `same_file_history_contract_closure_manifest/v1` and its
+self-hash is `manifest_sha256`. The extractor reads exactly one Git blob,
+requires one unambiguous C function definition, indexes only macros, typedefs,
+extern declarations, static objects, and read-only pool owners in that file,
+then recursively closes identifiers referenced by the function and those
+contracts. A dependency already present in the destination must match kind and
+exact source hash and is sealed under `satisfied_dependencies`; only missing
+contracts are emitted. Incompatible, ambiguous, missing, reordered, hash-drifted,
+or cyclic packages fail closed before compilation.
+
+Feed the manifest and its sealed baseline/preflight/exact evidence into the
+cumulative dispatcher:
+
+```sh
+rtk python tools/crack_learning_rules.py \
+  --report work/capmove/kinoko-baseline.strict.json \
+  --function ev_CapEffKinokoOMExec \
+  --same-file-history-contract-context \
+    work/capmove/kinoko.history-contract-context.json \
+  > work/capmove/kinoko.learning.json
+```
+
+`same_file_history_contract_closure_context/v1` requires the large semantic
+size/frame/physical-relocation deficit, the body-only failure before object
+creation, one independently exact result, protected-sibling preservation, and
+the one-search/no-trace telemetry disposition. It schedules exactly one bounded
+manifest-ordered package. The exact-result objdiff hash suppresses the rule, so
+the same context cannot schedule work after closure. Broad history search,
+body-only retries, manual source-shape permutations, tracing, dead/fake
+dependencies, padding, register shaping, retention, promotion, and authority
+advancement remain suppressed.
+
+The immutable Kinoko replay emits only `lbl_802C3E28`, then
+`CAPMOVE_EFFECT_MIN_SCALE`, then the authenticated function body; four
+destination contracts are sealed as already satisfied. Manifest SHA-256 is
+`dbf3f00029c2aac34ce2fd79bbd0e74b629f6138137db45a63e9ab62ed27a7a7`.
+The `480/1540`, `16/97`, `0x50/0xb0` baseline emits diagnosis SHA-256
+`74d8cc0b921168183b7e46251c0767d9edf79a1a765fd4a805067baf01dec7e6`;
+the exact `1540/1540`, `97/97` replay emits no diagnosis and SHA-256
+`e5948d2352e48fcc973dc7a577b56bed47f9de42481a8e82b9efbb530f082d93`.
+Focused verification ran 81 tests; the full central tools suite ran 930 tests
+with 7 skips and no failures.
+
 ## Single-use final-call direct-consumer diagnosis
 
 Installed implementation checkpoint:
@@ -657,9 +729,10 @@ expression control must grow the function. Assignment-expression retries,
 pointer probes, global declaration permutations, tracing, fake/dead locals,
 padding, and register shaping remain suppressed.
 
-The standalone rule emits no source edits and advances no authority. The
-dispatcher emits `crack_learning_diagnosis/v34`; the real immutable KillerBoost
-replay emits diagnosis SHA-256
+The standalone rule emits no source edits and advances no authority. Its
+installed-checkpoint dispatcher emitted `crack_learning_diagnosis/v34`; the
+current cumulative dispatcher emits v35. The real immutable KillerBoost replay
+at that checkpoint emits diagnosis SHA-256
 `77714aef32eeffbd764b97223bc83fd24ae9bc97ab880a4af5a018ab139af5f0`.
 Focused verification ran 79 tests across the rule and dispatcher modules; the
 full central tools suite ran 918 tests with 7 skips and no failures.
@@ -702,8 +775,9 @@ unsuffixed `4.9 / 60.0` source after topology closes. Opaque bit literals,
 arbitrary numeric search, pool-owner rearrangement, further guard permutations,
 tracing, fake/dead locals, padding, and register shaping remain suppressed.
 
-The real immutable h006 replay emits `crack_learning_diagnosis/v34`, the two
-ordered cells, `authority_advanced=false`, and diagnosis SHA-256
+The real immutable h006 replay at its installed checkpoint emitted
+`crack_learning_diagnosis/v34`, the two ordered cells,
+`authority_advanced=false`, and diagnosis SHA-256
 `fa869893386b95b54e4dfa36ad5faf3afaa57a9deaa925876ccee8306849f060`.
 Focused verification ran 80 tests across the rule and dispatcher modules; the
 full central tools suite ran 924 tests with 7 skips and no failures.
