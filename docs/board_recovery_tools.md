@@ -145,6 +145,35 @@ owner orchestrator still applies strict, data-value, relocation, section/pool,
 consumer, and protected-sibling gates. Read-only recommendations never make a
 source-policy or retention decision.
 
+### Policy-quarantined exact diagnostics
+
+Byte-exact code is useful compiler evidence without necessarily being
+admissible recovered source. Keep that distinction explicit when an exact
+candidate contains an unresolved source-policy axis:
+
+- classify the result as `exact_diagnostic` and set
+  `policy_quarantined: true`, `retention_authorized: false`, and
+  `authority_advanced: false`;
+- leave production source untouched and do not expose the candidate as an
+  authenticated donor, a retained crack, owner progress, or promotion proof;
+- permit causal-rule mining only when the quarantined axis remains identified
+  in the indexed evidence and cannot be emitted as an automatic source action;
+- record candidate counts and measured active/heavy time normally, but exclude
+  the function from the exact-functions-per-active-hour numerator until the
+  source-policy gate is independently closed. Incomplete timing remains
+  excluded under the ordinary fail-closed telemetry rule.
+
+The bound CapThrow `mbev_CapKamekku` v27 receipt is the reference case. It is
+`3844/3844`, strict/data exact with zero rows, has `229/229` physical
+relocations, and preserves all thirteen previously exact siblings. Its source,
+object, strict, data, candidate-record, and telemetry SHA-256 identities begin
+`f4410896`, `ec515e51`, `7ce5bfea`, `ed80bd2a`, `cea73fc3`, and `277e2090`.
+The target stack map proves the allocation extent modeled by
+`motionData[16]`, but it does not authenticate spare-element source provenance
+or a semantic consumer for that capacity. Consequently the exact candidate is
+valid for diagnostic compiler learning while remaining ineligible for source
+retention, crack/hour credit, or authority advancement.
+
 Every output intended for a crack report or cross-orchestrator handoff must be
 stored in the owner's private artifact directory and referenced by path,
 schema, SHA-256, command, installed tool commit, and verification result.
