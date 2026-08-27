@@ -1059,7 +1059,7 @@ config.libs = [
             Object(Matching, "board/tutorial.c"),
             Object(Matching, "board/roulette.c"),
             Object(Matching, "board/capselect.c"),
-            Object(NonMatching, "board/capmove.c"),
+            Object(Matching, "board/capmove.c"),
             Object(Matching, "board/capthrow.c"),
             Object(NonMatching, "board/captrap.c"),
             Object(NonMatching, "board/capspecial.c"),
