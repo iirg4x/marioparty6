@@ -29,6 +29,28 @@ def descriptor(path: Path) -> dict[str, object]:
     return {"path": str(path), "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
 
 
+def minimal_ppc_elf_object() -> bytes:
+    ident = b"\x7fELF\x01\x02\x01" + b"\x00" * 9
+    header = struct.pack(
+        ">16sHHIIIIIHHHHHH",
+        ident,
+        1,
+        20,
+        1,
+        0,
+        0,
+        52,
+        0,
+        52,
+        0,
+        0,
+        40,
+        1,
+        0,
+    )
+    return header + b"\x00" * 40
+
+
 class FakeBackend:
     capabilities = {"read_image", "install_breakpoint", "remove_breakpoint", "single_step", "run", "close"}
 
@@ -306,6 +328,27 @@ def prepared_capture(root: Path, *, backend: FakeBackend | None = None, session_
     envelope_path = root / "capture" / "same-session.envelope.json"
     return request_path, envelope_path, captured, trust_root_for_request(request_path, include_outputs=True)
 class CapsuleSameSessionCaptureTests(unittest.TestCase):
+    def test_session_breakpoint_cleanup_does_not_mask_primary_failure(self) -> None:
+        class PrimaryAndBreakpointCleanupFailure(FakeBackend):
+            def run(self, session: MODULE.CombinedCaptureSession) -> None:
+                del session
+                raise MODULE.Rejected("primary compiler failure")
+
+            def remove_breakpoint(self, address: int) -> None:
+                del address
+                raise MODULE.Rejected("restore failed")
+
+        with TemporaryDirectory() as directory:
+            session = MODULE.CombinedCaptureSession(
+                auth(Path(directory)), PrimaryAndBreakpointCleanupFailure()
+            )
+            with self.assertRaisesRegex(
+                MODULE.Rejected,
+                "primary compiler failure; secondary failure: breakpoint cleanup failure",
+            ) as caught:
+                session.run()
+            self.assertEqual(caught.exception.primary_failure, "primary compiler failure")
+
     def test_provisional_invalid_inventory_does_not_poison_complete_refresh(self) -> None:
         class ProvisionalInvalidInventory(FakeBackend):
             def snapshot_inventory(self) -> dict[str, list[dict[str, object]]]:
@@ -3567,7 +3610,8 @@ class SourceSpanV2StackIntervalTests(unittest.TestCase):
             paths["directory"].mkdir()
             paths["stdout"].write_bytes(b"compiler stdout")
             paths["stderr"].write_bytes(b"")
-            output.write_bytes(b"compiler object")
+            object_bytes = minimal_ppc_elf_object()
+            output.write_bytes(object_bytes)
             receipt = MODULE._compiler_execution_receipt(
                 auth_context,
                 transport_mode="authenticated_direct_compiler",
@@ -3583,8 +3627,371 @@ class SourceSpanV2StackIntervalTests(unittest.TestCase):
             )
             self.assertEqual(receipt["status"], "COMPILER_TO_OBJECT_OBSERVED")
             self.assertTrue(receipt["compiler_output"]["exists"])
-            self.assertEqual(receipt["compiler_output"]["sha256"], hashlib.sha256(b"compiler object").hexdigest())
+            self.assertEqual(receipt["compiler_output"]["sha256"], hashlib.sha256(object_bytes).hexdigest())
+            self.assertTrue(receipt["compiler_output"]["complete"])
             self.assertFalse(receipt["authority_advanced"])
+
+    def test_compiler_terminal_receipt_admits_only_complete_capture(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root, output, session_id="session-0000000000000015"
+            )
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root_for_request(request_path),
+            )
+            capture_result = MODULE.capture_with_backend(
+                request_path,
+                FakeBackend(),
+                external_trust_root=trust_root_for_request(request_path),
+                preauthenticated_auth=auth_context,
+            )
+            paths = MODULE._compiler_transport_paths(auth_context)
+            paths["directory"].mkdir()
+            paths["stdout"].write_bytes(b"ok\n")
+            paths["stderr"].write_bytes(b"")
+            output.write_bytes(minimal_ppc_elf_object())
+            environment = MODULE._compiler_environment_binding({"Path": "one", "TEMP": "two"})
+
+            receipt = MODULE._compiler_execution_receipt(
+                auth_context,
+                transport_mode="authenticated_direct_compiler",
+                executed_argv=auth_context["request"]["argv"][1:],
+                include_search_paths=[],
+                stdout_path=paths["stdout"],
+                stderr_path=paths["stderr"],
+                process_created=True,
+                process_quiesced=True,
+                terminated_by_capture=False,
+                exit_code=0,
+                failure=None,
+                environment_binding=environment,
+                capture_result=capture_result,
+                process_summary={
+                    "observed_process_ids": [7],
+                    "exited_process_ids": [7],
+                    "open_process_ids": [],
+                    "open_thread_handle_count": 0,
+                    "active_debug_event": False,
+                },
+            )
+
+            self.assertEqual(receipt["terminal_state"], "SUCCESS", receipt)
+            self.assertEqual(receipt["evidence_admission"], "COMPLETE")
+            self.assertEqual(receipt["object_observation"], "ADMITTED_COMPLETE")
+            self.assertEqual(receipt["environment"], environment)
+            self.assertTrue(all(row["exists"] for row in receipt["capture_outputs"].values()))
+
+    def test_compiler_terminal_receipt_rejects_unsealed_cross_bound_capture(self) -> None:
+        for mutation in ("malformed_envelope", "cross_session", "tampered_stream"):
+            with self.subTest(mutation=mutation), TemporaryDirectory() as directory:
+                root = Path(directory)
+                output = root / "compiler-output.o"
+                request_path = self._prepare_handoff_request(
+                    root,
+                    output,
+                    session_id=f"session-00000000000002{len(mutation):02x}",
+                )
+                trust_root = trust_root_for_request(request_path)
+                auth_context = MODULE.authenticate_request(
+                    request_path,
+                    require_empty=True,
+                    external_trust_root=trust_root,
+                )
+                capture_result = MODULE.capture_with_backend(
+                    request_path,
+                    FakeBackend(),
+                    external_trust_root=trust_root,
+                    preauthenticated_auth=auth_context,
+                )
+                envelope_path = auth_context["paths"]["envelope"]
+                if mutation == "malformed_envelope":
+                    envelope_path.write_bytes(b"{}\n")
+                elif mutation == "tampered_stream":
+                    auth_context["paths"]["event_stream_stack"].write_bytes(b"tampered\n")
+                else:
+                    envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+                    envelope["context"]["session_id"] = "session-ffffffffffffffff"
+                    unsigned = {key: value for key, value in envelope.items() if key != "envelope_sha256"}
+                    envelope["envelope_sha256"] = MODULE.canonical_hash(unsigned)
+                    envelope_path.write_text(
+                        json.dumps(envelope, ensure_ascii=True, sort_keys=True, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    capture_result = dict(capture_result)
+                    capture_result["envelope_sha256"] = envelope["envelope_sha256"]
+
+                paths = MODULE._compiler_transport_paths(auth_context)
+                paths["directory"].mkdir()
+                paths["stdout"].write_bytes(b"")
+                paths["stderr"].write_bytes(b"")
+                output.write_bytes(minimal_ppc_elf_object())
+                receipt = MODULE._compiler_execution_receipt(
+                    auth_context,
+                    transport_mode="wrapper_memexec",
+                    executed_argv=auth_context["request"]["argv"],
+                    include_search_paths=[],
+                    stdout_path=paths["stdout"],
+                    stderr_path=paths["stderr"],
+                    process_created=True,
+                    process_quiesced=True,
+                    terminated_by_capture=False,
+                    exit_code=0,
+                    failure=None,
+                    capture_result=capture_result,
+                )
+                self.assertEqual(receipt["terminal_state"], "UNKNOWN")
+                self.assertEqual(receipt["evidence_admission"], "NONE")
+                self.assertIsNotNone(receipt["capture_validation_failure"])
+
+    def test_compiler_terminal_receipt_quarantines_partial_object(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root, output, session_id="session-0000000000000016"
+            )
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root_for_request(request_path),
+            )
+            paths = MODULE._compiler_transport_paths(auth_context)
+            paths["directory"].mkdir()
+            paths["stdout"].write_bytes(b"")
+            paths["stderr"].write_bytes(b"fatal\n")
+            output.write_bytes(b"partial")
+
+            receipt = MODULE._compiler_execution_receipt(
+                auth_context,
+                transport_mode="wrapper_memexec",
+                executed_argv=auth_context["request"]["argv"],
+                include_search_paths=[],
+                stdout_path=paths["stdout"],
+                stderr_path=paths["stderr"],
+                process_created=True,
+                process_quiesced=True,
+                terminated_by_capture=False,
+                exit_code=2,
+                failure="compiler failed",
+                capture_result=None,
+            )
+
+            self.assertEqual(receipt["terminal_state"], "UNKNOWN")
+            self.assertEqual(receipt["object_observation"], "PRESENT_UNADMITTED")
+            self.assertEqual(receipt["evidence_admission"], "NONE")
+            self.assertEqual(receipt["primary_failure"], "compiler failed")
+            self.assertFalse(receipt["compiler_output"]["complete"])
+
+    def test_compiler_success_rejects_empty_and_truncated_object(self) -> None:
+        for index, payload in enumerate((b"", minimal_ppc_elf_object()[:-1])):
+            with self.subTest(payload_size=len(payload)), TemporaryDirectory() as directory:
+                root = Path(directory)
+                output = root / "compiler-output.o"
+                request_path = self._prepare_handoff_request(
+                    root,
+                    output,
+                    session_id=f"session-00000000000003{index:02x}",
+                )
+                trust_root = trust_root_for_request(request_path)
+                auth_context = MODULE.authenticate_request(
+                    request_path,
+                    require_empty=True,
+                    external_trust_root=trust_root,
+                )
+                capture_result = MODULE.capture_with_backend(
+                    request_path,
+                    FakeBackend(),
+                    external_trust_root=trust_root,
+                    preauthenticated_auth=auth_context,
+                )
+                paths = MODULE._compiler_transport_paths(auth_context)
+                paths["directory"].mkdir()
+                paths["stdout"].write_bytes(b"")
+                paths["stderr"].write_bytes(b"")
+                output.write_bytes(payload)
+                receipt = MODULE._compiler_execution_receipt(
+                    auth_context,
+                    transport_mode="wrapper_memexec",
+                    executed_argv=auth_context["request"]["argv"],
+                    include_search_paths=[],
+                    stdout_path=paths["stdout"],
+                    stderr_path=paths["stderr"],
+                    process_created=True,
+                    process_quiesced=True,
+                    terminated_by_capture=False,
+                    exit_code=0,
+                    failure=None,
+                    capture_result=capture_result,
+                )
+                self.assertEqual(receipt["terminal_state"], "UNKNOWN")
+                self.assertFalse(receipt["compiler_output"]["complete"])
+                self.assertEqual(receipt["object_observation"], "PRESENT_UNADMITTED")
+                self.assertEqual(receipt["evidence_admission"], "NONE")
+
+    def test_compiler_receipt_publication_failure_leaves_no_partial_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "compiler-to-object.json"
+            unsigned = {"schema": MODULE.COMPILER_EXECUTION_RECEIPT_SCHEMA, "status": "UNKNOWN"}
+            receipt = {**unsigned, "receipt_sha256": MODULE.canonical_hash(unsigned)}
+            with mock.patch.object(MODULE.os, "fsync", side_effect=OSError("disk failure")):
+                with self.assertRaisesRegex(OSError, "disk failure"):
+                    MODULE._publish_compiler_execution_receipt(path, receipt)
+            self.assertFalse(path.exists())
+
+    def test_compiler_environment_block_is_immutable_and_hash_bound(self) -> None:
+        environment = {"B": "2", "a": "1"}
+        binding, block = MODULE._sealed_compiler_environment(environment)
+        environment["a"] = "changed"
+        environment["C"] = "3"
+        self.assertEqual("".join(block), "a=1\0B=2\0\0\0")
+        self.assertEqual(binding, MODULE._compiler_environment_binding({"B": "2", "a": "1"}))
+
+    def test_diagnostic_stream_close_failure_preserves_primary(self) -> None:
+        class BadStream:
+            def close(self) -> None:
+                raise OSError("flush failed")
+
+        primary = MODULE.Rejected("compiler failed first")
+        failure = MODULE._close_capture_streams([BadStream()], primary)
+        self.assertIsInstance(failure, MODULE.Rejected)
+        self.assertEqual(failure.primary_failure, "compiler failed first")
+        self.assertEqual(len(failure.secondary_failures), 1)
+        self.assertIn("stream close failure", str(failure))
+
+    def test_compiler_terminal_receipt_classifies_nonquiescent_timeout_unknown(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root, output, session_id="session-0000000000000018"
+            )
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root_for_request(request_path),
+            )
+            paths = MODULE._compiler_transport_paths(auth_context)
+            paths["directory"].mkdir()
+            paths["stdout"].write_bytes(b"")
+            paths["stderr"].write_bytes(b"timeout\n")
+            receipt = MODULE._compiler_execution_receipt(
+                auth_context,
+                transport_mode="wrapper_memexec",
+                executed_argv=auth_context["request"]["argv"],
+                include_search_paths=[],
+                stdout_path=paths["stdout"],
+                stderr_path=paths["stderr"],
+                process_created=True,
+                process_quiesced=False,
+                terminated_by_capture=True,
+                exit_code=None,
+                failure="terminal timeout",
+                process_summary={
+                    "observed_process_ids": [7],
+                    "exited_process_ids": [],
+                    "open_process_ids": [7],
+                    "open_thread_handle_count": 1,
+                    "active_debug_event": True,
+                },
+            )
+            self.assertEqual(receipt["terminal_state"], "UNKNOWN")
+            self.assertFalse(receipt["diagnostics_sealed"])
+            self.assertEqual(receipt["evidence_admission"], "NONE")
+
+    def test_capture_cleanup_failure_preserves_primary_failure(self) -> None:
+        class PrimaryAndCleanupFailure(FakeBackend):
+            def run(self, session: MODULE.CombinedCaptureSession) -> None:
+                del session
+                raise MODULE.Rejected("primary compiler failure")
+
+            def close(self) -> None:
+                raise MODULE.Rejected("cleanup drain failure")
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            request_path = self._prepare_handoff_request(
+                root,
+                root / "compiler-output.o",
+                session_id="session-0000000000000017",
+            )
+            trust_root = trust_root_for_request(request_path)
+            with self.assertRaisesRegex(
+                MODULE.Rejected,
+                "primary compiler failure; secondary failure: native cleanup failure",
+            ) as caught:
+                MODULE.capture_with_backend(
+                    request_path,
+                    PrimaryAndCleanupFailure(),
+                    external_trust_root=trust_root,
+                )
+            self.assertEqual(caught.exception.primary_failure, "primary compiler failure")
+            self.assertEqual(len(caught.exception.secondary_failures), 1)
+
+    def test_capture_triple_failure_preserves_primary_and_cleanup_order(self) -> None:
+        class CompilerDispatcherAndBackendFailure(FakeBackend):
+            def run(self, session: MODULE.CombinedCaptureSession) -> None:
+                del session
+                raise MODULE.Rejected("compiler primary failure")
+
+            def remove_breakpoint(self, address: int) -> None:
+                del address
+                raise MODULE.Rejected("dispatcher restore failure")
+
+            def close(self) -> None:
+                raise MODULE.Rejected("backend close failure")
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            request_path = self._prepare_handoff_request(
+                root,
+                root / "compiler-output.o",
+                session_id="session-0000000000000026",
+            )
+            trust_root = trust_root_for_request(request_path)
+            with self.assertRaises(MODULE.Rejected) as caught:
+                MODULE.capture_with_backend(
+                    request_path,
+                    CompilerDispatcherAndBackendFailure(),
+                    external_trust_root=trust_root,
+                )
+            backend_failure = "native cleanup failure: Rejected: backend close failure"
+            self.assertEqual(caught.exception.primary_failure, "compiler primary failure")
+            self.assertEqual(len(caught.exception.secondary_failures), 2)
+            dispatcher_failure = caught.exception.secondary_failures[0]
+            self.assertTrue(
+                dispatcher_failure.startswith(
+                    "breakpoint cleanup failure: Rejected: breakpoint cleanup failed:"
+                )
+            )
+            self.assertIn("dispatcher restore failure", dispatcher_failure)
+            self.assertEqual(caught.exception.secondary_failures[1], backend_failure)
+            self.assertEqual(
+                str(caught.exception),
+                "; ".join(
+                    (
+                        "compiler primary failure",
+                        f"secondary failure: {dispatcher_failure}",
+                        f"secondary failure: {backend_failure}",
+                    )
+                ),
+            )
+
+    def test_terminal_failure_combiner_deduplicates_repeated_finalization(self) -> None:
+        failure = MODULE._combine_terminal_failure(
+            MODULE.Rejected("compiler primary failure"), "backend close failure"
+        )
+        repeated = MODULE._combine_terminal_failure(failure, "backend close failure")
+        self.assertIs(repeated, failure)
+        self.assertEqual(repeated.primary_failure, "compiler primary failure")
+        self.assertEqual(repeated.secondary_failures, ["backend close failure"])
+        self.assertEqual(
+            str(repeated),
+            "compiler primary failure; secondary failure: backend close failure",
+        )
 
     def test_final_owner_join_unknown_publishes_immutable_partial_evidence(self) -> None:
         with TemporaryDirectory() as directory:
@@ -4271,21 +4678,21 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
     def test_native_backend_quiesces_failed_process_before_receipt_sealing(self) -> None:
         class Kernel32:
             def __init__(self) -> None:
-                self.exit_reads = 0
+                self.signaled = False
                 self.terminated: list[tuple[int, int]] = []
                 self.closed: list[int] = []
 
             def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
-                self.exit_reads += 1
-                code._obj.value = 259 if self.exit_reads == 1 else 1
+                code._obj.value = 1
                 return True
 
             def TerminateProcess(self, handle: object, exit_code: int) -> bool:
                 self.terminated.append((int(handle.value), exit_code))
+                self.signaled = True
                 return True
 
             def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
-                return 0
+                return 0 if self.signaled else 258
 
             def CloseHandle(self, handle: int) -> bool:
                 self.closed.append(handle)
@@ -4301,6 +4708,236 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
         self.assertEqual(backend.compiler_exit_code, 1)
         self.assertEqual(kernel32.terminated, [(11, 1)])
         self.assertEqual(sorted(kernel32.closed), [11, 12])
+
+    def test_native_backend_accepts_signaled_process_exit_code_259(self) -> None:
+        class Kernel32:
+            def __init__(self) -> None:
+                self.terminated = False
+
+            def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
+                return 0
+
+            def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
+                code._obj.value = 259
+                return True
+
+            def TerminateProcess(self, _handle: object, _exit_code: int) -> bool:
+                self.terminated = True
+                return True
+
+            def CloseHandle(self, _handle: int) -> bool:
+                return True
+
+        kernel32 = Kernel32()
+        native = type("Native", (), {"kernel32": kernel32})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        backend.close()
+
+        self.assertTrue(backend.exited)
+        self.assertTrue(backend.process_quiesced)
+        self.assertEqual(backend.compiler_exit_code, 259)
+        self.assertFalse(kernel32.terminated)
+
+    def test_native_backend_continues_active_event_and_drains_compiler_exit(self) -> None:
+        import ctypes
+
+        class ExitProcessInfo(ctypes.Structure):
+            _fields_ = [("dwExitCode", ctypes.c_uint32)]
+
+        class EventUnion(ctypes.Union):
+            _fields_ = [("ExitProcess", ExitProcessInfo)]
+
+        class DebugEvent(ctypes.Structure):
+            _fields_ = [
+                ("dwDebugEventCode", ctypes.c_uint32),
+                ("dwProcessId", ctypes.c_uint32),
+                ("dwThreadId", ctypes.c_uint32),
+                ("u", EventUnion),
+            ]
+
+        class Kernel32:
+            def __init__(self) -> None:
+                self.signaled = False
+                self.exit_event_pending = True
+                self.continues: list[tuple[int, int, int]] = []
+                self.terminated: list[tuple[int, int]] = []
+                self.closed: list[int] = []
+
+            def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
+                code._obj.value = 1 if self.signaled else 259
+                return True
+
+            def TerminateProcess(self, handle: object, exit_code: int) -> bool:
+                self.terminated.append((int(handle.value), exit_code))
+                return True
+
+            def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
+                return 0 if self.signaled else 258
+
+            def WaitForDebugEvent(self, event_pointer: object, _timeout: int) -> bool:
+                self.assert_exit_pending()
+                event = ctypes.cast(event_pointer, ctypes.POINTER(DebugEvent)).contents
+                event.dwDebugEventCode = 5
+                event.dwProcessId = 4321
+                event.dwThreadId = 8
+                event.u.ExitProcess.dwExitCode = 1
+                self.exit_event_pending = False
+                return True
+
+            def assert_exit_pending(self) -> None:
+                if not self.exit_event_pending:
+                    raise AssertionError("unexpected extra WaitForDebugEvent")
+
+            def ContinueDebugEvent(self, process_id: int, thread_id: int, status: int) -> bool:
+                row = (int(process_id), int(thread_id), int(status))
+                self.continues.append(row)
+                if row[:2] == (4321, 8):
+                    self.signaled = True
+                return True
+
+            def CloseHandle(self, handle: int) -> bool:
+                self.closed.append(handle)
+                return True
+
+        kernel32 = Kernel32()
+        native = type(
+            "Native",
+            (),
+            {
+                "kernel32": kernel32,
+                "DEBUG_EVENT": DebugEvent,
+                "DBG_CONTINUE": 0x00010002,
+                "EXIT_PROCESS_DEBUG_EVENT": 5,
+                "CREATE_PROCESS_DEBUG_EVENT": 3,
+            },
+        )()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        backend.compiler_process_id = 4321
+        backend._active_debug_event = (4321, 7)
+        backend.close()
+
+        self.assertTrue(backend.exited)
+        self.assertTrue(backend.process_quiesced)
+        self.assertTrue(backend.compiler_terminated_by_capture)
+        self.assertEqual(backend.compiler_exit_code, 1)
+        self.assertEqual(kernel32.terminated, [(11, 1)])
+        self.assertEqual(
+            kernel32.continues,
+            [(4321, 7, 0x00010002), (4321, 8, 0x00010002)],
+        )
+
+    def test_native_backend_releases_delivered_exit_event_before_sealing(self) -> None:
+        class Kernel32:
+            def __init__(self) -> None:
+                self.signaled = False
+                self.continues: list[tuple[int, int, int]] = []
+                self.terminated = False
+
+            def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
+                code._obj.value = 7
+                return True
+
+            def TerminateProcess(self, _handle: object, _exit_code: int) -> bool:
+                self.terminated = True
+                return True
+
+            def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
+                return 0 if self.signaled else 258
+
+            def ContinueDebugEvent(self, process_id: int, thread_id: int, status: int) -> bool:
+                self.continues.append((int(process_id), int(thread_id), int(status)))
+                self.signaled = True
+                return True
+
+            def CloseHandle(self, _handle: int) -> bool:
+                return True
+
+        kernel32 = Kernel32()
+        native = type("Native", (), {"kernel32": kernel32, "DBG_CONTINUE": 0x00010002})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        backend.compiler_process_id = 4321
+        backend.exited = True
+        backend.compiler_exit_code = 7
+        backend._active_debug_event = (4321, 9)
+        backend.close()
+
+        self.assertTrue(backend.process_quiesced)
+        self.assertFalse(kernel32.terminated)
+        self.assertEqual(kernel32.continues, [(4321, 9, 0x00010002)])
+
+    def test_native_backend_quiesces_descendants_and_finalizes_once(self) -> None:
+        class Kernel32:
+            def __init__(self) -> None:
+                self.signaled: set[int] = set()
+                self.terminated: list[tuple[int, int]] = []
+                self.closed: list[int] = []
+
+            def WaitForSingleObject(self, handle: object, _milliseconds: int) -> int:
+                return 0 if int(handle.value) in self.signaled else 258
+
+            def TerminateProcess(self, handle: object, exit_code: int) -> bool:
+                raw = int(handle.value)
+                self.terminated.append((raw, exit_code))
+                self.signaled.add(raw)
+                return True
+
+            def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
+                code._obj.value = 1
+                return True
+
+            def CloseHandle(self, handle: int) -> bool:
+                self.closed.append(int(handle))
+                return True
+
+        kernel32 = Kernel32()
+        native = type("Native", (), {"kernel32": kernel32})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        backend.compiler_process_id = 4321
+        backend._observed_process_ids.add(5000)
+        backend._process_handles[5000] = 21
+        backend._owned_handles.add(21)
+
+        backend.close()
+        first_terminated = list(kernel32.terminated)
+        first_closed = list(kernel32.closed)
+        backend.close()
+
+        self.assertEqual(first_terminated, [(21, 1), (11, 1)])
+        self.assertEqual(kernel32.terminated, first_terminated)
+        self.assertEqual(kernel32.closed, first_closed)
+        self.assertTrue(backend.process_quiesced)
+        self.assertEqual(backend.terminal_process_summary()["open_process_ids"], [])
+        self.assertEqual(backend.terminal_process_summary()["open_thread_handle_count"], 0)
+
+    def test_native_backend_closehandle_false_is_terminal_failure(self) -> None:
+        class Kernel32:
+            def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
+                return 0
+
+            def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
+                code._obj.value = 0
+                return True
+
+            def CloseHandle(self, handle: int) -> bool:
+                return int(handle) != 12
+
+        native = type("Native", (), {"kernel32": Kernel32()})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        with self.assertRaisesRegex(MODULE.Rejected, "CloseHandle returned FALSE"):
+            backend.close()
+        self.assertEqual(backend.terminal_process_summary()["unclosed_handle_count"], 1)
+
+    def test_native_backend_quiescence_timeout_is_bounded_unknown(self) -> None:
+        class Kernel32:
+            def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
+                return 258
+
+        native = type("Native", (), {"kernel32": Kernel32()})()
+        backend = MODULE.NativeWow64Backend(native, 11, 0, 4321)
+        with mock.patch.object(MODULE.time, "monotonic", side_effect=[0.0, 6.0]):
+            with self.assertRaisesRegex(MODULE.Rejected, "did not quiesce"):
+                backend._seal_process_quiescence()
+        self.assertFalse(backend.process_quiesced)
 
     def test_native_backend_uses_owned_list_heads_and_function_filter(self) -> None:
         backend = MODULE.NativeWow64Backend(object(), 1, 0, 4321)

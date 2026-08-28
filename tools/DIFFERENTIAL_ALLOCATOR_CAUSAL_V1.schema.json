@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "DIFFERENTIAL_ALLOCATOR_CAUSAL_V1.schema.json",
+  "title": "Differential Allocator Causal Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "function", "inference_started", "failure_stage", "first_missing_edge",
+    "maximal_closed_permutation", "minimum_causal_frontier", "ranked_source_class",
+    "ranked_source_classes", "candidate_interaction_request", "owner_facts", "rejected_controls",
+    "evidence_binding", "blockers", "diagnostic_only", "source_text_emitted", "source_patch_emitted",
+    "compile_authorized", "retention_authorized", "authority_advanced", "result_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "differential_allocator_causal/v1"},
+    "status": {"enum": ["RANKED_SOURCE_CLASS", "UNKNOWN"]},
+    "function": {"type": "string", "minLength": 1},
+    "inference_started": {"type": "boolean"},
+    "failure_stage": {"type": ["string", "null"]},
+    "first_missing_edge": {"type": ["string", "null"]},
+    "maximal_closed_permutation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["complete", "mapping", "row_indices", "owner_ids"],
+      "properties": {
+        "complete": {"type": "boolean"},
+        "mapping": {"type": "array", "items": {"$ref": "#/$defs/registerPair"}},
+        "row_indices": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+        "owner_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "minimum_causal_frontier": {
+      "type": "object", "additionalProperties": false,
+      "required": ["unique", "axis_count", "source_class"],
+      "properties": {
+        "unique": {"type": "boolean"},
+        "axis_count": {"type": ["integer", "null"], "minimum": 0, "maximum": 3},
+        "source_class": {"type": ["string", "null"]}
+      }
+    },
+    "ranked_source_class": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/rankedClass"}]},
+    "ranked_source_classes": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/rankedClassDetailed"}},
+    "candidate_interaction_request": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/oneCellRequest"}]},
+    "owner_facts": {"type": "array", "items": {"$ref": "#/$defs/ownerFact"}},
+    "rejected_controls": {"type": "array", "items": {"$ref": "#/$defs/rejectedControl"}},
+    "evidence_binding": {"$ref": "#/$defs/evidenceBinding"},
+    "blockers": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "diagnostic_only": {"const": true},
+    "source_text_emitted": {"const": false},
+    "source_patch_emitted": {"const": false},
+    "compile_authorized": {"const": false},
+    "retention_authorized": {"const": false},
+    "authority_advanced": {"const": false},
+    "result_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "RANKED_SOURCE_CLASS"}}},
+      "then": {
+        "properties": {
+          "failure_stage": {"type": "null"},
+          "first_missing_edge": {"type": "null"},
+          "maximal_closed_permutation": {"properties": {"complete": {"const": true}}},
+          "minimum_causal_frontier": {"properties": {"unique": {"const": true}}},
+          "ranked_source_class": {"$ref": "#/$defs/rankedClass"},
+          "ranked_source_classes": {"minItems": 1, "maxItems": 1},
+          "candidate_interaction_request": {"type": "object"},
+          "owner_facts": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "object_token": {"type": "string"}, "varinfo_id": {"type": "string"},
+                "pcode_def_token": {"type": "string"}, "pcode_use_tokens": {"minItems": 1},
+                "ig_node_id": {"type": "string"}, "vreg": {"type": "string", "pattern": "^[rf][0-9]+$"},
+                "interference_neighbors": {"minItems": 1}, "target": {"$ref": "#/$defs/register"},
+                "target_residual_interval": {"$ref": "#/$defs/residualInterval"}, "missing_edge": {"type": "null"}
+              }
+            }
+          },
+          "blockers": {"maxItems": 0}
+        }
+      },
+      "else": {
+        "properties": {
+          "failure_stage": {"type": "string"},
+          "first_missing_edge": {"type": "string"},
+          "ranked_source_class": {"type": "null"},
+          "candidate_interaction_request": {"type": "null"},
+          "blockers": {"minItems": 1}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "register": {"type": "string", "pattern": "^[rf](?:[0-9]|[12][0-9]|3[01])$"},
+    "registerPair": {
+      "type": "object", "additionalProperties": false, "required": ["candidate", "target"],
+      "properties": {"candidate": {"$ref": "#/$defs/register"}, "target": {"$ref": "#/$defs/register"}}
+    },
+    "rankedClass": {
+      "type": "object", "additionalProperties": false, "required": ["rank", "source_class"],
+      "properties": {"rank": {"const": 1}, "source_class": {"type": "string"}}
+    },
+    "rankedClassDetailed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rank", "source_class", "axis_count", "suppresses_control_ids"],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1, "maximum": 3},
+        "source_class": {"type": "string"},
+        "axis_count": {"type": "integer", "minimum": 2, "maximum": 3},
+        "suppresses_control_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "lifetime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["birth", "assignment", "first_use", "last_use"],
+      "properties": {
+        "birth": {"type": "integer", "minimum": 0}, "assignment": {"type": "integer", "minimum": 0},
+        "first_use": {"type": "integer", "minimum": 0}, "last_use": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ownerFact": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "owner_id", "session_id", "source_span_id", "row_indices", "object_token", "varinfo_id", "pcode_def_token",
+        "pcode_use_tokens", "ig_node_id", "vreg", "candidate", "target", "interference_neighbors",
+        "target_claim", "target_residual_interval", "lifetime", "missing_edge"
+      ],
+      "properties": {
+        "owner_id": {"type": "string"}, "session_id": {"type": "string"}, "source_span_id": {"type": "string"},
+        "row_indices": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+        "object_token": {"type": ["string", "null"]}, "varinfo_id": {"type": ["string", "null"]},
+        "pcode_def_token": {"type": ["string", "null"]}, "pcode_use_tokens": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "ig_node_id": {"type": ["string", "null"]}, "vreg": {"type": ["string", "null"], "pattern": "^[rf][0-9]+$"},
+        "candidate": {"$ref": "#/$defs/register"}, "target_claim": {"$ref": "#/$defs/register"},
+        "target": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/register"}]},
+        "target_residual_interval": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/residualInterval"}]},
+        "interference_neighbors": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "lifetime": {"$ref": "#/$defs/lifetime"}, "missing_edge": {"type": ["string", "null"]}
+      }
+    },
+    "rejectedControl": {
+      "type": "object", "additionalProperties": false,
+      "required": ["control_id", "source_sha256", "object_sha256", "outcome"],
+      "properties": {
+        "control_id": {"type": "string"}, "source_sha256": {"$ref": "#/$defs/sha256"},
+        "object_sha256": {"$ref": "#/$defs/sha256"}, "outcome": {"type": "string"}
+      }
+    },
+    "evidenceBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "session_id", "trust_anchor_sha256", "context_sha256", "focus_artifact_sha256", "physical_stream_sha256",
+        "physical_relocation_receipt_sha256", "source_span_manifest_sha256", "trace_sha256",
+        "compiler_sha256", "tool_sha256"
+      ],
+      "properties": {
+        "session_id": {"type": "string"}, "trust_anchor_sha256": {"$ref": "#/$defs/sha256"},
+        "context_sha256": {"$ref": "#/$defs/sha256"}, "focus_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "physical_stream_sha256": {"$ref": "#/$defs/sha256"}, "physical_relocation_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "source_span_manifest_sha256": {"$ref": "#/$defs/sha256"}, "trace_sha256": {"$ref": "#/$defs/sha256"},
+        "compiler_sha256": {"$ref": "#/$defs/sha256"}, "tool_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "residualAnchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["row_index", "operand_positions", "candidate_register", "target_register"],
+      "properties": {
+        "row_index": {"type": "integer", "minimum": 0},
+        "operand_positions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+        "candidate_register": {"$ref": "#/$defs/register"}, "target_register": {"$ref": "#/$defs/register"}
+      }
+    },
+    "residualInterval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["first_row", "last_row", "anchors"],
+      "properties": {
+        "first_row": {"type": "integer", "minimum": 0}, "last_row": {"type": "integer", "minimum": 0},
+        "anchors": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/residualAnchor"}}
+      }
+    },
+    "oneCellRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema", "function", "source_class", "cell_id", "composed_axes", "evidence_sha256",
+        "max_cells", "matrix_expansion", "compile_authorized", "authority_advanced", "request_sha256"
+      ],
+      "properties": {
+        "schema": {"const": "differential_allocator_one_cell_request/v1"},
+        "function": {"type": "string"}, "source_class": {"type": "string"}, "cell_id": {"type": "string"},
+        "composed_axes": {"type": "array", "minItems": 2, "maxItems": 3, "items": {"$ref": "#/$defs/composedAxis"}},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"}, "max_cells": {"const": 1},
+        "matrix_expansion": {"const": false}, "compile_authorized": {"const": false},
+        "authority_advanced": {"const": false}, "request_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "composedAxis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "hypothesis", "source_action", "topology_token"],
+      "properties": {
+        "id": {"type": "string"}, "hypothesis": {"type": "string"},
+        "source_action": {"type": "string"}, "topology_token": {"type": "string"}
+      }
+    }
+  }
+}

@@ -106,6 +106,7 @@ PARTIAL_EVIDENCE_SCHEMA = "mwcc_capsule_same_session_partial_evidence/v1"
 PARTIAL_FAILURE_GRAPH_SCHEMA = "mwcc_capsule_same_session_ownership_failure_graph/v1"
 PARTIAL_HOOK_RECEIPT_SCHEMA = "mwcc_capsule_same_session_hook_validation/v1"
 COMPILER_EXECUTION_RECEIPT_SCHEMA = "mwcc_capsule_compiler_to_object_receipt/v1"
+COMPILER_TERMINAL_STATES = frozenset({"SUCCESS", "UNKNOWN", "FAILED"})
 # The pinned hook union changed: old requests/envelopes must not be
 # interpreted as captures from this repaired transport.
 TOOL_VERSION = "capsule-same-session-capture-2"
@@ -144,6 +145,7 @@ STARTF_USESTDHANDLES = 0x00000100
 MEM_COMMIT = 0x00001000
 MEM_PRIVATE = 0x00020000
 MEMEXEC_STARTUP_TIMEOUT_SECONDS = 30.0
+NATIVE_CAPTURE_TERMINAL_TIMEOUT_SECONDS = 300.0
 # A first probe is requested when the authenticated wrapper is released.  A
 # manually mapped compiler may then create its worker thread before that probe
 # is delivered; permit one follow-up observation after that event, but never
@@ -3058,6 +3060,8 @@ class CombinedCaptureSession:
         return {"status": "COMPLETE" if complete else "UNKNOWN", **rows}
 
     def run(self) -> dict[str, Any]:
+        result: dict[str, Any] | None = None
+        failure: Rejected | None = None
         try:
             # A wrapper-first launch (sjiswrap.exe -> mwcceppc.exe) is debugged
             # with DEBUG_PROCESS.  The native backend must consume and
@@ -3077,16 +3081,25 @@ class CombinedCaptureSession:
                 raise Rejected("debug loop ended without process exit")
             if not self.function_exited:
                 raise Rejected("capture ended without function exit")
-            return self.build_envelope()
-        except Rejected:
-            raise
+            result = self.build_envelope()
+        except Rejected as exc:
+            failure = exc
         except Exception as exc:
-            raise Rejected(f"native transport failure: {type(exc).__name__}: {exc}") from exc
-        finally:
-            # The dispatcher owns the union's restoration boundary.  The
-            # backend's close() then closes handles/process state; no partial
-            # breakpoint mutation survives a failed session.
+            failure = Rejected(f"native transport failure: {type(exc).__name__}: {exc}")
+        # The dispatcher owns the union's restoration boundary. The backend's
+        # close() then closes handles/process state; no partial breakpoint
+        # mutation survives a failed session. Restoration is secondary and
+        # must not replace the first compiler/capture failure.
+        try:
             self.dispatcher.remove_all()
+        except Exception as exc:
+            cleanup = f"breakpoint cleanup failure: {type(exc).__name__}: {exc}"
+            failure = _combine_terminal_failure(failure, cleanup)
+        if failure is not None:
+            raise failure
+        if result is None:
+            raise Rejected("capture session returned no terminal result")
+        return result
 
     def build_envelope(self) -> dict[str, Any]:
         if not self.started or self.bus.process_id is None:
@@ -3464,6 +3477,190 @@ def _optional_output_descriptor(path: Path) -> dict[str, Any]:
     }
 
 
+def _compiler_object_descriptor(path: Path) -> dict[str, Any]:
+    """Describe and minimally authenticate a complete ELF32/PPC relocatable."""
+
+    descriptor = _optional_output_descriptor(path)
+    descriptor["format"] = None
+    descriptor["complete"] = False
+    descriptor["validation_failure"] = None
+    if descriptor["exists"] is not True:
+        descriptor["validation_failure"] = "compiler object is absent"
+        return descriptor
+    try:
+        data = path.read_bytes()
+        if len(data) < 52:
+            raise Rejected("compiler object is shorter than an ELF32 header")
+        if data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 2:
+            raise Rejected("compiler object is not big-endian ELF32")
+        e_type = int.from_bytes(data[16:18], "big")
+        e_machine = int.from_bytes(data[18:20], "big")
+        e_shoff = int.from_bytes(data[32:36], "big")
+        e_ehsize = int.from_bytes(data[40:42], "big")
+        e_shentsize = int.from_bytes(data[46:48], "big")
+        e_shnum = int.from_bytes(data[48:50], "big")
+        if e_type != 1 or e_machine != 20 or e_ehsize != 52:
+            raise Rejected("compiler object ELF identity is not PPC relocatable")
+        if e_shoff < e_ehsize or e_shentsize != 40 or e_shnum <= 0:
+            raise Rejected("compiler object section table is incomplete")
+        if e_shoff + e_shentsize * e_shnum > len(data):
+            raise Rejected("compiler object section table exceeds the emitted file")
+    except Exception as exc:
+        descriptor["validation_failure"] = f"{type(exc).__name__}: {exc}"
+        return descriptor
+    descriptor["format"] = "ELF32_PPC_RELOCATABLE"
+    descriptor["complete"] = True
+    return descriptor
+
+
+def _compiler_environment_binding(environment: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """Bind the inherited process environment without publishing its values."""
+
+    values = os.environ if environment is None else environment
+    rows: list[list[str]] = []
+    for key, value in values.items():
+        if not isinstance(key, str) or not isinstance(value, str) or not key:
+            raise Rejected("compiler environment contains a malformed entry")
+        rows.append([key.upper(), value])
+    rows.sort(key=lambda row: (row[0], row[1]))
+    if len({row[0] for row in rows}) != len(rows):
+        raise Rejected("compiler environment contains case-ambiguous keys")
+    return {
+        "mode": "inherited",
+        "variable_count": len(rows),
+        "variable_names": [row[0] for row in rows],
+        "sha256": canonical_hash(rows),
+    }
+
+
+def _sealed_compiler_environment(
+    environment: Mapping[str, str] | None = None,
+) -> tuple[dict[str, Any], Any]:
+    """Snapshot one immutable Unicode environment block and its safe binding."""
+
+    values = dict(os.environ if environment is None else environment)
+    binding = _compiler_environment_binding(values)
+    ordered = sorted(values.items(), key=lambda row: row[0].upper())
+    block = "\0".join(f"{key}={value}" for key, value in ordered) + "\0\0"
+    return binding, ctypes.create_unicode_buffer(block)
+
+
+def _combine_terminal_failure(
+    failure: Exception | None, secondary: str
+) -> Rejected:
+    secondary = _text(secondary, "secondary terminal failure")
+    if failure is None:
+        result = Rejected(secondary)
+        result.primary_failure = secondary
+        result.secondary_failures = []
+        return result
+    primary = str(getattr(failure, "primary_failure", str(failure)))
+    existing = list(getattr(failure, "secondary_failures", ()))
+    # Finalization can be observed from more than one boundary (for example a
+    # failed dispatcher restoration followed by an idempotent backend close).
+    # Preserve every distinct failure once, without allowing a repeated close
+    # observation to rewrite either the causal primary or secondary order.
+    if secondary in existing:
+        return failure if isinstance(failure, Rejected) else _structured_terminal_failure(
+            primary, existing
+        )
+    all_secondary = [*existing, secondary]
+    combined = _structured_terminal_failure(primary, all_secondary)
+    return combined
+
+
+def _structured_terminal_failure(primary: str, secondary: Sequence[str]) -> Rejected:
+    message = "; ".join(
+        [primary, *(f"secondary failure: {item}" for item in secondary)]
+    )
+    combined = Rejected(message)
+    combined.primary_failure = primary
+    combined.secondary_failures = list(secondary)
+    return combined
+
+
+def _close_capture_streams(
+    streams: Sequence[Any], failure: Exception | None
+) -> Exception | None:
+    result = failure
+    for stream in reversed(streams):
+        try:
+            stream.close()
+        except OSError as exc:
+            result = _combine_terminal_failure(
+                result,
+                f"compiler diagnostic stream close failure: {type(exc).__name__}: {exc}",
+            )
+    return result
+
+
+def _capture_output_descriptors(
+    auth: Mapping[str, Any], capture_result: Mapping[str, Any] | None
+) -> tuple[bool, dict[str, Any], str | None]:
+    """Return complete canonical capture outputs, or an unadmitted diagnostic set."""
+
+    paths = auth.get("paths")
+    if not isinstance(paths, Mapping):
+        raise Rejected("compiler receipt lacks authenticated capture paths")
+    descriptors: dict[str, Any] = {}
+    for name in ("event_stream_stack", "event_stream_pcode", "envelope"):
+        path = _canonical_path(paths.get(name), f"compiler receipt capture {name}", must_exist=False)
+        descriptors[name] = _optional_output_descriptor(path)
+    if not isinstance(capture_result, Mapping) or capture_result.get("schema") != SCHEMA:
+        return False, descriptors, "capture result is missing or has the wrong schema"
+    if not all(row["exists"] is True and int(row["size"] or 0) > 0 for row in descriptors.values()):
+        return False, descriptors, "capture output set is missing or empty"
+    try:
+        envelope_path = Path(descriptors["envelope"]["path"])
+        envelope = strict_json_loads(envelope_path.read_text(encoding="utf-8"), "compiler receipt envelope")
+        if not isinstance(envelope, Mapping) or envelope.get("schema") != SCHEMA:
+            raise Rejected("capture envelope schema mismatch")
+        expected_hash = envelope.get("envelope_sha256")
+        unsigned_envelope = {key: value for key, value in envelope.items() if key != "envelope_sha256"}
+        if expected_hash != canonical_hash(unsigned_envelope):
+            raise Rejected("capture envelope self-digest mismatch")
+        if capture_result.get("envelope_sha256") != expected_hash:
+            raise Rejected("capture result/envelope identity mismatch")
+        context = envelope.get("context")
+        request = auth.get("request")
+        if not isinstance(context, Mapping) or not isinstance(request, Mapping):
+            raise Rejected("capture envelope context is missing")
+        if context.get("session_id") != request.get("session_id"):
+            raise Rejected("capture envelope session mismatch")
+        if context.get("function") != request.get("function"):
+            raise Rejected("capture envelope function mismatch")
+        if context.get("function_sha256") != request.get("function_sha256"):
+            raise Rejected("capture envelope function hash mismatch")
+        request_descriptor = context.get("request")
+        if (
+            not isinstance(request_descriptor, Mapping)
+            or request_descriptor.get("sha256") != auth.get("request_sha256")
+        ):
+            raise Rejected("capture envelope request binding mismatch")
+        envelope_outputs = envelope.get("outputs")
+        if not isinstance(envelope_outputs, Mapping):
+            raise Rejected("capture envelope output bindings are missing")
+        for name in ("event_stream_stack", "event_stream_pcode"):
+            live_binding = {
+                key: descriptors[name][key] for key in ("path", "size", "sha256")
+            }
+            if envelope_outputs.get(name) != live_binding:
+                raise Rejected(f"capture envelope {name} binding mismatch")
+
+        root = auth.get("trust_root")
+        if not isinstance(root, ExternalTrustRoot):
+            raise Rejected("capture receipt lacks its external trust root")
+        output_values = {field: getattr(root, field) for field in ExternalTrustRoot.FIELDS}
+        for name in ("event_stream_stack", "event_stream_pcode", "envelope"):
+            output_values[f"{name}_path"] = descriptors[name]["path"]
+            output_values[f"{name}_size"] = descriptors[name]["size"]
+            output_values[f"{name}_sha256"] = descriptors[name]["sha256"]
+        validate_envelope(envelope_path, external_trust_root=ExternalTrustRoot(**output_values))
+    except Exception as exc:
+        return False, descriptors, f"{type(exc).__name__}: {exc}"
+    return True, descriptors, None
+
+
 def _compiler_execution_receipt(
     auth: Mapping[str, Any],
     *,
@@ -3477,6 +3674,10 @@ def _compiler_execution_receipt(
     terminated_by_capture: bool,
     exit_code: int | None,
     failure: str | None,
+    environment_binding: Mapping[str, Any] | None = None,
+    capture_result: Mapping[str, Any] | None = None,
+    process_summary: Mapping[str, Any] | None = None,
+    secondary_failures: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Seal the compiler invocation and its exact object/diagnostic outcome."""
 
@@ -3499,26 +3700,64 @@ def _compiler_execution_receipt(
         raise Rejected("compiler stderr capture is missing or not a regular file")
     if exit_code is not None:
         exit_code = _integer(exit_code, "compiler receipt exit code")
-    if process_created and not process_quiesced:
-        raise Rejected("compiler process was not quiesced before diagnostic sealing")
-    output = _optional_output_descriptor(compiler_outputs[0])
-    succeeded = (
+    output = _compiler_object_descriptor(compiler_outputs[0])
+    capture_complete, capture_outputs, capture_validation_failure = _capture_output_descriptors(
+        auth, capture_result
+    )
+    compiler_observed = (
         process_created
         and process_quiesced
         and not terminated_by_capture
         and exit_code == 0
-        and output["exists"] is True
+        and output["complete"] is True
         and failure is None
+    )
+    terminal_success = compiler_observed and capture_complete
+    environment = dict(environment_binding or _compiler_environment_binding())
+    if set(environment) != {"mode", "variable_count", "variable_names", "sha256"}:
+        raise Rejected("compiler environment binding is malformed")
+    secondary = [_text(value, f"compiler receipt secondary failure[{index}]") for index, value in enumerate(secondary_failures)]
+    if secondary != list(dict.fromkeys(secondary)):
+        raise Rejected("compiler receipt secondary failures are noncanonical")
+    process_tree = dict(process_summary or {
+        "observed_process_ids": [],
+        "exited_process_ids": [],
+        "open_process_ids": [],
+        "open_thread_handle_count": 0,
+        "unclosed_handle_count": 0,
+        "active_debug_event": False,
+    })
+    process_tree_complete = (
+        process_tree.get("open_process_ids") == []
+        and process_tree.get("open_thread_handle_count") == 0
+        and process_tree.get("unclosed_handle_count", 0) == 0
+        and process_tree.get("active_debug_event") is False
+    )
+    terminal_success = terminal_success and process_tree_complete
+    terminal_state = "SUCCESS" if terminal_success else ("UNKNOWN" if process_created else "FAILED")
+    if terminal_state not in COMPILER_TERMINAL_STATES:
+        raise Rejected("compiler terminal state is invalid")
+    partial_evidence_admitted = (
+        isinstance(capture_result, Mapping)
+        and capture_result.get("schema") == f"{PARTIAL_EVIDENCE_SCHEMA}/capture"
+        and capture_result.get("status") == "UNKNOWN"
     )
     unsigned = {
         "schema": COMPILER_EXECUTION_RECEIPT_SCHEMA,
-        "status": "COMPILER_TO_OBJECT_OBSERVED" if succeeded else "UNKNOWN",
+        "status": "COMPILER_TO_OBJECT_OBSERVED" if compiler_observed else "UNKNOWN",
+        "terminal_state": terminal_state,
         "diagnostic_only": True,
         "board_admission": False,
         "exactness_claim": False,
         "authority_advanced": False,
         "session_id": _safe_session_id(request.get("session_id")),
         "function": _text(request.get("function"), "compiler receipt function"),
+        "source_span": {
+            "function": _text(request.get("function"), "compiler receipt function"),
+            "function_sha256": _text(
+                request.get("function_sha256"), "compiler receipt function hash"
+            ).lower(),
+        },
         "request": _descriptor(auth.get("request_path"), "compiler receipt request"),
         "source": _descriptor(request.get("source"), "compiler receipt source"),
         "compiler": _descriptor(request.get("compiler"), "compiler receipt compiler"),
@@ -3528,13 +3767,33 @@ def _compiler_execution_receipt(
         "executed_argv_sha256": canonical_hash(argv),
         "include_search_paths": live_include_paths,
         "cwd": _canonical_cwd(request.get("cwd"), must_exist=True),
+        "environment": environment,
+        "prelaunch_empty_output_proof": dict(auth.get("prelaunch_empty_output_proof") or {}),
         "process_created": bool(process_created),
         "process_quiesced": bool(process_quiesced),
         "terminated_by_capture": bool(terminated_by_capture),
         "exit_code": exit_code,
         "compiler_output": output,
+        "object_observation": (
+            "ADMITTED_COMPLETE" if terminal_success else
+            "PRESENT_UNADMITTED" if output["exists"] else
+            "ABSENT"
+        ),
         "stdout": _descriptor(stdout_path, "compiler receipt stdout"),
         "stderr": _descriptor(stderr_path, "compiler receipt stderr"),
+        "diagnostics_sealed": bool(not process_created or process_quiesced),
+        "capture_outputs": capture_outputs,
+        "capture_validation_failure": capture_validation_failure,
+        "evidence_admission": (
+            "COMPLETE" if terminal_success else
+            "PARTIAL_DIAGNOSTIC" if partial_evidence_admitted else
+            "NONE"
+        ),
+        "partial_evidence_admitted": partial_evidence_admitted,
+        "process_tree": process_tree,
+        "primary_failure": failure,
+        "secondary_failures": secondary,
+        # Compatibility alias retained for existing receipt readers.
         "failure": failure,
     }
     return {**unsigned, "receipt_sha256": canonical_hash(unsigned)}
@@ -3544,7 +3803,22 @@ def _publish_compiler_execution_receipt(path: Path, receipt: Mapping[str, Any]) 
     unsigned = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
     if receipt.get("receipt_sha256") != canonical_hash(unsigned):
         raise Rejected("compiler execution receipt self-digest mismatch")
-    write_new(path, _canonical_json_bytes(dict(receipt)))
+    if path.exists() or path.is_symlink():
+        raise FileExistsError(path)
+    staging = path.with_name(f".{path.name}.{receipt['receipt_sha256']}.tmp")
+    if staging.exists() or staging.is_symlink():
+        raise Rejected("compiler execution receipt staging path already exists")
+    try:
+        write_new(staging, _canonical_json_bytes(dict(receipt)))
+        # Same-directory rename is the single publication point. On Windows it
+        # also fails rather than replacing an existing immutable receipt.
+        os.rename(staging, path)
+    finally:
+        try:
+            if staging.exists() or staging.is_symlink():
+                staging.unlink()
+        except OSError:
+            pass
 
 
 def authenticate_request(
@@ -4593,7 +4867,11 @@ def capture_with_backend(
             try:
                 close()
             except Exception as exc:
-                failure = Rejected(f"native cleanup failure: {type(exc).__name__}: {exc}")
+                cleanup_text = f"native cleanup failure: {type(exc).__name__}: {exc}"
+                # Preserve the causal failure first. Cleanup is secondary
+                # evidence and must never replace the compiler/capture outcome
+                # that caused cleanup to run.
+                failure = _combine_terminal_failure(failure, cleanup_text)
 
     if validation_failure is not None and failure is None:
         assert auth is not None and envelope is not None and root is not None and partial_evidence_dir is not None
@@ -6768,6 +7046,12 @@ class NativeWow64Backend:
             raise Rejected("native transport lacks its executed argv")
         self.direct_compiler_transport = transport_mode == "authenticated_direct_compiler"
         self._owned_handles: set[int] = {value for value in (int(process or 0), int(initial_thread or 0)) if value}
+        self._process_handles: dict[int, int] = {
+            int(process_id): int(process)
+        } if int(process_id) > 0 and int(process or 0) > 0 else {}
+        self._observed_process_ids: set[int] = {int(process_id)} if int(process_id) > 0 else set()
+        self._exited_process_ids: set[int] = set()
+        self._descendant_threads: dict[int, dict[int, int]] = {}
         self.transport_threads: dict[int, int] = {}
         if initial_thread:
             self.transport_threads[0] = int(initial_thread)
@@ -6804,7 +7088,14 @@ class NativeWow64Backend:
         self._compiler_relocation_rvas_cache: tuple[int, ...] | None = None
         self._compiler_relocation_values_cache: dict[int, int] | None = None
         self._pending_debug_event: tuple[int, int] | None = None
+        # A debugger event is an execution lease: Windows will not finish
+        # terminating a DEBUG_PROCESS debuggee until the event is continued.
+        # Keep the currently delivered event explicit so failure cleanup can
+        # release that lease before waiting for process quiescence.
+        self._active_debug_event: tuple[int, int] | None = None
         self._selection_mode: str | None = None
+        self._close_started = False
+        self._terminal_deadline: float | None = None
 
     def _runtime(self, absolute: int) -> int:
         return absolute - KNOWN_IMAGE_BASE + self.base
@@ -6942,11 +7233,46 @@ class NativeWow64Backend:
             getattr(self.native, "DBG_CONTINUE", 0x00010002),
         ):
             raise Rejected("ContinueDebugEvent failed")
+        if self._active_debug_event == (int(process_id), int(thread_id)):
+            self._active_debug_event = None
 
     def _close_debug_file(self, info: Any) -> None:
         file_handle = _native_value(getattr(info, "hFile", 0))
         if file_handle:
             self.native.kernel32.CloseHandle(file_handle)
+
+    def _record_process_create(self, process_id: int, thread_id: int, info: Any) -> None:
+        process_handle = _native_value(getattr(info, "hProcess", 0))
+        thread_handle = _native_value(getattr(info, "hThread", 0))
+        if process_id <= 0 or process_handle <= 0 or thread_handle <= 0:
+            raise Rejected("debug descendant CREATE_PROCESS event lacks handles")
+        if process_id in self._observed_process_ids:
+            existing = self._process_handles.get(process_id)
+            if existing not in {None, process_handle}:
+                raise Rejected("debug process identity reused a different handle")
+        self._observed_process_ids.add(int(process_id))
+        self._process_handles[int(process_id)] = int(process_handle)
+        self._descendant_threads.setdefault(int(process_id), {})[int(thread_id)] = int(thread_handle)
+        self._owned_handles.update((int(process_handle), int(thread_handle)))
+        self._close_debug_file(info)
+
+    def _record_process_exit(self, process_id: int) -> None:
+        if process_id not in self._observed_process_ids:
+            raise Rejected("debug process exit lacks an observed process")
+        self._exited_process_ids.add(int(process_id))
+
+    def terminal_process_summary(self) -> dict[str, Any]:
+        open_processes = sorted(self._observed_process_ids.difference(self._exited_process_ids))
+        return {
+            "observed_process_ids": sorted(self._observed_process_ids),
+            "exited_process_ids": sorted(self._exited_process_ids),
+            "open_process_ids": open_processes,
+            "open_thread_handle_count": len(self.threads) + len(self.transport_threads) + sum(
+                len(rows) for rows in self._descendant_threads.values()
+            ),
+            "unclosed_handle_count": len(self._owned_handles),
+            "active_debug_event": self._active_debug_event is not None,
+        }
 
     def _select_compiler_process(
         self,
@@ -6979,6 +7305,8 @@ class NativeWow64Backend:
         self.base = image_base
         self.threads[int(thread_id)] = thread_handle
         self._owned_handles.update((process_handle, thread_handle))
+        self._observed_process_ids.add(int(process_id))
+        self._process_handles[int(process_id)] = int(process_handle)
         # A native 32-bit process under WOW64 produces both the native and
         # WOW64 debugger-init breakpoints before user code.  A normal child
         # transport has one.  Only same-PID, out-of-compiler-image events may
@@ -7306,6 +7634,7 @@ class NativeWow64Backend:
                 raise Rejected(f"WaitForDebugEvent failed while pausing compiler: {error}")
             pid = int(event.dwProcessId)
             tid = int(event.dwThreadId)
+            self._active_debug_event = (pid, tid)
             if pid != self.transport_process_id:
                 raise Rejected("same-process pause reported an unauthenticated process")
             code = int(event.dwDebugEventCode)
@@ -7397,6 +7726,7 @@ class NativeWow64Backend:
             code = int(event.dwDebugEventCode)
             pid = int(event.dwProcessId)
             tid = int(event.dwThreadId)
+            self._active_debug_event = (pid, tid)
             if code == getattr(self.native, "CREATE_PROCESS_DEBUG_EVENT", 3):
                 info = event.u.CreateProcessInfo
                 process_handle = _native_value(getattr(info, "hProcess", 0))
@@ -7458,6 +7788,7 @@ class NativeWow64Backend:
                     # still selectable.  The bounded startup deadline keeps a
                     # same-process wrapper exit fail-closed.
                     self._transport_exited = True
+                    self._record_process_exit(pid)
                 self._continue_debug_event(pid, tid)
                 if not self._transport_exited:
                     image_base = self._discover_memexec_image_base()
@@ -8085,6 +8416,7 @@ class NativeWow64Backend:
         if event_type is None:
             raise Rejected("native DEBUG_EVENT layout is unavailable")
         event = event_type()
+        self._terminal_deadline = time.monotonic() + NATIVE_CAPTURE_TERMINAL_TIMEOUT_SECONDS
         if self._pending_create_event is not None:
             self._continue_debug_event(*self._pending_create_event)
             self._pending_create_event = None
@@ -8092,6 +8424,8 @@ class NativeWow64Backend:
             self._continue_debug_event(*self._pending_debug_event)
             self._pending_debug_event = None
         while not self.exited:
+            if self._terminal_deadline is not None and time.monotonic() >= self._terminal_deadline:
+                raise Rejected("native compiler capture exceeded its terminal deadline")
             if not self.native.kernel32.WaitForDebugEvent(ctypes.byref(event), 1000):
                 error = ctypes.get_last_error()
                 if error == getattr(self.native, "ERROR_SEM_TIMEOUT", 121):
@@ -8100,11 +8434,38 @@ class NativeWow64Backend:
             code = int(event.dwDebugEventCode)
             pid = int(event.dwProcessId)
             tid = int(event.dwThreadId)
+            compiler_exit_event = False
+            self._active_debug_event = (pid, tid)
+            if code == getattr(self.native, "CREATE_PROCESS_DEBUG_EVENT", 3) and pid != self.compiler_process_id:
+                # DEBUG_PROCESS reports every descendant.  Descendants never
+                # contribute hook evidence, but their handles/events remain
+                # part of the terminal process-tree proof.
+                self._record_process_create(pid, tid, event.u.CreateProcessInfo)
+                self._continue_debug_event(pid, tid)
+                continue
+            if pid in self._observed_process_ids and pid not in {
+                self.transport_process_id, self.compiler_process_id
+            }:
+                if code == getattr(self.native, "CREATE_THREAD_DEBUG_EVENT", 2):
+                    handle = _native_value(event.u.CreateThread.hThread)
+                    if handle:
+                        self._descendant_threads.setdefault(pid, {})[tid] = handle
+                        self._owned_handles.add(handle)
+                elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                    handle = self._descendant_threads.setdefault(pid, {}).pop(tid, None)
+                    if handle:
+                        self.native.kernel32.CloseHandle(handle)
+                        self._owned_handles.discard(handle)
+                elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                    self._record_process_exit(pid)
+                self._continue_debug_event(pid, tid)
+                continue
             # DEBUG_PROCESS also reports the wrapper's loader/transport events.
             # They are continued without inspection; every other process must
             # be the one authenticated compiler child.
             if pid == self.transport_process_id and pid != self.compiler_process_id:
                 if code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                    self._record_process_exit(pid)
                     self._continue_debug_event(pid, tid)
                     continue
                 if code == getattr(self.native, "CREATE_PROCESS_DEBUG_EVENT", 3):
@@ -8144,7 +8505,8 @@ class NativeWow64Backend:
                 # impossible breakpoint writes if validation rejects.
                 self.exited = True
                 self.compiler_exit_code = int(event.u.ExitProcess.dwExitCode)
-                self.process_quiesced = True
+                self._record_process_exit(pid)
+                compiler_exit_event = True
                 session.on_process_exit(self.compiler_exit_code, pid)
             elif code == getattr(self.native, "EXCEPTION_DEBUG_EVENT", 1):
                 session._check_process(pid)
@@ -8160,8 +8522,96 @@ class NativeWow64Backend:
             else:
                 session._check_process(pid)
             self._continue_debug_event(pid, tid)
+            if compiler_exit_event:
+                # EXIT_PROCESS is not a durable process boundary until its
+                # debugger event has been continued and the process handle is
+                # signaled.  Prove that boundary before a receipt may consume
+                # the compiler exit status.
+                self._seal_process_quiescence()
+
+    def _seal_process_quiescence(self) -> None:
+        """Continue termination events until every observed process is signaled."""
+
+        if self._active_debug_event is not None:
+            self._continue_debug_event(*self._active_debug_event)
+        self._pending_create_event = None
+        self._pending_debug_event = None
+
+        exit_code = ctypes.c_uint32()
+        deadline = time.monotonic() + 5.0
+        event_type = getattr(self.native, "DEBUG_EVENT", None)
+        event = None if event_type is None else event_type()
+        compiler_exit_code: int | None = None
+        while True:
+            unsignaled: list[int] = []
+            for pid, raw_handle in sorted(self._process_handles.items()):
+                wait_result = int(
+                    self.native.kernel32.WaitForSingleObject(ctypes.c_void_p(int(raw_handle)), 0)
+                )
+                if wait_result != 0:
+                    unsignaled.append(pid)
+                else:
+                    self._exited_process_ids.add(pid)
+            if not unsignaled:
+                process_handle = ctypes.c_void_p(int(self.process))
+                if not self.native.kernel32.GetExitCodeProcess(process_handle, ctypes.byref(exit_code)):
+                    raise Rejected("compiler exit code was unavailable after diagnostic quiescence")
+                observed = int(exit_code.value)
+                expected = compiler_exit_code
+                if expected is None:
+                    expected = self.compiler_exit_code
+                if expected is not None and observed != expected:
+                    raise Rejected("compiler exit event and process exit code diverged")
+                self.compiler_exit_code = observed
+                self.process_quiesced = True
+                self.exited = True
+                return
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise Rejected("compiler process did not quiesce before diagnostic sealing")
+            if event is None:
+                raise Rejected("native DEBUG_EVENT layout is unavailable during process quiescence")
+            wait_ms = max(1, min(250, int(remaining * 1000)))
+            if not self.native.kernel32.WaitForDebugEvent(ctypes.byref(event), wait_ms):
+                error = ctypes.get_last_error()
+                if error == getattr(self.native, "ERROR_SEM_TIMEOUT", 121):
+                    continue
+                raise Rejected(f"WaitForDebugEvent failed during process quiescence: {error}")
+
+            code = int(event.dwDebugEventCode)
+            pid = int(event.dwProcessId)
+            tid = int(event.dwThreadId)
+            self._active_debug_event = (pid, tid)
+            authenticated_pids = {self.transport_process_id}
+            if self.compiler_process_id is not None:
+                authenticated_pids.add(self.compiler_process_id)
+            if pid not in authenticated_pids:
+                if code != getattr(self.native, "CREATE_PROCESS_DEBUG_EVENT", 3) and pid not in self._observed_process_ids:
+                    raise Rejected("process quiescence reported an unauthenticated debug process")
+            if code == getattr(self.native, "CREATE_PROCESS_DEBUG_EVENT", 3):
+                self._record_process_create(pid, tid, event.u.CreateProcessInfo)
+            elif code == getattr(self.native, "CREATE_THREAD_DEBUG_EVENT", 2):
+                handle = _native_value(event.u.CreateThread.hThread)
+                if handle:
+                    self._descendant_threads.setdefault(pid, {})[tid] = handle
+                    self._owned_handles.add(handle)
+            elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                handle = self._descendant_threads.setdefault(pid, {}).pop(tid, None)
+                if handle:
+                    self.native.kernel32.CloseHandle(handle)
+                    self._owned_handles.discard(handle)
+            elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                self._record_process_exit(pid)
+                compiler_pid = self.compiler_process_id or self.transport_process_id
+                if pid == compiler_pid:
+                    compiler_exit_code = int(event.u.ExitProcess.dwExitCode)
+            self._continue_debug_event(pid, tid)
 
     def close(self) -> None:
+        if self._close_started:
+            return
+        self._close_started = True
         errors: list[str] = []
         # Once the compiler process has delivered EXIT_PROCESS, its address
         # space is gone and WriteProcessMemory cannot restore INT3 bytes.  The
@@ -8176,44 +8626,58 @@ class NativeWow64Backend:
                     errors.append(f"breakpoint 0x{runtime:08x}: {type(exc).__name__}: {exc}")
                 else:
                     self.breakpoints.pop(runtime, None)
-            exit_code = ctypes.c_uint32()
-            already_exited = bool(
-                self.native.kernel32.GetExitCodeProcess(
-                    ctypes.c_void_p(int(self.process)), ctypes.byref(exit_code)
-                )
-            ) and int(exit_code.value) != 259
-            if already_exited:
-                self.compiler_exit_code = int(exit_code.value)
-                self.process_quiesced = True
-                self.exited = True
-            elif not self.native.kernel32.TerminateProcess(ctypes.c_void_p(int(self.process)), 1):
-                errors.append("compiler process could not be terminated before diagnostic sealing")
-            else:
+        # Release a delivered debugger event before deciding whether any
+        # process needs forced termination. An EXIT_PROCESS event commonly
+        # becomes signaled immediately after this continuation.
+        if self._active_debug_event is not None:
+            try:
+                self._continue_debug_event(*self._active_debug_event)
+            except Exception as exc:
+                errors.append(f"active debug event: {type(exc).__name__}: {exc}")
+        exit_code = ctypes.c_uint32()
+        for pid, raw_handle in sorted(self._process_handles.items(), reverse=True):
+            process_handle = ctypes.c_void_p(int(raw_handle))
+            wait_result = int(self.native.kernel32.WaitForSingleObject(process_handle, 0))
+            if wait_result == 0:
+                self._exited_process_ids.add(pid)
+                if pid == (self.compiler_process_id or self.transport_process_id):
+                    if not self.native.kernel32.GetExitCodeProcess(process_handle, ctypes.byref(exit_code)):
+                        errors.append("compiler exit code was unavailable after its process handle signaled")
+                    else:
+                        self.compiler_exit_code = int(exit_code.value)
+                        self.exited = True
+                continue
+            if not self.native.kernel32.TerminateProcess(process_handle, 1):
+                errors.append(f"debug process {pid} could not be terminated before diagnostic sealing")
+            elif pid == (self.compiler_process_id or self.transport_process_id):
                 self.compiler_terminated_by_capture = True
-                wait_result = self.native.kernel32.WaitForSingleObject(
-                    ctypes.c_void_p(int(self.process)), 5000
-                )
-                if int(wait_result) != 0:
-                    errors.append("compiler process did not quiesce before diagnostic sealing")
-                elif not self.native.kernel32.GetExitCodeProcess(
-                    ctypes.c_void_p(int(self.process)), ctypes.byref(exit_code)
-                ):
-                    errors.append("compiler exit code was unavailable after diagnostic quiescence")
-                else:
-                    self.compiler_exit_code = int(exit_code.value)
-                    self.process_quiesced = True
-                    self.exited = True
+
+        # An EXIT_PROCESS status is not sufficient while a debugger event is
+        # still leased.  Always continue/drain that event and prove the process
+        # handle signaled before making diagnostics immutable.
+        if self._process_handles:
+            try:
+                self._seal_process_quiescence()
+            except Exception as exc:
+                errors.append(f"process quiescence: {type(exc).__name__}: {exc}")
         # DEBUG_PROCESS gives us handles for both the wrapper and compiler
         # CREATE_PROCESS events.  Close each raw handle once at the durable
         # cleanup boundary; never let a transport handle remain attached to a
         # later capture.
+        unclosed_handles: set[int] = set()
         for handle in sorted(self._owned_handles):
             try:
-                self.native.kernel32.CloseHandle(handle)
+                closed = self.native.kernel32.CloseHandle(handle)
             except Exception as exc:
                 errors.append(f"native handle {handle}: {type(exc).__name__}: {exc}")
-        self._owned_handles.clear()
+            else:
+                if not closed:
+                    errors.append(f"native handle {handle}: CloseHandle returned FALSE")
+                    unclosed_handles.add(handle)
+        self._owned_handles = unclosed_handles
         self.threads.clear()
+        self.transport_threads.clear()
+        self._descendant_threads.clear()
         if errors:
             raise Rejected("native cleanup restoration failed: " + "; ".join(errors))
 
@@ -8255,6 +8719,7 @@ def launch_native_capture(
     wait_for_process.restype = ctypes.c_uint32
     request = auth["request"]
     transport_mode, executed_argv = _native_transport_plan(request)
+    environment_binding, environment_block = _sealed_compiler_environment()
     include_search_paths = [
         _directory_tree_descriptor(path)
         for path in _compile_include_paths(executed_argv, request["cwd"])
@@ -8308,8 +8773,10 @@ def launch_native_capture(
             None,
             None,
             True,
-            DEBUG_PROCESS | native.CREATE_NO_WINDOW,
-            None,
+            DEBUG_PROCESS
+            | native.CREATE_NO_WINDOW
+            | getattr(native, "CREATE_UNICODE_ENVIRONMENT", 0x00000400),
+            environment_block,
             request["cwd"],
             ctypes.byref(startup),
             ctypes.byref(process_info),
@@ -8351,13 +8818,16 @@ def launch_native_capture(
                 os.set_handle_inheritable(handle, False)
             except OSError:
                 pass
-        for stream in reversed(streams):
-            try:
-                stream.close()
-            except OSError:
-                pass
+        failure = _close_capture_streams(streams, failure)
 
     failure_text = None if failure is None else str(failure)
+    primary_failure = (
+        getattr(failure, "primary_failure", failure_text) if failure is not None else None
+    )
+    secondary_failures = (
+        list(getattr(failure, "secondary_failures", ())) if failure is not None else []
+    )
+    process_summary = None if backend is None else backend.terminal_process_summary()
     try:
         receipt = _compiler_execution_receipt(
             auth,
@@ -8370,14 +8840,16 @@ def launch_native_capture(
             process_quiesced=False if backend is None else backend.process_quiesced,
             terminated_by_capture=False if backend is None else backend.compiler_terminated_by_capture,
             exit_code=None if backend is None else backend.compiler_exit_code,
-            failure=failure_text,
+            failure=primary_failure,
+            environment_binding=environment_binding,
+            capture_result=result,
+            process_summary=process_summary,
+            secondary_failures=secondary_failures,
         )
         _publish_compiler_execution_receipt(diagnostic_paths["receipt"], receipt)
     except Exception as exc:
-        original = f"; original capture failure: {failure_text}" if failure_text else ""
-        raise Rejected(
-            f"compiler execution receipt publication failed: {type(exc).__name__}: {exc}{original}"
-        ) from exc
+        publication = f"compiler execution receipt publication failed: {type(exc).__name__}: {exc}"
+        raise _combine_terminal_failure(failure, publication) from exc
     if failure is not None:
         if isinstance(failure, Rejected):
             raise failure
