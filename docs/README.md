@@ -17,6 +17,7 @@
 - [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, evidence
 - [`match_workbench.md`](match_workbench.md): authenticated matching deduplication and bounded read-only diagnosis
 - [`frontend_temporary_birth_order.md`](frontend_temporary_birth_order.md): fail-closed MWCC temporary-home permutation diagnosis
+- [`volatile_owner_causal_join.md`](volatile_owner_causal_join.md): diagnostic-only volatile PCode/IG owner and register-permutation join
 - [`board_owner_causal_map.md`](board_owner_causal_map.md): checkpoint G full-owner residual inventory, causal joins, and ranked next evidence
 - [`blind_recovery_benchmark.md`](blind_recovery_benchmark.md): sealed holdouts and organicity
 - [`../benchmarks/blind_recovery/README.md`](../benchmarks/blind_recovery/README.md): benchmark replay

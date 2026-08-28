@@ -74,6 +74,24 @@ is rejected before the compiler launches. A private backend can implement the
 13 sites but cannot add authority or replace the request's compiler-selected
 profile.
 
+The three GC/2.7 physical commits do not use the GC/2.6 `EBX = Object*`,
+`EBP = VarInfo*` convention. At the pair and single commits, `ESI` retains the
+Object and `EAX` retains the just-written VarInfo. At the precolored commit,
+`EBX` retains the owned list node (`Object*` at `+0x04`) and `ESI` retains the
+VarInfo. The native backend selects this layout only for the pinned GC/2.7
+compiler and checks the pair against the captured Object/VarInfo ledger before
+serializing a token. A null, unlisted, reverse-mismatched, or cross-profile
+pair remains UNKNOWN or is rejected; class and register integers are never
+treated as pointers. GC/2.6 continues to use its separately authenticated
+legacy layout.
+
+The current event contract represents one physical register per Object. The
+GC/2.7 pair commit writes two ordered registers, so a consistent pair commit is
+preserved as explicit UNKNOWN rather than silently dropping its high member.
+Single commits cross-check the live class/register arguments but ignore stale
+`VarInfo+0x28`, which that path does not write. Precolored commits cross-check
+the class/register bytes in the owned list node and require a zero high member.
+
 `preflight` also maps every selected hook address back into the authenticated
 GC/2.7 PE file and compares the exact preferred-base bytes before any process
 is created. This disk-image gate is independent of the later live mapped-image
@@ -270,6 +288,14 @@ The immutable, hash-bound package contains:
   source-register definition, the explicit missing source registers, and the
   complete capture-local PCode operand/IG-owner chronology. Hidden IG owners
   remain `UNKNOWN`; the graph never promotes them to source Objects;
+- the additive `volatile_owner_facts` projection inside that graph. It retains
+  only PCode/IG operands that have a named Object or an exact decoded machine
+  operand edge, binds repeated physical registers by authenticated operand
+  ordinal and decoder-supplied role order, and hashes only raw events supporting
+  those retained facts. Competing role orders, missing vregs, missing physical
+  assignments, hidden owners, and incomplete machine joins remain explicit
+  UNKNOWN classifications. The complete raw streams above remain the forensic
+  authority; this compact projection is a downstream diagnostic index;
 - `partial-evidence.json`, the self-hashed package manifest and artifact
   digests.
 
@@ -322,6 +348,17 @@ invalidates only the source dependency connected to that evidence. A `bl` or
 `fneg` outside the dependency interval does not poison unrelated rows; an
 unknown dependency touching the stack interval keeps that interval UNKNOWN.
 UNKNOWN is never converted into an owner by inference.
+
+`tools/volatile_owner_causal_join.py` can consume the compact projection for a
+hash-bound, register-only residual. Its caller must independently supply the
+sealed context digest, strict and data focus bindings, source spans, target and
+candidate objects, and physical-relocation receipt. A `PROVEN` result requires
+one exact Object-to-vreg-to-physical def/use path for every changed operand and
+a complete register permutation; otherwise the result is deterministic
+`UNKNOWN`. See `docs/volatile_owner_causal_join.md`. Current preserved
+MetalShock and Boble captures contain useful operand chronology but no exact
+Object-to-vreg edge, so they remain negative replay fixtures rather than
+positive source-ranking evidence.
 
 ### Capture-local template normalization
 

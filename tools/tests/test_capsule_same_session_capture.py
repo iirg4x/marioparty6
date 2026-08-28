@@ -2412,6 +2412,10 @@ class MachineEmissionDecoderTests(unittest.TestCase):
             "compiler": {"sha256": MODULE.GC27_COMPILER_SHA256},
         }
         MODULE._validate_event(event, 0, context)
+        self.assertEqual(
+            event["operand_role_order"],
+            ["destination", "source_a", "source_b"],
+        )
 
         incomplete = dict(event)
         del incomplete["arithmetic_type"]
@@ -2420,6 +2424,12 @@ class MachineEmissionDecoderTests(unittest.TestCase):
         invalid = dict(event, arithmetic_type="f64")
         with self.assertRaisesRegex(MODULE.Rejected, "arithmetic effect is invalid"):
             MODULE._validate_event(invalid, 0, context)
+        reordered = dict(
+            event,
+            operand_role_order=["destination", "source_b", "source_a"],
+        )
+        with self.assertRaisesRegex(MODULE.Rejected, "operand role order is invalid"):
+            MODULE._validate_event(reordered, 0, context)
 
     def test_machine_event_joins_existing_physical_owner_without_serializing_pointer(self) -> None:
         with TemporaryDirectory() as directory:
@@ -3647,6 +3657,262 @@ class SourceSpanV2StackIntervalTests(unittest.TestCase):
                 path = Path(artifact["path"])
                 self.assertEqual(path.stat().st_size, artifact["size"], name)
                 self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), artifact["sha256"], name)
+
+            volatile = graph["volatile_owner_facts"]
+            self.assertEqual(volatile["session_id"], "session-0000000000000012")
+            self.assertEqual(volatile["candidate_object"], manifest["compiler_owned_object"])
+            self.assertEqual(
+                volatile["volatile_owner_facts_sha256"],
+                MODULE.canonical_hash({
+                    key: value
+                    for key, value in volatile.items()
+                    if key != "volatile_owner_facts_sha256"
+                }),
+            )
+            self.assertNotIn("pointer", json.dumps(volatile, sort_keys=True).lower())
+            hidden_bindings = [
+                row for row in volatile["object_identity_bindings"]
+                if "hidden_owner_token" in row
+            ]
+            self.assertEqual(hidden_bindings, [])
+
+    def _volatile_owner_fixture(
+        self,
+        root: Path,
+        *,
+        machine_registers: dict[str, str] | None,
+    ) -> tuple[dict[str, object], list[dict[str, object]]]:
+        request = auth(root)["request"]
+        assert isinstance(request, dict)
+        session_id = str(request["session_id"])
+        object_token = f"local-{session_id}-000000"
+        pcode_id = f"pcode-{session_id}-000000"
+        events: list[dict[str, object]] = [
+            {
+                "event_id": f"{session_id}-e000000",
+                "sequence": 0,
+                "event_kind": "regalloc_assignment",
+                "status": "EXACT",
+                "object_token": object_token,
+                "vreg_id": "f32",
+                "bank": "FPR",
+            },
+            {
+                "event_id": f"{session_id}-e000001",
+                "sequence": 1,
+                "event_kind": "physical_reg_assignment",
+                "status": "EXACT",
+                "object_token": object_token,
+                "physical_reg": 17,
+                "bank": "FPR",
+            },
+            {
+                "event_id": f"{session_id}-e000002",
+                "sequence": 2,
+                "event_kind": "pcode_capture",
+                "status": "CAPTURED",
+                "pcode_token": pcode_id,
+                "ig_token": f"ig-{session_id}-000000",
+                "operand_ordinal": 0,
+                "operand_count": 1,
+                "operand_kind": 2,
+                "operand_bank": "FPR",
+                "operand_index": 32,
+                "final_color": 17,
+                "ig_flags": 0,
+                "object_token": object_token,
+            },
+        ]
+        if machine_registers is not None:
+            events.append({
+                "event_id": f"{session_id}-e000003",
+                "sequence": 3,
+                "event_kind": "machine_emission",
+                "status": "CAPTURED",
+                "pcode_token": pcode_id,
+                "instruction_index": 9,
+                "mnemonic": "fmuls",
+                "registers": machine_registers,
+                "operand_role_order": list(machine_registers),
+                "reaching_definitions": [8],
+            })
+        return request, events
+
+    def test_volatile_owner_facts_preserve_unique_def_use_join(self) -> None:
+        with TemporaryDirectory() as directory:
+            context, events = self._volatile_owner_fixture(
+                Path(directory), machine_registers={"source_a": "f17"}
+            )
+            session_id = str(context["session_id"])
+            events.extend([
+                {
+                    "event_id": f"{session_id}-e000004",
+                    "sequence": 4,
+                    "event_kind": "machine_emission",
+                    "status": "CAPTURED",
+                    "pcode_token": f"pcode-{session_id}-000004",
+                    "instruction_index": 8,
+                    "mnemonic": "fmuls",
+                    "registers": {"destination": "f17"},
+                    "operand_role_order": ["destination"],
+                    "reaching_definitions": [],
+                },
+                {
+                    "event_id": f"{session_id}-e000005",
+                    "sequence": 5,
+                    "event_kind": "machine_emission",
+                    "status": "CAPTURED",
+                    "pcode_token": f"pcode-{session_id}-000005",
+                    "instruction_index": 11,
+                    "mnemonic": "fmuls",
+                    "registers": {"source_a": "f17"},
+                    "operand_role_order": ["source_a"],
+                    "reaching_definitions": [8],
+                },
+            ])
+            facts = MODULE._build_volatile_owner_facts(events, context)
+        self.assertEqual(len(facts["closed_residual_rows"]), 1)
+        self.assertEqual(facts["closed_residual_rows"][0]["required_operand_roles"], ["source_a"])
+        owner = facts["owner_facts"][0]
+        self.assertEqual(owner["classification"], "UNIQUE")
+        self.assertEqual(owner["vreg"], "f32")
+        self.assertEqual(owner["physical_register"], "f17")
+        self.assertEqual(owner["def_id"], "def-000008")
+        self.assertEqual(owner["use_ids"], ["use-000009", "use-000011"])
+        hashed_events = {
+            row["event_id"]: row["sha256"] for row in facts["raw_event_hashes"]
+        }
+        cited_instruction_indexes = {
+            int(owner["def_id"].rsplit("-", 1)[1]),
+            *(int(use_id.rsplit("-", 1)[1]) for use_id in owner["use_ids"]),
+        }
+        cited_machine_event_ids = {
+            str(event["event_id"])
+            for event in events
+            if event.get("event_kind") == "machine_emission"
+            and event.get("instruction_index") in cited_instruction_indexes
+        }
+        self.assertEqual(
+            cited_machine_event_ids,
+            {
+                f"{context['session_id']}-e000003",
+                f"{context['session_id']}-e000004",
+                f"{context['session_id']}-e000005",
+            },
+        )
+        self.assertTrue(cited_machine_event_ids.issubset(hashed_events))
+        events_by_id = {str(event["event_id"]): event for event in events}
+        for event_id in cited_machine_event_ids:
+            self.assertEqual(hashed_events[event_id], MODULE.canonical_hash(events_by_id[event_id]))
+
+    def test_volatile_owner_facts_preserve_competing_ambiguous_joins(self) -> None:
+        with TemporaryDirectory() as directory:
+            context, events = self._volatile_owner_fixture(
+                Path(directory),
+                machine_registers={"source_a": "f17", "source_b": "f17"},
+            )
+            events[2]["operand_count"] = 2
+            events.append({
+                **events[-1],
+                "event_id": f"{context['session_id']}-e000004",
+                "sequence": 4,
+                "operand_role_order": ["source_b", "source_a"],
+            })
+            facts = MODULE._build_volatile_owner_facts(events, context)
+        self.assertEqual(len(facts["owner_facts"]), 2)
+        self.assertEqual(
+            {row["role"] for row in facts["owner_facts"]},
+            {"source_a", "source_b"},
+        )
+        self.assertEqual(
+            {row["classification"] for row in facts["owner_facts"]},
+            {"UNKNOWN_AMBIGUOUS_MACHINE_EDGE"},
+        )
+        self.assertEqual(
+            facts["closed_residual_rows"][0]["required_operand_roles"],
+            ["source_a", "source_b"],
+        )
+
+    def test_volatile_owner_facts_preserve_missing_join_as_unknown(self) -> None:
+        with TemporaryDirectory() as directory:
+            context, events = self._volatile_owner_fixture(
+                Path(directory), machine_registers=None
+            )
+            facts = MODULE._build_volatile_owner_facts(events, context)
+        self.assertEqual(len(facts["owner_facts"]), 1)
+        owner = facts["owner_facts"][0]
+        self.assertEqual(owner["classification"], "UNKNOWN_MISSING_MACHINE_EDGE")
+        self.assertEqual(owner["role"], "UNKNOWN")
+        self.assertIsNone(owner["def_id"])
+        self.assertEqual(owner["use_ids"], [])
+        self.assertEqual(facts["closed_residual_rows"][0]["required_operand_roles"], [])
+
+    def test_volatile_owner_facts_use_ordinal_to_split_duplicate_colors(self) -> None:
+        with TemporaryDirectory() as directory:
+            context, events = self._volatile_owner_fixture(
+                Path(directory), machine_registers=None
+            )
+            session_id = str(context["session_id"])
+            object_token = f"local-{session_id}-000000"
+            pcode_id = f"pcode-{session_id}-000000"
+            events = [
+                {
+                    **events[2],
+                    "event_id": f"{session_id}-e{ordinal:06d}",
+                    "sequence": ordinal,
+                    "ig_token": f"ig-{session_id}-{ordinal:06d}",
+                    "operand_ordinal": ordinal,
+                    "operand_count": 3,
+                    "final_color": color,
+                    "object_token": object_token,
+                }
+                for ordinal, color in enumerate((0, 31, 0))
+            ]
+            events.append({
+                "event_id": f"{session_id}-e000003",
+                "sequence": 3,
+                "event_kind": "machine_emission",
+                "status": "CAPTURED",
+                "pcode_token": pcode_id,
+                "instruction_index": 608,
+                "mnemonic": "fmuls",
+                "registers": {
+                    "destination": "f0",
+                    "source_a": "f31",
+                    "source_b": "f0",
+                },
+                "operand_role_order": ["destination", "source_a", "source_b"],
+                "reaching_definitions": [606, 607],
+            })
+            facts = MODULE._build_volatile_owner_facts(events, context)
+        self.assertEqual(
+            [fact["role"] for fact in facts["owner_facts"]],
+            ["destination", "source_a", "source_b"],
+        )
+        self.assertEqual(
+            [fact["physical_register"] for fact in facts["owner_facts"]],
+            ["f0", "f31", "f0"],
+        )
+        self.assertEqual(
+            {fact["classification"] for fact in facts["owner_facts"]},
+            {"UNKNOWN_MISSING_VREG_EDGE"},
+        )
+
+    def test_volatile_owner_facts_drop_unjoinable_hidden_bulk(self) -> None:
+        with TemporaryDirectory() as directory:
+            context, events = self._volatile_owner_fixture(
+                Path(directory), machine_registers=None
+            )
+            hidden = dict(events[2])
+            hidden.pop("object_token")
+            hidden["hidden_owner_token"] = (
+                f"hidden-ig-{context['session_id']}-000000"
+            )
+            facts = MODULE._build_volatile_owner_facts([hidden], context)
+        self.assertEqual(facts["closed_residual_rows"], [])
+        self.assertEqual(facts["owner_facts"], [])
+        self.assertEqual(facts["object_identity_bindings"], [])
+        self.assertEqual(facts["raw_event_hashes"], [])
 
     def test_partial_evidence_requires_one_compiler_owned_output_and_new_destination(self) -> None:
         with TemporaryDirectory() as directory:
@@ -4877,6 +5143,7 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
         self.assertEqual(
             backend.capture_physical_regalloc("regalloc_post", 7),
             {
+                "hook_id": "regalloc_post",
                 "object": 0x1000,
                 "varinfo_pointer": 0x2000,
                 "noregister": 0,
@@ -4889,6 +5156,125 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
         backend.read_register = mock.Mock(side_effect=lambda _thread, name: {"ebx": 0x1000, "ebp": 0x3000}[name])
         with self.assertRaisesRegex(MODULE.Rejected, "VarInfo pointer"):
             backend.capture_physical_regalloc("regalloc_post", 7)
+
+    def test_gc27_pair_physical_hook_cross_checks_and_stays_unknown(self) -> None:
+        data = bytearray(0x2A)
+        data[0x24] = 6
+        data[0x25] = 4
+        struct.pack_into("<h", data, 0x26, 17)
+        struct.pack_into("<h", data, 0x28, 18)
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC27_COMPILER_SHA256
+        )
+        backend._object_kind[0x1000] = "local"
+        backend._object_varinfo[0x1000] = 0x2000
+        backend._varinfo_object[0x2000] = 0x1000
+        backend.read_register = mock.Mock(
+            side_effect=lambda _thread, name: {
+                "esi": 0x1000, "eax": 0x2000, "ebx": 18, "ebp": 17,
+            }[name]
+        )
+        backend._read = mock.Mock(return_value=bytes(data))
+        row = backend.capture_physical_regalloc("physical_pair_commit", 7)
+        self.assertEqual(row["hook_id"], "physical_pair_commit")
+        self.assertEqual(row["commit"], {"register_class": 4, "reg": 17, "reg_hi": 18})
+        self.assertEqual(row["status"], "UNKNOWN")
+        self.assertEqual(row["reason"], "paired physical register assignment unsupported")
+
+    def test_gc27_single_physical_hook_ignores_stale_high_half(self) -> None:
+        data = bytearray(0x2A)
+        data[0x24] = 2
+        data[0x25] = 3
+        struct.pack_into("<h", data, 0x26, 17)
+        struct.pack_into("<h", data, 0x28, 29)
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC27_COMPILER_SHA256
+        )
+        backend._object_kind[0x1000] = "local"
+        backend._object_varinfo[0x1000] = 0x2000
+        backend._varinfo_object[0x2000] = 0x1000
+        backend.read_register = mock.Mock(
+            side_effect=lambda _thread, name: {
+                "esi": 0x1000, "eax": 0x2000, "ebx": 3, "ebp": 17,
+            }[name]
+        )
+        backend._read = mock.Mock(return_value=bytes(data))
+        row = backend.capture_physical_regalloc("physical_single_commit", 7)
+        self.assertNotIn("status", row)
+        self.assertEqual(row["commit"], {"register_class": 3, "reg": 17, "reg_hi_ignored": True})
+        self.assertEqual((row["rclass"], row["reg"], row["reg_hi"]), (3, 17, 0))
+
+    def test_gc27_precolored_hook_reads_object_from_owned_list_node(self) -> None:
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC27_COMPILER_SHA256
+        )
+        backend._object_kind[0x1000] = "local"
+        backend._object_varinfo[0x1000] = 0x2000
+        backend._varinfo_object[0x2000] = 0x1000
+        backend.read_register = mock.Mock(
+            side_effect=lambda _thread, name: {"ebx": 0x3000, "esi": 0x2000}[name]
+        )
+        data = bytearray(0x2A)
+        data[0x24] = 2
+        data[0x25] = 4
+        struct.pack_into("<h", data, 0x26, 12)
+        struct.pack_into("<h", data, 0x28, 0)
+
+        def read(address: int, size: int) -> bytes:
+            if (address, size) == (0x3004, 4):
+                return (0x1000).to_bytes(4, "little")
+            if (address, size) == (0x300C, 2):
+                return bytes((4, 12))
+            if (address, size) == (0x2000, 0x2A):
+                return bytes(data)
+            self.fail(f"unexpected GC/2.7 physical read {address:#x}/{size}")
+
+        backend._read = mock.Mock(side_effect=read)
+        row = backend.capture_physical_regalloc("precolored_commit", 7)
+        self.assertEqual(row["object"], 0x1000)
+        self.assertEqual(row["varinfo_pointer"], 0x2000)
+        self.assertEqual((row["rclass"], row["reg"], row["reg_hi"]), (4, 12, 0))
+        self.assertEqual(row["commit"], {"register_class": 4, "reg": 12, "reg_hi": 0})
+
+    def test_gc27_null_pair_and_single_objects_are_unknown_not_pointer_reinterpretation(self) -> None:
+        for hook_id in ("physical_pair_commit", "physical_single_commit"):
+            with self.subTest(hook_id=hook_id):
+                backend = MODULE.NativeWow64Backend(
+                    object(), 1, 0, 4321, compiler_sha256=MODULE.GC27_COMPILER_SHA256
+                )
+                backend.read_register = mock.Mock(
+                    side_effect=lambda _thread, name: {
+                        "esi": 0, "eax": 0x2000, "ebx": 18, "ebp": 17,
+                    }[name]
+                )
+                row = backend.capture_physical_regalloc(hook_id, 7)
+                self.assertEqual(row["hook_id"], hook_id)
+                self.assertEqual(row["status"], "UNKNOWN")
+                self.assertEqual(row["reason"], "null object identity")
+                self.assertEqual(row["object"], 0)
+
+    def test_gc27_live_single_commit_mismatch_is_unknown(self) -> None:
+        data = bytearray(0x2A)
+        data[0x24] = 2
+        data[0x25] = 3
+        struct.pack_into("<h", data, 0x26, 16)
+        struct.pack_into("<h", data, 0x28, 0)
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC27_COMPILER_SHA256
+        )
+        backend._object_kind[0x1000] = "local"
+        backend._object_varinfo[0x1000] = 0x2000
+        backend._varinfo_object[0x2000] = 0x1000
+        backend.read_register = mock.Mock(
+            side_effect=lambda _thread, name: {
+                "esi": 0x1000, "eax": 0x2000, "ebx": 3, "ebp": 17,
+            }[name]
+        )
+        backend._read = mock.Mock(return_value=bytes(data))
+        row = backend.capture_physical_regalloc("physical_single_commit", 7)
+        self.assertEqual(row["commit"], {"register_class": 3, "reg": 17, "reg_hi_ignored": True})
+        self.assertEqual(row["status"], "UNKNOWN")
+        self.assertEqual(row["reason"], "incomplete physical register evidence")
 
 
 class SourceSpanTemplateNormalizerTests(unittest.TestCase):

@@ -586,6 +586,7 @@ _EVENT_EXTRA_KEYS = {
     "missing_reaching_registers",
     "owner_joins",
     "physical_owner_joins",
+    "operand_role_order",
     "ig_token",
     "hidden_owner_token",
     "operand_ordinal",
@@ -637,6 +638,7 @@ _EVENT_ALLOWED_FIELDS = {
         "effective_stack_offset", "address_definition", "reaching_definitions",
         "known_reaching_definitions", "missing_reaching_registers",
         "arithmetic_op", "arithmetic_type", "owner_joins", "physical_owner_joins",
+        "operand_role_order",
     },
     "lane_unknown": {"reason"},
     "function_exit": {"exit_code"},
@@ -697,6 +699,7 @@ _KNOWN_UNKNOWN_REASONS = frozenset(
         "unsupported machine operand",
         "descriptor opcode mismatch",
         "machine owner register-bank mismatch",
+        "paired physical register assignment unsupported",
     )
 )
 
@@ -1524,6 +1527,7 @@ class MachineEmissionDecoder:
                 "arithmetic_type",
                 "known_reaching_definitions",
                 "missing_reaching_registers",
+                "operand_role_order",
             ):
                 if key in located:
                     result[key] = located[key]
@@ -1696,6 +1700,7 @@ class MachineEmissionDecoder:
             result.update(
                 mnemonic="fneg",
                 registers={"destination": f"f{destination}", "source": f"f{source}"},
+                operand_role_order=["destination", "source"],
             )
             self.value_defs[("FPR", destination)] = instruction_index
         elif primary == 59 and ((word >> 1) & 0x1F) == 25:  # fmuls
@@ -1725,6 +1730,7 @@ class MachineEmissionDecoder:
                 },
                 arithmetic_op="multiply",
                 arithmetic_type="f32",
+                operand_role_order=["destination", "source_a", "source_b"],
                 known_reaching_definitions=known_reaching,
                 missing_reaching_registers=missing_reaching,
             )
@@ -1751,6 +1757,7 @@ class MachineEmissionDecoder:
                 },
                 arithmetic_op="multiply",
                 arithmetic_type="paired-single",
+                operand_role_order=["destination", "source_a", "source_b"],
             )
             self.value_defs[("FPR", destination)] = instruction_index
         else:
@@ -2508,6 +2515,12 @@ class CombinedCaptureSession:
         if self.varinfo_owners.get(varinfo_pointer) != token:
             self._physical_unknown(token, "missing or invalid Object VarInfo pointer")
             return None
+        if row.get("status") == "UNKNOWN":
+            reason = row.get("reason")
+            if reason not in _KNOWN_UNKNOWN_REASONS:
+                reason = "incomplete physical register evidence"
+            self._physical_unknown(token, str(reason))
+            return None
 
         def _field_int(name: str, *aliases: str) -> int | None:
             value = next((row[key] for key in (name, *aliases) if key in row), None)
@@ -2583,7 +2596,7 @@ class CombinedCaptureSession:
 
     def on_physical_regalloc(self, row: Mapping[str, Any]) -> None:
         if not self.inventory_structure_ready or not self.stack_allocation_pre_seen:
-            # Keep the process-local EBX/EBP evidence until a complete Object
+            # Keep the process-local hook-specific Object/VarInfo evidence until a complete Object
             # list snapshot binds the pointer to a session token.  Raw
             # pointers never enter the event bus or serialized envelope.
             self.pending_physical_rows.append(dict(row) if isinstance(row, Mapping) else {})
@@ -3568,9 +3581,313 @@ def _exact_edge_map(
     return result
 
 
+def _build_volatile_owner_facts(
+    events: Sequence[Mapping[str, Any]],
+    context: Mapping[str, Any],
+    candidate_object: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Freeze capture-local PCode/IG facts without promoting them to authority."""
+
+    session_id = _safe_session_id(context.get("session_id"))
+    function = _text(context.get("function"), "volatile owner function")
+    source = _descriptor(context.get("source"), "volatile owner source", verify=False)
+    compiler = _descriptor(context.get("compiler"), "volatile owner compiler", verify=False)
+    machine_by_pcode: dict[str, list[dict[str, Any]]] = {}
+    machine_role_orders: dict[str, list[tuple[str, list[str]]]] = {}
+    exact_vregs: dict[str, list[str]] = {}
+    exact_physical: dict[str, list[str]] = {}
+
+    for event in events:
+        if not isinstance(event, Mapping):
+            raise Rejected("volatile owner event is not an object")
+        kind = event.get("event_kind")
+        if kind == "regalloc_assignment" and event.get("status") == "EXACT":
+            token = _text(event.get("object_token"), "volatile owner Object token")
+            _token_parts(token, "volatile owner Object token", session_id)
+            exact_vregs.setdefault(token, []).append(
+                _validate_vreg(event.get("vreg_id"), "volatile owner vreg")
+            )
+        if kind == "physical_reg_assignment" and event.get("status") == "EXACT":
+            token = _text(event.get("object_token"), "volatile physical Object token")
+            _token_parts(token, "volatile physical Object token", session_id)
+            bank = event.get("bank")
+            color = _integer(event.get("physical_reg"), "volatile physical color", nonnegative=True)
+            if bank not in {"GPR", "FPR"} or color > 31:
+                raise Rejected("volatile physical assignment is invalid")
+            exact_physical.setdefault(token, []).append(
+                f"{'r' if bank == 'GPR' else 'f'}{color}"
+            )
+        if kind != "machine_emission" or event.get("status") not in {"CAPTURED", "UNKNOWN"}:
+            continue
+        if not isinstance(event.get("pcode_token"), str) or not isinstance(event.get("registers"), Mapping):
+            continue
+        pcode_id = str(event["pcode_token"])
+        pcode_match = PCODE_TOKEN_RE.fullmatch(pcode_id)
+        if pcode_match is None or pcode_match.group("session") != session_id:
+            raise Rejected("volatile machine PCode provenance changed")
+        role_order = event.get("operand_role_order")
+        if role_order is not None:
+            if (
+                not isinstance(role_order, list)
+                or not role_order
+                or any(not isinstance(role, str) or role not in event["registers"] for role in role_order)
+                or len(role_order) != len(set(role_order))
+            ):
+                raise Rejected("volatile machine operand role order is invalid")
+            machine_role_orders.setdefault(pcode_id, []).append(
+                (_text(event.get("event_id"), "volatile machine event ID"), list(role_order))
+            )
+        instruction_index = _integer(
+            event.get("instruction_index"), "volatile instruction index", nonnegative=True
+        )
+        reaching = {
+            _integer(value, "volatile reaching definition", nonnegative=True)
+            for value in event.get("reaching_definitions", [])
+        }
+        known_by_register: dict[str, set[int]] = {}
+        for row in event.get("known_reaching_definitions", []):
+            if not isinstance(row, Mapping):
+                raise Rejected("volatile known reaching definition is malformed")
+            register = _text(row.get("physical_register"), "volatile reaching register")
+            known_by_register.setdefault(register, set()).add(
+                _integer(row.get("instruction_index"), "volatile known definition", nonnegative=True)
+            )
+        effects: list[dict[str, Any]] = []
+        for role in sorted(event["registers"]):
+            register = event["registers"][role]
+            if not isinstance(role, str) or not isinstance(register, str) or re.fullmatch(
+                r"[rf](?:[0-9]|[12][0-9]|3[01])", register
+            ) is None:
+                raise Rejected("volatile machine register effect is invalid")
+            is_def = role == "destination" or (
+                role == "data" and event.get("memory_op") == "load"
+            )
+            effects.append({
+                "event_id": event.get("event_id"),
+                "instruction_index": instruction_index,
+                "role": role,
+                "physical_register": register,
+                "effect": "DEF" if is_def else "USE",
+                "reaching": sorted(known_by_register.get(register, reaching)),
+            })
+        machine_by_pcode.setdefault(pcode_id, []).extend(effects)
+
+    closed_rows: list[dict[str, Any]] = []
+    owner_facts: list[dict[str, Any]] = []
+    object_bindings: list[dict[str, Any]] = []
+    selected_event_ids: set[str] = set()
+    selected_object_tokens: set[str] = set()
+    machine_effects = [
+        effect
+        for effects in machine_by_pcode.values()
+        for effect in effects
+    ]
+    for event in events:
+        if (
+            not isinstance(event, Mapping)
+            or event.get("event_kind") != "pcode_capture"
+            or event.get("status") != "CAPTURED"
+            or "operand_ordinal" not in event
+        ):
+            continue
+        pcode_id = _text(event.get("pcode_token"), "volatile operand PCode ID")
+        ig_node_id = _text(event.get("ig_token"), "volatile operand IG ID")
+        pcode_match = PCODE_TOKEN_RE.fullmatch(pcode_id)
+        ig_match = IG_TOKEN_RE.fullmatch(ig_node_id)
+        if (
+            pcode_match is None
+            or ig_match is None
+            or pcode_match.group("session") != session_id
+            or ig_match.group("session") != session_id
+        ):
+            raise Rejected("volatile PCode/IG provenance changed")
+        ordinal = _integer(event.get("operand_ordinal"), "volatile operand ordinal", nonnegative=True)
+        count = _integer(event.get("operand_count"), "volatile operand count", nonnegative=True)
+        kind = _integer(event.get("operand_kind"), "volatile operand kind", nonnegative=True)
+        final_color = _integer(event.get("final_color"), "volatile final color", nonnegative=True)
+        bank = event.get("operand_bank")
+        if count < 1 or ordinal >= count or bank not in {"GPR", "FPR"} or final_color > 31:
+            raise Rejected("volatile operand chronology/color is invalid")
+        physical_register = f"{'r' if bank == 'GPR' else 'f'}{final_color}"
+        object_token: str | None = None
+        hidden_token: str | None = None
+        if isinstance(event.get("object_token"), str):
+            object_token = str(event["object_token"])
+            _token_parts(object_token, "volatile operand Object token", session_id)
+        elif isinstance(event.get("hidden_owner_token"), str):
+            hidden_token = str(event["hidden_owner_token"])
+            hidden_match = HIDDEN_IG_TOKEN_RE.fullmatch(hidden_token)
+            if hidden_match is None or hidden_match.group("session") != session_id:
+                raise Rejected("volatile hidden IG provenance changed")
+        else:
+            raise Rejected("volatile operand lacks an owner identity")
+
+        role_orders = machine_role_orders.get(pcode_id, [])
+        role_order_ambiguous = len(role_orders) > 1
+        selected_role: str | None = None
+        supporting_machine_events: set[str] = set()
+        plausible_roles: list[str] = []
+        if len(role_orders) == 1 and len(role_orders[0][1]) == count:
+            supporting_machine_event, order = role_orders[0]
+            supporting_machine_events.add(supporting_machine_event)
+            selected_role = order[ordinal]
+            plausible_roles = [selected_role]
+        elif role_order_ambiguous:
+            role_candidates: set[str] = set()
+            for event_id, order in role_orders:
+                if len(order) == count:
+                    supporting_machine_events.add(event_id)
+                    role_candidates.add(order[ordinal])
+            plausible_roles = sorted(role_candidates)
+        candidates_by_role: dict[str, Mapping[str, Any]] = {}
+        for effect in machine_by_pcode.get(pcode_id, []):
+            if (
+                effect["role"] in plausible_roles
+                and effect["physical_register"] == physical_register
+            ):
+                candidates_by_role.setdefault(str(effect["role"]), effect)
+        candidates = [candidates_by_role[role] for role in plausible_roles if role in candidates_by_role]
+        # Anonymous IG nodes with no authenticated ordinal-to-role machine
+        # edge add bulk but no join capability.  The complete events remain in
+        # the separately hash-bound raw streams.
+        if object_token is None and not candidates:
+            continue
+        variants: list[Mapping[str, Any] | None] = candidates or [None]
+        required_roles = plausible_roles
+        pcode_event_id = _text(event.get("event_id"), "volatile PCode event ID")
+        selected_event_ids.add(pcode_event_id)
+        selected_event_ids.update(supporting_machine_events)
+        if object_token is not None:
+            selected_object_tokens.add(object_token)
+        for candidate in variants:
+            fact_index = len(owner_facts)
+            fact_id = f"owner-fact-{fact_index:06d}"
+            row_id = f"residual-{fact_index:06d}"
+            vreg_candidates = [] if object_token is None else exact_vregs.get(object_token, [])
+            all_physical_candidates = (
+                [] if object_token is None else exact_physical.get(object_token, [])
+            )
+            physical_candidates = [] if object_token is None else [
+                value for value in all_physical_candidates
+                if value == physical_register
+            ]
+            if object_token is None:
+                classification = "UNKNOWN_MISSING_OBJECT_EDGE"
+            elif role_order_ambiguous:
+                classification = "UNKNOWN_AMBIGUOUS_MACHINE_EDGE"
+            elif not candidates:
+                classification = "UNKNOWN_MISSING_MACHINE_EDGE"
+            elif len(candidates) > 1:
+                classification = "UNKNOWN_AMBIGUOUS_MACHINE_EDGE"
+            elif len(vreg_candidates) > 1 or len(all_physical_candidates) > 1:
+                classification = "UNKNOWN_AMBIGUOUS_ASSIGNMENT_EDGE"
+            elif not vreg_candidates:
+                classification = "UNKNOWN_MISSING_VREG_EDGE"
+            elif not physical_candidates:
+                classification = "UNKNOWN_MISSING_ASSIGNMENT_EDGE"
+            else:
+                classification = "UNIQUE"
+
+            def_id: str | None = None
+            use_ids: list[str] = []
+            role = "UNKNOWN" if candidate is None else str(candidate["role"])
+            if candidate is not None:
+                selected_event_ids.add(
+                    _text(candidate.get("event_id"), "volatile owner machine event ID")
+                )
+                if candidate["effect"] == "DEF":
+                    definition_index = int(candidate["instruction_index"])
+                    def_id = f"def-{definition_index:06d}"
+                else:
+                    reaching = list(candidate["reaching"])
+                    definition_index = reaching[0] if len(reaching) == 1 else None
+                    if definition_index is not None:
+                        def_id = f"def-{definition_index:06d}"
+                    use_ids.append(f"use-{int(candidate['instruction_index']):06d}")
+            if def_id is not None:
+                definition_index = int(def_id.rsplit("-", 1)[1])
+                for effect in machine_effects:
+                    same_register = effect["physical_register"] == physical_register
+                    supports_definition = (
+                        same_register
+                        and effect["effect"] == "DEF"
+                        and int(effect["instruction_index"]) == definition_index
+                    )
+                    supports_use = (
+                        same_register
+                        and effect["effect"] == "USE"
+                        and definition_index in effect["reaching"]
+                    )
+                    if supports_definition or supports_use:
+                        selected_event_ids.add(
+                            _text(effect.get("event_id"), "volatile owner chronology event ID")
+                        )
+                    if supports_use:
+                        use_ids.append(f"use-{int(effect['instruction_index']):06d}")
+            use_ids = sorted(set(use_ids))
+            closed_rows.append({
+                "row_id": row_id,
+                "ordinal": ordinal,
+                "kind": kind,
+                "owner_fact_id": fact_id,
+                "required_operand_roles": required_roles,
+            })
+            owner_facts.append({
+                "fact_id": fact_id,
+                "row_id": row_id,
+                "role": role,
+                "pcode_id": pcode_id,
+                "ig_node_id": ig_node_id,
+                "vreg": vreg_candidates[0] if len(vreg_candidates) == 1 else None,
+                "final_color": final_color,
+                "physical_register": physical_register,
+                "def_id": def_id,
+                "use_ids": use_ids,
+                "classification": classification,
+            })
+            binding: dict[str, Any] = {"fact_id": fact_id, "status": "UNKNOWN"}
+            if object_token is not None:
+                binding.update(status="PRESENT", object_token=object_token)
+            elif hidden_token is not None:
+                binding["hidden_owner_token"] = hidden_token
+            object_bindings.append(binding)
+
+    result: dict[str, Any] = {
+        "schema": f"{PARTIAL_FAILURE_GRAPH_SCHEMA}/volatile-owner-facts/v1",
+        "status": "DIAGNOSTIC_ONLY",
+        "authority_advanced": False,
+        "session_id": session_id,
+        "function": function,
+        "source": source,
+        "compiler": compiler,
+        "raw_event_hashes": [
+            {"event_id": event.get("event_id"), "sha256": canonical_hash(event)}
+            for event in events
+            if (
+                event.get("event_id") in selected_event_ids
+                or (
+                    event.get("event_kind") in {"regalloc_assignment", "physical_reg_assignment"}
+                    and event.get("object_token") in selected_object_tokens
+                )
+            )
+        ],
+        "object_identity_bindings": object_bindings,
+        "closed_residual_rows": closed_rows,
+        "owner_facts": owner_facts,
+    }
+    if candidate_object is not None:
+        result["candidate_object"] = _descriptor(
+            candidate_object, "volatile owner candidate object", verify=False
+        )
+    _pointer_free(result)
+    result["volatile_owner_facts_sha256"] = canonical_hash(result)
+    return result
+
+
 def _build_ownership_failure_graph(
     envelope: Mapping[str, Any],
     validation_failure: str,
+    candidate_object: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     events = envelope.get("events")
     context = envelope.get("context")
@@ -3616,6 +3933,9 @@ def _build_ownership_failure_graph(
         event_kind="physical_reg_assignment",
         value_fields=("bank", "physical_reg"),
         label="Object-to-physical",
+    )
+    volatile_owner_facts = _build_volatile_owner_facts(
+        events, context, candidate_object
     )
 
     pcode_operands: dict[str, dict[int, dict[str, Any]]] = {}
@@ -3805,6 +4125,7 @@ def _build_ownership_failure_graph(
         "first_absent_edge": first_absent,
         "join_attempts": attempts,
         "unresolved_machine_sites": unresolved_machine_sites,
+        "volatile_owner_facts": volatile_owner_facts,
         "machine_event_ids": [
             event["event_id"]
             for event in events
@@ -3879,7 +4200,9 @@ def _publish_partial_evidence(
         if source_path.read_bytes() != blobs[name]:
             raise Rejected(f"partial evidence source {name} changed after capture")
 
-    graph = _build_ownership_failure_graph(envelope, validation_failure)
+    graph = _build_ownership_failure_graph(
+        envelope, validation_failure, candidate_object=compiler_object
+    )
     context = envelope.get("context")
     if not isinstance(context, Mapping):
         raise Rejected("partial evidence context is missing")
@@ -4296,11 +4619,13 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 "mnemonic", "registers", "arithmetic_op", "arithmetic_type",
                 "known_reaching_definitions", "missing_reaching_registers",
             }
+            diagnostic_unknown_with_roles = diagnostic_unknown | {"operand_role_order"}
             unknown_fields = frozenset(fields)
             if unknown_fields not in {
                 frozenset(minimal_unknown),
                 frozenset(located_unknown),
                 frozenset(diagnostic_unknown),
+                frozenset(diagnostic_unknown_with_roles),
             }:
                 raise Rejected(f"event[{index}] UNKNOWN machine emission is not closed")
             if event["reason"] not in _KNOWN_UNKNOWN_REASONS:
@@ -4321,7 +4646,10 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
                 if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
                     raise Rejected(f"event[{index}] located UNKNOWN PPC bytes/word mismatch")
-            if unknown_fields == frozenset(diagnostic_unknown):
+            if unknown_fields in {
+                frozenset(diagnostic_unknown),
+                frozenset(diagnostic_unknown_with_roles),
+            }:
                 if event["reason"] != "ambiguous reaching definition" or event["mnemonic"] != "fmuls":
                     raise Rejected(f"event[{index}] diagnostic UNKNOWN machine class is invalid")
                 registers = event["registers"]
@@ -4334,6 +4662,10 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                         raise Rejected(f"event[{index}] diagnostic UNKNOWN FPR is malformed")
                 if event["arithmetic_op"] != "multiply" or event["arithmetic_type"] != "f32":
                     raise Rejected(f"event[{index}] diagnostic UNKNOWN arithmetic effect is invalid")
+                if "operand_role_order" in event and event["operand_role_order"] != [
+                    "destination", "source_a", "source_b"
+                ]:
+                    raise Rejected(f"event[{index}] diagnostic UNKNOWN operand role order is invalid")
                 source_registers = {registers["source_a"], registers["source_b"]}
                 known = event["known_reaching_definitions"]
                 if not isinstance(known, list):
@@ -4398,6 +4730,14 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
             for role, register in registers.items():
                 if role not in {"destination", "source", "source_a", "source_b", "data", "base", "index"} or not isinstance(register, str) or re.fullmatch(r"[rf](?:[0-9]|[12][0-9]|3[01])", register) is None:
                     raise Rejected(f"event[{index}] machine register operand is malformed")
+            if "operand_role_order" in event:
+                expected_role_order = {
+                    "fneg": ["destination", "source"],
+                    "fmuls": ["destination", "source_a", "source_b"],
+                    "ps_mul": ["destination", "source_a", "source_b"],
+                }.get(str(event["mnemonic"]))
+                if expected_role_order is None or event["operand_role_order"] != expected_role_order:
+                    raise Rejected(f"event[{index}] machine operand role order is invalid")
             reaching = event["reaching_definitions"]
             if not isinstance(reaching, list) or any(not isinstance(value, int) or isinstance(value, bool) or value < 0 or value >= instruction_index for value in reaching) or reaching != sorted(set(reaching)):
                 raise Rejected(f"event[{index}] reaching definitions are malformed")
@@ -7314,22 +7654,83 @@ class NativeWow64Backend:
         return rows
 
     def capture_physical_regalloc(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
-        """Read the verified post-allocation EBX Object*/EBP VarInfo* pair.
+        """Read one compiler-profile-specific post-allocation Object/VarInfo pair.
 
         ``regalloc_post`` lands on the GC/2.6 epilogue at 0x004D03E8.  At
         that site EBX still names the compiler Object and EBP still names its
-        VarInfo.  Only the five authenticated VarInfo fields cross this
-        backend boundary; the Object/VarInfo addresses remain process-local
-        and are checked against the captured list ledger first.
+        VarInfo.  GC/2.7's pair/single epilogues instead retain Object* in ESI
+        and the just-written VarInfo* in EAX.  Its precolored loop retains a
+        list node in EBX (Object* at +0x04) and VarInfo* in ESI.  Only the five
+        authenticated VarInfo fields cross this backend boundary; all native
+        identities are checked against the captured list ledger first.
         """
 
         hook = HOOK_BY_ID.get(str(hook_id))
         if hook is None or hook.get("role") != "regalloc_post":
             raise Rejected("unowned physical register-allocation hook")
-        object_pointer = self.read_register(thread_id, "ebx")
-        varinfo_pointer = self.read_register(thread_id, "ebp")
+        commit: dict[str, Any] = {}
+        if self.compiler_sha256 == GC27_COMPILER_SHA256:
+            if hook_id in {"physical_pair_commit", "physical_single_commit"}:
+                object_pointer = self.read_register(thread_id, "esi")
+                varinfo_pointer = self.read_register(thread_id, "eax")
+                raw_bp = self.read_register(thread_id, "ebp") & 0xFFFF
+                live_reg = raw_bp - 0x10000 if raw_bp >= 0x8000 else raw_bp
+                if hook_id == "physical_pair_commit":
+                    raw_bx = self.read_register(thread_id, "ebx") & 0xFFFF
+                    live_reg_hi = raw_bx - 0x10000 if raw_bx >= 0x8000 else raw_bx
+                    commit = {
+                        "register_class": 4,
+                        "reg": live_reg,
+                        "reg_hi": live_reg_hi,
+                    }
+                else:
+                    live_class = self.read_register(thread_id, "ebx") & 0xFF
+                    commit = {
+                        "register_class": live_class,
+                        "reg": live_reg,
+                        "reg_hi_ignored": True,
+                    }
+            elif hook_id == "precolored_commit":
+                list_node = self.read_register(thread_id, "ebx")
+                object_data = self._read(list_node + 4, 4) if list_node else b""
+                operand_data = self._read(list_node + 0xC, 2) if list_node else b""
+                object_pointer = (
+                    int.from_bytes(object_data, "little", signed=False)
+                    if len(object_data) == 4
+                    else 0
+                )
+                varinfo_pointer = self.read_register(thread_id, "esi")
+                live_class = operand_data[0] if len(operand_data) == 2 else -1
+                live_reg = (
+                    int.from_bytes(operand_data[1:2], "little", signed=True)
+                    if len(operand_data) == 2
+                    else -1
+                )
+                commit = {
+                    "register_class": live_class,
+                    "reg": live_reg,
+                    "reg_hi": 0,
+                }
+            else:
+                object_pointer = 0
+                varinfo_pointer = 0
+        else:
+            object_pointer = self.read_register(thread_id, "ebx")
+            varinfo_pointer = self.read_register(thread_id, "ebp")
         if object_pointer == 0:
-            raise Rejected("physical assignment has a null Object register")
+            return {
+                "hook_id": str(hook_id),
+                "status": "UNKNOWN",
+                "reason": "null object identity",
+                "object": 0,
+                "varinfo_pointer": varinfo_pointer,
+                "commit": commit,
+                "noregister": 0,
+                "flags": 0,
+                "rclass": 0,
+                "reg": 0,
+                "reg_hi": 0,
+            }
         expected_varinfo = self._object_varinfo.get(object_pointer)
         if varinfo_pointer == 0:
             raise Rejected("Object VarInfo pointer is null")
@@ -7344,7 +7745,8 @@ class NativeWow64Backend:
         data = self._read(varinfo_pointer, VARINFO_PHYSICAL_READ_SIZE)
         if len(data) < VARINFO_PHYSICAL_READ_SIZE:
             raise Rejected("physical assignment VarInfo record is truncated")
-        return {
+        result: dict[str, Any] = {
+            "hook_id": str(hook_id),
             "object": object_pointer,
             "varinfo_pointer": varinfo_pointer,
             "noregister": data[VARINFO_NOREGISTER_FIELD],
@@ -7353,6 +7755,44 @@ class NativeWow64Backend:
             "reg": int.from_bytes(data[VARINFO_REG_FIELD:VARINFO_REG_FIELD + 0x2], "little", signed=True),
             "reg_hi": int.from_bytes(data[VARINFO_REG_HI_FIELD:VARINFO_REG_HI_FIELD + 0x2], "little", signed=True),
         }
+        if commit:
+            result["commit"] = commit
+        if self.compiler_sha256 != GC27_COMPILER_SHA256:
+            return result
+        consistent = (
+            result["noregister"] == 0
+            and result["rclass"] == commit.get("register_class")
+            and result["reg"] == commit.get("reg")
+        )
+        if hook_id == "physical_pair_commit":
+            consistent = (
+                consistent
+                and result["flags"] & 6 == 6
+                and result["reg_hi"] == commit.get("reg_hi")
+            )
+            result.update(
+                status="UNKNOWN",
+                reason=(
+                    "paired physical register assignment unsupported"
+                    if consistent
+                    else "incomplete physical register evidence"
+                ),
+            )
+            return result
+        if hook_id == "physical_single_commit":
+            consistent = consistent and result["flags"] & 2 == 2
+            # +0x28 is not written by the single-register epilogue.  Never
+            # reinterpret a stale high-half value as a second assignment.
+            result["reg_hi"] = 0
+        elif hook_id == "precolored_commit":
+            consistent = (
+                consistent
+                and result["flags"] & 2 == 2
+                and result["reg_hi"] == 0
+            )
+        if not consistent:
+            result.update(status="UNKNOWN", reason="incomplete physical register evidence")
+        return result
 
     # Name the hook-specific operation as well for transports that dispatch
     # by breakpoint ID rather than by the generic physical-regalloc role.

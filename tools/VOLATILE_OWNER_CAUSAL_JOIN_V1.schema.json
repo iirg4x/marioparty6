@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "VOLATILE_OWNER_CAUSAL_JOIN_V1.schema.json",
+  "title": "Volatile Owner Causal Join v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "function", "session_id", "bindings",
+    "register_permutation", "ranked_source_classes", "closed_residual_rows", "evidence_binding",
+    "blockers", "diagnostic_only", "source_text_emitted",
+    "source_patch_emitted", "retention_authorized", "authority_advanced",
+    "join_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "volatile_owner_causal_join/v1"},
+    "status": {"enum": ["PROVEN", "UNKNOWN"]},
+    "function": {"type": "string"},
+    "session_id": {"type": "string"},
+    "bindings": {"type": "array", "items": {"$ref": "#/$defs/binding"}},
+    "register_permutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "mapping", "changed_mapping"],
+      "properties": {
+        "complete": {"type": "boolean"},
+        "mapping": {"type": "array", "items": {"$ref": "#/$defs/registerPair"}},
+        "changed_mapping": {"type": "array", "items": {"$ref": "#/$defs/registerPair"}}
+      }
+    },
+    "ranked_source_classes": {"type": "array", "maxItems": 1, "items": {"$ref": "#/$defs/rankedClass"}},
+    "closed_residual_rows": {"type": "array", "items": {"type": "integer", "minimum": 0}, "uniqueItems": true},
+    "evidence_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_sha256", "focus_artifact_sha256", "strict_report_sha256", "data_report_sha256", "source_span_manifest_sha256", "ownership_failure_graph_sha256", "physical_relocation_receipt", "target_object", "candidate_object"],
+      "properties": {
+        "context_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "focus_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "strict_report_sha256": {"$ref": "#/$defs/sha256"},
+        "data_report_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "source_span_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "ownership_failure_graph_sha256": {"$ref": "#/$defs/sha256"},
+        "physical_relocation_receipt": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["file_sha256", "receipt_payload_sha256"],
+              "properties": {
+                "file_sha256": {"$ref": "#/$defs/sha256"},
+                "receipt_payload_sha256": {"$ref": "#/$defs/sha256"}
+              }
+            }
+          ]
+        },
+        "target_object": {"$ref": "#/$defs/objectIdentity"},
+        "candidate_object": {"$ref": "#/$defs/objectIdentity"}
+      }
+    },
+    "blockers": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "diagnostic_only": {"const": true},
+    "source_text_emitted": {"const": false},
+    "source_patch_emitted": {"const": false},
+    "retention_authorized": {"const": false},
+    "authority_advanced": {"const": false},
+    "join_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "PROVEN"}}},
+      "then": {
+        "properties": {
+          "bindings": {"minItems": 1},
+          "ranked_source_classes": {"minItems": 1, "maxItems": 1},
+          "register_permutation": {
+            "properties": {
+              "complete": {"const": true},
+              "mapping": {"minItems": 1},
+              "changed_mapping": {"minItems": 1}
+            }
+          },
+          "closed_residual_rows": {"minItems": 1},
+          "evidence_binding": {
+            "properties": {
+              "context_sha256": {"$ref": "#/$defs/sha256"},
+              "data_report_sha256": {"$ref": "#/$defs/sha256"},
+              "physical_relocation_receipt": {"$ref": "#/$defs/physicalEvidence"}
+            }
+          },
+          "blockers": {"maxItems": 0}
+        }
+      },
+      "else": {
+        "properties": {
+          "ranked_source_classes": {"maxItems": 0},
+          "register_permutation": {"properties": {"complete": {"const": false}}}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "objectIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "size"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size": {"type": "integer", "minimum": 0}
+      }
+    },
+    "physicalEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_sha256", "receipt_payload_sha256"],
+      "properties": {
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "receipt_payload_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "rankedClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "source_class"],
+      "properties": {
+        "rank": {"const": 1},
+        "source_class": {"type": "string"}
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["row_id", "row_ordinal", "role", "semantic_role", "candidate_operand_index", "pcode_id", "ig_node_id", "vreg", "final_color", "candidate_physical_register", "target_physical_register", "def_id", "use_ids", "classification"],
+      "properties": {
+        "row_id": {"type": "string"},
+        "row_ordinal": {"type": "integer", "minimum": 0},
+        "role": {"type": "string"},
+        "semantic_role": {"type": "string"},
+        "candidate_operand_index": {"type": "integer", "minimum": 0},
+        "pcode_id": {"type": "string"},
+        "ig_node_id": {"type": "string"},
+        "vreg": {"type": "string", "pattern": "^[rf][0-9]+$"},
+        "final_color": {"type": "integer", "minimum": 0, "maximum": 31},
+        "candidate_physical_register": {"$ref": "#/$defs/physicalRegister"},
+        "target_physical_register": {"$ref": "#/$defs/physicalRegister"},
+        "def_id": {"type": "string"},
+        "use_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "classification": {"const": "UNIQUE"}
+      }
+    },
+    "physicalRegister": {"type": "string", "pattern": "^[rf](?:[0-9]|[12][0-9]|3[01])$"},
+    "registerPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate", "target"],
+      "properties": {
+        "candidate": {"$ref": "#/$defs/physicalRegister"},
+        "target": {"$ref": "#/$defs/physicalRegister"}
+      }
+    }
+  }
+}
