@@ -1459,6 +1459,40 @@ def hook_union(central):
             with self.assertRaisesRegex(MODULE.Rejected, "authenticated wrapper"):
                 MODULE._native_launch_argv(bad)
 
+    def test_live_compile_preflight_rejects_missing_include_root_and_seals_present_tree(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "capsule.c"
+            compiler = root / "mwcceppc.exe"
+            include = root / "generated-include"
+            source.write_bytes(b"int capsule;\n")
+            compiler.write_bytes(b"compiler")
+            include.mkdir()
+            (include / "version.h").write_bytes(b"#define VERSION 0\n")
+            argv = [str(compiler), "-i", str(include), "-c", str(source)]
+            self.assertEqual(
+                MODULE._validate_compile_argv(
+                    argv,
+                    cwd=str(root),
+                    source=descriptor(source),
+                    compiler=descriptor(compiler),
+                    require_include_paths=True,
+                ),
+                argv,
+            )
+            tree = MODULE._directory_tree_descriptor(include)
+            self.assertEqual(tree["file_count"], 1)
+            self.assertEqual(tree["path"], str(include))
+            missing_argv = [str(compiler), "-i", str(root / "missing"), "-c", str(source)]
+            with self.assertRaisesRegex(MODULE.Rejected, "include path is missing"):
+                MODULE._validate_compile_argv(
+                    missing_argv,
+                    cwd=str(root),
+                    source=descriptor(source),
+                    compiler=descriptor(compiler),
+                    require_include_paths=True,
+                )
+
     def test_gc27_direct_transport_is_exact_ascii_argv_derivation(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1502,7 +1536,7 @@ def hook_union(central):
                 )
                 self.assertEqual(
                     MODULE._native_transport_plan(request),
-                    ("authenticated_direct_compiler", request["argv"][1:]),
+                    ("wrapper_memexec", request["argv"]),
                 )
 
     def test_gc27_direct_transport_rejects_unowned_or_changed_context(self) -> None:
@@ -3448,6 +3482,110 @@ class SourceSpanV2StackIntervalTests(unittest.TestCase):
                     preauthenticated_auth=auth_context,
                 )
 
+    def test_compiler_transport_paths_are_isolated_and_single_use(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root,
+                output,
+                session_id="session-0000000000000012",
+            )
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root_for_request(request_path),
+            )
+            paths = MODULE._compiler_transport_paths(auth_context)
+            self.assertEqual(
+                paths["directory"],
+                root / "capture.compiler-transport-session-0000000000000012",
+            )
+            self.assertNotEqual(paths["directory"], auth_context["output_dir"])
+            paths["directory"].mkdir()
+            with self.assertRaisesRegex(MODULE.Rejected, "already exists"):
+                MODULE._compiler_transport_paths(auth_context)
+
+    def test_compiler_execution_receipt_seals_exit2_without_object(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root,
+                output,
+                session_id="session-0000000000000013",
+            )
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root_for_request(request_path),
+            )
+            paths = MODULE._compiler_transport_paths(auth_context)
+            paths["directory"].mkdir()
+            paths["stdout"].write_bytes(b"")
+            paths["stderr"].write_bytes(b"fatal diagnostic\r\n")
+            receipt = MODULE._compiler_execution_receipt(
+                auth_context,
+                transport_mode="authenticated_direct_compiler",
+                executed_argv=auth_context["request"]["argv"][1:],
+                include_search_paths=[],
+                stdout_path=paths["stdout"],
+                stderr_path=paths["stderr"],
+                process_created=True,
+                process_quiesced=True,
+                terminated_by_capture=False,
+                exit_code=2,
+                failure="compiler process exited with code 2",
+            )
+            self.assertEqual(receipt["status"], "UNKNOWN")
+            self.assertFalse(receipt["authority_advanced"])
+            self.assertEqual(receipt["exit_code"], 2)
+            self.assertFalse(receipt["compiler_output"]["exists"])
+            self.assertEqual(receipt["stderr"]["sha256"], hashlib.sha256(b"fatal diagnostic\r\n").hexdigest())
+            unsigned = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+            self.assertEqual(receipt["receipt_sha256"], MODULE.canonical_hash(unsigned))
+            MODULE._publish_compiler_execution_receipt(paths["receipt"], receipt)
+            self.assertEqual(json.loads(paths["receipt"].read_text())["receipt_sha256"], receipt["receipt_sha256"])
+            with self.assertRaises(FileExistsError):
+                MODULE._publish_compiler_execution_receipt(paths["receipt"], receipt)
+
+    def test_compiler_execution_receipt_binds_successful_object_hash(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "compiler-output.o"
+            request_path = self._prepare_handoff_request(
+                root,
+                output,
+                session_id="session-0000000000000014",
+            )
+            auth_context = MODULE.authenticate_request(
+                request_path,
+                require_empty=True,
+                external_trust_root=trust_root_for_request(request_path),
+            )
+            paths = MODULE._compiler_transport_paths(auth_context)
+            paths["directory"].mkdir()
+            paths["stdout"].write_bytes(b"compiler stdout")
+            paths["stderr"].write_bytes(b"")
+            output.write_bytes(b"compiler object")
+            receipt = MODULE._compiler_execution_receipt(
+                auth_context,
+                transport_mode="authenticated_direct_compiler",
+                executed_argv=auth_context["request"]["argv"][1:],
+                include_search_paths=[],
+                stdout_path=paths["stdout"],
+                stderr_path=paths["stderr"],
+                process_created=True,
+                process_quiesced=True,
+                terminated_by_capture=False,
+                exit_code=0,
+                failure=None,
+            )
+            self.assertEqual(receipt["status"], "COMPILER_TO_OBJECT_OBSERVED")
+            self.assertTrue(receipt["compiler_output"]["exists"])
+            self.assertEqual(receipt["compiler_output"]["sha256"], hashlib.sha256(b"compiler object").hexdigest())
+            self.assertFalse(receipt["authority_advanced"])
+
     def test_final_owner_join_unknown_publishes_immutable_partial_evidence(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -4129,6 +4267,40 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
         ):
             self.assertTrue(callable(getattr(backend, name, None)), name)
             self.assertIn(name, backend.capabilities)
+
+    def test_native_backend_quiesces_failed_process_before_receipt_sealing(self) -> None:
+        class Kernel32:
+            def __init__(self) -> None:
+                self.exit_reads = 0
+                self.terminated: list[tuple[int, int]] = []
+                self.closed: list[int] = []
+
+            def GetExitCodeProcess(self, _handle: object, code: object) -> bool:
+                self.exit_reads += 1
+                code._obj.value = 259 if self.exit_reads == 1 else 1
+                return True
+
+            def TerminateProcess(self, handle: object, exit_code: int) -> bool:
+                self.terminated.append((int(handle.value), exit_code))
+                return True
+
+            def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
+                return 0
+
+            def CloseHandle(self, handle: int) -> bool:
+                self.closed.append(handle)
+                return True
+
+        kernel32 = Kernel32()
+        native = type("Native", (), {"kernel32": kernel32})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        backend.close()
+        self.assertTrue(backend.exited)
+        self.assertTrue(backend.process_quiesced)
+        self.assertTrue(backend.compiler_terminated_by_capture)
+        self.assertEqual(backend.compiler_exit_code, 1)
+        self.assertEqual(kernel32.terminated, [(11, 1)])
+        self.assertEqual(sorted(kernel32.closed), [11, 12])
 
     def test_native_backend_uses_owned_list_heads_and_function_filter(self) -> None:
         backend = MODULE.NativeWow64Backend(object(), 1, 0, 4321)

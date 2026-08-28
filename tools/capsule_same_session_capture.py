@@ -105,6 +105,7 @@ CAUSAL_MAP_SCHEMA = "mwcc_source_aware_causal_map/v1"
 PARTIAL_EVIDENCE_SCHEMA = "mwcc_capsule_same_session_partial_evidence/v1"
 PARTIAL_FAILURE_GRAPH_SCHEMA = "mwcc_capsule_same_session_ownership_failure_graph/v1"
 PARTIAL_HOOK_RECEIPT_SCHEMA = "mwcc_capsule_same_session_hook_validation/v1"
+COMPILER_EXECUTION_RECEIPT_SCHEMA = "mwcc_capsule_compiler_to_object_receipt/v1"
 # The pinned hook union changed: old requests/envelopes must not be
 # interpreted as captures from this repaired transport.
 TOOL_VERSION = "capsule-same-session-capture-2"
@@ -136,6 +137,7 @@ KNOWN_IMAGE_BASE = _stack_home.KNOWN_IMAGE_BASE
 # would attach only to sjiswrap.exe and all compiler hooks would be read from
 # the wrong address space.
 DEBUG_PROCESS = 0x00000001
+STARTF_USESTDHANDLES = 0x00000100
 # sjiswrap does not create a child process.  It manually maps mwcceppc.exe
 # into its own address space through memexec_exe_with_hooks.  The mapped image
 # is therefore a MEM_PRIVATE allocation, not a normal loader module.
@@ -149,14 +151,16 @@ MEMEXEC_STARTUP_TIMEOUT_SECONDS = 30.0
 MEMEXEC_MAX_PROBES = 2
 # sjiswrap v1.1.1 and the pinned GC/2.7 compiler both prefer 0x00400000.
 # The wrapper therefore manual-maps a relocated compiler image into its own
-# PID.  On loaded Windows hosts that private-map handoff can be delayed beyond
-# the bounded debugger observation window even though the authenticated
-# compiler invocation is otherwise unchanged.  This closed pair may bypass
-# only the wrapper transport; the immutable request argv remains the authority
-# and the executed argv is derived by removing exactly argv[0].
+# PID.  Direct launch was retained as an authenticated transport for archived
+# envelope validation, but sealed compiler diagnostics proved that it is not
+# macro-environment-equivalent to sjiswrap.  New captures for this closed pair
+# must preserve wrapper semantics even when all request/source bytes are ASCII.
 SJISWRAP_V111_SHA256 = "27a3c5d4f263e4eb96e5619cfcda22f45d33ccd121104c7ff6a37e15b3f427cd"
 GC27_COMPILER_SHA256 = "04ece8178961bdbaeebe2d4e5922ed542c4d82b2fc3de996c41c9e193bd49eea"
 AUTHENTICATED_DIRECT_COMPILER_PAIRS = frozenset(
+    {(SJISWRAP_V111_SHA256, GC27_COMPILER_SHA256)}
+)
+WRAPPER_SEMANTICS_REQUIRED_PAIRS = frozenset(
     {(SJISWRAP_V111_SHA256, GC27_COMPILER_SHA256)}
 )
 LOCALS_LIST_HEAD = 0x005EA8D4
@@ -1010,6 +1014,7 @@ def _validate_compile_argv(
     source: Mapping[str, Any],
     compiler: Mapping[str, Any],
     wrapper: Mapping[str, Any] | None = None,
+    require_include_paths: bool = False,
 ) -> list[str]:
     """Require a single, source-anchored compiler ``-c`` operand."""
 
@@ -1060,7 +1065,48 @@ def _validate_compile_argv(
     operand = _canonical_path(operand, "argv -c source", must_exist=False)
     if str(operand) != str(source_path):
         raise Rejected("argv -c operand is not the authenticated source")
+    if require_include_paths:
+        _compile_include_paths(values, cwd)
     return values
+
+
+def _compile_include_paths(argv: Sequence[str], cwd: str) -> list[Path]:
+    """Resolve every explicit MWCC include root and reject environment drift."""
+
+    values = list(argv)
+    roots: list[Path] = []
+    for index, value in enumerate(values):
+        if value != "-i":
+            continue
+        if index + 1 >= len(values) or values[index + 1].startswith("-"):
+            raise Rejected("compiler -i operand is missing an include path")
+        path = Path(values[index + 1])
+        if not path.is_absolute():
+            path = Path(cwd) / path
+        roots.append(_canonical_path(path, "compiler -i include path", directory=True, must_exist=True))
+    return roots
+
+
+def _directory_tree_descriptor(path: Path) -> dict[str, Any]:
+    path = _canonical_path(path, "compiler include tree", directory=True, must_exist=True)
+    rows: list[dict[str, Any]] = []
+    for entry in sorted(path.rglob("*"), key=lambda value: value.relative_to(path).as_posix()):
+        if entry.is_symlink():
+            raise Rejected("compiler include tree contains a symlink")
+        if entry.is_dir():
+            continue
+        if not entry.is_file():
+            raise Rejected("compiler include tree contains a non-regular entry")
+        rows.append({
+            "relative_path": entry.relative_to(path).as_posix(),
+            "size": entry.stat().st_size,
+            "sha256": sha256(entry),
+        })
+    return {
+        "path": str(path),
+        "file_count": len(rows),
+        "tree_sha256": canonical_hash(rows),
+    }
 
 
 def _native_launch_argv(request: Mapping[str, Any]) -> list[str]:
@@ -1089,6 +1135,7 @@ def _native_launch_argv(request: Mapping[str, Any]) -> list[str]:
         source=source,
         compiler=compiler,
         wrapper=wrapper,
+        require_include_paths=True,
     )
     if "path" not in wrapper:
         raise Rejected("native launch wrapper identity has no path")
@@ -1166,6 +1213,8 @@ def _native_transport_plan(request: Mapping[str, Any]) -> tuple[str, list[str]]:
         _digest(wrapper.get("sha256"), "request.wrapper.sha256"),
         _digest(compiler.get("sha256"), "request.compiler.sha256"),
     )
+    if pair in WRAPPER_SEMANTICS_REQUIRED_PAIRS:
+        return "wrapper_memexec", request_argv
     if pair in AUTHENTICATED_DIRECT_COMPILER_PAIRS:
         return "authenticated_direct_compiler", _authenticated_direct_compiler_argv(request)
     return "wrapper_memexec", request_argv
@@ -3273,7 +3322,14 @@ def prepare_request(
         raise Rejected("manifest.function_sha256 is malformed")
     argv = _canonical_argv(raw.get("argv"))
     cwd = _canonical_cwd(raw.get("cwd"), must_exist=True)
-    _validate_compile_argv(argv, cwd=cwd, source=source, compiler=compiler, wrapper=tools["wrapper"])
+    _validate_compile_argv(
+        argv,
+        cwd=cwd,
+        source=source,
+        compiler=compiler,
+        wrapper=tools["wrapper"],
+        require_include_paths=True,
+    )
     session_id = _safe_session_id(raw.get("session_id", _new_session_id()))
     expected_hooks = _hooks_for_compiler(str(compiler["sha256"]))
     hooks = _validate_hook_rows(
@@ -3359,6 +3415,138 @@ def _compiler_output_paths(request: Mapping[str, Any]) -> tuple[Path, ...]:
     return tuple(outputs)
 
 
+def _compiler_transport_paths(auth: Mapping[str, Any]) -> dict[str, Path]:
+    """Derive an isolated, capture-owned diagnostics boundary."""
+
+    request_path = _canonical_path(auth.get("request_path"), "authenticated request path")
+    request = auth.get("request")
+    if not isinstance(request, Mapping):
+        raise Rejected("authenticated request metadata is missing")
+    session_id = _safe_session_id(request.get("session_id"))
+    output_dir = _canonical_path(auth.get("output_dir"), "authenticated output directory", directory=True)
+    if request_path.parent != output_dir:
+        raise Rejected("authenticated request/output directory binding changed")
+    compiler_outputs = tuple(Path(path) for path in auth.get("compiler_output_paths", ()))
+    if len(compiler_outputs) != 1:
+        raise Rejected("native compiler receipt requires exactly one -o output")
+    diagnostic_dir = output_dir.with_name(f"{output_dir.name}.compiler-transport-{session_id}")
+    diagnostic_dir = _canonical_path(
+        diagnostic_dir,
+        "compiler transport diagnostic directory",
+        directory=True,
+        must_exist=False,
+    )
+    if diagnostic_dir.exists() or diagnostic_dir.is_symlink():
+        raise Rejected("compiler transport diagnostic directory already exists")
+    paths = {
+        "directory": diagnostic_dir,
+        "stdout": diagnostic_dir / "compiler.stdout.bin",
+        "stderr": diagnostic_dir / "compiler.stderr.bin",
+        "receipt": diagnostic_dir / "compiler-to-object.json",
+    }
+    if any(path.exists() or path.is_symlink() for key, path in paths.items() if key != "directory"):
+        raise Rejected("compiler transport diagnostic output already exists")
+    return paths
+
+
+def _optional_output_descriptor(path: Path) -> dict[str, Any]:
+    if path.is_symlink():
+        raise Rejected("compiler output is a symlink")
+    if not path.exists():
+        return {"path": str(path), "exists": False, "size": None, "sha256": None}
+    if not path.is_file():
+        raise Rejected("compiler output is not a regular file")
+    return {
+        "path": str(path),
+        "exists": True,
+        "size": path.stat().st_size,
+        "sha256": sha256(path),
+    }
+
+
+def _compiler_execution_receipt(
+    auth: Mapping[str, Any],
+    *,
+    transport_mode: str,
+    executed_argv: Sequence[str],
+    include_search_paths: Sequence[Mapping[str, Any]],
+    stdout_path: Path,
+    stderr_path: Path,
+    process_created: bool,
+    process_quiesced: bool,
+    terminated_by_capture: bool,
+    exit_code: int | None,
+    failure: str | None,
+) -> dict[str, Any]:
+    """Seal the compiler invocation and its exact object/diagnostic outcome."""
+
+    request = auth.get("request")
+    if not isinstance(request, Mapping):
+        raise Rejected("compiler receipt lacks authenticated request metadata")
+    compiler_outputs = tuple(Path(path) for path in auth.get("compiler_output_paths", ()))
+    if len(compiler_outputs) != 1:
+        raise Rejected("compiler receipt requires exactly one -o output")
+    argv = [_text(value, f"compiler receipt argv[{index}]") for index, value in enumerate(executed_argv)]
+    live_include_paths = [
+        _directory_tree_descriptor(Path(str(row.get("path", ""))))
+        for row in include_search_paths
+    ]
+    if live_include_paths != [dict(row) for row in include_search_paths]:
+        raise Rejected("compiler include tree changed during capture")
+    if not stdout_path.is_file() or stdout_path.is_symlink():
+        raise Rejected("compiler stdout capture is missing or not a regular file")
+    if not stderr_path.is_file() or stderr_path.is_symlink():
+        raise Rejected("compiler stderr capture is missing or not a regular file")
+    if exit_code is not None:
+        exit_code = _integer(exit_code, "compiler receipt exit code")
+    if process_created and not process_quiesced:
+        raise Rejected("compiler process was not quiesced before diagnostic sealing")
+    output = _optional_output_descriptor(compiler_outputs[0])
+    succeeded = (
+        process_created
+        and process_quiesced
+        and not terminated_by_capture
+        and exit_code == 0
+        and output["exists"] is True
+        and failure is None
+    )
+    unsigned = {
+        "schema": COMPILER_EXECUTION_RECEIPT_SCHEMA,
+        "status": "COMPILER_TO_OBJECT_OBSERVED" if succeeded else "UNKNOWN",
+        "diagnostic_only": True,
+        "board_admission": False,
+        "exactness_claim": False,
+        "authority_advanced": False,
+        "session_id": _safe_session_id(request.get("session_id")),
+        "function": _text(request.get("function"), "compiler receipt function"),
+        "request": _descriptor(auth.get("request_path"), "compiler receipt request"),
+        "source": _descriptor(request.get("source"), "compiler receipt source"),
+        "compiler": _descriptor(request.get("compiler"), "compiler receipt compiler"),
+        "transport_mode": _text(transport_mode, "compiler receipt transport mode"),
+        "request_argv_sha256": canonical_hash(list(request.get("argv", ()))),
+        "executed_argv": argv,
+        "executed_argv_sha256": canonical_hash(argv),
+        "include_search_paths": live_include_paths,
+        "cwd": _canonical_cwd(request.get("cwd"), must_exist=True),
+        "process_created": bool(process_created),
+        "process_quiesced": bool(process_quiesced),
+        "terminated_by_capture": bool(terminated_by_capture),
+        "exit_code": exit_code,
+        "compiler_output": output,
+        "stdout": _descriptor(stdout_path, "compiler receipt stdout"),
+        "stderr": _descriptor(stderr_path, "compiler receipt stderr"),
+        "failure": failure,
+    }
+    return {**unsigned, "receipt_sha256": canonical_hash(unsigned)}
+
+
+def _publish_compiler_execution_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
+    unsigned = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+    if receipt.get("receipt_sha256") != canonical_hash(unsigned):
+        raise Rejected("compiler execution receipt self-digest mismatch")
+    write_new(path, _canonical_json_bytes(dict(receipt)))
+
+
 def authenticate_request(
     request_path: Path | str,
     *,
@@ -3431,6 +3619,7 @@ def authenticate_request(
         source=source,
         compiler=compiler,
         wrapper=tools["wrapper"],
+        require_include_paths=not post_capture_analysis,
     )
     paths = _request_paths(parsed)
     output_dir = _canonical_path(parsed["output_dir"], "request.output_dir", directory=True, must_exist=True)
@@ -6587,6 +6776,9 @@ class NativeWow64Backend:
         self.breakpoints: dict[int, int] = {}
         self.pending_steps: dict[int, int] = {}
         self.exited = False
+        self.compiler_exit_code: int | None = None
+        self.process_quiesced = False
+        self.compiler_terminated_by_capture = False
         self.loader_breakpoint_pending = False
         self.loader_breakpoints_remaining = 0
         # These maps are process-local and never cross the event boundary.
@@ -7951,7 +8143,9 @@ class NativeWow64Backend:
                 # session to validate chronology so cleanup cannot attempt
                 # impossible breakpoint writes if validation rejects.
                 self.exited = True
-                session.on_process_exit(int(event.u.ExitProcess.dwExitCode), pid)
+                self.compiler_exit_code = int(event.u.ExitProcess.dwExitCode)
+                self.process_quiesced = True
+                session.on_process_exit(self.compiler_exit_code, pid)
             elif code == getattr(self.native, "EXCEPTION_DEBUG_EVENT", 1):
                 session._check_process(pid)
                 record = event.u.Exception.ExceptionRecord
@@ -7982,6 +8176,33 @@ class NativeWow64Backend:
                     errors.append(f"breakpoint 0x{runtime:08x}: {type(exc).__name__}: {exc}")
                 else:
                     self.breakpoints.pop(runtime, None)
+            exit_code = ctypes.c_uint32()
+            already_exited = bool(
+                self.native.kernel32.GetExitCodeProcess(
+                    ctypes.c_void_p(int(self.process)), ctypes.byref(exit_code)
+                )
+            ) and int(exit_code.value) != 259
+            if already_exited:
+                self.compiler_exit_code = int(exit_code.value)
+                self.process_quiesced = True
+                self.exited = True
+            elif not self.native.kernel32.TerminateProcess(ctypes.c_void_p(int(self.process)), 1):
+                errors.append("compiler process could not be terminated before diagnostic sealing")
+            else:
+                self.compiler_terminated_by_capture = True
+                wait_result = self.native.kernel32.WaitForSingleObject(
+                    ctypes.c_void_p(int(self.process)), 5000
+                )
+                if int(wait_result) != 0:
+                    errors.append("compiler process did not quiesce before diagnostic sealing")
+                elif not self.native.kernel32.GetExitCodeProcess(
+                    ctypes.c_void_p(int(self.process)), ctypes.byref(exit_code)
+                ):
+                    errors.append("compiler exit code was unavailable after diagnostic quiescence")
+                else:
+                    self.compiler_exit_code = int(exit_code.value)
+                    self.process_quiesced = True
+                    self.exited = True
         # DEBUG_PROCESS gives us handles for both the wrapper and compiler
         # CREATE_PROCESS events.  Close each raw handle once at the durable
         # cleanup boundary; never let a transport handle remain attached to a
@@ -8023,50 +8244,147 @@ def launch_native_capture(
     # Python host cannot truncate a WOW64 process handle or region address.
     virtual_query = getattr(native.kernel32, "VirtualQueryEx", None)
     debug_break = getattr(native.kernel32, "DebugBreakProcess", None)
-    if not callable(virtual_query) or not callable(debug_break):
+    wait_for_process = getattr(native.kernel32, "WaitForSingleObject", None)
+    if not callable(virtual_query) or not callable(debug_break) or not callable(wait_for_process):
         raise Rejected("native kernel32 lacks same-process compiler handoff APIs")
     virtual_query.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(_MEMORY_BASIC_INFORMATION), ctypes.c_size_t]
     virtual_query.restype = ctypes.c_size_t
     debug_break.argtypes = [ctypes.c_void_p]
     debug_break.restype = wintypes.BOOL
+    wait_for_process.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    wait_for_process.restype = ctypes.c_uint32
     request = auth["request"]
     transport_mode, executed_argv = _native_transport_plan(request)
+    include_search_paths = [
+        _directory_tree_descriptor(path)
+        for path in _compile_include_paths(executed_argv, request["cwd"])
+    ]
+    diagnostic_paths = _compiler_transport_paths(auth)
+    diagnostic_paths["directory"].mkdir(parents=False, exist_ok=False)
     command = subprocess.list2cmdline(executed_argv)
-    startup = native.STARTUPINFOW(cb=ctypes.sizeof(native.STARTUPINFOW), dwFlags=native.STARTF_USESHOWWINDOW, wShowWindow=native.SW_HIDE)
+    startup = native.STARTUPINFOW(
+        cb=ctypes.sizeof(native.STARTUPINFOW),
+        dwFlags=native.STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES,
+        wShowWindow=native.SW_HIDE,
+    )
     process_info = native.PROCESS_INFORMATION()
     buffer = ctypes.create_unicode_buffer(command)
-    # The immutable request argv remains wrapper-first. For the one closed
-    # sjiswrap/GC2.7 pair above, the process command is its authenticated
-    # ASCII-equivalent argv[1:] derivation; every other pair remains wrapper
-    # based. DEBUG_PROCESS covers both the direct compiler and launchers that
-    # create a real compiler child. The backend authenticates the selected
-    # image before any hook read.
-    created = native.kernel32.CreateProcessW(None, buffer, None, None, False, DEBUG_PROCESS | native.CREATE_NO_WINDOW, None, request["cwd"], ctypes.byref(startup), ctypes.byref(process_info))
-    if not created:
-        raise Rejected(f"CreateProcessW failed: {ctypes.WinError(ctypes.get_last_error())}")
-    pid = _native_value(process_info.dwProcessId)
-    if pid <= 0:
-        native.kernel32.CloseHandle(process_info.hProcess)
-        raise Rejected("CreateProcessW returned no native PID")
-    backend = NativeWow64Backend(
-        native,
-        _native_value(process_info.hProcess),
-        _native_value(process_info.hThread),
-        pid,
-        compiler_path=str(request["compiler"]["path"]),
-        compiler_sha256=str(request["compiler"]["sha256"]),
-        wrapper_path=str(request["wrapper"]["path"]),
-        wrapper_sha256=str(request["wrapper"]["sha256"]),
-        transport_mode=transport_mode,
-        executed_argv=executed_argv,
-    )
-    return capture_with_backend(
-        request_path,
-        backend,
-        external_trust_root=root,
-        preauthenticated_auth=auth,
-        partial_evidence_dir=partial_evidence_dir,
-    )
+    streams: list[Any] = []
+    inherited_handles: list[int] = []
+    backend: NativeWow64Backend | None = None
+    process_created = False
+    result: dict[str, Any] | None = None
+    failure: Exception | None = None
+    try:
+        import msvcrt
+
+        stdout_fd = os.open(diagnostic_paths["stdout"], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        stdout_stream = os.fdopen(stdout_fd, "wb", buffering=0)
+        streams.append(stdout_stream)
+        stderr_fd = os.open(diagnostic_paths["stderr"], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        stderr_stream = os.fdopen(stderr_fd, "wb", buffering=0)
+        streams.append(stderr_stream)
+        stdin_stream = open(os.devnull, "rb", buffering=0)
+        streams.append(stdin_stream)
+        stdin_handle = int(msvcrt.get_osfhandle(stdin_stream.fileno()))
+        stdout_handle = int(msvcrt.get_osfhandle(stdout_stream.fileno()))
+        stderr_handle = int(msvcrt.get_osfhandle(stderr_stream.fileno()))
+        inherited_handles.extend((stdin_handle, stdout_handle, stderr_handle))
+        for handle in inherited_handles:
+            os.set_handle_inheritable(handle, True)
+        startup.hStdInput = stdin_handle
+        startup.hStdOutput = stdout_handle
+        startup.hStdError = stderr_handle
+        # The immutable request argv remains wrapper-first. For the one closed
+        # sjiswrap/GC2.7 pair above, the process command is its authenticated
+        # ASCII-equivalent argv[1:] derivation; every other pair remains wrapper
+        # based. DEBUG_PROCESS covers both the direct compiler and launchers that
+        # create a real compiler child. The backend authenticates the selected
+        # image before any hook read. Only the three diagnostic handles above
+        # are intentionally inheritable.
+        created = native.kernel32.CreateProcessW(
+            None,
+            buffer,
+            None,
+            None,
+            True,
+            DEBUG_PROCESS | native.CREATE_NO_WINDOW,
+            None,
+            request["cwd"],
+            ctypes.byref(startup),
+            ctypes.byref(process_info),
+        )
+        if not created:
+            raise Rejected(f"CreateProcessW failed: {ctypes.WinError(ctypes.get_last_error())}")
+        process_created = True
+        for handle in inherited_handles:
+            os.set_handle_inheritable(handle, False)
+        pid = _native_value(process_info.dwProcessId)
+        if pid <= 0:
+            native.kernel32.CloseHandle(process_info.hThread)
+            native.kernel32.CloseHandle(process_info.hProcess)
+            raise Rejected("CreateProcessW returned no native PID")
+        backend = NativeWow64Backend(
+            native,
+            _native_value(process_info.hProcess),
+            _native_value(process_info.hThread),
+            pid,
+            compiler_path=str(request["compiler"]["path"]),
+            compiler_sha256=str(request["compiler"]["sha256"]),
+            wrapper_path=str(request["wrapper"]["path"]),
+            wrapper_sha256=str(request["wrapper"]["sha256"]),
+            transport_mode=transport_mode,
+            executed_argv=executed_argv,
+        )
+        result = capture_with_backend(
+            request_path,
+            backend,
+            external_trust_root=root,
+            preauthenticated_auth=auth,
+            partial_evidence_dir=partial_evidence_dir,
+        )
+    except Exception as exc:
+        failure = exc
+    finally:
+        for handle in inherited_handles:
+            try:
+                os.set_handle_inheritable(handle, False)
+            except OSError:
+                pass
+        for stream in reversed(streams):
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+    failure_text = None if failure is None else str(failure)
+    try:
+        receipt = _compiler_execution_receipt(
+            auth,
+            transport_mode=transport_mode,
+            executed_argv=executed_argv,
+            include_search_paths=include_search_paths,
+            stdout_path=diagnostic_paths["stdout"],
+            stderr_path=diagnostic_paths["stderr"],
+            process_created=process_created,
+            process_quiesced=False if backend is None else backend.process_quiesced,
+            terminated_by_capture=False if backend is None else backend.compiler_terminated_by_capture,
+            exit_code=None if backend is None else backend.compiler_exit_code,
+            failure=failure_text,
+        )
+        _publish_compiler_execution_receipt(diagnostic_paths["receipt"], receipt)
+    except Exception as exc:
+        original = f"; original capture failure: {failure_text}" if failure_text else ""
+        raise Rejected(
+            f"compiler execution receipt publication failed: {type(exc).__name__}: {exc}{original}"
+        ) from exc
+    if failure is not None:
+        if isinstance(failure, Rejected):
+            raise failure
+        raise Rejected(f"capture failure: {type(failure).__name__}: {failure}") from failure
+    if result is None:
+        raise Rejected("native capture returned no result")
+    return result
 
 
 def unknown_result(reason: str) -> dict[str, Any]:

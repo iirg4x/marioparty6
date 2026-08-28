@@ -21,6 +21,7 @@ from typing import Any, Mapping, Sequence
 
 
 SCHEMA = "volatile_owner_causal_join/v1"
+ENRICHED_SCHEMA = "volatile_owner_causal_join/v2"
 CONTEXT_SCHEMA = "volatile_owner_causal_join_context/v1"
 FOCUS_SCHEMA = "focus_symbol_report/v1"
 GRAPH_SCHEMA = "mwcc_capsule_same_session_ownership_failure_graph/v1"
@@ -383,7 +384,9 @@ def _focus_rows(focus: Mapping[str, Any], context: Mapping[str, Any], blockers: 
     return target, candidate
 
 
-def _validate_span(span: Mapping[str, Any], context: Mapping[str, Any], blockers: list[str]) -> None:
+def _validate_span(
+    span: Mapping[str, Any], context: Mapping[str, Any], blockers: list[str]
+) -> dict[str, dict[str, Any]]:
     if span.get("schema") not in SPAN_SCHEMAS:
         raise VolatileOwnerJoinInputError("source-span manifest schema is unsupported")
     required = {"schema", "function", "function_sha256", "session_id", "source", "spans", "authority_advanced", "manifest_sha256"}
@@ -395,9 +398,7 @@ def _validate_span(span: Mapping[str, Any], context: Mapping[str, Any], blockers
     _text(source["path"], "source-span manifest.source.path", limit=4096)
     _uint(source["size"], "source-span manifest.source.size")
     _sha256(source["sha256"], "source-span manifest.source.sha256")
-    _sequence(span.get("spans"), "source-span manifest.spans")
-    if "objects" in required:
-        _sequence(span.get("objects"), "source-span manifest.objects")
+    raw_spans = _sequence(span.get("spans"), "source-span manifest.spans")
     _self_digest(span, "manifest_sha256", "source-span manifest")
     if span.get("manifest_sha256") != context["source_span_manifest"]["manifest_sha256"]:
         raise VolatileOwnerJoinInputError("source-span manifest identity differs from context")
@@ -407,9 +408,94 @@ def _validate_span(span: Mapping[str, Any], context: Mapping[str, Any], blockers
         blockers.append("source_span_function_mismatch")
     if span.get("authority_advanced") is not False:
         blockers.append("source_span_authority_not_false")
+    if span.get("schema") != "mwcc_source_span_bindings/v2":
+        return {}
+
+    source_path = Path(str(source["path"]))
+    source_bytes: bytes | None = None
+    if not source_path.is_absolute() or source_path.is_symlink() or not source_path.is_file():
+        blockers.append("source_span_source_path_not_verified_regular_file")
+    else:
+        try:
+            source_bytes = source_path.read_bytes()
+        except OSError:
+            blockers.append("source_span_source_path_not_verified_regular_file")
+        else:
+            if len(source_bytes) != source["size"] or hashlib.sha256(source_bytes).hexdigest() != source["sha256"]:
+                blockers.append("source_span_source_file_identity_mismatch")
+
+    object_tokens: set[str] = set()
+    for index, raw in enumerate(_sequence(span.get("objects"), "source-span manifest.objects")):
+        label = f"source-span manifest.objects[{index}]"
+        item = _closed(raw, label, {"byte_size", "identity", "object_token", "object_type", "ownership_mode"})
+        token = _token(item["object_token"], f"{label}.object_token")
+        token_match = _OBJECT_TOKEN_RE.fullmatch(token)
+        if token_match is None or token_match.group("session") != context["session_id"]:
+            raise VolatileOwnerJoinInputError(f"{label}.object_token is not a canonical same-session token")
+        _uint(item["byte_size"], f"{label}.byte_size")
+        _token(item["identity"], f"{label}.identity")
+        _token(item["object_type"], f"{label}.object_type")
+        _token(item["ownership_mode"], f"{label}.ownership_mode")
+        if token in object_tokens:
+            raise VolatileOwnerJoinInputError("source-span manifest objects contain duplicate tokens")
+        object_tokens.add(token)
+
+    declarations: dict[str, dict[str, Any]] = {}
+    for index, raw in enumerate(raw_spans):
+        label = f"source-span manifest.spans[{index}]"
+        item = _closed(
+            raw,
+            label,
+            {
+                "byte_end", "byte_start", "dependency_id", "identity", "line_end",
+                "line_start", "machine_instruction_indices", "object_token", "role",
+                "text_sha256",
+            },
+        )
+        token = _token(item["object_token"], f"{label}.object_token")
+        if token not in object_tokens:
+            raise VolatileOwnerJoinInputError(f"{label}.object_token has no declared object")
+        identity = _token(item["identity"], f"{label}.identity")
+        role = _token(item["role"], f"{label}.role")
+        byte_start = _uint(item["byte_start"], f"{label}.byte_start")
+        byte_end = _uint(item["byte_end"], f"{label}.byte_end")
+        line_start = _uint(item["line_start"], f"{label}.line_start")
+        line_end = _uint(item["line_end"], f"{label}.line_end")
+        text_sha256 = _sha256(item["text_sha256"], f"{label}.text_sha256")
+        if byte_end < byte_start or line_end < line_start:
+            raise VolatileOwnerJoinInputError(f"{label} has a reversed source range")
+        machine_indices = [
+            _uint(value, f"{label}.machine_instruction_indices[{ordinal}]")
+            for ordinal, value in enumerate(_sequence(item["machine_instruction_indices"], f"{label}.machine_instruction_indices"))
+        ]
+        if len(machine_indices) != len(set(machine_indices)):
+            raise VolatileOwnerJoinInputError(f"{label}.machine_instruction_indices contains duplicates")
+        if source_bytes is not None:
+            if byte_end > len(source_bytes):
+                blockers.append(f"source_span_{index}_range_out_of_bounds")
+            elif hashlib.sha256(source_bytes[byte_start:byte_end]).hexdigest() != text_sha256:
+                blockers.append(f"source_span_{index}_text_hash_mismatch")
+        descriptor = {
+            "identity": identity,
+            "role": role,
+            "object_token": token,
+            "byte_start": byte_start,
+            "byte_end": byte_end,
+            "line_start": line_start,
+            "line_end": line_end,
+            "text_sha256": text_sha256,
+        }
+        if role == "declaration":
+            if token in declarations:
+                blockers.append(f"source_object_{token}_declaration_not_unique")
+            else:
+                declarations[token] = descriptor
+    return declarations
 
 
-def _capture_binding(section: Mapping[str, Any], context: Mapping[str, Any], span: Mapping[str, Any], blockers: list[str]) -> dict[str, str]:
+def _capture_binding(
+    section: Mapping[str, Any], context: Mapping[str, Any], span: Mapping[str, Any], blockers: list[str]
+) -> dict[str, dict[str, str]]:
     source = _mapping(section.get("source"), "graph.volatile_owner_facts.source")
     compiler = _mapping(section.get("compiler"), "graph.volatile_owner_facts.compiler")
     candidate = section.get("candidate_object")
@@ -443,7 +529,7 @@ def _capture_binding(section: Mapping[str, Any], context: Mapping[str, Any], spa
         event_ids.add(event_id)
     object_bindings = _sequence(section.get("object_identity_bindings"), "graph.volatile_owner_facts.object_identity_bindings")
     bound_fact_ids: set[str] = set()
-    binding_statuses: dict[str, str] = {}
+    binding_statuses: dict[str, dict[str, str]] = {}
     for index, raw in enumerate(object_bindings):
         label = f"graph.volatile_owner_facts.object_identity_bindings[{index}]"
         binding = _mapping(raw, label)
@@ -461,7 +547,7 @@ def _capture_binding(section: Mapping[str, Any], context: Mapping[str, Any], spa
         if fact_id in bound_fact_ids:
             raise VolatileOwnerJoinInputError("graph object identity bindings contain duplicate facts")
         bound_fact_ids.add(fact_id)
-        binding_statuses[fact_id] = str(status)
+        binding_statuses[fact_id] = {"status": str(status), "object_token": capture_token}
     span_source = span.get("source")
     if not isinstance(span_source, Mapping) or span_source.get("sha256") != source.get("sha256"):
         blockers.append("graph_source_identity_mismatch")
@@ -496,7 +582,12 @@ def _graph_rows(section: Mapping[str, Any], blockers: list[str], session_id: str
     fact_ids: set[str] = set()
     for index, raw in enumerate(_sequence(raw_facts, "graph.owner_facts")):
         label = f"graph.owner_facts[{index}]"
-        fact = _closed(raw, label, {"fact_id", "row_id", "role", "pcode_id", "ig_node_id", "vreg", "final_color", "physical_register", "def_id", "use_ids", "classification"})
+        fact = _closed(
+            raw,
+            label,
+            {"fact_id", "row_id", "role", "pcode_id", "ig_node_id", "vreg", "final_color", "physical_register", "def_id", "use_ids", "classification"},
+            {"interference_neighbors", "missing_edge"},
+        )
         parsed = {key: _token(fact[key], f"{label}.{key}") for key in ("fact_id", "row_id", "role", "pcode_id", "ig_node_id", "physical_register", "classification")}
         if parsed["fact_id"] in fact_ids:
             raise VolatileOwnerJoinInputError("graph.owner_facts contains duplicate fact IDs")
@@ -525,7 +616,42 @@ def _graph_rows(section: Mapping[str, Any], blockers: list[str], session_id: str
             raise VolatileOwnerJoinInputError(f"{label}.use_ids contains a noncanonical token")
         if len(use_ids) != len(set(use_ids)):
             raise VolatileOwnerJoinInputError(f"{label}.use_ids must be duplicate-free")
-        parsed.update({"final_color": final_color, "use_ids": use_ids})
+        neighbors: list[dict[str, Any]] | None = None
+        if "interference_neighbors" in fact:
+            neighbors = []
+            seen_neighbor_ids: set[str] = set()
+            for neighbor_index, raw_neighbor in enumerate(_sequence(fact["interference_neighbors"], f"{label}.interference_neighbors")):
+                neighbor_label = f"{label}.interference_neighbors[{neighbor_index}]"
+                neighbor = _closed(raw_neighbor, neighbor_label, {"ig_node_id", "vreg", "final_color", "physical_register"})
+                ig_node_id = _token(neighbor["ig_node_id"], f"{neighbor_label}.ig_node_id")
+                ig_match = _IG_ID_RE.fullmatch(ig_node_id)
+                if ig_match is None or ig_match.group("session") != session_id:
+                    raise VolatileOwnerJoinInputError(f"{neighbor_label}.ig_node_id is not session-bound")
+                neighbor_vreg = _token(neighbor["vreg"], f"{neighbor_label}.vreg")
+                neighbor_register = _token(neighbor["physical_register"], f"{neighbor_label}.physical_register").lower()
+                neighbor_color = _uint(neighbor["final_color"], f"{neighbor_label}.final_color", maximum=31)
+                if _VREG_RE.fullmatch(neighbor_vreg) is None or _REGISTER_RE.fullmatch(neighbor_register) is None:
+                    raise VolatileOwnerJoinInputError(f"{neighbor_label} has an invalid vreg/register")
+                if int(neighbor_register[1:]) != neighbor_color or neighbor_register[0] != neighbor_vreg[0].lower():
+                    blockers.append(f"fact_{parsed['fact_id']}_interference_neighbor_color_mismatch")
+                if ig_node_id in seen_neighbor_ids:
+                    raise VolatileOwnerJoinInputError(f"{label}.interference_neighbors contains duplicate IG nodes")
+                seen_neighbor_ids.add(ig_node_id)
+                neighbors.append({
+                    "ig_node_id": ig_node_id,
+                    "vreg": neighbor_vreg,
+                    "final_color": neighbor_color,
+                    "physical_register": neighbor_register,
+                })
+        missing_edge = None
+        if "missing_edge" in fact and fact["missing_edge"] is not None:
+            missing_edge = _token(fact["missing_edge"], f"{label}.missing_edge")
+        parsed.update({
+            "final_color": final_color,
+            "use_ids": use_ids,
+            "interference_neighbors": neighbors,
+            "missing_edge": missing_edge,
+        })
         facts.append(parsed)
     return rows, facts
 
@@ -561,7 +687,7 @@ def build_join(
     _verify_object_file(context["candidate_object"], "candidate_object", blockers)
     _verify_physical_receipt_file(context["physical_relocation_receipt"], context["strict_report_sha256"], blockers)
     target_rows, candidate_rows = _focus_rows(focus, context, blockers)
-    _validate_span(span, context, blockers)
+    source_declarations = _validate_span(span, context, blockers)
     if graph.get("schema") != GRAPH_SCHEMA:
         raise VolatileOwnerJoinInputError(f"ownership graph schema must be {GRAPH_SCHEMA}")
     _self_digest(graph, "failure_graph_sha256", "ownership graph")
@@ -577,7 +703,7 @@ def build_join(
     if not isinstance(section, Mapping):
         blockers.append("volatile_owner_extension_absent")
         section = {}
-        object_binding_statuses: dict[str, str] = {}
+        object_binding_statuses: dict[str, dict[str, str]] = {}
     else:
         _closed(
             section,
@@ -598,6 +724,10 @@ def build_join(
             blockers.append("volatile_owner_section_authority_not_false")
         object_binding_statuses = _capture_binding(section, context, span, blockers)
     graph_rows, facts = _graph_rows(section, blockers, context["session_id"])
+    enriched = (
+        span.get("schema") == "mwcc_source_span_bindings/v2"
+        or any(fact["interference_neighbors"] is not None or fact["missing_edge"] is not None for fact in facts)
+    )
     if isinstance(section, Mapping) and section:
         bound_fact_ids = {
             row.get("fact_id") for row in section.get("object_identity_bindings", [])
@@ -620,6 +750,7 @@ def build_join(
     if set(observed) - expected_pairs:
         blockers.append("owner_facts_contain_extra_row_or_role")
     bindings: list[dict[str, Any]] = []
+    row_diagnostics: list[dict[str, Any]] = []
     permutation: dict[str, str] = {}
     changed_pairs: set[tuple[str, str]] = set()
     for index in sorted(focus_indices):
@@ -636,6 +767,26 @@ def build_join(
         choices = observed.get(pair, [])
         if len(choices) != 1:
             blockers.append(f"owner_fact_not_unique:{pair[0]}:{pair[1]}")
+            if enriched:
+                manifest_binding = binding_by_id.get(pair[0])
+                row_diagnostics.append({
+                    "row_id": pair[0],
+                    "row_ordinal": (manifest_binding["focus_row_index"] if manifest_binding is not None else None),
+                    "role": pair[1],
+                    "semantic_role": (manifest_binding["semantic_role"] if manifest_binding is not None else None),
+                    "candidate_operand_index": (manifest_binding["candidate_operand_index"] if manifest_binding is not None else None),
+                    "pcode_id": None,
+                    "ig_node_id": None,
+                    "vreg": None,
+                    "final_color": None,
+                    "candidate_physical_register": None,
+                    "target_physical_register": None,
+                    "def_id": None,
+                    "use_ids": [],
+                    "interference_neighbors": [],
+                    "missing_edge": "owner_fact_not_unique",
+                    "source_span": None,
+                })
             continue
         fact = choices[0]
         row = rows_by_id.get(fact["row_id"])
@@ -643,19 +794,71 @@ def build_join(
         if row is None or manifest_binding is None or manifest_binding["focus_row_index"] not in focus_indices:
             blockers.append(f"owner_fact_row_unbound:{fact['fact_id']}")
             continue
-        if row["owner_fact_id"] != fact["fact_id"] or fact["classification"] != "UNIQUE" or fact["vreg"] is None or fact["def_id"] is None or not fact["use_ids"]:
-            blockers.append(f"owner_fact_chain_not_unique:{fact['fact_id']}")
-            continue
-        if object_binding_statuses.get(fact["fact_id"]) != "PRESENT":
-            blockers.append(f"owner_fact_object_identity_not_present:{fact['fact_id']}")
-            continue
-        if fact["role"] != manifest_binding["captured_role"] or fact["role"] not in row["required_operand_roles"]:
-            blockers.append(f"owner_fact_role_not_capture_bound:{fact['fact_id']}")
-            continue
+        object_binding = object_binding_statuses.get(fact["fact_id"])
+        source_span = (
+            source_declarations.get(object_binding["object_token"])
+            if object_binding is not None and object_binding.get("status") == "PRESENT"
+            else None
+        )
         index = manifest_binding["focus_row_index"]
         candidate_regs = _registers(candidate_rows[index], f"focus.candidate[{index}]")
         target_regs = _registers(target_rows[index], f"focus.target[{index}]")
         operand_index = manifest_binding["candidate_operand_index"]
+        target_register = (
+            target_regs[operand_index]
+            if operand_index is not None and operand_index < len(target_regs)
+            else None
+        )
+        derived_missing_edge = fact["missing_edge"]
+        if fact["classification"] != "UNIQUE":
+            derived_missing_edge = derived_missing_edge or "owner_chain_not_unique"
+        elif fact["vreg"] is None:
+            derived_missing_edge = derived_missing_edge or "object_to_vreg"
+        elif fact["def_id"] is None or not fact["use_ids"]:
+            derived_missing_edge = derived_missing_edge or "pcode_def_use"
+        elif object_binding is None or object_binding.get("status") != "PRESENT":
+            derived_missing_edge = derived_missing_edge or "source_object_identity"
+        elif enriched and source_span is None:
+            derived_missing_edge = derived_missing_edge or "source_object_to_declaration_span"
+        elif enriched and fact["interference_neighbors"] is None:
+            derived_missing_edge = derived_missing_edge or "ig_interference_neighbors"
+        if enriched:
+            row_diagnostics.append({
+                "row_id": fact["row_id"],
+                "row_ordinal": index,
+                "role": fact["role"],
+                "semantic_role": manifest_binding["semantic_role"],
+                "candidate_operand_index": operand_index,
+                "pcode_id": fact["pcode_id"],
+                "ig_node_id": fact["ig_node_id"],
+                "vreg": fact["vreg"],
+                "final_color": fact["final_color"],
+                "candidate_physical_register": fact["physical_register"].lower(),
+                "target_physical_register": target_register,
+                "def_id": fact["def_id"],
+                "use_ids": fact["use_ids"],
+                "interference_neighbors": fact["interference_neighbors"] or [],
+                "missing_edge": derived_missing_edge,
+                "source_span": source_span,
+            })
+        if row["owner_fact_id"] != fact["fact_id"] or fact["classification"] != "UNIQUE" or fact["vreg"] is None or fact["def_id"] is None or not fact["use_ids"]:
+            blockers.append(f"owner_fact_chain_not_unique:{fact['fact_id']}")
+            continue
+        if object_binding is None or object_binding.get("status") != "PRESENT":
+            blockers.append(f"owner_fact_object_identity_not_present:{fact['fact_id']}")
+            continue
+        if enriched and source_span is None:
+            blockers.append(f"owner_fact_source_span_missing:{fact['fact_id']}")
+            continue
+        if enriched and fact["interference_neighbors"] is None:
+            blockers.append(f"owner_fact_interference_evidence_missing:{fact['fact_id']}")
+            continue
+        if enriched and derived_missing_edge is not None:
+            blockers.append(f"owner_fact_has_missing_edge:{fact['fact_id']}:{derived_missing_edge}")
+            continue
+        if fact["role"] != manifest_binding["captured_role"] or fact["role"] not in row["required_operand_roles"]:
+            blockers.append(f"owner_fact_role_not_capture_bound:{fact['fact_id']}")
+            continue
         if operand_index is None:
             blockers.append(f"candidate_operand_index_missing:{fact['fact_id']}")
             continue
@@ -671,7 +874,7 @@ def build_join(
             blockers.append(f"physical_register_has_conflicting_targets:{fact['physical_register'].lower()}")
             continue
         permutation[fact["physical_register"].lower()] = target_register
-        bindings.append({
+        binding_result = {
             "row_id": fact["row_id"], "row_ordinal": index, "role": fact["role"],
             "semantic_role": manifest_binding["semantic_role"],
             "candidate_operand_index": operand_index,
@@ -680,7 +883,14 @@ def build_join(
             "candidate_physical_register": fact["physical_register"].lower(),
             "target_physical_register": target_register, "def_id": fact["def_id"],
             "use_ids": fact["use_ids"], "classification": fact["classification"],
-        })
+        }
+        if enriched:
+            binding_result.update({
+                "interference_neighbors": fact["interference_neighbors"],
+                "missing_edge": None,
+                "source_span": source_span,
+            })
+        bindings.append(binding_result)
     if not changed_pairs:
         blockers.append("focus_contains_no_register_permutation")
     if not changed_pairs <= set(permutation.items()):
@@ -699,7 +909,7 @@ def build_join(
 
     status = "PROVEN" if not blockers else "UNKNOWN"
     result: dict[str, Any] = {
-        "schema": SCHEMA,
+        "schema": ENRICHED_SCHEMA if enriched else SCHEMA,
         "status": status,
         "function": context["function"],
         "session_id": context["session_id"],
@@ -732,6 +942,15 @@ def build_join(
         "retention_authorized": False,
         "authority_advanced": False,
     }
+    if enriched:
+        result["row_diagnostics"] = sorted(
+            row_diagnostics,
+            key=lambda item: (
+                item["row_ordinal"] if item["row_ordinal"] is not None else 1 << 31,
+                item["role"],
+                item["pcode_id"] or "",
+            ),
+        )
     result["join_sha256"] = canonical_sha256(result)
     return result
 
@@ -756,6 +975,17 @@ def build_from_paths(
     span = _json(span_path, context["source_span_manifest"]["file_sha256"], "source-span manifest")
     graph = _json(graph_path, context["ownership_failure_graph"]["file_sha256"], "ownership graph")
     return build_join(focus, span, graph, context_raw, expected_context)
+
+
+def schema_path_for_document(document: Mapping[str, Any]) -> Path:
+    """Resolve only the two published output contracts; never guess a version."""
+
+    schema = document.get("schema")
+    if schema == SCHEMA:
+        return Path(__file__).with_name("VOLATILE_OWNER_CAUSAL_JOIN_V1.schema.json")
+    if schema == ENRICHED_SCHEMA:
+        return Path(__file__).with_name("VOLATILE_OWNER_CAUSAL_JOIN_V2.schema.json")
+    raise VolatileOwnerJoinInputError("volatile-owner join output schema is unsupported")
 
 
 def _atomic_write(path: Path, text: str) -> None:

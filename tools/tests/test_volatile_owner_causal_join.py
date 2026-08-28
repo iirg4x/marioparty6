@@ -185,6 +185,73 @@ class VolatileOwnerCausalJoinTests(unittest.TestCase):
         self._reseal_graph(graph_value)
         return focus_value, span_value, graph_value, context(focus_value, span_value, graph_value, self.root, self.physical_file_sha256, self.physical_payload_sha256)
 
+    def enriched_fixture(self) -> tuple[dict[str, object], dict[str, object], dict[str, object], dict[str, object]]:
+        focus_value, _, graph_value, _ = self.fixture()
+        source_bytes = b"int owner0;\nint owner1;\n"
+        source_path = self.root / "owner.c"
+        source_path.write_bytes(source_bytes)
+        source_descriptor = {
+            "path": str(source_path),
+            "size": len(source_bytes),
+            "sha256": hashlib.sha256(source_bytes).hexdigest(),
+        }
+        span_value: dict[str, object] = {
+            "schema": "mwcc_source_span_bindings/v2",
+            "function": FUNCTION,
+            "function_sha256": "12" * 32,
+            "session_id": SESSION,
+            "source": copy.deepcopy(source_descriptor),
+            "objects": [
+                {
+                    "byte_size": 4,
+                    "identity": f"owner{number}",
+                    "object_token": f"local-{SESSION}-{number:06d}",
+                    "object_type": "int",
+                    "ownership_mode": "source_object",
+                }
+                for number in range(2)
+            ],
+            "spans": [
+                {
+                    "byte_start": 0 if number == 0 else 12,
+                    "byte_end": 11 if number == 0 else 23,
+                    "dependency_id": None,
+                    "identity": f"owner{number}",
+                    "line_start": number + 1,
+                    "line_end": number + 1,
+                    "machine_instruction_indices": [10 + number],
+                    "object_token": f"local-{SESSION}-{number:06d}",
+                    "role": "declaration",
+                    "text_sha256": hashlib.sha256(source_bytes[(0 if number == 0 else 12):(11 if number == 0 else 23)]).hexdigest(),
+                }
+                for number in range(2)
+            ],
+            "authority_advanced": False,
+        }
+        _seal(span_value, "manifest_sha256")
+        section = graph_value["volatile_owner_facts"]
+        section["source"] = copy.deepcopy(source_descriptor)
+        for number, fact in enumerate(section["owner_facts"]):
+            fact["interference_neighbors"] = [
+                {
+                    "ig_node_id": f"ig-{SESSION}-{100 + number:06d}",
+                    "vreg": f"r{40 + number}",
+                    "final_color": 6 + number,
+                    "physical_register": f"r{6 + number}",
+                }
+            ]
+            fact["missing_edge"] = None
+        self._reseal_graph(graph_value)
+        context_value = context(
+            focus_value,
+            span_value,
+            graph_value,
+            self.root,
+            self.physical_file_sha256,
+            self.physical_payload_sha256,
+        )
+        return focus_value, span_value, graph_value, context_value
+
     @staticmethod
     def build_join(focus_value: dict[str, object], span_value: dict[str, object], graph_value: dict[str, object], context_value: dict[str, object]) -> dict[str, object]:
         return reducer.build_join(
@@ -203,12 +270,73 @@ class VolatileOwnerCausalJoinTests(unittest.TestCase):
         self.assertEqual(result["ranked_source_classes"], [{"rank": 1, "source_class": "volatile_index_owner"}])
         self.assertNotIn("path", json.dumps(result["evidence_binding"], sort_keys=True))
 
-    def test_output_schema_rejects_evidence_free_proven_documents(self) -> None:
-        schema_path = Path(reducer.__file__).with_name("VOLATILE_OWNER_CAUSAL_JOIN_V1.schema.json")
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        proven_rules = schema["allOf"][0]["then"]["properties"]
+    def test_enriched_join_exposes_def_use_interference_color_and_source_span(self) -> None:
+        focus_value, span_value, graph_value, context_value = self.enriched_fixture()
+        result = self.build_join(focus_value, span_value, graph_value, context_value)
+        self.assertEqual(result["schema"], reducer.ENRICHED_SCHEMA)
+        self.assertEqual(result["status"], "PROVEN")
+        self.assertEqual(len(result["row_diagnostics"]), 2)
+        first = result["row_diagnostics"][0]
+        self.assertEqual(first["pcode_id"], f"pcode-{SESSION}-000000")
+        self.assertEqual(first["def_id"], "def-000020")
+        self.assertEqual(first["use_ids"], ["use-000030"])
+        self.assertEqual(first["candidate_physical_register"], "r3")
+        self.assertEqual(first["target_physical_register"], "r4")
+        self.assertEqual(first["interference_neighbors"][0]["vreg"], "r40")
+        self.assertEqual(first["source_span"]["identity"], "owner0")
+        self.assertEqual(first["source_span"]["text_sha256"], hashlib.sha256(b"int owner0;").hexdigest())
+        self.assertIsNone(first["missing_edge"])
 
-        def enforce_proven_gate(document: dict[str, object]) -> None:
+    def test_enriched_join_missing_interference_is_unknown_with_explicit_edge(self) -> None:
+        focus_value, span_value, graph_value, context_value = self.enriched_fixture()
+        del graph_value["volatile_owner_facts"]["owner_facts"][0]["interference_neighbors"]
+        self._reseal_graph(graph_value)
+        context_value["ownership_failure_graph"]["failure_graph_sha256"] = graph_value["failure_graph_sha256"]
+        self._reseal_context(context_value)
+        result = self.build_join(focus_value, span_value, graph_value, context_value)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["row_diagnostics"][0]["missing_edge"], "ig_interference_neighbors")
+        self.assertIn("owner_fact_interference_evidence_missing:owner-fact-000000", result["blockers"])
+
+    def test_enriched_join_capture_missing_edge_never_ranks_source(self) -> None:
+        focus_value, span_value, graph_value, context_value = self.enriched_fixture()
+        graph_value["volatile_owner_facts"]["owner_facts"][0]["missing_edge"] = "object_to_vreg"
+        self._reseal_graph(graph_value)
+        context_value["ownership_failure_graph"]["failure_graph_sha256"] = graph_value["failure_graph_sha256"]
+        self._reseal_context(context_value)
+        result = self.build_join(focus_value, span_value, graph_value, context_value)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["ranked_source_classes"], [])
+        self.assertEqual(result["row_diagnostics"][0]["missing_edge"], "object_to_vreg")
+
+    def test_enriched_source_span_bytes_are_hash_verified(self) -> None:
+        focus_value, span_value, graph_value, context_value = self.enriched_fixture()
+        (self.root / "owner.c").write_bytes(b"int changed;\nint owner1;\n")
+        result = self.build_join(focus_value, span_value, graph_value, context_value)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertIn("source_span_source_file_identity_mismatch", result["blockers"])
+
+    def test_schema_loader_preserves_v1_and_selects_v2_fail_closed(self) -> None:
+        focus_value, span_value, graph_value, context_value = self.fixture()
+        legacy = self.build_join(focus_value, span_value, graph_value, context_value)
+        legacy_schema = reducer.schema_path_for_document(legacy)
+        self.assertEqual(legacy_schema.name, "VOLATILE_OWNER_CAUSAL_JOIN_V1.schema.json")
+        self.assertEqual(json.loads(legacy_schema.read_text(encoding="utf-8"))["$id"], legacy_schema.name)
+
+        focus_value, span_value, graph_value, context_value = self.enriched_fixture()
+        enriched = self.build_join(focus_value, span_value, graph_value, context_value)
+        enriched_schema = reducer.schema_path_for_document(enriched)
+        schema = json.loads(enriched_schema.read_text(encoding="utf-8"))
+        self.assertEqual(enriched_schema.name, "VOLATILE_OWNER_CAUSAL_JOIN_V2.schema.json")
+        self.assertEqual(schema["properties"]["schema"]["const"], reducer.ENRICHED_SCHEMA)
+        self.assertIn("row_diagnostics", schema["required"])
+        self.assertIn("source_span", schema["$defs"]["binding"]["required"])
+        with self.assertRaisesRegex(reducer.VolatileOwnerJoinInputError, "unsupported"):
+            reducer.schema_path_for_document({"schema": "volatile_owner_causal_join/v3"})
+
+    def test_output_schema_rejects_evidence_free_proven_documents(self) -> None:
+        def enforce_proven_gate(schema: dict[str, object], document: dict[str, object]) -> None:
+            proven_rules = schema["allOf"][0]["then"]["properties"]
             for field in ("bindings", "ranked_source_classes", "closed_residual_rows"):
                 minimum = proven_rules[field]["minItems"]
                 if len(document[field]) < minimum:
@@ -222,13 +350,6 @@ class VolatileOwnerCausalJoinTests(unittest.TestCase):
                 if "$ref" not in evidence_rules[field] or document["evidence_binding"][field] is None:
                     raise ValueError(field)
 
-        valid_gate = {
-            "bindings": [{}],
-            "ranked_source_classes": [{}],
-            "closed_residual_rows": [1],
-            "register_permutation": {"mapping": [{}], "changed_mapping": [{}]},
-            "evidence_binding": {"context_sha256": "10" * 32, "data_report_sha256": "11" * 32, "physical_relocation_receipt": {}},
-        }
         mutations = (
             ("bindings", lambda row: row.update(bindings=[])),
             ("mapping", lambda row: row["register_permutation"].update(mapping=[])),
@@ -238,12 +359,22 @@ class VolatileOwnerCausalJoinTests(unittest.TestCase):
             ("data_report_sha256", lambda row: row["evidence_binding"].update(data_report_sha256=None)),
             ("physical_relocation_receipt", lambda row: row["evidence_binding"].update(physical_relocation_receipt=None)),
         )
-        for label, mutate in mutations:
-            with self.subTest(label=label):
-                adversarial = copy.deepcopy(valid_gate)
-                mutate(adversarial)
-                with self.assertRaisesRegex(ValueError, label):
-                    enforce_proven_gate(adversarial)
+        fixture_builders = (
+            ("v1", self.fixture, "VOLATILE_OWNER_CAUSAL_JOIN_V1.schema.json"),
+            ("v2", self.enriched_fixture, "VOLATILE_OWNER_CAUSAL_JOIN_V2.schema.json"),
+        )
+        for version, fixture_builder, schema_name in fixture_builders:
+            focus_value, span_value, graph_value, context_value = fixture_builder()
+            valid_gate = self.build_join(focus_value, span_value, graph_value, context_value)
+            self.assertEqual(valid_gate["status"], "PROVEN")
+            schema = json.loads(Path(reducer.__file__).with_name(schema_name).read_text(encoding="utf-8"))
+            enforce_proven_gate(schema, valid_gate)
+            for label, mutate in mutations:
+                with self.subTest(version=version, label=label):
+                    adversarial = copy.deepcopy(valid_gate)
+                    mutate(adversarial)
+                    with self.assertRaisesRegex(ValueError, label):
+                        enforce_proven_gate(schema, adversarial)
 
     def test_two_owner_bindings_may_close_distinct_positions_of_one_fmuls(self) -> None:
         focus_value, span_value, graph_value, context_value = self.fixture()
