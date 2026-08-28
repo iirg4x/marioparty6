@@ -1,14 +1,20 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest import mock
 
+from tools.agent_queue import canonical_queue_path
 from tools.recovery_memory import (
     RecoveryMemory,
     RecoveryMemoryError,
+    _canonical_workflow_root,
     parse_crack_report,
+    startup_check,
 )
+from tools.tests import test_recovery_workflow as recovery_fixture
 
 
 SHA_A = "a" * 64
@@ -38,6 +44,354 @@ class RecoveryMemoryTests(unittest.TestCase):
             hypothesis="direct consumer",
             axis="lifetime",
         )
+
+    @staticmethod
+    def git(root: Path, *args: str) -> str:
+        process = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        return process.stdout.strip()
+
+    def split_lane_and_workflow(self) -> tuple[Path, Path]:
+        lane = self.root / "lane"
+        workflow = self.root / "workflow"
+        lane.mkdir()
+        (lane / "workflow-marker.txt").write_text(
+            "permanent workflow ancestry marker\n", encoding="utf-8"
+        )
+        self.git(lane, "init", "-q", "-b", "main")
+        self.git(lane, "config", "user.email", "test@example.com")
+        self.git(lane, "config", "user.name", "Test")
+        self.git(lane, "add", "workflow-marker.txt")
+        self.git(lane, "commit", "-qm", "permanent workflow marker")
+        self.git(
+            lane,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            "HEAD",
+        )
+        self.git(lane, "worktree", "add", "-q", "-b", "workflow", str(workflow))
+        recovery_fixture.RecoveryWorkflowTests().fixture(workflow)
+        freshness = workflow / "config/recovery/knowledge_freshness.json"
+        freshness.write_text(
+            json.dumps({"schema_version": 1, "cards": {}}),
+            encoding="utf-8",
+        )
+        runtime = workflow / "tools/workflow_runtime.py"
+        runtime.parent.mkdir(parents=True, exist_ok=True)
+        runtime.write_text("WORKFLOW_VERSION = 1\n", encoding="utf-8")
+        self.git(workflow, "add", ".")
+        self.git(workflow, "commit", "-qm", "add recovery workflow metadata")
+        self.git(
+            workflow,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            "HEAD",
+        )
+        return lane, workflow
+
+    def independent_workflow(self, lane: Path, name: str) -> Path:
+        workflow = self.root / name
+        permanent = self.git(
+            lane,
+            "rev-parse",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+        )
+        self.git(
+            self.root,
+            "clone",
+            "-q",
+            "--branch",
+            "workflow",
+            str(lane),
+            str(workflow),
+        )
+        self.git(
+            workflow,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            permanent,
+        )
+        return workflow
+
+    def test_startup_check_uses_authenticated_workflow_root_for_legacy_lane(
+        self,
+    ) -> None:
+        lane, _linked_workflow = self.split_lane_and_workflow()
+        workflow = self.independent_workflow(lane, "workflow-independent")
+        self.assertFalse((lane / "config/recovery/project.json").exists())
+        with self.assertRaisesRegex(
+            RecoveryMemoryError, "lane is stale"
+        ):
+            startup_check(lane, sync_reports=False)
+        self.git(
+            lane,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            "HEAD",
+        )
+
+        result = startup_check(
+            lane,
+            sync_reports=False,
+            workflow_root=workflow,
+        )
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["lane_root"], str(lane.resolve()))
+        self.assertEqual(result["workflow_root"], str(workflow.resolve()))
+        self.assertNotEqual(
+            canonical_queue_path(lane), canonical_queue_path(workflow)
+        )
+        self.assertEqual(
+            Path(result["queue_path"]), canonical_queue_path(lane)
+        )
+        self.assertEqual(
+            Path(result["memory_path"]).parent,
+            canonical_queue_path(lane).parent,
+        )
+        self.assertFalse(canonical_queue_path(workflow).exists())
+        self.assertFalse(
+            (canonical_queue_path(workflow).parent / "recovery-memory.sqlite3").exists()
+        )
+        self.assertNotEqual(result["lane_head"], result["permanent_ref_commit"])
+        self.assertEqual(
+            result["workflow_head"], result["permanent_ref_commit"]
+        )
+        self.assertEqual(result["merge_base"], result["lane_head"])
+        self.assertFalse(result["authority_advanced"])
+        self.assertEqual(len(result["workflow_root_sha256"]), 64)
+        self.assertIn(
+            "config/recovery/project.json", result["workflow_files"]
+        )
+        self.assertIn(
+            "config/recovery/knowledge_freshness.json",
+            result["workflow_files"],
+        )
+        repeated = startup_check(
+            lane,
+            sync_reports=False,
+            workflow_root=workflow,
+        )
+        self.assertEqual(
+            repeated["workflow_root_sha256"], result["workflow_root_sha256"]
+        )
+
+    def test_startup_check_uses_workflow_objects_across_unfetched_clone(
+        self,
+    ) -> None:
+        upstream = self.root / "history-upstream"
+        lane = self.root / "history-lane"
+        workflow = self.root / "history-workflow"
+        upstream.mkdir()
+        (upstream / "workflow-marker.txt").write_text(
+            "shared history\n", encoding="utf-8"
+        )
+        self.git(upstream, "init", "-q", "-b", "main")
+        self.git(upstream, "config", "user.email", "test@example.com")
+        self.git(upstream, "config", "user.name", "Test")
+        self.git(upstream, "add", "workflow-marker.txt")
+        self.git(upstream, "commit", "-qm", "shared base")
+        self.git(self.root, "clone", "-q", str(upstream), str(lane))
+        self.git(self.root, "clone", "-q", str(upstream), str(workflow))
+
+        self.git(workflow, "config", "user.email", "test@example.com")
+        self.git(workflow, "config", "user.name", "Test")
+        recovery_fixture.RecoveryWorkflowTests().fixture(workflow)
+        (workflow / "config/recovery/knowledge_freshness.json").write_text(
+            json.dumps({"schema_version": 1, "cards": {}}),
+            encoding="utf-8",
+        )
+        self.git(workflow, "add", ".")
+        self.git(workflow, "commit", "-qm", "new workflow metadata")
+        self.git(
+            workflow,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            "HEAD",
+        )
+        workflow_head = self.git(workflow, "rev-parse", "HEAD")
+        lane_head = self.git(lane, "rev-parse", "HEAD")
+        unseen = subprocess.run(
+            ["git", "cat-file", "-e", f"{workflow_head}^{{commit}}"],
+            cwd=lane,
+            capture_output=True,
+            check=False,
+        )
+        self.assertNotEqual(unseen.returncode, 0)
+
+        result = startup_check(
+            lane,
+            sync_reports=False,
+            workflow_root=workflow,
+        )
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["lane_head"], lane_head)
+        self.assertEqual(result["workflow_head"], workflow_head)
+        self.assertEqual(result["permanent_ref_commit"], workflow_head)
+        self.assertEqual(result["merge_base"], lane_head)
+
+    def test_startup_check_rejects_relative_and_alias_workflow_roots(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        with self.assertRaisesRegex(RecoveryMemoryError, "absolute canonical"):
+            startup_check(
+                lane,
+                sync_reports=False,
+                workflow_root=Path("workflow"),
+            )
+        alias = workflow / "config" / ".."
+        with self.assertRaisesRegex(RecoveryMemoryError, "path alias"):
+            startup_check(lane, sync_reports=False, workflow_root=alias)
+
+    def test_workflow_root_rejects_non_worktree_and_symlink(self) -> None:
+        not_worktree = self.root / "not-worktree"
+        not_worktree.mkdir()
+        with self.assertRaisesRegex(RecoveryMemoryError, "not a Git worktree"):
+            _canonical_workflow_root(not_worktree)
+
+        lane, workflow = self.split_lane_and_workflow()
+        del lane
+        with mock.patch.object(Path, "is_symlink", return_value=True):
+            with self.assertRaisesRegex(RecoveryMemoryError, "symlink"):
+                _canonical_workflow_root(workflow)
+
+    def test_startup_check_rejects_unrelated_workflow_history(self) -> None:
+        lane, _workflow = self.split_lane_and_workflow()
+        unrelated = self.root / "workflow-unrelated"
+        unrelated.mkdir()
+        recovery_fixture.RecoveryWorkflowTests().fixture(unrelated)
+        (unrelated / "config/recovery/knowledge_freshness.json").write_text(
+            json.dumps({"schema_version": 1, "cards": {}}),
+            encoding="utf-8",
+        )
+        self.git(unrelated, "init", "-q", "-b", "workflow")
+        self.git(unrelated, "config", "user.email", "test@example.com")
+        self.git(unrelated, "config", "user.name", "Test")
+        self.git(unrelated, "add", ".")
+        self.git(unrelated, "commit", "-qm", "unrelated workflow")
+        self.git(
+            unrelated,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            "HEAD",
+        )
+        with self.assertRaisesRegex(
+            RecoveryMemoryError, "deterministic common merge-base"
+        ):
+            startup_check(lane, sync_reports=False, workflow_root=unrelated)
+
+    def test_startup_check_rejects_stale_workflow_root(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        permanent = self.git(
+            lane,
+            "rev-parse",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+        )
+        stale = self.root / "workflow-stale"
+        self.git(
+            self.root,
+            "clone",
+            "-q",
+            "--branch",
+            "workflow",
+            str(lane),
+            str(stale),
+        )
+        self.git(stale, "config", "user.email", "test@example.com")
+        self.git(stale, "config", "user.name", "Test")
+        self.git(stale, "checkout", "-q", "--orphan", "stale-workflow")
+        self.git(stale, "rm", "-q", "-rf", ".")
+        recovery_fixture.RecoveryWorkflowTests().fixture(stale)
+        (stale / "config/recovery/knowledge_freshness.json").write_text(
+            json.dumps({"schema_version": 1, "cards": {}}),
+            encoding="utf-8",
+        )
+        self.git(stale, "add", ".")
+        self.git(stale, "commit", "-qm", "unrelated workflow metadata")
+        self.git(
+            stale,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            permanent,
+        )
+        with self.assertRaisesRegex(RecoveryMemoryError, "must equal released"):
+            startup_check(lane, sync_reports=False, workflow_root=stale)
+
+    def test_startup_check_rejects_workflow_head_ahead_of_release(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        (workflow / "tools/workflow_runtime.py").write_text(
+            "WORKFLOW_VERSION = 2\n", encoding="utf-8"
+        )
+        self.git(workflow, "add", "tools/workflow_runtime.py")
+        self.git(workflow, "commit", "-qm", "unreleased workflow change")
+        with self.assertRaisesRegex(RecoveryMemoryError, "must equal released"):
+            startup_check(lane, sync_reports=False, workflow_root=workflow)
+
+    def test_startup_check_rejects_dirty_tracked_workflow_tooling(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        (workflow / "tools/workflow_runtime.py").write_text(
+            "WORKFLOW_VERSION = 99\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(RecoveryMemoryError, "worktree is not clean"):
+            startup_check(lane, sync_reports=False, workflow_root=workflow)
+
+    def test_startup_check_rejects_untracked_workflow_tooling(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        (workflow / "tools/untracked_runtime.py").write_text(
+            "UNRELEASED = True\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(RecoveryMemoryError, "worktree is not clean"):
+            startup_check(lane, sync_reports=False, workflow_root=workflow)
+
+    def test_default_startup_preserves_dirty_lane_compatibility(self) -> None:
+        lane = self.root / "default-lane"
+        lane.mkdir()
+        recovery_fixture.RecoveryWorkflowTests().fixture(lane)
+        self.git(lane, "init", "-q", "-b", "main")
+        self.git(lane, "config", "user.email", "test@example.com")
+        self.git(lane, "config", "user.name", "Test")
+        self.git(lane, "add", ".")
+        self.git(lane, "commit", "-qm", "lane metadata")
+        self.git(
+            lane,
+            "update-ref",
+            "refs/remotes/origin/agent/recovery-context-workflow",
+            "HEAD",
+        )
+        untracked = lane / "tools/local_probe.py"
+        untracked.parent.mkdir(parents=True, exist_ok=True)
+        untracked.write_text("LOCAL = True\n", encoding="utf-8")
+        result = startup_check(lane, sync_reports=False)
+        self.assertEqual(result["status"], "pass")
+
+    def test_startup_check_rejects_tampered_workflow_metadata(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        patterns = workflow / "config/recovery/compiler_patterns.json"
+        self.git(
+            workflow,
+            "update-index",
+            "--assume-unchanged",
+            "config/recovery/compiler_patterns.json",
+        )
+        patterns.write_text(
+            patterns.read_text(encoding="utf-8") + "\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            RecoveryMemoryError, "does not match authenticated HEAD"
+        ):
+            startup_check(lane, sync_reports=False, workflow_root=workflow)
+
+    def test_startup_check_rejects_missing_workflow_metadata(self) -> None:
+        lane, workflow = self.split_lane_and_workflow()
+        (workflow / "config/recovery/knowledge_freshness.json").unlink()
+        with self.assertRaisesRegex(
+            RecoveryMemoryError, "worktree is not clean"
+        ):
+            startup_check(lane, sync_reports=False, workflow_root=workflow)
 
     def test_admission_is_shared_and_record_is_deduplicated(self) -> None:
         identity = self.identity()

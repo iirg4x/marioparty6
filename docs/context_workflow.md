@@ -272,12 +272,57 @@ Every recovery lane starts with:
 python tools/agent.py memory startup-check --strict-reports
 ```
 
+If a legacy source lane intentionally does not carry the recovery metadata,
+authenticate a separate workflow/knowledge worktree explicitly:
+
+```sh
+python C:/absolute/path/to/recovery-workflow/tools/agent.py \
+  --root C:/absolute/path/to/source-lane \
+  memory startup-check --strict-reports \
+  --workflow-root C:/absolute/path/to/recovery-workflow
+```
+
+`--workflow-root` is a fail-closed trust boundary, not a replacement lane.  It
+must name the absolute, canonical top level of a real Git worktree (no relative
+path, symlink, `..` alias, or subdirectory).  Its permanent workflow ref is the
+workflow authority, and the workflow HEAD must equal that resolved commit
+exactly.  A local commit beyond the released ref is not an authority source.
+The explicit workflow worktree must also be completely clean according to
+`git status --porcelain=v1 --untracked-files=all`; ignored build products remain
+allowed, while tracked edits and untracked Python/tooling fail closed.  The lane
+and workflow HEADs must have exactly one Git merge-base, which is recorded with
+both HEADs and the permanent-ref commit.  The lane need not contain the latest
+permanent workflow commit; this is what lets a legacy owner lane consume current
+knowledge without an ancestry-only merge after every tooling update.  Recovery
+project, knowledge, and freshness metadata must be tracked and byte-identical to
+the workflow HEAD.  The workflow root supplies only those metadata files and
+their hashes.  The source lane still supplies the branch and HEAD identity,
+canonical queue and memory locations, report/workbench sync, and the recorded
+lane key.
+
+Separate clones are supported without fetching into the lane.  For the bounded
+merge-base query only, startup resolves and validates the workflow repository's
+canonical Git object directory and prepends it to
+`GIT_ALTERNATE_OBJECT_DIRECTORIES`, preserving any existing alternates.  Git
+therefore reads the workflow commits without writing objects or refs into the
+lane.  An unavailable, symlinked, or aliased workflow object directory fails
+closed.
+
+Omitting `--workflow-root` preserves the original strict behavior: the lane
+itself supplies recovery metadata and the permanent workflow ref must be an
+ancestor of the lane HEAD.  A stale lane cannot bypass that check merely by
+omitting the explicit trust root.
+
 The check requires one canonical queue, initializes/opens the shared registry,
-proves the current permanent recovery-workflow ref is an ancestor of the lane,
-validates cards and freshness metadata, synchronizes completed reports, and
-records a hash-bound lane snapshot. `agent context`, recovery worktree creation,
-and managed commit/push hooks run the relevant check automatically. A stale lane
-must update/rebase; it may not compile around the failure.
+validates the applicable ancestry or external-workflow relationship, validates
+cards and freshness metadata, synchronizes completed reports, and records a
+hash-bound lane snapshot.  The result binds `lane_head`,
+`workflow_head`, `permanent_ref_commit`, and `merge_base` alongside both roots,
+the complete workflow metadata hash map, and a deterministic
+`workflow_root_sha256`; none advances authority. `agent context`, recovery
+worktree creation, and managed commit/push hooks run the relevant check
+automatically. A stale lane must update/rebase; it may not compile around the
+failure.
 
 ## Updating knowledge
 

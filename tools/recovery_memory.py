@@ -32,6 +32,7 @@ from tools.agent_queue import (
     queue_path,
     read_queue,
 )
+from tools.git_paths import native_git_path
 
 
 MEMORY_SCHEMA = "recovery_memory/v1"
@@ -206,6 +207,194 @@ def is_git_worktree(root: Path) -> bool:
         check=False,
     )
     return process.returncode == 0 and process.stdout.strip() == "true"
+
+
+def _canonical_workflow_root(value: str | Path) -> Path:
+    """Return an authenticated, canonical Git worktree root.
+
+    Unlike the lane root, a separately supplied workflow root is a trust input.
+    It may not rely on the caller's current directory, a symlink, a parent
+    search, or a subdirectory alias.
+    """
+
+    supplied = Path(value)
+    if not supplied.is_absolute():
+        raise RecoveryMemoryError("workflow root must be an absolute canonical path")
+    try:
+        resolved = supplied.resolve(strict=True)
+    except OSError as exc:
+        raise RecoveryMemoryError(
+            f"workflow root does not exist or cannot be resolved: {supplied}"
+        ) from exc
+    if supplied != resolved or supplied.is_symlink():
+        raise RecoveryMemoryError(
+            f"workflow root must not use a symlink or path alias: {supplied}"
+        )
+    if not resolved.is_dir() or not is_git_worktree(resolved):
+        raise RecoveryMemoryError(
+            f"workflow root is not a Git worktree: {resolved}"
+        )
+    top_level = native_git_path(
+        _git(resolved, "rev-parse", "--show-toplevel"),
+        relative_to=resolved,
+    ).resolve(strict=True)
+    if top_level != resolved:
+        raise RecoveryMemoryError(
+            f"workflow root must be the canonical Git worktree root: {resolved}"
+        )
+    return resolved
+
+
+def _canonical_git_object_directory(root: Path) -> Path:
+    """Resolve the canonical Git object directory used as a read alternate."""
+
+    raw = native_git_path(
+        _git(
+            root,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-path",
+            "objects",
+        ),
+        relative_to=root,
+    )
+    try:
+        resolved = raw.resolve(strict=True)
+    except OSError as exc:
+        raise RecoveryMemoryError(
+            f"workflow Git object directory is unavailable: {raw}"
+        ) from exc
+    if raw != resolved or raw.is_symlink() or not resolved.is_dir():
+        raise RecoveryMemoryError(
+            f"workflow Git object directory is not canonical: {raw}"
+        )
+    return resolved
+
+
+def _workflow_alternate_environment(workflow: Path) -> dict[str, str]:
+    """Expose workflow objects read-only without replacing caller alternates."""
+
+    objects = _canonical_git_object_directory(workflow)
+    environment = os.environ.copy()
+    existing = environment.get("GIT_ALTERNATE_OBJECT_DIRECTORIES")
+    environment["GIT_ALTERNATE_OBJECT_DIRECTORIES"] = (
+        str(objects) + os.pathsep + existing if existing else str(objects)
+    )
+    return environment
+
+
+def _workflow_metadata_hashes(
+    root: Path,
+    data: Mapping[str, Any],
+    *,
+    require_freshness: bool,
+) -> dict[str, str]:
+    """Hash the authenticated recovery metadata supplied by ``root``.
+
+    Explicit workflow roots are required to supply tracked, HEAD-identical
+    metadata.  The omitted-option path retains the historical permissive
+    freshness-file behavior for compatibility.
+    """
+
+    files = data.get("project", {}).get("files", {})
+    patterns_relative = (
+        str(
+            files.get(
+                "compiler_patterns",
+                "config/recovery/compiler_patterns.json",
+            )
+        )
+        if isinstance(files, Mapping)
+        else "config/recovery/compiler_patterns.json"
+    )
+    freshness_relative = (
+        str(
+            files.get(
+                "knowledge_freshness",
+                "config/recovery/knowledge_freshness.json",
+            )
+        )
+        if isinstance(files, Mapping)
+        else "config/recovery/knowledge_freshness.json"
+    )
+    if not require_freshness:
+        return {
+            str((root / relative).relative_to(root)): _sha256_file(root / relative)
+            for relative in (patterns_relative, freshness_relative)
+            if (root / relative).is_file()
+        }
+
+    project = root / "config/recovery/project.json"
+    if not project.is_file() or project.is_symlink():
+        raise RecoveryMemoryError(
+            f"workflow root is missing regular metadata config/recovery/project.json: {root}"
+        )
+    metadata_paths = {Path(path) for path in data.get("metadata_paths", [])}
+    freshness_path = root / freshness_relative
+    if freshness_path.is_file():
+        metadata_paths.add(freshness_path)
+    elif require_freshness:
+        raise RecoveryMemoryError(
+            f"workflow root is missing knowledge metadata {freshness_relative}: {root}"
+        )
+
+    hashes: dict[str, str] = {}
+    relative_paths: list[str] = []
+    for path in sorted(metadata_paths, key=lambda item: str(item).casefold()):
+        if not path.is_file() or path.is_symlink():
+            raise RecoveryMemoryError(
+                f"workflow metadata must be a regular non-symlink file: {path}"
+            )
+        try:
+            relative = path.resolve(strict=True).relative_to(root).as_posix()
+        except (OSError, ValueError) as exc:
+            raise RecoveryMemoryError(
+                f"workflow metadata escapes the workflow root: {path}"
+            ) from exc
+        if Path(relative).is_absolute() or ".." in Path(relative).parts:
+            raise RecoveryMemoryError(
+                f"workflow metadata path is not canonical: {path}"
+            )
+        hashes[relative] = _sha256_file(path)
+        relative_paths.append(relative)
+
+    if require_freshness:
+        for relative in relative_paths:
+            tracked = subprocess.run(
+                ["git", "ls-files", "--error-unmatch", "--", relative],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if tracked.returncode:
+                raise RecoveryMemoryError(
+                    f"workflow metadata is not tracked at HEAD: {relative}"
+                )
+            head_blob = _git(root, "rev-parse", f"HEAD:{relative}")
+            worktree_blob = _git(
+                root,
+                "hash-object",
+                f"--path={relative}",
+                relative,
+            )
+            if worktree_blob != head_blob:
+                raise RecoveryMemoryError(
+                    f"workflow metadata does not match authenticated HEAD: {relative}"
+                )
+        status = _git(
+            root,
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
+            "--",
+            *relative_paths,
+        )
+        if status:
+            raise RecoveryMemoryError(
+                "workflow metadata differs from authenticated HEAD:\n" + status
+            )
+    return dict(sorted(hashes.items()))
 
 
 def recovery_memory_path(
@@ -1953,6 +2142,7 @@ def startup_check(
     sync_reports: bool = True,
     strict_reports: bool = True,
     permanent_ref: str = PERMANENT_RECOVERY_REF,
+    workflow_root: str | Path | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     if not is_git_worktree(root):
@@ -1967,43 +2157,149 @@ def startup_check(
             + ", ".join(str(item["path"]) for item in locations["shadows"])
         )
     queue_file = queue_path(root)
-    permanent_commit = _git(root, "rev-parse", permanent_ref)
     head = _git(root, "rev-parse", "HEAD")
-    ancestor = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", permanent_commit, head],
-        cwd=root,
-        capture_output=True,
-        check=False,
+    explicit_workflow_root = workflow_root is not None
+    workflow = (
+        _canonical_workflow_root(workflow_root)
+        if explicit_workflow_root
+        else root
     )
-    if ancestor.returncode != 0:
-        raise RecoveryMemoryError(
-            f"lane is stale: {permanent_ref} ({permanent_commit[:12]}) "
-            f"is not an ancestor of HEAD ({head[:12]})"
+    permanent_commit = _git(workflow, "rev-parse", permanent_ref)
+    workflow_head = _git(workflow, "rev-parse", "HEAD")
+    if explicit_workflow_root:
+        if workflow_head != permanent_commit:
+            raise RecoveryMemoryError(
+                f"workflow HEAD ({workflow_head[:12]}) must equal released "
+                f"{permanent_ref} ({permanent_commit[:12]})"
+            )
+        workflow_status = _git(
+            workflow,
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
         )
+        if workflow_status:
+            raise RecoveryMemoryError(
+                "explicit workflow worktree is not clean:\n" + workflow_status
+            )
+        merge_base_process = subprocess.run(
+            ["git", "merge-base", "--all", head, workflow_head],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+            env=_workflow_alternate_environment(workflow),
+        )
+        merge_bases = sorted(
+            {
+                line.strip().lower()
+                for line in merge_base_process.stdout.splitlines()
+                if re.fullmatch(r"[0-9a-fA-F]{40}", line.strip())
+            }
+        )
+        if merge_base_process.returncode or len(merge_bases) != 1:
+            detail = (
+                merge_base_process.stderr.strip()
+                or f"found {len(merge_bases)} merge bases"
+            )
+            raise RecoveryMemoryError(
+                "lane and workflow histories lack one deterministic common "
+                f"merge-base: {detail}"
+            )
+        merge_base = merge_bases[0]
+        for checkout, checkout_head, label in (
+            (root, head, "lane"),
+            (workflow, workflow_head, "workflow"),
+        ):
+            contains_base = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", merge_base, checkout_head],
+                cwd=checkout,
+                capture_output=True,
+                check=False,
+            )
+            if contains_base.returncode:
+                raise RecoveryMemoryError(
+                    f"deterministic merge-base is not contained by {label} HEAD"
+                )
+    else:
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", permanent_commit, head],
+            cwd=root,
+            capture_output=True,
+            check=False,
+        )
+        if ancestor.returncode != 0:
+            raise RecoveryMemoryError(
+                f"lane is stale: {permanent_ref} ({permanent_commit[:12]}) "
+                f"is not an ancestor of HEAD ({head[:12]})"
+            )
+        merge_base = permanent_commit
     from tools.knowledge_freshness import validate_freshness
     from tools.recovery_core import load
     from tools.recovery_knowledge import validate_knowledge
 
-    data = load(root, validate=False)
-    knowledge_errors = sorted(
-        set([*validate_knowledge(data), *validate_freshness(data)])
-    )
-    if knowledge_errors:
+    try:
+        data = load(workflow, validate=False)
+        knowledge_errors = sorted(
+            set([*validate_knowledge(data), *validate_freshness(data)])
+        )
+        workflow_files = _workflow_metadata_hashes(
+            workflow,
+            data,
+            require_freshness=explicit_workflow_root,
+        )
+    except (OSError, ValueError) as exc:
+        if isinstance(exc, RecoveryMemoryError):
+            raise
         raise RecoveryMemoryError(
-            "lane knowledge/freshness metadata is invalid:\n- "
+            f"workflow recovery metadata is invalid: {exc}"
+        ) from exc
+    if knowledge_errors:
+        metadata_owner = "workflow" if explicit_workflow_root else "lane"
+        raise RecoveryMemoryError(
+            f"{metadata_owner} knowledge/freshness metadata is invalid:\n- "
             + "\n- ".join(knowledge_errors)
         )
-    knowledge_files = [
-        root / "config/recovery/compiler_patterns.json",
-        root / "config/recovery/knowledge_freshness.json",
-    ]
-    knowledge_hash = _digest(
-        {
-            str(path.relative_to(root)): _sha256_file(path)
-            for path in knowledge_files
-            if path.is_file()
-        }
+    project_files = data.get("project", {}).get("files", {})
+    if not isinstance(project_files, Mapping):
+        project_files = {}
+    knowledge_relatives = (
+        str(
+            project_files.get(
+                "compiler_patterns",
+                "config/recovery/compiler_patterns.json",
+            )
+        ),
+        str(
+            project_files.get(
+                "knowledge_freshness",
+                "config/recovery/knowledge_freshness.json",
+            )
+        ),
     )
+    knowledge_hash = (
+        _digest(
+            {
+                Path(relative).as_posix(): workflow_files[
+                    Path(relative).as_posix()
+                ]
+                for relative in knowledge_relatives
+                if Path(relative).as_posix() in workflow_files
+            }
+        )
+        if explicit_workflow_root
+        else _digest(workflow_files)
+    )
+    workflow_root_body = {
+        "workflow_root": str(workflow),
+        "lane_head": head,
+        "workflow_head": workflow_head,
+        "permanent_ref": permanent_ref,
+        "permanent_ref_commit": permanent_commit,
+        "merge_base": merge_base,
+        "workflow_files": workflow_files,
+    }
+    workflow_root_sha256 = _digest(workflow_root_body)
     store = RecoveryMemory.for_root(root)
     report_sync = (
         sync_crack_reports(root, strict=strict_reports)
@@ -2021,8 +2317,16 @@ def startup_check(
         "lane_root": str(root),
         "branch": _git(root, "branch", "--show-current") or "DETACHED",
         "head_commit": head,
+        "lane_head": head,
+        "workflow_root": str(workflow),
+        "workflow_head_commit": workflow_head,
+        "workflow_head": workflow_head,
+        "workflow_root_sha256": workflow_root_sha256,
+        "workflow_files": workflow_files,
         "permanent_ref": permanent_ref,
         "permanent_commit": permanent_commit,
+        "permanent_ref_commit": permanent_commit,
+        "merge_base": merge_base,
         "queue_path": str(queue_file),
         "memory_path": str(store.path),
         "knowledge_sha256": knowledge_hash,
@@ -2138,6 +2442,13 @@ def add_memory_parser(subparsers: Any) -> argparse.ArgumentParser:
         help="diagnostic escape hatch: report parse failures are returned but do not fail startup",
     )
     startup.add_argument("--permanent-ref", default=PERMANENT_RECOVERY_REF)
+    startup.add_argument(
+        "--workflow-root",
+        help=(
+            "absolute canonical Git worktree supplying authenticated "
+            "config/recovery knowledge metadata"
+        ),
+    )
     startup.add_argument("--json", action="store_true")
     ingest = commands.add_parser("ingest-report")
     ingest.add_argument("report")
@@ -2194,6 +2505,7 @@ def run_memory_command(args: argparse.Namespace, *, root: Path) -> int:
             sync_reports=not args.no_sync,
             strict_reports=not args.allow_report_backlog,
             permanent_ref=args.permanent_ref,
+            workflow_root=args.workflow_root,
         )
     elif args.memory_command == "sync-reports":
         result = sync_crack_reports(root, strict=args.strict)
