@@ -276,11 +276,15 @@ If a legacy source lane intentionally does not carry the recovery metadata,
 authenticate a separate workflow/knowledge worktree explicitly:
 
 ```sh
-python C:/absolute/path/to/recovery-workflow/tools/agent.py \
+cd C:/absolute/path/to/recovery-workflow
+python -m tools.recovery_memory \
   --root C:/absolute/path/to/source-lane \
   memory startup-check --strict-reports \
   --workflow-root C:/absolute/path/to/recovery-workflow
 ```
+
+Run this command from the released workflow worktree so Python resolves the
+workflow package before the legacy lane's project metadata is consulted.
 
 `--workflow-root` is a fail-closed trust boundary, not a replacement lane.  It
 must name the absolute, canonical top level of a real Git worktree (no relative
