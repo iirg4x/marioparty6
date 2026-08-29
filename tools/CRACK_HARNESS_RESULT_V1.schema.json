@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CRACK_HARNESS_RESULT_V1.schema.json",
+  "title": "Bounded crack cell terminal result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "approval_id", "approval_sha256", "owner", "task_id", "function", "base_commit", "campaign_id", "candidate_sha256", "base_sha256", "status", "reason", "predicted_rows", "receipts", "finished_at", "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced", "result_sha256"],
+  "properties": {
+    "schema": {"const": "crack_harness_result/v1"},
+    "approval_id": {"type": "string", "minLength": 1},
+    "approval_sha256": {"$ref": "#/$defs/sha256"},
+    "owner": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "function": {"type": "string", "minLength": 1},
+    "base_commit": {"type": "string", "minLength": 1},
+    "campaign_id": {"type": "string", "minLength": 1},
+    "candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "base_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"enum": ["exact", "improved", "no_gain", "failed"]},
+    "reason": {"type": "string", "minLength": 1},
+    "owner_gain": {"type": ["number", "null"]},
+    "predicted_rows": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "receipts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "precompile": {"type": "object"},
+        "compile": {"type": "object"},
+        "strict": {"type": "object"},
+        "data": {"type": "object"},
+        "focus": {"type": "object"},
+        "siblings": {"type": "object"},
+        "physical": {"type": "object"},
+        "assess": {"type": "object"},
+        "record": {"type": "object"},
+        "failure": {"type": "object"}
+      }
+    },
+    "finished_at": {"type": "string", "format": "date-time"},
+    "source_restored": {"type": "boolean"},
+    "cleanup_status": {"enum": ["pending", "complete", "cleanup_incomplete"]},
+    "cleanup_errors": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 1000}},
+    "authority_advanced": {"const": false},
+    "result_sha256": {"$ref": "#/$defs/sha256"},
+    "report_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

@@ -130,11 +130,10 @@ class MatchWorkbenchGlobalMemoryTests(unittest.TestCase):
         synced = sync_match_workbenches(self.root)
         self.assertEqual(synced["failures"], [])
         self.assertEqual(synced["imported"], 0)
-        self.assertGreaterEqual(
-            synced["unchanged"] + synced["observations_imported"], 1
-        )
+        self.assertEqual(synced["imported"], 0)
+        self.assertEqual(synced["observations_imported"], 0)
 
-    def test_pre_registry_workbench_history_is_imported_at_startup(self) -> None:
+    def test_pre_registry_nonretained_history_is_not_imported(self) -> None:
         historical = self.root / "historical.c"
         historical_object = self.root / "historical.o"
         historical.write_text("int fn(void) { return 3; }\n", encoding="utf-8")
@@ -174,15 +173,11 @@ class MatchWorkbenchGlobalMemoryTests(unittest.TestCase):
 
         synced = sync_match_workbenches(self.root)
         self.assertEqual(synced["failures"], [])
-        self.assertEqual(synced["imported"], 1)
+        self.assertEqual(synced["imported"], 0)
         context = RecoveryMemory.for_root(self.root).context_memory(
             "main:board/example", "fn"
         )
-        self.assertEqual(len(context["experiments"]), 1)
-        self.assertEqual(context["experiments"][0]["status"], "nonexact")
-        self.assertEqual(
-            context["experiments"][0]["candidate_id"], "historical-c001"
-        )
+        self.assertEqual(context["experiments"], [])
 
     def test_record_without_lookup_and_postcompile_lookup_fail_closed(self) -> None:
         source = self.root / "new.c"

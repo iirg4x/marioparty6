@@ -205,7 +205,14 @@ def _normalized_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 def _instruction_payload_sha256(rows: Sequence[Mapping[str, Any]]) -> str:
     """Hash instruction payloads without strict/data-only diff annotations."""
-    return canonical_sha256([row.get("instruction") for row in rows])
+    return canonical_sha256(
+        [row["instruction"] for row in rows if isinstance(row.get("instruction"), Mapping)]
+    )
+
+
+def _instruction_count(rows: Sequence[Mapping[str, Any]]) -> int:
+    """Count physical instructions, excluding objdiff alignment placeholders."""
+    return sum(isinstance(row.get("instruction"), Mapping) for row in rows)
 
 
 def _diff_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -341,7 +348,7 @@ def _channel(
         "metric": _focus_metric(document, function, label),
         "target": {
             "symbol": _symbol_metadata(target),
-            "instruction_count": len(target_rows),
+            "instruction_count": _instruction_count(target_rows),
             "raw_instruction_sha256": canonical_sha256(target_rows),
             "instruction_payload_sha256": _instruction_payload_sha256(target_rows),
             "rows_kind": "all" if full_rows else "diff_only",
@@ -350,7 +357,7 @@ def _channel(
         },
         "candidate": {
             "symbol": _symbol_metadata(candidate),
-            "instruction_count": len(candidate_rows),
+            "instruction_count": _instruction_count(candidate_rows),
             "raw_instruction_sha256": canonical_sha256(candidate_rows),
             "instruction_payload_sha256": _instruction_payload_sha256(candidate_rows),
             "rows_kind": "all" if full_rows else "diff_only",
@@ -496,6 +503,7 @@ def build_artifact(
         "policies": {
             "strict_rows": "all_normalized_rows",
             "data_rows": "diff_only_with_full_raw_digest",
+            "instruction_metrics": "actual_instruction_mappings_excluding_alignment_placeholders",
             "instruction_parts": "omitted_but_sha256_bound_per_row",
             "protected_sibling_gate": "baseline_exact_identity_subset",
             "physical_without_receipt": "UNKNOWN",

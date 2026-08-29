@@ -57,6 +57,9 @@ def parser() -> argparse.ArgumentParser:
     record.add_argument("--data-report-sha256")
     record.add_argument("--report-sha256")
     record.add_argument("--workspace")
+    discard = commands.add_parser("discard")
+    _common(discard)
+    discard.add_argument("--admission-token", required=True)
     return result
 
 

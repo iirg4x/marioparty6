@@ -16,6 +16,8 @@
 - [`recovery_standard.md`](recovery_standard.md): faithful-source evidence standard
 - [`context_workflow.md`](context_workflow.md): catalog, cards, symptoms, budgets, evidence
 - [`match_workbench.md`](match_workbench.md): authenticated matching deduplication and bounded read-only diagnosis
+- [`crack_harness.md`](crack_harness.md): explicitly approved one-cell execution, proof, rollback, quotas, and artifact GC
+- [`crack_evidence_bundle.md`](crack_evidence_bundle.md): centralized pinned build, objdiff, and physical-relocation evidence for each approved cell
 - [`frontend_temporary_birth_order.md`](frontend_temporary_birth_order.md): fail-closed MWCC temporary-home permutation diagnosis
 - [`volatile_owner_causal_join.md`](volatile_owner_causal_join.md): diagnostic-only volatile PCode/IG owner and register-permutation join
 - [`board_owner_causal_map.md`](board_owner_causal_map.md): checkpoint G full-owner residual inventory, causal joins, and ranked next evidence

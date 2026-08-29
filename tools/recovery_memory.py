@@ -15,10 +15,12 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import hmac
 import json
 import os
 import re
 import sqlite3
+import stat
 import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -26,8 +28,10 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from tools.agent_queue import (
+    QUEUE_ENV,
     QueueError,
     canonical_queue_path,
+    git_common_dir,
     queue_location_audit,
     queue_path,
     read_queue,
@@ -38,6 +42,16 @@ from tools.git_paths import native_git_path
 MEMORY_SCHEMA = "recovery_memory/v1"
 MEMORY_SCHEMA_VERSION = 2
 MEMORY_ENV = "MP6_RECOVERY_MEMORY"
+MAX_RECOVERY_MEMORY_BYTES = 64 * 1024 * 1024
+MAX_RECOVERY_DATABASE_BYTES = MAX_RECOVERY_MEMORY_BYTES - 1024 * 1024
+MAX_COMPACT_FIELD_BYTES = 64 * 1024
+REPARSE_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+CENTRAL_REDIRECT_ENV = (
+    MEMORY_ENV, QUEUE_ENV, "GIT_DIR", "GIT_COMMON_DIR", "GIT_WORK_TREE",
+    # Git sets GIT_INDEX_FILE while invoking hooks.  It selects the pending
+    # index but cannot redirect the canonical common-dir queue/memory paths.
+    "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+)
 ADMISSION_TTL_HOURS = 24
 PERMANENT_RECOVERY_REF = "refs/remotes/origin/agent/recovery-context-workflow"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -155,6 +169,13 @@ def _required_text(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value.strip() or "\x00" in value:
         raise RecoveryMemoryError(f"{label} must be a non-empty string")
     return value.strip()
+
+
+def _compact_text(value: Any, label: str) -> str:
+    text = _required_text(value, label)
+    if len(text.encode("utf-8")) > MAX_COMPACT_FIELD_BYTES:
+        raise RecoveryMemoryError(f"{label} exceeds the compact 64 KiB field cap")
+    return text
 
 
 def _canonical_owner(value: Any, label: str = "owner") -> str:
@@ -397,14 +418,82 @@ def _workflow_metadata_hashes(
     return dict(sorted(hashes.items()))
 
 
+def _invalid_central_redirect_environment(root: Path) -> tuple[str, ...]:
+    """Return environment redirects that do not describe this worktree.
+
+    Git legitimately exports ``GIT_DIR`` while running hooks.  Accept only
+    Git's own canonical directory/worktree values; explicit queue, memory, or
+    object-store redirects remain forbidden.
+    """
+
+    invalid = [
+        name
+        for name in (
+            MEMORY_ENV,
+            QUEUE_ENV,
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        )
+        if os.environ.get(name)
+    ]
+    checks = {
+        "GIT_DIR": "--git-dir",
+        "GIT_COMMON_DIR": "--git-common-dir",
+        "GIT_WORK_TREE": "--show-toplevel",
+    }
+    clean_env = dict(os.environ)
+    for name in CENTRAL_REDIRECT_ENV:
+        clean_env.pop(name, None)
+    for name, argument in checks.items():
+        raw = os.environ.get(name)
+        if not raw:
+            continue
+        process = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", argument],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+            env=clean_env,
+        )
+        if process.returncode != 0:
+            invalid.append(name)
+            continue
+        expected = native_git_path(process.stdout.strip(), relative_to=root).resolve()
+        actual = native_git_path(raw, relative_to=root).resolve()
+        if actual != expected:
+            invalid.append(name)
+    return tuple(sorted(set(invalid)))
+
+
 def recovery_memory_path(
     root: Path, override: str | Path | None = None
 ) -> Path:
-    raw = override or os.environ.get(MEMORY_ENV)
-    if raw:
-        expanded = Path(os.path.expandvars(os.path.expanduser(str(raw))))
-        return (expanded if expanded.is_absolute() else root / expanded).resolve()
-    return canonical_queue_path(root).parent / "recovery-memory.sqlite3"
+    root = root.resolve()
+    redirected = _invalid_central_redirect_environment(root)
+    if override is not None or redirected:
+        raise RecoveryMemoryError(
+            "central recovery queue/memory paths are fixed; overrides are forbidden"
+            + (f" ({', '.join(redirected)})" if redirected else "")
+        )
+    return git_common_dir(root.resolve()) / "agent-coordination" / "recovery-memory.sqlite3"
+
+
+def _assert_plain_components(path: Path, *, missing_leaf: bool = False) -> None:
+    absolute = Path(os.path.abspath(path))
+    current = Path(absolute.parts[0])
+    for index, part in enumerate(absolute.parts[1:], 1):
+        current /= part
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            if missing_leaf:
+                return
+            raise RecoveryMemoryError(f"central path component is missing: {current}")
+        if stat.S_ISLNK(info.st_mode) or bool(
+            getattr(info, "st_file_attributes", 0) & REPARSE_ATTRIBUTE
+        ):
+            raise RecoveryMemoryError(f"central path indirection is forbidden: {current}")
 
 
 def recovery_memory_available(root: Path) -> bool:
@@ -422,8 +511,13 @@ class RecoveryMemory:
     """Small SQLite-backed canonical registry shared by all Board lanes."""
 
     def __init__(self, path: Path):
-        self.path = path.resolve()
+        raw_path = Path(os.path.abspath(path))
+        _assert_plain_components(raw_path, missing_leaf=True)
+        self.path = raw_path
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        _assert_plain_components(self.path.parent)
+        if self._storage_bytes() > MAX_RECOVERY_MEMORY_BYTES:
+            raise RecoveryMemoryError("central recovery memory exceeds the hard 64 MiB cap")
         self._initialize()
 
     @classmethod
@@ -431,18 +525,40 @@ class RecoveryMemory:
         cls, root: Path, override: str | Path | None = None
     ) -> "RecoveryMemory":
         root = root.resolve()
+        redirected = _invalid_central_redirect_environment(root)
+        if override is not None or redirected:
+            raise RecoveryMemoryError(
+                "central recovery queue/memory paths are fixed; overrides are forbidden"
+                + (f" ({', '.join(redirected)})" if redirected else "")
+            )
         # Normal use must fail while a shadow queue exists.  This couples the
         # registry to exactly one queue namespace.
         queue_path(root)
         return cls(recovery_memory_path(root, override))
+
+    def _storage_bytes(self) -> int:
+        return sum(
+            item.stat().st_size
+            for item in (
+                self.path, Path(str(self.path) + "-wal"), Path(str(self.path) + "-shm")
+            )
+            if item.is_file()
+        )
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path, timeout=15.0)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 15000")
-        connection.execute("PRAGMA journal_mode = WAL")
+        connection.execute("PRAGMA journal_mode = DELETE")
         connection.execute("PRAGMA synchronous = FULL")
+        page_size = int(connection.execute("PRAGMA page_size").fetchone()[0])
+        connection.execute(
+            f"PRAGMA max_page_count = {MAX_RECOVERY_DATABASE_BYTES // page_size}"
+        )
+        if self._storage_bytes() > MAX_RECOVERY_MEMORY_BYTES:
+            connection.close()
+            raise RecoveryMemoryError("central recovery memory exceeds the hard 64 MiB cap")
         return connection
 
     def _initialize(self) -> None:
@@ -596,9 +712,10 @@ class RecoveryMemory:
         axis: str | None = None,
     ) -> dict[str, Any]:
         owner_value = _canonical_owner(owner)
-        function_value = _required_text(function, "function")
-        base_value = _required_text(base_commit, "base_commit")
-        toolchain_value = _required_text(toolchain_key, "toolchain_key")
+        _compact_text(owner_value, "owner")
+        function_value = _compact_text(function, "function")
+        base_value = _compact_text(base_commit, "base_commit")
+        toolchain_value = _compact_text(toolchain_key, "toolchain_key")
         target_value = _sha(target_sha256, "target_sha256")
         source_value = _sha(source_sha256, "source_sha256")
         compiler_value = _sha(
@@ -660,7 +777,9 @@ class RecoveryMemory:
         requester: str,
         source_path: str | None = None,
     ) -> dict[str, Any]:
-        requester_value = _required_text(requester, "requester")
+        requester_value = _compact_text(requester, "requester")
+        if source_path is not None:
+            _compact_text(source_path, "source_path")
         now = datetime.now(timezone.utc).replace(microsecond=0)
         expires = now + timedelta(hours=ADMISSION_TTL_HOURS)
         input_key = _sha(identity.get("input_key"), "input_key")
@@ -670,6 +789,17 @@ class RecoveryMemory:
                 "UPDATE admissions SET state='expired' "
                 "WHERE state='pending' AND expires_at < ?",
                 (now.isoformat(),),
+            )
+            connection.execute("DELETE FROM admissions WHERE state <> 'pending'")
+            connection.execute(
+                "DELETE FROM admissions WHERE rowid NOT IN "
+                "(SELECT rowid FROM admissions ORDER BY created_at DESC, rowid DESC LIMIT 1024)"
+            )
+            connection.execute(
+                "DELETE FROM admissions WHERE owner=? AND function_name=? AND rowid NOT IN "
+                "(SELECT rowid FROM admissions WHERE owner=? AND function_name=? "
+                "ORDER BY created_at DESC, rowid DESC LIMIT 1)",
+                (identity["owner"], identity["function"], identity["owner"], identity["function"]),
             )
             experiment = connection.execute(
                 "SELECT * FROM experiments WHERE input_key = ?", (input_key,)
@@ -739,6 +869,24 @@ class RecoveryMemory:
                     "expires_at": pending["expires_at"],
                     "authority_advanced": False,
                 }
+            owner_pending = connection.execute(
+                "SELECT * FROM admissions WHERE owner=? AND function_name=? "
+                "AND state='pending' LIMIT 1",
+                (identity["owner"], identity["function"]),
+            ).fetchone()
+            if owner_pending is not None:
+                if owner_pending["requester"] != requester_value:
+                    return {
+                        "status": "pending_in_other_lane", "skip_compile": True,
+                        "input_key": owner_pending["input_key"],
+                        "requester": owner_pending["requester"],
+                        "expires_at": owner_pending["expires_at"],
+                        "authority_advanced": False,
+                    }
+                connection.execute(
+                    "DELETE FROM admissions WHERE owner=? AND function_name=?",
+                    (identity["owner"], identity["function"]),
+                )
             token = uuid.uuid4().hex
             values = (
                 input_key,
@@ -800,10 +948,20 @@ class RecoveryMemory:
         workspace: str | None = None,
         source_path: str | None = None,
     ) -> dict[str, Any]:
-        requester_value = _required_text(requester, "requester")
+        requester_value = _compact_text(requester, "requester")
         object_value = _sha(object_sha256, "object_sha256")
         status_value = _status(status)
-        reason_value = _required_text(reason, "reason")
+        if status_value not in {"improved", "exact"}:
+            raise RecoveryMemoryError(
+                "central recovery memory records retained improved/exact outcomes only"
+            )
+        reason_value = _compact_text(reason, "reason")
+        for label, value in (
+            ("candidate_id", candidate_id), ("workspace", workspace),
+            ("source_path", source_path),
+        ):
+            if value is not None:
+                _compact_text(value, label)
         input_key = _sha(identity.get("input_key"), "input_key")
         now = _now()
         with contextlib.closing(self._connect()) as connection, connection:
@@ -854,6 +1012,21 @@ class RecoveryMemory:
                 identity.get("hypothesis") or admission["hypothesis"]
             )
             effective_axis = identity.get("axis") or admission["axis"]
+            stale_keys = [
+                row["input_key"] for row in connection.execute(
+                    "SELECT input_key FROM experiments WHERE owner=? AND function_name=? "
+                    "AND input_key<>?",
+                    (identity["owner"], identity["function"], input_key),
+                )
+            ]
+            for stale_key in stale_keys:
+                connection.execute(
+                    "DELETE FROM experiment_observations WHERE input_key=?", (stale_key,)
+                )
+            connection.execute(
+                "DELETE FROM experiments WHERE owner=? AND function_name=? AND input_key<>?",
+                (identity["owner"], identity["function"], input_key),
+            )
             record_body = {
                 "schema": "recovery_experiment/v1",
                 "input_key": input_key,
@@ -925,11 +1098,7 @@ class RecoveryMemory:
                     record_sha,
                 ),
             )
-            connection.execute(
-                "UPDATE admissions SET state='consumed', consumed_at=? "
-                "WHERE input_key=?",
-                (now, input_key),
-            )
+            connection.execute("DELETE FROM admissions WHERE input_key=?", (input_key,))
             row = connection.execute(
                 "SELECT * FROM experiments WHERE input_key = ?", (input_key,)
             ).fetchone()
@@ -939,13 +1108,114 @@ class RecoveryMemory:
             "authority_advanced": False,
         }
 
+    def invalidate_retained(
+        self,
+        *,
+        input_key: str,
+        owner: str,
+        function: str,
+        source_sha256: str,
+        object_sha256: str,
+        candidate_record_sha256: str,
+        status: str,
+    ) -> dict[str, Any]:
+        """Delete exactly one split-brain retained record during journal recovery."""
+
+        binding = {
+            "input_key": _sha(input_key, "input_key"),
+            "owner": _canonical_owner(owner),
+            "function_name": _required_text(function, "function"),
+            "source_sha256": _sha(source_sha256, "source_sha256"),
+            "object_sha256": _sha(object_sha256, "object_sha256"),
+            "candidate_record_sha256": _sha(
+                candidate_record_sha256, "candidate_record_sha256"
+            ),
+            "status": _status(status),
+        }
+        if binding["status"] not in {"improved", "exact"}:
+            raise RecoveryMemoryError("only retained outcomes can be invalidated")
+        with contextlib.closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM experiments WHERE input_key=?",
+                (binding["input_key"],),
+            ).fetchone()
+            if row is None:
+                return {
+                    "status": "missing", "input_key": binding["input_key"],
+                    "authority_advanced": False,
+                }
+            for key, expected in binding.items():
+                if row[key] != expected:
+                    raise RecoveryMemoryError(
+                        f"retained experiment does not match recovery binding {key}"
+                    )
+            connection.execute(
+                "DELETE FROM experiments WHERE input_key=?",
+                (binding["input_key"],),
+            )
+        return {
+            "status": "invalidated", "input_key": binding["input_key"],
+            "authority_advanced": False,
+        }
+
+    def retained_matches(self, **binding: Any) -> bool:
+        """Return whether the exact journal-bound retained row exists."""
+
+        expected = {
+            "input_key": _sha(binding.get("input_key"), "input_key"),
+            "owner": _canonical_owner(binding.get("owner")),
+            "function_name": _required_text(binding.get("function"), "function"),
+            "source_sha256": _sha(binding.get("source_sha256"), "source_sha256"),
+            "object_sha256": _sha(binding.get("object_sha256"), "object_sha256"),
+            "candidate_record_sha256": _sha(
+                binding.get("candidate_record_sha256"), "candidate_record_sha256"
+            ),
+            "status": _status(binding.get("status")),
+        }
+        with contextlib.closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT * FROM experiments WHERE input_key=?",
+                (expected["input_key"],),
+            ).fetchone()
+        return row is not None and all(row[key] == value for key, value in expected.items())
+
+    def discard(
+        self, identity: Mapping[str, Any], *, requester: str,
+        admission_token: str,
+    ) -> dict[str, Any]:
+        """Delete one unretained pending admission without recording history."""
+
+        input_key = _sha(identity.get("input_key"), "input_key")
+        requester_value = _compact_text(requester, "requester")
+        token_value = _required_text(admission_token, "admission_token")
+        with contextlib.closing(self._connect()) as connection, connection:
+            connection.execute("BEGIN IMMEDIATE")
+            admission = connection.execute(
+                "SELECT * FROM admissions WHERE input_key=?", (input_key,)
+            ).fetchone()
+            if admission is None:
+                return {
+                    "status": "missing", "input_key": input_key,
+                    "authority_advanced": False,
+                }
+            if admission["requester"] != requester_value or not hmac.compare_digest(
+                admission["token"], token_value
+            ):
+                raise RecoveryMemoryError("candidate discard authority does not match admission")
+            connection.execute("DELETE FROM admissions WHERE input_key=?", (input_key,))
+        return {
+            "status": "discarded", "input_key": input_key,
+            "authority_advanced": False,
+        }
+
     def require_pending_admission(
         self, identity: Mapping[str, Any], *, requester: str
     ) -> dict[str, Any]:
         """Prove that this lane performed the mandatory pre-compile lookup."""
 
         input_key = _sha(identity.get("input_key"), "input_key")
-        requester_value = _required_text(requester, "requester")
+        requester_value = _compact_text(requester, "requester")
         with contextlib.closing(self._connect()) as connection, connection:
             experiment = connection.execute(
                 "SELECT * FROM experiments WHERE input_key=?", (input_key,)
@@ -991,7 +1261,7 @@ class RecoveryMemory:
         workspace: str,
         source_path: str | None,
     ) -> dict[str, Any]:
-        """Import one immutable pre-registry candidate without faking admission."""
+        """Import only the latest retained pre-registry result without append history."""
 
         input_key = _sha(identity.get("input_key"), "input_key")
         object_value = _sha(object_sha256, "object_sha256")
@@ -1005,8 +1275,16 @@ class RecoveryMemory:
             data_report_sha256, "data_report_sha256", optional=True
         )
         status_value = _status(status)
-        reason_value = _required_text(reason, "reason")
-        workspace_value = _required_text(workspace, "workspace")
+        if status_value not in {"improved", "exact"}:
+            raise RecoveryMemoryError(
+                "historical import accepts retained improved/exact outcomes only"
+            )
+        reason_value = _compact_text(reason, "reason")
+        workspace_value = _compact_text(workspace, "workspace")
+        if candidate_id is not None:
+            _compact_text(candidate_id, "candidate_id")
+        if source_path is not None:
+            _compact_text(source_path, "source_path")
         now = _now()
         record_body = {
             "schema": "recovery_experiment_import/v1",
@@ -1025,7 +1303,29 @@ class RecoveryMemory:
             existing = connection.execute(
                 "SELECT * FROM experiments WHERE input_key=?", (input_key,)
             ).fetchone()
+            if (
+                existing is not None
+                and existing["candidate_record_sha256"] != candidate_record_value
+            ):
+                raise RecoveryMemoryError(
+                    "append-only historical observations are forbidden; keep one latest retained row"
+                )
             if existing is None:
+                stale_keys = [
+                    row["input_key"] for row in connection.execute(
+                        "SELECT input_key FROM experiments WHERE owner=? AND function_name=?",
+                        (identity["owner"], identity["function"]),
+                    )
+                ]
+                for stale_key in stale_keys:
+                    connection.execute(
+                        "DELETE FROM experiment_observations WHERE input_key=?",
+                        (stale_key,),
+                    )
+                connection.execute(
+                    "DELETE FROM experiments WHERE owner=? AND function_name=?",
+                    (identity["owner"], identity["function"]),
+                )
                 connection.execute(
                     """
                     INSERT INTO experiments(
@@ -1162,6 +1462,8 @@ class RecoveryMemory:
         if not path.is_file():
             raise RecoveryMemoryError(f"crack report does not exist: {path}")
         raw = path.read_bytes()
+        if len(raw) > MAX_COMPACT_FIELD_BYTES:
+            raise RecoveryMemoryError("crack report exceeds the compact 64 KiB import cap")
         report_sha = hashlib.sha256(raw).hexdigest()
         parsed = parse_crack_report(path, raw)
         payload = parsed["payload"]
@@ -1198,6 +1500,21 @@ class RecoveryMemory:
                     ).fetchone()[0],
                     "authority_advanced": False,
                 }
+            stale_reports = [
+                row["report_sha256"] for row in connection.execute(
+                    "SELECT report_sha256 FROM reports WHERE owner=? AND function_name=?",
+                    (parsed["owner"], parsed["function"]),
+                )
+            ]
+            for stale_report in stale_reports:
+                connection.execute(
+                    "DELETE FROM report_constraints WHERE report_sha256=?",
+                    (stale_report,),
+                )
+            connection.execute(
+                "DELETE FROM reports WHERE owner=? AND function_name=?",
+                (parsed["owner"], parsed["function"]),
+            )
             connection.execute(
                 """
                 INSERT INTO reports(
@@ -1331,7 +1648,6 @@ class RecoveryMemory:
                 "SELECT COUNT(*) FROM experiments "
                 "WHERE status='historical-conflict'"
             ).fetchone()[0]
-            connection.execute("PRAGMA wal_checkpoint(FULL)")
         return {
             "schema": MEMORY_SCHEMA,
             "schema_version": MEMORY_SCHEMA_VERSION,
@@ -1344,6 +1660,11 @@ class RecoveryMemory:
         }
 
     def record_lane_snapshot(self, snapshot: Mapping[str, Any]) -> None:
+        for key in (
+            "lane_root", "branch", "head_commit", "permanent_ref",
+            "permanent_commit", "queue_path", "memory_path", "checked_at",
+        ):
+            _compact_text(snapshot.get(key), f"snapshot.{key}")
         with contextlib.closing(self._connect()) as connection, connection:
             connection.execute(
                 """
@@ -1365,6 +1686,10 @@ class RecoveryMemory:
                     snapshot["checked_at"],
                     snapshot["snapshot_sha256"],
                 ),
+            )
+            connection.execute(
+                "DELETE FROM lane_snapshots WHERE lane_root NOT IN "
+                "(SELECT lane_root FROM lane_snapshots ORDER BY checked_at DESC LIMIT 128)"
             )
 
 
@@ -1746,7 +2071,8 @@ def import_match_workbench(
     unchanged = 0
     observations_imported = 0
     conflicts = 0
-    for item in prepared:
+    retained_items = [item for item in prepared if item["status"] == "exact"][-1:]
+    for item in retained_items:
         result = memory.import_historical_experiment(
             item["identity"],
             object_sha256=item["object_sha256"],
@@ -1779,7 +2105,7 @@ def import_match_workbench(
         "owner": owner,
         "function": function,
         "session_sha256": session_sha,
-        "candidate_count": len(prepared),
+        "candidate_count": len(retained_items),
         "imported": imported,
         "observations_imported": observations_imported,
         "conflicts": conflicts,
@@ -2533,6 +2859,11 @@ def run_memory_command(args: argparse.Namespace, *, root: Path) -> int:
                     identity,
                     requester=requester,
                     source_path=args.source_path,
+                )
+            elif args.memory_command == "discard":
+                result = store.discard(
+                    identity, requester=requester,
+                    admission_token=args.admission_token,
                 )
             else:
                 result = store.record(

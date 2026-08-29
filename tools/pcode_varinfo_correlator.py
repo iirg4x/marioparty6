@@ -601,6 +601,13 @@ def _absolute_path_text(value: str) -> bool:
     )
 
 
+def _authenticated_source_label_text(value: str) -> bool:
+    """Recognize donor_cfg's closed label around one canonical source path."""
+
+    prefix = "source chronology "
+    return value.startswith(prefix) and _absolute_path_text(value[len(prefix):])
+
+
 def _reject_pointer_material(
     value: Any,
     where: str = "$",
@@ -712,7 +719,7 @@ def _reject_pointer_material(
         # A path field is allowed to contain an address-looking component, but
         # a bare address is still not a path and must not be smuggled through
         # the path exception.
-        if _absolute_path_text(value):
+        if _absolute_path_text(value) or _authenticated_source_label_text(value):
             return
 
     # SHA-256 values are authenticated digests, not runtime addresses.  They

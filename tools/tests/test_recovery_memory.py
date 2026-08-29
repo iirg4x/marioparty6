@@ -1,4 +1,7 @@
+import contextlib
 import json
+import os
+import sqlite3
 import subprocess
 import tempfile
 import unittest
@@ -15,6 +18,7 @@ from tools.recovery_memory import (
     startup_check,
 )
 from tools.tests import test_recovery_workflow as recovery_fixture
+import tools.recovery_memory as memory_module
 
 
 SHA_A = "a" * 64
@@ -420,13 +424,49 @@ class RecoveryMemoryTests(unittest.TestCase):
         )
         self.assertEqual(unchanged["status"], "unchanged")
 
+    def test_unretained_attempts_and_consumed_admissions_do_not_accumulate(self) -> None:
+        for index in range(8):
+            identity = self.identity(source=f"{index + 10:064x}")
+            admitted = self.store.admit(identity, requester="lane-a")
+            self.assertEqual(admitted["status"], "admitted")
+            discarded = self.store.discard(
+                identity, requester="lane-a",
+                admission_token=admitted["admission_token"],
+            )
+            self.assertEqual(discarded["status"], "discarded")
+        with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM admissions").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 0)
+
+        latest = None
+        for index in range(8):
+            identity = self.identity(source=f"{index + 100:064x}")
+            latest = self.store.admit(identity, requester="lane-a")
+            self.assertEqual(latest["status"], "admitted")
+        with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM admissions").fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 0)
+        assert latest is not None
+        self.store.discard(identity, requester="lane-a", admission_token=latest["admission_token"])
+
+        identity = self.identity(source="f" * 64)
+        admitted = self.store.admit(identity, requester="lane-a")
+        self.store.record(
+            identity, requester="lane-a", object_sha256=SHA_C,
+            status="improved", reason="retained non-regressed gain",
+            admission_token=admitted["admission_token"],
+        )
+        with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM admissions").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 1)
+
     def test_record_without_precompile_admission_fails(self) -> None:
         with self.assertRaisesRegex(RecoveryMemoryError, "no pending central"):
             self.store.record(
                 self.identity(),
                 requester="lane-a",
                 object_sha256=SHA_C,
-                status="measured",
+                status="improved",
                 reason="candidate measured",
             )
 
@@ -442,29 +482,88 @@ class RecoveryMemoryTests(unittest.TestCase):
         )
         self.assertEqual(identity["owner"], "main:board/example")
 
-    def test_negative_shape_blocks_equivalent_source(self) -> None:
-        first = self.identity(shape="direct-pointer-consumer")
-        admission = self.store.admit(first, requester="lane-a")
-        self.store.record(
-            first,
-            requester="lane-a",
-            object_sha256=SHA_C,
-            status="regressed",
-            reason="frame shrank",
-            admission_token=admission["admission_token"],
-        )
-        second = self.identity(source="d" * 64, shape="direct-pointer-consumer")
-        result = self.store.admit(second, requester="lane-b")
-        self.assertEqual(result["status"], "known_negative_shape")
-        self.assertTrue(result["skip_compile"])
+    def test_direct_unretained_records_never_create_experiments(self) -> None:
+        for index, status in enumerate(("no_gain", "failed", "regressed") * 4):
+            identity = self.identity(source=f"{index + 300:064x}")
+            admission = self.store.admit(identity, requester="lane-a")
+            with self.assertRaisesRegex(
+                RecoveryMemoryError, "retained improved/exact outcomes only"
+            ):
+                self.store.record(
+                    identity, requester="lane-a", object_sha256=SHA_C,
+                    status=status, reason="not retained",
+                    admission_token=admission["admission_token"],
+                )
+        with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 0)
+            self.assertLessEqual(connection.execute("SELECT COUNT(*) FROM admissions").fetchone()[0], 1)
 
-    def test_conflicting_historical_objects_are_preserved_and_quarantined(self) -> None:
+    def test_oversized_memory_and_historical_payload_fail_closed(self) -> None:
+        oversized = self.root / "oversized.sqlite3"
+        with oversized.open("wb") as handle:
+            handle.seek(memory_module.MAX_RECOVERY_MEMORY_BYTES)
+            handle.write(b"x")
+        with self.assertRaisesRegex(RecoveryMemoryError, "64 MiB"):
+            RecoveryMemory(oversized)
+
+        identity = self.identity(source="9" * 64)
+        with self.assertRaisesRegex(RecoveryMemoryError, "64 KiB"):
+            self.store.import_historical_experiment(
+                identity, object_sha256=SHA_C, status="improved",
+                reason="x" * (memory_module.MAX_COMPACT_FIELD_BYTES + 1),
+                candidate_id="large", candidate_record_sha256="8" * 64,
+                strict_report_sha256=None, data_report_sha256=None,
+                workspace="lane/workbench", source_path="candidate.c",
+            )
+        with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 0)
+
+    def test_central_path_environment_overrides_are_rejected(self) -> None:
+        lane = self.root / "env-lane"
+        lane.mkdir()
+        self.git(lane, "init", "-q")
+        for variable in ("MP6_RECOVERY_MEMORY", "MP6_AGENT_QUEUE", "GIT_DIR"):
+            with self.subTest(variable=variable), mock.patch.dict(
+                os.environ, {variable: str(self.root / "shadow")}, clear=False,
+            ):
+                with self.assertRaisesRegex(RecoveryMemoryError, "fixed"):
+                    RecoveryMemory.for_root(lane)
+
+    def test_git_hook_index_environment_does_not_redirect_central_path(self) -> None:
+        lane = self.root / "hook-lane"
+        lane.mkdir()
+        self.git(lane, "init", "-q")
+        hook_index = lane / ".git" / "index.lock"
+        with mock.patch.dict(
+            os.environ, {"GIT_INDEX_FILE": str(hook_index)}, clear=False,
+        ):
+            resolved = memory_module.recovery_memory_path(lane)
+        self.assertEqual(
+            resolved,
+            lane / ".git" / "agent-coordination" / "recovery-memory.sqlite3",
+        )
+
+    def test_git_hook_canonical_git_dir_is_accepted(self) -> None:
+        lane = self.root / "git-dir-hook-lane"
+        lane.mkdir()
+        self.git(lane, "init", "-q")
+        git_dir = self.git(
+            lane, "rev-parse", "--path-format=absolute", "--git-dir",
+        )
+        with mock.patch.dict(os.environ, {"GIT_DIR": git_dir}, clear=False):
+            resolved = memory_module.recovery_memory_path(lane)
+        self.assertEqual(
+            resolved,
+            lane / ".git" / "agent-coordination" / "recovery-memory.sqlite3",
+        )
+
+    def test_historical_import_is_retained_only_latest_and_nonappend(self) -> None:
         identity = self.identity()
         first = self.store.import_historical_experiment(
             identity,
             object_sha256=SHA_B,
-            status="nonexact",
-            reason="first immutable record",
+            status="improved",
+            reason="first retained record",
             candidate_id="c001",
             candidate_record_sha256="d" * 64,
             strict_report_sha256=None,
@@ -473,23 +572,26 @@ class RecoveryMemoryTests(unittest.TestCase):
             source_path="lane-a/candidate.c",
         )
         self.assertEqual(first["status"], "imported")
-        second = self.store.import_historical_experiment(
-            identity,
-            object_sha256=SHA_C,
-            status="nonexact",
-            reason="second immutable record",
-            candidate_id="c002",
-            candidate_record_sha256="e" * 64,
-            strict_report_sha256=None,
-            data_report_sha256=None,
-            workspace="lane-b/workbench",
-            source_path="lane-b/candidate.c",
+        with self.assertRaisesRegex(RecoveryMemoryError, "append-only"):
+            self.store.import_historical_experiment(
+                identity, object_sha256=SHA_C, status="exact",
+                reason="second retained record", candidate_id="c002",
+                candidate_record_sha256="e" * 64,
+                strict_report_sha256=None, data_report_sha256=None,
+                workspace="lane-b/workbench", source_path="lane-b/candidate.c",
+            )
+        latest_identity = self.identity(source="d" * 64)
+        latest = self.store.import_historical_experiment(
+            latest_identity, object_sha256=SHA_C, status="exact",
+            reason="latest retained record", candidate_id="c003",
+            candidate_record_sha256="f" * 64,
+            strict_report_sha256=None, data_report_sha256=None,
+            workspace="lane-c/workbench", source_path="lane-c/candidate.c",
         )
-        self.assertEqual(second["status"], "conflict_imported")
-        self.assertEqual(len(second["observations"]), 2)
-        blocked = self.store.admit(identity, requester="lane-c")
-        self.assertEqual(blocked["status"], "conflicting_historical_source")
-        self.assertTrue(blocked["skip_compile"])
+        self.assertEqual(latest["status"], "imported")
+        with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiment_observations").fetchone()[0], 1)
 
     def test_concurrent_admission_has_one_owner(self) -> None:
         identity = self.identity()

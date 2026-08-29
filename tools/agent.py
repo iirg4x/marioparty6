@@ -32,6 +32,7 @@ from tools.context_engine import (
     render_compact_knowledge,
     select_context_knowledge,
 )
+from tools.crack_harness import CrackHarnessError, add_crack_parser, run_crack_command
 from tools.hooks import HookError, add_hooks_parser, hook_status, run_hooks_command
 from tools.integration_finalize import add_integration_parser, run_integration_command
 from tools.knowledge_freshness import (
@@ -856,6 +857,7 @@ def main() -> int:
     add_recovery_pass_parser(sub)
     add_match_parser(sub)
     add_memory_parser(sub)
+    add_crack_parser(sub)
 
     context = sub.add_parser("context")
     context.add_argument("kind", choices=["function", "owner"])
@@ -931,6 +933,8 @@ def main() -> int:
             return 0
         if args.command == "memory":
             return run_memory_command(args, root=root)
+        if args.command == "crack":
+            return run_crack_command(args, root=root)
         data = load(root, validate=False)
         catalog = (
             _catalog(data)
@@ -1012,6 +1016,7 @@ def main() -> int:
         return 0
     except (
         CatalogError,
+        CrackHarnessError,
         FreshnessError,
         HookError,
         OSError,

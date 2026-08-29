@@ -3211,7 +3211,12 @@ class SourceSpanV2StackIntervalTests(unittest.TestCase):
 
     def test_v2_scalar_register_physical_only_without_object_vreg_is_unknown(self) -> None:
         with TemporaryDirectory() as directory:
-            fixture = self._make_fixture(Path(directory))
+            # Windows temporary roots may contain a digit-leading, long
+            # hexadecimal component.  It is an authenticated source-span path,
+            # not serialized runtime pointer text.
+            root = Path(directory) / "8ac03784e5db4fc790d31b81f0a61c29"
+            root.mkdir()
+            fixture = self._make_fixture(root)
             envelope = fixture["envelope"]
             token = fixture["token_norm"]
             physical = next(

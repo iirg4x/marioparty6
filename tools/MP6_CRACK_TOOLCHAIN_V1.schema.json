@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "MP6_CRACK_TOOLCHAIN_V1.schema.json",
+  "title": "Central MP6 crack evidence toolchain",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "objdiff", "dtk", "sjiswrap", "ninja", "binutils", "compilers", "orig", "manifest_sha256"],
+  "properties": {
+    "schema": {"const": "mp6_crack_toolchain/v1"},
+    "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "objdiff": {"$ref": "#/$defs/file"},
+    "dtk": {"$ref": "#/$defs/file"},
+    "sjiswrap": {"$ref": "#/$defs/file"},
+    "ninja": {"$ref": "#/$defs/file"},
+    "binutils": {"$ref": "#/$defs/tree"},
+    "compilers": {"$ref": "#/$defs/tree"},
+    "orig": {"$ref": "#/$defs/tree"}
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "tree_sha256", "file_count", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "tree_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "file_count": {"type": "integer", "minimum": 1},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
