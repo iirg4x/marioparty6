@@ -1927,6 +1927,11 @@ def _run_command(
         "CRACK_HARNESS_ROOT": os.fspath(root),
     })
     env.update(extra_env or {})
+    # Reviewed Python front doors may import controller-owned modules.  Never
+    # let those imports materialize __pycache__ beside the immutable tooling;
+    # all durable command output must remain in the disposable roots.
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env.pop("PYTHONPYCACHEPREFIX", None)
     for redirected_name in (
         "MP6_RECOVERY_MEMORY", "MP6_AGENT_QUEUE", "GIT_DIR", "GIT_COMMON_DIR",
         "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
@@ -1986,9 +1991,13 @@ def _run_command(
                 _terminate_process(process)
                 raise CrackHarnessError("command output exceeded 1 MiB compact-output limit")
             if production_manifest is not None and time.monotonic() >= next_manifest_check:
-                if _repo_manifest(production_root, state_root) != production_manifest:
+                current_production = _repo_manifest(production_root, state_root)
+                if current_production != production_manifest:
                     _terminate_process(process)
-                    raise CrackHarnessError("reviewed command wrote outside the disposable worktree")
+                    raise CrackHarnessError(
+                        "reviewed command wrote outside the disposable worktree: "
+                        + _manifest_delta(production_manifest, current_production)
+                    )
                 if _tree_manifest(state_root, (run_temp,)) != state_manifest:
                     _terminate_process(process)
                     raise CrackHarnessError("reviewed command wrote outside its monitored run root")
@@ -2018,8 +2027,13 @@ def _run_command(
         process.stdout.close()
     if process.stderr:
         process.stderr.close()
-    if production_manifest is not None and _repo_manifest(production_root, state_root) != production_manifest:
-        raise CrackHarnessError("reviewed command wrote outside the disposable worktree")
+    if production_manifest is not None:
+        current_production = _repo_manifest(production_root, state_root)
+        if current_production != production_manifest:
+            raise CrackHarnessError(
+                "reviewed command wrote outside the disposable worktree: "
+                + _manifest_delta(production_manifest, current_production)
+            )
     if state_manifest is not None and _tree_manifest(state_root, (run_temp,)) != state_manifest:
         raise CrackHarnessError("reviewed command wrote outside its monitored run root")
     stdout = bytes(captured["stdout"]).decode("utf-8", errors="replace")
@@ -2197,6 +2211,18 @@ def _close_windows_job(handle: int | None) -> None:
 
 def _repo_manifest(root: Path, state: Path) -> dict[str, tuple[int, int]]:
     return _tree_manifest(root, (state,))
+
+
+def _manifest_delta(
+    before: Mapping[str, tuple[int, int]], after: Mapping[str, tuple[int, int]],
+) -> str:
+    changed = sorted(
+        path for path in set(before) | set(after) if before.get(path) != after.get(path)
+    )
+    if not changed:
+        return "unknown path"
+    summary = ", ".join(changed[:8])
+    return summary + (f" (+{len(changed) - 8} more)" if len(changed) > 8 else "")
 
 
 def _tree_manifest(

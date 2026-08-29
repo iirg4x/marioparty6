@@ -4,6 +4,7 @@ import contextlib
 import inspect
 import json
 import os
+import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -810,6 +811,71 @@ elif 'admit' in sys.argv:
                 if value is None: os.environ.pop(name, None)
                 else: os.environ[name] = value
         self.assertEqual(payload, {"MP6_RECOVERY_MEMORY": None, "MP6_AGENT_QUEUE": None, "GIT_DIR": None})
+
+    def test_controller_import_cannot_materialize_bytecode_outside_run_roots(self) -> None:
+        module = self.root / "controller_bytecode_probe.py"
+        module.write_text("VALUE = 7\n", encoding="utf-8")
+        command_root = self.state / "bytecode-command"
+        run_temp = self.state / "bytecode-temp"
+        command_root.mkdir()
+        run_temp.mkdir()
+        forced_cache = self.root / "forced-pycache"
+        try:
+            payload, _ = harness._run_command(
+                [
+                    sys.executable,
+                    "-c",
+                    "import controller_bytecode_probe,json;"
+                    "print(json.dumps({'value':controller_bytecode_probe.VALUE}))",
+                ],
+                root=command_root,
+                run_temp=run_temp,
+                deadline=time.monotonic() + 5,
+                storage_limit=4096,
+                expect_json=True,
+                production_root=self.root,
+                state_root=self.state,
+                extra_env={
+                    "PYTHONPATH": str(self.root),
+                    "PYTHONDONTWRITEBYTECODE": "",
+                    "PYTHONPYCACHEPREFIX": str(forced_cache),
+                },
+            )
+            self.assertEqual(payload, {"value": 7})
+            self.assertFalse(forced_cache.exists())
+            self.assertFalse(any(
+                (self.root / "__pycache__").glob("controller_bytecode_probe.*.pyc")
+            ))
+        finally:
+            module.unlink(missing_ok=True)
+            shutil.rmtree(forced_cache, ignore_errors=True)
+
+    def test_external_write_is_rejected_with_changed_path(self) -> None:
+        command_root = self.state / "external-write-command"
+        run_temp = self.state / "external-write-temp"
+        command_root.mkdir()
+        run_temp.mkdir()
+        marker = self.root / "forbidden-write.txt"
+        command = (
+            "from pathlib import Path;"
+            f"Path({str(marker)!r}).write_text('forbidden')"
+        )
+        try:
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, "forbidden-write.txt"
+            ):
+                harness._run_command(
+                    [sys.executable, "-c", command],
+                    root=command_root,
+                    run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096,
+                    expect_json=False,
+                    production_root=self.root,
+                    state_root=self.state,
+                )
+        finally:
+            marker.unlink(missing_ok=True)
 
     def test_compile_failure_primary_cause_survives_cleanup_failure(self) -> None:
         with patch.object(
