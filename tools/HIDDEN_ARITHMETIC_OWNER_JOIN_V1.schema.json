@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "HIDDEN_ARITHMETIC_OWNER_JOIN_V1.schema.json",
+  "title": "Hidden arithmetic owner join result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "authority_advanced", "diagnostic_only", "function", "implementation", "result_sha256"],
+  "properties": {
+    "schema": {"const": "hidden_arithmetic_owner_join/v1"},
+    "status": {"enum": ["RANKED_SOURCE_CLASS", "UNKNOWN"]},
+    "authority_advanced": {"const": false},
+    "diagnostic_only": {"const": true},
+    "function": {"type": ["string", "null"]},
+    "implementation": {"$ref": "#/$defs/implementation"},
+    "session_id": {"type": "string"},
+    "bindings": {"type": "object"},
+    "chains": {
+      "type": "array", "minItems": 2,
+      "items": {"$ref": "#/$defs/chain"}
+    },
+    "repeated_topology_sha256": {"$ref": "#/$defs/sha256"},
+    "ranked_source_classes": {"type": "array", "maxItems": 1},
+    "rejected_controls": {"type": "array", "minItems": 2},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "first_missing_edge": {"type": "string", "minLength": 1},
+    "result_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "RANKED_SOURCE_CLASS"}}, "required": ["status"]},
+      "then": {
+        "required": ["session_id", "bindings", "chains", "repeated_topology_sha256", "ranked_source_classes", "rejected_controls", "limitations"],
+        "properties": {"ranked_source_classes": {"minItems": 1}}
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "UNKNOWN"}}, "required": ["status"]},
+      "then": {
+        "required": ["first_missing_edge", "ranked_source_classes"],
+        "properties": {"ranked_source_classes": {"maxItems": 0}}
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "implementation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 3},
+        "size": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "allocatorIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {"kind": {"const": "IG_NODE"}, "id": {"type": "string", "minLength": 1}}
+    },
+    "chain": {
+      "type": "object",
+      "required": ["machine_site", "named_owner", "hidden_input", "hidden_definition", "production_residual_group", "topology_signature"],
+      "properties": {
+        "machine_site": {"type": "integer", "minimum": 0},
+        "named_owner": {
+          "type": "object",
+          "required": ["allocator_identity", "edge_mode", "legacy_vreg_id"],
+          "properties": {
+            "allocator_identity": {"$ref": "#/$defs/allocatorIdentity"},
+            "edge_mode": {"const": "DIRECT_PCODE_OBJECT_TO_IG_COLOR"},
+            "legacy_vreg_id": {"type": "null"}
+          }
+        },
+        "hidden_input": {
+          "type": "object",
+          "required": ["allocator_identity", "edge_mode", "legacy_vreg_id"],
+          "properties": {
+            "allocator_identity": {"$ref": "#/$defs/allocatorIdentity"},
+            "edge_mode": {"const": "DIRECT_PCODE_HIDDEN_OWNER_TO_IG_COLOR"},
+            "legacy_vreg_id": {"type": "null"}
+          }
+        },
+        "hidden_definition": {"type": "object"},
+        "production_residual_group": {"type": "object"},
+        "topology_signature": {"type": "object"}
+      }
+    }
+  }
+}
