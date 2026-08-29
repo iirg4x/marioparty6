@@ -23,6 +23,11 @@ import subprocess
 import sys
 from typing import Any, Mapping, Sequence
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.crack_contract import is_closed_objdiff_unit_name
+
 
 SCHEMA = "crack_evidence_bundle_context/v1"
 PHASE_RECEIPT_SCHEMA = "crack_evidence_phase_receipt/v1"
@@ -38,7 +43,6 @@ BINUTILS_TAG = "2.42-1"
 NINJA_VERSION = "1.13.2"
 NINJA_SHA256 = "e52a7ad9538d9618c67a0bd777964e2eec8a30f68b810a2f6adce1f2daf847b8"
 SHA_RE = re.compile(r"[0-9a-f]{64}")
-SAFE_UNIT_RE = re.compile(r"[A-Za-z0-9_.\-/]+")
 
 
 class EvidenceError(ValueError):
@@ -197,7 +201,7 @@ def _load_environment(root: Path, out_root: Path, explicit_context: Path) -> dic
     if phase not in {"baseline", "candidate"}:
         raise EvidenceError("phase must be baseline or candidate")
     unit = os.environ["CRACK_HARNESS_UNIT"]
-    if SAFE_UNIT_RE.fullmatch(unit) is None or ".." in Path(unit).parts:
+    if not is_closed_objdiff_unit_name(unit):
         raise EvidenceError("unit is not a closed objdiff unit name")
     source_rel = Path(os.environ["CRACK_HARNESS_SOURCE_PATH"])
     if source_rel.is_absolute():

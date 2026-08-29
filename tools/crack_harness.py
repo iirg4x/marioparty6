@@ -26,6 +26,7 @@ from typing import Any, Mapping, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.crack_contract import is_closed_objdiff_unit_name
 from tools.recovery_pass import serialized_build_lock
 
 
@@ -45,6 +46,7 @@ TOOLCHAIN_MANIFEST_KEY = "b6764a1e5883ea1a096bfe4f8b888b93f1740f0f4046eb6149e0fe
 MAX_RETAINED_OWNER_BYTES = 16 * 1024 * 1024
 MAX_RETAINED_GLOBAL_BYTES = 64 * 1024 * 1024
 MAX_COMPACT_TERMINAL_BYTES = 1024 * 1024
+MAX_PERMIT_ATTEMPTS_PER_FUNCTION = 32
 EXACT_REPORT_FIELDS = {
     "schema", "status", "completed", "authority_advanced", "owner", "function",
     "task_id", "base_commit", "approval_sha256", "source_sha256",
@@ -247,7 +249,7 @@ def _validate_winning_cell_selection(
     """Require one evidence-backed winning cell before any compile is legal."""
 
     required = {
-        "strategy", "rank", "evidence", "candidate_sha256",
+        "strategy", "rank", "expected_terminal", "evidence", "candidate_sha256",
         "predicted_rows_sha256", "alternatives_compiled", "negative_controls",
         "pivot_if_unranked", "source_class",
     }
@@ -260,6 +262,8 @@ def _validate_winning_cell_selection(
     rank = selection.get("rank")
     if type(rank) is not int or rank != 1:
         raise CrackHarnessError("selection.rank must be exactly 1")
+    if selection.get("expected_terminal") != "exact":
+        raise CrackHarnessError("selection.expected_terminal must be exact")
     evidence = selection.get("evidence")
     if not isinstance(evidence, Mapping) or set(evidence) != {"path", "sha256"}:
         raise CrackHarnessError("selection.evidence must bind one path and sha256")
@@ -297,7 +301,7 @@ def _validate_winning_cell_selection(
 
     evidence_value = _read_json(evidence_path)
     evidence_required = {
-        "schema", "owner", "function", "strategy", "rank",
+        "schema", "owner", "function", "strategy", "rank", "expected_terminal",
         "candidate_sha256", "predicted_rows_sha256",
         "alternatives_compiled", "negative_controls", "pivot_if_unranked",
         "source_class", "inputs", "causal_prediction",
@@ -312,6 +316,7 @@ def _validate_winning_cell_selection(
         "function": function,
         "strategy": "winning_cell_first",
         "rank": 1,
+        "expected_terminal": "exact",
         "candidate_sha256": candidate_sha256,
         "predicted_rows_sha256": _digest_json(list(predicted_rows)),
         "alternatives_compiled": 0,
@@ -998,7 +1003,9 @@ def load_approval(
         raise CrackHarnessError("approval_id contains unsafe characters")
     _text(approval.get("owner"), "owner")
     _text(approval.get("task_id"), "task_id")
-    _text(approval.get("unit"), "unit")
+    unit = _text(approval.get("unit"), "unit")
+    if not is_closed_objdiff_unit_name(unit):
+        raise CrackHarnessError("unit is not a closed objdiff unit name")
     _text(approval.get("base_commit"), "base_commit")
     if _sha(approval.get("toolchain_key"), "toolchain_key") != TOOLCHAIN_MANIFEST_KEY:
         raise CrackHarnessError("toolchain_key is not the canonical Ninja-inclusive manifest")
@@ -2538,6 +2545,59 @@ def _function_key(approval: Mapping[str, Any]) -> str:
     })
 
 
+def _permit_attempts(run_dir: Path, approval: Mapping[str, Any]) -> list[str]:
+    """Load the bounded one-shot permit ledger for one owner/function."""
+
+    path = run_dir.parent / "permit-attempts.json"
+    if not path.is_file():
+        return []
+    _assert_no_indirection(path)
+    value = _read_json(path)
+    required = {
+        "schema", "function_key", "owner", "function", "permit_sha256s",
+    }
+    permits = value.get("permit_sha256s") if isinstance(value, Mapping) else None
+    valid = (
+        isinstance(value, Mapping)
+        and set(value) == required
+        and value.get("schema") == "crack_harness_permit_attempts/v1"
+        and value.get("function_key") == _function_key(approval)
+        and value.get("owner") == approval["owner"]
+        and value.get("function") == approval["function"]
+        and isinstance(permits, list)
+        and len(permits) <= MAX_PERMIT_ATTEMPTS_PER_FUNCTION
+        and len(set(permits)) == len(permits)
+        and all(isinstance(item, str) and SHA_RE.fullmatch(item) for item in permits)
+    )
+    if not valid:
+        raise CrackHarnessError("permit-attempt ledger is malformed or unbound")
+    return list(permits)
+
+
+def _permit_attempted(run_dir: Path, approval: Mapping[str, Any]) -> bool:
+    return approval["permit_sha256"] in _permit_attempts(run_dir, approval)
+
+
+def _consume_permit(run_dir: Path, approval: Mapping[str, Any]) -> None:
+    """Consume exactly one signed permit without consuming the function cell."""
+
+    path = run_dir.parent / "permit-attempts.json"
+    permits = _permit_attempts(run_dir, approval)
+    permit_sha256 = approval["permit_sha256"]
+    if permit_sha256 in permits:
+        raise CrackHarnessError("signed permit has already been attempted")
+    if len(permits) >= MAX_PERMIT_ATTEMPTS_PER_FUNCTION:
+        raise CrackHarnessError("function permit-attempt cap is exhausted")
+    permits.append(permit_sha256)
+    _safe_mkdir(path.parent)
+    _atomic_json(path, {
+        "schema": "crack_harness_permit_attempts/v1",
+        "function_key": _function_key(approval),
+        "owner": approval["owner"], "function": approval["function"],
+        "permit_sha256s": permits,
+    })
+
+
 def _function_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
     path = run_dir.parent / "latest-function.json"
     if path.is_file():
@@ -2605,6 +2665,8 @@ def _dry_run_core(root: Path, approval_path: Path, state: Path) -> dict[str, Any
         blockers.append("function already has a terminal result")
     if _function_consumed(_run_dir(state, approval), approval):
         blockers.append("function tombstone forbids another lifetime cell")
+    if _permit_attempted(_run_dir(state, approval), approval):
+        blockers.append("signed permit already attempted; issue a fresh permit")
     if approval.get("_source_applied") and not existing.exists():
         blockers.append("source is already the candidate without a terminal result")
     if any(item.get("status") in {"failed", "no_gain"} for item in results):
@@ -2645,6 +2707,31 @@ def _cleanup_raw(run_dir: Path) -> None:
             shutil.rmtree(path)
 
 
+FUNCTION_GUARD_FILES = {"latest-function.json", "permit-attempts.json"}
+
+
+def _prune_function_state(function_dir: Path) -> None:
+    """Drop bulky/history state while retaining compact one-shot guards."""
+
+    _assert_no_indirection(function_dir)
+    guards = {
+        child.name for child in function_dir.iterdir()
+        if child.name in FUNCTION_GUARD_FILES and child.is_file()
+    }
+    if not guards:
+        shutil.rmtree(function_dir)
+        return
+    for child in tuple(function_dir.iterdir()):
+        if child.name in guards:
+            _assert_no_indirection(child)
+            continue
+        _assert_no_indirection(child)
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+
+
 def _gc_owner(
     run_dir: Path, byte_limit: int, *, protected: set[Path] | None = None,
 ) -> None:
@@ -2659,8 +2746,7 @@ def _gc_owner(
     )
     while _tree_size(owner_dir) > byte_limit and entries:
         victim = entries.pop(0)
-        _assert_no_indirection(victim)
-        shutil.rmtree(victim)
+        _prune_function_state(victim)
     if _tree_size(owner_dir) > byte_limit:
         raise CrackHarnessError("owner retained state exceeds the hard 16 MiB cap")
 
@@ -2684,8 +2770,7 @@ def _gc_global(
     )
     while _tree_size(state) > byte_limit and entries:
         victim = entries.pop(0)
-        _assert_no_indirection(victim)
-        shutil.rmtree(victim)
+        _prune_function_state(victim)
     if _tree_size(state) > byte_limit:
         raise CrackHarnessError("global retained state exceeds the hard 64 MiB cap")
 
@@ -2809,10 +2894,10 @@ def _run_locked(
             str(permit_file), str(approval["_approval_path"]),
         ],
     }
+    _consume_permit(run_dir, approval)
     _atomic_json(state / "attempt.json", {
         **attempt_body, "attempt_sha256": _digest_json(attempt_body)
     })
-    _consume_function(run_dir, approval)
     _safe_mkdir(run_dir)
     temp = run_dir / "temp"
     _safe_mkdir(temp)
@@ -2921,6 +3006,11 @@ def _run_locked(
             if any((out_root / name).exists() for name in EVIDENCE_CANDIDATE_FILES):
                 raise CrackHarnessError("baseline evidence phase emitted candidate outputs")
             _checkpoint(root, approval["_approval_path"], approval, permit_file, permit, state, allow_source=False)
+            # The signed permit is one-shot from run start, but the natural-C
+            # function cell is consumed only after the complete baseline and
+            # evidence front door succeed.  Infrastructure failures before
+            # this boundary therefore cannot burn an uncompiled function.
+            _consume_function(run_dir, approval)
             _atomic_copy(paths["candidate"], worktree_source)
             _clear_evidence(out_root, EVIDENCE_CANDIDATE_FILES)
             candidate_env = {

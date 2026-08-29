@@ -77,6 +77,7 @@ class CrackHarnessTests(unittest.TestCase):
             "schema": harness.WINNING_CELL_EVIDENCE_SCHEMA,
             "owner": "main:board/test", "function": "Owner",
             "strategy": "winning_cell_first", "rank": 1,
+            "expected_terminal": "exact",
             "candidate_sha256": sha(self.candidate),
             "predicted_rows_sha256": harness._digest_json(predicted_rows),
             "alternatives_compiled": 0, "negative_controls": 0,
@@ -189,9 +190,9 @@ elif 'admit' in sys.argv:
         }
         predicted_rows = ["Owner:ARG:0"]
         value = {
-            "schema": harness.APPROVAL_SCHEMA, "approval_id": "cell-1", "owner": "main:board/test", "task_id": "task", "function": "Owner", "unit": "src/owner.c", "base_commit": self.commit, "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY, "target_sha256": TARGET_SHA, "permit_sha256": "0" * 64, "issued_at": issued.isoformat(), "expires_at": deadline.isoformat(),
+            "schema": harness.APPROVAL_SCHEMA, "approval_id": "cell-1", "owner": "main:board/test", "task_id": "task", "function": "Owner", "unit": "main/board/test", "base_commit": self.commit, "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY, "target_sha256": TARGET_SHA, "permit_sha256": "0" * 64, "issued_at": issued.isoformat(), "expires_at": deadline.isoformat(),
             "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": predicted_rows,
-            "selection": {"strategy": "winning_cell_first", "rank": 1, "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell"},
+            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": "exact", "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell"},
             "commands": {"precompile": precompile, "compile": self.descriptor("compile", "compile", str(gain), str(focus_rows)), "strict": self.descriptor("proof_strict", "strict"), "data": self.descriptor("proof_data", "data"), "focus": self.descriptor("proof_focus", "focus"), "siblings": self.descriptor("proof_siblings", "siblings"), "physical": self.descriptor("proof_physical", "physical"), "assess": self.descriptor("assessment", "assess"), "record": self.descriptor("canonical_record", "record")},
             "campaign": {"id": campaign_id, "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
         }
@@ -360,6 +361,24 @@ elif 'admit' in sys.argv:
                 approval_path.write_text(json.dumps(value), encoding="utf-8")
                 with self.assertRaisesRegex(harness.CrackHarnessError, field):
                     harness.load_approval(self.root, approval_path)
+
+    def test_winning_cell_must_predict_an_exact_terminal(self) -> None:
+        approval_path, _ = self.write_inputs()
+        value = json.loads(approval_path.read_text(encoding="utf-8"))
+        value["selection"]["expected_terminal"] = "improved"
+        approval_path.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "must be exact"):
+            harness.load_approval(self.root, approval_path)
+
+        approval_path, _ = self.write_inputs()
+        evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+        evidence["expected_terminal"] = "improved"
+        self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        approval["selection"]["evidence"]["sha256"] = sha(self.evidence)
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "expected_terminal"):
+            harness.load_approval(self.root, approval_path)
 
     def test_winning_cell_evidence_semantics_are_owner_function_and_rows_bound(self) -> None:
         for mutation, expected_message in (
@@ -1289,6 +1308,89 @@ elif 'admit' in sys.argv:
         with self.assertRaises((harness.CrackHarnessError, FileNotFoundError)):
             harness.load_approval(self.root, self.root / "missing-approval.json")
 
+    def test_invalid_objdiff_unit_is_rejected_before_any_command(self) -> None:
+        invalid_units = (
+            "main:board/captrap", "main/../board/captrap",
+            r"main\board\captrap", "main/board/cap trap", "main/board/captráp",
+            "/main/board/captrap", "main//board/captrap",
+            "main/board/captrap/", "main/./board/captrap", "captrap",
+        )
+        for unit in invalid_units:
+            with self.subTest(unit=unit):
+                approval, _ = self.write_inputs()
+                value = json.loads(approval.read_text(encoding="utf-8"))
+                value["unit"] = unit
+                approval.write_text(json.dumps(value), encoding="utf-8")
+                with patch.object(harness, "_run_command") as command:
+                    with self.assertRaisesRegex(
+                        harness.CrackHarnessError, "closed objdiff unit name"
+                    ):
+                        harness._dry_run_for_test(
+                            self.root, approval, state_root=self.state
+                        )
+                    command.assert_not_called()
+
+    def test_valid_slash_form_objdiff_unit_passes_dry_run(self) -> None:
+        approval, _ = self.write_inputs()
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["unit"] = "main/board/test"
+        approval.write_text(json.dumps(value), encoding="utf-8")
+        result = harness._dry_run_for_test(
+            self.root, approval, state_root=self.state
+        )
+        self.assertEqual(result["status"], "ready")
+
+    def test_signed_permit_is_one_shot_without_consuming_function(self) -> None:
+        approval, _ = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        harness._consume_permit(run_dir, loaded)
+        self.assertTrue(harness._permit_attempted(run_dir, loaded))
+        self.assertFalse(harness._function_consumed(run_dir, loaded))
+        with self.assertRaisesRegex(harness.CrackHarnessError, "already been attempted"):
+            harness._consume_permit(run_dir, loaded)
+
+    def test_baseline_infrastructure_failure_does_not_consume_function(self) -> None:
+        approval, permit = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        original = harness._run_command
+
+        def fail_baseline(*args, **kwargs):
+            phase = (kwargs.get("extra_env") or {}).get("CRACK_HARNESS_PHASE")
+            if phase == "baseline":
+                raise harness.CrackHarnessError("baseline infrastructure failure")
+            return original(*args, **kwargs)
+
+        with patch.object(harness, "_run_command", side_effect=fail_baseline):
+            result = harness._run_approved_for_test(
+                self.root, approval, permit_path=permit,
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(harness._permit_attempted(run_dir, loaded))
+        self.assertFalse(harness._function_consumed(run_dir, loaded))
+
+    def test_candidate_execution_boundary_consumes_function(self) -> None:
+        approval, permit = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        original = harness._run_command
+
+        def fail_candidate(*args, **kwargs):
+            phase = (kwargs.get("extra_env") or {}).get("CRACK_HARNESS_PHASE")
+            if phase == "candidate":
+                raise harness.CrackHarnessError("candidate compiler failure")
+            return original(*args, **kwargs)
+
+        with patch.object(harness, "_run_command", side_effect=fail_candidate):
+            result = harness._run_approved_for_test(
+                self.root, approval, permit_path=permit,
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
+
     def test_second_candidate_for_function_is_rejected_across_campaign_ids(self) -> None:
         approval, _ = self.write_inputs()
         loaded = harness.load_approval(self.root, approval)
@@ -1323,6 +1425,29 @@ elif 'admit' in sys.argv:
         tombstone_path.write_text(json.dumps(tombstone), encoding="utf-8")
         with self.assertRaisesRegex(harness.CrackHarnessError, "binding is invalid"):
             harness._function_consumed(run_dir, loaded)
+
+    def test_retention_gc_preserves_function_and_permit_guards(self) -> None:
+        approval, _ = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        harness._consume_permit(run_dir, loaded)
+        harness._consume_function(run_dir, loaded)
+        payload = run_dir / "raw" / "bulk.bin"
+        payload.parent.mkdir(parents=True)
+        payload.write_bytes(b"x" * 8192)
+        owner_limit = harness._tree_size(run_dir.parents[1]) - 4096
+        harness._gc_owner(run_dir, owner_limit)
+        self.assertFalse(payload.exists())
+        self.assertTrue(harness._permit_attempted(run_dir, loaded))
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
+
+        payload.parent.mkdir(parents=True)
+        payload.write_bytes(b"x" * 8192)
+        global_limit = harness._tree_size(self.state) - 4096
+        harness._gc_global(self.state, global_limit)
+        self.assertFalse(payload.exists())
+        self.assertTrue(harness._permit_attempted(run_dir, loaded))
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
 
     @unittest.skipUnless(os.name == "nt", "Windows path semantics")
     def test_windows_paths(self) -> None:

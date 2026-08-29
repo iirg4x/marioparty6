@@ -48,6 +48,11 @@ Validate approval with `tools/CRACK_HARNESS_APPROVAL_V1.schema.json`. It binds
 Git `base_commit`, configure `unit`, the SHA-256 key of the closed central
 toolchain manifest, target, source/baseline/candidate hashes, a
 hash-bound function span, predicted rows, limits, and every command descriptor.
+`unit` is the generated slash-form objdiff name (for example,
+`main/board/captrap`), not the colon-form owner identity. The harness and
+evidence bundle share one side-effect-free validator, so malformed, traversing,
+owner-style, empty-segment, and leading/trailing-slash unit names fail during
+dry-run before permit use.
 Limits cannot be elevated: one candidate for an owner/function for the lifetime
 of the retained harness state (a new campaign ID cannot reset this counter), at
 most 1,800 seconds, 512 MiB ephemeral data, and 16 MiB retained compact state
@@ -60,7 +65,9 @@ forcing are rejected.
 
 Every approval also carries a closed `selection` object. Its strategy is fixed
 to `winning_cell_first`, its rank is exactly `1`, and it must name a non-empty
-natural-C `source_class`. The selection binds an existing repository-local
+natural-C `source_class`. `expected_terminal` is fixed to `exact`; an
+incremental, exploratory, negative-control, or merely measurable-improvement
+cell is rejected before permit use. The selection binds an existing repository-local
 `crack_winning_cell_evidence/v1` artifact by path and SHA-256, the approval
 candidate SHA, and the canonical SHA-256 of `predicted_rows`. Validate the
 artifact with `tools/CRACK_WINNING_CELL_EVIDENCE_V1.schema.json`. Its closed
@@ -114,6 +121,11 @@ and `data` JSON, `physical.json`, self-digested phase receipts, and a final
 self-digested evidence context under `CRACK_HARNESS_OUT_ROOT`. The harness
 checks every receipt identity, phase nonce, artifact hash/size, target hash, and
 baseline immutability. Missing, stale, mixed, or fabricated evidence fails closed.
+The signed permit is recorded as one-shot when execution begins. The function
+cell is not tombstoned until the complete baseline build and evidence phase have
+succeeded and the candidate execution boundary is reached. Admission, worktree,
+unit, configuration, or baseline infrastructure failures therefore require a
+fresh signed permit but cannot consume an uncompiled function cell.
 Temp is metered and production
 writes are polled and rejected. Combined streamed output is capped at 1 MiB;
 timeout/overrun kills the process tree. On Windows the root process is created
@@ -140,10 +152,12 @@ match does not regress, both protected sets lose nothing, and physical
 relocations remain exact. Data percent and differing-row count must both be
 non-regressing. Otherwise the candidate is treated as no gain and rolled back.
 
-No gain/failure leaves baseline and retains no run directory or result artifact;
-only one overwrite-only owner/function tombstone remains. That tombstone is
-independent of campaign ID and permanently forces a pivot to another function;
-failure may additionally
+No gain or a failure after the candidate execution boundary leaves baseline and
+retains no run directory or result artifact; only one overwrite-only
+owner/function tombstone remains. That tombstone is independent of campaign ID
+and permanently forces a pivot to another function. A pre-candidate
+infrastructure failure retains only its bounded one-shot permit marker and does
+not tombstone the function. Failure may additionally
 retain one tiny overwrite-only sealed diagnostic, never an attempt log. Positive nonexact gain CAS-copies the candidate
 as `improved`, emits `PIVOT_REQUIRED`, and ends work on that function. Exact also writes
 compact `CRACK_REPORT/v1`. Only one latest compact result and, for exact only,
