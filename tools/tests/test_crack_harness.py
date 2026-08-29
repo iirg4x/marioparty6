@@ -147,7 +147,8 @@ elif kind=='record': print(json.dumps({'schema':'crack_central_record_receipt/v1
 if 'discard' in sys.argv:
  print(json.dumps({'status':'discarded','input_key':'a'*64,'authority_advanced':False}))
 elif 'record' in sys.argv:
- print(json.dumps({'status':'recorded','authority_advanced':False}))
+ args=sys.argv; get=lambda name:args[args.index(name)+1]
+ print(json.dumps({'status':'recorded','authority_advanced':False,'experiment':{'input_key':'a'*64,'owner':get('--owner'),'function_name':get('--function'),'target_sha256':get('--target-sha256'),'source_sha256':get('--source-sha256'),'object_sha256':get('--object-sha256'),'status':get('--status'),'record_sha256':'e'*64}}))
 elif 'admit' in sys.argv:
  print(json.dumps({'status':'admitted','reused':False,'skip_compile':False,'admission_token':'central','input_key':'a'*64,'expires_at':'2099-01-01T00:00:00+00:00','authority_advanced':False}))
 '''
@@ -249,9 +250,9 @@ elif 'admit' in sys.argv:
         result_path = run / "result.json"; result_path.write_text(json.dumps(result), encoding="utf-8")
         commit_path = run / "record.commit.json"
         if exact_commit:
-            commit_body = {"schema":"crack_harness_record_commit/v1","outcome":"exact","candidate_sha256":sha(self.candidate),"record_payload_sha256":"e"*64}
+            commit_body = {"schema":"crack_harness_record_commit/v1","outcome":"exact","candidate_sha256":sha(self.candidate),"record_payload_sha256":"e"*64,"record_sha256":"e"*64}
             commit_path.write_text(json.dumps(commit_body | {"commit_sha256":harness._digest_json(commit_body)}), encoding="utf-8")
-        body = {"schema":"crack_harness_transaction/v1","source_relpath":"src/owner.c","baseline_snapshot":str(baseline),"baseline_sha256":sha(self.base),"approval_sha256":"a"*64,"candidate_sha256":sha(self.candidate),"result_path":str(result_path),"record_commit_path":str(commit_path),"worktree":str(recovery / "worktree"),"central_record_binding":central_record_binding}
+        body = {"schema":"crack_harness_transaction/v1","source_relpath":"src/owner.c","baseline_snapshot":str(baseline),"baseline_sha256":sha(self.base),"approval_sha256":"a"*64,"target_object_sha256":TARGET_SHA,"candidate_sha256":sha(self.candidate),"result_path":str(result_path),"record_commit_path":str(commit_path),"worktree":str(recovery / "worktree"),"central_record_binding":central_record_binding}
         (self.state / "transaction.json").write_text(json.dumps(body | {"transaction_sha256":harness._digest_json(body)}), encoding="utf-8")
 
     def test_exact_uses_disposable_worktree_and_keeps_no_source_duplicate(self) -> None:
@@ -485,6 +486,7 @@ elif 'admit' in sys.argv:
         self._write_recovery_journal(result={}, central_record_binding={
             "input_key": identity["input_key"], "owner": "main:board/test",
             "function": "Owner", "source_sha256": sha(self.candidate),
+            "target_object_sha256": TARGET_SHA,
             "object_sha256": "c" * 64,
             "candidate_record_sha256": candidate_record, "status": "improved",
         })
@@ -493,6 +495,83 @@ elif 'admit' in sys.argv:
         self.assertEqual(self.source.read_bytes(), self.base.read_bytes())
         with contextlib.closing(sqlite3.connect(store.path)) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 0)
+
+    def test_recovery_binding_or_local_commit_mismatch_never_deletes_central_row(self) -> None:
+        candidate_record = "d" * 64
+        store = RecoveryMemory(self.root / "memory.sqlite3")
+        identity = RecoveryMemory.identity(
+            owner="main:board/test", function="Owner", base_commit=self.commit,
+            toolchain_key=harness.TOOLCHAIN_MANIFEST_KEY,
+            target_sha256=TARGET_SHA, source_sha256=sha(self.candidate),
+        )
+        admitted = store.admit(identity, requester="lane")
+        recorded = store.record(
+            identity, requester="lane", object_sha256="c" * 64,
+            status="improved", reason="retained",
+            admission_token=admitted["admission_token"],
+            candidate_record_sha256=candidate_record,
+        )
+        row = recorded["experiment"]
+        valid_binding = {
+            "input_key": identity["input_key"], "owner": "main:board/test",
+            "function": "Owner", "source_sha256": sha(self.candidate),
+            "target_object_sha256": TARGET_SHA, "object_sha256": "c" * 64,
+            "candidate_record_sha256": candidate_record, "status": "improved",
+        }
+
+        self._write_recovery_journal(
+            result={},
+            central_record_binding={
+                **valid_binding, "target_object_sha256": "f" * 64,
+            },
+        )
+        journal = self.state / "transaction.json"
+        value = json.loads(journal.read_text(encoding="utf-8"))
+        value["target_object_sha256"] = "f" * 64
+        unsigned = dict(value)
+        unsigned.pop("transaction_sha256", None)
+        value["transaction_sha256"] = harness._digest_json(unsigned)
+        journal.write_text(json.dumps(value), encoding="utf-8")
+        with patch.object(RecoveryMemory, "for_root", return_value=store):
+            with self.assertRaisesRegex(harness.CrackHarnessError, "cannot reconcile"):
+                harness._recover_interrupted(self.root, self.state)
+        with contextlib.closing(sqlite3.connect(store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 1)
+
+        forged_record_sha = "e" * 64
+        run = self.state / "owners/test/Owner/latest"
+        commit_body = {
+            "schema": "crack_harness_record_commit/v1",
+            "outcome": "improved",
+            "candidate_sha256": sha(self.candidate),
+            "record_payload_sha256": "e" * 64,
+            "record_sha256": forged_record_sha,
+        }
+        (run / "record.commit.json").write_text(
+            json.dumps({
+                **commit_body,
+                "commit_sha256": harness._digest_json(commit_body),
+            }),
+            encoding="utf-8",
+        )
+        value = json.loads(journal.read_text(encoding="utf-8"))
+        value["target_object_sha256"] = TARGET_SHA
+        value["central_record_binding"] = valid_binding
+        unsigned = dict(value)
+        unsigned.pop("transaction_sha256", None)
+        value["transaction_sha256"] = harness._digest_json(unsigned)
+        journal.write_text(json.dumps(value), encoding="utf-8")
+        with patch.object(RecoveryMemory, "for_root", return_value=store):
+            with self.assertRaisesRegex(harness.CrackHarnessError, "cannot reconcile"):
+                harness._recover_interrupted(self.root, self.state)
+        with contextlib.closing(sqlite3.connect(store.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 1)
+        self.assertEqual(row["record_sha256"], store.verify_retained(**{
+            "input_key": identity["input_key"], "owner": identity["owner"],
+            "function": identity["function"], "target_sha256": TARGET_SHA,
+            "source_sha256": identity["source_sha256"], "object_sha256": "c" * 64,
+            "candidate_record_sha256": candidate_record, "status": "improved",
+        })["record_sha256"])
 
     def test_self_asserted_manager_permit_is_rejected(self) -> None:
         approval_path, permit_path = self.write_inputs()
@@ -769,6 +848,287 @@ elif 'admit' in sys.argv:
         self.assertTrue(any("cleanup improved failed" in item for item in result["cleanup_errors"]))
         self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
 
+    def _exact_report_fixture(self) -> tuple[dict, dict, dict]:
+        with patch.object(
+            harness, "_cleanup_raw", side_effect=OSError("retain exact report")
+        ):
+            self.assertEqual(self.execute()["status"], "exact")
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        report = json.loads(
+            (result_path.parent / "CRACK_REPORT_v1.json").read_text(encoding="utf-8")
+        )
+        record = result["receipts"]["record"]["summary"]
+        binding = {
+            "owner": result["owner"],
+            "function": result["function"],
+            "source_sha256": result["candidate_sha256"],
+            "target_object_sha256": report["target_object_sha256"],
+            "object_sha256": record["candidate_object_sha256"],
+            "candidate_record_sha256": result["receipts"]["assess"]["payload_sha256"],
+            "status": "exact",
+            "input_key": record["admission_input_key"],
+        }
+        return report, result, binding
+
+    def test_complete_exact_report_is_accepted_by_shared_validator(self) -> None:
+        report, result, binding = self._exact_report_fixture()
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        report_path = result_path.parent / "CRACK_REPORT_v1.json"
+        store = RecoveryMemory(self.root / "terminal-memory.sqlite3")
+        identity = RecoveryMemory.identity(
+            owner=result["owner"], function=result["function"],
+            base_commit=result["base_commit"],
+            toolchain_key=harness.TOOLCHAIN_MANIFEST_KEY,
+            target_sha256=binding["target_object_sha256"],
+            source_sha256=binding["source_sha256"],
+        )
+        identity["input_key"] = binding["input_key"]
+        admission = store.admit(identity, requester="terminal-test")
+        central = store.record(
+            identity,
+            requester="terminal-test",
+            object_sha256=binding["object_sha256"],
+            status="exact",
+            reason="zero rows",
+            admission_token=admission["admission_token"],
+            candidate_record_sha256=binding["candidate_record_sha256"],
+            strict_report_sha256=result["receipts"]["strict"]["summary"]["report_sha256"],
+            data_report_sha256=result["receipts"]["data"]["summary"]["report_sha256"],
+        )
+        central_record_sha256 = central["experiment"]["record_sha256"]
+        record_summary = result["receipts"]["record"]["summary"]
+        record_summary["record_sha256"] = central_record_sha256
+        result["receipts"]["record"]["payload_sha256"] = harness._digest_json(record_summary)
+        report["proof_receipts"]["record"] = {
+            "sha256": result["receipts"]["record"]["payload_sha256"],
+            "summary": dict(record_summary),
+        }
+        report_body = dict(report)
+        report_body.pop("report_sha256", None)
+        report["report_sha256"] = harness._digest_json(report_body)
+        result["report_sha256"] = report["report_sha256"]
+        result_body = dict(result)
+        result_body.pop("result_sha256", None)
+        result["result_sha256"] = harness._digest_json(result_body)
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+        commit_body = {
+            "schema": "crack_harness_record_commit/v1",
+            "outcome": "exact",
+            "candidate_sha256": result["candidate_sha256"],
+            "record_payload_sha256": result["receipts"]["record"]["payload_sha256"],
+            "record_sha256": central_record_sha256,
+        }
+        commit_path = result_path.parent / "record.commit.json"
+        commit_path.write_text(
+            json.dumps({
+                **commit_body,
+                "commit_sha256": harness._digest_json(commit_body),
+            }),
+            encoding="utf-8",
+        )
+        with patch.object(RecoveryMemory, "for_root", return_value=store):
+            self.assertTrue(
+                harness._valid_terminal_result(self.root, result_path, commit_path, binding)
+            )
+
+    def test_exact_report_rejects_unbound_receipt_and_target_bypasses(self) -> None:
+        import copy
+
+        report, result, binding = self._exact_report_fixture()
+        original_record_sha = result["receipts"]["record"]["summary"]["record_sha256"]
+
+        def rehash_result(value: dict) -> dict:
+            body = dict(value)
+            body.pop("result_sha256", None)
+            return {**body, "result_sha256": harness._digest_json(body)}
+
+        cases = (
+            (
+                "proof ok false",
+                lambda forged_report, forged_result: forged_result["receipts"]["strict"].__setitem__(
+                    "ok", False
+                ),
+                None,
+            ),
+            (
+                "proof command empty",
+                lambda forged_report, forged_result: forged_result["receipts"]["strict"].__setitem__(
+                    "command", {}
+                ),
+                None,
+            ),
+            (
+                "compile command empty",
+                lambda forged_report, forged_result: forged_result["receipts"]["compile"].__setitem__(
+                    "baseline_command", {}
+                ),
+                None,
+            ),
+            ("target rehashed", None, "target"),
+            ("record digest forged", None, "record"),
+        )
+        for label, mutation, special in cases:
+            with self.subTest(label=label):
+                forged_report = copy.deepcopy(report)
+                forged_result = copy.deepcopy(result)
+                record_commit = None
+                if mutation is not None:
+                    mutation(forged_report, forged_result)
+                elif special == "target":
+                    rogue_target = "f" * 64
+                    forged_report["target_object_sha256"] = rogue_target
+                    for name in ("strict", "data", "focus", "siblings", "physical", "assess", "record"):
+                        summary = forged_result["receipts"][name]["summary"]
+                        summary["target_object_sha256"] = rogue_target
+                        payload_sha256 = harness._digest_json(summary)
+                        forged_result["receipts"][name]["payload_sha256"] = payload_sha256
+                        forged_report["proof_receipts"][name]["summary"] = copy.deepcopy(summary)
+                        forged_report["proof_receipts"][name]["sha256"] = payload_sha256
+                elif special == "record":
+                    forged_record = forged_result["receipts"]["record"]["summary"]
+                    forged_record["record_sha256"] = "f" * 64
+                    payload_sha256 = harness._digest_json(forged_record)
+                    forged_result["receipts"]["record"]["payload_sha256"] = payload_sha256
+                    forged_report["proof_receipts"]["record"]["summary"] = copy.deepcopy(forged_record)
+                    forged_report["proof_receipts"]["record"]["sha256"] = payload_sha256
+                    commit_body = {
+                        "schema": "crack_harness_record_commit/v1",
+                        "outcome": "exact",
+                        "candidate_sha256": forged_result["candidate_sha256"],
+                        "record_payload_sha256": payload_sha256,
+                        "record_sha256": original_record_sha,
+                    }
+                    record_commit = {
+                        **commit_body,
+                        "commit_sha256": harness._digest_json(commit_body),
+                    }
+                forged_result = rehash_result(forged_result)
+                report_body = dict(forged_report)
+                report_body.pop("report_sha256", None)
+                forged_report["report_sha256"] = harness._digest_json(report_body)
+                with self.assertRaises(harness.CrackHarnessError):
+                    harness._validate_exact_report(
+                        forged_report,
+                        forged_result,
+                        binding,
+                        record_commit=record_commit,
+                    )
+
+    def test_exact_report_rejects_missing_schema_completion_or_proofs(self) -> None:
+        import copy
+
+        report, result, binding = self._exact_report_fixture()
+        for label, mutation in (
+            ("schema", lambda value: value.__setitem__("schema", "CRACK_REPORT/other")),
+            ("completed", lambda value: value.pop("completed")),
+            (
+                "authority",
+                lambda value: value.__setitem__("authority_advanced", True),
+            ),
+            ("completed_at", lambda value: value.pop("completed_at")),
+            (
+                "proof",
+                lambda value: value["proof_receipts"].pop("physical"),
+            ),
+        ):
+            with self.subTest(label=label):
+                forged = copy.deepcopy(report)
+                mutation(forged)
+                body = dict(forged)
+                body.pop("report_sha256", None)
+                forged["report_sha256"] = harness._digest_json(body)
+                with self.assertRaises(harness.CrackHarnessError):
+                    harness._validate_exact_report(forged, result, binding)
+
+    def test_exact_report_rejects_wrong_identity_and_tampered_hashes(self) -> None:
+        import copy
+
+        report, result, binding = self._exact_report_fixture()
+        for label, mutation in (
+            ("owner", lambda value: value.__setitem__("owner", "main:board/other")),
+            ("function", lambda value: value.__setitem__("function", "Other")),
+            ("source", lambda value: value.__setitem__("source_sha256", "0" * 64)),
+            (
+                "proof source",
+                lambda value: value["proof_receipts"]["strict"]["summary"].__setitem__(
+                    "candidate_source_sha256", "0" * 64
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                forged = copy.deepcopy(report)
+                mutation(forged)
+                body = dict(forged)
+                body.pop("report_sha256", None)
+                forged["report_sha256"] = harness._digest_json(body)
+                with self.assertRaises(harness.CrackHarnessError):
+                    harness._validate_exact_report(forged, result, binding)
+
+    def test_self_hashed_structurally_invalid_exact_report_is_not_a_terminal_result(self) -> None:
+        run = self.state / "owners/test/Owner/latest"
+        run.mkdir(parents=True)
+        candidate_sha = sha(self.candidate)
+        summary = {
+            "schema": "crack_central_record_receipt/v1",
+            "recorded": True,
+            "owner": "main:board/test",
+            "function": "Owner",
+            "candidate_source_sha256": candidate_sha,
+            "candidate_object_sha256": "c" * 64,
+            "outcome": "exact",
+            "admission_input_key": "a" * 64,
+        }
+        record = {"summary": summary, "payload_sha256": harness._digest_json(summary)}
+        result_body = {
+            "status": "exact",
+            "owner": "main:board/test",
+            "function": "Owner",
+            "candidate_sha256": candidate_sha,
+            "receipts": {"record": record},
+        }
+        result = {
+            **result_body,
+            "result_sha256": harness._digest_json(result_body),
+        }
+        result_path = run / "result.json"
+        result_path.write_text(json.dumps(result), encoding="utf-8")
+        commit_body = {
+            "schema": "crack_harness_record_commit/v1",
+            "outcome": "exact",
+            "candidate_sha256": candidate_sha,
+            "record_payload_sha256": record["payload_sha256"],
+            "record_sha256": "0" * 64,
+        }
+        commit_path = run / "record.commit.json"
+        commit_path.write_text(
+            json.dumps({
+                **commit_body,
+                "commit_sha256": harness._digest_json(commit_body),
+            }),
+            encoding="utf-8",
+        )
+        report_body = {"source_sha256": candidate_sha}
+        report = {
+            **report_body,
+            "report_sha256": harness._digest_json(report_body),
+        }
+        (run / "CRACK_REPORT_v1.json").write_text(
+            json.dumps(report), encoding="utf-8"
+        )
+        binding = {
+            "owner": "main:board/test",
+            "function": "Owner",
+            "source_sha256": candidate_sha,
+            "object_sha256": "c" * 64,
+            "status": "exact",
+            "input_key": "a" * 64,
+        }
+        self.assertFalse(
+            harness._valid_terminal_result(self.root, result_path, commit_path, binding)
+        )
+
     def test_startup_retries_successful_terminal_cleanup_without_rollback(self) -> None:
         with patch.object(
             harness, "_remove_disposable_worktree",
@@ -953,7 +1313,7 @@ elif 'admit' in sys.argv:
     def test_recovery_journal_cannot_escape_state_temp(self) -> None:
         outside = self.root / "outside.snapshot"; outside.write_bytes(self.base.read_bytes())
         run = self.state / "owners/test/Owner/latest"; run.mkdir(parents=True)
-        body = {"schema":"crack_harness_transaction/v1","source_relpath":"src/owner.c","baseline_snapshot":str(outside),"baseline_sha256":sha(self.base),"approval_sha256":"a"*64,"candidate_sha256":sha(self.candidate),"result_path":str(run/"result.json"),"record_commit_path":str(run/"record.commit.json"),"worktree":str(run/"temp/worktree"),"central_record_binding":None}
+        body = {"schema":"crack_harness_transaction/v1","source_relpath":"src/owner.c","baseline_snapshot":str(outside),"baseline_sha256":sha(self.base),"approval_sha256":"a"*64,"target_object_sha256":TARGET_SHA,"candidate_sha256":sha(self.candidate),"result_path":str(run/"result.json"),"record_commit_path":str(run/"record.commit.json"),"worktree":str(run/"temp/worktree"),"central_record_binding":None}
         (self.state / "transaction.json").write_text(json.dumps(body | {"transaction_sha256":harness._digest_json(body)}), encoding="utf-8")
         with self.assertRaisesRegex(harness.CrackHarnessError, "exact run temp"):
             harness._recover_interrupted(self.root, self.state)

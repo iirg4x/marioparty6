@@ -204,6 +204,85 @@ def _status(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", _required_text(value, "status").lower()).strip("-")
 
 
+def _experiment_record_body(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Reconstruct the canonical body hashed into a normal experiment row.
+
+    The row digest is the RecoveryMemory authority for a retained candidate.  A
+    command receipt or a transaction journal may repeat that digest, but neither
+    is allowed to redefine it.  Keep this projection in one place so read-only
+    verification and the writer use the same field order/meaning.
+    """
+
+    try:
+        return {
+            "schema": "recovery_experiment/v1",
+            "input_key": row["input_key"],
+            "owner": row["owner"],
+            "function": row["function_name"],
+            "base_commit": row["base_commit"],
+            "toolchain_key": row["toolchain_key"],
+            "target_sha256": row["target_sha256"],
+            "compiler_sha256": row["compiler_sha256"],
+            "context_key": row["context_key"],
+            "source_sha256": row["source_sha256"],
+            "shape_key": row["shape_key"],
+            "constraint_key": row["constraint_key"],
+            "hypothesis": row["hypothesis"],
+            "axis": row["axis"],
+            "object_sha256": row["object_sha256"],
+            "status": row["status"],
+            "reason": row["reason"],
+            "candidate_id": row["candidate_id"],
+            "candidate_record_sha256": row["candidate_record_sha256"],
+            "strict_report_sha256": row["strict_report_sha256"],
+            "data_report_sha256": row["data_report_sha256"],
+            "report_sha256": row["report_sha256"],
+            "workspace": row["workspace"],
+            "source_path": row["source_path"],
+            "recorded_at": row["recorded_at"],
+            "authority_advanced": False,
+        }
+    except (KeyError, IndexError) as exc:
+        raise RecoveryMemoryError(
+            "retained experiment row is missing canonical record fields"
+        ) from exc
+
+
+def _historical_experiment_record_body(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Reconstruct the digest used by the pre-registry import path.
+
+    Imported rows intentionally use a smaller, legacy body.  Keep that
+    representation verifiable during recovery without treating an arbitrary
+    local receipt as an authority for the row's identity.
+    """
+
+    try:
+        return {
+            "schema": "recovery_experiment_import/v1",
+            "input_key": row["input_key"],
+            "source_sha256": row["source_sha256"],
+            "object_sha256": row["object_sha256"],
+            "candidate_record_sha256": row["candidate_record_sha256"],
+            "workspace": row["workspace"],
+            "status": row["status"],
+            "reason": row["reason"],
+            "authority_advanced": False,
+        }
+    except (KeyError, IndexError) as exc:
+        raise RecoveryMemoryError(
+            "retained experiment row is missing historical record fields"
+        ) from exc
+
+
+def _record_digest_matches(row: Mapping[str, Any]) -> bool:
+    """Verify a normal or legacy imported central experiment row digest."""
+
+    record_sha = _sha(row.get("record_sha256"), "experiment.record_sha256")
+    if record_sha == _digest(_experiment_record_body(row)):
+        return True
+    return record_sha == _digest(_historical_experiment_record_body(row))
+
+
 def _git(root: Path, *args: str, check: bool = True) -> str:
     process = subprocess.run(
         ["git", *args],
@@ -1027,34 +1106,34 @@ class RecoveryMemory:
                 "DELETE FROM experiments WHERE owner=? AND function_name=? AND input_key<>?",
                 (identity["owner"], identity["function"], input_key),
             )
-            record_body = {
-                "schema": "recovery_experiment/v1",
-                "input_key": input_key,
-                "owner": identity["owner"],
-                "function": identity["function"],
-                "base_commit": identity["base_commit"],
-                "toolchain_key": identity["toolchain_key"],
-                "target_sha256": identity["target_sha256"],
-                "compiler_sha256": identity.get("compiler_sha256"),
-                "context_key": identity["context_key"],
-                "source_sha256": identity["source_sha256"],
-                "shape_key": effective_shape,
-                "constraint_key": effective_constraint,
-                "hypothesis": effective_hypothesis,
-                "axis": effective_axis,
-                "object_sha256": object_value,
-                "status": status_value,
-                "reason": reason_value,
-                "candidate_id": candidate_id,
-                "candidate_record_sha256": candidate_record_sha256,
-                "strict_report_sha256": strict_report_sha256,
-                "data_report_sha256": data_report_sha256,
-                "report_sha256": report_sha256,
-                "workspace": workspace,
-                "source_path": source_path,
-                "recorded_at": now,
-                "authority_advanced": False,
-            }
+            record_body = _experiment_record_body(
+                {
+                    "input_key": input_key,
+                    "owner": identity["owner"],
+                    "function_name": identity["function"],
+                    "base_commit": identity["base_commit"],
+                    "toolchain_key": identity["toolchain_key"],
+                    "target_sha256": identity["target_sha256"],
+                    "compiler_sha256": identity.get("compiler_sha256"),
+                    "context_key": identity["context_key"],
+                    "source_sha256": identity["source_sha256"],
+                    "shape_key": effective_shape,
+                    "constraint_key": effective_constraint,
+                    "hypothesis": effective_hypothesis,
+                    "axis": effective_axis,
+                    "object_sha256": object_value,
+                    "status": status_value,
+                    "reason": reason_value,
+                    "candidate_id": candidate_id,
+                    "candidate_record_sha256": candidate_record_sha256,
+                    "strict_report_sha256": strict_report_sha256,
+                    "data_report_sha256": data_report_sha256,
+                    "report_sha256": report_sha256,
+                    "workspace": workspace,
+                    "source_path": source_path,
+                    "recorded_at": now,
+                }
+            )
             record_sha = _digest(record_body)
             negative = 1 if status_value in NEGATIVE_STATUSES else 0
             connection.execute(
@@ -1114,10 +1193,12 @@ class RecoveryMemory:
         input_key: str,
         owner: str,
         function: str,
+        target_sha256: str,
         source_sha256: str,
         object_sha256: str,
         candidate_record_sha256: str,
         status: str,
+        record_sha256: str | None = None,
     ) -> dict[str, Any]:
         """Delete exactly one split-brain retained record during journal recovery."""
 
@@ -1125,6 +1206,7 @@ class RecoveryMemory:
             "input_key": _sha(input_key, "input_key"),
             "owner": _canonical_owner(owner),
             "function_name": _required_text(function, "function"),
+            "target_sha256": _sha(target_sha256, "target_sha256"),
             "source_sha256": _sha(source_sha256, "source_sha256"),
             "object_sha256": _sha(object_sha256, "object_sha256"),
             "candidate_record_sha256": _sha(
@@ -1150,6 +1232,17 @@ class RecoveryMemory:
                     raise RecoveryMemoryError(
                         f"retained experiment does not match recovery binding {key}"
                     )
+            if not _record_digest_matches(dict(row)):
+                raise RecoveryMemoryError(
+                    "retained experiment record digest does not match its row"
+                )
+            record_sha = _sha(row["record_sha256"], "experiment.record_sha256")
+            if record_sha256 is not None and record_sha != _sha(
+                record_sha256, "record_sha256"
+            ):
+                raise RecoveryMemoryError(
+                    "retained experiment record digest does not match recovery evidence"
+                )
             connection.execute(
                 "DELETE FROM experiments WHERE input_key=?",
                 (binding["input_key"],),
@@ -1159,13 +1252,29 @@ class RecoveryMemory:
             "authority_advanced": False,
         }
 
-    def retained_matches(self, **binding: Any) -> bool:
-        """Return whether the exact journal-bound retained row exists."""
+    def verify_retained(self, **binding: Any) -> dict[str, Any]:
+        """Verify and return one authenticated normal experiment row.
 
+        Recovery callers must compare their local terminal evidence with the
+        returned ``record_sha256``.  The row digest is recomputed from the
+        canonical experiment body, so a self-consistent journal/receipt cannot
+        replace the central target or record identity.
+        """
+
+        required = {
+            "input_key", "owner", "function", "target_sha256", "source_sha256",
+            "object_sha256", "candidate_record_sha256", "status",
+        }
+        allowed = required | {"record_sha256"}
+        if set(binding) - allowed or not required <= set(binding):
+            raise RecoveryMemoryError(
+                "retained experiment verification binding is incomplete"
+            )
         expected = {
             "input_key": _sha(binding.get("input_key"), "input_key"),
             "owner": _canonical_owner(binding.get("owner")),
             "function_name": _required_text(binding.get("function"), "function"),
+            "target_sha256": _sha(binding.get("target_sha256"), "target_sha256"),
             "source_sha256": _sha(binding.get("source_sha256"), "source_sha256"),
             "object_sha256": _sha(binding.get("object_sha256"), "object_sha256"),
             "candidate_record_sha256": _sha(
@@ -1173,12 +1282,44 @@ class RecoveryMemory:
             ),
             "status": _status(binding.get("status")),
         }
+        expected_record = (
+            _sha(binding.get("record_sha256"), "record_sha256")
+            if "record_sha256" in binding
+            else None
+        )
         with contextlib.closing(self._connect()) as connection:
             row = connection.execute(
                 "SELECT * FROM experiments WHERE input_key=?",
                 (expected["input_key"],),
             ).fetchone()
-        return row is not None and all(row[key] == value for key, value in expected.items())
+        if row is None:
+            raise RecoveryMemoryError(
+                "no retained experiment matches the authenticated input key"
+            )
+        row_value = dict(row)
+        if any(row_value.get(key) != value for key, value in expected.items()):
+            raise RecoveryMemoryError(
+                "retained experiment does not match the authenticated binding"
+            )
+        row_record = _sha(row_value.get("record_sha256"), "experiment.record_sha256")
+        if not _record_digest_matches(row_value):
+            raise RecoveryMemoryError(
+                "retained experiment record digest does not match its row"
+            )
+        if expected_record is not None and row_record != expected_record:
+            raise RecoveryMemoryError(
+                "retained experiment record digest does not match terminal evidence"
+            )
+        return row_value
+
+    def retained_matches(self, **binding: Any) -> bool:
+        """Return whether the exact journal-bound retained row is authentic."""
+
+        try:
+            self.verify_retained(**binding)
+        except (RecoveryMemoryError, OSError, TypeError, ValueError):
+            return False
+        return True
 
     def discard(
         self, identity: Mapping[str, Any], *, requester: str,

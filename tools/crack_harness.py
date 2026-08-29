@@ -45,6 +45,22 @@ TOOLCHAIN_MANIFEST_KEY = "b6764a1e5883ea1a096bfe4f8b888b93f1740f0f4046eb6149e0fe
 MAX_RETAINED_OWNER_BYTES = 16 * 1024 * 1024
 MAX_RETAINED_GLOBAL_BYTES = 64 * 1024 * 1024
 MAX_COMPACT_TERMINAL_BYTES = 1024 * 1024
+EXACT_REPORT_FIELDS = {
+    "schema", "status", "completed", "authority_advanced", "owner", "function",
+    "task_id", "base_commit", "approval_sha256", "source_sha256",
+    "target_object_sha256", "candidate_object_sha256", "result", "proof_receipts",
+    "predicted_rows", "completed_at", "report_sha256",
+}
+EXACT_REPORT_RESULT_FIELDS = {
+    "strict_percent", "data_percent", "target_bytes", "candidate_bytes", "owner_gain",
+}
+EXACT_REPORT_PROOF_RECEIPTS = {
+    "precompile", "strict", "data", "focus", "siblings", "physical", "assess", "record",
+}
+EXACT_RESULT_RECEIPTS = EXACT_REPORT_PROOF_RECEIPTS | {"compile"}
+COMMAND_RECEIPT_FIELDS = {
+    "argv_sha256", "returncode", "active_seconds", "stdout_sha256", "stderr_sha256",
+}
 OBJDIFF_PIN = {
     "path": r"C:\Users\Anony\.codex\tools\objdiff\v3.8.0\objdiff-cli.exe",
     "version": "3.8.0", "size": 7161344,
@@ -415,6 +431,28 @@ def _command(root: Path, value: Any, label: str, kind: str) -> dict[str, Any]:
             if isinstance(script, Mapping) else None
         ),
     }
+
+
+def _validate_command_receipt(value: Any, label: str) -> dict[str, Any]:
+    """Validate the sealed result of one reviewed command invocation."""
+
+    if not isinstance(value, Mapping) or set(value) != COMMAND_RECEIPT_FIELDS:
+        raise CrackHarnessError(f"{label} is not a complete command receipt")
+    for key in ("argv_sha256", "stdout_sha256", "stderr_sha256"):
+        _sha(value.get(key), f"{label}.{key}")
+    returncode = value.get("returncode")
+    if type(returncode) is not int or returncode != 0:
+        raise CrackHarnessError(f"{label}.returncode is not a successful exit")
+    active_seconds = value.get("active_seconds")
+    if isinstance(active_seconds, bool) or not isinstance(active_seconds, (int, float)):
+        raise CrackHarnessError(f"{label}.active_seconds is not numeric")
+    try:
+        active_value = float(active_seconds)
+    except OverflowError as exc:
+        raise CrackHarnessError(f"{label}.active_seconds is not finite") from exc
+    if not math.isfinite(active_value) or active_value < 0:
+        raise CrackHarnessError(f"{label}.active_seconds is not finite")
+    return dict(value)
 
 
 def _limits(value: Any) -> dict[str, int]:
@@ -1261,13 +1299,20 @@ def _checkpoint(
 def _record_commit_value(path: Path) -> Mapping[str, Any] | None:
     if not path.is_file():
         return None
-    value = _read_json(path)
-    if not isinstance(value, Mapping):
+    try:
+        return _validate_record_commit(_read_json(path), "record commit")
+    except (CrackHarnessError, OSError, TypeError, ValueError):
         return None
+
+
+def _validate_record_commit(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise CrackHarnessError(f"{label} is not a typed object")
     body = dict(value)
     digest = body.pop("commit_sha256", None)
     required = {
-        "schema", "outcome", "candidate_sha256", "record_payload_sha256"
+        "schema", "outcome", "candidate_sha256", "record_payload_sha256",
+        "record_sha256",
     }
     if (
         set(body) != required
@@ -1275,73 +1320,415 @@ def _record_commit_value(path: Path) -> Mapping[str, Any] | None:
         or body.get("outcome") not in {"improved", "exact"}
         or digest != _digest_json(body)
     ):
-        return None
-    try:
-        _sha(body.get("candidate_sha256"), "record candidate_sha256")
-        _sha(body.get("record_payload_sha256"), "record payload_sha256")
-    except CrackHarnessError:
-        return None
+        raise CrackHarnessError(f"{label} digest or schema is invalid")
+    _sha(body.get("candidate_sha256"), f"{label}.candidate_sha256")
+    _sha(body.get("record_payload_sha256"), f"{label}.record_payload_sha256")
+    _sha(body.get("record_sha256"), f"{label}.record_sha256")
     return dict(value)
 
 
-def _valid_terminal_result(
-    path: Path, record_commit_path: Path, binding: Any,
-) -> bool:
-    if not path.is_file():
-        return False
-    value = _read_json(path)
-    if not isinstance(value, Mapping) or value.get("status") not in {"exact", "improved"}:
-        return False
-    if not isinstance(binding, Mapping):
-        return False
-    body = dict(value)
-    digest = body.pop("result_sha256", None)
-    record = value.get("receipts", {}).get("record", {}) if isinstance(value.get("receipts"), Mapping) else {}
-    commit = _record_commit_value(record_commit_path)
-    summary = record.get("summary") if isinstance(record, Mapping) else None
-    if (
-        digest != _digest_json(body)
-        or not isinstance(record, Mapping)
-        or not isinstance(summary, Mapping)
-        or _digest_json(summary) != record.get("payload_sha256")
-        or commit is None
-        or commit.get("record_payload_sha256") != record.get("payload_sha256")
-        or commit.get("outcome") != value.get("status")
-        or commit.get("candidate_sha256") != value.get("candidate_sha256")
-    ):
-        return False
-    expected = {
-        "schema": "crack_central_record_receipt/v1", "recorded": True,
-        "owner": binding.get("owner"), "function": binding.get("function"),
-        "candidate_source_sha256": binding.get("source_sha256"),
-        "candidate_object_sha256": binding.get("object_sha256"),
-        "outcome": binding.get("status"),
-        "admission_input_key": binding.get("input_key"),
-    }
-    if any(summary.get(key) != expected_value for key, expected_value in expected.items()):
-        return False
-    if (
-        value.get("owner") != binding.get("owner")
-        or value.get("function") != binding.get("function")
-        or value.get("candidate_sha256") != binding.get("source_sha256")
-        or value.get("status") != binding.get("status")
-    ):
-        return False
-    if value.get("status") != "exact":
-        return True
-    report_path = path.parent / "CRACK_REPORT_v1.json"
-    if not report_path.is_file():
-        return False
-    report = _read_json(report_path)
-    if not isinstance(report, Mapping):
-        return False
+def _report_int(value: Any, label: str) -> int:
+    if type(value) is not int or value < 0:
+        raise CrackHarnessError(f"{label} must be a non-negative integer")
+    return value
+
+
+def _report_signed_int(value: Any, label: str) -> int:
+    if type(value) is not int:
+        raise CrackHarnessError(f"{label} must be an integer")
+    return value
+
+
+def _report_number(value: Any, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise CrackHarnessError(f"{label} must be numeric")
+    try:
+        result = float(value)
+    except OverflowError as exc:
+        raise CrackHarnessError(f"{label} must be finite") from exc
+    if not math.isfinite(result):
+        raise CrackHarnessError(f"{label} must be finite")
+    return result
+
+
+def _validate_exact_report(
+    report: Mapping[str, Any], result: Mapping[str, Any], binding: Mapping[str, Any],
+    record_commit: Mapping[str, Any] | None = None,
+) -> None:
+    """Validate the complete compact CRACK_REPORT used for exact recovery.
+
+    This is deliberately shared by report sealing and interrupted-transaction
+    recovery.  A self-digest authenticates bytes, not their meaning, so every
+    field that makes an exact result retainable is checked here as well.
+    """
+
+    if set(report) != EXACT_REPORT_FIELDS or report.get("schema") != REPORT_SCHEMA:
+        raise CrackHarnessError("exact report is not the canonical CRACK_REPORT/v1 schema")
+    report_digest = _sha(report.get("report_sha256"), "report_sha256")
     report_body = dict(report)
-    report_digest = report_body.pop("report_sha256", None)
-    return (
-        report_digest == _digest_json(report_body)
-        and value.get("report_sha256") == report_digest
-        and report.get("source_sha256") == value.get("candidate_sha256")
+    report_body.pop("report_sha256")
+    if report_digest != _digest_json(report_body):
+        raise CrackHarnessError("exact report digest is invalid")
+    if report.get("status") != "exact" or report.get("completed") is not True:
+        raise CrackHarnessError("exact report is not a completed exact result")
+    if report.get("authority_advanced") is not False:
+        raise CrackHarnessError("exact report must preserve authority_advanced=false")
+
+    owner = _text(report.get("owner"), "report owner")
+    function = _text(report.get("function"), "report function")
+    task_id = _text(report.get("task_id"), "report task_id")
+    base_commit = _text(report.get("base_commit"), "report base_commit")
+    approval_sha256 = _sha(report.get("approval_sha256"), "report approval_sha256")
+    source_sha256 = _sha(report.get("source_sha256"), "report source_sha256")
+    target_object_sha256 = _sha(
+        report.get("target_object_sha256"), "report target_object_sha256"
     )
+    candidate_object_sha256 = _sha(
+        report.get("candidate_object_sha256"), "report candidate_object_sha256"
+    )
+    completed_at = _timestamp(report.get("completed_at"), "report completed_at")
+
+    if not isinstance(binding, Mapping) or binding.get("status") != "exact":
+        raise CrackHarnessError("exact report central binding is missing or non-exact")
+    bound_target_object_sha256 = _sha(
+        binding.get("target_object_sha256"), "binding.target_object_sha256"
+    )
+    if (
+        owner != binding.get("owner")
+        or function != binding.get("function")
+        or source_sha256 != binding.get("source_sha256")
+        or target_object_sha256 != bound_target_object_sha256
+        or candidate_object_sha256 != binding.get("object_sha256")
+    ):
+        raise CrackHarnessError("exact report does not bind the central owner/function/source/object")
+
+    result_fields = {
+        "schema", "approval_id", "approval_sha256", "owner", "task_id", "function",
+        "base_commit", "campaign_id", "candidate_sha256", "base_sha256", "status",
+        "reason", "owner_gain", "predicted_rows", "receipts", "finished_at",
+        "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced",
+        "result_sha256", "report_sha256",
+    }
+    if set(result) != result_fields or result.get("schema") != RESULT_SCHEMA:
+        raise CrackHarnessError("exact terminal result is not the canonical result schema")
+    result_digest = _sha(result.get("result_sha256"), "result_sha256")
+    result_body = dict(result)
+    result_body.pop("result_sha256")
+    if result_digest != _digest_json(result_body):
+        raise CrackHarnessError("exact terminal result digest is invalid")
+    if (
+        result.get("status") != "exact"
+        or result.get("authority_advanced") is not False
+        or result.get("source_restored") is not False
+        or result.get("report_sha256") != report_digest
+        or result.get("owner") != owner
+        or result.get("function") != function
+        or result.get("task_id") != task_id
+        or result.get("base_commit") != base_commit
+        or result.get("approval_sha256") != approval_sha256
+        or result.get("candidate_sha256") != source_sha256
+    ):
+        raise CrackHarnessError("exact terminal result does not bind the exact report")
+    if _timestamp(result.get("finished_at"), "result finished_at") != completed_at:
+        raise CrackHarnessError("exact report completed_at does not match result finished_at")
+    if not isinstance(result.get("reason"), str) or not result["reason"]:
+        raise CrackHarnessError("exact terminal result reason is missing")
+    if result.get("cleanup_status") not in {"pending", "complete", "cleanup_incomplete"}:
+        raise CrackHarnessError("exact terminal cleanup status is invalid")
+    cleanup_errors = result.get("cleanup_errors")
+    if (
+        not isinstance(cleanup_errors, list) or len(cleanup_errors) > 8
+        or any(not isinstance(item, str) or len(item) > 1000 for item in cleanup_errors)
+    ):
+        raise CrackHarnessError("exact terminal cleanup errors are invalid")
+
+    predicted_rows = report.get("predicted_rows")
+    if (
+        not isinstance(predicted_rows, list) or not predicted_rows
+        or any(not isinstance(item, str) for item in predicted_rows)
+        or predicted_rows != result.get("predicted_rows")
+    ):
+        raise CrackHarnessError("exact report predicted_rows are not result-bound")
+
+    report_result = report.get("result")
+    if (
+        not isinstance(report_result, Mapping)
+        or set(report_result) != EXACT_REPORT_RESULT_FIELDS
+    ):
+        raise CrackHarnessError("exact report result is incomplete")
+    report_strict = _report_number(report_result.get("strict_percent"), "report strict_percent")
+    report_data = _report_number(report_result.get("data_percent"), "report data_percent")
+    report_target_bytes = _report_int(report_result.get("target_bytes"), "report target_bytes")
+    report_candidate_bytes = _report_int(report_result.get("candidate_bytes"), "report candidate_bytes")
+    report_gain = _report_number(report_result.get("owner_gain"), "report owner_gain")
+    if report_strict != 100 or report_data != 100 or report_target_bytes != report_candidate_bytes or report_gain <= 0:
+        raise CrackHarnessError("exact report result does not prove exactness")
+
+    receipts = result.get("receipts")
+    if not isinstance(receipts, Mapping):
+        raise CrackHarnessError("exact terminal receipts are missing")
+    receipt_names = set(receipts)
+    if not EXACT_RESULT_RECEIPTS <= receipt_names or receipt_names - (EXACT_RESULT_RECEIPTS | {"secondary_failures"}):
+        raise CrackHarnessError("exact terminal is missing a required receipt")
+    proof_receipts = report.get("proof_receipts")
+    if not isinstance(proof_receipts, Mapping) or set(proof_receipts) != EXACT_REPORT_PROOF_RECEIPTS:
+        raise CrackHarnessError("exact report is missing a required proof receipt")
+
+    compact_summaries: dict[str, Mapping[str, Any]] = {}
+    for name in EXACT_REPORT_PROOF_RECEIPTS:
+        receipt = receipts.get(name)
+        if not isinstance(receipt, Mapping) or set(receipt) != {
+            "schema", "hook", "ok", "summary", "payload_sha256", "command",
+        }:
+            raise CrackHarnessError(f"exact {name} receipt is not a compact typed receipt")
+        if (
+            receipt.get("schema") != "crack_harness_receipt/v1"
+            or receipt.get("hook") != name
+            or receipt.get("ok") is not True
+        ):
+            raise CrackHarnessError(f"exact {name} receipt has the wrong schema or hook")
+        payload_sha256 = _sha(receipt.get("payload_sha256"), f"{name}.payload_sha256")
+        summary = receipt.get("summary")
+        _validate_command_receipt(receipt.get("command"), f"{name}.command")
+        if not isinstance(summary, Mapping):
+            raise CrackHarnessError(f"exact {name} receipt summary is invalid")
+        entry = proof_receipts.get(name)
+        if (
+            not isinstance(entry, Mapping) or set(entry) != {"sha256", "summary"}
+            or _sha(entry.get("sha256"), f"report proof {name}.sha256") != payload_sha256
+            or entry.get("summary") != summary
+        ):
+            raise CrackHarnessError(f"report proof receipt {name} does not bind terminal receipt")
+        compact_summaries[name] = summary
+
+    compile_receipt = receipts.get("compile")
+    if (
+        not isinstance(compile_receipt, Mapping)
+        or set(compile_receipt) != {"schema", "hook", "baseline_command", "candidate_command"}
+        or compile_receipt.get("schema") != "crack_harness_receipt/v1"
+        or compile_receipt.get("hook") != "compile"
+        or not isinstance(compile_receipt.get("baseline_command"), Mapping)
+        or not isinstance(compile_receipt.get("candidate_command"), Mapping)
+    ):
+        raise CrackHarnessError("exact compile receipt is incomplete")
+    _validate_command_receipt(
+        compile_receipt["baseline_command"], "compile.baseline_command"
+    )
+    _validate_command_receipt(
+        compile_receipt["candidate_command"], "compile.candidate_command"
+    )
+
+    precompile = compact_summaries["precompile"]
+    if set(precompile) != {
+        "status", "reused", "skip_compile", "input_key", "admission_token",
+        "expires_at", "authority_advanced",
+    }:
+        raise CrackHarnessError("exact precompile receipt is incomplete")
+    if (
+        precompile.get("status") != "admitted"
+        or type(precompile.get("reused")) is not bool
+        or precompile.get("skip_compile") is not False
+        or precompile.get("authority_advanced") is not False
+    ):
+        raise CrackHarnessError("exact precompile receipt is not an admitted non-authoritative result")
+    admission_input_key = _sha(precompile.get("input_key"), "precompile input_key")
+    admission_token = _text(precompile.get("admission_token"), "precompile admission_token")
+    _timestamp(precompile.get("expires_at"), "precompile expires_at")
+
+    proof_common = {
+        "schema", "owner", "function", "candidate_source_sha256",
+        "target_object_sha256", "candidate_object_sha256", "report_sha256",
+    }
+    object_pair: tuple[str, str] | None = None
+    proof_artifact_sha: str | None = None
+    for name in ("strict", "data", "focus", "siblings", "physical"):
+        summary = compact_summaries[name]
+        extras = {
+            "strict": {"strict_percent", "target_bytes", "candidate_bytes", "differences"},
+            "data": {"data_percent", "target_bytes", "candidate_bytes", "differences"},
+            "focus": {"differing_rows"},
+            "siblings": {"protected_total", "protected_losses"},
+            "physical": {"target_count", "candidate_count", "differences"},
+        }[name]
+        if set(summary) != proof_common | extras:
+            raise CrackHarnessError(f"exact {name} proof summary is incomplete")
+        if (
+            summary.get("owner") != owner
+            or summary.get("function") != function
+            or summary.get("candidate_source_sha256") != source_sha256
+        ):
+            raise CrackHarnessError(f"exact {name} proof summary is not source-bound")
+        target = _sha(summary.get("target_object_sha256"), f"{name}.target_object_sha256")
+        candidate = _sha(summary.get("candidate_object_sha256"), f"{name}.candidate_object_sha256")
+        artifact = _sha(summary.get("report_sha256"), f"{name}.report_sha256")
+        if object_pair is None:
+            object_pair = (target, candidate)
+            proof_artifact_sha = artifact
+        elif object_pair != (target, candidate) or proof_artifact_sha != artifact:
+            raise CrackHarnessError("exact proof summaries disagree on object/artifact identity")
+        if name == "strict":
+            if (
+                _report_number(summary.get("strict_percent"), "strict_percent") != 100
+                or _report_int(summary.get("target_bytes"), "strict.target_bytes")
+                != _report_int(summary.get("candidate_bytes"), "strict.candidate_bytes")
+                or _report_int(summary.get("differences"), "strict.differences") != 0
+            ):
+                raise CrackHarnessError("strict proof summary is not exact")
+        elif name == "data":
+            if (
+                _report_number(summary.get("data_percent"), "data_percent") != 100
+                or _report_int(summary.get("target_bytes"), "data.target_bytes")
+                != _report_int(summary.get("candidate_bytes"), "data.candidate_bytes")
+                or _report_int(summary.get("differences"), "data.differences") != 0
+            ):
+                raise CrackHarnessError("data proof summary is not exact")
+        elif name == "focus":
+            if _report_int(summary.get("differing_rows"), "focus.differing_rows") != 0:
+                raise CrackHarnessError("focus proof summary is not exact")
+        elif name == "siblings":
+            _report_int(summary.get("protected_total"), "siblings.protected_total")
+            if _report_int(summary.get("protected_losses"), "siblings.protected_losses") != 0:
+                raise CrackHarnessError("siblings proof summary is not exact")
+        else:
+            if (
+                _report_int(summary.get("target_count"), "physical.target_count")
+                != _report_int(summary.get("candidate_count"), "physical.candidate_count")
+                or _report_int(summary.get("differences"), "physical.differences") != 0
+            ):
+                raise CrackHarnessError("physical proof summary is not exact")
+
+    assert object_pair is not None
+    if target_object_sha256 != object_pair[0] or candidate_object_sha256 != object_pair[1]:
+        raise CrackHarnessError("exact report object identity does not bind proof summaries")
+    if candidate_object_sha256 != _sha(binding.get("object_sha256"), "binding.object_sha256"):
+        raise CrackHarnessError("exact report candidate object does not bind central record")
+    if (
+        report_result.get("strict_percent") != compact_summaries["strict"].get("strict_percent")
+        or report_result.get("data_percent") != compact_summaries["data"].get("data_percent")
+        or report_result.get("target_bytes") != compact_summaries["strict"].get("target_bytes")
+        or report_result.get("candidate_bytes") != compact_summaries["strict"].get("candidate_bytes")
+    ):
+        raise CrackHarnessError("exact report result does not bind strict/data proof summaries")
+
+    assessment = compact_summaries["assess"]
+    if set(assessment) != {
+        "schema", "owner", "function", "candidate_source_sha256", "target_object_sha256",
+        "candidate_object_sha256", "owner_gain", "data_gain", "data_diff_delta",
+    } or assessment.get("schema") != "crack_assessment/v1":
+        raise CrackHarnessError("exact assessment receipt is incomplete")
+    if (
+        assessment.get("owner") != owner
+        or assessment.get("function") != function
+        or assessment.get("candidate_source_sha256") != source_sha256
+        or assessment.get("target_object_sha256") != object_pair[0]
+        or assessment.get("candidate_object_sha256") != object_pair[1]
+    ):
+        raise CrackHarnessError("exact assessment is not object/source-bound")
+    assessment_gain = _report_number(assessment.get("owner_gain"), "assessment.owner_gain")
+    if (
+        assessment_gain <= 0
+        or _report_number(assessment.get("data_gain"), "assessment.data_gain") < 0
+        or _report_signed_int(assessment.get("data_diff_delta"), "assessment.data_diff_delta") > 0
+    ):
+        raise CrackHarnessError("exact assessment does not prove a non-regressing gain")
+    if report_gain != assessment_gain or _report_number(result.get("owner_gain"), "result.owner_gain") != assessment_gain:
+        raise CrackHarnessError("exact owner gain is not assessment-bound")
+
+    record = compact_summaries["record"]
+    if set(record) != {
+        "schema", "recorded", "owner", "function", "candidate_source_sha256",
+        "target_object_sha256", "candidate_object_sha256", "outcome",
+        "admission_token_sha256", "admission_input_key", "record_sha256",
+    } or record.get("schema") != "crack_central_record_receipt/v1":
+        raise CrackHarnessError("exact central record summary is incomplete")
+    if (
+        record.get("recorded") is not True
+        or record.get("owner") != owner
+        or record.get("function") != function
+        or record.get("candidate_source_sha256") != source_sha256
+        or record.get("target_object_sha256") != object_pair[0]
+        or record.get("candidate_object_sha256") != object_pair[1]
+        or record.get("outcome") != "exact"
+        or record.get("admission_input_key") != admission_input_key
+        or record.get("admission_token_sha256") != _digest_bytes(admission_token.encode("utf-8"))
+    ):
+        raise CrackHarnessError("exact central record summary is not admission-bound")
+    record_sha256 = _sha(record.get("record_sha256"), "record.record_sha256")
+    if record_commit is not None:
+        record_commit = _validate_record_commit(record_commit, "exact record commit")
+        if record_commit.get("record_sha256") != record_sha256:
+            raise CrackHarnessError("exact record SHA does not bind the central record commit")
+
+
+def _valid_terminal_result(
+    root: Path, path: Path, record_commit_path: Path, binding: Any,
+) -> bool:
+    try:
+        if not path.is_file() or not isinstance(binding, Mapping):
+            return False
+        value = _read_json(path)
+        if not isinstance(value, Mapping) or value.get("status") not in {"exact", "improved"}:
+            return False
+        body = dict(value)
+        digest = body.pop("result_sha256", None)
+        record = value.get("receipts", {}).get("record", {}) if isinstance(value.get("receipts"), Mapping) else {}
+        commit = _record_commit_value(record_commit_path)
+        summary = record.get("summary") if isinstance(record, Mapping) else None
+        if (
+            digest != _digest_json(body)
+            or not isinstance(record, Mapping)
+            or not isinstance(summary, Mapping)
+            or _digest_json(summary) != record.get("payload_sha256")
+            or commit is None
+            or commit.get("record_payload_sha256") != record.get("payload_sha256")
+            or commit.get("outcome") != value.get("status")
+            or commit.get("candidate_sha256") != value.get("candidate_sha256")
+        ):
+            return False
+        bound_target_object_sha256 = _sha(
+            binding.get("target_object_sha256"),
+            "binding.target_object_sha256",
+        )
+        if commit.get("record_sha256") != summary.get("record_sha256"):
+            return False
+        expected = {
+            "schema": "crack_central_record_receipt/v1", "recorded": True,
+            "owner": binding.get("owner"), "function": binding.get("function"),
+            "candidate_source_sha256": binding.get("source_sha256"),
+            "candidate_object_sha256": binding.get("object_sha256"),
+            "outcome": binding.get("status"),
+            "admission_input_key": binding.get("input_key"),
+        }
+        expected["target_object_sha256"] = bound_target_object_sha256
+        if any(summary.get(key) != expected_value for key, expected_value in expected.items()):
+            return False
+        if (
+            value.get("owner") != binding.get("owner")
+            or value.get("function") != binding.get("function")
+            or value.get("candidate_sha256") != binding.get("source_sha256")
+            or value.get("status") != binding.get("status")
+        ):
+            return False
+        terminal_record_sha256 = _sha(
+            summary.get("record_sha256"),
+            "terminal record.record_sha256",
+        )
+        if not _central_record_matches(
+            root, binding, record_sha256=terminal_record_sha256,
+        ):
+            return False
+        if value.get("status") != "exact":
+            return True
+        report_path = path.parent / "CRACK_REPORT_v1.json"
+        if not report_path.is_file():
+            return False
+        report = _read_json(report_path)
+        if not isinstance(report, Mapping):
+            return False
+        _validate_exact_report(report, value, binding, record_commit=commit)
+        return True
+    except (CrackHarnessError, OSError, TypeError, ValueError):
+        return False
 def _valid_exact_record_commit(path: Path, candidate_sha256: str) -> bool:
     value = _record_commit_value(path)
     return bool(
@@ -1350,19 +1737,34 @@ def _valid_exact_record_commit(path: Path, candidate_sha256: str) -> bool:
     )
 
 
-def _invalidate_central_record(root: Path, binding: Any) -> None:
+def _invalidate_central_record(
+    root: Path, binding: Any, *, record_sha256: str | None = None,
+) -> None:
     if binding is None:
         return
-    required = {
+    memory_required = {
         "input_key", "owner", "function", "source_sha256", "object_sha256",
         "candidate_record_sha256", "status",
     }
+    required = memory_required | {"target_object_sha256"}
     if not isinstance(binding, Mapping) or set(binding) != required:
         raise CrackHarnessError("transaction central record binding is invalid")
     try:
         from tools.recovery_memory import RecoveryMemory, RecoveryMemoryError
 
-        result = RecoveryMemory.for_root(root).invalidate_retained(**dict(binding))
+        memory_binding = {
+            "input_key": binding["input_key"],
+            "owner": binding["owner"],
+            "function": binding["function"],
+            "target_sha256": binding["target_object_sha256"],
+            "source_sha256": binding["source_sha256"],
+            "object_sha256": binding["object_sha256"],
+            "candidate_record_sha256": binding["candidate_record_sha256"],
+            "status": binding["status"],
+        }
+        if record_sha256 is not None:
+            memory_binding["record_sha256"] = record_sha256
+        result = RecoveryMemory.for_root(root).invalidate_retained(**memory_binding)
     except (OSError, RecoveryMemoryError) as exc:
         raise CrackHarnessError(
             "cannot reconcile the exact central retained experiment before rollback"
@@ -1371,13 +1773,32 @@ def _invalidate_central_record(root: Path, binding: Any) -> None:
         raise CrackHarnessError("central retained experiment reconciliation failed")
 
 
-def _central_record_matches(root: Path, binding: Any) -> bool:
-    if not isinstance(binding, Mapping):
+def _central_record_matches(
+    root: Path, binding: Any, *, record_sha256: str | None = None,
+) -> bool:
+    memory_required = {
+        "input_key", "owner", "function", "source_sha256", "object_sha256",
+        "candidate_record_sha256", "status",
+    }
+    required = memory_required | {"target_object_sha256"}
+    if not isinstance(binding, Mapping) or set(binding) != required:
         return False
     try:
         from tools.recovery_memory import RecoveryMemory, RecoveryMemoryError
 
-        return RecoveryMemory.for_root(root).retained_matches(**dict(binding))
+        memory_binding = {
+            "input_key": binding["input_key"],
+            "owner": binding["owner"],
+            "function": binding["function"],
+            "target_sha256": binding["target_object_sha256"],
+            "source_sha256": binding["source_sha256"],
+            "object_sha256": binding["object_sha256"],
+            "candidate_record_sha256": binding["candidate_record_sha256"],
+            "status": binding["status"],
+        }
+        if record_sha256 is not None:
+            memory_binding["record_sha256"] = record_sha256
+        return RecoveryMemory.for_root(root).retained_matches(**memory_binding)
     except (OSError, RecoveryMemoryError):
         return False
 
@@ -1393,7 +1814,8 @@ def _recover_interrupted(root: Path, state: Path) -> None:
     digest = unsigned.pop("transaction_sha256", None)
     required = {
         "schema", "source_relpath", "baseline_snapshot", "baseline_sha256",
-        "approval_sha256", "candidate_sha256", "result_path", "worktree",
+        "approval_sha256", "target_object_sha256", "candidate_sha256",
+        "result_path", "worktree",
         "record_commit_path", "central_record_binding",
     }
     if set(unsigned) != required or unsigned.get("schema") != "crack_harness_transaction/v1" or digest != _digest_json(unsigned):
@@ -1420,25 +1842,54 @@ def _recover_interrupted(root: Path, state: Path) -> None:
         raise CrackHarnessError("interrupted transaction source is not the approved tracked source")
     expected = _sha(value.get("baseline_sha256"), "transaction baseline_sha256")
     _sha(value.get("approval_sha256"), "transaction approval_sha256")
+    target_object_sha256 = _sha(
+        value.get("target_object_sha256"), "transaction target_object_sha256"
+    )
     _sha(value.get("candidate_sha256"), "transaction candidate_sha256")
     if not baseline.is_file() or _digest_file(baseline) != expected:
         raise CrackHarnessError("interrupted transaction baseline is unavailable")
     candidate_sha = value.get("candidate_sha256")
+    record_commit_exists = record_commit_path.is_file()
+    record_commit = _record_commit_value(record_commit_path)
+    if record_commit_exists and record_commit is None:
+        # A malformed local commit cannot be used to authenticate, or to
+        # invalidate, a central row. Leave the row untouched and fail closed
+        # rather than allowing a rewritten journal/commit to delete it.
+        raise CrackHarnessError(
+            "interrupted transaction record commit is invalid; central record retained"
+        )
+    record_commit_sha256 = (
+        record_commit.get("record_sha256") if record_commit is not None else None
+    )
     binding = value.get("central_record_binding")
+    terminal_binding = binding
+    if isinstance(binding, Mapping):
+        bound_target_object_sha256 = _sha(
+            binding.get("target_object_sha256"),
+            "transaction central_record_binding.target_object_sha256",
+        )
+        if bound_target_object_sha256 != target_object_sha256:
+            raise CrackHarnessError(
+                "transaction target object does not match its central record binding"
+            )
+        terminal_binding = dict(binding)
     terminal_valid = _valid_terminal_result(
-        result_path, record_commit_path, binding
+        root, result_path, record_commit_path, terminal_binding
     )
     retained = (
         isinstance(candidate_sha, str) and source.is_file()
         and _digest_file(source) == candidate_sha
         and terminal_valid
-        and _central_record_matches(root, binding)
     )
     if not retained:
         # The journal is written before record.  If record committed but the
         # local terminal commit did not, delete only that exact bound row before
         # restoring source so central memory and the live tree cannot diverge.
-        _invalidate_central_record(root, value.get("central_record_binding"))
+        _invalidate_central_record(
+            root,
+            value.get("central_record_binding"),
+            record_sha256=record_commit_sha256,
+        )
         _atomic_copy(baseline, source)
         exact_record_only = _valid_exact_record_commit(record_commit_path, str(candidate_sha))
         if exact_record_only:
@@ -1799,7 +2250,7 @@ def _compact_receipt(name: str, payload: Mapping[str, Any], command: Mapping[str
     return {
         "schema": "crack_harness_receipt/v1",
         "hook": name,
-        "ok": payload.get("ok"),
+        "ok": payload.get("ok", True),
         "summary": summary,
         "payload_sha256": _digest_json(payload),
         "command": dict(command),
@@ -1942,9 +2393,45 @@ def _run_canonical_record(
         argv, root=root, run_temp=run_temp, deadline=deadline,
         storage_limit=storage_limit, expect_json=True,
     )
-    assert canonical is not None
+    if not isinstance(canonical, Mapping):
+        raise CrackHarnessError(
+            "canonical recovery memory did not return an authenticated experiment row"
+        )
     if canonical.get("status") != "recorded" or canonical.get("authority_advanced") is not False:
         raise CrackHarnessError("canonical recovery memory did not record exactly one measured outcome")
+    experiment = canonical.get("experiment")
+    if not isinstance(experiment, Mapping):
+        raise CrackHarnessError(
+            "canonical recovery memory did not return its authenticated experiment row"
+        )
+    required_experiment = {
+        "input_key", "owner", "function_name", "target_sha256",
+        "source_sha256", "object_sha256", "status", "record_sha256",
+    }
+    if not required_experiment <= set(experiment):
+        raise CrackHarnessError(
+            "canonical recovery memory experiment row is incomplete"
+        )
+    expected_experiment = {
+        "input_key": admission_input_key,
+        "owner": approval["owner"],
+        "function_name": approval["function"],
+        "target_sha256": approval["target_sha256"],
+        "source_sha256": approval["candidate"]["sha256"],
+        "object_sha256": object_pair[1],
+        "status": outcome,
+    }
+    if any(
+        experiment.get(key) != expected
+        for key, expected in expected_experiment.items()
+    ):
+        raise CrackHarnessError(
+            "canonical recovery memory experiment row does not bind the measured outcome"
+        )
+    central_record_sha256 = _sha(
+        experiment.get("record_sha256"),
+        "central experiment.record_sha256",
+    )
     payload = {
         "schema": "crack_central_record_receipt/v1", "recorded": True,
         "owner": approval["owner"], "function": approval["function"],
@@ -1953,7 +2440,9 @@ def _run_canonical_record(
         "candidate_object_sha256": object_pair[1], "outcome": outcome,
         "admission_token_sha256": _digest_bytes(admission_token.encode("utf-8")),
         "admission_input_key": admission_input_key,
-        "record_sha256": _digest_json(canonical),
+        # This is the central DB experiment digest, not a digest of the CLI
+        # response envelope. Recovery must authenticate against this value.
+        "record_sha256": central_record_sha256,
     }
     return payload, command
 
@@ -2485,6 +2974,7 @@ def _run_locked(
                 "source_relpath": paths["source"].relative_to(root).as_posix(),
                 "baseline_snapshot": str(baseline_snapshot), "baseline_sha256": approval["base"]["sha256"],
                 "approval_sha256": approval["_approval_sha256"],
+                "target_object_sha256": approval["target_sha256"],
                 "candidate_sha256": approval["candidate"]["sha256"],
                 "result_path": str(run_dir / "result.json"), "worktree": str(worktree),
                 "record_commit_path": str(run_dir / "record.commit.json"),
@@ -2493,6 +2983,7 @@ def _run_locked(
                     "owner": approval["owner"],
                     "function": approval["function"],
                     "source_sha256": approval["candidate"]["sha256"],
+                    "target_object_sha256": approval["target_sha256"],
                     "object_sha256": object_pair[1],
                     "candidate_record_sha256": _digest_json(assessment),
                     "status": status,
@@ -2520,6 +3011,7 @@ def _run_locked(
                 "schema": "crack_harness_record_commit/v1", "outcome": status,
                 "candidate_sha256": approval["candidate"]["sha256"],
                 "record_payload_sha256": receipts["record"]["payload_sha256"],
+                "record_sha256": receipts["record"]["summary"]["record_sha256"],
             }
             _atomic_json(run_dir / "record.commit.json", {**commit_body, "commit_sha256": _digest_json(commit_body)})
         else:
@@ -2614,12 +3106,17 @@ def _run_locked(
     if status == "exact":
         report_body = {
             "schema": REPORT_SCHEMA,
+            "status": "exact",
+            "completed": True,
+            "authority_advanced": False,
             "owner": approval["owner"],
             "function": approval["function"],
             "task_id": approval["task_id"],
             "base_commit": approval["base_commit"],
             "approval_sha256": approval["_approval_sha256"],
             "source_sha256": approval["candidate"]["sha256"],
+            "target_object_sha256": object_pair[0],
+            "candidate_object_sha256": object_pair[1],
             "result": {
                 "strict_percent": proof_payloads["strict"]["strict_percent"],
                 "data_percent": proof_payloads["data"]["data_percent"],
@@ -2641,11 +3138,27 @@ def _run_locked(
         report = {**report_body, "report_sha256": _digest_json(report_body)}
         if len(_canonical(report)) > MAX_COMPACT_TERMINAL_BYTES:
             raise CrackHarnessError("exact report exceeds the hard 1 MiB compact cap")
-        _atomic_json(run_dir / "CRACK_REPORT_v1.json", report)
         result["report_sha256"] = report["report_sha256"]
         unhashed = dict(result)
         unhashed.pop("result_sha256", None)
         result["result_sha256"] = _digest_json(unhashed)
+        record_commit = _record_commit_value(run_dir / "record.commit.json")
+        if record_commit is None:
+            raise CrackHarnessError("exact central record commit is missing or invalid")
+        _validate_exact_report(
+            report,
+            result,
+            {
+                "owner": approval["owner"],
+                "function": approval["function"],
+                "source_sha256": approval["candidate"]["sha256"],
+                "target_object_sha256": approval["target_sha256"],
+                "object_sha256": object_pair[1],
+                "status": "exact",
+            },
+            record_commit=record_commit,
+        )
+        _atomic_json(run_dir / "CRACK_REPORT_v1.json", report)
         _atomic_json(run_dir / "result.json", result)
     journal = state / "transaction.json"
     cleanup_errors: list[str] = []

@@ -424,6 +424,48 @@ class RecoveryMemoryTests(unittest.TestCase):
         )
         self.assertEqual(unchanged["status"], "unchanged")
 
+    def test_retained_verification_binds_target_and_recovery_record_digest(self) -> None:
+        identity = self.identity()
+        admitted = self.store.admit(identity, requester="lane-a")
+        recorded = self.store.record(
+            identity,
+            requester="lane-a",
+            object_sha256=SHA_C,
+            status="exact",
+            reason="zero rows",
+            admission_token=admitted["admission_token"],
+            candidate_record_sha256="d" * 64,
+        )
+        experiment = dict(recorded["experiment"])
+        binding = {
+            "input_key": experiment["input_key"],
+            "owner": experiment["owner"],
+            "function": experiment["function_name"],
+            "target_sha256": experiment["target_sha256"],
+            "source_sha256": experiment["source_sha256"],
+            "object_sha256": experiment["object_sha256"],
+            "candidate_record_sha256": experiment["candidate_record_sha256"],
+            "status": experiment["status"],
+            "record_sha256": experiment["record_sha256"],
+        }
+        self.assertEqual(self.store.verify_retained(**binding), experiment)
+        self.assertTrue(self.store.retained_matches(**binding))
+
+        for label, overrides in (
+            ("target", {"target_sha256": "e" * 64}),
+            ("record", {"record_sha256": "f" * 64}),
+        ):
+            with self.subTest(label=label):
+                forged = {**binding, **overrides}
+                self.assertFalse(self.store.retained_matches(**forged))
+                with self.assertRaises(RecoveryMemoryError):
+                    self.store.invalidate_retained(**forged)
+                with contextlib.closing(sqlite3.connect(self.store.path)) as connection:
+                    self.assertEqual(
+                        connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0],
+                        1,
+                    )
+
     def test_unretained_attempts_and_consumed_admissions_do_not_accumulate(self) -> None:
         for index in range(8):
             identity = self.identity(source=f"{index + 10:064x}")
