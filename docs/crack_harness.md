@@ -48,9 +48,10 @@ Validate approval with `tools/CRACK_HARNESS_APPROVAL_V1.schema.json`. It binds
 Git `base_commit`, configure `unit`, the SHA-256 key of the closed central
 toolchain manifest, target, source/baseline/candidate hashes, a
 hash-bound function span, predicted rows, limits, and every command descriptor.
-Limits cannot be elevated: one candidate, at most 1,800 seconds, 512 MiB
-ephemeral data, and 16 MiB retained compact state per stable owner across all
-campaigns.
+Limits cannot be elevated: one candidate for an owner/function for the lifetime
+of the retained harness state (a new campaign ID cannot reset this counter), at
+most 1,800 seconds, 512 MiB ephemeral data, and 16 MiB retained compact state
+per stable owner across all campaigns.
 
 The UTF-8 natural-C cell may use at most three hunks and 80 changed lines,
 including insert/delete, wholly inside the function span. NUL, asm,
@@ -60,8 +61,15 @@ forcing are rejected.
 Every approval also carries a closed `selection` object. Its strategy is fixed
 to `winning_cell_first`, its rank is exactly `1`, and it must name a non-empty
 natural-C `source_class`. The selection binds an existing repository-local
-evidence artifact by path and SHA-256, the approval candidate SHA, and the
-canonical SHA-256 of `predicted_rows`. `alternatives_compiled` and
+`crack_winning_cell_evidence/v1` artifact by path and SHA-256, the approval
+candidate SHA, and the canonical SHA-256 of `predicted_rows`. Validate the
+artifact with `tools/CRACK_WINNING_CELL_EVIDENCE_V1.schema.json`. Its closed
+contents repeat and must exactly match owner, function, candidate, predicted-row
+digest, rank, strategy, controls, pivot decision, and source class; it also
+binds 1-16 repository-local evidence inputs by path/role/hash and carries an
+explicit earliest divergence, predicted effect, and exact predicted row list.
+The harness parses and verifies those contents and every input hash rather than
+accepting the artifact as an opaque assertion. `alternatives_compiled` and
 `negative_controls` are both exactly `0`, and `pivot_if_unranked` is `true`.
 The complete approval—including this selection—is included in the permit
 identity and therefore in the manager signature binding. Missing, drifted,
@@ -133,9 +141,11 @@ relocations remain exact. Data percent and differing-row count must both be
 non-regressing. Otherwise the candidate is treated as no gain and rolled back.
 
 No gain/failure leaves baseline and retains no run directory or result artifact;
-only one overwrite-only latest campaign tombstone remains; failure may additionally
+only one overwrite-only owner/function tombstone remains. That tombstone is
+independent of campaign ID and permanently forces a pivot to another function;
+failure may additionally
 retain one tiny overwrite-only sealed diagnostic, never an attempt log. Positive nonexact gain CAS-copies the candidate
-as `improved`, emits `PIVOT_REQUIRED`, and ends the campaign. Exact also writes
+as `improved`, emits `PIVOT_REQUIRED`, and ends work on that function. Exact also writes
 compact `CRACK_REPORT/v1`. Only one latest compact result and, for exact only,
 its bound report survive per owner/function; no full source duplicate or
 per-attempt or append-only candidate history survives. Approval, baseline,

@@ -30,6 +30,7 @@ from tools.recovery_pass import serialized_build_lock
 
 
 APPROVAL_SCHEMA = "crack_harness_approval/v1"
+WINNING_CELL_EVIDENCE_SCHEMA = "crack_winning_cell_evidence/v1"
 RESULT_SCHEMA = "crack_harness_result/v1"
 REPORT_SCHEMA = "CRACK_REPORT/v1"
 PERMIT_SCHEMA = "crack_harness_resume_permit/v1"
@@ -225,7 +226,7 @@ def _sha(value: Any, label: str) -> str:
 
 def _validate_winning_cell_selection(
     root: Path, selection: Any, candidate_sha256: str,
-    predicted_rows: Sequence[str],
+    predicted_rows: Sequence[str], owner: str, function: str,
 ) -> None:
     """Require one evidence-backed winning cell before any compile is legal."""
 
@@ -276,7 +277,76 @@ def _validate_winning_cell_selection(
             raise CrackHarnessError(f"selection.{key} must be exactly 0")
     if selection.get("pivot_if_unranked") is not True:
         raise CrackHarnessError("selection.pivot_if_unranked must be true")
-    _text(selection.get("source_class"), "selection.source_class")
+    source_class = _text(selection.get("source_class"), "selection.source_class")
+
+    evidence_value = _read_json(evidence_path)
+    evidence_required = {
+        "schema", "owner", "function", "strategy", "rank",
+        "candidate_sha256", "predicted_rows_sha256",
+        "alternatives_compiled", "negative_controls", "pivot_if_unranked",
+        "source_class", "inputs", "causal_prediction",
+    }
+    if not isinstance(evidence_value, Mapping) or set(evidence_value) != evidence_required:
+        raise CrackHarnessError(
+            "selection evidence must be a strict crack_winning_cell_evidence/v1 object"
+        )
+    evidence_bindings = {
+        "schema": WINNING_CELL_EVIDENCE_SCHEMA,
+        "owner": owner,
+        "function": function,
+        "strategy": "winning_cell_first",
+        "rank": 1,
+        "candidate_sha256": candidate_sha256,
+        "predicted_rows_sha256": _digest_json(list(predicted_rows)),
+        "alternatives_compiled": 0,
+        "negative_controls": 0,
+        "pivot_if_unranked": True,
+        "source_class": source_class,
+    }
+    for key, expected in evidence_bindings.items():
+        if evidence_value.get(key) != expected:
+            raise CrackHarnessError(
+                f"selection evidence does not bind approval {key}"
+            )
+    inputs = evidence_value.get("inputs")
+    if (
+        not isinstance(inputs, list) or not 1 <= len(inputs) <= 16
+        or any(not isinstance(item, Mapping) for item in inputs)
+    ):
+        raise CrackHarnessError("selection evidence inputs must contain 1-16 files")
+    seen_inputs: set[tuple[str, str]] = set()
+    for index, item in enumerate(inputs):
+        if set(item) != {"path", "sha256", "role"}:
+            raise CrackHarnessError(
+                f"selection evidence input {index} must bind path, sha256, and role"
+            )
+        input_path = _bound_path(
+            root, item.get("path"), f"selection evidence input {index}.path"
+        )
+        input_sha256 = _sha(
+            item.get("sha256"), f"selection evidence input {index}.sha256"
+        )
+        role = _text(item.get("role"), f"selection evidence input {index}.role")
+        identity = (input_path.relative_to(root).as_posix(), role)
+        if identity in seen_inputs:
+            raise CrackHarnessError("selection evidence inputs contain a duplicate")
+        seen_inputs.add(identity)
+        if _digest_file(input_path) != input_sha256:
+            raise CrackHarnessError(
+                f"selection evidence input hash mismatch: {input_path}"
+            )
+    causal = evidence_value.get("causal_prediction")
+    if (
+        not isinstance(causal, Mapping)
+        or set(causal) != {"earliest_divergence", "predicted_effect", "predicted_rows"}
+    ):
+        raise CrackHarnessError("selection evidence causal_prediction is not strict")
+    _text(causal.get("earliest_divergence"), "causal_prediction.earliest_divergence")
+    _text(causal.get("predicted_effect"), "causal_prediction.predicted_effect")
+    if causal.get("predicted_rows") != list(predicted_rows):
+        raise CrackHarnessError(
+            "selection evidence causal_prediction does not bind predicted_rows"
+        )
 
 
 def _timestamp(value: Any, label: str) -> datetime:
@@ -952,7 +1022,8 @@ def load_approval(
     ):
         raise CrackHarnessError("predicted_rows must be a non-empty string array")
     _validate_winning_cell_selection(
-        root, approval.get("selection"), approval["candidate"]["sha256"], rows
+        root, approval.get("selection"), approval["candidate"]["sha256"], rows,
+        approval["owner"], approval["function"],
     )
     commands = approval.get("commands")
     if not isinstance(commands, Mapping):
@@ -1158,7 +1229,7 @@ def _checkpoint(
 ) -> None:
     _validate_winning_cell_selection(
         root, approval.get("selection"), approval["candidate"]["sha256"],
-        approval["predicted_rows"],
+        approval["predicted_rows"], approval["owner"], approval["function"],
     )
     now = datetime.now(timezone.utc)
     approval_expires = _timestamp(approval.get("expires_at"), "approval expires_at")
@@ -1932,7 +2003,7 @@ def _result_path(state_root: Path, approval: Mapping[str, Any]) -> Path:
     return _run_dir(state_root, approval) / "result.json"
 
 
-def _campaign_results(state_root: Path, approval: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _function_results(state_root: Path, approval: Mapping[str, Any]) -> list[dict[str, Any]]:
     path = _result_path(state_root, approval)
     if not path.is_file():
         return []
@@ -1940,41 +2011,72 @@ def _campaign_results(state_root: Path, approval: Mapping[str, Any]) -> list[dic
     if (
         isinstance(value, Mapping)
         and value.get("owner") == approval["owner"]
-        and value.get("campaign_id") == approval["campaign"]["id"]
+        and value.get("function") == approval["function"]
     ):
         return [dict(value)]
     return []
 
 
-def _campaign_key(approval: Mapping[str, Any]) -> str:
+def _function_key(approval: Mapping[str, Any]) -> str:
     return _digest_json({
         "owner": approval["owner"], "function": approval["function"],
-        "campaign": approval["campaign"]["id"],
     })
 
 
-def _campaign_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
-    path = run_dir.parent / "latest-campaign.json"
-    if not path.is_file():
+def _function_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
+    path = run_dir.parent / "latest-function.json"
+    if path.is_file():
+        _assert_no_indirection(path)
+        value = _read_json(path)
+        required = {
+            "schema", "function_key", "owner", "function",
+            "first_campaign_id", "consumed",
+        }
+        if not isinstance(value, Mapping) or set(value) != required:
+            raise CrackHarnessError("function tombstone is malformed")
+        valid = (
+            value.get("schema") == "crack_harness_function_tombstone/v1"
+            and value.get("function_key") == _function_key(approval)
+            and value.get("owner") == approval["owner"]
+            and value.get("function") == approval["function"]
+            and isinstance(value.get("first_campaign_id"), str)
+            and bool(value.get("first_campaign_id"))
+            and value.get("consumed") is True
+        )
+        if not valid:
+            raise CrackHarnessError("function tombstone binding is invalid")
+        return True
+    legacy = run_dir.parent / "latest-campaign.json"
+    if not legacy.is_file():
         return False
-    value = _read_json(path)
-    return (
-        isinstance(value, Mapping)
-        and value.get("schema") == "crack_harness_campaign_tombstone/v1"
-        and value.get("campaign_key") == _campaign_key(approval)
-        and value.get("consumed") is True
-    )
+    _assert_no_indirection(legacy)
+    value = _read_json(legacy)
+    if (
+        not isinstance(value, Mapping)
+        or set(value) != {"schema", "campaign_key", "campaign_id", "consumed"}
+        or value.get("schema") != "crack_harness_campaign_tombstone/v1"
+        or SHA_RE.fullmatch(str(value.get("campaign_key"))) is None
+        or not isinstance(value.get("campaign_id"), str)
+        or not value.get("campaign_id")
+        or value.get("consumed") is not True
+    ):
+        raise CrackHarnessError("legacy campaign tombstone is malformed")
+    # Its containing directory is already the exact owner/function namespace.
+    # Treat every valid legacy cell as function consumption so changing the
+    # campaign identifier cannot bypass the historical one-cell gate.
+    return True
 
 
-def _consume_campaign(run_dir: Path, approval: Mapping[str, Any]) -> None:
-    path = run_dir.parent / "latest-campaign.json"
+def _consume_function(run_dir: Path, approval: Mapping[str, Any]) -> None:
+    path = run_dir.parent / "latest-function.json"
     _safe_mkdir(path.parent)
-    key = _campaign_key(approval)
-    if _campaign_consumed(run_dir, approval):
-        raise CrackHarnessError("function campaign already consumed its one cell")
+    key = _function_key(approval)
+    if _function_consumed(run_dir, approval):
+        raise CrackHarnessError("function already consumed its one lifetime cell")
     _atomic_json(path, {
-        "schema": "crack_harness_campaign_tombstone/v1", "campaign_key": key,
-        "campaign_id": approval["campaign"]["id"], "consumed": True,
+        "schema": "crack_harness_function_tombstone/v1", "function_key": key,
+        "owner": approval["owner"], "function": approval["function"],
+        "first_campaign_id": approval["campaign"]["id"], "consumed": True,
     })
 
 
@@ -1982,18 +2084,18 @@ def _dry_run_core(root: Path, approval_path: Path, state: Path) -> dict[str, Any
     _assert_no_indirection(Path(os.path.abspath(root)))
     approval = load_approval(root, approval_path, allow_applied_source=True)
     existing = _result_path(state, approval)
-    results = _campaign_results(state, approval)
+    results = _function_results(state, approval)
     blockers = []
     if results:
-        blockers.append("function campaign already has a terminal result")
-    if _campaign_consumed(_run_dir(state, approval), approval):
-        blockers.append("function campaign tombstone forbids another cell")
+        blockers.append("function already has a terminal result")
+    if _function_consumed(_run_dir(state, approval), approval):
+        blockers.append("function tombstone forbids another lifetime cell")
     if approval.get("_source_applied") and not existing.exists():
         blockers.append("source is already the candidate without a terminal result")
     if any(item.get("status") in {"failed", "no_gain"} for item in results):
-        blockers.append("campaign is terminal after a failed or no-gain candidate")
+        blockers.append("function is terminal after a failed or no-gain candidate")
     if len(results) >= approval["campaign"].get("quota", 1):
-        blockers.append("campaign quota exhausted")
+        blockers.append("function lifetime quota exhausted")
     return {
         "schema": "crack_harness_dry_run/v1",
         "status": "ready" if not blockers else "blocked",
@@ -2176,8 +2278,8 @@ def _run_locked(
     for disposable in (approval["_paths"]["base"], approval["_paths"]["candidate"], approval["_approval_path"], permit_file):
         if _is_tracked(root, disposable):
             raise CrackHarnessError(f"disposable approval artifact is tracked and cannot be deleted: {disposable}")
-    if _campaign_consumed(run_dir, approval):
-        raise CrackHarnessError("function campaign already consumed its one cell")
+    if _function_consumed(run_dir, approval):
+        raise CrackHarnessError("function already consumed its one lifetime cell")
     if run_dir.exists():
         _assert_no_indirection(run_dir)
         shutil.rmtree(run_dir)
@@ -2195,7 +2297,7 @@ def _run_locked(
     _atomic_json(state / "attempt.json", {
         **attempt_body, "attempt_sha256": _digest_json(attempt_body)
     })
-    _consume_campaign(run_dir, approval)
+    _consume_function(run_dir, approval)
     _safe_mkdir(run_dir)
     temp = run_dir / "temp"
     _safe_mkdir(temp)

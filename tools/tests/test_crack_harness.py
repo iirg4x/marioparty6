@@ -36,8 +36,12 @@ class CrackHarnessTests(unittest.TestCase):
         self.admission.parent.mkdir()
         self.evidence = self.root / "evidence/selection.json"
         self.evidence.parent.mkdir()
-        self.evidence.write_text('{"evidence":"winning-cell"}\n', encoding="utf-8")
         self.source.write_text("int Owner(void) {\n    return 1;\n}\n", encoding="utf-8")
+        self.base = self.root / "base.c"
+        self.candidate = self.root / "candidate.c"
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text("int Owner(void) {\n    return 2;\n}\n", encoding="utf-8")
+        self._write_selection_evidence()
         self.admission.write_text(
             self._admission_source(),
             encoding="utf-8",
@@ -50,10 +54,6 @@ class CrackHarnessTests(unittest.TestCase):
         self._git("add", "src/owner.c", "evidence/selection.json", "tools/candidate_compile_admission.py", "tools/crack_harness.py", "tools/crack_evidence_bundle.py")
         self._git("commit", "-qm", "fixture")
         self.commit = self._git("rev-parse", "HEAD")
-        self.base = self.root / "base.c"
-        self.candidate = self.root / "candidate.c"
-        self.base.write_bytes(self.source.read_bytes())
-        self.candidate.write_text("int Owner(void) {\n    return 2;\n}\n", encoding="utf-8")
         self.state = self.root / "state"
         self.state.mkdir()
         self.approval = self.root / "approval.json"
@@ -69,6 +69,31 @@ class CrackHarnessTests(unittest.TestCase):
 
     def _git(self, *args: str) -> str:
         return subprocess.run(["git", *args], cwd=self.root, text=True, capture_output=True, check=True).stdout.strip()
+
+    def _write_selection_evidence(self) -> None:
+        predicted_rows = ["Owner:ARG:0"]
+        value = {
+            "schema": harness.WINNING_CELL_EVIDENCE_SCHEMA,
+            "owner": "main:board/test", "function": "Owner",
+            "strategy": "winning_cell_first", "rank": 1,
+            "candidate_sha256": sha(self.candidate),
+            "predicted_rows_sha256": harness._digest_json(predicted_rows),
+            "alternatives_compiled": 0, "negative_controls": 0,
+            "pivot_if_unranked": True, "source_class": "test-natural-cell",
+            "inputs": [{
+                "path": "base.c", "sha256": sha(self.base),
+                "role": "sealed_baseline_source",
+            }],
+            "causal_prediction": {
+                "earliest_divergence": "Owner return-value producer",
+                "predicted_effect": "close the one predicted focus row",
+                "predicted_rows": predicted_rows,
+            },
+        }
+        self.evidence.write_text(
+            json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
 
     def _hook_source(self) -> str:
         return r'''import hashlib,json,os,pathlib,sys,time
@@ -148,7 +173,9 @@ elif 'admit' in sys.argv:
     def write_inputs(
         self, *, gain: int = 1, focus_rows: int = 0, data_gain: int = 0,
         sibling_losses: int = 0, physical_diff: int = 0, size_delta: int = 0,
+        campaign_id: str = "campaign",
     ) -> tuple[Path, Path]:
+        self._write_selection_evidence()
         issued = datetime.now(timezone.utc).replace(microsecond=0)
         deadline = issued + timedelta(minutes=20)
         stop_nonce = "f" * 64
@@ -164,7 +191,7 @@ elif 'admit' in sys.argv:
             "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": predicted_rows,
             "selection": {"strategy": "winning_cell_first", "rank": 1, "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell"},
             "commands": {"precompile": precompile, "compile": self.descriptor("compile", "compile", str(gain), str(focus_rows)), "strict": self.descriptor("proof_strict", "strict"), "data": self.descriptor("proof_data", "data"), "focus": self.descriptor("proof_focus", "focus"), "siblings": self.descriptor("proof_siblings", "siblings"), "physical": self.descriptor("proof_physical", "physical"), "assess": self.descriptor("assessment", "assess"), "record": self.descriptor("canonical_record", "record")},
-            "campaign": {"id": "campaign", "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
+            "campaign": {"id": campaign_id, "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
         }
         permit = {
             "schema": harness.PERMIT_SCHEMA, "permit_id": "permit",
@@ -249,7 +276,7 @@ elif 'admit' in sys.argv:
         self.assertIn("return 1", self.source.read_text())
         self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
         self.assertFalse(any(self.state.glob("owners/*/*/latest/temp")))
-        self.assertTrue(any(self.state.glob("owners/*/*/latest-campaign.json")))
+        self.assertTrue(any(self.state.glob("owners/*/*/latest-function.json")))
         self.assertIn("discard", result["receipts"])
         self.assertNotIn("record", result["receipts"])
 
@@ -277,6 +304,11 @@ elif 'admit' in sys.argv:
         value["selection"]["predicted_rows_sha256"] = harness._digest_json(
             value["predicted_rows"]
         )
+        evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+        evidence["predicted_rows_sha256"] = value["selection"]["predicted_rows_sha256"]
+        evidence["causal_prediction"]["predicted_rows"] = value["predicted_rows"]
+        self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
+        value["selection"]["evidence"]["sha256"] = sha(self.evidence)
         approval_path.write_text(json.dumps(value), encoding="utf-8")
         approval = harness.load_approval(self.root, approval_path)
         with self.assertRaisesRegex(harness.CrackHarnessError, "approval_identity_sha256"):
@@ -327,6 +359,39 @@ elif 'admit' in sys.argv:
                 with self.assertRaisesRegex(harness.CrackHarnessError, field):
                     harness.load_approval(self.root, approval_path)
 
+    def test_winning_cell_evidence_semantics_are_owner_function_and_rows_bound(self) -> None:
+        for mutation, expected_message in (
+            (lambda value: value.__setitem__("owner", "main:board/other"), "owner"),
+            (lambda value: value.__setitem__("function", "Other"), "function"),
+            (
+                lambda value: value["causal_prediction"].__setitem__(
+                    "predicted_rows", ["Owner:ARG:1"]
+                ),
+                "causal_prediction",
+            ),
+        ):
+            with self.subTest(expected_message=expected_message):
+                approval_path, _ = self.write_inputs()
+                evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+                mutation(evidence)
+                self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
+                approval = json.loads(approval_path.read_text(encoding="utf-8"))
+                approval["selection"]["evidence"]["sha256"] = sha(self.evidence)
+                approval_path.write_text(json.dumps(approval), encoding="utf-8")
+                with self.assertRaisesRegex(harness.CrackHarnessError, expected_message):
+                    harness.load_approval(self.root, approval_path)
+
+    def test_winning_cell_evidence_inputs_are_hash_bound(self) -> None:
+        approval_path, _ = self.write_inputs()
+        evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+        evidence["inputs"][0]["sha256"] = "e" * 64
+        self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        approval["selection"]["evidence"]["sha256"] = sha(self.evidence)
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "input hash mismatch"):
+            harness.load_approval(self.root, approval_path)
+
     def test_valid_winning_cell_selection_is_bound_to_permit_identity(self) -> None:
         approval_path, permit_path = self.write_inputs()
         loaded = harness.load_approval(self.root, approval_path)
@@ -339,6 +404,10 @@ elif 'admit' in sys.argv:
         )
         value = json.loads(approval_path.read_text(encoding="utf-8"))
         value["selection"]["source_class"] = "different-winning-cell"
+        evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+        evidence["source_class"] = value["selection"]["source_class"]
+        self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
+        value["selection"]["evidence"]["sha256"] = sha(self.evidence)
         approval_path.write_text(json.dumps(value), encoding="utf-8")
         drifted = harness.load_approval(self.root, approval_path)
         with self.assertRaisesRegex(harness.CrackHarnessError, "approval_identity_sha256"):
@@ -794,13 +863,40 @@ elif 'admit' in sys.argv:
         with self.assertRaises((harness.CrackHarnessError, FileNotFoundError)):
             harness.load_approval(self.root, self.root / "missing-approval.json")
 
-    def test_second_candidate_for_campaign_is_rejected(self) -> None:
+    def test_second_candidate_for_function_is_rejected_across_campaign_ids(self) -> None:
         approval, _ = self.write_inputs()
         loaded = harness.load_approval(self.root, approval)
         run_dir = harness._run_dir(self.state, loaded)
-        harness._consume_campaign(run_dir, loaded)
+        harness._consume_function(run_dir, loaded)
+        other_approval, _ = self.write_inputs(campaign_id="different-campaign")
+        other = harness.load_approval(self.root, other_approval)
+        self.assertTrue(harness._function_consumed(run_dir, other))
+        dry_run = harness._dry_run_for_test(
+            self.root, other_approval, state_root=self.state
+        )
+        self.assertEqual(dry_run["status"], "blocked")
+        self.assertTrue(any("lifetime cell" in item for item in dry_run["blockers"]))
         with self.assertRaisesRegex(harness.CrackHarnessError, "already consumed"):
-            harness._consume_campaign(run_dir, loaded)
+            harness._consume_function(run_dir, other)
+
+    def test_new_campaign_is_allowed_before_any_function_cell_is_consumed(self) -> None:
+        approval, _ = self.write_inputs(campaign_id="different-campaign")
+        dry_run = harness._dry_run_for_test(
+            self.root, approval, state_root=self.state
+        )
+        self.assertEqual(dry_run["status"], "ready")
+
+    def test_function_tombstone_tamper_fails_closed(self) -> None:
+        approval, _ = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        harness._consume_function(run_dir, loaded)
+        tombstone_path = run_dir.parent / "latest-function.json"
+        tombstone = json.loads(tombstone_path.read_text(encoding="utf-8"))
+        tombstone["owner"] = "main:board/other"
+        tombstone_path.write_text(json.dumps(tombstone), encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "binding is invalid"):
+            harness._function_consumed(run_dir, loaded)
 
     @unittest.skipUnless(os.name == "nt", "Windows path semantics")
     def test_windows_paths(self) -> None:
