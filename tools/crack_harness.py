@@ -223,6 +223,62 @@ def _sha(value: Any, label: str) -> str:
     return result
 
 
+def _validate_winning_cell_selection(
+    root: Path, selection: Any, candidate_sha256: str,
+    predicted_rows: Sequence[str],
+) -> None:
+    """Require one evidence-backed winning cell before any compile is legal."""
+
+    required = {
+        "strategy", "rank", "evidence", "candidate_sha256",
+        "predicted_rows_sha256", "alternatives_compiled", "negative_controls",
+        "pivot_if_unranked", "source_class",
+    }
+    if not isinstance(selection, Mapping) or set(selection) != required:
+        raise CrackHarnessError(
+            "selection must be a strict closed winning-cell-first object"
+        )
+    if selection.get("strategy") != "winning_cell_first":
+        raise CrackHarnessError("selection.strategy must be winning_cell_first")
+    rank = selection.get("rank")
+    if type(rank) is not int or rank != 1:
+        raise CrackHarnessError("selection.rank must be exactly 1")
+    evidence = selection.get("evidence")
+    if not isinstance(evidence, Mapping) or set(evidence) != {"path", "sha256"}:
+        raise CrackHarnessError("selection.evidence must bind one path and sha256")
+    evidence_path = _bound_path(
+        root, evidence.get("path"), "selection.evidence.path", exists=True
+    )
+    expected_evidence_sha256 = _sha(
+        evidence.get("sha256"), "selection.evidence.sha256"
+    )
+    if _digest_file(evidence_path) != expected_evidence_sha256:
+        raise CrackHarnessError(
+            f"selection evidence hash mismatch: {evidence_path}"
+        )
+    selected_candidate = _sha(
+        selection.get("candidate_sha256"), "selection.candidate_sha256"
+    )
+    if selected_candidate != candidate_sha256:
+        raise CrackHarnessError(
+            "selection.candidate_sha256 does not match approval candidate"
+        )
+    selected_rows = _sha(
+        selection.get("predicted_rows_sha256"),
+        "selection.predicted_rows_sha256",
+    )
+    if selected_rows != _digest_json(list(predicted_rows)):
+        raise CrackHarnessError(
+            "selection.predicted_rows_sha256 does not match predicted_rows"
+        )
+    for key in ("alternatives_compiled", "negative_controls"):
+        if type(selection.get(key)) is not int or selection.get(key) != 0:
+            raise CrackHarnessError(f"selection.{key} must be exactly 0")
+    if selection.get("pivot_if_unranked") is not True:
+        raise CrackHarnessError("selection.pivot_if_unranked must be true")
+    _text(selection.get("source_class"), "selection.source_class")
+
+
 def _timestamp(value: Any, label: str) -> datetime:
     try:
         result = datetime.fromisoformat(_text(value, label).replace("Z", "+00:00"))
@@ -821,7 +877,7 @@ def load_approval(
     allowed = {
         "schema", "approval_id", "owner", "task_id", "function",
         "unit", "base_commit", "toolchain_key", "target_sha256", "permit_sha256", "issued_at", "expires_at",
-        "source", "base", "candidate", "function_span", "predicted_rows",
+        "source", "base", "candidate", "function_span", "predicted_rows", "selection",
         "commands", "campaign", "limits",
     }
     unknown = sorted(set(approval) - allowed)
@@ -895,6 +951,9 @@ def load_approval(
         isinstance(row, str) and row.strip() for row in rows
     ):
         raise CrackHarnessError("predicted_rows must be a non-empty string array")
+    _validate_winning_cell_selection(
+        root, approval.get("selection"), approval["candidate"]["sha256"], rows
+    )
     commands = approval.get("commands")
     if not isinstance(commands, Mapping):
         raise CrackHarnessError("commands must be an object")
@@ -1097,6 +1156,10 @@ def _checkpoint(
     root: Path, approval_path: Path, approval: Mapping[str, Any],
     permit_path: Path, permit: Mapping[str, Any], state: Path, *, allow_source: bool,
 ) -> None:
+    _validate_winning_cell_selection(
+        root, approval.get("selection"), approval["candidate"]["sha256"],
+        approval["predicted_rows"],
+    )
     now = datetime.now(timezone.utc)
     approval_expires = _timestamp(approval.get("expires_at"), "approval expires_at")
     permit_expires = _timestamp(permit.get("deadline"), "permit deadline")

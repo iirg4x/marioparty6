@@ -34,6 +34,9 @@ class CrackHarnessTests(unittest.TestCase):
         self.compile_hook = self.root / "tools/crack_evidence_bundle.py"
         self.source.parent.mkdir(parents=True)
         self.admission.parent.mkdir()
+        self.evidence = self.root / "evidence/selection.json"
+        self.evidence.parent.mkdir()
+        self.evidence.write_text('{"evidence":"winning-cell"}\n', encoding="utf-8")
         self.source.write_text("int Owner(void) {\n    return 1;\n}\n", encoding="utf-8")
         self.admission.write_text(
             self._admission_source(),
@@ -44,7 +47,7 @@ class CrackHarnessTests(unittest.TestCase):
         self._git("init", "-q")
         self._git("config", "user.email", "test@example.invalid")
         self._git("config", "user.name", "Harness Test")
-        self._git("add", "src/owner.c", "tools/candidate_compile_admission.py", "tools/crack_harness.py", "tools/crack_evidence_bundle.py")
+        self._git("add", "src/owner.c", "evidence/selection.json", "tools/candidate_compile_admission.py", "tools/crack_harness.py", "tools/crack_evidence_bundle.py")
         self._git("commit", "-qm", "fixture")
         self.commit = self._git("rev-parse", "HEAD")
         self.base = self.root / "base.c"
@@ -155,9 +158,11 @@ elif 'admit' in sys.argv:
             "executable": {"path": str(Path(sys.executable).resolve()), "sha256": sha(Path(sys.executable))},
             "script": {"path": str(self.admission), "sha256": sha(self.admission)},
         }
+        predicted_rows = ["Owner:ARG:0"]
         value = {
             "schema": harness.APPROVAL_SCHEMA, "approval_id": "cell-1", "owner": "main:board/test", "task_id": "task", "function": "Owner", "unit": "src/owner.c", "base_commit": self.commit, "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY, "target_sha256": TARGET_SHA, "permit_sha256": "0" * 64, "issued_at": issued.isoformat(), "expires_at": deadline.isoformat(),
-            "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": ["Owner:ARG:0"],
+            "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": predicted_rows,
+            "selection": {"strategy": "winning_cell_first", "rank": 1, "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell"},
             "commands": {"precompile": precompile, "compile": self.descriptor("compile", "compile", str(gain), str(focus_rows)), "strict": self.descriptor("proof_strict", "strict"), "data": self.descriptor("proof_data", "data"), "focus": self.descriptor("proof_focus", "focus"), "siblings": self.descriptor("proof_siblings", "siblings"), "physical": self.descriptor("proof_physical", "physical"), "assess": self.descriptor("assessment", "assess"), "record": self.descriptor("canonical_record", "record")},
             "campaign": {"id": "campaign", "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
         }
@@ -269,11 +274,76 @@ elif 'admit' in sys.argv:
         approval_path, permit_path = self.write_inputs()
         value = json.loads(approval_path.read_text(encoding="utf-8"))
         value["predicted_rows"] = ["Owner:ARG:1"]
+        value["selection"]["predicted_rows_sha256"] = harness._digest_json(
+            value["predicted_rows"]
+        )
         approval_path.write_text(json.dumps(value), encoding="utf-8")
         approval = harness.load_approval(self.root, approval_path)
         with self.assertRaisesRegex(harness.CrackHarnessError, "approval_identity_sha256"):
             harness._load_permit(
                 self.root, approval, permit_path, self.state,
+                manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )
+
+    def test_winning_cell_selection_is_required_and_rank_one(self) -> None:
+        for mutation, message in (
+            (lambda value: value.pop("selection"), "strict closed"),
+            (lambda value: value["selection"].__setitem__("rank", 2), "rank"),
+        ):
+            with self.subTest(message=message):
+                approval_path, _ = self.write_inputs()
+                value = json.loads(approval_path.read_text(encoding="utf-8"))
+                mutation(value)
+                approval_path.write_text(json.dumps(value), encoding="utf-8")
+                with self.assertRaisesRegex(harness.CrackHarnessError, message):
+                    harness.load_approval(self.root, approval_path)
+
+    def test_winning_cell_selection_rejects_evidence_candidate_and_rows_drift(self) -> None:
+        approval_path, _ = self.write_inputs()
+        self.evidence.write_text('{"evidence":"changed"}\n', encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "evidence hash"):
+            harness.load_approval(self.root, approval_path)
+
+        for field, expected_message in (
+            ("candidate_sha256", "candidate"),
+            ("predicted_rows_sha256", "predicted_rows"),
+        ):
+            with self.subTest(field=field):
+                approval_path, _ = self.write_inputs()
+                value = json.loads(approval_path.read_text(encoding="utf-8"))
+                value["selection"][field] = "e" * 64
+                approval_path.write_text(json.dumps(value), encoding="utf-8")
+                with self.assertRaisesRegex(harness.CrackHarnessError, expected_message):
+                    harness.load_approval(self.root, approval_path)
+
+    def test_winning_cell_selection_rejects_alternatives_and_negative_controls(self) -> None:
+        for field in ("alternatives_compiled", "negative_controls"):
+            with self.subTest(field=field):
+                approval_path, _ = self.write_inputs()
+                value = json.loads(approval_path.read_text(encoding="utf-8"))
+                value["selection"][field] = 1
+                approval_path.write_text(json.dumps(value), encoding="utf-8")
+                with self.assertRaisesRegex(harness.CrackHarnessError, field):
+                    harness.load_approval(self.root, approval_path)
+
+    def test_valid_winning_cell_selection_is_bound_to_permit_identity(self) -> None:
+        approval_path, permit_path = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval_path)
+        self.assertEqual(loaded["selection"]["strategy"], "winning_cell_first")
+        self.assertEqual(loaded["selection"]["rank"], 1)
+        harness._load_permit(
+            self.root, loaded, permit_path, self.state,
+            manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        value = json.loads(approval_path.read_text(encoding="utf-8"))
+        value["selection"]["source_class"] = "different-winning-cell"
+        approval_path.write_text(json.dumps(value), encoding="utf-8")
+        drifted = harness.load_approval(self.root, approval_path)
+        with self.assertRaisesRegex(harness.CrackHarnessError, "approval_identity_sha256"):
+            harness._load_permit(
+                self.root, drifted, permit_path, self.state,
                 manager_key_path=self.manager_key,
                 expected_key_id=sha(self.manager_key),
             )

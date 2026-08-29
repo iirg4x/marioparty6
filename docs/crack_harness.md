@@ -57,6 +57,18 @@ including insert/delete, wholly inside the function span. NUL, asm,
 volatile/register shaping, padding, dead branches, and inline/optimization
 forcing are rejected.
 
+Every approval also carries a closed `selection` object. Its strategy is fixed
+to `winning_cell_first`, its rank is exactly `1`, and it must name a non-empty
+natural-C `source_class`. The selection binds an existing repository-local
+evidence artifact by path and SHA-256, the approval candidate SHA, and the
+canonical SHA-256 of `predicted_rows`. `alternatives_compiled` and
+`negative_controls` are both exactly `0`, and `pivot_if_unranked` is `true`.
+The complete approval—including this selection—is included in the permit
+identity and therefore in the manager signature binding. Missing, drifted,
+or mismatched selection data is rejected before admission. There is no
+fallback compile for an unranked cell: without a valid signed approval and
+permit, STOP remains in force and the harness does not run.
+
 Descriptors hash-pin executable and script. The fixed registry requires
 `candidate_compile_admission.py` for admission/record,
 `crack_evidence_bundle.py` for compile/evidence, and the exact
