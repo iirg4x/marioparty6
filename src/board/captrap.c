@@ -1,3 +1,4 @@
+#define _MATH_H
 #include "dolphin/math.h"
 #include "dolphin.h"
 #include "game/gamework.h"
