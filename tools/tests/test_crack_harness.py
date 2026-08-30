@@ -19,6 +19,14 @@ from tools.recovery_memory import RecoveryMemory
 from unittest.mock import patch
 
 TARGET_SHA = hashlib.sha256(b"target").hexdigest()
+STRICT_ROW_0 = (
+    "strict:Owner:row:0:kind=DIFF_ARG_MISMATCH:"
+    "target=0x100:candidate=0x100"
+)
+STRICT_ROW_1 = (
+    "strict:Owner:row:1:kind=DIFF_ARG_MISMATCH:"
+    "target=0x104:candidate=0x104"
+)
 
 
 def sha(path: Path) -> str:
@@ -33,28 +41,31 @@ class CrackHarnessTests(unittest.TestCase):
         self.admission = self.root / "tools/candidate_compile_admission.py"
         self.hook = self.root / "tools/crack_harness.py"
         self.compile_hook = self.root / "tools/crack_evidence_bundle.py"
+        self.residual_producer = self.root / "tools/crack_current_residual.py"
         self.source.parent.mkdir(parents=True)
         self.admission.parent.mkdir()
         self.evidence = self.root / "evidence/selection.json"
+        self.current_residual = self.root / "evidence/current-residual.json"
         self.evidence.parent.mkdir()
         self.source.write_text("int Owner(void) {\n    return 1;\n}\n", encoding="utf-8")
         self.base = self.root / "base.c"
         self.candidate = self.root / "candidate.c"
         self.base.write_bytes(self.source.read_bytes())
         self.candidate.write_text("int Owner(void) {\n    return 2;\n}\n", encoding="utf-8")
-        self._write_selection_evidence()
         self.admission.write_text(
             self._admission_source(),
             encoding="utf-8",
         )
         self.hook.write_text(self._hook_source(), encoding="utf-8")
         self.compile_hook.write_text(self._hook_source(), encoding="utf-8")
+        self.residual_producer.write_text("# test residual producer\n", encoding="utf-8")
         self._git("init", "-q")
         self._git("config", "user.email", "test@example.invalid")
         self._git("config", "user.name", "Harness Test")
-        self._git("add", "src/owner.c", "evidence/selection.json", "tools/candidate_compile_admission.py", "tools/crack_harness.py", "tools/crack_evidence_bundle.py")
+        self._git("add", "src/owner.c", "tools/candidate_compile_admission.py", "tools/crack_harness.py", "tools/crack_evidence_bundle.py", "tools/crack_current_residual.py")
         self._git("commit", "-qm", "fixture")
         self.commit = self._git("rev-parse", "HEAD")
+        self._write_selection_evidence()
         self.luna_audit = self.root / "evidence/luna5.json"
         self._write_luna5_audit()
         self.state = self.root / "state"
@@ -76,8 +87,12 @@ class CrackHarnessTests(unittest.TestCase):
     def _write_selection_evidence(
         self, *, expected_terminal: str = "exact",
         include_live_source: bool = False,
+        residual_rows: list[str] | None = None,
+        predicted_rows: list[str] | None = None,
     ) -> None:
-        predicted_rows = ["Owner:ARG:0"]
+        predicted_rows = predicted_rows or [STRICT_ROW_0]
+        residual_rows = residual_rows or [STRICT_ROW_0]
+        self._write_current_residual(residual_rows)
         inputs = [{
             "path": "base.c", "sha256": sha(self.base),
             "role": "sealed_baseline_source",
@@ -96,6 +111,10 @@ class CrackHarnessTests(unittest.TestCase):
             "predicted_rows_sha256": harness._digest_json(predicted_rows),
             "alternatives_compiled": 0, "negative_controls": 0,
             "pivot_if_unranked": True, "source_class": "test-natural-cell",
+            "current_residual": {
+                "path": self.current_residual.relative_to(self.root).as_posix(),
+                "sha256": sha(self.current_residual),
+            },
             "inputs": inputs,
             "causal_prediction": {
                 "earliest_divergence": "Owner return-value producer",
@@ -107,6 +126,144 @@ class CrackHarnessTests(unittest.TestCase):
             json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
             encoding="utf-8",
         )
+
+    def _write_current_residual(
+        self, residual_rows: list[str], **overrides: object,
+    ) -> None:
+        base_object_path = self.root / "evidence/current-base.o"
+        target_object_path = self.root / "evidence/current-target.o"
+        focus_path = self.root / "evidence/current-focus.json"
+        physical_path = self.root / "evidence/current-physical.json"
+        base_object_path.write_bytes(b"current base object")
+        target_object_path.write_bytes(b"target")
+
+        def file_descriptor(path: Path) -> dict[str, object]:
+            return {
+                "path": path.relative_to(self.root).as_posix(),
+                "sha256": sha(path),
+                "size_bytes": path.stat().st_size,
+            }
+
+        strict_descriptor = {"sha256": "1" * 64, "size_bytes": 101}
+        data_descriptor = {"sha256": "2" * 64, "size_bytes": 102}
+        receipt_descriptor = {"sha256": "3" * 64, "size_bytes": 103}
+        base_descriptor = file_descriptor(base_object_path)
+        target_descriptor = file_descriptor(target_object_path)
+        row_material = {
+            STRICT_ROW_0: {
+                "index": 0, "diff_kind": "DIFF_ARG_MISMATCH",
+                "instruction": {"address": "0x100", "formatted": "li r3,0"},
+            },
+            STRICT_ROW_1: {
+                "index": 1, "diff_kind": "DIFF_ARG_MISMATCH",
+                "instruction": {"address": "0x104", "formatted": "li r4,0"},
+            },
+        }
+        try:
+            strict_rows = [row_material[row] for row in residual_rows]
+        except KeyError as exc:
+            raise AssertionError(f"test fixture lacks focus material for {exc.args[0]}") from exc
+        focus_body = {
+            "schema": "focus_symbol_report/v1",
+            "function": "Owner",
+            "input_binding": {
+                "strict_report": strict_descriptor,
+                "data_report": data_descriptor,
+                "physical_relocation_receipt": receipt_descriptor,
+            },
+            "channels": {
+                "strict": {
+                    "target": {"rows_kind": "all", "rows": strict_rows},
+                    "candidate": {"rows_kind": "all", "rows": strict_rows},
+                },
+                "data": {
+                    "target": {"rows_kind": "diff_only", "rows": []},
+                    "candidate": {"rows_kind": "diff_only", "rows": []},
+                },
+            },
+            "physical_relocations": {
+                "status": "exact",
+                "target": {"object": target_descriptor},
+                "candidate": {"object": base_descriptor},
+                "physical_relocation_differences": [],
+            },
+            "authority_advanced": False,
+        }
+        focus_path.write_text(
+            json.dumps({
+                **focus_body,
+                "artifact_sha256": harness._digest_json(focus_body),
+            }, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        focus_descriptor = file_descriptor(focus_path)
+        physical_body = {
+            "schema": "crack_current_residual_physical_summary/v1",
+            "owner": "main:board/test",
+            "unit": "main/board/test",
+            "function": "Owner",
+            "base_commit": self.commit,
+            "target_object": target_descriptor,
+            "base_object": base_descriptor,
+            "focus_report": focus_descriptor,
+            "strict_report": strict_descriptor,
+            "data_report": data_descriptor,
+            "physical_relocations_exact": True,
+            "physical_difference_count": 0,
+            "physical_difference_sha256": harness._digest_json([]),
+            "authority_advanced": False,
+        }
+        physical_path.write_text(
+            json.dumps({
+                **physical_body,
+                "physical_summary_sha256": harness._digest_json(physical_body),
+            }, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        residual_body = {
+            "schema": harness.CURRENT_RESIDUAL_EVIDENCE_SCHEMA,
+            "owner": "main:board/test", "function": "Owner",
+            "base_commit": self.commit, "unit": "main/board/test",
+            "base_sha256": sha(self.base), "source_sha256": sha(self.source),
+            "target_sha256": TARGET_SHA,
+            "function_span": {
+                "start_line": 1, "end_line": 3,
+                "base_span_sha256": sha(self.base),
+            },
+            "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY,
+            "base_object": base_descriptor,
+            "target_object": target_descriptor,
+            "focus_report": focus_descriptor,
+            "physical_summary": file_descriptor(physical_path),
+            "strict_report": strict_descriptor,
+            "data_report": data_descriptor,
+            "physical_receipt": receipt_descriptor,
+            "producer": file_descriptor(self.residual_producer),
+            "residual_rows": residual_rows,
+            "current_source_bound": True, "authority_advanced": False,
+        }
+        residual_body.update(overrides)
+        self.current_residual.write_text(
+            json.dumps({
+                **residual_body,
+                "residual_sha256": harness._digest_json(residual_body),
+            }, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+
+    def _rebind_current_residual(self, approval_path: Path) -> None:
+        evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+        evidence["current_residual"]["sha256"] = sha(self.current_residual)
+        self.evidence.write_text(
+            json.dumps(evidence, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        approval["selection"]["current_residual"]["sha256"] = sha(
+            self.current_residual
+        )
+        approval["selection"]["evidence"]["sha256"] = sha(self.evidence)
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
 
     def _write_luna5_audit(self) -> None:
         receipts = []
@@ -153,9 +310,6 @@ class CrackHarnessTests(unittest.TestCase):
 
     def _commit_expected_terminal_fixture(self, expected_terminal: str) -> None:
         self._write_selection_evidence(expected_terminal=expected_terminal)
-        self._git("add", "evidence/selection.json")
-        self._git("commit", "-qm", f"expect {expected_terminal}")
-        self.commit = self._git("rev-parse", "HEAD")
         self._write_luna5_audit()
 
     def _commit_live_source_evidence_fixture(self) -> None:
@@ -263,11 +417,11 @@ elif 'admit' in sys.argv:
             "executable": {"path": str(Path(sys.executable).resolve()), "sha256": sha(Path(sys.executable))},
             "script": {"path": str(self.admission), "sha256": sha(self.admission)},
         }
-        predicted_rows = ["Owner:ARG:0"]
+        predicted_rows = [STRICT_ROW_0]
         value = {
             "schema": harness.APPROVAL_SCHEMA, "approval_id": "cell-1", "owner": "main:board/test", "task_id": "task", "function": "Owner", "unit": "main/board/test", "base_commit": self.commit, "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY, "target_sha256": TARGET_SHA, "permit_sha256": "0" * 64, "issued_at": issued.isoformat(), "expires_at": deadline.isoformat(),
             "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": predicted_rows,
-            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": expected_terminal, "evidence": {"path": self.evidence.relative_to(self.root).as_posix(), "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell", "luna5_audit": {"path": self.luna_audit.relative_to(self.root).as_posix(), "sha256": sha(self.luna_audit)}},
+            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": expected_terminal, "evidence": {"path": self.evidence.relative_to(self.root).as_posix(), "sha256": sha(self.evidence)}, "current_residual": {"path": self.current_residual.relative_to(self.root).as_posix(), "sha256": sha(self.current_residual)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell", "luna5_audit": {"path": self.luna_audit.relative_to(self.root).as_posix(), "sha256": sha(self.luna_audit)}},
             "commands": {"precompile": precompile, "compile": self.descriptor("compile", "compile", str(gain), str(focus_rows)), "strict": self.descriptor("proof_strict", "strict"), "data": self.descriptor("proof_data", "data"), "focus": self.descriptor("proof_focus", "focus"), "siblings": self.descriptor("proof_siblings", "siblings"), "physical": self.descriptor("proof_physical", "physical"), "assess": self.descriptor("assessment", "assess"), "record": self.descriptor("canonical_record", "record")},
             "campaign": {"id": campaign_id, "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
         }
@@ -430,6 +584,75 @@ elif 'admit' in sys.argv:
             "selection evidence cannot bind the mutable live source",
         ):
             harness.load_approval(self.root, approval)
+
+    def test_legacy_winning_packet_without_current_residual_fails_closed(self) -> None:
+        approval, _ = self.write_inputs()
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["selection"].pop("current_residual")
+        approval.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "strict closed winning-cell-first",
+        ):
+            harness.load_approval(self.root, approval)
+
+    def test_current_residual_must_bind_current_target_and_base(self) -> None:
+        approval, _ = self.write_inputs()
+        self._write_current_residual(
+            [STRICT_ROW_0], target_sha256="0" * 64,
+        )
+        self._rebind_current_residual(approval)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "current residual evidence does not bind approval target_sha256",
+        ):
+            harness.load_approval(self.root, approval)
+
+    def test_current_residual_rejects_self_hashed_forged_rows(self) -> None:
+        approval, _ = self.write_inputs()
+        residual = json.loads(self.current_residual.read_text(encoding="utf-8"))
+        residual["residual_rows"] = ["FORGED:ROW"]
+        unsigned = {
+            key: value for key, value in residual.items()
+            if key != "residual_sha256"
+        }
+        residual["residual_sha256"] = harness._digest_json(unsigned)
+        self.current_residual.write_text(
+            json.dumps(residual, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        self._rebind_current_residual(approval)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "rows do not match the bound focus evidence",
+        ):
+            harness.load_approval(self.root, approval)
+
+    def test_predicted_rows_must_come_from_current_residual(self) -> None:
+        approval, _ = self.write_inputs()
+        self._write_current_residual([STRICT_ROW_1])
+        self._rebind_current_residual(approval)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "predicted_rows must be a subset of current residual rows",
+        ):
+            harness.load_approval(self.root, approval)
+
+    def test_exact_prediction_must_cover_complete_current_residual(self) -> None:
+        approval, _ = self.write_inputs(expected_terminal="exact")
+        self._write_current_residual([STRICT_ROW_0, STRICT_ROW_1])
+        self._rebind_current_residual(approval)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "expected exact requires complete current residual row coverage",
+        ):
+            harness.load_approval(self.root, approval)
+
+    def test_improved_prediction_may_cover_current_residual_subset(self) -> None:
+        approval, _ = self.write_inputs(expected_terminal="improved")
+        self._write_current_residual([STRICT_ROW_0, STRICT_ROW_1])
+        self._rebind_current_residual(approval)
+        loaded = harness.load_approval(self.root, approval)
+        self.assertEqual(loaded["selection"]["expected_terminal"], "improved")
 
     def test_positive_nonexact_retains_signed_frontier_without_report_or_record(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
@@ -778,15 +1001,20 @@ elif 'admit' in sys.argv:
     def test_signed_permit_rejects_approval_identity_drift(self) -> None:
         approval_path, permit_path = self.write_inputs()
         value = json.loads(approval_path.read_text(encoding="utf-8"))
-        value["predicted_rows"] = ["Owner:ARG:1"]
+        value["predicted_rows"] = [STRICT_ROW_1]
         value["selection"]["predicted_rows_sha256"] = harness._digest_json(
             value["predicted_rows"]
         )
         evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
         evidence["predicted_rows_sha256"] = value["selection"]["predicted_rows_sha256"]
         evidence["causal_prediction"]["predicted_rows"] = value["predicted_rows"]
+        self._write_current_residual(value["predicted_rows"])
+        evidence["current_residual"]["sha256"] = sha(self.current_residual)
         self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
         value["selection"]["evidence"]["sha256"] = sha(self.evidence)
+        value["selection"]["current_residual"]["sha256"] = sha(
+            self.current_residual
+        )
         approval_path.write_text(json.dumps(value), encoding="utf-8")
         approval = harness.load_approval(self.root, approval_path)
         with self.assertRaisesRegex(harness.CrackHarnessError, "approval_identity_sha256"):
@@ -865,7 +1093,7 @@ elif 'admit' in sys.argv:
             (lambda value: value.__setitem__("function", "Other"), "function"),
             (
                 lambda value: value["causal_prediction"].__setitem__(
-                    "predicted_rows", ["Owner:ARG:1"]
+                    "predicted_rows", [STRICT_ROW_1]
                 ),
                 "causal_prediction",
             ),
@@ -1532,7 +1760,7 @@ elif 'admit' in sys.argv:
     def test_predicted_rows_must_be_unique_at_runtime(self) -> None:
         approval, _ = self.write_inputs()
         value = json.loads(approval.read_text(encoding="utf-8"))
-        value["predicted_rows"] = ["Owner:ARG:0", "Owner:ARG:0"]
+        value["predicted_rows"] = [STRICT_ROW_0, STRICT_ROW_0]
         approval.write_text(json.dumps(value), encoding="utf-8")
         with self.assertRaisesRegex(harness.CrackHarnessError, "unique rows"):
             harness.load_approval(self.root, approval)
@@ -2280,7 +2508,7 @@ elif 'admit' in sys.argv:
             ("campaign_id", lambda value: value.__setitem__("campaign_id", "other")),
             (
                 "predicted_rows",
-                lambda value: value.__setitem__("predicted_rows", ["Owner:ARG:9"]),
+                lambda value: value.__setitem__("predicted_rows", [STRICT_ROW_1]),
             ),
         )
         for field, mutation in cases:
@@ -2716,7 +2944,7 @@ elif 'admit' in sys.argv:
         for field, replacement in (
             ("task_id", "other-task"),
             ("campaign_id", "other-campaign"),
-            ("predicted_rows", ["Owner:ARG:9"]),
+            ("predicted_rows", [STRICT_ROW_1]),
         ):
             with self.subTest(field=field):
                 forged = copy.deepcopy(result)
@@ -3643,6 +3871,70 @@ elif 'admit' in sys.argv:
         harness._consume_function(run_dir, second)
         self.assertTrue(harness._function_consumed(run_dir, second))
         self.assertTrue(harness._function_consumed(run_dir, first))
+
+    def test_same_candidate_on_a_different_base_is_not_the_same_cell(self) -> None:
+        approval, _ = self.write_inputs(campaign_id="first-base")
+        first = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, first)
+        harness._consume_function(run_dir, first)
+
+        self.source.write_text(
+            "int Owner(void) {\n    return 0;\n}\n", encoding="utf-8"
+        )
+        self.base.write_bytes(self.source.read_bytes())
+        self.evidence = self.root / "evidence/selection-second-base.json"
+        self.current_residual = self.root / "evidence/residual-second-base.json"
+        self.luna_audit = self.root / "evidence/luna5-second-base.json"
+        self._write_luna5_audit()
+        second_path, _ = self.write_inputs(campaign_id="second-base")
+        second = harness.load_approval(self.root, second_path)
+        self.assertEqual(
+            first["candidate"]["sha256"], second["candidate"]["sha256"]
+        )
+        self.assertNotEqual(first["base"]["sha256"], second["base"]["sha256"])
+        self.assertFalse(harness._function_consumed(run_dir, second))
+
+    def test_no_gain_consumes_only_the_same_base_and_candidate(self) -> None:
+        first = self.execute(gain=0, campaign_id="no-gain-first")
+        self.assertEqual(first["status"], "no_gain", first)
+
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-after-no-gain.json"
+        self.current_residual = self.root / "evidence/residual-after-no-gain.json"
+        self.luna_audit = self.root / "evidence/luna5-after-no-gain.json"
+        self._write_luna5_audit()
+        second_path, _ = self.write_inputs(campaign_id="no-gain-second")
+        second = harness.load_approval(self.root, second_path)
+        run_dir = harness._run_dir(self.state, second)
+        self.assertFalse(harness._function_consumed(run_dir, second))
+        self.assertEqual(
+            harness._dry_run_for_test(
+                self.root, second_path, state_root=self.state,
+            )["status"],
+            "ready",
+        )
+
+    def test_completed_exact_report_closes_function_for_new_candidate(self) -> None:
+        first = self.execute(campaign_id="exact-first")
+        self.assertEqual(first["status"], "exact", first)
+
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-after-exact.json"
+        self.current_residual = self.root / "evidence/residual-after-exact.json"
+        self.luna_audit = self.root / "evidence/luna5-after-exact.json"
+        self._write_luna5_audit()
+        second_path, _ = self.write_inputs(campaign_id="exact-second")
+        readiness = harness._dry_run_for_test(
+            self.root, second_path, state_root=self.state,
+        )
+        self.assertEqual(readiness["status"], "blocked")
+        self.assertIn("function already has a terminal result", readiness["blockers"])
 
     def test_new_campaign_is_allowed_before_any_function_cell_is_consumed(self) -> None:
         approval, _ = self.write_inputs(campaign_id="different-campaign")

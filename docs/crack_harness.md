@@ -5,6 +5,38 @@ cell. It schedules no lanes and never asks a user for authentication. Production
 state is fixed at `build/crack-harness`; only Python tests may inject another
 state root.
 
+## Manager-only current residual baseline
+
+`tools/crack_current_residual.py` is a manager-only baseline materializer for
+the approval's current source. It compiles that current source once in a
+detached disposable worktree under the serialized build lock, then publishes a
+compact, current-source-bound `crack_current_residual_evidence/v1` artifact
+with focus, physical, and object evidence plus bounded report receipts. It
+requires residual rows; an already exact current base is not
+materialized. It does not admit or compile a candidate, create an approval,
+permit, admission, or history record, or advance authority (`authority_advanced`
+is `false`). The artifact is bound into the winning-cell selection and supplies
+the rows that approval predictions may name.
+
+Use repository-relative placeholders for the owner, unit, function, hashes, and
+span; do not guess a function-specific span:
+
+```sh
+rtk python tools/crack_current_residual.py \
+  --root . \
+  --base-commit <40-hex-commit> \
+  --owner <owner> \
+  --unit <slash-form-objdiff-unit> \
+  --function <C-function> \
+  --source <src/path.c> \
+  --source-sha256 <64-hex-source-sha256> \
+  --target-sha256 <64-hex-target-object-sha256> \
+  --toolchain-key <64-hex-toolchain-manifest-sha256> \
+  --span-start <START_LINE> \
+  --span-end <END_LINE> \
+  --output <build/current-residual.json>
+```
+
 ## STOP and assignment permit
 
 The manager creates the global `build/crack-harness/STOP` authorization when
@@ -70,12 +102,15 @@ hash-bound function span, predicted rows, limits, and every command descriptor.
 evidence bundle share one side-effect-free validator, so malformed, traversing,
 owner-style, empty-segment, and leading/trailing-slash unit names fail during
 dry-run before permit use.
-Limits cannot be elevated: each candidate source hash is one-shot for an
-owner/function (a new campaign ID cannot retry the same candidate), at most
-1,800 seconds, 512 MiB ephemeral data, and 16 MiB retained compact state per
-stable owner across all campaigns. A measurable safe improvement may become
-the one current frontier for that function; a later permit may start from that
-frontier with a different candidate hash. An exact result closes the function.
+Limits cannot be elevated: each `(base_sha256, candidate_sha256)` pair is
+one-shot for an owner/function (a new campaign ID cannot retry that same
+base+candidate attempt), at most 1,800 seconds, 512 MiB ephemeral data, and
+16 MiB retained compact state per stable owner across all campaigns. A positive
+safe improvement is retained as the one current signed, monotonic frontier for
+that function;
+a later permit may continue from that frontier/current source with a new
+candidate. Only an exact result with a valid, bound `CRACK_REPORT/v1` closes the
+function.
 
 The UTF-8 natural-C cell may use at most three hunks and 80 changed lines,
 including insert/delete, wholly inside the function span. NUL, preprocessor
@@ -96,9 +131,9 @@ its result explicitly marks the exact prediction unmet; the harness never
 silently downgrades an exact prediction or rolls back useful progress. An incremental, exploratory, or
 negative-control cell is still rejected before permit use. The selection binds
 an existing repository-local
-`crack_winning_cell_evidence/v1` artifact by path and SHA-256, the approval
+`crack_winning_cell_evidence/v2` artifact by path and SHA-256, the approval
 candidate SHA, and the canonical SHA-256 of `predicted_rows`. Validate the
-artifact with `tools/CRACK_WINNING_CELL_EVIDENCE_V1.schema.json`. Its closed
+artifact with `tools/CRACK_WINNING_CELL_EVIDENCE_V2.schema.json`. Its closed
 contents repeat and must exactly match owner, function, candidate, predicted-row
 digest, rank, strategy, controls, pivot decision, and source class; it also
 binds 1-16 repository-local evidence inputs by path/role/hash and carries an
@@ -165,13 +200,13 @@ and `data` JSON, `baseline-physical.json`, `physical.json`, self-digested phase 
 self-digested evidence context under `CRACK_HARNESS_OUT_ROOT`. The harness
 checks every receipt identity, phase nonce, artifact hash/size, target hash, and
 baseline immutability. Missing, stale, mixed, or fabricated evidence fails closed.
-The signed permit is recorded as one-shot when execution begins. The function
-cell is reserved only after the candidate process has been created and assigned
-to containment, and its durable marker is published before the contained process
-is resumed. Admission, worktree, unit, configuration, baseline, assignment, or
-resume/setup infrastructure failures therefore require a fresh signed permit but
-cannot consume an uncompiled function cell; a published pre-resume reservation
-is rolled back when resumption fails.
+The signed permit is recorded as one-shot when execution begins. The approved
+base+candidate attempt is reserved only after the candidate process has been
+created and assigned to containment, and its durable marker is published before
+the contained process is resumed. Admission, worktree, unit, configuration,
+baseline, assignment, or resume/setup infrastructure failures therefore require
+a fresh signed permit but cannot consume an uncompiled base+candidate attempt; a
+published pre-resume reservation is rolled back when resumption fails.
 Temp is metered and production
 writes are polled and rejected. Combined streamed output is capped at 1 MiB;
 timeout/overrun kills the process tree. On Windows the root process is created
@@ -209,15 +244,15 @@ with `tools/CRACK_HARNESS_FRONTIER_V1.schema.json`; the manager HMAC and
 `frontier_sha256` digest cover the retained body. The signed assessment stores
 the change in physical-relocation distance and the runtime rejects a positive
 delta. The harness removes the run
-directory, disposable inputs, logs, and per-candidate source copy. The next
-cell must seal a base equal to the current frontier source and use a different
-candidate hash; the same candidate hash is permanently rejected. A later exact
-cell replaces the frontier with the exact result and its compact report. A no-gain
-or failed cell leaves the prior frontier untouched, removes its disposable
-state, and records at most one bounded candidate-keyed diagnostic; it does not
-roll back a previously retained improvement or force a pivot. Pre-candidate
-infrastructure failure consumes neither the candidate cell nor the function.
-Exact writes compact `CRACK_REPORT/v1`; this report is exact-only. No full source
+directory, disposable inputs, logs, and per-candidate source copy. A later
+candidate may continue from the signed frontier/current source: its approved
+base must equal that source, and its base+candidate pair must be new. A
+no_gain or failed cell leaves the prior frontier untouched, removes its
+disposable state, and consumes only that same base+candidate attempt; it does
+not close the function or force a pivot. A later exact result closes the
+function only when its valid bound `CRACK_REPORT/v1` is sealed. Pre-candidate
+infrastructure failure consumes neither a candidate attempt nor the function's
+retained frontier. This report is exact-only. No full source
 duplicate, per-attempt log, append-only candidate history, or raw compiler
 history survives. Approval, baseline, candidate, permit, worktree, objects,
 logs, and temp are deleted after each cell. Owner state is hard-capped at 16
@@ -241,18 +276,20 @@ and containment assignment has succeeded, but immediately before the contained
 process is resumed. They bind the approval, base, candidate, and
 `candidate_execution_started: true` execution-boundary reservation. Ordinary
 admission, baseline, command, assignment, resume, or proof infrastructure
-failures before that boundary do not consume a function cell. A failed
+failures before that boundary do not consume a base+candidate attempt. A failed
 pre-resume setup rolls back both the local tombstone and central reservation only
 after both halves were fully published and still match the rollback snapshot.
 If central publication throws
 after persisting its ledger half, the central consumed-cell row is deliberately
 retained even if the local marker is rolled back; that partial-publication case
 fails closed rather than risking duplicate execution. A bounded
-`consumed-cells.json` ledger independently preserves the same one-cell fact;
+`consumed-cells.json` ledger independently preserves the same base+candidate
+fact;
 missing or conflicting local/central markers fail closed.
 
-There is no general retry or tombstone reset for the same candidate. A legacy
-v1 tombstone may be reconciled exactly once only when the approval carries the strict optional
+There is no general retry or tombstone reset for the same base+candidate
+attempt. A legacy v1 tombstone may be reconciled exactly once only when the
+approval carries the strict optional
 `crack_harness_legacy_reconciliation/v1` descriptor. That descriptor binds the
 immutable v1 tombstone and prior sealed failure by path and digest, the prior
 approval, the same candidate and legacy controller commit, and compact
@@ -266,17 +303,18 @@ If only the central half persisted before publication failed, that half remains
 consumed fail-closed. Once resume succeeds, every surviving reservation remains
 consumed permanently.
 V2 tombstones, partial historical results, malformed or missing artifacts, and
-ordinary permits remain permanently fail-closed for their candidate hash. A
-different hash may continue from the latest retained frontier under a new
-manager-signed permit; failure text or provenance alone can never release a
-candidate reservation.
+ordinary permits remain permanently fail-closed for their consumed
+base+candidate pair. A new candidate may continue from the latest retained
+frontier/current source under a new manager-signed permit; failure text or
+provenance alone can never release that same attempt reservation.
 
 `improved`, `no_gain`, and `failed` return terminal results; `no_gain` and
 `failed` return nonzero. Results use the closed
 `tools/CRACK_HARNESS_RESULT_V1.schema.json`. There is no reset command; Git is
 the rollback path after an incorrectly retained frontier.
 
-Only `exact` invokes central `record`. An `improved` attempt copies its
+Only `exact` invokes central `record`; the function closes only after the exact
+result and its valid bound `CRACK_REPORT/v1` are sealed. An `improved` attempt copies its
 candidate into the current source frontier and invokes canonical `discard` for
 the pending admission; it creates no central experiment. Every no-gain or failed
 admitted attempt also invokes canonical `discard`. Central admission rows are

@@ -33,7 +33,8 @@ from tools.recovery_pass import serialized_build_lock
 
 
 APPROVAL_SCHEMA = "crack_harness_approval/v1"
-WINNING_CELL_EVIDENCE_SCHEMA = "crack_winning_cell_evidence/v1"
+WINNING_CELL_EVIDENCE_SCHEMA = "crack_winning_cell_evidence/v2"
+CURRENT_RESIDUAL_EVIDENCE_SCHEMA = "crack_current_residual_evidence/v1"
 LUNA5_AUDIT_SCHEMA = "crack_luna5_audit/v1"
 RETRY_SCHEMA = "crack_harness_legacy_reconciliation/v1"
 HISTORICAL_EXACT_EVIDENCE_SCHEMA = "crack_harness_historical_exact_evidence/v1"
@@ -871,10 +872,331 @@ def _validate_predicted_rows(value: Any, label: str = "predicted_rows") -> list[
     return list(value)
 
 
+def _validate_current_residual_file(
+    root: Path, value: Any, label: str, *, expected_sha256: str | None = None,
+    expected_path: Path | None = None,
+) -> tuple[Path, dict[str, Any]]:
+    if not isinstance(value, Mapping) or set(value) != {"path", "sha256", "size_bytes"}:
+        raise CrackHarnessError(f"{label} must be a strict file descriptor")
+    path = _bound_path(root, value.get("path"), f"{label}.path")
+    digest = _sha(value.get("sha256"), f"{label}.sha256")
+    size = value.get("size_bytes")
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise CrackHarnessError(f"{label}.size_bytes is invalid")
+    if path.stat().st_size != size or _digest_file(path) != digest:
+        raise CrackHarnessError(f"{label} file binding is invalid")
+    if expected_sha256 is not None and digest != expected_sha256:
+        raise CrackHarnessError(f"{label} SHA-256 does not match its approval binding")
+    if expected_path is not None and path != Path(os.path.abspath(expected_path)):
+        raise CrackHarnessError(f"{label} path is not the required producer path")
+    return path, dict(value)
+
+
+def _validate_current_residual_hash(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {"sha256", "size_bytes"}:
+        raise CrackHarnessError(f"{label} must be a strict hash descriptor")
+    digest = _sha(value.get("sha256"), f"{label}.sha256")
+    size = value.get("size_bytes")
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise CrackHarnessError(f"{label}.size_bytes is invalid")
+    return {"sha256": digest, "size_bytes": size}
+
+
+def _current_residual_row_address(row: Mapping[str, Any] | None) -> str:
+    if not isinstance(row, Mapping):
+        return "-"
+    instruction = row.get("instruction")
+    value = instruction.get("address") if isinstance(instruction, Mapping) else row.get("address")
+    return "-" if value is None else str(value)
+
+
+def _current_residual_channel_rows(
+    focus: Mapping[str, Any], channel: str, function: str,
+) -> list[str]:
+    """Recompute producer row IDs from the independently bound focus payload."""
+
+    channels = focus.get("channels")
+    channel_value = channels.get(channel) if isinstance(channels, Mapping) else None
+    if not isinstance(channel_value, Mapping):
+        raise CrackHarnessError(f"current residual focus {channel} channel is invalid")
+    expected_kind = "all" if channel == "strict" else "diff_only"
+    indexed: dict[str, dict[int, Mapping[str, Any]]] = {}
+    for side in ("target", "candidate"):
+        side_value = channel_value.get(side)
+        rows = side_value.get("rows") if isinstance(side_value, Mapping) else None
+        if (
+            not isinstance(side_value, Mapping)
+            or side_value.get("rows_kind") != expected_kind
+            or not isinstance(rows, list)
+        ):
+            raise CrackHarnessError(
+                f"current residual focus {channel}.{side} rows are invalid"
+            )
+        side_rows: dict[int, Mapping[str, Any]] = {}
+        for row in rows:
+            index = row.get("index") if isinstance(row, Mapping) else None
+            if (
+                not isinstance(row, Mapping)
+                or isinstance(index, bool)
+                or not isinstance(index, int)
+                or index < 0
+                or index in side_rows
+            ):
+                raise CrackHarnessError(
+                    f"current residual focus {channel}.{side} row index is invalid"
+                )
+            diff_kind = row.get("diff_kind")
+            if diff_kind is not None and (
+                not isinstance(diff_kind, str) or not diff_kind
+            ):
+                raise CrackHarnessError(
+                    f"current residual focus {channel}.{side} diff kind is invalid"
+                )
+            side_rows[index] = row
+        indexed[side] = side_rows
+
+    result: list[str] = []
+    for index in sorted(set(indexed["target"]) | set(indexed["candidate"])):
+        target_row = indexed["target"].get(index)
+        candidate_row = indexed["candidate"].get(index)
+        kinds = sorted({
+            kind
+            for kind in (
+                target_row.get("diff_kind") if target_row is not None else None,
+                candidate_row.get("diff_kind") if candidate_row is not None else None,
+            )
+            if isinstance(kind, str) and kind
+        })
+        if not kinds:
+            continue
+        result.append(
+            f"{channel}:{function}:row:{index}:kind={'+'.join(kinds)}:"
+            f"target={_current_residual_row_address(target_row)}:"
+            f"candidate={_current_residual_row_address(candidate_row)}"
+        )
+    return result
+
+
+def _canonical_current_residual_rows(
+    focus: Mapping[str, Any], function: str,
+) -> tuple[list[str], list[Any]]:
+    rows = _current_residual_channel_rows(focus, "strict", function)
+    rows.extend(_current_residual_channel_rows(focus, "data", function))
+    physical = focus.get("physical_relocations")
+    differences = (
+        physical.get("physical_relocation_differences")
+        if isinstance(physical, Mapping) else None
+    )
+    if not isinstance(differences, list):
+        raise CrackHarnessError(
+            "current residual focus physical differences are invalid"
+        )
+    rows.extend(
+        f"physical:{function}:row:{index}:sha256={_digest_json(value)}"
+        for index, value in enumerate(differences)
+    )
+    if not rows or len(set(rows)) != len(rows):
+        raise CrackHarnessError(
+            "current residual focus canonical rows are empty or duplicated"
+        )
+    return rows, list(differences)
+
+
+def _validate_current_residual_evidence(
+    root: Path, descriptor: Any, *, owner: str, function: str,
+    base_commit: str, unit: str,
+    base_sha256: str, source_sha256: str, target_sha256: str,
+    function_span: Mapping[str, Any], toolchain_key: str,
+    predicted_rows: Sequence[str], expected_terminal: str,
+) -> list[str]:
+    """Bind candidate authorization to the current base's actual residual.
+
+    Historical matches may rank a source class, but only this independently
+    sealed current-base census authorizes its predicted rows.  Row identifiers
+    are intentionally opaque to the harness; their authority comes from the
+    exact base/source/target/span/toolchain binding and the artifact digest.
+    """
+
+    if not isinstance(descriptor, Mapping) or set(descriptor) != {"path", "sha256"}:
+        raise CrackHarnessError(
+            "selection current_residual must bind one path and sha256"
+        )
+    path = _bound_path(
+        root, descriptor.get("path"), "selection current_residual.path"
+    )
+    expected_sha256 = _sha(
+        descriptor.get("sha256"), "selection current_residual.sha256"
+    )
+    if _digest_file(path) != expected_sha256:
+        raise CrackHarnessError(f"current residual evidence hash mismatch: {path}")
+    value = _read_json(path)
+    required = {
+        "schema", "owner", "function", "base_commit", "unit",
+        "base_sha256", "source_sha256", "target_sha256", "function_span",
+        "toolchain_key", "base_object", "target_object", "focus_report",
+        "physical_summary", "strict_report", "data_report",
+        "physical_receipt", "producer", "residual_rows",
+        "current_source_bound", "authority_advanced", "residual_sha256",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        raise CrackHarnessError(
+            "current residual evidence must be a strict closed v1 object"
+        )
+    body = dict(value)
+    digest = body.pop("residual_sha256", None)
+    if digest != _digest_json(body):
+        raise CrackHarnessError("current residual evidence self-digest is invalid")
+    expected_span = {
+        "start_line": function_span["start_line"],
+        "end_line": function_span["end_line"],
+        "base_span_sha256": function_span["base_span_sha256"],
+    }
+    bindings = {
+        "schema": CURRENT_RESIDUAL_EVIDENCE_SCHEMA,
+        "owner": owner,
+        "function": function,
+        "base_commit": base_commit,
+        "unit": unit,
+        "base_sha256": base_sha256,
+        "source_sha256": source_sha256,
+        "target_sha256": target_sha256,
+        "function_span": expected_span,
+        "toolchain_key": toolchain_key,
+        "current_source_bound": True,
+        "authority_advanced": False,
+    }
+    for key, expected in bindings.items():
+        if value.get(key) != expected:
+            raise CrackHarnessError(
+                f"current residual evidence does not bind approval {key}"
+            )
+
+    base_object_path, base_object = _validate_current_residual_file(
+        root, value.get("base_object"), "current_residual.base_object"
+    )
+    target_object_path, target_object = _validate_current_residual_file(
+        root, value.get("target_object"), "current_residual.target_object",
+        expected_sha256=target_sha256,
+    )
+    focus_path, focus_descriptor = _validate_current_residual_file(
+        root, value.get("focus_report"), "current_residual.focus_report"
+    )
+    physical_path, physical_descriptor = _validate_current_residual_file(
+        root, value.get("physical_summary"), "current_residual.physical_summary"
+    )
+    _validate_current_residual_file(
+        root, value.get("producer"), "current_residual.producer",
+        expected_path=root / "tools" / "crack_current_residual.py",
+    )
+    strict_descriptor = _validate_current_residual_hash(
+        value.get("strict_report"), "current_residual.strict_report"
+    )
+    data_descriptor = _validate_current_residual_hash(
+        value.get("data_report"), "current_residual.data_report"
+    )
+    receipt_descriptor = _validate_current_residual_hash(
+        value.get("physical_receipt"), "current_residual.physical_receipt"
+    )
+
+    focus = _read_json(focus_path)
+    if not isinstance(focus, Mapping) or focus.get("schema") != "focus_symbol_report/v1":
+        raise CrackHarnessError("current residual focus report schema is invalid")
+    focus_unsigned = dict(focus)
+    focus_digest = focus_unsigned.pop("artifact_sha256", None)
+    if focus_digest != _digest_json(focus_unsigned) or focus.get("function") != function:
+        raise CrackHarnessError("current residual focus report integrity is invalid")
+    focus_binding = focus.get("input_binding")
+    if not isinstance(focus_binding, Mapping):
+        raise CrackHarnessError("current residual focus report lacks input binding")
+    for key, expected in (
+        ("strict_report", strict_descriptor),
+        ("data_report", data_descriptor),
+        ("physical_relocation_receipt", receipt_descriptor),
+    ):
+        actual = focus_binding.get(key)
+        if not isinstance(actual, Mapping) or any(
+            actual.get(field) != expected[field] for field in ("sha256", "size_bytes")
+        ):
+            raise CrackHarnessError(f"current residual focus {key} binding drifted")
+    physical_focus = focus.get("physical_relocations")
+    if not isinstance(physical_focus, Mapping):
+        raise CrackHarnessError("current residual focus physical evidence is invalid")
+    for side, expected in (("target", target_object), ("candidate", base_object)):
+        row = physical_focus.get(side)
+        obj = row.get("object") if isinstance(row, Mapping) else None
+        if not isinstance(obj, Mapping) or any(
+            obj.get(field) != expected[field] for field in ("sha256", "size_bytes")
+        ):
+            raise CrackHarnessError(f"current residual focus {side} object drifted")
+
+    physical_summary = _read_json(physical_path)
+    if not isinstance(physical_summary, Mapping):
+        raise CrackHarnessError("current residual physical summary is invalid")
+    physical_unsigned = dict(physical_summary)
+    physical_digest = physical_unsigned.pop("physical_summary_sha256", None)
+    if physical_digest != _digest_json(physical_unsigned):
+        raise CrackHarnessError("current residual physical summary digest is invalid")
+    physical_bindings = {
+        "owner": owner,
+        "unit": unit,
+        "function": function,
+        "base_commit": base_commit,
+        "target_object": target_object,
+        "base_object": base_object,
+        "focus_report": focus_descriptor,
+        "strict_report": strict_descriptor,
+        "data_report": data_descriptor,
+    }
+    for key, expected in physical_bindings.items():
+        if physical_summary.get(key) != expected:
+            raise CrackHarnessError(
+                f"current residual physical summary {key} binding drifted"
+            )
+    canonical_rows, physical_differences = _canonical_current_residual_rows(
+        focus, function
+    )
+    physical_exact = physical_summary.get("physical_relocations_exact")
+    if not isinstance(physical_exact, bool):
+        raise CrackHarnessError(
+            "current residual physical summary exactness is invalid"
+        )
+    if (
+        physical_summary.get("physical_difference_count")
+        != len(physical_differences)
+        or physical_summary.get("physical_difference_sha256")
+        != _digest_json(physical_differences)
+        or (physical_focus.get("status") == "exact") != physical_exact
+        or physical_exact != (not physical_differences)
+    ):
+        raise CrackHarnessError(
+            "current residual physical difference binding drifted"
+        )
+    residual_rows = _validate_predicted_rows(
+        value.get("residual_rows"), "current_residual.residual_rows"
+    )
+    if residual_rows != canonical_rows:
+        raise CrackHarnessError(
+            "current residual rows do not match the bound focus evidence"
+        )
+    predicted = set(predicted_rows)
+    residual = set(residual_rows)
+    if not predicted.issubset(residual):
+        raise CrackHarnessError(
+            "predicted_rows must be a subset of current residual rows"
+        )
+    if expected_terminal == "exact" and predicted != residual:
+        raise CrackHarnessError(
+            "expected exact requires complete current residual row coverage"
+        )
+    return residual_rows
+
+
 def _validate_winning_cell_selection(
     root: Path, selection: Any, candidate_sha256: str,
     predicted_rows: Sequence[str], owner: str, function: str,
-    controller_commit: str, *, mutable_source_path: Path,
+    controller_commit: str, *, unit: str, mutable_source_path: Path,
+    base_sha256: str, source_sha256: str, target_sha256: str,
+    function_span: Mapping[str, Any], toolchain_key: str,
 ) -> None:
     """Require one evidence-backed winning cell before any compile is legal."""
 
@@ -884,6 +1206,7 @@ def _validate_winning_cell_selection(
         "strategy", "rank", "expected_terminal", "evidence", "candidate_sha256",
         "predicted_rows_sha256", "alternatives_compiled", "negative_controls",
         "pivot_if_unranked", "source_class", "luna5_audit",
+        "current_residual",
     }
     if not isinstance(selection, Mapping) or set(selection) != required:
         raise CrackHarnessError(
@@ -937,6 +1260,14 @@ def _validate_winning_cell_selection(
         root, selection.get("luna5_audit"), owner, function,
         candidate_sha256, controller_commit,
     )
+    _validate_current_residual_evidence(
+        root, selection.get("current_residual"), owner=owner,
+        function=function, base_commit=controller_commit, unit=unit,
+        base_sha256=base_sha256,
+        source_sha256=source_sha256, target_sha256=target_sha256,
+        function_span=function_span, toolchain_key=toolchain_key,
+        predicted_rows=predicted_rows, expected_terminal=expected_terminal,
+    )
 
     evidence_value = _read_json(evidence_path)
     evidence_required = {
@@ -944,6 +1275,7 @@ def _validate_winning_cell_selection(
         "candidate_sha256", "predicted_rows_sha256",
         "alternatives_compiled", "negative_controls", "pivot_if_unranked",
         "source_class", "inputs", "causal_prediction",
+        "current_residual",
     }
     if not isinstance(evidence_value, Mapping) or set(evidence_value) != evidence_required:
         raise CrackHarnessError(
@@ -962,6 +1294,7 @@ def _validate_winning_cell_selection(
         "negative_controls": 0,
         "pivot_if_unranked": True,
         "source_class": source_class,
+        "current_residual": selection.get("current_residual"),
     }
     for key, expected in evidence_bindings.items():
         if evidence_value.get(key) != expected:
@@ -2792,7 +3125,12 @@ def load_approval(
         _validate_winning_cell_selection(
             root, approval.get("selection"), approval["candidate"]["sha256"], rows,
             approval["owner"], approval["function"], approval["base_commit"],
-            mutable_source_path=paths["source"],
+            unit=approval["unit"], mutable_source_path=paths["source"],
+            base_sha256=approval["base"]["sha256"],
+            source_sha256=approval["source"]["sha256"],
+            target_sha256=approval["target_sha256"],
+            function_span=span,
+            toolchain_key=approval["toolchain_key"],
         )
     commands = approval.get("commands")
     if not isinstance(commands, Mapping):
@@ -3250,7 +3588,12 @@ def _checkpoint(
         root, approval.get("selection"), approval["candidate"]["sha256"],
         approval["predicted_rows"], approval["owner"], approval["function"],
         approval["base_commit"],
-        mutable_source_path=approval["_paths"]["source"],
+        unit=approval["unit"], mutable_source_path=approval["_paths"]["source"],
+        base_sha256=approval["base"]["sha256"],
+        source_sha256=approval["source"]["sha256"],
+        target_sha256=approval["target_sha256"],
+        function_span=approval["function_span"],
+        toolchain_key=approval["toolchain_key"],
     )
     now = datetime.now(timezone.utc)
     approval_expires = _timestamp(approval.get("expires_at"), "approval expires_at")
@@ -5390,7 +5733,8 @@ def _function_results(state_root: Path, approval: Mapping[str, Any]) -> list[dic
         if not isinstance(root, Path):
             root = state_root.parent
         if binding is not None and _valid_terminal_result(
-            root, path, path.parent / "record.commit.json", binding, approval
+            root, path, path.parent / "record.commit.json", binding,
+            central_required=False,
         ):
             return [dict(value)]
     return []
@@ -5485,33 +5829,42 @@ def _consumed_cell_records(state: Path) -> list[dict[str, Any]]:
     if (
         not isinstance(value, Mapping)
         or set(value) != {"schema", "records"}
-        or value.get("schema") != "crack_harness_consumed_cells/v1"
+        or value.get("schema") not in {
+            "crack_harness_consumed_cells/v1",
+            "crack_harness_consumed_cells/v2",
+        }
         or not isinstance(value.get("records"), list)
         or len(value["records"]) > MAX_CONSUMED_CELLS
     ):
         raise CrackHarnessError("central consumed-cell ledger is malformed")
-    required = {
+    required_v1 = {
         "function_key", "owner", "function", "candidate_sha256",
         "first_campaign_id", "consumed_at",
     }
+    required_v2 = required_v1 | {"base_sha256"}
     records: list[dict[str, Any]] = []
-    identities: set[tuple[str, str]] = set()
+    identities: set[tuple[str, str, str]] = set()
     for item in value["records"]:
-        if not isinstance(item, Mapping) or set(item) != required:
+        if not isinstance(item, Mapping) or frozenset(item) not in {
+            frozenset(required_v1), frozenset(required_v2),
+        }:
             raise CrackHarnessError("central consumed-cell record is malformed")
         function_key = _sha(item.get("function_key"), "consumed function_key")
         candidate_sha256 = _sha(
             item.get("candidate_sha256"), "consumed candidate_sha256"
         )
+        base_sha256 = item.get("base_sha256")
+        if base_sha256 is not None:
+            base_sha256 = _sha(base_sha256, "consumed base_sha256")
         _text(item.get("owner"), "consumed owner")
         _text(item.get("function"), "consumed function")
         _text(item.get("first_campaign_id"), "consumed first_campaign_id")
         _timestamp(item.get("consumed_at"), "consumed_at")
-        identity = (function_key, candidate_sha256)
+        identity = (function_key, candidate_sha256, base_sha256 or "legacy")
         if identity in identities:
             raise CrackHarnessError("central consumed-cell ledger contains a duplicate")
         identities.add(identity)
-        records.append(dict(item))
+        records.append({**dict(item), "base_sha256": base_sha256})
     return records
 
 
@@ -5520,9 +5873,14 @@ def _append_consumed_cell(
     first_campaign_id: str | None = None,
 ) -> None:
     records = _consumed_cell_records(state)
-    identity = (_function_key(approval), approval["candidate"]["sha256"])
+    identity = (
+        _function_key(approval), approval["base"]["sha256"],
+        approval["candidate"]["sha256"],
+    )
     if any(
-        (item["function_key"], item["candidate_sha256"]) == identity
+        item["function_key"] == identity[0]
+        and item["candidate_sha256"] == identity[2]
+        and item.get("base_sha256") in {None, identity[1]}
         for item in records
     ):
         return
@@ -5530,12 +5888,13 @@ def _append_consumed_cell(
         raise CrackHarnessError("central consumed-cell ledger reached its hard cap")
     records.append({
         "function_key": identity[0], "owner": approval["owner"],
-        "function": approval["function"], "candidate_sha256": identity[1],
+        "function": approval["function"], "base_sha256": identity[1],
+        "candidate_sha256": identity[2],
         "first_campaign_id": first_campaign_id or approval["campaign"]["id"],
         "consumed_at": _now(),
     })
     _atomic_json(state / "consumed-cells.json", {
-        "schema": "crack_harness_consumed_cells/v1", "records": records,
+        "schema": "crack_harness_consumed_cells/v2", "records": records,
     })
 
 
@@ -5932,12 +6291,16 @@ def _function_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
             return False
         if tombstone.get("schema") == "crack_harness_function_tombstone/v1":
             return True
-        if tombstone.get("candidate_sha256") == approval["candidate"]["sha256"]:
+        if (
+            tombstone.get("candidate_sha256") == approval["candidate"]["sha256"]
+            and tombstone.get("base_sha256") == approval["base"]["sha256"]
+        ):
             return True
     key = _function_key(approval)
     return any(
         item["function_key"] == key
         and item["candidate_sha256"] == approval["candidate"]["sha256"]
+        and item.get("base_sha256") in {None, approval["base"]["sha256"]}
         for item in _consumed_cell_records(_state_from_run_dir(run_dir))
     )
 

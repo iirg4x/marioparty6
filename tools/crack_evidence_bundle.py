@@ -370,10 +370,18 @@ def _load_toolchain(manifest_path: Path, expected_key: str) -> dict[str, Any]:
 
 def _remove_staged_retail(retail_copy: Path) -> None:
     """Remove staged retail bytes while preserving the tracked placeholder."""
+    _assert_no_indirection(retail_copy, missing_leaf=True)
+    if not retail_copy.exists():
+        return
+    _assert_no_indirection(retail_copy)
     for child in list(retail_copy.iterdir()) if retail_copy.exists() else []:
+        _assert_no_indirection(child)
         if child.name == ".gitkeep" and child.is_file() and not child.is_symlink():
             continue
-        if child.is_dir() and not child.is_symlink():
+        is_junction = getattr(child, "is_junction", lambda: False)()
+        if child.is_symlink() or is_junction:
+            child.unlink(missing_ok=True)
+        elif child.is_dir():
             shutil.rmtree(child)
         else:
             child.unlink(missing_ok=True)
