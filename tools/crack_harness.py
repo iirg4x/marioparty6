@@ -1332,6 +1332,10 @@ def _validate_winning_cell_selection(
             raise CrackHarnessError(
                 "selection evidence cannot bind the mutable live source"
             )
+        if _inside((root / DEFAULT_STATE_ROOT).resolve(), input_path):
+            raise CrackHarnessError(
+                "selection evidence cannot bind mutable harness state"
+            )
         if _digest_file(input_path) != input_sha256:
             raise CrackHarnessError(
                 f"selection evidence input hash mismatch: {input_path}"

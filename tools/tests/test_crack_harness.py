@@ -587,6 +587,33 @@ elif 'admit' in sys.argv:
         ):
             harness.load_approval(self.root, approval)
 
+    def test_selection_evidence_cannot_bind_mutable_harness_state(self) -> None:
+        approval, _ = self.write_inputs()
+        frontier = (
+            self.root / harness.DEFAULT_STATE_ROOT
+            / "owners/owner/function/latest-frontier.json"
+        )
+        frontier.parent.mkdir(parents=True)
+        frontier.write_text("{}\n", encoding="utf-8")
+        evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
+        evidence["inputs"].append({
+            "path": frontier.relative_to(self.root).as_posix(),
+            "sha256": sha(frontier),
+            "role": "signed_parent_frontier",
+        })
+        self.evidence.write_text(
+            json.dumps(evidence, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        approval_value = json.loads(approval.read_text(encoding="utf-8"))
+        approval_value["selection"]["evidence"]["sha256"] = sha(self.evidence)
+        approval.write_text(json.dumps(approval_value), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "selection evidence cannot bind mutable harness state",
+        ):
+            harness.load_approval(self.root, approval)
+
     def test_legacy_winning_packet_without_current_residual_fails_closed(self) -> None:
         approval, _ = self.write_inputs()
         value = json.loads(approval.read_text(encoding="utf-8"))
