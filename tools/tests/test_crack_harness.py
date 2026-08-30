@@ -55,6 +55,8 @@ class CrackHarnessTests(unittest.TestCase):
         self._git("add", "src/owner.c", "evidence/selection.json", "tools/candidate_compile_admission.py", "tools/crack_harness.py", "tools/crack_evidence_bundle.py")
         self._git("commit", "-qm", "fixture")
         self.commit = self._git("rev-parse", "HEAD")
+        self.luna_audit = self.root / "evidence/luna5.json"
+        self._write_luna5_audit()
         self.state = self.root / "state"
         self.state.mkdir()
         self.approval = self.root / "approval.json"
@@ -97,10 +99,55 @@ class CrackHarnessTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def _write_luna5_audit(self) -> None:
+        receipts = []
+        for index, role in enumerate(sorted(harness.LUNA5_ROLES)):
+            artifact = self.root / f"evidence/luna-{index}.json"
+            artifact.write_text(
+                json.dumps({
+                    "schema": harness.LUNA5_ARTIFACT_SCHEMA,
+                    "role": role, "agent_id": f"luna-{index}",
+                    "model": "gpt-5.6-luna", "reasoning_effort": "max",
+                    "status": "PASS", "owner": "main:board/test",
+                    "function": "Owner", "controller_commit": self.commit,
+                    "candidate_sha256": sha(self.candidate),
+                    "checks": {
+                        name: True for name in harness.LUNA5_ROLE_CHECKS[role]
+                    },
+                    "findings": [f"{role} audit passed"],
+                    "mutations": False, "compiled": False,
+                    "authority_advanced": False,
+                }, sort_keys=True, separators=(",", ":")) + "\n",
+                encoding="utf-8",
+            )
+            receipts.append({
+                "role": role, "agent_id": f"luna-{index}",
+                "model": "gpt-5.6-luna", "reasoning_effort": "max",
+                "status": "PASS", "controller_commit": self.commit,
+                "artifact": {
+                    "path": artifact.relative_to(self.root).as_posix(),
+                    "sha256": sha(artifact),
+                },
+                "mutations": False, "compiled": False,
+            })
+        value = {
+            "schema": harness.LUNA5_AUDIT_SCHEMA,
+            "owner": "main:board/test", "function": "Owner",
+            "controller_commit": self.commit,
+            "candidate_sha256": sha(self.candidate),
+            "receipts": receipts, "authority_advanced": False,
+        }
+        self.luna_audit.write_text(
+            json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+
     def _hook_source(self) -> str:
         return r'''import hashlib,json,os,pathlib,sys,time
 if pathlib.Path(sys.argv[0]).name=='crack_evidence_bundle.py':
  out=pathlib.Path(os.environ['CRACK_HARNESS_OUT_ROOT']); out.mkdir(parents=True,exist_ok=True)
+ if os.environ.get('HARNESS_TEST_COMMAND_FAIL')=='1':
+  (out/'observed.o').write_bytes(b'partial-object'); print('known stdout'); print('known stderr',file=sys.stderr); raise SystemExit(7)
  desc=lambda p:{'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'size_bytes':p.stat().st_size}
  digest=lambda v:hashlib.sha256(json.dumps(v,sort_keys=True,separators=(',',':')).encode()).hexdigest()
  phase=os.environ['CRACK_HARNESS_PHASE']; source_rel=os.environ['CRACK_HARNESS_SOURCE_PATH']
@@ -192,7 +239,7 @@ elif 'admit' in sys.argv:
         value = {
             "schema": harness.APPROVAL_SCHEMA, "approval_id": "cell-1", "owner": "main:board/test", "task_id": "task", "function": "Owner", "unit": "main/board/test", "base_commit": self.commit, "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY, "target_sha256": TARGET_SHA, "permit_sha256": "0" * 64, "issued_at": issued.isoformat(), "expires_at": deadline.isoformat(),
             "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": predicted_rows,
-            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": "exact", "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell"},
+            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": "exact", "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell", "luna5_audit": {"path": "evidence/luna5.json", "sha256": sha(self.luna_audit)}},
             "commands": {"precompile": precompile, "compile": self.descriptor("compile", "compile", str(gain), str(focus_rows)), "strict": self.descriptor("proof_strict", "strict"), "data": self.descriptor("proof_data", "data"), "focus": self.descriptor("proof_focus", "focus"), "siblings": self.descriptor("proof_siblings", "siblings"), "physical": self.descriptor("proof_physical", "physical"), "assess": self.descriptor("assessment", "assess"), "record": self.descriptor("canonical_record", "record")},
             "campaign": {"id": campaign_id, "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
         }
@@ -222,6 +269,81 @@ elif 'admit' in sys.argv:
         (self.state / "STOP").write_text(json.dumps({"schema":"crack_harness_stop/v1","stopped":True,"authorized_permit_sha256":sha(self.permit),"stop_nonce":stop_nonce}), encoding="utf-8")
         self.approval.write_text(json.dumps(value), encoding="utf-8")
         return self.approval, self.permit
+
+    def add_legacy_retry(
+        self, approval_path: Path, *, strict_percent: int = 100,
+        tombstone_schema: str = "crack_harness_function_tombstone/v1",
+    ) -> tuple[Path, dict]:
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        loaded = harness.load_approval(self.root, approval_path)
+        run_dir = harness._run_dir(self.state, loaded)
+        function_dir = run_dir.parent
+        function_dir.mkdir(parents=True, exist_ok=True)
+        tombstone = {
+            "schema": tombstone_schema,
+            "function_key": harness._function_key(loaded),
+            "owner": loaded["owner"], "function": loaded["function"],
+            "first_campaign_id": "legacy-campaign", "consumed": True,
+        }
+        if tombstone_schema.endswith("/v2"):
+            tombstone.update({
+                "approval_sha256": "1" * 64,
+                "base_sha256": loaded["base"]["sha256"],
+                "candidate_sha256": loaded["candidate"]["sha256"],
+                "candidate_execution_started": True,
+                "consumed_at": harness._now(),
+            })
+        tombstone_path = function_dir / "latest-function.json"
+        tombstone_path.write_text(json.dumps(tombstone), encoding="utf-8")
+
+        prior_approval = "2" * 64
+        failure_body = {
+            "schema": "crack_harness_failure_diagnostic/v1",
+            "approval_sha256": prior_approval,
+            "owner": loaded["owner"], "function": loaded["function"],
+            "primary_reason": "legacy infrastructure failed before proof",
+            "cleanup_errors": [], "finished_at": harness._now(),
+        }
+        failure_path = function_dir / "latest-failure.json"
+        failure_path.write_text(json.dumps({
+            **failure_body,
+            "diagnostic_sha256": harness._digest_json(failure_body),
+        }), encoding="utf-8")
+        historical = {
+            "schema": harness.HISTORICAL_EXACT_EVIDENCE_SCHEMA,
+            "owner": loaded["owner"], "function": loaded["function"],
+            "candidate_sha256": loaded["candidate"]["sha256"],
+            "legacy_controller_commit": self.commit,
+            "target_bytes": 32, "candidate_bytes": 32,
+            "strict_percent": strict_percent, "data_percent": 100,
+            "strict_diff_rows": 0, "data_diff_rows": 0,
+        }
+        evidence_path = self.root / "evidence/legacy-exact.json"
+        evidence_path.write_text(json.dumps(historical), encoding="utf-8")
+        rel = lambda path: path.relative_to(self.root).as_posix()
+        approval["retry"] = {
+            "schema": harness.RETRY_SCHEMA,
+            "tombstone": {"path": rel(tombstone_path), "sha256": sha(tombstone_path)},
+            "failure": {"path": rel(failure_path), "sha256": sha(failure_path)},
+            "prior_approval_sha256": prior_approval,
+            "candidate_sha256": loaded["candidate"]["sha256"],
+            "legacy_controller_commit": self.commit,
+            "historical_exact_evidence": {
+                "path": rel(evidence_path), "sha256": sha(evidence_path),
+            },
+        }
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
+        return run_dir, approval
+
+    def manager_draft(self, **kwargs: int) -> Path:
+        approval, permit = self.write_inputs(**kwargs)
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["permit_sha256"] = "0" * 64
+        draft = self.root / "manager-draft.json"
+        draft.write_text(json.dumps(value), encoding="utf-8")
+        approval.unlink()
+        permit.unlink()
+        return draft
 
     def execute(self, **kwargs: int) -> dict:
         approval, permit = self.write_inputs(**kwargs)
@@ -265,20 +387,27 @@ elif 'admit' in sys.argv:
         run = next((self.state / "owners").glob("*/*/*"))
         self.assertFalse((run / "temp").exists()); self.assertFalse((run / "retained_winner.c").exists())
         self.assertTrue((run / "CRACK_REPORT_v1.json").is_file())
+        self.assertTrue((run / "root-cleanup.receipt.json").is_file())
 
-    def test_positive_nonexact_is_improved_without_report(self) -> None:
+    def test_positive_nonexact_is_rejected_without_report_or_record(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
-        self.assertEqual(result["status"], "improved", result)
-        run = next((self.state / "owners").glob("*/*/*"))
-        self.assertFalse((run / "CRACK_REPORT_v1.json").exists())
-        self.assertIn("return 2", self.source.read_text())
+        self.assertEqual(result["status"], "no_gain", result)
+        self.assertIn("exact-terminal-only", result["reason"])
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/CRACK_REPORT_v1.json")))
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
+        self.assertIn("return 1", self.source.read_text())
+        self.assertIn("discard", result["receipts"])
+        self.assertNotIn("record", result["receipts"])
 
     def test_no_gain_restores(self) -> None:
         result = self.execute(gain=0)
         self.assertEqual(result["status"], "no_gain", result)
+        self.assertEqual(result["cleanup_status"], "complete")
+        self.assertEqual(result["cleanup_errors"], [])
         self.assertIn("return 1", self.source.read_text())
         self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
         self.assertFalse(any(self.state.glob("owners/*/*/latest/temp")))
+        self.assertFalse(any(self.state.glob("owners/*/*/latest")))
         self.assertTrue(any(self.state.glob("owners/*/*/latest-function.json")))
         self.assertIn("discard", result["receipts"])
         self.assertNotIn("record", result["receipts"])
@@ -299,6 +428,196 @@ elif 'admit' in sys.argv:
             self.assertNotIn("state_root", inspect.signature(function).parameters)
         with self.assertRaisesRegex(harness.CrackHarnessError, "fixed"):
             harness._state_root(self.root, self.state)
+
+    def test_manager_issuer_atomically_materializes_dry_run_ready_packet(self) -> None:
+        draft = self.manager_draft()
+        issued_approval = self.root / "issued-approval.json"
+        issued_permit = self.root / "issued-permit.json"
+        packet = harness._issue_manager_packet_for_test(
+            self.root, draft, issued_approval, issued_permit,
+            state_root=self.state, manager_key_path=self.manager_key,
+        )
+        self.assertEqual(packet["status"], "ready")
+        self.assertEqual(packet["approval"]["sha256"], sha(issued_approval))
+        self.assertEqual(packet["permit"]["sha256"], sha(issued_permit))
+        loaded = harness.load_approval(self.root, issued_approval)
+        harness._load_permit(
+            self.root, loaded, issued_permit, self.state,
+            manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(
+            harness._dry_run_for_test(
+                self.root, issued_approval, state_root=self.state
+            )["status"],
+            "ready",
+        )
+
+    def test_manager_issuer_rolls_back_partial_publication(self) -> None:
+        draft = self.manager_draft()
+        issued_approval = self.root / "issued-approval.json"
+        issued_permit = self.root / "issued-permit.json"
+        prior_stop = (self.state / "STOP").read_bytes()
+        with patch.object(
+            harness, "_load_permit", side_effect=harness.CrackHarnessError("seal failed")
+        ):
+            with self.assertRaisesRegex(harness.CrackHarnessError, "seal failed"):
+                harness._issue_manager_packet_for_test(
+                    self.root, draft, issued_approval, issued_permit,
+                    state_root=self.state, manager_key_path=self.manager_key,
+                )
+        self.assertFalse(issued_approval.exists())
+        self.assertFalse(issued_permit.exists())
+        self.assertEqual((self.state / "STOP").read_bytes(), prior_stop)
+
+    def test_manager_issuer_rejects_outputs_inside_harness_state(self) -> None:
+        draft = self.manager_draft()
+        reserved = (
+            self.state / "transaction.json",
+            self.state / "RECOVERY_REQUIRED.json",
+            self.state / "attempt.json",
+            self.state / "owners/test/Owner/latest/result.json",
+        )
+        for path in reserved:
+            with self.subTest(path=path):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with self.assertRaisesRegex(
+                    harness.CrackHarnessError, "outside the harness state tree"
+                ):
+                    harness._issue_manager_packet_for_test(
+                        self.root, draft, path,
+                        self.root / f"permit-{path.name}.json",
+                        state_root=self.state, manager_key_path=self.manager_key,
+                    )
+                self.assertFalse(path.exists())
+
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "outside the harness state tree"
+        ):
+            harness._issue_manager_packet_for_test(
+                self.root, draft,
+                self.root / "approval-outside-state.json",
+                self.state / "owners/test/Owner/latest/result.json",
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+
+    def test_manager_issuer_preserves_primary_when_artifact_rollback_fails(self) -> None:
+        draft = self.manager_draft()
+        issued_approval = self.root / "issued-approval.json"
+        issued_permit = self.root / "issued-permit.json"
+        original_unlink = harness._safe_unlink
+
+        def fail_artifact_unlink(path: Path) -> None:
+            if path in {issued_approval, issued_permit}:
+                raise OSError("artifact rollback denied")
+            original_unlink(path)
+
+        with patch.object(
+            harness, "_load_permit", side_effect=harness.CrackHarnessError("primary seal failure")
+        ), patch.object(harness, "_safe_unlink", side_effect=fail_artifact_unlink):
+            with self.assertRaisesRegex(harness.CrackHarnessError, "primary seal failure") as raised:
+                harness._issue_manager_packet_for_test(
+                    self.root, draft, issued_approval, issued_permit,
+                    state_root=self.state, manager_key_path=self.manager_key,
+                )
+        self.assertTrue(any("artifact rollback denied" in note for note in raised.exception.__notes__))
+        stop = json.loads((self.state / "STOP").read_text(encoding="utf-8"))
+        self.assertEqual(stop["authorized_permit_sha256"], "0" * 64)
+        self.assertTrue(issued_approval.is_file())
+        self.assertTrue(issued_permit.is_file())
+        marker_path = self.state / "PACKET_ROLLBACK_REQUIRED.json"
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        marker_body = dict(marker)
+        marker_sha256 = marker_body.pop("rollback_sha256")
+        self.assertEqual(marker["schema"], harness.PACKET_ROLLBACK_REQUIRED_SCHEMA)
+        self.assertEqual(marker_sha256, harness._digest_json(marker_body))
+        self.assertTrue(
+            harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["packet_rollback_required"]
+        )
+        self.assertEqual(
+            harness._dry_run_for_test(
+                self.root, issued_approval, state_root=self.state,
+            )["status"],
+            "blocked",
+        )
+        with self.assertRaisesRegex(harness.CrackHarnessError, "recovery state"):
+            harness._issue_manager_packet_for_test(
+                self.root, draft,
+                self.root / "other-issued-approval.json",
+                self.root / "other-issued-permit.json",
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+
+    def test_atomic_json_flushes_file_and_directory(self) -> None:
+        output = self.root / "state" / "durable.json"
+        with patch.object(harness, "_directory_fsync") as directory_fsync, patch.object(
+            harness.os, "fsync", wraps=harness.os.fsync
+        ) as file_fsync:
+            harness._atomic_json(output, {"durable": True})
+        self.assertGreaterEqual(file_fsync.call_count, 1)
+        directory_fsync.assert_called_once_with(output.parent)
+        self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"durable": True})
+
+    def test_manager_key_path_rejects_in_tree_and_symlink_paths(self) -> None:
+        in_tree = self.root / "manager.key"
+        in_tree.write_bytes(b"T" * 32)
+        with self.assertRaisesRegex(harness.CrackHarnessError, "outside the repository"):
+            harness._manager_key_file(self.root, in_tree)
+        link = self.root / "manager-link"
+        try:
+            link.symlink_to(self.manager_key)
+        except OSError as exc:
+            self.skipTest(f"symlink creation unavailable: {exc}")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "plain file"):
+            harness._manager_key_file(self.root, link)
+
+    def test_legacy_guard_survives_history_pruning(self) -> None:
+        function_dir = self.state / "owners/legacy-owner/Legacy"
+        function_dir.mkdir(parents=True)
+        legacy = function_dir / "latest-campaign.json"
+        legacy.write_text(json.dumps({
+            "schema": "crack_harness_campaign_tombstone/v1",
+            "campaign_key": "a" * 64, "campaign_id": "old", "consumed": True,
+        }), encoding="utf-8")
+        (function_dir / "bulky.bin").write_bytes(b"x" * 1024)
+        harness._prune_function_state(function_dir)
+        self.assertTrue(legacy.is_file())
+        self.assertFalse((function_dir / "bulky.bin").exists())
+
+    def test_local_and_central_consumed_markers_independently_fail_closed(self) -> None:
+        result = self.execute(gain=0)
+        self.assertEqual(result["status"], "no_gain")
+        function_dir = next((self.state / "owners").glob("*/*"))
+        local = function_dir / "latest-function.json"
+        local_bytes = local.read_bytes()
+        central = self.state / "consumed-cells.json"
+        central_bytes = central.read_bytes()
+
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 2;\n}\n", encoding="utf-8"
+        )
+        self._write_luna5_audit()
+        approval_path, _ = self.write_inputs(campaign_id="second")
+        local.unlink()
+        self.assertEqual(
+            harness._dry_run_for_test(
+                self.root, approval_path, state_root=self.state
+            )["status"],
+            "blocked",
+        )
+        local.write_bytes(local_bytes)
+        central.unlink()
+        self.assertEqual(
+            harness._dry_run_for_test(
+                self.root, approval_path, state_root=self.state
+            )["status"],
+            "blocked",
+        )
+        central.write_bytes(central_bytes)
 
     def test_signed_permit_rejects_approval_identity_drift(self) -> None:
         approval_path, permit_path = self.write_inputs()
@@ -438,6 +757,54 @@ elif 'admit' in sys.argv:
                 expected_key_id=sha(self.manager_key),
             )
 
+    def test_five_luna_audit_rejects_duplicate_agent_and_commit_drift(self) -> None:
+        for mutation, message in (
+            (
+                lambda value: value["receipts"][1].__setitem__(
+                    "agent_id", value["receipts"][0]["agent_id"]
+                ),
+                "artifact content is unbound|duplicated, drifted",
+            ),
+            (
+                lambda value: value["receipts"][0].__setitem__(
+                    "controller_commit", "0" * 40
+                ),
+                "artifact content is unbound|duplicated, drifted",
+            ),
+        ):
+            with self.subTest(message=message):
+                self._write_luna5_audit()
+                value = json.loads(self.luna_audit.read_text(encoding="utf-8"))
+                mutation(value)
+                self.luna_audit.write_text(json.dumps(value), encoding="utf-8")
+                approval_path, _ = self.write_inputs()
+                approval = json.loads(approval_path.read_text(encoding="utf-8"))
+                approval["selection"]["luna5_audit"]["sha256"] = sha(self.luna_audit)
+                approval_path.write_text(json.dumps(approval), encoding="utf-8")
+                with self.assertRaisesRegex(harness.CrackHarnessError, message):
+                    harness.load_approval(self.root, approval_path)
+        self._write_luna5_audit()
+
+    def test_five_luna_audit_rejects_hash_bound_but_incomplete_artifact(self) -> None:
+        self._write_luna5_audit()
+        audit = json.loads(self.luna_audit.read_text(encoding="utf-8"))
+        descriptor = audit["receipts"][0]["artifact"]
+        artifact = self.root / descriptor["path"]
+        value = json.loads(artifact.read_text(encoding="utf-8"))
+        value["checks"].pop(next(iter(value["checks"])))
+        artifact.write_text(json.dumps(value), encoding="utf-8")
+        descriptor["sha256"] = sha(artifact)
+        self.luna_audit.write_text(json.dumps(audit), encoding="utf-8")
+        approval_path, _ = self.write_inputs()
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        approval["selection"]["luna5_audit"]["sha256"] = sha(self.luna_audit)
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "artifact checks are incomplete"
+        ):
+            harness.load_approval(self.root, approval_path)
+        self._write_luna5_audit()
+
     def test_signed_permit_rejects_every_runtime_identity_drift(self) -> None:
         approval_path, permit_path = self.write_inputs()
         mutations = {
@@ -487,7 +854,7 @@ elif 'admit' in sys.argv:
         with self.assertRaisesRegex(harness.CrackHarnessError, "non-negative numeric"):
             harness._validate_proof("strict", proof, approval, None)
 
-    def test_crash_after_central_record_invalidates_before_source_rollback(self) -> None:
+    def test_unbound_legacy_journal_never_invalidates_central_record(self) -> None:
         candidate_record = "d" * 64
         store = RecoveryMemory(self.root / "memory.sqlite3")
         identity = RecoveryMemory.identity(
@@ -511,10 +878,173 @@ elif 'admit' in sys.argv:
             "candidate_record_sha256": candidate_record, "status": "improved",
         })
         with patch.object(RecoveryMemory, "for_root", return_value=store):
-            harness._recover_interrupted(self.root, self.state)
-        self.assertEqual(self.source.read_bytes(), self.base.read_bytes())
+            with self.assertRaisesRegex(harness.CrackHarnessError, "central record retained"):
+                harness._recover_interrupted(self.root, self.state)
+        self.assertEqual(self.source.read_bytes(), self.candidate.read_bytes())
         with contextlib.closing(sqlite3.connect(store.path)) as connection:
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 1)
+
+    def _write_bound_recovery_journal(
+        self, *, central_record_binding: dict | None = None,
+        exact_commit: bool = False,
+    ) -> tuple[Path, dict]:
+        """Create a v1 journal whose identity is bound to the real approval."""
+
+        with patch.object(harness, "_validate_natural_cell", return_value=None):
+            approval = harness.load_approval(self.root, self.approval)
+        run = harness._run_dir(self.state, approval)
+        temp = run / "temp"
+        temp.mkdir(parents=True)
+        baseline = temp / "baseline.snapshot"
+        baseline.write_bytes(self.base.read_bytes())
+        result_path = run / "result.json"
+        report_path = run / "CRACK_REPORT_v1.json"
+        commit_path = run / "record.commit.json"
+        if exact_commit:
+            commit_body = {
+                "schema": "crack_harness_record_commit/v1",
+                "outcome": "exact",
+                "candidate_sha256": approval["candidate"]["sha256"],
+                "record_payload_sha256": "e" * 64,
+                "record_sha256": "e" * 64,
+            }
+            commit_path.write_text(
+                json.dumps({**commit_body, "commit_sha256": harness._digest_json(commit_body)}),
+                encoding="utf-8",
+            )
+        body = {
+            "schema": harness.TRANSACTION_SCHEMA,
+            "approval_path": str(self.approval),
+            "approval_id": approval["approval_id"],
+            "approval_identity_sha256": approval["_permit_identity_sha256"],
+            "approval_sha256": approval["_approval_sha256"],
+            "owner": approval["owner"],
+            "function": approval["function"],
+            "source_relpath": approval["_paths"]["source"].relative_to(self.root).as_posix(),
+            "source_sha256": approval["source"]["sha256"],
+            "base_relpath": approval["_paths"]["base"].relative_to(self.root).as_posix(),
+            "base_sha256": approval["base"]["sha256"],
+            "base_commit": approval["base_commit"],
+            "candidate_relpath": approval["_paths"]["candidate"].relative_to(self.root).as_posix(),
+            "candidate_sha256": approval["candidate"]["sha256"],
+            "baseline_snapshot": str(baseline),
+            "baseline_sha256": approval["base"]["sha256"],
+            "target_object_sha256": approval["target_sha256"],
+            "result_path": str(result_path),
+            "report_path": str(report_path),
+            "worktree": str(temp / "worktree"),
+            "record_commit_path": str(commit_path),
+            "central_record_binding": central_record_binding,
+        }
+        journal = self.state / "transaction.json"
+        journal.write_text(
+            json.dumps({**body, "transaction_sha256": harness._digest_json(body)}),
+            encoding="utf-8",
+        )
+        return journal, approval
+
+    def test_interrupted_journal_must_bind_the_actual_approval_file(self) -> None:
+        self.write_inputs()
+        journal, _ = self._write_bound_recovery_journal()
+        value = json.loads(journal.read_text(encoding="utf-8"))
+        value["owner"] = "main:board/forged"
+        unsigned = dict(value)
+        unsigned.pop("transaction_sha256")
+        value["transaction_sha256"] = harness._digest_json(unsigned)
+        journal.write_text(json.dumps(value), encoding="utf-8")
+        self.source.write_bytes(self.candidate.read_bytes())
+        with patch.object(harness, "_validate_natural_cell", return_value=None):
+            with self.assertRaisesRegex(harness.CrackHarnessError, "owner.*approval"):
+                harness._recover_interrupted(self.root, self.state)
+        self.assertEqual(self.source.read_bytes(), self.candidate.read_bytes())
+        self.assertTrue(journal.is_file())
+
+    def test_unavailable_central_query_never_rolls_back_interrupted_source(self) -> None:
+        self.write_inputs()
+        binding = {
+            "input_key": "a" * 64,
+            "owner": "main:board/test",
+            "function": "Owner",
+            "source_sha256": sha(self.candidate),
+            "target_object_sha256": TARGET_SHA,
+            "object_sha256": "c" * 64,
+            "candidate_record_sha256": "d" * 64,
+            "status": "exact",
+        }
+        journal, _ = self._write_bound_recovery_journal(
+            central_record_binding=binding, exact_commit=True,
+        )
+        self.source.write_bytes(self.candidate.read_bytes())
+        with patch.object(
+            harness, "_central_record_matches",
+            side_effect=harness.CrackHarnessError("central unavailable"),
+        ), patch.object(harness, "_validate_natural_cell", return_value=None):
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, "central unavailable"
+            ):
+                harness._recover_interrupted(self.root, self.state)
+        self.assertEqual(self.source.read_bytes(), self.candidate.read_bytes())
+        self.assertTrue(journal.is_file())
+
+    def test_live_transaction_without_approval_fails_closed(self) -> None:
+        self.write_inputs()
+        journal, _ = self._write_bound_recovery_journal()
+        self.source.write_bytes(self.candidate.read_bytes())
+        self.approval.unlink()
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "approval is missing"
+        ):
+            harness._recover_interrupted(self.root, self.state)
+        self.assertEqual(self.source.read_bytes(), self.candidate.read_bytes())
+        self.assertTrue(journal.is_file())
+
+    def test_untrusted_journal_binding_never_invalidates_central_record(self) -> None:
+        self.write_inputs()
+        store = RecoveryMemory(self.root / "memory.sqlite3")
+        with patch.object(RecoveryMemory, "for_root", return_value=store):
+            with patch.object(harness, "_validate_natural_cell", return_value=None):
+                approval = harness.load_approval(self.root, self.approval)
+            identity = RecoveryMemory.identity(
+                owner=approval["owner"], function=approval["function"],
+                base_commit=approval["base_commit"],
+                toolchain_key=harness.TOOLCHAIN_MANIFEST_KEY,
+                target_sha256=approval["target_sha256"],
+                source_sha256=approval["candidate"]["sha256"],
+            )
+            admitted = store.admit(identity, requester="lane")
+            recorded = store.record(
+                identity, requester="lane", object_sha256="c" * 64,
+                status="exact", reason="retained",
+                admission_token=admitted["admission_token"],
+                candidate_record_sha256="d" * 64,
+            )
+            row = recorded["experiment"]
+            journal, _ = self._write_bound_recovery_journal(
+                central_record_binding={
+                    "input_key": row["input_key"], "owner": row["owner"],
+                    "function": row["function_name"],
+                    "source_sha256": row["source_sha256"],
+                    "target_object_sha256": row["target_sha256"],
+                    "object_sha256": row["object_sha256"],
+                    "candidate_record_sha256": row["candidate_record_sha256"],
+                    "status": row["status"],
+                },
+                exact_commit=True,
+            )
+            self.source.write_bytes(self.candidate.read_bytes())
+            with patch.object(harness, "_validate_natural_cell", return_value=None):
+                with self.assertRaisesRegex(
+                    harness.CrackHarnessError,
+                    "central retained-record query is inconclusive",
+                ):
+                    harness._recover_interrupted(self.root, self.state)
+            self.assertEqual(self.source.read_bytes(), self.candidate.read_bytes())
+            self.assertTrue(journal.is_file())
+            with contextlib.closing(sqlite3.connect(store.path)) as connection:
+                self.assertEqual(
+                    connection.execute("SELECT COUNT(*) FROM experiments").fetchone()[0],
+                    1,
+                )
 
     def test_recovery_binding_or_local_commit_mismatch_never_deletes_central_row(self) -> None:
         candidate_record = "d" * 64
@@ -616,6 +1146,17 @@ elif 'admit' in sys.argv:
         approval, _ = self.write_inputs(); value = json.loads(approval.read_text()); value["toolchain_key"] = "0" * 64
         approval.write_text(json.dumps(value), encoding="utf-8")
         with self.assertRaisesRegex(harness.CrackHarnessError, "Ninja-inclusive"):
+            harness.load_approval(self.root, approval)
+
+    def test_live_source_and_sealed_base_must_use_distinct_paths(self) -> None:
+        approval, _ = self.write_inputs()
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["base"] = dict(value["source"])
+        approval.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "live source and sealed base must use separate paths",
+        ):
             harness.load_approval(self.root, approval)
 
     def test_future_manager_permit_is_rejected_even_when_signed(self) -> None:
@@ -720,6 +1261,25 @@ elif 'admit' in sys.argv:
         self.assertIn("discard", result["receipts"])
         self.assertNotIn("record", result["receipts"])
 
+    def test_stop_is_rechecked_before_every_discard_command(self) -> None:
+        original = harness._validate_assessment
+
+        def revoke_stop(*args, **kwargs):
+            value = original(*args, **kwargs)
+            stop_path = self.state / "STOP"
+            stop = json.loads(stop_path.read_text(encoding="utf-8"))
+            stop["authorized_permit_sha256"] = "0" * 64
+            stop_path.write_text(json.dumps(stop), encoding="utf-8")
+            return value
+
+        with (
+            patch.object(harness, "_validate_assessment", side_effect=revoke_stop),
+            patch.object(harness, "_run_canonical_discard") as discard,
+        ):
+            result = self.execute(gain=0)
+        self.assertEqual(result["status"], "failed")
+        discard.assert_not_called()
+
     def test_real_proof_adapter_derives_closed_payloads_from_reports(self) -> None:
         import copy
         from tools.tests.test_focus_symbol_report import FUNCTION, _physical_receipt, _report
@@ -767,6 +1327,74 @@ elif 'admit' in sys.argv:
         deleted.write_text("int Owner(void) {\n    int value = 2;\n    return value;\n}\n", encoding="utf-8")
         harness._validate_natural_cell(larger_base, deleted, 1, 5)
 
+    def test_natural_cell_rejects_directives_and_function_boundary_injection(self) -> None:
+        directive = self.root / "directive.c"
+        directive.write_text(
+            "int Owner(void) {\n#if ENABLE_OWNER\n    return 2;\n#endif\n}\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(harness.CrackHarnessError, "preprocessor directive"):
+            harness._validate_natural_cell(self.base, directive, 1, 3)
+
+        nested_function = self.root / "nested-function.c"
+        nested_function.write_text(
+            "int Owner(void) {\n    int Evil(void) { return 4; }\n    return 2;\n}\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(harness.CrackHarnessError, "nested function boundary"):
+            harness._validate_natural_cell(self.base, nested_function, 1, 3)
+
+        trailing_function = self.root / "trailing-function.c"
+        trailing_function.write_text(
+            "int Owner(void) {\n    return 2;\n}\nint Evil(void) { return 4; }\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "outside the approved function span|function boundary"
+        ):
+            harness._validate_natural_cell(self.base, trailing_function, 1, 3)
+
+    def test_natural_cell_allows_legitimate_nested_body_control_blocks(self) -> None:
+        candidate = self.root / "nested-control.c"
+        candidate.write_text(
+            "int Owner(void) {\n    if (1) {\n        return 2;\n    }\n    return 1;\n}\n",
+            encoding="utf-8",
+        )
+        harness._validate_natural_cell(self.base, candidate, 1, 3)
+
+    def test_predicted_rows_must_be_unique_at_runtime(self) -> None:
+        approval, _ = self.write_inputs()
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["predicted_rows"] = ["Owner:ARG:0", "Owner:ARG:0"]
+        approval.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "unique rows"):
+            harness.load_approval(self.root, approval)
+
+    def test_result_schema_closes_receipt_shapes_and_predicted_rows(self) -> None:
+        schema = json.loads(
+            (Path(__file__).parents[1] / "CRACK_HARNESS_RESULT_V1.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertTrue(schema["properties"]["predicted_rows"]["uniqueItems"])
+        receipts = schema["properties"]["receipts"]["properties"]
+        self.assertEqual(receipts["strict"]["$ref"], "#/$defs/compact_receipt")
+        self.assertEqual(receipts["discard_failure"]["$ref"], "#/$defs/failure_receipt")
+        self.assertEqual(receipts["secondary_failures"]["$ref"], "#/$defs/secondary_failures")
+        self.assertTrue(schema["$defs"]["compact_receipt"]["additionalProperties"] is False)
+        self.assertIn("command", schema["$defs"]["failure_receipt"]["required"])
+        self.assertIn(
+            "object_observed",
+            schema["$defs"]["failure_command_receipt"]["required"],
+        )
+        exact_contract = schema["allOf"][0]["then"]
+        self.assertEqual(
+            set(exact_contract["required"]), {"owner_gain", "report_sha256"}
+        )
+        self.assertEqual(
+            exact_contract["properties"]["owner_gain"]["exclusiveMinimum"], 0
+        )
+
     def test_forged_minimal_terminal_result_rolls_back_and_is_deleted(self) -> None:
         self.source.write_bytes(self.candidate.read_bytes())
         body = {"status": "improved", "receipts": {"record": {"payload_sha256": "e" * 64}}}
@@ -782,7 +1410,14 @@ elif 'admit' in sys.argv:
         self._write_recovery_journal(result=body | {"result_sha256":harness._digest_json(body)}, exact_commit=True)
         harness._recover_interrupted(self.root, self.state)
         self.assertEqual(self.source.read_bytes(), self.base.read_bytes())
-        self.assertTrue((self.state / "RECOVERY_REQUIRED.json").is_file())
+        self.assertFalse((self.state / "RECOVERY_REQUIRED.json").exists())
+        self.assertFalse((self.state / "transaction.json").exists())
+        diagnostic_path = self.state / "owners" / "test" / "Owner" / "latest-failure.json"
+        diagnostic = json.loads(diagnostic_path.read_text(encoding="utf-8"))
+        diagnostic_body = dict(diagnostic)
+        diagnostic_sha256 = diagnostic_body.pop("diagnostic_sha256")
+        self.assertEqual(diagnostic_sha256, harness._digest_json(diagnostic_body))
+        self.assertIn("lacked a complete hash-bound CRACK_REPORT", diagnostic["primary_reason"])
 
     def test_permit_must_bind_stop_and_approval(self) -> None:
         approval, permit = self.write_inputs(); value = json.loads(permit.read_text()); value["owner"] = "wrong"
@@ -896,6 +1531,38 @@ elif 'admit' in sys.argv:
         finally:
             marker.unlink(missing_ok=True)
 
+    def test_started_callback_does_not_mask_concurrent_state_write(self) -> None:
+        run_temp = self.state / "manifest-race-temp"
+        run_temp.mkdir()
+        allowed = self.state / "allowed-start-marker.json"
+        rogue = self.state / "rogue-start-write.json"
+
+        def started() -> None:
+            allowed.write_text("authorized callback marker", encoding="utf-8")
+            time.sleep(0.2)
+
+        command = (
+            "from pathlib import Path;import time;"
+            f"Path({str(rogue)!r}).write_text('rogue', encoding='utf-8');"
+            "time.sleep(1)"
+        )
+        try:
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, "reviewed command wrote outside its monitored run root"
+            ):
+                harness._run_command(
+                    [sys.executable, "-c", command],
+                    root=self.root, run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096, expect_json=False,
+                    production_root=self.root, state_root=self.state,
+                    on_started=started,
+                    on_started_state_paths=(allowed,),
+                )
+        finally:
+            allowed.unlink(missing_ok=True)
+            rogue.unlink(missing_ok=True)
+
     def test_compile_failure_primary_cause_survives_cleanup_failure(self) -> None:
         with patch.object(
             harness, "_validate_evidence_receipt",
@@ -911,6 +1578,142 @@ elif 'admit' in sys.argv:
         self.assertIn("primary compile evidence failure", value["primary_reason"])
         self.assertTrue(any("secondary cleanup failure" in item for item in value["cleanup_errors"]))
 
+    def test_source_rollback_failure_preserves_transaction_and_recovery_marker(self) -> None:
+        original_copy = harness._atomic_copy
+
+        def fail_only_source_rollback(source: Path, destination: Path) -> None:
+            if (
+                Path(destination) == self.source
+                and Path(source).is_file()
+                and Path(source).read_bytes() == self.base.read_bytes()
+            ):
+                raise OSError("source rollback denied")
+            original_copy(Path(source), Path(destination))
+
+        with patch.object(
+            harness, "_run_canonical_record",
+            side_effect=harness.CrackHarnessError("record response unavailable"),
+        ), patch.object(
+            harness, "_central_record_matches", return_value=False,
+        ), patch.object(
+            harness, "_atomic_copy", side_effect=fail_only_source_rollback,
+        ):
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, "record response unavailable"
+            ):
+                self.execute()
+        self.assertEqual(self.source.read_bytes(), self.candidate.read_bytes())
+        self.assertTrue((self.state / "transaction.json").is_file())
+        self.assertTrue((self.state / "RECOVERY_REQUIRED.json").is_file())
+        self.assertTrue((self.state / "attempt.json").is_file())
+        self.assertTrue(self.approval.is_file())
+
+        with patch.object(harness, "_central_record_matches", return_value=False):
+            harness._recover_interrupted(self.root, self.state)
+        self.assertEqual(self.source.read_bytes(), self.base.read_bytes())
+        self.assertFalse((self.state / "transaction.json").exists())
+        self.assertFalse((self.state / "RECOVERY_REQUIRED.json").exists())
+
+    def test_command_nonzero_exit_is_not_masked_by_quiesce_failure(self) -> None:
+        run_temp = self.root / "command-primary-temp"
+        run_temp.mkdir()
+        with patch.object(
+            harness, "_quiesce_windows_job",
+            side_effect=OSError("secondary quiesce failure"),
+        ):
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, r"reviewed command failed \(7\)"
+            ) as raised:
+                harness._run_command(
+                    [sys.executable, "-c", "raise SystemExit(7)"],
+                    root=self.root, run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096, expect_json=False,
+                )
+        receipt = getattr(raised.exception, "_crack_command_receipt")
+        self.assertEqual(receipt["returncode"], 7)
+        self.assertEqual(receipt["stdout_sha256"], hashlib.sha256(b"").hexdigest())
+        self.assertEqual(receipt["stderr_sha256"], hashlib.sha256(b"").hexdigest())
+        self.assertFalse(receipt["object_observed"])
+        self.assertTrue(any("secondary quiesce failure" in item for item in receipt["cleanup_errors"]))
+
+    def test_command_failure_seals_streams_and_observed_object(self) -> None:
+        run_temp = self.root / "command-evidence-temp"
+        run_temp.mkdir()
+        script = (
+            "import pathlib,sys;"
+            f"pathlib.Path({str(run_temp / 'observed.o')!r}).write_bytes(b'partial');"
+            "print('known stdout');"
+            "print('known stderr',file=sys.stderr);"
+            "raise SystemExit(7)"
+        )
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, r"reviewed command failed \(7\)"
+        ) as raised:
+            harness._run_command(
+                [sys.executable, "-c", script], root=self.root,
+                run_temp=run_temp, deadline=time.monotonic() + 5,
+                storage_limit=4096, expect_json=False,
+            )
+        receipt = getattr(raised.exception, "_crack_command_receipt")
+        self.assertEqual(receipt["returncode"], 7)
+        self.assertEqual(
+            receipt["stdout_sha256"],
+            hashlib.sha256(("known stdout" + os.linesep).encode()).hexdigest(),
+        )
+        self.assertEqual(
+            receipt["stderr_sha256"],
+            hashlib.sha256(("known stderr" + os.linesep).encode()).hexdigest(),
+        )
+        self.assertTrue(receipt["object_observed"])
+
+    def test_failed_terminal_diagnostic_preserves_command_receipt(self) -> None:
+        os.environ["HARNESS_TEST_COMMAND_FAIL"] = "1"
+        try:
+            result = self.execute()
+        finally:
+            os.environ.pop("HARNESS_TEST_COMMAND_FAIL", None)
+        self.assertEqual(result["status"], "failed")
+        command = result["receipts"]["failure"]["command"]
+        self.assertEqual(command["returncode"], 7)
+        self.assertTrue(command["object_observed"])
+        diagnostic_path = next(self.state.glob("owners/*/*/latest-failure.json"))
+        diagnostic = json.loads(diagnostic_path.read_text(encoding="utf-8"))
+        body = dict(diagnostic)
+        digest = body.pop("diagnostic_sha256")
+        self.assertEqual(digest, harness._digest_json(body))
+        self.assertEqual(diagnostic["schema"], "crack_harness_failure_diagnostic/v2")
+        self.assertEqual(diagnostic["failure_receipt"]["command"], command)
+
+    def test_command_success_seals_cleanup_failures_in_receipt(self) -> None:
+        run_temp = self.root / "command-cleanup-temp"
+        run_temp.mkdir()
+        with patch.object(
+            harness, "_quiesce_windows_job",
+            side_effect=OSError("secondary quiesce failure"),
+        ), patch.object(
+            harness, "_close_windows_job",
+            side_effect=OSError("secondary close failure"),
+        ):
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, "did not quiesce"
+            ) as raised:
+                harness._run_command(
+                    [sys.executable, "-c", "import json;print(json.dumps({'ok': True}))"],
+                    root=self.root, run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096, expect_json=True,
+                )
+        receipt = raised.exception._crack_command_receipt
+        self.assertEqual(receipt["returncode"], 0)
+        self.assertEqual(
+            receipt["cleanup_errors"],
+            ["quiesce: secondary quiesce failure", "close job: secondary close failure"],
+        )
+        self.assertFalse(receipt["object_observed"])
+        self.assertRegex(receipt["stdout_sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(receipt["stderr_sha256"], r"^[0-9a-f]{64}$")
+
     def test_exact_success_survives_post_terminal_cleanup_failure(self) -> None:
         with patch.object(
             harness, "_cleanup_raw", side_effect=OSError("cleanup exact failed")
@@ -922,16 +1725,26 @@ elif 'admit' in sys.argv:
         self.assertTrue(any("cleanup exact failed" in item for item in result["cleanup_errors"]))
         self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
 
-    def test_improved_success_survives_post_terminal_cleanup_failure(self) -> None:
+    def test_positive_nonexact_never_enters_retained_success_cleanup(self) -> None:
+        result = self.execute(gain=2, focus_rows=1)
+        self.assertEqual(result["status"], "no_gain")
+        self.assertIn("return 1", self.source.read_text())
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/CRACK_REPORT_v1.json")))
+
+    def test_no_gain_survives_terminal_cleanup_failure(self) -> None:
         with patch.object(
-            harness, "_cleanup_raw", side_effect=OSError("cleanup improved failed")
+            harness, "_cleanup_raw", side_effect=OSError("cleanup no-gain failed")
         ):
-            result = self.execute(gain=2, focus_rows=1)
-        self.assertEqual(result["status"], "improved")
+            result = self.execute(gain=0)
+        self.assertEqual(result["status"], "no_gain")
         self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
-        self.assertIn("return 2", self.source.read_text())
-        self.assertTrue(any("cleanup improved failed" in item for item in result["cleanup_errors"]))
-        self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
+        self.assertTrue(any("cleanup no-gain failed" in item for item in result["cleanup_errors"]))
+        sealed = dict(result)
+        digest = sealed.pop("result_sha256")
+        self.assertEqual(digest, harness._digest_json(sealed))
+        self.assertIn("return 1", self.source.read_text())
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
 
     def _exact_report_fixture(self) -> tuple[dict, dict, dict]:
         with patch.object(
@@ -1017,6 +1830,82 @@ elif 'admit' in sys.argv:
             self.assertTrue(
                 harness._valid_terminal_result(self.root, result_path, commit_path, binding)
             )
+
+    def test_exact_terminal_is_bound_to_full_approval_identity(self) -> None:
+        import copy
+
+        report, result, binding = self._exact_report_fixture()
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        report_path = result_path.parent / "CRACK_REPORT_v1.json"
+        record = result["receipts"]["record"]
+        commit_body = {
+            "schema": "crack_harness_record_commit/v1",
+            "outcome": "exact",
+            "candidate_sha256": result["candidate_sha256"],
+            "record_payload_sha256": record["payload_sha256"],
+            "record_sha256": record["summary"]["record_sha256"],
+        }
+        commit_path = result_path.parent / "record.commit.json"
+        commit_path.write_text(
+            json.dumps({
+                **commit_body,
+                "commit_sha256": harness._digest_json(commit_body),
+            }),
+            encoding="utf-8",
+        )
+        approval = {
+            "_approval_sha256": result["approval_sha256"],
+            "approval_id": result["approval_id"],
+            "owner": result["owner"],
+            "task_id": result["task_id"],
+            "function": result["function"],
+            "base_commit": result["base_commit"],
+            "campaign": {"id": result["campaign_id"]},
+            "base": {"sha256": result["base_sha256"]},
+            "candidate": {"sha256": result["candidate_sha256"]},
+            "predicted_rows": list(result["predicted_rows"]),
+            "target_sha256": report["target_object_sha256"],
+        }
+        self.assertTrue(
+            harness._valid_terminal_result(
+                self.root, result_path, commit_path, binding, approval,
+                central_required=False,
+            )
+        )
+
+        cases = (
+            ("approval_id", lambda value: value.__setitem__("approval_id", "other")),
+            ("task_id", lambda value: value.__setitem__("task_id", "other")),
+            ("campaign_id", lambda value: value.__setitem__("campaign_id", "other")),
+            (
+                "predicted_rows",
+                lambda value: value.__setitem__("predicted_rows", ["Owner:ARG:9"]),
+            ),
+        )
+        for field, mutation in cases:
+            with self.subTest(field=field):
+                forged_result = copy.deepcopy(result)
+                forged_report = copy.deepcopy(report)
+                mutation(forged_result)
+                if field == "task_id":
+                    forged_report["task_id"] = forged_result["task_id"]
+                    report_body = dict(forged_report)
+                    report_body.pop("report_sha256", None)
+                    forged_report["report_sha256"] = harness._digest_json(report_body)
+                    forged_result["report_sha256"] = forged_report["report_sha256"]
+                result_body = dict(forged_result)
+                result_body.pop("result_sha256", None)
+                forged_result["result_sha256"] = harness._digest_json(result_body)
+                report_path.write_text(json.dumps(forged_report), encoding="utf-8")
+                result_path.write_text(json.dumps(forged_result), encoding="utf-8")
+                self.assertFalse(
+                    harness._valid_terminal_result(
+                        self.root, result_path, commit_path, binding, approval,
+                        central_required=False,
+                    )
+                )
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        result_path.write_text(json.dumps(result), encoding="utf-8")
 
     def test_exact_report_rejects_unbound_receipt_and_target_bypasses(self) -> None:
         import copy
@@ -1221,13 +2110,371 @@ elif 'admit' in sys.argv:
         ):
             result = self.execute()
         self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
-        status = harness._status_for_test(self.root, state_root=self.state)
+        # The command adapter in this unit fixture emits a compact central
+        # receipt but does not populate the real RecoveryMemory database.
+        # Startup finalization still requires that database binding in
+        # production, so isolate the cleanup behavior here.
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            status = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )
         retained = status["results"][0]
         self.assertEqual(retained["status"], "exact")
         self.assertEqual(retained["cleanup_status"], "complete")
         self.assertTrue(any("cleanup retry pending" in item for item in retained["cleanup_errors"]))
         self.assertIn("return 2", self.source.read_text())
         self.assertFalse(any(self.state.glob("owners/*/*/latest/temp")))
+
+    def test_startup_retries_partially_deleted_root_disposables_before_completion(self) -> None:
+        original_unlink = harness._safe_unlink
+        failed = False
+
+        def fail_candidate_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == self.candidate and not failed:
+                failed = True
+                raise OSError("candidate root deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_candidate_once):
+            result = self.execute()
+        self.assertEqual(result["status"], "exact")
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        self.assertTrue(any("candidate root deletion failed" in item for item in result["cleanup_errors"]))
+        self.assertFalse(self.base.exists())
+        self.assertTrue(self.candidate.exists())
+        self.assertTrue(self.permit.exists())
+        self.assertTrue(self.approval.exists())
+        self.assertTrue((self.state / "attempt.json").exists())
+        self.assertTrue((self.state / "transaction.json").exists())
+
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            retained = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
+        self.assertEqual(retained["status"], "exact")
+        self.assertEqual(retained["cleanup_status"], "complete")
+        self.assertFalse(self.candidate.exists())
+        self.assertFalse(self.permit.exists())
+        self.assertFalse(self.approval.exists())
+        self.assertFalse((self.state / "attempt.json").exists())
+        self.assertFalse((self.state / "transaction.json").exists())
+        self.assertFalse((self.state / "RECOVERY_REQUIRED.json").exists())
+
+    def test_tampered_attempt_cannot_redirect_permit_cleanup(self) -> None:
+        original_unlink = harness._safe_unlink
+        failed = False
+
+        def fail_candidate_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == self.candidate and not failed:
+                failed = True
+                raise OSError("candidate root deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_candidate_once):
+            result = self.execute()
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        attempt_path = self.state / "attempt.json"
+        attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
+        real_permit = Path(attempt["disposable_paths"][2])
+        decoy = self.root / "decoy-permit.json"
+        attempt["disposable_paths"][2] = str(decoy)
+        unsigned = dict(attempt)
+        unsigned.pop("attempt_sha256")
+        attempt["attempt_sha256"] = harness._digest_json(unsigned)
+        attempt_path.write_text(json.dumps(attempt), encoding="utf-8")
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            with self.assertRaisesRegex(
+                harness.CrackHarnessError, "attempt receipt (integrity|signature)"
+            ):
+                harness._status_for_test(
+                    self.root, state_root=self.state,
+                    manager_key_path=self.manager_key,
+                )
+        self.assertTrue(real_permit.is_file())
+
+    def test_missing_attempt_cannot_finalize_while_root_disposables_remain(self) -> None:
+        original_unlink = harness._safe_unlink
+        failed = False
+
+        def fail_candidate_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == self.candidate and not failed:
+                failed = True
+                raise OSError("candidate root deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_candidate_once):
+            result = self.execute()
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        (self.state / "attempt.json").unlink()
+
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            retained = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
+        self.assertEqual(retained["status"], "exact")
+        self.assertEqual(retained["cleanup_status"], "cleanup_incomplete")
+        self.assertTrue(self.candidate.exists())
+        self.assertTrue(self.permit.exists())
+        self.assertTrue(self.approval.exists())
+        run_dir = next(self.state.glob("owners/*/*/latest"))
+        # Exact cleanup seals the manager-authenticated root manifest before
+        # deleting any disposable.  Losing attempt.json cannot erase that
+        # proof, but it also cannot authorize finalization while roots remain.
+        self.assertTrue((run_dir / "root-cleanup.receipt.json").is_file())
+
+    def test_orphan_recovery_marker_is_a_hard_cleanup_lock(self) -> None:
+        original_unlink = harness._safe_unlink
+        failed = False
+
+        def fail_candidate_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == self.candidate and not failed:
+                failed = True
+                raise OSError("candidate root deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_candidate_once):
+            result = self.execute()
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        (self.state / "attempt.json").unlink()
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )
+        marker = self.state / "RECOVERY_REQUIRED.json"
+        journal = self.state / "transaction.json"
+        self.assertTrue(marker.is_file())
+        self.assertTrue(journal.is_file())
+        journal.unlink()
+
+        status = harness._status_for_test(
+            self.root, state_root=self.state,
+            manager_key_path=self.manager_key,
+        )
+        self.assertFalse(status["interrupted_transaction"])
+        self.assertTrue(marker.is_file())
+        self.assertTrue(self.candidate.is_file())
+        self.assertTrue(self.permit.is_file())
+        retained = status["results"][0]
+        self.assertEqual(retained["cleanup_status"], "cleanup_incomplete")
+
+    def test_recreated_root_disposable_blocks_cleanup_finalization(self) -> None:
+        self.execute()
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        value = json.loads(result_path.read_text(encoding="utf-8"))
+        body = dict(value)
+        body.pop("result_sha256")
+        body["cleanup_status"] = "cleanup_incomplete"
+        result_path.write_text(
+            json.dumps({**body, "result_sha256": harness._digest_json(body)}),
+            encoding="utf-8",
+        )
+        self.candidate.write_text("recreated", encoding="utf-8")
+
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            retained = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
+        self.assertEqual(retained["cleanup_status"], "cleanup_incomplete")
+        self.assertTrue(self.candidate.exists())
+
+    def test_root_cleanup_receipt_binds_task_campaign_and_predicted_rows(self) -> None:
+        import copy
+
+        result = self.execute()
+        run_dir = next(self.state.glob("owners/*/*/latest"))
+        self.assertTrue(
+            harness._valid_root_cleanup_receipt(
+                self.root, self.state, run_dir, result,
+                manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )
+        )
+        for field, replacement in (
+            ("task_id", "other-task"),
+            ("campaign_id", "other-campaign"),
+            ("predicted_rows", ["Owner:ARG:9"]),
+        ):
+            with self.subTest(field=field):
+                forged = copy.deepcopy(result)
+                forged[field] = replacement
+                body = dict(forged)
+                body.pop("result_sha256", None)
+                forged["result_sha256"] = harness._digest_json(body)
+                self.assertFalse(
+                    harness._valid_root_cleanup_receipt(
+                        self.root, self.state, run_dir, forged,
+                        manager_key_path=self.manager_key,
+                        expected_key_id=sha(self.manager_key),
+                    )
+                )
+
+    def test_forged_root_cleanup_manifest_cannot_finalize(self) -> None:
+        self.execute()
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        value = json.loads(result_path.read_text(encoding="utf-8"))
+        body = dict(value)
+        body.pop("result_sha256")
+        body["cleanup_status"] = "cleanup_incomplete"
+        result_path.write_text(
+            json.dumps({**body, "result_sha256": harness._digest_json(body)}),
+            encoding="utf-8",
+        )
+        receipt_path = result_path.parent / "root-cleanup.receipt.json"
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        receipt["disposables"][1]["path"] = str(self.root / "forged-candidate.c")
+        forged_body = dict(receipt)
+        forged_body.pop("cleanup_sha256")
+        receipt["cleanup_sha256"] = harness._digest_json(forged_body)
+        receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            retained = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
+        self.assertEqual(retained["cleanup_status"], "cleanup_incomplete")
+
+    def test_startup_fails_closed_if_external_tamper_removes_approval_first(self) -> None:
+        original_unlink = harness._safe_unlink
+        failed = False
+
+        def fail_candidate_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == self.candidate and not failed:
+                failed = True
+                raise OSError("candidate root deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_candidate_once):
+            result = self.execute()
+        self.assertEqual(result["status"], "exact")
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        self.assertTrue(self.approval.exists())
+        self.approval.unlink()
+
+        status = harness._status_for_test(
+            self.root, state_root=self.state,
+            manager_key_path=self.manager_key,
+        )
+        self.assertTrue(status["interrupted_transaction"])
+        self.assertTrue((self.state / "RECOVERY_REQUIRED.json").exists())
+        self.assertTrue(self.candidate.exists())
+        self.assertTrue(self.permit.exists())
+        self.assertTrue((self.state / "attempt.json").exists())
+
+    def test_startup_cleanup_accepts_expired_hash_bound_approval(self) -> None:
+        original_unlink = harness._safe_unlink
+        failed = False
+
+        def fail_candidate_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == self.candidate and not failed:
+                failed = True
+                raise OSError("candidate root deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_candidate_once):
+            result = self.execute()
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+
+        real_datetime = datetime
+
+        class FutureDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                current = real_datetime.now(tz or timezone.utc)
+                return current + timedelta(hours=1)
+
+        with (
+            patch.object(harness, "datetime", FutureDatetime),
+            patch.object(harness, "_central_record_matches", return_value=True),
+        ):
+            retained = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
+        self.assertEqual(retained["status"], "exact")
+        self.assertEqual(retained["cleanup_status"], "complete")
+        self.assertFalse(self.candidate.exists())
+        self.assertFalse(self.permit.exists())
+        self.assertFalse(self.approval.exists())
+        self.assertFalse((self.state / "attempt.json").exists())
+
+    def test_startup_retries_final_attempt_receipt_unlink_after_disposables_are_gone(self) -> None:
+        original_unlink = harness._safe_unlink
+        attempt_path = self.state / "attempt.json"
+        failed = False
+
+        def fail_attempt_once(path: Path) -> None:
+            nonlocal failed
+            if Path(path) == attempt_path and not failed:
+                failed = True
+                raise OSError("attempt receipt deletion failed")
+            original_unlink(Path(path))
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_attempt_once):
+            result = self.execute()
+        self.assertEqual(result["status"], "exact")
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        self.assertTrue(any("attempt receipt deletion failed" in item for item in result["cleanup_errors"]))
+        self.assertFalse(self.base.exists())
+        self.assertFalse(self.candidate.exists())
+        self.assertFalse(self.permit.exists())
+        self.assertFalse(self.approval.exists())
+        self.assertTrue(attempt_path.exists())
+
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            retained = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
+        self.assertEqual(retained["status"], "exact")
+        self.assertEqual(retained["cleanup_status"], "complete")
+        self.assertFalse(attempt_path.exists())
+        self.assertFalse((self.state / "transaction.json").exists())
+        self.assertFalse((self.state / "RECOVERY_REQUIRED.json").exists())
+
+    def test_malformed_existing_record_commit_invalidates_exact_terminal(self) -> None:
+        self.execute()
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        value = json.loads(result_path.read_text(encoding="utf-8"))
+        binding = harness._terminal_binding_from_result(result_path.parent, value)
+        self.assertIsNotNone(binding)
+        commit_path = result_path.parent / "record.commit.json"
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            self.assertTrue(
+                harness._valid_terminal_result(
+                    self.root, result_path, commit_path, binding
+                )
+            )
+        commit_path.write_text("{}", encoding="utf-8")
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            self.assertFalse(
+                harness._valid_terminal_result(
+                    self.root, result_path, commit_path, binding
+                )
+            )
+
+    def test_record_commit_directory_invalidates_exact_terminal(self) -> None:
+        report, result, binding = self._exact_report_fixture()
+        result_path = next(self.state.glob("owners/*/*/latest/result.json"))
+        commit_path = result_path.parent / "record.commit.json"
+        commit_path.mkdir()
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            self.assertFalse(
+                harness._valid_terminal_result(
+                    self.root, result_path, commit_path, binding
+                )
+            )
 
     def test_exact_success_survives_owner_gc_exception(self) -> None:
         with patch.object(
@@ -1239,23 +2486,19 @@ elif 'admit' in sys.argv:
         self.assertTrue(any("owner gc failed" in item for item in result["cleanup_errors"]))
         self.assertIn("return 2", self.source.read_text())
         self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
-        retried = harness._status_for_test(self.root, state_root=self.state)["results"][0]
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            retried = harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )["results"][0]
         self.assertEqual(retried["status"], "exact")
         self.assertEqual(retried["cleanup_status"], "complete")
 
-    def test_improved_success_survives_global_gc_exception(self) -> None:
-        with patch.object(
-            harness, "_gc_global", side_effect=[None, OSError("global gc failed")]
-        ):
-            result = self.execute(gain=2, focus_rows=1)
-        self.assertEqual(result["status"], "improved")
-        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
-        self.assertTrue(any("global gc failed" in item for item in result["cleanup_errors"]))
-        self.assertIn("return 2", self.source.read_text())
-        self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
-        retried = harness._status_for_test(self.root, state_root=self.state)["results"][0]
-        self.assertEqual(retried["status"], "improved")
-        self.assertEqual(retried["cleanup_status"], "complete")
+    def test_positive_nonexact_creates_no_retention_maintenance_result(self) -> None:
+        result = self.execute(gain=2, focus_rows=1)
+        self.assertEqual(result["status"], "no_gain")
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
+        self.assertFalse(any(self.state.glob("owners/*/*/latest/record.commit.json")))
 
     def test_generic_post_terminal_baseexception_cannot_escape(self) -> None:
         with patch.object(
@@ -1340,6 +2583,202 @@ elif 'admit' in sys.argv:
         )
         self.assertEqual(result["status"], "ready")
 
+    def test_lane_reconciliation_field_is_rejected(self) -> None:
+        approval, _ = self.write_inputs()
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["retry"] = {
+            "schema": "crack_harness_legacy_reconciliation/v1",
+            "one_shot": True,
+        }
+        approval.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "retry must be a strict crack_harness_legacy_reconciliation/v1 object",
+        ):
+            harness.load_approval(self.root, approval)
+
+    def test_explicit_null_retry_is_rejected(self) -> None:
+        approval, _ = self.write_inputs()
+        value = json.loads(approval.read_text(encoding="utf-8"))
+        value["retry"] = None
+        approval.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(harness.CrackHarnessError, "retry must not be null"):
+            harness.load_approval(self.root, approval)
+
+    def test_published_approval_schema_has_luna_audit_and_bounded_retry(self) -> None:
+        schema_path = Path(harness.__file__).with_name(
+            "CRACK_HARNESS_APPROVAL_V1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        properties = schema["properties"]
+        self.assertIn("retry", properties)
+        selection = properties["selection"]
+        self.assertIn("luna5_audit", selection["required"])
+        self.assertIn("luna5_audit", selection["properties"])
+
+    def test_legacy_v1_exact_retry_is_ready_once_then_durably_consumed(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-campaign")
+        run_dir, _ = self.add_legacy_retry(approval_path)
+        ready = harness._dry_run_for_test(
+            self.root, approval_path, state_root=self.state
+        )
+        self.assertEqual(ready["status"], "ready", ready)
+        loaded = harness.load_approval(self.root, approval_path)
+        harness._consume_legacy_retry(run_dir, loaded)
+        marker = run_dir.parent / "retry-used.json"
+        self.assertTrue(marker.is_file())
+        blocked = harness._dry_run_for_test(
+            self.root, approval_path, state_root=self.state
+        )
+        self.assertEqual(blocked["status"], "blocked", blocked)
+        self.assertTrue(any("tombstone" in item for item in blocked["blockers"]))
+
+    def test_legacy_retry_revalidates_historical_evidence_hash_at_execution_boundary(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-evidence-hash")
+        run_dir, _ = self.add_legacy_retry(approval_path)
+        loaded = harness.load_approval(self.root, approval_path)
+        evidence_path = loaded["_retry"]["historical_exact_evidence_path"]
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["target_bytes"] = 31
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "retry.historical_exact_evidence hash mismatch",
+        ):
+            harness._consume_legacy_retry(run_dir, loaded)
+        self.assertFalse((run_dir.parent / "retry-used.json").exists())
+
+    def test_legacy_retry_revalidates_historical_evidence_binding_and_content(self) -> None:
+        mutations = (
+            ("path", lambda value: value.__setitem__("path", "evidence/other.json"), "binding changed"),
+            ("owner", lambda value: value.__setitem__("owner", "main:board/other"), "not bound"),
+            ("function", lambda value: value.__setitem__("function", "Other"), "not bound"),
+            ("candidate", lambda value: value.__setitem__("candidate_sha256", "e" * 64), "not bound"),
+            ("target bytes", lambda value: value.__setitem__("target_bytes", 31), "byte counts differ"),
+            ("candidate bytes", lambda value: value.__setitem__("candidate_bytes", 31), "byte counts differ"),
+            ("strict percent", lambda value: value.__setitem__("strict_percent", 99), "strict proof is not 100"),
+            ("data percent", lambda value: value.__setitem__("data_percent", 99), "data proof is not 100"),
+            ("strict rows", lambda value: value.__setitem__("strict_diff_rows", 1), "residual rows"),
+            ("data rows", lambda value: value.__setitem__("data_diff_rows", 1), "residual rows"),
+        )
+        for label, mutate, expected in mutations:
+            with self.subTest(label=label):
+                approval_path, _ = self.write_inputs(campaign_id=f"retry-evidence-{label.replace(' ', '-')}")
+                run_dir, _ = self.add_legacy_retry(approval_path)
+                loaded = harness.load_approval(self.root, approval_path)
+                evidence_path = loaded["_retry"]["historical_exact_evidence_path"]
+                if label == "path":
+                    other = self.root / "evidence/other.json"
+                    other.write_bytes(evidence_path.read_bytes())
+                    loaded["_retry"]["historical_exact_evidence_path"] = other
+                    with self.assertRaisesRegex(harness.CrackHarnessError, expected):
+                        harness._legacy_reconciliation_eligible(run_dir, loaded)
+                    continue
+                evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+                mutate(evidence)
+                evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+                digest = sha(evidence_path)
+                loaded["retry"]["historical_exact_evidence"]["sha256"] = digest
+                loaded["_retry"]["historical_exact_evidence_sha256"] = digest
+                with self.assertRaisesRegex(harness.CrackHarnessError, expected):
+                    harness._legacy_reconciliation_eligible(run_dir, loaded)
+
+    def test_legacy_retry_rejects_partial_historical_evidence(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-partial")
+        self.add_legacy_retry(approval_path, strict_percent=99)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "strict proof is not 100 percent"
+        ):
+            harness.load_approval(self.root, approval_path)
+
+    def test_legacy_retry_rejects_self_asserted_historical_report(self) -> None:
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "must use crack_harness_historical_exact_evidence/v1",
+        ):
+            harness._historical_exact_values(
+                {
+                    "schema": harness.REPORT_SCHEMA,
+                    "owner": "main:board/test", "function": "Owner",
+                    "status": "exact", "completed": True,
+                    "authority_advanced": False,
+                    "source_sha256": sha(self.candidate),
+                    "result": {
+                        "target_bytes": 1, "candidate_bytes": 1,
+                        "strict_percent": 100, "data_percent": 100,
+                    },
+                },
+                "main:board/test", "Owner", sha(self.candidate),
+            )
+
+    def test_legacy_retry_never_releases_v2_tombstone(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-v2")
+        self.add_legacy_retry(
+            approval_path,
+            tombstone_schema="crack_harness_function_tombstone/v2",
+        )
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "must be an exact consumed legacy v1 tombstone",
+        ):
+            harness.load_approval(self.root, approval_path)
+
+    def test_legacy_retry_partial_central_publication_still_blocks_second_use(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-partial-publish")
+        run_dir, _ = self.add_legacy_retry(approval_path)
+        loaded = harness.load_approval(self.root, approval_path)
+        publish = harness._append_consumed_cell
+
+        def publish_then_fail(*args: object, **kwargs: object) -> None:
+            publish(*args, **kwargs)
+            raise OSError("post-publication failure")
+
+        with patch.object(
+            harness, "_append_consumed_cell", side_effect=publish_then_fail
+        ):
+            with self.assertRaisesRegex(OSError, "post-publication failure"):
+                harness._consume_legacy_retry(run_dir, loaded)
+        self.assertFalse((run_dir.parent / "retry-used.json").exists())
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "legacy retry is not eligible"
+        ):
+            harness._consume_legacy_retry(run_dir, loaded)
+
+    def test_marker_rollback_preserves_primary_and_fails_closed(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-rollback")
+        run_dir, _ = self.add_legacy_retry(approval_path)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        loaded = harness.load_approval(self.root, approval_path)
+        marker_path = run_dir.parent / "retry-used.json"
+
+        with patch.object(
+            harness, "_append_consumed_cell", side_effect=OSError("central publish failed")
+        ), patch.object(
+            harness, "_safe_unlink", side_effect=OSError("marker rollback denied")
+        ):
+            with self.assertRaisesRegex(OSError, "central publish failed") as raised:
+                harness._consume_legacy_retry(run_dir, loaded)
+        self.assertTrue(any("marker rollback denied" in note for note in raised.exception.__notes__))
+        self.assertTrue(marker_path.is_file())
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
+
+    def test_started_marker_is_retained_when_central_publish_fails(self) -> None:
+        approval_path, _ = self.write_inputs(campaign_id="retry-started")
+        run_dir, _ = self.add_legacy_retry(approval_path)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        loaded = harness.load_approval(self.root, approval_path)
+        marker_path = run_dir.parent / "retry-used.json"
+        with patch.object(
+            harness, "_append_consumed_cell", side_effect=OSError("central publish failed")
+        ):
+            with self.assertRaisesRegex(OSError, "central publish failed"):
+                harness._consume_legacy_retry(
+                    run_dir, loaded, execution_started=True
+                )
+        self.assertTrue(marker_path.is_file())
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
+
     def test_signed_permit_is_one_shot_without_consuming_function(self) -> None:
         approval, _ = self.write_inputs()
         loaded = harness.load_approval(self.root, approval)
@@ -1380,6 +2819,9 @@ elif 'admit' in sys.argv:
         def fail_candidate(*args, **kwargs):
             phase = (kwargs.get("extra_env") or {}).get("CRACK_HARNESS_PHASE")
             if phase == "candidate":
+                started = kwargs.get("on_started")
+                self.assertIsNotNone(started)
+                started()
                 raise harness.CrackHarnessError("candidate compiler failure")
             return original(*args, **kwargs)
 
@@ -1389,6 +2831,342 @@ elif 'admit' in sys.argv:
                 state_root=self.state, manager_key_path=self.manager_key,
             )
         self.assertEqual(result["status"], "failed")
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
+
+    def test_launch_callback_runs_after_containment_before_process_resume(self) -> None:
+        run_temp = self.root / "launch-callback"
+        run_temp.mkdir()
+        events: list[str] = []
+        marker = run_temp / "reserved-before-resume"
+        real_popen = harness.subprocess.Popen
+        real_assign = harness._assign_windows_job
+        real_resume = harness._resume_windows_process
+
+        def popen(*args, **kwargs):
+            events.append("popen")
+            process = real_popen(*args, **kwargs)
+            events.append("popen-return")
+            return process
+
+        def assign(process):
+            events.append("assign")
+            return real_assign(process)
+
+        def resume(process, job_handle):
+            self.assertTrue(marker.is_file())
+            events.append("resume")
+            return real_resume(process, job_handle)
+
+        def reserve() -> None:
+            marker.write_text("reserved", encoding="utf-8")
+            events.append("started")
+
+        with patch.object(harness.subprocess, "Popen", side_effect=popen), patch.object(
+            harness, "_assign_windows_job", side_effect=assign
+        ), patch.object(harness, "_resume_windows_process", side_effect=resume):
+            harness._run_command(
+                [sys.executable, "-c", "pass"],
+                root=self.root,
+                run_temp=run_temp,
+                deadline=time.monotonic() + 5,
+                storage_limit=4096,
+                expect_json=False,
+                on_started=reserve,
+            )
+
+        self.assertEqual(events, ["popen", "popen-return", "assign", "started", "resume"])
+
+    def test_assignment_failure_does_not_invoke_consumption_callback(self) -> None:
+        run_temp = self.root / "launch-failure"
+        run_temp.mkdir()
+        events: list[str] = []
+        with patch.object(
+            harness, "_assign_windows_job", side_effect=OSError("assignment failed")
+        ):
+            with self.assertRaisesRegex(OSError, "assignment failed"):
+                harness._run_command(
+                    [sys.executable, "-c", "pass"],
+                    root=self.root,
+                    run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096,
+                    expect_json=False,
+                    on_started=lambda: events.append("started"),
+                )
+        self.assertNotIn("started", events)
+
+    def test_callback_failure_prevents_process_resume(self) -> None:
+        run_temp = self.root / "callback-failure"
+        run_temp.mkdir()
+        events: list[str] = []
+        real_resume = harness._resume_windows_process
+
+        def fail_callback() -> None:
+            events.append("callback")
+            raise harness.CrackHarnessError("reservation failed")
+
+        def resume(process, job_handle):
+            events.append("resume")
+            return real_resume(process, job_handle)
+
+        with patch.object(harness, "_resume_windows_process", side_effect=resume):
+            with self.assertRaisesRegex(harness.CrackHarnessError, "reservation failed"):
+                harness._run_command(
+                    [sys.executable, "-c", "pass"],
+                    root=self.root,
+                    run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096,
+                    expect_json=False,
+                    on_started=fail_callback,
+                )
+        self.assertEqual(events, ["callback"])
+
+    def test_resume_failure_rolls_back_launch_reservation(self) -> None:
+        run_temp = self.root / "resume-failure"
+        run_temp.mkdir()
+        marker = run_temp / "reservation"
+        rolled_back: list[str] = []
+
+        def reserve() -> object:
+            marker.write_text("reserved", encoding="utf-8")
+
+            def rollback() -> None:
+                marker.unlink()
+                rolled_back.append("rollback")
+
+            return rollback
+
+        with patch.object(
+            harness, "_resume_windows_process", side_effect=OSError("resume failed")
+        ):
+            with self.assertRaisesRegex(OSError, "resume failed"):
+                harness._run_command(
+                    [sys.executable, "-c", "pass"],
+                    root=self.root,
+                    run_temp=run_temp,
+                    deadline=time.monotonic() + 5,
+                    storage_limit=4096,
+                    expect_json=False,
+                    on_started=reserve,
+                )
+        self.assertEqual(rolled_back, ["rollback"])
+        self.assertFalse(marker.exists())
+
+    def test_successful_resume_leaves_v2_and_legacy_markers_consumed(self) -> None:
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                if (self.state / "owners").exists():
+                    shutil.rmtree(self.state / "owners")
+                (self.state / "consumed-cells.json").unlink(missing_ok=True)
+                approval, _ = self.write_inputs(
+                    campaign_id="legacy-success" if legacy else "v2-success"
+                )
+                if legacy:
+                    run_dir, _ = self.add_legacy_retry(approval)
+                else:
+                    loaded = harness.load_approval(self.root, approval)
+                    run_dir = harness._run_dir(self.state, loaded)
+                loaded = harness.load_approval(self.root, approval)
+                run_temp = self.state / (
+                    "legacy-marker-success" if legacy else "v2-marker-success"
+                )
+                run_temp.mkdir()
+                marker_name = "retry-used.json" if legacy else "latest-function.json"
+                marker = run_dir.parent / marker_name
+                ledger = self.state / "consumed-cells.json"
+                events: list[str] = []
+                real_resume = harness._resume_windows_process
+
+                def reserve() -> object:
+                    rollback = harness._consume_function(run_dir, loaded)
+                    self.assertTrue(marker.is_file())
+                    self.assertTrue(ledger.is_file())
+                    events.append("reserved")
+                    return rollback
+
+                def resume(process: object, job_handle: int | None) -> None:
+                    self.assertTrue(marker.is_file())
+                    events.append("resume")
+                    real_resume(process, job_handle)
+
+                with patch.object(
+                    harness, "_resume_windows_process", side_effect=resume
+                ):
+                    harness._run_command(
+                        [sys.executable, "-c", "pass"],
+                        root=self.root, run_temp=run_temp,
+                        deadline=time.monotonic() + 5,
+                        storage_limit=4096, expect_json=False,
+                        state_root=self.state,
+                        on_started=reserve,
+                        on_started_state_paths=(marker, ledger),
+                    )
+                self.assertEqual(events, ["reserved", "resume"])
+                self.assertTrue(marker.is_file())
+                self.assertTrue(ledger.is_file())
+                self.assertTrue(harness._function_consumed(run_dir, loaded))
+
+    def test_resume_failure_rolls_back_v2_and_legacy_markers(self) -> None:
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                if (self.state / "owners").exists():
+                    shutil.rmtree(self.state / "owners")
+                (self.state / "consumed-cells.json").unlink(missing_ok=True)
+                approval, _ = self.write_inputs(
+                    campaign_id="legacy-resume-failure" if legacy else "v2-resume-failure"
+                )
+                if legacy:
+                    run_dir, _ = self.add_legacy_retry(approval)
+                else:
+                    loaded = harness.load_approval(self.root, approval)
+                    run_dir = harness._run_dir(self.state, loaded)
+                loaded = harness.load_approval(self.root, approval)
+                run_temp = self.state / (
+                    "legacy-marker-failure" if legacy else "v2-marker-failure"
+                )
+                run_temp.mkdir()
+                marker_name = "retry-used.json" if legacy else "latest-function.json"
+                marker = run_dir.parent / marker_name
+                ledger = self.state / "consumed-cells.json"
+
+                def reserve() -> object:
+                    self.assertFalse(marker.exists())
+                    self.assertFalse(ledger.exists())
+                    return harness._consume_function(run_dir, loaded)
+
+                def fail_resume(process: object, job_handle: int | None) -> None:
+                    self.assertTrue(marker.is_file())
+                    raise OSError("resume failed")
+
+                with patch.object(
+                    harness, "_resume_windows_process", side_effect=fail_resume
+                ):
+                    with self.assertRaisesRegex(OSError, "resume failed"):
+                        harness._run_command(
+                            [sys.executable, "-c", "pass"],
+                            root=self.root, run_temp=run_temp,
+                            deadline=time.monotonic() + 5,
+                            storage_limit=4096, expect_json=False,
+                            state_root=self.state,
+                            on_started=reserve,
+                            on_started_state_paths=(marker, ledger),
+                        )
+                self.assertFalse(marker.exists())
+                self.assertFalse(ledger.exists())
+                self.assertFalse(harness._function_consumed(run_dir, loaded))
+
+    def test_setup_failure_cleans_process_job_and_pipes(self) -> None:
+        class FakeStream:
+            def __init__(self) -> None:
+                self.closed = False
+
+            def read(self, _size: int) -> bytes:
+                return b""
+
+            def close(self) -> None:
+                self.closed = True
+
+        class FakeProcess:
+            pid = 1234
+
+            def __init__(self) -> None:
+                self.stdout = FakeStream()
+                self.stderr = FakeStream()
+
+            def poll(self) -> None:
+                return None
+
+        run_temp = self.root / "setup-cleanup"
+        run_temp.mkdir()
+        for failure in ("assignment", "resume"):
+            with self.subTest(failure=failure):
+                process = FakeProcess()
+                events: list[tuple[str, object]] = []
+
+                def assign(_process: object) -> int | None:
+                    events.append(("assign", _process))
+                    if failure == "assignment":
+                        raise OSError("assignment failed")
+                    return 17
+
+                def resume(_process: object, _job: int | None) -> None:
+                    events.append(("resume", _job))
+                    raise OSError("resume failed")
+
+                with patch.object(
+                    harness.subprocess, "Popen", return_value=process
+                ), patch.object(
+                    harness, "_assign_windows_job", side_effect=assign
+                ), patch.object(
+                    harness, "_resume_windows_process", side_effect=resume
+                ), patch.object(
+                    harness, "_terminate_process",
+                    side_effect=lambda value: events.append(("terminate", value)),
+                ), patch.object(
+                    harness, "_quiesce_windows_job",
+                    side_effect=lambda value, **kwargs: events.append(("quiesce", value)),
+                ), patch.object(
+                    harness, "_close_windows_job",
+                    side_effect=lambda value: events.append(("close", value)),
+                ):
+                    with self.assertRaisesRegex(OSError, f"{failure} failed"):
+                        harness._run_command(
+                            [sys.executable, "-c", "pass"],
+                            root=self.root, run_temp=run_temp,
+                            deadline=time.monotonic() + 5,
+                            storage_limit=4096, expect_json=False,
+                        )
+
+                self.assertTrue(any(name == "terminate" for name, _ in events))
+                self.assertTrue(process.stdout.closed)
+                self.assertTrue(process.stderr.closed)
+                if failure == "resume":
+                    self.assertIn(("quiesce", 17), events)
+                    self.assertIn(("close", 17), events)
+
+    def test_post_candidate_proof_failure_consumes_function(self) -> None:
+        approval, permit = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+
+        with patch.object(
+            harness, "_validate_proof",
+            side_effect=harness.CrackHarnessError("proof infrastructure failure"),
+        ):
+            result = harness._run_approved_for_test(
+                self.root, approval, permit_path=permit,
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(harness._function_consumed(run_dir, loaded))
+
+    def test_failure_text_cannot_reopen_legacy_v1_tombstone(self) -> None:
+        approval, _ = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        run_dir.parent.mkdir(parents=True, exist_ok=True)
+        tombstone = {
+            "schema": "crack_harness_function_tombstone/v1",
+            "function_key": harness._function_key(loaded),
+            "owner": loaded["owner"], "function": loaded["function"],
+            "first_campaign_id": loaded["campaign"]["id"],
+            "consumed": True,
+        }
+        (run_dir.parent / "latest-function.json").write_text(
+            json.dumps(tombstone), encoding="utf-8",
+        )
+        (run_dir.parent / "latest-failure.json").write_text(
+            json.dumps({
+                "schema": "crack_harness_failure_diagnostic/v1",
+                "owner": loaded["owner"], "function": loaded["function"],
+                "approval_sha256": loaded["_approval_sha256"],
+                "primary_reason": (
+                    "proof strict compiler wrote outside the disposable worktree"
+                ),
+            }),
+            encoding="utf-8",
+        )
         self.assertTrue(harness._function_consumed(run_dir, loaded))
 
     def test_second_candidate_for_function_is_rejected_across_campaign_ids(self) -> None:
@@ -1496,9 +3274,16 @@ elif 'admit' in sys.argv:
         approval, permit = self.write_inputs()
         temp = self.state / "owners" / "owner" / "Owner" / "latest" / "temp"
         temp.mkdir(parents=True); (temp / "raw.bin").write_bytes(b"raw")
-        body = {"schema":"crack_harness_attempt/v1","run_dir":str(temp.parent),"source_path":str(self.source),"approval_path":str(approval),"approval_sha256":sha(approval),"disposable_paths":[str(self.base),str(self.candidate),str(permit),str(approval)]}
-        (self.state / "attempt.json").write_text(json.dumps(body | {"attempt_sha256":harness._digest_json(body)}), encoding="utf-8")
-        harness._scavenge_disposable_worktrees(self.root, self.state)
+        body = {"schema":harness.ATTEMPT_SCHEMA,"run_dir":str(temp.parent),"source_path":str(self.source),"approval_path":str(approval),"approval_sha256":sha(approval),"disposable_paths":[str(self.base),str(self.candidate),str(permit),str(approval)]}
+        signed_attempt = harness._sign_attempt_receipt(
+            self.root, body, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        (self.state / "attempt.json").write_text(json.dumps(signed_attempt), encoding="utf-8")
+        harness._scavenge_disposable_worktrees(
+            self.root, self.state, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
         self.assertFalse(approval.exists()); self.assertFalse(temp.exists())
 
     def test_recovery_journal_cannot_escape_state_temp(self) -> None:

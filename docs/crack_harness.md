@@ -17,7 +17,8 @@ command-set identity, source path, source/base/candidate hashes, base commit,
 toolchain, target, `issued_at`, and a deadline no more than 1,800 seconds later.
 One permit authorizes one exact cell. The later approval binds the exact permit
 SHA-256, so analysis time counts and neither approval nor candidate may drift. STOP
-is revalidated before every command, CAS, central record, and terminal write.
+is revalidated before every command (including admission discard), CAS, central
+record, and terminal write.
 The permit deadline must be no later than the bound approval expiry; both clocks
 are rechecked at every checkpoint immediately before execution and retention.
 
@@ -35,6 +36,22 @@ permit fields are `schema`, `permit_id`, `issuer`, `resume` (`true`),
 over canonical compact JSON of every other permit field. STOP contains only
 `schema`, `stopped` (`true`),
 `authorized_permit_sha256`, and the same `stop_nonce`.
+
+The manager materializes the packet through the production issuer; lanes do not
+handcraft HMACs or edit STOP:
+
+```sh
+python tools/agent.py crack issue --draft build/approvals/cell.draft.json --approval-out build/approvals/cell.json --permit-out build/approvals/cell.permit.json
+```
+
+The draft uses a zero `permit_sha256` placeholder. The issuer validates the
+cell and clean repository, writes the signed permit, binds its raw file SHA into
+the final approval, publishes STOP last, reloads all three through production
+validators, and returns a dry-run-ready command. Any partial publication
+restores the prior STOP and removes the new outputs. If either rollback step
+fails, the issuer writes a bounded self-hashed
+`build/crack-harness/PACKET_ROLLBACK_REQUIRED.json`, revokes STOP, and blocks
+issue, dry-run, and run until a manager repairs the named paths.
 
 This protects against forged lane permits and repository-controlled keys. It is
 not a security boundary against a malicious process already running as the same
@@ -59,9 +76,11 @@ most 1,800 seconds, 512 MiB ephemeral data, and 16 MiB retained compact state
 per stable owner across all campaigns.
 
 The UTF-8 natural-C cell may use at most three hunks and 80 changed lines,
-including insert/delete, wholly inside the function span. NUL, asm,
-volatile/register shaping, padding, dead branches, and inline/optimization
-forcing are rejected.
+including insert/delete, wholly inside the function span. NUL, preprocessor
+directives, structural changes to the approved function boundary, and nested
+function definitions are rejected; legitimate body edits and nested control
+blocks remain allowed. asm, volatile/register shaping, padding, dead branches,
+and inline/optimization forcing are also rejected.
 
 Every approval also carries a closed `selection` object. Its strategy is fixed
 to `winning_cell_first`, its rank is exactly `1`, and it must name a non-empty
@@ -75,6 +94,8 @@ contents repeat and must exactly match owner, function, candidate, predicted-row
 digest, rank, strategy, controls, pivot decision, and source class; it also
 binds 1-16 repository-local evidence inputs by path/role/hash and carries an
 explicit earliest divergence, predicted effect, and exact predicted row list.
+`predicted_rows` is non-empty and unique in both the approval/result schemas and
+the runtime validators.
 The harness parses and verifies those contents and every input hash rather than
 accepting the artifact as an opaque assertion. `alternatives_compiled` and
 `negative_controls` are both exactly `0`, and `pivot_if_unranked` is `true`.
@@ -83,6 +104,15 @@ identity and therefore in the manager signature binding. Missing, drifted,
 or mismatched selection data is rejected before admission. There is no
 fallback compile for an unranked cell: without a valid signed approval and
 permit, STOP remains in force and the harness does not run.
+
+The selection also binds one `crack_luna5_audit/v1` artifact. It must contain
+five distinct read-only Luna/max PASS receipts for the fixed roles
+`exact_candidate_recovery`, `source_provenance`, `retry_safety`,
+`permit_pipeline`, and `adversarial_security`. Every receipt binds the same
+controller commit and candidate, a unique agent and immutable artifact, and
+proves that the auditor neither compiled nor mutated source. Duplicate agents,
+roles, outputs, commit drift, non-max effort, or a non-PASS result fail before
+permit use.
 
 Descriptors hash-pin executable and script. The fixed registry requires
 `candidate_compile_admission.py` for admission/record,
@@ -122,10 +152,12 @@ self-digested evidence context under `CRACK_HARNESS_OUT_ROOT`. The harness
 checks every receipt identity, phase nonce, artifact hash/size, target hash, and
 baseline immutability. Missing, stale, mixed, or fabricated evidence fails closed.
 The signed permit is recorded as one-shot when execution begins. The function
-cell is not tombstoned until the complete baseline build and evidence phase have
-succeeded and the candidate execution boundary is reached. Admission, worktree,
-unit, configuration, or baseline infrastructure failures therefore require a
-fresh signed permit but cannot consume an uncompiled function cell.
+cell is reserved only after the candidate process has been created and assigned
+to containment, and its durable marker is published before the contained process
+is resumed. Admission, worktree, unit, configuration, baseline, assignment, or
+resume/setup infrastructure failures therefore require a fresh signed permit but
+cannot consume an uncompiled function cell; a published pre-resume reservation
+is rolled back when resumption fails.
 Temp is metered and production
 writes are polled and rejected. Combined streamed output is capped at 1 MiB;
 timeout/overrun kills the process tree. On Windows the root process is created
@@ -146,11 +178,9 @@ byte counts and zero differences, zero focus rows, zero protected-sibling
 losses, and equal physical counts with zero differences. Assessment supplies
 only owner gain. The admission token/input key and object pair must be bound by
 one typed central-record receipt; recording failure rolls back. Protected sibling
-proof covers the union of strict and data exact-identity sets. A positive focus
-gain is retainable only when strict/data byte sizes remain target-equal, data
-match does not regress, both protected sets lose nothing, and physical
-relocations remain exact. Data percent and differing-row count must both be
-non-regressing. Otherwise the candidate is treated as no gain and rolled back.
+proof covers the union of strict and data exact-identity sets. Any positive
+result that is not fully exact is treated as no gain and rolled back. Partial
+improvement is never copied into source and never centrally recorded.
 
 No gain or a failure after the candidate execution boundary leaves baseline and
 retains no run directory or result artifact; only one overwrite-only
@@ -158,50 +188,117 @@ owner/function tombstone remains. That tombstone is independent of campaign ID
 and permanently forces a pivot to another function. A pre-candidate
 infrastructure failure retains only its bounded one-shot permit marker and does
 not tombstone the function. Failure may additionally
-retain one tiny overwrite-only sealed diagnostic, never an attempt log. Positive nonexact gain CAS-copies the candidate
-as `improved`, emits `PIVOT_REQUIRED`, and ends work on that function. Exact also writes
+retain one tiny overwrite-only sealed diagnostic, never an attempt log. Exact writes
 compact `CRACK_REPORT/v1`. Only one latest compact result and, for exact only,
 its bound report survive per owner/function; no full source duplicate or
 per-attempt or append-only candidate history survives. Approval, baseline,
 candidate, permit,
 worktree, objects, logs, and temp are deleted. Owner state is hard-capped at 16
 MiB and all harness state at 64 MiB. Journal recovery restores an interrupted
-CAS. If central record committed before the local terminal commit, recovery
-first deletes only the exact source/object/assessment-bound central experiment,
-then rolls source back; it never leaves a retained central success paired with
-baseline source. Recovery retains a candidate only when the self-digested
-terminal result, complete typed central-record receipt, record-commit digest,
-journal binding, and exact central database row all agree; exact additionally
-requires the hash-bound report. Forged or partial terminal files are deleted.
+CAS. If an exact central row committed before the complete local terminal was
+sealed, recovery preserves the candidate, central row, journal, and a self-hashed
+`RECOVERY_REQUIRED` marker; it does not invalidate that authoritative row or
+roll source back. If no authenticated central row survives, a stray local exact
+commit is rolled back with source and becomes one bounded, self-hashed failure
+diagnostic rather than a recovery marker. Recovery retains a candidate only when
+the self-digested terminal result, complete typed central-record receipt,
+journal binding, exact central database row, and hash-bound report all agree.
+`record.commit.json` is required while present and for the initial exact handoff,
+but normal completed cleanup removes it; later startup validation uses the
+sealed result/report receipts plus the exact central row. Forged or partial
+terminal files are deleted.
 
-`no_gain`, `improved`, and `failed` return nonzero. Results use the closed
+New function tombstones use `crack_harness_function_tombstone/v2`. They are
+written only after the approved candidate has been overlaid, Popen has returned,
+and containment assignment has succeeded, but immediately before the contained
+process is resumed. They bind the approval, base, candidate, and
+`candidate_execution_started: true` execution-boundary reservation. Ordinary
+admission, baseline, command, assignment, resume, or proof infrastructure
+failures before that boundary do not consume a function cell. A failed
+pre-resume setup rolls back both the local tombstone and central reservation only
+after both halves were fully published and still match the rollback snapshot.
+If central publication throws
+after persisting its ledger half, the central consumed-cell row is deliberately
+retained even if the local marker is rolled back; that partial-publication case
+fails closed rather than risking duplicate execution. A bounded
+`consumed-cells.json` ledger independently preserves the same one-cell fact;
+missing or conflicting local/central markers fail closed.
+
+There is no general retry or tombstone reset. A legacy v1 tombstone may be
+reconciled exactly once only when the approval carries the strict optional
+`crack_harness_legacy_reconciliation/v1` descriptor. That descriptor binds the
+immutable v1 tombstone and prior sealed failure by path and digest, the prior
+approval, the same candidate and legacy controller commit, and compact
+historical proof of equal target/candidate bytes, strict/data 100%, and zero
+rows. It is authority-free by itself: the complete approval identity still
+requires the external manager HMAC permit. A durable `retry-used.json` marker is
+written after Popen/containment and before candidate resumption, and prevents a
+second reconciliation. If setup or resume fails before the execution boundary,
+a fully published, unchanged local/central reservation is rolled back together.
+If only the central half persisted before publication failed, that half remains
+consumed fail-closed. Once resume succeeds, every surviving reservation remains
+consumed permanently.
+V2 tombstones, partial historical results, malformed or missing artifacts, and
+ordinary permits remain permanently fail-closed. Failure text or provenance
+alone can never release a tombstone.
+
+`no_gain` and `failed` return nonzero. Results use the closed
 `tools/CRACK_HARNESS_RESULT_V1.schema.json`. There is no reset command; Git is
 the rollback path after a retained terminal gain.
 
-Only retained `improved` or `exact` outcomes invoke central `record`. Every
+Only `exact` invokes central `record`. Every
 unretained or failed admitted attempt invokes canonical `discard`, which deletes
 the pending admission and creates no experiment. Central admission rows are
 overwrite-bounded to one pending row per owner/function; a successful retained
 record deletes its consumed admission rather than preserving admission history.
-`RecoveryMemory.record` itself accepts only `improved` or `exact`; direct
-`no_gain`, `failed`, or `regressed` calls fail before inserting an experiment.
+`RecoveryMemory.record` retains legacy API validation for `improved` and
+`exact`, but this harness invokes it only for `exact`; direct `no_gain`, `failed`,
+or `regressed` calls fail before inserting an experiment.
 The central database uses a fixed Git-common-directory path; queue/memory
 environment overrides are rejected. SQLite's page cap is hard-set to 64 MiB,
 inputs are compact-field bounded, admissions and lane snapshots are bounded,
 and only the latest retained experiment/report per owner/function survives.
 Historical synchronization imports at most the latest exact retained record;
-nonretained and append-only observations are discarded. A compile failure keeps
-an overwrite-only, hash-sealed `latest-failure.json` diagnostic whose primary
+nonretained and append-only observations are discarded. Every failed reviewed
+command attaches a bounded command receipt with return code (or explicit null
+before exit), active time, sealed stdout/stderr hashes, cleanup errors, and
+whether any `.o` object was observed in the disposable tree. A compile failure
+keeps an overwrite-only, hash-sealed `latest-failure.json` diagnostic whose primary
 cause is preserved even when rollback, discard, deletion, GC, or cleanup raises
 an ordinary exception, interruption, or other `BaseException`; those later
 errors are bounded secondary metadata and never escape in place of the primary.
-Cleanup after an authoritative `exact` or `improved` terminal never changes the
+If a command exits zero but descendant/job or output-reader quiescence cannot be
+proved, its receipt preserves that zero primary exit and the exact cleanup
+error, but the harness fails closed before consuming the output as evidence.
+Cleanup after an authoritative `exact` terminal never changes the
 crack status or rolls source back. The sealed result instead carries
 `cleanup_status: cleanup_incomplete` and at most eight bounded secondary errors.
-Startup retries only the contained disposable worktree/temp cleanup, then
-reruns protected owner/global retention maintenance and atomically advances that
-same latest result to `cleanup_status: complete`. Once exact/improved is sealed,
+Startup retries the contained disposable worktree/temp cleanup and the exact
+approval/base/candidate/permit set authenticated by the manager-HMAC-signed
+`crack_harness_attempt/v2` receipt, then reruns protected owner/global retention
+maintenance. Before deleting any root disposable it writes a manager-HMAC
+`root-cleanup.receipt.json` beside the exact result. That compact receipt binds
+the exact result's `attempt_sha256`, approval identity, retained source, and the
+four canonical disposable roles, paths, and expected hashes. Root deletion is
+fail-fast; the transaction journal is removed before the approval, the approval
+before the attempt receipt, and the attempt receipt only after the other roots
+are gone. It advances
+the same latest result to `cleanup_status: complete` only after the receipt
+signature and result bindings validate, every listed root path is rechecked as
+absent, and the attempt receipt, transaction journal, and recovery marker are
+gone. Once exact is sealed,
 no later cleanup, cap, GC, or maintenance exception may escape as a crack
 failure, roll source back, or create `latest-failure.json`; every such exception
 is bounded secondary metadata on the same result. This does not create a
 contradictory failure result or attempt history.
+
+Root disposables are removed in fail-fast order with the approval deleted last,
+so an expired but still hash-bound approval remains sufficient for automatic
+startup cleanup. If an external actor deletes that approval while another root
+disposable remains, startup deliberately writes or preserves a recovery lock and
+leaves the remaining files untouched: even the signed attempt receipt cannot
+replace the missing approval for rollback or cleanup. Manager repair or review
+is required for that tamper boundary. Likewise, externally deleting
+`attempt.json` before root cleanup cannot advance an exact result to
+cleanup-complete while any signed-manifest path remains; the presealed cleanup
+receipt is evidence of the intended paths, not deletion authority by itself.

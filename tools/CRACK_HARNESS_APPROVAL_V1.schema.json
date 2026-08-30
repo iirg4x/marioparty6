@@ -22,7 +22,7 @@
     "candidate": {"$ref": "#/$defs/file"},
     "function_span": {"type": "object", "additionalProperties": false, "required": ["start_line", "end_line", "base_span_sha256"], "properties": {"start_line": {"type": "integer", "minimum": 1}, "end_line": {"type": "integer", "minimum": 1}, "base_span_sha256": {"$ref": "#/$defs/sha"}}},
     "predicted_rows": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-    "selection": {"type": "object", "additionalProperties": false, "required": ["strategy", "rank", "expected_terminal", "evidence", "candidate_sha256", "predicted_rows_sha256", "alternatives_compiled", "negative_controls", "pivot_if_unranked", "source_class"], "properties": {
+    "selection": {"type": "object", "additionalProperties": false, "required": ["strategy", "rank", "expected_terminal", "evidence", "candidate_sha256", "predicted_rows_sha256", "alternatives_compiled", "negative_controls", "pivot_if_unranked", "source_class", "luna5_audit"], "properties": {
       "strategy": {"const": "winning_cell_first"},
       "rank": {"const": 1},
       "expected_terminal": {"const": "exact"},
@@ -32,7 +32,8 @@
       "alternatives_compiled": {"const": 0},
       "negative_controls": {"const": 0},
       "pivot_if_unranked": {"const": true},
-      "source_class": {"type": "string", "minLength": 1}
+      "source_class": {"type": "string", "minLength": 1},
+      "luna5_audit": {"$ref": "#/$defs/file"}
     }},
     "commands": {"type": "object", "additionalProperties": false, "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "record"], "properties": {
       "precompile": {"$ref": "#/$defs/canonical_admission"}, "compile": {"$ref": "#/$defs/compile"},
@@ -42,6 +43,7 @@
       "record": {"$ref": "#/$defs/canonical_record"}
     }},
     "campaign": {"type": "object", "additionalProperties": false, "required": ["id", "quota"], "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{1,96}$"}, "quota": {"const": 1}}},
+    "retry": {"$ref": "#/$defs/retry"},
     "limits": {"type": "object", "additionalProperties": false, "properties": {"active_seconds": {"type": "integer", "minimum": 1, "maximum": 1800}, "temporary_bytes": {"type": "integer", "minimum": 1, "maximum": 536870912}, "candidates": {"const": 1}}}
   },
   "$defs": {
@@ -57,6 +59,15 @@
     "proof_siblings": {"allOf": [{"$ref": "#/$defs/descriptor"}, {"properties": {"kind": {"const": "proof_siblings"}}}]},
     "proof_physical": {"allOf": [{"$ref": "#/$defs/descriptor"}, {"properties": {"kind": {"const": "proof_physical"}}}]},
     "assessment": {"allOf": [{"$ref": "#/$defs/descriptor"}, {"properties": {"kind": {"const": "assessment"}}}]},
-    "canonical_record": {"allOf": [{"$ref": "#/$defs/descriptor"}, {"properties": {"kind": {"const": "canonical_record"}}}]}
+    "canonical_record": {"allOf": [{"$ref": "#/$defs/descriptor"}, {"properties": {"kind": {"const": "canonical_record"}}}]},
+    "retry": {"type": "object", "additionalProperties": false, "required": ["schema", "tombstone", "failure", "prior_approval_sha256", "candidate_sha256", "legacy_controller_commit", "historical_exact_evidence"], "properties": {
+      "schema": {"const": "crack_harness_legacy_reconciliation/v1"},
+      "tombstone": {"$ref": "#/$defs/file"},
+      "failure": {"$ref": "#/$defs/file"},
+      "prior_approval_sha256": {"$ref": "#/$defs/sha"},
+      "candidate_sha256": {"$ref": "#/$defs/sha"},
+      "legacy_controller_commit": {"type": "string", "minLength": 1},
+      "historical_exact_evidence": {"$ref": "#/$defs/file"}
+    }}
   }
 }

@@ -4,7 +4,7 @@
   "title": "Bounded crack cell terminal result",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "approval_id", "approval_sha256", "owner", "task_id", "function", "base_commit", "campaign_id", "candidate_sha256", "base_sha256", "status", "reason", "predicted_rows", "receipts", "finished_at", "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced", "result_sha256"],
+  "required": ["schema", "approval_id", "approval_sha256", "owner", "task_id", "function", "base_commit", "campaign_id", "attempt_sha256", "candidate_sha256", "base_sha256", "status", "reason", "predicted_rows", "receipts", "finished_at", "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced", "result_sha256"],
   "properties": {
     "schema": {"const": "crack_harness_result/v1"},
     "approval_id": {"type": "string", "minLength": 1},
@@ -14,26 +14,36 @@
     "function": {"type": "string", "minLength": 1},
     "base_commit": {"type": "string", "minLength": 1},
     "campaign_id": {"type": "string", "minLength": 1},
+    "attempt_sha256": {"$ref": "#/$defs/sha256"},
     "candidate_sha256": {"$ref": "#/$defs/sha256"},
     "base_sha256": {"$ref": "#/$defs/sha256"},
-    "status": {"enum": ["exact", "improved", "no_gain", "failed"]},
+    "status": {"enum": ["exact", "no_gain", "failed"]},
     "reason": {"type": "string", "minLength": 1},
     "owner_gain": {"type": ["number", "null"]},
-    "predicted_rows": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "predicted_rows": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
     "receipts": {
       "type": "object",
       "additionalProperties": false,
+      "minProperties": 1,
       "properties": {
-        "precompile": {"type": "object"},
-        "compile": {"type": "object"},
-        "strict": {"type": "object"},
-        "data": {"type": "object"},
-        "focus": {"type": "object"},
-        "siblings": {"type": "object"},
-        "physical": {"type": "object"},
-        "assess": {"type": "object"},
-        "record": {"type": "object"},
-        "failure": {"type": "object"}
+        "precompile": {"$ref": "#/$defs/compact_receipt"},
+        "compile": {"$ref": "#/$defs/compile_receipt"},
+        "strict": {"$ref": "#/$defs/compact_receipt"},
+        "data": {"$ref": "#/$defs/compact_receipt"},
+        "focus": {"$ref": "#/$defs/compact_receipt"},
+        "siblings": {"$ref": "#/$defs/compact_receipt"},
+        "physical": {"$ref": "#/$defs/compact_receipt"},
+        "assess": {"$ref": "#/$defs/compact_receipt"},
+        "record": {"$ref": "#/$defs/compact_receipt"},
+        "discard": {"$ref": "#/$defs/compact_receipt"},
+        "failure": {"$ref": "#/$defs/failure_receipt"},
+        "discard_failure": {"$ref": "#/$defs/failure_receipt"},
+        "secondary_failures": {"$ref": "#/$defs/secondary_failures"}
       }
     },
     "finished_at": {"type": "string", "format": "date-time"},
@@ -44,5 +54,141 @@
     "result_sha256": {"$ref": "#/$defs/sha256"},
     "report_sha256": {"$ref": "#/$defs/sha256"}
   },
-  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "exact"}}},
+      "then": {
+        "required": ["owner_gain", "report_sha256"],
+        "properties": {
+          "owner_gain": {"type": "number", "exclusiveMinimum": 0},
+          "receipts": {
+            "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "record"]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "no_gain"}}},
+      "then": {
+        "properties": {
+          "receipts": {
+            "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "discard"]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "failed"}}},
+      "then": {
+        "properties": {
+          "receipts": {"required": ["failure"]}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "command_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv_sha256", "returncode", "active_seconds", "stdout_sha256", "stderr_sha256", "cleanup_errors"],
+      "properties": {
+        "argv_sha256": {"$ref": "#/$defs/sha256"},
+        "returncode": {"type": "integer", "const": 0},
+        "active_seconds": {"type": "number", "minimum": 0},
+        "stdout_sha256": {"$ref": "#/$defs/sha256"},
+        "stderr_sha256": {"$ref": "#/$defs/sha256"},
+        "cleanup_errors": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"type": "string", "maxLength": 1000}
+        }
+      }
+    },
+    "compact_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "hook", "ok", "summary", "payload_sha256", "command"],
+      "properties": {
+        "schema": {"const": "crack_harness_receipt/v1"},
+        "hook": {"type": "string", "minLength": 1},
+        "ok": {"type": "boolean"},
+        "summary": {
+          "type": "object",
+          "maxProperties": 32,
+          "additionalProperties": {
+            "oneOf": [
+              {"type": ["string", "number", "boolean", "null"]},
+              {
+                "type": "array",
+                "maxItems": 64,
+                "items": {"type": ["string", "number", "boolean", "null"]}
+              }
+            ]
+          }
+        },
+        "payload_sha256": {"$ref": "#/$defs/sha256"},
+        "command": {"$ref": "#/$defs/command_receipt"}
+      }
+    },
+    "compile_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "hook", "baseline_command", "candidate_command"],
+      "properties": {
+        "schema": {"const": "crack_harness_receipt/v1"},
+        "hook": {"const": "compile"},
+        "baseline_command": {"$ref": "#/$defs/command_receipt"},
+        "candidate_command": {"$ref": "#/$defs/command_receipt"}
+      }
+    },
+    "failure_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "hook", "reason", "command"],
+      "properties": {
+        "schema": {"const": "crack_harness_failure_receipt/v1"},
+        "hook": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "argv_sha256": {"$ref": "#/$defs/sha256"},
+        "command": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/failure_command_receipt"}
+          ]
+        }
+      }
+    },
+    "failure_command_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv_sha256", "returncode", "active_seconds", "stdout_sha256", "stderr_sha256", "cleanup_errors", "object_observed"],
+      "properties": {
+        "argv_sha256": {"$ref": "#/$defs/sha256"},
+        "returncode": {"type": ["integer", "null"]},
+        "active_seconds": {"type": "number", "minimum": 0},
+        "stdout_sha256": {"$ref": "#/$defs/sha256"},
+        "stderr_sha256": {"$ref": "#/$defs/sha256"},
+        "cleanup_errors": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"type": "string", "maxLength": 1000}
+        },
+        "object_observed": {"type": "boolean"}
+      }
+    },
+    "secondary_failures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "items"],
+      "properties": {
+        "schema": {"const": "crack_harness_secondary_failures/v1"},
+        "items": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"type": "string", "maxLength": 1000}
+        }
+      }
+    }
+  }
 }
