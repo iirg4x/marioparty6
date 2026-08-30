@@ -1898,16 +1898,25 @@ def _validate_frontier(
             isinstance(value_number, bool)
             or not isinstance(value_number, (int, float))
             or not math.isfinite(float(value_number))
+            or float(value_number) < 0
         ):
             raise CrackHarnessError(f"partial frontier {key} is invalid")
-    integer_fields = (
+    nonnegative_integer_fields = (
         "strict_target_bytes", "strict_candidate_bytes", "strict_differences",
         "data_target_bytes", "data_candidate_bytes", "data_differences",
         "focus_differing_rows", "protected_total", "protected_losses",
         "physical_target_count", "physical_candidate_count",
-        "physical_differences", "data_diff_delta", "physical_diff_delta",
+        "physical_differences",
     )
-    for key in integer_fields:
+    for key in nonnegative_integer_fields:
+        number = unsigned.get(key)
+        if (
+            isinstance(number, bool)
+            or not isinstance(number, int)
+            or number < 0
+        ):
+            raise CrackHarnessError(f"partial frontier {key} is invalid")
+    for key in ("data_diff_delta", "physical_diff_delta"):
         number = unsigned.get(key)
         if isinstance(number, bool) or not isinstance(number, int):
             raise CrackHarnessError(f"partial frontier {key} is invalid")
@@ -6900,10 +6909,11 @@ def _run_locked(
             cleanup_errors.append(f"{label}: {exc}"[:1000])
 
     if status == "exact":
-        # Keep the transaction journal until every disposable cleanup has
-        # succeeded.  If a later finalization step fails, the journal itself
-        # remains a bound recovery marker instead of leaving only a central
-        # exact row and a candidate source with no local handoff.
+        # Keep the transaction journal until the exact result, root cleanup
+        # receipt, and manager-bound disposable cleanup have succeeded.  The
+        # retired partial frontier is secondary: remove it only after that
+        # authenticated boundary so an unlink failure is retryable by status
+        # instead of pinning the exact transaction journal forever.
         secondary(
             "record commit cleanup",
             lambda: (run_dir / "record.commit.json").unlink(missing_ok=True),
@@ -6914,10 +6924,6 @@ def _run_locked(
                 lambda: _remove_disposable_worktree(root, worktree),
             )
         secondary("raw/temp cleanup", lambda: _cleanup_raw(run_dir))
-        secondary(
-            "retired partial frontier cleanup",
-            lambda: _safe_unlink(_frontier_file(run_dir)),
-        )
         if not cleanup_errors:
             # Authenticate the exact four root paths while every manager-bound
             # input still exists.  Only then may deletion begin.
@@ -6954,6 +6960,11 @@ def _run_locked(
                     "delete attempt receipt",
                     lambda: _safe_unlink(state / "attempt.json"),
                 )
+        if not cleanup_errors:
+            secondary(
+                "retired partial frontier cleanup",
+                lambda: _safe_unlink(_frontier_file(run_dir)),
+            )
         secondary(
             "owner retention maintenance",
             lambda: _gc_owner(

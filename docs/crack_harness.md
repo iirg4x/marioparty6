@@ -183,6 +183,8 @@ zero differences. An `improved` result is deliberately allowed to retain
 nonzero focus rows, physical-relocation residuals, or a changed function size,
 but only when owner gain is positive, physical distance from the target does not
 increase, protected siblings do not lose exactness, and data does not regress.
+Physical distance is `abs(target_count - candidate_count) + differences`, where
+`differences` is the number of nonidentical physical-relocation entries.
 Assessment supplies the strict-score gain plus data/physical deltas;
 the runtime rejects non-finite or non-positive gains. Improved cells are
 measurable progress, not proof of a crack: they are copied into the live source

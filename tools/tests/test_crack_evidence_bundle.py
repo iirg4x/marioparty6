@@ -23,6 +23,33 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+class EvidenceContainmentTests(unittest.TestCase):
+    def test_output_root_symlink_is_rejected_before_external_write(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            external = Path(temp) / "external"
+            root.mkdir()
+            external.mkdir()
+            out_root = root / "out"
+            try:
+                out_root.symlink_to(external, target_is_directory=True)
+            except (NotImplementedError, OSError) as exc:
+                if os.name != "nt":
+                    self.skipTest(f"directory symlink unavailable: {exc}")
+                junction = subprocess.run(
+                    ["cmd.exe", "/d", "/c", "mklink", "/J", str(out_root), str(external)],
+                    check=False, capture_output=True, text=True,
+                )
+                if junction.returncode != 0:
+                    self.skipTest(
+                        f"directory symlink/junction unavailable: {junction.stderr}"
+                    )
+
+            with self.assertRaisesRegex(bundle.EvidenceError, "indirection"):
+                bundle._prepare_output_root(root, out_root)
+            self.assertEqual(list(external.iterdir()), [])
+
+
 class RealEvidenceFixtureTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()

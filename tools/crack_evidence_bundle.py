@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import struct
 import subprocess
 import sys
@@ -43,6 +44,7 @@ BINUTILS_TAG = "2.42-1"
 NINJA_VERSION = "1.13.2"
 NINJA_SHA256 = "e52a7ad9538d9618c67a0bd777964e2eec8a30f68b810a2f6adce1f2daf847b8"
 SHA_RE = re.compile(r"[0-9a-f]{64}")
+REPARSE_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 
 class EvidenceError(ValueError):
@@ -94,15 +96,31 @@ def _tree_descriptor(path: Path) -> dict[str, Any]:
 
 
 def _atomic_copy(source: Path, destination: Path) -> None:
+    _assert_no_indirection(source)
+    _assert_no_indirection(destination.parent)
+    if destination.exists() or destination.is_symlink():
+        _assert_no_indirection(destination)
     temp = destination.with_name(destination.name + ".tmp")
-    temp.unlink(missing_ok=True)
+    if temp.exists() or temp.is_symlink():
+        _assert_no_indirection(temp)
+        temp.unlink()
     shutil.copyfile(source, temp)
+    _assert_no_indirection(temp)
+    _assert_no_indirection(destination.parent)
     os.replace(temp, destination)
 
 
 def _atomic_json(destination: Path, value: Mapping[str, Any]) -> None:
+    _assert_no_indirection(destination.parent)
+    if destination.exists() or destination.is_symlink():
+        _assert_no_indirection(destination)
     temp = destination.with_name(destination.name + ".tmp")
+    if temp.exists() or temp.is_symlink():
+        _assert_no_indirection(temp)
+        temp.unlink()
     temp.write_bytes(_canonical(value))
+    _assert_no_indirection(temp)
+    _assert_no_indirection(destination.parent)
     os.replace(temp, destination)
 
 
@@ -114,6 +132,53 @@ def _inside(root: Path, path: Path, label: str) -> Path:
     except ValueError as exc:
         raise EvidenceError(f"{label} escapes {root}: {resolved}") from exc
     return resolved
+
+
+def _assert_no_indirection(path: Path, *, missing_leaf: bool = False) -> None:
+    """Reject symlink/reparse components before any path resolution."""
+
+    absolute = Path(os.path.abspath(path))
+    current = Path(absolute.parts[0])
+    for part in absolute.parts[1:]:
+        current /= part
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            if missing_leaf:
+                return
+            raise EvidenceError(f"path component does not exist: {current}")
+        if stat.S_ISLNK(info.st_mode) or bool(
+            getattr(info, "st_file_attributes", 0) & REPARSE_ATTRIBUTE
+        ):
+            raise EvidenceError(f"path indirection is forbidden: {current}")
+
+
+def _prepare_output_root(root: Path, out_root: Path) -> tuple[Path, Path]:
+    """Create one real output directory lexically and physically under root."""
+
+    root_absolute = Path(os.path.abspath(root))
+    out_absolute = Path(os.path.abspath(out_root))
+    _assert_no_indirection(root_absolute)
+    try:
+        out_absolute.relative_to(root_absolute)
+    except ValueError as exc:
+        raise EvidenceError(
+            f"output root escapes repository: {out_absolute}"
+        ) from exc
+    _assert_no_indirection(out_absolute, missing_leaf=True)
+    if out_absolute.exists() and not out_absolute.is_dir():
+        raise EvidenceError("output root must be a real directory")
+    out_absolute.mkdir(parents=True, exist_ok=True)
+    _assert_no_indirection(out_absolute)
+    root_resolved = root_absolute.resolve()
+    out_resolved = out_absolute.resolve()
+    try:
+        out_resolved.relative_to(root_resolved)
+    except ValueError as exc:
+        raise EvidenceError(
+            f"output root escapes repository: {out_resolved}"
+        ) from exc
+    return root_resolved, out_resolved
 
 
 def _sha(value: Any, label: str) -> str:
@@ -357,8 +422,15 @@ def _unit_paths(root: Path, unit_name: str) -> tuple[Path, Path]:
 
 
 def _run_objdiff(objdiff: Path, target: Path, candidate: Path, output: Path, *, data: bool, root: Path) -> None:
+    _assert_no_indirection(target)
+    _assert_no_indirection(candidate)
+    _assert_no_indirection(output.parent)
+    if output.exists() or output.is_symlink():
+        _assert_no_indirection(output)
     temp = output.with_name(output.name + ".tmp")
-    temp.unlink(missing_ok=True)
+    if temp.exists() or temp.is_symlink():
+        _assert_no_indirection(temp)
+        temp.unlink()
     command = [str(objdiff), "diff", "-1", str(target), "-2", str(candidate), "-o", str(temp), "--format", "json-pretty"]
     if data:
         command += ["-c", "functionRelocDiffs=data_value"]
@@ -366,6 +438,8 @@ def _run_objdiff(objdiff: Path, target: Path, candidate: Path, output: Path, *, 
     document = _load_json(temp, "objdiff report")
     if not isinstance(document.get("left"), Mapping) or not isinstance(document.get("right"), Mapping):
         raise EvidenceError("objdiff report lacks real left/right object evidence")
+    _assert_no_indirection(temp)
+    _assert_no_indirection(output.parent)
     os.replace(temp, output)
 
 
@@ -520,13 +594,9 @@ def _run_phase_impl(
     *, root: Path, context_path: Path, out_root: Path, objdiff: Path,
     readelf: Path, ninja: Path, staged_retail: list[Path],
 ) -> dict[str, Any]:
-    root = root.resolve()
-    out_root = out_root.resolve()
+    root, out_root = _prepare_output_root(root, out_root)
     if not (root / ".git").exists() and not (root / ".git").is_file():
         raise EvidenceError("root is not a Git worktree")
-    if out_root.exists() and (out_root.is_symlink() or not out_root.is_dir()):
-        raise EvidenceError("output root must be a real directory")
-    out_root.mkdir(parents=True, exist_ok=True)
     env = _load_environment(root, out_root, context_path)
     manifest_path = Path(os.environ.get("MP6_CRACK_TOOLCHAIN_MANIFEST", DEFAULT_TOOLCHAIN_MANIFEST))
     toolchain = _load_toolchain(manifest_path, env["toolchain_key"])

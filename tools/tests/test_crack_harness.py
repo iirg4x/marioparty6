@@ -429,6 +429,75 @@ elif 'admit' in sys.argv:
             self.source.read_text(), "int Owner(void) {\n    return 2;\n}\n"
         )
 
+    def test_positive_nonexact_with_improved_physical_residual_is_retained(self) -> None:
+        result = self.execute(
+            gain=2, focus_rows=1,
+            baseline_physical_diff=2, physical_diff=1,
+        )
+        self.assertEqual(result["status"], "improved", result)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(frontier["physical_differences"], 1)
+        self.assertEqual(frontier["physical_diff_delta"], -1)
+
+    def test_frontier_rejects_wrong_directory_and_tampering(self) -> None:
+        result = self.execute(gain=2, focus_rows=1)
+        self.assertEqual(result["status"], "improved", result)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+
+        wrong_dir = frontier_path.parent.parent / "WrongFunction"
+        wrong_dir.mkdir()
+        wrong_path = wrong_dir / "latest-frontier.json"
+        shutil.copyfile(frontier_path, wrong_path)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "stored under the wrong function"
+        ):
+            harness._validate_frontier(
+                self.root, wrong_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )
+
+        tampered = json.loads(frontier_path.read_text(encoding="utf-8"))
+        tampered["physical_diff_delta"] = 1
+        frontier_path.write_text(json.dumps(tampered), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "frontier digest is invalid"
+        ):
+            harness._validate_frontier(
+                self.root, frontier_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )
+
+    def test_frontier_rejects_correctly_signed_negative_schema_field(self) -> None:
+        result = self.execute(gain=2, focus_rows=1)
+        self.assertEqual(result["status"], "improved", result)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+        frontier.pop("frontier_sha256")
+        frontier.pop("signature")
+        frontier["strict_differences"] = -1
+        signed = {
+            **frontier,
+            "signature": hmac.new(
+                self.manager_key.read_bytes(), harness._canonical(frontier),
+                hashlib.sha256,
+            ).hexdigest(),
+        }
+        sealed = {
+            **signed, "frontier_sha256": harness._digest_json(signed),
+        }
+        frontier_path.write_text(json.dumps(sealed), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "strict_differences is invalid"
+        ):
+            harness._validate_frontier(
+                self.root, frontier_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )
+
     def test_no_gain_restores(self) -> None:
         result = self.execute(gain=0)
         self.assertEqual(result["status"], "no_gain", result)
@@ -1850,6 +1919,53 @@ elif 'admit' in sys.argv:
         )
         self.assertFalse(frontier_path.exists())
         self.assertFalse(any(self.state.glob("owners/*/*/latest-frontier.json")))
+
+    def test_exact_frontier_cleanup_failure_is_retryable_after_root_cleanup(self) -> None:
+        first = self.execute(
+            gain=2, focus_rows=1, campaign_id="partial-before-cleanup-retry"
+        )
+        self.assertEqual(first["status"], "improved", first)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-exact-cleanup-retry.json"
+        self.luna_audit = self.root / "evidence/luna5-exact-cleanup-retry.json"
+        self._write_luna5_audit()
+
+        real_unlink = harness._safe_unlink
+        frontier_failure = False
+
+        def fail_frontier_once(path: Path) -> None:
+            nonlocal frontier_failure
+            if Path(path) == frontier_path and not frontier_failure:
+                frontier_failure = True
+                raise OSError("retired frontier cleanup failed once")
+            real_unlink(path)
+
+        with patch.object(harness, "_safe_unlink", side_effect=fail_frontier_once):
+            exact = self.execute(
+                gain=1, focus_rows=0, campaign_id="exact-cleanup-retry"
+            )
+        self.assertEqual(exact["status"], "exact", exact)
+        self.assertEqual(exact["cleanup_status"], "cleanup_incomplete", exact)
+        self.assertTrue(frontier_path.is_file())
+        run_dir = next(self.state.glob("owners/*/*/latest"))
+        self.assertTrue((run_dir / "root-cleanup.receipt.json").is_file())
+        self.assertFalse((self.state / "transaction.json").exists())
+        self.assertFalse((self.state / "attempt.json").exists())
+
+        with patch.object(harness, "_central_record_matches", return_value=True):
+            harness._status_for_test(
+                self.root, state_root=self.state,
+                manager_key_path=self.manager_key,
+            )
+        self.assertFalse(frontier_path.exists())
+        final = json.loads((run_dir / "result.json").read_text(encoding="utf-8"))
+        self.assertEqual(final["status"], "exact", final)
+        self.assertEqual(final["cleanup_status"], "complete", final)
 
     def test_partial_frontier_continues_monotonically_and_rejects_stale_base(self) -> None:
         original_base = self.base.read_bytes()
