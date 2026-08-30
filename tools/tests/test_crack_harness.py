@@ -173,8 +173,8 @@ class CrackHarnessTests(unittest.TestCase):
             },
             "channels": {
                 "strict": {
-                    "target": {"rows_kind": "all", "rows": strict_rows},
-                    "candidate": {"rows_kind": "all", "rows": strict_rows},
+                    "target": {"rows_kind": "diff_only", "rows": strict_rows},
+                    "candidate": {"rows_kind": "diff_only", "rows": strict_rows},
                 },
                 "data": {
                     "target": {"rows_kind": "diff_only", "rows": []},

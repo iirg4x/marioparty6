@@ -348,6 +348,60 @@ class CurrentResidualMaterializationTests(unittest.TestCase):
         )
         self.assertNotIn("^", "".join(git.call_args.args[1]))
 
+    def test_focus_compaction_keeps_diff_context_and_hashes_exact_physical_rows(self) -> None:
+        rows = [
+            {
+                "index": index,
+                "diff_kind": "DIFF_ARG_MISMATCH" if index == 2500 else None,
+                "instruction": {
+                    "address": hex(0x1000 + 4 * index),
+                    "formatted": f"addi r3,r3,{index}",
+                },
+            }
+            for index in range(5000)
+        ]
+        physical_rows = [{"offset": index * 4, "type": "R_PPC_REL24"} for index in range(500)]
+        focus = {
+            "schema": "focus_symbol_report/v1",
+            "function": FUNCTION,
+            "input_binding": {},
+            "channels": {
+                "strict": {
+                    "target": {"rows_kind": "all", "rows": rows},
+                    "candidate": {"rows_kind": "all", "rows": rows},
+                },
+                "data": {
+                    "target": {"rows_kind": "diff_only", "rows": [rows[2500]]},
+                    "candidate": {"rows_kind": "diff_only", "rows": [rows[2500]]},
+                },
+            },
+            "physical_relocations": {
+                "target": {"physical_relocations": physical_rows},
+                "candidate": {"physical_relocations": physical_rows},
+                "physical_relocation_differences": [],
+            },
+            "policies": {"strict_rows": "all_normalized_rows"},
+        }
+
+        compact = residual._sanitize_focus_artifact(focus, self.root)
+
+        strict_target = compact["channels"]["strict"]["target"]
+        self.assertEqual(strict_target["rows_kind"], "diff_context")
+        self.assertEqual(
+            [row["index"] for row in strict_target["rows"]],
+            [2498, 2499, 2500, 2501, 2502],
+        )
+        self.assertNotIn(
+            "physical_relocations", compact["physical_relocations"]["target"]
+        )
+        self.assertEqual(
+            compact["physical_relocations"]["target"][
+                "physical_relocation_payload_sha256"
+            ],
+            residual._json_sha(physical_rows),
+        )
+        self.assertLess(len(residual._canonical(compact)), residual.MAX_FOCUS_BYTES)
+
     def test_publish_rollback_retries_after_replace_and_unlink_failures(self) -> None:
         first = self.root / "build" / "first.evidence"
         second = self.root / "build" / "second.evidence"

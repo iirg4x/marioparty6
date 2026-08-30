@@ -919,14 +919,16 @@ def _current_residual_channel_rows(
     channel_value = channels.get(channel) if isinstance(channels, Mapping) else None
     if not isinstance(channel_value, Mapping):
         raise CrackHarnessError(f"current residual focus {channel} channel is invalid")
-    expected_kind = "all" if channel == "strict" else "diff_only"
+    expected_kinds = (
+        {"diff_only", "diff_context"} if channel == "strict" else {"diff_only"}
+    )
     indexed: dict[str, dict[int, Mapping[str, Any]]] = {}
     for side in ("target", "candidate"):
         side_value = channel_value.get(side)
         rows = side_value.get("rows") if isinstance(side_value, Mapping) else None
         if (
             not isinstance(side_value, Mapping)
-            or side_value.get("rows_kind") != expected_kind
+            or side_value.get("rows_kind") not in expected_kinds
             or not isinstance(rows, list)
         ):
             raise CrackHarnessError(

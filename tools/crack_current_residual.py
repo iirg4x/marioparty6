@@ -53,6 +53,7 @@ MAX_FOCUS_BYTES = 512 * 1024
 MAX_OBJECT_BYTES = 16 * 1024 * 1024
 DEFAULT_PROCESS_TIMEOUT = 120.0
 PROCESS_TERMINATION_GRACE = 5.0
+FOCUS_CONTEXT_RADIUS = 2
 
 
 class ResidualEvidenceError(ValueError):
@@ -1172,7 +1173,16 @@ def _publish_bundle(files: Sequence[tuple[Path, bytes]]) -> dict[Path, str]:
 
 
 def _sanitize_focus_artifact(value: Mapping[str, Any], worktree: Path) -> dict[str, Any]:
-    """Remove path references that would dangle after scratch teardown."""
+    """Publish bounded causal focus evidence without losing residual identity.
+
+    ``focus_symbol_report`` intentionally carries every strict instruction and
+    every physical relocation.  That is useful as an in-process proof adapter,
+    but it scales with the whole function instead of the residual.  The current
+    residual record keeps each differing strict row plus a two-row causal
+    context window, every data-diff row, the full raw payload digests, and every
+    physical difference.  Exact physical arrays are replaced by their count
+    and digest.  The raw reports/receipt remain hash-bound by ``input_binding``.
+    """
 
     root = worktree.resolve()
 
@@ -1196,6 +1206,77 @@ def _sanitize_focus_artifact(value: Mapping[str, Any], worktree: Path) -> dict[s
     result = clean(value)
     if not isinstance(result, dict):
         raise ResidualEvidenceError("focus artifact sanitizer produced invalid data")
+
+    channels = result.get("channels")
+    if not isinstance(channels, dict):
+        raise ResidualEvidenceError("focus artifact sanitizer found no channels")
+    for channel_name in ("strict", "data"):
+        channel = channels.get(channel_name)
+        if not isinstance(channel, dict):
+            raise ResidualEvidenceError(
+                f"focus artifact sanitizer found no {channel_name} channel"
+            )
+        for side_name in ("target", "candidate"):
+            side = channel.get(side_name)
+            rows = side.get("rows") if isinstance(side, dict) else None
+            if not isinstance(side, dict) or not isinstance(rows, list):
+                raise ResidualEvidenceError(
+                    f"focus artifact sanitizer found invalid {channel_name}.{side_name} rows"
+                )
+            if channel_name == "strict":
+                diff_indices = {
+                    row.get("index")
+                    for row in rows
+                    if isinstance(row, Mapping)
+                    and isinstance(row.get("index"), int)
+                    and not isinstance(row.get("index"), bool)
+                    and isinstance(row.get("diff_kind"), str)
+                    and row.get("diff_kind")
+                }
+                retained_indices = {
+                    index
+                    for diff_index in diff_indices
+                    for index in range(
+                        max(0, diff_index - FOCUS_CONTEXT_RADIUS),
+                        diff_index + FOCUS_CONTEXT_RADIUS + 1,
+                    )
+                }
+                side["rows"] = [
+                    row
+                    for row in rows
+                    if isinstance(row, Mapping) and row.get("index") in retained_indices
+                ]
+                side["rows_kind"] = "diff_context"
+                side["context_radius"] = FOCUS_CONTEXT_RADIUS
+            else:
+                side["rows"] = [
+                    row
+                    for row in rows
+                    if isinstance(row, Mapping)
+                    and isinstance(row.get("diff_kind"), str)
+                    and row.get("diff_kind")
+                ]
+                side["rows_kind"] = "diff_only"
+
+    physical = result.get("physical_relocations")
+    if not isinstance(physical, dict):
+        raise ResidualEvidenceError("focus artifact sanitizer found no physical evidence")
+    for side_name in ("target", "candidate"):
+        side = physical.get(side_name)
+        if not isinstance(side, dict):
+            continue
+        relocations = side.pop("physical_relocations", None)
+        if relocations is not None:
+            if not isinstance(relocations, list):
+                raise ResidualEvidenceError(
+                    f"focus artifact sanitizer found invalid {side_name} physical relocations"
+                )
+            side["physical_relocation_payload_sha256"] = _json_sha(relocations)
+
+    policies = result.get("policies")
+    if isinstance(policies, dict):
+        policies["strict_rows"] = "diff_rows_plus_two_row_context_with_full_raw_digest"
+        policies["physical_relocations"] = "differences_plus_full_payload_digest"
     result.pop("artifact_sha256", None)
     result["artifact_sha256"] = _json_sha(result)
     return result
