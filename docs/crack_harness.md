@@ -108,6 +108,11 @@ the runtime validators.
 The harness parses and verifies those contents and every input hash rather than
 accepting the artifact as an opaque assertion. `alternatives_compiled` and
 `negative_controls` are both exactly `0`, and `pivot_if_unranked` is `true`.
+Evidence inputs must be immutable: the approval's separately hash-bound live
+source is forbidden as an evidence input, including through a hard-link alias.
+Use the sealed base artifact when the current source bytes are evidence. This
+prevents a valid base hash from becoming a deterministic post-retention failure
+when the harness atomically applies an exact or improved candidate.
 The complete approval—including this selection—is included in the permit
 identity and therefore in the manager signature binding. Missing, drifted,
 or mismatched selection data is rejected before admission. There is no

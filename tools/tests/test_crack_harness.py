@@ -73,8 +73,20 @@ class CrackHarnessTests(unittest.TestCase):
     def _git(self, *args: str) -> str:
         return subprocess.run(["git", *args], cwd=self.root, text=True, capture_output=True, check=True).stdout.strip()
 
-    def _write_selection_evidence(self, *, expected_terminal: str = "exact") -> None:
+    def _write_selection_evidence(
+        self, *, expected_terminal: str = "exact",
+        include_live_source: bool = False,
+    ) -> None:
         predicted_rows = ["Owner:ARG:0"]
+        inputs = [{
+            "path": "base.c", "sha256": sha(self.base),
+            "role": "sealed_baseline_source",
+        }]
+        if include_live_source:
+            inputs.append({
+                "path": "src/owner.c", "sha256": sha(self.source),
+                "role": "live_source_context",
+            })
         value = {
             "schema": harness.WINNING_CELL_EVIDENCE_SCHEMA,
             "owner": "main:board/test", "function": "Owner",
@@ -84,10 +96,7 @@ class CrackHarnessTests(unittest.TestCase):
             "predicted_rows_sha256": harness._digest_json(predicted_rows),
             "alternatives_compiled": 0, "negative_controls": 0,
             "pivot_if_unranked": True, "source_class": "test-natural-cell",
-            "inputs": [{
-                "path": "base.c", "sha256": sha(self.base),
-                "role": "sealed_baseline_source",
-            }],
+            "inputs": inputs,
             "causal_prediction": {
                 "earliest_divergence": "Owner return-value producer",
                 "predicted_effect": "close the one predicted focus row",
@@ -146,6 +155,13 @@ class CrackHarnessTests(unittest.TestCase):
         self._write_selection_evidence(expected_terminal=expected_terminal)
         self._git("add", "evidence/selection.json")
         self._git("commit", "-qm", f"expect {expected_terminal}")
+        self.commit = self._git("rev-parse", "HEAD")
+        self._write_luna5_audit()
+
+    def _commit_live_source_evidence_fixture(self) -> None:
+        self._write_selection_evidence(include_live_source=True)
+        self._git("add", "evidence/selection.json")
+        self._git("commit", "-qm", "bind live source evidence")
         self.commit = self._git("rev-parse", "HEAD")
         self._write_luna5_audit()
 
@@ -232,8 +248,12 @@ elif 'admit' in sys.argv:
         sibling_losses: int = 0, baseline_physical_diff: int = 0,
         physical_diff: int = 0, size_delta: int = 0,
         campaign_id: str = "campaign", expected_terminal: str = "exact",
+        live_source_evidence: bool = False,
     ) -> tuple[Path, Path]:
-        self._write_selection_evidence(expected_terminal=expected_terminal)
+        self._write_selection_evidence(
+            expected_terminal=expected_terminal,
+            include_live_source=live_source_evidence,
+        )
         issued = datetime.now(timezone.utc).replace(microsecond=0)
         deadline = issued + timedelta(minutes=20)
         stop_nonce = "f" * 64
@@ -401,6 +421,15 @@ elif 'admit' in sys.argv:
         self.assertFalse((run / "temp").exists()); self.assertFalse((run / "retained_winner.c").exists())
         self.assertTrue((run / "CRACK_REPORT_v1.json").is_file())
         self.assertTrue((run / "root-cleanup.receipt.json").is_file())
+
+    def test_selection_evidence_cannot_bind_mutable_live_source(self) -> None:
+        self._commit_live_source_evidence_fixture()
+        approval, _ = self.write_inputs(live_source_evidence=True)
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "selection evidence cannot bind the mutable live source",
+        ):
+            harness.load_approval(self.root, approval)
 
     def test_positive_nonexact_retains_signed_frontier_without_report_or_record(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
@@ -2933,6 +2962,31 @@ elif 'admit' in sys.argv:
         (self.state / "STOP").write_text(json.dumps({"schema":"crack_harness_stop/v1","stopped":True,"authorized_permit_sha256":"0"*64,"stop_nonce":"f"*64}), encoding="utf-8")
         with self.assertRaisesRegex(harness.CrackHarnessError, "authenticate"):
             harness._checkpoint(self.root, approval, loaded, permit_file, permit, self.state, allow_source=False)
+
+    def test_post_apply_checkpoint_accepts_only_the_approved_candidate(self) -> None:
+        approval, permit_path = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        permit, permit_file = harness._load_permit(
+            self.root, loaded, permit_path, self.state,
+            manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.source.write_bytes(self.candidate.read_bytes())
+        harness._checkpoint(
+            self.root, approval, loaded, permit_file, permit, self.state,
+            allow_source=True,
+        )
+        self.source.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "live source changed outside the approved cell",
+        ):
+            harness._checkpoint(
+                self.root, approval, loaded, permit_file, permit, self.state,
+                allow_source=True,
+            )
 
     def test_missing_approval_is_rejected(self) -> None:
         with self.assertRaises((harness.CrackHarnessError, FileNotFoundError)):

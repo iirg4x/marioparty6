@@ -874,11 +874,12 @@ def _validate_predicted_rows(value: Any, label: str = "predicted_rows") -> list[
 def _validate_winning_cell_selection(
     root: Path, selection: Any, candidate_sha256: str,
     predicted_rows: Sequence[str], owner: str, function: str,
-    controller_commit: str,
+    controller_commit: str, *, mutable_source_path: Path,
 ) -> None:
     """Require one evidence-backed winning cell before any compile is legal."""
 
     predicted_rows = _validate_predicted_rows(list(predicted_rows))
+    mutable_source = Path(os.path.abspath(mutable_source_path))
     required = {
         "strategy", "rank", "expected_terminal", "evidence", "candidate_sha256",
         "predicted_rows_sha256", "alternatives_compiled", "negative_controls",
@@ -990,6 +991,12 @@ def _validate_winning_cell_selection(
         if identity in seen_inputs:
             raise CrackHarnessError("selection evidence inputs contain a duplicate")
         seen_inputs.add(identity)
+        if input_path == mutable_source or os.path.samefile(
+            input_path, mutable_source
+        ):
+            raise CrackHarnessError(
+                "selection evidence cannot bind the mutable live source"
+            )
         if _digest_file(input_path) != input_sha256:
             raise CrackHarnessError(
                 f"selection evidence input hash mismatch: {input_path}"
@@ -2785,6 +2792,7 @@ def load_approval(
         _validate_winning_cell_selection(
             root, approval.get("selection"), approval["candidate"]["sha256"], rows,
             approval["owner"], approval["function"], approval["base_commit"],
+            mutable_source_path=paths["source"],
         )
     commands = approval.get("commands")
     if not isinstance(commands, Mapping):
@@ -3242,6 +3250,7 @@ def _checkpoint(
         root, approval.get("selection"), approval["candidate"]["sha256"],
         approval["predicted_rows"], approval["owner"], approval["function"],
         approval["base_commit"],
+        mutable_source_path=approval["_paths"]["source"],
     )
     now = datetime.now(timezone.utc)
     approval_expires = _timestamp(approval.get("expires_at"), "approval expires_at")
