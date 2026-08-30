@@ -2516,6 +2516,71 @@ elif 'admit' in sys.argv:
             len(list(function_dir.glob("latest-frontier.json"))), 1
         )
 
+    def test_partial_frontier_continues_across_source_neutral_release(self) -> None:
+        first = self.execute(gain=2, focus_rows=1, campaign_id="release-a")
+        self.assertEqual(first["status"], "improved", first)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier_a = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+
+        self.hook.write_text(
+            self.hook.read_text(encoding="utf-8") + "\n# harness-only release\n",
+            encoding="utf-8",
+        )
+        self._git("add", "tools/crack_harness.py")
+        self._git("commit", "-qm", "harness-only release")
+        self.commit = self._git("rev-parse", "HEAD")
+
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-release-b.json"
+        self.luna_audit = self.root / "evidence/luna5-release-b.json"
+        self._write_luna5_audit()
+        second = self.execute(gain=3, focus_rows=1, campaign_id="release-b")
+        self.assertEqual(second["status"], "improved", second)
+        frontier_b = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(
+            frontier_b["parent_frontier_sha256"], frontier_a["frontier_sha256"]
+        )
+        self.assertEqual(frontier_b["base_commit"], self.commit)
+
+    def test_partial_frontier_rejects_release_that_changes_source_blob(self) -> None:
+        first = self.execute(gain=2, focus_rows=1, campaign_id="source-a")
+        self.assertEqual(first["status"], "improved", first)
+        retained_source = self.source.read_bytes()
+
+        self.source.write_text(
+            "int Owner(void) {\n    return 9;\n}\n", encoding="utf-8"
+        )
+        self._git("add", "src/owner.c")
+        self._git("commit", "-qm", "change tracked owner source")
+        self.commit = self._git("rev-parse", "HEAD")
+        self.source.write_bytes(retained_source)
+
+        self.base.write_bytes(retained_source)
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-source-b.json"
+        self.luna_audit = self.root / "evidence/luna5-source-b.json"
+        self._write_luna5_audit()
+        approval, permit = self.write_inputs(campaign_id="source-b")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError,
+            "stale relative to the retained partial frontier",
+        ):
+            harness._run_approved_for_test(
+                self.root, approval, permit_path=permit,
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+
     def test_no_gain_survives_terminal_cleanup_failure(self) -> None:
         with patch.object(
             harness, "_cleanup_raw", side_effect=OSError("cleanup no-gain failed")

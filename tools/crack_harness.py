@@ -2356,12 +2356,22 @@ def _validate_frontier_continuation(
         "owner": approval["owner"],
         "task_id": approval["task_id"],
         "function": approval["function"],
-        "base_commit": approval["base_commit"],
         "source_relpath": approval["_paths"]["source"].relative_to(root).as_posix(),
         "target_object_sha256": approval["target_sha256"],
         "candidate_sha256": approval["base"]["sha256"],
     }
-    if any(frontier.get(key) != value for key, value in expected.items()):
+    stale = any(frontier.get(key) != value for key, value in expected.items())
+    frontier_commit = frontier.get("base_commit")
+    approval_commit = approval["base_commit"]
+    if (
+        not stale
+        and frontier_commit != approval_commit
+        and not _frontier_release_transition_allowed(
+            root, frontier_commit, approval_commit, expected["source_relpath"]
+        )
+    ):
+        stale = True
+    if stale:
         raise CrackHarnessError(
             "approved base is stale relative to the retained partial frontier"
         )
@@ -3594,6 +3604,40 @@ def _git(root: Path, *args: str) -> str:
     if completed.returncode != 0:
         raise CrackHarnessError(f"git {' '.join(args)} failed: {completed.stderr.strip()}")
     return completed.stdout.strip()
+
+
+def _frontier_release_transition_allowed(
+    root: Path, frontier_commit: object, approval_commit: str,
+    source_relpath: str,
+) -> bool:
+    """Allow a retained frontier to cross a source-neutral harness release.
+
+    A continuation may advance HEAD only along the existing commit ancestry and
+    only when the tracked source blob is identical at both commits.  The live
+    retained source is still independently bound by the signed frontier and
+    approval hashes.
+    """
+
+    if not isinstance(frontier_commit, str) or not frontier_commit:
+        return False
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", frontier_commit, approval_commit],
+        cwd=root, text=True, capture_output=True, check=False,
+    )
+    if ancestor.returncode != 0:
+        return False
+    try:
+        frontier_blob = _git(
+            root, "rev-parse", "--verify",
+            f"{frontier_commit}:{source_relpath}",
+        )
+        approval_blob = _git(
+            root, "rev-parse", "--verify",
+            f"{approval_commit}:{source_relpath}",
+        )
+    except CrackHarnessError:
+        return False
+    return bool(frontier_blob) and frontier_blob == approval_blob
 
 
 def _is_tracked(root: Path, path: Path) -> bool:
