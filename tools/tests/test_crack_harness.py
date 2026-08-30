@@ -142,6 +142,13 @@ class CrackHarnessTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def _commit_expected_terminal_fixture(self, expected_terminal: str) -> None:
+        self._write_selection_evidence(expected_terminal=expected_terminal)
+        self._git("add", "evidence/selection.json")
+        self._git("commit", "-qm", f"expect {expected_terminal}")
+        self.commit = self._git("rev-parse", "HEAD")
+        self._write_luna5_audit()
+
     def _hook_source(self) -> str:
         return r'''import hashlib,json,os,pathlib,sys,time
 if pathlib.Path(sys.argv[0]).name=='crack_evidence_bundle.py':
@@ -386,6 +393,8 @@ elif 'admit' in sys.argv:
     def test_exact_uses_disposable_worktree_and_keeps_no_source_duplicate(self) -> None:
         result = self.execute()
         self.assertEqual(result["status"], "exact", result)
+        self.assertEqual(result["expected_terminal"], "exact")
+        self.assertTrue(result["terminal_expectation_met"])
         self.assertEqual(self.source.read_text(), "int Owner(void) {\n    return 2;\n}\n", result)
         self.assertFalse(self.base.exists()); self.assertFalse(self.candidate.exists()); self.assertFalse(self.permit.exists()); self.assertFalse(self.approval.exists())
         run = next((self.state / "owners").glob("*/*/*"))
@@ -396,6 +405,9 @@ elif 'admit' in sys.argv:
     def test_positive_nonexact_retains_signed_frontier_without_report_or_record(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
         self.assertEqual(result["status"], "improved", result)
+        self.assertEqual(result["expected_terminal"], "exact")
+        self.assertFalse(result["terminal_expectation_met"])
+        self.assertIn("exact terminal expectation unmet", result["reason"])
         self.assertIn("partial frontier retained", result["reason"])
         self.assertFalse(any(self.state.glob("owners/*/*/latest/CRACK_REPORT_v1.json")))
         self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
@@ -411,6 +423,22 @@ elif 'admit' in sys.argv:
         )
         self.assertEqual(frontier["frontier_sha256"], result["frontier_sha256"])
         self.assertEqual(frontier["candidate_sha256"], sha(self.source))
+
+    def test_improved_prediction_is_met_by_an_improved_result(self) -> None:
+        self._commit_expected_terminal_fixture("improved")
+        result = self.execute(
+            gain=2, focus_rows=1, expected_terminal="improved"
+        )
+        self.assertEqual(result["status"], "improved", result)
+        self.assertEqual(result["expected_terminal"], "improved")
+        self.assertTrue(result["terminal_expectation_met"])
+
+    def test_improved_prediction_is_met_by_an_exact_result(self) -> None:
+        self._commit_expected_terminal_fixture("improved")
+        result = self.execute(expected_terminal="improved")
+        self.assertEqual(result["status"], "exact", result)
+        self.assertEqual(result["expected_terminal"], "improved")
+        self.assertTrue(result["terminal_expectation_met"])
 
     def test_positive_nonexact_with_unchanged_physical_residual_is_retained(self) -> None:
         result = self.execute(
@@ -2207,6 +2235,7 @@ elif 'admit' in sys.argv:
             "base": {"sha256": result["base_sha256"]},
             "candidate": {"sha256": result["candidate_sha256"]},
             "predicted_rows": list(result["predicted_rows"]),
+            "selection": {"expected_terminal": result["expected_terminal"]},
             "target_sha256": report["target_object_sha256"],
         }
         self.assertTrue(
@@ -2280,6 +2309,20 @@ elif 'admit' in sys.argv:
                 "compile command empty",
                 lambda forged_report, forged_result: forged_result["receipts"]["compile"].__setitem__(
                     "baseline_command", {}
+                ),
+                None,
+            ),
+            (
+                "terminal expectation false",
+                lambda forged_report, forged_result: forged_result.__setitem__(
+                    "terminal_expectation_met", False
+                ),
+                None,
+            ),
+            (
+                "terminal expectation invalid",
+                lambda forged_report, forged_result: forged_result.__setitem__(
+                    "expected_terminal", "partial"
                 ),
                 None,
             ),

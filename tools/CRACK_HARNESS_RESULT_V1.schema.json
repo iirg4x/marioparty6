@@ -4,7 +4,7 @@
   "title": "Bounded crack cell terminal result",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "approval_id", "approval_sha256", "owner", "task_id", "function", "base_commit", "campaign_id", "attempt_sha256", "candidate_sha256", "base_sha256", "status", "reason", "predicted_rows", "receipts", "finished_at", "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced", "result_sha256"],
+  "required": ["schema", "approval_id", "approval_sha256", "owner", "task_id", "function", "base_commit", "campaign_id", "attempt_sha256", "candidate_sha256", "base_sha256", "status", "expected_terminal", "terminal_expectation_met", "reason", "predicted_rows", "receipts", "finished_at", "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced", "result_sha256"],
   "properties": {
     "schema": {"const": "crack_harness_result/v1"},
     "approval_id": {"type": "string", "minLength": 1},
@@ -19,6 +19,8 @@
     "base_sha256": {"$ref": "#/$defs/sha256"},
     "frontier_sha256": {"$ref": "#/$defs/sha256"},
     "status": {"enum": ["exact", "improved", "no_gain", "failed"]},
+    "expected_terminal": {"enum": ["exact", "improved"]},
+    "terminal_expectation_met": {"type": "boolean"},
     "reason": {"type": "string", "minLength": 1},
     "owner_gain": {"type": ["number", "null"]},
     "predicted_rows": {
@@ -62,6 +64,7 @@
         "required": ["owner_gain", "report_sha256"],
         "not": {"required": ["frontier_sha256"]},
         "properties": {
+          "terminal_expectation_met": {"const": true},
           "owner_gain": {"type": "number", "exclusiveMinimum": 0},
           "receipts": {
             "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "record"]
@@ -77,6 +80,7 @@
           {"required": ["frontier_sha256"]}
         ]},
         "properties": {
+          "terminal_expectation_met": {"const": false},
           "receipts": {
             "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "discard"]
           }
@@ -98,6 +102,26 @@
       }
     },
     {
+      "if": {
+        "required": ["status", "expected_terminal"],
+        "properties": {
+          "status": {"const": "improved"},
+          "expected_terminal": {"const": "exact"}
+        }
+      },
+      "then": {"properties": {"terminal_expectation_met": {"const": false}}}
+    },
+    {
+      "if": {
+        "required": ["status", "expected_terminal"],
+        "properties": {
+          "status": {"const": "improved"},
+          "expected_terminal": {"const": "improved"}
+        }
+      },
+      "then": {"properties": {"terminal_expectation_met": {"const": true}}}
+    },
+    {
       "if": {"properties": {"status": {"const": "failed"}}},
       "then": {
         "not": {"anyOf": [
@@ -105,6 +129,7 @@
           {"required": ["frontier_sha256"]}
         ]},
         "properties": {
+          "terminal_expectation_met": {"const": false},
           "receipts": {"required": ["failure"]}
         }
       }

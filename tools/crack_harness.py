@@ -3576,7 +3576,7 @@ def _validate_exact_report(
     result_fields = {
         "schema", "approval_id", "approval_sha256", "owner", "task_id", "function",
         "base_commit", "campaign_id", "attempt_sha256", "candidate_sha256",
-        "base_sha256", "status",
+        "base_sha256", "status", "expected_terminal", "terminal_expectation_met",
         "reason", "owner_gain", "predicted_rows", "receipts", "finished_at",
         "source_restored", "cleanup_status", "cleanup_errors", "authority_advanced",
         "result_sha256", "report_sha256",
@@ -3591,6 +3591,8 @@ def _validate_exact_report(
         raise CrackHarnessError("exact terminal result digest is invalid")
     if (
         result.get("status") != "exact"
+        or result.get("expected_terminal") not in {"exact", "improved"}
+        or result.get("terminal_expectation_met") is not True
         or result.get("authority_advanced") is not False
         or result.get("source_restored") is not False
         or result.get("report_sha256") != report_digest
@@ -3892,6 +3894,7 @@ def _valid_terminal_result(
                 "base_sha256": approval["base"]["sha256"],
                 "candidate_sha256": approval["candidate"]["sha256"],
                 "predicted_rows": approval["predicted_rows"],
+                "expected_terminal": approval["selection"]["expected_terminal"],
             }
             if any(value.get(key) != expected for key, expected in expected_approval.items()):
                 return False
@@ -3901,6 +3904,8 @@ def _valid_terminal_result(
                 or binding.get("source_sha256") != approval["candidate"]["sha256"]
                 or binding.get("target_object_sha256") != approval["target_sha256"]
             ):
+                return False
+            if value.get("terminal_expectation_met") is not True:
                 return False
             expected_run_dir = _run_dir(
                 Path(os.path.abspath(_state_from_run_dir(path.parent))), approval,
@@ -6362,6 +6367,8 @@ def _run_locked(
     proof_payloads: dict[str, Any] = {}
     status = "failed"
     reason = "unclassified failure"
+    expected_terminal = approval["selection"]["expected_terminal"]
+    terminal_expectation_met = False
     assessment: dict[str, Any] = {}
     proof_exact: dict[str, bool] = {}
     object_pair: tuple[str, str] | None = None
@@ -6525,6 +6532,18 @@ def _run_locked(
         else:
             status = "improved"
             reason = "measurable non-regressing partial frontier retained"
+        terminal_expectation_met = (
+            status == "exact"
+            or (status == "improved" and expected_terminal == "improved")
+        )
+        if status == "improved" and expected_terminal == "exact":
+            # ``expected_terminal`` is the sealed winning-cell prediction, not
+            # permission to destroy a measured gain. Keep the monotonic
+            # frontier, but explicitly record that the exact prediction missed.
+            reason = (
+                "exact terminal expectation unmet; measurable non-regressing "
+                "partial frontier retained"
+            )
         if status == "exact":
             baseline_snapshot = temp / "baseline.snapshot"
             _atomic_copy(paths["base"], baseline_snapshot)
@@ -6825,6 +6844,8 @@ def _run_locked(
         "candidate_sha256": approval["candidate"]["sha256"],
         "base_sha256": approval["base"]["sha256"],
         "status": status,
+        "expected_terminal": expected_terminal,
+        "terminal_expectation_met": terminal_expectation_met,
         "reason": reason,
         "owner_gain": assessment.get("owner_gain"),
         "predicted_rows": approval["predicted_rows"],

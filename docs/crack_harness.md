@@ -88,7 +88,12 @@ Every approval also carries a closed `selection` object. Its strategy is fixed
 to `winning_cell_first`, its rank is exactly `1`, and it must name a non-empty
 natural-C `source_class`. `expected_terminal` is either `exact` or `improved`;
 the former predicts a fully exact function and the latter predicts one positive,
-safe, measurable frontier improvement. An incremental, exploratory, or
+safe, measurable frontier improvement. Every result repeats that prediction and
+seals `terminal_expectation_met`: `exact` is satisfied only by an exact result,
+while `improved` is satisfied by either an improved or exact result. A safe
+partial gain from an exact-predicted cell is still retained monotonically, but
+its result explicitly marks the exact prediction unmet; the harness never
+silently downgrades an exact prediction or rolls back useful progress. An incremental, exploratory, or
 negative-control cell is still rejected before permit use. The selection binds
 an existing repository-local
 `crack_winning_cell_evidence/v1` artifact by path and SHA-256, the approval
