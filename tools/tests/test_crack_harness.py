@@ -1645,9 +1645,15 @@ elif 'admit' in sys.argv:
             os.environ.pop("HARNESS_TEST_GAIN", None); os.environ.pop("HARNESS_TEST_FOCUS", None)
         self.assertEqual(result["status"], "failed", result)
         self.assertIn("receipt digest", result["reason"])
+        self.assertEqual(result["cleanup_status"], "complete", result)
         self.assertIn("return 1", self.source.read_text())
         self.assertIn("discard", result["receipts"])
         self.assertNotIn("record", result["receipts"])
+        diagnostic = next(self.state.glob("owners/*/*/latest-failure.json"))
+        self.assertEqual(
+            json.loads(diagnostic.read_text(encoding="utf-8"))["cleanup_errors"],
+            [],
+        )
 
     def test_stop_is_rechecked_before_every_discard_command(self) -> None:
         original = harness._validate_assessment

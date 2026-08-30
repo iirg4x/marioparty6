@@ -5145,8 +5145,12 @@ def _run_command(
         while process.poll() is None:
             if time.monotonic() >= deadline:
                 raise CrackHarnessError("active-time limit exceeded")
-            if _tree_size(run_temp) > storage_limit:
-                raise CrackHarnessError("temporary-storage limit exceeded")
+            observed_storage = _tree_size(run_temp)
+            if observed_storage > storage_limit:
+                raise CrackHarnessError(
+                    "temporary-storage limit exceeded: observed "
+                    f"{observed_storage} bytes > limit {storage_limit} bytes"
+                )
             if overflow.is_set():
                 raise CrackHarnessError("command output exceeded 1 MiB compact-output limit")
             if time.monotonic() >= next_manifest_check:
@@ -5240,8 +5244,12 @@ def _run_command(
         )
         attach_failure_receipt(primary, cleanup_errors)
         raise primary
-    if _tree_size(run_temp) > storage_limit:
-        primary = CrackHarnessError("temporary-storage limit exceeded")
+    observed_storage = _tree_size(run_temp)
+    if observed_storage > storage_limit:
+        primary = CrackHarnessError(
+            "temporary-storage limit exceeded: observed "
+            f"{observed_storage} bytes > limit {storage_limit} bytes"
+        )
         attach_failure_receipt(primary, cleanup_errors)
         raise primary
     if not expect_json:
@@ -7528,11 +7536,17 @@ def _run_locked(
             )
         secondary(
             "failed owner retention maintenance",
-            lambda: _gc_owner(run_dir, MAX_RETAINED_OWNER_BYTES),
+            lambda: _gc_owner(
+                run_dir, MAX_RETAINED_OWNER_BYTES,
+                protected={run_dir.parent},
+            ),
         )
         secondary(
             "failed global retention maintenance",
-            lambda: _gc_global(state, MAX_RETAINED_GLOBAL_BYTES),
+            lambda: _gc_global(
+                state, MAX_RETAINED_GLOBAL_BYTES,
+                protected={run_dir.parent},
+            ),
         )
         diagnostic_body = {
             "schema": "crack_harness_failure_diagnostic/v2",
@@ -7604,11 +7618,17 @@ def _run_locked(
         )
     secondary(
         "no-gain owner retention maintenance",
-        lambda: _gc_owner(run_dir, MAX_RETAINED_OWNER_BYTES),
+        lambda: _gc_owner(
+            run_dir, MAX_RETAINED_OWNER_BYTES,
+            protected={run_dir.parent},
+        ),
     )
     secondary(
         "no-gain global retention maintenance",
-        lambda: _gc_global(state, MAX_RETAINED_GLOBAL_BYTES),
+        lambda: _gc_global(
+            state, MAX_RETAINED_GLOBAL_BYTES,
+            protected={run_dir.parent},
+        ),
     )
     if run_dir.exists():
         secondary(
