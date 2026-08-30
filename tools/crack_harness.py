@@ -2108,6 +2108,76 @@ def _create_disposable_worktree(root: Path, destination: Path, base_commit: str)
         raise CrackHarnessError(f"cannot create disposable worktree: {completed.stderr.strip()}")
 
 
+def _git_worktree_census(root: Path) -> frozenset[Path]:
+    """Return the canonical paths registered in Git's worktree metadata.
+
+    ``git worktree remove`` can fail after an interrupted run has already
+    removed the administrative entry.  In that case the destination is safe
+    to remove only after this independent, canonical census proves that Git no
+    longer considers it a worktree.  Keep parsing strict: a missing or
+    malformed census must never turn a failed registered-worktree removal into
+    a recursive delete.
+    """
+
+    completed = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=root, text=True, capture_output=True, check=False,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip()
+        raise CrackHarnessError(
+            f"cannot census registered disposable worktrees: {detail[:500]}"
+        )
+    paths: set[Path] = set()
+    for line in completed.stdout.splitlines():
+        if not line.startswith("worktree "):
+            continue
+        raw = line[len("worktree "):]
+        if not raw:
+            raise CrackHarnessError("Git worktree census contains an empty path")
+        if raw.startswith('"'):
+            if len(raw) < 2 or not raw.endswith('"'):
+                raise CrackHarnessError("Git worktree census contains an invalid quoted path")
+            try:
+                raw_value = json.loads(raw)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise CrackHarnessError(
+                    "Git worktree census contains an invalid quoted path"
+                ) from exc
+            if not isinstance(raw_value, str):
+                raise CrackHarnessError("Git worktree census contains an invalid path")
+            raw = raw_value
+        elif '"' in raw:
+            raise CrackHarnessError("Git worktree census contains an invalid path")
+        if "\x00" in raw:
+            raise CrackHarnessError("Git worktree census contains an invalid path")
+        path = Path(raw)
+        if not path.is_absolute():
+            path = root / path
+        canonical = Path(os.path.abspath(path))
+        if canonical in paths:
+            raise CrackHarnessError(
+                f"Git worktree census contains a duplicate path: {canonical}"
+            )
+        paths.add(canonical)
+    if not paths:
+        raise CrackHarnessError("Git worktree census is empty")
+    return frozenset(paths)
+
+
+def _prune_git_worktrees(root: Path) -> None:
+    completed = subprocess.run(
+        ["git", "worktree", "prune"], cwd=root,
+        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        text=True, check=False,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or "").strip()
+        raise CrackHarnessError(
+            f"Git worktree prune failed: {detail[:500]}"
+        )
+
+
 def _remove_disposable_worktree(root: Path, destination: Path) -> None:
     root = Path(os.path.abspath(root))
     destination = Path(os.path.abspath(destination))
@@ -2122,18 +2192,56 @@ def _remove_disposable_worktree(root: Path, destination: Path) -> None:
         raise CrackHarnessError(f"disposable worktree state escapes repository root: {state}")
     _state_run_dir(state, run_dir)
     _assert_no_indirection(destination, missing_leaf=True)
+    pre_registered = _git_worktree_census(root)
+    was_registered = destination in pre_registered
     completed = subprocess.run(
         ["git", "worktree", "remove", "--force", str(destination)],
         cwd=root, text=True, capture_output=True, check=False,
     )
-    subprocess.run(
-        ["git", "worktree", "prune"], cwd=root,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
-    )
-    if completed.returncode != 0 or destination.exists():
+    destination_exists = destination.exists()
+    # Always take a post-removal census.  Besides proving a fallback orphan is
+    # really unregistered, this catches an entry that disappeared while Git's
+    # removal was ambiguous.  A path that was registered before the attempt is
+    # never recursively deleted, even if its registration later vanishes.
+    post_registered = _git_worktree_census(root)
+    if completed.returncode == 0 and not destination_exists and destination not in post_registered:
+        _prune_git_worktrees(root)
+        return
+
+    # A failed remove is recoverable only for a real orphan.  The census is
+    # intentionally taken after Git's removal attempt so an interrupted Git
+    # transaction cannot be mistaken for an unregistered directory.
+    if was_registered or destination in post_registered:
+        _prune_git_worktrees(root)
         raise CrackHarnessError(
-            f"disposable worktree cleanup failed; global STOP remains: {destination}"
+            f"registered disposable worktree cleanup failed; global STOP remains: {destination}"
         )
+    if not destination_exists:
+        # Missing is an idempotent success only when both authoritative censuses
+        # prove this exact state-bound leaf was never/longer registered.  This
+        # lets interrupted cleanup safely finish after an earlier remover won
+        # the race without weakening the registered-worktree fail-closed gate.
+        _prune_git_worktrees(root)
+        return
+
+    # The path was validated before the Git call; validate it again and inspect
+    # every child immediately before recursive deletion.  Any link/reparse
+    # component or non-directory replacement is a fail-closed cleanup error.
+    _assert_no_indirection(destination)
+    if not destination.is_dir():
+        _prune_git_worktrees(root)
+        raise CrackHarnessError(
+            f"disposable worktree orphan is not a directory; global STOP remains: {destination}"
+        )
+    _tree_manifest(destination)
+    shutil.rmtree(destination, ignore_errors=False)
+    _assert_no_indirection(destination, missing_leaf=True)
+    if destination.exists():
+        _prune_git_worktrees(root)
+        raise CrackHarnessError(
+            f"disposable worktree orphan cleanup failed; global STOP remains: {destination}"
+        )
+    _prune_git_worktrees(root)
 
 
 def _sign_attempt_receipt(
@@ -5054,21 +5162,33 @@ def _recover_interrupted(root: Path, state: Path) -> None:
         )
         return
     recovery_marker = state / "RECOVERY_REQUIRED.json"
-    # A bound recovery marker is a lock, not permanent history.  Once either
-    # retained-terminal validation or authenticated rollback has completed,
-    # clear it before removing the journal so startup can never inherit an
-    # orphan marker with no reconciliation authority.
-    if recovery_marker.exists():
-        _safe_unlink(recovery_marker)
+    # Keep the journal and recovery lock until every cleanup action has
+    # succeeded.  If cleanup fails, startup needs both authenticated records
+    # to retry safely; deleting the journal first would turn a cleanup error
+    # into an untracked orphan with no recovery authority.
     _state_path(state, journal, "transaction journal", exists=True)
-    journal.unlink()
-    if terminal_valid and record_commit_path.is_file():
-        record_commit_path.unlink(missing_ok=True)
-    if worktree.exists():
-        _remove_disposable_worktree(root, worktree)
-    if baseline.parent.exists():
-        _assert_no_indirection(baseline.parent)
-        shutil.rmtree(baseline.parent, ignore_errors=False)
+    try:
+        if terminal_valid and record_commit_path.is_file():
+            record_commit_path.unlink(missing_ok=True)
+        if worktree.exists():
+            _remove_disposable_worktree(root, worktree)
+        if baseline.parent.exists():
+            _assert_no_indirection(baseline.parent)
+            shutil.rmtree(baseline.parent, ignore_errors=False)
+        if recovery_marker.exists():
+            _safe_unlink(recovery_marker)
+        journal.unlink()
+    except BaseException as cleanup_error:
+        try:
+            _write_recovery_required(
+                root, state, value,
+                "interrupted transaction cleanup is incomplete",
+                record_sha256=recorded_sha256
+                or (record_commit.get("record_sha256") if exact_commit else None),
+            )
+        except BaseException as marker_error:
+            _note_secondary(cleanup_error, "recovery marker", marker_error)
+        raise
 
 
 def _run_command(

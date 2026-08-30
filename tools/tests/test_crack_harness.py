@@ -578,6 +578,66 @@ elif 'admit' in sys.argv:
         self.assertTrue((run / "CRACK_REPORT_v1.json").is_file())
         self.assertTrue((run / "root-cleanup.receipt.json").is_file())
 
+    def test_unregistered_orphan_worktree_is_removed_after_git_rejects_it(self) -> None:
+        run = self.state / "owners/test/Owner/latest"
+        destination = run / "temp/worktree"
+        destination.mkdir(parents=True)
+        (destination / "orphan.bin").write_bytes(b"orphan")
+
+        harness._remove_disposable_worktree(self.root, destination)
+
+        self.assertFalse(destination.exists())
+        registered = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=self.root, text=True, capture_output=True, check=True,
+        ).stdout
+        self.assertNotIn(str(destination), registered)
+
+    def test_missing_unregistered_worktree_cleanup_is_idempotent(self) -> None:
+        run = self.state / "owners/test/Owner/latest"
+        destination = run / "temp/worktree"
+        destination.parent.mkdir(parents=True)
+
+        harness._remove_disposable_worktree(self.root, destination)
+
+        self.assertFalse(destination.exists())
+        registered = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=self.root, text=True, capture_output=True, check=True,
+        ).stdout
+        self.assertNotIn(str(destination), registered)
+
+    def test_registered_worktree_removal_failure_fails_closed(self) -> None:
+        run = self.state / "owners/test/Owner/latest"
+        destination = run / "temp/worktree"
+        destination.parent.mkdir(parents=True)
+        self._git("worktree", "add", "--detach", str(destination), "HEAD")
+        marker = destination / "registered.bin"
+        marker.write_bytes(b"registered")
+
+        original_run = harness.subprocess.run
+
+        def fail_registered_remove(argv: object, *args: object, **kwargs: object) -> object:
+            if list(argv)[:4] == ["git", "worktree", "remove", "--force"]:
+                return subprocess.CompletedProcess(argv, 1, "", "remove sentinel")
+            return original_run(argv, *args, **kwargs)
+
+        try:
+            with patch.object(
+                harness.subprocess, "run", side_effect=fail_registered_remove,
+            ):
+                with self.assertRaisesRegex(
+                    harness.CrackHarnessError, "registered disposable worktree cleanup failed",
+                ):
+                    harness._remove_disposable_worktree(self.root, destination)
+            self.assertTrue(destination.is_dir())
+            self.assertTrue(marker.is_file())
+        finally:
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", str(destination)],
+                cwd=self.root, text=True, capture_output=True, check=False,
+            )
+
     def test_selection_evidence_cannot_bind_mutable_live_source(self) -> None:
         self._commit_live_source_evidence_fixture()
         approval, _ = self.write_inputs(live_source_evidence=True)
@@ -1969,6 +2029,62 @@ elif 'admit' in sys.argv:
         diagnostic_sha256 = diagnostic_body.pop("diagnostic_sha256")
         self.assertEqual(diagnostic_sha256, harness._digest_json(diagnostic_body))
         self.assertIn("lacked a complete hash-bound CRACK_REPORT", diagnostic["primary_reason"])
+
+    def test_interrupted_cleanup_failure_retains_journal_and_recovery_marker(self) -> None:
+        self.write_inputs()
+        binding = {
+            "input_key": "a" * 64,
+            "owner": "main:board/test",
+            "function": "Owner",
+            "source_sha256": sha(self.candidate),
+            "target_object_sha256": TARGET_SHA,
+            "object_sha256": "b" * 64,
+            "candidate_record_sha256": "c" * 64,
+            "status": "exact",
+        }
+        journal, approval = self._write_bound_recovery_journal(
+            central_record_binding=binding,
+        )
+        run = harness._run_dir(self.state, approval)
+        result_path = run / "result.json"
+        report_path = run / "CRACK_REPORT_v1.json"
+        metadata = {
+            "approval_sha256": approval["_approval_sha256"],
+            "owner": approval["owner"],
+            "function": approval["function"],
+            "base_commit": approval["base_commit"],
+            "candidate_sha256": approval["candidate"]["sha256"],
+        }
+        result_path.write_text(
+            json.dumps({"status": "exact", **metadata}), encoding="utf-8",
+        )
+        report_path.write_text(
+            json.dumps({"status": "exact", **metadata}), encoding="utf-8",
+        )
+        self.source.write_bytes(self.candidate.read_bytes())
+        (run / "temp/worktree").mkdir(parents=True)
+        (self.state / "attempt.json").write_text("{}", encoding="utf-8")
+
+        with patch.object(
+            harness, "_central_record_matches", return_value=False,
+        ), patch.object(
+            harness, "_terminal_binding_from_result", return_value=binding,
+        ), patch.object(
+            harness, "_valid_terminal_result", return_value=True,
+        ), patch.object(
+            harness, "_remove_disposable_worktree",
+            side_effect=OSError("worktree cleanup denied"),
+        ):
+            with self.assertRaisesRegex(OSError, "worktree cleanup denied"):
+                harness._recover_interrupted(self.root, self.state)
+
+        self.assertTrue(journal.is_file())
+        marker = self.state / "RECOVERY_REQUIRED.json"
+        self.assertTrue(marker.is_file())
+        self.assertEqual(
+            json.loads(marker.read_text(encoding="utf-8"))["schema"],
+            harness.RECOVERY_REQUIRED_SCHEMA,
+        )
 
     def test_permit_must_bind_stop_and_approval(self) -> None:
         approval, permit = self.write_inputs(); value = json.loads(permit.read_text()); value["owner"] = "wrong"
