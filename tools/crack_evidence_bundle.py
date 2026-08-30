@@ -154,17 +154,28 @@ def _assert_no_indirection(path: Path, *, missing_leaf: bool = False) -> None:
 
 
 def _prepare_output_root(root: Path, out_root: Path) -> tuple[Path, Path]:
-    """Create one real output directory lexically and physically under root."""
+    """Create one real output directory in a canonical disposable layout.
+
+    Direct adapter use may place ``out`` below the repository root.  The crack
+    harness instead uses sibling directories ``temp/worktree`` and
+    ``temp/out`` so evidence survives worktree teardown.  No other sibling or
+    ancestor layout is writable.
+    """
 
     root_absolute = Path(os.path.abspath(root))
     out_absolute = Path(os.path.abspath(out_root))
     _assert_no_indirection(root_absolute)
+    _assert_no_indirection(root_absolute.parent)
     try:
         out_absolute.relative_to(root_absolute)
-    except ValueError as exc:
-        raise EvidenceError(
-            f"output root escapes repository: {out_absolute}"
-        ) from exc
+        container_absolute = root_absolute
+    except ValueError:
+        sibling_out = root_absolute.parent / "out"
+        if out_absolute != sibling_out:
+            raise EvidenceError(
+                f"output root escapes disposable layout: {out_absolute}"
+            )
+        container_absolute = root_absolute.parent
     _assert_no_indirection(out_absolute, missing_leaf=True)
     if out_absolute.exists() and not out_absolute.is_dir():
         raise EvidenceError("output root must be a real directory")
@@ -172,11 +183,12 @@ def _prepare_output_root(root: Path, out_root: Path) -> tuple[Path, Path]:
     _assert_no_indirection(out_absolute)
     root_resolved = root_absolute.resolve()
     out_resolved = out_absolute.resolve()
+    container_resolved = container_absolute.resolve()
     try:
-        out_resolved.relative_to(root_resolved)
+        out_resolved.relative_to(container_resolved)
     except ValueError as exc:
         raise EvidenceError(
-            f"output root escapes repository: {out_resolved}"
+            f"output root escapes disposable layout: {out_resolved}"
         ) from exc
     return root_resolved, out_resolved
 

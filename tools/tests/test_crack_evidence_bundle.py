@@ -26,11 +26,12 @@ def digest(path: Path) -> str:
 class EvidenceContainmentTests(unittest.TestCase):
     def test_output_root_symlink_is_rejected_before_external_write(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp) / "root"
+            disposable = Path(temp) / "temp"
+            root = disposable / "worktree"
             external = Path(temp) / "external"
-            root.mkdir()
+            root.mkdir(parents=True)
             external.mkdir()
-            out_root = root / "out"
+            out_root = disposable / "out"
             try:
                 out_root.symlink_to(external, target_is_directory=True)
             except (NotImplementedError, OSError) as exc:
@@ -48,6 +49,30 @@ class EvidenceContainmentTests(unittest.TestCase):
             with self.assertRaisesRegex(bundle.EvidenceError, "indirection"):
                 bundle._prepare_output_root(root, out_root)
             self.assertEqual(list(external.iterdir()), [])
+
+    def test_output_root_accepts_canonical_harness_sibling_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            disposable = Path(temp) / "temp"
+            root = disposable / "worktree"
+            root.mkdir(parents=True)
+            expected_out = disposable / "out"
+
+            prepared_root, prepared_out = bundle._prepare_output_root(
+                root, expected_out
+            )
+            self.assertEqual(prepared_root, root.resolve())
+            self.assertEqual(prepared_out, expected_out.resolve())
+            self.assertTrue(prepared_out.is_dir())
+
+    def test_output_root_rejects_noncanonical_sibling(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            disposable = Path(temp) / "temp"
+            root = disposable / "worktree"
+            root.mkdir(parents=True)
+            with self.assertRaisesRegex(
+                bundle.EvidenceError, "escapes disposable layout"
+            ):
+                bundle._prepare_output_root(root, disposable / "other")
 
 
 class RealEvidenceFixtureTests(unittest.TestCase):
