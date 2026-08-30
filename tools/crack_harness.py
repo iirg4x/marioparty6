@@ -6446,7 +6446,11 @@ def _gc_owner(
     run_dir: Path, byte_limit: int, *, protected: set[Path] | None = None,
 ) -> None:
     run_dir = Path(os.path.abspath(run_dir))
-    _assert_no_indirection(run_dir)
+    # Failed/no-gain finalization removes ``latest`` before compact owner GC.
+    # The canonical path still identifies the owner even when that final leaf
+    # no longer exists, so validate the existing ancestry without requiring
+    # the deleted run directory to be recreated.
+    _assert_no_indirection(run_dir, missing_leaf=True)
     state = _state_from_run_dir(run_dir)
     _state_run_dir(state, run_dir)
     owner_dir = run_dir.parents[1]

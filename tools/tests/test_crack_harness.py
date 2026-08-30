@@ -4014,6 +4014,22 @@ elif 'admit' in sys.argv:
         harness._gc_owner(run, harness.MAX_RETAINED_OWNER_BYTES)
         self.assertLessEqual(harness._tree_size(run.parents[1]), harness.MAX_RETAINED_OWNER_BYTES)
 
+    def test_owner_gc_accepts_deleted_latest_after_failed_finalization(self) -> None:
+        approval, _ = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run = harness._run_dir(self.state, loaded)
+        function_dir = run.parent
+        function_dir.mkdir(parents=True)
+        (function_dir / "latest-failure.json").write_text(
+            "{}", encoding="utf-8",
+        )
+        self.assertFalse(run.exists())
+
+        harness._gc_owner(run, harness.MAX_RETAINED_OWNER_BYTES)
+
+        self.assertTrue((function_dir / "latest-failure.json").is_file())
+        self.assertFalse(run.exists())
+
     def test_global_state_cap_removes_old_compact_frontiers(self) -> None:
         for index in range(2):
             latest = self.state / "owners" / f"owner{index}" / "Owner" / "latest"
