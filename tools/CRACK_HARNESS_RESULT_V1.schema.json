@@ -17,7 +17,8 @@
     "attempt_sha256": {"$ref": "#/$defs/sha256"},
     "candidate_sha256": {"$ref": "#/$defs/sha256"},
     "base_sha256": {"$ref": "#/$defs/sha256"},
-    "status": {"enum": ["exact", "no_gain", "failed"]},
+    "frontier_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"enum": ["exact", "improved", "no_gain", "failed"]},
     "reason": {"type": "string", "minLength": 1},
     "owner_gain": {"type": ["number", "null"]},
     "predicted_rows": {
@@ -59,6 +60,7 @@
       "if": {"properties": {"status": {"const": "exact"}}},
       "then": {
         "required": ["owner_gain", "report_sha256"],
+        "not": {"required": ["frontier_sha256"]},
         "properties": {
           "owner_gain": {"type": "number", "exclusiveMinimum": 0},
           "receipts": {
@@ -70,7 +72,25 @@
     {
       "if": {"properties": {"status": {"const": "no_gain"}}},
       "then": {
+        "not": {"anyOf": [
+          {"required": ["report_sha256"]},
+          {"required": ["frontier_sha256"]}
+        ]},
         "properties": {
+          "receipts": {
+            "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "discard"]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "improved"}}},
+      "then": {
+        "required": ["owner_gain", "frontier_sha256"],
+        "not": {"required": ["report_sha256"]},
+        "properties": {
+          "owner_gain": {"type": "number", "exclusiveMinimum": 0},
+          "source_restored": {"const": false},
           "receipts": {
             "required": ["precompile", "compile", "strict", "data", "focus", "siblings", "physical", "assess", "discard"]
           }
@@ -80,6 +100,10 @@
     {
       "if": {"properties": {"status": {"const": "failed"}}},
       "then": {
+        "not": {"anyOf": [
+          {"required": ["report_sha256"]},
+          {"required": ["frontier_sha256"]}
+        ]},
         "properties": {
           "receipts": {"required": ["failure"]}
         }

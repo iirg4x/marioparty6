@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CRACK_HARNESS_FRONTIER_V1.schema.json",
+  "title": "Bounded retained crack frontier",
+  "description": "A manager-signed, overwrite-only frontier for a positive safe partial improvement. Physical relocation residuals may remain only when their distance from the target did not increase from the sealed baseline.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "owner",
+    "task_id",
+    "function",
+    "campaign_id",
+    "base_commit",
+    "source_relpath",
+    "base_sha256",
+    "candidate_sha256",
+    "target_object_sha256",
+    "candidate_object_sha256",
+    "approval_sha256",
+    "expected_terminal",
+    "predicted_rows_sha256",
+    "strict_percent",
+    "strict_target_bytes",
+    "strict_candidate_bytes",
+    "strict_differences",
+    "data_percent",
+    "data_target_bytes",
+    "data_candidate_bytes",
+    "data_differences",
+    "focus_differing_rows",
+    "protected_total",
+    "protected_losses",
+    "physical_target_count",
+    "physical_candidate_count",
+    "physical_differences",
+    "owner_gain",
+    "data_gain",
+    "data_diff_delta",
+    "physical_diff_delta",
+    "parent_frontier_sha256",
+    "authority_advanced",
+    "retained_at",
+    "key_id",
+    "signature",
+    "frontier_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "crack_harness_frontier/v1"},
+    "owner": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "function": {"type": "string", "minLength": 1},
+    "campaign_id": {"type": "string", "minLength": 1},
+    "base_commit": {"type": "string", "minLength": 1},
+    "source_relpath": {"type": "string", "minLength": 1},
+    "base_sha256": {"$ref": "#/$defs/sha256"},
+    "candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "target_object_sha256": {"$ref": "#/$defs/sha256"},
+    "candidate_object_sha256": {"$ref": "#/$defs/sha256"},
+    "approval_sha256": {"$ref": "#/$defs/sha256"},
+    "expected_terminal": {"enum": ["exact", "improved"]},
+    "predicted_rows_sha256": {"$ref": "#/$defs/sha256"},
+    "strict_percent": {"type": "number", "minimum": 0},
+    "strict_target_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+    "strict_candidate_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+    "strict_differences": {"$ref": "#/$defs/nonnegative_integer"},
+    "data_percent": {"type": "number", "minimum": 0},
+    "data_target_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+    "data_candidate_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+    "data_differences": {"$ref": "#/$defs/nonnegative_integer"},
+    "focus_differing_rows": {"$ref": "#/$defs/nonnegative_integer"},
+    "protected_total": {"$ref": "#/$defs/nonnegative_integer"},
+    "protected_losses": {"const": 0},
+    "physical_target_count": {"$ref": "#/$defs/nonnegative_integer"},
+    "physical_candidate_count": {"$ref": "#/$defs/nonnegative_integer"},
+    "physical_differences": {"$ref": "#/$defs/nonnegative_integer"},
+    "owner_gain": {"type": "number", "exclusiveMinimum": 0},
+    "data_gain": {"type": "number", "minimum": 0},
+    "data_diff_delta": {"type": "integer", "maximum": 0},
+    "physical_diff_delta": {"type": "integer", "maximum": 0},
+    "parent_frontier_sha256": {
+      "description": "Optional for the first retained frontier; when present, this is the digest of the immediately preceding frontier.",
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/sha256"}
+      ]
+    },
+    "authority_advanced": {"const": false},
+    "retained_at": {"type": "string", "format": "date-time"},
+    "key_id": {"$ref": "#/$defs/sha256"},
+    "signature": {
+      "description": "Lowercase hex HMAC-SHA256 over canonical compact JSON of the unsigned frontier body.",
+      "$ref": "#/$defs/sha256"
+    },
+    "frontier_sha256": {
+      "description": "SHA-256 of the signed frontier object, excluding this field.",
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonnegative_integer": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

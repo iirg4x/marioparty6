@@ -317,7 +317,13 @@ class RealEvidenceFixtureTests(unittest.TestCase):
                 root=self.root, context_path=context_path, out_root=out,
                 objdiff=OBJDFF, readelf=readelf,
             )
-        sealed = {name: digest(out / name) for name in ("target.o", "baseline-strict.json", "baseline-data.json")}
+        sealed = {
+            name: digest(out / name)
+            for name in (
+                "target.o", "baseline-strict.json", "baseline-data.json",
+                "baseline-physical.json",
+            )
+        }
         with patch.dict(
             os.environ,
             {**common, "CRACK_HARNESS_PHASE": "candidate", "CRACK_HARNESS_PHASE_NONCE": hashlib.sha256((context["context_sha256"] + ":candidate").encode()).hexdigest()},
@@ -330,6 +336,7 @@ class RealEvidenceFixtureTests(unittest.TestCase):
         self.assertEqual(baseline["phase"], "baseline")
         self.assertEqual(candidate_receipt["phase"], "candidate")
         self.assertEqual(sealed, {name: digest(out / name) for name in sealed})
+        self.assertTrue((out / "baseline-physical.json").is_file())
         self.assertTrue((out / "physical.json").is_file())
 
 

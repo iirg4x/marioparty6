@@ -25,7 +25,7 @@
     "selection": {"type": "object", "additionalProperties": false, "required": ["strategy", "rank", "expected_terminal", "evidence", "candidate_sha256", "predicted_rows_sha256", "alternatives_compiled", "negative_controls", "pivot_if_unranked", "source_class", "luna5_audit"], "properties": {
       "strategy": {"const": "winning_cell_first"},
       "rank": {"const": 1},
-      "expected_terminal": {"const": "exact"},
+      "expected_terminal": {"enum": ["exact", "improved"]},
       "evidence": {"$ref": "#/$defs/file"},
       "candidate_sha256": {"$ref": "#/$defs/sha"},
       "predicted_rows_sha256": {"$ref": "#/$defs/sha"},

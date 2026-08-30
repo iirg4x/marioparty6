@@ -10,7 +10,7 @@
     "function": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
     "strategy": {"const": "winning_cell_first"},
     "rank": {"const": 1},
-    "expected_terminal": {"const": "exact"},
+    "expected_terminal": {"enum": ["exact", "improved"]},
     "candidate_sha256": {"$ref": "#/$defs/sha"},
     "predicted_rows_sha256": {"$ref": "#/$defs/sha"},
     "alternatives_compiled": {"const": 0},

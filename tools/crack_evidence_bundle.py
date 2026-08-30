@@ -555,7 +555,7 @@ def _run_phase_impl(
     if env["phase"] == "baseline":
         forbidden = (
             "target.o", "candidate.o", "baseline-strict.json", "baseline-data.json",
-            "candidate-strict.json", "candidate-data.json", "physical.json",
+            "baseline-physical.json", "candidate-strict.json", "candidate-data.json", "physical.json",
             "baseline-receipt.json", "candidate-receipt.json", "evidence-context.json",
         )
         stale = [name for name in forbidden if (out_root / name).exists()]
@@ -570,7 +570,18 @@ def _run_phase_impl(
         _atomic_copy(built, baseline_object)
         _run_objdiff(objdiff, out_root / "target.o", baseline_object, out_root / "baseline-strict.json", data=False, root=root)
         _run_objdiff(objdiff, out_root / "target.o", baseline_object, out_root / "baseline-data.json", data=True, root=root)
-        artifacts = {name: _compact_descriptor(out_root / name) for name in ("target.o", "baseline-candidate.o", "baseline-strict.json", "baseline-data.json")}
+        baseline_physical = _physical_receipt(
+            out_root / "target.o", baseline_object, env["function"],
+            out_root / "baseline-strict.json", readelf,
+        )
+        _atomic_json(out_root / "baseline-physical.json", baseline_physical)
+        artifacts = {
+            name: _compact_descriptor(out_root / name)
+            for name in (
+                "target.o", "baseline-candidate.o", "baseline-strict.json",
+                "baseline-data.json", "baseline-physical.json",
+            )
+        }
         receipt = _phase_receipt(env, "baseline", artifacts, tools)
         _atomic_json(baseline_receipt_path, receipt)
         context: dict[str, Any] = {
@@ -604,7 +615,10 @@ def _run_phase_impl(
     if context.get("phase_nonces", {}).get("candidate") != env["phase_nonce"]:
         raise EvidenceError("candidate phase nonce is not baseline-bound")
     for name, descriptor in baseline_receipt.get("artifacts", {}).items():
-        if name not in {"target.o", "baseline-candidate.o", "baseline-strict.json", "baseline-data.json"}:
+        if name not in {
+            "target.o", "baseline-candidate.o", "baseline-strict.json",
+            "baseline-data.json", "baseline-physical.json",
+        }:
             raise EvidenceError("baseline receipt contains an unknown artifact")
         path = out_root / name
         if not path.is_file() or _file_sha(path) != descriptor.get("sha256") or path.stat().st_size != descriptor.get("size_bytes"):

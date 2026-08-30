@@ -39,6 +39,7 @@ RETRY_SCHEMA = "crack_harness_legacy_reconciliation/v1"
 HISTORICAL_EXACT_EVIDENCE_SCHEMA = "crack_harness_historical_exact_evidence/v1"
 RESULT_SCHEMA = "crack_harness_result/v1"
 REPORT_SCHEMA = "CRACK_REPORT/v1"
+FRONTIER_SCHEMA = "crack_harness_frontier/v1"
 PERMIT_SCHEMA = "crack_harness_resume_permit/v1"
 DEFAULT_ACTIVE_SECONDS = 30 * 60
 DEFAULT_STORAGE_BYTES = 512 * 1024 * 1024
@@ -62,17 +63,19 @@ LUNA5_ARTIFACT_SCHEMA = "crack_luna_audit_receipt/v1"
 LUNA5_ROLE_CHECKS = {
     "exact_candidate_recovery": {
         "current_source_bound", "candidate_hash_reproduced",
-        "historical_exact_evidence_bound",
+        "predicted_terminal_bound",
     },
     "source_provenance": {
         "natural_c_reviewed", "source_provenance_bound",
         "no_opaque_or_dead_source",
     },
     "retry_safety": {
-        "legacy_v1_only", "historical_exact_only", "one_shot_marker_bound",
+        "candidate_identity_one_shot", "frontier_base_bound",
+        "one_shot_marker_bound",
     },
     "permit_pipeline": {
-        "manager_hmac_required", "stop_nonce_bound", "dry_run_only",
+        "manager_hmac_required", "stop_nonce_bound", "expected_terminal_bound",
+        "dry_run_only",
     },
     "adversarial_security": {
         "path_containment_reviewed", "primary_error_preserved",
@@ -890,8 +893,11 @@ def _validate_winning_cell_selection(
     rank = selection.get("rank")
     if type(rank) is not int or rank != 1:
         raise CrackHarnessError("selection.rank must be exactly 1")
-    if selection.get("expected_terminal") != "exact":
-        raise CrackHarnessError("selection.expected_terminal must be exact")
+    expected_terminal = selection.get("expected_terminal")
+    if expected_terminal not in {"exact", "improved"}:
+        raise CrackHarnessError(
+            "selection.expected_terminal must be exact or improved"
+        )
     evidence = selection.get("evidence")
     if not isinstance(evidence, Mapping) or set(evidence) != {"path", "sha256"}:
         raise CrackHarnessError("selection.evidence must bind one path and sha256")
@@ -948,7 +954,7 @@ def _validate_winning_cell_selection(
         "function": function,
         "strategy": "winning_cell_first",
         "rank": 1,
-        "expected_terminal": "exact",
+        "expected_terminal": expected_terminal,
         "candidate_sha256": candidate_sha256,
         "predicted_rows_sha256": _digest_json(list(predicted_rows)),
         "alternatives_compiled": 0,
@@ -1396,6 +1402,7 @@ def _validate_proof_adapter_argv(
         "--baseline-data-report", "{OUT_ROOT}/baseline-data.json",
         "--candidate-strict-report", "{OUT_ROOT}/candidate-strict.json",
         "--candidate-data-report", "{OUT_ROOT}/candidate-data.json",
+        "--baseline-physical-receipt", "{OUT_ROOT}/baseline-physical.json",
         "--physical-receipt", "{OUT_ROOT}/physical.json",
     ]
     if descriptor["argv"] != expected:
@@ -1459,7 +1466,7 @@ def _proof_adapter_payload(
     target_object: Path, candidate_object: Path,
     baseline_strict_report: Path, baseline_data_report: Path,
     candidate_strict_report: Path, candidate_data_report: Path,
-    physical_receipt: Path,
+    baseline_physical_receipt: Path, physical_receipt: Path,
 ) -> dict[str, Any]:
     """Derive one closed proof from canonical, hash-bound objdiff artifacts."""
     from tools import focus_symbol_report as focus_report
@@ -1477,6 +1484,9 @@ def _proof_adapter_payload(
         function=function,
         expected_strict_report_sha256=_digest_file(baseline_strict_report),
         expected_data_report_sha256=_digest_file(baseline_data_report),
+        physical_receipt_path=baseline_physical_receipt,
+        expected_physical_receipt_sha256=_digest_file(baseline_physical_receipt),
+        require_physical=False,
     )
     candidate = focus_report.build_from_paths(
         strict_report_path=candidate_strict_report,
@@ -1543,6 +1553,23 @@ def _proof_adapter_payload(
         data_after = channels["data"]["metric"]["match_percent"]
         data_diff_before = baseline["channels"]["data"]["metric"]["diff_rows"]
         data_diff_after = channels["data"]["metric"]["diff_rows"]
+        baseline_physical = baseline["physical_relocations"]
+        candidate_physical = candidate["physical_relocations"]
+
+        def physical_distance(value: Mapping[str, Any]) -> int:
+            target_count = int(
+                value.get("target", {}).get("physical_relocation_count", 0)
+            )
+            candidate_count = int(
+                value.get("candidate", {}).get("physical_relocation_count", 0)
+            )
+            differences = value.get("physical_relocation_differences", [])
+            if not isinstance(differences, list):
+                raise CrackHarnessError(
+                    "focus artifact physical differences are invalid"
+                )
+            return abs(target_count - candidate_count) + len(differences)
+
         return {
             "schema": "crack_assessment/v1", "owner": owner,
             "function": function, "candidate_source_sha256": source_sha,
@@ -1551,13 +1578,17 @@ def _proof_adapter_payload(
             "owner_gain": float(after) - float(before),
             "data_gain": float(data_after) - float(data_before),
             "data_diff_delta": int(data_diff_after) - int(data_diff_before),
+            "physical_diff_delta": (
+                physical_distance(candidate_physical)
+                - physical_distance(baseline_physical)
+            ),
         }
     raise CrackHarnessError(f"unsupported proof adapter kind: {kind}")
 
 
 EVIDENCE_BASELINE_FILES = (
     "target.o", "baseline-candidate.o", "baseline-strict.json", "baseline-data.json",
-    "baseline-receipt.json",
+    "baseline-physical.json", "baseline-receipt.json",
 )
 EVIDENCE_CANDIDATE_FILES = (
     "candidate.o", "candidate-strict.json", "candidate-data.json", "physical.json",
@@ -1625,7 +1656,10 @@ def _validate_evidence_receipt(
             raise CrackHarnessError(f"{phase} evidence receipt {key} is not approval-bound")
     artifacts = receipt.get("artifacts")
     required = (
-        {"target.o", "baseline-candidate.o", "baseline-strict.json", "baseline-data.json"}
+        {
+            "target.o", "baseline-candidate.o", "baseline-strict.json",
+            "baseline-data.json", "baseline-physical.json",
+        }
         if phase == "baseline" else
         {"target.o", "candidate.o", "candidate-strict.json", "candidate-data.json", "physical.json"}
     )
@@ -1782,6 +1816,260 @@ def _validate_attempt_receipt(
     ):
         raise CrackHarnessError("attempt receipt signature is invalid")
     return dict(value)
+
+
+FRONTIER_BODY_FIELDS = {
+    "schema", "owner", "task_id", "function", "campaign_id", "base_commit",
+    "source_relpath", "base_sha256", "candidate_sha256",
+    "target_object_sha256", "candidate_object_sha256", "approval_sha256",
+    "expected_terminal", "predicted_rows_sha256", "strict_percent",
+    "strict_target_bytes", "strict_candidate_bytes", "strict_differences",
+    "data_percent", "data_target_bytes", "data_candidate_bytes",
+    "data_differences", "focus_differing_rows", "protected_total",
+    "protected_losses", "physical_target_count", "physical_candidate_count",
+    "physical_differences", "owner_gain", "data_gain", "data_diff_delta",
+    "physical_diff_delta", "parent_frontier_sha256", "authority_advanced",
+    "retained_at", "key_id",
+}
+
+
+def _frontier_file(run_dir: Path) -> Path:
+    return run_dir.parent / "latest-frontier.json"
+
+
+def _frontier_pending_file(run_dir: Path) -> Path:
+    return run_dir.parent / "frontier.pending.json"
+
+
+def _validate_frontier(
+    root: Path, path: Path, *, manager_key_path: Path,
+    expected_key_id: str, require_live_source: bool = True,
+    approval: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Validate one compact manager-signed partial frontier."""
+
+    root = Path(os.path.abspath(root))
+    path = Path(os.path.abspath(path))
+    _assert_no_indirection(root)
+    _assert_no_indirection(path)
+    if not path.is_file() or not _inside(root, path):
+        raise CrackHarnessError("partial frontier path is not a contained file")
+    value = _read_json(path)
+    if not isinstance(value, Mapping):
+        raise CrackHarnessError("partial frontier is not an object")
+    unsigned = dict(value)
+    frontier_sha256 = unsigned.pop("frontier_sha256", None)
+    if frontier_sha256 != _digest_json(unsigned):
+        raise CrackHarnessError("partial frontier digest is invalid")
+    signature = unsigned.pop("signature", None)
+    if set(unsigned) != FRONTIER_BODY_FIELDS:
+        raise CrackHarnessError("partial frontier is not a strict closed object")
+    if (
+        unsigned.get("schema") != FRONTIER_SCHEMA
+        or unsigned.get("authority_advanced") is not False
+        or unsigned.get("expected_terminal") not in {"exact", "improved"}
+        or unsigned.get("key_id") != expected_key_id
+    ):
+        raise CrackHarnessError("partial frontier identity is invalid")
+    key_path = _manager_key_file(root, manager_key_path)
+    secret = key_path.read_bytes()
+    if len(secret) != 32 or _digest_bytes(secret) != expected_key_id:
+        raise CrackHarnessError("partial frontier manager key is invalid")
+    expected_signature = hmac.new(
+        secret, _canonical(unsigned), hashlib.sha256
+    ).hexdigest()
+    if not isinstance(signature, str) or not hmac.compare_digest(
+        signature, expected_signature
+    ):
+        raise CrackHarnessError("partial frontier signature is invalid")
+    for key in (
+        "base_sha256", "candidate_sha256", "target_object_sha256",
+        "candidate_object_sha256", "approval_sha256", "predicted_rows_sha256",
+    ):
+        _sha(unsigned.get(key), f"partial frontier {key}")
+    parent = unsigned.get("parent_frontier_sha256")
+    if parent is not None:
+        _sha(parent, "partial frontier parent_frontier_sha256")
+    for key in (
+        "strict_percent", "data_percent", "owner_gain", "data_gain",
+    ):
+        value_number = unsigned.get(key)
+        if (
+            isinstance(value_number, bool)
+            or not isinstance(value_number, (int, float))
+            or not math.isfinite(float(value_number))
+        ):
+            raise CrackHarnessError(f"partial frontier {key} is invalid")
+    integer_fields = (
+        "strict_target_bytes", "strict_candidate_bytes", "strict_differences",
+        "data_target_bytes", "data_candidate_bytes", "data_differences",
+        "focus_differing_rows", "protected_total", "protected_losses",
+        "physical_target_count", "physical_candidate_count",
+        "physical_differences", "data_diff_delta", "physical_diff_delta",
+    )
+    for key in integer_fields:
+        number = unsigned.get(key)
+        if isinstance(number, bool) or not isinstance(number, int):
+            raise CrackHarnessError(f"partial frontier {key} is invalid")
+    if (
+        float(unsigned["owner_gain"]) <= 0
+        or float(unsigned["data_gain"]) < 0
+        or unsigned["data_diff_delta"] > 0
+        or unsigned["physical_diff_delta"] > 0
+        or unsigned["protected_losses"] != 0
+        or unsigned["data_target_bytes"] != unsigned["data_candidate_bytes"]
+    ):
+        raise CrackHarnessError("partial frontier does not prove a safe gain")
+    source = _bound_path(
+        root, unsigned.get("source_relpath"), "partial frontier source"
+    )
+    if not _is_tracked(root, source):
+        raise CrackHarnessError("partial frontier source is not tracked")
+    try:
+        state = path.parents[3]
+    except IndexError as exc:
+        raise CrackHarnessError("partial frontier directory binding is invalid") from exc
+    expected_function_dir = _run_dir(state, unsigned).parent
+    if path.parent != expected_function_dir:
+        raise CrackHarnessError("partial frontier is stored under the wrong function")
+    if require_live_source and _digest_file(source) != unsigned["candidate_sha256"]:
+        raise CrackHarnessError("partial frontier does not match the live source")
+    if approval is not None:
+        expected = {
+            "owner": approval["owner"], "task_id": approval["task_id"],
+            "function": approval["function"],
+            "base_commit": approval["base_commit"],
+            "source_relpath": approval["_paths"]["source"].relative_to(root).as_posix(),
+            "base_sha256": approval["base"]["sha256"],
+            "candidate_sha256": approval["candidate"]["sha256"],
+            "target_object_sha256": approval["target_sha256"],
+            "approval_sha256": approval["_approval_sha256"],
+            "expected_terminal": approval["selection"]["expected_terminal"],
+            "predicted_rows_sha256": _digest_json(approval["predicted_rows"]),
+        }
+        if any(unsigned.get(key) != expected_value for key, expected_value in expected.items()):
+            raise CrackHarnessError("partial frontier is not approval-bound")
+    _timestamp(unsigned.get("retained_at"), "partial frontier retained_at")
+    return dict(value)
+
+
+def _validate_frontier_continuation(
+    root: Path, run_dir: Path, frontier: Mapping[str, Any],
+    approval: Mapping[str, Any],
+) -> None:
+    expected = {
+        "owner": approval["owner"],
+        "task_id": approval["task_id"],
+        "function": approval["function"],
+        "base_commit": approval["base_commit"],
+        "source_relpath": approval["_paths"]["source"].relative_to(root).as_posix(),
+        "target_object_sha256": approval["target_sha256"],
+        "candidate_sha256": approval["base"]["sha256"],
+    }
+    if any(frontier.get(key) != value for key, value in expected.items()):
+        raise CrackHarnessError(
+            "approved base is stale relative to the retained partial frontier"
+        )
+
+
+def _sign_frontier(
+    root: Path, run_dir: Path, approval: Mapping[str, Any],
+    object_pair: tuple[str, str], proof_payloads: Mapping[str, Mapping[str, Any]],
+    assessment: Mapping[str, Any], *, manager_key_path: Path,
+    expected_key_id: str,
+) -> dict[str, Any]:
+    previous_path = _frontier_file(run_dir)
+    parent_sha256 = None
+    if previous_path.is_file():
+        previous = _validate_frontier(
+            root, previous_path, manager_key_path=manager_key_path,
+            expected_key_id=expected_key_id, require_live_source=True,
+        )
+        parent_sha256 = previous["frontier_sha256"]
+        _validate_frontier_continuation(root, run_dir, previous, approval)
+    strict = proof_payloads["strict"]
+    data = proof_payloads["data"]
+    focus = proof_payloads["focus"]
+    siblings = proof_payloads["siblings"]
+    physical = proof_payloads["physical"]
+    body = {
+        "schema": FRONTIER_SCHEMA,
+        "owner": approval["owner"], "task_id": approval["task_id"],
+        "function": approval["function"],
+        "campaign_id": approval["campaign"]["id"],
+        "base_commit": approval["base_commit"],
+        "source_relpath": approval["_paths"]["source"].relative_to(root).as_posix(),
+        "base_sha256": approval["base"]["sha256"],
+        "candidate_sha256": approval["candidate"]["sha256"],
+        "target_object_sha256": object_pair[0],
+        "candidate_object_sha256": object_pair[1],
+        "approval_sha256": approval["_approval_sha256"],
+        "expected_terminal": approval["selection"]["expected_terminal"],
+        "predicted_rows_sha256": _digest_json(approval["predicted_rows"]),
+        "strict_percent": strict["strict_percent"],
+        "strict_target_bytes": strict["target_bytes"],
+        "strict_candidate_bytes": strict["candidate_bytes"],
+        "strict_differences": strict["differences"],
+        "data_percent": data["data_percent"],
+        "data_target_bytes": data["target_bytes"],
+        "data_candidate_bytes": data["candidate_bytes"],
+        "data_differences": data["differences"],
+        "focus_differing_rows": focus["differing_rows"],
+        "protected_total": siblings["protected_total"],
+        "protected_losses": siblings["protected_losses"],
+        "physical_target_count": physical["target_count"],
+        "physical_candidate_count": physical["candidate_count"],
+        "physical_differences": physical["differences"],
+        "owner_gain": assessment["owner_gain"],
+        "data_gain": assessment["data_gain"],
+        "data_diff_delta": assessment["data_diff_delta"],
+        "physical_diff_delta": assessment["physical_diff_delta"],
+        "parent_frontier_sha256": parent_sha256,
+        "authority_advanced": False, "retained_at": _now(),
+        "key_id": expected_key_id,
+    }
+    key_path = _manager_key_file(root, manager_key_path)
+    secret = key_path.read_bytes()
+    if len(secret) != 32 or _digest_bytes(secret) != expected_key_id:
+        raise CrackHarnessError("partial frontier manager key is invalid")
+    signed = {
+        **body,
+        "signature": hmac.new(secret, _canonical(body), hashlib.sha256).hexdigest(),
+    }
+    return {**signed, "frontier_sha256": _digest_json(signed)}
+
+
+def _recover_pending_frontiers(
+    root: Path, state: Path, *, manager_key_path: Path,
+    expected_key_id: str,
+) -> None:
+    if not state.exists():
+        return
+    for pending in _state_glob(
+        state, "owners/*/*/frontier.pending.json", "pending partial frontier"
+    ):
+        frontier = _validate_frontier(
+            root, pending, manager_key_path=manager_key_path,
+            expected_key_id=expected_key_id, require_live_source=False,
+        )
+        source = _bound_path(
+            root, frontier["source_relpath"], "pending partial frontier source"
+        )
+        source_sha256 = _digest_file(source)
+        if source_sha256 == frontier["base_sha256"]:
+            pending.unlink()
+            continue
+        if source_sha256 != frontier["candidate_sha256"]:
+            raise CrackHarnessError(
+                "pending partial frontier source is neither base nor candidate"
+            )
+        destination = pending.parent / "latest-frontier.json"
+        os.replace(pending, destination)
+        _directory_fsync(destination.parent)
+        _validate_frontier(
+            root, destination, manager_key_path=manager_key_path,
+            expected_key_id=expected_key_id, require_live_source=True,
+        )
 
 
 def _seal_root_cleanup_receipt(
@@ -2238,6 +2526,36 @@ def _finalize_cleanup_results(
     for path in _state_glob(state, "owners/*/*/latest/result.json", "terminal result"):
         value = _read_json(path)
         if (
+            isinstance(value, Mapping)
+            and value.get("status") == "improved"
+            and value.get("cleanup_status") in {"pending", "cleanup_incomplete"}
+        ):
+            run_dir = path.parent
+            if any(
+                (run_dir / name).exists()
+                for name in ("temp", "raw", "logs", "out")
+            ):
+                continue
+            frontier_path = _frontier_file(run_dir)
+            try:
+                frontier = _validate_frontier(
+                    root, frontier_path,
+                    manager_key_path=manager_key_path,
+                    expected_key_id=expected_key_id,
+                    require_live_source=True,
+                )
+            except (CrackHarnessError, OSError, TypeError, ValueError):
+                continue
+            if (
+                frontier.get("frontier_sha256") != value.get("frontier_sha256")
+                or frontier.get("candidate_sha256")
+                != value.get("candidate_sha256")
+            ):
+                continue
+            _assert_no_indirection(run_dir)
+            shutil.rmtree(run_dir)
+            continue
+        if (
             not isinstance(value, Mapping)
             or value.get("status") != "exact"
             or value.get("cleanup_status") not in {"pending", "cleanup_incomplete"}
@@ -2281,6 +2599,7 @@ def _finalize_cleanup_results(
             expected_key_id=expected_key_id,
         ):
             continue
+        _safe_unlink(_frontier_file(run_dir))
         _atomic_json(path, {**body, "result_sha256": _digest_json(body)})
 
 
@@ -2300,7 +2619,7 @@ def _retry_retention_maintenance(
             value = _read_json(path)
             if (
                 isinstance(value, Mapping)
-                and value.get("status") == "exact"
+                and value.get("status") in {"exact", "improved"}
                 and value.get("cleanup_status") in {"pending", "cleanup_incomplete"}
             ):
                 run_dir = path.parent
@@ -2895,7 +3214,12 @@ def _verify_repository(root: Path, approval: Mapping[str, Any], *, allow_source:
     for line in _git(root, "status", "--porcelain=v1", "--untracked-files=no").splitlines():
         relative = (line[3:] if len(line) > 2 and line[2] == " " else line[2:]).strip().replace("\\", "/")
         source_relative = approval["_paths"]["source"].relative_to(root).as_posix()
-        if not allow_source or relative != source_relative:
+        # A retained partial frontier intentionally leaves exactly this tracked
+        # source dirty.  Its bytes are independently hash-checked by
+        # ``load_approval`` and every ``_checkpoint``; all other tracked writes
+        # remain forbidden.  ``allow_source`` selects base-vs-candidate hash,
+        # not whether the one approved source path may appear in Git status.
+        if relative != source_relative:
             dirty.append(relative)
     if dirty:
         raise CrackHarnessError("unapproved tracked writes: " + ", ".join(dirty))
@@ -3455,6 +3779,7 @@ def _validate_exact_report(
     if set(assessment) != {
         "schema", "owner", "function", "candidate_source_sha256", "target_object_sha256",
         "candidate_object_sha256", "owner_gain", "data_gain", "data_diff_delta",
+        "physical_diff_delta",
     } or assessment.get("schema") != "crack_assessment/v1":
         raise CrackHarnessError("exact assessment receipt is incomplete")
     if (
@@ -3470,6 +3795,10 @@ def _validate_exact_report(
         assessment_gain <= 0
         or _report_number(assessment.get("data_gain"), "assessment.data_gain") < 0
         or _report_signed_int(assessment.get("data_diff_delta"), "assessment.data_diff_delta") > 0
+        or _report_signed_int(
+            assessment.get("physical_diff_delta"),
+            "assessment.physical_diff_delta",
+        ) > 0
     ):
         raise CrackHarnessError("exact assessment does not prove a non-regressing gain")
     if report_gain != assessment_gain or _report_number(result.get("owner_gain"), "result.owner_gain") != assessment_gain:
@@ -3804,7 +4133,7 @@ def _authenticated_record_binding(
         assess_required = {
             "schema", "owner", "function", "candidate_source_sha256",
             "target_object_sha256", "candidate_object_sha256", "owner_gain",
-            "data_gain", "data_diff_delta",
+            "data_gain", "data_diff_delta", "physical_diff_delta",
         }
         if (
             set(record_summary) != record_required
@@ -4842,7 +5171,7 @@ def _validate_assessment(
     payload: Mapping[str, Any], approval: Mapping[str, Any],
     object_pair: tuple[str, str],
 ) -> float:
-    if set(payload) != {"schema", "owner", "function", "candidate_source_sha256", "target_object_sha256", "candidate_object_sha256", "owner_gain", "data_gain", "data_diff_delta"} or payload.get("schema") != "crack_assessment/v1":
+    if set(payload) != {"schema", "owner", "function", "candidate_source_sha256", "target_object_sha256", "candidate_object_sha256", "owner_gain", "data_gain", "data_diff_delta", "physical_diff_delta"} or payload.get("schema") != "crack_assessment/v1":
         raise CrackHarnessError("assessment payload is not the strict typed schema")
     if (
         payload.get("owner") != approval["owner"]
@@ -4861,8 +5190,9 @@ def _validate_assessment(
         for value in (gain, data_gain)
     ):
         raise CrackHarnessError("assessment gains must be finite numeric values")
-    if isinstance(payload.get("data_diff_delta"), bool) or not isinstance(payload.get("data_diff_delta"), int):
-        raise CrackHarnessError("assessment.data_diff_delta must be an integer")
+    for field in ("data_diff_delta", "physical_diff_delta"):
+        if isinstance(payload.get(field), bool) or not isinstance(payload.get(field), int):
+            raise CrackHarnessError(f"assessment.{field} must be an integer")
     return float(gain)
 
 
@@ -5577,12 +5907,15 @@ def _function_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
             and _legacy_reconciliation_eligible(run_dir, approval)
         ):
             return False
-        return True
+        if tombstone.get("schema") == "crack_harness_function_tombstone/v1":
+            return True
+        if tombstone.get("candidate_sha256") == approval["candidate"]["sha256"]:
+            return True
     key = _function_key(approval)
     return any(
-        item["function_key"] == key for item in _consumed_cell_records(
-            _state_from_run_dir(run_dir)
-        )
+        item["function_key"] == key
+        and item["candidate_sha256"] == approval["candidate"]["sha256"]
+        for item in _consumed_cell_records(_state_from_run_dir(run_dir))
     )
 
 
@@ -5685,7 +6018,7 @@ def _cleanup_raw(run_dir: Path) -> None:
 
 FUNCTION_GUARD_FILES = {
     "latest-function.json", "latest-campaign.json", "permit-attempts.json",
-    "retry-used.json",
+    "retry-used.json", "latest-frontier.json", "frontier.pending.json",
 }
 
 
@@ -5920,6 +6253,10 @@ def _run_locked(
     if (state / "PACKET_ROLLBACK_REQUIRED.json").exists():
         raise CrackHarnessError("manager packet rollback requires repair")
     _recover_interrupted(root, state)
+    _recover_pending_frontiers(
+        root, state, manager_key_path=manager_key_path,
+        expected_key_id=expected_key_id,
+    )
     if (
         (state / "RECOVERY_REQUIRED.json").is_file()
         or (state / "transaction.json").is_file()
@@ -5942,6 +6279,17 @@ def _run_locked(
         )
     if (state / "RECOVERY_REQUIRED.json").exists():
         raise CrackHarnessError("recorded interrupted winner requires manager recovery review")
+    current_frontier = _frontier_file(run_dir)
+    if current_frontier.exists() and not current_frontier.is_file():
+        raise CrackHarnessError("partial frontier path is not a regular file")
+    if current_frontier.is_file():
+        retained = _validate_frontier(
+            root, current_frontier,
+            manager_key_path=manager_key_path,
+            expected_key_id=expected_key_id,
+            require_live_source=True,
+        )
+        _validate_frontier_continuation(root, run_dir, retained, approval)
     readiness = _dry_run_core(root, approval_path, state)
     if readiness["status"] != "ready":
         raise CrackHarnessError("; ".join(readiness["blockers"]))
@@ -6014,6 +6362,8 @@ def _run_locked(
     source_replaced = False
     central_record_succeeded = False
     transaction_value: dict[str, Any] | None = None
+    frontier_value: dict[str, Any] | None = None
+    frontier_commit_crossed = False
     recovery_required = False
     active_hook = "precompile"
     secondary_failures: list[str] = []
@@ -6040,8 +6390,14 @@ def _run_locked(
         if _tree_size(temp) > approval["limits"]["temporary_bytes"]:
             raise CrackHarnessError("disposable worktree exceeds the hard ephemeral-storage limit")
         worktree_source = worktree / paths["source"].relative_to(root)
+        # The authoritative working source may be a retained dirty frontier and
+        # therefore need not exist at ``base_commit``.  Overlay the separately
+        # sealed, hash-bound base before the baseline build.
+        _atomic_copy(paths["base"], worktree_source)
         if _digest_file(worktree_source) != approval["base"]["sha256"]:
-            raise CrackHarnessError("disposable worktree source does not equal sealed baseline")
+            raise CrackHarnessError(
+                "disposable worktree source does not equal sealed baseline"
+            )
         lock = state / ".serialized-compile.lock"
         with serialized_build_lock(lock, min(55.0, max(0.1, deadline - time.monotonic()))):
             active_hook = "compile"
@@ -6142,10 +6498,9 @@ def _run_locked(
         assert object_pair is not None
         nonregression = (
             proof_exact.get("siblings") is True
-            and proof_exact.get("physical") is True
             and float(assessment["data_gain"]) >= 0
             and assessment["data_diff_delta"] <= 0
-            and proof_payloads["strict"]["target_bytes"] == proof_payloads["strict"]["candidate_bytes"]
+            and assessment["physical_diff_delta"] <= 0
             and proof_payloads["data"]["target_bytes"] == proof_payloads["data"]["candidate_bytes"]
         )
         exact = gain > 0 and nonregression and all(proof_exact.values())
@@ -6159,10 +6514,8 @@ def _run_locked(
             status = "no_gain"
             reason = "positive focus gain rejected because a closed proof channel regressed"
         else:
-            status = "no_gain"
-            reason = (
-                "positive but nonexact candidate rejected by exact-terminal-only policy"
-            )
+            status = "improved"
+            reason = "measurable non-regressing partial frontier retained"
         if status == "exact":
             baseline_snapshot = temp / "baseline.snapshot"
             _atomic_copy(paths["base"], baseline_snapshot)
@@ -6257,6 +6610,46 @@ def _run_locked(
             receipts["discard"] = _compact_receipt("discard", discard_payload, discard_command)
             admission_closed = True
         _checkpoint(root, approval["_approval_path"], approval, permit_file, permit, state, allow_source=source_replaced)
+        if status == "improved":
+            # Seal the compact frontier before changing the tracked source.  A
+            # crash can therefore leave only (base + pending) or
+            # (candidate + pending); startup deterministically deletes or
+            # finalizes that single pending receipt without candidate history.
+            frontier_value = _sign_frontier(
+                root, run_dir, approval, object_pair, proof_payloads, assessment,
+                manager_key_path=manager_key_path,
+                expected_key_id=expected_key_id,
+            )
+            pending_frontier = _frontier_pending_file(run_dir)
+            _atomic_json(pending_frontier, frontier_value)
+            _validate_frontier(
+                root, pending_frontier, manager_key_path=manager_key_path,
+                expected_key_id=expected_key_id, require_live_source=False,
+                approval=approval,
+            )
+            _atomic_copy(paths["candidate"], paths["source"])
+            source_replaced = True
+            frontier_commit_crossed = True
+            try:
+                os.replace(pending_frontier, _frontier_file(run_dir))
+                _directory_fsync(_frontier_file(run_dir).parent)
+            except BaseException as frontier_exc:
+                # The signed pending file plus atomically replaced source are a
+                # recoverable retained outcome.  Preserve them and attach the
+                # finalization issue instead of rolling back a measured gain.
+                secondary_failures.append(
+                    f"frontier publication: {frontier_exc}"[:1000]
+                )
+            frontier_path = (
+                pending_frontier
+                if pending_frontier.is_file()
+                else _frontier_file(run_dir)
+            )
+            _validate_frontier(
+                root, frontier_path, manager_key_path=manager_key_path,
+                expected_key_id=expected_key_id, require_live_source=True,
+                approval=approval,
+            )
     except (Exception, KeyboardInterrupt) as exc:
         primary_exception = exc
         reason = str(exc)
@@ -6319,6 +6712,16 @@ def _run_locked(
                 secondary_failures.append(
                     f"recovery marker: {marker_exc}"[:1000]
                 )
+            try:
+                setattr(primary_exception, "_crack_recovery_required", True)
+            except BaseException:
+                pass
+        elif frontier_commit_crossed:
+            # A validated signed pending frontier existed before the atomic
+            # source replacement.  Once both are present, rollback would erase
+            # a measured gain.  Preserve candidate+pending; startup recovery
+            # will either publish that exact frontier or fail closed on drift.
+            recovery_required = True
             try:
                 setattr(primary_exception, "_crack_recovery_required", True)
             except BaseException:
@@ -6422,6 +6825,10 @@ def _run_locked(
         "cleanup_status": "pending",
         "cleanup_errors": [],
         "authority_advanced": False,
+        **(
+            {"frontier_sha256": frontier_value["frontier_sha256"]}
+            if status == "improved" and frontier_value is not None else {}
+        ),
     }
     result = {**result_body, "result_sha256": _digest_json(result_body)}
     if len(_canonical(result)) > MAX_COMPACT_TERMINAL_BYTES:
@@ -6507,6 +6914,10 @@ def _run_locked(
                 lambda: _remove_disposable_worktree(root, worktree),
             )
         secondary("raw/temp cleanup", lambda: _cleanup_raw(run_dir))
+        secondary(
+            "retired partial frontier cleanup",
+            lambda: _safe_unlink(_frontier_file(run_dir)),
+        )
         if not cleanup_errors:
             # Authenticate the exact four root paths while every manager-bound
             # input still exists.  Only then may deletion begin.
@@ -6597,6 +7008,83 @@ def _run_locked(
                 terminal_body["cleanup_errors"] = cleanup_errors[:8]
                 result = {
                     **terminal_body, "result_sha256": _digest_json(terminal_body)
+                }
+        return result
+
+    if status == "improved":
+        if frontier_value is None:
+            raise CrackHarnessError("improved outcome lacks a signed frontier")
+        _atomic_json(run_dir / "result.json", result)
+        if worktree.exists():
+            secondary(
+                "improved disposable worktree cleanup",
+                lambda: _remove_disposable_worktree(root, worktree),
+            )
+        if not cleanup_errors:
+            secondary("improved raw/temp cleanup", lambda: _cleanup_raw(run_dir))
+        for disposable in (
+            paths["base"], paths["candidate"], permit_file,
+            approval["_approval_path"],
+        ):
+            if cleanup_errors:
+                break
+            secondary(
+                f"improved delete {disposable.name}",
+                lambda item=disposable: _safe_unlink(item),
+            )
+        if not cleanup_errors:
+            secondary(
+                "improved delete attempt receipt",
+                lambda: _safe_unlink(state / "attempt.json"),
+            )
+        secondary(
+            "improved owner retention maintenance",
+            lambda: _gc_owner(
+                run_dir, MAX_RETAINED_OWNER_BYTES,
+                protected={run_dir.parent},
+            ),
+        )
+        secondary(
+            "improved global retention maintenance",
+            lambda: _gc_global(
+                state, MAX_RETAINED_GLOBAL_BYTES,
+                protected={run_dir.parent},
+            ),
+        )
+        terminal_body = dict(result)
+        terminal_body.pop("result_sha256", None)
+        terminal_body["cleanup_status"] = (
+            "cleanup_incomplete" if cleanup_errors else "complete"
+        )
+        terminal_body["cleanup_errors"] = cleanup_errors[:8]
+        result = {
+            **terminal_body, "result_sha256": _digest_json(terminal_body)
+        }
+        if cleanup_errors:
+            # Keep only the compact result beside the already signed frontier;
+            # a later maintenance pass retries deletion without changing the
+            # retained source or primary improved outcome.
+            try:
+                _atomic_json(run_dir / "result.json", result)
+            except BaseException as exc:
+                terminal_body["cleanup_errors"] = (
+                    cleanup_errors + [f"seal cleanup metadata: {exc}"[:1000]]
+                )[:8]
+                result = {
+                    **terminal_body,
+                    "result_sha256": _digest_json(terminal_body),
+                }
+        elif run_dir.exists():
+            secondary(
+                "improved run directory cleanup",
+                lambda: (_assert_no_indirection(run_dir), shutil.rmtree(run_dir)),
+            )
+            if cleanup_errors:
+                terminal_body["cleanup_status"] = "cleanup_incomplete"
+                terminal_body["cleanup_errors"] = cleanup_errors[:8]
+                result = {
+                    **terminal_body,
+                    "result_sha256": _digest_json(terminal_body),
                 }
         return result
 
@@ -6751,6 +7239,10 @@ def _status_core(
         )
         with serialized_build_lock(lock_path, 55.0):
             _recover_interrupted(root, state)
+            _recover_pending_frontiers(
+                root, state, manager_key_path=manager_key_path,
+                expected_key_id=expected_key_id,
+            )
             # An unresolved post-record transaction owns its temp/worktree
             # until a complete terminal report is available.  Scavenging it
             # here would destroy the baseline needed for recovery.
@@ -6838,6 +7330,7 @@ def _add_proof_adapter_parser(subparsers: Any) -> None:
     parser.add_argument("--baseline-data-report", required=True, type=Path)
     parser.add_argument("--candidate-strict-report", required=True, type=Path)
     parser.add_argument("--candidate-data-report", required=True, type=Path)
+    parser.add_argument("--baseline-physical-receipt", required=True, type=Path)
     parser.add_argument("--physical-receipt", required=True, type=Path)
 
 
@@ -6880,6 +7373,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 baseline_data_report=args.baseline_data_report,
                 candidate_strict_report=args.candidate_strict_report,
                 candidate_data_report=args.candidate_data_report,
+                baseline_physical_receipt=args.baseline_physical_receipt,
                 physical_receipt=args.physical_receipt,
             )
             print(_canonical(value).decode("utf-8"))

@@ -73,13 +73,13 @@ class CrackHarnessTests(unittest.TestCase):
     def _git(self, *args: str) -> str:
         return subprocess.run(["git", *args], cwd=self.root, text=True, capture_output=True, check=True).stdout.strip()
 
-    def _write_selection_evidence(self) -> None:
+    def _write_selection_evidence(self, *, expected_terminal: str = "exact") -> None:
         predicted_rows = ["Owner:ARG:0"]
         value = {
             "schema": harness.WINNING_CELL_EVIDENCE_SCHEMA,
             "owner": "main:board/test", "function": "Owner",
             "strategy": "winning_cell_first", "rank": 1,
-            "expected_terminal": "exact",
+            "expected_terminal": expected_terminal,
             "candidate_sha256": sha(self.candidate),
             "predicted_rows_sha256": harness._digest_json(predicted_rows),
             "alternatives_compiled": 0, "negative_controls": 0,
@@ -155,11 +155,11 @@ if pathlib.Path(sys.argv[0]).name=='crack_evidence_bundle.py':
   value={'schema':'crack_evidence_phase_receipt/v1','phase':phase,'owner':os.environ['CRACK_HARNESS_OWNER'],'function':os.environ['CRACK_HARNESS_FUNCTION'],'unit':os.environ['CRACK_HARNESS_UNIT'],'source_relpath':source_rel,'base_commit':os.environ['CRACK_HARNESS_BASE_COMMIT'],'approval_sha256':os.environ['CRACK_HARNESS_APPROVAL_SHA256'],'approval_context_sha256':os.environ['CRACK_HARNESS_CONTEXT_SHA256'],'phase_nonce':os.environ['CRACK_HARNESS_PHASE_NONCE'],'issued_at':os.environ['CRACK_HARNESS_ISSUED_AT'],'artifacts':{name:desc(out/name) for name in names},'tools':{'fixture':{'sha256':'f'*64}},'authority_advanced':False}
   value['receipt_sha256']=digest(value); (out/(phase+'-receipt.json')).write_text(json.dumps(value)); return value
  if os.environ['CRACK_HARNESS_PHASE']=='baseline':
-  (out/'target.o').write_bytes(b'target'); (out/'baseline-candidate.o').write_bytes(b'baseline'); (out/'baseline-strict.json').write_text('{}'); (out/'baseline-data.json').write_text('{}')
-  receipt('baseline',['target.o','baseline-candidate.o','baseline-strict.json','baseline-data.json'])
+  (out/'target.o').write_bytes(b'target'); (out/'baseline-candidate.o').write_bytes(b'baseline'); (out/'baseline-strict.json').write_text('{}'); (out/'baseline-data.json').write_text('{}'); (out/'baseline-physical.json').write_text('{}')
+  receipt('baseline',['target.o','baseline-candidate.o','baseline-strict.json','baseline-data.json','baseline-physical.json'])
   value={'schema':'crack_evidence_bundle_context/v1','owner':os.environ['CRACK_HARNESS_OWNER'],'function':os.environ['CRACK_HARNESS_FUNCTION'],'unit':os.environ['CRACK_HARNESS_UNIT'],'source_relpath':source_rel,'target_sha256':os.environ['CRACK_HARNESS_TARGET_SHA256'],'base_commit':os.environ['CRACK_HARNESS_BASE_COMMIT'],'approval_sha256':os.environ['CRACK_HARNESS_APPROVAL_SHA256'],'approval_context_sha256':os.environ['CRACK_HARNESS_CONTEXT_SHA256'],'phase_nonces':{'baseline':os.environ['CRACK_HARNESS_PHASE_NONCE'],'candidate':hashlib.sha256((os.environ['CRACK_HARNESS_CONTEXT_SHA256']+':candidate').encode()).hexdigest()},'baseline_receipt':desc(out/'baseline-receipt.json'),'authority_advanced':False}; value['evidence_context_sha256']=digest(value); (out/'evidence-context.json').write_text(json.dumps(value))
  else:
-  (out/'candidate.o').write_bytes(b'candidate'); (out/'candidate-strict.json').write_text('{}'); (out/'candidate-data.json').write_text('{}'); (out/'physical.json').write_text('{}'); (out/'fixture.json').write_text(json.dumps({'gain':float(os.environ['HARNESS_TEST_GAIN']),'focus':int(os.environ['HARNESS_TEST_FOCUS']),'data_gain':float(os.environ.get('HARNESS_TEST_DATA_GAIN','0')),'sibling_losses':int(os.environ.get('HARNESS_TEST_SIBLING_LOSSES','0')),'physical_diff':int(os.environ.get('HARNESS_TEST_PHYSICAL_DIFF','0')),'size_delta':int(os.environ.get('HARNESS_TEST_SIZE_DELTA','0'))}))
+  (out/'candidate.o').write_bytes(b'candidate'); (out/'candidate-strict.json').write_text('{}'); (out/'candidate-data.json').write_text('{}'); (out/'physical.json').write_text('{}'); (out/'fixture.json').write_text(json.dumps({'gain':float(os.environ['HARNESS_TEST_GAIN']),'focus':int(os.environ['HARNESS_TEST_FOCUS']),'data_gain':float(os.environ.get('HARNESS_TEST_DATA_GAIN','0')),'sibling_losses':int(os.environ.get('HARNESS_TEST_SIBLING_LOSSES','0')),'baseline_physical_diff':int(os.environ.get('HARNESS_TEST_BASELINE_PHYSICAL_DIFF','0')),'physical_diff':int(os.environ.get('HARNESS_TEST_PHYSICAL_DIFF','0')),'size_delta':int(os.environ.get('HARNESS_TEST_SIZE_DELTA','0'))}))
   candidate_receipt=receipt('candidate',['target.o','candidate.o','candidate-strict.json','candidate-data.json','physical.json'])
   if os.environ.get('HARNESS_TEST_BAD_RECEIPT')=='1': candidate_receipt['receipt_sha256']='0'*64; (out/'candidate-receipt.json').write_text(json.dumps(candidate_receipt))
   value=json.loads((out/'evidence-context.json').read_text()); value.pop('evidence_context_sha256'); value['candidate_receipt']=desc(out/'candidate-receipt.json'); value['completed']=True; value['evidence_context_sha256']=digest(value); (out/'evidence-context.json').write_text(json.dumps(value))
@@ -174,7 +174,7 @@ if sys.argv[1]=='proof-adapter':
  elif kind=='focus': value=common|{'schema':'crack_proof_focus/v1','differing_rows':fixture['focus']}
  elif kind=='siblings': value=common|{'schema':'crack_proof_siblings/v1','protected_total':18,'protected_losses':fixture['sibling_losses']}
  elif kind=='physical': value=common|{'schema':'crack_proof_physical/v1','target_count':3,'candidate_count':3,'differences':fixture['physical_diff']}
- else: value={'schema':'crack_assessment/v1','owner':get('--owner'),'function':get('--function'),'candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':fixture['gain'],'data_gain':fixture['data_gain'],'data_diff_delta':1 if fixture['data_gain']<0 else 0}
+ else: value={'schema':'crack_assessment/v1','owner':get('--owner'),'function':get('--function'),'candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':fixture['gain'],'data_gain':fixture['data_gain'],'data_diff_delta':1 if fixture['data_gain']<0 else 0,'physical_diff_delta':fixture['physical_diff']-fixture['baseline_physical_diff']}
  print(json.dumps(value)); raise SystemExit
 run,out,kind,*rest=sys.argv[1:]
 source=pathlib.Path(run,'src/owner.c')
@@ -187,7 +187,7 @@ elif kind=='data': print(json.dumps(common|{'schema':'crack_proof_data/v1','data
 elif kind=='focus': print(json.dumps(common|{'schema':'crack_proof_focus/v1','differing_rows':int(rest[0]) if rest else 0}))
 elif kind=='siblings': print(json.dumps(common|{'schema':'crack_proof_siblings/v1','protected_total':9,'protected_losses':0}))
 elif kind=='physical': print(json.dumps(common|{'schema':'crack_proof_physical/v1','target_count':3,'candidate_count':3,'differences':0}))
-elif kind=='assess': print(json.dumps({'schema':'crack_assessment/v1','owner':'main:board/test','function':'Owner','candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':float(rest[0]),'data_gain':0.0,'data_diff_delta':0}))
+elif kind=='assess': print(json.dumps({'schema':'crack_assessment/v1','owner':'main:board/test','function':'Owner','candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':float(rest[0]),'data_gain':0.0,'data_diff_delta':0,'physical_diff_delta':0}))
 elif kind=='record': print(json.dumps({'schema':'crack_central_record_receipt/v1','recorded':True,'owner':'main:board/test','function':'Owner','candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':os.environ['CRACK_HARNESS_CANDIDATE_OBJECT_SHA256'],'outcome':os.environ['CRACK_HARNESS_OUTCOME'],'admission_token_sha256':hashlib.sha256(os.environ['CRACK_HARNESS_ADMISSION_TOKEN'].encode()).hexdigest(),'admission_input_key':'a'*64,'record_sha256':'e'*64}))
 '''
 
@@ -206,7 +206,7 @@ elif 'admit' in sys.argv:
         script = self.compile_hook if kind == "compile" else self.admission if kind == "canonical_record" else self.hook
         if kind.startswith("proof_") or kind == "assessment":
             adapter_kind = kind.removeprefix("proof_") if kind != "assessment" else "assess"
-            argv = [str(Path(sys.executable).resolve()), "{CONTROLLER_ROOT}/tools/crack_harness.py", "proof-adapter", "--kind", adapter_kind, "--owner", "main:board/test", "--function", "Owner", "--candidate-source", "{RUN_ROOT}/src/owner.c", "--candidate-source-sha256", sha(self.candidate), "--approved-target-object-sha256", TARGET_SHA, "--target-object", "{OUT_ROOT}/target.o", "--candidate-object", "{OUT_ROOT}/candidate.o", "--baseline-strict-report", "{OUT_ROOT}/baseline-strict.json", "--baseline-data-report", "{OUT_ROOT}/baseline-data.json", "--candidate-strict-report", "{OUT_ROOT}/candidate-strict.json", "--candidate-data-report", "{OUT_ROOT}/candidate-data.json", "--physical-receipt", "{OUT_ROOT}/physical.json"]
+            argv = [str(Path(sys.executable).resolve()), "{CONTROLLER_ROOT}/tools/crack_harness.py", "proof-adapter", "--kind", adapter_kind, "--owner", "main:board/test", "--function", "Owner", "--candidate-source", "{RUN_ROOT}/src/owner.c", "--candidate-source-sha256", sha(self.candidate), "--approved-target-object-sha256", TARGET_SHA, "--target-object", "{OUT_ROOT}/target.o", "--candidate-object", "{OUT_ROOT}/candidate.o", "--baseline-strict-report", "{OUT_ROOT}/baseline-strict.json", "--baseline-data-report", "{OUT_ROOT}/baseline-data.json", "--candidate-strict-report", "{OUT_ROOT}/candidate-strict.json", "--candidate-data-report", "{OUT_ROOT}/candidate-data.json", "--baseline-physical-receipt", "{OUT_ROOT}/baseline-physical.json", "--physical-receipt", "{OUT_ROOT}/physical.json"]
         elif kind == "compile":
             argv = [str(Path(sys.executable).resolve()), "{CONTROLLER_ROOT}/tools/crack_evidence_bundle.py", "--root", "{RUN_ROOT}", "--context", "{OUT_ROOT}/approval-context.json", "--out", "{OUT_ROOT}"]
         elif kind == "canonical_record":
@@ -222,10 +222,11 @@ elif 'admit' in sys.argv:
 
     def write_inputs(
         self, *, gain: int = 1, focus_rows: int = 0, data_gain: int = 0,
-        sibling_losses: int = 0, physical_diff: int = 0, size_delta: int = 0,
-        campaign_id: str = "campaign",
+        sibling_losses: int = 0, baseline_physical_diff: int = 0,
+        physical_diff: int = 0, size_delta: int = 0,
+        campaign_id: str = "campaign", expected_terminal: str = "exact",
     ) -> tuple[Path, Path]:
-        self._write_selection_evidence()
+        self._write_selection_evidence(expected_terminal=expected_terminal)
         issued = datetime.now(timezone.utc).replace(microsecond=0)
         deadline = issued + timedelta(minutes=20)
         stop_nonce = "f" * 64
@@ -239,7 +240,7 @@ elif 'admit' in sys.argv:
         value = {
             "schema": harness.APPROVAL_SCHEMA, "approval_id": "cell-1", "owner": "main:board/test", "task_id": "task", "function": "Owner", "unit": "main/board/test", "base_commit": self.commit, "toolchain_key": harness.TOOLCHAIN_MANIFEST_KEY, "target_sha256": TARGET_SHA, "permit_sha256": "0" * 64, "issued_at": issued.isoformat(), "expires_at": deadline.isoformat(),
             "source": {"path": str(self.source), "sha256": sha(self.source)}, "base": {"path": str(self.base), "sha256": sha(self.base)}, "candidate": {"path": str(self.candidate), "sha256": sha(self.candidate)}, "function_span": {"start_line": 1, "end_line": 3, "base_span_sha256": hashlib.sha256(self.base.read_bytes()).hexdigest()}, "predicted_rows": predicted_rows,
-            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": "exact", "evidence": {"path": "evidence/selection.json", "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell", "luna5_audit": {"path": "evidence/luna5.json", "sha256": sha(self.luna_audit)}},
+            "selection": {"strategy": "winning_cell_first", "rank": 1, "expected_terminal": expected_terminal, "evidence": {"path": self.evidence.relative_to(self.root).as_posix(), "sha256": sha(self.evidence)}, "candidate_sha256": sha(self.candidate), "predicted_rows_sha256": harness._digest_json(predicted_rows), "alternatives_compiled": 0, "negative_controls": 0, "pivot_if_unranked": True, "source_class": "test-natural-cell", "luna5_audit": {"path": self.luna_audit.relative_to(self.root).as_posix(), "sha256": sha(self.luna_audit)}},
             "commands": {"precompile": precompile, "compile": self.descriptor("compile", "compile", str(gain), str(focus_rows)), "strict": self.descriptor("proof_strict", "strict"), "data": self.descriptor("proof_data", "data"), "focus": self.descriptor("proof_focus", "focus"), "siblings": self.descriptor("proof_siblings", "siblings"), "physical": self.descriptor("proof_physical", "physical"), "assess": self.descriptor("assessment", "assess"), "record": self.descriptor("canonical_record", "record")},
             "campaign": {"id": campaign_id, "quota": 1}, "limits": {"active_seconds": 20, "temporary_bytes": 1048576, "candidates": 1}
         }
@@ -352,6 +353,9 @@ elif 'admit' in sys.argv:
             "HARNESS_TEST_FOCUS": kwargs.get("focus_rows", 0),
             "HARNESS_TEST_DATA_GAIN": kwargs.get("data_gain", 0),
             "HARNESS_TEST_SIBLING_LOSSES": kwargs.get("sibling_losses", 0),
+            "HARNESS_TEST_BASELINE_PHYSICAL_DIFF": kwargs.get(
+                "baseline_physical_diff", 0
+            ),
             "HARNESS_TEST_PHYSICAL_DIFF": kwargs.get("physical_diff", 0),
             "HARNESS_TEST_SIZE_DELTA": kwargs.get("size_delta", 0),
         }
@@ -389,15 +393,41 @@ elif 'admit' in sys.argv:
         self.assertTrue((run / "CRACK_REPORT_v1.json").is_file())
         self.assertTrue((run / "root-cleanup.receipt.json").is_file())
 
-    def test_positive_nonexact_is_rejected_without_report_or_record(self) -> None:
+    def test_positive_nonexact_retains_signed_frontier_without_report_or_record(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
-        self.assertEqual(result["status"], "no_gain", result)
-        self.assertIn("exact-terminal-only", result["reason"])
+        self.assertEqual(result["status"], "improved", result)
+        self.assertIn("partial frontier retained", result["reason"])
         self.assertFalse(any(self.state.glob("owners/*/*/latest/CRACK_REPORT_v1.json")))
         self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
-        self.assertIn("return 1", self.source.read_text())
+        self.assertEqual(
+            self.source.read_text(), "int Owner(void) {\n    return 2;\n}\n"
+        )
         self.assertIn("discard", result["receipts"])
         self.assertNotIn("record", result["receipts"])
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(frontier["frontier_sha256"], result["frontier_sha256"])
+        self.assertEqual(frontier["candidate_sha256"], sha(self.source))
+
+    def test_positive_nonexact_with_unchanged_physical_residual_is_retained(self) -> None:
+        result = self.execute(
+            gain=2, focus_rows=1,
+            baseline_physical_diff=1, physical_diff=1,
+        )
+        self.assertEqual(result["status"], "improved", result)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(frontier["physical_differences"], 1)
+        self.assertEqual(frontier["physical_diff_delta"], 0)
+        self.assertEqual(
+            self.source.read_text(), "int Owner(void) {\n    return 2;\n}\n"
+        )
 
     def test_no_gain_restores(self) -> None:
         result = self.execute(gain=0)
@@ -681,22 +711,26 @@ elif 'admit' in sys.argv:
                 with self.assertRaisesRegex(harness.CrackHarnessError, field):
                     harness.load_approval(self.root, approval_path)
 
-    def test_winning_cell_must_predict_an_exact_terminal(self) -> None:
+    def test_winning_cell_accepts_exact_or_improved_terminal(self) -> None:
         approval_path, _ = self.write_inputs()
         value = json.loads(approval_path.read_text(encoding="utf-8"))
         value["selection"]["expected_terminal"] = "improved"
         approval_path.write_text(json.dumps(value), encoding="utf-8")
-        with self.assertRaisesRegex(harness.CrackHarnessError, "must be exact"):
+        with self.assertRaisesRegex(harness.CrackHarnessError, "expected_terminal"):
             harness.load_approval(self.root, approval_path)
 
-        approval_path, _ = self.write_inputs()
+        approval_path, _ = self.write_inputs(expected_terminal="improved")
+        self.assertEqual(harness.load_approval(self.root, approval_path)["selection"]["expected_terminal"], "improved")
+
+        value = json.loads(approval_path.read_text(encoding="utf-8"))
         evidence = json.loads(self.evidence.read_text(encoding="utf-8"))
-        evidence["expected_terminal"] = "improved"
+        value["selection"]["expected_terminal"] = "partial"
+        evidence["expected_terminal"] = "partial"
         self.evidence.write_text(json.dumps(evidence), encoding="utf-8")
-        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        approval = value
         approval["selection"]["evidence"]["sha256"] = sha(self.evidence)
         approval_path.write_text(json.dumps(approval), encoding="utf-8")
-        with self.assertRaisesRegex(harness.CrackHarnessError, "expected_terminal"):
+        with self.assertRaisesRegex(harness.CrackHarnessError, "exact or improved"):
             harness.load_approval(self.root, approval_path)
 
     def test_winning_cell_evidence_semantics_are_owner_function_and_rows_bound(self) -> None:
@@ -839,7 +873,7 @@ elif 'admit' in sys.argv:
             "target_object_sha256": "b" * 64,
             "candidate_object_sha256": "c" * 64,
             "owner_gain": float("nan"), "data_gain": 0.0,
-            "data_diff_delta": 0,
+            "data_diff_delta": 0, "physical_diff_delta": 0,
         }
         with self.assertRaisesRegex(harness.CrackHarnessError, "finite"):
             harness._validate_assessment(assessment, approval, ("b" * 64, "c" * 64))
@@ -1239,7 +1273,7 @@ elif 'admit' in sys.argv:
 
     def test_assessment_must_bind_proven_object_pair(self) -> None:
         approval, _ = self.write_inputs(); loaded = harness.load_approval(self.root, approval)
-        payload = {"schema":"crack_assessment/v1","owner":"main:board/test","function":"Owner","candidate_source_sha256":sha(self.candidate),"target_object_sha256":"b"*64,"candidate_object_sha256":"0"*64,"owner_gain":1,"data_gain":0,"data_diff_delta":0}
+        payload = {"schema":"crack_assessment/v1","owner":"main:board/test","function":"Owner","candidate_source_sha256":sha(self.candidate),"target_object_sha256":"b"*64,"candidate_object_sha256":"0"*64,"owner_gain":1,"data_gain":0,"data_diff_delta":0,"physical_diff_delta":0}
         with self.assertRaisesRegex(harness.CrackHarnessError, "does not bind"):
             harness._validate_assessment(payload, loaded, ("b" * 64, "c" * 64))
 
@@ -1293,9 +1327,15 @@ elif 'admit' in sys.argv:
             paths[name] = adapter / f"{name}.json"; paths[name].write_text(json.dumps(value), encoding="utf-8")
         physical = _physical_receipt(); physical["report"]["sha256"] = sha(paths["candidate-strict"])
         physical_path = adapter / "physical.json"; physical_path.write_text(json.dumps(physical), encoding="utf-8")
+        baseline_physical = _physical_receipt()
+        baseline_physical["report"]["sha256"] = sha(paths["baseline-strict"])
+        baseline_physical_path = adapter / "baseline-physical.json"
+        baseline_physical_path.write_text(
+            json.dumps(baseline_physical), encoding="utf-8"
+        )
         target = adapter / "target.o"; target.write_bytes(b"target-object")
         candidate = adapter / "candidate.o"; candidate.write_bytes(b"candidate-object")
-        arguments = dict(owner="main:board/test", function=FUNCTION, candidate_source=self.candidate, candidate_source_sha256=sha(self.candidate), approved_target_object_sha256=sha(target), target_object=target, candidate_object=candidate, baseline_strict_report=paths["baseline-strict"], baseline_data_report=paths["baseline-data"], candidate_strict_report=paths["candidate-strict"], candidate_data_report=paths["candidate-data"], physical_receipt=physical_path)
+        arguments = dict(owner="main:board/test", function=FUNCTION, candidate_source=self.candidate, candidate_source_sha256=sha(self.candidate), approved_target_object_sha256=sha(target), target_object=target, candidate_object=candidate, baseline_strict_report=paths["baseline-strict"], baseline_data_report=paths["baseline-data"], candidate_strict_report=paths["candidate-strict"], candidate_data_report=paths["candidate-data"], baseline_physical_receipt=baseline_physical_path, physical_receipt=physical_path)
         strict = harness._proof_adapter_payload(kind="strict", **arguments)
         assess = harness._proof_adapter_payload(kind="assess", **arguments)
         physical_proof = harness._proof_adapter_payload(kind="physical", **arguments)
@@ -1305,6 +1345,7 @@ elif 'admit' in sys.argv:
         self.assertEqual(assess["owner_gain"], 25.0)
         self.assertEqual(assess["data_gain"], 25.0)
         self.assertLessEqual(assess["data_diff_delta"], 0)
+        self.assertEqual(assess["physical_diff_delta"], 0)
         self.assertEqual(physical_proof["differences"], 0)
         self.assertEqual(sibling_proof["protected_losses"], 1)
 
@@ -1725,12 +1766,198 @@ elif 'admit' in sys.argv:
         self.assertTrue(any("cleanup exact failed" in item for item in result["cleanup_errors"]))
         self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
 
-    def test_positive_nonexact_never_enters_retained_success_cleanup(self) -> None:
-        result = self.execute(gain=2, focus_rows=1)
-        self.assertEqual(result["status"], "no_gain")
-        self.assertIn("return 1", self.source.read_text())
-        self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
+    def test_improved_cleanup_failure_preserves_primary_frontier(self) -> None:
+        with patch.object(
+            harness, "_cleanup_raw", side_effect=OSError("cleanup improved failed")
+        ):
+            result = self.execute(gain=2, focus_rows=1)
+        self.assertEqual(result["status"], "improved")
+        self.assertEqual(result["cleanup_status"], "cleanup_incomplete")
+        self.assertTrue(any("cleanup improved failed" in item for item in result["cleanup_errors"]))
+        self.assertEqual(
+            self.source.read_text(), "int Owner(void) {\n    return 2;\n}\n"
+        )
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        self.assertEqual(
+            harness._validate_frontier(
+                self.root, frontier_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )["frontier_sha256"],
+            result["frontier_sha256"],
+        )
         self.assertFalse(any(self.state.glob("owners/*/*/latest/CRACK_REPORT_v1.json")))
+        self.assertFalse(any(self.state.glob("owners/*/*/latest-failure.json")))
+
+    def test_pending_frontier_publication_recovers_without_rollback(self) -> None:
+        real_replace = harness.os.replace
+
+        def fail_frontier_publication(source: str, destination: str, *args: object, **kwargs: object) -> None:
+            if (
+                Path(source).name == "frontier.pending.json"
+                and Path(destination).name == "latest-frontier.json"
+            ):
+                raise OSError("frontier publication failed")
+            real_replace(source, destination, *args, **kwargs)
+
+        with patch.object(harness.os, "replace", side_effect=fail_frontier_publication):
+            result = self.execute(gain=2, focus_rows=1)
+        self.assertEqual(result["status"], "improved", result)
+        self.assertIn("secondary_failures", result["receipts"])
+        function_dir = next(self.state.glob("owners/*/*"))
+        pending = function_dir / "frontier.pending.json"
+        frontier = function_dir / "latest-frontier.json"
+        self.assertTrue(pending.is_file())
+        self.assertFalse(frontier.exists())
+        self.assertEqual(
+            self.source.read_text(encoding="utf-8"),
+            "int Owner(void) {\n    return 2;\n}\n",
+        )
+
+        status = harness._status_for_test(
+            self.root, state_root=self.state, manager_key_path=self.manager_key
+        )
+        self.assertEqual(status["results"], [])
+        self.assertFalse(pending.exists())
+        self.assertTrue(frontier.is_file())
+        self.assertEqual(
+            harness._validate_frontier(
+                self.root, frontier, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )["frontier_sha256"],
+            result["frontier_sha256"],
+        )
+
+    def test_exact_cell_retires_prior_partial_frontier(self) -> None:
+        first = self.execute(gain=2, focus_rows=1, campaign_id="partial-before-exact")
+        self.assertEqual(first["status"], "improved", first)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        self.assertTrue(frontier_path.is_file())
+
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-exact-after-partial.json"
+        self.luna_audit = self.root / "evidence/luna5-exact-after-partial.json"
+        self._write_luna5_audit()
+        exact = self.execute(
+            gain=1, focus_rows=0, campaign_id="exact-after-partial"
+        )
+        self.assertEqual(exact["status"], "exact", exact)
+        self.assertEqual(
+            self.source.read_text(encoding="utf-8"),
+            "int Owner(void) {\n    return 3;\n}\n",
+        )
+        self.assertFalse(frontier_path.exists())
+        self.assertFalse(any(self.state.glob("owners/*/*/latest-frontier.json")))
+
+    def test_partial_frontier_continues_monotonically_and_rejects_stale_base(self) -> None:
+        original_base = self.base.read_bytes()
+
+        first = self.execute(gain=2, focus_rows=1, campaign_id="frontier-a")
+        self.assertEqual(first["status"], "improved", first)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier_a = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(frontier_a["candidate_sha256"], sha(self.source))
+
+        # The retained candidate is deliberately dirty in the tracked source;
+        # the next cell seals it as its baseline instead of rebuilding from
+        # the original commit.
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-frontier-b.json"
+        self.luna_audit = self.root / "evidence/luna5-frontier-b.json"
+        self._write_luna5_audit()
+        second = self.execute(gain=3, focus_rows=1, campaign_id="frontier-b")
+        self.assertEqual(second["status"], "improved", second)
+        self.assertEqual(
+            self.source.read_text(encoding="utf-8"),
+            "int Owner(void) {\n    return 3;\n}\n",
+        )
+        frontier_b = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(frontier_b["parent_frontier_sha256"], frontier_a["frontier_sha256"])
+        self.assertEqual(frontier_b["candidate_sha256"], sha(self.source))
+        self.assertNotEqual(frontier_b["frontier_sha256"], frontier_a["frontier_sha256"])
+
+        # A cell based on the original committed source is stale after the
+        # first improvement and must stop before candidate execution.
+        # Build the stale packet while source/base are still identical (the
+        # approval contract requires that), then restore the retained live
+        # source before invoking it.  Its candidate is the already-retained
+        # value, so the frontier check—not a second compile—must reject it.
+        self.source.write_bytes(original_base)
+        self.base.write_bytes(original_base)
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-stale.json"
+        self.luna_audit = self.root / "evidence/luna5-stale.json"
+        self._write_luna5_audit()
+        stale_approval, stale_permit = self.write_inputs(campaign_id="stale-base")
+        self.source.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "stale relative to the retained partial frontier"
+        ):
+            harness._run_approved_for_test(
+                self.root, stale_approval, permit_path=stale_permit,
+                state_root=self.state, manager_key_path=self.manager_key,
+            )
+        self.assertEqual(
+            self.source.read_text(encoding="utf-8"),
+            "int Owner(void) {\n    return 3;\n}\n",
+        )
+        self.assertEqual(
+            harness._validate_frontier(
+                self.root, frontier_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )["frontier_sha256"],
+            frontier_b["frontier_sha256"],
+        )
+
+        # A neutral/regressing cell also rolls back to the current retained
+        # frontier, never to the original committed source.
+        self.base.write_bytes(self.source.read_bytes())
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 5;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-neutral.json"
+        self.luna_audit = self.root / "evidence/luna5-neutral.json"
+        self._write_luna5_audit()
+        neutral = self.execute(
+            gain=0, focus_rows=1, campaign_id="neutral-after-frontier"
+        )
+        self.assertEqual(neutral["status"], "no_gain", neutral)
+        self.assertEqual(
+            self.source.read_text(encoding="utf-8"),
+            "int Owner(void) {\n    return 3;\n}\n",
+        )
+        self.assertEqual(
+            harness._validate_frontier(
+                self.root, frontier_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )["frontier_sha256"],
+            frontier_b["frontier_sha256"],
+        )
+
+        # Only the compact frontier and one-shot guard files remain; no raw
+        # candidate/run directories or pending frontier history accumulate.
+        function_dir = frontier_path.parent
+        self.assertTrue(frontier_path.is_file())
+        self.assertFalse((function_dir / "frontier.pending.json").exists())
+        self.assertFalse(any(child.is_dir() for child in function_dir.iterdir()))
+        self.assertLessEqual(
+            len(list(function_dir.glob("latest-frontier.json"))), 1
+        )
 
     def test_no_gain_survives_terminal_cleanup_failure(self) -> None:
         with patch.object(
@@ -2496,9 +2723,10 @@ elif 'admit' in sys.argv:
 
     def test_positive_nonexact_creates_no_retention_maintenance_result(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
-        self.assertEqual(result["status"], "no_gain")
+        self.assertEqual(result["status"], "improved")
         self.assertFalse(any(self.state.glob("owners/*/*/latest/result.json")))
         self.assertFalse(any(self.state.glob("owners/*/*/latest/record.commit.json")))
+        self.assertTrue(any(self.state.glob("owners/*/*/latest-frontier.json")))
 
     def test_generic_post_terminal_baseexception_cannot_escape(self) -> None:
         with patch.object(
@@ -3169,7 +3397,7 @@ elif 'admit' in sys.argv:
         )
         self.assertTrue(harness._function_consumed(run_dir, loaded))
 
-    def test_second_candidate_for_function_is_rejected_across_campaign_ids(self) -> None:
+    def test_same_candidate_is_one_shot_across_campaign_ids(self) -> None:
         approval, _ = self.write_inputs()
         loaded = harness.load_approval(self.root, approval)
         run_dir = harness._run_dir(self.state, loaded)
@@ -3184,6 +3412,24 @@ elif 'admit' in sys.argv:
         self.assertTrue(any("lifetime cell" in item for item in dry_run["blockers"]))
         with self.assertRaisesRegex(harness.CrackHarnessError, "already consumed"):
             harness._consume_function(run_dir, other)
+
+    def test_different_candidate_is_allowed_after_a_prior_cell(self) -> None:
+        approval, _ = self.write_inputs(campaign_id="first-cell")
+        first = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, first)
+        harness._consume_function(run_dir, first)
+
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self._write_luna5_audit()
+        second_path, _ = self.write_inputs(campaign_id="second-cell")
+        second = harness.load_approval(self.root, second_path)
+        self.assertNotEqual(first["candidate"]["sha256"], second["candidate"]["sha256"])
+        self.assertFalse(harness._function_consumed(run_dir, second))
+        harness._consume_function(run_dir, second)
+        self.assertTrue(harness._function_consumed(run_dir, second))
+        self.assertTrue(harness._function_consumed(run_dir, first))
 
     def test_new_campaign_is_allowed_before_any_function_cell_is_consumed(self) -> None:
         approval, _ = self.write_inputs(campaign_id="different-campaign")

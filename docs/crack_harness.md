@@ -15,7 +15,7 @@ and 256-bit `stop_nonce`. The permit
 binds owner, task, function, campaign, approval ID, cycle-free approval identity,
 command-set identity, source path, source/base/candidate hashes, base commit,
 toolchain, target, `issued_at`, and a deadline no more than 1,800 seconds later.
-One permit authorizes one exact cell. The later approval binds the exact permit
+One permit authorizes one reviewed candidate cell. The later approval binds the exact permit
 SHA-256, so analysis time counts and neither approval nor candidate may drift. STOP
 is revalidated before every command (including admission discard), CAS, central
 record, and terminal write.
@@ -70,10 +70,12 @@ hash-bound function span, predicted rows, limits, and every command descriptor.
 evidence bundle share one side-effect-free validator, so malformed, traversing,
 owner-style, empty-segment, and leading/trailing-slash unit names fail during
 dry-run before permit use.
-Limits cannot be elevated: one candidate for an owner/function for the lifetime
-of the retained harness state (a new campaign ID cannot reset this counter), at
-most 1,800 seconds, 512 MiB ephemeral data, and 16 MiB retained compact state
-per stable owner across all campaigns.
+Limits cannot be elevated: each candidate source hash is one-shot for an
+owner/function (a new campaign ID cannot retry the same candidate), at most
+1,800 seconds, 512 MiB ephemeral data, and 16 MiB retained compact state per
+stable owner across all campaigns. A measurable safe improvement may become
+the one current frontier for that function; a later permit may start from that
+frontier with a different candidate hash. An exact result closes the function.
 
 The UTF-8 natural-C cell may use at most three hunks and 80 changed lines,
 including insert/delete, wholly inside the function span. NUL, preprocessor
@@ -84,9 +86,11 @@ and inline/optimization forcing are also rejected.
 
 Every approval also carries a closed `selection` object. Its strategy is fixed
 to `winning_cell_first`, its rank is exactly `1`, and it must name a non-empty
-natural-C `source_class`. `expected_terminal` is fixed to `exact`; an
-incremental, exploratory, negative-control, or merely measurable-improvement
-cell is rejected before permit use. The selection binds an existing repository-local
+natural-C `source_class`. `expected_terminal` is either `exact` or `improved`;
+the former predicts a fully exact function and the latter predicts one positive,
+safe, measurable frontier improvement. An incremental, exploratory, or
+negative-control cell is still rejected before permit use. The selection binds
+an existing repository-local
 `crack_winning_cell_evidence/v1` artifact by path and SHA-256, the approval
 candidate SHA, and the canonical SHA-256 of `predicted_rows`. Validate the
 artifact with `tools/CRACK_WINNING_CELL_EVIDENCE_V1.schema.json`. Its closed
@@ -147,7 +151,7 @@ commit, source hashes, target hash, and the exact central toolchain-manifest
 SHA-256. A label or version string is not a valid `toolchain_key`.
 The bundle must write
 `target.o`, `baseline-candidate.o`, `candidate.o`, baseline/candidate `strict`
-and `data` JSON, `physical.json`, self-digested phase receipts, and a final
+and `data` JSON, `baseline-physical.json`, `physical.json`, self-digested phase receipts, and a final
 self-digested evidence context under `CRACK_HARNESS_OUT_ROOT`. The harness
 checks every receipt identity, phase nonce, artifact hash/size, target hash, and
 baseline immutability. Missing, stale, mixed, or fabricated evidence fails closed.
@@ -173,27 +177,38 @@ Typed proofs bind owner/function, candidate source, approved target object,
 candidate object, and report hash; assessment binds the same source/object pair.
 Every numeric proof and assessment field must be finite; JSON `NaN` and
 infinities are rejected before any comparison or retention decision.
-Exact requires strict/data 100%, exact equal
-byte counts and zero differences, zero focus rows, zero protected-sibling
-losses, and equal physical counts with zero differences. Assessment supplies
-only owner gain. The admission token/input key and object pair must be bound by
-one typed central-record receipt; recording failure rolls back. Protected sibling
-proof covers the union of strict and data exact-identity sets. Any positive
-result that is not fully exact is treated as no gain and rolled back. Partial
-improvement is never copied into source and never centrally recorded.
+Exact requires strict/data 100%, exact equal byte counts and zero differences,
+zero focus rows, zero protected-sibling losses, and equal physical counts with
+zero differences. An `improved` result is deliberately allowed to retain
+nonzero focus rows, physical-relocation residuals, or a changed function size,
+but only when owner gain is positive, physical distance from the target does not
+increase, protected siblings do not lose exactness, and data does not regress.
+Assessment supplies the strict-score gain plus data/physical deltas;
+the runtime rejects non-finite or non-positive gains. Improved cells are
+measurable progress, not proof of a crack: they are copied into the live source
+frontier, do not invoke central `record`, and do not produce a
+`CRACK_REPORT/v1`. The admission token/input key and object pair must still be
+bound by typed receipts, and protected sibling proof covers the union of strict
+and data exact-identity sets.
 
-No gain or a failure after the candidate execution boundary leaves baseline and
-retains no run directory or result artifact; only one overwrite-only
-owner/function tombstone remains. That tombstone is independent of campaign ID
-and permanently forces a pivot to another function. A pre-candidate
-infrastructure failure retains only its bounded one-shot permit marker and does
-not tombstone the function. Failure may additionally
-retain one tiny overwrite-only sealed diagnostic, never an attempt log. Exact writes
-compact `CRACK_REPORT/v1`. Only one latest compact result and, for exact only,
-its bound report survive per owner/function; no full source duplicate or
-per-attempt or append-only candidate history survives. Approval, baseline,
-candidate, permit,
-worktree, objects, logs, and temp are deleted. Owner state is hard-capped at 16
+After an improved cell, the harness keeps exactly one overwrite-only,
+self-hashed compact frontier for that owner/function. Validate frontier files
+with `tools/CRACK_HARNESS_FRONTIER_V1.schema.json`; the manager HMAC and
+`frontier_sha256` digest cover the retained body. The signed assessment stores
+the change in physical-relocation distance and the runtime rejects a positive
+delta. The harness removes the run
+directory, disposable inputs, logs, and per-candidate source copy. The next
+cell must seal a base equal to the current frontier source and use a different
+candidate hash; the same candidate hash is permanently rejected. A later exact
+cell replaces the frontier with the exact result and its compact report. A no-gain
+or failed cell leaves the prior frontier untouched, removes its disposable
+state, and records at most one bounded candidate-keyed diagnostic; it does not
+roll back a previously retained improvement or force a pivot. Pre-candidate
+infrastructure failure consumes neither the candidate cell nor the function.
+Exact writes compact `CRACK_REPORT/v1`; this report is exact-only. No full source
+duplicate, per-attempt log, append-only candidate history, or raw compiler
+history survives. Approval, baseline, candidate, permit, worktree, objects,
+logs, and temp are deleted after each cell. Owner state is hard-capped at 16
 MiB and all harness state at 64 MiB. Journal recovery restores an interrupted
 CAS. If an exact central row committed before the complete local terminal was
 sealed, recovery preserves the candidate, central row, journal, and a self-hashed
@@ -224,8 +239,8 @@ fails closed rather than risking duplicate execution. A bounded
 `consumed-cells.json` ledger independently preserves the same one-cell fact;
 missing or conflicting local/central markers fail closed.
 
-There is no general retry or tombstone reset. A legacy v1 tombstone may be
-reconciled exactly once only when the approval carries the strict optional
+There is no general retry or tombstone reset for the same candidate. A legacy
+v1 tombstone may be reconciled exactly once only when the approval carries the strict optional
 `crack_harness_legacy_reconciliation/v1` descriptor. That descriptor binds the
 immutable v1 tombstone and prior sealed failure by path and digest, the prior
 approval, the same candidate and legacy controller commit, and compact
@@ -239,16 +254,20 @@ If only the central half persisted before publication failed, that half remains
 consumed fail-closed. Once resume succeeds, every surviving reservation remains
 consumed permanently.
 V2 tombstones, partial historical results, malformed or missing artifacts, and
-ordinary permits remain permanently fail-closed. Failure text or provenance
-alone can never release a tombstone.
+ordinary permits remain permanently fail-closed for their candidate hash. A
+different hash may continue from the latest retained frontier under a new
+manager-signed permit; failure text or provenance alone can never release a
+candidate reservation.
 
-`no_gain` and `failed` return nonzero. Results use the closed
+`improved`, `no_gain`, and `failed` return terminal results; `no_gain` and
+`failed` return nonzero. Results use the closed
 `tools/CRACK_HARNESS_RESULT_V1.schema.json`. There is no reset command; Git is
-the rollback path after a retained terminal gain.
+the rollback path after an incorrectly retained frontier.
 
-Only `exact` invokes central `record`. Every
-unretained or failed admitted attempt invokes canonical `discard`, which deletes
-the pending admission and creates no experiment. Central admission rows are
+Only `exact` invokes central `record`. An `improved` attempt copies its
+candidate into the current source frontier and invokes canonical `discard` for
+the pending admission; it creates no central experiment. Every no-gain or failed
+admitted attempt also invokes canonical `discard`. Central admission rows are
 overwrite-bounded to one pending row per owner/function; a successful retained
 record deletes its consumed admission rather than preserving admission history.
 `RecoveryMemory.record` retains legacy API validation for `improved` and
