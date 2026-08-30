@@ -268,7 +268,7 @@ class CurrentResidualMaterializationTests(unittest.TestCase):
                 ],
             },
         }
-        with patch.object(residual, "_git", return_value=BASE_COMMIT), \
+        with patch.object(residual, "_git", return_value="commit"), \
              patch.object(residual, "__file__", str(self.producer)), \
              patch.object(residual, "_create_disposable_worktree", return_value=scratch), \
              patch.object(residual, "_remove_disposable_worktree", return_value=cleanup_error), \
@@ -335,6 +335,18 @@ class CurrentResidualMaterializationTests(unittest.TestCase):
             if key != "physical_summary_sha256"
         }))
         self.assertFalse((self.root / "candidate.o").exists())
+
+    def test_base_commit_verification_avoids_typed_peel_revision_syntax(self) -> None:
+        with patch.object(residual, "_git", return_value="commit") as git:
+            residual._verify_base_commit(self.root, BASE_COMMIT, timeout=17.0)
+
+        git.assert_called_once_with(
+            self.root,
+            ["cat-file", "-t", BASE_COMMIT],
+            "base commit verification",
+            timeout=17.0,
+        )
+        self.assertNotIn("^", "".join(git.call_args.args[1]))
 
     def test_publish_rollback_retries_after_replace_and_unlink_failures(self) -> None:
         first = self.root / "build" / "first.evidence"
@@ -521,7 +533,7 @@ class CurrentResidualMaterializationTests(unittest.TestCase):
         self.assertIn("cleanup sentinel", " ".join(raised.exception.__notes__))
 
     def test_source_hash_drift_fails_before_compile_and_writes_nothing(self) -> None:
-        with patch.object(residual, "_git", return_value=BASE_COMMIT), \
+        with patch.object(residual, "_git", return_value="commit"), \
              patch.object(residual.bundle, "_run") as compile_run:
             with self.assertRaisesRegex(residual.ResidualEvidenceError, "source SHA-256 drifted"):
                 residual.materialize_current_residual(
@@ -551,7 +563,7 @@ class CurrentResidualMaterializationTests(unittest.TestCase):
 
     def test_stale_output_is_rejected_before_compile(self) -> None:
         self.output.write_text("stale", encoding="ascii")
-        with patch.object(residual, "_git", return_value=BASE_COMMIT), \
+        with patch.object(residual, "_git", return_value="commit"), \
              patch.object(residual.bundle, "_run") as compile_run:
             with self.assertRaisesRegex(residual.ResidualEvidenceError, "stale evidence"):
                 residual.materialize_current_residual(

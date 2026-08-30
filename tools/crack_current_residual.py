@@ -594,6 +594,25 @@ def _git(
     ).strip()
 
 
+def _verify_base_commit(repository: Path, commit: str, *, timeout: float) -> None:
+    """Verify one full object id without revision-suffix shell ambiguity.
+
+    Some Windows/MSYS Git launchers rewrite braces in ``^{commit}`` even when
+    Python supplies an argv vector directly.  A full 40-hex object id plus
+    ``cat-file -t`` proves both object identity and commit type without using
+    revision syntax that those launchers can mutate.
+    """
+
+    object_type = _git(
+        repository,
+        ["cat-file", "-t", commit],
+        "base commit verification",
+        timeout=timeout,
+    )
+    if object_type != "commit":
+        raise ResidualEvidenceError("base_commit does not name a commit object")
+
+
 def _validate_process_timeout(value: float) -> float:
     """Validate the per-subprocess deadline independently of the build lock."""
 
@@ -1210,14 +1229,7 @@ def materialize_current_residual(
     if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
         raise ResidualEvidenceError("base_commit must be a full lowercase Git commit")
     bounded_process_timeout = _validate_process_timeout(process_timeout)
-    resolved_commit = _git(
-        repository,
-        ["rev-parse", "--verify", f"{commit}^{{commit}}"],
-        "base commit verification",
-        timeout=bounded_process_timeout,
-    )
-    if resolved_commit != commit:
-        raise ResidualEvidenceError("base_commit did not resolve to the bound commit")
+    _verify_base_commit(repository, commit, timeout=bounded_process_timeout)
     if not isinstance(function, str) or FUNCTION_RE.fullmatch(function) is None:
         raise ResidualEvidenceError("function must be a C identifier")
     expected_source = _sha(source_sha256, "source_sha256")
