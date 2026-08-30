@@ -230,7 +230,10 @@ but only when owner gain is positive, physical distance from the target does not
 increase, protected siblings do not lose exactness, and data does not regress.
 Physical distance is `abs(target_count - candidate_count) + differences`, where
 `differences` is the number of nonidentical physical-relocation entries.
-Assessment supplies the strict-score gain plus data/physical deltas;
+Size distance is `abs(target_bytes - candidate_bytes)`. Assessment binds both
+the sealed baseline and candidate data byte counts and supplies
+`size_diff_delta = candidate_size_distance - baseline_size_distance`.
+Assessment supplies the strict-score gain plus data/size/physical deltas;
 the runtime rejects non-finite or non-positive gains. Improved cells are
 measurable progress, not proof of a crack: they are copied into the live source
 frontier, do not invoke central `record`, and do not produce a
@@ -242,11 +245,16 @@ After an improved cell, the harness keeps exactly one overwrite-only,
 self-hashed compact frontier for that owner/function. Validate frontier files
 with `tools/CRACK_HARNESS_FRONTIER_V1.schema.json`; the manager HMAC and
 `frontier_sha256` digest cover the retained body. The signed assessment stores
-the change in physical-relocation distance and the runtime rejects a positive
-delta. The harness removes the run
+the baseline/candidate byte counts and the changes in size and
+physical-relocation distance. Frontier validation recomputes the size delta
+from those bound byte counts; the runtime rejects a positive size or physical
+delta. Equal nonzero size distance is retainable only when another measurable
+owner gain is positive and every other nonregression gate passes. The harness removes the run
 directory, disposable inputs, logs, and per-candidate source copy. A later
 candidate may continue from the signed frontier/current source: its approved
 base must equal that source, and its base+candidate pair must be new. A
+pre-size-distance frontier lacks these signed byte counts and is intentionally
+invalid; rematerialize it from the retained source before continuing.
 no_gain or failed cell leaves the prior frontier untouched, removes its
 disposable state, and consumes only that same base+candidate attempt; it does
 not close the function or force a pivot. A later exact result closes the

@@ -336,7 +336,7 @@ if pathlib.Path(sys.argv[0]).name=='crack_evidence_bundle.py':
   receipt('baseline',['target.o','baseline-candidate.o','baseline-strict.json','baseline-data.json','baseline-physical.json'])
   value={'schema':'crack_evidence_bundle_context/v1','owner':os.environ['CRACK_HARNESS_OWNER'],'function':os.environ['CRACK_HARNESS_FUNCTION'],'unit':os.environ['CRACK_HARNESS_UNIT'],'source_relpath':source_rel,'target_sha256':os.environ['CRACK_HARNESS_TARGET_SHA256'],'base_commit':os.environ['CRACK_HARNESS_BASE_COMMIT'],'approval_sha256':os.environ['CRACK_HARNESS_APPROVAL_SHA256'],'approval_context_sha256':os.environ['CRACK_HARNESS_CONTEXT_SHA256'],'phase_nonces':{'baseline':os.environ['CRACK_HARNESS_PHASE_NONCE'],'candidate':hashlib.sha256((os.environ['CRACK_HARNESS_CONTEXT_SHA256']+':candidate').encode()).hexdigest()},'baseline_receipt':desc(out/'baseline-receipt.json'),'authority_advanced':False}; value['evidence_context_sha256']=digest(value); (out/'evidence-context.json').write_text(json.dumps(value))
  else:
-  (out/'candidate.o').write_bytes(b'candidate'); (out/'candidate-strict.json').write_text('{}'); (out/'candidate-data.json').write_text('{}'); (out/'physical.json').write_text('{}'); (out/'fixture.json').write_text(json.dumps({'gain':float(os.environ['HARNESS_TEST_GAIN']),'focus':int(os.environ['HARNESS_TEST_FOCUS']),'data_gain':float(os.environ.get('HARNESS_TEST_DATA_GAIN','0')),'sibling_losses':int(os.environ.get('HARNESS_TEST_SIBLING_LOSSES','0')),'baseline_physical_diff':int(os.environ.get('HARNESS_TEST_BASELINE_PHYSICAL_DIFF','0')),'physical_diff':int(os.environ.get('HARNESS_TEST_PHYSICAL_DIFF','0')),'size_delta':int(os.environ.get('HARNESS_TEST_SIZE_DELTA','0'))}))
+  (out/'candidate.o').write_bytes(b'candidate'); (out/'candidate-strict.json').write_text('{}'); (out/'candidate-data.json').write_text('{}'); (out/'physical.json').write_text('{}'); (out/'fixture.json').write_text(json.dumps({'gain':float(os.environ['HARNESS_TEST_GAIN']),'focus':int(os.environ['HARNESS_TEST_FOCUS']),'data_gain':float(os.environ.get('HARNESS_TEST_DATA_GAIN','0')),'sibling_losses':int(os.environ.get('HARNESS_TEST_SIBLING_LOSSES','0')),'baseline_physical_diff':int(os.environ.get('HARNESS_TEST_BASELINE_PHYSICAL_DIFF','0')),'physical_diff':int(os.environ.get('HARNESS_TEST_PHYSICAL_DIFF','0')),'baseline_size_delta':int(os.environ.get('HARNESS_TEST_BASELINE_SIZE_DELTA','0')),'size_delta':int(os.environ.get('HARNESS_TEST_SIZE_DELTA','0'))}))
   candidate_receipt=receipt('candidate',['target.o','candidate.o','candidate-strict.json','candidate-data.json','physical.json'])
   if os.environ.get('HARNESS_TEST_BAD_RECEIPT')=='1': candidate_receipt['receipt_sha256']='0'*64; (out/'candidate-receipt.json').write_text(json.dumps(candidate_receipt))
   value=json.loads((out/'evidence-context.json').read_text()); value.pop('evidence_context_sha256'); value['candidate_receipt']=desc(out/'candidate-receipt.json'); value['completed']=True; value['evidence_context_sha256']=digest(value); (out/'evidence-context.json').write_text(json.dumps(value))
@@ -351,7 +351,7 @@ if sys.argv[1]=='proof-adapter':
  elif kind=='focus': value=common|{'schema':'crack_proof_focus/v1','differing_rows':fixture['focus']}
  elif kind=='siblings': value=common|{'schema':'crack_proof_siblings/v1','protected_total':18,'protected_losses':fixture['sibling_losses']}
  elif kind=='physical': value=common|{'schema':'crack_proof_physical/v1','target_count':3,'candidate_count':3,'differences':fixture['physical_diff']}
- else: value={'schema':'crack_assessment/v1','owner':get('--owner'),'function':get('--function'),'candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':fixture['gain'],'data_gain':fixture['data_gain'],'data_diff_delta':1 if fixture['data_gain']<0 else 0,'physical_diff_delta':fixture['physical_diff']-fixture['baseline_physical_diff']}
+ else: value={'schema':'crack_assessment/v1','owner':get('--owner'),'function':get('--function'),'candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':fixture['gain'],'data_gain':fixture['data_gain'],'data_diff_delta':1 if fixture['data_gain']<0 else 0,'baseline_data_target_bytes':8,'baseline_data_candidate_bytes':8+fixture['baseline_size_delta'],'data_target_bytes':8,'data_candidate_bytes':8+fixture['size_delta'],'size_diff_delta':abs(fixture['size_delta'])-abs(fixture['baseline_size_delta']),'physical_diff_delta':fixture['physical_diff']-fixture['baseline_physical_diff']}
  print(json.dumps(value)); raise SystemExit
 run,out,kind,*rest=sys.argv[1:]
 source=pathlib.Path(run,'src/owner.c')
@@ -364,7 +364,7 @@ elif kind=='data': print(json.dumps(common|{'schema':'crack_proof_data/v1','data
 elif kind=='focus': print(json.dumps(common|{'schema':'crack_proof_focus/v1','differing_rows':int(rest[0]) if rest else 0}))
 elif kind=='siblings': print(json.dumps(common|{'schema':'crack_proof_siblings/v1','protected_total':9,'protected_losses':0}))
 elif kind=='physical': print(json.dumps(common|{'schema':'crack_proof_physical/v1','target_count':3,'candidate_count':3,'differences':0}))
-elif kind=='assess': print(json.dumps({'schema':'crack_assessment/v1','owner':'main:board/test','function':'Owner','candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':float(rest[0]),'data_gain':0.0,'data_diff_delta':0,'physical_diff_delta':0}))
+elif kind=='assess': print(json.dumps({'schema':'crack_assessment/v1','owner':'main:board/test','function':'Owner','candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':candidate,'owner_gain':float(rest[0]),'data_gain':0.0,'data_diff_delta':0,'baseline_data_target_bytes':8,'baseline_data_candidate_bytes':8,'data_target_bytes':8,'data_candidate_bytes':8,'size_diff_delta':0,'physical_diff_delta':0}))
 elif kind=='record': print(json.dumps({'schema':'crack_central_record_receipt/v1','recorded':True,'owner':'main:board/test','function':'Owner','candidate_source_sha256':candidate_source,'target_object_sha256':target,'candidate_object_sha256':os.environ['CRACK_HARNESS_CANDIDATE_OBJECT_SHA256'],'outcome':os.environ['CRACK_HARNESS_OUTCOME'],'admission_token_sha256':hashlib.sha256(os.environ['CRACK_HARNESS_ADMISSION_TOKEN'].encode()).hexdigest(),'admission_input_key':'a'*64,'record_sha256':'e'*64}))
 '''
 
@@ -400,7 +400,8 @@ elif 'admit' in sys.argv:
     def write_inputs(
         self, *, gain: int = 1, focus_rows: int = 0, data_gain: int = 0,
         sibling_losses: int = 0, baseline_physical_diff: int = 0,
-        physical_diff: int = 0, size_delta: int = 0,
+        physical_diff: int = 0, baseline_size_delta: int = 0,
+        size_delta: int = 0,
         campaign_id: str = "campaign", expected_terminal: str = "exact",
         live_source_evidence: bool = False,
     ) -> tuple[Path, Path]:
@@ -539,6 +540,7 @@ elif 'admit' in sys.argv:
             ),
             "HARNESS_TEST_PHYSICAL_DIFF": kwargs.get("physical_diff", 0),
             "HARNESS_TEST_SIZE_DELTA": kwargs.get("size_delta", 0),
+            "HARNESS_TEST_BASELINE_SIZE_DELTA": kwargs.get("baseline_size_delta", 0),
         }
         previous = {name: os.environ.get(name) for name in settings}
         os.environ.update({name: str(value) for name, value in settings.items()})
@@ -723,6 +725,93 @@ elif 'admit' in sys.argv:
         self.assertEqual(frontier["physical_differences"], 1)
         self.assertEqual(frontier["physical_diff_delta"], -1)
 
+    def test_closed_size_channel_regression_is_not_retained(self) -> None:
+        result = self.execute(
+            gain=2, focus_rows=1,
+            baseline_size_delta=0, size_delta=16,
+        )
+        self.assertEqual(result["status"], "no_gain", result)
+        self.assertEqual(result["owner_gain"], 2)
+        self.assertFalse(any(self.state.glob("owners/*/*/latest-frontier.json")))
+        self.assertIn("return 1", self.source.read_text())
+
+    def test_open_size_distance_improvement_is_retained(self) -> None:
+        result = self.execute(
+            gain=2, focus_rows=1,
+            baseline_size_delta=132, size_delta=120,
+        )
+        self.assertEqual(result["status"], "improved", result)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier = harness._validate_frontier(
+            self.root, frontier_path, manager_key_path=self.manager_key,
+            expected_key_id=sha(self.manager_key),
+        )
+        self.assertEqual(frontier["baseline_data_target_bytes"], 8)
+        self.assertEqual(frontier["baseline_data_candidate_bytes"], 140)
+        self.assertEqual(frontier["data_target_bytes"], 8)
+        self.assertEqual(frontier["data_candidate_bytes"], 128)
+        self.assertEqual(frontier["size_diff_delta"], -12)
+
+    def test_equal_open_size_distance_requires_other_positive_gain(self) -> None:
+        retained = self.execute(
+            gain=2, focus_rows=1,
+            baseline_size_delta=132, size_delta=132,
+        )
+        self.assertEqual(retained["status"], "improved", retained)
+
+    def test_equal_open_size_distance_without_gain_is_not_retained(self) -> None:
+        result = self.execute(
+            gain=0, focus_rows=1,
+            baseline_size_delta=132, size_delta=132,
+        )
+        self.assertEqual(result["status"], "no_gain", result)
+        self.assertFalse(any(self.state.glob("owners/*/*/latest-frontier.json")))
+
+    def test_open_size_distance_regression_is_not_retained(self) -> None:
+        result = self.execute(
+            gain=2, focus_rows=1,
+            baseline_size_delta=132, size_delta=144,
+        )
+        self.assertEqual(result["status"], "no_gain", result)
+        self.assertFalse(any(self.state.glob("owners/*/*/latest-frontier.json")))
+
+    def test_assessment_rejects_missing_or_inconsistent_size_evidence(self) -> None:
+        approval_path, _ = self.write_inputs()
+        approval = harness.load_approval(self.root, approval_path)
+        payload = {
+            "schema": "crack_assessment/v1",
+            "owner": "main:board/test",
+            "function": "Owner",
+            "candidate_source_sha256": sha(self.candidate),
+            "target_object_sha256": "b" * 64,
+            "candidate_object_sha256": "c" * 64,
+            "owner_gain": 2,
+            "data_gain": 0,
+            "data_diff_delta": 0,
+            "baseline_data_target_bytes": 8,
+            "baseline_data_candidate_bytes": 140,
+            "data_target_bytes": 8,
+            "data_candidate_bytes": 128,
+            "size_diff_delta": -12,
+            "physical_diff_delta": 0,
+        }
+        missing = dict(payload)
+        missing.pop("baseline_data_candidate_bytes")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "strict typed schema"
+        ):
+            harness._validate_assessment(
+                missing, approval, ("b" * 64, "c" * 64)
+            )
+        inconsistent = dict(payload)
+        inconsistent["size_diff_delta"] = -13
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "inconsistent with bound byte counts"
+        ):
+            harness._validate_assessment(
+                inconsistent, approval, ("b" * 64, "c" * 64)
+            )
+
     def test_frontier_rejects_wrong_directory_and_tampering(self) -> None:
         result = self.execute(gain=2, focus_rows=1)
         self.assertEqual(result["status"], "improved", result)
@@ -772,6 +861,34 @@ elif 'admit' in sys.argv:
         frontier_path.write_text(json.dumps(sealed), encoding="utf-8")
         with self.assertRaisesRegex(
             harness.CrackHarnessError, "strict_differences is invalid"
+        ):
+            harness._validate_frontier(
+                self.root, frontier_path, manager_key_path=self.manager_key,
+                expected_key_id=sha(self.manager_key),
+            )
+
+    def test_frontier_rejects_resigned_inconsistent_size_evidence(self) -> None:
+        result = self.execute(
+            gain=2, focus_rows=1,
+            baseline_size_delta=132, size_delta=120,
+        )
+        self.assertEqual(result["status"], "improved", result)
+        frontier_path = next(self.state.glob("owners/*/*/latest-frontier.json"))
+        frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+        frontier.pop("frontier_sha256")
+        frontier.pop("signature")
+        frontier["size_diff_delta"] = -13
+        signed = {
+            **frontier,
+            "signature": hmac.new(
+                self.manager_key.read_bytes(), harness._canonical(frontier),
+                hashlib.sha256,
+            ).hexdigest(),
+        }
+        sealed = {**signed, "frontier_sha256": harness._digest_json(signed)}
+        frontier_path.write_text(json.dumps(sealed), encoding="utf-8")
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "inconsistent with bound byte counts"
         ):
             harness._validate_frontier(
                 self.root, frontier_path, manager_key_path=self.manager_key,
@@ -1227,7 +1344,13 @@ elif 'admit' in sys.argv:
             "target_object_sha256": "b" * 64,
             "candidate_object_sha256": "c" * 64,
             "owner_gain": float("nan"), "data_gain": 0.0,
-            "data_diff_delta": 0, "physical_diff_delta": 0,
+            "data_diff_delta": 0,
+            "baseline_data_target_bytes": 8,
+            "baseline_data_candidate_bytes": 8,
+            "data_target_bytes": 8,
+            "data_candidate_bytes": 8,
+            "size_diff_delta": 0,
+            "physical_diff_delta": 0,
         }
         with self.assertRaisesRegex(harness.CrackHarnessError, "finite"):
             harness._validate_assessment(assessment, approval, ("b" * 64, "c" * 64))
@@ -1627,7 +1750,7 @@ elif 'admit' in sys.argv:
 
     def test_assessment_must_bind_proven_object_pair(self) -> None:
         approval, _ = self.write_inputs(); loaded = harness.load_approval(self.root, approval)
-        payload = {"schema":"crack_assessment/v1","owner":"main:board/test","function":"Owner","candidate_source_sha256":sha(self.candidate),"target_object_sha256":"b"*64,"candidate_object_sha256":"0"*64,"owner_gain":1,"data_gain":0,"data_diff_delta":0,"physical_diff_delta":0}
+        payload = {"schema":"crack_assessment/v1","owner":"main:board/test","function":"Owner","candidate_source_sha256":sha(self.candidate),"target_object_sha256":"b"*64,"candidate_object_sha256":"0"*64,"owner_gain":1,"data_gain":0,"data_diff_delta":0,"baseline_data_target_bytes":8,"baseline_data_candidate_bytes":8,"data_target_bytes":8,"data_candidate_bytes":8,"size_diff_delta":0,"physical_diff_delta":0}
         with self.assertRaisesRegex(harness.CrackHarnessError, "does not bind"):
             harness._validate_assessment(payload, loaded, ("b" * 64, "c" * 64))
 

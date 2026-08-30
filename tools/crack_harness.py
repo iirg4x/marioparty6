@@ -1895,6 +1895,22 @@ def _proof_adapter_payload(
         data_after = channels["data"]["metric"]["match_percent"]
         data_diff_before = baseline["channels"]["data"]["metric"]["diff_rows"]
         data_diff_after = channels["data"]["metric"]["diff_rows"]
+        baseline_data_target_bytes = int(
+            baseline["channels"]["data"]["metric"]["target_size"]
+        )
+        baseline_data_candidate_bytes = int(
+            baseline["channels"]["data"]["metric"]["candidate_size"]
+        )
+        candidate_data_target_bytes = int(
+            channels["data"]["metric"]["target_size"]
+        )
+        candidate_data_candidate_bytes = int(
+            channels["data"]["metric"]["candidate_size"]
+        )
+        if baseline_data_target_bytes != candidate_data_target_bytes:
+            raise CrackHarnessError(
+                "assessment data target byte count changed between baseline and candidate"
+            )
         baseline_physical = baseline["physical_relocations"]
         candidate_physical = candidate["physical_relocations"]
 
@@ -1920,6 +1936,14 @@ def _proof_adapter_payload(
             "owner_gain": float(after) - float(before),
             "data_gain": float(data_after) - float(data_before),
             "data_diff_delta": int(data_diff_after) - int(data_diff_before),
+            "baseline_data_target_bytes": baseline_data_target_bytes,
+            "baseline_data_candidate_bytes": baseline_data_candidate_bytes,
+            "data_target_bytes": candidate_data_target_bytes,
+            "data_candidate_bytes": candidate_data_candidate_bytes,
+            "size_diff_delta": (
+                abs(candidate_data_target_bytes - candidate_data_candidate_bytes)
+                - abs(baseline_data_target_bytes - baseline_data_candidate_bytes)
+            ),
             "physical_diff_delta": (
                 physical_distance(candidate_physical)
                 - physical_distance(baseline_physical)
@@ -2166,11 +2190,12 @@ FRONTIER_BODY_FIELDS = {
     "target_object_sha256", "candidate_object_sha256", "approval_sha256",
     "expected_terminal", "predicted_rows_sha256", "strict_percent",
     "strict_target_bytes", "strict_candidate_bytes", "strict_differences",
-    "data_percent", "data_target_bytes", "data_candidate_bytes",
+    "data_percent", "baseline_data_target_bytes", "baseline_data_candidate_bytes",
+    "data_target_bytes", "data_candidate_bytes",
     "data_differences", "focus_differing_rows", "protected_total",
     "protected_losses", "physical_target_count", "physical_candidate_count",
     "physical_differences", "owner_gain", "data_gain", "data_diff_delta",
-    "physical_diff_delta", "parent_frontier_sha256", "authority_advanced",
+    "size_diff_delta", "physical_diff_delta", "parent_frontier_sha256", "authority_advanced",
     "retained_at", "key_id",
 }
 
@@ -2245,6 +2270,7 @@ def _validate_frontier(
             raise CrackHarnessError(f"partial frontier {key} is invalid")
     nonnegative_integer_fields = (
         "strict_target_bytes", "strict_candidate_bytes", "strict_differences",
+        "baseline_data_target_bytes", "baseline_data_candidate_bytes",
         "data_target_bytes", "data_candidate_bytes", "data_differences",
         "focus_differing_rows", "protected_total", "protected_losses",
         "physical_target_count", "physical_candidate_count",
@@ -2258,17 +2284,31 @@ def _validate_frontier(
             or number < 0
         ):
             raise CrackHarnessError(f"partial frontier {key} is invalid")
-    for key in ("data_diff_delta", "physical_diff_delta"):
+    for key in ("data_diff_delta", "size_diff_delta", "physical_diff_delta"):
         number = unsigned.get(key)
         if isinstance(number, bool) or not isinstance(number, int):
             raise CrackHarnessError(f"partial frontier {key} is invalid")
+    expected_size_diff_delta = (
+        abs(
+            unsigned["data_target_bytes"]
+            - unsigned["data_candidate_bytes"]
+        )
+        - abs(
+            unsigned["baseline_data_target_bytes"]
+            - unsigned["baseline_data_candidate_bytes"]
+        )
+    )
+    if unsigned["size_diff_delta"] != expected_size_diff_delta:
+        raise CrackHarnessError(
+            "partial frontier size_diff_delta is inconsistent with bound byte counts"
+        )
     if (
         float(unsigned["owner_gain"]) <= 0
         or float(unsigned["data_gain"]) < 0
         or unsigned["data_diff_delta"] > 0
+        or unsigned["size_diff_delta"] > 0
         or unsigned["physical_diff_delta"] > 0
         or unsigned["protected_losses"] != 0
-        or unsigned["data_target_bytes"] != unsigned["data_candidate_bytes"]
     ):
         raise CrackHarnessError("partial frontier does not prove a safe gain")
     source = _bound_path(
@@ -2362,6 +2402,8 @@ def _sign_frontier(
         "strict_candidate_bytes": strict["candidate_bytes"],
         "strict_differences": strict["differences"],
         "data_percent": data["data_percent"],
+        "baseline_data_target_bytes": assessment["baseline_data_target_bytes"],
+        "baseline_data_candidate_bytes": assessment["baseline_data_candidate_bytes"],
         "data_target_bytes": data["target_bytes"],
         "data_candidate_bytes": data["candidate_bytes"],
         "data_differences": data["differences"],
@@ -2374,6 +2416,7 @@ def _sign_frontier(
         "owner_gain": assessment["owner_gain"],
         "data_gain": assessment["data_gain"],
         "data_diff_delta": assessment["data_diff_delta"],
+        "size_diff_delta": assessment["size_diff_delta"],
         "physical_diff_delta": assessment["physical_diff_delta"],
         "parent_frontier_sha256": parent_sha256,
         "authority_advanced": False, "retained_at": _now(),
@@ -4141,11 +4184,22 @@ def _validate_exact_report(
         raise CrackHarnessError("exact report result does not bind strict/data proof summaries")
 
     assessment = compact_summaries["assess"]
-    if set(assessment) != {
+    assessment_legacy_fields = {
         "schema", "owner", "function", "candidate_source_sha256", "target_object_sha256",
         "candidate_object_sha256", "owner_gain", "data_gain", "data_diff_delta",
         "physical_diff_delta",
-    } or assessment.get("schema") != "crack_assessment/v1":
+    }
+    assessment_size_fields = {
+        "baseline_data_target_bytes", "baseline_data_candidate_bytes",
+        "data_target_bytes", "data_candidate_bytes", "size_diff_delta",
+    }
+    if (
+        set(assessment) not in {
+            frozenset(assessment_legacy_fields),
+            frozenset(assessment_legacy_fields | assessment_size_fields),
+        }
+        or assessment.get("schema") != "crack_assessment/v1"
+    ):
         raise CrackHarnessError("exact assessment receipt is incomplete")
     if (
         assessment.get("owner") != owner
@@ -4156,10 +4210,37 @@ def _validate_exact_report(
     ):
         raise CrackHarnessError("exact assessment is not object/source-bound")
     assessment_gain = _report_number(assessment.get("owner_gain"), "assessment.owner_gain")
+    if assessment_size_fields <= set(assessment):
+        for field in assessment_size_fields - {"size_diff_delta"}:
+            _report_int(assessment.get(field), f"assessment.{field}")
+        expected_size_diff_delta = (
+            abs(
+                assessment["data_target_bytes"]
+                - assessment["data_candidate_bytes"]
+            )
+            - abs(
+                assessment["baseline_data_target_bytes"]
+                - assessment["baseline_data_candidate_bytes"]
+            )
+        )
+        assessment_size_diff_delta = _report_signed_int(
+            assessment.get("size_diff_delta"), "assessment.size_diff_delta"
+        )
+        if assessment_size_diff_delta != expected_size_diff_delta:
+            raise CrackHarnessError(
+                "exact assessment size_diff_delta is inconsistent with bound byte counts"
+            )
+    else:
+        # Pre-size-distance v1 exact reports remain recoverable.  Their strict
+        # and data summaries above independently prove equal target/candidate
+        # byte counts and zero rows, so the only valid implied distance delta
+        # is zero.
+        assessment_size_diff_delta = 0
     if (
         assessment_gain <= 0
         or _report_number(assessment.get("data_gain"), "assessment.data_gain") < 0
         or _report_signed_int(assessment.get("data_diff_delta"), "assessment.data_diff_delta") > 0
+        or assessment_size_diff_delta > 0
         or _report_signed_int(
             assessment.get("physical_diff_delta"),
             "assessment.physical_diff_delta",
@@ -4498,18 +4579,41 @@ def _authenticated_record_binding(
             "target_object_sha256", "candidate_object_sha256", "outcome",
             "admission_token_sha256", "admission_input_key", "record_sha256",
         }
-        assess_required = {
+        assess_legacy_required = {
             "schema", "owner", "function", "candidate_source_sha256",
             "target_object_sha256", "candidate_object_sha256", "owner_gain",
             "data_gain", "data_diff_delta", "physical_diff_delta",
         }
+        assess_size_fields = {
+            "baseline_data_target_bytes", "baseline_data_candidate_bytes",
+            "data_target_bytes", "data_candidate_bytes", "size_diff_delta",
+        }
         if (
             set(record_summary) != record_required
-            or set(assess_summary) != assess_required
+            or set(assess_summary) not in {
+                frozenset(assess_legacy_required),
+                frozenset(assess_legacy_required | assess_size_fields),
+            }
             or record_summary.get("schema") != "crack_central_record_receipt/v1"
             or assess_summary.get("schema") != "crack_assessment/v1"
         ):
             return None
+        if assess_size_fields <= set(assess_summary):
+            for field in assess_size_fields - {"size_diff_delta"}:
+                _report_int(assess_summary.get(field), f"assessment.{field}")
+            if _report_signed_int(
+                assess_summary.get("size_diff_delta"), "assessment.size_diff_delta"
+            ) != (
+                abs(
+                    assess_summary["data_target_bytes"]
+                    - assess_summary["data_candidate_bytes"]
+                )
+                - abs(
+                    assess_summary["baseline_data_target_bytes"]
+                    - assess_summary["baseline_data_candidate_bytes"]
+                )
+            ):
+                return None
         expected_record = {
             "recorded": True,
             "owner": approval["owner"],
@@ -5547,7 +5651,14 @@ def _validate_assessment(
     payload: Mapping[str, Any], approval: Mapping[str, Any],
     object_pair: tuple[str, str],
 ) -> float:
-    if set(payload) != {"schema", "owner", "function", "candidate_source_sha256", "target_object_sha256", "candidate_object_sha256", "owner_gain", "data_gain", "data_diff_delta", "physical_diff_delta"} or payload.get("schema") != "crack_assessment/v1":
+    required = {
+        "schema", "owner", "function", "candidate_source_sha256",
+        "target_object_sha256", "candidate_object_sha256", "owner_gain",
+        "data_gain", "data_diff_delta", "baseline_data_target_bytes",
+        "baseline_data_candidate_bytes", "data_target_bytes",
+        "data_candidate_bytes", "size_diff_delta", "physical_diff_delta",
+    }
+    if set(payload) != required or payload.get("schema") != "crack_assessment/v1":
         raise CrackHarnessError("assessment payload is not the strict typed schema")
     if (
         payload.get("owner") != approval["owner"]
@@ -5566,9 +5677,28 @@ def _validate_assessment(
         for value in (gain, data_gain)
     ):
         raise CrackHarnessError("assessment gains must be finite numeric values")
-    for field in ("data_diff_delta", "physical_diff_delta"):
+    for field in ("data_diff_delta", "size_diff_delta", "physical_diff_delta"):
         if isinstance(payload.get(field), bool) or not isinstance(payload.get(field), int):
             raise CrackHarnessError(f"assessment.{field} must be an integer")
+    for field in (
+        "baseline_data_target_bytes", "baseline_data_candidate_bytes",
+        "data_target_bytes", "data_candidate_bytes",
+    ):
+        if type(payload.get(field)) is not int or payload[field] < 0:
+            raise CrackHarnessError(
+                f"assessment.{field} must be a non-negative integer"
+            )
+    expected_size_diff_delta = (
+        abs(payload["data_target_bytes"] - payload["data_candidate_bytes"])
+        - abs(
+            payload["baseline_data_target_bytes"]
+            - payload["baseline_data_candidate_bytes"]
+        )
+    )
+    if payload["size_diff_delta"] != expected_size_diff_delta:
+        raise CrackHarnessError(
+            "assessment size_diff_delta is inconsistent with bound byte counts"
+        )
     return float(gain)
 
 
@@ -6902,8 +7032,8 @@ def _run_locked(
             proof_exact.get("siblings") is True
             and float(assessment["data_gain"]) >= 0
             and assessment["data_diff_delta"] <= 0
+            and assessment["size_diff_delta"] <= 0
             and assessment["physical_diff_delta"] <= 0
-            and proof_payloads["data"]["target_bytes"] == proof_payloads["data"]["candidate_bytes"]
         )
         exact = gain > 0 and nonregression and all(proof_exact.values())
         if exact:
