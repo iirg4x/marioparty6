@@ -517,6 +517,66 @@ class OwnerCampaignTests(unittest.TestCase):
             campaign.snapshot_frontier(self.root, loaded, "focus")
         self.assertFalse((self.root / "build" / "invocations.log").exists())
 
+    def test_exact_live_measurement_producer_wins_over_matching_cas(self) -> None:
+        expected = self.manifest["measurement_producer"]["sha256"]
+        cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / expected / "owner_campaign_measure.py"
+        )
+        cas.parent.mkdir(parents=True, exist_ok=True)
+        cas.write_bytes((self.root / "hook.py").read_bytes())
+
+        loaded = self.load()
+
+        self.assertEqual(loaded["_producer"], (self.root / "hook.py").resolve())
+
+    def _use_untracked_deployed_producer(self) -> tuple[Path, str, bytes]:
+        """Move the test binding to an untracked deployment path."""
+
+        original = (self.root / "hook.py").read_bytes()
+        live = self.root / "build" / "deployed-hook.py"
+        live.write_bytes(original)
+        body = {
+            key: value for key, value in self.manifest.items()
+            if key != "manifest_sha256"
+        }
+        expected = digest_bytes(original)
+        body["measurement_producer"] = {
+            "path": "build/deployed-hook.py", "sha256": expected
+        }
+        self.manifest = seal(body, "manifest_sha256")
+        self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
+        return live, expected, original
+
+    def test_drifted_live_producer_uses_exact_contained_cas_snapshot(self) -> None:
+        live, expected, original = self._use_untracked_deployed_producer()
+        live.write_bytes(original + b"\n# deployed update\n")
+        cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / expected / "owner_campaign_measure.py"
+        )
+        cas.parent.mkdir(parents=True, exist_ok=True)
+        cas.write_bytes(original)
+
+        loaded = self.load()
+
+        self.assertEqual(loaded["_producer"], cas.resolve())
+
+    def test_drifted_live_producer_requires_exact_cas_snapshot(self) -> None:
+        live, expected, original = self._use_untracked_deployed_producer()
+        live.write_bytes(original + b"\n# deployed update\n")
+        cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / expected / "owner_campaign_measure.py"
+        )
+        with self.assertRaisesRegex(campaign.CampaignError, "measurement producer hash drift"):
+            self.load()
+
+        cas.parent.mkdir(parents=True, exist_ok=True)
+        cas.write_bytes(b"wrong producer snapshot")
+        with self.assertRaisesRegex(campaign.CampaignError, "measurement producer hash drift"):
+            self.load()
+
     def test_snapshot_rehashes_sources_immediately_before_publication(self) -> None:
         loaded = self.load()
         original = campaign._run_hook

@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 import tempfile
 from typing import Any, Mapping, Sequence
@@ -267,6 +268,96 @@ def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
         temp.unlink(missing_ok=True)
 
 
+def _is_regular_file(path: Path) -> bool:
+    """Return whether *path* is a regular file without following links."""
+
+    try:
+        return stat.S_ISREG(path.lstat().st_mode)
+    except (FileNotFoundError, OSError):
+        return False
+
+
+def _producer_cas_path(root: Path, expected_sha256: str) -> Path:
+    relative = (
+        Path("build") / "owner-campaign" / "tool-cas"
+        / expected_sha256 / "owner_campaign_measure.py"
+    )
+    path = _safe_path(root, relative, "measurement producer CAS", exists=False)
+    if owner_campaign._path_has_indirection(root, path):
+        raise ManifestError("measurement producer CAS uses indirection")
+    return path
+
+
+def _snapshot_measurement_producer(
+    root: Path, binding: Mapping[str, Any]
+) -> Path:
+    """Publish the bound producer bytes into content-addressed campaign CAS."""
+
+    expected = _sha(binding.get("sha256"), "measurement producer.sha256")
+    source = _safe_path(
+        root, binding.get("path"), "measurement producer", exists=False
+    )
+    if owner_campaign._path_has_indirection(root, source):
+        raise ManifestError("measurement producer uses indirection")
+    cas = _producer_cas_path(root, expected)
+
+    try:
+        cas.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise ManifestError(f"measurement producer CAS is unreadable: {cas}") from exc
+    else:
+        if not _is_regular_file(cas):
+            raise ManifestError("measurement producer CAS is not a regular file")
+        if owner_campaign._digest_file(cas) != expected:
+            raise ManifestError("measurement producer CAS hash drift")
+        return cas
+
+    if not _is_regular_file(source):
+        raise ManifestError("measurement producer is not a regular file")
+    try:
+        payload = source.read_bytes()
+    except OSError as exc:
+        raise ManifestError(f"measurement producer is unreadable: {source}") from exc
+    if owner_campaign._digest_bytes(payload) != expected:
+        raise ManifestError("measurement producer hash drift before CAS snapshot")
+
+    try:
+        cas.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ManifestError(f"measurement producer CAS directory is unavailable: {cas.parent}") from exc
+    if owner_campaign._path_has_indirection(root, cas):
+        raise ManifestError("measurement producer CAS uses indirection")
+
+    fd, raw = tempfile.mkstemp(
+        prefix=".owner_campaign_measure.", dir=cas.parent
+    )
+    temporary = Path(raw)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            # Linking the fully-written temporary file creates the final CAS
+            # path atomically without ever overwriting a concurrent object.
+            os.link(temporary, cas)
+        except FileExistsError:
+            if (
+                _is_regular_file(cas)
+                and not owner_campaign._path_has_indirection(root, cas)
+                and owner_campaign._digest_file(cas) == expected
+            ):
+                return cas
+            raise ManifestError("measurement producer CAS hash drift")
+        except OSError as exc:
+            raise ManifestError(f"measurement producer CAS publication failed: {cas}") from exc
+        return cas
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def _identity(root: Path, path: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
     loaded = owner_campaign.load_campaign(root, path)
     return {
@@ -438,6 +529,7 @@ def initialize_campaign(
         "limits": limits_value,
     }
     manifest = {**body, "manifest_sha256": _digest_json(body)}
+    _snapshot_measurement_producer(root, producer_binding)
     _atomic_json(output_path, manifest)
     try:
         return _identity(root, output_path, manifest)

@@ -105,6 +105,16 @@ class OwnerCampaignManifestTests(unittest.TestCase):
                 ).hexdigest(),
             },
         )
+        producer_sha256 = raw["measurement_producer"]["sha256"]
+        producer_cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / producer_sha256 / "owner_campaign_measure.py"
+        )
+        self.assertTrue(producer_cas.is_file())
+        self.assertEqual(producer_cas.read_bytes(), (self.root / "build" / "producer.py").read_bytes())
+        self.assertEqual(
+            hashlib.sha256(producer_cas.read_bytes()).hexdigest(), producer_sha256
+        )
         self.assertEqual(raw["commands"]["snapshot"]["argv"][1], "{MEASUREMENT_PRODUCER}")
         self.assertEqual(raw["commands"]["candidate"]["argv"][1], "{MEASUREMENT_PRODUCER}")
         self.assertEqual(raw["limits"]["focus_evidence_bytes"], 256 << 10)
@@ -194,6 +204,55 @@ class OwnerCampaignManifestTests(unittest.TestCase):
                 draft=Path("build/draft.json"),
                 output=Path("build/campaign.json"),
             )
+        self.assertFalse((self.root / "build" / "campaign.json").exists())
+
+    def test_measurement_producer_drift_is_rejected_before_cas_snapshot(self) -> None:
+        producer = self.root / "build" / "producer.py"
+        expected = hashlib.sha256(producer.read_bytes()).hexdigest()
+        draft = self.root / "build" / "producer-draft.json"
+        values = self._direct(output=None)
+        values.pop("root")
+        values.pop("output")
+        values["target_object"] = {
+            "path": "build/target.o",
+            "sha256": hashlib.sha256(b"target").hexdigest(),
+        }
+        values["toolchain"] = {
+            "path": "build/toolchain.json",
+            "sha256": hashlib.sha256(b"toolchain\n").hexdigest(),
+        }
+        values["measurement_producer"] = {
+            "path": "build/producer.py", "sha256": expected
+        }
+        values.pop("final_owner_command")
+        draft.write_text(json.dumps(values), encoding="utf-8")
+        producer.write_bytes(producer.read_bytes() + b"# drift\n")
+
+        with self.assertRaisesRegex(manifest.ManifestError, "measurement producer hash drift"):
+            manifest.initialize_campaign(
+                root=self.root,
+                draft=Path("build/producer-draft.json"),
+                output=Path("build/campaign.json"),
+                final_owner_command=[sys.executable, "{MEASUREMENT_PRODUCER}"],
+            )
+        producer_cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / expected / "owner_campaign_measure.py"
+        )
+        self.assertFalse(producer_cas.exists())
+
+    def test_wrong_existing_measurement_producer_cas_is_rejected(self) -> None:
+        producer = self.root / "build" / "producer.py"
+        expected = hashlib.sha256(producer.read_bytes()).hexdigest()
+        producer_cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / expected / "owner_campaign_measure.py"
+        )
+        producer_cas.parent.mkdir(parents=True, exist_ok=True)
+        producer_cas.write_bytes(b"wrong producer snapshot")
+
+        with self.assertRaisesRegex(manifest.ManifestError, "measurement producer CAS hash drift"):
+            manifest.initialize_campaign(**self._direct())
         self.assertFalse((self.root / "build" / "campaign.json").exists())
 
     def test_direct_external_path_is_rejected(self) -> None:

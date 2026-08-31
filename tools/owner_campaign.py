@@ -22,6 +22,7 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -391,10 +392,26 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
         or not set(protected) <= set(functions)
     ):
         raise CampaignError("campaign function inventory is invalid")
+    producer: Path | None = None
     for label in ("target_object", "toolchain", "measurement_producer"):
         binding = _closed_keys(raw[label], {"path", "sha256"}, label)
+        expected_sha256 = _sha(binding["sha256"], f"{label}.sha256")
+        if label == "measurement_producer":
+            # The configured path is mutable deployment state.  A producer
+            # update must not block an existing campaign, but it may only be
+            # replaced by an immutable, exact-hash snapshot from campaign
+            # state.  Keep the configured path itself contained and free of
+            # indirection even when it has been removed or changed.
+            bound = _bound_path(
+                root, binding["path"], label, exists=False
+            )
+            if _is_regular_file(bound) and _digest_file(bound) == expected_sha256:
+                producer = bound
+            else:
+                producer = _resolve_measurement_producer_cas(root, expected_sha256)
+            continue
         bound = _bound_path(root, binding["path"], label)
-        if _digest_file(bound) != _sha(binding["sha256"], f"{label}.sha256"):
+        if _digest_file(bound) != expected_sha256:
             raise CampaignError(f"{label} hash drift")
     commands = raw["commands"]
     if not isinstance(commands, Mapping) or set(commands) != {"snapshot", "candidate", "final_owner"}:
@@ -527,9 +544,9 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
     result["_source"] = source
     result["_target"] = _bound_path(root, raw["target_object"]["path"], "target object")
     result["_toolchain"] = _bound_path(root, raw["toolchain"]["path"], "toolchain")
-    result["_producer"] = _bound_path(
-        root, raw["measurement_producer"]["path"], "measurement producer"
-    )
+    if producer is None:
+        raise CampaignError("measurement producer could not be resolved")
+    result["_producer"] = producer
     result["_base_source_sha256"] = base_source_sha256
     result["_git_executable"] = git_executable
     result["_git_sha256"] = git_sha256
@@ -543,6 +560,47 @@ def _slug(value: str) -> str:
 
 def _state_root(root: Path) -> Path:
     return root / "build" / "owner-campaign"
+
+
+def _is_regular_file(path: Path) -> bool:
+    """Return whether *path* is a regular file without following links."""
+
+    try:
+        return stat.S_ISREG(path.lstat().st_mode)
+    except (FileNotFoundError, OSError):
+        return False
+
+
+def _resolve_measurement_producer_cas(root: Path, expected_sha256: str) -> Path:
+    """Resolve an exact immutable producer snapshot from campaign-local CAS.
+
+    The manifest continues to name the configured deployment path and its
+    expected digest.  If that path drifts, only the canonical producer
+    filename below the digest directory is eligible as a replacement.  The
+    final path is checked both lexically and with the existing filesystem
+    indirection guard before its bytes are hashed.
+    """
+
+    state_root = _state_root(root)
+    relative = Path("tool-cas") / expected_sha256 / "owner_campaign_measure.py"
+    try:
+        snapshot = _bound_path(
+            state_root, relative.as_posix(),
+            "measurement producer CAS", exists=True,
+        )
+    except CampaignError as exc:
+        raise CampaignError(
+            "measurement producer hash drift; exact CAS snapshot is unavailable"
+        ) from exc
+    if _path_has_indirection(root, snapshot) or not _is_regular_file(snapshot):
+        raise CampaignError(
+            "measurement producer hash drift; CAS snapshot is not a regular file"
+        )
+    if _digest_file(snapshot) != expected_sha256:
+        raise CampaignError(
+            "measurement producer hash drift; CAS snapshot hash drift"
+        )
+    return snapshot
 
 
 def _owner_root(root: Path, campaign: Mapping[str, Any]) -> Path:
