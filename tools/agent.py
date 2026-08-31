@@ -982,6 +982,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
     for name, aliases in (
         ("initialize", ["init"]),
         ("status", []),
+        ("snapshot", []),
         ("run", []),
         ("import", ["migrate"]),
     ):
@@ -991,6 +992,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
             help={
                 "initialize": "create an owner-scoped campaign manifest",
                 "status": "inspect campaign state and recover pending frontiers",
+                "snapshot": "establish or read the current compact frontier",
                 "run": "run the autonomous owner campaign loop",
                 "import": "import authenticated legacy exact receipts and compiled dedupe outcomes",
             }[name],
@@ -1003,7 +1005,7 @@ def _add_owner_campaign_parser(
 ) -> argparse.ArgumentParser:
     """Register owner-campaign commands and the documented ``crack loop``.
 
-    ``owner-campaign`` is the explicit namespace for initialize/status/run.
+    ``owner-campaign`` is the explicit namespace for initialize/status/snapshot/run.
     ``crack loop`` remains available as the compact lane entry point used by
     the workflow document.  Both dispatch to the same ``tools.owner_campaign``
     API and neither has a permit or global STOP argument.
@@ -1225,6 +1227,56 @@ def _print_owner_campaign_result(value: Any) -> int:
     return 0
 
 
+def _run_owner_campaign_snapshot(
+    args: argparse.Namespace, *, root: Path, module: Any
+) -> int:
+    """Establish/read one baseline frontier and print its compact binding."""
+
+    campaign_path = _campaign_path(args)
+    if campaign_path is None:
+        raise OwnerCampaignCLIError(
+            "owner campaign snapshot requires --campaign"
+        )
+    functions = list(getattr(args, "functions", None) or [])
+    if len(functions) != 1:
+        raise OwnerCampaignCLIError(
+            "owner campaign snapshot requires exactly one --function"
+        )
+    loader = getattr(module, "load_campaign", None)
+    if not callable(loader):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose load_campaign"
+        )
+    snapshotter = getattr(module, "snapshot_frontier", None)
+    if not callable(snapshotter):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose snapshot_frontier"
+        )
+    campaign = loader(root, campaign_path)
+    function = functions[0]
+    frontier = snapshotter(root, campaign, function)
+    compact = {
+        "schema": "owner_campaign_snapshot/v1",
+        "status": "snapshot",
+        "campaign_id": frontier["campaign_id"],
+        "manifest_sha256": frontier["manifest_sha256"],
+        "owner": frontier["owner"],
+        "unit": frontier["unit"],
+        "function": frontier["function"],
+        "source_relpath": frontier["source_relpath"],
+        "source_sha256": frontier["source_sha256"],
+        "target_object_sha256": frontier["target_object_sha256"],
+        "toolchain_sha256": frontier["toolchain_sha256"],
+        "candidate_object_sha256": frontier["candidate_object_sha256"],
+        "frontier_sha256": frontier["frontier_sha256"],
+        "focus_evidence_sha256": frontier["focus_evidence_sha256"],
+        "parent_frontier_sha256": frontier["parent_frontier_sha256"],
+        "generation": frontier["generation"],
+        "authority_advanced": False,
+    }
+    return _print_owner_campaign_result(compact)
+
+
 def _run_owner_campaign_command(
     args: argparse.Namespace, *, root: Path
 ) -> int:
@@ -1232,7 +1284,7 @@ def _run_owner_campaign_command(
     operation = getattr(args, "owner_campaign_operation", None) or (
         "run" if getattr(args, "crack_command", None) == "loop" else None
     )
-    if operation not in {"initialize", "status", "run", "import"}:
+    if operation not in {"initialize", "status", "snapshot", "run", "import"}:
         raise OwnerCampaignCLIError("owner campaign operation is missing")
 
     if operation == "initialize":
@@ -1260,6 +1312,18 @@ def _run_owner_campaign_command(
             ],
         )
         return _print_owner_campaign_result(value)
+
+    # Snapshot is the v2 bootstrap boundary: load the hash-bound campaign,
+    # establish/reuse its baseline frontier, and return only the compact
+    # identity needed by workers.  It deliberately bypasses candidate,
+    # permit, STOP, and legacy crack-harness paths.
+    command_runner = getattr(module, "run_owner_campaign_command", None)
+    if operation == "snapshot":
+        try:
+            return _run_owner_campaign_snapshot(args, root=root, module=module)
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"error: {exc}")
+            return 2
 
     # A normal Sol lane does not pass cells through the manager CLI.  When no
     # explicit descriptor is supplied, consume the compact per-campaign inbox
@@ -1302,7 +1366,6 @@ def _run_owner_campaign_command(
 
     # Prefer a module-level command adapter when supplied by the workflow.  It
     # can apply richer validation while keeping this front door stable.
-    command_runner = getattr(module, "run_owner_campaign_command", None)
     try:
         if callable(command_runner):
             setattr(args, "campaign_command", operation)

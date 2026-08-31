@@ -218,6 +218,97 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(result, [])
 
+    def test_snapshot_dispatches_loaded_campaign_and_prints_compact_binding(self) -> None:
+        frontier = self._snapshot_frontier()
+        with patch.object(
+            owner_campaign, "snapshot_frontier", return_value=frontier
+        ) as snapshotter:
+            code, result, _ = self._run_agent(
+                "owner-campaign",
+                "snapshot",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(result["schema"], "owner_campaign_snapshot/v1")
+        self.assertEqual(result["status"], "snapshot")
+        self.assertEqual(result["function"], "focus")
+        self.assertEqual(result["frontier_sha256"], frontier["frontier_sha256"])
+        self.assertEqual(
+            result["focus_evidence_sha256"], frontier["focus_evidence_sha256"]
+        )
+        self.assertEqual(result["authority_advanced"], False)
+        self.assertEqual(snapshotter.call_count, 1)
+        self.assertEqual(snapshotter.call_args.args[0], self.root)
+        self.assertEqual(snapshotter.call_args.args[2], "focus")
+
+    def test_snapshot_cli_is_idempotent_for_the_same_frontier(self) -> None:
+        frontier = self._snapshot_frontier()
+        argv = (
+            "owner-campaign",
+            "snapshot",
+            "--campaign",
+            "build/campaign.json",
+            "--function",
+            "focus",
+        )
+        with patch.object(
+            owner_campaign, "snapshot_frontier", return_value=frontier
+        ) as snapshotter:
+            first_code, first, _ = self._run_agent(*argv)
+            second_code, second, _ = self._run_agent(*argv)
+
+        self.assertEqual(first_code, 0)
+        self.assertEqual(second_code, 0)
+        self.assertEqual(first, second)
+        self.assertEqual(snapshotter.call_count, 2)
+        self.assertEqual(
+            [entry.args[2] for entry in snapshotter.call_args_list],
+            ["focus", "focus"],
+        )
+
+    def test_snapshot_rejects_function_outside_campaign_scope(self) -> None:
+        code, result, text = self._run_agent(
+            "owner-campaign",
+            "snapshot",
+            "--campaign",
+            "build/campaign.json",
+            "--function",
+            "outside",
+        )
+
+        self.assertEqual(code, 2)
+        self.assertEqual(result, text.strip())
+        self.assertIn("function is outside campaign scope: outside", text)
+
+    def test_snapshot_never_enters_legacy_compile_or_control_paths(self) -> None:
+        frontier = self._snapshot_frontier()
+        with patch.object(
+            owner_campaign, "snapshot_frontier", return_value=frontier
+        ), patch.object(
+            agent,
+            "run_crack_command",
+            side_effect=AssertionError("legacy crack harness entered"),
+        ), patch.object(
+            owner_campaign,
+            "run_candidate",
+            side_effect=AssertionError("candidate compile entered"),
+        ):
+            code, result, _ = self._run_agent(
+                "owner-campaign",
+                "snapshot",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(result["status"], "snapshot")
+
     def test_initialize_validates_existing_manifest(self) -> None:
         code, result, _ = self._run_agent(
             "owner-campaign",
@@ -282,6 +373,24 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
     def _manifest_sha256(self) -> str:
         value = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         return value["manifest_sha256"]
+
+    def _snapshot_frontier(self) -> dict[str, object]:
+        return {
+            "campaign_id": "cli-owner-v1",
+            "manifest_sha256": self._manifest_sha256(),
+            "owner": "main:test/owner",
+            "unit": "main/test/owner",
+            "function": "focus",
+            "source_relpath": "src/test.c",
+            "source_sha256": _digest(self.source.read_bytes()),
+            "target_object_sha256": _digest(self.target.read_bytes()),
+            "toolchain_sha256": _digest(self.toolchain.read_bytes()),
+            "candidate_object_sha256": "c" * 64,
+            "frontier_sha256": "f" * 64,
+            "focus_evidence_sha256": "e" * 64,
+            "parent_frontier_sha256": None,
+            "generation": 0,
+        }
 
 
 if __name__ == "__main__":

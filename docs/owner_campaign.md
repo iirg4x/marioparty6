@@ -66,6 +66,26 @@ draft omits snapshot/candidate argv, the initializer supplies the production
 `owner_campaign_measure.py` command, but it never invents the required
 `final_owner` command.
 
+### Bootstrap the first frontier
+
+Before emitting any candidate descriptor, the Sol parent must establish the
+function's current frontier. This is a reusable baseline boundary for all five
+workers: it binds the live source, target, toolchain, function, and compact
+focus evidence once, and makes a repeated call a no-op while that frontier is
+still current:
+
+```sh
+rtk python tools/agent.py owner-campaign snapshot \
+  --campaign build/owner-campaign/<owner>.json \
+  --function <function>
+```
+
+The command prints only the compact `owner_campaign_snapshot/v1` identity and
+`focus_evidence_sha256` binding. It does not dispatch candidates, read or
+write legacy permits/STOP state, or enter the candidate loop. Workers consume
+that returned frontier identity before writing their distinct descriptors to
+the inbox.
+
 ### Sol lane protocol
 
 The Sol parent owns orchestration, not candidate selection by management. At
