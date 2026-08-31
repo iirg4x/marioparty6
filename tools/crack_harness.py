@@ -53,7 +53,11 @@ TOOLCHAIN_MANIFEST_KEY = "b6764a1e5883ea1a096bfe4f8b888b93f1740f0f4046eb6149e0fe
 MAX_RETAINED_OWNER_BYTES = 16 * 1024 * 1024
 MAX_RETAINED_GLOBAL_BYTES = 64 * 1024 * 1024
 MAX_COMPACT_TERMINAL_BYTES = 1024 * 1024
-MAX_PERMIT_ATTEMPTS_PER_FUNCTION = 32
+# Permit hashes are compact replay guards.  Keep a large storage bound, but do
+# not use the old 32-per-function ceiling as a decompilation lifetime limit:
+# large functions legitimately advance through many distinct retained
+# frontiers.
+MAX_PERMIT_ATTEMPTS_PER_FUNCTION = 4096
 MAX_CONSUMED_CELLS = 4096
 RETRY_USED_SCHEMA = "crack_harness_retry_used/v1"
 LUNA5_ROLES = {
@@ -6588,7 +6592,12 @@ def _consume_legacy_retry(
 
 
 def _function_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
-    if _retry_used_record(run_dir, approval) is not None:
+    retry_used = _retry_used_record(run_dir, approval)
+    if (
+        retry_used is not None
+        and retry_used.get("candidate_sha256")
+        == approval["candidate"]["sha256"]
+    ):
         return True
     _, tombstone = _read_function_tombstone(run_dir, approval)
     if tombstone is not None:
@@ -6598,9 +6607,16 @@ def _function_consumed(run_dir: Path, approval: Mapping[str, Any]) -> bool:
         ):
             return False
         if tombstone.get("schema") == "crack_harness_function_tombstone/v1":
-            return True
+            # v1 predates candidate/base binding and therefore cannot safely
+            # tombstone every future source cell for this function.  Preserve
+            # the original campaign guard; candidate-specific historical
+            # guards are enforced by the central consumed-cell ledger below.
+            if tombstone.get("first_campaign_id") == approval["campaign"]["id"]:
+                return True
         if (
-            tombstone.get("candidate_sha256") == approval["candidate"]["sha256"]
+            tombstone.get("schema") == "crack_harness_function_tombstone/v2"
+            and tombstone.get("candidate_sha256")
+            == approval["candidate"]["sha256"]
             and tombstone.get("base_sha256") == approval["base"]["sha256"]
         ):
             return True

@@ -3795,6 +3795,75 @@ elif 'admit' in sys.argv:
         with self.assertRaisesRegex(harness.CrackHarnessError, "already been attempted"):
             harness._consume_permit(run_dir, loaded)
 
+    def test_permit_ledger_does_not_end_function_after_32_distinct_permits(self) -> None:
+        approval, _ = self.write_inputs()
+        loaded = harness.load_approval(self.root, approval)
+        run_dir = harness._run_dir(self.state, loaded)
+        attempted = []
+        for index in range(33):
+            current = dict(loaded)
+            current["permit_sha256"] = hashlib.sha256(
+                f"distinct-permit-{index}".encode()
+            ).hexdigest()
+            harness._consume_permit(run_dir, current)
+            attempted.append(current["permit_sha256"])
+        self.assertEqual(harness._permit_attempts(run_dir, loaded), attempted)
+        replay = dict(loaded)
+        replay["permit_sha256"] = attempted[-1]
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "already been attempted"
+        ):
+            harness._consume_permit(run_dir, replay)
+
+    def test_v2_tombstone_blocks_same_cell_but_allows_distinct_candidate(self) -> None:
+        approval_a, _ = self.write_inputs(campaign_id="candidate-a")
+        loaded_a = harness.load_approval(self.root, approval_a)
+        run_dir = harness._run_dir(self.state, loaded_a)
+        harness._consume_function(run_dir, loaded_a)
+        self.assertTrue(harness._function_consumed(run_dir, loaded_a))
+
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-candidate-b.json"
+        self.luna_audit = self.root / "evidence/luna5-candidate-b.json"
+        self._write_luna5_audit()
+        approval_b, _ = self.write_inputs(campaign_id="candidate-b")
+        loaded_b = harness.load_approval(self.root, approval_b)
+        self.assertFalse(harness._function_consumed(run_dir, loaded_b))
+        ready = harness._dry_run_for_test(
+            self.root, approval_b, state_root=self.state
+        )
+        self.assertEqual(ready["status"], "ready", ready)
+
+    def test_legacy_v1_tombstone_does_not_end_distinct_future_candidate(self) -> None:
+        approval_a, _ = self.write_inputs(campaign_id="legacy-a")
+        loaded_a = harness.load_approval(self.root, approval_a)
+        run_dir = harness._run_dir(self.state, loaded_a)
+        run_dir.parent.mkdir(parents=True, exist_ok=True)
+        (run_dir.parent / "latest-function.json").write_text(
+            json.dumps({
+                "schema": "crack_harness_function_tombstone/v1",
+                "function_key": harness._function_key(loaded_a),
+                "owner": loaded_a["owner"],
+                "function": loaded_a["function"],
+                "first_campaign_id": "legacy-a",
+                "consumed": True,
+            }),
+            encoding="utf-8",
+        )
+        self.assertTrue(harness._function_consumed(run_dir, loaded_a))
+
+        self.candidate.write_text(
+            "int Owner(void) {\n    return 3;\n}\n", encoding="utf-8"
+        )
+        self.evidence = self.root / "evidence/selection-legacy-b.json"
+        self.luna_audit = self.root / "evidence/luna5-legacy-b.json"
+        self._write_luna5_audit()
+        approval_b, _ = self.write_inputs(campaign_id="legacy-b")
+        loaded_b = harness.load_approval(self.root, approval_b)
+        self.assertFalse(harness._function_consumed(run_dir, loaded_b))
+
     def test_baseline_infrastructure_failure_does_not_consume_function(self) -> None:
         approval, permit = self.write_inputs()
         loaded = harness.load_approval(self.root, approval)
