@@ -1065,7 +1065,7 @@ static int ev_CapMasuNumGet(int playerNo)
 {
     int masuNum = mbPlayerWorkGet(playerNo)->_unk08;
 
-    return masuNum + mbev_CapBiriQShockDelayGet(playerNo);
+    return (int)((char *)mbev_CapBiriQShockDelayGet(playerNo) + masuNum);
 }
 
 void mbev_CapTumujikun(void)
@@ -1454,6 +1454,7 @@ void mbev_CapDossun(void)
     HuVecF ringScale;
     HuVecF ringRot;
     GXColor colorTemp;
+    GXColor colorArg;
     int frame;
     int model;
     int masuNumCur;
@@ -1590,8 +1591,13 @@ void mbev_CapDossun(void)
         colorTemp.g = 255;
         colorTemp.b = 127;
         colorTemp.a = 255;
-        ((int (*)())mbev_CapEffRingAdd)(work->ringObj,
-            ringPos, ringRot, ringScale, 1, 12, 2, colorTemp);
+        colorArg = colorTemp;
+        {
+            GXColor *colorP = &colorArg;
+
+            ((int (*)())mbev_CapEffRingAdd)(work->ringObj,
+                ringPos, ringRot, ringScale, 1, 12, 2, colorP);
+        }
         radius = 100.0f * (3.0f + (2.0f * MBCapsuleEffRandF()));
         angle = 360.0f * MBCapsuleEffRandF();
         rotX = 180.0f
