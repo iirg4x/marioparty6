@@ -187,7 +187,7 @@ The storage contract is:
 
 | Resource | Bound |
 | --- | ---: |
-| Scratch (soft / hard) | 128 MiB / 256 MiB |
+| Reusable lane scratch (soft / hard) | 384 MiB / 512 MiB |
 | One cell temporary output | 64 MiB |
 | One focus-evidence artifact | 256 KiB |
 | Transient measurement envelope | 16 MiB |
@@ -223,8 +223,10 @@ v2 contract must pass: manager-offline exact replays of `SetupMgType`,
 180-second sequential bounds; concurrent replay plus duplicate/stale-candidate
 isolation and 1.5x slowdown bound; a manager-offline live pilot with a retained
 gain and a new exact report; candidate/proof latency bounds; zero manager
-intervention; kill/restart frontier recovery; and the 512 MiB lane, 16 MiB
-owner, and 32 MiB post-cleanup storage bounds. Any false exact, sibling loss,
+intervention; kill/restart frontier recovery; and the 512 MiB reusable-lane,
+16 MiB retained-owner, and 64 MiB retained-global storage bounds. Raw cell
+outputs must be removed after every measurement; the reusable compiler checkout
+is deliberately retained and remains subject to the lane bound. Any false exact, sibling loss,
 source collision, intervention, or missed output/time bound is a release
 failure.
 
