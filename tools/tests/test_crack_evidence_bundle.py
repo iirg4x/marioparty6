@@ -231,6 +231,30 @@ class RealEvidenceFixtureTests(unittest.TestCase):
                 bundle._ensure_configured(self.root, toolchain, bundle.DEFAULT_NINJA)
         self.assertEqual(list(tracked_orig.iterdir()), [tracked_orig / ".gitkeep"])
 
+    def test_retail_cleanup_retries_disappearing_inner_file(self) -> None:
+        retail_copy = self.root / "orig" / "GP6E01"
+        dll = retail_copy / "files" / "dll"
+        dll.mkdir(parents=True)
+        (retail_copy / ".gitkeep").write_bytes(b"")
+        disappearing = dll / "m602Dll.rel"
+        disappearing.write_bytes(b"retail")
+        (dll / "other.rel").write_bytes(b"retail")
+
+        real_rmtree = shutil.rmtree
+        first = True
+
+        def disappear_during_walk(path: Path) -> None:
+            nonlocal first
+            if first:
+                first = False
+                disappearing.unlink()
+                raise FileNotFoundError(2, "simulated cleanup race", disappearing)
+            real_rmtree(path)
+
+        with patch.object(bundle.shutil, "rmtree", side_effect=disappear_during_walk):
+            bundle._remove_staged_retail(retail_copy)
+        self.assertEqual(list(retail_copy.iterdir()), [retail_copy / ".gitkeep"])
+
     def test_staged_retail_survives_real_configure_and_selected_ninja_build(self) -> None:
         tracked_orig = self.root / "orig" / "GP6E01"
         tracked_orig.mkdir(parents=True)

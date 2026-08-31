@@ -375,16 +375,42 @@ def _remove_staged_retail(retail_copy: Path) -> None:
         return
     _assert_no_indirection(retail_copy)
     for child in list(retail_copy.iterdir()) if retail_copy.exists() else []:
-        _assert_no_indirection(child)
+        try:
+            _assert_no_indirection(child)
+        except EvidenceError:
+            # Another quiescing cleanup may already have removed this staged
+            # child.  Missing retail bytes are the desired terminal state.
+            if not child.exists():
+                continue
+            raise
         if child.name == ".gitkeep" and child.is_file() and not child.is_symlink():
             continue
         is_junction = getattr(child, "is_junction", lambda: False)()
         if child.is_symlink() or is_junction:
             child.unlink(missing_ok=True)
         elif child.is_dir():
-            shutil.rmtree(child)
+            # Windows ``shutil.rmtree`` can surface FileNotFoundError when a
+            # concurrently quiescing cleanup removes an inner REL after the
+            # directory walk has begun.  Retry the same validated root once;
+            # never treat a still-present directory as successfully removed.
+            try:
+                shutil.rmtree(child)
+            except FileNotFoundError:
+                if child.exists():
+                    _assert_no_indirection(child)
+                    shutil.rmtree(child)
         else:
             child.unlink(missing_ok=True)
+    remaining = [
+        child for child in retail_copy.iterdir()
+        if not (
+            child.name == ".gitkeep"
+            and child.is_file()
+            and not child.is_symlink()
+        )
+    ]
+    if remaining:
+        raise EvidenceError("staged retail cleanup left unexpected paths")
 
 
 def _ensure_configured(root: Path, toolchain: Mapping[str, Any], ninja: Path) -> Path:
