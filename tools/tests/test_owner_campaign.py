@@ -314,7 +314,34 @@ class OwnerCampaignTests(unittest.TestCase):
         extra.write_text("new head\n", encoding="utf-8")
         subprocess.run(["git", "add", "extra.txt"], cwd=self.root, check=True)
         subprocess.run(["git", "commit", "-qm", "new head"], cwd=self.root, check=True)
-        with self.assertRaisesRegex(campaign.CampaignError, "repository HEAD"):
+        loaded = self.load()
+        self.assertEqual(loaded["base_commit"], self.commit)
+
+    def test_neutral_descendant_head_is_accepted(self) -> None:
+        extra = self.root / "workflow-only.txt"
+        extra.write_text("workflow-only change\n", encoding="utf-8")
+        subprocess.run(["git", "add", "workflow-only.txt"], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "workflow-only descendant"], cwd=self.root, check=True)
+
+        loaded = self.load()
+        self.assertEqual(loaded["base_commit"], self.commit)
+        self.assertEqual(loaded["_base_source_sha256"], digest_bytes(self.source.read_bytes()))
+
+    def test_source_changing_descendant_head_is_rejected(self) -> None:
+        self.source.write_text("int focus(void) { return 1; } /* SOURCE DESCENDANT */\n", encoding="utf-8")
+        subprocess.run(["git", "add", "src/test.c"], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "source descendant"], cwd=self.root, check=True)
+
+        with self.assertRaisesRegex(campaign.CampaignError, "clean campaign source"):
+            self.load()
+
+    def test_non_descendant_head_is_rejected(self) -> None:
+        subprocess.run(["git", "checkout", "--orphan", "unrelated"], cwd=self.root, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "add", "src/test.c", "hook.py"], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "unrelated root"], cwd=self.root, check=True)
+
+        with self.assertRaisesRegex(campaign.CampaignError, "not an ancestor"):
             self.load()
 
     def test_snapshot_is_cached_by_live_frontier(self) -> None:

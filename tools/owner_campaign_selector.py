@@ -804,10 +804,6 @@ def _validate_proposal(
         }
         if counts != expected_counts:
             raise SelectionError("predicted remaining counts do not match predicted rows")
-    if status == "RANKED_SOURCE_CLASS" and all(item > 0 for item in counts.values()):
-        # A ranked exact-style proposal must predict progress in at least one
-        # channel.  It is still allowed to be an improved, not exact, cell.
-        raise SelectionError("ranked selection predicts no channel improvement")
     if value.get("expected_terminal") == "exact" and any(counts.values()):
         raise SelectionError("exact selection does not predict zero remaining rows")
     protected = _protected_digest(value)

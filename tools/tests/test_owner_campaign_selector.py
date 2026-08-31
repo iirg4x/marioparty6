@@ -264,6 +264,57 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertEqual(selection["selected"]["source_class"], "historical_exact_source_shape")
         self.assertEqual(selection["selected"]["predicted_remaining_counts"], {"strict": 0, "data": 0, "physical": 0})
 
+    def test_ranked_partial_improvement_with_remaining_rows_is_accepted(self) -> None:
+        residual = [
+            "strict:focus:row:1",
+            "strict:focus:row:2",
+            "data:focus:row:1",
+            "data:focus:row:2",
+            "physical:focus:row:1",
+            "physical:focus:row:2",
+        ]
+        predicted = [
+            "strict:focus:row:1",
+            "data:focus:row:1",
+            "physical:focus:row:1",
+        ]
+        descriptor, _source, _sidecar = self._proposal(
+            "partial-frontier",
+            residual=residual,
+            predicted=predicted,
+            predicted_counts={"strict": 1, "data": 1, "physical": 1},
+        )
+
+        selection = selector.select_winning_candidate(self.root, self.campaign, [descriptor])
+
+        self.assertEqual(selection["status"], selector.SELECTED)
+        self.assertEqual(selection["selected"]["predicted_rows"], predicted)
+        self.assertEqual(
+            selection["selected"]["predicted_remaining_counts"],
+            {"strict": 1, "data": 1, "physical": 1},
+        )
+
+    def test_ranked_zero_improvement_is_rejected_by_count_binding(self) -> None:
+        residual = [
+            "strict:focus:row:1",
+            "strict:focus:row:2",
+            "data:focus:row:1",
+            "data:focus:row:2",
+            "physical:focus:row:1",
+            "physical:focus:row:2",
+        ]
+        descriptor, _source, _sidecar = self._proposal(
+            "zero-improvement",
+            residual=residual,
+            predicted=["strict:focus:row:1"],
+            predicted_counts={"strict": 2, "data": 2, "physical": 2},
+        )
+
+        selection = selector.select_winning_candidate(self.root, self.campaign, [descriptor])
+
+        self.assertEqual(selection["status"], selector.UNKNOWN)
+        self.assertIn("predicted remaining counts", selection["reason"])
+
     def test_prior_no_gain_same_frontier_class_and_rows_is_suppressed(self) -> None:
         descriptor, source, sidecar = self._proposal("already-measured")
         self._write_outcome(status="no_gain")

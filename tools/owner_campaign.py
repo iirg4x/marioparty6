@@ -368,8 +368,25 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
         [str(git_executable), "rev-parse", "HEAD"], cwd=root, capture_output=True,
         text=True, check=False,
     )
-    if head.returncode or head.stdout.strip() != raw["base_commit"]:
-        raise CampaignError("campaign base_commit is not the repository HEAD")
+    if head.returncode or not head.stdout.strip():
+        raise CampaignError(
+            "campaign repository HEAD cannot be resolved: "
+            + (head.stderr.strip() or head.stdout.strip() or str(head.returncode))[:500]
+        )
+    head_commit = head.stdout.strip()
+    ancestry = subprocess.run(
+        [str(git_executable), "merge-base", "--is-ancestor", raw["base_commit"], head_commit],
+        cwd=root, capture_output=True, text=True, check=False,
+    )
+    if ancestry.returncode:
+        if ancestry.returncode == 1:
+            raise CampaignError(
+                "campaign base_commit is not an ancestor of the repository HEAD"
+            )
+        raise CampaignError(
+            "campaign base_commit ancestry cannot be verified: "
+            + (ancestry.stderr.strip() or ancestry.stdout.strip() or str(ancestry.returncode))[:500]
+        )
     blob = subprocess.run(
         [str(git_executable), "show", f"{raw['base_commit']}:{raw['source_relpath']}"],
         cwd=root, capture_output=True, check=False,
