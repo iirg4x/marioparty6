@@ -180,8 +180,8 @@ extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
     HuVecF *out);
 extern OMOBJ *mbev_CapEffGlowCreate(void);
 extern void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot);
-extern void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
-    HuVecF *scale);
+extern void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF pos, HuVecF rot,
+    HuVecF scale);
 extern void mbWipeDissolveFadeOutTime(int time);
 extern void mbWipeDissolveFadeIn(void);
 extern u32 mbCapEffNum;
@@ -1709,20 +1709,17 @@ void mbev_CapDossunTrap(void *workP)
 void mbev_CapBomhei(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
+    HuVecF playerPos;
     HuVecF masuPos;
     HuVecF effectPos;
     HuVecF finalPos;
-    HuVecF playerPos;
     HuVecF bodyPos;
-    HuVecF ringPos;
     HuVecF ringRot;
     HuVecF ringScale;
-    HuVecF glowPos;
-    HuVecF glowRot;
+    HuVecF ringPos;
     int body;
     int attachment;
     int effect;
-    char *itemHook;
     int playerNo;
     int frame;
     float time;
@@ -1755,7 +1752,7 @@ void mbev_CapBomhei(void)
 
     mbMasuPosGet(work->masuIdNext, &masuPos);
     effectPos = masuPos;
-    finalPos = masuPos;
+    finalPos = effectPos;
     masuPos.y += 150.0f;
     effectPos.y += 500.0f;
     finalPos.y += 50.0f;
@@ -1774,8 +1771,8 @@ void mbev_CapBomhei(void)
             HuPrcVSleep();
         }
         mbObjPosSet(body, 0.0f, 0.0f, 0.0f);
-        itemHook = CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, 0);
-        mbObjHookSet(mbPlayerObjIDGet(playerNo), itemHook, body);
+        mbObjHookSet(mbPlayerObjIDGet(playerNo),
+            CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, 0), body);
         CharFXPlay(GwPlayer[playerNo].charNo, CHARVOICEID(8));
         mbAudFXPlay(MSM_SE_GUIDE_05);
         bomheiMode[playerNo] = 2;
@@ -1812,8 +1809,9 @@ void mbev_CapBomhei(void)
             HuPrcVSleep();
         }
         mbObjPosGet(body, &bodyPos);
-        ringPos = bodyPos;
-        ringPos.y += 10.0f;
+        ringPos.x = bodyPos.x;
+        ringPos.y = bodyPos.y + 10.0f;
+        ringPos.z = bodyPos.z;
         ringRot.x = 90.0f;
         ringRot.y = 0.0f;
         ringRot.z = 0.0f;
@@ -1821,27 +1819,25 @@ void mbev_CapBomhei(void)
         ringScale.y = 3.0f;
         ringScale.z = 100.0f
             * (1.0f + (0.25f * MBCapsuleEffRandF()));
-        mbev_CapEffRingHitAdd(work->ringObj, &ringPos, &ringRot,
-            &ringScale);
-        glowPos = bodyPos;
-        glowPos.y += 20.0f;
-        glowRot.x = 0.0f;
-        glowRot.y = 0.0f;
-        glowRot.z = 0.0f;
-        mbev_CapEffGlowCoinAdd(work->glowObj, &glowPos, &glowRot);
-        mbev_CapEffGlowCoinAdd(work->glowObj, &glowPos, &glowRot);
+        mbev_CapEffRingHitAdd(work->ringObj, ringPos, ringRot, ringScale);
+        ringPos.x = bodyPos.x;
+        ringPos.y = bodyPos.y + 20.0f;
+        ringPos.z = bodyPos.z;
+        ringRot.x = ringRot.y = ringRot.z = 0.0f;
+        mbev_CapEffGlowCoinAdd(work->glowObj, &ringPos, &ringRot);
+        mbev_CapEffGlowCoinAdd(work->glowObj, &ringPos, &ringRot);
         for (frame = 1; frame <= 22; frame++) {
             time = (float)frame / 22.0f;
-            effectPos.x = bodyPos.x + (time * (100.0
+            ringPos.x = bodyPos.x + (time * (100.0
                 * sin((M_PI * bomheiRotY[playerNo]) / 180.0f)));
-            effectPos.y = bodyPos.y
+            ringPos.y = bodyPos.y
                 + (1.5 * (100.0
                     * sin((M_PI * (90.0f * time)) / 180.0f)))
                 + (100.0
                     * sin((M_PI * (180.0f * time)) / 180.0f));
-            effectPos.z = bodyPos.z + (time * (100.0
+            ringPos.z = bodyPos.z + (time * (100.0
                 * cos((M_PI * bomheiRotY[playerNo]) / 180.0f)));
-            mbObjPosSetV(body, &effectPos);
+            mbObjPosSetV(body, &ringPos);
             mbObjRotSet(body, 0.0f, 360.0f * time, 0.0f);
             HuPrcVSleep();
         }
@@ -1858,30 +1854,29 @@ void mbev_CapBomhei(void)
         ringScale.y = 3.0f;
         ringScale.z = 100.0f
             * (1.0f + (0.25f * MBCapsuleEffRandF()));
-        mbev_CapEffRingHitAdd(work->ringObj, &ringPos, &ringRot,
-            &ringScale);
-        glowPos.x = bodyPos.x + (0.5 * (100.0
+        mbev_CapEffRingHitAdd(work->ringObj, ringPos, ringRot, ringScale);
+        ringPos.x = bodyPos.x + (0.5 * (100.0
             * sin((M_PI * (180.0f + bomheiRotY[playerNo])) / 180.0f)));
-        glowPos.y = bodyPos.y + 100.0f;
-        glowPos.z = bodyPos.z + (0.5 * (100.0
+        ringPos.y = bodyPos.y + 100.0f;
+        ringPos.z = bodyPos.z + (0.5 * (100.0
             * cos((M_PI * (180.0f + bomheiRotY[playerNo])) / 180.0f)));
-        glowRot.x = 90.0f;
-        glowRot.y = 0.0f;
-        glowRot.z = bomheiRotY[playerNo];
-        mbev_CapEffGlowCoinAdd(work->glowObj, &glowPos, &glowRot);
-        mbev_CapEffGlowCoinAdd(work->glowObj, &glowPos, &glowRot);
+        ringRot.x = 90.0f;
+        ringRot.y = 0.0f;
+        ringRot.z = bomheiRotY[playerNo];
+        mbev_CapEffGlowCoinAdd(work->glowObj, &ringPos, &ringRot);
+        mbev_CapEffGlowCoinAdd(work->glowObj, &ringPos, &ringRot);
         for (frame = 1; frame <= 20; frame++) {
             time = (float)frame / 20.0f;
-            effectPos.x = bodyPos.x + (time * (3.0 * (100.0
+            ringPos.x = bodyPos.x + (time * (3.0 * (100.0
                 * sin((M_PI * bomheiRotY[playerNo]) / 180.0f))));
-            effectPos.y = bodyPos.y
+            ringPos.y = bodyPos.y
                 + (100.0
                     * sin((M_PI * (90.0f * time)) / 180.0f))
                 + (1.5 * (100.0
                     * sin((M_PI * (180.0f * time)) / 180.0f)));
-            effectPos.z = bodyPos.z + (time * (3.0 * (100.0
+            ringPos.z = bodyPos.z + (time * (3.0 * (100.0
                 * cos((M_PI * bomheiRotY[playerNo]) / 180.0f))));
-            mbObjPosSetV(body, &effectPos);
+            mbObjPosSetV(body, &ringPos);
             mbObjRotSet(body, 0.0f, 720.0f * time, 0.0f);
             HuPrcVSleep();
         }
