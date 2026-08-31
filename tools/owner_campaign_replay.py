@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime as _datetime
+import difflib
 import hashlib
 import json
 import os
@@ -37,6 +38,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Mapping, MutableMapping, Sequence
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 
 SCHEMA = "owner_campaign_replay/v1"
 AGGREGATE_SCHEMA = "owner_campaign_replay_aggregate/v1"
@@ -44,6 +48,11 @@ HANDLE_SCHEMA = "owner_campaign_replay_handle/v1"
 REPORT_SCHEMA = "CRACK_REPORT/v1"
 SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 COMMIT_RE = re.compile(r"[0-9a-f]{40}\Z")
+_REPARSE_POINT_ATTRIBUTE = int(
+    getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+)
+_GENERATOR_SUPPORT_MAX_FILES = 256
+_GENERATOR_SUPPORT_MAX_BYTES = 16 << 20
 
 
 class ReplayError(RuntimeError):
@@ -130,16 +139,49 @@ def _inside(root: Path, path: Path) -> bool:
         return False
 
 
-def _real_file(path: Path, label: str) -> Path:
+def _is_reparse(info: os.stat_result) -> bool:
+    return bool(
+        getattr(info, "st_file_attributes", 0) & _REPARSE_POINT_ATTRIBUTE
+    )
+
+
+def _real_path(path: Path, label: str, *, directory: bool = False) -> Path:
+    """Return a path whose complete component chain is non-indirect.
+
+    ``Path.is_symlink`` is insufficient on Windows because junctions and other
+    reparse points can redirect a copy outside the replay root.  Inspect every
+    component with ``lstat`` so support inputs are validated without resolving
+    them into an uncontrolled location.
+    """
+
     path = Path(os.path.abspath(path))
-    if not path.is_file() or path.is_symlink():
-        raise ReplayError(f"{label} is not a regular file: {path}")
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        kind = "directory" if directory else "file"
+        raise ReplayError(f"{label} is not a regular {kind}: {path}") from exc
+    expected = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+    if not expected or stat.S_ISLNK(info.st_mode) or _is_reparse(info):
+        kind = "directory" if directory else "file"
+        raise ReplayError(f"{label} is not a regular {kind}: {path}")
     current = path.anchor and Path(path.anchor) or Path(path.parts[0])
     for part in path.relative_to(current).parts:
         current /= part
-        if current.is_symlink():
-            raise ReplayError(f"{label} uses symlink indirection: {current}")
+        try:
+            component = current.lstat()
+        except OSError as exc:
+            raise ReplayError(f"{label} is unreadable: {current}") from exc
+        if stat.S_ISLNK(component.st_mode) or _is_reparse(component):
+            raise ReplayError(f"{label} uses indirect path component: {current}")
     return path
+
+
+def _real_directory(path: Path, label: str) -> Path:
+    return _real_path(path, label, directory=True)
+
+
+def _real_file(path: Path, label: str) -> Path:
+    return _real_path(path, label)
 
 
 def _repository(raw: str | os.PathLike[str]) -> Path:
@@ -171,6 +213,134 @@ def _copy_bytes(data: bytes, destination: Path) -> None:
 def _copy_file(source: Path, destination: Path) -> None:
     _real_file(source, "source input")
     _copy_bytes(source.read_bytes(), destination)
+
+
+def _ensure_directory(path: Path, label: str) -> Path:
+    """Create a directory without traversing a symlink/reparse component."""
+
+    path = Path(os.path.abspath(path))
+    missing: list[Path] = []
+    current = path
+    while True:
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            missing.append(current)
+            parent = current.parent
+            if parent == current:
+                raise ReplayError(f"{label} has no usable parent: {path}")
+            current = parent
+            continue
+        except OSError as exc:
+            raise ReplayError(f"{label} is unreadable: {current}") from exc
+        if stat.S_ISLNK(info.st_mode) or _is_reparse(info):
+            raise ReplayError(f"{label} uses indirect path component: {current}")
+        if not stat.S_ISDIR(info.st_mode):
+            raise ReplayError(f"{label} is not a directory: {current}")
+        break
+    _real_directory(current, label)
+    for child in reversed(missing):
+        try:
+            child.mkdir()
+        except FileExistsError:
+            pass
+        _real_directory(child, label)
+    return path
+
+
+def _copy_bound_file(
+    source: Path,
+    destination: Path,
+    *,
+    label: str,
+    relative: str,
+) -> dict[str, Any]:
+    """Copy one support file and bind both sides to one immutable digest."""
+
+    source = _real_file(source, label)
+    try:
+        data = source.read_bytes()
+    except OSError as exc:
+        raise ReplayError(f"{label} is unreadable: {source}: {exc}") from exc
+    _ensure_directory(destination.parent, f"{label} destination parent")
+    _copy_bytes(data, destination)
+    destination = _real_file(destination, f"{label} destination")
+    expected = _sha_bytes(data)
+    if _sha_file(destination) != expected:
+        raise ReplayError(f"{label} destination hash drift")
+    # Read the source again after the copy.  This turns a concurrent source
+    # edit into a deterministic replay failure rather than binding a mixed
+    # support tree to the generated candidate.
+    if _sha_file(source) != expected:
+        raise ReplayError(f"{label} changed during copy")
+    return {"path": relative, "size": len(data), "sha256": expected}
+
+
+def _copy_support_tree(
+    source: Path,
+    destination: Path,
+    *,
+    repository: Path,
+    label: str,
+) -> list[dict[str, Any]]:
+    """Copy a bounded generator support directory without following indirection."""
+
+    source = _real_directory(source, label)
+    destination = Path(os.path.abspath(destination))
+    repository = Path(os.path.abspath(repository))
+    if not _inside(repository, destination):
+        raise ReplayError(f"{label} destination escapes replay clone")
+    _ensure_directory(destination, f"{label} destination")
+    pending: list[tuple[Path, Path]] = [(source, destination)]
+    bindings: list[dict[str, Any]] = []
+    total_bytes = 0
+    while pending:
+        current_source, current_destination = pending.pop()
+        _real_directory(current_source, label)
+        _ensure_directory(current_destination, f"{label} destination")
+        try:
+            with os.scandir(current_source) as scan:
+                entries = sorted(scan, key=lambda item: item.name)
+        except OSError as exc:
+            raise ReplayError(f"{label} is unreadable: {current_source}: {exc}") from exc
+        for entry in entries:
+            source_entry = Path(entry.path)
+            try:
+                info = source_entry.lstat()
+            except OSError as exc:
+                raise ReplayError(f"{label} entry is unreadable: {source_entry}") from exc
+            if stat.S_ISLNK(info.st_mode) or _is_reparse(info):
+                raise ReplayError(f"{label} uses indirect path component: {source_entry}")
+            relative_path = source_entry.relative_to(source).as_posix()
+            destination_entry = destination / Path(*Path(relative_path).parts)
+            if not _inside(destination, destination_entry):
+                raise ReplayError(f"{label} destination escapes replay clone")
+            if stat.S_ISDIR(info.st_mode):
+                pending.append((source_entry, destination_entry))
+                continue
+            if not stat.S_ISREG(info.st_mode):
+                raise ReplayError(f"{label} contains unsupported entry: {source_entry}")
+            try:
+                entry_size = info.st_size
+            except AttributeError:
+                entry_size = source_entry.stat().st_size
+            if type(entry_size) is not int or entry_size < 0:
+                raise ReplayError(f"{label} entry size is invalid: {source_entry}")
+            total_bytes += entry_size
+            if len(bindings) >= _GENERATOR_SUPPORT_MAX_FILES:
+                raise ReplayError(f"{label} exceeds file limit")
+            if total_bytes > _GENERATOR_SUPPORT_MAX_BYTES:
+                raise ReplayError(f"{label} exceeds byte limit")
+            bindings.append(
+                _copy_bound_file(
+                    source_entry,
+                    destination_entry,
+                    label=f"{label} file",
+                    relative=relative_path,
+                )
+            )
+    bindings.sort(key=lambda item: str(item["path"]))
+    return bindings
 
 
 def _remove_tree(path: Path) -> None:
@@ -789,23 +959,56 @@ def _run_source_generator(
     )
 
     support_patterns = (
-        r"(?m)^RESIDUAL\s*=\s*ROOT\s*/\s*(['\"])(.*?)\1\s*$",
-        r"(?m)^TEMPLATE_DIR\s*=\s*ROOT\s*/\s*(['\"])(.*?)\1\s*$",
+        ("file", r"(?m)^RESIDUAL\s*=\s*ROOT\s*/\s*(['\"])(.*?)\1\s*$"),
+        ("directory", r"(?m)^TEMPLATE_DIR\s*=\s*ROOT\s*/\s*(['\"])(.*?)\1\s*$"),
     )
-    for pattern in support_patterns:
+    support_bindings: list[dict[str, Any]] = []
+    for kind, pattern in support_patterns:
         match = re.search(pattern, script)
         if match is None:
             continue
         relative = Path(match.group(2))
-        source = _real_file(historical_root / relative, "generator support input")
-        destination = repository / relative
-        _copy_file(source, destination)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ReplayError("generator support input path is unsafe")
+        source = historical_root / relative
+        destination = Path(os.path.abspath(repository / relative))
+        if not _inside(repository, destination):
+            raise ReplayError("generator support input escapes replay clone")
+        if kind == "file":
+            support_bindings.append(
+                _copy_bound_file(
+                    source,
+                    destination,
+                    label="generator support input",
+                    relative=relative.as_posix(),
+                )
+            )
+        else:
+            tree_bindings = _copy_support_tree(
+                source,
+                destination,
+                repository=repository,
+                label="generator template directory",
+            )
+            for binding in tree_bindings:
+                binding["path"] = (
+                    relative / Path(str(binding["path"]))
+                ).as_posix()
+            support_bindings.extend(tree_bindings)
 
     raw_script = generator_path.parent / ".replay-generator.py"
     # Keep the rewritten script outside the clone's tracked tree.  The clone
     # is the only cwd and all generated request files remain disposable.
     raw_script = repository.parent / f".{repository.name}.replay-generator.py"
     _copy_bytes(script.encode("utf-8"), raw_script)
+    generated = Path(os.path.abspath(repository / generated_relpath))
+    if not _inside(repository, generated):
+        raise ReplayError("generated source escapes replay clone")
+    # Historical generators commonly write a sealed base/candidate pair into
+    # the request directory without creating that directory themselves.  It is
+    # a replay-owned, already-contained destination, so establish the exact
+    # parent before execution rather than failing before any compiler proof.
+    _ensure_directory(generated.parent, "generated source parent")
     try:
         environment = dict(os.environ)
         # Historical generators may invoke ``git`` themselves.  Keep those
@@ -837,9 +1040,17 @@ def _run_source_generator(
         )
     finally:
         raw_script.unlink(missing_ok=True)
-    generated = (repository / generated_relpath).absolute()
-    if not _inside(repository, generated):
-        raise ReplayError("generated source escapes replay clone")
+    # Bind every immutable support input again after generation.  A generator
+    # that mutates its template/residual inputs, or a source race during the
+    # copy, must fail closed rather than yielding a candidate assembled from
+    # mixed identities.
+    for binding in support_bindings:
+        relative = Path(str(binding["path"]))
+        source = _real_file(historical_root / relative, "generator support input")
+        destination = _real_file(repository / relative, "generator support destination")
+        expected = _valid_sha(binding.get("sha256"), "generator support hash")
+        if _sha_file(source) != expected or _sha_file(destination) != expected:
+            raise ReplayError(f"generator support input drift: {relative.as_posix()}")
     return generated
 
 
@@ -860,21 +1071,44 @@ def _materialize_sources(
     if not isinstance(base_descriptor, Mapping) or not isinstance(candidate_descriptor, Mapping):
         raise ReplayError("fixture source descriptors are incomplete")
 
-    candidate = _resolve_source(source_repository, candidate_descriptor, "candidate source")
-    if base_descriptor.get("kind") == "reconstruct":
-        donor_path = base_descriptor.get("donor_path")
-        donor_function = base_descriptor.get("donor_function")
-        if not isinstance(donor_path, str) or not isinstance(donor_function, str):
-            raise ReplayError("reconstructed base donor is incomplete")
-        donor = _real_file(Path(donor_path), "donor source").read_bytes()
-        base = reconstruct_function(
-            candidate,
-            donor,
-            donor_function,
-            expected_sha256=str(base_descriptor.get("sha256")),
+    if candidate_descriptor.get("kind") == "generator":
+        # A retained historical cell can be the base for the next exact crack.
+        # Its generator expects ROOT/source_relpath to contain that retained
+        # frontier, not whatever older file happens to live at release HEAD.
+        # Materialize the immutable base into the disposable clone before the
+        # generator runs.  Reconstructed bases depend on candidate bytes and
+        # therefore cannot form this pre-generation context.
+        if base_descriptor.get("kind") == "reconstruct":
+            raise ReplayError("generated candidate cannot use a reconstructed base")
+        base = _resolve_source(source_repository, base_descriptor, "base source")
+        source_relpath = spec.get("source_relpath")
+        if (
+            not isinstance(source_relpath, str)
+            or not source_relpath
+            or Path(source_relpath).is_absolute()
+            or ".." in Path(source_relpath).parts
+        ):
+            raise ReplayError("generator base source_relpath is unsafe")
+        _copy_bytes(base, source_repository / source_relpath)
+        candidate = _resolve_source(
+            source_repository, candidate_descriptor, "candidate source"
         )
     else:
-        base = _resolve_source(source_repository, base_descriptor, "base source")
+        candidate = _resolve_source(source_repository, candidate_descriptor, "candidate source")
+        if base_descriptor.get("kind") == "reconstruct":
+            donor_path = base_descriptor.get("donor_path")
+            donor_function = base_descriptor.get("donor_function")
+            if not isinstance(donor_path, str) or not isinstance(donor_function, str):
+                raise ReplayError("reconstructed base donor is incomplete")
+            donor = _real_file(Path(donor_path), "donor source").read_bytes()
+            base = reconstruct_function(
+                candidate,
+                donor,
+                donor_function,
+                expected_sha256=str(base_descriptor.get("sha256")),
+            )
+        else:
+            base = _resolve_source(source_repository, base_descriptor, "base source")
     if _sha_bytes(base) != _valid_sha(base_descriptor.get("sha256"), "base source.sha256"):
         raise ReplayError("base source hash drift")
     return base, candidate
@@ -913,6 +1147,82 @@ def _source_function_span(
     }
 
 
+def _source_cell_span(
+    base_source: bytes, candidate_source: bytes, function: str
+) -> dict[str, Any]:
+    """Bind the smallest contiguous source cell containing function and edits.
+
+    Most replay cells edit only the named function, but a target-authenticated
+    translation-unit owner can move across the function boundary (for example,
+    a static data producer relocated from immediately before a callback to
+    immediately after it).  The production campaign validator accepts a
+    bounded source cell, not an unbounded file rewrite.  Derive that cell from
+    the named function span plus every non-equal ``SequenceMatcher`` opcode in
+    both line-coordinate systems.
+
+    Prefix and suffix equality are checked here as well as by the production
+    runtime.  This makes the replay handle a closed binding: every changed line
+    is inside the claimed envelope, while every line outside it is identical.
+    ``function_span`` remains the descriptor field name for schema
+    compatibility even though the bound region may include adjacent TU owners.
+    """
+
+    base_function = _source_function_span(base_source, function, "base source")
+    candidate_function = _source_function_span(
+        candidate_source, function, "candidate source"
+    )
+    try:
+        base_text = base_source.decode("utf-8")
+        candidate_text = candidate_source.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ReplayError("source cell is not UTF-8 natural C") from exc
+    base_lines = base_text.splitlines(keepends=True)
+    candidate_lines = candidate_text.splitlines(keepends=True)
+
+    # Half-open coordinates match SequenceMatcher and the campaign runtime.
+    base_start = int(base_function["start_line"]) - 1
+    base_end = int(base_function["end_line"])
+    candidate_start = int(candidate_function["start_line"]) - 1
+    candidate_end = int(candidate_function["end_line"])
+    opcodes = difflib.SequenceMatcher(a=base_lines, b=candidate_lines).get_opcodes()
+    for tag, a0, a1, b0, b1 in opcodes:
+        if tag == "equal":
+            continue
+        base_start = min(base_start, a0)
+        base_end = max(base_end, a1)
+        candidate_start = min(candidate_start, b0)
+        candidate_end = max(candidate_end, b1)
+
+    if (
+        base_lines[:base_start] != candidate_lines[:candidate_start]
+        or base_lines[base_end:] != candidate_lines[candidate_end:]
+    ):
+        raise ReplayError("source cell envelope does not isolate every candidate edit")
+    for tag, a0, a1, b0, b1 in opcodes:
+        if tag != "equal" and (
+            a0 < base_start
+            or a1 > base_end
+            or b0 < candidate_start
+            or b1 > candidate_end
+        ):
+            raise ReplayError("source cell edit escapes the derived envelope")
+
+    base_covered = "".join(base_lines[base_start:base_end]).encode("utf-8")
+    candidate_covered = "".join(
+        candidate_lines[candidate_start:candidate_end]
+    ).encode("utf-8")
+    if not base_covered or not candidate_covered:
+        raise ReplayError("source cell span is empty")
+    return {
+        "base_start_line": base_start + 1,
+        "base_end_line": base_end,
+        "candidate_start_line": candidate_start + 1,
+        "candidate_end_line": candidate_end,
+        "base_sha256": _sha_bytes(base_covered),
+        "candidate_sha256": _sha_bytes(candidate_covered),
+    }
+
+
 def _objdiff_paths(config: Path, unit: str) -> tuple[str, str]:
     value = _read_json(config, "objdiff config")
     units = value.get("units") if isinstance(value, Mapping) else None
@@ -942,7 +1252,16 @@ def _git_stage_commit(
     if index_path.exists():
         index_path.unlink()
     _run(_git_argv("read-tree", release_commit), cwd=repository, timeout=30, env=environment)
-    _run(_git_argv("add", "--all", "--", *paths), cwd=worktree, timeout=60, env=environment)
+    # Replay assets intentionally live under ignored build paths.  Force-add
+    # only the sealed explicit path list; never broaden this to ``git add -f
+    # --all`` without pathspecs, which could pull unrelated scratch files into
+    # the synthetic campaign commit.
+    _run(
+        _git_argv("add", "--force", "--all", "--", *paths),
+        cwd=worktree,
+        timeout=60,
+        env=environment,
+    )
     tree = _run(_git_argv("write-tree"), cwd=repository, timeout=30, env=environment).stdout.decode().strip()
     if not re.fullmatch(r"[0-9a-f]{40}", tree):
         raise ReplayError("temporary replay tree is invalid")
@@ -1037,8 +1356,8 @@ def _build_manifest(
         raise ReplayError("protected function census is invalid")
     limits = {
         "command_timeout_seconds": int(spec.get("command_timeout_seconds", 120)),
-        "scratch_soft_bytes": int(spec.get("scratch_soft_bytes", 128 << 20)),
-        "scratch_hard_bytes": int(spec.get("scratch_hard_bytes", 256 << 20)),
+        "scratch_soft_bytes": int(spec.get("scratch_soft_bytes", 384 << 20)),
+        "scratch_hard_bytes": int(spec.get("scratch_hard_bytes", 512 << 20)),
         "cell_temporary_bytes": int(spec.get("cell_temporary_bytes", 64 << 20)),
         "focus_evidence_bytes": int(spec.get("focus_evidence_bytes", 256 << 10)),
         "frontier_bytes": int(spec.get("frontier_bytes", 64 << 10)),
@@ -1362,24 +1681,11 @@ def load_replay_handle(
     # bound bytes before allowing a resumed runtime to execute; this catches
     # stale/replaced worktree inputs after a process restart.
     _verify_replay_inputs(prepared, phase="replay handle validation")
-    base_span = _source_function_span(
+    actual_span = _source_cell_span(
         Path(prepared["base_path"]).read_bytes(),
-        str(prepared["spec"]["function"]),
-        "handle base source",
-    )
-    candidate_span = _source_function_span(
         Path(prepared["candidate_path"]).read_bytes(),
         str(prepared["spec"]["function"]),
-        "handle candidate source",
     )
-    actual_span = {
-        "base_start_line": base_span["start_line"],
-        "base_end_line": base_span["end_line"],
-        "candidate_start_line": candidate_span["start_line"],
-        "candidate_end_line": candidate_span["end_line"],
-        "base_sha256": base_span["sha256"],
-        "candidate_sha256": candidate_span["sha256"],
-    }
     if actual_span != prepared["function_span"]:
         raise ReplayError("replay handle function span is stale")
     return prepared
@@ -1499,18 +1805,33 @@ def prepare_replay(
     if output_path.exists() and any(output_path.iterdir()):
         raise ReplayError(f"replay output must be empty: {output_path}")
     output_path.mkdir(parents=True, exist_ok=True)
-    raw_root = output_path / ".raw"
+    # Keep every disposable component deliberately short.  The repository
+    # contains deep MSL include paths and Windows worktree checkout still hits
+    # legacy path ceilings even when long-path support is enabled.
+    raw_root = output_path / ".r"
     raw_root.mkdir()
-    worktree = raw_root / "worktree"
-    index_path = raw_root / "replay.index"
+    worktree = raw_root / "w"
+    index_path = raw_root / "i"
     isolated_repository: Path | None = None
     worktree_registered = False
     try:
         # All replay-only Git state lives below this output directory.  The
         # authoritative checkout is read-only for the complete preparation/run.
-        clone_path = raw_root / "repository"
+        clone_path = raw_root / "g"
         isolated_repository = _clone_repository(authoritative_repository, clone_path)
         _git_commit_exists(isolated_repository, release_commit)
+        # Source generators are part of the historical fixture and may inspect
+        # ``HEAD`` to authenticate the source context they reconstruct.  A
+        # normal clone checks out the authoritative repository's *current*
+        # branch, which can be newer than the fixture's pinned release.  Detach
+        # the disposable clone at the release before running any generator;
+        # this changes only replay-owned state and makes its view agree with
+        # the worktree/campaign parent used below.
+        _run(
+            _git_argv("checkout", "--detach", release_commit),
+            cwd=isolated_repository,
+            timeout=60,
+        )
 
         base_bytes, candidate_bytes = _materialize_sources(
             spec, repository=isolated_repository
@@ -1518,18 +1839,7 @@ def prepare_replay(
         base_sha = _sha_bytes(base_bytes)
         candidate_sha = _sha_bytes(candidate_bytes)
         function = str(spec["function"])
-        base_span = _source_function_span(base_bytes, function, "base source")
-        candidate_span = _source_function_span(
-            candidate_bytes, function, "candidate source"
-        )
-        function_span = {
-            "base_start_line": base_span["start_line"],
-            "base_end_line": base_span["end_line"],
-            "candidate_start_line": candidate_span["start_line"],
-            "candidate_end_line": candidate_span["end_line"],
-            "base_sha256": base_span["sha256"],
-            "candidate_sha256": candidate_span["sha256"],
-        }
+        function_span = _source_cell_span(base_bytes, candidate_bytes, function)
         target_input = _real_file(Path(spec["target_path"]), "target object")
         target_sha = _valid_sha(
             spec.get("target_sha256", CAPTRAP_TARGET_SHA), "target object.sha256"
@@ -1803,7 +2113,6 @@ def _verify_replay_inputs(
 
     checks = (
         ("base source", "base_path", prepared["base_source_sha256"]),
-        ("campaign source", "source_path", prepared["base_source_sha256"]),
         ("target object", "target_path", prepared["target_sha256"]),
         ("target input", "target_input_path", prepared["target_sha256"]),
         ("toolchain descriptor", "toolchain_path", prepared["toolchain_sha256"]),
@@ -1816,6 +2125,33 @@ def _verify_replay_inputs(
             raise ReplayError(f"{phase}: {exc}") from exc
         if actual != _valid_sha(expected, f"{label} expected hash"):
             raise ReplayError(f"{phase}: {label} hash drift: {actual} != {expected}")
+
+    # A monotonic improved/exact campaign result intentionally retains the
+    # candidate in the live owner source.  Before execution only the base is
+    # valid; after execution the source must be exactly either the untouched
+    # base (no gain) or the authenticated candidate (retained gain).  Treating
+    # candidate retention as source drift made every real exact replay fail
+    # after it had already produced the correct object and report.
+    campaign_source = Path(str(prepared["source_path"]))
+    try:
+        actual_campaign_source = _sha_file(_real_file(campaign_source, "campaign source"))
+    except ReplayError as exc:
+        raise ReplayError(f"{phase}: {exc}") from exc
+    allowed_campaign_sources = {
+        _valid_sha(prepared["base_source_sha256"], "campaign source base hash")
+    }
+    if allow_candidate_cleanup:
+        allowed_campaign_sources.add(
+            _valid_sha(
+                prepared["candidate_source_sha256"],
+                "campaign source candidate hash",
+            )
+        )
+    if actual_campaign_source not in allowed_campaign_sources:
+        raise ReplayError(
+            f"{phase}: campaign source hash drift: {actual_campaign_source} not in "
+            f"{sorted(allowed_campaign_sources)}"
+        )
 
     candidate = Path(str(prepared["candidate_path"]))
     if candidate.exists():
@@ -2096,6 +2432,12 @@ def _aggregate_receipt(
         for item in results
     ]
     peaks = [int(item.get("storage", {}).get("peak_bytes", 0)) for item in results]
+    # Sequential children are cleaned before the next child starts, so their
+    # peak footprints never coexist.  Concurrent children do coexist and must
+    # be charged as a sum.  Treating sequential peaks as cumulative falsely
+    # rejected three individually compliant replays as an over-cap lane.
+    max_child_peak = max(peaks, default=0)
+    aggregate_peak = sum(peaks) if mode == "concurrent" else max_child_peak
     body: dict[str, Any] = {
         "schema": AGGREGATE_SCHEMA,
         "status": "exact" if not errors and len(results) == len(fixtures) else "failed",
@@ -2131,12 +2473,12 @@ def _aggregate_receipt(
             or (finished - started) <= float(max_wall_seconds),
         },
         "storage": {
-            "peak_bytes": sum(peaks),
-            "max_child_peak_bytes": max(peaks, default=0),
+            "peak_bytes": aggregate_peak,
+            "max_child_peak_bytes": max_child_peak,
             "final_bytes_before_aggregate_receipt": _storage_bytes(output),
             "cap_bytes": storage_cap_bytes,
             "within_cap": storage_cap_bytes is None
-            or sum(peaks) <= storage_cap_bytes,
+            or max_child_peak <= storage_cap_bytes,
         },
     }
     receipt = {**body, "aggregate_sha256": _sha_json(body)}
@@ -2196,7 +2538,13 @@ def run_replay_batch(
 
     def one(index: int) -> dict[str, Any]:
         fixture = fixtures[index]
-        child = output_path / f"{index:02d}-{re.sub(r'[^A-Za-z0-9_.-]+', '_', names[index])}"
+        # Keep the disposable checkout path short.  Windows' legacy path
+        # ceiling is reached easily by the repository's deep MSL include
+        # hierarchy when a descriptive fixture name is repeated below a
+        # caller-selected batch directory.  The aggregate receipt already
+        # binds the ordered fixture name, so the child directory needs only a
+        # stable ordinal.
+        child = output_path / f"{index:02d}"
         prepared = prepare_replay(
             root,
             fixture,
@@ -2319,6 +2667,11 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="run the three required historical fixtures sequentially",
     )
+    parser.add_argument(
+        "--concurrent-replay-gate",
+        action="store_true",
+        help="run the three required historical fixtures concurrently",
+    )
     parser.add_argument("--root", type=Path, help="repository containing the release commit")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--inventory", type=Path)
@@ -2333,18 +2686,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     inventory = _read_json(args.inventory, "inventory") if args.inventory else None
     if inventory is not None and not isinstance(inventory, Mapping):
         raise ReplayError("inventory must be a JSON object")
-    if args.three_replay_gate:
-        result = run_three_replay_gate(
-            args.root,
-            args.output,
-            inventory=inventory,
-            storage_cap_bytes=args.storage_cap_bytes,
-            max_wall_seconds=args.max_wall_seconds,
-        )
+    if args.three_replay_gate or args.concurrent_replay_gate:
+        if args.three_replay_gate and args.concurrent_replay_gate:
+            raise ReplayError("replay gate modes are mutually exclusive")
+        if args.concurrent_replay_gate:
+            result = run_concurrent_replays(
+                args.root,
+                ("SetupMgType", "mbev_CapBomheiMove", "ev_CapBobleOMExec"),
+                args.output,
+                inventory=inventory,
+                storage_cap_bytes=args.storage_cap_bytes,
+                max_wall_seconds=args.max_wall_seconds,
+            )
+        else:
+            result = run_three_replay_gate(
+                args.root,
+                args.output,
+                inventory=inventory,
+                storage_cap_bytes=args.storage_cap_bytes,
+                max_wall_seconds=args.max_wall_seconds,
+            )
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     if args.fixture is None:
-        raise ReplayError("one of --fixture or --three-replay-gate is required")
+        raise ReplayError(
+            "one of --fixture, --three-replay-gate, or --concurrent-replay-gate is required"
+        )
     prepared = prepare_replay(
         args.root,
         args.fixture,

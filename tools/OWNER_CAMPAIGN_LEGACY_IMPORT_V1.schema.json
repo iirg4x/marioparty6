@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "OWNER_CAMPAIGN_LEGACY_IMPORT_V1.schema.json",
+  "title": "Offline legacy owner-campaign import",
+  "description": "Compact migration receipts and the deterministic import result. Legacy CRACK_REPORT/v1 is validated by the importer because its historical schema predates owner_campaign/v1.",
+  "oneOf": [
+    {"$ref": "#/$defs/legacy_exact"},
+    {"$ref": "#/$defs/legacy_outcome"},
+    {"$ref": "#/$defs/import_result"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "minLength": 1},
+    "proof_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strict", "data", "physical", "siblings", "source_link"],
+      "properties": {
+        "strict": {"$ref": "#/$defs/sha256"},
+        "data": {"$ref": "#/$defs/sha256"},
+        "physical": {"$ref": "#/$defs/sha256"},
+        "siblings": {"$ref": "#/$defs/sha256"},
+        "source_link": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "legacy_exact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "owner", "unit", "function", "base_commit", "source_sha256",
+        "target_object_sha256", "candidate_object_sha256", "toolchain_sha256",
+        "target_bytes", "candidate_bytes", "strict_differences", "data_differences",
+        "physical_target_count", "physical_candidate_count", "physical_differences",
+        "protected_total", "protected_losses", "source_link_exact", "compiled", "exact",
+        "proof_receipts", "completed_at", "report_sha256"
+      ],
+      "properties": {
+        "schema": {"const": "owner_campaign_legacy_exact/v1"},
+        "owner": {"type": "string", "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "function": {"type": "string", "minLength": 1},
+        "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "target_object_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_object_sha256": {"$ref": "#/$defs/sha256"},
+        "toolchain_sha256": {"$ref": "#/$defs/sha256"},
+        "target_bytes": {"type": "integer", "minimum": 0},
+        "candidate_bytes": {"type": "integer", "minimum": 0},
+        "strict_differences": {"const": 0},
+        "data_differences": {"const": 0},
+        "physical_target_count": {"type": "integer", "minimum": 0},
+        "physical_candidate_count": {"type": "integer", "minimum": 0},
+        "physical_differences": {"const": 0},
+        "protected_total": {"type": "integer", "minimum": 0},
+        "protected_losses": {"const": 0},
+        "source_link_exact": {"const": true},
+        "compiled": {"const": true},
+        "exact": {"const": true},
+        "proof_receipts": {"$ref": "#/$defs/proof_hashes"},
+        "completed_at": {"$ref": "#/$defs/timestamp"},
+        "report_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "legacy_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "owner", "unit", "function", "base_commit", "source_sha256",
+        "target_object_sha256", "candidate_object_sha256", "toolchain_sha256",
+        "candidate_source_sha256", "status", "compiled", "strict_difference_delta",
+        "data_difference_delta", "physical_difference_delta", "completed_at", "outcome_sha256"
+      ],
+      "properties": {
+        "schema": {"const": "owner_campaign_legacy_outcome/v1"},
+        "owner": {"type": "string", "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "function": {"type": "string", "minLength": 1},
+        "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "target_object_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_object_sha256": {"$ref": "#/$defs/sha256"},
+        "toolchain_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_source_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["no_gain", "improved", "stale"]},
+        "compiled": {"const": true},
+        "strict_difference_delta": {"type": "integer"},
+        "data_difference_delta": {"type": "integer"},
+        "physical_difference_delta": {"type": "integer"},
+        "completed_at": {"$ref": "#/$defs/timestamp"},
+        "outcome_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "import_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "status", "campaign_id", "owner", "exact_imported",
+        "outcome_imported", "exact_count", "total", "authority_advanced"
+      ],
+      "properties": {
+        "schema": {"const": "owner_campaign_legacy_import/v1"},
+        "status": {"enum": ["imported", "already_imported"]},
+        "campaign_id": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "exact_imported": {"type": "array", "items": {"type": "string"}},
+        "outcome_imported": {"type": "array", "items": {"type": "string"}},
+        "exact_count": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 1},
+        "authority_advanced": {"const": false}
+      }
+    }
+  }
+}

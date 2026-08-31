@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -55,6 +56,77 @@ def _focus(function: str = "fn", *, differences: int = 1) -> dict[str, object]:
 
 
 class OwnerCampaignMeasureTests(unittest.TestCase):
+    def test_physical_identity_ignores_symbol_aliases_but_not_effective_target(self) -> None:
+        focus = _focus(differences=0)
+        target_rows = focus["physical_relocations"]["target"]["physical_relocations"]
+        candidate_rows = focus["physical_relocations"]["candidate"]["physical_relocations"]
+        target_rows[0].update({"symbol": "lbl_802C4A6C", "symbol_value": 44, "addend": 0})
+        candidate_rows[0].update({"symbol": "@380", "symbol_value": 0, "addend": 0})
+
+        difference_ids, target_identity, candidate_identity = adapter._physical_identity(
+            focus, "fn"
+        )
+        self.assertEqual(difference_ids, [])
+        self.assertEqual(target_identity, candidate_identity)
+
+        candidate_rows[0]["effective_target"] = "@different"
+        _difference_ids, target_identity, candidate_identity = adapter._physical_identity(
+            focus, "fn"
+        )
+        self.assertNotEqual(target_identity, candidate_identity)
+
+    def test_unit_object_resolution_creates_fresh_candidate_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            target = root / "build" / "GP6E01" / "obj" / "board" / "owner.o"
+            candidate = root / "build" / "GP6E01" / "src" / "board" / "owner.o"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"target")
+            identity = adapter.Identity(
+                phase="candidate", campaign_id="campaign", manifest_sha256="a" * 64,
+                owner="main:board/owner", unit="main/board/owner", function="fn",
+                source_sha256="b" * 64,
+                target_object_sha256=hashlib.sha256(b"target").hexdigest(),
+                toolchain_sha256="d" * 64, base_commit="e" * 40,
+                source_path="src/board/owner.c",
+            )
+            with mock.patch.object(
+                adapter.bundle, "_unit_paths", return_value=(target, candidate)
+            ):
+                resolved_target, resolved_candidate = adapter._unit_objects(root, identity)
+            self.assertEqual(resolved_target, target)
+            self.assertEqual(resolved_candidate, candidate)
+            self.assertTrue(candidate.parent.is_dir())
+            self.assertFalse(candidate.exists())
+
+    def test_runtime_environment_names_bind_measurement_identity(self) -> None:
+        args = argparse.Namespace(
+            campaign_id=None,
+            manifest_sha256=None,
+            owner=None,
+            unit=None,
+            function=None,
+            source_sha256=None,
+            target_object_sha256=None,
+            toolchain_sha256=None,
+            base_commit=None,
+        )
+        environment = {
+            "OWNER_CAMPAIGN_ID": "campaign",
+            "OWNER_CAMPAIGN_MANIFEST_SHA256": "a" * 64,
+            "OWNER_CAMPAIGN_OWNER": "main:board/test",
+            "OWNER_CAMPAIGN_UNIT": "main/board/test",
+            "OWNER_CAMPAIGN_FUNCTION": "focus",
+            "OWNER_CAMPAIGN_SOURCE_SHA256": "b" * 64,
+            "OWNER_CAMPAIGN_TARGET_SHA256": "c" * 64,
+            "OWNER_CAMPAIGN_TOOLCHAIN_SHA256": "d" * 64,
+            "OWNER_CAMPAIGN_BASE_COMMIT": "e" * 40,
+        }
+        with mock.patch.dict(adapter.os.environ, environment, clear=True):
+            identity = adapter._identity(args, "snapshot")
+        self.assertEqual(identity.campaign_id, "campaign")
+        self.assertEqual(identity.target_object_sha256, "c" * 64)
+
     def test_measurement_is_closed_and_compact(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
@@ -156,6 +228,31 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
         with self.assertRaisesRegex(adapter.MeasurementError, "paired compiler command"):
             adapter._compact_source_link_proof(proof)
 
+    def test_source_compile_provenance_accepts_mwcc_directory_output(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "src" / "board" / "mgcall.c"
+            candidate = root / "build" / "GP6E01" / "src" / "board" / "mgcall.o"
+            source.parent.mkdir(parents=True)
+            candidate.parent.mkdir(parents=True)
+            source.write_text("int x;", encoding="utf-8")
+            command = (
+                "sjiswrap.exe mwcceppc.exe -c src\\board\\mgcall.c "
+                "-o build\\GP6E01\\src\\board"
+            )
+            proof = adapter._assert_source_compile_provenance(
+                command, root=root, source=source, candidate=candidate,
+                owner="main:board/mgcall",
+            )
+            self.assertEqual(proof["candidate_object_path"], "build/GP6E01/src/board/mgcall.o")
+
+            wrong = candidate.with_name("different.o")
+            with self.assertRaisesRegex(adapter.MeasurementError, "does not bind"):
+                adapter._assert_source_compile_provenance(
+                    command, root=root, source=source, candidate=wrong,
+                    owner="main:board/mgcall",
+                )
+
     def test_focus_evidence_hash_is_deterministic(self) -> None:
         identity = adapter.Identity(
             phase="snapshot", campaign_id="campaign", manifest_sha256="a" * 64,
@@ -246,6 +343,40 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
         self.assertLessEqual(len(encoded.encode()), adapter.MAX_FOCUS_COMPACT)
         self.assertTrue(any("omitted=" in item for item in value["strict_rows"]))
 
+    def test_snapshot_reports_retain_nonexact_physical_frontier(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            target = root / "target.o"
+            candidate = root / "candidate.o"
+            target.write_bytes(b"target")
+            candidate.write_bytes(b"candidate")
+            (root / "strict.json").write_text("{}", encoding="utf-8")
+            (root / "data.json").write_text("{}", encoding="utf-8")
+            identity = adapter.Identity(
+                phase="snapshot", campaign_id="campaign", manifest_sha256="a" * 64,
+                owner="owner", unit="main/board/test", function="fn",
+                source_sha256="b" * 64,
+                target_object_sha256=hashlib.sha256(b"target").hexdigest(),
+                toolchain_sha256="d" * 64, base_commit="e" * 40,
+                source_path="src/test.c",
+            )
+            with (
+                mock.patch.object(adapter.bundle, "_run_objdiff"),
+                mock.patch.object(
+                    adapter.bundle, "_physical_receipt",
+                    return_value={"status": "mismatch", "differences": [{"offset": 4}]},
+                ),
+                mock.patch.object(
+                    adapter.focus_symbol_report, "build_from_paths", return_value=_focus()
+                ) as build,
+            ):
+                adapter._run_reports(
+                    root=root, identity=identity, target=target, candidate=candidate,
+                    objdiff=root / "objdiff.exe", readelf=root / "readelf.exe",
+                    temp=root, deadline=adapter.Deadline(5),
+                )
+            self.assertFalse(build.call_args.kwargs["require_physical"])
+
     def test_path_escape_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
@@ -292,6 +423,14 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
                     [sys.executable, "-c", "import time; time.sleep(2)"],
                     cwd=root, deadline=adapter.Deadline(0.1), label="slow fixture",
                 )
+
+    def test_bounded_runner_accepts_pathlike_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            output = adapter._run_bounded(
+                [Path(sys.executable), "-c", "print('ready')"],
+                cwd=Path(raw), deadline=adapter.Deadline(5), label="path fixture",
+            )
+        self.assertEqual(output.strip(), "ready")
 
     def test_toolchain_descriptor_and_internal_hash_domains_are_distinct(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

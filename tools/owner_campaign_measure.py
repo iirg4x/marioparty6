@@ -202,14 +202,56 @@ def _absolute(raw: str | os.PathLike[str], *, root: Path, label: str,
 
 
 def _safe_dir(path: Path, *, root: Path, label: str) -> Path:
-    path = _absolute(path, root=root, label=label, allow_external=False, exists=False)
+    if not isinstance(path, (str, os.PathLike)):
+        raise MeasurementError(f"{label} is invalid")
+    value = os.fspath(path)
+    if not value or "\x00" in value:
+        raise MeasurementError(f"{label} is invalid")
+    path = Path(os.path.abspath(Path(value) if Path(value).is_absolute() else root / value))
+    root_abs = Path(os.path.abspath(root))
     try:
-        path.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise MeasurementError(f"cannot create {label}: {path}: {exc}") from exc
-    _assert_no_indirection(path)
-    if not path.is_dir():
-        raise MeasurementError(f"{label} is not a directory: {path}")
+        path.relative_to(root_abs)
+    except ValueError as exc:
+        raise MeasurementError(f"{label} escapes disposable root: {path}") from exc
+
+    # Validate the complete existing prefix, then create each missing directory
+    # one component at a time and revalidate it.  ``Path.mkdir(parents=True)``
+    # alone cannot distinguish an absent clean suffix from a symlink/reparse
+    # component, while the old _absolute(..., exists=False) accepted only one
+    # missing leaf and rejected clean Ninja output trees several levels deep.
+    missing: list[Path] = []
+    current = path
+    while True:
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            missing.append(current)
+            parent = current.parent
+            if parent == current:
+                raise MeasurementError(f"cannot resolve existing prefix for {label}: {path}")
+            current = parent
+            continue
+        if stat.S_ISLNK(info.st_mode) or bool(
+            getattr(info, "st_file_attributes", 0) & REPARSE_ATTRIBUTE
+        ):
+            raise MeasurementError(f"path indirection is forbidden: {current}")
+        if not current.is_dir():
+            raise MeasurementError(f"{label} parent is not a directory: {current}")
+        _assert_no_indirection(current)
+        break
+
+    for directory in reversed(missing):
+        try:
+            directory.mkdir()
+        except FileExistsError:
+            # A concurrent creator is acceptable only when it produced the same
+            # ordinary directory; the immediate validation below decides that.
+            pass
+        except OSError as exc:
+            raise MeasurementError(f"cannot create {label}: {directory}: {exc}") from exc
+        _assert_no_indirection(directory)
+        if not directory.is_dir():
+            raise MeasurementError(f"{label} is not a directory: {directory}")
     return path
 
 
@@ -259,7 +301,14 @@ def _terminate_process(process: subprocess.Popen[bytes]) -> None:
 
 def _run_bounded(command: Sequence[str], *, cwd: Path, deadline: Deadline,
                  label: str) -> str:
-    if not command or not all(isinstance(item, str) and item for item in command):
+    normalized: list[str] = []
+    for item in command:
+        if isinstance(item, os.PathLike):
+            item = os.fspath(item)
+        if not isinstance(item, str) or not item:
+            raise MeasurementError(f"{label} command is invalid")
+        normalized.append(item)
+    if not normalized:
         raise MeasurementError(f"{label} command is invalid")
     _assert_no_indirection(cwd)
     flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
@@ -271,7 +320,7 @@ def _run_bounded(command: Sequence[str], *, cwd: Path, deadline: Deadline,
     if os.name != "nt":
         kwargs["start_new_session"] = True
     try:
-        process = subprocess.Popen(list(command), **kwargs)
+        process = subprocess.Popen(normalized, **kwargs)
     except OSError as exc:
         raise MeasurementError(f"{label} could not start: {exc}") from exc
     try:
@@ -324,13 +373,15 @@ def _env_or_arg(args: argparse.Namespace, name: str, env_name: str | None = None
 
 def _identity(args: argparse.Namespace, phase: str) -> Identity:
     values = {
-        "campaign_id": _env_or_arg(args, "campaign_id"),
+        "campaign_id": _env_or_arg(args, "campaign_id", "OWNER_CAMPAIGN_ID"),
         "manifest_sha256": _env_or_arg(args, "manifest_sha256"),
         "owner": _env_or_arg(args, "owner"),
         "unit": _env_or_arg(args, "unit"),
         "function": _env_or_arg(args, "function"),
         "source_sha256": _env_or_arg(args, "source_sha256"),
-        "target_object_sha256": _env_or_arg(args, "target_object_sha256"),
+        "target_object_sha256": _env_or_arg(
+            args, "target_object_sha256", "OWNER_CAMPAIGN_TARGET_SHA256"
+        ),
         "toolchain_sha256": _env_or_arg(args, "toolchain_sha256"),
         "base_commit": _env_or_arg(args, "base_commit"),
     }
@@ -418,6 +469,12 @@ def _unit_objects(root: Path, identity: Identity) -> tuple[Path, Path]:
     except Exception as exc:
         raise MeasurementError(f"objdiff unit resolution failed: {exc}") from exc
     target = _absolute(target, root=root, label="target object", allow_external=False, exists=True)
+    # A freshly configured Ninja graph need not have created the source-object
+    # directory yet.  The candidate path is a build output declared by the
+    # sealed objdiff unit, so create only its validated parent before asking
+    # Ninja for the first compile.  Requiring every intermediate component to
+    # pre-exist here prevented clean historical replays from reaching MWCC.
+    _safe_dir(candidate.parent, root=root, label="candidate object directory")
     candidate = _absolute(candidate, root=root, label="candidate object", allow_external=False, exists=False)
     actual = _sha_file(target)
     if actual != identity.target_object_sha256:
@@ -605,13 +662,16 @@ def _stable_row_ids(focus: Mapping[str, Any], channel: str, function: str) -> li
 def _relocation_identity(row: Any) -> dict[str, Any]:
     if not isinstance(row, Mapping):
         raise MeasurementError("physical relocation entry is invalid")
-    # Offset/type/effective target are the stable relocation identity.  Keep any
-    # additional canonical fields (symbol/addend/etc.) so aliases cannot hide a
-    # changed relocation while deliberately excluding display row ordinals.
-    return {
-        key: value for key, value in row.items()
-        if key not in {"index", "row_index", "ordinal"}
-    }
+    # Match the physical-proof comparator exactly.  Local symbol names and
+    # symbol values are attribution metadata: MWCC may call the same .sdata2
+    # owner ``lbl_...`` in the retail object and ``@380`` in the reconstructed
+    # object while offset/type/effective target are byte-for-byte equivalent.
+    # Hashing those display aliases made an already exact relocation set look
+    # like a migrated frontier and incorrectly rejected exact candidates.
+    required = ("offset", "type", "effective_target")
+    if any(key not in row for key in required):
+        raise MeasurementError("physical relocation identity is incomplete")
+    return {key: row[key] for key in required}
 
 
 def _physical_identity(focus: Mapping[str, Any], function: str) -> tuple[list[str], str, str]:
@@ -1233,7 +1293,11 @@ def _run_reports(*, root: Path, identity: Identity, target: Path, candidate: Pat
             expected_data_report_sha256=_sha_file(data_path),
             physical_receipt_path=physical_path,
             expected_physical_receipt_sha256=_sha_file(physical_path),
-            require_physical=True,
+            # Snapshot/candidate measurements must preserve and score a
+            # nonexact physical frontier.  Physical exactness is mandatory for
+            # an exact result, but rejecting it here makes every partial owner
+            # impossible to enter the monotonic campaign in the first place.
+            require_physical=False,
         )
     except Exception as exc:
         raise MeasurementError(f"focus evidence construction failed: {exc}") from exc
@@ -1266,7 +1330,8 @@ def _assert_source_compile_provenance(command_text: str, *, root: Path,
         )
     paired = [
         line for line in lines
-        if _command_mentions(source, line, root) and _command_mentions(candidate, line, root)
+        if _command_mentions(source, line, root)
+        and _command_produces_candidate(source, candidate, line, root)
     ]
     if not paired:
         raise MeasurementError(
@@ -1286,6 +1351,37 @@ def _assert_source_compile_provenance(command_text: str, *, root: Path,
         "nonmatching_fallback_linked": False,
         "authority_advanced": False,
     }, "proof_sha256")
+
+
+def _command_produces_candidate(source: Path, candidate: Path, command: str,
+                                root: Path) -> bool:
+    """Recognize file- or directory-valued MWCC ``-o`` output bindings.
+
+    The MP6 Ninja rule passes an output *directory* to CodeWarrior and the
+    compiler derives ``mgcall.o`` from ``mgcall.c``.  Requiring the final object
+    filename to appear literally rejected the real compiler command even
+    though Ninja had returned it for that exact output edge.  Directory output
+    is accepted only when source and object basenames agree.
+    """
+
+    tokens = [item.strip('"') for item in re.findall(r'"[^"]*"|\S+', command)]
+    outputs: list[str] = []
+    for index, token in enumerate(tokens):
+        lowered = token.lower()
+        if lowered == "-o" and index + 1 < len(tokens):
+            outputs.append(tokens[index + 1])
+        elif lowered.startswith("-o="):
+            outputs.append(token[3:])
+    for raw in outputs:
+        output = Path(raw)
+        if not output.is_absolute():
+            output = root / output
+        output = Path(os.path.abspath(output))
+        if output == candidate:
+            return True
+        if output == candidate.parent and source.stem.lower() == candidate.stem.lower():
+            return True
+    return False
 
 
 def measure_current(*, root: Path, args: argparse.Namespace) -> dict[str, Any]:

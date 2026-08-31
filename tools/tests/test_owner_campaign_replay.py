@@ -171,6 +171,82 @@ class ReplayTests(unittest.TestCase):
             "focus",
         )), digest(b"void f(void) { return; }\nvoid focus(void) { return 1; }\n"))
 
+    def test_source_generator_copies_bounded_template_directory(self) -> None:
+        """The production Boble generator's directory input stays in the clone."""
+
+        historical = Path(self.temp.name) / "historical"
+        template = historical / "build/requests/template"
+        nested = template / "nested"
+        nested.mkdir(parents=True)
+        (template / "approval-draft.json").write_bytes(b"draft")
+        (nested / "support.txt").write_bytes(b"support")
+        (historical / "residual.json").write_bytes(b"residual")
+        generator = historical / "generate.py"
+        generator.write_text(
+            "\n".join(
+                (
+                    "from pathlib import Path",
+                    f"ROOT = Path(r'{historical.as_posix()}')",
+                    "TEMPLATE_DIR = ROOT / 'build/requests/template'",
+                    "RESIDUAL = ROOT / 'residual.json'",
+                    "output = ROOT / 'build/generated.c'",
+                    "output.parent.mkdir(parents=True, exist_ok=True)",
+                    "output.write_bytes((TEMPLATE_DIR / 'nested/support.txt').read_bytes() + RESIDUAL.read_bytes())",
+                    "",
+                )
+            ),
+            encoding="utf-8",
+        )
+        repository = Path(self.temp.name) / "replay"
+        repository.mkdir()
+
+        generated = replay._run_source_generator(
+            repository, generator, Path("build/generated.c")
+        )
+
+        self.assertEqual(generated.read_bytes(), b"supportresidual")
+        self.assertEqual(
+            (repository / "build/requests/template/approval-draft.json").read_bytes(),
+            b"draft",
+        )
+        self.assertEqual(
+            (repository / "build/requests/template/nested/support.txt").read_bytes(),
+            b"support",
+        )
+        self.assertEqual(
+            replay._sha_file(repository / "residual.json"),
+            digest(b"residual"),
+        )
+
+    def test_git_stage_commit_force_adds_only_explicit_ignored_paths(self) -> None:
+        """Ignored sealed build inputs are staged, but unrelated scratch is not."""
+
+        (self.root / ".gitignore").write_text("build/\n*.scratch\n", encoding="utf-8")
+        self._git_run("add", ".gitignore")
+        self._git_run("commit", "-qm", "ignore build inputs")
+        release_commit = self._git_output("rev-parse", "HEAD").strip()
+        selected = self.root / "build/selected.c"
+        unrelated = self.root / "build/unrelated.c"
+        scratch = self.root / "unrelated.scratch"
+        selected.parent.mkdir(parents=True)
+        selected.write_bytes(b"selected")
+        unrelated.write_bytes(b"unrelated")
+        scratch.write_bytes(b"scratch")
+
+        campaign_commit = replay._git_stage_commit(
+            self.root,
+            self.root,
+            release_commit,
+            ["build/selected.c"],
+            Path(self.temp.name) / "replay.index",
+        )
+        tracked = set(
+            self._git_output("ls-tree", "-r", "--name-only", campaign_commit).splitlines()
+        )
+        self.assertIn("build/selected.c", tracked)
+        self.assertNotIn("build/unrelated.c", tracked)
+        self.assertNotIn("unrelated.scratch", tracked)
+
     def test_replay_schemas_are_valid_json_and_match_runtime_constants(self) -> None:
         replay_schema = json.loads(
             (Path(__file__).parents[1] / "OWNER_CAMPAIGN_REPLAY_V1.schema.json").read_text()
@@ -197,6 +273,8 @@ class ReplayTests(unittest.TestCase):
         )
         manifest = json.loads(Path(prepared["manifest_path"]).read_text())
         self.assertEqual(manifest["limits"]["focus_evidence_bytes"], 256 << 10)
+        self.assertEqual(manifest["limits"]["scratch_soft_bytes"], 384 << 20)
+        self.assertEqual(manifest["limits"]["scratch_hard_bytes"], 512 << 20)
         self.assertEqual((self.root / "src/test.c").read_bytes(), self.base)
         self.assertEqual(Path(prepared["source_path"]).read_bytes(), self.base)
         replay.cleanup_replay(prepared)
@@ -292,6 +370,91 @@ class ReplayTests(unittest.TestCase):
             if not prepared.get("cleaned"):
                 replay.cleanup_replay(prepared)
 
+    def test_moved_static_owner_uses_bounded_cell_envelope_accepted_by_runtime(self) -> None:
+        from tools import owner_campaign as campaign_runtime
+
+        base = (
+            b"static const int owner = 7;\n"
+            b"int helper(void) { return 2; }\n"
+            b"int focus(void) { return 0; }\n"
+            b"int tail(void) { return owner; }\n"
+        )
+        candidate = (
+            b"int helper(void) { return 2; }\n"
+            b"int focus(void) { return 0; }\n"
+            b"static const int owner = 7;\n"
+            b"int tail(void) { return owner; }\n"
+        )
+        base_path = Path(self.temp.name) / "moved-owner-base.c"
+        candidate_path = Path(self.temp.name) / "moved-owner-candidate.c"
+        base_path.write_bytes(base)
+        candidate_path.write_bytes(candidate)
+        inventory = copy.deepcopy(self.inventory)
+        inventory["base"] = {
+            "kind": "file",
+            "path": str(base_path),
+            "sha256": digest(base),
+        }
+        inventory["candidate"] = {
+            "kind": "file",
+            "path": str(candidate_path),
+            "sha256": digest(candidate),
+        }
+
+        output = Path(self.temp.name) / "moved-owner-envelope"
+        prepared = replay.prepare_replay(self.root, inventory, output)
+        try:
+            self.assertEqual(
+                prepared["function_span"],
+                {
+                    "base_start_line": 1,
+                    "base_end_line": 3,
+                    "candidate_start_line": 1,
+                    "candidate_end_line": 3,
+                    "base_sha256": digest(b"".join(base.splitlines(keepends=True)[:3])),
+                    "candidate_sha256": digest(
+                        b"".join(candidate.splitlines(keepends=True)[:3])
+                    ),
+                },
+            )
+            worktree = Path(prepared["worktree"])
+            candidate_relpath = Path(prepared["candidate_path"]).relative_to(
+                worktree
+            ).as_posix()
+            campaign = {
+                "campaign_id": "fixture",
+                "functions": ["focus"],
+                "allowed_source_paths": ["src/test.c"],
+                "allowed_build_paths": ["build"],
+                "forbidden_constructs": [],
+                "_source": Path(prepared["source_path"]),
+            }
+            frontier = {"function": "focus", "frontier_sha256": "a" * 64}
+            descriptor = replay._candidate_descriptor(
+                prepared["spec"],
+                campaign,
+                frontier,
+                candidate_relpath,
+                prepared["candidate_source_sha256"],
+                prepared["function_span"],
+            )
+            descriptor_path = worktree / "build/owner-replay/moved-owner.json"
+            descriptor_path.parent.mkdir(parents=True, exist_ok=True)
+            descriptor_path.write_text(
+                json.dumps(descriptor, sort_keys=True), encoding="utf-8"
+            )
+
+            loaded = campaign_runtime._load_candidate(
+                worktree, descriptor_path, campaign, frontier
+            )
+            self.assertEqual(loaded["function_span"], prepared["function_span"])
+            self.assertEqual(
+                loaded["_source_sha256"], prepared["candidate_source_sha256"]
+            )
+        finally:
+            if not prepared.get("cleaned"):
+                replay.cleanup_replay(prepared)
+
     def test_candidate_descriptor_uses_requested_function_not_first_campaign_function(self) -> None:
         output = Path(self.temp.name) / "requested-function"
         inventory = copy.deepcopy(self.inventory)
@@ -371,6 +534,50 @@ class ReplayTests(unittest.TestCase):
         self.assertTrue(result["storage"]["within_cap"])
         self.assertEqual(result["storage"]["cap_bytes"], 10_000_000)
 
+    def test_prepare_runs_generator_at_pinned_release_not_current_head(self) -> None:
+        retained_base = b"int focus(void) { return 2; }\n"
+        retained_base_path = Path(self.temp.name) / "retained-base.c"
+        retained_base_path.write_bytes(retained_base)
+        generator = Path(self.temp.name) / "release-bound-generator.py"
+        generator.write_text(
+            "from pathlib import Path\n"
+            "import subprocess\n"
+            f"ROOT = Path({str(self.root)!r})\n"
+            f"BASE_COMMIT = {self.commit!r}\n"
+            "head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()\n"
+            "assert head == BASE_COMMIT, (head, BASE_COMMIT)\n"
+            f"assert (ROOT / 'src/test.c').read_bytes() == {retained_base!r}\n"
+            "output = ROOT / 'build/generated-candidate.c'\n"
+            f"output.write_bytes({self.candidate!r})\n",
+            encoding="utf-8",
+        )
+        (self.root / "later.txt").write_text("later\n", encoding="utf-8")
+        self._git_run("add", "later.txt")
+        self._git_run("commit", "-qm", "later head")
+        self.assertNotEqual(self._git_output("rev-parse", "HEAD").strip(), self.commit)
+        inventory = copy.deepcopy(self.inventory)
+        inventory["base"] = {
+            "kind": "file",
+            "path": str(retained_base_path),
+            "sha256": digest(retained_base),
+        }
+        inventory["candidate"] = {
+            "kind": "generator",
+            "generator_path": str(generator),
+            "generated_relpath": "build/generated-candidate.c",
+            "sha256": digest(self.candidate),
+        }
+        prepared = replay.prepare_replay(
+            self.root,
+            inventory,
+            Path(self.temp.name) / "release-bound-output",
+        )
+        try:
+            self.assertEqual(Path(prepared["candidate_path"]).read_bytes(), self.candidate)
+            self.assertEqual(prepared["release_commit"], self.commit)
+        finally:
+            replay.cleanup_replay(prepared)
+
     def test_hash_drift_fails_before_worktree_creation(self) -> None:
         self.inventory["candidate"]["sha256"] = "0" * 64
         with self.assertRaisesRegex(replay.ReplayError, "candidate source hash drift"):
@@ -427,6 +634,22 @@ class ReplayTests(unittest.TestCase):
             replay.run_replay(prepared, runtime=DriftingRuntime())
         self.assertTrue(prepared["cleaned"])
 
+    def test_post_build_verifier_accepts_authenticated_retained_candidate(self) -> None:
+        output = Path(self.temp.name) / "retained-candidate"
+        prepared = replay.prepare_replay(self.root, self.inventory, output)
+        try:
+            Path(prepared["source_path"]).write_bytes(self.candidate)
+            Path(prepared["candidate_path"]).unlink()
+            replay._verify_replay_inputs(
+                prepared,
+                phase="after candidate build",
+                allow_candidate_cleanup=True,
+            )
+            with self.assertRaisesRegex(replay.ReplayError, "campaign source hash drift"):
+                replay._verify_replay_inputs(prepared, phase="before replay")
+        finally:
+            replay.cleanup_replay(prepared)
+
     def _batch_inventory(self, suffix: str) -> dict[str, object]:
         value = copy.deepcopy(self.inventory)
         value["name"] = f"fixture-{suffix}"
@@ -446,6 +669,10 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(result["aggregate"]["requested"], 3)
         self.assertEqual(result["aggregate"]["exact"], 3)
         self.assertTrue(result["aggregate"]["all_exact"])
+        self.assertEqual(
+            result["storage"]["peak_bytes"],
+            result["storage"]["max_child_peak_bytes"],
+        )
         self.assertEqual(len(result["results"]), 3)
         self.assertTrue((Path(self.temp.name) / "batch" / "replay-aggregate.json").is_file())
         for child in result["results"]:
@@ -462,10 +689,33 @@ class ReplayTests(unittest.TestCase):
         )
         self.assertEqual(result["mode"], "concurrent")
         self.assertEqual(result["aggregate"]["exact"], 3)
+        self.assertEqual(
+            result["storage"]["peak_bytes"],
+            sum(item["storage"]["peak_bytes"] for item in result["results"]),
+        )
         self.assertEqual(len({item["receipt_sha256"] for item in result["results"]}), 3)
-        children = sorted((Path(self.temp.name) / "concurrent").glob("0*-fixture-*"))
+        children = sorted((Path(self.temp.name) / "concurrent").glob("0*"))
         self.assertEqual(len(children), 3)
-        self.assertTrue(all(not (child / ".raw").exists() for child in children))
+        self.assertEqual([child.name for child in children], ["00", "01", "02"])
+        self.assertTrue(all(not (child / ".r").exists() for child in children))
+
+    def test_concurrent_storage_cap_is_enforced_per_lane(self) -> None:
+        output = Path(self.temp.name) / "aggregate-storage"
+        output.mkdir()
+        result = replay._aggregate_receipt(
+            output=output,
+            mode="concurrent",
+            fixtures=("a", "b"),
+            results=(
+                {"fixture": "a", "proof": {"exact": True}, "storage": {"peak_bytes": 60}},
+                {"fixture": "b", "proof": {"exact": True}, "storage": {"peak_bytes": 60}},
+            ),
+            started=time.monotonic(),
+            storage_cap_bytes=100,
+        )
+        self.assertEqual(result["storage"]["peak_bytes"], 120)
+        self.assertEqual(result["storage"]["max_child_peak_bytes"], 60)
+        self.assertTrue(result["storage"]["within_cap"])
 
     def test_batch_failure_publishes_terminal_failure_receipt(self) -> None:
         class NoGainRuntime(FakeRuntime):

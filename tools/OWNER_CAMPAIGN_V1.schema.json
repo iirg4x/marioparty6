@@ -41,8 +41,8 @@
       "required": ["command_timeout_seconds", "scratch_soft_bytes", "scratch_hard_bytes", "cell_temporary_bytes", "focus_evidence_bytes", "frontier_bytes", "report_bytes", "dedupe_bytes", "owner_state_bytes"],
       "properties": {
         "command_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 1800},
-        "scratch_soft_bytes": {"type": "integer", "minimum": 1, "maximum": 134217728},
-        "scratch_hard_bytes": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "scratch_soft_bytes": {"type": "integer", "minimum": 1, "maximum": 402653184},
+        "scratch_hard_bytes": {"type": "integer", "minimum": 1, "maximum": 536870912},
         "cell_temporary_bytes": {"type": "integer", "minimum": 1, "maximum": 67108864},
         "focus_evidence_bytes": {"type": "integer", "minimum": 1, "maximum": 262144},
         "frontier_bytes": {"type": "integer", "minimum": 1, "maximum": 65536},

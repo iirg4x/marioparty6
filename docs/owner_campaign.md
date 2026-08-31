@@ -247,5 +247,26 @@ then:
    the dedupe ledger, removes approval directories and abandoned per-cell
    worktrees, and runs the release gates.
 
+The offline migration entry point is:
+
+```text
+rtk python tools/agent.py --root . owner-campaign import \
+  --campaign build/owner-campaign/config.json \
+  --legacy-exact build/legacy/exact-function.json \
+  --legacy-consumed build/legacy/consumed-cell.json
+```
+
+The importer accepts the compact `owner_campaign_legacy_exact/v1` receipt and
+the old harness `CRACK_REPORT/v1` exact report. It validates the campaign
+owner/unit/base commit, clean source, target and toolchain hashes, strict/data
+zero rows, equal bytes, exact physical relocation count, zero protected
+losses, and all bound legacy proof summaries before publishing v2 CAS and an
+exact manifest. A compiled `owner_campaign_legacy_outcome/v1` (or old
+`crack_harness_result/v1`) with `no_gain`/`stale` status is written to the
+function's dedupe ledger only; infrastructure failures and uncompiled cells
+are not consumed, and improved legacy outcomes are not promoted. Inputs are
+read-only and the import does not consult STOP or create permits. The
+transaction is idempotent and rolls back newly published state on failure.
+
 Existing lanes stay paused until those gates pass. The old harness page remains
 available only for legacy replay and migration reference.

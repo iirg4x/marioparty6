@@ -27,8 +27,12 @@ DEFAULT_MEASUREMENT_RELPATH = "build/owner-campaign/measurement.json"
 DEFAULT_FORBIDDEN_CONSTRUCTS = [r"\b(?:asm|volatile|register)\b", r"#\s*pragma"]
 DEFAULT_LIMITS = {
     "command_timeout_seconds": 1800,
-    "scratch_soft_bytes": 128 << 20,
-    "scratch_hard_bytes": 256 << 20,
+    # A configured MP6 checkout is roughly 241 MiB before its first candidate
+    # object.  Keep the reusable Ninja cache below a bounded soft watermark
+    # instead of deleting it after every cell, while retaining a strict 512 MiB
+    # transient ceiling per owner lane.
+    "scratch_soft_bytes": 384 << 20,
+    "scratch_hard_bytes": 512 << 20,
     "cell_temporary_bytes": 64 << 20,
     "focus_evidence_bytes": 256 << 10,
     "frontier_bytes": 64 << 10,

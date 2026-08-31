@@ -16,6 +16,7 @@ import datetime as dt
 import difflib
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -41,6 +42,7 @@ COMMIT_RE = re.compile(r"[0-9a-f]{40}\Z")
 TOKEN_RE = re.compile(r"[A-Za-z0-9_.-]{1,96}\Z")
 UNIT_RE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+\Z")
 MAX_OUTPUT = 1 << 20
+DEFAULT_COMMAND_TIMEOUT_SECONDS = 1800.0
 
 
 class CampaignError(RuntimeError):
@@ -157,6 +159,36 @@ def _closed_keys(value: Any, fields: set[str], label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping) or set(value) != fields:
         raise CampaignError(f"{label} is not a strict closed object")
     return value
+
+
+def _command_timeout_seconds(campaign: Mapping[str, Any]) -> float:
+    """Return the validated lock timeout, including for lightweight callers.
+
+    Loaded manifests always carry a fully validated ``limits`` object.  A few
+    supervisor/status API callers intentionally provide a minimal campaign
+    mapping, however, and still need to inspect frontier state.  Locking is
+    safe for those callers with the same bounded default used by manifests;
+    malformed values remain an explicit error instead of silently becoming an
+    unbounded wait.
+    """
+
+    limits = campaign.get("limits")
+    if limits is None:
+        return DEFAULT_COMMAND_TIMEOUT_SECONDS
+    if not isinstance(limits, Mapping):
+        raise CampaignError("campaign limits are invalid")
+    value = limits.get(
+        "command_timeout_seconds", DEFAULT_COMMAND_TIMEOUT_SECONDS
+    )
+    if isinstance(value, bool):
+        raise CampaignError("campaign command timeout is invalid")
+    try:
+        timeout = float(value)
+    except (TypeError, ValueError) as exc:
+        raise CampaignError("campaign command timeout is invalid") from exc
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise CampaignError("campaign command timeout is invalid")
+    return timeout
 
 
 MANIFEST_FIELDS = {
@@ -305,8 +337,8 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
             raise CampaignError(f"{name} measurement is outside allowed build paths")
     limits = _closed_keys(raw["limits"], LIMIT_FIELDS, "campaign limits")
     maxima = {
-        "command_timeout_seconds": 1800, "scratch_soft_bytes": 128 << 20,
-        "scratch_hard_bytes": 256 << 20, "cell_temporary_bytes": 64 << 20,
+        "command_timeout_seconds": 1800, "scratch_soft_bytes": 384 << 20,
+        "scratch_hard_bytes": 512 << 20, "cell_temporary_bytes": 64 << 20,
         "focus_evidence_bytes": 256 << 10,
         "frontier_bytes": 64 << 10, "report_bytes": 64 << 10,
         "dedupe_bytes": 1 << 20, "owner_state_bytes": 16 << 20,
@@ -394,6 +426,7 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
     elif live_source_sha256 != base_source_sha256:
         raise CampaignError("clean campaign source does not match the base blob")
     result = dict(raw)
+    result["_root"] = root
     result["_path"] = path
     result["_source"] = source
     result["_target"] = _bound_path(root, raw["target_object"]["path"], "target object")
@@ -463,7 +496,7 @@ def _path_has_indirection(root: Path, path: Path) -> bool:
 
 
 def _scratch_is_owned(campaign: Mapping[str, Any], scratch: Path) -> bool:
-    if _path_has_indirection(_state_root(Path(campaign["_path"]).parent.parent), scratch):
+    if _path_has_indirection(_state_root(Path(campaign["_root"])), scratch):
         return False
     marker = scratch / ".owner-campaign-identity.json"
     try:
@@ -652,6 +685,29 @@ def _exclusive_lock(path: Path, timeout: float):
         stream.close()
 
 
+@contextmanager
+def _frontier_lock_chain(
+    root: Path, campaign: Mapping[str, Any], function: str,
+):
+    """Acquire frontier state locks in the one canonical order.
+
+    Source publication and the per-function frontier are one CAS domain.  The
+    focus CAS is taken last because recovery/publication may also materialize
+    the focus blob.  Keeping this order shared by snapshot, recovery, status,
+    and retention prevents a snapshot that was measured against an old source
+    from racing a retained candidate.
+    """
+
+    timeout = _command_timeout_seconds(campaign)
+    directory = _function_root(root, campaign, function)
+    with _exclusive_lock(_owner_root(root, campaign) / "source-cas.lock", timeout):
+        with _exclusive_lock(directory / "frontier-cas.lock", timeout):
+            with _exclusive_lock(
+                _state_root(root) / "proof-cas" / "focus-cas.lock", timeout
+            ):
+                yield
+
+
 def _sync_scratch_source(root: Path, scratch: Path, campaign: Mapping[str, Any], source_bytes: bytes) -> Path:
     relative = campaign["source_relpath"]
     destination = _bound_path(scratch, relative, "scratch source", exists=False)
@@ -777,6 +833,7 @@ def _run_hook(
     _verify_hook_inputs(campaign)
     descriptor = campaign["commands"][phase]
     output = _bound_path(scratch, descriptor["measurement_relpath"], "measurement output", exists=False)
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.unlink(missing_ok=True)
     argv = _expand_argv(
         descriptor["argv"], root=root, scratch=scratch, campaign=campaign,
@@ -842,6 +899,7 @@ def _run_final_owner(
     output = _bound_path(
         scratch, descriptor["measurement_relpath"], "final owner output", exists=False
     )
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.unlink(missing_ok=True)
     argv = _expand_argv(
         descriptor["argv"], root=root, scratch=scratch, campaign=campaign,
@@ -1314,11 +1372,32 @@ def _validate_frontier(value: Any, campaign: Mapping[str, Any], function: str) -
     return dict(value)
 
 
-def _recover_pending(root: Path, campaign: Mapping[str, Any], function: str) -> None:
+def _read_latest_frontier(
+    root: Path, campaign: Mapping[str, Any], function: str,
+) -> dict[str, Any] | None:
+    path = _function_root(root, campaign, function) / "latest-frontier.json"
+    if not path.is_file():
+        return None
+    return _validate_frontier(
+        _read_json(path, "latest frontier"), campaign, function
+    )
+
+
+def _recover_pending_locked(
+    root: Path, campaign: Mapping[str, Any], function: str,
+) -> dict[str, Any] | None:
+    """Recover a source-CAS interruption while the canonical locks are held.
+
+    A pending frontier is allowed to complete only when the live source still
+    identifies that pending write.  If another writer already retained a
+    frontier, that frontier wins and the stale pending record is discarded; a
+    recovery must never overwrite a newer retained state.
+    """
+
     directory = _function_root(root, campaign, function)
     pending = directory / "frontier.pending.json"
     if not pending.exists():
-        return
+        return None
     value = _read_json(pending, "pending frontier")
     fields = {
         "schema", "base_source_sha256", "candidate_source_sha256", "frontier",
@@ -1331,9 +1410,17 @@ def _recover_pending(root: Path, campaign: Mapping[str, Any], function: str) -> 
         raise CampaignError("pending frontier digest is invalid")
     frontier = _validate_frontier(value["frontier"], campaign, function)
     live = _digest_file(campaign["_source"])
+    latest = _read_latest_frontier(root, campaign, function)
+    if latest is not None and latest["frontier_sha256"] != frontier["frontier_sha256"]:
+        # A different writer has already published a frontier.  Never replace
+        # it with this pending record, even if both happen to use the same
+        # source bytes; the publication order is the authority.
+        if latest["generation"] >= frontier["generation"]:
+            pending.unlink()
+            return latest
     if live == value["base_source_sha256"]:
         pending.unlink()
-        return
+        return latest
     if live != value["candidate_source_sha256"] or frontier["source_sha256"] != live:
         raise CampaignError("pending frontier cannot be reconciled with live source")
     _atomic_json(directory / "latest-frontier.json", frontier, limit=campaign["limits"]["frontier_bytes"])
@@ -1343,6 +1430,14 @@ def _recover_pending(root: Path, campaign: Mapping[str, Any], function: str) -> 
             final_owner_receipt=value["final_owner_receipt"],
         )
     pending.unlink()
+    return frontier
+
+
+def _recover_pending(root: Path, campaign: Mapping[str, Any], function: str) -> dict[str, Any] | None:
+    """Recover pending state under source→function→focus CAS locks."""
+
+    with _frontier_lock_chain(root, campaign, function):
+        return _recover_pending_locked(root, campaign, function)
 
 
 def snapshot_frontier(
@@ -1351,13 +1446,23 @@ def snapshot_frontier(
     _check_cancelled(root, campaign)
     if function not in campaign["functions"]:
         raise CampaignError(f"function is outside campaign scope: {function}")
-    _recover_pending(root, campaign, function)
-    latest = _function_root(root, campaign, function) / "latest-frontier.json"
-    live_sha = _digest_file(campaign["_source"])
-    if latest.is_file() and not force:
-        frontier = _validate_frontier(_read_json(latest, "latest frontier"), campaign, function)
-        if frontier["source_sha256"] == live_sha:
-            return frontier
+
+    # Establish a versioned read before doing the expensive measurement.  A
+    # later writer may advance either source or latest while the hook runs;
+    # the second locked read below treats that as a stale snapshot.
+    with _frontier_lock_chain(root, campaign, function):
+        _recover_pending_locked(root, campaign, function)
+        initial_frontier = _read_latest_frontier(root, campaign, function)
+        live_sha = _digest_file(campaign["_source"])
+        if initial_frontier is not None:
+            if initial_frontier["source_sha256"] != live_sha:
+                raise CampaignError("latest frontier is inconsistent with live source")
+            if not force:
+                return initial_frontier
+        initial_frontier_sha = (
+            initial_frontier["frontier_sha256"] if initial_frontier is not None else None
+        )
+
     scratch = _ensure_scratch(root, campaign)
     live_bytes = campaign["_source"].read_bytes()
     _sync_scratch_source(root, scratch, campaign, live_bytes)
@@ -1371,10 +1476,30 @@ def snapshot_frontier(
     finally:
         _cleanup_cell_outputs(scratch, campaign)
     frontier = _frontier_from_measurement(campaign, function, measurement, parent=None)
-    with _exclusive_lock(
-        _state_root(root) / "proof-cas" / "focus-cas.lock",
-        float(campaign["limits"]["command_timeout_seconds"]),
-    ):
+
+    with _frontier_lock_chain(root, campaign, function):
+        _recover_pending_locked(root, campaign, function)
+        current_frontier = _read_latest_frontier(root, campaign, function)
+        locked_live_sha = _digest_file(campaign["_source"])
+        latest = _function_root(root, campaign, function) / "latest-frontier.json"
+
+        if current_frontier is not None:
+            if current_frontier["source_sha256"] != locked_live_sha:
+                raise CampaignError("latest frontier is inconsistent with live source")
+            if (
+                current_frontier["frontier_sha256"] != initial_frontier_sha
+                or locked_live_sha != live_sha
+            ):
+                # Another snapshot/retention won while this one was running.
+                # Return the winner, never overwrite it with this stale result.
+                return current_frontier
+        elif initial_frontier_sha is not None:
+            raise CampaignError("latest frontier disappeared during snapshot")
+        if locked_live_sha != live_sha:
+            raise CampaignError("frontier snapshot became stale before publication")
+        _verify_publication_sources(
+            campaign, scratch, live_sha256=live_sha, scratch_sha256=live_sha,
+        )
         _ensure_state_write_peak(
             root, campaign,
             [(latest, _canonical(frontier) + b"\n")],
@@ -2032,63 +2157,66 @@ def _retain(
         except VerificationError as exc:
             raise CampaignError(f"exact report independent verification failed: {exc}") from exc
     timeout = float(campaign["limits"]["command_timeout_seconds"])
-    with _exclusive_lock(_owner_root(root, campaign) / "source-cas.lock", timeout):
-        with _exclusive_lock(directory / "frontier-cas.lock", timeout):
-            latest_path = directory / "latest-frontier.json"
-            if not latest_path.is_file():
-                return None, None
-            current = _validate_frontier(
-                _read_json(latest_path, "latest frontier"), campaign, function
+    with _frontier_lock_chain(root, campaign, function):
+        latest_path = directory / "latest-frontier.json"
+        if not latest_path.is_file():
+            return None, None
+        current = _validate_frontier(
+            _read_json(latest_path, "latest frontier"), campaign, function
+        )
+        if (
+            current["frontier_sha256"] != base["frontier_sha256"]
+            or _digest_file(campaign["_source"]) != base["source_sha256"]
+        ):
+            return None, None
+        _publish_focus_evidence(root, campaign, measurement["focus_evidence"])
+        pending_body = {
+            "schema": PENDING_SCHEMA,
+            "base_source_sha256": base["source_sha256"],
+            "candidate_source_sha256": candidate["_source_sha256"],
+            "frontier": frontier, "exact_report": report,
+            "final_owner_receipt": (
+                dict(final_owner_receipt) if final_owner_receipt else None
+            ),
+        }
+        pending = {**pending_body, "pending_sha256": _digest_json(pending_body)}
+        pending_path = directory / "frontier.pending.json"
+        _ensure_state_write_peak(
+            root, campaign,
+            [
+                (pending_path, _canonical(pending) + b"\n"),
+                (latest_path, _canonical(frontier) + b"\n"),
+            ],
+        )
+        _atomic_json(
+            pending_path, pending, limit=campaign["limits"]["frontier_bytes"]
+        )
+        _atomic_bytes(campaign["_source"], candidate["_source_bytes"])
+        if _digest_file(campaign["_source"]) != candidate["_source_sha256"]:
+            raise CampaignError("frontier source publication failed")
+        _atomic_json(
+            latest_path, frontier, limit=campaign["limits"]["frontier_bytes"]
+        )
+        exact_receipt = None
+        if status == "exact":
+            assert report is not None
+            exact_receipt = _publish_exact(
+                root, campaign, frontier, report,
+                final_owner_receipt=final_owner_receipt,
             )
-            if (
-                current["frontier_sha256"] != base["frontier_sha256"]
-                or _digest_file(campaign["_source"]) != base["source_sha256"]
-            ):
-                return None, None
-            with _exclusive_lock(
-                _state_root(root) / "proof-cas" / "focus-cas.lock", timeout
-            ):
-                _publish_focus_evidence(root, campaign, measurement["focus_evidence"])
-                pending_body = {
-                    "schema": PENDING_SCHEMA,
-                    "base_source_sha256": base["source_sha256"],
-                    "candidate_source_sha256": candidate["_source_sha256"],
-                    "frontier": frontier, "exact_report": report,
-                    "final_owner_receipt": (
-                        dict(final_owner_receipt) if final_owner_receipt else None
-                    ),
-                }
-                pending = {**pending_body, "pending_sha256": _digest_json(pending_body)}
-                pending_path = directory / "frontier.pending.json"
-                _ensure_state_write_peak(
-                    root, campaign,
-                    [
-                        (pending_path, _canonical(pending) + b"\n"),
-                        (latest_path, _canonical(frontier) + b"\n"),
-                    ],
-                )
-                _atomic_json(
-                    pending_path, pending, limit=campaign["limits"]["frontier_bytes"]
-                )
-                _atomic_bytes(campaign["_source"], candidate["_source_bytes"])
-                if _digest_file(campaign["_source"]) != candidate["_source_sha256"]:
-                    raise CampaignError("frontier source publication failed")
-                _atomic_json(
-                    latest_path, frontier, limit=campaign["limits"]["frontier_bytes"]
-                )
-                exact_receipt = None
-                if status == "exact":
-                    assert report is not None
-                    exact_receipt = _publish_exact(
-                        root, campaign, frontier, report,
-                        final_owner_receipt=final_owner_receipt,
-                    )
-                pending_path.unlink()
-                return frontier, exact_receipt
+        pending_path.unlink()
+        return frontier, exact_receipt
 
 
 def _check_limits(root: Path, campaign: Mapping[str, Any]) -> None:
-    _gc_focus_evidence(root)
+    # Focus blobs are published and referenced while the same global CAS lock
+    # is held.  GC must participate in that lock domain or it can delete a
+    # blob between publication and the frontier reference being observed.
+    with _exclusive_lock(
+        _state_root(root) / "proof-cas" / "focus-cas.lock",
+        _command_timeout_seconds(campaign),
+    ):
+        _gc_focus_evidence(root)
     scratch_root = (
         _state_root(root) / "scratch" / _slug(str(campaign["campaign_id"]))
     )
@@ -2336,36 +2464,47 @@ def campaign_status(root: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
     owner = _owner_root(root, campaign)
     exact_manifest = owner / "exact-manifest.json"
     exact: Mapping[str, Any] = {}
-    if exact_manifest.is_file():
-        value = _validate_exact_manifest(
-            root, campaign, _read_json(exact_manifest, "exact manifest")
-        )
-        exact = value["exact"]
     functions: dict[str, Any] = {}
     focus_evidence: dict[str, Any] = {}
     for function in campaign["functions"]:
-        path = _function_root(root, campaign, function) / "latest-frontier.json"
-        frontier = (
-            _validate_frontier(_read_json(path, "latest frontier"), campaign, function)
-            if path.is_file() else None
-        )
-        functions[function] = frontier
-        if frontier is not None:
-            digest = frontier["focus_evidence_sha256"]
-            evidence_path = (
-                _state_root(root) / "proof-cas" / "focus" / digest[:2]
-                / f"{digest}.json"
+        # Recovery and status reads share the writer's complete lock order;
+        # otherwise status could validate a pending source against a frontier
+        # while retention is in the middle of its source CAS.
+        with _frontier_lock_chain(root, campaign, function):
+            _recover_pending_locked(root, campaign, function)
+            path = _function_root(root, campaign, function) / "latest-frontier.json"
+            frontier = (
+                _validate_frontier(_read_json(path, "latest frontier"), campaign, function)
+                if path.is_file() else None
             )
-            evidence = _validate_focus_evidence(
-                _read_json(evidence_path, f"focus evidence {function}"),
-                campaign, function, frontier["source_sha256"],
+            functions[function] = frontier
+            if frontier is not None:
+                digest = frontier["focus_evidence_sha256"]
+                evidence_path = (
+                    _state_root(root) / "proof-cas" / "focus" / digest[:2]
+                    / f"{digest}.json"
+                )
+                evidence = _validate_focus_evidence(
+                    _read_json(evidence_path, f"focus evidence {function}"),
+                    campaign, function, frontier["source_sha256"],
+                )
+                if evidence["focus_evidence_sha256"] != digest:
+                    raise CampaignError("frontier focus evidence binding drift")
+                focus_evidence[function] = {
+                    "sha256": digest,
+                    "path": evidence_path.relative_to(root).as_posix(),
+                }
+    # The owner exact manifest is updated under source-cas by _publish_exact;
+    # validate it under that same lock rather than observing a partial replace.
+    with _exclusive_lock(
+        _owner_root(root, campaign) / "source-cas.lock",
+        _command_timeout_seconds(campaign),
+    ):
+        if exact_manifest.is_file():
+            value = _validate_exact_manifest(
+                root, campaign, _read_json(exact_manifest, "exact manifest")
             )
-            if evidence["focus_evidence_sha256"] != digest:
-                raise CampaignError("frontier focus evidence binding drift")
-            focus_evidence[function] = {
-                "sha256": digest,
-                "path": evidence_path.relative_to(root).as_posix(),
-            }
+            exact = value["exact"]
     return {
         "schema": "owner_campaign_status/v1", "campaign_id": campaign["campaign_id"],
         "owner": campaign["owner"], "exact_count": len(exact), "total": len(campaign["functions"]),

@@ -325,6 +325,19 @@ class OwnerCampaignTests(unittest.TestCase):
         lines = (self.root / "build" / "invocations.log").read_text().splitlines()
         self.assertEqual([line.split(":", 1)[0] for line in lines], ["snapshot"])
 
+    def test_nested_manifest_path_keeps_scratch_under_repository_state_root(self) -> None:
+        nested = self.root / "build" / "owner-replay" / "campaign.json"
+        nested.parent.mkdir(parents=True)
+        nested.write_text(json.dumps(self.manifest), encoding="utf-8")
+        self.manifest_path = nested
+
+        loaded = self.load()
+        scratch = campaign._ensure_scratch(self.root, loaded)
+
+        expected = self.root / "build" / "owner-campaign" / "scratch"
+        self.assertTrue(campaign._inside(expected, scratch))
+        self.assertTrue(campaign._scratch_is_owned(loaded, scratch))
+
     def test_scratch_with_wrong_head_is_recreated_at_bound_base(self) -> None:
         loaded = self.load()
         scratch = campaign._ensure_scratch(self.root, loaded)
@@ -864,6 +877,23 @@ class OwnerCampaignTests(unittest.TestCase):
         self.assertEqual(
             campaign.assess_gain(metrics, closed_candidate, base_focus=base_focus, candidate_focus=closed_physical),
             "improved",
+        )
+
+        exact_candidate = json.loads(json.dumps(closed_candidate))
+        exact_candidate["strict"]["differences"] = 0
+        exact_candidate["data"]["differences"] = 0
+        exact_candidate["source_link_exact"] = True
+        exact_focus = {
+            **closed_physical,
+            "strict_row_ids": [],
+            "data_row_ids": [],
+        }
+        self.assertEqual(
+            campaign.assess_gain(
+                metrics, exact_candidate,
+                base_focus=base_focus, candidate_focus=exact_focus,
+            ),
+            "exact",
         )
 
     def test_identical_parallel_candidate_compiles_once(self) -> None:

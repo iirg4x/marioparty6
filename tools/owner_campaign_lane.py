@@ -23,6 +23,7 @@ from collections import Counter
 from typing import Any, Callable, Mapping, Sequence
 
 from . import owner_campaign
+from . import owner_campaign_selector
 
 
 INBOX_SCHEMA = "owner_campaign_inbox/v1"
@@ -264,8 +265,42 @@ def run_inbox(
             "authority_advanced": False,
         }
 
+    # A real v2 manifest always uses the selector.  The small descriptor-only
+    # fallback is retained for old unit/replay callers that predate the
+    # selection sidecar; it is unreachable for a loaded v2 campaign because
+    # ``base_commit`` is mandatory there.  This keeps replay compatibility
+    # without allowing a production campaign to compile an unranked batch.
+    selection: dict[str, Any] | None = None
+    selection_required = "base_commit" in campaign or any(
+        any(path.is_file() for path in owner_campaign_selector.selection_evidence_paths(descriptor))
+        for descriptor in descriptors
+    )
+    dispatch_descriptors = descriptors
+    if selection_required:
+        selection = owner_campaign_selector.select_winning_candidate(
+            root, campaign, descriptors
+        )
+        if selection.get("status") != owner_campaign_selector.SELECTED:
+            return {
+                "schema": LANE_RESULT_SCHEMA,
+                "status": "selection_unknown",
+                "reason": selection.get("reason", "no deterministic winner"),
+                "campaign_id": campaign["campaign_id"],
+                "discovered": len(descriptors),
+                "dispatched": 0,
+                "results": [],
+                "cleaned": [],
+                "preserved_infrastructure": [
+                    path.relative_to(root).as_posix() for path in descriptors
+                ],
+                "selection": selection,
+                "authority_advanced": False,
+            }
+        selected_path = Path(selection["selected"]["descriptor_path"])
+        dispatch_descriptors = [selected_path]
+
     try:
-        results = owner_campaign.run_loop(root, campaign, descriptors)
+        results = owner_campaign.run_loop(root, campaign, dispatch_descriptors)
     except owner_campaign.InfrastructureError as exc:
         # A batch-level infrastructure error must not consume its inputs.
         results = [
@@ -276,12 +311,12 @@ def run_inbox(
                 "reason": str(exc)[:1000],
                 "authority_advanced": False,
             }
-            for path in descriptors
+            for path in dispatch_descriptors
         ]
 
     cleaned: list[str] = []
     preserved: list[str] = []
-    for index, descriptor_path in enumerate(descriptors):
+    for index, descriptor_path in enumerate(dispatch_descriptors):
         result = results[index] if index < len(results) else {
             "status": "infra_retry",
             "reason": "core returned fewer results than dispatched",
@@ -289,6 +324,14 @@ def run_inbox(
         status = _result_status(result)
         if status in TERMINAL_STATUSES:
             cleaned.extend(_compact_terminal_input(root, campaign, descriptor_path))
+            if selection is not None:
+                evidence_path = Path(selection["selected"]["evidence_path"])
+                try:
+                    if evidence_path.is_file():
+                        evidence_path.unlink()
+                        cleaned.append(evidence_path.relative_to(root).as_posix())
+                except (OSError, ValueError) as exc:
+                    cleaned.append(f"cleanup-error:{evidence_path}:{exc}")
         else:
             preserved.append(descriptor_path.relative_to(root).as_posix())
 
@@ -304,10 +347,11 @@ def run_inbox(
         "status": status,
         "campaign_id": campaign["campaign_id"],
         "discovered": len(descriptors),
-        "dispatched": len(descriptors),
+        "dispatched": len(dispatch_descriptors),
         "results": list(results),
         "cleaned": cleaned,
         "preserved_infrastructure": preserved,
+        "selection": selection,
         "authority_advanced": False,
     }
 
@@ -402,11 +446,12 @@ def run_supervisor(
 ) -> dict[str, Any]:
     """Keep a Sol-owned campaign live until a bounded terminal state.
 
-    Candidate selection remains outside this module. The supervisor only
-    discovers sealed inbox descriptors, dispatches them through the core, and
-    waits with bounded exponential backoff when the inbox is empty or an
-    infrastructure retry is pending. ``--once`` uses :func:`run_inbox` instead
-    for deterministic snapshots and tests.
+    The supervisor resolves the lane's sealed evidence through the deterministic
+    winning-cell selector, dispatches at most its single rank-1 candidate, and
+    waits with bounded exponential backoff when no candidate is supportable or
+    an infrastructure retry is pending. Portfolio scope and cross-owner
+    priorities remain outside the lane. ``--once`` uses :func:`run_inbox`
+    instead for deterministic snapshots and tests.
     """
 
     if type(max_candidates) is not int or not 1 <= max_candidates <= DEFAULT_BATCH_SIZE:
@@ -496,6 +541,18 @@ def run_supervisor(
             batch_statuses = [_result_status(item) for item in batch_results]
             outcomes.update(batch_statuses)
             last_batch_status = str(batch.get("status", "unknown"))
+            if last_batch_status == "selection_unknown":
+                return _terminal_result(
+                    campaign,
+                    status="pivot_required",
+                    reason=str(batch.get("reason", "selection returned UNKNOWN"))[:1000],
+                    started=started,
+                    clock=clock,
+                    batches=batches,
+                    dispatched=dispatched,
+                    outcomes=outcomes,
+                    last_batch_status=last_batch_status,
+                )
             infra_only = bool(batch_statuses) and all(
                 status in {"infra_retry", "stale_rebase", "stale"}
                 for status in batch_statuses

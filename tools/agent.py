@@ -961,6 +961,17 @@ def _add_owner_campaign_command_arguments(
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--json", action="store_true")
+    if command == "import":
+        parser.add_argument(
+            "--legacy-exact", "--exact", dest="legacy_exact",
+            action="append", default=[],
+            help="legacy CRACK_REPORT/v1 or compact exact receipt to import",
+        )
+        parser.add_argument(
+            "--legacy-consumed", "--consumed", dest="legacy_consumed",
+            action="append", default=[],
+            help="compiled legacy neutral outcome to add to dedupe only",
+        )
     parser.set_defaults(owner_campaign_operation=command)
 
 
@@ -972,6 +983,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
         ("initialize", ["init"]),
         ("status", []),
         ("run", []),
+        ("import", ["migrate"]),
     ):
         command = commands.add_parser(
             name,
@@ -980,6 +992,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
                 "initialize": "create an owner-scoped campaign manifest",
                 "status": "inspect campaign state and recover pending frontiers",
                 "run": "run the autonomous owner campaign loop",
+                "import": "import authenticated legacy exact receipts and compiled dedupe outcomes",
             }[name],
         )
         _add_owner_campaign_command_arguments(command, name)
@@ -1219,7 +1232,7 @@ def _run_owner_campaign_command(
     operation = getattr(args, "owner_campaign_operation", None) or (
         "run" if getattr(args, "crack_command", None) == "loop" else None
     )
-    if operation not in {"initialize", "status", "run"}:
+    if operation not in {"initialize", "status", "run", "import"}:
         raise OwnerCampaignCLIError("owner campaign operation is missing")
 
     if operation == "initialize":
@@ -1229,6 +1242,22 @@ def _run_owner_campaign_command(
             initialize_campaign,
             args,
             root=root,
+        )
+        return _print_owner_campaign_result(value)
+
+    if operation == "import":
+        campaign_path = _campaign_path(args)
+        if campaign_path is None:
+            raise OwnerCampaignCLIError("owner campaign import requires --campaign")
+        from tools.owner_campaign_import import import_legacy
+
+        value = import_legacy(
+            root,
+            campaign_path,
+            [Path(item) for item in (getattr(args, "legacy_exact", None) or [])],
+            consumed_paths=[
+                Path(item) for item in (getattr(args, "legacy_consumed", None) or [])
+            ],
         )
         return _print_owner_campaign_result(value)
 
