@@ -589,7 +589,13 @@ def _candidate_key(campaign: Mapping[str, Any], record: Mapping[str, Any]) -> st
 
 
 def _focus(campaign: Mapping[str, Any], record: Mapping[str, Any]) -> dict[str, Any]:
-    siblings = list(campaign["protected_exact_functions"])
+    # Legacy receipts counted the complete protected inventory, including the
+    # function being imported.  v2 keeps the focus function's exactness in its
+    # own strict/data/physical metrics, so its sibling census must exclude the
+    # selected focus just like every live v2 measurement does.
+    siblings = list(
+        owner_campaign._protected_sibling_functions(campaign, record["function"])
+    )
     body: dict[str, Any] = {
         "schema": "owner_campaign_focus_evidence/v1", "owner": campaign["owner"],
         "function": record["function"], "unit": campaign["unit"],
@@ -605,7 +611,7 @@ def _focus(campaign: Mapping[str, Any], record: Mapping[str, Any]) -> dict[str, 
         "strict_row_count": 0, "data_row_count": 0,
         "physical_target_count": record["physical_target_count"],
         "physical_candidate_count": record["physical_candidate_count"],
-        "physical_difference_count": 0, "protected_total": record["protected_total"],
+        "physical_difference_count": 0, "protected_total": len(siblings),
         "protected_losses": 0, "sibling_digest": _digest_json(siblings),
     }
     body["focus_evidence_sha256"] = _digest_json(body)
@@ -652,7 +658,7 @@ def _normalized_state(
         "strict": {"target_bytes": record["target_bytes"], "candidate_bytes": record["candidate_bytes"], "differences": 0},
         "data": {"target_bytes": record["target_bytes"], "candidate_bytes": record["candidate_bytes"], "differences": 0},
         "physical_target_count": record["physical_target_count"], "physical_candidate_count": record["physical_candidate_count"],
-        "physical_differences": 0, "protected_total": record["protected_total"],
+        "physical_differences": 0, "protected_total": focus["protected_total"],
         "protected_losses": 0, "source_link_exact": True,
     }
     frontier_body = {
@@ -684,7 +690,7 @@ def _normalized_state(
             "physical_target_count": record["physical_target_count"],
             "physical_candidate_count": record["physical_candidate_count"], "physical_difference_count": 0,
             "physical_difference_ids_sha256": focus["physical_difference_ids_sha256"],
-            "protected_total": record["protected_total"], "protected_losses": 0,
+            "protected_total": focus["protected_total"], "protected_losses": 0,
             "protected_sibling_digest": focus["sibling_digest"], "source_link_exact": True,
         },
         "proof_receipts": receipts,
@@ -700,8 +706,8 @@ def _normalized_state(
             "physical_target_count": record["physical_target_count"],
             "physical_candidate_count": record["physical_candidate_count"], "physical_difference_count": 0,
             "physical_difference_ids_sha256": focus["physical_difference_ids_sha256"],
-            "protected_total": record["protected_total"], "protected_losses": 0,
-            "protected_sibling_identities": list(campaign["protected_exact_functions"]),
+            "protected_total": focus["protected_total"], "protected_losses": 0,
+            "protected_sibling_identities": list(focus["sibling_identities"]),
             "protected_sibling_digest": focus["sibling_digest"], "proofs": proofs,
         },
         "completed_at": record["completed_at"],
