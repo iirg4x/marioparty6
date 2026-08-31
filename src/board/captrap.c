@@ -1491,8 +1491,8 @@ void mbev_CapDossun(void)
             HuPrcVSleep();
             playerNo = work->playerNo;
             masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
-            masuNumSum = mbev_CapBiriQShockDelayGet(playerNo)
-                + masuNumField;
+            masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                + masuNumField);
             masuNumResult = masuNumSum;
             masuNumCur = masuNumResult;
         } while (masuNumCur < 0 || masuNumCur > 20);
@@ -1505,8 +1505,8 @@ void mbev_CapDossun(void)
 
         playerNo = work->playerNo;
         masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
-        masuNumSum = mbev_CapBiriQShockDelayGet(playerNo)
-            + masuNumField;
+        masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+            + masuNumField);
         masuNumResult = masuNumSum;
         masuNum = masuNumResult;
     }
@@ -1522,8 +1522,8 @@ void mbev_CapDossun(void)
 
             playerNo = work->playerNo;
             masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
-            masuNumSum = mbev_CapBiriQShockDelayGet(playerNo)
-                + masuNumField;
+            masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                + masuNumField);
             masuNumResult = masuNumSum;
             time = 1.0f
                 - ((float)(masuNumResult - 1) / masuNum);
@@ -1537,8 +1537,8 @@ void mbev_CapDossun(void)
 
             playerNo = work->playerNo;
             masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
-            masuNumSum = mbev_CapBiriQShockDelayGet(playerNo)
-                + masuNumField;
+            masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                + masuNumField);
             masuNumResult = masuNumSum;
             masuNumCur = masuNumResult;
         }
