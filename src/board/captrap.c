@@ -1198,7 +1198,6 @@ void mbev_CapTumujikunTrap(void *workP)
     int focusObj;
     int motionId;
     int masuNum;
-    int branchAttr;
     int randomStart;
     int candidate;
     int masuId;
@@ -1349,8 +1348,7 @@ void mbev_CapTumujikunTrap(void *workP)
         if (candidate == masuId) {
             continue;
         }
-        branchAttr = mbBranchAttrGet();
-        if ((mbMasuMAttrGet(candidate) & branchAttr) != 0
+        if ((mbMasuMAttrGet(candidate) & mbBranchAttrGet()) != 0
             || mbCapMasuDispTypeGet(candidate) == 2
             || (mbMasuTypeGet(candidate) != 1
                 && mbMasuTypeGet(candidate) != 2)) {
@@ -1370,8 +1368,7 @@ void mbev_CapTumujikunTrap(void *workP)
             if (candidate == masuId) {
                 continue;
             }
-            branchAttr = mbBranchAttrGet();
-            if ((mbMasuMAttrGet(candidate) & branchAttr) != 0
+            if ((mbMasuMAttrGet(candidate) & mbBranchAttrGet()) != 0
                 || (mbCapMasuDispTypeGet(candidate) == 2
                     && mbCapMasuPlayerGet(candidate) != work->playerNo)
                 || (mbMasuTypeGet(candidate) != 1
@@ -1393,8 +1390,7 @@ void mbev_CapTumujikunTrap(void *workP)
             if (candidate == masuId) {
                 continue;
             }
-            branchAttr = mbBranchAttrGet();
-            if ((mbMasuMAttrGet(candidate) & branchAttr) != 0
+            if ((mbMasuMAttrGet(candidate) & mbBranchAttrGet()) != 0
                 || (mbMasuTypeGet(candidate) != 1
                     && mbMasuTypeGet(candidate) != 2)) {
                 continue;
