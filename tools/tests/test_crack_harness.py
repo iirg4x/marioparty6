@@ -1973,6 +1973,121 @@ elif 'admit' in sys.argv:
         )
         harness._validate_natural_cell(self.base, candidate, 1, 3)
 
+    def test_translation_unit_cell_allows_static_data_move_across_unchanged_function(self) -> None:
+        base = self.root / "translation-unit-base.c"
+        candidate = self.root / "translation-unit-candidate.c"
+        base_text = (
+            "static int first = 1;\n"
+            "int Keep(void) { return first; }\n"
+            "static int second = 2;\n"
+            "int Tail(void) { return second; }\n"
+        )
+        candidate_text = (
+            "static int second = 2;\n"
+            "int Keep(void) { return first; }\n"
+            "static int first = 1;\n"
+            "int Tail(void) { return second; }\n"
+        )
+        base.write_bytes(base_text.encode("utf-8"))
+        candidate.write_bytes(candidate_text.encode("utf-8"))
+        scope = {
+            "kind": "translation_unit",
+            "start_line": 1,
+            "end_line": len(base_text.splitlines()),
+            "base_span_sha256": sha(base),
+        }
+        harness._validate_natural_cell(
+            base, candidate, 2, 2,
+            hashlib.sha256(base.read_bytes().splitlines(keepends=True)[1]).hexdigest(),
+            cell_scope=scope,
+        )
+
+    def test_translation_unit_cell_rejects_function_boundary_mutation(self) -> None:
+        base = self.root / "translation-unit-boundary-base.c"
+        candidate = self.root / "translation-unit-boundary-candidate.c"
+        base_text = (
+            "static int first = 1;\n"
+            "int Keep(void) { return first; }\n"
+            "static int second = 2;\n"
+            "int Tail(void) { return second; }\n"
+        )
+        candidate_text = base_text.replace("int Tail(void)", "int Renamed(void)")
+        base.write_bytes(base_text.encode("utf-8"))
+        candidate.write_bytes(candidate_text.encode("utf-8"))
+        scope = {
+            "kind": "translation_unit",
+            "start_line": 1,
+            "end_line": 4,
+            "base_span_sha256": sha(base),
+        }
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "top-level function boundary"
+        ):
+            harness._validate_natural_cell(
+                base, candidate, 2, 2, cell_scope=scope,
+            )
+
+    def test_translation_unit_cell_rejects_bad_scope_hash_and_outside_edit(self) -> None:
+        base = self.root / "translation-unit-scope-base.c"
+        candidate = self.root / "translation-unit-scope-candidate.c"
+        base_text = (
+            "static int first = 1;\n"
+            "int Keep(void) { return first; }\n"
+            "static int second = 2;\n"
+            "int Tail(void) { return second; }\n"
+        )
+        base.write_bytes(base_text.encode("utf-8"))
+        candidate.write_bytes(base_text.replace("second = 2", "second = 3").encode("utf-8"))
+        wrong_hash_scope = {
+            "kind": "translation_unit", "start_line": 1, "end_line": 4,
+            "base_span_sha256": "0" * 64,
+        }
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "translation-unit span hash"
+        ):
+            harness._validate_natural_cell(
+                base, candidate, 2, 2, cell_scope=wrong_hash_scope,
+            )
+
+        outside_candidate = self.root / "translation-unit-outside.c"
+        outside_candidate.write_bytes(base_text.replace("first = 1", "first = 9").encode("utf-8"))
+        scope_text = b"".join(base.read_bytes().splitlines(keepends=True)[1:])
+        scope = {
+            "kind": "translation_unit", "start_line": 2, "end_line": 4,
+            "base_span_sha256": hashlib.sha256(scope_text).hexdigest(),
+        }
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "outside the approved translation-unit span"
+        ):
+            harness._validate_natural_cell(
+                base, outside_candidate, 2, 2, cell_scope=scope,
+            )
+
+    def test_default_function_scope_rejects_static_move_across_function(self) -> None:
+        base = self.root / "function-scope-base.c"
+        candidate = self.root / "function-scope-candidate.c"
+        base_text = (
+            "static int first = 1;\n"
+            "int Keep(void) { return first; }\n"
+            "static int second = 2;\n"
+            "int Tail(void) { return second; }\n"
+        )
+        candidate_text = (
+            "static int second = 2;\n"
+            "int Keep(void) { return first; }\n"
+            "static int first = 1;\n"
+            "int Tail(void) { return second; }\n"
+        )
+        base.write_bytes(base_text.encode("utf-8"))
+        candidate.write_bytes(candidate_text.encode("utf-8"))
+        with self.assertRaisesRegex(
+            harness.CrackHarnessError, "approved function span|function boundary"
+        ):
+            harness._validate_natural_cell(
+                base, candidate, 2, 2,
+                hashlib.sha256(base.read_bytes().splitlines(keepends=True)[1]).hexdigest(),
+            )
+
     def test_predicted_rows_must_be_unique_at_runtime(self) -> None:
         approval, _ = self.write_inputs()
         value = json.loads(approval.read_text(encoding="utf-8"))

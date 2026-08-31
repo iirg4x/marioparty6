@@ -1482,6 +1482,7 @@ def _limits(value: Any) -> dict[str, int]:
 def _validate_natural_cell(
     base: Path, candidate: Path, start: int, end: int,
     base_span_sha256: str | None = None,
+    *, cell_scope: Mapping[str, Any] | None = None,
 ) -> None:
     try:
         before = base.read_bytes()
@@ -1492,11 +1493,20 @@ def _validate_natural_cell(
         new_lines = after.decode("utf-8").splitlines(keepends=True)
     except UnicodeDecodeError as exc:
         raise CrackHarnessError("natural-C cell must be UTF-8") from exc
-    if end > len(old_lines):
-        raise CrackHarnessError("approved function span exceeds the sealed base")
-    span_bytes = "".join(old_lines[start - 1:end]).encode("utf-8")
-    if base_span_sha256 is not None and _digest_bytes(span_bytes) != base_span_sha256:
-        raise CrackHarnessError("approved function span hash does not match the sealed base")
+    if cell_scope is None:
+        scope_start, scope_end = start, end
+        scope_hash = base_span_sha256
+        scope_label = "function"
+    else:
+        scope_start, scope_end, scope_hash = _cell_scope_values(cell_scope)
+        scope_label = "translation-unit"
+    if scope_end > len(old_lines):
+        raise CrackHarnessError(f"approved {scope_label} span exceeds the sealed base")
+    span_bytes = "".join(old_lines[scope_start - 1:scope_end]).encode("utf-8")
+    if scope_hash is not None and _digest_bytes(span_bytes) != scope_hash:
+        raise CrackHarnessError(
+            f"approved {scope_label} span hash does not match the sealed base"
+        )
     changes = [opcode for opcode in difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False).get_opcodes() if opcode[0] != "equal"]
     if not changes or len(changes) > 3:
         raise CrackHarnessError("candidate must contain one bounded semantic cell of at most three hunks")
@@ -1507,12 +1517,24 @@ def _validate_natural_cell(
         # The first and last boundaries of the approved span are outside the
         # function, so accepting them would let a supposedly function-scoped
         # cell inject a declaration immediately before/after the function.
-        outside_span = old_start < start - 1 or old_end > end
-        insertion_at_boundary = (
-            old_start == old_end and not (start <= old_start < end)
-        )
+        outside_span = old_start < scope_start - 1 or old_end > scope_end
+        if cell_scope is None:
+            insertion_at_boundary = (
+                old_start == old_end
+                and not (scope_start <= old_start < scope_end)
+            )
+        else:
+            # A translation-unit scope includes its first line boundary, so
+            # moving a file-scope declaration to the beginning is valid.  The
+            # boundary after the final scoped line remains outside the cell.
+            insertion_at_boundary = (
+                old_start == old_end
+                and not (scope_start - 1 <= old_start < scope_end)
+            )
         if outside_span or insertion_at_boundary:
-            raise CrackHarnessError("candidate changes lines outside the approved function span")
+            raise CrackHarnessError(
+                f"candidate changes lines outside the approved {scope_label} span"
+            )
         changed_lines += (old_end - old_start) + (new_end - new_start)
         changed_text_parts.extend(new_lines[new_start:new_end])
     if changed_lines > 80:
@@ -1530,9 +1552,34 @@ def _validate_natural_cell(
     if _contains_preprocessor_directive(changed_text):
         raise CrackHarnessError("candidate contains a preprocessor directive")
 
-    _validate_function_span_structure(
-        before.decode("utf-8"), after.decode("utf-8"), start, end
-    )
+    before_text = before.decode("utf-8")
+    after_text = after.decode("utf-8")
+    if cell_scope is None:
+        _validate_function_span_structure(
+            before_text, after_text, start, end
+        )
+    else:
+        _validate_translation_unit_structure(before_text, after_text)
+
+
+def _cell_scope_values(value: Mapping[str, Any]) -> tuple[int, int, str]:
+    """Validate and unpack an optional translation-unit cell scope."""
+
+    if set(value) != {"kind", "start_line", "end_line", "base_span_sha256"}:
+        raise CrackHarnessError(
+            "cell_scope must be a strict translation-unit descriptor"
+        )
+    if value.get("kind") != "translation_unit":
+        raise CrackHarnessError("cell_scope.kind must be translation_unit")
+    scope_start = value.get("start_line")
+    scope_end = value.get("end_line")
+    if (
+        type(scope_start) is not int or scope_start < 1
+        or type(scope_end) is not int or scope_end < scope_start
+    ):
+        raise CrackHarnessError("cell_scope line bounds are invalid")
+    scope_hash = _sha(value.get("base_span_sha256"), "cell_scope.base_span_sha256")
+    return scope_start, scope_end, scope_hash
 
 
 def _mask_c_noncode(text: str) -> str:
@@ -1667,6 +1714,61 @@ def _function_block_signatures(masked: str, opening: int, closing: int) -> list[
         signature = re.sub(r"\s+", " ", body[match.start() : match.end() - 1]).strip()
         signatures.append(signature)
     return signatures
+
+
+def _function_definitions(masked: str) -> list[tuple[int, str]]:
+    """Return C function-definition signatures and nesting depths in order.
+
+    The translation-unit cell may move ordinary file-scope data, which can
+    shift every function's line number.  Comparing the definition signature
+    sequence instead of line ranges therefore preserves the meaningful
+    boundary invariant while allowing that source-layout change.  A depth is
+    retained so an injected nested definition is rejected as well.
+    """
+
+    depth = 0
+    opening_depth: dict[int, int] = {}
+    for index, char in enumerate(masked):
+        if char == "{":
+            opening_depth[index] = depth
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth < 0:
+                # The ordinary function-structure validator will report the
+                # malformed body.  Keep this scanner deterministic and avoid
+                # treating a malformed source as a negative depth sequence.
+                depth = 0
+
+    definitions: list[tuple[int, str]] = []
+    for match in _FUNCTION_BLOCK_RE.finditer(masked):
+        opening = match.end() - 1
+        definition_depth = opening_depth.get(opening)
+        if definition_depth is None or match.group("name") in _CONTROL_BLOCK_KEYWORDS:
+            continue
+        signature = re.sub(
+            r"\s+", " ", masked[match.start():opening]
+        ).strip()
+        definitions.append((definition_depth, signature))
+    return definitions
+
+
+def _validate_translation_unit_structure(base_text: str, candidate_text: str) -> None:
+    """Keep every function boundary stable for a translation-unit cell.
+
+    File-scope static data may move and thereby shift line numbers, but the
+    ordered function-definition signature/depth sequence must remain exactly
+    the same.  This catches additions, removals, renames, reordering, and
+    nested-definition injection without imposing function-span suffix
+    equality on otherwise valid data-layout cells.
+    """
+
+    base_masked = _mask_preprocessor_directives(_mask_c_noncode(base_text))
+    candidate_masked = _mask_preprocessor_directives(_mask_c_noncode(candidate_text))
+    if _function_definitions(base_masked) != _function_definitions(candidate_masked):
+        raise CrackHarnessError(
+            "candidate changes a top-level function boundary"
+        )
 
 
 def _validate_function_span_structure(base_text: str, candidate_text: str, start: int, end: int) -> None:
@@ -3199,7 +3301,7 @@ def load_approval(
         "schema", "approval_id", "owner", "task_id", "function",
         "unit", "base_commit", "toolchain_key", "target_sha256", "permit_sha256", "issued_at", "expires_at",
         "source", "base", "candidate", "function_span", "predicted_rows", "selection",
-        "commands", "campaign", "limits", "retry",
+        "commands", "campaign", "limits", "retry", "cell_scope",
     }
     unknown = sorted(set(approval) - allowed)
     if unknown:
@@ -3287,8 +3389,17 @@ def load_approval(
     if not all(isinstance(item, int) and not isinstance(item, bool) and item > 0 for item in (start, end)) or start > end:
         raise CrackHarnessError("function_span is invalid")
     span_sha = _sha(span.get("base_span_sha256"), "function_span.base_span_sha256")
+    cell_scope = None
+    if "cell_scope" in approval:
+        if not isinstance(approval["cell_scope"], Mapping):
+            raise CrackHarnessError("cell_scope must be a strict translation-unit descriptor")
+        _cell_scope_values(approval["cell_scope"])
+        cell_scope = approval["cell_scope"]
     if paths["base"].is_file() and paths["candidate"].is_file():
-        _validate_natural_cell(paths["base"], paths["candidate"], start, end, span_sha)
+        _validate_natural_cell(
+            paths["base"], paths["candidate"], start, end, span_sha,
+            cell_scope=cell_scope,
+        )
     elif not recovery_cleanup:
         raise CrackHarnessError("sealed base/candidate cell inputs are missing")
     rows = _validate_predicted_rows(approval.get("predicted_rows"))
