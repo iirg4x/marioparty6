@@ -415,6 +415,44 @@ class OwnerCampaignTests(unittest.TestCase):
         self.assertTrue(Path(loaded["_git_executable"]).is_file())
         self.assertEqual(loaded["_git_sha256"], campaign._digest_file(loaded["_git_executable"]))
 
+    def test_git_resolver_falls_back_when_native_cannot_read_repository(self) -> None:
+        fake = self.root / "build" / "git-resolver-fallback"
+        native = fake / "Git" / "cmd" / "git.exe"
+        msys = fake / "devkitPro" / "msys2" / "usr" / "bin" / "git.exe"
+        native.parent.mkdir(parents=True)
+        msys.parent.mkdir(parents=True)
+        native.write_bytes(b"native")
+        msys.write_bytes(b"msys")
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            calls.append((argv, kwargs))
+            if argv[-1] == "--version":
+                return subprocess.CompletedProcess(argv, 0, "git version 2.45.0\n", "")
+            self.assertEqual(argv[1:], ["rev-parse", "--git-dir"])
+            if Path(argv[0]).resolve() == native.resolve():
+                return subprocess.CompletedProcess(argv, 128, "", "not a repository")
+            return subprocess.CompletedProcess(argv, 0, ".git\n", "")
+
+        environment = {
+            "ProgramW6432": str(fake),
+            "PATH": str(msys.parent),
+        }
+        with mock.patch.object(campaign.os, "name", "nt"), mock.patch.dict(
+            campaign.os.environ, environment, clear=True
+        ), mock.patch.object(campaign.subprocess, "run", side_effect=run):
+            selected, digest = campaign._resolve_git_executable(self.root)
+
+        self.assertEqual(selected, msys.resolve())
+        self.assertEqual(digest, campaign._digest_file(msys))
+        repository_probes = [
+            (argv, kwargs)
+            for argv, kwargs in calls
+            if argv[1:] == ["rev-parse", "--git-dir"]
+        ]
+        self.assertEqual([Path(argv[0]).resolve() for argv, _ in repository_probes], [native.resolve(), msys.resolve()])
+        self.assertEqual([kwargs["cwd"] for _, kwargs in repository_probes], [self.root, self.root])
+
     def test_unowned_scratch_is_never_removed(self) -> None:
         loaded = self.load()
         scratch = campaign._scratch_repo(self.root, loaded)

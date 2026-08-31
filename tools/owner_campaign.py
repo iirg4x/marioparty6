@@ -207,9 +207,7 @@ LIMIT_FIELDS = {
 COMMAND_FIELDS = {"argv", "measurement_relpath"}
 
 
-def _select_git_executable(candidates: Sequence[Path], *, windows: bool) -> Path:
-    """Choose a stable native Git while retaining a portable last-resort fallback."""
-
+def _unique_git_executables(candidates: Sequence[Path]) -> list[Path]:
     unique: list[Path] = []
     seen: set[str] = set()
     for raw in candidates:
@@ -222,31 +220,65 @@ def _select_git_executable(candidates: Sequence[Path], *, windows: bool) -> Path
             continue
         seen.add(key)
         unique.append(candidate)
+    return unique
+
+
+def _git_executable_rank(path: Path, *, windows: bool) -> tuple[int, int]:
+    lowered = str(path).replace("/", "\\").lower()
+    msys = "\\msys" in lowered or "\\devkitpro\\" in lowered
+    git_for_windows = "\\git\\cmd\\git.exe" in lowered or "\\git\\bin\\git.exe" in lowered
+    return (0 if git_for_windows and not msys else 2 if msys else 1, len(lowered))
+
+
+def _select_git_executable(candidates: Sequence[Path], *, windows: bool) -> Path:
+    """Choose the preferred Git path without probing a repository."""
+
+    unique = _unique_git_executables(candidates)
     if not unique:
         raise CampaignError("native Git executable cannot be resolved")
     if not windows:
         return unique[0]
 
-    def rank(path: Path) -> tuple[int, int]:
-        lowered = str(path).replace("/", "\\").lower()
-        msys = "\\msys" in lowered or "\\devkitpro\\" in lowered
-        git_for_windows = "\\git\\cmd\\git.exe" in lowered or "\\git\\bin\\git.exe" in lowered
-        return (0 if git_for_windows and not msys else 2 if msys else 1, len(lowered))
-
-    return min(unique, key=rank)
+    return min(unique, key=lambda path: _git_executable_rank(path, windows=True))
 
 
-def _resolve_git_executable() -> tuple[Path, str]:
+def _resolve_git_executable(repository_root: Path | None = None) -> tuple[Path, str]:
+    """Resolve Git and verify that it can read the campaign repository.
+
+    Windows installations commonly expose a native Git before the MSYS Git
+    used by the project. ``--version`` only proves that an executable can be
+    launched; it does not prove that it understands the repository's ``.git``
+    representation. Probe each candidate in preference order and retain the
+    first one that can perform a repository ``rev-parse`` in the actual
+    campaign root.
+    """
+
     candidates: list[Path] = []
     if os.name == "nt":
         for variable in ("ProgramW6432", "ProgramFiles", "LOCALAPPDATA"):
-            base = os.environ.get(variable)
-            if not base:
+            install_base = os.environ.get(variable)
+            if not install_base:
                 continue
-            root = Path(base)
+            install_root = Path(install_base)
             if variable == "LOCALAPPDATA":
-                root = root / "Programs"
-            candidates.extend((root / "Git" / "cmd" / "git.exe", root / "Git" / "bin" / "git.exe"))
+                install_root = install_root / "Programs"
+            candidates.extend(
+                (
+                    install_root / "Git" / "cmd" / "git.exe",
+                    install_root / "Git" / "bin" / "git.exe",
+                )
+            )
+        for variable in ("DEVKITPRO", "MSYS2_HOME", "MSYS2_ROOT"):
+            install_base = os.environ.get(variable)
+            if not install_base:
+                continue
+            install_root = Path(install_base)
+            candidates.extend(
+                (
+                    install_root / "msys2" / "usr" / "bin" / "git.exe",
+                    install_root / "usr" / "bin" / "git.exe",
+                )
+            )
         for item in os.environ.get("PATH", "").split(os.pathsep):
             if item:
                 candidates.append(Path(item) / "git.exe")
@@ -254,13 +286,60 @@ def _resolve_git_executable() -> tuple[Path, str]:
         found = shutil.which("git")
         if found:
             candidates.append(Path(found))
-    selected = _select_git_executable(candidates, windows=os.name == "nt")
-    probe = subprocess.run(
-        [str(selected), "--version"], capture_output=True, text=True, check=False,
+    unique = _unique_git_executables(candidates)
+    if not unique:
+        raise CampaignError("native Git executable cannot be resolved")
+    ordered = (
+        sorted(unique, key=lambda path: _git_executable_rank(path, windows=True))
+        if os.name == "nt"
+        else unique
     )
-    if probe.returncode or not probe.stdout.startswith("git version "):
+    repository = Path(os.path.abspath(repository_root)) if repository_root is not None else None
+    version_ok = False
+    repository_failures: list[str] = []
+    for candidate in ordered:
+        try:
+            version = subprocess.run(
+                [str(candidate), "--version"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            repository_failures.append(f"{candidate}: {exc}")
+            continue
+        if version.returncode or not version.stdout.startswith("git version "):
+            continue
+        version_ok = True
+        if repository is not None:
+            try:
+                repository_probe = subprocess.run(
+                    [str(candidate), "rev-parse", "--git-dir"],
+                    cwd=repository,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except OSError as exc:
+                repository_failures.append(f"{candidate}: {exc}")
+                continue
+            if repository_probe.returncode or not repository_probe.stdout.strip():
+                detail = (
+                    repository_probe.stderr.strip()
+                    or repository_probe.stdout.strip()
+                    or str(repository_probe.returncode)
+                )[:200]
+                repository_failures.append(f"{candidate}: {detail}")
+                continue
+        return candidate, _digest_file(candidate)
+    if not version_ok:
         raise CampaignError("resolved Git executable failed identity probe")
-    return selected, _digest_file(selected)
+    if repository is not None:
+        raise CampaignError(
+            "no resolved Git executable can read campaign repository"
+            + (f": {'; '.join(repository_failures)}" if repository_failures else "")
+        )
+    raise CampaignError("resolved Git executable failed identity probe")
 
 
 def _git_argv(campaign: Mapping[str, Any], *arguments: str) -> list[str]:
@@ -354,7 +433,7 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
         raise CampaignError("forbidden_constructs is invalid")
     if type(raw["cancellation_epoch"]) is not int or raw["cancellation_epoch"] < 0:
         raise CampaignError("cancellation_epoch is invalid")
-    git_executable, git_sha256 = _resolve_git_executable()
+    git_executable, git_sha256 = _resolve_git_executable(root)
     check = subprocess.run(
         [str(git_executable), "cat-file", "-t", raw["base_commit"]],
         cwd=root, capture_output=True, text=True, check=False,
