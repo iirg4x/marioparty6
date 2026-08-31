@@ -1071,30 +1071,29 @@ static int ev_CapMasuNumGet(int playerNo)
 void mbev_CapTumujikun(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
-    int motFile[] = {
-        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MOTION_A),
-        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MOTION_B),
-        -1,
-    };
-    HuVecF setupPos;
+    struct {
+        HuVecF setupPos;
+        int motFile[3];
+        u8 pad[48];
+    } local;
     HuVecF pos;
     HuVecF posTop;
     HuVecF effectPos;
-    HuVecF movePos;
-    int playerNo;
     int capObj;
     int effectObj;
     int soundId;
     int frame;
     int masuNum;
     int masuNumPrev;
-    float time;
-    float frameMax;
+    float weight;
     float masuNumStart;
+    float time;
 
-    playerNo = work->playerNo;
+    local.motFile[0] = DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MOTION_A);
+    local.motFile[1] = DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MOTION_B);
+    local.motFile[2] = -1;
     capObj = mbev_CapObjCreate(&work->objWork,
-        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MODEL), motFile,
+        DATANUM(DATA_capsule, CAPTRAP_DATA_TUMUJIKUN_MODEL), local.motFile,
         FALSE, 0, FALSE);
     mbObjDispSet(capObj, FALSE);
     mbObjLayerSet(capObj, 3);
@@ -1106,53 +1105,101 @@ void mbev_CapTumujikun(void)
     mbMasuPosGet(work->masuIdNext, &pos);
     posTop = pos;
     posTop.y += 1000.0f;
-    setupPos = pos;
+    local.setupPos = pos;
     do {
         HuPrcVSleep();
-        masuNum = ev_CapMasuNumGet(work->playerNo);
+        {
+            int playerNo;
+            int masuNumField;
+            int masuNumSum;
+            int masuNumResult;
+
+            playerNo = work->playerNo;
+            masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
+            masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                + masuNumField);
+            masuNumResult = masuNumSum;
+            masuNum = masuNumResult;
+        }
     } while (masuNum < 0 || masuNum > 20);
     mbAudFXPlay(MSM_SE_BRD00_75);
     mbObjMotionTimeSet(effectObj, 0.0f);
     mbObjMotionSpeedSet(effectObj, 0.5f);
-    mbObjPosSetV(effectObj, &setupPos);
+    mbObjPosSetV(effectObj, &local.setupPos);
     mbObjScaleSet(effectObj, 2.0f, 2.0f, 2.0f);
     mbObjDispSet(effectObj, TRUE);
     HuPrcSleep(15);
-    masuNumStart = ev_CapMasuNumGet(work->playerNo);
-    if (masuNumStart <= 0.0f) {
-        masuNumStart = 1.0f;
-    }
-    do {
-        masuNum = ev_CapMasuNumGet(work->playerNo);
-        time = 1.0f - (float)(masuNum - 1) / masuNumStart;
-        masuNumPrev = ev_CapMasuNumGet(work->playerNo);
-        HuPrcVSleep();
-        if (time >= 1.0f) {
-            break;
+    {
+        {
+            int playerNo;
+            int masuNumField;
+            int masuNumSum;
+            int masuNumResult;
+
+            playerNo = work->playerNo;
+            masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
+            masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                + masuNumField);
+            masuNumResult = masuNumSum;
+            masuNumStart = masuNumResult;
         }
-    } while (ev_CapMasuNumGet(work->playerNo) <= masuNumPrev);
+        if (masuNumStart <= 0.0f) {
+            masuNumStart = 1.0f;
+        }
+        do {
+            {
+                int playerNo;
+                int masuNumField;
+                int masuNumSum;
+                int masuNumResult;
+
+                playerNo = work->playerNo;
+                masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
+                masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                    + masuNumField);
+                masuNumResult = masuNumSum;
+                time = 1.0f
+                    - ((float)(masuNumResult - 1) / masuNumStart);
+            }
+            {
+                int playerNo;
+                int masuNumField;
+                int masuNumSum;
+                int masuNumResult;
+
+                playerNo = work->playerNo;
+                masuNumField = mbPlayerWorkGet(playerNo)->_unk08;
+                masuNumSum = (int)((char *)mbev_CapBiriQShockDelayGet(playerNo)
+                    + masuNumField);
+                masuNumResult = masuNumSum;
+                masuNumPrev = masuNumResult;
+            }
+            HuPrcVSleep();
+        } while (time < 1.0f
+            && ev_CapMasuNumGet(work->playerNo) <= masuNumPrev);
+    }
     soundId = mbAudFXPlay(MSM_SE_BRD00_75);
     mbObjMotionSet(capObj, 1, HU3D_MOTATTR_LOOP);
-    mbObjPosSetV(capObj, &setupPos);
+    mbObjPosSetV(capObj, &local.setupPos);
     mbObjDispSet(capObj, TRUE);
     for (frame = 0; frame < 30.0f; frame++) {
-        time = (float)frame / 30.0f;
+        weight = (float)frame / 30.0f;
         mbObjScaleSet(capObj, 1.5f,
-            1.5f * sin((M_PI * (90.0f * time)) / 180.0f), 1.5f);
+            1.5f * sin((M_PI * (90.0f * weight)) / 180.0f), 1.5f);
         HuPrcVSleep();
     }
     if (!GwPlayer[work->playerNo].metalF) {
         HuPrcSleep(30);
         mbAudFXPlay(MSM_SE_BRD00_77);
-        frameMax = 60.0f;
-        for (frame = 0; frame < frameMax; frame++) {
-            time = (float)frame / frameMax;
-            time = sin((M_PI * (90.0f * time)) / 180.0f);
-            effectPos.x = pos.x + time * (posTop.x - pos.x);
-            effectPos.y = pos.y + time * (posTop.y - pos.y);
-            effectPos.z = pos.z + time * (posTop.z - pos.z);
+        masuNumStart = 60.0f;
+        for (frame = 0; frame < masuNumStart; frame++) {
+            time = (float)frame / masuNumStart;
+            weight = sin((M_PI * (90.0f * time)) / 180.0f);
+            effectPos.x = pos.x + weight * (posTop.x - pos.x);
+            effectPos.y = pos.y + weight * (posTop.y - pos.y);
+            effectPos.z = pos.z + weight * (posTop.z - pos.z);
             mbObjPosSetV(capObj, &effectPos);
-            mbObjAlphaSet(capObj, 255.0f * (1.0f - time));
+            mbObjAlphaSet(capObj, 255.0f * (1.0f - weight));
             HuPrcVSleep();
         }
         mbObjDispSet(capObj, FALSE);
@@ -1162,15 +1209,15 @@ void mbev_CapTumujikun(void)
     } else {
         work->explodeObj = mbev_CapEffExplodeCreate();
         for (frame = 0; frame < 12.0f; frame++) {
-            time = (float)frame / 12.0f;
+            weight = (float)frame / 12.0f;
             mbObjScaleSet(capObj, 1.5f,
-                1.5f * cos((M_PI * (90.0f * time)) / 180.0f), 1.5f);
-            mbObjAlphaSet(effectObj, 255.0f * (1.0f - time));
+                1.5f * cos((M_PI * (90.0f * weight)) / 180.0f), 1.5f);
+            mbObjAlphaSet(effectObj, 255.0f * (1.0f - weight));
             HuPrcVSleep();
         }
-        mbMasuPosGet(work->masuIdNext, &setupPos);
-        movePos = setupPos;
-        mbev_CapEffDustHeavyAdd(work->explodeObj, &movePos);
+        mbMasuPosGet(work->masuIdNext, &local.setupPos);
+        ((void (*)(OMOBJ *, HuVecF))mbev_CapEffDustHeavyAdd)(
+            work->explodeObj, local.setupPos);
         if (soundId != -1) {
             mbAudFXStop(soundId);
         }
