@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "owner_campaign_replay_handle/v1",
+  "title": "Owner campaign replay restart handle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "fixture", "owner", "unit", "function", "source_relpath",
+    "release_commit", "campaign_commit", "paths", "target_input_path",
+    "hashes", "function_span", "candidate_object_expected_sha256",
+    "expected_report_sha256", "peak_bytes", "storage_cap_bytes", "created_at",
+    "handle_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "owner_campaign_replay_handle/v1"},
+    "fixture": {"type": "string", "minLength": 1},
+    "owner": {"type": "string", "minLength": 1},
+    "unit": {"type": "string", "minLength": 1},
+    "function": {"type": "string", "minLength": 1},
+    "source_relpath": {"type": "string", "minLength": 1},
+    "release_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "campaign_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository", "worktree", "raw_root", "index_path", "manifest_path",
+        "candidate_path", "base_path", "source_path", "target_path", "toolchain_path"
+      ],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "worktree": {"type": "string", "minLength": 1},
+        "raw_root": {"type": "string", "minLength": 1},
+        "index_path": {"type": "string", "minLength": 1},
+        "manifest_path": {"type": "string", "minLength": 1},
+        "candidate_path": {"type": "string", "minLength": 1},
+        "base_path": {"type": "string", "minLength": 1},
+        "source_path": {"type": "string", "minLength": 1},
+        "target_path": {"type": "string", "minLength": 1},
+        "toolchain_path": {"type": "string", "minLength": 1}
+      }
+    },
+    "target_input_path": {"type": "string", "minLength": 1},
+    "hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_source_sha256", "candidate_source_sha256", "target_sha256",
+        "toolchain_sha256", "producer_sha256"
+      ],
+      "properties": {
+        "base_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "candidate_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "target_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "toolchain_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "producer_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "function_span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_start_line", "base_end_line", "candidate_start_line",
+        "candidate_end_line", "base_sha256", "candidate_sha256"
+      ],
+      "properties": {
+        "base_start_line": {"type": "integer", "minimum": 1},
+        "base_end_line": {"type": "integer", "minimum": 1},
+        "candidate_start_line": {"type": "integer", "minimum": 1},
+        "candidate_end_line": {"type": "integer", "minimum": 1},
+        "base_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "candidate_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "candidate_object_expected_sha256": {
+      "type": "string",
+      "pattern": "^(|[0-9a-f]{64})$"
+    },
+    "expected_report_sha256": {
+      "type": "string",
+      "pattern": "^(|[0-9a-f]{64})$"
+    },
+    "peak_bytes": {"type": "integer", "minimum": 0},
+    "storage_cap_bytes": {"type": ["integer", "null"], "minimum": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "handle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

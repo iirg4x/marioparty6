@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"OWNER_CAMPAIGN_CANDIDATE_RESULT_V1.schema.json","type":"object","additionalProperties":false,
+  "required":["schema","candidate_key","function","base_frontier_sha256","candidate_source_sha256","status","strict_difference_delta","data_difference_delta","physical_difference_delta","finished_at","result_sha256"],
+  "properties":{"schema":{"const":"owner_campaign_candidate_result/v1"},"candidate_key":{"$ref":"#/$defs/sha"},"function":{"type":"string","minLength":1},"base_frontier_sha256":{"$ref":"#/$defs/sha"},"candidate_source_sha256":{"$ref":"#/$defs/sha"},"status":{"enum":["inflight","exact","improved","no_gain","stale"]},"strict_difference_delta":{"type":"integer"},"data_difference_delta":{"type":"integer"},"physical_difference_delta":{"type":"integer"},"finished_at":{"type":"string","format":"date-time"},"result_sha256":{"$ref":"#/$defs/sha"}},"$defs":{"sha":{"type":"string","pattern":"^[0-9a-f]{64}$"}}
+}

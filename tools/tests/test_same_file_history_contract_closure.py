@@ -160,6 +160,7 @@ class SameFileHistoryContractClosureTests(unittest.TestCase):
         self.repo = root / "repo"
         self.repo.mkdir()
         _git(self.repo, "init", "--quiet")
+        _git(self.repo, "config", "core.autocrlf", "false")
         source = self.repo / "src" / "fixture.c"
         source.parent.mkdir()
         source.write_text(DONOR_SOURCE, encoding="utf-8")

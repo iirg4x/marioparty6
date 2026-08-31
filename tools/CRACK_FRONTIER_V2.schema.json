@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CRACK_FRONTIER_V2.schema.json",
+  "title": "Autonomous cracking frontier",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "campaign_id", "manifest_sha256", "owner", "unit", "function", "source_relpath", "source_sha256", "target_object_sha256", "toolchain_sha256", "candidate_object_sha256", "metrics", "report_receipts", "focus_evidence_sha256", "parent_frontier_sha256", "generation", "retained_at", "frontier_sha256"],
+  "properties": {
+    "schema": {"const": "crack_frontier/v2"},
+    "campaign_id": {"type": "string", "minLength": 1},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "owner": {"type": "string", "minLength": 1},
+    "unit": {"type": "string", "minLength": 1},
+    "function": {"type": "string", "minLength": 1},
+    "source_relpath": {"type": "string", "minLength": 1},
+    "source_sha256": {"$ref": "#/$defs/sha256"},
+    "target_object_sha256": {"$ref": "#/$defs/sha256"},
+    "toolchain_sha256": {"$ref": "#/$defs/sha256"},
+    "candidate_object_sha256": {"$ref": "#/$defs/sha256"},
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "report_receipts": {"type": "object", "minProperties": 5, "maxProperties": 16, "additionalProperties": {"$ref": "#/$defs/sha256"}},
+    "focus_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "parent_frontier_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "generation": {"type": "integer", "minimum": 0},
+    "retained_at": {"type": "string", "format": "date-time"},
+    "frontier_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "channel": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target_bytes", "candidate_bytes", "differences"],
+      "properties": {
+        "target_bytes": {"type": "integer", "minimum": 0},
+        "candidate_bytes": {"type": "integer", "minimum": 0},
+        "differences": {"type": "integer", "minimum": 0}
+      }
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["strict", "data", "physical_target_count", "physical_candidate_count", "physical_differences", "protected_total", "protected_losses", "source_link_exact"],
+      "properties": {
+        "strict": {"$ref": "#/$defs/channel"},
+        "data": {"$ref": "#/$defs/channel"},
+        "physical_target_count": {"type": "integer", "minimum": 0},
+        "physical_candidate_count": {"type": "integer", "minimum": 0},
+        "physical_differences": {"type": "integer", "minimum": 0},
+        "protected_total": {"type": "integer", "minimum": 0},
+        "protected_losses": {"type": "integer", "minimum": 0},
+        "source_link_exact": {"type": "boolean"}
+      }
+    }
+  }
+}

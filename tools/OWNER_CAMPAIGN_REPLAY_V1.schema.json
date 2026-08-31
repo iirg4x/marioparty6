@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "owner_campaign_replay/v1",
+  "title": "Owner campaign replay receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "fixture", "owner", "unit", "function", "release_commit",
+    "campaign_commit", "source", "target_object_sha256",
+    "candidate_object_sha256", "report", "metrics", "timing", "storage",
+    "proof", "cleanup", "receipt_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "owner_campaign_replay/v1"},
+    "fixture": {"type": "string", "minLength": 1},
+    "owner": {"type": "string", "minLength": 1},
+    "unit": {"type": "string", "minLength": 1},
+    "function": {"type": "string", "minLength": 1},
+    "release_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "campaign_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "base_sha256", "candidate_sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "base_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "candidate_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "target_object_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate_object_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "metrics": {"type": "object"},
+    "timing": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["wall_seconds", "active_seconds", "active_definition"],
+      "properties": {
+        "wall_seconds": {"type": "number", "minimum": 0},
+        "active_seconds": {"type": "number", "minimum": 0},
+        "active_definition": {"type": "string", "minLength": 1}
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["peak_bytes", "final_bytes"],
+      "properties": {
+        "peak_bytes": {"type": "integer", "minimum": 0},
+        "final_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_schema", "completed", "exact"],
+      "properties": {
+        "report_schema": {"const": "CRACK_REPORT/v1"},
+        "completed": {"const": true},
+        "exact": {"const": true}
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["status"],
+      "properties": {"status": {"type": "string", "minLength": 1}}
+    },
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

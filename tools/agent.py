@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import importlib
+import inspect
 import json
 import re
 import shutil
@@ -841,6 +843,508 @@ def _add_catalog_parser(sub: Any) -> None:
     query.add_argument("--json", action="store_true")
 
 
+class OwnerCampaignCLIError(RecoveryError):
+    """The owner-campaign CLI could not load or dispatch its core API."""
+
+
+def _owner_campaign_root(args: argparse.Namespace) -> Path:
+    """Resolve a campaign root without requiring recovery metadata.
+
+    Campaign fixtures and isolated pilot worktrees intentionally do not need a
+    project metadata file.  Keep the normal ``root_from`` behaviour when one
+    is available, but use the explicit path as a standalone root otherwise.
+    """
+
+    if args.root:
+        selected = Path(args.root).expanduser().resolve()
+        try:
+            return root_from(selected)
+        except RecoveryError:
+            return selected
+    return root_from()
+
+
+def _add_owner_campaign_command_arguments(
+    parser: argparse.ArgumentParser, command: str
+) -> None:
+    """Add the shared owner-scoped campaign options.
+
+    The workflow implementation owns validation and manifest semantics.  The
+    front door accepts paths and scope bindings here, then forwards only the
+    options understood by the implementation.  This keeps the CLI usable
+    while the workflow evolves without introducing a second authority model.
+    """
+
+    parser.add_argument("campaign_path", nargs="?", type=Path)
+    parser.add_argument(
+        "--campaign",
+        "--manifest",
+        "--campaign-manifest",
+        dest="campaign",
+        type=Path,
+    )
+    parser.add_argument("--output", "--campaign-out", dest="output", type=Path)
+    parser.add_argument("--draft", type=Path)
+    parser.add_argument("--campaign-id")
+    parser.add_argument("--owner")
+    parser.add_argument("--unit")
+    parser.add_argument("--source", "--source-relpath", dest="source_relpath")
+    parser.add_argument("--base-commit")
+    parser.add_argument("--target-object", type=Path)
+    parser.add_argument("--toolchain", type=Path)
+    parser.add_argument("--measurement-producer", type=Path)
+    parser.add_argument(
+        "--function",
+        "--functions",
+        dest="functions",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--protected-exact-function",
+        "--protected-function",
+        dest="protected_exact_functions",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--allowed-source-path",
+        dest="allowed_source_paths",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--allowed-build-path",
+        dest="allowed_build_paths",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--forbidden-construct",
+        dest="forbidden_constructs",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--snapshot-command",
+        dest="snapshot_command",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--candidate-command",
+        dest="candidate_command",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--candidate",
+        "--candidate-path",
+        dest="candidate_paths",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
+        "--final-owner-command",
+        dest="final_owner_command",
+        action="append",
+        default=[],
+    )
+    parser.add_argument("--state-root", type=Path)
+    parser.add_argument("--workers", "--lanes", dest="workers", type=int)
+    parser.add_argument("--max-lanes", dest="max_lanes", type=int)
+    parser.add_argument("--timeout", "--watchdog-seconds", dest="timeout", type=int)
+    parser.add_argument("--idle-timeout", dest="idle_timeout", type=float)
+    parser.add_argument("--poll-interval", dest="poll_interval", type=float)
+    parser.add_argument("--cancellation-epoch", type=int)
+    parser.add_argument("--max-candidates", type=int)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    parser.set_defaults(owner_campaign_operation=command)
+
+
+def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
+    commands = parser.add_subparsers(
+        dest="owner_campaign_command", required=True
+    )
+    for name, aliases in (
+        ("initialize", ["init"]),
+        ("status", []),
+        ("run", []),
+    ):
+        command = commands.add_parser(
+            name,
+            aliases=aliases,
+            help={
+                "initialize": "create an owner-scoped campaign manifest",
+                "status": "inspect campaign state and recover pending frontiers",
+                "run": "run the autonomous owner campaign loop",
+            }[name],
+        )
+        _add_owner_campaign_command_arguments(command, name)
+
+
+def _add_owner_campaign_parser(
+    subparsers: Any, *, crack_parser: argparse.ArgumentParser | None = None
+) -> argparse.ArgumentParser:
+    """Register owner-campaign commands and the documented ``crack loop``.
+
+    ``owner-campaign`` is the explicit namespace for initialize/status/run.
+    ``crack loop`` remains available as the compact lane entry point used by
+    the workflow document.  Both dispatch to the same ``tools.owner_campaign``
+    API and neither has a permit or global STOP argument.
+    """
+
+    parser = subparsers.add_parser(
+        "owner-campaign",
+        aliases=["campaign", "owner_campaign"],
+        help="initialize, inspect, or run an autonomous owner campaign",
+    )
+    _add_owner_campaign_commands(parser)
+
+    if crack_parser is not None:
+        # ``add_crack_parser`` owns the legacy parser.  Attach the v2 loop to
+        # its subparser action without changing crack_harness.py's legacy
+        # permit commands or public API.
+        for action in crack_parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                loop = action.add_parser(
+                    "loop",
+                    help="run the autonomous owner campaign loop",
+                )
+                _add_owner_campaign_command_arguments(loop, "run")
+                break
+    return parser
+
+
+def _owner_campaign_module() -> Any:
+    try:
+        return importlib.import_module("tools.owner_campaign")
+    except ModuleNotFoundError as exc:
+        if exc.name in {"tools.owner_campaign", "owner_campaign"}:
+            raise OwnerCampaignCLIError(
+                "owner campaign support is unavailable: tools.owner_campaign "
+                "is not installed"
+            ) from exc
+        raise
+
+
+def _campaign_path(args: argparse.Namespace) -> Path | None:
+    value = getattr(args, "campaign", None) or getattr(args, "campaign_path", None)
+    return Path(value) if value is not None else None
+
+
+def _owner_campaign_values(
+    args: argparse.Namespace, *, root: Path
+) -> dict[str, Any]:
+    campaign = _campaign_path(args)
+    output = getattr(args, "output", None)
+    values: dict[str, Any] = {
+        "args": args,
+        "options": args,
+        "namespace": args,
+        "root": root,
+        "project_root": root,
+        "repo_root": root,
+        "workspace": root,
+        "workspace_root": root,
+        "base": root,
+        "campaign": campaign,
+        "campaign_path": campaign,
+        "manifest": campaign,
+        "manifest_path": campaign,
+        "campaign_manifest": campaign,
+        "campaign_manifest_path": campaign,
+        "output": output,
+        "output_path": output,
+        "draft": getattr(args, "draft", None),
+        "draft_path": getattr(args, "draft", None),
+        "campaign_id": getattr(args, "campaign_id", None),
+        "owner": getattr(args, "owner", None),
+        "unit": getattr(args, "unit", None),
+        "source": getattr(args, "source_relpath", None),
+        "source_relpath": getattr(args, "source_relpath", None),
+        "base_commit": getattr(args, "base_commit", None),
+        "target_object": getattr(args, "target_object", None),
+        "target_object_path": getattr(args, "target_object", None),
+        "toolchain": getattr(args, "toolchain", None),
+        "toolchain_path": getattr(args, "toolchain", None),
+        "measurement_producer": getattr(args, "measurement_producer", None),
+        "measurement_producer_path": getattr(args, "measurement_producer", None),
+        "functions": getattr(args, "functions", None) or None,
+        "protected_exact_functions": (
+            getattr(args, "protected_exact_functions", None) or None
+        ),
+        "protected_functions": (
+            getattr(args, "protected_exact_functions", None) or None
+        ),
+        "allowed_source_paths": (
+            getattr(args, "allowed_source_paths", None) or None
+        ),
+        "allowed_build_paths": (
+            getattr(args, "allowed_build_paths", None) or None
+        ),
+        "forbidden_constructs": (
+            getattr(args, "forbidden_constructs", None) or None
+        ),
+        "snapshot_command": getattr(args, "snapshot_command", None) or None,
+        "candidate_command": getattr(args, "candidate_command", None) or None,
+        "candidate_paths": [
+            Path(item)
+            for item in (getattr(args, "candidate_paths", None) or [])
+        ] or None,
+        "candidates": [
+            Path(item)
+            for item in (getattr(args, "candidate_paths", None) or [])
+        ] or None,
+        "final_owner_command": (
+            getattr(args, "final_owner_command", None) or None
+        ),
+        "state_root": getattr(args, "state_root", None),
+        "workers": getattr(args, "workers", None),
+        "lanes": getattr(args, "workers", None),
+        "max_lanes": getattr(args, "max_lanes", None),
+        "timeout": getattr(args, "timeout", None),
+        "watchdog_seconds": getattr(args, "timeout", None),
+        "idle_timeout": getattr(args, "idle_timeout", None),
+        "idle_timeout_seconds": getattr(args, "idle_timeout", None),
+        "poll_interval": getattr(args, "poll_interval", None),
+        "poll_interval_seconds": getattr(args, "poll_interval", None),
+        "cancellation_epoch": getattr(args, "cancellation_epoch", None),
+        "max_candidates": getattr(args, "max_candidates", None),
+        "resume": getattr(args, "resume", False),
+        "once": getattr(args, "once", False),
+    }
+    return values
+
+
+def _invoke_owner_campaign_callable(
+    function: Any,
+    args: argparse.Namespace,
+    *,
+    root: Path,
+    overrides: Mapping[str, Any] | None = None,
+) -> Any:
+    """Call one core API function using only its declared parameters."""
+
+    values = _owner_campaign_values(args, root=root)
+    if overrides:
+        values.update(overrides)
+    try:
+        signature = inspect.signature(function)
+    except (TypeError, ValueError):
+        return function(args, root=root)
+
+    accepts_kwargs = any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+    if accepts_kwargs:
+        return function(**{key: value for key, value in values.items() if value is not None})
+
+    kwargs: dict[str, Any] = {}
+    for name, parameter in signature.parameters.items():
+        if parameter.kind in {
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        }:
+            continue
+        value = values.get(name)
+        if value is not None:
+            kwargs[name] = value
+    return function(**kwargs)
+
+
+def _owner_campaign_callable(module: Any, operation: str) -> Any:
+    candidates = {
+        "initialize": (
+            "initialize_campaign",
+            "initialize",
+            "create_campaign",
+            "init_campaign",
+        ),
+        "status": (
+            "campaign_status",
+            "status_campaign",
+            "status",
+        ),
+        "run": (
+            "run_campaign",
+            "run_owner_campaign",
+            "run_loop",
+            "run",
+            "loop",
+        ),
+    }[operation]
+    for name in candidates:
+        function = getattr(module, name, None)
+        if callable(function):
+            return function
+    raise OwnerCampaignCLIError(
+        "tools.owner_campaign does not expose a "
+        f"{operation} campaign operation"
+    )
+
+
+def _print_owner_campaign_result(value: Any) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (Mapping, list, tuple)):
+        print(json.dumps(value, indent=2, sort_keys=True, default=str))
+        if isinstance(value, Mapping):
+            status = str(value.get("status", "")).lower()
+            return (
+                2
+                if status in {
+                    "failed",
+                    "blocked",
+                    "error",
+                    "cancelled",
+                    "canceled",
+                    "infrastructure_terminal",
+                }
+                else 0
+            )
+        return 0
+    if value is not None:
+        print(value)
+    return 0
+
+
+def _run_owner_campaign_command(
+    args: argparse.Namespace, *, root: Path
+) -> int:
+    module = _owner_campaign_module()
+    operation = getattr(args, "owner_campaign_operation", None) or (
+        "run" if getattr(args, "crack_command", None) == "loop" else None
+    )
+    if operation not in {"initialize", "status", "run"}:
+        raise OwnerCampaignCLIError("owner campaign operation is missing")
+
+    if operation == "initialize":
+        from tools.owner_campaign_manifest import initialize_campaign
+
+        value = _invoke_owner_campaign_callable(
+            initialize_campaign,
+            args,
+            root=root,
+        )
+        return _print_owner_campaign_result(value)
+
+    # A normal Sol lane does not pass cells through the manager CLI.  When no
+    # explicit descriptor is supplied, consume the compact per-campaign inbox
+    # through the lane adapter.  Explicit paths remain useful for tests and
+    # migration, but the documented ``crack loop`` path is inbox-driven.
+    if operation == "run" and not (
+        getattr(args, "candidate_paths", None) or []
+    ):
+        campaign_path = _campaign_path(args)
+        if campaign_path is None:
+            raise OwnerCampaignCLIError(
+                "owner campaign run requires --campaign"
+            )
+        loader = getattr(module, "load_campaign", None)
+        if not callable(loader):
+            raise OwnerCampaignCLIError(
+                "tools.owner_campaign does not expose load_campaign"
+            )
+        campaign = loader(root, campaign_path)
+        from tools.owner_campaign_lane import run_inbox
+        max_candidates = (
+            getattr(args, "max_candidates", None)
+            if getattr(args, "max_candidates", None) is not None
+            else 5
+        )
+        if getattr(args, "once", False):
+            value = run_inbox(root, campaign, max_candidates=max_candidates)
+        else:
+            from tools.owner_campaign_lane import run_supervisor
+
+            value = run_supervisor(
+                root,
+                campaign,
+                max_candidates=max_candidates,
+                idle_timeout_seconds=getattr(args, "idle_timeout", None),
+                watchdog_seconds=getattr(args, "timeout", None),
+                poll_interval_seconds=getattr(args, "poll_interval", None),
+            )
+        return _print_owner_campaign_result(value)
+
+    # Prefer a module-level command adapter when supplied by the workflow.  It
+    # can apply richer validation while keeping this front door stable.
+    command_runner = getattr(module, "run_owner_campaign_command", None)
+    try:
+        if callable(command_runner):
+            setattr(args, "campaign_command", operation)
+            value = _invoke_owner_campaign_callable(command_runner, args, root=root)
+        else:
+            campaign_path = _campaign_path(args)
+            if operation in {"status", "run"}:
+                if campaign_path is None:
+                    raise OwnerCampaignCLIError(
+                        f"owner campaign {operation} requires --campaign"
+                    )
+                loader = getattr(module, "load_campaign", None)
+                if not callable(loader):
+                    raise OwnerCampaignCLIError(
+                        "tools.owner_campaign does not expose load_campaign"
+                    )
+                campaign = loader(root, campaign_path)
+                function = _owner_campaign_callable(module, operation)
+                value = _invoke_owner_campaign_callable(
+                    function,
+                    args,
+                    root=root,
+                    overrides={
+                        "campaign": campaign,
+                        "candidate_paths": [
+                            Path(item)
+                            for item in (
+                                getattr(args, "candidate_paths", None) or []
+                            )
+                        ],
+                    },
+                )
+            else:
+                try:
+                    function = _owner_campaign_callable(module, operation)
+                except OwnerCampaignCLIError:
+                    # A manifest is already the authority boundary.  When the
+                    # runtime has no separate constructor, initialize means
+                    # validate/load that manifest and return its identity.
+                    if campaign_path := _campaign_path(args):
+                        loader = getattr(module, "load_campaign", None)
+                        if callable(loader):
+                            campaign = loader(root, campaign_path)
+                            value = {
+                                "schema": "owner_campaign_init/v1",
+                                "status": "initialized",
+                                "campaign_id": campaign["campaign_id"],
+                                "manifest_sha256": campaign["manifest_sha256"],
+                                "owner": campaign["owner"],
+                                "unit": campaign["unit"],
+                                "manifest_path": str(campaign_path),
+                                "authority_advanced": False,
+                            }
+                        else:
+                            raise
+                    else:
+                        raise
+                else:
+                    value = _invoke_owner_campaign_callable(
+                        function, args, root=root
+                    )
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"error: {exc}")
+        return 2
+    except TypeError as exc:
+        raise OwnerCampaignCLIError(
+            f"cannot dispatch {operation} through tools.owner_campaign: {exc}"
+        ) from exc
+    return _print_owner_campaign_result(value)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root")
@@ -857,7 +1361,8 @@ def main() -> int:
     add_recovery_pass_parser(sub)
     add_match_parser(sub)
     add_memory_parser(sub)
-    add_crack_parser(sub)
+    crack_parser = add_crack_parser(sub)
+    _add_owner_campaign_parser(sub, crack_parser=crack_parser)
 
     context = sub.add_parser("context")
     context.add_argument("kind", choices=["function", "owner"])
@@ -899,6 +1404,14 @@ def main() -> int:
             else:
                 root = root_from()
             return run_match_command(args, root=root)
+        if args.command in {"owner-campaign", "campaign", "owner_campaign"} or (
+            args.command == "crack"
+            and getattr(args, "crack_command", None) == "loop"
+        ):
+            return _run_owner_campaign_command(
+                args,
+                root=_owner_campaign_root(args),
+            )
         root = root_from(args.root)
         if args.command == "probe":
             if args.probe_command == "lookup":

@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"CRACK_FRONTIER_PENDING_V2.schema.json","type":"object","additionalProperties":false,
+  "required":["schema","base_source_sha256","candidate_source_sha256","frontier","exact_report","final_owner_receipt","pending_sha256"],
+  "properties":{"schema":{"const":"crack_frontier_pending/v2"},"base_source_sha256":{"$ref":"#/$defs/sha"},"candidate_source_sha256":{"$ref":"#/$defs/sha"},"frontier":{"type":"object"},"exact_report":{"type":["object","null"]},"final_owner_receipt":{"type":["object","null"]},"pending_sha256":{"$ref":"#/$defs/sha"}},"$defs":{"sha":{"type":"string","pattern":"^[0-9a-f]{64}$"}}
+}

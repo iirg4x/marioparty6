@@ -5,6 +5,13 @@ cell. It schedules no lanes and never asks a user for authentication. Production
 state is fixed at `build/crack-harness`; only Python tests may inject another
 state root.
 
+> **v2 migration:** This page documents the legacy per-cell approval,
+> `STOP`, and HMAC-permit path. It is not the owner-campaign entry point. See
+> [`owner_campaign.md`](owner_campaign.md) for the owner-scoped manifest,
+> autonomous five-lane loop, frontier CAS, compact state, and release gates;
+> keep this page for legacy replay and migration reference until those gates
+> pass.
+
 ## Manager-only current residual baseline
 
 `tools/crack_current_residual.py` is a manager-only baseline materializer for

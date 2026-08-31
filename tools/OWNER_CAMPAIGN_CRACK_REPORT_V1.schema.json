@@ -1,0 +1,37 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"OWNER_CAMPAIGN_CRACK_REPORT_V1.schema.json",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","status","completed","authority_advanced","owner","function","campaign_id","manifest_sha256","unit","source_path","base_commit","frontier_sha256","source_sha256","target_object_sha256","candidate_object_sha256","toolchain_sha256","result","proof_receipts","evidence","completed_at","report_sha256"],
+  "properties":{
+    "schema":{"const":"CRACK_REPORT/v1"},
+    "status":{"const":"exact"},
+    "completed":{"const":true},
+    "authority_advanced":{"const":false},
+    "owner":{"type":"string","minLength":1},
+    "function":{"type":"string","minLength":1},
+    "campaign_id":{"type":"string","minLength":1},
+    "manifest_sha256":{"$ref":"#/$defs/sha"},
+    "unit":{"type":"string","minLength":1},
+    "source_path":{"type":"string","minLength":1},
+    "base_commit":{"$ref":"#/$defs/commit"},
+    "frontier_sha256":{"$ref":"#/$defs/sha"},
+    "source_sha256":{"$ref":"#/$defs/sha"},
+    "target_object_sha256":{"$ref":"#/$defs/sha"},
+    "candidate_object_sha256":{"$ref":"#/$defs/sha"},
+    "toolchain_sha256":{"$ref":"#/$defs/sha"},
+    "result":{"$ref":"#/$defs/result"},
+    "proof_receipts":{"type":"object","minProperties":5,"maxProperties":16,"additionalProperties":{"$ref":"#/$defs/sha"}},
+    "evidence":{"$ref":"#/$defs/evidence"},
+    "completed_at":{"type":"string","format":"date-time"},
+    "report_sha256":{"$ref":"#/$defs/sha"}
+  },
+  "$defs":{
+    "sha":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "commit":{"type":"string","pattern":"^[0-9a-f]{40}$"},
+    "ids":{"type":"array","maxItems":2048,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":1024}},
+    "result":{"type":"object","additionalProperties":false,"required":["strict_percent","data_percent","target_bytes","candidate_bytes","strict_difference_count","data_difference_count","strict_row_ids_sha256","data_row_ids_sha256","physical_target_count","physical_candidate_count","physical_difference_count","physical_difference_ids_sha256","protected_total","protected_losses","protected_sibling_digest","source_link_exact"],"properties":{"strict_percent":{"const":100},"data_percent":{"const":100},"target_bytes":{"type":"integer","minimum":0},"candidate_bytes":{"type":"integer","minimum":0},"strict_difference_count":{"type":"integer","minimum":0},"data_difference_count":{"type":"integer","minimum":0},"strict_row_ids_sha256":{"$ref":"#/$defs/sha"},"data_row_ids_sha256":{"$ref":"#/$defs/sha"},"physical_target_count":{"type":"integer","minimum":0},"physical_candidate_count":{"type":"integer","minimum":0},"physical_difference_count":{"type":"integer","minimum":0},"physical_difference_ids_sha256":{"$ref":"#/$defs/sha"},"protected_total":{"type":"integer","minimum":0},"protected_losses":{"type":"integer","minimum":0},"protected_sibling_digest":{"$ref":"#/$defs/sha"},"source_link_exact":{"const":true}}},
+    "evidence":{"type":"object","additionalProperties":false,"required":["schema","owner","function","unit","source_path","base_commit","source_sha256","target_object_sha256","candidate_object_sha256","focus_evidence_sha256","strict_row_count","strict_row_ids_sha256","data_row_count","data_row_ids_sha256","physical_target_count","physical_candidate_count","physical_difference_count","physical_difference_ids_sha256","protected_total","protected_losses","protected_sibling_identities","protected_sibling_digest","proofs"],"properties":{"schema":{"const":"owner_campaign_report_evidence/v1"},"owner":{"type":"string","minLength":1},"function":{"type":"string","minLength":1},"unit":{"type":"string","minLength":1},"source_path":{"type":"string","minLength":1},"base_commit":{"$ref":"#/$defs/commit"},"source_sha256":{"$ref":"#/$defs/sha"},"target_object_sha256":{"$ref":"#/$defs/sha"},"candidate_object_sha256":{"$ref":"#/$defs/sha"},"focus_evidence_sha256":{"$ref":"#/$defs/sha"},"strict_row_count":{"type":"integer","minimum":0},"strict_row_ids_sha256":{"$ref":"#/$defs/sha"},"data_row_count":{"type":"integer","minimum":0},"data_row_ids_sha256":{"$ref":"#/$defs/sha"},"physical_target_count":{"type":"integer","minimum":0},"physical_candidate_count":{"type":"integer","minimum":0},"physical_difference_count":{"type":"integer","minimum":0},"physical_difference_ids_sha256":{"$ref":"#/$defs/sha"},"protected_total":{"type":"integer","minimum":0},"protected_losses":{"type":"integer","minimum":0},"protected_sibling_identities":{"$ref":"#/$defs/ids"},"protected_sibling_digest":{"$ref":"#/$defs/sha"},"proofs":{"type":"object","required":["source_link","object","toolchain"],"additionalProperties":false,"properties":{"source_link":{"type":"object"},"object":{"type":"object"},"toolchain":{"type":"object"}}}}}
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"OWNER_CAMPAIGN_EXACT_MANIFEST_V1.schema.json","type":"object","additionalProperties":false,
+  "required":["schema","campaign_id","manifest_sha256","owner","exact","total","owner_closure","updated_at","exact_manifest_sha256"],
+  "properties":{"schema":{"const":"owner_campaign_exact_manifest/v1"},"campaign_id":{"type":"string","minLength":1},"manifest_sha256":{"$ref":"#/$defs/sha"},"owner":{"type":"string","minLength":1},"exact":{"type":"object","additionalProperties":{"type":"object","additionalProperties":false,"required":["source_sha256","frontier_sha256","report_sha256"],"properties":{"source_sha256":{"$ref":"#/$defs/sha"},"frontier_sha256":{"$ref":"#/$defs/sha"},"report_sha256":{"$ref":"#/$defs/sha"}}}},"total":{"type":"integer","minimum":1},"owner_closure":{"type":["object","null"]},"updated_at":{"type":"string","format":"date-time"},"exact_manifest_sha256":{"$ref":"#/$defs/sha"}},"$defs":{"sha":{"type":"string","pattern":"^[0-9a-f]{64}$"}}
+}
