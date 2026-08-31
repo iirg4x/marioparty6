@@ -908,13 +908,36 @@ def _expand_argv(
 def _verify_hook_inputs(campaign: Mapping[str, Any]) -> None:
     """Revalidate immutable command inputs immediately before every launch."""
 
+    root = Path(campaign["_root"])
     for label, private in (
         ("target_object", "_target"),
         ("toolchain", "_toolchain"),
         ("measurement_producer", "_producer"),
     ):
         path = campaign[private]
-        if not path.is_file() or _digest_file(path) != campaign[label]["sha256"]:
+        # ``Path.is_file`` follows symlinks and Windows reparse points.  The
+        # manifest is loaded before a hook starts, so a path can be replaced
+        # after load even though its original binding was safe.  Re-check the
+        # whole path chain and use lstat-based regular-file validation before
+        # opening anything for hashing.  This is deliberately an
+        # InfrastructureError: the immutable input changed and the caller may
+        # retry after repairing the campaign-owned CAS, but no subprocess may
+        # observe the replacement.
+        if _path_has_indirection(root, path):
+            raise InfrastructureError(
+                f"{label} path uses symlink/reparse indirection before hook execution"
+            )
+        if not _is_regular_file(path):
+            raise InfrastructureError(
+                f"{label} is not a regular file before hook execution"
+            )
+        try:
+            digest = _digest_file(path)
+        except OSError as exc:
+            raise InfrastructureError(
+                f"{label} cannot be read before hook execution: {exc}"
+            ) from exc
+        if digest != campaign[label]["sha256"]:
             raise InfrastructureError(f"{label} hash drift before hook execution")
 
 
@@ -1041,6 +1064,11 @@ def _run_hook(
         environment = _hook_environment(
             scratch, campaign, function, source_sha256, phase
         )
+        # Recheck after all command construction and directly before process
+        # creation.  The earlier check rejects stale state before touching the
+        # scratch output; this final check closes the pre-launch replacement
+        # window for target/toolchain/CAS producer inputs.
+        _verify_hook_inputs(campaign)
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,
             timeout=float(campaign["limits"]["command_timeout_seconds"]),
@@ -1087,6 +1115,7 @@ def _run_final_owner(
         scratch, campaign, function, source_sha256, "final_owner"
     )
     try:
+        _verify_hook_inputs(campaign)
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,
             timeout=float(campaign["limits"]["command_timeout_seconds"]),

@@ -628,6 +628,44 @@ class OwnerCampaignTests(unittest.TestCase):
         with self.assertRaisesRegex(campaign.CampaignError, "measurement producer hash drift"):
             self.load()
 
+    def test_hook_rejects_replaced_cas_producer_before_subprocess(self) -> None:
+        live, expected, original = self._use_untracked_deployed_producer()
+        live.write_bytes(original + b"\n# deployed update\n")
+        cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / expected / "owner_campaign_measure.py"
+        )
+        cas.parent.mkdir(parents=True, exist_ok=True)
+        cas.write_bytes(original)
+        loaded = self.load()
+        self.assertEqual(loaded["_producer"], cas.resolve())
+
+        # A directory at the already-loaded CAS path is the portable
+        # non-regular/indirection adversarial replacement.  On platforms that
+        # permit symlinks, the same gate also rejects a symlink via
+        # ``_path_has_indirection``; this test avoids requiring elevated
+        # symlink privileges on Windows.
+        cas.unlink()
+        cas.mkdir()
+        launched = False
+
+        def fail_if_launched(*args: object, **kwargs: object) -> object:
+            nonlocal launched
+            launched = True
+            self.fail("measurement subprocess launched after CAS replacement")
+
+        with mock.patch.object(campaign, "_run_bounded_process", side_effect=fail_if_launched):
+            with self.assertRaisesRegex(campaign.InfrastructureError, "measurement_producer"):
+                campaign._run_hook(
+                    self.root,
+                    campaign._ensure_scratch(self.root, loaded),
+                    loaded,
+                    "focus",
+                    campaign._digest_bytes(self.source.read_bytes()),
+                    "snapshot",
+                )
+        self.assertFalse(launched)
+
     def test_snapshot_rehashes_sources_immediately_before_publication(self) -> None:
         loaded = self.load()
         original = campaign._run_hook
