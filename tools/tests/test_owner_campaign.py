@@ -75,6 +75,11 @@ else:
     diff, data_diff, physical, size, linked = 10, 10, 2, 96, False
 source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
 receipts = {name: hashlib.sha256((name + source_sha).encode()).hexdigest() for name in ("strict", "data", "physical", "siblings", "source_link", "focus")}
+protected_names = [
+    item for item in os.environ["OWNER_CAMPAIGN_PROTECTED_FUNCTIONS"].split(",")
+    if item != os.environ["OWNER_CAMPAIGN_FUNCTION"]
+]
+protected_total = len(protected_names)
 focus_body = {
     "schema": "owner_campaign_focus_evidence/v1",
     "owner": os.environ["OWNER_CAMPAIGN_OWNER"],
@@ -95,7 +100,7 @@ focus_body = {
     "strict_row_count": diff, "data_row_count": data_diff,
     "physical_target_count": 5, "physical_candidate_count": 5,
     "physical_difference_count": physical,
-    "protected_total": int(os.environ["OWNER_CAMPAIGN_PROTECTED_TOTAL"]),
+    "protected_total": protected_total,
     "protected_losses": 1 if "LOSS" in text else 0,
     "sibling_identities": ["sibling"],
     "sibling_digest": hashlib.sha256(json.dumps(["sibling"], sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
@@ -151,7 +156,7 @@ body = {
         "data": {"target_bytes": 100, "candidate_bytes": size, "differences": data_diff},
         "physical_target_count": 5, "physical_candidate_count": 5,
         "physical_differences": physical,
-        "protected_total": int(os.environ["OWNER_CAMPAIGN_PROTECTED_TOTAL"]),
+        "protected_total": protected_total,
         "protected_losses": 1 if "LOSS" in text else 0,
         "source_link_exact": linked,
     },
@@ -588,6 +593,46 @@ class OwnerCampaignTests(unittest.TestCase):
                 measurement, campaign=loaded, function="focus", phase="snapshot",
                 source_sha256=campaign._digest_bytes(source),
             )
+
+    def test_focus_in_protected_inventory_uses_sibling_census(self) -> None:
+        loaded = self.load()
+        loaded["protected_exact_functions"] = ["focus", "sibling"]
+        scratch = campaign._ensure_scratch(self.root, loaded)
+        source = self.source.read_bytes()
+        source_sha = campaign._digest_bytes(source)
+        campaign._sync_scratch_source(self.root, scratch, loaded, source)
+
+        measurement = campaign._run_hook(
+            self.root, scratch, loaded, "focus", source_sha, "snapshot"
+        )
+
+        self.assertEqual(measurement["metrics"]["protected_total"], 1)
+        self.assertEqual(measurement["metrics"]["protected_losses"], 0)
+        self.assertEqual(
+            measurement["focus_evidence"]["protected_total"], 1
+        )
+        self.assertEqual(
+            measurement["focus_evidence"]["sibling_identities"], ["sibling"]
+        )
+
+        frontier = campaign._frontier_from_measurement(
+            loaded, "focus", measurement, parent=None
+        )
+        self.assertEqual(frontier["metrics"]["protected_total"], 1)
+        self.assertEqual(
+            campaign._validate_frontier(frontier, loaded, "focus"), frontier
+        )
+
+        base = campaign.snapshot_frontier(self.root, loaded, "focus")
+        result = campaign.run_candidate(
+            self.root, loaded, self.candidate("EXACT", base, "focus-exact")
+        )
+        self.assertEqual(result["status"], "exact")
+        report = json.loads(Path(result["exact"]["report_path"]).read_text())
+        self.assertEqual(report["result"]["protected_total"], 1)
+        self.assertEqual(
+            report["evidence"]["protected_sibling_identities"], ["sibling"]
+        )
 
     def test_final_owner_receipt_obeys_compact_limit(self) -> None:
         loaded = self.load()

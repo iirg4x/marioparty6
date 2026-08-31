@@ -227,17 +227,38 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertTrue(source.exists())
         self.assertTrue(sidecar.exists())
 
-    def test_rank_one_tie_dispatches_zero(self) -> None:
+    def test_rank_one_tie_dispatches_one_deterministically(self) -> None:
         first = self._proposal("first")
         second = self._proposal("second")
-        with patch.object(owner_campaign, "run_loop", side_effect=AssertionError("must not compile")):
+        forward = selector.select_winning_candidate(
+            self.root, self.campaign, [first[0], second[0]]
+        )
+        reverse = selector.select_winning_candidate(
+            self.root, self.campaign, [second[0], first[0]]
+        )
+        expected = Path(forward["selected"]["descriptor_path"])
+        self.assertEqual(
+            expected, Path(reverse["selected"]["descriptor_path"])
+        )
+        observed: list[Path] = []
+
+        def dispatch(
+            root: Path, campaign: dict[str, object], paths: list[Path]
+        ) -> list[dict[str, object]]:
+            observed.extend(paths)
+            return [{"status": "no_gain", "authority_advanced": False}]
+
+        with patch.object(owner_campaign, "run_loop", side_effect=dispatch):
             result = lane.run_inbox(self.root, self.campaign)
 
-        self.assertEqual(result["status"], "selection_unknown")
-        self.assertIn("tie", result["reason"])
-        self.assertEqual(result["dispatched"], 0)
-        self.assertTrue(first[1].exists())
-        self.assertTrue(second[1].exists())
+        self.assertEqual(result["status"], "processed")
+        self.assertIn("arbitrated", result["selection"]["reason"])
+        self.assertEqual(result["dispatched"], 1)
+        self.assertEqual(observed, [expected])
+        consumed, preserved = (first, second) if expected == first[0] else (second, first)
+        self.assertFalse(consumed[0].exists())
+        self.assertFalse(consumed[1].exists())
+        self.assertTrue(preserved[1].exists())
 
     def test_predicted_row_outside_current_residual_dispatches_zero(self) -> None:
         descriptor, source, sidecar = self._proposal(

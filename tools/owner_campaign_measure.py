@@ -826,6 +826,7 @@ def _metric(focus: Mapping[str, Any], channel: str) -> Mapping[str, Any]:
 def _protected(
     focus: Mapping[str, Any], expected_total: int | None,
     expected_names: Sequence[str] | None = None,
+    focus_function: str | None = None,
 ) -> tuple[int, int, list[str], str]:
     """Return the protected census using the campaign's named identities.
 
@@ -854,12 +855,15 @@ def _protected(
         raise MeasurementError("protected sibling census is inconsistent")
     observed = set(identities)
     if expected_names is not None:
-        names = list(expected_names)
-        if any(not isinstance(item, str) or not item for item in names):
+        all_names = list(expected_names)
+        if any(not isinstance(item, str) or not item for item in all_names):
             raise MeasurementError("protected function names are invalid")
-        if len(names) != len(set(names)):
+        if len(all_names) != len(set(all_names)):
             raise MeasurementError("protected function names are duplicated")
-        if expected_total is not None and expected_total != len(names):
+        names = [item for item in all_names if item != focus_function]
+        if expected_total is not None and expected_total not in {
+            len(all_names), len(names)
+        }:
             raise MeasurementError("protected total disagrees with protected function names")
         total = len(names)
         losses = len(set(names) - observed)
@@ -954,7 +958,7 @@ def _focus_evidence(identity: Identity, focus: Mapping[str, Any], args: argparse
     expected = _expected_total(args)
     expected_names = _expected_protected_names(args)
     total, losses, siblings, sibling_digest = _protected(
-        focus, expected, expected_names
+        focus, expected, expected_names, identity.function
     )
     physical = focus.get("physical_relocations")
     if not isinstance(physical, Mapping):
@@ -1037,7 +1041,7 @@ def _metrics(identity: Identity, focus: Mapping[str, Any], args: argparse.Namesp
            for item in (target_count, candidate_count)):
         raise MeasurementError("physical relocation counts are invalid")
     total, losses, _siblings, _digest = _protected(
-        focus, _expected_total(args), _expected_protected_names(args)
+        focus, _expected_total(args), _expected_protected_names(args), identity.function
     )
     metrics = {
         "strict": {

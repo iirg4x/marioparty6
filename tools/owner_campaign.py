@@ -953,7 +953,7 @@ def _run_hook(
                 campaign["measurement_producer"]["sha256"]
             ),
             "OWNER_CAMPAIGN_PROTECTED_TOTAL": str(
-                len(campaign["protected_exact_functions"])
+                len(_protected_sibling_functions(campaign, function))
             ),
             "OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": ",".join(
                 campaign["protected_exact_functions"]
@@ -1018,7 +1018,7 @@ def _run_final_owner(
             campaign["measurement_producer"]["sha256"]
         ),
         "OWNER_CAMPAIGN_PROTECTED_TOTAL": str(
-            len(campaign["protected_exact_functions"])
+            len(_protected_sibling_functions(campaign, function))
         ),
         "OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": ",".join(
             campaign["protected_exact_functions"]
@@ -1226,6 +1226,24 @@ def _validate_metrics(value: Any) -> dict[str, Any]:
     return result
 
 
+def _protected_sibling_functions(
+    campaign: Mapping[str, Any], function: str,
+) -> tuple[str, ...]:
+    """Return protected exact identities other than the selected focus.
+
+    The campaign inventory may include the function currently being measured,
+    but ``focus_symbol_report`` deliberately reports only protected *siblings*
+    because the focus has its own strict/data/physical gates.  Keep those
+    contracts separate: every other protected identity remains mandatory, and
+    the focus remains protected by its own measurement metrics.
+    """
+
+    return tuple(
+        name for name in campaign["protected_exact_functions"]
+        if name != function
+    )
+
+
 def _validate_measurement(
     value: Any, *, campaign: Mapping[str, Any], function: str,
     phase: str, source_sha256: str,
@@ -1250,7 +1268,8 @@ def _validate_measurement(
         raise CampaignError("measurement identity does not match the campaign")
     _sha(value["candidate_object_sha256"], "candidate_object_sha256")
     metrics = _validate_metrics(value["metrics"])
-    if metrics["protected_total"] != len(campaign["protected_exact_functions"]):
+    protected_siblings = _protected_sibling_functions(campaign, function)
+    if metrics["protected_total"] != len(protected_siblings):
         raise CampaignError("measurement protected sibling census is incomplete")
     if _is_exact(metrics) and metrics["protected_losses"] != 0:
         raise CampaignError("exact measurement protected sibling census has losses")
@@ -1283,7 +1302,7 @@ def _validate_measurement(
         proof_sha = _sha(proof_body.pop("proof_sha256", None), f"{name} proof_sha256")
         if _digest_json(proof_body) != proof_sha:
             raise CampaignError(f"measurement {name} proof digest is invalid")
-    if not set(campaign["protected_exact_functions"]) <= set(
+    if not set(protected_siblings) <= set(
         focus["sibling_identities"]
     ):
         raise CampaignError("measurement protected sibling identities are incomplete")
@@ -1453,7 +1472,8 @@ def _validate_frontier(value: Any, campaign: Mapping[str, Any], function: str) -
     _sha(value["candidate_object_sha256"], "frontier candidate_object_sha256")
     _sha(value["focus_evidence_sha256"], "focus_evidence_sha256")
     metrics = _validate_metrics(value["metrics"])
-    if metrics["protected_total"] != len(campaign["protected_exact_functions"]):
+    protected_siblings = _protected_sibling_functions(campaign, function)
+    if metrics["protected_total"] != len(protected_siblings):
         raise CampaignError("frontier protected sibling census is incomplete")
     receipts = value["report_receipts"]
     required = {"strict", "data", "physical", "siblings", "source_link"}
@@ -1899,6 +1919,9 @@ def _validate_exact_report(
     digest = _sha(body.pop("report_sha256", None), "report_sha256")
     if digest != _digest_json(body):
         raise CampaignError("exact report digest is invalid")
+    protected_siblings = _protected_sibling_functions(
+        campaign, frontier["function"]
+    )
     if (
         value["schema"] != REPORT_SCHEMA or value["status"] != "exact"
         or value["completed"] is not True or value["authority_advanced"] is not False
@@ -1934,7 +1957,7 @@ def _validate_exact_report(
         or result.get("physical_difference_count") != 0
         or result.get("physical_target_count") != result.get("physical_candidate_count")
         or result.get("protected_losses") != 0
-        or result.get("protected_total") != len(campaign["protected_exact_functions"])
+        or result.get("protected_total") != len(protected_siblings)
         or result.get("source_link_exact") is not True
     ):
         raise CampaignError("exact report does not prove every exactness gate")
@@ -1967,7 +1990,7 @@ def _validate_exact_report(
         "focus_evidence_sha256": frontier["focus_evidence_sha256"],
         "strict_row_count": 0, "data_row_count": 0,
         "physical_difference_count": 0,
-        "protected_total": len(campaign["protected_exact_functions"]),
+        "protected_total": len(protected_siblings),
         "protected_losses": 0,
     }
     if any(evidence.get(key) != expected for key, expected in expected_evidence.items()):
@@ -1982,7 +2005,7 @@ def _validate_exact_report(
         != result["protected_sibling_digest"]
     ):
         raise CampaignError("exact report evidence drifts from result")
-    if not set(campaign["protected_exact_functions"]) <= set(
+    if not set(protected_siblings) <= set(
         evidence["protected_sibling_identities"]
     ):
         raise CampaignError("exact report protected sibling identities are incomplete")

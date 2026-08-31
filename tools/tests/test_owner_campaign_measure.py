@@ -297,6 +297,23 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
         self.assertEqual((total, losses), (1, 0))
         self.assertEqual(identities, ["newly_exact", "sibling"])
 
+    def test_protected_census_excludes_selected_focus(self) -> None:
+        focus = _focus()
+        args = adapter._parser().parse_args([])
+        with mock.patch.dict(
+            "os.environ",
+            {"OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": "fn,sibling"},
+            clear=False,
+        ):
+            total, losses, identities, _digest = adapter._protected(
+                focus,
+                expected_total=2,
+                expected_names=adapter._expected_protected_names(args),
+                focus_function="fn",
+            )
+        self.assertEqual((total, losses), (1, 0))
+        self.assertEqual(identities, ["sibling"])
+
     def test_protected_census_counts_missing_named_identity(self) -> None:
         focus = _focus()
         identity = adapter.Identity(

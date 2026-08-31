@@ -944,6 +944,56 @@ def _add_owner_campaign_command_arguments(
         action="append",
         default=[],
     )
+    if command == "propose":
+        parser.add_argument(
+            "--candidate-source",
+            "--candidate-source-path",
+            dest="candidate_source",
+            required=True,
+            type=Path,
+            help="worker-produced natural-C source to queue",
+        )
+        parser.add_argument(
+            "--hypothesis-family",
+            "--family",
+            dest="hypothesis_family",
+            required=True,
+            help="source-shape family that produced the candidate",
+        )
+        parser.add_argument(
+            "--expected-terminal",
+            choices=("exact", "improved"),
+            default="exact",
+            help="predicted proposal terminal (default: exact)",
+        )
+        parser.add_argument(
+            "--predicted-row",
+            dest="predicted_rows",
+            action="append",
+            default=[],
+            help="current residual row predicted to close; repeatable",
+        )
+        parser.add_argument(
+            "--predicted-remaining-strict",
+            "--remaining-strict",
+            dest="predicted_remaining_strict",
+            type=int,
+            help="remaining strict rows for an improved proposal",
+        )
+        parser.add_argument(
+            "--predicted-remaining-data",
+            "--remaining-data",
+            dest="predicted_remaining_data",
+            type=int,
+            help="remaining data rows for an improved proposal",
+        )
+        parser.add_argument(
+            "--predicted-remaining-physical",
+            "--remaining-physical",
+            dest="predicted_remaining_physical",
+            type=int,
+            help="remaining physical rows for an improved proposal",
+        )
     parser.add_argument(
         "--final-owner-command",
         dest="final_owner_command",
@@ -984,6 +1034,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
         ("status", []),
         ("snapshot", []),
         ("run", []),
+        ("propose", ["submit"]),
         ("import", ["migrate"]),
     ):
         command = commands.add_parser(
@@ -994,6 +1045,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
                 "status": "inspect campaign state and recover pending frontiers",
                 "snapshot": "establish or read the current compact frontier",
                 "run": "run the autonomous owner campaign loop",
+                "propose": "queue one current-frontier-bound natural-C candidate",
                 "import": "import authenticated legacy exact receipts and compiled dedupe outcomes",
             }[name],
         )
@@ -1003,11 +1055,11 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
 def _add_owner_campaign_parser(
     subparsers: Any, *, crack_parser: argparse.ArgumentParser | None = None
 ) -> argparse.ArgumentParser:
-    """Register owner-campaign commands and the documented ``crack loop``.
+    """Register owner-campaign commands and the documented ``crack`` helpers.
 
-    ``owner-campaign`` is the explicit namespace for initialize/status/snapshot/run.
-    ``crack loop`` remains available as the compact lane entry point used by
-    the workflow document.  Both dispatch to the same ``tools.owner_campaign``
+    ``owner-campaign`` is the explicit namespace for initialize/status/snapshot,
+    proposal, and run.  ``crack loop`` and ``crack propose`` remain available as
+    compact lane entry points used by the workflow document.  Both dispatch to the same ``tools.owner_campaign``
     API and neither has a permit or global STOP argument.
     """
 
@@ -1029,6 +1081,12 @@ def _add_owner_campaign_parser(
                     help="run the autonomous owner campaign loop",
                 )
                 _add_owner_campaign_command_arguments(loop, "run")
+                propose = action.add_parser(
+                    "propose",
+                    aliases=["submit"],
+                    help="queue one current-frontier-bound natural-C candidate",
+                )
+                _add_owner_campaign_command_arguments(propose, "propose")
                 break
     return parser
 
@@ -1109,6 +1167,14 @@ def _owner_campaign_values(
             Path(item)
             for item in (getattr(args, "candidate_paths", None) or [])
         ] or None,
+        "candidate_source": getattr(args, "candidate_source", None),
+        "candidate_source_path": getattr(args, "candidate_source", None),
+        "hypothesis_family": getattr(args, "hypothesis_family", None),
+        "expected_terminal": getattr(args, "expected_terminal", None),
+        "predicted_rows": getattr(args, "predicted_rows", None) or None,
+        "predicted_remaining_strict": getattr(args, "predicted_remaining_strict", None),
+        "predicted_remaining_data": getattr(args, "predicted_remaining_data", None),
+        "predicted_remaining_physical": getattr(args, "predicted_remaining_physical", None),
         "candidates": [
             Path(item)
             for item in (getattr(args, "candidate_paths", None) or [])
@@ -1284,7 +1350,7 @@ def _run_owner_campaign_command(
     operation = getattr(args, "owner_campaign_operation", None) or (
         "run" if getattr(args, "crack_command", None) == "loop" else None
     )
-    if operation not in {"initialize", "status", "snapshot", "run", "import"}:
+    if operation not in {"initialize", "status", "snapshot", "run", "propose", "import"}:
         raise OwnerCampaignCLIError("owner campaign operation is missing")
 
     if operation == "initialize":
@@ -1311,6 +1377,57 @@ def _run_owner_campaign_command(
                 Path(item) for item in (getattr(args, "legacy_consumed", None) or [])
             ],
         )
+        return _print_owner_campaign_result(value)
+
+    if operation == "propose":
+        campaign_path = _campaign_path(args)
+        if campaign_path is None:
+            raise OwnerCampaignCLIError("owner campaign propose requires --campaign")
+        functions = list(getattr(args, "functions", None) or [])
+        if len(functions) != 1:
+            raise OwnerCampaignCLIError(
+                "owner campaign propose requires exactly one --function"
+            )
+        candidate_source = getattr(args, "candidate_source", None)
+        hypothesis_family = getattr(args, "hypothesis_family", None)
+        if candidate_source is None or hypothesis_family is None:
+            raise OwnerCampaignCLIError(
+                "owner campaign propose requires --candidate-source and "
+                "--hypothesis-family"
+            )
+        loader = getattr(module, "load_campaign", None)
+        if not callable(loader):
+            raise OwnerCampaignCLIError(
+                "tools.owner_campaign does not expose load_campaign"
+            )
+        campaign = loader(root, campaign_path)
+        from tools.owner_campaign_lane import propose_candidate
+        try:
+            expected_terminal = getattr(args, "expected_terminal", "exact")
+            predicted_rows = list(getattr(args, "predicted_rows", None) or [])
+            remaining_values = {
+                "strict": getattr(args, "predicted_remaining_strict", None),
+                "data": getattr(args, "predicted_remaining_data", None),
+                "physical": getattr(args, "predicted_remaining_physical", None),
+            }
+            predicted_remaining_counts = (
+                remaining_values
+                if any(value is not None for value in remaining_values.values())
+                else None
+            )
+            value = propose_candidate(
+                root,
+                campaign,
+                functions[0],
+                Path(candidate_source),
+                str(hypothesis_family),
+                expected_terminal=expected_terminal,
+                predicted_rows=predicted_rows or None,
+                predicted_remaining_counts=predicted_remaining_counts,
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"error: {exc}")
+            return 2
         return _print_owner_campaign_result(value)
 
     # Snapshot is the v2 bootstrap boundary: load the hash-bound campaign,
@@ -1498,7 +1615,7 @@ def main() -> int:
             return run_match_command(args, root=root)
         if args.command in {"owner-campaign", "campaign", "owner_campaign"} or (
             args.command == "crack"
-            and getattr(args, "crack_command", None) == "loop"
+            and getattr(args, "crack_command", None) in {"loop", "propose", "submit"}
         ):
             return _run_owner_campaign_command(
                 args,

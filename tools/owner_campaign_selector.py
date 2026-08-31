@@ -850,6 +850,7 @@ def _validate_proposal(
         "source_class": source_class,
         "status": status,
         "rank": rank,
+        "expected_terminal": value.get("expected_terminal"),
         "residual_rows": residual,
         "predicted_rows": predicted,
         "predicted_remaining_counts": counts,
@@ -908,8 +909,10 @@ def select_winning_candidate(
 
     Invalid proposals are suppressed individually so one malformed Luna
     proposal cannot block a valid winner.  Multiple valid rank-1 proposals are
-    a deterministic tie and return ``UNKNOWN``; no source or descriptor is
-    touched in either outcome.
+    ordered deterministically from their sealed evidence: exact predictions
+    first, then the fewest predicted remaining rows, then the smallest current
+    residual.  This lets parallel workers queue proposals without turning a
+    rank-1 tie into an administrative stop.
     """
 
     root = Path(os.path.abspath(root))
@@ -959,13 +962,6 @@ def select_winning_candidate(
             rejected.append({"descriptor": relative, "reason": str(exc)[:256]})
 
     ranked = [item for item in eligible if item["rank"] == 1]
-    if len(ranked) > 1:
-        return _result(
-            status=UNKNOWN,
-            reason="rank-1 selection tie",
-            discovered=len(paths),
-            evaluations=[*eligible, *rejected],
-        )
     if not ranked:
         reason = "no current-bound rank-1 proposal"
         if rejected:
@@ -976,9 +972,29 @@ def select_winning_candidate(
             discovered=len(paths),
             evaluations=[*eligible, *rejected],
         )
+    function_order = {
+        name: index
+        for index, name in enumerate(campaign.get("functions", []))
+        if isinstance(name, str)
+    }
+    ranked.sort(
+        key=lambda item: (
+            0 if item.get("expected_terminal") == "exact" else 1,
+            sum(item["predicted_remaining_counts"].values()),
+            len(item["residual_rows"]),
+            function_order.get(item["function"], len(function_order)),
+            item["selection_key_sha256"],
+            item["candidate_identity_sha256"],
+        )
+    )
+    reason = (
+        "one deterministic rank-1 proposal selected"
+        if len(ranked) == 1
+        else "parallel rank-1 proposals deterministically arbitrated"
+    )
     return _result(
         status=SELECTED,
-        reason="one deterministic rank-1 proposal selected",
+        reason=reason,
         discovered=len(paths),
         evaluations=[*eligible, *rejected],
         selected=ranked[0],

@@ -218,6 +218,51 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(result, [])
 
+    def test_propose_cli_forwards_selection_terminal_and_counts(self) -> None:
+        candidate = self.root / "build" / "candidate.c"
+        candidate.write_text("int focus(void) { return 1; }\n", encoding="utf-8")
+        expected = {"schema": "owner_campaign_proposal/v1", "status": "queued"}
+        with patch.object(
+            owner_campaign,
+            "load_campaign",
+            return_value={"functions": ["focus"]},
+        ), patch(
+            "tools.owner_campaign_lane.propose_candidate",
+            return_value=expected,
+        ) as propose:
+            code, result, _ = self._run_agent(
+                "crack",
+                "propose",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+                "--candidate-source",
+                "build/candidate.c",
+                "--hypothesis-family",
+                "direct-owner",
+                "--expected-terminal",
+                "improved",
+                "--predicted-row",
+                "strict:focus:row:1",
+                "--predicted-remaining-strict",
+                "3",
+                "--predicted-remaining-data",
+                "4",
+                "--predicted-remaining-physical",
+                "5",
+            )
+        self.assertEqual(code, 0)
+        self.assertEqual(result, expected)
+        self.assertEqual(propose.call_args.kwargs["expected_terminal"], "improved")
+        self.assertEqual(
+            propose.call_args.kwargs["predicted_rows"], ["strict:focus:row:1"]
+        )
+        self.assertEqual(
+            propose.call_args.kwargs["predicted_remaining_counts"],
+            {"strict": 3, "data": 4, "physical": 5},
+        )
+
     def test_snapshot_dispatches_loaded_campaign_and_prints_compact_binding(self) -> None:
         frontier = self._snapshot_frontier()
         with patch.object(
