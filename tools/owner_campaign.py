@@ -918,6 +918,50 @@ def _verify_hook_inputs(campaign: Mapping[str, Any]) -> None:
             raise InfrastructureError(f"{label} hash drift before hook execution")
 
 
+def _hook_environment(
+    scratch: Path,
+    campaign: Mapping[str, Any],
+    function: str,
+    source_sha256: str,
+    phase: str,
+) -> dict[str, str]:
+    """Build the sealed environment for a campaign measurement subprocess.
+
+    Measurement producers are executed from campaign CAS by absolute path,
+    while their imports must resolve against the hash-bound detached scratch
+    checkout.  Do not inherit a caller-controlled ``PYTHONPATH``: it can
+    shadow the scratch ``tools`` package and make a measurement depend on the
+    manager's ambient environment.
+    """
+
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = str(scratch.resolve())
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment.update({
+        "OWNER_CAMPAIGN_PHASE": phase,
+        "OWNER_CAMPAIGN_ID": str(campaign["campaign_id"]),
+        "OWNER_CAMPAIGN_MANIFEST_SHA256": str(campaign["manifest_sha256"]),
+        "OWNER_CAMPAIGN_OWNER": str(campaign["owner"]),
+        "OWNER_CAMPAIGN_UNIT": str(campaign["unit"]),
+        "OWNER_CAMPAIGN_FUNCTION": function,
+        "OWNER_CAMPAIGN_SOURCE_SHA256": source_sha256,
+        "OWNER_CAMPAIGN_TARGET_SHA256": str(campaign["target_object"]["sha256"]),
+        "OWNER_CAMPAIGN_TOOLCHAIN_SHA256": str(campaign["toolchain"]["sha256"]),
+        "OWNER_CAMPAIGN_BASE_COMMIT": str(campaign["base_commit"]),
+        "OWNER_CAMPAIGN_SOURCE_PATH": str(campaign["source_relpath"]),
+        "OWNER_CAMPAIGN_MEASUREMENT_PRODUCER_SHA256": str(
+            campaign["measurement_producer"]["sha256"]
+        ),
+        "OWNER_CAMPAIGN_PROTECTED_TOTAL": str(
+            len(_protected_sibling_functions(campaign, function))
+        ),
+        "OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": ",".join(
+            campaign["protected_exact_functions"]
+        ),
+    })
+    return environment
+
+
 def _terminate_process_tree(process: subprocess.Popen[bytes]) -> None:
     """Best-effort bounded termination of the hook and every descendant."""
 
@@ -994,29 +1038,9 @@ def _run_hook(
         function=function, source_sha256=source_sha256, phase=phase,
     )
     try:
-        environment = dict(os.environ)
-        environment.update({
-            "OWNER_CAMPAIGN_PHASE": phase,
-            "OWNER_CAMPAIGN_ID": str(campaign["campaign_id"]),
-            "OWNER_CAMPAIGN_MANIFEST_SHA256": str(campaign["manifest_sha256"]),
-            "OWNER_CAMPAIGN_OWNER": str(campaign["owner"]),
-            "OWNER_CAMPAIGN_UNIT": str(campaign["unit"]),
-            "OWNER_CAMPAIGN_FUNCTION": function,
-            "OWNER_CAMPAIGN_SOURCE_SHA256": source_sha256,
-            "OWNER_CAMPAIGN_TARGET_SHA256": str(campaign["target_object"]["sha256"]),
-            "OWNER_CAMPAIGN_TOOLCHAIN_SHA256": str(campaign["toolchain"]["sha256"]),
-            "OWNER_CAMPAIGN_BASE_COMMIT": str(campaign["base_commit"]),
-            "OWNER_CAMPAIGN_SOURCE_PATH": str(campaign["source_relpath"]),
-            "OWNER_CAMPAIGN_MEASUREMENT_PRODUCER_SHA256": str(
-                campaign["measurement_producer"]["sha256"]
-            ),
-            "OWNER_CAMPAIGN_PROTECTED_TOTAL": str(
-                len(_protected_sibling_functions(campaign, function))
-            ),
-            "OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": ",".join(
-                campaign["protected_exact_functions"]
-            ),
-        })
+        environment = _hook_environment(
+            scratch, campaign, function, source_sha256, phase
+        )
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,
             timeout=float(campaign["limits"]["command_timeout_seconds"]),
@@ -1059,29 +1083,9 @@ def _run_final_owner(
         descriptor["argv"], root=root, scratch=scratch, campaign=campaign,
         function=function, source_sha256=source_sha256, phase="final_owner",
     )
-    environment = dict(os.environ)
-    environment.update({
-        "OWNER_CAMPAIGN_PHASE": "final_owner",
-        "OWNER_CAMPAIGN_ID": str(campaign["campaign_id"]),
-        "OWNER_CAMPAIGN_MANIFEST_SHA256": str(campaign["manifest_sha256"]),
-        "OWNER_CAMPAIGN_OWNER": str(campaign["owner"]),
-        "OWNER_CAMPAIGN_UNIT": str(campaign["unit"]),
-        "OWNER_CAMPAIGN_FUNCTION": function,
-        "OWNER_CAMPAIGN_SOURCE_SHA256": source_sha256,
-        "OWNER_CAMPAIGN_TARGET_SHA256": str(campaign["target_object"]["sha256"]),
-        "OWNER_CAMPAIGN_TOOLCHAIN_SHA256": str(campaign["toolchain"]["sha256"]),
-        "OWNER_CAMPAIGN_BASE_COMMIT": str(campaign["base_commit"]),
-        "OWNER_CAMPAIGN_SOURCE_PATH": str(campaign["source_relpath"]),
-        "OWNER_CAMPAIGN_MEASUREMENT_PRODUCER_SHA256": str(
-            campaign["measurement_producer"]["sha256"]
-        ),
-        "OWNER_CAMPAIGN_PROTECTED_TOTAL": str(
-            len(_protected_sibling_functions(campaign, function))
-        ),
-        "OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": ",".join(
-            campaign["protected_exact_functions"]
-        ),
-    })
+    environment = _hook_environment(
+        scratch, campaign, function, source_sha256, "final_owner"
+    )
     try:
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,

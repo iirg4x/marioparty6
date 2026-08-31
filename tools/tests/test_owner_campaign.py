@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -516,6 +517,56 @@ class OwnerCampaignTests(unittest.TestCase):
         with self.assertRaisesRegex(campaign.InfrastructureError, "measurement_producer"):
             campaign.snapshot_frontier(self.root, loaded, "focus")
         self.assertFalse((self.root / "build" / "invocations.log").exists())
+
+    def test_measurement_hooks_use_only_hash_bound_scratch_import_root(self) -> None:
+        loaded = self.load()
+        scratch = campaign._ensure_scratch(self.root, loaded)
+        source = self.source.read_bytes()
+        source_sha = campaign._digest_bytes(source)
+        campaign._sync_scratch_source(self.root, scratch, loaded, source)
+
+        # Execute the producer from its campaign-CAS path, matching deployed
+        # production behavior rather than the fixture's live source path.
+        cas = (
+            self.root / "build" / "owner-campaign" / "tool-cas"
+            / loaded["measurement_producer"]["sha256"]
+            / "owner_campaign_measure.py"
+        )
+        cas.parent.mkdir(parents=True, exist_ok=True)
+        cas.write_bytes((self.root / "hook.py").read_bytes())
+        loaded["_producer"] = cas.resolve()
+
+        environments: list[dict[str, str]] = []
+        original = campaign._run_bounded_process
+
+        def capture(*args: object, **kwargs: object) -> object:
+            environments.append(dict(kwargs["environment"]))
+            return original(*args, **kwargs)
+
+        inherited = {
+            "PYTHONPATH": str(self.root / "untrusted-import-root"),
+            "PYTHONNOUSERSITE": "untrusted-user-site",
+        }
+        with mock.patch.dict(os.environ, inherited):
+            with mock.patch.object(campaign, "_run_bounded_process", side_effect=capture):
+                campaign._run_hook(
+                    self.root, scratch, loaded, "focus", source_sha, "candidate"
+                )
+                campaign._run_final_owner(
+                    self.root, scratch, loaded, "focus", source_sha
+                )
+
+        self.assertEqual(len(environments), 2)
+        expected_root = str(scratch.resolve())
+        self.assertEqual(
+            [environment["OWNER_CAMPAIGN_PHASE"] for environment in environments],
+            ["candidate", "final_owner"],
+        )
+        for environment in environments:
+            self.assertEqual(environment["PYTHONPATH"], expected_root)
+            self.assertEqual(environment["PYTHONNOUSERSITE"], "1")
+            self.assertNotIn("untrusted-import-root", environment["PYTHONPATH"])
+            self.assertNotIn("untrusted-user-site", environment["PYTHONNOUSERSITE"])
 
     def test_exact_live_measurement_producer_wins_over_matching_cas(self) -> None:
         expected = self.manifest["measurement_producer"]["sha256"]
