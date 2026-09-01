@@ -1002,7 +1002,7 @@ def _add_owner_campaign_command_arguments(
     )
     parser.add_argument("--state-root", type=Path)
     parser.add_argument("--workers", "--lanes", dest="workers", type=int)
-    if command in {"snapshot", "reconstruct"}:
+    if command in {"snapshot", "reconstruct", "triage"}:
         parser.add_argument(
             "--worker",
             type=int,
@@ -1040,6 +1040,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
         ("status", []),
         ("snapshot", []),
         ("reconstruct", ["context"]),
+        ("triage", ["first-mismatch"]),
         ("run", []),
         ("propose", ["submit"]),
         ("import", ["migrate"]),
@@ -1052,6 +1053,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
                 "status": "inspect campaign state and recover pending frontiers",
                 "snapshot": "establish or read the current compact frontier",
                 "reconstruct": "read the current target-first reconstruction packet",
+                "triage": "rank the current frontier's first mismatch cluster",
                 "run": "run the autonomous owner campaign loop",
                 "propose": "queue one current-frontier-bound natural-C candidate",
                 "import": "import authenticated legacy exact receipts and compiled dedupe outcomes",
@@ -1101,6 +1103,12 @@ def _add_owner_campaign_parser(
                     help="read the current target-first reconstruction packet",
                 )
                 _add_owner_campaign_command_arguments(reconstruct, "reconstruct")
+                triage = action.add_parser(
+                    "triage",
+                    aliases=["first-mismatch"],
+                    help="rank the current frontier's first mismatch cluster",
+                )
+                _add_owner_campaign_command_arguments(triage, "triage")
                 break
     return parser
 
@@ -1408,7 +1416,8 @@ def _run_owner_campaign_snapshot(
 
 
 def _run_owner_campaign_reconstruct(
-    args: argparse.Namespace, *, root: Path, module: Any
+    args: argparse.Namespace, *, root: Path, module: Any,
+    require_existing: bool = False,
 ) -> int:
     """Summarize the current target-first packet without compiling."""
 
@@ -1460,6 +1469,7 @@ def _run_owner_campaign_reconstruct(
             campaign,
             functions[0],
             snapshotter=bound_snapshotter,
+            require_existing=require_existing,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"error: {exc}")
@@ -1475,7 +1485,8 @@ def _run_owner_campaign_command(
         "run" if getattr(args, "crack_command", None) == "loop" else None
     )
     if operation not in {
-        "initialize", "status", "snapshot", "reconstruct", "run", "propose", "import"
+        "initialize", "status", "snapshot", "reconstruct", "triage",
+        "run", "propose", "import",
     }:
         raise OwnerCampaignCLIError("owner campaign operation is missing")
 
@@ -1568,8 +1579,13 @@ def _run_owner_campaign_command(
             print(f"error: {exc}")
             return 2
 
-    if operation == "reconstruct":
-        return _run_owner_campaign_reconstruct(args, root=root, module=module)
+    if operation in {"reconstruct", "triage"}:
+        return _run_owner_campaign_reconstruct(
+            args,
+            root=root,
+            module=module,
+            require_existing=operation == "triage",
+        )
 
     # A normal Sol lane does not pass cells through the manager CLI.  When no
     # explicit descriptor is supplied, consume the compact per-campaign inbox
@@ -1755,7 +1771,10 @@ def main() -> int:
         if args.command in {"owner-campaign", "campaign", "owner_campaign"} or (
             args.command == "crack"
             and getattr(args, "crack_command", None)
-            in {"loop", "propose", "submit", "reconstruct", "context"}
+            in {
+                "loop", "propose", "submit", "reconstruct", "context",
+                "triage", "first-mismatch",
+            }
         ):
             return _run_owner_campaign_command(
                 args,

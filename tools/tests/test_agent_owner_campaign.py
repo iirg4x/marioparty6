@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from tools import agent
 from tools import owner_campaign
+from tools import owner_campaign_lane as campaign_lane
 from tools import owner_campaign_reconstruction as reconstruction
 
 
@@ -670,6 +671,28 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(result["next_action"], "CRACK")
         self.assertFalse(result["authority_advanced"])
         self.assertEqual(snapshotter.call_count, 1)
+        plan = result["first_mismatch_plan"]
+        self.assertEqual(plan["schema"], "owner_campaign_first_mismatch_plan/v1")
+        self.assertEqual(plan["route"], "causal_reducer")
+        self.assertEqual(plan["candidate_budget"], 1)
+        self.assertEqual(plan["expected_terminal"], "exact")
+        first_rows = [
+            rows[0]
+            for rows in (packet["strict_residuals"], packet["data_residuals"])
+            if rows
+        ]
+        self.assertEqual(
+            plan["mandatory_first_rows"],
+            first_rows,
+        )
+        self.assertEqual(
+            plan["predicted_rows"],
+            first_rows,
+        )
+        self.assertEqual(
+            plan["predicted_remaining_counts"],
+            {"strict": 0, "data": 0, "physical": 0},
+        )
 
         with patch.object(
             owner_campaign, "snapshot_frontier", return_value=frontier
@@ -684,6 +707,23 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
             )
         self.assertEqual(alias_code, 0)
         self.assertEqual(alias_result, result)
+
+        with patch.object(
+            owner_campaign, "snapshot_frontier", return_value=frontier
+        ) as triage_snapshotter, patch.object(
+            campaign_lane, "_frontier_for_proposal", return_value=frontier
+        ):
+            triage_code, triage_result, triage_output = self._run_agent(
+                "owner-campaign",
+                "triage",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+            )
+        self.assertEqual(triage_code, 0, triage_output)
+        self.assertEqual(triage_result, result)
+        triage_snapshotter.assert_not_called()
 
     def test_reconstruct_explicit_worker_is_forwarded(self) -> None:
         frontier = self._snapshot_frontier()

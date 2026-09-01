@@ -644,6 +644,166 @@ def _load_reconstruction_for_frontier(
     }
 
 
+def _first_mismatch_plan(reconstruction: Mapping[str, Any]) -> dict[str, Any]:
+    """Project a verified reconstruction packet onto one compile-sized plan.
+
+    The campaign compacts raw objdiff reports after measurement.  Its
+    reconstruction CAS is therefore the durable instruction chronology.
+    Expose the earliest causal/mirror cluster directly so lanes never need to
+    regenerate private reports or probe a later mismatch.
+    """
+
+    packet = reconstruction.get("packet")
+    if not isinstance(packet, Mapping):
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction packet is unavailable for first-pass triage"
+        )
+    strict_rows = list(packet.get("strict_residuals", []))
+    data_rows = list(packet.get("data_residuals", []))
+    physical_rows = list(packet.get("physical_difference_ids", []))
+    if any(not isinstance(row, str) for row in strict_rows + data_rows + physical_rows):
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction residual identities are invalid"
+        )
+
+    def cluster_rows(cluster: Mapping[str, Any]) -> set[str]:
+        rows: set[str] = set()
+        for key in (
+            "row_ids", "strict_row_ids", "data_row_ids",
+            "physical_difference_ids", "residual_row_ids",
+        ):
+            values = cluster.get(key)
+            if isinstance(values, Mapping):
+                for nested in values.values():
+                    if isinstance(nested, list):
+                        rows.update(item for item in nested if isinstance(item, str))
+            elif isinstance(values, list):
+                rows.update(item for item in values if isinstance(item, str))
+        return rows
+
+    def mirror_group(cluster: Mapping[str, Any]) -> str:
+        value = cluster.get("mirror_group", cluster.get("mirror_group_id"))
+        if isinstance(value, Mapping):
+            value = value.get("id", value.get("group_id"))
+        return str(value) if value is not None else ""
+
+    channel_first = owner_campaign_selector._first_mismatch_rows(
+        strict_rows, data_rows
+    )
+    clusters = reconstruction.get("causal_clusters")
+    if not isinstance(clusters, list) or any(
+        not isinstance(cluster, Mapping) for cluster in clusters
+    ):
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction causal clusters are unavailable"
+        )
+
+    selected_clusters: list[Mapping[str, Any]] = []
+    kind = "instruction_cluster"
+    if channel_first:
+        matches = [
+            cluster for cluster in clusters
+            if set(channel_first) & cluster_rows(cluster)
+        ]
+        if not matches:
+            raise owner_campaign.CampaignError(
+                "first mismatch is not represented by a causal cluster"
+            )
+        group_keys = {mirror_group(cluster) for cluster in matches}
+        if len(group_keys) != 1:
+            raise owner_campaign.CampaignError(
+                "first proof-channel mismatches cross causal clusters"
+            )
+        group = next(iter(group_keys))
+        if group:
+            selected_clusters = [
+                cluster for cluster in clusters if mirror_group(cluster) == group
+            ]
+        elif len(matches) == 1:
+            selected_clusters = matches
+        else:
+            raise owner_campaign.CampaignError(
+                "first proof-channel mismatches cross causal clusters"
+            )
+        required = set().union(*(cluster_rows(cluster) for cluster in selected_clusters))
+        predicted = [
+            row for row in strict_rows + data_rows + physical_rows if row in required
+        ]
+        if not set(channel_first) <= set(predicted):
+            raise owner_campaign.CampaignError(
+                "first mismatch cluster omits a proof channel"
+            )
+    elif physical_rows:
+        # Physical differences have no instruction chronology.  Treat their
+        # complete authenticated set as one layout cause instead of inventing
+        # an arbitrary relocation order.
+        kind = "physical_layout"
+        predicted = list(physical_rows)
+    else:
+        kind = "exact"
+        predicted = []
+
+    current_counts = {
+        "strict": len(strict_rows),
+        "data": len(data_rows),
+        "physical": len(physical_rows),
+    }
+    remaining = {
+        channel: current_counts[channel] - sum(
+            row.startswith(f"{channel}:") for row in predicted
+        )
+        for channel in current_counts
+    }
+    expected_terminal = (
+        "exact"
+        if kind == "exact"
+        or (
+            predicted
+            and not any(remaining.values())
+            and reconstruction.get("exact_terminal_possible") is True
+        )
+        else "improved"
+    )
+    cluster_ids = [
+        cluster.get("cluster_id") for cluster in selected_clusters
+        if isinstance(cluster.get("cluster_id"), str)
+    ]
+    first_index = min(
+        (
+            cluster.get("first_index") for cluster in selected_clusters
+            if type(cluster.get("first_index")) is int
+        ),
+        default=None,
+    )
+    group = mirror_group(selected_clusters[0]) if selected_clusters else None
+    return {
+        "schema": "owner_campaign_first_mismatch_plan/v1",
+        "status": "exact" if kind == "exact" else "ready",
+        "kind": kind,
+        "route": (
+            "proof_report" if kind == "exact"
+            else "physical_relocation_layout" if kind == "physical_layout"
+            else "causal_reducer"
+        ),
+        "first_residual_index": first_index,
+        "cluster_id": cluster_ids[0] if cluster_ids else None,
+        "cluster_ids": cluster_ids,
+        "mirror_group": group,
+        "mandatory_first_rows": channel_first,
+        "predicted_rows": predicted,
+        "current_counts": current_counts,
+        "predicted_remaining_counts": remaining,
+        "expected_terminal": expected_terminal,
+        "candidate_budget": 1,
+        "analysis_deadline_minutes": 5,
+        "next_action": (
+            "WRITE_CRACK_REPORT" if kind == "exact"
+            else "RANK_ONE_NATURAL_C_CELL"
+        ),
+        "authority_advanced": False,
+    }
+
+
 def _reconstruction_cluster_for_rows(
     reconstruction: Mapping[str, Any],
     predicted_rows: Sequence[str],
@@ -865,6 +1025,7 @@ def reconstruct_frontier(
     function: str,
     *,
     snapshotter: Callable[..., Mapping[str, Any]] | None = None,
+    require_existing: bool = False,
 ) -> dict[str, Any]:
     """Read the current frontier and summarize its target-first packet.
 
@@ -885,13 +1046,20 @@ def reconstruct_frontier(
         raise owner_campaign.CampaignError(
             f"function is outside campaign scope: {function}"
         )
-    if snapshotter is None:
-        snapshotter = getattr(owner_campaign, "snapshot_frontier", None)
-    if not callable(snapshotter):
+    if type(require_existing) is not bool:
         raise owner_campaign.CampaignError(
-            "tools.owner_campaign does not expose snapshot_frontier"
+            "reconstruction require_existing flag is invalid"
         )
-    current = snapshotter(root, campaign, function)
+    if require_existing:
+        current = _frontier_for_proposal(root, campaign, function)
+    else:
+        if snapshotter is None:
+            snapshotter = getattr(owner_campaign, "snapshot_frontier", None)
+        if not callable(snapshotter):
+            raise owner_campaign.CampaignError(
+                "tools.owner_campaign does not expose snapshot_frontier"
+            )
+        current = snapshotter(root, campaign, function)
     if not isinstance(current, Mapping):
         raise owner_campaign.CampaignError("current frontier is invalid")
     current = dict(current)
@@ -965,6 +1133,7 @@ def reconstruct_frontier(
             "next_action": packet["next_action"],
             "bounded_regions": packet["bounded_regions"],
             "ownership_complete": packet["ownership_complete"],
+            "first_mismatch_plan": _first_mismatch_plan(packet),
         }
     )
     return result

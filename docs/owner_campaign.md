@@ -131,6 +131,21 @@ reconstruction, but they are optional and cannot block or authorize a proposal.
 Static register names and stack offsets remain target pseudo-owners unless a
 same-session compiler trace proves the source-to-vreg join.
 
+The normal hot-path command is report-free and reads that retained packet
+directly from campaign CAS:
+
+```sh
+rtk python tools/agent.py owner-campaign triage \
+  --campaign build/owner-campaign/<owner>.json \
+  --function <function>
+```
+
+It returns the earliest causal/mirror cluster, its exact strict/data row IDs,
+the one-cell predicted remaining counts, and `candidate_budget=1`. Raw objdiff
+reports and candidate objects are not regenerated or retained for this step.
+The lane writes one natural-C candidate for that cluster and queues it with
+`owner-campaign propose`; later-row-only proposals remain fail-closed.
+
 The reconstruction packet is diagnostic only.  It never emits a source patch,
 authorizes a compile, retains a candidate, or advances authority.  Exactness
 still requires the normal strict/data/physical/sibling/source-link proof ladder.
