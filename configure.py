@@ -1061,7 +1061,7 @@ config.libs = [
             Object(Matching, "board/capselect.c"),
             Object(Matching, "board/capmove.c"),
             Object(Matching, "board/capthrow.c"),
-            Object(NonMatching, "board/captrap.c"),
+            Object(Matching, "board/captrap.c"),
             Object(NonMatching, "board/capspecial.c"),
             Object(Matching, "board/capsule.c"),
             Object(Matching, "board/capevent.c"),
