@@ -587,8 +587,10 @@ def verify_measurement(
     ):
         raise VerificationError("measurement has noncanonical fields")
     body = dict(measurement)
-    digest = _sha(body.pop("measurement_sha256", None), "measurement_sha256")
-    if _sha_json(body) != digest:
+    measurement_digest = _sha(
+        body.pop("measurement_sha256", None), "measurement_sha256"
+    )
+    if _sha_json(body) != measurement_digest:
         raise VerificationError("measurement digest is invalid")
     if measurement.get("schema") != MEASUREMENT_SCHEMA:
         raise VerificationError("measurement schema is invalid")
@@ -754,8 +756,8 @@ def verify_measurement(
     required_receipts = {"strict", "data", "physical", "siblings", "source_link"}
     if not required_receipts <= set(receipts) or len(receipts) > 16:
         raise VerificationError("measurement report receipts are incomplete")
-    for name, digest in receipts.items():
-        _sha(digest, f"measurement report receipt {name}")
+    for name, receipt_digest in receipts.items():
+        _sha(receipt_digest, f"measurement report receipt {name}")
     if set(proofs) != {"source_link", "object", "toolchain"}:
         raise VerificationError("measurement proof bodies are noncanonical")
     for name in ("source_link", "object", "toolchain"):
@@ -783,7 +785,7 @@ def verify_measurement(
         raise VerificationError("measurement exceeds 256 KiB compact limit")
     result = {
         "schema": "owner_campaign_measurement_verification/v1",
-        "measurement_sha256": digest,
+        "measurement_sha256": measurement_digest,
         "focus_evidence_sha256": focus["focus_evidence_sha256"],
         "verified": True,
         "authority_advanced": False,

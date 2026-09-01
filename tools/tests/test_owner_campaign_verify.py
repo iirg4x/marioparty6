@@ -147,6 +147,7 @@ class OwnerCampaignVerifyTests(unittest.TestCase):
         value = _measurement(exact=True)
         checked = verify_measurement(value)
         self.assertTrue(checked["verified"])
+        self.assertEqual(checked["measurement_sha256"], value["measurement_sha256"])
         self.assertEqual(checked["focus_evidence_sha256"], value["focus_evidence"]["focus_evidence_sha256"])
 
     def test_tampered_reconstruction_packet_is_rejected_even_when_measurement_resealed(self) -> None:

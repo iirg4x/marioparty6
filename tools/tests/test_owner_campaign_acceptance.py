@@ -461,6 +461,44 @@ class OwnerCampaignAcceptanceTests(unittest.TestCase):
             recovered["frontier_sha256"],
         )
 
+    def test_pending_exact_recovery_requires_intact_focus_cas(self) -> None:
+        loaded = self.load()
+        base = campaign.snapshot_frontier(self.root, loaded, "focus")
+        candidate = self.candidate("EXACT pending", base, "exact-pending")
+        original_atomic_json = campaign._atomic_json
+        interrupted = False
+
+        def crash_at_frontier(
+            path: Path, value: object, *, limit: int | None = None
+        ) -> None:
+            nonlocal interrupted
+            if Path(path).name == "latest-frontier.json" and not interrupted:
+                interrupted = True
+                raise RuntimeError("simulated exact publication interruption")
+            original_atomic_json(path, value, limit=limit)
+
+        with mock.patch.object(campaign, "_atomic_json", side_effect=crash_at_frontier):
+            with self.assertRaisesRegex(RuntimeError, "exact publication interruption"):
+                campaign.run_candidate(self.root, loaded, candidate)
+
+        directory = self.function_state_root()
+        pending_path = directory / "frontier.pending.json"
+        pending = json.loads(pending_path.read_text(encoding="utf-8"))
+        focus_digest = pending["frontier"]["focus_evidence_sha256"]
+        focus_path = (
+            self.root / "build" / "owner-campaign" / "proof-cas" / "focus"
+            / focus_digest[:2] / f"{focus_digest}.json"
+        )
+        focus_path.unlink()
+
+        with self.assertRaisesRegex(campaign.CampaignError, "frontier focus evidence"):
+            campaign.snapshot_frontier(self.root, loaded, "focus")
+
+        self.assertTrue(pending_path.is_file())
+        latest = json.loads((directory / "latest-frontier.json").read_text(encoding="utf-8"))
+        self.assertEqual(latest["frontier_sha256"], base["frontier_sha256"])
+        self.assertFalse((self.owner_state_root() / "exact-manifest.json").exists())
+
     def test_cancellation_epoch_stops_loop_without_source_mutation(self) -> None:
         loaded = self.load()
         base = campaign.snapshot_frontier(self.root, loaded, "focus")
