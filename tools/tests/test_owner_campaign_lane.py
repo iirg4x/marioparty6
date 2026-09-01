@@ -249,6 +249,49 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         for index in range(5):
             self.assertFalse((self.root / "build" / "candidates" / f"cell-{index}.c").exists())
 
+    def test_terminal_compaction_failure_is_retryable_and_not_reported_processed(self) -> None:
+        descriptor = self._candidate("cleanup-failure")
+
+        def failed_compaction(
+            root: Path, campaign: dict[str, object], path: Path,
+        ) -> list[str]:
+            return [f"cleanup-error:{path}:injected"]
+
+        with patch.object(
+            owner_campaign,
+            "run_loop",
+            return_value=[{"status": "no_gain", "authority_advanced": False}],
+        ), patch.object(lane, "_compact_terminal_input", side_effect=failed_compaction):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(result["status"], "infra_retry")
+        self.assertEqual(len(result["cleanup_failures"]), 1)
+        self.assertIn(descriptor.relative_to(self.root).as_posix(), result["preserved_infrastructure"])
+        self.assertTrue(descriptor.exists())
+
+    def test_terminal_compaction_retries_a_transient_unlink(self) -> None:
+        descriptor = self._candidate("cleanup-retry")
+        source = self.root / "build" / "candidates" / "cleanup-retry.c"
+        original_unlink = Path.unlink
+        failed = False
+
+        def flaky_unlink(path: Path, *args: object, **kwargs: object) -> None:
+            nonlocal failed
+            if path == source and not failed:
+                failed = True
+                raise OSError("transient sharing violation")
+            original_unlink(path, *args, **kwargs)
+
+        with patch.object(Path, "unlink", autospec=True, side_effect=flaky_unlink):
+            cleaned = lane._compact_terminal_input(
+                self.root, self.campaign, descriptor
+            )
+
+        self.assertTrue(failed)
+        self.assertFalse(descriptor.exists())
+        self.assertFalse(source.exists())
+        self.assertFalse(any(str(item).startswith("cleanup-error:") for item in cleaned))
+
     def test_infrastructure_retry_preserves_descriptor_and_source(self) -> None:
         descriptor = self._candidate("retry")
         source = self.root / "build" / "candidates" / "retry.c"

@@ -1462,6 +1462,130 @@ class OwnerCampaignTests(unittest.TestCase):
         self.assertEqual(len(blobs), 1)
         self.assertNotEqual(blobs[0].stem, base["focus_evidence_sha256"])
 
+    def test_physical_cas_gc_preserves_pending_selection_and_collects_orphans(self) -> None:
+        loaded = self.load()
+        state = self.root / "build" / "owner-campaign"
+        physical_root = state / "proof-cas" / "physical"
+        keep_body = b'{"keep":true}\n'
+        orphan_body = b'{"orphan":true}\n'
+        keep_digest = hashlib.sha256(b"keep-physical").hexdigest()
+        orphan_digest = hashlib.sha256(b"orphan-physical").hexdigest()
+        keep_path = physical_root / keep_digest[:2] / f"{keep_digest}.json"
+        orphan_path = physical_root / orphan_digest[:2] / f"{orphan_digest}.json"
+        keep_path.parent.mkdir(parents=True, exist_ok=True)
+        orphan_path.parent.mkdir(parents=True, exist_ok=True)
+        keep_path.write_bytes(keep_body)
+        orphan_path.write_bytes(orphan_body)
+
+        # An unconsumed proposal selection is the only durable reference for
+        # its physical projection before a candidate reaches a frontier.
+        selection = state / "inbox" / "pending" / "candidate.selection.json"
+        selection.parent.mkdir(parents=True, exist_ok=True)
+        selection.write_text(
+            json.dumps({"physical_artifact": {"sha256": keep_digest}}),
+            encoding="utf-8",
+        )
+
+        campaign._gc_physical_evidence(self.root, minimum_age_seconds=0)
+        campaign._gc_physical_evidence(self.root, minimum_age_seconds=0)
+        self.assertTrue(keep_path.exists())
+        self.assertFalse(orphan_path.exists())
+
+    def test_inbox_and_tool_cas_count_toward_peak_retained_limit(self) -> None:
+        loaded = self.load()
+        state = self.root / "build" / "owner-campaign"
+        inbox = state / "inbox"
+        tool_cas = state / "tool-cas"
+        inbox.mkdir(parents=True, exist_ok=True)
+        tool_cas.mkdir(parents=True, exist_ok=True)
+
+        def sized(path: Path) -> int:
+            if path in {inbox, tool_cas}:
+                return 40 << 20
+            return 0
+
+        with mock.patch.object(campaign, "_tree_size", side_effect=sized):
+            with self.assertRaisesRegex(campaign.CampaignError, "global campaign state"):
+                campaign._check_limits(self.root, loaded)
+
+    def test_all_campaign_scratch_is_bounded_before_more_work(self) -> None:
+        loaded = self.load()
+        state = self.root / "build" / "owner-campaign"
+        scratch_root = state / "scratch" / campaign._slug(loaded["campaign_id"])
+
+        def sized(path: Path) -> int:
+            if path == state / "scratch":
+                return campaign.GLOBAL_SCRATCH_HARD_BYTES + 1
+            if path == scratch_root:
+                return 0
+            return 0
+
+        with mock.patch.object(campaign, "_tree_size", side_effect=sized):
+            with self.assertRaisesRegex(campaign.InfrastructureError, "all campaign scratch"):
+                campaign._check_limits(self.root, loaded)
+
+    def test_obsolete_owned_scratch_gc_removes_only_identity_bound_old_repo(self) -> None:
+        loaded = self.load()
+        state = self.root / "build" / "owner-campaign"
+        old_campaign = dict(loaded)
+        old_campaign["campaign_id"] = "retired-owner-campaign-v1"
+        old_repo = (
+            state / "scratch" / campaign._slug(old_campaign["campaign_id"])
+            / "repo-0"
+        )
+        old_repo.mkdir(parents=True, exist_ok=True)
+        (old_repo / ".owner-campaign-identity.json").write_bytes(
+            campaign._canonical(campaign._scratch_identity(old_campaign, old_repo))
+            + b"\n"
+        )
+        (old_repo / "obsolete.bin").write_bytes(b"retired")
+
+        removed = campaign._gc_obsolete_scratch(
+            self.root, loaded, minimum_age_seconds=0
+        )
+
+        self.assertIn(str(old_repo), removed)
+        self.assertFalse(old_repo.exists())
+        self.assertFalse(old_repo.parent.exists())
+
+    def test_scratch_worker_lease_serializes_across_processes(self) -> None:
+        log = self.root / "scratch-lease.log"
+        script = (
+            "from pathlib import Path\n"
+            "import sys, time\n"
+            "from tools import owner_campaign as c\n"
+            "root = Path(sys.argv[1])\n"
+            "log = Path(sys.argv[2])\n"
+            "campaign = {'campaign_id': 'lease-test', 'limits': {'command_timeout_seconds': 5}}\n"
+            "with c._scratch_lease(root, campaign, 0):\n"
+            "    start = time.monotonic()\n"
+            "    with log.open('a', encoding='utf-8') as stream: stream.write(f'{start},')\n"
+            "    time.sleep(0.15)\n"
+            "    end = time.monotonic()\n"
+            "    with log.open('a', encoding='utf-8') as stream: stream.write(f'{end}\\n')\n"
+        )
+        environment = dict(os.environ)
+        environment["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
+        processes = [
+            subprocess.Popen(
+                [sys.executable, "-c", script, str(self.root), str(log)],
+                cwd=self.root, env=environment,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            for _ in range(2)
+        ]
+        outputs = [process.communicate(timeout=10) for process in processes]
+        for stdout, stderr in outputs:
+            self.assertEqual(stdout, b"", stderr.decode("utf-8", "replace"))
+            self.assertEqual(stderr, b"", stderr.decode("utf-8", "replace"))
+        intervals = [
+            tuple(float(value) for value in line.split(","))
+            for line in log.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertEqual(len(intervals), 2)
+        first, second = sorted(intervals)
+        self.assertLessEqual(first[1], second[0])
+
     def test_gc_scan_does_not_hold_focus_publication_lock(self) -> None:
         loaded = self.load()
         entered = threading.Event()

@@ -41,6 +41,11 @@ INBOX_SCHEMA = "owner_campaign_inbox/v1"
 LANE_RESULT_SCHEMA = "owner_campaign_lane_result/v1"
 SUPERVISOR_RESULT_SCHEMA = "owner_campaign_supervisor_result/v1"
 PROPOSAL_RESULT_SCHEMA = "owner_campaign_proposal/v1"
+_STATE_LIMIT_FIELDS = frozenset({
+    "owner_state_bytes", "scratch_soft_bytes", "scratch_hard_bytes",
+    "cell_temporary_bytes", "focus_evidence_bytes", "frontier_bytes",
+    "report_bytes", "dedupe_bytes",
+})
 DEFAULT_BATCH_SIZE = 5
 DEFAULT_WATCHDOG_SECONDS = 1800.0
 # Keep an empty-inbox supervisor alive for the full watchdog window.  A short
@@ -148,11 +153,18 @@ def _allowed_candidate_path(
     return any(path == item or _path_inside(item, path) for item in allowed)
 
 
-def _stable_file_bytes(path: Path, label: str) -> bytes:
+def _stable_file_bytes(
+    path: Path, label: str, *, max_bytes: int | None = None,
+) -> bytes:
     """Read one stable file snapshot; reject replacement during the read."""
 
     try:
         before = path.stat()
+        if max_bytes is not None and before.st_size > max_bytes:
+            raise owner_campaign.CampaignError(
+                f"{label} exceeds bounded proposal storage: "
+                f"{before.st_size} > {max_bytes} bytes"
+            )
         payload = path.read_bytes()
         after = path.stat()
     except OSError as exc:
@@ -1315,12 +1327,24 @@ def _prepare_candidate_proposal(
     ):
         raise owner_campaign.CampaignError("required current function snapshot is invalid")
     source_path = _campaign_source_path(root, campaign)
-    source_bytes = _stable_file_bytes(source_path, "campaign source")
+    limits = campaign.get("limits")
+    proposal_limit = (
+        limits.get("cell_temporary_bytes")
+        if isinstance(limits, Mapping)
+        else None
+    )
+    if type(proposal_limit) is not int or proposal_limit <= 0:
+        proposal_limit = None
+    source_bytes = _stable_file_bytes(
+        source_path, "campaign source", max_bytes=proposal_limit,
+    )
     source_sha256 = owner_campaign._digest_bytes(source_bytes)
     frontier = _frontier_for_proposal(root, campaign, function)
     if frontier["source_sha256"] != source_sha256:
         raise owner_campaign.CampaignError("current source has drifted from frontier")
-    candidate_bytes = _stable_file_bytes(candidate_source, "candidate source")
+    candidate_bytes = _stable_file_bytes(
+        candidate_source, "candidate source", max_bytes=proposal_limit,
+    )
     candidate_sha256 = owner_campaign._digest_bytes(candidate_bytes)
     if candidate_sha256 == source_sha256:
         raise owner_campaign.CampaignError("candidate source is byte-identical to frontier")
@@ -1443,6 +1467,24 @@ def _prepare_candidate_proposal(
     _physical_sha = physical_ref.get("sha256")
     if not _is_hex_sha(_physical_sha):
         raise owner_campaign.CampaignError("selection physical artifact hash is invalid")
+    ensure_peak = getattr(owner_campaign, "_ensure_state_write_peak", None)
+    if (
+        callable(ensure_peak) and isinstance(limits, Mapping)
+        and _STATE_LIMIT_FIELDS <= set(limits)
+    ):
+        ensure_peak(
+            root,
+            campaign,
+            [
+                (final_dir / "base.c", source_bytes),
+                (final_dir / "candidate.c", candidate_bytes),
+                (final_dir / "candidate.json", owner_campaign._canonical(descriptor) + b"\n"),
+                (
+                    final_dir / "candidate.selection.json",
+                    owner_campaign._canonical(selection) + b"\n",
+                ),
+            ],
+        )
     return {
         "function": function,
         "hypothesis_family": hypothesis_family,
@@ -1687,6 +1729,15 @@ def propose_candidate(
     else:
         context = nullcontext()
     try:
+        # The preflight above accounts for the intended payloads.  Recheck
+        # after staging as well so concurrent proposal workers cannot
+        # collectively push the inbox beyond the global retained-state cap.
+        if (
+            "_source" in campaign
+            and isinstance(campaign.get("limits"), Mapping)
+            and _STATE_LIMIT_FIELDS <= set(campaign["limits"])
+        ):
+            owner_campaign._check_limits(root, campaign)
         with context:
             return _publish_prepared_proposal_locked(
                 root, campaign, prepared, stage
@@ -1907,38 +1958,104 @@ def _source_referenced_by_pending(
 def _compact_terminal_input(
     root: Path, campaign: Mapping[str, Any], descriptor_path: Path
 ) -> list[str]:
-    """Remove a terminal descriptor and an unshared build-root source."""
+    """Remove terminal inbox inputs, retrying transient filesystem errors.
+
+    The descriptor is deliberately removed last.  If a source, sidecar, or
+    base snapshot cannot be removed, the descriptor remains as a durable
+    retry token and the lane reports ``infra_retry`` instead of silently
+    claiming that terminal history was compacted.
+    """
 
     removed: list[str] = []
+    errors: list[str] = []
+    descriptor_path = Path(os.path.abspath(descriptor_path))
+    source_path: Path | None = None
     try:
         sealed = _sealed_descriptor(root, campaign, descriptor_path)
-        source_path = sealed[1] if sealed is not None else None
-        base_snapshot = descriptor_path.parent / "base.c"
-        if descriptor_path.exists():
-            descriptor_path.unlink()
-            removed.append(descriptor_path.relative_to(root).as_posix())
-        if (
-            source_path is not None
-            and source_path.exists()
-            and _under_allowed_build(root, source_path, campaign)
-            and not _source_referenced_by_pending(
-                root, campaign, source_path, exclude=descriptor_path
+        if sealed is not None:
+            source_path = sealed[1]
+        else:
+            # A prior cleanup attempt may already have removed the candidate
+            # source, making the full sealed-descriptor check impossible.  A
+            # strictly contained raw binding is still enough to finish
+            # cleanup; never use an unbound path.
+            try:
+                raw = json.loads(descriptor_path.read_text(encoding="utf-8"))
+                binding = raw.get("candidate_source") if isinstance(raw, Mapping) else None
+                raw_path = binding.get("path") if isinstance(binding, Mapping) else None
+                candidate = _relative_path(root, raw_path)
+                if (
+                    candidate is not None
+                    and _under_allowed_build(root, candidate, campaign)
+                ):
+                    source_path = candidate
+            except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
+                source_path = None
+    except (OSError, ValueError):
+        source_path = None
+
+    base_snapshot = descriptor_path.parent / "base.c"
+    sidecars: list[Path] = []
+    try:
+        sidecars = [
+            Path(path)
+            for path in owner_campaign_selector.selection_evidence_paths(
+                descriptor_path
             )
-        ):
-            source_path.unlink()
-            removed.append(source_path.relative_to(root).as_posix())
-        if (
-            base_snapshot != source_path
-            and base_snapshot.exists()
-            and _under_allowed_build(root, base_snapshot, campaign)
-        ):
-            base_snapshot.unlink()
-            removed.append(base_snapshot.relative_to(root).as_posix())
-    except (OSError, ValueError) as exc:
-        # The measurement result is still authoritative.  Surface cleanup
-        # trouble to the caller while leaving an infra retry distinguishable.
-        removed.append(f"cleanup-error:{descriptor_path}:{exc}")
-    return removed
+            if _path_inside(inbox_path(root, campaign), Path(os.path.abspath(path)))
+        ]
+    except (OSError, ValueError):
+        errors.append(f"cleanup-error:{descriptor_path}:selection sidecar discovery failed")
+
+    def relative(path: Path) -> str:
+        try:
+            return path.relative_to(root).as_posix()
+        except ValueError:
+            return str(path)
+
+    def unlink_retry(path: Path, *, required: bool) -> None:
+        if not required and not (path.exists() or path.is_symlink()):
+            return
+        last: OSError | None = None
+        for attempt in range(3):
+            try:
+                if path.exists() or path.is_symlink():
+                    path.unlink()
+                    removed.append(relative(path))
+                return
+            except OSError as exc:
+                last = exc
+                if attempt < 2:
+                    time.sleep(0.02 * (attempt + 1))
+        if last is not None:
+            errors.append(f"cleanup-error:{path}:{last}")
+
+    # Remove source and base only when they are campaign-contained and not
+    # shared by another still-pending proposal.  Sidecars are always inbox
+    # contained; an absent sidecar is already compacted.
+    if (
+        source_path is not None
+        and _under_allowed_build(root, source_path, campaign)
+        and not _source_referenced_by_pending(
+            root, campaign, source_path, exclude=descriptor_path
+        )
+    ):
+        unlink_retry(source_path, required=False)
+    if (
+        base_snapshot != source_path
+        and _under_allowed_build(root, base_snapshot, campaign)
+    ):
+        unlink_retry(base_snapshot, required=False)
+    for sidecar in sidecars:
+        if sidecar.is_symlink():
+            errors.append(f"cleanup-error:{sidecar}:selection sidecar is indirect")
+        else:
+            unlink_retry(sidecar, required=False)
+
+    # Keep the descriptor as the retry token until every companion is gone.
+    if not errors:
+        unlink_retry(descriptor_path, required=False)
+    return [*removed, *errors]
 
 
 def _rebase_tombstone_path(
@@ -2034,6 +2151,10 @@ def _publish_rebase_tombstone(
         # The old descriptor identity may reach this boundary again after a
         # process interruption.  Its first durable disposition is final.
         return existing
+    ensure_peak = getattr(owner_campaign, "_ensure_state_write_peak", None)
+    payload = owner_campaign._canonical(value) + b"\n"
+    if callable(ensure_peak) and isinstance(campaign.get("limits"), Mapping):
+        ensure_peak(root, campaign, [(path, payload)])
     owner_campaign._atomic_json(path, value, limit=16 << 10)
     observed = _read_rebase_tombstone(path)
     if observed != value:
@@ -3011,6 +3132,7 @@ def run_inbox(
         _post_pipeline_maintenance(root, campaign, results)
 
     cleaned: list[str] = []
+    cleanup_failures: list[str] = []
     dispatched_paths = {Path(os.path.abspath(path)) for path in dispatch_descriptors}
     preserved: list[str] = [
         path.relative_to(root).as_posix()
@@ -3080,7 +3202,12 @@ def run_inbox(
                         f"selection outcome publication failed: {exc}"
                     ) from exc
                 recorded_outcomes.append(outcome)
-            cleaned.extend(_compact_terminal_input(root, campaign, descriptor_path))
+            compacted = _compact_terminal_input(root, campaign, descriptor_path)
+            cleaned.extend(compacted)
+            cleanup_failures.extend(
+                item for item in compacted
+                if str(item).startswith("cleanup-error:")
+            )
             if selected is not None:
                 evidence_raw = selected.get("evidence_path")
                 if not isinstance(evidence_raw, (str, os.PathLike)):
@@ -3096,12 +3223,24 @@ def run_inbox(
                         evidence_path.unlink()
                         cleaned.append(evidence_path.relative_to(root).as_posix())
                 except (OSError, ValueError) as exc:
-                    cleaned.append(f"cleanup-error:{evidence_path}:{exc}")
+                    failure = f"cleanup-error:{evidence_path}:{exc}"
+                    cleaned.append(failure)
+                    cleanup_failures.append(failure)
+            if any(
+                str(item).startswith("cleanup-error:") for item in compacted
+            ) or any(
+                str(item).startswith("cleanup-error:")
+                and descriptor_path.name in str(item)
+                for item in cleanup_failures
+            ):
+                preserved.append(descriptor_path.relative_to(root).as_posix())
         else:
             preserved.append(descriptor_path.relative_to(root).as_posix())
 
     statuses = [_result_status(item) for item in results]
-    if not statuses:
+    if cleanup_failures:
+        status = "infra_retry"
+    elif not statuses:
         status = "infra_retry"
     elif all(item == "infra_retry" for item in statuses):
         status = "infra_retry"
@@ -3119,6 +3258,7 @@ def run_inbox(
         "selection": selection,
         "selections": selections,
         "recorded_outcomes": recorded_outcomes,
+        "cleanup_failures": cleanup_failures,
         "authority_advanced": False,
     }
 

@@ -11,6 +11,7 @@ is consulted here.
 from __future__ import annotations
 
 import argparse
+import contextvars
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import datetime as dt
@@ -47,6 +48,21 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9_.-]{1,96}\Z")
 UNIT_RE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+\Z")
 MAX_OUTPUT = 1 << 20
 DEFAULT_COMMAND_TIMEOUT_SECONDS = 1800.0
+# Scratch repositories are deliberately reusable and are therefore not safe
+# to garbage-collect merely because their campaign is idle.  Bound the
+# aggregate of every campaign's scratch tree so abandoned campaigns fail
+# closed before filling the volume; the per-campaign manifest limit remains
+# the tighter limit for an active campaign.
+GLOBAL_SCRATCH_HARD_BYTES = 5 * (512 << 20)
+GC_MINIMUM_AGE_SECONDS = 60.0
+
+# ``run_candidate`` may call ``snapshot_frontier`` while already holding the
+# worker lease.  A context variable keeps that fact local to the executing
+# worker without changing the public snapshot function signature (which is
+# also used by test and supervisor adapters).
+_SCRATCH_LEASE_HELD = contextvars.ContextVar(
+    "owner_campaign_scratch_lease_held", default=False
+)
 
 
 class CampaignError(RuntimeError):
@@ -666,6 +682,209 @@ def _scratch_is_owned(campaign: Mapping[str, Any], scratch: Path) -> bool:
     return dict(value) == _scratch_identity(campaign, scratch)
 
 
+def _read_owned_scratch_identity(scratch: Path) -> dict[str, str] | None:
+    """Read a self-bound scratch marker without trusting its path."""
+
+    marker = scratch / ".owner-campaign-identity.json"
+    try:
+        if _path_has_indirection(scratch, marker):
+            return None
+        value = _read_json(marker, "scratch identity")
+        if not isinstance(value, Mapping):
+            return None
+        fields = {
+            "schema", "campaign_id", "manifest_sha256", "base_commit",
+            "scratch_path", "git_sha256", "scratch_identity_sha256",
+        }
+        if set(value) != fields or value["schema"] != "owner_campaign_scratch/v1":
+            return None
+        body = dict(value)
+        digest = body.pop("scratch_identity_sha256", None)
+        if not isinstance(digest, str) or digest != _digest_json(body):
+            return None
+        for field in ("campaign_id", "scratch_path"):
+            if not isinstance(value[field], str) or not value[field]:
+                return None
+        if (
+            COMMIT_RE.fullmatch(str(value["base_commit"])) is None
+            or SHA_RE.fullmatch(str(value["manifest_sha256"])) is None
+            or SHA_RE.fullmatch(str(value["git_sha256"])) is None
+        ):
+            return None
+        if str(value["scratch_path"]) != str(Path(os.path.abspath(scratch))):
+            return None
+        if _path_has_indirection(scratch, scratch):
+            return None
+        return {field: str(value[field]) for field in fields - {"scratch_identity_sha256"}}
+    except (CampaignError, OSError, TypeError):
+        return None
+
+
+def _scratch_has_active_state(root: Path) -> bool:
+    """Return true when any campaign has state that makes scratch deletion unsafe."""
+
+    owners = _state_root(root) / "owners"
+    if not owners.is_dir() or _path_has_indirection(root, owners):
+        return True if owners.exists() else False
+    try:
+        for ledger in owners.rglob("candidate-results.jsonl"):
+            if _path_has_indirection(root, ledger):
+                return True
+            if any(
+                record["status"] == "inflight"
+                for record in _dedupe_records(ledger)
+            ):
+                return True
+        for pending in owners.rglob("frontier.pending.json"):
+            if _path_has_indirection(root, pending):
+                return True
+            # A pending frontier is a live source-publication transaction even
+            # if its JSON is temporarily unreadable.  Keep all old scratch
+            # until the transaction is reconciled.
+            return True
+    except (CampaignError, OSError):
+        return True
+    return False
+
+
+def _registered_scratch_worktree(
+    root: Path, campaign: Mapping[str, Any], scratch: Path,
+) -> bool | None:
+    """Return Git registration state, or None when it cannot be proven."""
+
+    try:
+        result = subprocess.run(
+            _git_argv(campaign, "worktree", "list", "--porcelain"),
+            cwd=root, capture_output=True, text=True, check=False,
+            timeout=_command_timeout_seconds(campaign),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode:
+        return None
+    wanted = os.path.normcase(os.path.abspath(str(scratch)))
+    target_tail = "/".join(
+        part.lower() for part in scratch.relative_to(root).parts
+    ).rstrip("/")
+    registered: list[str] = []
+    for line in result.stdout.splitlines():
+        if line.startswith("worktree "):
+            value = line[len("worktree "):].strip()
+            if value.startswith('"') or value.endswith('"'):
+                return None
+            registered.append(value)
+    for value in registered:
+        try:
+            normalized = os.path.normcase(os.path.abspath(value))
+            if normalized == wanted:
+                return True
+            # Git for Windows may report a drive through an MSYS-style alias.
+            # A matching path suffix is enough to prove that the target may be
+            # registered, but not enough to authorize removal, so fail closed.
+            raw_normalized = value.replace("\\", "/").lower().rstrip("/")
+            if raw_normalized.endswith("/" + target_tail):
+                return None
+        except (TypeError, ValueError):
+            return None
+    return False
+
+
+def _gc_obsolete_scratch(
+    root: Path, campaign: Mapping[str, Any], *,
+    minimum_age_seconds: float = GC_MINIMUM_AGE_SECONDS,
+) -> list[str]:
+    """Retire identity-bound inactive scratch repos from old campaigns.
+
+    Only a marker whose digest, campaign slug, and exact path all validate is
+    eligible.  A worker lease must be acquired first; any active/inflight
+    owner state, path indirection, Git-list ambiguity, or removal failure
+    skips the repo and leaves it for a later maintenance pass.
+    """
+
+    scratch_root = _state_root(root) / "scratch"
+    if not scratch_root.is_dir() or _path_has_indirection(root, scratch_root):
+        return []
+    if _scratch_has_active_state(root):
+        return []
+    current_slug = _slug(str(campaign["campaign_id"]))
+    now = time.time()
+    removed: list[str] = []
+    try:
+        campaign_dirs = list(scratch_root.iterdir())
+    except OSError:
+        return []
+    for campaign_dir in campaign_dirs:
+        if (
+            not campaign_dir.is_dir() or campaign_dir.is_symlink()
+            or campaign_dir.name == current_slug
+            or _path_has_indirection(root, campaign_dir)
+        ):
+            continue
+        try:
+            entries = list(campaign_dir.iterdir())
+        except OSError:
+            continue
+        for scratch in entries:
+            if (
+                not scratch.is_dir() or scratch.is_symlink()
+                or not re.fullmatch(r"repo-[0-4]", scratch.name)
+                or _path_has_indirection(root, scratch)
+            ):
+                continue
+            identity = _read_owned_scratch_identity(scratch)
+            if identity is None or _slug(identity["campaign_id"]) != campaign_dir.name:
+                continue
+            try:
+                marker_age = now - (scratch / ".owner-campaign-identity.json").stat().st_mtime
+            except OSError:
+                continue
+            if marker_age < max(0.0, minimum_age_seconds):
+                continue
+            lease = scratch.with_name(f"{scratch.name}.lease")
+            try:
+                with _exclusive_lock(lease, 0.0):
+                    if _scratch_has_active_state(root):
+                        continue
+                    registration = _registered_scratch_worktree(root, campaign, scratch)
+                    if registration is None:
+                        continue
+                    if registration:
+                        try:
+                            result = subprocess.run(
+                                _git_argv(campaign, "worktree", "remove", "--force", str(scratch)),
+                                cwd=root, capture_output=True, text=True, check=False,
+                                timeout=_command_timeout_seconds(campaign),
+                            )
+                        except (OSError, subprocess.TimeoutExpired):
+                            continue
+                        if result.returncode or scratch.exists():
+                            continue
+                    else:
+                        if _path_has_indirection(root, scratch):
+                            continue
+                        try:
+                            shutil.rmtree(scratch)
+                        except OSError:
+                            continue
+                        if scratch.exists():
+                            continue
+                    removed.append(str(scratch))
+            except InfrastructureError:
+                # A held lease means an active worker owns this repo.  A
+                # non-blocking probe must not turn that into a maintenance
+                # failure or delete the active checkout.
+                continue
+            try:
+                lease.unlink(missing_ok=True)
+            except OSError:
+                pass
+        try:
+            campaign_dir.rmdir()
+        except OSError:
+            pass
+    return removed
+
+
 def _tree_size(path: Path) -> int:
     if not path.exists():
         return 0
@@ -696,7 +915,12 @@ def _ensure_state_write_peak(
             owner_extra += len(payload)
     if _tree_size(owner_root) + owner_extra > campaign["limits"]["owner_state_bytes"]:
         raise CampaignError("retained owner state would exceed peak hard limit")
-    retained = _tree_size(state_root / "owners") + _tree_size(state_root / "proof-cas")
+    retained = (
+        _tree_size(state_root / "owners")
+        + _tree_size(state_root / "proof-cas")
+        + _tree_size(state_root / "inbox")
+        + _tree_size(state_root / "tool-cas")
+    )
     if retained + global_extra > 64 << 20:
         raise CampaignError("retained global campaign state would exceed peak hard limit")
 
@@ -843,6 +1067,35 @@ def _exclusive_lock(path: Path, timeout: float):
 
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
         stream.close()
+
+
+def _scratch_lease_path(
+    root: Path, campaign: Mapping[str, Any], worker: int,
+) -> Path:
+    """Return the stable cross-process lease for one reusable worker checkout."""
+
+    return _scratch_repo(root, campaign, worker).with_name(
+        f"repo-{worker}.lease"
+    )
+
+
+@contextmanager
+def _scratch_lease(
+    root: Path, campaign: Mapping[str, Any], worker: int,
+):
+    """Serialize reset/sync/hook/cleanup for a campaign worker.
+
+    Reusable scratch repositories are intentionally shared by sequential
+    cells, but they must never be shared concurrently.  The lease lives next
+    to (rather than inside) the worktree, so Git worktree removal cannot
+    remove the lock inode while another process is waiting on it.
+    """
+
+    if type(worker) is not int or not 0 <= worker < 5:
+        raise CampaignError("scratch lease worker index must be between 0 and 4")
+    timeout = _command_timeout_seconds(campaign)
+    with _exclusive_lock(_scratch_lease_path(root, campaign, worker), timeout):
+        yield
 
 
 @contextmanager
@@ -1438,7 +1691,6 @@ def _publish_reconstruction_evidence(
 
 
 GC_MARKER_SCHEMA = "owner_campaign_evidence_gc_marker/v1"
-GC_MINIMUM_AGE_SECONDS = 60.0
 
 
 def _evidence_blob_lock(root: Path, kind: str, digest: str) -> Path:
@@ -1485,6 +1737,48 @@ def _evidence_gc_references(
             except CampaignError:
                 # Corrupt retained state must remain available for diagnosis;
                 # status validation will fail closed rather than GC hiding it.
+                return None
+    # Candidate selection sidecars retain focus/reconstruction/physical CAS
+    # blobs while a proposal is still in flight.  These files live in the
+    # inbox rather than under an owner's latest frontier, so omitting them
+    # from the reference scan could delete evidence needed to validate a
+    # queued proposal.  Scan only the known sidecar names; descriptors and
+    # rebase receipts do not carry CAS references.
+    kind_by_field = {
+        "focus_evidence_sha256": "focus_artifact",
+        "reconstruction_evidence_sha256": "reconstruction",
+        "physical_summary_sha256": "physical_artifact",
+    }
+    reference_key = kind_by_field.get(digest_field)
+    inbox = state / "inbox"
+    if reference_key is not None and inbox.is_dir():
+        try:
+            sidecars = [
+                item for item in inbox.rglob("*.json")
+                if item.name.endswith(".selection.json")
+                or item.parent.name == "selection"
+            ]
+        except OSError:
+            return None
+        for sidecar in sidecars:
+            try:
+                if _path_has_indirection(root, sidecar):
+                    return None
+                value = _read_json(sidecar, f"{label} inbox reference")
+                if not isinstance(value, Mapping):
+                    return None
+                reference = value.get(reference_key)
+                if reference is None:
+                    continue
+                if not isinstance(reference, Mapping):
+                    return None
+                digest = reference.get("sha256", reference.get("file_sha256"))
+                if not isinstance(digest, str) or SHA_RE.fullmatch(digest) is None:
+                    return None
+                referenced.add(digest)
+            except (CampaignError, OSError):
+                # A live sidecar that cannot be authenticated must prevent
+                # collection; losing a blob is worse than deferring GC.
                 return None
     return referenced
 
@@ -1595,6 +1889,17 @@ def _gc_reconstruction_evidence(
         digest_field="reconstruction_evidence_sha256",
         label="reconstruction evidence",
         minimum_age_seconds=minimum_age_seconds,
+    )
+
+
+def _gc_physical_evidence(
+    root: Path, *, minimum_age_seconds: float = GC_MINIMUM_AGE_SECONDS,
+) -> None:
+    """Collect unreferenced compact physical proof projections."""
+
+    _gc_evidence_kind(
+        root, kind="physical", digest_field="physical_summary_sha256",
+        label="physical evidence", minimum_age_seconds=minimum_age_seconds,
     )
 
 
@@ -2008,6 +2313,36 @@ def _recover_pending_locked(
         return latest
     if live != value["candidate_source_sha256"] or frontier["source_sha256"] != live:
         raise CampaignError("pending frontier cannot be reconciled with live source")
+    if value["exact_report"] is not None:
+        # The frontier and report were prepared before the interruption, but
+        # their separately published focus evidence is still part of the
+        # exact proof.  Revalidate that CAS dependency before making either
+        # the frontier or exact manifest authoritative.
+        focus = _frontier_focus(root, campaign, frontier)
+        try:
+            from tools.owner_campaign_verify import VerificationError, verify_report
+
+            verify_report(
+                value["exact_report"],
+                focus_evidence=focus,
+                expected={
+                    "owner": campaign["owner"],
+                    "function": function,
+                    "campaign_id": campaign["campaign_id"],
+                    "manifest_sha256": campaign["manifest_sha256"],
+                    "unit": campaign["unit"],
+                    "source_path": campaign["source_relpath"],
+                    "base_commit": campaign["base_commit"],
+                    "source_sha256": frontier["source_sha256"],
+                    "target_object_sha256": campaign["target_object"]["sha256"],
+                    "candidate_object_sha256": frontier["candidate_object_sha256"],
+                    "toolchain_sha256": campaign["toolchain"]["sha256"],
+                },
+            )
+        except VerificationError as exc:
+            raise CampaignError(
+                f"pending exact report independent verification failed: {exc}"
+            ) from exc
     _atomic_json(directory / "latest-frontier.json", frontier, limit=campaign["limits"]["frontier_bytes"])
     if value["exact_report"] is not None:
         _publish_exact(
@@ -2055,18 +2390,26 @@ def snapshot_frontier(
             initial_frontier["frontier_sha256"] if initial_frontier is not None else None
         )
 
-    scratch = _ensure_scratch(root, campaign, worker)
-    live_bytes = campaign["_source"].read_bytes()
-    _sync_scratch_source(root, scratch, campaign, live_bytes)
-    try:
-        measurement = _run_hook(
-            root, scratch, campaign, function, live_sha, "snapshot"
-        )
-        _verify_publication_sources(
-            campaign, scratch, live_sha256=live_sha, scratch_sha256=live_sha,
-        )
-    finally:
-        _cleanup_cell_outputs(scratch, campaign)
+    def measure_on_worker() -> tuple[Path, dict[str, Any]]:
+        scratch = _ensure_scratch(root, campaign, worker)
+        live_bytes = campaign["_source"].read_bytes()
+        _sync_scratch_source(root, scratch, campaign, live_bytes)
+        try:
+            measurement = _run_hook(
+                root, scratch, campaign, function, live_sha, "snapshot"
+            )
+            _verify_publication_sources(
+                campaign, scratch, live_sha256=live_sha, scratch_sha256=live_sha,
+            )
+        finally:
+            _cleanup_cell_outputs(scratch, campaign)
+        return scratch, measurement
+
+    if _SCRATCH_LEASE_HELD.get():
+        scratch, measurement = measure_on_worker()
+    else:
+        with _scratch_lease(root, campaign, worker):
+            scratch, measurement = measure_on_worker()
     frontier = _frontier_from_measurement(
         campaign, function, measurement, parent=initial_frontier
     )
@@ -2973,6 +3316,10 @@ def _check_limits(root: Path, campaign: Mapping[str, Any]) -> None:
     ):
         _gc_focus_evidence(root, minimum_age_seconds=maintenance_age)
         _gc_reconstruction_evidence(root, minimum_age_seconds=maintenance_age)
+        _gc_physical_evidence(root, minimum_age_seconds=maintenance_age)
+        _gc_obsolete_scratch(
+            root, campaign, minimum_age_seconds=maintenance_age
+        )
     scratch_root = (
         _state_root(root) / "scratch" / _slug(str(campaign["campaign_id"]))
     )
@@ -3002,9 +3349,16 @@ def _check_limits(root: Path, campaign: Mapping[str, Any]) -> None:
     retained_global = (
         _tree_size(_state_root(root) / "owners")
         + _tree_size(_state_root(root) / "proof-cas")
+        + _tree_size(_state_root(root) / "inbox")
+        + _tree_size(_state_root(root) / "tool-cas")
     )
     if retained_global > 64 << 20:
         raise CampaignError("retained global campaign state exceeds 64 MiB")
+    scratch_global = _tree_size(_state_root(root) / "scratch")
+    if scratch_global > GLOBAL_SCRATCH_HARD_BYTES:
+        raise InfrastructureError(
+            "all campaign scratch repositories exceed global hard limit"
+        )
 
 
 def _cleanup_cell_outputs(
@@ -3132,7 +3486,7 @@ def _post_candidate_cleanup(
     return errors
 
 
-def run_candidate(
+def _run_candidate_unleased(
     root: Path, campaign: Mapping[str, Any], candidate_path: Path,
     *, worker: int = 0, _defer_maintenance: bool = False,
 ) -> dict[str, Any]:
@@ -3279,6 +3633,24 @@ def run_candidate(
         result["cleanup_errors"] = cleanup_errors[:8]
         result = _sealed_outcome(result)
     return result
+
+
+def run_candidate(
+    root: Path, campaign: Mapping[str, Any], candidate_path: Path,
+    *, worker: int = 0, _defer_maintenance: bool = False,
+) -> dict[str, Any]:
+    """Run one candidate while exclusively owning its reusable scratch repo."""
+
+    root = Path(os.path.abspath(root))
+    with _scratch_lease(root, campaign, worker):
+        token = _SCRATCH_LEASE_HELD.set(True)
+        try:
+            return _run_candidate_unleased(
+                root, campaign, candidate_path, worker=worker,
+                _defer_maintenance=_defer_maintenance,
+            )
+        finally:
+            _SCRATCH_LEASE_HELD.reset(token)
 
 
 def campaign_terminal_progress(
