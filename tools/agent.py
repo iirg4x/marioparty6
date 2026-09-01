@@ -1701,6 +1701,16 @@ def main() -> int:
     add_memory_parser(sub)
     crack_parser = add_crack_parser(sub)
     _add_owner_campaign_parser(sub, crack_parser=crack_parser)
+    cell = sub.add_parser(
+        "crack-cell", help="compile and measure one candidate without retention"
+    )
+    cell.add_argument("--baseline", required=True, type=Path)
+    cell.add_argument("--candidate", required=True, type=Path)
+    cell.add_argument("--function", required=True)
+    cell.add_argument("--label", required=True)
+    cell.add_argument("--output", type=Path)
+    cell.add_argument("--toolchain", type=Path)
+    cell.add_argument("--timeout", type=float, default=180.0)
 
     context = sub.add_parser("context")
     context.add_argument("kind", choices=["function", "owner"])
@@ -1751,6 +1761,26 @@ def main() -> int:
                 args,
                 root=_owner_campaign_root(args),
             )
+        if args.command == "crack-cell":
+            from tools.crack_cell_runner import CellRunnerError, run_cell
+
+            selected_root = root_from(args.root)
+            try:
+                value = run_cell(
+                    root=selected_root,
+                    baseline=args.baseline,
+                    candidate=args.candidate,
+                    function=args.function,
+                    label=args.label,
+                    output=args.output,
+                    toolchain=args.toolchain,
+                    timeout=args.timeout,
+                )
+            except (CellRunnerError, OSError) as exc:
+                print(f"error: {exc}")
+                return 2
+            print(json.dumps(value, indent=2, sort_keys=True))
+            return 0 if value.get("status") == "measured" else 2
         root = root_from(args.root)
         if args.command == "probe":
             if args.probe_command == "lookup":
