@@ -480,6 +480,84 @@ class OwnerCampaignReconstructionTests(unittest.TestCase):
                 self.assertTrue(set(cluster["data_row_ids"]) <= data_ids)
             reconstruction.verify_packet(packet)
 
+    def test_broad_packet_binds_reordered_retained_subset_to_full_focus_census(self) -> None:
+        report = _broad_report(80)
+        strict_ids = measure._stable_row_ids(report, "strict", FUNCTION)
+        data_ids = measure._stable_row_ids(report, "data", FUNCTION)
+        packet = _build(
+            report,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+
+        self.assertEqual(packet["status"], "UNKNOWN")
+        self.assertLess(len(packet["strict_residuals"]), len(strict_ids))
+        self.assertNotEqual(
+            packet["strict_residuals"],
+            strict_ids[: len(packet["strict_residuals"])],
+        )
+        reconstruction.verify_packet(packet)
+        reconstruction.verify_residual_identity_census(
+            packet,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+
+    def test_19_row_multicluster_packet_binds_full_focus_census(self) -> None:
+        report = _broad_report(80)
+        residual_indexes = set(range(0, 5)) | set(range(20, 25)) | set(
+            range(40, 45)
+        ) | set(range(60, 64))
+        for channel in ("strict", "data"):
+            material = report["channels"][channel]
+            material["metric"]["diff_rows"] = len(residual_indexes)
+            for side in ("target", "candidate"):
+                for index, row in enumerate(material[side]["rows"]):
+                    if index not in residual_indexes:
+                        row.pop("diff_kind", None)
+        report["artifact_sha256"] = reconstruction.canonical_sha256(
+            {key: value for key, value in report.items() if key != "artifact_sha256"}
+        )
+        strict_ids = measure._stable_row_ids(report, "strict", FUNCTION)
+        data_ids = measure._stable_row_ids(report, "data", FUNCTION)
+        packet = _build(
+            report,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+
+        self.assertEqual(len(strict_ids), 19)
+        self.assertEqual(packet["status"], "UNKNOWN")
+        self.assertEqual(packet["strict_residual_count"], 16)
+        reconstruction.verify_packet(packet)
+        reconstruction.verify_residual_identity_census(
+            packet,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+
+    def test_broad_packet_full_focus_identity_drift_is_rejected(self) -> None:
+        report = _broad_report(80)
+        strict_ids = measure._stable_row_ids(report, "strict", FUNCTION)
+        data_ids = measure._stable_row_ids(report, "data", FUNCTION)
+        packet = _build(
+            report,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+        forged_strict = list(strict_ids)
+        forged_strict[-1] = "strict:instruction:" + ("f" * 64)
+
+        with self.assertRaisesRegex(
+            reconstruction.ReconstructionPacketError,
+            "strict residual identities drifted from focus",
+        ):
+            reconstruction.verify_residual_identity_census(
+                packet,
+                strict_row_ids=forged_strict,
+                data_row_ids=data_ids,
+            )
+
     def test_broad_omitted_digest_hashes_actual_events(self) -> None:
         report = _broad_report(1000)
         packet = _build(report)

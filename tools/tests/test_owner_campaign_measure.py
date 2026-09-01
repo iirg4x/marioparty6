@@ -10,7 +10,7 @@ import unittest
 from unittest import mock
 
 from tools import owner_campaign_measure as adapter
-from tools.owner_campaign_verify import verify_measurement
+from tools.owner_campaign_verify import VerificationError, verify_measurement
 
 
 def _sha(value: object) -> str:
@@ -337,6 +337,56 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
             )
             self.assertEqual(packet["source_span"]["start_line"], 1)
 
+    def test_broad_reconstruction_measurement_verifies_full_focus_census(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "src" / "test.c"
+            source.parent.mkdir()
+            source.write_text("int fn(void) { return 1; }\n", encoding="utf-8")
+            candidate = root / "candidate.o"
+            candidate.write_bytes(b"candidate")
+            paths = [root / name for name in ("strict.json", "data.json", "physical.json")]
+            for path in paths:
+                path.write_text(path.stem, encoding="utf-8")
+            identity = adapter.Identity(
+                phase="candidate", campaign_id="campaign", manifest_sha256="a" * 64,
+                owner="main:board/test", unit="main/board/test", function="fn",
+                source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+                target_object_sha256="c" * 64, toolchain_sha256="d" * 64,
+                base_commit="e" * 40, source_path="src/test.c",
+            )
+            focus = _focus(differences=80)
+            focus["schema"] = "focus_symbol_report/v1"
+            value = adapter._measurement(
+                identity, focus, adapter._parser().parse_args(["--protected-total", "1"]),
+                strict_path=paths[0], data_path=paths[1], physical_path=paths[2],
+                candidate=candidate, root=root,
+            )
+
+            packet = value["reconstruction_evidence"]
+            self.assertEqual(packet["status"], "UNKNOWN")
+            self.assertEqual(packet["strict_residual_count"], 16)
+            self.assertEqual(value["focus_evidence"]["strict_row_count"], 80)
+            self.assertTrue(verify_measurement(value)["verified"])
+
+            forged = json.loads(json.dumps(value))
+            forged_ids = forged["focus_evidence"]["strict_row_ids"]
+            forged_ids[-1] = "strict:instruction:" + ("f" * 64)
+            forged["focus_evidence"]["strict_row_ids_sha256"] = _sha(forged_ids)
+            focus_unsigned = dict(forged["focus_evidence"])
+            focus_unsigned.pop("focus_evidence_sha256")
+            forged["focus_evidence"]["focus_evidence_sha256"] = _sha(focus_unsigned)
+            forged["report_receipts"]["focus"] = forged["focus_evidence"][
+                "focus_evidence_sha256"
+            ]
+            unsigned = dict(forged)
+            unsigned.pop("measurement_sha256")
+            forged["measurement_sha256"] = _sha(unsigned)
+            with self.assertRaisesRegex(
+                VerificationError, "strict residual identities drifted from focus"
+            ):
+                verify_measurement(forged)
+
     def test_exact_measurement_passes_independent_verifier(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
@@ -440,6 +490,45 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
         self.assertEqual(len(first["strict_rows"]), 2)
         self.assertIn("addr=", first["strict_rows"][0])
         self.assertIn("row_sha256=", first["strict_rows"][0])
+
+    def test_residual_identity_survives_candidate_rebuild_address_shift(self) -> None:
+        identity = adapter.Identity(
+            phase="snapshot", campaign_id="campaign", manifest_sha256="a" * 64,
+            owner="owner", unit="main/board/test", function="fn", source_sha256="b" * 64,
+            target_object_sha256="c" * 64, toolchain_sha256="d" * 64,
+            base_commit="e" * 40, source_path="src/test.c",
+        )
+        args = adapter._parser().parse_args(["--protected-total", "1"])
+        first_focus = _focus(differences=1)
+        rebuilt_focus = json.loads(json.dumps(first_focus))
+        # A fresh candidate rebuild can move its address while the immutable
+        # target instruction (the residual's semantic anchor) is unchanged.
+        rebuilt_focus["channels"]["strict"]["candidate"]["rows"][0][
+            "instruction"
+        ]["address"] = 0xdead
+        first = adapter._focus_evidence(identity, first_focus, args)
+        rebuilt = adapter._focus_evidence(identity, rebuilt_focus, args)
+        self.assertEqual(first["strict_row_ids"], rebuilt["strict_row_ids"])
+        self.assertEqual(first["data_row_ids"], rebuilt["data_row_ids"])
+
+    def test_residual_identity_changes_when_target_instruction_drifts(self) -> None:
+        identity = adapter.Identity(
+            phase="snapshot", campaign_id="campaign", manifest_sha256="a" * 64,
+            owner="owner", unit="main/board/test", function="fn", source_sha256="b" * 64,
+            target_object_sha256="c" * 64, toolchain_sha256="d" * 64,
+            base_commit="e" * 40, source_path="src/test.c",
+        )
+        args = adapter._parser().parse_args(["--protected-total", "1"])
+        first_focus = _focus(differences=1)
+        drifted_focus = json.loads(json.dumps(first_focus))
+        for channel in ("strict", "data"):
+            drifted_focus["channels"][channel]["target"]["rows"][0][
+                "instruction"
+            ]["address"] = 0xbeef
+        first = adapter._focus_evidence(identity, first_focus, args)
+        drifted = adapter._focus_evidence(identity, drifted_focus, args)
+        self.assertNotEqual(first["strict_row_ids"], drifted["strict_row_ids"])
+        self.assertNotEqual(first["data_row_ids"], drifted["data_row_ids"])
 
     def test_protected_census_uses_named_runtime_set(self) -> None:
         focus = _focus()

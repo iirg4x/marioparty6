@@ -2685,6 +2685,96 @@ def _verify_channel_census(
             )
 
 
+def verify_residual_identity_census(
+    packet: Mapping[str, Any],
+    *,
+    strict_row_ids: Sequence[str],
+    data_row_ids: Sequence[str],
+) -> None:
+    """Bind a compact reconstruction packet to the producer's full row census.
+
+    READY packets normally retain every identity.  Broad UNKNOWN packets keep
+    only a bounded representative subset and seal the complete producer-order
+    census with count/full/omitted digests.  Consumers must compare those full
+    census facts instead of mistaking the representative subset for drift.
+
+    This check is deliberately independent of :func:`verify_packet`: callers
+    first verify the packet itself, then bind it to the separately authenticated
+    compact focus evidence supplied by the measurement producer.
+    """
+
+    value = _mapping(packet, "packet")
+    expected_by_channel = {
+        "strict": _validated_id_override(strict_row_ids, "strict_row_ids"),
+        "data": _validated_id_override(data_row_ids, "data_row_ids"),
+    }
+    for channel, expected in expected_by_channel.items():
+        field = f"{channel}_residuals"
+        retained = _verify_string_array(value.get(field), f"packet.{field}")
+        prefix = field
+        census_fields = {
+            f"{prefix}_complete",
+            f"{prefix}_total_count",
+            f"{prefix}_full_sha256",
+            f"{prefix}_omitted_count",
+            f"{prefix}_omitted_sha256",
+        }
+        present = census_fields & set(value)
+        if not present:
+            # Compatibility for persisted pre-census READY packets.  Without
+            # an authenticated full digest, exact ordered equality is the only
+            # safe binding.
+            if retained != expected:
+                raise ReconstructionPacketError(
+                    f"packet {channel} residual identities drifted from focus",
+                    code="row_identity",
+                )
+            continue
+        if present != census_fields:
+            raise ReconstructionPacketError(
+                f"packet {prefix} census is incomplete", code="packet_shape"
+            )
+
+        _verify_channel_census(value, channel, retained, require=True)
+        total = value[f"{prefix}_total_count"]
+        if total != len(expected):
+            raise ReconstructionPacketError(
+                f"packet {channel} residual count drifted from focus",
+                code="row_identity",
+            )
+        if value[f"{prefix}_full_sha256"] != canonical_sha256(expected):
+            raise ReconstructionPacketError(
+                f"packet {channel} residual identities drifted from focus",
+                code="row_identity",
+            )
+
+        complete = value[f"{prefix}_complete"]
+        if complete:
+            if retained != expected:
+                raise ReconstructionPacketError(
+                    f"packet {channel} complete residual identities drifted from focus",
+                    code="row_identity",
+                )
+            continue
+
+        expected_set = set(expected)
+        if any(row_id not in expected_set for row_id in retained):
+            raise ReconstructionPacketError(
+                f"packet {channel} retained residual escapes focus census",
+                code="row_identity",
+            )
+        retained_set = set(retained)
+        omitted = [row_id for row_id in expected if row_id not in retained_set]
+        if (
+            value[f"{prefix}_omitted_count"] != len(omitted)
+            or value[f"{prefix}_omitted_sha256"] != canonical_sha256(omitted)
+        ):
+            raise ReconstructionPacketError(
+                f"packet {channel} omitted residual census drifted from focus",
+                code="row_identity",
+            )
+
+
 def _verify_retained_sequence(
     value: Mapping[str, Any],
     *,

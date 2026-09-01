@@ -3619,6 +3619,17 @@ def run_supervisor(
     dispatched = 0
     outcomes: Counter[str] = Counter()
     last_batch_status: str | None = None
+    # A selector UNKNOWN/PIVOT is a function-local disposition, not a lane
+    # terminal state.  Keep the sealed descriptors in the inbox, but suppress
+    # their paths for this supervisor invocation so an unrankable function is
+    # not selected repeatedly while other functions wait for a slot.
+    deferred_selection_paths: set[Path] = set()
+
+    def normalize_deferred_path(raw_path: Path | str | os.PathLike[str]) -> Path:
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = root / path
+        return Path(os.path.abspath(path))
 
     while True:
         now = clock()
@@ -3653,7 +3664,18 @@ def run_supervisor(
             isinstance(function, str) for function in campaign.get("functions", [])
         )
         scan_limit = max_candidates * max(1, function_count)
-        descriptors = discover_candidates(root, campaign, limit=scan_limit)
+        # ``discover_candidates`` applies its limit before the deferred-path
+        # filter below.  Include the deferred count in the read-only scan so a
+        # fresh proposal is not hidden behind old UNKNOWN descriptors for the
+        # same function.  The inbox remains bounded by the campaign limits;
+        # this only widens discovery enough to skip already-seen paths.
+        scan_limit += len(deferred_selection_paths)
+        discovered_descriptors = discover_candidates(root, campaign, limit=scan_limit)
+        descriptors = [
+            path
+            for path in discovered_descriptors
+            if normalize_deferred_path(path) not in deferred_selection_paths
+        ]
         if descriptors:
             try:
                 if (
@@ -3716,17 +3738,22 @@ def run_supervisor(
                     last_batch_status=last_batch_status,
                 )
             if last_batch_status in {"selection_unknown", "pivot_required"}:
-                return _terminal_result(
-                    campaign,
-                    status="pivot_required",
-                    reason=str(batch.get("reason", "selection returned UNKNOWN"))[:1000],
-                    started=started,
-                    clock=clock,
-                    batches=batches,
-                    dispatched=dispatched,
-                    outcomes=outcomes,
-                    last_batch_status=last_batch_status,
+                # No candidate was dispatched for this batch, so retain every
+                # descriptor in the inbox but defer those exact identities for
+                # this supervisor run.  A later, newly sealed descriptor for
+                # the same function remains eligible; unrelated functions are
+                # immediately discoverable and can use the freed slots.
+                deferred_selection_paths.update(
+                    normalize_deferred_path(path) for path in descriptors
                 )
+                infra_retries = 0
+                now = clock()
+                remaining = max(0.0, watchdog - (now - started))
+                if remaining <= 0.0:
+                    continue
+                sleeper(min(delay, remaining))
+                delay = min(MAX_BACKOFF_SECONDS, max(poll_interval, delay * 2))
+                continue
             infra_statuses = (
                 {"infra_retry"}
                 if "base_commit" in campaign

@@ -1251,6 +1251,11 @@ def _measurement(identity: Identity, focus: Mapping[str, Any], args: argparse.Na
                 ],
             )
             reconstruction.verify_packet(reconstruction_packet)
+            reconstruction.verify_residual_identity_census(
+                reconstruction_packet,
+                strict_row_ids=focus_evidence["strict_row_ids"],
+                data_row_ids=focus_evidence["data_row_ids"],
+            )
         except (OSError, UnicodeError, reconstruction.ReconstructionPacketError) as exc:
             raise MeasurementError(
                 f"target-first reconstruction packet failed: {exc}"

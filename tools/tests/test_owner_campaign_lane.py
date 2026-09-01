@@ -405,7 +405,11 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             selector_calls.append((function, len(paths)))
             return {
                 "status": lane.owner_campaign_selector.SELECTED,
-                "selected": {"descriptor_path": str(paths[0]), "function": function},
+                "selected": {
+                    "descriptor_path": str(paths[0]),
+                    "evidence_path": str(paths[0].with_suffix(".evidence.json")),
+                    "function": function,
+                },
             }
 
         def dispatch(
@@ -513,7 +517,10 @@ class OwnerCampaignLaneTests(unittest.TestCase):
                 }
             return {
                 "status": lane.owner_campaign_selector.SELECTED,
-                "selected": {"descriptor_path": str(paths[0]), "function": function},
+                "selected": {
+                    "descriptor_path": str(paths[0]),
+                    "function": function,
+                },
             }
 
         def dispatch(
@@ -774,6 +781,102 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         self.assertFalse(ready.exists())
         self.assertIn("selector arbitration failed", result["selections"][0]["reason"])
         maintenance.assert_called_once()
+
+    def test_supervisor_continues_after_selection_unknown_and_dispatches_later_function(self) -> None:
+        """An UNKNOWN selector result is a search miss, not a supervisor terminal state."""
+
+        self._enable_streaming_pipeline()
+        self.campaign["functions"] = ["blocked", "ready"]
+        self.campaign["base_commit"] = "base-commit"
+        blocked = self._candidate("supervisor-blocked", function="blocked")
+        ready = self._candidate("supervisor-ready", function="ready")
+        discovery_calls = 0
+        dispatched: list[str] = []
+
+        def discover(
+            root: Path,
+            campaign: dict[str, object],
+            *,
+            limit: int,
+        ) -> list[Path]:
+            nonlocal discovery_calls
+            discovery_calls += 1
+            if discovery_calls == 1:
+                return [blocked]
+            if discovery_calls == 2:
+                # The first streaming drain sees only the blocked selector.
+                return []
+            if discovery_calls == 3:
+                # The next supervisor poll must still be live and find this
+                # distinct function after the UNKNOWN result.
+                return [ready]
+            return []
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            function = json.loads(paths[0].read_text(encoding="utf-8"))["function"]
+            if function == "blocked":
+                return {
+                    "status": lane.owner_campaign_selector.UNKNOWN,
+                    "reason": "no current-bound winner",
+                }
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {"descriptor_path": str(paths[0]), "function": function},
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            function = json.loads(path.read_text(encoding="utf-8"))["function"]
+            dispatched.append(function)
+            return {
+                "status": "infra_retry",
+                "function": function,
+                "authority_advanced": False,
+            }
+
+        with (
+            patch.object(lane, "discover_candidates", side_effect=discover),
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance"),
+            patch.object(
+                lane.owner_campaign_selector,
+                "append_selection_outcome",
+                return_value={"function": "ready", "status": "no_gain"},
+            ),
+            patch.object(owner_campaign, "_check_cancelled"),
+            patch.object(
+                owner_campaign,
+                "campaign_terminal_progress",
+                return_value={"exact_count": 0, "total": 2, "closed": False},
+            ),
+        ):
+            result = lane.run_supervisor(
+                self.root,
+                self.campaign,
+                idle_timeout_seconds=0.05,
+                watchdog_seconds=2.0,
+                poll_interval_seconds=0.01,
+            )
+
+        self.assertEqual(dispatched, ["ready"])
+        self.assertEqual(result["status"], "idle_timeout")
+        self.assertEqual(result["dispatched"], 1)
+        self.assertEqual(result["outcomes"], {"infra_retry": 1}, result)
+        self.assertGreaterEqual(discovery_calls, 3)
 
     def test_supervisor_reuses_one_pre_discovered_batch(self) -> None:
         functions = ["focus0", "focus1"]

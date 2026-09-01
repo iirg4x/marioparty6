@@ -649,22 +649,16 @@ def verify_measurement(
             raise VerificationError(
                 "measurement reconstruction evidence identity is not measurement-bound"
             )
-        if packet.get("strict_residuals") != focus["strict_row_ids"]:
-            raise VerificationError(
-                "measurement reconstruction strict identities drifted from focus"
+        try:
+            reconstruction.verify_residual_identity_census(
+                packet,
+                strict_row_ids=focus["strict_row_ids"],
+                data_row_ids=focus["data_row_ids"],
             )
-        if packet.get("data_residuals") != focus["data_row_ids"]:
+        except reconstruction.ReconstructionPacketError as exc:
             raise VerificationError(
-                "measurement reconstruction data identities drifted from focus"
-            )
-        if packet.get("strict_residual_count") != focus["strict_row_count"]:
-            raise VerificationError(
-                "measurement reconstruction strict count drifted from focus"
-            )
-        if packet.get("data_residual_count") != focus["data_row_count"]:
-            raise VerificationError(
-                "measurement reconstruction data count drifted from focus"
-            )
+                f"measurement reconstruction residual census drifted from focus: {exc}"
+            ) from exc
         if packet.get("status") not in {"READY", "UNKNOWN"}:
             raise VerificationError("measurement reconstruction status is invalid")
         if type(packet.get("exact_terminal_possible")) is not bool:
