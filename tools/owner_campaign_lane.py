@@ -645,14 +645,22 @@ def _load_reconstruction_for_frontier(
 
 
 def _reconstruction_cluster_for_rows(
-    reconstruction: Mapping[str, Any], predicted_rows: Sequence[str]
+    reconstruction: Mapping[str, Any],
+    predicted_rows: Sequence[str],
+    *,
+    allow_multiple: bool = False,
 ) -> Mapping[str, Any]:
-    """Require one closed packet causal cluster for a source proposal.
+    """Bind predicted rows to the reconstruction causal topology.
 
     Repeated target regions may be marked with the same ``mirror_group`` by
     the reconstruction producer.  Such a group is one atomic source pattern:
     selecting only one occurrence would create a misleading positive result,
-    so every row in every member cluster must be predicted together.
+    so every row in every member cluster must be predicted together.  Exact
+    proposals are different: the caller has already required the complete
+    canonical frontier residual, so a genuine exact cell may span several
+    independently separated causal clusters.  ``allow_multiple`` is reserved
+    for that exact-terminal path and returns one aggregate binding; the
+    default remains the improved-only single-cluster policy.
     """
 
     predicted = set(predicted_rows)
@@ -699,6 +707,48 @@ def _reconstruction_cluster_for_rows(
     ]
     if not matches:
         raise owner_campaign.CampaignError("predicted rows cross causal clusters")
+
+    if allow_multiple:
+        # Exact-terminal callers must have already compared the prediction to
+        # the complete current focus/physical residual.  Keep this helper
+        # independently fail-closed by requiring the sealed reconstruction
+        # packet to account for precisely the same row identities; otherwise
+        # a broad/truncated packet could masquerade as an exact binding.
+        represented: set[str] = set()
+        strict_rows: set[str] = set()
+        data_rows: set[str] = set()
+        physical_rows: set[str] = set()
+        cluster_ids: list[str] = []
+        for cluster in clusters:
+            ids = cluster_rows(cluster)
+            represented.update(ids)
+            for key, destination in (
+                ("strict_row_ids", strict_rows),
+                ("data_row_ids", data_rows),
+                ("physical_difference_ids", physical_rows),
+            ):
+                values = cluster.get(key)
+                if isinstance(values, list):
+                    destination.update(item for item in values if isinstance(item, str))
+            cluster_id = cluster.get("cluster_id")
+            if not isinstance(cluster_id, str) or not cluster_id:
+                raise owner_campaign.CampaignError(
+                    "exact reconstruction causal cluster identity is missing"
+                )
+            cluster_ids.append(cluster_id)
+        if represented != predicted:
+            raise owner_campaign.CampaignError(
+                "exact predicted rows do not match reconstruction causal clusters"
+            )
+        return {
+            "cluster_id": cluster_ids[0] if cluster_ids else None,
+            "cluster_ids": cluster_ids,
+            "strict_row_ids": sorted(strict_rows),
+            "data_row_ids": sorted(data_rows),
+            "physical_difference_ids": sorted(physical_rows),
+            "row_ids": sorted(represented),
+        }
+
     groups: dict[str, list[tuple[Mapping[str, Any], set[str]]]] = {}
     for cluster, ids in matches:
         groups.setdefault(cluster_group(cluster), []).append((cluster, ids))
@@ -1193,7 +1243,9 @@ def _selection_evidence_for_proposal(
     reconstruction_region: Mapping[str, Any] | None = None
     if reconstruction is not None:
         reconstruction_cluster = _reconstruction_cluster_for_rows(
-            reconstruction, predicted
+            reconstruction,
+            predicted,
+            allow_multiple=expected_terminal == "exact",
         )
         if reconstruction["status"] == "UNKNOWN":
             reconstruction_region = _reconstruction_region_for_cluster(

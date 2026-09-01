@@ -34,6 +34,7 @@ def _reconstruction_focus_report(
     size_drift: bool = False,
     include_residual: bool = True,
     broad: bool = False,
+    residual_indexes: tuple[int, ...] | None = None,
 ) -> dict[str, object]:
     """Build a small, complete focus report for packet-builder fixtures.
 
@@ -60,7 +61,11 @@ def _reconstruction_focus_report(
             row["diff_kind"] = kind
         return row
 
-    indexes = [1, 20, 40, 60] if broad else [1]
+    indexes = list(
+        residual_indexes
+        if residual_indexes is not None
+        else ([1, 20, 40, 60] if broad else [1])
+    )
     target_rows = [instruction_row(index, candidate=False) for index in indexes]
     candidate_rows = [instruction_row(index, candidate=True) for index in indexes]
     target_relocations: list[dict[str, object]] = []
@@ -1410,7 +1415,11 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         for forbidden in ("stop", "permit", "hmac"):
             self.assertNotIn(forbidden, source)
 
-    def _proposal_fixture(self) -> tuple[dict[str, object], Path, Path]:
+    def _proposal_fixture(
+        self,
+        *,
+        residual_indexes: tuple[int, ...] = (1,),
+    ) -> tuple[dict[str, object], Path, Path]:
         source_dir = self.root / "src"
         source_dir.mkdir(parents=True)
         campaign_source = source_dir / "owner.c"
@@ -1435,6 +1444,12 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         }
         source_sha256 = owner_campaign._digest_file(campaign_source)
         sibling_digest = owner_campaign._digest_json([])
+        def focus_row_id(index: int) -> str:
+            kind = {20: "DIFF_INSERT", 40: "DIFF_DELETE", 60: "DIFF_REPLACE"}.get(index)
+            suffix = f"kind={kind}" if kind is not None else ""
+            return f"strict:focus:row:{index}:{suffix}"
+
+        strict_row_ids = [focus_row_id(index) for index in residual_indexes]
         focus_body: dict[str, object] = {
             "schema": "owner_campaign_focus_evidence/v1",
             "owner": campaign["owner"],
@@ -1444,18 +1459,18 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             "base_commit": "0" * 40,
             "source_sha256": source_sha256,
             "target_object_sha256": "d" * 64,
-            "strict_rows": ["strict:focus:row:1:"],
+            "strict_rows": strict_row_ids,
             "data_rows": [],
             "physical_differences": [],
-            "strict_row_ids": ["strict:focus:row:1:"],
-            "strict_row_ids_sha256": owner_campaign._digest_json(["strict:focus:row:1:"]),
+            "strict_row_ids": strict_row_ids,
+            "strict_row_ids_sha256": owner_campaign._digest_json(strict_row_ids),
             "data_row_ids": [],
             "data_row_ids_sha256": owner_campaign._digest_json([]),
             "physical_difference_ids": [],
             "physical_difference_ids_sha256": owner_campaign._digest_json([]),
             "physical_target_identity_sha256": "e" * 64,
             "physical_candidate_identity_sha256": "f" * 64,
-            "strict_row_count": 1,
+            "strict_row_count": len(strict_row_ids),
             "data_row_count": 0,
             "physical_target_count": 0,
             "physical_candidate_count": 0,
@@ -1513,6 +1528,7 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         status: str = "READY",
         exact_terminal_possible: bool = True,
         next_action: str | None = None,
+        residual_indexes: tuple[int, ...] | None = None,
     ) -> dict[str, object]:
         frontier_path = (
             owner_campaign._function_root(self.root, campaign, "focus")
@@ -1530,6 +1546,7 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             ),
             broad=status == "UNKNOWN" and next_action == "DECOMPOSE",
             include_residual=not (status == "UNKNOWN" and next_action != "DECOMPOSE"),
+            residual_indexes=residual_indexes,
         )
         binding = {
             "owner": frontier["owner"],
@@ -1692,6 +1709,40 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         self.assertEqual(sidecar["reconstruction"]["causal_cluster_id"], "cluster-000")
         self.assertEqual(sidecar["ownership_complete"], True)
 
+    def test_packet_ready_exact_proposal_can_span_causal_clusters(self) -> None:
+        residual_indexes = (1, 20)
+        campaign, _base, candidate_source = self._proposal_fixture(
+            residual_indexes=residual_indexes
+        )
+        self._attach_reconstruction(
+            campaign,
+            exact_terminal_possible=True,
+            residual_indexes=residual_indexes,
+        )
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        result = lane.propose_candidate(
+            self.root,
+            campaign,
+            "focus",
+            candidate_source,
+            "reconstructed-multicluster-return",
+            expected_terminal="exact",
+        )
+        sidecar = json.loads(
+            (self.root / result["candidate_selection"]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(sidecar["predicted_rows"], sidecar["residual_rows"])
+        self.assertEqual(
+            sidecar["reconstruction"]["causal_cluster_count"],
+            2,
+        )
+        self.assertEqual(sidecar["reconstruction"]["causal_cluster_id"], "cluster-000")
+
     def test_ready_packet_without_exact_support_allows_only_improved(self) -> None:
         campaign, _base, candidate_source = self._proposal_fixture()
         self._attach_reconstruction(campaign, exact_terminal_possible=False)
@@ -1836,6 +1887,56 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             lane._reconstruction_cluster_for_rows(
                 reconstruction_view,
                 ["strict:row:1", "strict:row:2"],
+            )
+
+    def test_exact_reconstruction_binds_complete_multicluster_residual(self) -> None:
+        reconstruction_view = {
+            "causal_clusters": [
+                {
+                    "cluster_id": "a",
+                    "strict_row_ids": ["strict:row:1"],
+                    "data_row_ids": ["data:row:1"],
+                },
+                {
+                    "cluster_id": "b",
+                    "strict_row_ids": ["strict:row:2"],
+                    "data_row_ids": ["data:row:2"],
+                },
+            ]
+        }
+        selected = lane._reconstruction_cluster_for_rows(
+            reconstruction_view,
+            [
+                "strict:row:1",
+                "data:row:1",
+                "strict:row:2",
+                "data:row:2",
+            ],
+            allow_multiple=True,
+        )
+        self.assertEqual(selected["cluster_ids"], ["a", "b"])
+        self.assertEqual(
+            set(selected["row_ids"]),
+            {
+                "strict:row:1",
+                "data:row:1",
+                "strict:row:2",
+                "data:row:2",
+            },
+        )
+
+    def test_exact_reconstruction_rejects_incomplete_multicluster_residual(self) -> None:
+        reconstruction_view = {
+            "causal_clusters": [
+                {"cluster_id": "a", "strict_row_ids": ["strict:row:1"]},
+                {"cluster_id": "b", "strict_row_ids": ["strict:row:2"]},
+            ]
+        }
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "exact predicted rows"):
+            lane._reconstruction_cluster_for_rows(
+                reconstruction_view,
+                ["strict:row:1"],
+                allow_multiple=True,
             )
 
     def test_mirrored_clusters_are_one_atomic_prediction_group(self) -> None:
