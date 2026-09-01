@@ -1070,7 +1070,7 @@ config.libs = [
             Object(Matching, "board/branch.c"),
             Object(NonMatching, "board/mgcall.c"),
             Object(NonMatching, "board/effect.c", extra_cflags=["-O4,p"]),
-            Object(NonMatching, "board/config.c"),
+            Object(Matching, "board/config.c"),
             Object(Matching, "board/gate.c"),
             Object(Matching, "board/last5.c"),
             Object(Matching, "board/telop.c"),
