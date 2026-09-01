@@ -2775,6 +2775,25 @@ def validate_candidate_scope(
         raise CampaignError("candidate scope kind is invalid")
     if not isinstance(base_text, str) or not isinstance(candidate_text, str):
         raise CampaignError("candidate scope sources are invalid")
+    if not isinstance(function, str) or not function:
+        raise CampaignError("candidate scope function is invalid")
+    if any(
+        type(value) is not int
+        for value in (
+            base_start_line,
+            base_end_line,
+            candidate_start_line,
+            candidate_end_line,
+        )
+    ):
+        raise CampaignError("candidate scope line binding is invalid")
+    if (
+        base_start_line < 1
+        or base_end_line < base_start_line
+        or candidate_start_line < 1
+        or candidate_end_line < candidate_start_line
+    ):
+        raise CampaignError("candidate scope line binding is invalid")
     if _digest_bytes(base_text.encode("utf-8")) != _sha(
         base_source_sha256, "candidate scope base source sha256"
     ):

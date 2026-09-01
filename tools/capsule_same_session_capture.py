@@ -7347,6 +7347,15 @@ class NativeWow64Backend:
         self._process_handles: dict[int, int] = {
             int(process_id): int(process)
         } if int(process_id) > 0 and int(process or 0) > 0 else {}
+        # Handles delivered by CREATE_PROCESS/CREATE_THREAD debug events have
+        # a different lifetime from handles returned by CreateProcessW.  A
+        # successful ContinueDebugEvent for EXIT_THREAD closes the delivered
+        # thread handle, and EXIT_PROCESS closes the delivered process and
+        # initial-thread handles.  Track those leases separately so terminal
+        # cleanup never calls CloseHandle on a handle the debug API already
+        # consumed.
+        self._debug_process_event_handles: dict[int, tuple[int, int]] = {}
+        self._debug_thread_event_handles: dict[tuple[int, int], int] = {}
         self._observed_process_ids: set[int] = {int(process_id)} if int(process_id) > 0 else set()
         self._exited_process_ids: set[int] = set()
         self._descendant_threads: dict[int, dict[int, int]] = {}
@@ -7539,6 +7548,34 @@ class NativeWow64Backend:
         if file_handle:
             self.native.kernel32.CloseHandle(file_handle)
 
+    def _track_debug_process_handles(
+        self,
+        process_id: int,
+        thread_id: int,
+        process_handle: int,
+        thread_handle: int,
+    ) -> None:
+        key = int(process_id)
+        handles = (int(process_handle), int(thread_handle))
+        existing = self._debug_process_event_handles.get(key)
+        if existing not in {None, handles}:
+            raise Rejected("debug process event reused a different handle pair")
+        self._debug_process_event_handles[key] = handles
+
+    def _track_debug_thread_handle(self, process_id: int, thread_id: int, handle: int) -> None:
+        key = (int(process_id), int(thread_id))
+        raw = int(handle)
+        existing = self._debug_thread_event_handles.get(key)
+        if existing not in {None, raw}:
+            raise Rejected("debug thread event reused a different handle")
+        self._debug_thread_event_handles[key] = raw
+
+    def _retire_debug_thread_handle(self, process_id: int, thread_id: int) -> None:
+        self._debug_thread_event_handles.pop((int(process_id), int(thread_id)), None)
+
+    def _retire_debug_process_handles(self, process_id: int) -> None:
+        self._debug_process_event_handles.pop(int(process_id), None)
+
     def _record_process_create(self, process_id: int, thread_id: int, info: Any) -> None:
         process_handle = _native_value(getattr(info, "hProcess", 0))
         thread_handle = _native_value(getattr(info, "hThread", 0))
@@ -7549,9 +7586,8 @@ class NativeWow64Backend:
             if existing not in {None, process_handle}:
                 raise Rejected("debug process identity reused a different handle")
         self._observed_process_ids.add(int(process_id))
-        self._process_handles[int(process_id)] = int(process_handle)
         self._descendant_threads.setdefault(int(process_id), {})[int(thread_id)] = int(thread_handle)
-        self._owned_handles.update((int(process_handle), int(thread_handle)))
+        self._track_debug_process_handles(process_id, thread_id, process_handle, thread_handle)
         self._close_debug_file(info)
 
     def _record_process_exit(self, process_id: int) -> None:
@@ -7602,9 +7638,8 @@ class NativeWow64Backend:
             self._transport_image_seen = True
         self.base = image_base
         self.threads[int(thread_id)] = thread_handle
-        self._owned_handles.update((process_handle, thread_handle))
+        self._track_debug_process_handles(process_id, thread_id, process_handle, thread_handle)
         self._observed_process_ids.add(int(process_id))
-        self._process_handles[int(process_id)] = int(process_handle)
         # A native 32-bit process under WOW64 produces both the native and
         # WOW64 debugger-init breakpoints before user code.  A normal child
         # transport has one.  Only same-PID, out-of-compiler-image events may
@@ -8040,8 +8075,7 @@ class NativeWow64Backend:
                     if wrapper_thread:
                         self.transport_threads.pop(0, None)
                         self.transport_threads[tid] = wrapper_thread
-                        self._owned_handles.add(wrapper_thread)
-                    self._owned_handles.add(process_handle)
+                    self._track_debug_process_handles(pid, tid, process_handle, wrapper_thread)
                     self._close_debug_file(info)
                     self._continue_debug_event(pid, tid)
                     image_base = self._discover_memexec_image_base()
@@ -8073,12 +8107,9 @@ class NativeWow64Backend:
                     thread_handle = _native_value(getattr(event.u.CreateThread, "hThread", 0))
                     if thread_handle:
                         self.transport_threads[tid] = thread_handle
-                        self._owned_handles.add(thread_handle)
+                        self._track_debug_thread_handle(pid, tid, thread_handle)
                 elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
-                    thread_handle = self.transport_threads.pop(tid, None)
-                    if thread_handle:
-                        self.native.kernel32.CloseHandle(thread_handle)
-                        self._owned_handles.discard(thread_handle)
+                    self.transport_threads.pop(tid, None)
                 elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
                     # A real launcher may detach/exit after handing off a
                     # compiler child.  Continue consuming the one debug port
@@ -8088,6 +8119,10 @@ class NativeWow64Backend:
                     self._transport_exited = True
                     self._record_process_exit(pid)
                 self._continue_debug_event(pid, tid)
+                if code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                    self._retire_debug_thread_handle(pid, tid)
+                elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                    self._retire_debug_process_handles(pid)
                 if not self._transport_exited:
                     image_base = self._discover_memexec_image_base()
                     if image_base is not None:
@@ -8772,15 +8807,16 @@ class NativeWow64Backend:
                     handle = _native_value(event.u.CreateThread.hThread)
                     if handle:
                         self._descendant_threads.setdefault(pid, {})[tid] = handle
-                        self._owned_handles.add(handle)
+                        self._track_debug_thread_handle(pid, tid, handle)
                 elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
-                    handle = self._descendant_threads.setdefault(pid, {}).pop(tid, None)
-                    if handle:
-                        self.native.kernel32.CloseHandle(handle)
-                        self._owned_handles.discard(handle)
+                    self._descendant_threads.setdefault(pid, {}).pop(tid, None)
                 elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
                     self._record_process_exit(pid)
                 self._continue_debug_event(pid, tid)
+                if code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                    self._retire_debug_thread_handle(pid, tid)
+                elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                    self._retire_debug_process_handles(pid)
                 continue
             # DEBUG_PROCESS also reports the wrapper's loader/transport events.
             # They are continued without inspection; every other process must
@@ -8789,6 +8825,7 @@ class NativeWow64Backend:
                 if code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
                     self._record_process_exit(pid)
                     self._continue_debug_event(pid, tid)
+                    self._retire_debug_process_handles(pid)
                     continue
                 if code == getattr(self.native, "CREATE_PROCESS_DEBUG_EVENT", 3):
                     raise Rejected("wrapper transport emitted a second process-create event")
@@ -8796,13 +8833,12 @@ class NativeWow64Backend:
                     wrapper_thread = _native_value(getattr(event.u.CreateThread, "hThread", 0))
                     if wrapper_thread:
                         self.transport_threads[tid] = wrapper_thread
-                        self._owned_handles.add(wrapper_thread)
+                        self._track_debug_thread_handle(pid, tid, wrapper_thread)
                 elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
-                    wrapper_thread = self.transport_threads.pop(tid, None)
-                    if wrapper_thread:
-                        self.native.kernel32.CloseHandle(wrapper_thread)
-                        self._owned_handles.discard(wrapper_thread)
+                    self.transport_threads.pop(tid, None)
                 self._continue_debug_event(pid, tid)
+                if code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                    self._retire_debug_thread_handle(pid, tid)
                 continue
             if pid != self.compiler_process_id:
                 raise Rejected("debug event came from an unauthenticated process")
@@ -8813,13 +8849,10 @@ class NativeWow64Backend:
                 handle = _native_value(event.u.CreateThread.hThread)
                 if handle:
                     self.threads[tid] = handle
-                    self._owned_handles.add(handle)
+                    self._track_debug_thread_handle(pid, tid, handle)
             elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
                 session._check_process(pid)
-                handle = self.threads.pop(tid, None)
-                if handle:
-                    self.native.kernel32.CloseHandle(handle)
-                    self._owned_handles.discard(handle)
+                self.threads.pop(tid, None)
             elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
                 # The process address space is already gone when the exit
                 # event is delivered; record that boundary before asking the
@@ -8844,6 +8877,10 @@ class NativeWow64Backend:
             else:
                 session._check_process(pid)
             self._continue_debug_event(pid, tid)
+            if code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                self._retire_debug_thread_handle(pid, tid)
+            elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                self._retire_debug_process_handles(pid)
             if compiler_exit_event:
                 # EXIT_PROCESS is not a durable process boundary until its
                 # debugger event has been continued and the process handle is
@@ -8866,7 +8903,12 @@ class NativeWow64Backend:
         compiler_exit_code: int | None = None
         while True:
             unsignaled: list[int] = []
-            for pid, raw_handle in sorted(self._process_handles.items()):
+            for pid in sorted(self._observed_process_ids):
+                raw_handle = self._process_handles.get(pid)
+                if raw_handle is None:
+                    if pid not in self._exited_process_ids:
+                        unsignaled.append(pid)
+                    continue
                 wait_result = int(
                     self.native.kernel32.WaitForSingleObject(ctypes.c_void_p(int(raw_handle)), 0)
                 )
@@ -8875,13 +8917,20 @@ class NativeWow64Backend:
                 else:
                     self._exited_process_ids.add(pid)
             if not unsignaled:
-                process_handle = ctypes.c_void_p(int(self.process))
-                if not self.native.kernel32.GetExitCodeProcess(process_handle, ctypes.byref(exit_code)):
-                    raise Rejected("compiler exit code was unavailable after diagnostic quiescence")
-                observed = int(exit_code.value)
+                compiler_pid = self.compiler_process_id or self.transport_process_id
+                persistent_handle = self._process_handles.get(int(compiler_pid))
                 expected = compiler_exit_code
                 if expected is None:
                     expected = self.compiler_exit_code
+                if persistent_handle:
+                    process_handle = ctypes.c_void_p(int(persistent_handle))
+                    if not self.native.kernel32.GetExitCodeProcess(process_handle, ctypes.byref(exit_code)):
+                        raise Rejected("compiler exit code was unavailable after diagnostic quiescence")
+                    observed = int(exit_code.value)
+                elif expected is not None and int(compiler_pid) in self._exited_process_ids:
+                    observed = int(expected)
+                else:
+                    raise Rejected("compiler exit code was unavailable after diagnostic quiescence")
                 if expected is not None and observed != expected:
                     raise Rejected("compiler exit event and process exit code diverged")
                 self.compiler_exit_code = observed
@@ -8917,18 +8966,19 @@ class NativeWow64Backend:
                 handle = _native_value(event.u.CreateThread.hThread)
                 if handle:
                     self._descendant_threads.setdefault(pid, {})[tid] = handle
-                    self._owned_handles.add(handle)
+                    self._track_debug_thread_handle(pid, tid, handle)
             elif code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
-                handle = self._descendant_threads.setdefault(pid, {}).pop(tid, None)
-                if handle:
-                    self.native.kernel32.CloseHandle(handle)
-                    self._owned_handles.discard(handle)
+                self._descendant_threads.setdefault(pid, {}).pop(tid, None)
             elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
                 self._record_process_exit(pid)
                 compiler_pid = self.compiler_process_id or self.transport_process_id
                 if pid == compiler_pid:
                     compiler_exit_code = int(event.u.ExitProcess.dwExitCode)
             self._continue_debug_event(pid, tid)
+            if code == getattr(self.native, "EXIT_THREAD_DEBUG_EVENT", 4):
+                self._retire_debug_thread_handle(pid, tid)
+            elif code == getattr(self.native, "EXIT_PROCESS_DEBUG_EVENT", 5):
+                self._retire_debug_process_handles(pid)
 
     def close(self) -> None:
         if self._close_started:
@@ -8957,7 +9007,11 @@ class NativeWow64Backend:
             except Exception as exc:
                 errors.append(f"active debug event: {type(exc).__name__}: {exc}")
         exit_code = ctypes.c_uint32()
-        for pid, raw_handle in sorted(self._process_handles.items(), reverse=True):
+        live_process_handles = dict(self._process_handles)
+        for pid, handles in self._debug_process_event_handles.items():
+            if handles and handles[0]:
+                live_process_handles.setdefault(int(pid), int(handles[0]))
+        for pid, raw_handle in sorted(live_process_handles.items(), reverse=True):
             process_handle = ctypes.c_void_p(int(raw_handle))
             wait_result = int(self.native.kernel32.WaitForSingleObject(process_handle, 0))
             if wait_result == 0:

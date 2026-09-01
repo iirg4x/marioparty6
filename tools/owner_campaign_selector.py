@@ -725,8 +725,17 @@ def _find_selection_evidence(root: Path, descriptor_path: Path) -> Path:
 def _descriptor(root: Path, path: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
     path = _bound_path(root, str(path), "candidate descriptor")
     value = _read_json(path, "candidate descriptor")
-    fields = getattr(owner_campaign, "CANDIDATE_FIELDS", frozenset())
-    if set(value) != set(fields):
+    required_fields = set(
+        getattr(owner_campaign, "CANDIDATE_FIELDS", frozenset())
+    )
+    optional_fields = set(
+        getattr(owner_campaign, "CANDIDATE_OPTIONAL_FIELDS", frozenset())
+    )
+    observed_fields = set(value)
+    if (
+        not required_fields <= observed_fields
+        or not observed_fields <= required_fields | optional_fields
+    ):
         raise SelectionError("candidate descriptor is not a closed object")
     body = dict(value)
     digest = body.pop("candidate_sha256", None)

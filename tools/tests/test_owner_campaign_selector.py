@@ -75,14 +75,37 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         source_class: str = "direct_semantic_owner",
         function: str = "focus",
         frontier: dict[str, object] | None = None,
+        base_text: str | None = None,
+        candidate_text: str | None = None,
+        candidate_scope: dict[str, object] | None = None,
     ) -> tuple[Path, Path, Path]:
         frontier = frontier or self.frontier
         residual = residual if residual is not None else ["strict:focus:row:1"]
         predicted = predicted if predicted is not None else list(residual)
         predicted_counts = predicted_counts or {"strict": 0, "data": 0, "physical": 0}
+        if base_text is not None:
+            self.base_source.write_bytes(base_text.encode("utf-8"))
         source = self.root / "build" / "candidates" / f"{name}.c"
-        source.write_text(f"int {function}(void) {{ return 0; }} /* {name} */\n", encoding="utf-8")
+        source.write_bytes(
+            (
+                candidate_text
+                if candidate_text is not None
+                else f"int {function}(void) {{ return 0; }} /* {name} */\n"
+            ).encode("utf-8")
+        )
+        base_bytes = self.base_source.read_bytes()
         source_sha = _sha_bytes(source.read_bytes())
+        if base_text is None and candidate_text is None and candidate_scope is None:
+            base_start = base_end = candidate_start = candidate_end = 1
+            base_span = base_bytes
+            candidate_span = source.read_bytes()
+        else:
+            base_start, base_end, base_span = owner_campaign._find_function_span(
+                base_bytes.decode("utf-8"), function
+            )
+            candidate_start, candidate_end, candidate_span = owner_campaign._find_function_span(
+                source.read_bytes().decode("utf-8"), function
+            )
         descriptor_body: dict[str, object] = {
             "schema": owner_campaign.CANDIDATE_SCHEMA,
             "campaign_id": self.campaign["campaign_id"],
@@ -97,18 +120,20 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
                 "sha256": source_sha,
             },
             "function_span": {
-                "base_start_line": 1,
-                "base_end_line": 1,
-                "candidate_start_line": 1,
-                "candidate_end_line": 1,
-                "base_sha256": frontier["source_sha256"],
-                "candidate_sha256": source_sha,
+                "base_start_line": base_start,
+                "base_end_line": base_end,
+                "candidate_start_line": candidate_start,
+                "candidate_end_line": candidate_end,
+                "base_sha256": _sha_bytes(base_span),
+                "candidate_sha256": _sha_bytes(candidate_span),
             },
             "hypothesis_family": f"family-{name}",
             "natural_c": True,
             "rebase_depth": 0,
             "created_at": "2026-08-31T00:00:00Z",
         }
+        if candidate_scope is not None:
+            descriptor_body["candidate_scope"] = candidate_scope
         descriptor = self.inbox / f"{name}.json"
         descriptor.write_text(
             json.dumps(_seal(descriptor_body, "candidate_sha256"), sort_keys=True),
@@ -171,6 +196,98 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
             encoding="utf-8",
         )
         return descriptor, source, sidecar
+
+    def test_adjacent_helper_descriptor_is_selectable(self) -> None:
+        base = (
+            "int before = 1;\n"
+            "\n"
+            "float focus(float speed, float axis) {\n"
+            "    return speed * axis;\n"
+            "}\n"
+            "int after = 2;\n"
+        )
+        candidate = (
+            "int before = 1;\n"
+            "\n"
+            "static inline float VelocityScale(float magnitude, float axis) {\n"
+            "    return magnitude * axis;\n"
+            "}\n"
+            "float focus(float speed, float axis) {\n"
+            "    float x = VelocityScale(speed, axis);\n"
+            "    return VelocityScale(x, axis);\n"
+            "}\n"
+            "int after = 2;\n"
+        )
+        base_start, base_end, base_span = owner_campaign._find_function_span(
+            base, "focus"
+        )
+        candidate_start, candidate_end, _candidate_span = owner_campaign._find_function_span(
+            candidate, "focus"
+        )
+        candidate_lines = candidate.splitlines(keepends=True)
+        helper_bytes = "".join(candidate_lines[2:5]).encode("utf-8")
+        base_sha = _sha_bytes(base.encode("utf-8"))
+        candidate_sha = _sha_bytes(candidate.encode("utf-8"))
+        frontier = _seal(
+            {
+                "function": "focus",
+                "unit": "main/test",
+                "source_sha256": base_sha,
+                "toolchain_sha256": "b" * 64,
+            },
+            "frontier_sha256",
+        )
+        self.frontier = frontier
+        self.campaign["_selection_frontier"] = frontier
+        scope = {
+            "kind": owner_campaign.ADJACENT_HELPER_SCOPE_KIND,
+            "base_source_sha256": base_sha,
+            "candidate_source_sha256": candidate_sha,
+            "base_insertion": {
+                "line": base_start,
+                "sha256": _sha_bytes(b""),
+            },
+            "helper": {
+                "name": "VelocityScale",
+                "start_line": 3,
+                "end_line": 5,
+                "sha256": _sha_bytes(helper_bytes),
+            },
+            "use_sites": [
+                {"line": 7, "name": "VelocityScale", "column": 14},
+                {"line": 8, "name": "VelocityScale", "column": 11},
+            ],
+        }
+        owner_campaign.validate_candidate_scope(
+            base_text=base,
+            candidate_text=candidate,
+            function="focus",
+            base_start_line=base_start,
+            base_end_line=base_end,
+            candidate_start_line=candidate_start,
+            candidate_end_line=candidate_end,
+            base_source_sha256=base_sha,
+            candidate_source_sha256=candidate_sha,
+            scope=scope,
+        )
+        descriptor, _source, _sidecar = self._proposal(
+            "adjacent-helper",
+            base_text=base,
+            candidate_text=candidate,
+            candidate_scope=scope,
+        )
+
+        self.assertEqual(lane.discover_candidates(self.root, self.campaign), [descriptor])
+
+        result = selector.select_winning_candidate(
+            self.root, self.campaign, [descriptor]
+        )
+
+        self.assertEqual(result["status"], selector.SELECTED)
+        self.assertEqual(
+            result["selected"]["source_relative"],
+            "build/candidates/adjacent-helper.c",
+        )
 
     def _decomposition_proposal(
         self,
@@ -547,6 +664,20 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         descriptor, _source, _sidecar = self._proposal("missing-base-source")
         value = json.loads(descriptor.read_text(encoding="utf-8"))
         value.pop("base_source")
+        descriptor.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
+
+        result = selector.select_winning_candidate(self.root, self.campaign, [descriptor])
+
+        self.assertEqual(result["status"], selector.UNKNOWN)
+        self.assertIn("candidate descriptor is not a closed object", result["reason"])
+
+    def test_candidate_unknown_field_is_rejected(self) -> None:
+        descriptor, _source, _sidecar = self._proposal("unknown-field")
+        value = json.loads(descriptor.read_text(encoding="utf-8"))
+        value["unexpected"] = True
+        body = dict(value)
+        body.pop("candidate_sha256")
+        value["candidate_sha256"] = owner_campaign._digest_json(body)
         descriptor.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
 
         result = selector.select_winning_candidate(self.root, self.campaign, [descriptor])

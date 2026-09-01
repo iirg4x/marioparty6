@@ -1956,6 +1956,47 @@ class OwnerCampaignLaneTests(unittest.TestCase):
                 ["strict:row:1", "strict:row:2"],
             )
 
+    def test_first_mismatch_plan_uses_full_counts_and_keeps_cluster_diagnostics(self) -> None:
+        strict_rows = [f"strict:focus:row:{index}:" for index in range(16)]
+        data_rows = [f"data:focus:row:{index}:" for index in range(16)]
+        physical_rows = ["physical:focus:row:0"]
+        packet = {
+            "strict_residuals": strict_rows,
+            "data_residuals": data_rows,
+            "physical_difference_ids": physical_rows,
+            "causal_clusters": [
+                {
+                    "cluster_id": "cluster-000",
+                    "strict_row_ids": strict_rows[:10],
+                    "data_row_ids": data_rows[:12],
+                }
+            ],
+        }
+        plan_input = dict(packet)
+        plan_input["packet"] = packet
+        plan_input["exact_terminal_possible"] = False
+        plan = lane._first_mismatch_plan(
+            plan_input,
+            full_counts={"strict": 145, "data": 137, "physical": 1},
+        )
+
+        self.assertEqual(
+            plan["current_counts"],
+            {"strict": 145, "data": 137, "physical": 1},
+        )
+        self.assertEqual(
+            plan["cluster_current_counts"],
+            {"strict": 16, "data": 16, "physical": 1},
+        )
+        self.assertEqual(
+            plan["predicted_remaining_counts"],
+            {"strict": 135, "data": 125, "physical": 1},
+        )
+        self.assertEqual(
+            plan["cluster_predicted_remaining_counts"],
+            {"strict": 6, "data": 4, "physical": 1},
+        )
+
     def test_exact_reconstruction_binds_complete_multicluster_residual(self) -> None:
         reconstruction_view = {
             "causal_clusters": [

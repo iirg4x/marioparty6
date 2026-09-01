@@ -668,7 +668,11 @@ def _load_reconstruction_for_frontier(
     }
 
 
-def _first_mismatch_plan(reconstruction: Mapping[str, Any]) -> dict[str, Any]:
+def _first_mismatch_plan(
+    reconstruction: Mapping[str, Any],
+    *,
+    full_counts: Mapping[str, int] | None = None,
+) -> dict[str, Any]:
     """Project a verified reconstruction packet onto one compile-sized plan.
 
     The campaign compacts raw objdiff reports after measurement.  Its
@@ -767,10 +771,34 @@ def _first_mismatch_plan(reconstruction: Mapping[str, Any]) -> dict[str, Any]:
         kind = "exact"
         predicted = []
 
-    current_counts = {
+    # Broad reconstruction packets intentionally retain only a bounded
+    # representative census.  Keep those counts for diagnostics, but use the
+    # authenticated full-function totals when sealing the proposal-facing
+    # remaining counts.  The latter must be the same coordinate system that
+    # ``propose_candidate`` reads from the current frontier.
+    cluster_current_counts = {
         "strict": len(strict_rows),
         "data": len(data_rows),
         "physical": len(physical_rows),
+    }
+    current_counts = dict(cluster_current_counts)
+    if full_counts is not None:
+        if set(full_counts) != set(current_counts) or any(
+            type(full_counts.get(channel)) is not int
+            or full_counts[channel] < cluster_current_counts[channel]
+            for channel in current_counts
+        ):
+            raise owner_campaign.CampaignError(
+                "full-function residual counts are invalid"
+            )
+        current_counts = {
+            channel: int(full_counts[channel]) for channel in current_counts
+        }
+    cluster_remaining = {
+        channel: cluster_current_counts[channel] - sum(
+            row.startswith(f"{channel}:") for row in predicted
+        )
+        for channel in cluster_current_counts
     }
     remaining = {
         channel: current_counts[channel] - sum(
@@ -816,7 +844,9 @@ def _first_mismatch_plan(reconstruction: Mapping[str, Any]) -> dict[str, Any]:
         "mandatory_first_rows": channel_first,
         "predicted_rows": predicted,
         "current_counts": current_counts,
+        "cluster_current_counts": cluster_current_counts,
         "predicted_remaining_counts": remaining,
+        "cluster_predicted_remaining_counts": cluster_remaining,
         "expected_terminal": expected_terminal,
         "candidate_budget": 1,
         "analysis_deadline_minutes": 5,
@@ -826,6 +856,40 @@ def _first_mismatch_plan(reconstruction: Mapping[str, Any]) -> dict[str, Any]:
         ),
         "authority_advanced": False,
     }
+
+
+def _frontier_residual_counts(
+    frontier: Mapping[str, Any],
+) -> dict[str, int] | None:
+    """Read authenticated full-function residual counts from a frontier.
+
+    Reconstruction packets may be bounded to one causal cluster, while the
+    frontier metrics remain the complete current-function census.  Legacy
+    in-memory fixtures without metrics return ``None`` and let the packet's
+    own census remain the compatibility source.
+    """
+
+    metrics = frontier.get("metrics")
+    if not isinstance(metrics, Mapping) or not metrics:
+        return None
+    if not any(key in metrics for key in ("strict", "data", "physical_differences")):
+        return None
+    strict = metrics.get("strict")
+    data = metrics.get("data")
+    if not isinstance(strict, Mapping) or not isinstance(data, Mapping):
+        raise owner_campaign.CampaignError(
+            "frontier full-function residual metrics are invalid"
+        )
+    values = {
+        "strict": strict.get("differences"),
+        "data": data.get("differences"),
+        "physical": metrics.get("physical_differences"),
+    }
+    if any(type(value) is not int or value < 0 for value in values.values()):
+        raise owner_campaign.CampaignError(
+            "frontier full-function residual metrics are invalid"
+        )
+    return {channel: int(value) for channel, value in values.items()}
 
 
 def _reconstruction_cluster_for_rows(
@@ -1143,7 +1207,10 @@ def reconstruct_frontier(
             }
         )
         return result
-    first_plan = _first_mismatch_plan(packet)
+    first_plan = _first_mismatch_plan(
+        packet,
+        full_counts=_frontier_residual_counts(current),
+    )
     first_plan.update(
         {
             "campaign_id": result["campaign_id"],
@@ -2185,7 +2252,12 @@ def _sealed_descriptor(
                 scope=scope,
                 forbidden_constructs=campaign.get("forbidden_constructs", ()),
             )
-        except (OSError, UnicodeError, owner_campaign.CampaignError):
+        except (
+            OSError,
+            UnicodeError,
+            TypeError,
+            owner_campaign.CampaignError,
+        ):
             return None
     return dict(value), source_path
 

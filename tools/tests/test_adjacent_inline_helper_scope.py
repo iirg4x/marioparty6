@@ -8,6 +8,7 @@ from pathlib import Path
 
 from tools import crack_cell_runner
 from tools import owner_campaign
+from tools import owner_campaign_lane
 
 
 class AdjacentInlineHelperScopeTests(unittest.TestCase):
@@ -60,7 +61,13 @@ class AdjacentInlineHelperScopeTests(unittest.TestCase):
             ],
         }
 
-    def _validate(self, base: str | None = None, candidate: str | None = None, scope=None):
+    def _validate(
+        self,
+        base: str | None = None,
+        candidate: str | None = None,
+        scope=None,
+        candidate_start_line: object | None = None,
+    ):
         base = self.base if base is None else base
         candidate = self.candidate if candidate is None else candidate
         scope = self.scope if scope is None else scope
@@ -70,6 +77,8 @@ class AdjacentInlineHelperScopeTests(unittest.TestCase):
         cstart, cend, _ = owner_campaign._find_function_span(
             candidate, "mbev_CapBiriQVelocity"
         )
+        if candidate_start_line is not None:
+            cstart = candidate_start_line
         return owner_campaign.validate_candidate_scope(
             base_text=base,
             candidate_text=candidate,
@@ -82,6 +91,12 @@ class AdjacentInlineHelperScopeTests(unittest.TestCase):
             candidate_source_sha256=hashlib.sha256(candidate.encode()).hexdigest(),
             scope=scope,
         )
+
+    def test_non_integer_candidate_span_fails_closed(self) -> None:
+        with self.assertRaisesRegex(
+            owner_campaign.CampaignError, "line binding"
+        ):
+            self._validate(candidate_start_line="6")
 
     def test_velocity_scale_shape_is_hash_bound_and_valid(self) -> None:
         validated = self._validate()
@@ -192,6 +207,7 @@ class AdjacentInlineHelperScopeTests(unittest.TestCase):
             descriptor_path.write_text(json.dumps(descriptor), encoding="utf-8")
             campaign = {
                 "campaign_id": "helper-scope-v1",
+                "functions": ["mbev_CapBiriQVelocity"],
                 "_source": live,
                 "allowed_build_paths": ["build"],
                 "allowed_source_paths": ["src/test.c"],
@@ -206,6 +222,18 @@ class AdjacentInlineHelperScopeTests(unittest.TestCase):
                 root, descriptor_path, campaign, frontier
             )
             self.assertEqual(loaded["candidate_scope"], self.scope)
+
+            malformed = json.loads(descriptor_path.read_text(encoding="utf-8"))
+            malformed["function_span"]["candidate_start_line"] = "6"
+            body = dict(malformed)
+            body.pop("candidate_sha256")
+            malformed["candidate_sha256"] = owner_campaign._digest_json(body)
+            descriptor_path.write_text(json.dumps(malformed), encoding="utf-8")
+            self.assertIsNone(
+                owner_campaign_lane._sealed_descriptor(
+                    root, campaign, descriptor_path
+                )
+            )
 
 
 if __name__ == "__main__":

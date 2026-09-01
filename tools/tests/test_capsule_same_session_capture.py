@@ -5057,6 +5057,93 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
             backend.close()
         self.assertEqual(backend.terminal_process_summary()["unclosed_handle_count"], 1)
 
+    def test_native_backend_does_not_double_close_debug_event_process_handles(self) -> None:
+        class Kernel32:
+            def __init__(self) -> None:
+                self.closed: list[int] = []
+                self.continues: list[tuple[int, int, int]] = []
+                self.waited: list[int] = []
+                self.exit_queries: list[int] = []
+
+            def ContinueDebugEvent(self, process_id: int, thread_id: int, status: int) -> bool:
+                self.continues.append((int(process_id), int(thread_id), int(status)))
+                return True
+
+            def WaitForSingleObject(self, handle: object, _milliseconds: int) -> int:
+                self.waited.append(int(handle.value))
+                return 0
+
+            def GetExitCodeProcess(self, handle: object, code: object) -> bool:
+                self.exit_queries.append(int(handle.value))
+                code._obj.value = 0
+                return True
+
+            def CloseHandle(self, handle: int) -> bool:
+                raw = int(handle)
+                self.closed.append(raw)
+                # ContinueDebugEvent already consumed these event-owned handles.
+                return raw not in {21, 22}
+
+        kernel32 = Kernel32()
+        native = type("Native", (), {"kernel32": kernel32, "DBG_CONTINUE": 0x00010002})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 4321)
+        backend.compiler_process_id = 4321
+        backend._track_debug_process_handles(4321, 7, 21, 22)
+        backend.compiler_exit_code = 0
+        backend._record_process_exit(4321)
+
+        backend._continue_debug_event(4321, 7)
+        backend._retire_debug_process_handles(4321)
+        backend._seal_process_quiescence()
+        backend.close()
+
+        self.assertEqual(kernel32.continues, [(4321, 7, 0x00010002)])
+        self.assertEqual(sorted(kernel32.closed), [11, 12])
+        self.assertEqual(kernel32.waited, [11, 11, 11])
+        self.assertEqual(kernel32.exit_queries, [11, 11, 11])
+        self.assertEqual(backend.terminal_process_summary()["unclosed_handle_count"], 0)
+
+    def test_native_backend_child_exit_quiesces_without_reusing_event_process_handle(self) -> None:
+        class Kernel32:
+            def __init__(self) -> None:
+                self.waited: list[int] = []
+                self.exit_queries: list[int] = []
+                self.continues: list[tuple[int, int, int]] = []
+
+            def ContinueDebugEvent(self, process_id: int, thread_id: int, status: int) -> bool:
+                self.continues.append((int(process_id), int(thread_id), int(status)))
+                return True
+
+            def WaitForSingleObject(self, handle: object, _milliseconds: int) -> int:
+                self.waited.append(int(handle.value))
+                return 0
+
+            def GetExitCodeProcess(self, handle: object, code: object) -> bool:
+                self.exit_queries.append(int(handle.value))
+                code._obj.value = 0
+                return True
+
+        kernel32 = Kernel32()
+        native = type("Native", (), {"kernel32": kernel32, "DBG_CONTINUE": 0x00010002})()
+        backend = MODULE.NativeWow64Backend(native, 11, 12, 100)
+        backend.compiler_process_id = 101
+        backend.process_id = 101
+        backend.process = 21
+        backend._observed_process_ids.add(101)
+        backend._track_debug_process_handles(101, 8, 21, 22)
+        backend._exited_process_ids.add(100)
+        backend._record_process_exit(101)
+        backend.compiler_exit_code = 7
+
+        backend._continue_debug_event(101, 8)
+        backend._retire_debug_process_handles(101)
+        backend._seal_process_quiescence()
+
+        self.assertTrue(backend.process_quiesced)
+        self.assertEqual(kernel32.waited, [11])
+        self.assertEqual(kernel32.exit_queries, [])
+        self.assertNotIn(21, backend._process_handles.values())
+
     def test_native_backend_quiescence_timeout_is_bounded_unknown(self) -> None:
         class Kernel32:
             def WaitForSingleObject(self, _handle: object, _milliseconds: int) -> int:
