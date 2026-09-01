@@ -18,7 +18,7 @@ invocation can retry them.
 from __future__ import annotations
 
 import math
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import difflib
 import json
 import os
@@ -2658,6 +2658,8 @@ def run_inbox(
     *,
     max_candidates: int = DEFAULT_BATCH_SIZE,
     _pre_discovered: Sequence[Path] | None = None,
+    _defer_maintenance: bool = False,
+    _worker: int | None = None,
 ) -> dict[str, Any]:
     """Dispatch one bounded inbox batch through the core campaign loop.
 
@@ -2668,6 +2670,8 @@ def run_inbox(
 
     if type(max_candidates) is not int or not 1 <= max_candidates <= DEFAULT_BATCH_SIZE:
         raise ValueError(f"max_candidates must be between 1 and {DEFAULT_BATCH_SIZE}")
+    if _worker is not None and (type(_worker) is not int or not 0 <= _worker < DEFAULT_BATCH_SIZE):
+        raise ValueError(f"_worker must be between 0 and {DEFAULT_BATCH_SIZE - 1}")
     root = Path(os.path.abspath(root))
     if _pre_discovered is None:
         # Scan a bounded slice per campaign function.  A single global slice
@@ -2831,13 +2835,21 @@ def run_inbox(
                 "result": None if result is None else dict(result),
             }
 
-        worker_count = min(DEFAULT_BATCH_SIZE, len(selected_groups))
+        if _worker is None:
+            indexed_groups = list(enumerate(selected_groups))
+        else:
+            # The streaming supervisor owns one persistent slot per pipeline.
+            # Pass its stable slot through to the core scratch namespace rather
+            # than creating a second worker assignment inside this single-cell
+            # compatibility entry point.
+            indexed_groups = [(_worker, selected_groups[0])] if selected_groups else []
+        worker_count = min(DEFAULT_BATCH_SIZE, len(indexed_groups))
         with ThreadPoolExecutor(
             max_workers=worker_count,
             thread_name_prefix="owner-campaign-pipeline",
         ) as executor:
             completed_pipelines = list(
-                executor.map(select_and_dispatch, enumerate(selected_groups))
+                executor.map(select_and_dispatch, indexed_groups)
             )
 
         dispatch_descriptors = []
@@ -2985,7 +2997,7 @@ def run_inbox(
                     mutable_results[index] = value
             results = mutable_results
 
-    if pipeline_results is not None:
+    if pipeline_results is not None and not _defer_maintenance:
         # Candidate measurement and every stale-frontier refresh defer their
         # individual maintenance.  Run one serialized pass only after all
         # function pipelines and rebase jobs have reached inspectable results.
@@ -3102,6 +3114,370 @@ def run_inbox(
         "recorded_outcomes": recorded_outcomes,
         "authority_advanced": False,
     }
+
+
+def _streaming_pipeline(
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptor_paths: Sequence[Path] | Path,
+    *,
+    worker: int,
+) -> dict[str, Any]:
+    """Run one selected function group in one persistent supervisor slot.
+
+    ``run_inbox`` remains the compatibility/``--once`` entry point.  The
+    streaming supervisor calls it with all currently sealed descriptors for one
+    function and deferred maintenance.  Selector arbitration therefore still
+    sees the complete ranked group; only the selected descriptor enters the
+    snapshot/compile/proof pipeline.  This keeps selection, source/frontier
+    CAS, and stale-rebase invariants in one implementation.
+    """
+
+    if isinstance(descriptor_paths, (str, os.PathLike)):
+        paths = [Path(descriptor_paths)]
+    else:
+        paths = list(descriptor_paths)
+    if not paths:
+        raise owner_campaign.CampaignError(
+            "streaming candidate pipeline received no descriptors"
+        )
+    value = run_inbox(
+        root,
+        campaign,
+        max_candidates=1,
+        _pre_discovered=paths,
+        _defer_maintenance=True,
+        _worker=worker,
+    )
+    if not isinstance(value, Mapping):
+        raise owner_campaign.CampaignError(
+            "streaming candidate pipeline returned an invalid lane result"
+        )
+    return dict(value)
+
+
+def _streaming_failure_result(
+    campaign: Mapping[str, Any],
+    descriptor_path: Path,
+    function: str,
+    reason: str,
+    *,
+    root: Path | None = None,
+) -> dict[str, Any]:
+    """Represent one failed slot without masking unrelated slot outcomes."""
+
+    display_path = str(descriptor_path)
+    if root is not None:
+        try:
+            display_path = descriptor_path.relative_to(root).as_posix()
+        except ValueError:
+            display_path = str(descriptor_path)
+    result = {
+        "schema": "owner_campaign_result/v1",
+        "status": "infra_retry",
+        "candidate": display_path,
+        "function": function,
+        "reason": reason[:1000],
+        "authority_advanced": False,
+    }
+    return {
+        "schema": LANE_RESULT_SCHEMA,
+        "status": "infra_retry",
+        "campaign_id": campaign["campaign_id"],
+        "discovered": 1,
+        "dispatched": 1,
+        "results": [result],
+        "cleaned": [],
+        "preserved_infrastructure": [display_path],
+        "selection": None,
+        "selections": [],
+        "recorded_outcomes": [],
+        "authority_advanced": False,
+    }
+
+
+def _run_streaming_inbox(
+    root: Path,
+    campaign: Mapping[str, Any],
+    *,
+    max_candidates: int,
+    initial_descriptors: Sequence[Path],
+    poll_interval: float,
+    clock: Callable[[], float],
+    watchdog_deadline: float,
+) -> dict[str, Any]:
+    """Drain a v2 inbox with persistent, continuously refilled worker slots.
+
+    The old supervisor waited for a complete five-function wave before looking
+    at the inbox again.  This scheduler keeps at most one candidate per
+    function claimed for a bounded drain, but refills a freed slot immediately
+    with the next distinct function.  Each cell still enters ``run_inbox`` so
+    its selector, source/frontier CAS, stale rebase, cleanup, and terminal
+    publication semantics are unchanged.  Only the batch-tail maintenance is
+    deferred until this drain reaches a terminal boundary.
+    """
+
+    root = Path(os.path.abspath(root))
+    if type(max_candidates) is not int or not 1 <= max_candidates <= DEFAULT_BATCH_SIZE:
+        raise ValueError(f"max_candidates must be between 1 and {DEFAULT_BATCH_SIZE}")
+    if not isinstance(initial_descriptors, Sequence):
+        raise owner_campaign.CampaignError("streaming descriptor batch is invalid")
+
+    function_count = sum(
+        isinstance(function, str) for function in campaign.get("functions", [])
+    )
+    scan_limit = max_candidates * max(1, function_count)
+    def normalize_path(raw_path: Path | str | os.PathLike[str]) -> Path:
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = root / path
+        return Path(os.path.abspath(path))
+
+    initial = [normalize_path(path) for path in initial_descriptors]
+    discovered: list[Path] = []
+    discovered_set: set[Path] = set()
+    attempted: set[Path] = set()
+    claimed_functions: set[str] = set()
+    initial_index = 0
+    slot_ids = set(range(max_candidates))
+    completed: dict[int, dict[str, Any]] = {}
+    future_meta: dict[Any, tuple[int, Path, str, int]] = {}
+    next_sequence = 0
+    boundary_status: str | None = None
+    boundary_reason: str | None = None
+    primary_error: BaseException | None = None
+
+    def note_discovered(paths: Sequence[Path]) -> None:
+        for raw_path in paths:
+            path = normalize_path(raw_path)
+            if path not in discovered_set:
+                discovered_set.add(path)
+                discovered.append(path)
+
+    note_discovered(initial)
+
+    def descriptor_function(path: Path) -> str | None:
+        sealed = _sealed_descriptor(root, campaign, path)
+        if sealed is None:
+            return None
+        function = sealed[0].get("function")
+        return function if isinstance(function, str) and function else None
+
+    def refill_source() -> list[Path]:
+        nonlocal initial_index
+        if initial_index < len(initial):
+            paths = initial[initial_index:]
+            initial_index = len(initial)
+            return paths
+        paths = discover_candidates(root, campaign, limit=scan_limit)
+        note_discovered(paths)
+        return paths
+
+    def next_eligible() -> tuple[list[Path], str] | None:
+        # Re-scan after every completed slot.  ``discover_candidates`` is
+        # bounded and deterministic; attempted paths/function claims prevent a
+        # retry or same-function duplicate from occupying the slot.  All
+        # currently sealed descriptors for the chosen function are passed to
+        # the selector together so a lower-ranked inbox entry can never bypass
+        # a higher-ranked sibling merely because it was discovered first.
+        for _ in range(2):
+            groups: dict[str, list[Path]] = {}
+            for path in refill_source():
+                if path in attempted:
+                    continue
+                function = descriptor_function(path)
+                if function is None or function in claimed_functions:
+                    continue
+                groups.setdefault(function, []).append(path)
+            if groups:
+                manifest_order = {
+                    function: index
+                    for index, function in enumerate(campaign.get("functions", []))
+                    if isinstance(function, str)
+                }
+                function = min(
+                    groups,
+                    key=lambda item: (manifest_order.get(item, len(manifest_order)), item),
+                )
+                group = groups[function]
+                attempted.update(group)
+                claimed_functions.add(function)
+                return group, function
+        return None
+
+    def submit_available(executor: ThreadPoolExecutor) -> None:
+        nonlocal next_sequence
+        while boundary_status is None and len(future_meta) < max_candidates and slot_ids:
+            candidate = next_eligible()
+            if candidate is None:
+                return
+            paths, function = candidate
+            slot = min(slot_ids)
+            slot_ids.remove(slot)
+            sequence = next_sequence
+            next_sequence += 1
+            future = executor.submit(
+                _streaming_pipeline,
+                root,
+                campaign,
+                paths,
+                worker=slot,
+            )
+            # The first path is only a stable failure/display identity; the
+            # complete descriptor group remains inside the future call so the
+            # selector can arbitrate all ranked siblings.
+            future_meta[future] = (sequence, paths[0], function, slot)
+
+    def consume_done(done: Sequence[Any]) -> None:
+        for future in sorted(
+            done,
+            key=lambda item: future_meta.get(item, (10**9, Path("."), "", 0))[0],
+        ):
+            meta = future_meta.pop(future, None)
+            if meta is None:
+                continue
+            sequence, path, function, slot = meta
+            slot_ids.add(slot)
+            try:
+                value = future.result()
+                if not isinstance(value, Mapping):
+                    raise owner_campaign.CampaignError(
+                        "streaming candidate pipeline returned an invalid lane result"
+                    )
+                completed[sequence] = dict(value)
+            except BaseException as exc:
+                completed[sequence] = _streaming_failure_result(
+                    campaign,
+                    path,
+                    function,
+                    f"streaming candidate pipeline failed: {exc}",
+                    root=root,
+                )
+
+    executor = ThreadPoolExecutor(
+        max_workers=max_candidates,
+        thread_name_prefix="owner-campaign-stream",
+    )
+    try:
+        submit_available(executor)
+        while future_meta and boundary_status is None:
+            try:
+                owner_campaign._check_cancelled(root, campaign)
+            except owner_campaign.CampaignError as exc:
+                if "campaign is cancelled at the active epoch" in str(exc):
+                    boundary_status = "cancelled"
+                    boundary_reason = str(exc)
+                    break
+                primary_error = exc
+                break
+            remaining = max(0.0, watchdog_deadline - clock())
+            if remaining <= 0.0:
+                boundary_status = "watchdog_timeout"
+                boundary_reason = "supervisor watchdog expired during streaming drain"
+                break
+            done, _pending = wait(
+                tuple(future_meta),
+                timeout=min(poll_interval, remaining),
+                return_when=FIRST_COMPLETED,
+            )
+            if not done:
+                continue
+            consume_done(tuple(done))
+            submit_available(executor)
+    finally:
+        # No new slot is submitted after cancellation/watchdog.  Running
+        # compiler/evidence pipelines are allowed to finish so their existing
+        # cleanup/CAS contracts can complete; queued futures are cancelled.
+        if boundary_status is not None or primary_error is not None:
+            for future in tuple(future_meta):
+                future.cancel()
+        executor.shutdown(wait=True, cancel_futures=True)
+        remaining_done = [future for future in tuple(future_meta) if future.done()]
+        consume_done(remaining_done)
+
+    if primary_error is not None:
+        raise primary_error
+
+    ordered_lane_results = [completed[index] for index in sorted(completed)]
+    candidate_results: list[Mapping[str, Any]] = []
+    selections: list[Mapping[str, Any]] = []
+    cleaned: list[str] = []
+    preserved: list[str] = []
+    recorded_outcomes: list[Mapping[str, Any]] = []
+    dispatched = 0
+    for lane_result in ordered_lane_results:
+        dispatched += int(lane_result.get("dispatched", 0))
+        raw_results = lane_result.get("results", [])
+        if isinstance(raw_results, list):
+            candidate_results.extend(
+                item for item in raw_results if isinstance(item, Mapping)
+            )
+        raw_selections = lane_result.get("selections", [])
+        if isinstance(raw_selections, list):
+            selections.extend(
+                item for item in raw_selections if isinstance(item, Mapping)
+            )
+        raw_cleaned = lane_result.get("cleaned", [])
+        if isinstance(raw_cleaned, list):
+            cleaned.extend(str(item) for item in raw_cleaned)
+        raw_preserved = lane_result.get("preserved_infrastructure", [])
+        if isinstance(raw_preserved, list):
+            preserved.extend(str(item) for item in raw_preserved)
+        raw_outcomes = lane_result.get("recorded_outcomes", [])
+        if isinstance(raw_outcomes, list):
+            recorded_outcomes.extend(
+                item for item in raw_outcomes if isinstance(item, Mapping)
+            )
+
+    attempted_set = set(attempted)
+    for path in discovered:
+        if path in attempted_set:
+            continue
+        try:
+            preserved_path = path.relative_to(root).as_posix()
+        except ValueError:
+            continue
+        if path.exists() and preserved_path not in preserved:
+            preserved.append(preserved_path)
+    # Each pipeline's maintenance is deferred.  Even a selection-unknown
+    # drain gets exactly one bounded maintenance pass at its terminal boundary.
+    _post_pipeline_maintenance(root, campaign, candidate_results)
+
+    if boundary_status is not None:
+        status = boundary_status
+    else:
+        result_statuses = [_result_status(item) for item in candidate_results]
+        selection_statuses = [item.get("status") for item in selections]
+        if not result_statuses:
+            if owner_campaign_selector.PIVOT_REQUIRED in selection_statuses:
+                status = "pivot_required"
+            elif selection_statuses:
+                status = "selection_unknown"
+            else:
+                status = "idle"
+        elif all(item == "infra_retry" for item in result_statuses):
+            status = "infra_retry"
+        else:
+            status = "processed"
+
+    result: dict[str, Any] = {
+        "schema": LANE_RESULT_SCHEMA,
+        "status": status,
+        "campaign_id": campaign["campaign_id"],
+        "discovered": len(discovered),
+        "dispatched": dispatched,
+        "results": candidate_results,
+        "cleaned": cleaned,
+        "preserved_infrastructure": preserved,
+        "selection": selections[0] if len(selections) == 1 else None,
+        "selections": selections,
+        "recorded_outcomes": recorded_outcomes,
+        "authority_advanced": False,
+    }
+    if boundary_status is not None:
+        result["terminal_reason"] = boundary_reason or boundary_status
+        result["_terminal_boundary"] = True
+    return result
 
 
 def _duration(
@@ -3280,12 +3656,31 @@ def run_supervisor(
         descriptors = discover_candidates(root, campaign, limit=scan_limit)
         if descriptors:
             try:
-                batch = run_inbox(
-                    root,
-                    campaign,
-                    max_candidates=max_candidates,
-                    _pre_discovered=descriptors,
-                )
+                if (
+                    "base_commit" in campaign
+                    and "_source" in campaign
+                    and "limits" in campaign
+                ):
+                    # Loaded v2 campaigns use a continuously refilled pool of
+                    # persistent slots.  The legacy branch below is retained
+                    # for descriptor-only/replay callers and therefore keeps
+                    # its historical whole-batch ``run_inbox`` semantics.
+                    batch = _run_streaming_inbox(
+                        root,
+                        campaign,
+                        max_candidates=max_candidates,
+                        initial_descriptors=descriptors,
+                        poll_interval=poll_interval,
+                        clock=clock,
+                        watchdog_deadline=started + watchdog,
+                    )
+                else:
+                    batch = run_inbox(
+                        root,
+                        campaign,
+                        max_candidates=max_candidates,
+                        _pre_discovered=descriptors,
+                    )
             except owner_campaign.CampaignError as exc:
                 return _terminal_result(
                     campaign,
@@ -3306,6 +3701,20 @@ def run_supervisor(
             batch_statuses = [_result_status(item) for item in batch_results]
             outcomes.update(batch_statuses)
             last_batch_status = str(batch.get("status", "unknown"))
+            if batch.get("_terminal_boundary"):
+                return _terminal_result(
+                    campaign,
+                    status=last_batch_status,
+                    reason=str(
+                        batch.get("terminal_reason", last_batch_status)
+                    )[:1000],
+                    started=started,
+                    clock=clock,
+                    batches=batches,
+                    dispatched=dispatched,
+                    outcomes=outcomes,
+                    last_batch_status=last_batch_status,
+                )
             if last_batch_status in {"selection_unknown", "pivot_required"}:
                 return _terminal_result(
                     campaign,

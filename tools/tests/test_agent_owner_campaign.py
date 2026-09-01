@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -316,6 +317,122 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
             ["focus", "focus"],
         )
 
+    def test_snapshot_bulk_dispatches_three_functions_on_distinct_workers(self) -> None:
+        campaign = owner_campaign.load_campaign(self.root, self.manifest_path)
+        campaign["functions"] = ["focus", "other", "third"]
+        barrier = threading.Barrier(3, timeout=5)
+        calls: list[tuple[str, int]] = []
+        calls_lock = threading.Lock()
+
+        def snapshot(
+            root: Path,
+            current_campaign: dict[str, object],
+            function: str,
+            *,
+            force: bool = False,
+            worker: int = 0,
+            _defer_maintenance: bool = False,
+        ) -> dict[str, object]:
+            self.assertEqual(root, self.root)
+            self.assertIs(current_campaign, campaign)
+            self.assertFalse(force)
+            self.assertTrue(_defer_maintenance)
+            with calls_lock:
+                calls.append((function, worker))
+            barrier.wait()
+            frontier = self._snapshot_frontier()
+            frontier["function"] = function
+            frontier["frontier_sha256"] = _digest(function.encode("utf-8"))
+            return frontier
+
+        with (
+            patch.object(owner_campaign, "load_campaign", return_value=campaign),
+            patch.object(owner_campaign, "snapshot_frontier", side_effect=snapshot),
+            patch.object(owner_campaign, "_check_limits"),
+        ):
+            code, result, _ = self._run_agent(
+                "owner-campaign",
+                "snapshot",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+                "--function",
+                "other",
+                "--function",
+                "third",
+                "--workers",
+                "3",
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(result["schema"], "owner_campaign_snapshots/v1")
+        self.assertEqual(result["functions"], ["focus", "other", "third"])
+        self.assertEqual(
+            [item["function"] for item in result["snapshots"]],
+            ["focus", "other", "third"],
+        )
+        self.assertEqual(sorted(calls), [("focus", 0), ("other", 1), ("third", 2)])
+
+    def test_snapshot_single_explicit_worker_is_forwarded(self) -> None:
+        frontier = self._snapshot_frontier()
+        with patch.object(
+            owner_campaign, "snapshot_frontier", return_value=frontier
+        ) as snapshotter:
+            code, result, _ = self._run_agent(
+                "owner-campaign",
+                "snapshot",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+                "--worker",
+                "4",
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(result["function"], "focus")
+        self.assertEqual(snapshotter.call_args.kwargs, {"worker": 4})
+
+    def test_snapshot_rejects_duplicate_and_out_of_range_workers(self) -> None:
+        duplicate_code, _, duplicate_text = self._run_agent(
+            "owner-campaign",
+            "snapshot",
+            "--campaign",
+            "build/campaign.json",
+            "--function",
+            "focus",
+            "--function",
+            "focus",
+        )
+        worker_code, _, worker_text = self._run_agent(
+            "owner-campaign",
+            "snapshot",
+            "--campaign",
+            "build/campaign.json",
+            "--function",
+            "focus",
+            "--worker",
+            "5",
+        )
+        workers_code, _, workers_text = self._run_agent(
+            "owner-campaign",
+            "snapshot",
+            "--campaign",
+            "build/campaign.json",
+            "--function",
+            "focus",
+            "--function",
+            "outside",
+            "--workers",
+            "6",
+        )
+
+        self.assertEqual((duplicate_code, worker_code, workers_code), (2, 2, 2))
+        self.assertIn("functions must be distinct", duplicate_text)
+        self.assertIn("--worker must be 0-4", worker_text)
+        self.assertIn("--workers must be 1-5", workers_text)
+
     def test_snapshot_rejects_function_outside_campaign_scope(self) -> None:
         code, result, text = self._run_agent(
             "owner-campaign",
@@ -567,6 +684,33 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
             )
         self.assertEqual(alias_code, 0)
         self.assertEqual(alias_result, result)
+
+    def test_reconstruct_explicit_worker_is_forwarded(self) -> None:
+        frontier = self._snapshot_frontier()
+        packet = self._write_reconstruction_packet(frontier)
+        frontier["reconstruction_evidence_sha256"] = packet["packet_sha256"]
+        frontier["reconstruction_status"] = packet["status"]
+        frontier_body = dict(frontier)
+        frontier_body.pop("frontier_sha256", None)
+        frontier["frontier_sha256"] = owner_campaign._digest_json(frontier_body)
+
+        with patch.object(
+            owner_campaign, "snapshot_frontier", return_value=frontier
+        ) as snapshotter:
+            code, result, _ = self._run_agent(
+                "owner-campaign",
+                "reconstruct",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+                "--worker",
+                "3",
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(snapshotter.call_args.kwargs, {"worker": 3})
 
 
 if __name__ == "__main__":

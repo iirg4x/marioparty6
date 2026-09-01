@@ -522,6 +522,42 @@ class OwnerCampaignTests(unittest.TestCase):
         ), self.assertRaisesRegex(campaign.CampaignError, "snapshot sentinel"):
             campaign.snapshot_frontiers(self.root, loaded, ["focus", "sibling"])
 
+    def test_snapshot_workers_steal_skewed_jobs_instead_of_static_partitioning(
+        self,
+    ) -> None:
+        loaded = self.load()
+        functions = [f"focus-{index}" for index in range(6)]
+        loaded["functions"] = functions
+        first_wave = threading.Barrier(5, timeout=5)
+        sixth_started = threading.Event()
+        workers: dict[str, int] = {}
+        lock = threading.Lock()
+
+        def skewed_snapshot(
+            root: Path, loaded_campaign: dict[str, object], function: str, *,
+            force: bool = False, worker: int = 0,
+            _defer_maintenance: bool = False,
+        ) -> dict[str, object]:
+            index = functions.index(function)
+            with lock:
+                workers[function] = worker
+            if index < 5:
+                first_wave.wait()
+            if index == 0:
+                if not sixth_started.wait(timeout=5):
+                    raise AssertionError("sixth snapshot stayed in a static partition")
+            elif index == 5:
+                sixth_started.set()
+            return {"function": function, "worker": worker}
+
+        with mock.patch.object(
+            campaign, "snapshot_frontier", side_effect=skewed_snapshot
+        ):
+            result = campaign.snapshot_frontiers(self.root, loaded, functions)
+        self.assertEqual(list(result), functions)
+        self.assertTrue(sixth_started.is_set())
+        self.assertNotEqual(workers[functions[0]], workers[functions[5]])
+
     def test_snapshot_frontier_uses_requested_isolated_worker_scratch(self) -> None:
         loaded = self.load()
         original = campaign._ensure_scratch
@@ -590,6 +626,54 @@ class OwnerCampaignTests(unittest.TestCase):
         self.assertTrue(first_snapshot_entered.is_set())
         self.assertTrue(second_candidate_started.is_set())
         self.assertEqual([item["status"] for item in results], ["no_gain", "no_gain"])
+
+    def test_candidate_workers_steal_skewed_jobs_and_preserve_result_order(
+        self,
+    ) -> None:
+        loaded = self.load()
+        descriptors: list[Path] = []
+        for index in range(6):
+            path = self.root / "build" / "candidates" / f"queue-{index}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({
+                "function": f"focus-{index}",
+                "base_frontier_sha256": "a" * 64,
+                "candidate_source": {"sha256": f"{index + 1:064x}"},
+            }), encoding="utf-8")
+            descriptors.append(path)
+        first_wave = threading.Barrier(5, timeout=5)
+        sixth_started = threading.Event()
+        workers: dict[int, int] = {}
+        lock = threading.Lock()
+
+        def skewed_candidate(
+            root: Path, loaded_campaign: dict[str, object], path: Path, *,
+            worker: int = 0, _defer_maintenance: bool = False,
+        ) -> dict[str, object]:
+            index = int(path.stem.rsplit("-", 1)[1])
+            with lock:
+                workers[index] = worker
+            if index < 5:
+                first_wave.wait()
+            if index == 0:
+                if not sixth_started.wait(timeout=5):
+                    raise AssertionError("sixth candidate stayed in a static partition")
+            elif index == 5:
+                sixth_started.set()
+            return {
+                "schema": "owner_campaign_result/v1", "status": "no_gain",
+                "candidate": str(index), "authority_advanced": False,
+            }
+
+        with mock.patch.object(
+            campaign, "run_candidate", side_effect=skewed_candidate
+        ):
+            results = campaign.run_loop(self.root, loaded, descriptors)
+        self.assertEqual([result["candidate"] for result in results], [
+            str(index) for index in range(6)
+        ])
+        self.assertTrue(sixth_started.is_set())
+        self.assertNotEqual(workers[0], workers[5])
 
     def test_five_candidate_batch_runs_one_deferred_maintenance_pass(self) -> None:
         loaded = self.load()
@@ -792,6 +876,125 @@ class OwnerCampaignTests(unittest.TestCase):
         )
         self.assertEqual(source_bytes, base_blob)
         self.assertEqual(campaign._digest_bytes(source_bytes), loaded["_base_source_sha256"])
+
+    def test_five_fresh_workers_materialize_bound_target_in_scratch(self) -> None:
+        loaded = self.load()
+        relative = Path(loaded["target_object"]["path"])
+        self.assertFalse(relative.is_absolute())
+        for worker in range(5):
+            scratch = campaign._ensure_scratch(self.root, loaded, worker)
+            target = scratch / relative
+            self.assertTrue(target.is_file())
+            self.assertEqual(target.read_bytes(), self.target.read_bytes())
+            self.assertEqual(target.stat().st_size, loaded["_target_size"])
+            self.assertEqual(
+                campaign._digest_file(target),
+                loaded["target_object"]["sha256"],
+            )
+
+    def test_five_worker_aggregate_over_soft_preserves_config_and_next_hook(
+        self,
+    ) -> None:
+        loaded = self.load()
+        scratches: list[Path] = []
+        mappings: list[Path] = []
+        for worker in range(5):
+            scratch = campaign._ensure_scratch(self.root, loaded, worker)
+            mapping = scratch / "build" / "config" / "compiler-map.bin"
+            mapping.parent.mkdir(parents=True, exist_ok=True)
+            mapping.write_bytes(bytes([worker]) * 2048)
+            scratches.append(scratch)
+            mappings.append(mapping)
+
+        sizes = [campaign._tree_size(scratch) for scratch in scratches]
+        per_worker_soft = max(sizes) + 1024
+        self.assertGreater(sum(sizes), per_worker_soft)
+        loaded["limits"]["scratch_soft_bytes"] = per_worker_soft
+        loaded["limits"]["scratch_hard_bytes"] = per_worker_soft + (1 << 20)
+
+        campaign._check_limits(self.root, loaded)
+        self.assertTrue(all(mapping.is_file() for mapping in mappings))
+        source_sha = campaign._digest_file(
+            scratches[4] / loaded["source_relpath"]
+        )
+        measurement = campaign._run_hook(
+            self.root, scratches[4], loaded, "focus", source_sha, "snapshot"
+        )
+        self.assertEqual(measurement["function"], "focus")
+        self.assertTrue(mappings[4].is_file())
+        campaign._verify_scratch_target(self.root, scratches[4], loaded)
+
+    def test_oversized_worker_fails_without_deleting_configured_build_state(
+        self,
+    ) -> None:
+        loaded = self.load()
+        scratch = campaign._ensure_scratch(self.root, loaded, worker=0)
+        mapping = scratch / "build" / "config" / "compiler-map.bin"
+        mapping.parent.mkdir(parents=True, exist_ok=True)
+        mapping.write_bytes(b"persistent compiler mapping" * 512)
+        persistent_size = campaign._tree_size(scratch)
+        hook_output = scratch / "build" / "hook" / "stale.json"
+        hook_output.parent.mkdir(parents=True, exist_ok=True)
+        hook_output.write_bytes(b"temporary hook output" * 128)
+        loaded["limits"]["scratch_soft_bytes"] = 1
+        loaded["limits"]["scratch_hard_bytes"] = persistent_size - 1
+
+        with self.assertRaisesRegex(
+            campaign.InfrastructureError,
+            "campaign worker 0 scratch exceeds hard limit",
+        ):
+            campaign._check_limits(self.root, loaded)
+        self.assertTrue(mapping.is_file())
+        self.assertFalse(hook_output.exists())
+        campaign._verify_scratch_target(self.root, scratch, loaded)
+
+    def test_tampered_scratch_target_fails_before_hook(self) -> None:
+        loaded = self.load()
+        scratch = campaign._ensure_scratch(self.root, loaded, worker=4)
+        target = campaign._scratch_target_path(self.root, scratch, loaded)
+        target.write_bytes(b"tampered")
+        with self.assertRaisesRegex(
+            campaign.InfrastructureError, "scratch target object"
+        ):
+            campaign._run_hook(
+                self.root, scratch, loaded, "focus",
+                campaign._digest_file(scratch / loaded["source_relpath"]),
+                "snapshot",
+            )
+        invocation_log = self.root / "build" / "invocations.log"
+        self.assertFalse(invocation_log.exists())
+
+    def test_absolute_target_binding_preserves_root_containment_contract(self) -> None:
+        body = {
+            key: value for key, value in self.manifest.items()
+            if key != "manifest_sha256"
+        }
+        body["target_object"] = {
+            **body["target_object"], "path": str(self.target.resolve()),
+        }
+        self.manifest = seal(body, "manifest_sha256")
+        self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
+        loaded = self.load()
+        scratch = campaign._ensure_scratch(self.root, loaded, worker=2)
+        relative = self.target.resolve().relative_to(self.root)
+        self.assertEqual(
+            (scratch / relative).read_bytes(), self.target.read_bytes()
+        )
+
+        with tempfile.TemporaryDirectory() as external_directory:
+            external = Path(external_directory) / "target.o"
+            external.write_bytes(b"target")
+            body["target_object"] = {
+                "path": str(external), "sha256": digest_bytes(b"target"),
+            }
+            self.manifest = seal(body, "manifest_sha256")
+            self.manifest_path.write_text(
+                json.dumps(self.manifest), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                campaign.CampaignError, "escapes the campaign root"
+            ):
+                self.load()
 
     def test_git_resolver_prefers_native_windows_git_and_binds_identity(self) -> None:
         fake = self.root / "build" / "git-resolver"

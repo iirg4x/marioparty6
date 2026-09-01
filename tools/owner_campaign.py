@@ -20,6 +20,7 @@ import json
 import math
 import os
 from pathlib import Path
+from queue import Empty, Queue
 import re
 import shutil
 import signal
@@ -27,6 +28,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from typing import Any, Mapping, Sequence
 
@@ -544,6 +546,7 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
     result["_path"] = path
     result["_source"] = source
     result["_target"] = _bound_path(root, raw["target_object"]["path"], "target object")
+    result["_target_size"] = result["_target"].stat().st_size
     result["_toolchain"] = _bound_path(root, raw["toolchain"]["path"], "toolchain")
     if producer is None:
         raise CampaignError("measurement producer could not be resolved")
@@ -768,6 +771,7 @@ def _ensure_scratch(
             )
         if _digest_file(scratch / campaign["source_relpath"]) != campaign["_base_source_sha256"]:
             raise InfrastructureError("scratch base source identity drift")
+        _materialize_scratch_target(root, scratch, campaign)
         return scratch
     if scratch.exists():
         if not _scratch_is_owned(campaign, scratch):
@@ -794,6 +798,7 @@ def _ensure_scratch(
         raise InfrastructureError("scratch worktree identity verification failed")
     if _digest_file(scratch / campaign["source_relpath"]) != campaign["_base_source_sha256"]:
         raise InfrastructureError("scratch source does not match manifest base blob")
+    _materialize_scratch_target(root, scratch, campaign)
     return scratch
 
 
@@ -874,6 +879,110 @@ def _sync_scratch_source(root: Path, scratch: Path, campaign: Mapping[str, Any],
     return destination
 
 
+def _scratch_target_path(
+    root: Path, scratch: Path, campaign: Mapping[str, Any]
+) -> Path:
+    """Map the root-contained manifest target to the same scratch-relative path."""
+
+    target = Path(os.path.abspath(campaign["_target"]))
+    try:
+        relative = target.relative_to(root)
+    except ValueError as exc:
+        # load_campaign currently rejects external bindings.  Keep that
+        # contract fail-closed if a synthetic/in-memory campaign bypasses load.
+        raise InfrastructureError(
+            "target object is outside the campaign root"
+        ) from exc
+    destination = _bound_path(
+        scratch, relative.as_posix(), "scratch target object", exists=False
+    )
+    if _path_has_indirection(scratch, destination):
+        raise InfrastructureError(
+            "scratch target path uses symlink/reparse indirection"
+        )
+    return destination
+
+
+def _verify_scratch_target(
+    root: Path, scratch: Path, campaign: Mapping[str, Any]
+) -> Path:
+    destination = _scratch_target_path(root, scratch, campaign)
+    if _path_has_indirection(scratch, destination):
+        raise InfrastructureError(
+            "scratch target path uses symlink/reparse indirection"
+        )
+    if not _is_regular_file(destination):
+        raise InfrastructureError("scratch target object is not a regular file")
+    try:
+        size = destination.stat().st_size
+        digest = _digest_file(destination)
+    except OSError as exc:
+        raise InfrastructureError(
+            f"scratch target object cannot be verified: {exc}"
+        ) from exc
+    if size != campaign["_target_size"]:
+        raise InfrastructureError("scratch target object size drift")
+    if digest != campaign["target_object"]["sha256"]:
+        raise InfrastructureError("scratch target object hash drift")
+    return destination
+
+
+def _materialize_scratch_target(
+    root: Path, scratch: Path, campaign: Mapping[str, Any]
+) -> Path:
+    """Atomically seed one worker with the immutable manifest-bound target."""
+
+    source = Path(campaign["_target"])
+    if _path_has_indirection(root, source) or not _is_regular_file(source):
+        raise InfrastructureError(
+            "target object uses indirection or is not regular during scratch bootstrap"
+        )
+    try:
+        before = source.stat()
+        payload = source.read_bytes()
+        after = source.stat()
+    except OSError as exc:
+        raise InfrastructureError(
+            f"target object cannot be read during scratch bootstrap: {exc}"
+        ) from exc
+    expected_size = campaign["_target_size"]
+    expected_sha = campaign["target_object"]["sha256"]
+    identity_before = (
+        before.st_dev, before.st_ino, before.st_size,
+        before.st_mtime_ns, before.st_ctime_ns,
+    )
+    identity_after = (
+        after.st_dev, after.st_ino, after.st_size,
+        after.st_mtime_ns, after.st_ctime_ns,
+    )
+    if (
+        identity_before != identity_after
+        or len(payload) != expected_size
+        or _digest_bytes(payload) != expected_sha
+    ):
+        raise InfrastructureError("target object drifted during scratch bootstrap")
+    # Recheck the source path after the read so a concurrent replacement cannot
+    # silently turn the read-once payload into evidence for a different inode.
+    if (
+        _path_has_indirection(root, source)
+        or not _is_regular_file(source)
+    ):
+        raise InfrastructureError("target object changed during scratch bootstrap")
+    destination = _scratch_target_path(root, scratch, campaign)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if _path_has_indirection(scratch, destination):
+        raise InfrastructureError(
+            "scratch target parent uses symlink/reparse indirection"
+        )
+    # Atomic replacement briefly owns both the existing destination and temp.
+    if _tree_size(scratch) + len(payload) > campaign["limits"]["scratch_hard_bytes"]:
+        raise InfrastructureError(
+            "scratch target materialization exceeds peak hard limit"
+        )
+    _atomic_bytes(destination, payload)
+    return _verify_scratch_target(root, scratch, campaign)
+
+
 def _verify_publication_sources(
     campaign: Mapping[str, Any], scratch: Path, *, live_sha256: str | None,
     scratch_sha256: str,
@@ -883,6 +992,7 @@ def _verify_publication_sources(
     scratch_source = scratch / campaign["source_relpath"]
     if _digest_file(scratch_source) != scratch_sha256:
         raise CampaignError("scratch source drifted before frontier publication")
+    _verify_scratch_target(Path(campaign["_root"]), scratch, campaign)
 
 
 def _expand_argv(
@@ -893,7 +1003,8 @@ def _expand_argv(
         "ROOT": str(root), "SCRATCH_ROOT": str(scratch),
         "SOURCE": str(scratch / campaign["source_relpath"]),
         "FUNCTION": function, "OWNER": campaign["owner"], "UNIT": campaign["unit"],
-        "TARGET": str(campaign["_target"]), "TOOLCHAIN": str(campaign["_toolchain"]),
+        "TARGET": str(_scratch_target_path(root, scratch, campaign)),
+        "TOOLCHAIN": str(campaign["_toolchain"]),
         "MEASUREMENT_PRODUCER": str(campaign["_producer"]),
         "SOURCE_SHA256": source_sha256, "PHASE": phase,
     }
@@ -1054,6 +1165,7 @@ def _run_hook(
     source_sha256: str, phase: str,
 ) -> dict[str, Any]:
     _verify_hook_inputs(campaign)
+    _verify_scratch_target(root, scratch, campaign)
     descriptor = campaign["commands"][phase]
     output = _bound_path(scratch, descriptor["measurement_relpath"], "measurement output", exists=False)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1071,6 +1183,7 @@ def _run_hook(
         # scratch output; this final check closes the pre-launch replacement
         # window for target/toolchain/CAS producer inputs.
         _verify_hook_inputs(campaign)
+        _verify_scratch_target(root, scratch, campaign)
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,
             timeout=float(campaign["limits"]["command_timeout_seconds"]),
@@ -2001,7 +2114,7 @@ def snapshot_frontier(
 
 def snapshot_frontiers(
     root: Path, campaign: Mapping[str, Any], functions: Sequence[str], *,
-    force: bool = False,
+    force: bool = False, workers: int | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Prepare each unique function baseline with up to five isolated workers.
 
@@ -2016,31 +2129,50 @@ def snapshot_frontiers(
             raise CampaignError("snapshot function identity is invalid")
         if function not in campaign["functions"]:
             raise CampaignError(f"function is outside campaign scope: {function}")
+    if workers is not None and (type(workers) is not int or not 1 <= workers <= 5):
+        raise CampaignError("snapshot worker count is outside 1..5")
     if not unique:
         return {}
-    worker_count = min(5, len(unique))
+    worker_count = min(5 if workers is None else workers, len(unique))
 
-    def run_group(worker: int) -> list[tuple[str, dict[str, Any]]]:
-        group: list[tuple[str, dict[str, Any]]] = []
-        for offset in range(worker, len(unique), worker_count):
-            function = unique[offset]
-            _check_cancelled(root, campaign)
-            group.append((
-                function,
-                snapshot_frontier(
+    pending: Queue[tuple[int, str]] = Queue(maxsize=len(unique))
+    for index, function in enumerate(unique):
+        pending.put_nowait((index, function))
+    indexed: dict[str, dict[str, Any]] = {}
+    worker_errors: list[tuple[int, BaseException]] = []
+    outcome_lock = threading.Lock()
+    stop = threading.Event()
+
+    def run_worker(worker: int) -> None:
+        while not stop.is_set():
+            try:
+                index, function = pending.get_nowait()
+            except Empty:
+                return
+            try:
+                if stop.is_set():
+                    return
+                _check_cancelled(root, campaign)
+                frontier = snapshot_frontier(
                     root, campaign, function, force=force, worker=worker,
                     _defer_maintenance=True,
-                ),
-            ))
-        return group
+                )
+                with outcome_lock:
+                    indexed[function] = frontier
+            except BaseException as exc:
+                with outcome_lock:
+                    worker_errors.append((index, exc))
+                stop.set()
+                return
+            finally:
+                pending.task_done()
 
-    indexed: dict[str, dict[str, Any]] = {}
     primary_error: BaseException | None = None
     try:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            for group in executor.map(run_group, range(worker_count)):
-                for function, frontier in group:
-                    indexed[function] = frontier
+            list(executor.map(run_worker, range(worker_count)))
+        if worker_errors:
+            primary_error = min(worker_errors, key=lambda item: item[0])[1]
     except BaseException as exc:
         primary_error = exc
     try:
@@ -2844,21 +2976,26 @@ def _check_limits(root: Path, campaign: Mapping[str, Any]) -> None:
     scratch_root = (
         _state_root(root) / "scratch" / _slug(str(campaign["campaign_id"]))
     )
-    scratch_size = _tree_size(scratch_root)
-    if scratch_size > campaign["limits"]["scratch_soft_bytes"]:
-        for repo in scratch_root.glob("repo-*"):
-            if not repo.is_dir():
-                continue
-            for raw in campaign["allowed_build_paths"]:
-                relative = Path(raw)
-                target = repo / relative
-                if target.is_dir() and _inside(repo, target):
-                    shutil.rmtree(target)
-                elif target.is_file() and _inside(repo, target):
-                    target.unlink()
-        scratch_size = _tree_size(scratch_root)
-    if scratch_size > campaign["limits"]["scratch_hard_bytes"]:
-        raise InfrastructureError("campaign scratch exceeds hard limit")
+    scratch_soft = campaign["limits"]["scratch_soft_bytes"]
+    scratch_hard = campaign["limits"]["scratch_hard_bytes"]
+    for worker in range(5):
+        repo = _scratch_repo(root, campaign, worker)
+        repo_size = _tree_size(repo)
+        if repo_size > scratch_soft:
+            if not _scratch_is_owned(campaign, repo):
+                raise InfrastructureError(
+                    f"campaign worker {worker} scratch is not owned"
+                )
+            _cleanup_cell_outputs(repo, campaign)
+            repo_size = _tree_size(repo)
+        if repo_size > scratch_hard:
+            raise InfrastructureError(
+                f"campaign worker {worker} scratch exceeds hard limit"
+            )
+    # The manifest limits are per reusable worker.  Stray state outside the
+    # five repositories is still bounded by the maximum total worker budget.
+    if _tree_size(scratch_root) > 5 * scratch_hard:
+        raise InfrastructureError("campaign aggregate scratch exceeds hard limit")
     owner_size = _tree_size(_owner_root(root, campaign))
     if owner_size > campaign["limits"]["owner_state_bytes"]:
         raise CampaignError("retained owner state exceeds hard limit")
@@ -2875,16 +3012,42 @@ def _cleanup_cell_outputs(
 ) -> None:
     """Delete hook-owned raw cell output while preserving the worker checkout."""
 
-    parents: set[Path] = set()
+    outputs: set[Path] = set()
     for descriptor in campaign["commands"].values():
         output = _bound_path(
             scratch, descriptor["measurement_relpath"],
             "cell output cleanup", exists=False,
         )
-        parents.add(output.parent)
+        outputs.add(output)
+    allowed_roots = {
+        _bound_path(scratch, raw, "allowed build cleanup", exists=False)
+        for raw in campaign["allowed_build_paths"]
+    }
+    protected = {
+        _bound_path(
+            scratch, campaign["source_relpath"], "scratch source", exists=False
+        ),
+        _scratch_target_path(Path(campaign["_root"]), scratch, campaign),
+    }
+    parents = {output.parent for output in outputs}
     for parent in sorted(parents, key=lambda item: len(item.parts), reverse=True):
-        if parent.exists() and parent != scratch and _inside(scratch, parent):
+        bounded_parent = (
+            parent != scratch
+            and _inside(scratch, parent)
+            and any(parent != root and _inside(root, parent) for root in allowed_roots)
+            and not any(_inside(parent, item) for item in protected)
+        )
+        if bounded_parent and parent.exists():
             shutil.rmtree(parent)
+            continue
+        # A command may place its result directly in an allowed build root.
+        # Remove only that exact hook-owned file; the root may contain the
+        # configured compiler mapping or other persistent worker state.
+        for output in outputs:
+            if output.parent != parent or not output.exists():
+                continue
+            if output.is_file() and not output.is_symlink():
+                output.unlink()
 
 
 def _would_close_owner(
@@ -3255,33 +3418,52 @@ def run_loop(
         active_indices.append(index)
     worker_count = min(5, len(active_indices))
     indexed_results: list[tuple[int, dict[str, Any]]] = []
+    pending: Queue[int] = Queue(maxsize=len(active_indices))
+    for index in active_indices:
+        pending.put_nowait(index)
+    worker_errors: list[tuple[int, BaseException]] = []
+    outcome_lock = threading.Lock()
+    stop = threading.Event()
 
-    def run_group(worker: int) -> list[tuple[int, dict[str, Any]]]:
-        group: list[tuple[int, dict[str, Any]]] = []
-        for offset in range(worker, len(active_indices), worker_count):
-            index = active_indices[offset]
-            path = paths[index]
-            _check_cancelled(root, campaign)
+    def run_worker(worker: int) -> None:
+        while not stop.is_set():
             try:
-                result = run_candidate(
-                    root, campaign, path, worker=worker,
-                    _defer_maintenance=True,
-                )
-            except InfrastructureError as exc:
-                result = {
-                    "schema": "owner_campaign_result/v1", "status": "infra_retry",
-                    "candidate": str(path), "reason": str(exc)[:1000],
-                    "authority_advanced": False,
-                }
-            group.append((index, result))
-        return group
+                index = pending.get_nowait()
+            except Empty:
+                return
+            try:
+                if stop.is_set():
+                    return
+                path = paths[index]
+                _check_cancelled(root, campaign)
+                try:
+                    result = run_candidate(
+                        root, campaign, path, worker=worker,
+                        _defer_maintenance=True,
+                    )
+                except InfrastructureError as exc:
+                    result = {
+                        "schema": "owner_campaign_result/v1", "status": "infra_retry",
+                        "candidate": str(path), "reason": str(exc)[:1000],
+                        "authority_advanced": False,
+                    }
+                with outcome_lock:
+                    indexed_results.append((index, result))
+            except BaseException as exc:
+                with outcome_lock:
+                    worker_errors.append((index, exc))
+                stop.set()
+                return
+            finally:
+                pending.task_done()
 
     primary_error: BaseException | None = None
     results: list[dict[str, Any]] = []
     try:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            for group in executor.map(run_group, range(worker_count)):
-                indexed_results.extend(group)
+            list(executor.map(run_worker, range(worker_count)))
+        if worker_errors:
+            raise min(worker_errors, key=lambda item: item[0])[1]
         by_index = dict(indexed_results)
         for index, original in duplicate_of.items():
             primary = by_index[original]

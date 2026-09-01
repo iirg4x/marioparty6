@@ -82,8 +82,27 @@ rtk python tools/agent.py owner-campaign snapshot \
   --function <function>
 ```
 
+Bootstrap up to five distinct functions concurrently by repeating
+`--function`; each function receives a distinct scratch worker, and output is
+returned in the requested function order:
+
+```sh
+rtk python tools/agent.py owner-campaign snapshot \
+  --campaign build/owner-campaign/<owner>.json \
+  --function <function-a> \
+  --function <function-b> \
+  --function <function-c> \
+  --workers 3
+```
+
+`--workers` must be between 1 and 5 and bounds each bulk group. Duplicate or
+out-of-manifest functions fail before dispatch. For a single function,
+`--worker 0..4` selects its isolated scratch explicitly; `reconstruct` accepts
+the same single-function `--worker` option.
+
 The command prints only the compact `owner_campaign_snapshot/v1` identity and
-`focus_evidence_sha256` binding. It does not dispatch candidates, read or
+`focus_evidence_sha256` binding (or an ordered
+`owner_campaign_snapshots/v1.snapshots` list for a bulk request). It does not dispatch candidates, read or
 write legacy permits/STOP state, or enter the candidate loop. Workers consume
 that returned frontier identity before writing their distinct descriptors to
 the inbox.
@@ -167,6 +186,14 @@ slowest selector, or for the slowest baseline. GC and storage-limit maintenance
 run once at the batch tail, outside the source/frontier hot path. The Sol parent
 adopts each winner with a per-function frontier compare-and-swap (CAS), so only
 the short live-source/frontier publication and final link are serialized.
+
+A reconstruction assignment has a ten-minute search lease. Before that lease
+expires, its worker returns exactly one current-frontier-bound natural-C
+candidate or `NONE`. A freed slot is reassigned immediately to another function
+or causal region; the parent never waits for the other four searches before
+submitting a ready descriptor. `NONE` closes only the searched evidence class,
+not the function, and therefore triggers target-region decomposition rather
+than a donor/history retry or a same-shape syntax matrix.
 
 ## Baseline and cracking loop
 
@@ -260,7 +287,7 @@ The storage contract is:
 
 | Resource | Bound |
 | --- | ---: |
-| Reusable lane scratch (soft / hard) | 384 MiB / 512 MiB |
+| Reusable worker scratch (soft / hard, per worker) | 384 MiB / 512 MiB |
 | One cell temporary output | 64 MiB |
 | One focus-evidence artifact | 256 KiB |
 | Transient measurement envelope | 16 MiB |

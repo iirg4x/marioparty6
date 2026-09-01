@@ -69,7 +69,17 @@ MAX_COMPACT = MAX_REPORT_COMPACT  # compatibility for existing callers
 MAX_FOCUS_COMPACT = 256 * 1024
 MAX_MEASUREMENT_COMPACT = 16 * 1024 * 1024
 MAX_STABLE_IDENTITIES = 2048
+MAX_SNAPSHOT_CACHE_BYTES = 32 * 1024 * 1024
 REPARSE_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+SNAPSHOT_CACHE_SCHEMA = "owner_campaign_snapshot_baseline_cache/v1"
+SNAPSHOT_CACHE_FIELDS = {
+    "schema", "campaign_id", "manifest_sha256", "owner", "unit",
+    "source_path", "source_sha256", "target_object_sha256",
+    "toolchain_sha256", "candidate_object_path", "candidate_object_sha256",
+    "candidate_object_size", "strict_report_sha256", "strict_report_size",
+    "data_report_sha256", "data_report_size", "compile_response_sha256",
+    "compile_proof", "tool_components", "cache_key_sha256", "cache_sha256",
+}
 
 
 class MeasurementError(RuntimeError):
@@ -1320,6 +1330,281 @@ def _measurement(identity: Identity, focus: Mapping[str, Any], args: argparse.Na
     return {**body, "measurement_sha256": _sha_json(body)}
 
 
+def _snapshot_cache_dir(root: Path) -> Path:
+    return root / "build" / ".owner-campaign-snapshot-cache"
+
+
+def _reset_snapshot_cache(root: Path) -> None:
+    cache = _snapshot_cache_dir(root)
+    if not cache.exists() and not cache.is_symlink():
+        return
+    _assert_no_indirection(cache)
+    if not cache.is_dir():
+        raise MeasurementError("snapshot cache path is not a directory")
+    shutil.rmtree(cache)
+
+
+def _atomic_file_copy(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, raw = tempfile.mkstemp(prefix=f".{destination.name}.", dir=destination.parent)
+    temporary = Path(raw)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(source.read_bytes())
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def _tool_component_identities(paths: Sequence[Path]) -> dict[str, str]:
+    names = ("objdiff", "readelf", "ninja", "dtk")
+    if len(paths) != len(names):
+        raise MeasurementError("snapshot cache tool component count is invalid")
+    return {name: _sha_file(Path(path)) for name, path in zip(names, paths)}
+
+
+def _snapshot_cache_key(
+    identity: Identity,
+    *,
+    candidate_path: str,
+    candidate_object_sha256: str,
+    strict_report_sha256: str,
+    data_report_sha256: str,
+    compile_response_sha256: str,
+    tool_components: Mapping[str, str],
+) -> str:
+    return _sha_json({
+        "schema": "owner_campaign_snapshot_baseline_cache_key/v1",
+        "campaign_id": identity.campaign_id,
+        "manifest_sha256": identity.manifest_sha256,
+        "owner": identity.owner,
+        "unit": identity.unit,
+        "source_path": identity.source_path,
+        "source_sha256": identity.source_sha256,
+        "target_object_sha256": identity.target_object_sha256,
+        "toolchain_sha256": identity.toolchain_sha256,
+        "candidate_object_path": candidate_path,
+        "candidate_object_sha256": candidate_object_sha256,
+        "strict_report_sha256": strict_report_sha256,
+        "data_report_sha256": data_report_sha256,
+        "compile_response_sha256": compile_response_sha256,
+        "tool_components": dict(tool_components),
+    })
+
+
+def _publish_snapshot_cache(
+    root: Path,
+    identity: Identity,
+    *,
+    candidate: Path,
+    strict_path: Path,
+    data_path: Path,
+    compile_commands: str,
+    compile_proof: Mapping[str, Any],
+    tool_paths: Sequence[Path],
+) -> None:
+    """Replace the worker's sole baseline cache with one sealed TU entry."""
+
+    candidate_relpath = candidate.relative_to(root).as_posix()
+    component_ids = _tool_component_identities(tool_paths)
+    response_sha = _sha_bytes(compile_commands.encode("utf-8"))
+    candidate_sha = _sha_file(candidate)
+    strict_sha = _sha_file(strict_path)
+    data_sha = _sha_file(data_path)
+    body: dict[str, Any] = {
+        "schema": SNAPSHOT_CACHE_SCHEMA,
+        "campaign_id": identity.campaign_id,
+        "manifest_sha256": identity.manifest_sha256,
+        "owner": identity.owner,
+        "unit": identity.unit,
+        "source_path": identity.source_path,
+        "source_sha256": identity.source_sha256,
+        "target_object_sha256": identity.target_object_sha256,
+        "toolchain_sha256": identity.toolchain_sha256,
+        "candidate_object_path": candidate_relpath,
+        "candidate_object_sha256": candidate_sha,
+        "candidate_object_size": candidate.stat().st_size,
+        "strict_report_sha256": strict_sha,
+        "strict_report_size": strict_path.stat().st_size,
+        "data_report_sha256": data_sha,
+        "data_report_size": data_path.stat().st_size,
+        "compile_response_sha256": response_sha,
+        "compile_proof": dict(compile_proof),
+        "tool_components": component_ids,
+        "cache_key_sha256": _snapshot_cache_key(
+            identity,
+            candidate_path=candidate_relpath,
+            candidate_object_sha256=candidate_sha,
+            strict_report_sha256=strict_sha,
+            data_report_sha256=data_sha,
+            compile_response_sha256=response_sha,
+            tool_components=component_ids,
+        ),
+    }
+    sealed = {**body, "cache_sha256": _sha_json(body)}
+    total = (
+        candidate.stat().st_size
+        + strict_path.stat().st_size
+        + data_path.stat().st_size
+        + len(_canonical(sealed))
+    )
+    _reset_snapshot_cache(root)
+    if total > MAX_SNAPSHOT_CACHE_BYTES or len(_canonical(sealed)) > MAX_REPORT_COMPACT:
+        return
+    cache = _snapshot_cache_dir(root)
+    _safe_dir(cache, root=root, label="snapshot cache directory")
+    try:
+        _atomic_file_copy(candidate, cache / "candidate.o")
+        _atomic_file_copy(strict_path, cache / "strict.json")
+        _atomic_file_copy(data_path, cache / "data.json")
+        _atomic_json(cache / "cache.json", sealed, limit=MAX_REPORT_COMPACT)
+    except BaseException:
+        _reset_snapshot_cache(root)
+        raise
+
+
+def _load_snapshot_cache(
+    root: Path,
+    identity: Identity,
+    *,
+    source: Path,
+    target: Path,
+    candidate: Path,
+    compile_commands: str,
+    tool_paths: Sequence[Path],
+) -> tuple[dict[str, Any], Path, Path] | None:
+    """Validate and restore the one scratch-local baseline cache entry."""
+
+    cache = _snapshot_cache_dir(root)
+    manifest_path = cache / "cache.json"
+    if not manifest_path.is_file():
+        if cache.exists() or cache.is_symlink():
+            _reset_snapshot_cache(root)
+        return None
+    try:
+        _assert_no_indirection(cache)
+        if manifest_path.stat().st_size > MAX_REPORT_COMPACT:
+            raise MeasurementError("snapshot cache manifest exceeds compact limit")
+        if {path.name for path in cache.iterdir()} != {
+            "cache.json", "candidate.o", "strict.json", "data.json",
+        }:
+            raise MeasurementError("snapshot cache contains unexpected entries")
+        value = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict) or set(value) != SNAPSHOT_CACHE_FIELDS:
+            raise MeasurementError("snapshot cache manifest fields are invalid")
+        if value.get("schema") != SNAPSHOT_CACHE_SCHEMA:
+            raise MeasurementError("snapshot cache schema is invalid")
+        body = dict(value)
+        digest = _valid_sha(body.pop("cache_sha256", None), "snapshot cache digest")
+        if _sha_json(body) != digest:
+            raise MeasurementError("snapshot cache digest is invalid")
+        candidate_relpath = candidate.relative_to(root).as_posix()
+        components = _tool_component_identities(tool_paths)
+        response_sha = _sha_bytes(compile_commands.encode("utf-8"))
+        bindings = {
+            "campaign_id": identity.campaign_id,
+            "manifest_sha256": identity.manifest_sha256,
+            "owner": identity.owner,
+            "unit": identity.unit,
+            "source_path": identity.source_path,
+            "source_sha256": identity.source_sha256,
+            "target_object_sha256": identity.target_object_sha256,
+            "toolchain_sha256": identity.toolchain_sha256,
+            "candidate_object_path": candidate_relpath,
+            "compile_response_sha256": response_sha,
+            "tool_components": components,
+        }
+        if any(value.get(field) != expected for field, expected in bindings.items()):
+            raise MeasurementError("snapshot cache binding drift")
+        if _sha_file(source) != identity.source_sha256:
+            raise MeasurementError("snapshot cache source drift")
+        if _sha_file(target) != identity.target_object_sha256:
+            raise MeasurementError("snapshot cache target drift")
+        cached_candidate = cache / "candidate.o"
+        strict_path = cache / "strict.json"
+        data_path = cache / "data.json"
+        for path, sha_field, size_field in (
+            (cached_candidate, "candidate_object_sha256", "candidate_object_size"),
+            (strict_path, "strict_report_sha256", "strict_report_size"),
+            (data_path, "data_report_sha256", "data_report_size"),
+        ):
+            _assert_no_indirection(path)
+            if (
+                not path.is_file()
+                or _sha_file(path) != value.get(sha_field)
+                or path.stat().st_size != value.get(size_field)
+            ):
+                raise MeasurementError("snapshot cache payload drift")
+        if sum(
+            path.stat().st_size
+            for path in (manifest_path, cached_candidate, strict_path, data_path)
+        ) > MAX_SNAPSHOT_CACHE_BYTES:
+            raise MeasurementError("snapshot cache exceeds bounded size")
+        expected_key = _snapshot_cache_key(
+            identity,
+            candidate_path=candidate_relpath,
+            candidate_object_sha256=value["candidate_object_sha256"],
+            strict_report_sha256=value["strict_report_sha256"],
+            data_report_sha256=value["data_report_sha256"],
+            compile_response_sha256=response_sha,
+            tool_components=components,
+        )
+        if value.get("cache_key_sha256") != expected_key:
+            raise MeasurementError("snapshot cache key drift")
+        proof = value.get("compile_proof")
+        if not isinstance(proof, Mapping):
+            raise MeasurementError("snapshot cache compile proof is invalid")
+        compact_proof = _compact_source_link_proof(proof)
+        if (
+            compact_proof.get("source_sha256") != identity.source_sha256
+            or compact_proof.get("candidate_object_sha256")
+            != value["candidate_object_sha256"]
+        ):
+            raise MeasurementError("snapshot cache compile proof drift")
+        _atomic_file_copy(cached_candidate, candidate)
+        if _sha_file(candidate) != value["candidate_object_sha256"]:
+            raise MeasurementError("restored snapshot object drift")
+        return dict(proof), strict_path, data_path
+    except (OSError, ValueError, KeyError, json.JSONDecodeError, MeasurementError):
+        _reset_snapshot_cache(root)
+        return None
+
+
+def _focus_from_reports(
+    *,
+    root: Path,
+    identity: Identity,
+    target: Path,
+    candidate: Path,
+    strict_path: Path,
+    data_path: Path,
+    physical_path: Path,
+    readelf: Path,
+    deadline: Deadline,
+) -> dict[str, Any]:
+    with _bounded_bundle_runner(deadline):
+        physical = bundle._physical_receipt(
+            target, candidate, identity.function, strict_path, readelf
+        )
+        bundle._atomic_json(physical_path, physical)
+    try:
+        return focus_symbol_report.build_from_paths(
+            strict_report_path=strict_path,
+            data_report_path=data_path,
+            function=identity.function,
+            expected_strict_report_sha256=_sha_file(strict_path),
+            expected_data_report_sha256=_sha_file(data_path),
+            physical_receipt_path=physical_path,
+            expected_physical_receipt_sha256=_sha_file(physical_path),
+            require_physical=False,
+        )
+    except Exception as exc:
+        raise MeasurementError(f"focus evidence construction failed: {exc}") from exc
+
+
 def _run_reports(*, root: Path, identity: Identity, target: Path, candidate: Path,
                  objdiff: Path, readelf: Path, temp: Path,
                  deadline: Deadline) -> tuple[dict[str, Any], Path, Path, Path]:
@@ -1329,25 +1614,11 @@ def _run_reports(*, root: Path, identity: Identity, target: Path, candidate: Pat
     with _bounded_bundle_runner(deadline):
         bundle._run_objdiff(objdiff, target, candidate, strict_path, data=False, root=root)
         bundle._run_objdiff(objdiff, target, candidate, data_path, data=True, root=root)
-        physical = bundle._physical_receipt(target, candidate, identity.function, strict_path, readelf)
-        bundle._atomic_json(physical_path, physical)
-    try:
-        focus = focus_symbol_report.build_from_paths(
-            strict_report_path=strict_path,
-            data_report_path=data_path,
-            function=identity.function,
-            expected_strict_report_sha256=_sha_file(strict_path),
-            expected_data_report_sha256=_sha_file(data_path),
-            physical_receipt_path=physical_path,
-            expected_physical_receipt_sha256=_sha_file(physical_path),
-            # Snapshot/candidate measurements must preserve and score a
-            # nonexact physical frontier.  Physical exactness is mandatory for
-            # an exact result, but rejecting it here makes every partial owner
-            # impossible to enter the monotonic campaign in the first place.
-            require_physical=False,
-        )
-    except Exception as exc:
-        raise MeasurementError(f"focus evidence construction failed: {exc}") from exc
+    focus = _focus_from_reports(
+        root=root, identity=identity, target=target, candidate=candidate,
+        strict_path=strict_path, data_path=data_path, physical_path=physical_path,
+        readelf=readelf, deadline=deadline,
+    )
     return focus, strict_path, data_path, physical_path
 
 
@@ -1495,43 +1766,68 @@ def measure_current(*, root: Path, args: argparse.Namespace) -> dict[str, Any]:
         )
         temp = Path(tempfile.mkdtemp(prefix=".owner-campaign-measure-", dir=root / "build"))
         _assert_no_indirection(temp)
-        if candidate.exists():
-            _assert_no_indirection(candidate)
-            candidate.unlink()
-        with _bounded_bundle_runner(deadline):
-            bundle._run([str(ninja), "-j1", str(candidate.relative_to(root))],
-                        cwd=root, label="candidate unit build")
-        candidate = _absolute(candidate, root=root, label="candidate object",
-                              allow_external=False, exists=True)
-        with _bounded_bundle_runner(deadline):
-            compile_commands_after = bundle._run(
-                [str(ninja), "-t", "commands", str(candidate.relative_to(root))],
-                cwd=root, label="Ninja source compiler input response after build",
+        cached = None
+        publish_snapshot_cache = False
+        if phase == "snapshot":
+            cached = _load_snapshot_cache(
+                root, identity, source=source, target=target,
+                candidate=candidate, compile_commands=compile_commands_before,
+                tool_paths=(objdiff, readelf, ninja, dtk),
             )
-        compile_proof_after = _assert_source_compile_provenance(
-            compile_commands_after, root=root, source=source, candidate=candidate,
-            owner=identity.owner,
-        )
-        if compile_proof["compiler_commands"] != compile_proof_after["compiler_commands"]:
-            raise MeasurementError("Ninja source compiler provenance changed during the build")
-        compile_proof_body = dict(compile_proof_after)
-        # Adding the two response digests changes the sealed payload; retain
-        # neither the stale digest from ``compile_proof_after`` nor an
-        # unauthenticated extension of it.
-        compile_proof_body.pop("proof_sha256", None)
-        compile_proof = _seal({
-            **compile_proof_body,
-            "candidate_object_sha256": _sha_file(candidate),
-            "before_response_sha256": _sha_bytes(compile_commands_before.encode("utf-8")),
-            "after_response_sha256": _sha_bytes(compile_commands_after.encode("utf-8")),
-        }, "proof_sha256")
-        if _sha_file(source) != identity.source_sha256:
-            raise MeasurementError("source changed during candidate build")
+        if cached is not None:
+            compile_proof, strict_path, data_path = cached
+            candidate = _absolute(
+                candidate, root=root, label="cached candidate object",
+                allow_external=False, exists=True,
+            )
+            physical_path = temp / "physical.json"
+            focus = _focus_from_reports(
+                root=root, identity=identity, target=target, candidate=candidate,
+                strict_path=strict_path, data_path=data_path,
+                physical_path=physical_path, readelf=readelf, deadline=deadline,
+            )
+        else:
+            # Candidate measurements always rebuild.  Snapshot misses replace
+            # the worker's sole cache only after compilation and both objdiff
+            # channels have been fully verified.
+            if candidate.exists():
+                _assert_no_indirection(candidate)
+                candidate.unlink()
+            with _bounded_bundle_runner(deadline):
+                bundle._run([str(ninja), "-j1", str(candidate.relative_to(root))],
+                            cwd=root, label="candidate unit build")
+            candidate = _absolute(candidate, root=root, label="candidate object",
+                                  allow_external=False, exists=True)
+            with _bounded_bundle_runner(deadline):
+                compile_commands_after = bundle._run(
+                    [str(ninja), "-t", "commands", str(candidate.relative_to(root))],
+                    cwd=root, label="Ninja source compiler input response after build",
+                )
+            compile_proof_after = _assert_source_compile_provenance(
+                compile_commands_after, root=root, source=source, candidate=candidate,
+                owner=identity.owner,
+            )
+            if compile_proof["compiler_commands"] != compile_proof_after["compiler_commands"]:
+                raise MeasurementError("Ninja source compiler provenance changed during the build")
+            compile_proof_body = dict(compile_proof_after)
+            # Adding the two response digests changes the sealed payload; retain
+            # neither the stale digest from ``compile_proof_after`` nor an
+            # unauthenticated extension of it.
+            compile_proof_body.pop("proof_sha256", None)
+            compile_proof = _seal({
+                **compile_proof_body,
+                "candidate_object_sha256": _sha_file(candidate),
+                "before_response_sha256": _sha_bytes(compile_commands_before.encode("utf-8")),
+                "after_response_sha256": _sha_bytes(compile_commands_after.encode("utf-8")),
+            }, "proof_sha256")
+            if _sha_file(source) != identity.source_sha256:
+                raise MeasurementError("source changed during candidate build")
+            focus, strict_path, data_path, physical_path = _run_reports(
+                root=root, identity=identity, target=target, candidate=candidate,
+                objdiff=objdiff, readelf=readelf, temp=temp, deadline=deadline,
+            )
+            publish_snapshot_cache = phase == "snapshot"
         candidate_before_reports_sha = _sha_file(candidate)
-        focus, strict_path, data_path, physical_path = _run_reports(
-            root=root, identity=identity, target=target, candidate=candidate,
-            objdiff=objdiff, readelf=readelf, temp=temp, deadline=deadline,
-        )
         # Reports are generated from files in the disposable worktree.  Bind
         # the published measurement to a final stable source/target/object
         # snapshot, and reject any concurrent build or source drift before the
@@ -1543,6 +1839,14 @@ def measure_current(*, root: Path, args: argparse.Namespace) -> dict[str, Any]:
             expected_candidate_sha256=candidate_before_reports_sha,
             label="report generation",
         )
+        if publish_snapshot_cache:
+            _publish_snapshot_cache(
+                root, identity, candidate=candidate,
+                strict_path=strict_path, data_path=data_path,
+                compile_commands=compile_commands_after,
+                compile_proof=compile_proof,
+                tool_paths=(objdiff, readelf, ninja, dtk),
+            )
         result = _measurement(
             identity, focus, args, strict_path=strict_path, data_path=data_path,
             physical_path=physical_path, candidate=candidate,

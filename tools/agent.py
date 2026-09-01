@@ -1002,6 +1002,12 @@ def _add_owner_campaign_command_arguments(
     )
     parser.add_argument("--state-root", type=Path)
     parser.add_argument("--workers", "--lanes", dest="workers", type=int)
+    if command in {"snapshot", "reconstruct"}:
+        parser.add_argument(
+            "--worker",
+            type=int,
+            help="isolated scratch worker index for one function (0-4)",
+        )
     parser.add_argument("--max-lanes", dest="max_lanes", type=int)
     parser.add_argument("--timeout", "--watchdog-seconds", dest="timeout", type=int)
     parser.add_argument("--idle-timeout", dest="idle_timeout", type=float)
@@ -1301,35 +1307,10 @@ def _print_owner_campaign_result(value: Any) -> int:
     return 0
 
 
-def _run_owner_campaign_snapshot(
-    args: argparse.Namespace, *, root: Path, module: Any
-) -> int:
-    """Establish/read one baseline frontier and print its compact binding."""
+def _compact_owner_campaign_snapshot(frontier: Mapping[str, Any]) -> dict[str, Any]:
+    """Project one full frontier onto the stable compact CLI contract."""
 
-    campaign_path = _campaign_path(args)
-    if campaign_path is None:
-        raise OwnerCampaignCLIError(
-            "owner campaign snapshot requires --campaign"
-        )
-    functions = list(getattr(args, "functions", None) or [])
-    if len(functions) != 1:
-        raise OwnerCampaignCLIError(
-            "owner campaign snapshot requires exactly one --function"
-        )
-    loader = getattr(module, "load_campaign", None)
-    if not callable(loader):
-        raise OwnerCampaignCLIError(
-            "tools.owner_campaign does not expose load_campaign"
-        )
-    snapshotter = getattr(module, "snapshot_frontier", None)
-    if not callable(snapshotter):
-        raise OwnerCampaignCLIError(
-            "tools.owner_campaign does not expose snapshot_frontier"
-        )
-    campaign = loader(root, campaign_path)
-    function = functions[0]
-    frontier = snapshotter(root, campaign, function)
-    compact = {
+    return {
         "schema": "owner_campaign_snapshot/v1",
         "status": "snapshot",
         "campaign_id": frontier["campaign_id"],
@@ -1346,6 +1327,81 @@ def _run_owner_campaign_snapshot(
         "focus_evidence_sha256": frontier["focus_evidence_sha256"],
         "parent_frontier_sha256": frontier["parent_frontier_sha256"],
         "generation": frontier["generation"],
+        "authority_advanced": False,
+    }
+
+
+def _run_owner_campaign_snapshot(
+    args: argparse.Namespace, *, root: Path, module: Any
+) -> int:
+    """Establish/read one or more baseline frontiers without worker collisions."""
+
+    campaign_path = _campaign_path(args)
+    if campaign_path is None:
+        raise OwnerCampaignCLIError(
+            "owner campaign snapshot requires --campaign"
+        )
+    functions = list(getattr(args, "functions", None) or [])
+    if not functions:
+        raise OwnerCampaignCLIError(
+            "owner campaign snapshot requires at least one --function"
+        )
+    if len(set(functions)) != len(functions):
+        raise OwnerCampaignCLIError(
+            "owner campaign snapshot functions must be distinct"
+        )
+    workers = getattr(args, "workers", None)
+    worker = getattr(args, "worker", None)
+    if workers is not None and not 1 <= workers <= 5:
+        raise OwnerCampaignCLIError("owner campaign snapshot --workers must be 1-5")
+    if worker is not None and not 0 <= worker <= 4:
+        raise OwnerCampaignCLIError("owner campaign snapshot --worker must be 0-4")
+    if worker is not None and (len(functions) != 1 or workers is not None):
+        raise OwnerCampaignCLIError(
+            "owner campaign snapshot --worker requires one function and no --workers"
+        )
+    loader = getattr(module, "load_campaign", None)
+    if not callable(loader):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose load_campaign"
+        )
+    snapshotter = getattr(module, "snapshot_frontier", None)
+    if not callable(snapshotter):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose snapshot_frontier"
+        )
+    campaign = loader(root, campaign_path)
+    outside = [function for function in functions if function not in campaign["functions"]]
+    if outside:
+        raise OwnerCampaignCLIError(
+            f"function is outside campaign scope: {outside[0]}"
+        )
+    if len(functions) == 1:
+        kwargs = {} if worker is None else {"worker": worker}
+        frontier = snapshotter(root, campaign, functions[0], **kwargs)
+        return _print_owner_campaign_result(
+            _compact_owner_campaign_snapshot(frontier)
+        )
+
+    bulk_snapshotter = getattr(module, "snapshot_frontiers", None)
+    if not callable(bulk_snapshotter):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose snapshot_frontiers"
+        )
+    # One bulk call lets the core's work-stealing pool keep every worker busy;
+    # there is no sequential wave barrier when functions have uneven latency.
+    frontiers = bulk_snapshotter(root, campaign, functions, workers=workers)
+    snapshots = [
+        _compact_owner_campaign_snapshot(frontiers[function])
+        for function in functions
+    ]
+    compact = {
+        "schema": "owner_campaign_snapshots/v1",
+        "status": "snapshot",
+        "campaign_id": campaign["campaign_id"],
+        "functions": list(functions),
+        "snapshots": snapshots,
+        "count": len(snapshots),
         "authority_advanced": False,
     }
     return _print_owner_campaign_result(compact)
@@ -1366,6 +1422,14 @@ def _run_owner_campaign_reconstruct(
         raise OwnerCampaignCLIError(
             "owner campaign reconstruct requires exactly one --function"
         )
+    worker = getattr(args, "worker", None)
+    workers = getattr(args, "workers", None)
+    if workers is not None:
+        raise OwnerCampaignCLIError(
+            "owner campaign reconstruct accepts --worker, not --workers"
+        )
+    if worker is not None and not 0 <= worker <= 4:
+        raise OwnerCampaignCLIError("owner campaign reconstruct --worker must be 0-4")
     loader = getattr(module, "load_campaign", None)
     if not callable(loader):
         raise OwnerCampaignCLIError(
@@ -1379,12 +1443,23 @@ def _run_owner_campaign_reconstruct(
     campaign = loader(root, campaign_path)
     from tools.owner_campaign_lane import reconstruct_frontier
 
+    bound_snapshotter = snapshotter
+    if worker is not None:
+        def bound_snapshotter(
+            current_root: Path,
+            current_campaign: Mapping[str, Any],
+            function: str,
+        ) -> Mapping[str, Any]:
+            return snapshotter(
+                current_root, current_campaign, function, worker=worker
+            )
+
     try:
         value = reconstruct_frontier(
             root,
             campaign,
             functions[0],
-            snapshotter=snapshotter,
+            snapshotter=bound_snapshotter,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"error: {exc}")

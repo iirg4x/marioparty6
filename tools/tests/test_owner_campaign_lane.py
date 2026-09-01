@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -857,6 +858,240 @@ class OwnerCampaignLaneTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "closed")
         progress.assert_called_once_with(self.root, campaign)
+
+    def test_streaming_refills_sixth_slot_before_long_fifth_finishes(self) -> None:
+        """A freed slot is refilled without waiting for the slowest slot."""
+
+        self._enable_streaming_pipeline()
+        functions = [f"owner{index}" for index in range(6)]
+        self.campaign["functions"] = functions
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [
+            self._candidate(f"stream-{function}", function=function)
+            for function in functions
+        ]
+        short_finished = threading.Event()
+        long_started = threading.Event()
+        long_finished = threading.Event()
+        sixth_started = threading.Event()
+        release_long = threading.Event()
+        starts: list[tuple[str, int]] = []
+
+        def pipeline(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            path = paths[0]
+            function = json.loads(path.read_text(encoding="utf-8"))["function"]
+            starts.append((function, worker))
+            if function == "owner0":
+                short_finished.set()
+            elif function == "owner4":
+                long_started.set()
+                self.assertTrue(release_long.wait(timeout=5))
+                long_finished.set()
+            elif function == "owner5":
+                # The fifth original slot is deliberately still blocked when
+                # the sixth function is admitted.
+                self.assertTrue(short_finished.is_set())
+                self.assertTrue(long_started.is_set())
+                self.assertFalse(long_finished.is_set())
+                sixth_started.set()
+            return {
+                "schema": lane.LANE_RESULT_SCHEMA,
+                "status": "infra_retry",
+                "campaign_id": self.campaign["campaign_id"],
+                "discovered": 1,
+                "dispatched": 1,
+                "results": [{
+                    "status": "infra_retry",
+                    "function": function,
+                    "authority_advanced": False,
+                }],
+                "cleaned": [],
+                "preserved_infrastructure": [],
+                "selection": None,
+                "selections": [],
+                "recorded_outcomes": [],
+                "authority_advanced": False,
+            }
+
+        def discover(
+            root: Path,
+            campaign: dict[str, object],
+            *,
+            limit: int,
+        ) -> list[Path]:
+            return descriptors
+
+        with (
+            patch.object(lane, "_streaming_pipeline", side_effect=pipeline),
+            patch.object(lane, "discover_candidates", side_effect=discover),
+            patch.object(lane, "_post_pipeline_maintenance"),
+            patch.object(lane.owner_campaign, "_check_cancelled"),
+        ):
+            # ``owner4`` cannot release itself; the test releases it only after
+            # observing that owner5 was admitted into the newly free slot.
+            result_holder: list[dict[str, object]] = []
+            error_holder: list[BaseException] = []
+
+            def drain() -> None:
+                try:
+                    result_holder.append(
+                        lane._run_streaming_inbox(
+                            self.root,
+                            self.campaign,
+                            max_candidates=5,
+                            initial_descriptors=descriptors[:5],
+                            poll_interval=0.01,
+                            clock=time.monotonic,
+                            watchdog_deadline=time.monotonic() + 5,
+                        )
+                    )
+                except BaseException as exc:
+                    error_holder.append(exc)
+
+            thread = threading.Thread(target=drain)
+            thread.start()
+            self.assertTrue(sixth_started.wait(timeout=5), starts)
+            release_long.set()
+            thread.join(timeout=5)
+
+        self.assertFalse(thread.is_alive())
+        self.assertFalse(error_holder, error_holder)
+        self.assertEqual(result_holder[0]["dispatched"], 6)
+        self.assertEqual(
+            {function for function, _worker in starts},
+            set(functions),
+        )
+        self.assertEqual(len({worker for _function, worker in starts}), 5)
+
+    def test_streaming_never_dispatches_two_candidates_for_one_function(self) -> None:
+        """Refills skip same-function candidates even when slots are free."""
+
+        self._enable_streaming_pipeline()
+        functions = ["owner0", "owner0", "owner1", "owner2", "owner3", "owner4"]
+        self.campaign["functions"] = [f"owner{index}" for index in range(5)]
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [
+            self._candidate(f"duplicate-{index}", function=function)
+            for index, function in enumerate(functions)
+        ]
+        dispatched: list[str] = []
+
+        def pipeline(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            path = paths[0]
+            function = json.loads(path.read_text(encoding="utf-8"))["function"]
+            dispatched.append(function)
+            return {
+                "schema": lane.LANE_RESULT_SCHEMA,
+                "status": "infra_retry",
+                "campaign_id": self.campaign["campaign_id"],
+                "discovered": 1,
+                "dispatched": 1,
+                "results": [{
+                    "status": "infra_retry",
+                    "function": function,
+                    "authority_advanced": False,
+                }],
+                "cleaned": [],
+                "preserved_infrastructure": [],
+                "selection": None,
+                "selections": [],
+                "recorded_outcomes": [],
+                "authority_advanced": False,
+            }
+
+        with (
+            patch.object(lane, "_streaming_pipeline", side_effect=pipeline),
+            patch.object(lane, "discover_candidates", return_value=descriptors),
+            patch.object(lane, "_post_pipeline_maintenance"),
+            patch.object(lane.owner_campaign, "_check_cancelled"),
+        ):
+            result = lane._run_streaming_inbox(
+                self.root,
+                self.campaign,
+                max_candidates=5,
+                initial_descriptors=descriptors,
+                poll_interval=0.01,
+                clock=time.monotonic,
+                watchdog_deadline=time.monotonic() + 5,
+            )
+
+        self.assertEqual(dispatched, ["owner0", "owner1", "owner2", "owner3", "owner4"])
+        self.assertEqual(result["dispatched"], 5)
+
+    def test_streaming_gives_selector_the_complete_same_function_group(self) -> None:
+        """A lower-ranked first entry cannot bypass its ranked sibling."""
+
+        self._enable_streaming_pipeline()
+        self.campaign["base_commit"] = "base-commit"
+        lower = self._candidate("ranked-lower")
+        higher = self._candidate("ranked-higher")
+        descriptors = [lower, higher]
+        selector_inputs: list[list[Path]] = []
+
+        def inbox(
+            root: Path,
+            campaign: dict[str, object],
+            *,
+            max_candidates: int,
+            _pre_discovered: list[Path],
+            _defer_maintenance: bool,
+            _worker: int,
+        ) -> dict[str, object]:
+            selector_inputs.append(list(_pre_discovered))
+            # This stub stands in for the real selector's deterministic rank;
+            # the assertion is that both siblings reach it in one group.
+            selected = _pre_discovered[-1]
+            return {
+                "schema": lane.LANE_RESULT_SCHEMA,
+                "status": "processed",
+                "campaign_id": campaign["campaign_id"],
+                "discovered": len(_pre_discovered),
+                "dispatched": 1,
+                "results": [{
+                    "status": "no_gain",
+                    "function": "focus",
+                    "candidate": str(selected),
+                    "authority_advanced": False,
+                }],
+                "cleaned": [],
+                "preserved_infrastructure": [],
+                "selection": None,
+                "selections": [],
+                "recorded_outcomes": [],
+                "authority_advanced": False,
+            }
+
+        with (
+            patch.object(lane, "run_inbox", side_effect=inbox),
+            patch.object(lane, "discover_candidates", return_value=descriptors),
+            patch.object(lane, "_post_pipeline_maintenance"),
+            patch.object(lane.owner_campaign, "_check_cancelled"),
+        ):
+            result = lane._run_streaming_inbox(
+                self.root,
+                self.campaign,
+                max_candidates=5,
+                initial_descriptors=descriptors,
+                poll_interval=0.01,
+                clock=time.monotonic,
+                watchdog_deadline=time.monotonic() + 5,
+            )
+
+        self.assertEqual(selector_inputs, [descriptors])
+        self.assertEqual(result["results"][0]["candidate"], str(higher))
+        self.assertEqual(result["dispatched"], 1)
 
     def test_driver_has_no_legacy_control_dependency(self) -> None:
         source = Path(lane.__file__).read_text(encoding="utf-8").lower()

@@ -127,6 +127,139 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
         self.assertEqual(identity.campaign_id, "campaign")
         self.assertEqual(identity.target_object_sha256, "c" * 64)
 
+    def test_snapshot_cache_reuses_one_tu_baseline_and_invalidates_safely(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "src" / "owner.c"
+            source.parent.mkdir(parents=True)
+            source.write_text(
+                "int first(void) { return 0; }\n"
+                "int second(void) { return 0; }\n",
+                encoding="utf-8",
+            )
+            target = root / "build" / "target.o"
+            candidate = root / "build" / "owner.o"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"target")
+            tools = []
+            for name in ("objdiff", "readelf", "ninja", "dtk"):
+                path = root / "build" / name
+                path.write_bytes(name.encode("ascii"))
+                tools.append(path)
+            compile_count = 0
+            objdiff_count = 0
+            command = "mwcc -c src/owner.c -o build/owner.o"
+
+            def run(argv, *, cwd, label, **_kwargs):
+                nonlocal compile_count
+                if "-t" in argv:
+                    return command
+                self.assertIn("candidate unit build", label)
+                compile_count += 1
+                candidate.write_bytes(b"object:" + source.read_bytes())
+                return "compiled"
+
+            def objdiff(
+                _objdiff, _target, _candidate, output, *, data, root,
+            ):
+                nonlocal objdiff_count
+                objdiff_count += 1
+                output.write_text("data" if data else "strict", encoding="utf-8")
+
+            def focus_report(**kwargs):
+                return _focus(str(kwargs["function"]))
+
+            def args(phase: str, function: str, output: str) -> argparse.Namespace:
+                return adapter._parser().parse_args([
+                    "--phase", phase,
+                    "--root", str(root),
+                    "--output", output,
+                    "--source", "src/owner.c",
+                    "--toolchain", "build/toolchain.json",
+                    "--campaign-id", "cache-campaign",
+                    "--manifest-sha256", "a" * 64,
+                    "--owner", "main:board/owner",
+                    "--unit", "main/board/owner",
+                    "--function", function,
+                    "--source-sha256", hashlib.sha256(source.read_bytes()).hexdigest(),
+                    "--target-object-sha256", hashlib.sha256(target.read_bytes()).hexdigest(),
+                    "--toolchain-sha256", "d" * 64,
+                    "--base-commit", "e" * 40,
+                ])
+
+            with (
+                mock.patch("pathlib.Path.cwd", return_value=root),
+                mock.patch.object(
+                    adapter, "_toolchain",
+                    return_value=({}, *tools),
+                ),
+                mock.patch.object(adapter.bundle, "_verify_objdiff"),
+                mock.patch.object(adapter.bundle, "_verify_readelf"),
+                mock.patch.object(adapter.bundle, "_verify_ninja"),
+                mock.patch.object(adapter.bundle, "_ensure_configured", return_value=None),
+                mock.patch.object(adapter, "_run_bounded", side_effect=run),
+                mock.patch.object(adapter.bundle, "_run_objdiff", side_effect=objdiff),
+                mock.patch.object(
+                    adapter.bundle, "_physical_receipt", return_value={"physical": True}
+                ),
+                mock.patch.object(
+                    adapter.focus_symbol_report,
+                    "build_from_paths",
+                    side_effect=focus_report,
+                ),
+                mock.patch.object(
+                    adapter, "_unit_objects", return_value=(target, candidate)
+                ),
+                mock.patch.object(
+                    adapter,
+                    "_measurement",
+                    side_effect=lambda identity, *_args, **_kwargs: {
+                        "phase": identity.phase,
+                        "function": identity.function,
+                    },
+                ),
+            ):
+                adapter.measure_current(
+                    root=root, args=args("snapshot", "first", "build/first.json")
+                )
+                adapter.measure_current(
+                    root=root, args=args("snapshot", "second", "build/second.json")
+                )
+                self.assertEqual((compile_count, objdiff_count), (1, 2))
+
+                # A report payload that no longer matches its sealed receipt
+                # is discarded and rebuilt rather than partially reused.
+                (adapter._snapshot_cache_dir(root) / "strict.json").write_text(
+                    "tampered", encoding="utf-8"
+                )
+                adapter.measure_current(
+                    root=root, args=args("snapshot", "first", "build/rebuilt.json")
+                )
+                self.assertEqual((compile_count, objdiff_count), (2, 4))
+
+                # Candidate proof is never served from the baseline cache.
+                adapter.measure_current(
+                    root=root, args=args("candidate", "second", "build/candidate.json")
+                )
+                self.assertEqual((compile_count, objdiff_count), (3, 6))
+
+                # A source identity change invalidates the single entry and
+                # replaces it with a fresh compile/report pair.
+                source.write_text(
+                    "int first(void) { return 1; }\n"
+                    "int second(void) { return 0; }\n",
+                    encoding="utf-8",
+                )
+                adapter.measure_current(
+                    root=root, args=args("snapshot", "first", "build/refreshed.json")
+                )
+                self.assertEqual((compile_count, objdiff_count), (4, 8))
+                cache = adapter._snapshot_cache_dir(root)
+                self.assertEqual(
+                    {path.name for path in cache.iterdir()},
+                    {"cache.json", "candidate.o", "strict.json", "data.json"},
+                )
+
     def test_measurement_is_closed_and_compact(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
