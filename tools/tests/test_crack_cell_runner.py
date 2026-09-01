@@ -254,6 +254,36 @@ class CrackCellRunnerTests(unittest.TestCase):
         self.assertFalse(value["compile_performed"])
         self.assertFalse(value["cell_consumed"])
 
+    def test_porcelain_status_preserves_leading_state_columns(self) -> None:
+        other = self.root / "src" / "board" / "other.c"
+        other.write_text("int other;\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "add other"], cwd=self.root, check=True)
+        other.write_text("int changed;\n", encoding="utf-8")
+
+        status = runner._git_text(
+            self.root, "status", "--porcelain", "--untracked-files=no"
+        )
+
+        self.assertEqual(status, " M src/board/other.c")
+
+    def test_tracked_write_error_keeps_complete_source_path(self) -> None:
+        other = self.root / "src" / "board" / "other.c"
+        other.write_text("int other;\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "add other"], cwd=self.root, check=True)
+        artifact = json.loads(self.baseline.read_text(encoding="utf-8"))
+        artifact["base_commit"] = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
+        ).strip()
+        other.write_text("int changed;\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            runner.CellRunnerError,
+            r"tracked write outside retained frontier source: src/board/other\.c",
+        ):
+            runner._authoritative_source(self.root, self.candidate, artifact)
+
     def test_foreign_posix_worktree_marker_is_rejected_before_compile(self) -> None:
         self.worktree.mkdir()
         (self.worktree / ".git").write_text(

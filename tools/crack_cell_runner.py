@@ -144,7 +144,9 @@ def _git_text(repository: Path, *args: str) -> str:
     if process.returncode != 0:
         reason = (process.stderr or process.stdout).strip()[:1000]
         raise CellRunnerError(f"Git context check failed ({process.returncode}): {reason}")
-    return process.stdout.strip()
+    # Porcelain status output uses its first two columns for state.  Preserve
+    # leading whitespace so callers can safely slice the path at column 3.
+    return process.stdout.rstrip()
 
 
 def _same_path(left: Path, right: Path) -> bool:
