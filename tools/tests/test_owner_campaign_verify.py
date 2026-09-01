@@ -110,6 +110,16 @@ def _measurement(*, exact: bool) -> dict[str, object]:
 
 
 class OwnerCampaignVerifyTests(unittest.TestCase):
+    def _reseal_measurement(self, value: dict[str, object]) -> None:
+        focus = value["focus_evidence"]
+        unsigned_focus = dict(focus)
+        unsigned_focus.pop("focus_evidence_sha256")
+        focus["focus_evidence_sha256"] = _sha(unsigned_focus)
+        value["report_receipts"]["focus"] = focus["focus_evidence_sha256"]
+        unsigned = dict(value)
+        unsigned.pop("measurement_sha256")
+        value["measurement_sha256"] = _sha(unsigned)
+
     def _with_reconstruction(self, value: dict[str, object]) -> dict[str, object]:
         focus = _focus(differences=1)
         focus["schema"] = "focus_symbol_report/v1"
@@ -149,6 +159,41 @@ class OwnerCampaignVerifyTests(unittest.TestCase):
         self.assertTrue(checked["verified"])
         self.assertEqual(checked["measurement_sha256"], value["measurement_sha256"])
         self.assertEqual(checked["focus_evidence_sha256"], value["focus_evidence"]["focus_evidence_sha256"])
+
+    def test_newly_exact_sibling_may_extend_immutable_protected_census(self) -> None:
+        value = _measurement(exact=True)
+        focus = value["focus_evidence"]
+        focus["sibling_identities"] = ["newly-exact", "sibling"]
+        focus["sibling_digest"] = _sha(focus["sibling_identities"])
+        self._reseal_measurement(value)
+
+        checked = verify_measurement(value)
+
+        self.assertTrue(checked["verified"])
+        self.assertEqual(value["metrics"]["protected_total"], 1)
+        self.assertEqual(len(focus["sibling_identities"]), 2)
+
+    def test_protected_losses_cannot_exceed_immutable_total(self) -> None:
+        value = _measurement(exact=False)
+        value["focus_evidence"]["protected_total"] = 0
+        value["focus_evidence"]["protected_losses"] = 1
+        value["metrics"]["protected_total"] = 0
+        value["metrics"]["protected_losses"] = 1
+        self._reseal_measurement(value)
+
+        with self.assertRaisesRegex(VerificationError, "protected losses exceed"):
+            verify_measurement(value)
+
+    def test_observed_protected_identities_must_be_in_sibling_census(self) -> None:
+        value = _measurement(exact=False)
+        value["focus_evidence"]["protected_total"] = 2
+        value["focus_evidence"]["protected_losses"] = 0
+        value["metrics"]["protected_total"] = 2
+        value["metrics"]["protected_losses"] = 0
+        self._reseal_measurement(value)
+
+        with self.assertRaisesRegex(VerificationError, "omits observed"):
+            verify_measurement(value)
 
     def test_tampered_reconstruction_packet_is_rejected_even_when_measurement_resealed(self) -> None:
         value = self._with_reconstruction(_measurement(exact=False))

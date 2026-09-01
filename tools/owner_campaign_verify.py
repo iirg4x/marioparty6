@@ -234,8 +234,11 @@ def _verify_focus(
         raise VerificationError("protected sibling digest is invalid")
     if value["protected_losses"] != 0 and value["strict_row_count"] == 0:
         raise VerificationError("exact focus evidence has protected sibling losses")
-    if value["protected_total"] < len(siblings):
-        raise VerificationError("protected total is smaller than sibling census")
+    if value["protected_losses"] > value["protected_total"]:
+        raise VerificationError("protected losses exceed protected total")
+    protected_observed = value["protected_total"] - value["protected_losses"]
+    if protected_observed > len(siblings):
+        raise VerificationError("protected sibling census omits observed protected identities")
     if len(_canonical(value)) > MAX_FOCUS_COMPACT:
         raise VerificationError("focus evidence exceeds 256 KiB compact limit")
     # These fields are intentionally returned rather than discarded.  They are
