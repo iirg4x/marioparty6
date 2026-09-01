@@ -172,6 +172,72 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         )
         return descriptor, source, sidecar
 
+    def _decomposition_proposal(
+        self,
+        name: str,
+        *,
+        expected_terminal: str = "improved",
+        predicted: list[str] | None = None,
+        cluster_rows: list[str] | None = None,
+        wrong_region: bool = False,
+    ) -> tuple[Path, Path]:
+        residual = ["strict:focus:row:1", "strict:focus:row:2"]
+        predicted = predicted or ["strict:focus:row:1"]
+        descriptor, _source, sidecar = self._proposal(
+            name,
+            residual=residual,
+            predicted=predicted,
+            predicted_counts={"strict": 2 - len(predicted), "data": 0, "physical": 0},
+            ownership_complete=False,
+        )
+        region = {
+            "cluster_id": "other" if wrong_region else "cluster-000",
+            "closed": True,
+            "strict_row_ids": cluster_rows or ["strict:focus:row:1"],
+        }
+        packet_body: dict[str, object] = {
+            "status": "UNKNOWN",
+            "owner": self.campaign["owner"],
+            "unit": self.campaign["unit"],
+            "function": "focus",
+            "source_sha256": self.frontier["source_sha256"],
+            "toolchain_sha256": self.frontier["toolchain_sha256"],
+            # Live broad packets may have no parent frontier.
+            "parent_frontier_sha256": None,
+            "target_first_signal": {
+                "status": "UNKNOWN",
+                "next_action": "DECOMPOSE",
+                "exact_terminal_possible": False,
+            },
+            "decomposition_regions": [region],
+            "causal_clusters": [{
+                "cluster_id": "cluster-000",
+                "strict_row_ids": cluster_rows or ["strict:focus:row:1"],
+            }],
+        }
+        packet = _seal(packet_body, "packet_sha256")
+        packet_path = self.root / "build" / "evidence" / f"{name}.reconstruction.json"
+        packet_path.parent.mkdir(parents=True, exist_ok=True)
+        packet_path.write_text(json.dumps(packet, sort_keys=True), encoding="utf-8")
+        evidence = json.loads(sidecar.read_text(encoding="utf-8"))
+        evidence.pop("evidence_sha256")
+        evidence["expected_terminal"] = expected_terminal
+        evidence["ownership_scope"] = "bounded_decomposition_region"
+        evidence["reconstruction"] = {
+            "path": packet_path.relative_to(self.root).as_posix(),
+            "sha256": _sha_bytes(packet_path.read_bytes()),
+            "packet_sha256": packet["packet_sha256"],
+            "status": "UNKNOWN",
+            "next_action": "DECOMPOSE",
+            "causal_cluster_id": "cluster-000",
+            "bounded_region": region,
+        }
+        sidecar.write_text(
+            json.dumps(_seal(evidence, "evidence_sha256"), sort_keys=True),
+            encoding="utf-8",
+        )
+        return descriptor, packet_path
+
     def _write_outcome(
         self, *, status: str, source_class: str = "direct_semantic_owner",
         predicted: list[str] | None = None,
@@ -243,6 +309,70 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertTrue(descriptor.exists())
         self.assertTrue(source.exists())
         self.assertTrue(sidecar.exists())
+
+    def test_bounded_unknown_decomposition_dispatches_improved_with_parent_none(self) -> None:
+        descriptor, _packet = self._decomposition_proposal("dossun-region")
+        with patch.object(
+            selector.owner_campaign_reconstruction, "verify_packet", return_value=None
+        ):
+            result = selector.select_winning_candidate(
+                self.root, self.campaign, [descriptor]
+            )
+
+        self.assertEqual(result["status"], selector.SELECTED)
+        self.assertEqual(result["selected"]["expected_terminal"], "improved")
+
+    def test_bounded_decomposition_wrong_region_fails_closed(self) -> None:
+        descriptor, _packet = self._decomposition_proposal(
+            "wrong-region", wrong_region=True
+        )
+        with patch.object(
+            selector.owner_campaign_reconstruction, "verify_packet", return_value=None
+        ):
+            result = selector.select_winning_candidate(
+                self.root, self.campaign, [descriptor]
+            )
+        self.assertEqual(result["status"], selector.UNKNOWN)
+
+    def test_bounded_decomposition_rows_outside_cluster_fail_closed(self) -> None:
+        descriptor, _packet = self._decomposition_proposal(
+            "wrong-rows", predicted=["strict:focus:row:2"]
+        )
+        with patch.object(
+            selector.owner_campaign_reconstruction, "verify_packet", return_value=None
+        ):
+            result = selector.select_winning_candidate(
+                self.root, self.campaign, [descriptor]
+            )
+        self.assertEqual(result["status"], selector.UNKNOWN)
+        self.assertIn("ownership is incomplete", result["reason"])
+
+    def test_bounded_decomposition_never_authorizes_exact(self) -> None:
+        descriptor, _packet = self._decomposition_proposal(
+            "exact-prohibited", expected_terminal="exact"
+        )
+        with patch.object(
+            selector.owner_campaign_reconstruction, "verify_packet", return_value=None
+        ):
+            result = selector.select_winning_candidate(
+                self.root, self.campaign, [descriptor]
+            )
+        self.assertEqual(result["status"], selector.UNKNOWN)
+
+    def test_bounded_decomposition_unverified_packet_fails_closed(self) -> None:
+        descriptor, _packet = self._decomposition_proposal("unverified-packet")
+        with patch.object(
+            selector.owner_campaign_reconstruction,
+            "verify_packet",
+            side_effect=selector.owner_campaign_reconstruction.ReconstructionPacketError(
+                "packet_sha256 mismatch"
+            ),
+        ):
+            result = selector.select_winning_candidate(
+                self.root, self.campaign, [descriptor]
+            )
+        self.assertEqual(result["status"], selector.UNKNOWN)
+        self.assertIn("ownership is incomplete", result["reason"])
 
     def test_rank_one_tie_dispatches_one_deterministically(self) -> None:
         first = self._proposal("first")

@@ -28,6 +28,7 @@ import re
 from typing import Any, Mapping, Sequence
 
 from . import owner_campaign
+from . import owner_campaign_reconstruction
 
 
 SCHEMA = "owner_campaign_selection/v1"
@@ -1060,6 +1061,155 @@ def _ownership_complete(value: Mapping[str, Any]) -> bool:
     return False
 
 
+def _reconstruction_row_ids(value: Mapping[str, Any]) -> set[str]:
+    """Return the row identities sealed by one cluster or bounded region."""
+
+    result: set[str] = set()
+    for key in (
+        "row_ids", "strict_row_ids", "data_row_ids",
+        "physical_difference_ids", "residual_row_ids",
+    ):
+        rows = value.get(key)
+        if isinstance(rows, Mapping):
+            for nested in rows.values():
+                if isinstance(nested, list):
+                    result.update(row for row in nested if isinstance(row, str))
+        elif isinstance(rows, list):
+            result.update(row for row in rows if isinstance(row, str))
+    return result
+
+
+def _bounded_decomposition_ownership(
+    root: Path,
+    value: Mapping[str, Any],
+    *,
+    function: str,
+    unit: Any,
+    source_sha256: str,
+    toolchain_sha256: str,
+    frontier_sha256: str,
+    predicted_rows: Sequence[str],
+) -> bool:
+    """Validate one improved-only, region-scoped UNKNOWN reconstruction."""
+
+    if value.get("ownership_complete") is not False:
+        return False
+    if value.get("ownership_scope") != "bounded_decomposition_region":
+        return False
+    if value.get("expected_terminal") != "improved":
+        return False
+    reconstruction = value.get("reconstruction")
+    if not isinstance(reconstruction, Mapping):
+        return False
+    if (
+        reconstruction.get("status") != "UNKNOWN"
+        or reconstruction.get("next_action") != "DECOMPOSE"
+    ):
+        return False
+    region = reconstruction.get("bounded_region")
+    cluster_id = reconstruction.get("causal_cluster_id")
+    if not isinstance(region, Mapping) or not isinstance(cluster_id, str) or not cluster_id:
+        return False
+    # Production broad packets predate an explicit ``closed`` marker.  An
+    # explicit false remains fatal; absence is accepted only when the region
+    # is exactly cross-linked to one sealed causal cluster below.
+    if region.get("closed") is False or region.get("complete") is False:
+        return False
+    region_cluster_id = region.get("cluster_id")
+    region_cluster_ids = region.get("cluster_ids")
+    if (
+        isinstance(region_cluster_id, str)
+        and region_cluster_id != cluster_id
+    ):
+        return False
+    if (
+        isinstance(region_cluster_ids, list)
+        and cluster_id not in region_cluster_ids
+    ):
+        return False
+
+    try:
+        packet_path, packet_file_sha = _file_ref(
+            reconstruction, "selection reconstruction", root
+        )
+        packet = _read_json(packet_path, "selection reconstruction")
+        owner_campaign_reconstruction.verify_packet(packet)
+    except (
+        SelectionError,
+        owner_campaign_reconstruction.ReconstructionPacketError,
+    ):
+        return False
+    packet_sha = reconstruction.get("packet_sha256")
+    parent_frontier = packet.get("parent_frontier_sha256")
+    if (
+        packet_file_sha != reconstruction.get("sha256")
+        or packet.get("packet_sha256") != packet_sha
+        or packet.get("status") != "UNKNOWN"
+        or packet.get("function") != function
+        or packet.get("unit") != unit
+        or packet.get("source_sha256") != source_sha256
+        or packet.get("toolchain_sha256") != toolchain_sha256
+        or (
+            parent_frontier is not None
+            and parent_frontier != frontier_sha256
+        )
+    ):
+        return False
+    signal = packet.get("target_first_signal")
+    if (
+        not isinstance(signal, Mapping)
+        or signal.get("status") != "UNKNOWN"
+        or signal.get("next_action") != "DECOMPOSE"
+        or signal.get("exact_terminal_possible") is not False
+    ):
+        return False
+
+    packet_regions = packet.get("decomposition_regions")
+    if not isinstance(packet_regions, list) or not any(
+        isinstance(item, Mapping) and dict(item) == dict(region)
+        for item in packet_regions
+    ):
+        return False
+    packet_clusters = packet.get("causal_clusters")
+    if not isinstance(packet_clusters, list):
+        return False
+    selected = [
+        item for item in packet_clusters
+        if isinstance(item, Mapping) and item.get("cluster_id") == cluster_id
+    ]
+    if len(selected) != 1:
+        return False
+
+    permitted_clusters: list[Mapping[str, Any]] = list(selected)
+    region_ids = region.get("cluster_ids")
+    if isinstance(region_ids, list):
+        wanted = {item for item in region_ids if isinstance(item, str)}
+        permitted_clusters = [
+            item for item in packet_clusters
+            if isinstance(item, Mapping) and item.get("cluster_id") in wanted
+        ]
+        if {item.get("cluster_id") for item in permitted_clusters} != wanted:
+            return False
+    else:
+        region_group = region.get("mirror_group", region.get("mirror_group_id"))
+        if isinstance(region_group, Mapping):
+            region_group = region_group.get("id", region_group.get("group_id"))
+        if isinstance(region_group, str) and region_group:
+            permitted_clusters = [
+                item for item in packet_clusters
+                if isinstance(item, Mapping)
+                and item.get("mirror_group", item.get("mirror_group_id")) == region_group
+            ]
+            if not permitted_clusters:
+                return False
+    permitted_rows: set[str] = set()
+    for cluster in permitted_clusters:
+        permitted_rows.update(_reconstruction_row_ids(cluster))
+    if not permitted_rows:
+        permitted_rows.update(_reconstruction_row_ids(region))
+    return bool(permitted_rows) and set(predicted_rows) <= permitted_rows
+
+
 def _validate_proposal(
     root: Path,
     campaign: Mapping[str, Any],
@@ -1081,8 +1231,6 @@ def _validate_proposal(
         raise SelectionError("selection evidence identity is invalid")
     status, source_class = _selection_class(value)
     rank = _rank(value)
-    if not _ownership_complete(value):
-        raise SelectionError("selection ownership is incomplete")
     candidate_path, candidate_sha = _candidate_reference(value, proposal)
     if candidate_path is not None:
         normalized = Path(candidate_path)
@@ -1181,6 +1329,17 @@ def _validate_proposal(
             raise SelectionError("predicted remaining counts do not match predicted rows")
     if value.get("expected_terminal") == "exact" and any(counts.values()):
         raise SelectionError("exact selection does not predict zero remaining rows")
+    if not _ownership_complete(value) and not _bounded_decomposition_ownership(
+        root,
+        value,
+        function=function,
+        unit=expected_unit,
+        source_sha256=expected_source,
+        toolchain_sha256=expected_toolchain,
+        frontier_sha256=frontier_ref["sha256"],
+        predicted_rows=predicted,
+    ):
+        raise SelectionError("selection ownership is incomplete")
     protected = _protected_digest(value)
     focus_protected = focus.get("sibling_digest", focus.get("protected_sibling_digest"))
     if focus_protected is not None and protected != focus_protected:

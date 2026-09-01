@@ -1574,6 +1574,20 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             sidecar["reconstruction"]["bounded_region"]["cluster_id"],
             "cluster-000",
         )
+        self.assertFalse(sidecar["ownership_complete"])
+        self.assertEqual(
+            sidecar["ownership_scope"], "bounded_decomposition_region"
+        )
+        frontier = lane._frontier_for_proposal(
+            self.root, campaign, "focus"
+        )
+        selection = lane.owner_campaign_selector._validate_proposal(
+            self.root,
+            campaign,
+            self.root / result["candidate_descriptor"],
+            frontier,
+        )
+        self.assertEqual(selection["expected_terminal"], "improved")
 
     def test_reconstruction_tamper_and_stale_identity_fail_closed(self) -> None:
         campaign, _base, _candidate = self._proposal_fixture()

@@ -1250,6 +1250,13 @@ def _selection_evidence_for_proposal(
             reconstruction["ownership_complete"]
             if reconstruction is not None else True
         ),
+        "ownership_scope": (
+            "bounded_decomposition_region"
+            if reconstruction is not None
+            and reconstruction["status"] == "UNKNOWN"
+            and reconstruction["next_action"] == "DECOMPOSE"
+            else "complete_function"
+        ),
         "candidate_count": 1,
     }
     if reconstruction is not None:
