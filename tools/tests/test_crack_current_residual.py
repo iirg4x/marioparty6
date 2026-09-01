@@ -64,6 +64,16 @@ def _sha(path: Path) -> str:
 
 
 class CurrentResidualPureTests(unittest.TestCase):
+    def test_focus_payload_limit_admits_large_board_functions_but_stays_bounded(self) -> None:
+        residual._validate_focus_payload_size(b"x" * 611_412)
+        residual._validate_focus_payload_size(b"x" * residual.MAX_FOCUS_BYTES)
+        with self.assertRaisesRegex(
+            residual.ResidualEvidenceError, "focus artifact exceeds compact evidence limit"
+        ):
+            residual._validate_focus_payload_size(
+                b"x" * (residual.MAX_FOCUS_BYTES + 1)
+            )
+
     def test_row_ids_bind_both_proof_channels(self) -> None:
         strict = _report()
         data = _report()

@@ -49,7 +49,10 @@ FUNCTION_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 MAX_ARTIFACT_BYTES = 512 * 1024
 MAX_PHYSICAL_SUMMARY_BYTES = 128 * 1024
 MAX_RESIDUAL_ROWS = 8192
-MAX_FOCUS_BYTES = 512 * 1024
+# Large Board functions can legitimately produce a compact, residual-only
+# focus payload above 512 KiB (for example, 611,412 bytes for mbev_Last5).
+# Keep publication bounded while admitting those functions.
+MAX_FOCUS_BYTES = 2 * 1024 * 1024
 MAX_OBJECT_BYTES = 16 * 1024 * 1024
 DEFAULT_PROCESS_TIMEOUT = 120.0
 PROCESS_TERMINATION_GRACE = 5.0
@@ -58,6 +61,11 @@ FOCUS_CONTEXT_RADIUS = 2
 
 class ResidualEvidenceError(ValueError):
     """The current-base census could not be proven without guessing."""
+
+
+def _validate_focus_payload_size(payload: bytes) -> None:
+    if len(payload) > MAX_FOCUS_BYTES:
+        raise ResidualEvidenceError("focus artifact exceeds compact evidence limit")
 
 
 def _canonical(value: Any) -> bytes:
@@ -1467,8 +1475,7 @@ def materialize_current_residual(
             focus_bytes = _canonical(focus) + b"\n"
             if len(target_bytes) > MAX_OBJECT_BYTES or len(base_bytes) > MAX_OBJECT_BYTES:
                 raise ResidualEvidenceError("selected owner object exceeds compact evidence limit")
-            if len(focus_bytes) > MAX_FOCUS_BYTES:
-                raise ResidualEvidenceError("focus artifact exceeds compact evidence limit")
+            _validate_focus_payload_size(focus_bytes)
 
             def stable_descriptor(path: Path, payload: bytes) -> dict[str, Any]:
                 return {
