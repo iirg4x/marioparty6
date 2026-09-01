@@ -370,7 +370,14 @@ def _git_argv(campaign: Mapping[str, Any], *arguments: str) -> list[str]:
     ]
 
 
-def load_campaign(root: Path, path: Path) -> dict[str, Any]:
+def _load_campaign(
+    root: Path,
+    path: Path,
+    *,
+    allow_unbound_live_source: bool = False,
+) -> dict[str, Any]:
+    if type(allow_unbound_live_source) is not bool:
+        raise CampaignError("campaign source-binding mode is invalid")
     root = Path(os.path.abspath(root))
     path = _bound_path(root, str(path), "campaign manifest")
     raw = _closed_keys(_read_json(path, "campaign manifest"), MANIFEST_FIELDS, "campaign manifest")
@@ -551,11 +558,14 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
                     break
             except CampaignError:
                 continue
-        if not bound_live:
+        if not bound_live and not allow_unbound_live_source:
             raise CampaignError(
                 "campaign source write is not bound to a retained frontier"
             )
-    elif live_source_sha256 != base_source_sha256:
+    elif (
+        live_source_sha256 != base_source_sha256
+        and not allow_unbound_live_source
+    ):
         raise CampaignError("clean campaign source does not match the base blob")
     result = dict(raw)
     result["_root"] = root
@@ -570,7 +580,52 @@ def load_campaign(root: Path, path: Path) -> dict[str, Any]:
     result["_base_source_sha256"] = base_source_sha256
     result["_git_executable"] = git_executable
     result["_git_sha256"] = git_sha256
+    result["_live_source_sha256"] = live_source_sha256
     return result
+
+
+def load_campaign(root: Path, path: Path) -> dict[str, Any]:
+    """Load a campaign for any operation that can measure or mutate state.
+
+    This public loader deliberately retains the strict live-source binding.
+    Read-only inspection of an older retained frontier uses the separate
+    ``load_retained_frontier_campaign`` entry point below.
+    """
+
+    return _load_campaign(root, path)
+
+
+def load_retained_frontier_campaign(
+    root: Path,
+    path: Path,
+    function: str,
+) -> dict[str, Any]:
+    """Bind a read-only campaign view to its canonical retained frontier.
+
+    A lane may have a newer live source while an earlier function frontier is
+    still the evidence to triage.  This loader permits that source drift only
+    after normal manifest/repository/path/toolchain validation, and binds the
+    exact canonical ``latest-frontier.json`` for one function.  No snapshot,
+    proposal, compile, or retention path calls this loader.
+    """
+
+    campaign = _load_campaign(
+        root,
+        path,
+        allow_unbound_live_source=True,
+    )
+    if not isinstance(function, str) or not function:
+        raise CampaignError("retained frontier function is invalid")
+    if function not in campaign["functions"]:
+        raise CampaignError(f"function is outside campaign scope: {function}")
+    frontier = _read_latest_frontier(Path(os.path.abspath(root)), campaign, function)
+    if frontier is None:
+        raise CampaignError(f"current frontier is unavailable for {function}")
+    campaign["_retained_frontier"] = dict(frontier)
+    campaign["_retained_frontier_sha256"] = frontier["frontier_sha256"]
+    campaign["_retained_frontier_function"] = function
+    campaign["_retained_frontier_read_only"] = True
+    return campaign
 
 
 def _slug(value: str) -> str:
@@ -2373,6 +2428,10 @@ def snapshot_frontier(
     root: Path, campaign: Mapping[str, Any], function: str, *, force: bool = False,
     worker: int = 0, _defer_maintenance: bool = False,
 ) -> dict[str, Any]:
+    if campaign.get("_retained_frontier_read_only") is True:
+        raise CampaignError(
+            "read-only retained frontier campaign cannot snapshot"
+        )
     _check_cancelled(root, campaign)
     if function not in campaign["functions"]:
         raise CampaignError(f"function is outside campaign scope: {function}")
@@ -2548,17 +2607,367 @@ CANDIDATE_FIELDS = {
     "base_source", "candidate_source", "function_span", "hypothesis_family",
     "natural_c", "rebase_depth", "created_at", "candidate_sha256",
 }
+# Candidate descriptors are deliberately closed, but the adjacent-helper
+# scope is an opt-in extension.  Keep the legacy field set stable so old
+# descriptors and their tests remain byte-compatible; loaders which accept
+# the extension should validate against ``CANDIDATE_ALL_FIELDS``.
+CANDIDATE_OPTIONAL_FIELDS = {"candidate_scope"}
+CANDIDATE_ALL_FIELDS = CANDIDATE_FIELDS | CANDIDATE_OPTIONAL_FIELDS
 FUNCTION_SPAN_FIELDS = {
     "base_start_line", "base_end_line", "candidate_start_line",
     "candidate_end_line", "base_sha256", "candidate_sha256",
 }
+
+ADJACENT_HELPER_SCOPE_KIND = "function_plus_adjacent_static_inline"
+ADJACENT_HELPER_SCOPE_FIELDS = {
+    "kind", "base_source_sha256", "candidate_source_sha256",
+    "base_insertion", "helper", "use_sites",
+}
+ADJACENT_HELPER_INSERTION_FIELDS = {"line", "sha256"}
+ADJACENT_HELPER_FIELDS = {"name", "start_line", "end_line", "sha256"}
+ADJACENT_HELPER_USE_FIELDS = {"line", "name", "column"}
+ADJACENT_HELPER_MAX_HUNKS = 3
+ADJACENT_HELPER_MAX_CHANGED_LINES = 80
+
+
+def _mask_c_source(text: str) -> str:
+    """Blank comments and literals while preserving source offsets/newlines."""
+
+    chars = list(text)
+    index = 0
+    while index < len(chars):
+        if chars[index] == "/" and index + 1 < len(chars) and chars[index + 1] == "/":
+            chars[index] = chars[index + 1] = " "
+            index += 2
+            while index < len(chars) and chars[index] not in "\r\n":
+                chars[index] = " "
+                index += 1
+            continue
+        if chars[index] == "/" and index + 1 < len(chars) and chars[index + 1] == "*":
+            chars[index] = chars[index + 1] = " "
+            index += 2
+            while index < len(chars):
+                if chars[index] == "*" and index + 1 < len(chars) and chars[index + 1] == "/":
+                    chars[index] = chars[index + 1] = " "
+                    index += 2
+                    break
+                if chars[index] not in "\r\n":
+                    chars[index] = " "
+                index += 1
+            continue
+        if chars[index] in {"\"", "'"}:
+            quote = chars[index]
+            chars[index] = " "
+            index += 1
+            while index < len(chars):
+                token = chars[index]
+                escaped = token == "\\"
+                if chars[index] not in "\r\n":
+                    chars[index] = " "
+                index += 1
+                if escaped and index < len(chars):
+                    if chars[index] not in "\r\n":
+                        chars[index] = " "
+                    index += 1
+                elif token == quote:
+                    break
+            continue
+        index += 1
+    return "".join(chars)
+
+
+def _balanced_c_delimiter(masked: str, opening: int, left: str, right: str) -> int | None:
+    depth = 0
+    for index in range(opening, len(masked)):
+        token = masked[index]
+        if token == left:
+            depth += 1
+        elif token == right:
+            depth -= 1
+            if depth == 0:
+                return index
+            if depth < 0:
+                return None
+    return None
+
+
+def _find_function_span(
+    text: str, function: str, label: str = "function"
+) -> tuple[int, int, bytes]:
+    """Find one C function definition and return inclusive line bounds."""
+
+    if not isinstance(function, str) or not function:
+        raise CampaignError(f"{label} name is invalid")
+    masked = _mask_c_source(text)
+    pattern = re.compile(r"\b" + re.escape(function) + r"\s*\(")
+    matches: list[tuple[int, int]] = []
+    for match in pattern.finditer(masked):
+        opening = masked.find("(", match.start(), match.end())
+        closing = _balanced_c_delimiter(masked, opening, "(", ")")
+        if closing is None:
+            continue
+        after = closing + 1
+        while after < len(masked) and masked[after].isspace():
+            after += 1
+        if after >= len(masked) or masked[after] != "{":
+            continue
+        body_close = _balanced_c_delimiter(masked, after, "{", "}")
+        if body_close is None:
+            raise CampaignError(f"{label} has an unterminated body")
+        boundary = max(
+            masked.rfind("}", 0, match.start()),
+            masked.rfind(";", 0, match.start()),
+        )
+        first = match.start() if boundary < 0 else boundary + 1
+        while first < match.start() and masked[first].isspace():
+            first += 1
+        start_offset = text.rfind("\n", 0, first) + 1
+        start_line = text.count("\n", 0, start_offset) + 1
+        end_line = text.count("\n", 0, body_close) + 1
+        matches.append((start_line, end_line))
+    if len(matches) != 1:
+        if not matches:
+            raise CampaignError(f"{label} definition is not found")
+        raise CampaignError(f"{label} definition is ambiguous")
+    start_line, end_line = matches[0]
+    lines = text.splitlines(keepends=True)
+    return start_line, end_line, "".join(lines[start_line - 1:end_line]).encode("utf-8")
+
+
+def _line_column(text: str, offset: int) -> tuple[int, int]:
+    line = text.count("\n", 0, offset) + 1
+    prior = text.rfind("\n", 0, offset)
+    return line, offset - prior - 1
+
+
+def _brace_depth(masked: str, offset: int) -> int:
+    return masked[:offset].count("{") - masked[:offset].count("}")
+
+
+def validate_candidate_scope(
+    *,
+    base_text: str,
+    candidate_text: str,
+    function: str,
+    base_start_line: int,
+    base_end_line: int,
+    candidate_start_line: int,
+    candidate_end_line: int,
+    base_source_sha256: str,
+    candidate_source_sha256: str,
+    scope: Mapping[str, Any],
+    forbidden_constructs: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Validate the opt-in one-helper candidate scope.
+
+    The helper is an intentionally tiny source extension: it is inserted at
+    the exact beginning of the target function, remains file-scope, and every
+    reference outside its own definition must be in that function.  All
+    checks are structural and hash-bound; this routine does not infer a
+    compiler result or grant retention authority.
+    """
+
+    if not isinstance(scope, Mapping):
+        raise CampaignError("candidate scope is invalid")
+    if set(scope) != ADJACENT_HELPER_SCOPE_FIELDS:
+        raise CampaignError("candidate scope fields are not closed")
+    if scope.get("kind") != ADJACENT_HELPER_SCOPE_KIND:
+        raise CampaignError("candidate scope kind is invalid")
+    if not isinstance(base_text, str) or not isinstance(candidate_text, str):
+        raise CampaignError("candidate scope sources are invalid")
+    if _digest_bytes(base_text.encode("utf-8")) != _sha(
+        base_source_sha256, "candidate scope base source sha256"
+    ):
+        raise CampaignError("candidate scope base source hash drift")
+    if _digest_bytes(candidate_text.encode("utf-8")) != _sha(
+        candidate_source_sha256, "candidate scope candidate source sha256"
+    ):
+        raise CampaignError("candidate scope candidate source hash drift")
+
+    insertion = scope.get("base_insertion")
+    if not isinstance(insertion, Mapping) or set(insertion) != ADJACENT_HELPER_INSERTION_FIELDS:
+        raise CampaignError("candidate scope base insertion is invalid")
+    if insertion.get("line") != base_start_line:
+        raise CampaignError("candidate scope insertion is not at the function boundary")
+    if _sha(insertion.get("sha256"), "candidate scope insertion sha256") != _digest_bytes(b""):
+        raise CampaignError("candidate scope base insertion is not zero-width")
+
+    helper = scope.get("helper")
+    if not isinstance(helper, Mapping) or set(helper) != ADJACENT_HELPER_FIELDS:
+        raise CampaignError("candidate scope helper binding is invalid")
+    name = helper.get("name")
+    if not isinstance(name, str) or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
+        raise CampaignError("candidate scope helper name is invalid")
+    helper_start = helper.get("start_line")
+    helper_end = helper.get("end_line")
+    if (
+        type(helper_start) is not int
+        or type(helper_end) is not int
+        or helper_start != base_start_line
+        or helper_end < helper_start
+        or candidate_start_line <= helper_end
+    ):
+        raise CampaignError("candidate scope helper is not immediately adjacent")
+    candidate_lines = candidate_text.splitlines(keepends=True)
+    base_lines = base_text.splitlines(keepends=True)
+    if (
+        base_start_line < 1
+        or base_end_line < base_start_line
+        or base_end_line > len(base_lines)
+        or candidate_start_line < 1
+        or candidate_end_line < candidate_start_line
+        or candidate_end_line > len(candidate_lines)
+        or helper_end > len(candidate_lines)
+    ):
+        raise CampaignError("candidate scope line binding is invalid")
+    helper_bytes = "".join(candidate_lines[helper_start - 1:helper_end]).encode("utf-8")
+    if _digest_bytes(helper_bytes) != _sha(helper.get("sha256"), "candidate scope helper sha256"):
+        raise CampaignError("candidate scope helper hash drift")
+    if base_lines[:base_start_line - 1] != candidate_lines[:helper_start - 1]:
+        raise CampaignError("candidate scope insertion changes the TU prefix")
+    if base_lines[base_end_line:] != candidate_lines[candidate_end_line:]:
+        raise CampaignError("candidate scope changes the TU suffix")
+    if any(line.strip() for line in candidate_lines[helper_end:candidate_start_line - 1]):
+        raise CampaignError("candidate scope helper is not immediately adjacent")
+
+    base_masked = _mask_c_source(base_text)
+    candidate_masked = _mask_c_source(candidate_text)
+    helper_start_offset = sum(len(line) for line in candidate_lines[:helper_start - 1])
+    helper_end_offset = sum(len(line) for line in candidate_lines[:helper_end])
+    candidate_function_start_offset = sum(
+        len(line) for line in candidate_lines[:candidate_start_line - 1]
+    )
+    candidate_function_end_offset = sum(
+        len(line) for line in candidate_lines[:candidate_end_line]
+    )
+    if _brace_depth(candidate_masked, helper_start_offset) != 0:
+        raise CampaignError("candidate scope helper is not file-scope")
+    helper_masked = candidate_masked[helper_start_offset:helper_end_offset]
+    if re.search(r"#|\b(?:asm|__asm|volatile|register|__attribute__)\b", helper_masked):
+        raise CampaignError("candidate scope helper contains a forbidden construct")
+    inline_defs = list(re.finditer(r"\bstatic\s+inline\b", helper_masked))
+    if len(inline_defs) != 1:
+        raise CampaignError("candidate scope must add exactly one static inline helper")
+    helper_definition = re.search(
+        r"\bstatic\s+inline\b[\s\S]*?\b" + re.escape(name) + r"\s*\(",
+        helper_masked,
+    )
+    if helper_definition is None:
+        raise CampaignError("candidate scope helper definition is not static inline")
+    if helper_masked[:helper_definition.start()].strip():
+        raise CampaignError("candidate scope helper span contains extra code")
+    opening = helper_masked.find("(", helper_definition.start(), helper_definition.end())
+    closing = _balanced_c_delimiter(helper_masked, opening, "(", ")")
+    if closing is None:
+        raise CampaignError("candidate scope helper signature is unterminated")
+    body_open = closing + 1
+    while body_open < len(helper_masked) and helper_masked[body_open].isspace():
+        body_open += 1
+    if body_open >= len(helper_masked) or helper_masked[body_open] != "{":
+        raise CampaignError("candidate scope helper has no function body")
+    body_close = _balanced_c_delimiter(helper_masked, body_open, "{", "}")
+    if body_close is None or helper_masked[body_close + 1:].strip():
+        raise CampaignError("candidate scope helper span contains extra code")
+    if base_masked and re.search(r"\b" + re.escape(name) + r"\b", base_masked):
+        raise CampaignError("candidate scope helper name already exists in the base")
+    for pattern in forbidden_constructs:
+        try:
+            if re.search(pattern, helper_bytes.decode("utf-8")):
+                raise CampaignError(f"candidate contains forbidden construct: {pattern}")
+        except re.error as exc:
+            raise CampaignError(f"invalid forbidden construct regex: {pattern}") from exc
+
+    name_matches = list(re.finditer(r"\b" + re.escape(name) + r"\b", candidate_masked))
+    definition_abs = helper_start_offset + helper_definition.start()
+    definition_name = candidate_masked.find(name, definition_abs, helper_end_offset)
+    if definition_name < 0:
+        raise CampaignError("candidate scope helper definition name is missing")
+    use_matches: list[tuple[int, int]] = []
+    for match in name_matches:
+        offset = match.start()
+        if helper_start_offset <= offset < helper_end_offset:
+            if offset != definition_name:
+                raise CampaignError("candidate scope helper has an extra self-reference")
+            continue
+        if not candidate_function_start_offset <= offset < candidate_function_end_offset:
+            raise CampaignError("candidate scope helper use escapes the target function")
+        use_matches.append(_line_column(candidate_text, offset))
+    if not use_matches:
+        raise CampaignError("candidate scope helper has no target-function use")
+    raw_sites = scope.get("use_sites")
+    if not isinstance(raw_sites, list) or not raw_sites:
+        raise CampaignError("candidate scope use_sites is invalid")
+    normalized_sites: list[dict[str, Any]] = []
+    for raw in raw_sites:
+        if not isinstance(raw, Mapping):
+            raise CampaignError("candidate scope use site is invalid")
+        keys = set(raw)
+        if keys != ADJACENT_HELPER_USE_FIELDS:
+            raise CampaignError("candidate scope use site fields are invalid")
+        line = raw.get("line")
+        if type(line) is not int or line < candidate_start_line or line > candidate_end_line:
+            raise CampaignError("candidate scope use site line is invalid")
+        if raw.get("name") != name:
+            raise CampaignError("candidate scope use site name is invalid")
+        column = raw.get("column")
+        if type(column) is not int or column < 0:
+            raise CampaignError("candidate scope use site column is invalid")
+        item: dict[str, Any] = {"line": line, "name": name, "column": column}
+        normalized_sites.append(item)
+    actual_sites = sorted(use_matches)
+    supplied_sites = sorted((item["line"], item["column"]) for item in normalized_sites)
+    if supplied_sites != actual_sites:
+        raise CampaignError("candidate scope use sites do not match source uses")
+
+    changes = [
+        opcode for opcode in difflib.SequenceMatcher(
+            a=base_lines, b=candidate_lines, autojunk=False
+        ).get_opcodes()
+        if opcode[0] != "equal"
+    ]
+    if not changes or len(changes) > ADJACENT_HELPER_MAX_HUNKS:
+        raise CampaignError("candidate adjacent-helper edit exceeds three hunks")
+    changed_lines = sum(max(opcode[2] - opcode[1], opcode[4] - opcode[3]) for opcode in changes)
+    if changed_lines > ADJACENT_HELPER_MAX_CHANGED_LINES:
+        raise CampaignError("candidate adjacent-helper edit exceeds changed-line limit")
+    for _tag, base_a, base_b, candidate_a, candidate_b in changes:
+        base_allowed = (
+            base_start_line - 1 <= base_a <= base_b <= base_end_line
+            or (base_a == base_start_line - 1 and base_b == base_a)
+        )
+        candidate_allowed = (
+            candidate_start_line - 1 <= candidate_a <= candidate_b <= candidate_end_line
+            or (candidate_a >= helper_start - 1 and candidate_b <= candidate_end_line)
+        )
+        if not base_allowed or not candidate_allowed:
+            raise CampaignError("candidate adjacent-helper edit escapes its bound scope")
+    return {
+        "kind": ADJACENT_HELPER_SCOPE_KIND,
+        "base_source_sha256": base_source_sha256,
+        "candidate_source_sha256": candidate_source_sha256,
+        "base_insertion": {"line": base_start_line, "sha256": _digest_bytes(b"")},
+        "helper": {
+            "name": name,
+            "start_line": helper_start,
+            "end_line": helper_end,
+            "sha256": _digest_bytes(helper_bytes),
+        },
+        "use_sites": normalized_sites,
+    }
 
 
 def _load_candidate(
     root: Path, path: Path, campaign: Mapping[str, Any], frontier: Mapping[str, Any],
 ) -> dict[str, Any]:
     path = _bound_path(root, str(path), "candidate descriptor")
-    value = _closed_keys(_read_json(path, "candidate descriptor"), CANDIDATE_FIELDS, "candidate descriptor")
+    raw = _read_json(path, "candidate descriptor")
+    observed_fields = set(raw) if isinstance(raw, Mapping) else set()
+    if (
+        not CANDIDATE_FIELDS <= observed_fields
+        or observed_fields - CANDIDATE_FIELDS > CANDIDATE_OPTIONAL_FIELDS
+    ):
+        raise CampaignError("candidate descriptor is not a strict closed object")
+    value = _closed_keys(raw, observed_fields, "candidate descriptor")
     body = dict(value)
     digest = _sha(body.pop("candidate_sha256", None), "candidate descriptor digest")
     if digest != _digest_json(body):
@@ -2647,7 +3056,24 @@ def _load_candidate(
         span["candidate_sha256"], "candidate span sha256"
     ):
         raise CampaignError("candidate function span hash drift")
-    if (
+    validated_scope: dict[str, Any] | None = None
+    if "candidate_scope" in value:
+        validated_scope = validate_candidate_scope(
+            base_text=base_text,
+            candidate_text=candidate_text,
+            function=value["function"],
+            base_start_line=base_start,
+            base_end_line=base_end,
+            candidate_start_line=candidate_start,
+            candidate_end_line=candidate_end,
+            base_source_sha256=base_source_sha,
+            candidate_source_sha256=source_sha,
+            scope=value["candidate_scope"],
+            forbidden_constructs=campaign["forbidden_constructs"],
+        )
+        if validated_scope != value["candidate_scope"]:
+            raise CampaignError("candidate scope is not canonical")
+    elif (
         base_lines[: base_start - 1] != candidate_lines[: candidate_start - 1]
         or base_lines[base_end:] != candidate_lines[candidate_end:]
     ):
@@ -2657,7 +3083,7 @@ def _load_candidate(
     changed = False
     for tag, _a0, _a1, b0, b1 in matcher.get_opcodes():
         if tag != "equal":
-            if (
+            if validated_scope is None and (
                 _a0 < base_start - 1 or _a1 > base_end
                 or b0 < candidate_start - 1 or b1 > candidate_end
             ):

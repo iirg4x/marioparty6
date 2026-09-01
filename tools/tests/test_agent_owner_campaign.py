@@ -224,6 +224,11 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
     def test_propose_cli_forwards_selection_terminal_and_counts(self) -> None:
         candidate = self.root / "build" / "candidate.c"
         candidate.write_text("int focus(void) { return 1; }\n", encoding="utf-8")
+        candidate_scope = {"kind": "function_plus_adjacent_static_inline"}
+        (self.root / "build" / "candidate-scope.json").write_text(
+            json.dumps(candidate_scope),
+            encoding="utf-8",
+        )
         expected = {"schema": "owner_campaign_proposal/v1", "status": "queued"}
         with patch.object(
             owner_campaign,
@@ -244,6 +249,8 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
                 "build/candidate.c",
                 "--hypothesis-family",
                 "direct-owner",
+                "--candidate-scope",
+                "build/candidate-scope.json",
                 "--expected-terminal",
                 "improved",
                 "--predicted-row",
@@ -264,6 +271,9 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(
             propose.call_args.kwargs["predicted_remaining_counts"],
             {"strict": 3, "data": 4, "physical": 5},
+        )
+        self.assertEqual(
+            propose.call_args.kwargs["candidate_scope"], candidate_scope
         )
 
     def test_snapshot_dispatches_loaded_campaign_and_prints_compact_binding(self) -> None:
@@ -556,6 +566,70 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
             "generation": 0,
         }
 
+    def _valid_frontier(
+        self,
+        *,
+        reconstruction_sha256: str | None = None,
+        reconstruction_status: str | None = None,
+    ) -> dict[str, object]:
+        loaded = owner_campaign.load_campaign(self.root, self.manifest_path)
+        body: dict[str, object] = {
+            "schema": "crack_frontier/v2",
+            "campaign_id": loaded["campaign_id"],
+            "manifest_sha256": loaded["manifest_sha256"],
+            "owner": loaded["owner"],
+            "unit": loaded["unit"],
+            "function": "focus",
+            "source_relpath": loaded["source_relpath"],
+            "source_sha256": _digest(self.source.read_bytes()),
+            "target_object_sha256": _digest(self.target.read_bytes()),
+            "toolchain_sha256": _digest(self.toolchain.read_bytes()),
+            "candidate_object_sha256": "c" * 64,
+            "metrics": {
+                "strict": {
+                    "target_bytes": 4,
+                    "candidate_bytes": 4,
+                    "differences": 1,
+                },
+                "data": {
+                    "target_bytes": 4,
+                    "candidate_bytes": 4,
+                    "differences": 0,
+                },
+                "physical_target_count": 0,
+                "physical_candidate_count": 0,
+                "physical_differences": 0,
+                "protected_total": 0,
+                "protected_losses": 0,
+                "source_link_exact": True,
+            },
+            "report_receipts": {
+                name: _digest(name.encode("utf-8"))
+                for name in ("strict", "data", "physical", "siblings", "source_link")
+            },
+            "focus_evidence_sha256": "e" * 64,
+            "parent_frontier_sha256": None,
+            "generation": 0,
+            "retained_at": "2026-01-01T00:00:00+00:00",
+        }
+        if reconstruction_sha256 is not None:
+            body["reconstruction_evidence_sha256"] = reconstruction_sha256
+            body["reconstruction_status"] = reconstruction_status or "READY"
+        return {
+            **body,
+            "frontier_sha256": owner_campaign._digest_json(body),
+        }
+
+    def _persist_frontier(self, frontier: dict[str, object]) -> Path:
+        loaded = owner_campaign.load_campaign(self.root, self.manifest_path)
+        path = (
+            owner_campaign._function_root(self.root, loaded, "focus")
+            / "latest-frontier.json"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        owner_campaign._atomic_json(path, frontier)
+        return path
+
     def _write_reconstruction_packet(
         self,
         frontier: dict[str, object],
@@ -646,13 +720,13 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         return packet
 
     def test_reconstruct_command_returns_verified_packet_summary(self) -> None:
-        frontier = self._snapshot_frontier()
+        frontier = self._valid_frontier()
         packet = self._write_reconstruction_packet(frontier)
-        frontier["reconstruction_evidence_sha256"] = packet["packet_sha256"]
-        frontier["reconstruction_status"] = packet["status"]
-        frontier_body = dict(frontier)
-        frontier_body.pop("frontier_sha256", None)
-        frontier["frontier_sha256"] = owner_campaign._digest_json(frontier_body)
+        frontier = self._valid_frontier(
+            reconstruction_sha256=packet["packet_sha256"],
+            reconstruction_status=packet["status"],
+        )
+        self._persist_frontier(frontier)
         with patch.object(
             owner_campaign, "snapshot_frontier", return_value=frontier
         ) as snapshotter:
@@ -676,6 +750,12 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(plan["route"], "causal_reducer")
         self.assertEqual(plan["candidate_budget"], 1)
         self.assertEqual(plan["expected_terminal"], "exact")
+        self.assertEqual(plan["frontier_sha256"], frontier["frontier_sha256"])
+        self.assertEqual(plan["focus_artifact_sha256"], frontier["focus_evidence_sha256"])
+        self.assertEqual(plan["reconstruction_packet_sha256"], packet["packet_sha256"])
+        plan_body = dict(plan)
+        plan_digest = plan_body.pop("plan_sha256")
+        self.assertEqual(plan_digest, owner_campaign._digest_json(plan_body))
         first_rows = [
             rows[0]
             for rows in (packet["strict_residuals"], packet["data_residuals"])
@@ -709,10 +789,10 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(alias_result, result)
 
         with patch.object(
-            owner_campaign, "snapshot_frontier", return_value=frontier
-        ) as triage_snapshotter, patch.object(
-            campaign_lane, "_frontier_for_proposal", return_value=frontier
-        ):
+            owner_campaign,
+            "snapshot_frontier",
+            side_effect=AssertionError("triage attempted snapshot"),
+        ) as triage_snapshotter:
             triage_code, triage_result, triage_output = self._run_agent(
                 "owner-campaign",
                 "triage",
@@ -724,6 +804,108 @@ class AgentOwnerCampaignCLITests(unittest.TestCase):
         self.assertEqual(triage_code, 0, triage_output)
         self.assertEqual(triage_result, result)
         triage_snapshotter.assert_not_called()
+
+    def test_triage_uses_retained_cas_after_unbound_live_source_drift(self) -> None:
+        frontier = self._valid_frontier()
+        packet = self._write_reconstruction_packet(frontier)
+        frontier = self._valid_frontier(
+            reconstruction_sha256=packet["packet_sha256"],
+            reconstruction_status=packet["status"],
+        )
+        self._persist_frontier(frontier)
+
+        self.source.write_text(
+            "int focus(void) { return 99; }\n",
+            encoding="utf-8",
+        )
+        self.assertNotEqual(
+            _digest(self.source.read_bytes()),
+            frontier["source_sha256"],
+        )
+        with patch.object(
+            owner_campaign,
+            "snapshot_frontier",
+            side_effect=AssertionError("triage attempted snapshot"),
+        ) as snapshotter, patch.object(
+            owner_campaign,
+            "run_candidate",
+            side_effect=AssertionError("triage compiled"),
+        ) as candidate_runner, patch.object(
+            owner_campaign,
+            "run_loop",
+            side_effect=AssertionError("triage looped"),
+        ) as loop_runner, patch.object(
+            campaign_lane,
+            "run_inbox",
+            side_effect=AssertionError("triage entered inbox"),
+        ) as inbox_runner:
+            code, result, output = self._run_agent(
+                "owner-campaign",
+                "triage",
+                "--campaign",
+                "build/campaign.json",
+                "--function",
+                "focus",
+            )
+        self.assertEqual(code, 0, output)
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["packet_sha256"], packet["packet_sha256"])
+        self.assertEqual(
+            result["frontier_source_sha256"], frontier["source_sha256"]
+        )
+        self.assertEqual(result["frontier_sha256"], frontier["frontier_sha256"])
+        self.assertEqual(result["next_action"], "CRACK")
+        self.assertFalse(result["authority_advanced"])
+        snapshotter.assert_not_called()
+        candidate_runner.assert_not_called()
+        loop_runner.assert_not_called()
+        inbox_runner.assert_not_called()
+
+        candidate = self.root / "build" / "candidate.c"
+        candidate.write_text(
+            "int focus(void) { return 1; }\n",
+            encoding="utf-8",
+        )
+        with patch.object(
+            owner_campaign,
+            "snapshot_frontier",
+            side_effect=AssertionError("non-triage snapshot"),
+        ), patch.object(
+            owner_campaign,
+            "run_candidate",
+            side_effect=AssertionError("non-triage compile"),
+        ), patch.object(
+            owner_campaign,
+            "run_loop",
+            side_effect=AssertionError("non-triage loop"),
+        ), patch.object(
+            campaign_lane,
+            "run_inbox",
+            side_effect=AssertionError("non-triage inbox"),
+        ) as strict_inbox:
+            commands = (
+                (
+                    "owner-campaign", "reconstruct", "--campaign",
+                    "build/campaign.json", "--function", "focus",
+                ),
+                (
+                    "owner-campaign", "propose", "--campaign",
+                    "build/campaign.json", "--function", "focus",
+                    "--candidate-source", "build/candidate.c",
+                    "--hypothesis-family", "direct-owner",
+                ),
+                (
+                    "owner-campaign", "run", "--campaign",
+                    "build/campaign.json", "--once",
+                ),
+            )
+            for command in commands:
+                with self.assertRaisesRegex(
+                    owner_campaign.CampaignError,
+                    "campaign source write is not bound to a retained frontier",
+                ):
+                    self._run_agent(*command)
+            strict_inbox.assert_not_called()
 
     def test_reconstruct_explicit_worker_is_forwarded(self) -> None:
         frontier = self._snapshot_frontier()

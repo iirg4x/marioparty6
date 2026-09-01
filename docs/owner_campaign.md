@@ -146,6 +146,21 @@ reports and candidate objects are not regenerated or retained for this step.
 The lane writes one natural-C candidate for that cluster and queues it with
 `owner-campaign propose`; later-row-only proposals remain fail-closed.
 
+This ordering is mandatory, especially for a function already at 98--99%.
+The lane does not sample arbitrary remaining rows, declaration permutations,
+or negative controls. It closes the first mismatch (or the complete mirrored
+or causal cluster that owns it), measures exactly one cell, then either retains
+the gain and runs `triage` again or fingerprints the no-gain cell and pivots.
+The next compile is therefore always derived from the new earliest mismatch.
+
+When the first mismatch is caused by inlining or translation-unit visibility,
+one proposal may opt into `--candidate-scope <scope.json>`. The only extended
+scope accepted is one hash-bound, immediately adjacent file-scope
+`static inline` helper plus its exact target-function use sites. All other
+translation-unit edits, stale helper rebases, and unbound helper uses fail
+closed; this is not permission to broaden the search beyond the first causal
+cluster.
+
 The reconstruction packet is diagnostic only.  It never emits a source patch,
 authorizes a compile, retains a candidate, or advances authority.  Exactness
 still requires the normal strict/data/physical/sibling/source-link proof ladder.

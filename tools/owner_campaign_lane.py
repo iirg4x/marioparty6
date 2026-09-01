@@ -286,7 +286,31 @@ def _frontier_for_proposal(
     """Read and validate the persisted current frontier without measuring."""
 
     reader = getattr(owner_campaign, "_read_latest_frontier", None)
-    if callable(reader) and "_source" in campaign:
+    retained = campaign.get("_retained_frontier")
+    if retained is not None:
+        if (
+            campaign.get("_retained_frontier_read_only") is not True
+            or campaign.get("_retained_frontier_function") != function
+            or not isinstance(retained, Mapping)
+        ):
+            raise owner_campaign.CampaignError(
+                "retained frontier read binding is invalid"
+            )
+        if not callable(reader):
+            raise owner_campaign.CampaignError(
+                "retained frontier reader is unavailable"
+            )
+        current_frontier = reader(root, campaign, function)
+        if (
+            current_frontier is None
+            or current_frontier.get("frontier_sha256")
+            != campaign.get("_retained_frontier_sha256")
+        ):
+            raise owner_campaign.CampaignError(
+                "retained frontier changed during read-only triage"
+            )
+        frontier = dict(retained)
+    elif callable(reader) and "_source" in campaign:
         frontier = reader(root, campaign, function)
     else:
         path = (
@@ -1119,6 +1143,21 @@ def reconstruct_frontier(
             }
         )
         return result
+    first_plan = _first_mismatch_plan(packet)
+    first_plan.update(
+        {
+            "campaign_id": result["campaign_id"],
+            "owner": result["owner"],
+            "unit": result["unit"],
+            "function": function,
+            "frontier_sha256": current["frontier_sha256"],
+            "frontier_source_sha256": current.get("source_sha256"),
+            "focus_artifact_sha256": current.get("focus_evidence_sha256"),
+            "reconstruction_artifact_sha256": packet["file_sha256"],
+            "reconstruction_packet_sha256": packet["packet_sha256"],
+        }
+    )
+    first_plan["plan_sha256"] = _canonical_digest(first_plan)
     result.update(
         {
             "status": packet["status"],
@@ -1133,7 +1172,7 @@ def reconstruct_frontier(
             "next_action": packet["next_action"],
             "bounded_regions": packet["bounded_regions"],
             "ownership_complete": packet["ownership_complete"],
-            "first_mismatch_plan": _first_mismatch_plan(packet),
+            "first_mismatch_plan": first_plan,
         }
     )
     return result
@@ -1535,6 +1574,7 @@ def _prepare_candidate_proposal(
     predicted_remaining_counts: Mapping[str, int] | None,
     rebase_depth: int = 0,
     required_current_function: bytes | None = None,
+    candidate_scope: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Prepare immutable proposal inputs without holding the frontier locks.
 
@@ -1598,7 +1638,22 @@ def _prepare_candidate_proposal(
     )
     base_lines = base_text.splitlines(keepends=True)
     candidate_lines = candidate_text.splitlines(keepends=True)
-    if (
+    validated_scope: dict[str, Any] | None = None
+    if candidate_scope is not None:
+        validated_scope = owner_campaign.validate_candidate_scope(
+            base_text=base_text,
+            candidate_text=candidate_text,
+            function=function,
+            base_start_line=base_start,
+            base_end_line=base_end,
+            candidate_start_line=candidate_start,
+            candidate_end_line=candidate_end,
+            base_source_sha256=source_sha256,
+            candidate_source_sha256=candidate_sha256,
+            scope=candidate_scope,
+            forbidden_constructs=campaign.get("forbidden_constructs", ()),
+        )
+    elif (
         base_lines[: base_start - 1] != candidate_lines[: candidate_start - 1]
         or base_lines[base_end:] != candidate_lines[candidate_end:]
     ):
@@ -1612,7 +1667,7 @@ def _prepare_candidate_proposal(
         if tag == "equal":
             continue
         changed = True
-        if (
+        if validated_scope is None and (
             base_a < base_start - 1
             or base_b > base_end
             or candidate_a < candidate_start - 1
@@ -1670,6 +1725,8 @@ def _prepare_candidate_proposal(
         "rebase_depth": rebase_depth,
         "created_at": created_at,
     }
+    if validated_scope is not None:
+        descriptor_body["candidate_scope"] = validated_scope
     descriptor = {
         **descriptor_body,
         "candidate_sha256": _canonical_digest(descriptor_body),
@@ -1739,6 +1796,7 @@ def _prepare_candidate_proposal(
         "physical_sha256": _physical_sha,
         "residual": residual,
         "counts": counts,
+        "candidate_scope": validated_scope,
     }
 
 
@@ -1922,6 +1980,7 @@ def propose_candidate(
     predicted_remaining_counts: Mapping[str, int] | None = None,
     rebase_depth: int = 0,
     _required_current_function: bytes | None = None,
+    candidate_scope: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Seal one worker source into the inbox against the current frontier.
 
@@ -1949,6 +2008,7 @@ def propose_candidate(
         predicted_remaining_counts=predicted_remaining_counts,
         rebase_depth=rebase_depth,
         required_current_function=_required_current_function,
+        candidate_scope=candidate_scope,
     )
     stage = _stage_prepared_proposal(prepared)
     lock_factory = getattr(owner_campaign, "_frontier_lock_chain", None)
@@ -2049,8 +2109,11 @@ def _sealed_descriptor(
         return None
     if not isinstance(value, Mapping):
         return None
-    fields = getattr(owner_campaign, "CANDIDATE_FIELDS", frozenset())
-    if set(value) != set(fields):
+    fields = set(getattr(owner_campaign, "CANDIDATE_FIELDS", frozenset()))
+    optional_fields = set(
+        getattr(owner_campaign, "CANDIDATE_OPTIONAL_FIELDS", frozenset())
+    )
+    if not fields <= set(value) or set(value) - (fields | optional_fields):
         return None
     body = dict(value)
     digest = body.pop("candidate_sha256", None)
@@ -2101,6 +2164,29 @@ def _sealed_descriptor(
             return None
     except OSError:
         return None
+    if "candidate_scope" in value:
+        scope = value["candidate_scope"]
+        try:
+            base_text = base_path.read_text(encoding="utf-8")
+            candidate_text = source_path.read_text(encoding="utf-8")
+            span = value.get("function_span")
+            if not isinstance(span, Mapping):
+                return None
+            owner_campaign.validate_candidate_scope(
+                base_text=base_text,
+                candidate_text=candidate_text,
+                function=value["function"],
+                base_start_line=span.get("base_start_line"),
+                base_end_line=span.get("base_end_line"),
+                candidate_start_line=span.get("candidate_start_line"),
+                candidate_end_line=span.get("candidate_end_line"),
+                base_source_sha256=base_source["sha256"],
+                candidate_source_sha256=source_sha,
+                scope=scope,
+                forbidden_constructs=campaign.get("forbidden_constructs", ()),
+            )
+        except (OSError, UnicodeError, owner_campaign.CampaignError):
+            return None
     return dict(value), source_path
 
 
@@ -2599,6 +2685,15 @@ def _auto_rebase_stale_candidate(
     old_candidate_sha = descriptor["candidate_source"]["sha256"]
     old_frontier_sha = descriptor["base_frontier_sha256"]
     old_depth = descriptor["rebase_depth"]
+    if "candidate_scope" in descriptor:
+        # A helper edit changes the translation-unit line layout.  The legacy
+        # rebaser only transplants a function span and would silently discard
+        # the adjacent helper, so fail closed until a helper-aware rebase is
+        # available rather than converting a sealed candidate into a different
+        # source shape.
+        raise owner_campaign.CampaignError(
+            "stale adjacent-helper candidate requires helper-aware rebase"
+        )
     if (
         selected.get("function") != function
         or selected.get("candidate_sha256") != old_candidate_sha

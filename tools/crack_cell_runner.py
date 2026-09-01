@@ -23,10 +23,12 @@ try:
     from tools import crack_current_residual as residual
     from tools import crack_evidence_bundle as bundle
     from tools import focus_symbol_report
+    from tools import owner_campaign
 except ImportError:  # direct ``python tools/crack_cell_runner.py`` execution
     import crack_current_residual as residual  # type: ignore
     import crack_evidence_bundle as bundle  # type: ignore
     import focus_symbol_report  # type: ignore
+    import owner_campaign  # type: ignore
 
 
 SCHEMA = "crack_cell_measurement/v1"
@@ -234,6 +236,40 @@ def _validate_candidate_cell(base: Path, candidate: Path, artifact: Mapping[str,
         raise CellRunnerError(f"candidate source is not a regular file: {candidate}")
     if _file_sha(base) != artifact.get("base_sha256"):
         raise CellRunnerError("disposable base source is stale")
+    candidate_scope = artifact.get("candidate_scope")
+    if candidate_scope is not None:
+        function = artifact.get("function")
+        if not isinstance(function, str) or not function:
+            raise CellRunnerError("current residual function is missing")
+        try:
+            base_text = base.read_text(encoding="utf-8")
+            candidate_text = candidate.read_text(encoding="utf-8")
+            base_start, base_end, _base_span = owner_campaign._find_function_span(
+                base_text, function, "current residual base function"
+            )
+            span = artifact.get("function_span")
+            if not isinstance(span, Mapping):
+                raise CellRunnerError("current residual function span is missing")
+            if (base_start, base_end) != (span.get("start_line"), span.get("end_line")):
+                raise CellRunnerError("current residual function span does not bind the source")
+            candidate_start, candidate_end, _candidate_span = owner_campaign._find_function_span(
+                candidate_text, function, "candidate function"
+            )
+            owner_campaign.validate_candidate_scope(
+                base_text=base_text,
+                candidate_text=candidate_text,
+                function=function,
+                base_start_line=base_start,
+                base_end_line=base_end,
+                candidate_start_line=candidate_start,
+                candidate_end_line=candidate_end,
+                base_source_sha256=str(artifact.get("base_sha256")),
+                candidate_source_sha256=_file_sha(candidate),
+                scope=candidate_scope,
+            )
+        except (OSError, UnicodeError, owner_campaign.CampaignError) as exc:
+            raise CellRunnerError(f"candidate adjacent-helper scope is invalid: {exc}") from exc
+        return
     span = artifact.get("function_span")
     if not isinstance(span, Mapping):
         raise CellRunnerError("current residual function span is missing")

@@ -1689,6 +1689,73 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         self.assertEqual(result["next_action"], "CRACK")
         self.assertFalse(result["authority_advanced"])
 
+    def test_retained_frontier_race_fails_closed_before_read_only_triage(self) -> None:
+        campaign, _base, _candidate = self._proposal_fixture()
+        frontier = json.loads(
+            (
+                owner_campaign._function_root(self.root, campaign, "focus")
+                / "latest-frontier.json"
+            ).read_text(encoding="utf-8")
+        )
+        campaign.update(
+            {
+                "_retained_frontier": frontier,
+                "_retained_frontier_sha256": frontier["frontier_sha256"],
+                "_retained_frontier_function": "focus",
+                "_retained_frontier_read_only": True,
+            }
+        )
+        changed = dict(frontier)
+        changed["frontier_sha256"] = "f" * 64
+        with patch.object(
+            owner_campaign, "_read_latest_frontier", return_value=changed
+        ):
+            with self.assertRaisesRegex(
+                owner_campaign.CampaignError,
+                "retained frontier changed during read-only triage",
+            ):
+                lane._frontier_for_proposal(self.root, campaign, "focus")
+
+    def test_propose_remains_strict_when_retained_frontier_source_is_advanced(self) -> None:
+        campaign, campaign_source, candidate_source = self._proposal_fixture()
+        frontier = json.loads(
+            (
+                owner_campaign._function_root(self.root, campaign, "focus")
+                / "latest-frontier.json"
+            ).read_text(encoding="utf-8")
+        )
+        campaign.update(
+            {
+                "_retained_frontier": frontier,
+                "_retained_frontier_sha256": frontier["frontier_sha256"],
+                "_retained_frontier_function": "focus",
+                "_retained_frontier_read_only": True,
+            }
+        )
+        campaign_source.write_text(
+            "int before = 9;\n\n"
+            "int focus(void) { return 9; } /* ADVANCED */\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; } /* CANDIDATE */\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        with patch.object(
+            owner_campaign, "_read_latest_frontier", return_value=frontier
+        ):
+            with self.assertRaisesRegex(
+                owner_campaign.CampaignError,
+                "current source has drifted from frontier",
+            ):
+                lane.propose_candidate(
+                    self.root, campaign, "focus", candidate_source, "advanced-source"
+                )
+        self.assertEqual(list(lane.inbox_path(self.root, campaign).rglob("*")), [])
+
     def test_packet_ready_exact_proposal_carries_reconstruction_reference(self) -> None:
         campaign, _base, candidate_source = self._proposal_fixture()
         self._attach_reconstruction(campaign, exact_terminal_possible=True)

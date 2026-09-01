@@ -445,6 +445,112 @@ class OwnerCampaignTests(unittest.TestCase):
         loaded = self.load()
         self.assertEqual(loaded["base_commit"], self.commit)
 
+    def test_strict_loader_rejects_unbound_dirty_and_advanced_source(self) -> None:
+        """Mutation-capable loading must never adopt an unretained source."""
+
+        self.source.write_text(
+            "int focus(void) { return 1; } /* UNBOUND DIRTY */\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(campaign.CampaignError, "retained frontier"):
+            campaign.load_campaign(self.root, self.manifest_path)
+
+        subprocess.run(["git", "add", "src/test.c"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "unbound source advance"],
+            cwd=self.root,
+            check=True,
+        )
+        with self.assertRaisesRegex(campaign.CampaignError, "clean campaign source"):
+            campaign.load_campaign(self.root, self.manifest_path)
+
+    def test_retained_loader_requires_canonical_latest_frontier(self) -> None:
+        """Source drift is readable only when a persisted frontier is present."""
+
+        self.source.write_text(
+            "int focus(void) { return 1; } /* UNRETAINED */\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(
+            campaign.CampaignError, "current frontier is unavailable"
+        ):
+            campaign.load_retained_frontier_campaign(
+                self.root, self.manifest_path, "focus"
+            )
+
+        # A clean mutation-capable load establishes the canonical persisted
+        # frontier.  The read-only loader must then bind exactly that record,
+        # even though the live source has advanced.
+        subprocess.run(["git", "checkout", "--", "src/test.c"], cwd=self.root, check=True)
+        loaded = campaign.load_campaign(self.root, self.manifest_path)
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        self.source.write_text(
+            "int focus(void) { return 2; } /* RETAINED ADVANCE */\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(campaign.CampaignError, "retained frontier"):
+            campaign.load_campaign(self.root, self.manifest_path)
+
+        retained = campaign.load_retained_frontier_campaign(
+            self.root, self.manifest_path, "focus"
+        )
+        self.assertTrue(retained["_retained_frontier_read_only"])
+        self.assertEqual(retained["_retained_frontier_function"], "focus")
+        self.assertEqual(
+            retained["_retained_frontier_sha256"], frontier["frontier_sha256"]
+        )
+        self.assertEqual(
+            retained["_retained_frontier"],
+            campaign._read_latest_frontier(self.root, retained, "focus"),
+        )
+        self.assertEqual(
+            retained["_live_source_sha256"], campaign._digest_file(self.source)
+        )
+
+    def test_retained_loader_rejects_missing_wrong_and_out_of_scope_frontier(self) -> None:
+        loaded = self.load()
+        campaign.snapshot_frontier(self.root, loaded, "focus")
+        latest = campaign._function_root(self.root, loaded, "focus") / "latest-frontier.json"
+        original = json.loads(latest.read_text(encoding="utf-8"))
+
+        latest.unlink()
+        with self.assertRaisesRegex(
+            campaign.CampaignError, "current frontier is unavailable"
+        ):
+            campaign.load_retained_frontier_campaign(
+                self.root, self.manifest_path, "focus"
+            )
+
+        wrong = dict(original)
+        wrong["function"] = "sibling"
+        wrong["frontier_sha256"] = campaign._digest_json(
+            {key: value for key, value in wrong.items() if key != "frontier_sha256"}
+        )
+        latest.write_text(json.dumps(wrong), encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "frontier identity mismatch"):
+            campaign.load_retained_frontier_campaign(
+                self.root, self.manifest_path, "focus"
+            )
+
+        latest.write_text(json.dumps(original), encoding="utf-8")
+        with self.assertRaisesRegex(
+            campaign.CampaignError, "outside campaign scope"
+        ):
+            campaign.load_retained_frontier_campaign(
+                self.root, self.manifest_path, "not-a-function"
+            )
+
+    def test_mutating_snapshot_rejects_read_only_retained_campaign(self) -> None:
+        """A read-only retained view must not be accepted by snapshot code."""
+
+        loaded = self.load()
+        campaign.snapshot_frontier(self.root, loaded, "focus")
+        retained = campaign.load_retained_frontier_campaign(
+            self.root, self.manifest_path, "focus"
+        )
+        with self.assertRaisesRegex(campaign.CampaignError, "read-only"):
+            campaign.snapshot_frontier(self.root, retained, "focus")
+
     def test_neutral_descendant_head_is_accepted(self) -> None:
         extra = self.root / "workflow-only.txt"
         extra.write_text("workflow-only change\n", encoding="utf-8")

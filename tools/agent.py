@@ -961,6 +961,15 @@ def _add_owner_campaign_command_arguments(
             help="source-shape family that produced the candidate",
         )
         parser.add_argument(
+            "--candidate-scope",
+            dest="candidate_scope",
+            type=Path,
+            help=(
+                "optional hash-bound candidate scope JSON, such as one "
+                "adjacent static-inline helper plus target-function uses"
+            ),
+        )
+        parser.add_argument(
             "--expected-terminal",
             choices=("exact", "improved"),
             default="exact",
@@ -1439,17 +1448,26 @@ def _run_owner_campaign_reconstruct(
         )
     if worker is not None and not 0 <= worker <= 4:
         raise OwnerCampaignCLIError("owner campaign reconstruct --worker must be 0-4")
-    loader = getattr(module, "load_campaign", None)
+    if require_existing:
+        loader = getattr(module, "load_retained_frontier_campaign", None)
+        loader_name = "load_retained_frontier_campaign"
+    else:
+        loader = getattr(module, "load_campaign", None)
+        loader_name = "load_campaign"
     if not callable(loader):
         raise OwnerCampaignCLIError(
-            "tools.owner_campaign does not expose load_campaign"
+            f"tools.owner_campaign does not expose {loader_name}"
         )
     snapshotter = getattr(module, "snapshot_frontier", None)
     if not callable(snapshotter):
         raise OwnerCampaignCLIError(
             "tools.owner_campaign does not expose snapshot_frontier"
         )
-    campaign = loader(root, campaign_path)
+    campaign = (
+        loader(root, campaign_path, functions[0])
+        if require_existing
+        else loader(root, campaign_path)
+    )
     from tools.owner_campaign_lane import reconstruct_frontier
 
     bound_snapshotter = snapshotter
@@ -1540,6 +1558,21 @@ def _run_owner_campaign_command(
         campaign = loader(root, campaign_path)
         from tools.owner_campaign_lane import propose_candidate
         try:
+            candidate_scope = None
+            candidate_scope_path = getattr(args, "candidate_scope", None)
+            if candidate_scope_path is not None:
+                binder = getattr(module, "_bound_path", None)
+                reader = getattr(module, "_read_json", None)
+                if not callable(binder) or not callable(reader):
+                    raise OwnerCampaignCLIError(
+                        "owner campaign candidate-scope loader is unavailable"
+                    )
+                bound_scope = binder(
+                    root,
+                    str(candidate_scope_path),
+                    "candidate scope",
+                )
+                candidate_scope = reader(bound_scope, "candidate scope")
             expected_terminal = getattr(args, "expected_terminal", "exact")
             predicted_rows = list(getattr(args, "predicted_rows", None) or [])
             remaining_values = {
@@ -1561,6 +1594,7 @@ def _run_owner_campaign_command(
                 expected_terminal=expected_terminal,
                 predicted_rows=predicted_rows or None,
                 predicted_remaining_counts=predicted_remaining_counts,
+                candidate_scope=candidate_scope,
             )
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"error: {exc}")
