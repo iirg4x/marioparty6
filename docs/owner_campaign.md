@@ -138,8 +138,8 @@ still requires the normal strict/data/physical/sibling/source-link proof ladder.
 ### Sol lane protocol
 
 The Sol parent owns orchestration, not candidate selection by management. At
-startup it may fill up to five Luna/max worker slots with distinct open
-functions (or bounded decomposition regions of broad functions), then collect
+startup it may fill up to five Luna/max worker slots with open functions (or
+bounded decomposition regions of broad functions), then collect
 their sealed `owner_campaign_candidate/v1` descriptors in the campaign inbox:
 
 ```text
@@ -149,9 +149,13 @@ build/owner-campaign/inbox/<campaign-slug>/*.json
 The available evidence classes are CFG/frame/topology;
 lifetime/stack/register chronology; expression scheduling/types/promotions;
 ABI/inline/header/TU visibility; and static data/pools/relocations/layout.
-They are ranking labels, not a five-way same-function probe matrix. Each worker
-independently reads its function's current reconstruction packet, reconstructs
-one natural-C boundary from target evidence, and writes only a sealed
+They are ranking labels, not a blind syntax matrix. If fewer than five
+functions are open, independently justified candidates for the same function
+may fill idle slots. Every candidate must own the first remaining strict/data
+mismatch or its complete authenticated causal/mirror cluster; a later-row-only
+candidate is rejected before compilation. Each worker independently reads its
+function's current reconstruction packet, reconstructs one natural-C boundary
+from target evidence, and writes only a sealed
 descriptor plus its source under the campaign's allowed build roots.
 Donor/history search may corroborate a reconstruction but is never required.
 The Sol parent then runs the inbox command above. It may continue from retained
@@ -164,7 +168,8 @@ The inbox driver groups proposals by function and runs up to five independent
 `select -> validate -> snapshot -> compile/proof` pipelines. A ready function
 does not wait for an unrelated slow selector or snapshot. Each pipeline
 arbitrates at most one winner for its function; the batch never spends five
-slots on same-function syntax variants. Terminal descriptors and unshared candidate sources are deleted after measurement;
+slots serially when independent same-function cells can be measured in
+parallel. Terminal descriptors and unshared candidate sources are deleted after measurement;
 `infra_retry` descriptors and sources stay in place for retry. Empty inboxes
 return an explicit `idle` result, not a false successful empty batch. The only
 upward lane message after success is the completed, evidence-bound
@@ -186,6 +191,21 @@ slowest selector, or for the slowest baseline. GC and storage-limit maintenance
 run once at the batch tail, outside the source/frontier hot path. The Sol parent
 adopts each winner with a per-function frontier compare-and-swap (CAS), so only
 the short live-source/frontier publication and final link are serialized.
+
+For an ad-hoc ranked cell, use the compact measurement front door instead of
+running compile, objdiff, data, relocation, and register inspection commands
+separately:
+
+```text
+rtk python tools/agent.py --root <owner-root> crack-cell \
+  --baseline <current-residual.json> --candidate <candidate.c> \
+  --function <symbol> --label <cell>
+```
+
+It performs one disposable build and returns one bounded JSON result with
+strict/data sizes and rows, physical relocations, instruction/register deltas,
+hashes, and cleanup status. It never retains source or consumes a candidate;
+infrastructure and stale-context failures remain retryable.
 
 A reconstruction assignment has a ten-minute search lease. Before that lease
 expires, its worker returns exactly one current-frontier-bound natural-C
