@@ -3,8 +3,8 @@
 The driver deliberately stays small.  It does not choose hypotheses, create
 Codex tasks, or replace the campaign runtime.  Sol supplies sealed natural-C
 candidate descriptors to the campaign inbox; this module discovers a bounded
-batch, arbitrates at most one selected proposal per function, and delegates
-measurement/retention to :mod:`tools.owner_campaign`.
+batch, arbitrates sealed proposals, and delegates measurement/retention to
+:mod:`tools.owner_campaign`.
 
 The inbox is a transport boundary, not a second authority boundary.  A
 descriptor must pass the same self-digest and campaign binding checks used by
@@ -1912,8 +1912,9 @@ def discover_candidates(
     # A global first-N slice can hide an eligible function behind a stalled
     # function's proposal run.  Interleave candidates by manifest function
     # order while preserving created/path order within each function.  The
-    # Arbitration later dispatches at most one winner per selected function,
-    # but it can now pivot to a different function in the same bounded scan.
+    # Arbitration later preserves deterministic proposal order while allowing
+    # the streaming scheduler to fill every worker slot when a function has
+    # multiple current-bound candidates.
     scoped_functions = [
         function for function in campaign.get("functions", [])
         if isinstance(function, str)
@@ -2788,6 +2789,7 @@ def run_inbox(
     _pre_discovered: Sequence[Path] | None = None,
     _defer_maintenance: bool = False,
     _worker: int | None = None,
+    _preselected_selection: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Dispatch one bounded inbox batch through the core campaign loop.
 
@@ -2800,13 +2802,16 @@ def run_inbox(
         raise ValueError(f"max_candidates must be between 1 and {DEFAULT_BATCH_SIZE}")
     if _worker is not None and (type(_worker) is not int or not 0 <= _worker < DEFAULT_BATCH_SIZE):
         raise ValueError(f"_worker must be between 0 and {DEFAULT_BATCH_SIZE - 1}")
+    if _preselected_selection is not None and _pre_discovered is None:
+        raise ValueError("_preselected_selection requires pre-discovered descriptors")
     root = Path(os.path.abspath(root))
     if _pre_discovered is None:
         # Scan a bounded slice per campaign function.  A single global slice
         # can contain only exhausted proposals from the first function and
         # falsely terminate a lane while another function has an eligible
-        # winner.  The selector arbitrates one winner per function from this
-        # widened read-only pool.
+        # winner.  The selector arbitrates the widened read-only pool; the
+        # streaming supervisor may preselect one descriptor at a time from a
+        # same-function group to keep every worker occupied.
         function_count = sum(
             isinstance(function, str) for function in campaign.get("functions", [])
         )
@@ -2845,15 +2850,52 @@ def run_inbox(
     )
     dispatch_descriptors = descriptors
     pipeline_results: list[dict[str, Any]] | None = None
-    if selection_required:
+    if selection_required and _preselected_selection is not None:
+        current_selection = dict(_preselected_selection)
+        if current_selection.get("status") != owner_campaign_selector.SELECTED:
+            raise owner_campaign.CampaignError(
+                "preselected streaming result is not selected"
+            )
+        selected = current_selection.get("selected")
+        if not isinstance(selected, Mapping):
+            raise owner_campaign.CampaignError(
+                "preselected streaming result has no selection binding"
+            )
+        selected_raw = selected.get("descriptor_path")
+        if not isinstance(selected_raw, str):
+            raise owner_campaign.CampaignError(
+                "preselected streaming result has no descriptor path"
+            )
+        selected_path = Path(selected_raw)
+        if not selected_path.is_absolute():
+            selected_path = root / selected_path
+        selected_path = Path(os.path.abspath(selected_path))
+        function_paths = {
+            Path(os.path.abspath(path)) for path in descriptors
+        }
+        if selected_path not in function_paths:
+            raise owner_campaign.CampaignError(
+                "preselected descriptor is outside its streaming batch"
+            )
+        selection_required = True
+        selections.append(current_selection)
+        selection_by_descriptor[selected_path] = dict(selected)
+        dispatch_descriptors = [selected_path]
+        streaming_dispatch = "_source" in campaign and "limits" in campaign
+        if streaming_dispatch:
+            result = _dispatch_selected_candidate(
+                root, campaign, selected_path, worker=_worker or 0,
+            )
+            pipeline_results = [result]
+        else:
+            pipeline_results = None
+    elif selection_required:
         streaming_dispatch = "_source" in campaign and "limits" in campaign
         grouped = _group_descriptors_by_function(root, campaign, descriptors)
-        # One winner per function is the unit of work.  Each function now owns
-        # a complete select -> validate -> measure pipeline: a ready function
-        # reaches its scratch worker immediately instead of waiting at a
-        # whole-batch selector barrier.  ``executor.map`` still yields the
-        # completed pipeline records in manifest order, keeping result and
-        # selection publication deterministic regardless of completion order.
+        # Each function group is independently arbitrated, and one selected
+        # descriptor enters that function's measure pipeline.  The streaming
+        # supervisor uses the same path repeatedly for eligible siblings; this
+        # compatibility entry point still dispatches one winner per group.
         manifest_order = {
             function: index
             for index, function in enumerate(campaign.get("functions", []))
@@ -3269,15 +3311,17 @@ def _streaming_pipeline(
     descriptor_paths: Sequence[Path] | Path,
     *,
     worker: int,
+    preselection: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run one selected function group in one persistent supervisor slot.
+    """Run one selected descriptor in one persistent supervisor slot.
 
     ``run_inbox`` remains the compatibility/``--once`` entry point.  The
-    streaming supervisor calls it with all currently sealed descriptors for one
-    function and deferred maintenance.  Selector arbitration therefore still
-    sees the complete ranked group; only the selected descriptor enters the
-    snapshot/compile/proof pipeline.  This keeps selection, source/frontier
-    CAS, and stale-rebase invariants in one implementation.
+    streaming supervisor calls it with a one-descriptor group after doing
+    read-only selector arbitration.  The complete ranked same-function group
+    is selected before this call; passing that sealed selection through keeps
+    rank selection, source/frontier CAS, and stale-rebase invariants in one
+    implementation while allowing several descriptors for one function to
+    occupy independent slots.
     """
 
     if isinstance(descriptor_paths, (str, os.PathLike)):
@@ -3288,14 +3332,15 @@ def _streaming_pipeline(
         raise owner_campaign.CampaignError(
             "streaming candidate pipeline received no descriptors"
         )
-    value = run_inbox(
-        root,
-        campaign,
-        max_candidates=1,
-        _pre_discovered=paths,
-        _defer_maintenance=True,
-        _worker=worker,
-    )
+    run_kwargs: dict[str, Any] = {
+        "max_candidates": 1,
+        "_pre_discovered": paths,
+        "_defer_maintenance": True,
+        "_worker": worker,
+    }
+    if preselection is not None:
+        run_kwargs["_preselected_selection"] = dict(preselection)
+    value = run_inbox(root, campaign, **run_kwargs)
     if not isinstance(value, Mapping):
         raise owner_campaign.CampaignError(
             "streaming candidate pipeline returned an invalid lane result"
@@ -3343,6 +3388,38 @@ def _streaming_failure_result(
     }
 
 
+def _is_source_advance_retryable(value: Any) -> bool:
+    """Return whether a lane result is retryable after a source/frontier race.
+
+    These messages are emitted by the core snapshot CAS when another worker
+    retains a shared-TU gain while this worker is measuring.  Compiler,
+    selector, and cleanup failures remain terminal for the descriptor; only
+    the explicit snapshot publication races are put back into the scheduler's
+    bounded inbox.
+    """
+
+    if not isinstance(value, Mapping):
+        return False
+    messages: list[str] = []
+    for key in ("reason", "terminal_reason"):
+        raw = value.get(key)
+        if isinstance(raw, str):
+            messages.append(raw)
+    raw_results = value.get("results")
+    if isinstance(raw_results, Sequence) and not isinstance(raw_results, (str, bytes)):
+        for item in raw_results:
+            if isinstance(item, Mapping):
+                reason = item.get("reason")
+                if isinstance(reason, str):
+                    messages.append(reason)
+    retryable_markers = (
+        "frontier snapshot became stale before publication",
+        "frontier advanced without matching the live source",
+        "latest frontier disappeared during snapshot",
+    )
+    return any(marker in message for message in messages for marker in retryable_markers)
+
+
 def _run_streaming_inbox(
     root: Path,
     campaign: Mapping[str, Any],
@@ -3355,13 +3432,14 @@ def _run_streaming_inbox(
 ) -> dict[str, Any]:
     """Drain a v2 inbox with persistent, continuously refilled worker slots.
 
-    The old supervisor waited for a complete five-function wave before looking
-    at the inbox again.  This scheduler keeps at most one candidate per
-    function claimed for a bounded drain, but refills a freed slot immediately
-    with the next distinct function.  Each cell still enters ``run_inbox`` so
-    its selector, source/frontier CAS, stale rebase, cleanup, and terminal
-    publication semantics are unchanged.  Only the batch-tail maintenance is
-    deferred until this drain reaches a terminal boundary.
+    The old supervisor waited for a complete five-function wave and claimed a
+    function for the whole drain.  This scheduler refills every free slot with
+    the next sealed descriptor, even when several descriptors belong to the
+    same function.  A same-function group is still passed through the selector
+    in deterministic rank order before each descriptor is submitted; the core
+    runner remains the authority for source/frontier CAS and stale rebases.
+    Only the batch-tail maintenance is deferred until this drain reaches a
+    terminal boundary.
     """
 
     root = Path(os.path.abspath(root))
@@ -3384,11 +3462,11 @@ def _run_streaming_inbox(
     discovered: list[Path] = []
     discovered_set: set[Path] = set()
     attempted: set[Path] = set()
-    claimed_functions: set[str] = set()
+    source_race_retries: dict[Path, int] = {}
     initial_index = 0
     slot_ids = set(range(max_candidates))
     completed: dict[int, dict[str, Any]] = {}
-    future_meta: dict[Any, tuple[int, Path, str, int]] = {}
+    future_meta: dict[Any, tuple[int, Path, str, int, Mapping[str, Any] | None]] = {}
     next_sequence = 0
     boundary_status: str | None = None
     boundary_reason: str | None = None
@@ -3420,86 +3498,160 @@ def _run_streaming_inbox(
         note_discovered(paths)
         return paths
 
-    def next_eligible() -> tuple[list[Path], str] | None:
+    def next_eligible() -> tuple[list[Path], str, Mapping[str, Any] | None] | None:
         # Re-scan after every completed slot.  ``discover_candidates`` is
-        # bounded and deterministic; attempted paths/function claims prevent a
-        # retry or same-function duplicate from occupying the slot.  All
-        # currently sealed descriptors for the chosen function are passed to
-        # the selector together so a lower-ranked inbox entry can never bypass
-        # a higher-ranked sibling merely because it was discovered first.
+        # bounded and deterministic; attempted paths prevent duplicate
+        # dispatch while allowing same-function siblings to fill free slots.
+        # The selector sees all currently eligible siblings for the chosen
+        # function and returns the next deterministic winner.  Removing only
+        # that winner from ``attempted`` leaves the remaining ranked siblings
+        # available for later slots.
         for _ in range(2):
             groups: dict[str, list[Path]] = {}
             for path in refill_source():
                 if path in attempted:
                     continue
                 function = descriptor_function(path)
-                if function is None or function in claimed_functions:
+                if function is None:
                     continue
                 groups.setdefault(function, []).append(path)
-            if groups:
-                manifest_order = {
-                    function: index
-                    for index, function in enumerate(campaign.get("functions", []))
-                    if isinstance(function, str)
-                }
-                function = min(
-                    groups,
-                    key=lambda item: (manifest_order.get(item, len(manifest_order)), item),
+            if not groups:
+                return None
+            manifest_order = {
+                function: index
+                for index, function in enumerate(campaign.get("functions", []))
+                if isinstance(function, str)
+            }
+            function = min(
+                groups,
+                key=lambda item: (manifest_order.get(item, len(manifest_order)), item),
+            )
+            group = groups[function]
+            selection_required = "base_commit" in campaign or any(
+                any(
+                    path.is_file()
+                    for path in owner_campaign_selector.selection_evidence_paths(path)
                 )
-                group = groups[function]
+                for path in group
+            )
+            if not selection_required:
+                # Legacy descriptor-only callers do not carry selection
+                # evidence.  Keep their historical one-slot dispatch shape;
+                # production v2 campaigns always take the branch below.
                 attempted.update(group)
-                claimed_functions.add(function)
-                return group, function
+                return group, function, None
+
+            try:
+                current_selection = owner_campaign_selector.select_winning_candidate(
+                    root, campaign, group
+                )
+            except Exception:
+                # Let run_inbox produce the canonical selector diagnostic for
+                # this group.  Mark all inputs consumed for this drain so an
+                # invalid/unknown group cannot spin forever.
+                attempted.update(group)
+                return group, function, None
+            if not isinstance(current_selection, Mapping):
+                attempted.update(group)
+                return group, function, None
+            current_selection = dict(current_selection)
+            if current_selection.get("status") != owner_campaign_selector.SELECTED:
+                attempted.update(group)
+                return group, function, None
+            selected = current_selection.get("selected")
+            selected_raw = (
+                selected.get("descriptor_path")
+                if isinstance(selected, Mapping)
+                else None
+            )
+            selected_path = Path(selected_raw) if isinstance(selected_raw, str) else None
+            if selected_path is None:
+                attempted.update(group)
+                return group, function, None
+            selected_path = normalize_path(selected_path)
+            group_paths = {normalize_path(path) for path in group}
+            if selected_path not in group_paths:
+                attempted.update(group)
+                return group, function, None
+            attempted.add(selected_path)
+            return [selected_path], function, current_selection
         return None
 
     def submit_available(executor: ThreadPoolExecutor) -> None:
         nonlocal next_sequence
-        while boundary_status is None and len(future_meta) < max_candidates and slot_ids:
+        planned: list[
+            tuple[int, list[Path], str, int, Mapping[str, Any] | None]
+        ] = []
+        while (
+            boundary_status is None
+            and len(future_meta) + len(planned) < max_candidates
+            and slot_ids
+        ):
             candidate = next_eligible()
             if candidate is None:
-                return
-            paths, function = candidate
+                break
+            paths, function, preselection = candidate
             slot = min(slot_ids)
             slot_ids.remove(slot)
             sequence = next_sequence
             next_sequence += 1
+            planned.append((sequence, list(paths), function, slot, preselection))
+
+        # Select the entire initial wave before starting any pipeline.  This
+        # avoids a fast same-function winner advancing the frontier before its
+        # sibling has even been ranked, while still leaving stale-rebase/CAS to
+        # the core runner once the workers begin.
+        for sequence, paths, function, slot, preselection in planned:
+            submit_kwargs: dict[str, Any] = {"worker": slot}
+            if preselection is not None:
+                submit_kwargs["preselection"] = preselection
             future = executor.submit(
                 _streaming_pipeline,
                 root,
                 campaign,
                 paths,
-                worker=slot,
+                **submit_kwargs,
             )
-            # The first path is only a stable failure/display identity; the
-            # complete descriptor group remains inside the future call so the
-            # selector can arbitrate all ranked siblings.
-            future_meta[future] = (sequence, paths[0], function, slot)
+            future_meta[future] = (
+                sequence, paths[0], function, slot, preselection
+            )
 
     def consume_done(done: Sequence[Any]) -> None:
         for future in sorted(
             done,
-            key=lambda item: future_meta.get(item, (10**9, Path("."), "", 0))[0],
+            key=lambda item: future_meta.get(
+                item, (10**9, Path("."), "", 0, None)
+            )[0],
         ):
             meta = future_meta.pop(future, None)
             if meta is None:
                 continue
-            sequence, path, function, slot = meta
+            sequence, path, function, slot, _preselection = meta
             slot_ids.add(slot)
+            value: Mapping[str, Any]
             try:
-                value = future.result()
-                if not isinstance(value, Mapping):
+                raw_value = future.result()
+                if not isinstance(raw_value, Mapping):
                     raise owner_campaign.CampaignError(
                         "streaming candidate pipeline returned an invalid lane result"
                     )
-                completed[sequence] = dict(value)
+                value = dict(raw_value)
+                completed[sequence] = value
             except BaseException as exc:
-                completed[sequence] = _streaming_failure_result(
+                value = _streaming_failure_result(
                     campaign,
                     path,
                     function,
                     f"streaming candidate pipeline failed: {exc}",
                     root=root,
                 )
+                completed[sequence] = value
+
+            if _is_source_advance_retryable(value):
+                retries = source_race_retries.get(path, 0)
+                if retries < 1 and path.exists():
+                    source_race_retries[path] = retries + 1
+                    attempted.discard(path)
 
     executor = ThreadPoolExecutor(
         max_workers=max_candidates,
