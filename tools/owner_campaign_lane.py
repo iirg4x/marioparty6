@@ -1133,6 +1133,13 @@ def _selection_evidence_for_proposal(
         raise owner_campaign.CampaignError("predicted rows are invalid")
     if not set(predicted) <= set(residual):
         raise owner_campaign.CampaignError("predicted rows are outside current residual")
+    first_mismatch_rows = owner_campaign_selector._first_mismatch_rows(
+        strict_rows, data_rows
+    )
+    if first_mismatch_rows and not set(first_mismatch_rows) <= set(predicted):
+        raise owner_campaign.CampaignError(
+            "candidate does not cover the first mismatch"
+        )
     current_counts = {
         "strict": len(strict_rows), "data": len(data_rows),
         "physical": len(physical_rows),

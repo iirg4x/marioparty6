@@ -345,9 +345,9 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
                 self.root, self.campaign, [descriptor]
             )
         self.assertEqual(result["status"], selector.UNKNOWN)
-        self.assertIn("ownership is incomplete", result["reason"])
+        self.assertIn("first mismatch", result["reason"])
 
-    def test_near_exact_selection_rejects_later_only_probe(self) -> None:
+    def test_selection_rejects_later_only_probe(self) -> None:
         frontier_body = {
             key: value
             for key, value in self.frontier.items()
@@ -385,7 +385,7 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertEqual(result["status"], selector.UNKNOWN)
         self.assertIn("first mismatch", result["reason"])
 
-    def test_near_exact_selection_admits_first_mismatch_cluster(self) -> None:
+    def test_selection_admits_first_mismatch_cluster(self) -> None:
         frontier_body = {
             key: value
             for key, value in self.frontier.items()
@@ -632,7 +632,7 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         descriptor, _source, _sidecar = self._proposal(
             "zero-improvement",
             residual=residual,
-            predicted=["strict:focus:row:1"],
+            predicted=["strict:focus:row:1", "data:focus:row:1"],
             predicted_counts={"strict": 2, "data": 2, "physical": 2},
         )
 
