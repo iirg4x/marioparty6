@@ -220,6 +220,57 @@ class FakeBackend:
         self.closed = True
 
 
+class GC26FrontendBackend(FakeBackend):
+    """Fake one-process backend exercising the combined frontend hooks."""
+
+    def __init__(self, *, duplicate_frontend_object: bool = False) -> None:
+        super().__init__()
+        self.duplicate_frontend_object = duplicate_frontend_object
+
+    def capture_frontend(self, hook_id: str, thread_id: int) -> dict[str, object]:
+        del thread_id
+        if hook_id in MODULE._frontend_chronology.GENERIC_HOOK_IDS:
+            index = MODULE._frontend_chronology.GENERIC_HOOK_IDS.index(hook_id)
+            pointers = [0x1010, 0x1020, 0x2010]
+            if self.duplicate_frontend_object and index == 1:
+                return {"pointer": pointers[0]}
+            return {"pointer": pointers[index]}
+        if hook_id == "bulk_object_link":
+            return {"object_pointers": [0x1010, 0x1020, 0x2010]}
+        raise MODULE.Rejected(f"unexpected fake frontend hook: {hook_id}")
+
+    def run(self, session: MODULE.CombinedCaptureSession) -> None:
+        self.session = session
+        hook_by_id = {str(row["id"]): row for row in session.auth["hooks"]}
+
+        def hit(hook_id: str) -> None:
+            session.on_breakpoint(int(hook_by_id[hook_id]["address"]), 1)
+            session.on_single_step(1)
+
+        session.on_process_started(self.process_id)
+        hit("reset")
+        for hook_id in MODULE._frontend_chronology.GENERIC_HOOK_IDS:
+            hit(hook_id)
+        hit("bulk_object_link")
+        # Frontend list construction precedes the shared function-filter
+        # boundary in the authenticated chronology; the combined session must
+        # retain these generations before selecting the target epoch.
+        hit("function_filter")
+        hit("allocation_pre")
+        hit("allocation_post")
+        for hook_id in (
+            str(row["id"])
+            for row in session.auth["hooks"]
+            if row["role"] == "object_stack_write"
+        ):
+            hit(hook_id)
+        for hook_id in MODULE._pcode_stage_hook_ids(tuple(session.auth["hooks"])):
+            hit(hook_id)
+        hit("regalloc")
+        hit("regalloc_post")
+        session.on_process_exit(0)
+
+
 def auth(root: Path, *, session_id: str = "session-0000000000000001") -> dict[str, object]:
     files = {}
     for name, data in (
@@ -328,6 +379,80 @@ def prepared_capture(root: Path, *, backend: FakeBackend | None = None, session_
     envelope_path = root / "capture" / "same-session.envelope.json"
     return request_path, envelope_path, captured, trust_root_for_request(request_path, include_outputs=True)
 class CapsuleSameSessionCaptureTests(unittest.TestCase):
+    def _gc26_auth(self, root: Path) -> dict[str, object]:
+        """Return a programmatic auth fixture selecting the GC/2.6 profile."""
+
+        value = auth(root)
+        request = dict(value["request"])
+        # The fake image need not exist: _path_descriptor intentionally permits
+        # sealed non-live descriptors for programmatic fake sessions.  Using a
+        # distinct path also prevents the fixture bytes from being mistaken for
+        # the authenticated MWCC/2.6 image.
+        request["compiler"] = {
+            "path": str(root / "gc26-mwcceppc.exe"),
+            "size": 0,
+            "sha256": MODULE.GC26_COMPILER_SHA256,
+        }
+        value["request"] = request
+        return value
+
+    def test_gc26_frontend_chronology_is_embedded_in_one_session(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            backend = GC26FrontendBackend()
+            session = MODULE.CombinedCaptureSession(self._gc26_auth(root), backend)
+            envelope = session.run()
+
+            frontend = envelope.get("frontend_chronology")
+            self.assertIsInstance(frontend, dict)
+            assert isinstance(frontend, dict)
+            self.assertEqual(frontend.get("status"), "CAPTURED")
+            packet = frontend.get("packet")
+            self.assertIsInstance(packet, dict)
+            assert isinstance(packet, dict)
+            validated = MODULE._frontend_chronology.validate_packet(packet)
+            self.assertEqual(validated, packet)
+            self.assertEqual(
+                packet["provenance"]["session_id"],
+                envelope["context"]["session_id"],
+            )
+            self.assertEqual(
+                packet["provenance"]["compiler_sha256"],
+                MODULE.GC26_COMPILER_SHA256,
+            )
+            self.assertEqual(
+                set(backend.installs),
+                {int(row["address"]) for row in MODULE.GC26_HOOKS},
+            )
+            self.assertEqual(
+                {event["lane"] for event in envelope["events"]},
+                {"stack", "pcode"},
+            )
+
+    def test_gc26_frontend_unknown_retains_combined_stack_evidence(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            backend = GC26FrontendBackend(duplicate_frontend_object=True)
+            session = MODULE.CombinedCaptureSession(self._gc26_auth(root), backend)
+            envelope = session.run()
+
+            frontend = envelope.get("frontend_chronology")
+            self.assertEqual(frontend, {
+                "status": "UNKNOWN",
+                "reason": "incomplete frontend chronology",
+            })
+            self.assertIn("incomplete frontend chronology", envelope["unknown"])
+            self.assertTrue(any(event["lane"] == "stack" for event in envelope["events"]))
+            self.assertTrue(any(event["lane"] == "pcode" for event in envelope["events"]))
+
+    def test_gc27_profile_does_not_install_frontend_hooks(self) -> None:
+        hooks = MODULE._hooks_for_compiler(MODULE.GC27_COMPILER_SHA256)
+        self.assertEqual(len(hooks), len(MODULE.GC27_HOOKS))
+        self.assertFalse(any(row.get("lane") == "frontend" for row in hooks))
+        self.assertTrue(
+            {str(row["id"]) for row in hooks}.isdisjoint(MODULE.GC26_FRONTEND_HOOK_IDS)
+        )
+
     def test_session_breakpoint_cleanup_does_not_mask_primary_failure(self) -> None:
         class PrimaryAndBreakpointCleanupFailure(FakeBackend):
             def run(self, session: MODULE.CombinedCaptureSession) -> None:

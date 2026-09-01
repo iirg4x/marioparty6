@@ -159,6 +159,10 @@ MEMEXEC_MAX_PROBES = 2
 # must preserve wrapper semantics even when all request/source bytes are ASCII.
 SJISWRAP_V111_SHA256 = "27a3c5d4f263e4eb96e5619cfcda22f45d33ccd121104c7ff6a37e15b3f427cd"
 GC27_COMPILER_SHA256 = "04ece8178961bdbaeebe2d4e5922ed542c4d82b2fc3de996c41c9e193bd49eea"
+# GC/2.6 is the compiler image used by the stack-home and frontend chronology
+# producers.  The frontend hooks below are enabled only for this exact image;
+# an arbitrary compiler hash continues to use the legacy stack/PCode profile.
+GC26_COMPILER_SHA256 = _stack_home.EXPECTED_COMPILER_SHA256
 AUTHENTICATED_DIRECT_COMPILER_PAIRS = frozenset(
     {(SJISWRAP_V111_SHA256, GC27_COMPILER_SHA256)}
 )
@@ -298,6 +302,18 @@ HOOKS: tuple[dict[str, Any], ...] = tuple(
 # Preserve the central legacy authority even when an explicitly imported
 # private backend replaces the public ``HOOKS`` compatibility variable.
 LEGACY_HOOKS = HOOKS
+# ``target_boundary`` is the same instruction as the stack lane's
+# ``function_filter``.  It must not be installed twice: the combined session
+# observes the single trap as both the target-function filter and the frontend
+# target entry.  The other five frontend sites are independent traps and are
+# carried in the GC/2.6 profile with an explicit frontend lane.
+GC26_FRONTEND_HOOKS: tuple[dict[str, Any], ...] = tuple(
+    {**row, "lane": "frontend"}
+    for row in _frontend_chronology.HOOKS
+    if row["id"] != "target_boundary"
+)
+GC26_FRONTEND_HOOK_IDS = tuple(str(row["id"]) for row in GC26_FRONTEND_HOOKS)
+GC26_HOOKS: tuple[dict[str, Any], ...] = HOOKS + GC26_FRONTEND_HOOKS
 # GC/2.7 keeps the same stack-hook meanings, but its allocator helper is
 # 0xe0 bytes earlier than the authenticated GC/2.6 image.  Three Object-write
 # sites therefore move with that helper, while the call at allocation_pre
@@ -390,7 +406,7 @@ GC27_HOOKS: tuple[dict[str, Any], ...] = (
 GC27_OPCODE_DESCRIPTOR_TABLE = 0x005C0FA8
 GC27_OPCODE_DESCRIPTOR_STRIDE = 18
 GC27_OPCODE_DESCRIPTOR_BASE_OFFSET = 0x0E
-_HOOK_SETS: tuple[tuple[dict[str, Any], ...], ...] = (HOOKS, GC27_HOOKS)
+_HOOK_SETS: tuple[tuple[dict[str, Any], ...], ...] = (HOOKS, GC26_HOOKS, GC27_HOOKS)
 HOOK_BY_ID = {str(row["id"]): row for rows in _HOOK_SETS for row in rows}
 HOOK_BY_ADDRESS = {int(row["address"]): row for rows in _HOOK_SETS for row in rows}
 WRITE_HOOK_IDS = tuple(row["id"] for row in HOOKS if row["role"] == "object_stack_write")
@@ -416,7 +432,12 @@ def _pcode_stage_hook_ids(hooks: Sequence[Mapping[str, Any]]) -> tuple[str, ...]
 def _hooks_for_compiler(compiler_sha256: str) -> tuple[dict[str, Any], ...]:
     """Select only hook sites authenticated for the request compiler."""
 
-    return GC27_HOOKS if compiler_sha256.lower() == GC27_COMPILER_SHA256 else LEGACY_HOOKS
+    normalized = compiler_sha256.lower()
+    if normalized == GC27_COMPILER_SHA256:
+        return GC27_HOOKS
+    if normalized == GC26_COMPILER_SHA256:
+        return GC26_HOOKS
+    return LEGACY_HOOKS
 
 
 def _validate_runtime_hook_patch(compiler_sha256: str) -> None:
@@ -706,7 +727,8 @@ _KNOWN_UNKNOWN_REASONS = frozenset(
         "descriptor opcode mismatch",
         "machine owner register-bank mismatch",
         "paired physical register assignment unsupported",
-    )
+        "incomplete frontend chronology",
+     )
 )
 
 
@@ -1842,7 +1864,17 @@ class SharedBreakpointDispatcher:
     def __init__(self, backend: CaptureBackend, session: "CombinedCaptureSession", hooks: Sequence[Mapping[str, Any]] = HOOKS) -> None:
         self.backend = backend
         self.session = session
-        self.hooks = _validate_hook_rows([dict(row) for row in hooks], "dispatcher hooks")
+        session_auth = getattr(session, "auth", None)
+        compiler_sha256: str | None = None
+        if isinstance(session_auth, Mapping):
+            request = session_auth.get("request")
+            if isinstance(request, Mapping) and isinstance(request.get("compiler"), Mapping):
+                compiler_sha256 = str(request["compiler"]["sha256"])
+        self.hooks = _validate_hook_rows(
+            [dict(row) for row in hooks],
+            "dispatcher hooks",
+            compiler_sha256=compiler_sha256,
+        )
         self.by_address = {int(row["address"]): row for row in self.hooks}
         if len(self.by_address) != len(self.hooks):
             raise Rejected("dispatcher hook union has conflicting addresses")
@@ -1942,7 +1974,13 @@ class SharedBreakpointDispatcher:
             raise Rejected("single-step had no pending write breakpoint")
         address, accepted = pending
         row = self.by_address[address]
-        if accepted and row["role"] == "object_stack_write":
+        if accepted and (
+            row["role"] == "object_stack_write"
+            or (
+                row.get("lane") == "frontend"
+                and row["role"] in {"generic_completed_insertion", "bulk_object_link"}
+            )
+        ):
             self.session.on_hook_post(row, thread)
         install = getattr(self.backend, "install_breakpoint", None)
         if not callable(install):
@@ -2025,6 +2063,33 @@ class CombinedCaptureSession:
         # even when the separate Object-to-vreg reader is unavailable.  Never
         # promote the operand index to a virtual-register identity.
         self.pcode_color_owners: dict[tuple[str, str, int], str] = {}
+        # GC/2.6 frontend chronology is consumed by this same session.  It is
+        # deliberately absent for GC/2.7: that compiler has a different
+        # frontend image/profile and must not inherit these hook addresses.
+        self.frontend_session: Any | None = None
+        self.frontend_packet: dict[str, Any] | None = None
+        self.frontend_failure: str | None = None
+        if str(request["compiler"]["sha256"]).lower() == GC26_COMPILER_SHA256:
+            provenance = {
+                "source_sha256": str(request["source"]["sha256"]),
+                "compiler_sha256": str(request["compiler"]["sha256"]),
+                # The combined event streams and frontend stream are produced
+                # by this authenticated request/session.  The request digest
+                # is the stable same-session trace anchor available before the
+                # envelope is sealed.
+                "trace_sha256": self.auth["request_sha256"],
+                "session_id": self.session_id,
+            }
+            try:
+                self.frontend_session = _frontend_chronology.FrontendChronologySession(
+                    provenance,
+                    function=self.function,
+                )
+            except Exception:
+                # Frontend chronology is an optional evidence lane.  A bad or
+                # incomplete frontend setup must remain UNKNOWN while the
+                # stack/PCode lanes continue to capture in this process.
+                self.frontend_failure = "incomplete frontend chronology"
 
     def _check_process(self, process_id: Any | None) -> None:
         if process_id is None:
@@ -2265,6 +2330,96 @@ class CombinedCaptureSession:
         decoded["physical_owner_joins"] = physical_owner_joins
         return {"hook_id": row["id"], **decoded}
 
+    def _frontend_unknown(self) -> None:
+        """Disable only the frontend evidence lane after an invalid join.
+
+        Frontend hooks are diagnostic enrichment.  A missing, duplicate, or
+        ambiguous frontend event must not discard the already authenticated
+        stack/PCode events from this same compiler process.
+        """
+
+        self.frontend_failure = "incomplete frontend chronology"
+        self.frontend_session = None
+        self.frontend_packet = None
+        self._unknown(self.frontend_failure)
+
+    def _frontend_snapshot_rows(self) -> list[dict[str, Any]]:
+        """Return the pointer-bearing snapshot only to the private frontend lane."""
+
+        method = getattr(self.backend, "snapshot_objects", None)
+        if callable(method):
+            raw_rows = method()
+        else:
+            method = getattr(self.backend, "snapshot_inventory", None)
+            if not callable(method):
+                raise Rejected("frontend Object snapshot is unavailable")
+            raw = method()
+            if not isinstance(raw, Mapping):
+                raise Rejected("frontend Object snapshot is malformed")
+            raw_rows = [
+                *list(raw.get("locals", ())),
+                *list(raw.get("arguments", ())),
+            ]
+        if not isinstance(raw_rows, Sequence) or isinstance(raw_rows, (str, bytes, bytearray)):
+            raise Rejected("frontend Object snapshot is malformed")
+        rows: list[dict[str, Any]] = []
+        for raw in raw_rows:
+            if not isinstance(raw, Mapping):
+                raise Rejected("frontend Object snapshot row is malformed")
+            if "pointer" not in raw or "varinfo_pointer" not in raw:
+                raise Rejected("frontend Object snapshot row lacks VarInfo identity")
+            row: dict[str, Any] = {
+                "pointer": raw["pointer"],
+                "varinfo_pointer": raw["varinfo_pointer"],
+            }
+            if "home_value" in raw:
+                row["home_value"] = raw["home_value"]
+            rows.append(row)
+        return rows
+
+    def _frontend_maybe_snapshot(self) -> None:
+        session = self.frontend_session
+        if session is None or not session.target_entry_seen or not session.bulk_seen or session.snapshot_seen:
+            return
+        session.on_post_allocation_snapshot(self._frontend_snapshot_rows())
+
+    def _frontend_complete_hook(self, row: Mapping[str, Any], thread: int) -> None:
+        session = self.frontend_session
+        if session is None:
+            return
+        hook_id = str(row["id"])
+        capture = getattr(self.backend, "capture_frontend", None)
+        raw: Any
+        if callable(capture):
+            raw = capture(hook_id, thread)
+        elif hook_id in _frontend_chronology.GENERIC_HOOK_IDS:
+            register = _frontend_chronology.GENERIC_OBJECT_REGISTERS.get(hook_id)
+            if register is None:
+                raise Rejected(f"frontend hook has no authenticated Object register: {hook_id}")
+            pointer = self._call_backend("read_register", thread, register)
+            raw = {"pointer": pointer}
+        elif hook_id == "bulk_object_link":
+            rows = self._frontend_snapshot_rows()
+            raw = {"object_pointers": [item["pointer"] for item in rows]}
+        else:
+            raise Rejected(f"unsupported frontend hook completion: {hook_id}")
+        if not isinstance(raw, Mapping):
+            raise Rejected("frontend hook backend returned a non-object")
+        if hook_id in _frontend_chronology.GENERIC_HOOK_IDS:
+            pointer = raw.get("pointer", raw.get("object_pointer"))
+            session.on_hook_complete(hook_id, pointer=pointer)
+        elif hook_id == "bulk_object_link":
+            pointers = raw.get("object_pointers")
+            session.on_hook_complete(hook_id, object_pointers=pointers)
+            self._frontend_maybe_snapshot()
+
+    def _frontend_target_entry(self, observed: Any) -> None:
+        session = self.frontend_session
+        if session is None or observed != self.function:
+            return
+        session.on_target_boundary(phase="entry", function=self.function)
+        self._frontend_maybe_snapshot()
+
     def on_process_started(self, process_id: Any | None = None) -> None:
         if self.started:
             raise Rejected("native process started twice")
@@ -2278,6 +2433,15 @@ class CombinedCaptureSession:
             raise Rejected("native process id does not match backend process")
         self.bus.bind_process(actual)
         self.started = True
+        if self.frontend_session is not None:
+            hook_bytes = {
+                str(row["id"]): str(row["prefix"])
+                for row in _frontend_chronology.HOOKS
+            }
+            try:
+                self.frontend_session.on_process_started(hook_bytes=hook_bytes)
+            except Exception:
+                self._frontend_unknown()
 
     def _call_backend(self, name: str, *args: Any) -> Any:
         method = getattr(self.backend, name, None)
@@ -2721,6 +2885,13 @@ class CombinedCaptureSession:
 
     def on_hook(self, row: Mapping[str, Any], thread: int) -> bool:
         role = row["role"]
+        if role == "frontend_reset":
+            if self.frontend_session is not None:
+                try:
+                    self.frontend_session.on_hook("reset")
+                except Exception:
+                    self._frontend_unknown()
+            return True
         if role == "function_filter":
             if self.target_complete:
                 return False
@@ -2738,9 +2909,32 @@ class CombinedCaptureSession:
                 return False
             if self.function_entered:
                 raise Rejected("target function entry observed twice")
+            if self.frontend_session is not None:
+                try:
+                    self._frontend_target_entry(observed)
+                except Exception:
+                    self._frontend_unknown()
             self.function_entered = True
             self.bus.emit("stack", "function_entry", {"hook_id": row["id"]})
             return True
+        if row.get("lane") == "frontend":
+            # Frontend Object insertions/linking delimit the target epoch and
+            # therefore legitimately occur before the shared function-filter
+            # breakpoint selects the requested function.  The standalone
+            # chronology consumer uses that same order.  Do not gate these
+            # hooks on the stack lane's ``function_entered`` flag; doing so
+            # would silently lose the Object generations needed for the later
+            # target-boundary join.  Once the stack lane has closed the target
+            # epoch, subsequent frontend hooks belong to another function.
+            if self.target_complete:
+                return False
+            if self.frontend_session is None:
+                return False
+            if role in {"generic_completed_insertion", "bulk_object_link"}:
+                # These hooks are sampled after their first instruction has
+                # executed; the dispatcher completes them from on_hook_post.
+                return True
+            raise Rejected(f"unsupported frontend hook role: {role}")
         if self.target_complete or not self.function_entered:
             return False
         if role == "numeric_stack_alloc_pre":
@@ -2912,11 +3106,30 @@ class CombinedCaptureSession:
             self.bus.emit("pcode", "lane_unknown", {"reason": reason})
 
     def on_hook_post(self, row: Mapping[str, Any], thread: int) -> None:
+        if row.get("lane") == "frontend":
+            try:
+                self._frontend_complete_hook(row, thread)
+            except Exception:
+                self._frontend_unknown()
+            return
         payload = self.pending_writes.pop(thread, None)
         if payload is None or payload["hook_id"] != row["id"]:
             raise Rejected("single-step write chronology mismatch")
         self.bus.emit("stack", "object_stack_write_post", {**payload, "write_observed": True})
         self._maybe_complete_target()
+
+    def _finalize_frontend(self) -> None:
+        session = self.frontend_session
+        if session is None:
+            if self.frontend_failure is not None:
+                self._unknown(self.frontend_failure)
+            return
+        try:
+            packet = session.on_process_exit(0)
+            validated = _frontend_chronology.validate_packet(packet)
+            self.frontend_packet = dict(validated)
+        except Exception:
+            self._frontend_unknown()
 
     def on_single_step(self, thread_id: Any, process_id: Any | None = None) -> None:
         self._check_process(process_id)
@@ -2940,6 +3153,7 @@ class CombinedCaptureSession:
             raise Rejected("process exited without target function entry")
         if self.pending_writes or self.dispatcher.pending_steps:
             raise Rejected("process exited with pending single-step")
+        self._finalize_frontend()
         self._ensure_lane_completion()
         self.function_exited = True
         self.bus.emit("stack", "function_exit", {"exit_code": self.exit_code})
@@ -3136,6 +3350,9 @@ class CombinedCaptureSession:
             "request": {"path": str(request_path), "size": request_size, "sha256": self.auth["request_sha256"]},
             "authority": dict(request["authority"]),
         }
+        is_gc26 = str(request["compiler"]["sha256"]).lower() == GC26_COMPILER_SHA256
+        if is_gc26:
+            context["frontend_trace_sha256"] = self.auth["request_sha256"]
         transport_provenance = getattr(self.backend, "transport_provenance", None)
         if callable(transport_provenance):
             execution = transport_provenance(request["argv"])
@@ -3174,6 +3391,17 @@ class CombinedCaptureSession:
                 "Missing, duplicate, reused, null, or one-to-many evidence is UNKNOWN.",
             ],
         }
+        if is_gc26:
+            if self.frontend_packet is not None:
+                envelope["frontend_chronology"] = {
+                    "status": "CAPTURED",
+                    "packet": dict(self.frontend_packet),
+                }
+            else:
+                envelope["frontend_chronology"] = {
+                    "status": "UNKNOWN",
+                    "reason": self.frontend_failure or "incomplete frontend chronology",
+                }
         _pointer_free(envelope)
         envelope["envelope_sha256"] = canonical_hash(envelope)
         return envelope
@@ -5652,6 +5880,37 @@ def _validate_chronology(
                 raise Rejected("machine physical owner join lacks an exact same-session assignment")
 
 
+def _validate_embedded_frontend_chronology(
+    value: Any,
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate frontend chronology emitted by the same combined session."""
+
+    if not isinstance(value, Mapping):
+        raise Rejected("embedded frontend chronology must be an object")
+    status = value.get("status")
+    if status == "CAPTURED":
+        if set(value) != {"status", "packet"} or not isinstance(value.get("packet"), Mapping):
+            raise Rejected("embedded frontend chronology capture shape mismatch")
+        packet = _frontend_chronology.validate_packet(value["packet"])
+        provenance = packet["provenance"]
+        if packet["function"] != context["function"]:
+            raise Rejected("embedded frontend chronology function mismatch")
+        if provenance["session_id"] != context["session_id"]:
+            raise Rejected("embedded frontend chronology session mismatch")
+        if provenance["source_sha256"] != context["source"]["sha256"] or provenance["compiler_sha256"] != context["compiler"]["sha256"]:
+            raise Rejected("embedded frontend chronology provenance mismatch")
+        trace = context.get("frontend_trace_sha256")
+        if trace is None or provenance["trace_sha256"] != trace:
+            raise Rejected("embedded frontend chronology trace mismatch")
+        return {"status": "CAPTURED", "packet": packet}
+    if status == "UNKNOWN":
+        if set(value) != {"status", "reason"} or value.get("reason") != "incomplete frontend chronology":
+            raise Rejected("embedded frontend chronology UNKNOWN shape mismatch")
+        return {"status": "UNKNOWN", "reason": "incomplete frontend chronology"}
+    raise Rejected("embedded frontend chronology status is unsupported")
+
+
 def validate_envelope(
     envelope_path: Path | str,
     external_trust_root: ExternalTrustRoot | Mapping[str, Any] | None = None,
@@ -5675,7 +5934,8 @@ def validate_envelope(
     expected_keys = {
         "schema", "tool_version", "status", "diagnostic_only", "board_admission", "exactness_claim", "authority_advanced", "context", "authority", "outputs", "hooks", "events", "event_count", "lanes", "inventory", "unknown", "limitations", "envelope_sha256"
     }
-    if set(envelope) != expected_keys:
+    envelope_keys = set(envelope)
+    if envelope_keys != expected_keys and envelope_keys != expected_keys | {"frontend_chronology"}:
         raise Rejected("envelope contains unsupported or missing fields")
     digest = envelope.get("envelope_sha256")
     unsigned = {key: value for key, value in envelope.items() if key != "envelope_sha256"}
@@ -5687,7 +5947,13 @@ def validate_envelope(
         raise Rejected("envelope policy mismatch")
     context = envelope["context"]
     base_context_keys = {"session_id", "process_id", "function", "function_sha256", "argv", "cwd", "source", "compiler", "wrapper", "debugger", "transport", "request", "authority"}
-    if not isinstance(context, Mapping) or set(context) not in {frozenset(base_context_keys), frozenset(base_context_keys | {"execution"})}:
+    allowed_context_keys = {
+        frozenset(base_context_keys),
+        frozenset(base_context_keys | {"execution"}),
+        frozenset(base_context_keys | {"frontend_trace_sha256"}),
+        frozenset(base_context_keys | {"frontend_trace_sha256", "execution"}),
+    }
+    if not isinstance(context, Mapping) or frozenset(context) not in allowed_context_keys:
         raise Rejected("envelope context shape mismatch")
     session_id = _safe_session_id(context["session_id"])
     if not isinstance(context["process_id"], int) or isinstance(context["process_id"], bool):
@@ -5712,6 +5978,15 @@ def validate_envelope(
     _path_descriptor(envelope["authority"], "envelope authority", must_exist=False)
     if context["authority"] != envelope["authority"]:
         raise Rejected("envelope authority descriptor is not shared with context")
+    compiler_sha256 = str(context["compiler"]["sha256"]).lower()
+    has_frontend = "frontend_chronology" in envelope
+    if compiler_sha256 == GC26_COMPILER_SHA256:
+        if not has_frontend or "frontend_trace_sha256" not in context:
+            raise Rejected("GC/2.6 envelope is missing same-session frontend chronology")
+        _digest(context["frontend_trace_sha256"], "envelope frontend trace")
+        _validate_embedded_frontend_chronology(envelope["frontend_chronology"], context)
+    elif has_frontend or "frontend_trace_sha256" in context:
+        raise Rejected("frontend chronology is not valid for this compiler profile")
     request_descriptor = context["request"]
     if not isinstance(request_descriptor, Mapping) or set(request_descriptor) != {"path", "size", "sha256"}:
         raise Rejected("envelope request descriptor is malformed")
@@ -5790,6 +6065,8 @@ def validate_envelope(
             derived_unknown.add(str(event["reason"]))
         elif event["event_kind"] in {"pcode_capture", "regalloc_assignment", "physical_reg_assignment", "machine_emission"} and event.get("status") == "UNKNOWN":
             derived_unknown.add(str(event["reason"]))
+    if has_frontend and envelope["frontend_chronology"].get("status") == "UNKNOWN":
+        derived_unknown.add(str(envelope["frontend_chronology"]["reason"]))
     if not isinstance(envelope["unknown"], list) or envelope["unknown"] != sorted(set(envelope["unknown"])) or not all(isinstance(item, str) and item in _KNOWN_UNKNOWN_REASONS for item in envelope["unknown"]):
         raise Rejected("envelope unknown list is invalid")
     if not derived_unknown.issubset(set(envelope["unknown"])):
@@ -6896,7 +7173,27 @@ def build_source_aware_causal_map(
 
     frontend: dict[str, Any]
     if frontend_chronology is None:
-        frontend = {"status": "UNKNOWN", "reason": "frontend chronology packet was not supplied"}
+        embedded = envelope.get("frontend_chronology")
+        if isinstance(embedded, Mapping):
+            if embedded.get("status") == "CAPTURED":
+                validated = _validate_embedded_frontend_chronology(
+                    embedded,
+                    envelope["context"],
+                )["packet"]
+                frontend = {
+                    "status": validated["status"],
+                    "source": "embedded_same_session",
+                    "packet_sha256": validated["packet_sha256"],
+                    "events": validated["events"],
+                }
+            else:
+                frontend = {
+                    "status": "UNKNOWN",
+                    "reason": str(embedded.get("reason", "incomplete frontend chronology")),
+                    "source": "embedded_same_session",
+                }
+        else:
+            frontend = {"status": "UNKNOWN", "reason": "frontend chronology packet was not supplied"}
     else:
         chronology_path = _canonical_path(frontend_chronology, "frontend chronology packet")
         chronology_raw = strict_json_loads(chronology_path.read_text(encoding="utf-8"), "frontend chronology packet")
@@ -6997,6 +7294,7 @@ class NativeWow64Backend:
             "snapshot_varinfo",
             "read_register",
             "capture_stack_write",
+            "capture_frontend",
             "capture_pcode",
             "capture_machine_emission",
             "capture_regalloc",
@@ -7555,7 +7853,7 @@ class NativeWow64Backend:
 
         if base <= 0 or base % 0x1000 or base + image_size > 0x100000000:
             return False
-        for row in HOOKS:
+        for row in _hooks_for_compiler(self.compiler_sha256 or ""):
             address = base + int(row["address"]) - KNOWN_IMAGE_BASE
             expected = self._mapped_hook_prefix(row, base)
             try:
@@ -7977,6 +8275,30 @@ class NativeWow64Backend:
         if kind is not None:
             result["kind"] = kind
         return result
+
+    def capture_frontend(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
+        """Capture one GC/2.6 frontend observation in the same paused process."""
+
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("frontend hook is not authenticated for this compiler")
+        hook = next((row for row in GC26_FRONTEND_HOOKS if str(row["id"]) == str(hook_id)), None)
+        if hook is None:
+            raise Rejected("unowned frontend hook")
+        if hook_id in _frontend_chronology.GENERIC_HOOK_IDS:
+            register = _frontend_chronology.GENERIC_OBJECT_REGISTERS.get(str(hook_id))
+            if register is None:
+                raise Rejected("frontend generic hook has no Object register")
+            pointer = self.read_register(thread_id, register)
+            if pointer == 0:
+                raise Rejected("frontend generic hook returned a null Object")
+            return {"pointer": pointer}
+        if hook_id == "bulk_object_link":
+            rows = self.snapshot_objects()
+            pointers = [row.get("pointer") for row in rows]
+            if not pointers or any(pointer is None for pointer in pointers):
+                raise Rejected("frontend bulk-link snapshot is incomplete")
+            return {"object_pointers": pointers}
+        raise Rejected("unsupported frontend hook")
 
     def _read_direct_vreg_evidence(self, hook_id: str, thread_id: int) -> list[dict[str, Any]]:
         """Read an optional authenticated direct Object-to-vreg table.
@@ -8871,9 +9193,9 @@ def unknown_result(reason: str) -> dict[str, Any]:
 
 
 def self_test() -> dict[str, Any]:
-    if len(LEGACY_HOOKS) != 8 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 17:
+    if len(LEGACY_HOOKS) != 8 or len(GC26_HOOKS) != 13 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 22:
         raise Rejected("hook union is not closed")
-    if tuple(HOOKS) not in (LEGACY_HOOKS, GC27_HOOKS):
+    if tuple(HOOKS) not in (LEGACY_HOOKS, GC26_HOOKS, GC27_HOOKS):
         raise Rejected("private backend hook patch does not match a closed profile")
     if any(row["address"] == 0x004D03E8 for row in GC27_HOOKS):
         raise Rejected("GC/2.7 profile contains stale GC/2.6 regalloc hook")
