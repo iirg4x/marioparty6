@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Route one objdiff residual to at most three P0 recovery actions.
+"""Route one objdiff residual to a first-mismatch P0 recovery cell.
 
 The router composes the installed typed-pool decoder with the strict
 typed-owner manifest gate.  It does not generate source or launch a compiler.
-Its purpose is to decide the first diagnostic path in seconds and keep the
-initial candidate budget bounded.
+Its purpose is to identify the earliest mismatch, rank one evidence-backed
+natural-C cell that owns it, and force a recompute/pivot after that result.
+Donor, history, and trace evidence are optional support rather than gates.
 """
 
 from __future__ import annotations
@@ -23,6 +24,21 @@ from tools import typed_pool_owner_manifest as owner_manifest
 
 
 SCHEMA = "crack_first_pass/v1"
+
+
+def _compile_action() -> str:
+    return (
+        "Compile one highest-ranked evidence-backed cell that owns the earliest "
+        "mismatch; after the result, retain measurable gain or pivot/recompute "
+        "from the new earliest mismatch."
+    )
+
+
+def _optional_evidence_action() -> str:
+    return (
+        "Use donor/history/trace evidence only when available as optional support; "
+        "none is a prerequisite for the first compile."
+    )
 
 
 def route_manifest(
@@ -45,49 +61,49 @@ def route_manifest(
 
     if manifest.get("status") == "matched":
         route = "typed_pool_owner_manifest"
-        candidate_budget = 1
         actions = [
-            "Confirm each listed instruction row maps to a truthful semantic source consumer.",
-            "Compile the single composed named-owner binding cell.",
+            "Confirm the earliest listed instruction row maps to a truthful semantic source consumer; donor/history/trace evidence remains optional.",
+            _compile_action(),
             "Run strict/data/physical-relocation/protected-sibling proof and write CRACK_REPORT/v1.",
         ]
         trace_budget = 0
     elif isinstance(stack_home_diagnosis, Mapping) and stack_home_diagnosis.get("status") == "matched":
         route = stack_home.ROUTE
-        candidate_budget = 3
         actions = [
-            "Enumerate the complete candidate-to-target stack-home mapping and observed extents.",
-            "Query Graphify plus one exact same-game donor for the live aggregate/capacity class, then compile one composed cell.",
-            "Decode only the listed remaining pool rows after home topology is exact; suppress declaration and scope permutations.",
+            "Use the closed stack-home mapping to rank the one natural owner cell for the earliest mismatch.",
+            _compile_action(),
+            "Recompute the residual after proof; decode optional pool rows only if still earliest, suppressing source matrices.",
         ]
         trace_budget = 0
     elif pool_count == strict_count and pool_count > 0:
         route = "typed_pool_decoder"
-        candidate_budget = 3
         actions = [
-            "Reduce pool groups by value, type, relocation addend, owner identity, and TU chronology.",
-            "Compose all disjoint target-authenticated pool causes into the first candidate.",
-            "Compile at most three cells; trace remains disabled for a pool-only residual.",
+            "Reduce pool evidence around the earliest mismatch and rank one truthful typed owner cell.",
+            _compile_action(),
+            _optional_evidence_action(),
         ]
         trace_budget = 0
     elif pool_count == 0:
         route = "causal_reducer"
-        candidate_budget = 3
         actions = [
-            "Run the causal cascade reducer for size/frame/CFG/ABI/aggregate ownership.",
-            "Query Graphify and one narrow same-TU/history donor before source permutations.",
-            "Compile at most three evidence-composed cells; trace only after structure is exact.",
+            "Use the causal reducer to identify the earliest non-cascade mismatch and rank one owning source boundary.",
+            _compile_action(),
+            _optional_evidence_action(),
         ]
         trace_budget = 1
     else:
         route = "causal_reducer_then_typed_pool_decoder"
-        candidate_budget = 3
         actions = [
-            "Close non-pool topology and owner rows first with the causal reducer.",
-            "Decode the remaining typed-pool rows after structure is exact.",
-            "Compose disjoint causes; compile at most three cells and trace at most once.",
+            "Identify the earliest non-pool mismatch and rank one owner before considering typed-pool evidence.",
+            _compile_action(),
+            "Recompute after proof; use optional typed-pool evidence only if it becomes the new earliest mismatch.",
         ]
         trace_budget = 1
+
+    # Every route gets exactly one compile opportunity.  A neutral or regressing
+    # result is handled by recomputing the residual and pivoting, never by
+    # expanding a syntax matrix in this first pass.
+    candidate_budget = 1
 
     result: dict[str, Any] = {
         "schema": SCHEMA,

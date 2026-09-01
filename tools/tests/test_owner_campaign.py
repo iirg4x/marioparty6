@@ -2045,7 +2045,7 @@ class OwnerCampaignTests(unittest.TestCase):
                 self.root, loaded, [(owner / "new.json", b"0123456789")]
             )
 
-    def test_gain_rejects_row_and_physical_identity_migration(self) -> None:
+    def test_gain_allows_count_monotonic_row_identity_migration(self) -> None:
         metrics = {
             "strict": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
             "data": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
@@ -2070,7 +2070,7 @@ class OwnerCampaignTests(unittest.TestCase):
         }
         self.assertEqual(
             campaign.assess_gain(metrics, candidate, base_focus=base_focus, candidate_focus=migrated),
-            "no_gain",
+            "improved",
         )
         migrated = {
             "strict_row_ids": ["s:a"], "data_row_ids": ["d:a"],
@@ -2119,6 +2119,88 @@ class OwnerCampaignTests(unittest.TestCase):
                 base_focus=base_focus, candidate_focus=exact_focus,
             ),
             "exact",
+        )
+
+    def test_gain_rejects_count_regression(self) -> None:
+        base = {
+            "strict": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "data": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "physical_target_count": 5, "physical_candidate_count": 5,
+            "physical_differences": 1, "protected_total": 1,
+            "protected_losses": 0, "source_link_exact": False,
+        }
+        candidate = json.loads(json.dumps(base))
+        candidate["strict"]["differences"] = 3
+        candidate["data"]["differences"] = 1
+        self.assertEqual(campaign.assess_gain(base, candidate), "no_gain")
+
+    def test_gain_rejects_physical_regression(self) -> None:
+        base = {
+            "strict": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "data": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "physical_target_count": 5, "physical_candidate_count": 5,
+            "physical_differences": 1, "protected_total": 1,
+            "protected_losses": 0, "source_link_exact": False,
+        }
+        candidate = json.loads(json.dumps(base))
+        candidate["strict"]["differences"] = 1
+        candidate["data"]["differences"] = 1
+        candidate["physical_differences"] = 2
+        self.assertEqual(campaign.assess_gain(base, candidate), "no_gain")
+
+    def test_gain_preserves_physical_only_improvement(self) -> None:
+        base = {
+            "strict": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "data": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "physical_target_count": 5, "physical_candidate_count": 5,
+            "physical_differences": 2, "protected_total": 1,
+            "protected_losses": 0, "source_link_exact": False,
+        }
+        candidate = json.loads(json.dumps(base))
+        candidate["physical_differences"] = 1
+        self.assertEqual(campaign.assess_gain(base, candidate), "improved")
+
+    def test_gain_rejects_protected_loss(self) -> None:
+        base = {
+            "strict": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "data": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "physical_target_count": 5, "physical_candidate_count": 5,
+            "physical_differences": 1, "protected_total": 1,
+            "protected_losses": 0, "source_link_exact": False,
+        }
+        candidate = json.loads(json.dumps(base))
+        candidate["strict"]["differences"] = 1
+        candidate["data"]["differences"] = 1
+        candidate["protected_losses"] = 1
+        self.assertEqual(campaign.assess_gain(base, candidate), "no_gain")
+
+    def test_gain_neutral_identity_migration_remains_no_gain(self) -> None:
+        metrics = {
+            "strict": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "data": {"target_bytes": 100, "candidate_bytes": 100, "differences": 2},
+            "physical_target_count": 5, "physical_candidate_count": 5,
+            "physical_differences": 1, "protected_total": 1,
+            "protected_losses": 0, "source_link_exact": False,
+        }
+        migrated = json.loads(json.dumps(metrics))
+        base_focus = {
+            "strict_row_ids": ["s:a"], "data_row_ids": ["d:a"],
+            "physical_difference_ids": ["p:old"],
+            "physical_target_identity_sha256": "1" * 64,
+            "physical_candidate_identity_sha256": "3" * 64,
+        }
+        candidate_focus = {
+            "strict_row_ids": ["s:new"], "data_row_ids": ["d:new"],
+            "physical_difference_ids": ["p:new"],
+            "physical_target_identity_sha256": "1" * 64,
+            "physical_candidate_identity_sha256": "4" * 64,
+        }
+        self.assertEqual(
+            campaign.assess_gain(
+                metrics, migrated,
+                base_focus=base_focus, candidate_focus=candidate_focus,
+            ),
+            "no_gain",
         )
 
     def test_identical_parallel_candidate_compiles_once(self) -> None:

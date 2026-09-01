@@ -2702,8 +2702,28 @@ class NativeWow64Backend:
         self._set_context(handle, context)
 
     def read_register(self, thread_id: int, name: str) -> int:
-        context = self._get_context(self.threads[thread_id])
-        return int(getattr(context, {"eax": "Eax", "ebx": "Ebx"}[name]))
+        register_names = {
+            "eax": "Eax",
+            "ebx": "Ebx",
+            "ecx": "Ecx",
+            "edx": "Edx",
+            "esi": "Esi",
+            "edi": "Edi",
+            "ebp": "Ebp",
+            "esp": "Esp",
+            "eip": "Eip",
+        }
+        field = register_names.get(str(name).lower())
+        if field is None:
+            raise Rejected(f"unsupported WOW64 register layout: {name!r}")
+        handle = self.threads.get(int(thread_id))
+        if handle is None:
+            raise Rejected(f"WOW64 thread handle is missing: {thread_id}")
+        context = self._get_context(handle)
+        try:
+            return int(getattr(context, field))
+        except AttributeError as exc:
+            raise Rejected(f"WOW64 context is missing register field: {field}") from exc
 
     def read_execution_state(self, thread_id: int) -> Mapping[str, int]:
         context = self._get_context(self.threads[thread_id])

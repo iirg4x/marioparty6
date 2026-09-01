@@ -93,6 +93,15 @@ HOOK_BY_ID = {str(row["id"]): row for row in HOOKS}
 HOOK_BY_ADDRESS = {int(row["address"]): row for row in HOOKS}
 HOOK_ORDER = tuple(str(row["id"]) for row in HOOKS)
 GENERIC_HOOK_IDS = tuple(row for row in HOOK_ORDER if row.startswith("generic_insert_"))
+# The generic insertion sites expose the newly created list node in EAX, but
+# retain the compiler Object argument in a different register at each site.
+# The hook is sampled after its first instruction, while EAX still names the
+# node, so using EAX here silently joins the node instead of the Object.
+GENERIC_OBJECT_REGISTERS = {
+    "generic_insert_0": "esi",
+    "generic_insert_1": "ebp",
+    "generic_insert_2": "ebx",
+}
 
 PROVENANCE_FIELDS = frozenset(
     {"source_sha256", "compiler_sha256", "trace_sha256", "session_id"}
@@ -985,7 +994,10 @@ class FrontendWow64Backend(_stack_home.NativeWow64Backend):
 
     def _frontend_pointer(self, hook_id: str, thread_id: int) -> int | None:
         if hook_id in GENERIC_HOOK_IDS:
-            return self.read_register(thread_id, "eax")
+            register = GENERIC_OBJECT_REGISTERS.get(hook_id)
+            if register is None:
+                raise Rejected(f"generic insertion hook has no Object register mapping: {hook_id}")
+            return self.read_register(thread_id, register)
         if hook_id == "bulk_object_link":
             return self.read_register(thread_id, "ebx")
         return None

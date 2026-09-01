@@ -2057,14 +2057,34 @@ def assess_gain(
     metrics = _validate_metrics(candidate)
     if (base_focus is None) != (candidate_focus is None):
         raise CampaignError("gain identity comparison requires both focus artifacts")
+    improvements = (
+        metrics["strict"]["differences"] < base_metrics["strict"]["differences"],
+        metrics["data"]["differences"] < base_metrics["data"]["differences"],
+        abs(metrics["strict"]["target_bytes"] - metrics["strict"]["candidate_bytes"])
+        < abs(base_metrics["strict"]["target_bytes"] - base_metrics["strict"]["candidate_bytes"]),
+        abs(metrics["data"]["target_bytes"] - metrics["data"]["candidate_bytes"])
+        < abs(base_metrics["data"]["target_bytes"] - base_metrics["data"]["candidate_bytes"]),
+        metrics["physical_differences"] < base_metrics["physical_differences"],
+        abs(metrics["physical_target_count"] - metrics["physical_candidate_count"])
+        < abs(base_metrics["physical_target_count"] - base_metrics["physical_candidate_count"]),
+    )
+    any_quantitative_gain = any(improvements)
     if base_focus is not None and candidate_focus is not None:
-        for field in (
-            "strict_row_ids", "data_row_ids", "physical_difference_ids"
-        ):
-            base_ids = set(base_focus[field])
-            candidate_ids = set(candidate_focus[field])
-            if not candidate_ids <= base_ids:
-                return "no_gain"
+        # Objdiff identities are derived from instruction alignment and may
+        # legitimately be renumbered/re-keyed when an earlier mismatch is
+        # removed.  A quantitative improvement is the authoritative gain
+        # signal; requiring residual IDs to be a set subset would reject real
+        # owner improvements such as 25 -> 13 rows after realignment. Without
+        # any quantitative gain, retain the identity-subset guard so neutral
+        # or unsupported migrations cannot become frontiers.
+        if not any_quantitative_gain:
+            for field in (
+                "strict_row_ids", "data_row_ids", "physical_difference_ids"
+            ):
+                base_ids = set(base_focus[field])
+                candidate_ids = set(candidate_focus[field])
+                if not candidate_ids <= base_ids:
+                    return "no_gain"
         if (
             candidate_focus["physical_target_identity_sha256"]
             != base_focus["physical_target_identity_sha256"]
@@ -2101,17 +2121,6 @@ def assess_gain(
         > abs(base_metrics["physical_target_count"] - base_metrics["physical_candidate_count"])
     ):
         return "no_gain"
-    improvements = (
-        metrics["strict"]["differences"] < base_metrics["strict"]["differences"],
-        metrics["data"]["differences"] < base_metrics["data"]["differences"],
-        abs(metrics["strict"]["target_bytes"] - metrics["strict"]["candidate_bytes"])
-        < abs(base_metrics["strict"]["target_bytes"] - base_metrics["strict"]["candidate_bytes"]),
-        abs(metrics["data"]["target_bytes"] - metrics["data"]["candidate_bytes"])
-        < abs(base_metrics["data"]["target_bytes"] - base_metrics["data"]["candidate_bytes"]),
-        metrics["physical_differences"] < base_metrics["physical_differences"],
-        abs(metrics["physical_target_count"] - metrics["physical_candidate_count"])
-        < abs(base_metrics["physical_target_count"] - base_metrics["physical_candidate_count"]),
-    )
     if not any(improvements):
         return "no_gain"
     return "exact" if _is_exact(metrics) else "improved"

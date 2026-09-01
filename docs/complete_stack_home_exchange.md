@@ -32,9 +32,11 @@ consumer family blocks the diagnosis. A blocked result falls back to the generic
 causal reducer and retains its single late-trace allowance.
 
 A matched result suppresses declaration-order permutations, scope permutations,
-dead/fake locals, padding, register shaping, and tracing before the donor
-composition. It sets a total candidate budget of three and a trace budget of
-zero. Source retention, promotion, and authority remain false.
+dead/fake locals, padding, register shaping, and trace-led searching. It ranks
+one evidence-backed natural-C cell that owns the earliest mismatch, sets a total
+candidate budget of one and a trace budget of zero, then requires a fresh
+residual before another cell. Donor evidence is optional support, not a compile
+prerequisite. Source retention, promotion, and authority remain false.
 
 ## Usage
 

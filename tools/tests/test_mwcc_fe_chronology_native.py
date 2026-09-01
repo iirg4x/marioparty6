@@ -39,6 +39,30 @@ def complete_packet() -> dict[str, object]:
 
 
 class MwccFeChronologyNativeTests(unittest.TestCase):
+    def test_generic_insert_hooks_capture_object_register_not_list_node(self) -> None:
+        class Context:
+            Eax = 0x1000  # Newly allocated list node, not the Object.
+            Esi = 0x2000  # generic_insert_0 Object argument.
+            Ebp = 0x3000  # generic_insert_1 Object argument.
+            Ebx = 0x4000  # generic_insert_2 Object argument.
+
+        backend = object.__new__(chronology.FrontendWow64Backend)
+        backend.threads = {7: 99}
+        backend._get_context = lambda handle: Context()
+
+        self.assertEqual(backend._frontend_pointer("generic_insert_0", 7), 0x2000)
+        self.assertEqual(backend._frontend_pointer("generic_insert_1", 7), 0x3000)
+        self.assertEqual(backend._frontend_pointer("generic_insert_2", 7), 0x4000)
+
+    def test_generic_insert_mapping_fails_closed_if_mapping_is_missing(self) -> None:
+        backend = object.__new__(chronology.FrontendWow64Backend)
+        original = chronology.GENERIC_OBJECT_REGISTERS.pop("generic_insert_0")
+        try:
+            with self.assertRaisesRegex(chronology.Rejected, "no Object register mapping"):
+                backend._frontend_pointer("generic_insert_0", 7)
+        finally:
+            chronology.GENERIC_OBJECT_REGISTERS["generic_insert_0"] = original
+
     def test_authenticated_hook_plan_has_requested_gc26_sites(self) -> None:
         self.assertEqual(
             [int(row["address"]) for row in chronology.HOOKS],

@@ -30,17 +30,21 @@ rtk C:\Python313\python.exe tools\crack_first_pass.py ^
   --output build\FUNCTION.first-pass.json
 ```
 
-The `crack_first_pass/v1` result selects exactly one of these routes:
+The `crack_first_pass/v1` result selects exactly one of these routes. Every
+route follows the same earliest-mismatch policy: rank one evidence-backed
+natural-C cell, compile it once, then recompute the residual and pivot if the
+result does not close it. Donor, history, and trace evidence are optional
+support and never prerequisites for that first compile.
 
 1. `typed_pool_owner_manifest`: one owner-binding candidate, no trace;
-2. `typed_pool_decoder`: pool-only semantic/type/chronology reduction, at most
-   three evidence-composed candidates and no trace;
-3. `causal_reducer`: structural/ABI/aggregate reduction, at most three
-   candidates and at most one late trace; or
+2. `typed_pool_decoder`: pool-only semantic/type/chronology reduction, one
+   earliest-owner candidate and no trace;
+3. `causal_reducer`: structural/ABI/aggregate reduction, one earliest-owner
+   candidate and at most one optional late trace; or
 4. `causal_reducer_then_typed_pool_decoder`: close structure before pool rows.
 
-Every route has an analysis deadline of five minutes, no more than three
-actions, and `authority_advanced:false`.
+Every route has an analysis deadline of five minutes, a candidate budget of one,
+and `authority_advanced:false`.
 
 ## Direct manifest command
 
