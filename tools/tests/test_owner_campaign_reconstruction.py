@@ -536,6 +536,45 @@ class OwnerCampaignReconstructionTests(unittest.TestCase):
             data_row_ids=data_ids,
         )
 
+    def test_six_row_bounded_cluster_keeps_complete_selector_ownership(self) -> None:
+        report = _broad_report(80)
+        residual_indexes = (
+            set(range(0, 6))
+            | set(range(20, 26))
+            | set(range(40, 46))
+            | set(range(60, 66))
+        )
+        for channel in ("strict", "data"):
+            material = report["channels"][channel]
+            material["metric"]["diff_rows"] = len(residual_indexes)
+            for side in ("target", "candidate"):
+                for index, row in enumerate(material[side]["rows"]):
+                    if index not in residual_indexes:
+                        row.pop("diff_kind", None)
+        report["artifact_sha256"] = reconstruction.canonical_sha256(
+            {key: value for key, value in report.items() if key != "artifact_sha256"}
+        )
+        strict_ids = measure._stable_row_ids(report, "strict", FUNCTION)
+        data_ids = measure._stable_row_ids(report, "data", FUNCTION)
+        packet = _build(
+            report,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+
+        cluster = packet["causal_clusters"][0]
+        self.assertEqual(cluster["residual_event_count"], 6)
+        self.assertEqual(len(cluster["strict_row_ids"]), 6)
+        self.assertEqual(len(cluster["data_row_ids"]), 6)
+        self.assertTrue(cluster["strict_row_ids_complete"])
+        self.assertTrue(cluster["data_row_ids_complete"])
+        reconstruction.verify_packet(packet)
+        reconstruction.verify_residual_identity_census(
+            packet,
+            strict_row_ids=strict_ids,
+            data_row_ids=data_ids,
+        )
+
     def test_broad_packet_full_focus_identity_drift_is_rejected(self) -> None:
         report = _broad_report(80)
         strict_ids = measure._stable_row_ids(report, "strict", FUNCTION)

@@ -50,7 +50,12 @@ MAX_BROAD_CLUSTERS = 8
 # canonical instruction digest), and the bounded packet must remain below the
 # 256 KiB contract even for the legal 4096-row input limit.
 MAX_BROAD_IDS = 16
-MAX_BROAD_CLUSTER_IDS = 4
+# A retained broad cluster must carry enough row identities for the small
+# bounded regions the selector is allowed to dispatch.  Four was lower than
+# the existing packet-wide ID budget and truncated ordinary six-row regions,
+# turning valid proposals into generic UNKNOWN.  Reuse the same 16-ID bound;
+# larger regions remain explicitly incomplete and must be decomposed again.
+MAX_BROAD_CLUSTER_IDS = MAX_BROAD_IDS
 MAX_BROAD_SUMMARY_ENTRIES = 8
 MAX_BROAD_STACK_HOMES = 16
 MAX_BROAD_WINDOW_RADIUS = 4
