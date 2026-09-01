@@ -2,9 +2,10 @@
 """Autonomous, owner-scoped cracking campaign runtime.
 
 This is the v2 hot path.  A campaign manifest grants owner scope once; cells
-are hash-bound, compiled in one reusable scratch worktree, measured once, and
-atomically retained when they improve the monotonic frontier.  No STOP file,
-manager key, approval, permit, or predicted-row packet is consulted here.
+are hash-bound, compiled in up to five reusable isolated scratch worktrees,
+measured once, and atomically retained when they improve the monotonic
+frontier.  No STOP file, manager key, approval, permit, or predicted-row packet
+is consulted here.
 """
 
 from __future__ import annotations
@@ -981,6 +982,7 @@ def _hook_environment(
         "OWNER_CAMPAIGN_PROTECTED_FUNCTIONS": ",".join(
             campaign["protected_exact_functions"]
         ),
+        "OWNER_CAMPAIGN_RECONSTRUCTION": "1",
     })
     return environment
 
@@ -1157,6 +1159,7 @@ MEASUREMENT_FIELDS = {
     "exact_report",
     "measurement_sha256",
 }
+MEASUREMENT_OPTIONAL_FIELDS = {"reconstruction_evidence"}
 FOCUS_FIELDS = {
     "schema", "owner", "function", "unit", "source_path", "base_commit",
     "source_sha256", "target_object_sha256",
@@ -1170,6 +1173,23 @@ FOCUS_FIELDS = {
     "sibling_digest",
     "focus_evidence_sha256",
 }
+
+
+def _measurement_requires_reconstruction(
+    root: Path, campaign: Mapping[str, Any]
+) -> bool:
+    """Return whether the campaign pins this checkout's packet producer.
+
+    Older campaigns execute a content-addressed historical producer and must
+    remain readable.  A campaign pinned to the current adapter, however, may
+    not strip the packet and reseal its measurement as a legacy envelope.
+    """
+
+    current = root / "tools" / "owner_campaign_measure.py"
+    return (
+        current.is_file()
+        and _digest_file(current) == campaign["measurement_producer"]["sha256"]
+    )
 
 
 def _validate_focus_evidence(
@@ -1239,59 +1259,230 @@ def _publish_focus_evidence(
         _state_root(root) / "proof-cas" / "focus" / digest[:2]
         / f"{digest}.json"
     )
-    if path.is_file():
+    marker = _evidence_gc_marker(path)
+    with _exclusive_lock(
+        _evidence_blob_lock(root, "focus", digest),
+        _command_timeout_seconds(campaign),
+    ):
+        if path.is_file():
+            if _read_json(path, "focus evidence CAS") != dict(evidence):
+                raise CampaignError("focus evidence CAS publication drift")
+            marker.unlink(missing_ok=True)
+            os.utime(path, None)
+            return digest
+        _ensure_state_write_peak(
+            root, campaign, [(path, _canonical(evidence) + b"\n")]
+        )
+        _atomic_json(
+            path, evidence, limit=campaign["limits"]["focus_evidence_bytes"]
+        )
         if _read_json(path, "focus evidence CAS") != dict(evidence):
             raise CampaignError("focus evidence CAS publication drift")
-        return digest
-    _ensure_state_write_peak(root, campaign, [(path, _canonical(evidence) + b"\n")])
-    _atomic_json(path, evidence, limit=campaign["limits"]["focus_evidence_bytes"])
-    if _read_json(path, "focus evidence CAS") != dict(evidence):
-        raise CampaignError("focus evidence CAS publication drift")
+        marker.unlink(missing_ok=True)
     return digest
 
 
-def _gc_focus_evidence(root: Path) -> None:
-    """Remove compact focus blobs not referenced by any published frontier."""
+def _publish_reconstruction_evidence(
+    root: Path, campaign: Mapping[str, Any], evidence: Mapping[str, Any]
+) -> str:
+    """Publish one independently verified target-first packet to proof CAS."""
+
+    try:
+        from tools.owner_campaign_reconstruction import (
+            MAX_OUTPUT_BYTES, ReconstructionPacketError, verify_packet,
+        )
+
+        verify_packet(evidence)
+    except ReconstructionPacketError as exc:
+        raise CampaignError(
+            f"reconstruction evidence failed publication verification: {exc}"
+        ) from exc
+    digest = _sha(evidence.get("packet_sha256"), "reconstruction packet_sha256")
+    path = (
+        _state_root(root) / "proof-cas" / "reconstruction" / digest[:2]
+        / f"{digest}.json"
+    )
+    payload = _canonical(evidence) + b"\n"
+    if len(payload) > MAX_OUTPUT_BYTES + 1:
+        raise CampaignError("reconstruction evidence exceeds compact CAS limit")
+    marker = _evidence_gc_marker(path)
+    with _exclusive_lock(
+        _evidence_blob_lock(root, "reconstruction", digest),
+        _command_timeout_seconds(campaign),
+    ):
+        if path.is_file():
+            if _read_json(path, "reconstruction evidence CAS") != dict(evidence):
+                raise CampaignError("reconstruction evidence CAS publication drift")
+            marker.unlink(missing_ok=True)
+            os.utime(path, None)
+            return digest
+        _ensure_state_write_peak(root, campaign, [(path, payload)])
+        _atomic_json(path, evidence, limit=MAX_OUTPUT_BYTES)
+        if _read_json(path, "reconstruction evidence CAS") != dict(evidence):
+            raise CampaignError("reconstruction evidence CAS publication drift")
+        marker.unlink(missing_ok=True)
+    return digest
+
+
+GC_MARKER_SCHEMA = "owner_campaign_evidence_gc_marker/v1"
+GC_MINIMUM_AGE_SECONDS = 60.0
+
+
+def _evidence_blob_lock(root: Path, kind: str, digest: str) -> Path:
+    return (
+        _state_root(root) / "proof-cas" / "blob-locks" / kind / digest[:2]
+        / f"{digest}.lock"
+    )
+
+
+def _evidence_gc_marker(blob: Path) -> Path:
+    return blob.with_suffix(".gc")
+
+
+def _gc_now_ns() -> int:
+    return time.time_ns()
+
+
+def _evidence_gc_references(
+    root: Path, digest_field: str, label: str,
+) -> set[str] | None:
+    """Return retained references, or None when state is unsafe to collect."""
 
     state = _state_root(root)
-    for ledger in (state / "owners").rglob("candidate-results.jsonl") if (state / "owners").is_dir() else ():
+    owners = state / "owners"
+    for ledger in owners.rglob("candidate-results.jsonl") if owners.is_dir() else ():
         try:
             if any(record["status"] == "inflight" for record in _dedupe_records(ledger)):
-                return
+                return None
         except CampaignError:
-            return
+            return None
     referenced: set[str] = set()
-    owners = state / "owners"
     if owners.is_dir():
-        frontier_paths = [
+        for frontier_path in [
             *owners.rglob("latest-frontier.json"),
             *owners.rglob("frontier.pending.json"),
-        ]
-        for frontier_path in frontier_paths:
+        ]:
             try:
-                value = _read_json(frontier_path, "frontier GC reference")
+                value = _read_json(frontier_path, f"{label} GC reference")
                 if frontier_path.name == "frontier.pending.json":
                     value = value.get("frontier", {})
-                digest = value.get("focus_evidence_sha256")
+                digest = value.get(digest_field)
                 if isinstance(digest, str) and SHA_RE.fullmatch(digest):
                     referenced.add(digest)
             except CampaignError:
                 # Corrupt retained state must remain available for diagnosis;
                 # status validation will fail closed rather than GC hiding it.
+                return None
+    return referenced
+
+
+def _gc_evidence_kind(
+    root: Path, *, kind: str, digest_field: str, label: str,
+    minimum_age_seconds: float,
+) -> None:
+    """Mark then sweep unreferenced CAS blobs without the publication lock.
+
+    A first pass only creates a generation marker.  Publication of the same
+    digest removes that marker under a short per-blob lock.  A later pass may
+    delete only when the blob identity is unchanged and the marker has aged,
+    which protects readers that obtained the prior frontier immediately before
+    a concurrent retention replaced it.
+    """
+
+    referenced = _evidence_gc_references(root, digest_field, label)
+    if referenced is None:
+        return
+    evidence_root = _state_root(root) / "proof-cas" / kind
+    if evidence_root.is_dir():
+        now_ns = _gc_now_ns()
+        minimum_age_ns = max(0, int(minimum_age_seconds * 1_000_000_000))
+        for blob in list(evidence_root.rglob("*.json")):
+            digest = blob.stem
+            if not SHA_RE.fullmatch(digest):
                 continue
-    focus_root = state / "proof-cas" / "focus"
-    if focus_root.is_dir():
-        for blob in focus_root.rglob("*.json"):
-            if blob.stem not in referenced:
-                blob.unlink(missing_ok=True)
+            marker = _evidence_gc_marker(blob)
+            with _exclusive_lock(
+                _evidence_blob_lock(root, kind, digest),
+                1.0,
+            ):
+                if not blob.is_file():
+                    marker.unlink(missing_ok=True)
+                    continue
+                if digest in referenced:
+                    marker.unlink(missing_ok=True)
+                    continue
+                stat = blob.stat()
+                marker_value: Mapping[str, Any] | None = None
+                if marker.is_file():
+                    try:
+                        candidate = _read_json(marker, f"{label} GC marker")
+                        marker_body = dict(candidate)
+                        marker_digest = marker_body.pop("marker_sha256", None)
+                        if (
+                            set(candidate) == {
+                                "schema", "kind", "digest", "size", "mtime_ns",
+                                "marked_at_ns", "marker_sha256",
+                            }
+                            and candidate["schema"] == GC_MARKER_SCHEMA
+                            and candidate["kind"] == kind
+                            and candidate["digest"] == digest
+                            and candidate["size"] == stat.st_size
+                            and candidate["mtime_ns"] == stat.st_mtime_ns
+                            and type(candidate["marked_at_ns"]) is int
+                            and marker_digest == _digest_json(marker_body)
+                        ):
+                            marker_value = candidate
+                    except (CampaignError, OSError, TypeError):
+                        marker_value = None
+                if marker_value is None:
+                    marker_body = {
+                        "schema": GC_MARKER_SCHEMA, "kind": kind,
+                        "digest": digest, "size": stat.st_size,
+                        "mtime_ns": stat.st_mtime_ns, "marked_at_ns": now_ns,
+                    }
+                    _atomic_json(marker, {
+                        **marker_body, "marker_sha256": _digest_json(marker_body),
+                    })
+                    continue
+                if now_ns - marker_value["marked_at_ns"] < minimum_age_ns:
+                    continue
+                current = blob.stat()
+                if (
+                    current.st_size != marker_value["size"]
+                    or current.st_mtime_ns != marker_value["mtime_ns"]
+                ):
+                    marker.unlink(missing_ok=True)
+                    continue
+                blob.unlink()
+                marker.unlink(missing_ok=True)
         for directory in sorted(
-            (item for item in focus_root.rglob("*") if item.is_dir()),
+            (item for item in evidence_root.rglob("*") if item.is_dir()),
             key=lambda item: len(item.parts), reverse=True,
         ):
             try:
                 directory.rmdir()
             except OSError:
                 pass
+
+
+def _gc_focus_evidence(
+    root: Path, *, minimum_age_seconds: float = GC_MINIMUM_AGE_SECONDS,
+) -> None:
+    _gc_evidence_kind(
+        root, kind="focus", digest_field="focus_evidence_sha256",
+        label="focus evidence", minimum_age_seconds=minimum_age_seconds,
+    )
+
+
+def _gc_reconstruction_evidence(
+    root: Path, *, minimum_age_seconds: float = GC_MINIMUM_AGE_SECONDS,
+) -> None:
+    _gc_evidence_kind(
+        root, kind="reconstruction",
+        digest_field="reconstruction_evidence_sha256",
+        label="reconstruction evidence",
+        minimum_age_seconds=minimum_age_seconds,
+    )
 
 
 def _validate_metrics(value: Any) -> dict[str, Any]:
@@ -1339,7 +1530,20 @@ def _validate_measurement(
     value: Any, *, campaign: Mapping[str, Any], function: str,
     phase: str, source_sha256: str,
 ) -> dict[str, Any]:
-    value = _closed_keys(value, MEASUREMENT_FIELDS, "campaign measurement")
+    observed_fields = set(value) if isinstance(value, Mapping) else set()
+    if (
+        not MEASUREMENT_FIELDS <= observed_fields
+        or observed_fields - MEASUREMENT_FIELDS > MEASUREMENT_OPTIONAL_FIELDS
+    ):
+        raise CampaignError("campaign measurement has noncanonical fields")
+    value = _closed_keys(value, observed_fields, "campaign measurement")
+    if (
+        _measurement_requires_reconstruction(Path(campaign["_root"]), campaign)
+        and "reconstruction_evidence" not in value
+    ):
+        raise CampaignError(
+            "current measurement producer omitted reconstruction evidence"
+        )
     body = dict(value)
     digest = _sha(body.pop("measurement_sha256", None), "measurement_sha256")
     if _digest_json(body) != digest:
@@ -1512,12 +1716,54 @@ def _frontier_focus(
     return focus
 
 
+def _frontier_reconstruction(
+    root: Path, frontier: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    digest = frontier.get("reconstruction_evidence_sha256")
+    if digest is None:
+        return None
+    path = (
+        _state_root(root) / "proof-cas" / "reconstruction" / digest[:2]
+        / f"{digest}.json"
+    )
+    evidence = _read_json(path, "frontier reconstruction evidence")
+    try:
+        from tools.owner_campaign_reconstruction import (
+            ReconstructionPacketError, verify_packet,
+        )
+
+        verify_packet(evidence)
+    except ReconstructionPacketError as exc:
+        raise CampaignError(
+            f"frontier reconstruction evidence is invalid: {exc}"
+        ) from exc
+    if evidence.get("packet_sha256") != digest:
+        raise CampaignError("frontier reconstruction evidence CAS binding drift")
+    expected = {
+        "owner": frontier["owner"], "unit": frontier["unit"],
+        "function": frontier["function"],
+        "source_path": frontier["source_relpath"],
+        "source_sha256": frontier["source_sha256"],
+        "frontier_source_sha256": frontier["source_sha256"],
+        "target_object_sha256": frontier["target_object_sha256"],
+        "candidate_object_sha256": frontier["candidate_object_sha256"],
+        "toolchain_sha256": frontier["toolchain_sha256"],
+        "status": frontier["reconstruction_status"],
+    }
+    if any(evidence.get(key) != value for key, value in expected.items()):
+        raise CampaignError("frontier reconstruction evidence identity drift")
+    return dict(evidence)
+
+
 FRONTIER_FIELDS = {
     "schema", "campaign_id", "manifest_sha256", "owner", "unit", "function",
     "source_relpath", "source_sha256", "target_object_sha256", "toolchain_sha256",
     "candidate_object_sha256", "metrics", "report_receipts",
     "focus_evidence_sha256", "parent_frontier_sha256",
     "generation", "retained_at", "frontier_sha256",
+}
+FRONTIER_OPTIONAL_FIELDS = {
+    "reconstruction_evidence_sha256", "reconstruction_status",
 }
 
 
@@ -1540,11 +1786,21 @@ def _frontier_from_measurement(
         "generation": parent["generation"] + 1 if parent else 0,
         "retained_at": _now(),
     }
+    reconstruction = measurement.get("reconstruction_evidence")
+    if isinstance(reconstruction, Mapping):
+        body["reconstruction_evidence_sha256"] = reconstruction["packet_sha256"]
+        body["reconstruction_status"] = reconstruction["status"]
     return {**body, "frontier_sha256": _digest_json(body)}
 
 
 def _validate_frontier(value: Any, campaign: Mapping[str, Any], function: str) -> dict[str, Any]:
-    value = _closed_keys(value, FRONTIER_FIELDS, "frontier")
+    observed_fields = set(value) if isinstance(value, Mapping) else set()
+    if (
+        not FRONTIER_FIELDS <= observed_fields
+        or observed_fields - FRONTIER_FIELDS > FRONTIER_OPTIONAL_FIELDS
+    ):
+        raise CampaignError("frontier has noncanonical fields")
+    value = _closed_keys(value, observed_fields, "frontier")
     body = dict(value)
     digest = _sha(body.pop("frontier_sha256", None), "frontier_sha256")
     if digest != _digest_json(body):
@@ -1562,6 +1818,15 @@ def _validate_frontier(value: Any, campaign: Mapping[str, Any], function: str) -
     _sha(value["source_sha256"], "frontier source_sha256")
     _sha(value["candidate_object_sha256"], "frontier candidate_object_sha256")
     _sha(value["focus_evidence_sha256"], "focus_evidence_sha256")
+    if "reconstruction_evidence_sha256" in value:
+        _sha(
+            value["reconstruction_evidence_sha256"],
+            "reconstruction_evidence_sha256",
+        )
+        if value.get("reconstruction_status") not in {"READY", "UNKNOWN"}:
+            raise CampaignError("frontier reconstruction_status is invalid")
+    elif "reconstruction_status" in value:
+        raise CampaignError("frontier reconstruction status lacks evidence")
     metrics = _validate_metrics(value["metrics"])
     protected_siblings = _protected_sibling_functions(campaign, function)
     if metrics["protected_total"] != len(protected_siblings):
@@ -1649,10 +1914,13 @@ def _recover_pending(root: Path, campaign: Mapping[str, Any], function: str) -> 
 
 def snapshot_frontier(
     root: Path, campaign: Mapping[str, Any], function: str, *, force: bool = False,
+    worker: int = 0, _defer_maintenance: bool = False,
 ) -> dict[str, Any]:
     _check_cancelled(root, campaign)
     if function not in campaign["functions"]:
         raise CampaignError(f"function is outside campaign scope: {function}")
+    if type(worker) is not int or not 0 <= worker < 5:
+        raise CampaignError("snapshot worker index must be between 0 and 4")
 
     # Establish a versioned read before doing the expensive measurement.  A
     # later writer may advance either source or latest while the hook runs;
@@ -1662,15 +1930,19 @@ def snapshot_frontier(
         initial_frontier = _read_latest_frontier(root, campaign, function)
         live_sha = _digest_file(campaign["_source"])
         if initial_frontier is not None:
-            if initial_frontier["source_sha256"] != live_sha:
-                raise CampaignError("latest frontier is inconsistent with live source")
-            if not force:
+            # A retained gain in another function advances the shared TU
+            # source.  That makes this function's last measured frontier
+            # stale, not corrupt.  Refresh it from the new live source instead
+            # of forcing every parallel worker through a serialized manual
+            # re-baseline step.  A frontier already bound to the live source
+            # remains the fast path.
+            if initial_frontier["source_sha256"] == live_sha and not force:
                 return initial_frontier
         initial_frontier_sha = (
             initial_frontier["frontier_sha256"] if initial_frontier is not None else None
         )
 
-    scratch = _ensure_scratch(root, campaign)
+    scratch = _ensure_scratch(root, campaign, worker)
     live_bytes = campaign["_source"].read_bytes()
     _sync_scratch_source(root, scratch, campaign, live_bytes)
     try:
@@ -1682,7 +1954,9 @@ def snapshot_frontier(
         )
     finally:
         _cleanup_cell_outputs(scratch, campaign)
-    frontier = _frontier_from_measurement(campaign, function, measurement, parent=None)
+    frontier = _frontier_from_measurement(
+        campaign, function, measurement, parent=initial_frontier
+    )
 
     with _frontier_lock_chain(root, campaign, function):
         _recover_pending_locked(root, campaign, function)
@@ -1691,15 +1965,18 @@ def snapshot_frontier(
         latest = _function_root(root, campaign, function) / "latest-frontier.json"
 
         if current_frontier is not None:
-            if current_frontier["source_sha256"] != locked_live_sha:
-                raise CampaignError("latest frontier is inconsistent with live source")
-            if (
-                current_frontier["frontier_sha256"] != initial_frontier_sha
-                or locked_live_sha != live_sha
-            ):
-                # Another snapshot/retention won while this one was running.
-                # Return the winner, never overwrite it with this stale result.
-                return current_frontier
+            if current_frontier["frontier_sha256"] != initial_frontier_sha:
+                # Another snapshot/retention won while this measurement was
+                # running.  It is usable only when it describes the source
+                # that is live now; otherwise neither result may overwrite
+                # the newer publication.
+                if current_frontier["source_sha256"] == locked_live_sha:
+                    return current_frontier
+                raise CampaignError(
+                    "frontier advanced without matching the live source"
+                )
+            if locked_live_sha != live_sha:
+                raise CampaignError("frontier snapshot became stale before publication")
         elif initial_frontier_sha is not None:
             raise CampaignError("latest frontier disappeared during snapshot")
         if locked_live_sha != live_sha:
@@ -1712,16 +1989,80 @@ def snapshot_frontier(
             [(latest, _canonical(frontier) + b"\n")],
         )
         _publish_focus_evidence(root, campaign, measurement["focus_evidence"])
+        if isinstance(measurement.get("reconstruction_evidence"), Mapping):
+            _publish_reconstruction_evidence(
+                root, campaign, measurement["reconstruction_evidence"]
+            )
         _atomic_json(latest, frontier, limit=campaign["limits"]["frontier_bytes"])
-        _gc_focus_evidence(root)
-    _check_limits(root, campaign)
+    if not _defer_maintenance:
+        _check_limits(root, campaign)
     return frontier
+
+
+def snapshot_frontiers(
+    root: Path, campaign: Mapping[str, Any], functions: Sequence[str], *,
+    force: bool = False,
+) -> dict[str, dict[str, Any]]:
+    """Prepare each unique function baseline with up to five isolated workers.
+
+    Function order is preserved for deterministic result mapping.  Any worker
+    failure propagates after the bounded executor joins; no partial mapping is
+    returned to candidate arbitration.
+    """
+
+    unique = list(dict.fromkeys(functions))
+    for function in unique:
+        if not isinstance(function, str) or not function:
+            raise CampaignError("snapshot function identity is invalid")
+        if function not in campaign["functions"]:
+            raise CampaignError(f"function is outside campaign scope: {function}")
+    if not unique:
+        return {}
+    worker_count = min(5, len(unique))
+
+    def run_group(worker: int) -> list[tuple[str, dict[str, Any]]]:
+        group: list[tuple[str, dict[str, Any]]] = []
+        for offset in range(worker, len(unique), worker_count):
+            function = unique[offset]
+            _check_cancelled(root, campaign)
+            group.append((
+                function,
+                snapshot_frontier(
+                    root, campaign, function, force=force, worker=worker,
+                    _defer_maintenance=True,
+                ),
+            ))
+        return group
+
+    indexed: dict[str, dict[str, Any]] = {}
+    primary_error: BaseException | None = None
+    try:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            for group in executor.map(run_group, range(worker_count)):
+                for function, frontier in group:
+                    indexed[function] = frontier
+    except BaseException as exc:
+        primary_error = exc
+    try:
+        _check_limits(root, campaign)
+    except BaseException as maintenance_error:
+        if primary_error is None:
+            raise
+        try:
+            primary_error.add_note(
+                f"snapshot batch maintenance failed: {maintenance_error}"
+            )
+        except AttributeError:
+            pass
+    if primary_error is not None:
+        raise primary_error
+    return {function: indexed[function] for function in unique}
 
 
 CANDIDATE_FIELDS = {
     "schema", "campaign_id", "function", "base_frontier_sha256",
-    "candidate_source", "function_span", "hypothesis_family", "natural_c", "created_at",
-    "candidate_sha256",
+    "base_source", "candidate_source", "function_span", "hypothesis_family",
+    "natural_c", "rebase_depth", "created_at", "candidate_sha256",
 }
 FUNCTION_SPAN_FIELDS = {
     "base_start_line", "base_end_line", "candidate_start_line",
@@ -1738,6 +2079,8 @@ def _load_candidate(
     digest = _sha(body.pop("candidate_sha256", None), "candidate descriptor digest")
     if digest != _digest_json(body):
         raise CampaignError("candidate descriptor digest is invalid")
+    if type(value["rebase_depth"]) is not int or not 0 <= value["rebase_depth"] <= 5:
+        raise CampaignError("candidate rebase_depth must be between 0 and 5")
     if (
         value["schema"] != CANDIDATE_SCHEMA
         or value["campaign_id"] != campaign["campaign_id"]
@@ -1748,6 +2091,29 @@ def _load_candidate(
         or not value["hypothesis_family"]
     ):
         raise CampaignError("candidate descriptor is not frontier-bound")
+    if _digest_file(campaign["_source"]) != frontier["source_sha256"]:
+        raise CampaignError("live source no longer matches the current frontier")
+    base_binding = _closed_keys(
+        value["base_source"], {"path", "sha256"}, "candidate base source"
+    )
+    base_source = _bound_path(root, base_binding["path"], "candidate base source")
+    allowed_build_roots = [
+        _bound_path(root, item, "allowed candidate base path", exists=False)
+        for item in campaign["allowed_build_paths"]
+    ]
+    if not any(
+        base_source == allowed or _inside(allowed, base_source)
+        for allowed in allowed_build_roots
+    ):
+        raise CampaignError("candidate base source is outside campaign allowed build paths")
+    base_source_sha = _sha(
+        base_binding["sha256"], "candidate base source sha256"
+    )
+    if base_source_sha != frontier["source_sha256"]:
+        raise CampaignError("candidate base source does not match the frontier")
+    if _digest_file(base_source) != base_source_sha:
+        raise CampaignError("candidate base source hash drift")
+    base_bytes = base_source.read_bytes()
     binding = _closed_keys(value["candidate_source"], {"path", "sha256"}, "candidate source")
     source = _bound_path(root, binding["path"], "candidate source")
     allowed_roots = [
@@ -1760,7 +2126,6 @@ def _load_candidate(
     if _digest_file(source) != source_sha:
         raise CampaignError("candidate source hash drift")
     candidate_bytes = source.read_bytes()
-    base_bytes = campaign["_source"].read_bytes()
     try:
         candidate_text = candidate_bytes.decode("utf-8")
         base_text = base_bytes.decode("utf-8")
@@ -1830,6 +2195,9 @@ def _load_candidate(
     result["_source"] = source
     result["_source_sha256"] = source_sha
     result["_source_bytes"] = candidate_bytes
+    result["_base_source"] = base_source
+    result["_base_source_sha256"] = base_source_sha
+    result["_base_source_bytes"] = base_bytes
     return result
 
 
@@ -2222,6 +2590,45 @@ def _validate_exact_manifest(
     return dict(value)
 
 
+def _validate_exact_manifest_progress(
+    campaign: Mapping[str, Any], value: Any,
+) -> dict[str, Any]:
+    """Validate the self-contained manifest envelope without loading proof CAS."""
+
+    value = _closed_keys(value, EXACT_MANIFEST_FIELDS, "exact manifest")
+    body = dict(value)
+    digest = _sha(body.pop("exact_manifest_sha256", None), "exact_manifest_sha256")
+    if digest != _digest_json(body):
+        raise CampaignError("exact manifest digest is invalid")
+    if (
+        value["schema"] != EXACT_MANIFEST_SCHEMA
+        or value["campaign_id"] != campaign["campaign_id"]
+        or value["manifest_sha256"] != campaign["manifest_sha256"]
+        or value["owner"] != campaign["owner"]
+        or value["total"] != len(campaign["functions"])
+        or not isinstance(value["exact"], Mapping)
+        or not set(value["exact"]) <= set(campaign["functions"])
+    ):
+        raise CampaignError("exact manifest identity is invalid")
+    for function, raw_entry in value["exact"].items():
+        entry = _closed_keys(raw_entry, EXACT_ENTRY_FIELDS, f"exact entry {function}")
+        _sha(entry["source_sha256"], f"{function} source_sha256")
+        _sha(entry["frontier_sha256"], f"{function} frontier_sha256")
+        _sha(entry["report_sha256"], f"{function} report_sha256")
+    closes_owner = len(value["exact"]) == len(campaign["functions"])
+    if closes_owner:
+        closure = value["owner_closure"]
+        if not isinstance(closure, Mapping):
+            raise CampaignError("closed exact manifest lacks owner closure")
+        closure_source = _sha(
+            closure.get("source_sha256"), "final owner source_sha256"
+        )
+        _validate_final_owner_receipt(closure, campaign, closure_source)
+    elif value["owner_closure"] is not None:
+        raise CampaignError("partial exact manifest cannot claim owner closure")
+    return dict(value)
+
+
 def _publish_exact(
     root: Path, campaign: Mapping[str, Any], frontier: Mapping[str, Any], report_raw: Any,
     *, final_owner_receipt: Mapping[str, Any] | None = None,
@@ -2380,6 +2787,10 @@ def _retain(
         ):
             return None, None
         _publish_focus_evidence(root, campaign, measurement["focus_evidence"])
+        if isinstance(measurement.get("reconstruction_evidence"), Mapping):
+            _publish_reconstruction_evidence(
+                root, campaign, measurement["reconstruction_evidence"]
+            )
         pending_body = {
             "schema": PENDING_SCHEMA,
             "base_source_sha256": base["source_sha256"],
@@ -2419,14 +2830,17 @@ def _retain(
 
 
 def _check_limits(root: Path, campaign: Mapping[str, Any]) -> None:
-    # Focus blobs are published and referenced while the same global CAS lock
-    # is held.  GC must participate in that lock domain or it can delete a
-    # blob between publication and the frontier reference being observed.
+    # Directory scanning/deletion belongs to a maintenance-only domain.  CAS
+    # publication uses short per-blob locks and never waits behind this scan.
+    maintenance_age = max(
+        GC_MINIMUM_AGE_SECONDS, _command_timeout_seconds(campaign)
+    )
     with _exclusive_lock(
-        _state_root(root) / "proof-cas" / "focus-cas.lock",
+        _state_root(root) / "proof-cas" / "maintenance.lock",
         _command_timeout_seconds(campaign),
     ):
-        _gc_focus_evidence(root)
+        _gc_focus_evidence(root, minimum_age_seconds=maintenance_age)
+        _gc_reconstruction_evidence(root, minimum_age_seconds=maintenance_age)
     scratch_root = (
         _state_root(root) / "scratch" / _slug(str(campaign["campaign_id"]))
     )
@@ -2499,6 +2913,13 @@ def _rebase_outcome(
     binding = hint.get("candidate_source")
     source_path = binding.get("path") if isinstance(binding, Mapping) else None
     source_sha = binding.get("sha256") if isinstance(binding, Mapping) else None
+    base_binding = hint.get("base_source")
+    base_source_path = (
+        base_binding.get("path") if isinstance(base_binding, Mapping) else None
+    )
+    base_source_sha = (
+        base_binding.get("sha256") if isinstance(base_binding, Mapping) else None
+    )
     return _sealed_outcome({
         "schema": "owner_campaign_result/v1", "status": "stale_rebase",
         "function": frontier["function"],
@@ -2509,6 +2930,9 @@ def _rebase_outcome(
             "descriptor_sha256": _digest_file(candidate_path),
             "candidate_source_path": source_path,
             "candidate_source_sha256": source_sha,
+            "base_source_path": base_source_path,
+            "base_source_sha256": base_source_sha,
+            "rebase_depth": hint.get("rebase_depth"),
             "function_span": hint.get("function_span"),
         },
         "cleanup_status": "complete", "cleanup_errors": [],
@@ -2519,6 +2943,7 @@ def _rebase_outcome(
 def _post_candidate_cleanup(
     root: Path, campaign: Mapping[str, Any], scratch: Path | None,
     candidate_paths: Sequence[Path], *, preserve_candidate: bool,
+    run_maintenance: bool = True,
 ) -> list[str]:
     errors: list[str] = []
     if not preserve_candidate:
@@ -2536,16 +2961,17 @@ def _post_candidate_cleanup(
             _cleanup_cell_outputs(scratch, campaign)
         except BaseException as exc:
             errors.append(f"cell output cleanup failed: {exc}")
-    try:
-        _check_limits(root, campaign)
-    except BaseException as exc:
-        errors.append(f"campaign maintenance failed: {exc}")
+    if run_maintenance:
+        try:
+            _check_limits(root, campaign)
+        except BaseException as exc:
+            errors.append(f"campaign maintenance failed: {exc}")
     return errors
 
 
 def run_candidate(
     root: Path, campaign: Mapping[str, Any], candidate_path: Path,
-    *, worker: int = 0,
+    *, worker: int = 0, _defer_maintenance: bool = False,
 ) -> dict[str, Any]:
     root = Path(os.path.abspath(root))
     _check_cancelled(root, campaign)
@@ -2553,23 +2979,40 @@ def run_candidate(
     if not isinstance(candidate_hint, Mapping) or not isinstance(candidate_hint.get("function"), str):
         raise CampaignError("candidate descriptor function is missing")
     function = candidate_hint["function"]
-    frontier = snapshot_frontier(root, campaign, function)
+    # Candidate workers own the complete snapshot→compile sequence on their
+    # assigned scratch checkout.  Maintenance is deferred to the candidate
+    # tail (direct calls) or the single batch tail (run_loop).
+    frontier = snapshot_frontier(
+        root, campaign, function, worker=worker, _defer_maintenance=True,
+    )
     if candidate_hint.get("base_frontier_sha256") != frontier["frontier_sha256"]:
-        return _rebase_outcome(root, Path(candidate_path), candidate_hint, frontier)
+        outcome = _rebase_outcome(
+            root, Path(candidate_path), candidate_hint, frontier
+        )
+        if not _defer_maintenance:
+            _check_limits(root, campaign)
+        return outcome
     candidate = _load_candidate(root, candidate_path, campaign, frontier)
     key = _candidate_key(campaign, frontier, candidate)
     if not _reserve_candidate(
         root, campaign, function, key, frontier, candidate["_source_sha256"]
     ):
         _cleanup_candidate_artifacts(
-            root, campaign, [candidate["_path"], candidate["_source"]]
+            root, campaign, [
+                candidate["_path"], candidate["_source"],
+                candidate["_base_source"],
+            ]
         )
+        if not _defer_maintenance:
+            _check_limits(root, campaign)
         return {"schema": "owner_campaign_result/v1", "status": "deduplicated", "candidate_key": key, "function": function, "authority_advanced": False}
     scratch: Path | None = None
     reservation_finished = False
     result: dict[str, Any] | None = None
     preserve_candidate = False
-    candidate_paths = [candidate["_path"], candidate["_source"]]
+    candidate_paths = [
+        candidate["_path"], candidate["_source"], candidate["_base_source"]
+    ]
     try:
         scratch = _ensure_scratch(root, campaign, worker)
         _sync_scratch_source(root, scratch, campaign, candidate["_source_bytes"])
@@ -2638,6 +3081,9 @@ def run_candidate(
                 "descriptor_sha256": _digest_file(candidate["_path"]),
                 "candidate_source_path": candidate["_source"].relative_to(root).as_posix(),
                 "candidate_source_sha256": candidate["_source_sha256"],
+                "base_source_path": candidate["_base_source"].relative_to(root).as_posix(),
+                "base_source_sha256": candidate["_base_source_sha256"],
+                "rebase_depth": candidate["rebase_depth"],
                 "function_span": candidate["function_span"],
             }
             result = _sealed_outcome(result)
@@ -2648,7 +3094,8 @@ def run_candidate(
             )
             reservation_finished = True
         cleanup_errors = _post_candidate_cleanup(
-            root, campaign, scratch, candidate_paths, preserve_candidate=True
+            root, campaign, scratch, candidate_paths, preserve_candidate=True,
+            run_maintenance=not _defer_maintenance,
         )
         for error in cleanup_errors:
             try:
@@ -2660,6 +3107,7 @@ def run_candidate(
     cleanup_errors = _post_candidate_cleanup(
         root, campaign, scratch, candidate_paths,
         preserve_candidate=preserve_candidate,
+        run_maintenance=not _defer_maintenance,
     )
     if cleanup_errors:
         if result["status"] not in {"exact", "improved"}:
@@ -2670,12 +3118,41 @@ def run_candidate(
     return result
 
 
+def campaign_terminal_progress(
+    root: Path, campaign: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return constant-cost exact progress for supervisor polling.
+
+    This intentionally reads only the exact manifest.  Full frontier, proof
+    CAS, scratch, and retained-size validation remains campaign_status work.
+    """
+
+    total = len(campaign["functions"])
+    manifest_path = _owner_root(root, campaign) / "exact-manifest.json"
+    exact_count = 0
+    with _exclusive_lock(
+        _owner_root(root, campaign) / "source-cas.lock",
+        _command_timeout_seconds(campaign),
+    ):
+        if manifest_path.is_file():
+            manifest = _validate_exact_manifest_progress(
+                campaign, _read_json(manifest_path, "exact manifest")
+            )
+            exact_count = len(manifest["exact"])
+    return {
+        "exact_count": exact_count,
+        "total": total,
+        "closed": exact_count == total,
+    }
+
+
 def campaign_status(root: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
     owner = _owner_root(root, campaign)
     exact_manifest = owner / "exact-manifest.json"
     exact: Mapping[str, Any] = {}
     functions: dict[str, Any] = {}
     focus_evidence: dict[str, Any] = {}
+    reconstruction_evidence: dict[str, Any] = {}
     for function in campaign["functions"]:
         # Recovery and status reads share the writer's complete lock order;
         # otherwise status could validate a pending source against a frontier
@@ -2704,6 +3181,21 @@ def campaign_status(root: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
                     "sha256": digest,
                     "path": evidence_path.relative_to(root).as_posix(),
                 }
+                reconstruction = _frontier_reconstruction(root, frontier)
+                if reconstruction is not None:
+                    reconstruction_digest = frontier[
+                        "reconstruction_evidence_sha256"
+                    ]
+                    reconstruction_path = (
+                        _state_root(root) / "proof-cas" / "reconstruction"
+                        / reconstruction_digest[:2]
+                        / f"{reconstruction_digest}.json"
+                    )
+                    reconstruction_evidence[function] = {
+                        "sha256": reconstruction_digest,
+                        "path": reconstruction_path.relative_to(root).as_posix(),
+                        "status": reconstruction["status"],
+                    }
     # The owner exact manifest is updated under source-cas by _publish_exact;
     # validate it under that same lock rather than observing a partial replace.
     with _exclusive_lock(
@@ -2719,6 +3211,7 @@ def campaign_status(root: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
         "schema": "owner_campaign_status/v1", "campaign_id": campaign["campaign_id"],
         "owner": campaign["owner"], "exact_count": len(exact), "total": len(campaign["functions"]),
         "functions": functions, "focus_evidence": focus_evidence,
+        "reconstruction_evidence": reconstruction_evidence,
         "scratch_bytes": _tree_size(
             _state_root(root) / "scratch" / _slug(str(campaign["campaign_id"]))
         ),
@@ -2734,18 +3227,21 @@ def run_loop(
     paths = [Path(path) for path in candidate_paths]
     if not paths:
         return []
-    # Establish each current baseline exactly once before workers race candidates,
-    # and deterministically assign identical cells to their first input slot.
+    # Read immutable descriptor identities and deterministically assign
+    # identical cells to their first input slot before launching workers.  Each
+    # worker performs its own hash-bound snapshot→compile sequence; there is no
+    # whole-batch snapshot barrier, so a ready function can compile while an
+    # unrelated function is still measuring its baseline.
     hints: list[Mapping[str, Any]] = []
     signatures: dict[tuple[str, str, str], int] = {}
     duplicate_of: dict[int, int] = {}
     active_indices: list[int] = []
-    for index, path in enumerate(paths):
+    for path in paths:
         hint = _read_json(_bound_path(root, str(path), "candidate descriptor"), "candidate descriptor")
         if not isinstance(hint, Mapping) or not isinstance(hint.get("function"), str):
             raise CampaignError("candidate descriptor function is missing")
-        snapshot_frontier(root, campaign, hint["function"])
         hints.append(hint)
+    for index, hint in enumerate(hints):
         source_binding = hint.get("candidate_source")
         source_sha = source_binding.get("sha256") if isinstance(source_binding, Mapping) else None
         if isinstance(source_sha, str) and SHA_RE.fullmatch(source_sha):
@@ -2767,7 +3263,10 @@ def run_loop(
             path = paths[index]
             _check_cancelled(root, campaign)
             try:
-                result = run_candidate(root, campaign, path, worker=worker)
+                result = run_candidate(
+                    root, campaign, path, worker=worker,
+                    _defer_maintenance=True,
+                )
             except InfrastructureError as exc:
                 result = {
                     "schema": "owner_campaign_result/v1", "status": "infra_retry",
@@ -2777,29 +3276,65 @@ def run_loop(
             group.append((index, result))
         return group
 
-    with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        for group in executor.map(run_group, range(worker_count)):
-            indexed_results.extend(group)
-    by_index = dict(indexed_results)
-    for index, original in duplicate_of.items():
-        primary = by_index[original]
-        if primary["status"] == "infra_retry":
-            duplicate = dict(primary)
-            duplicate["candidate"] = str(paths[index])
-        else:
-            duplicate = {
-                "schema": "owner_campaign_result/v1", "status": "deduplicated",
-                "candidate_key": primary.get("candidate_key"),
-                "function": hints[index]["function"], "authority_advanced": False,
-            }
-            cleanup = [paths[index]]
-            binding = hints[index].get("candidate_source")
-            if isinstance(binding, Mapping) and isinstance(binding.get("path"), str):
-                cleanup.append(Path(binding["path"]))
-            _cleanup_candidate_artifacts(root, campaign, cleanup)
-        indexed_results.append((index, duplicate))
-    indexed_results.sort(key=lambda item: item[0])
-    return [item[1] for item in indexed_results]
+    primary_error: BaseException | None = None
+    results: list[dict[str, Any]] = []
+    try:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            for group in executor.map(run_group, range(worker_count)):
+                indexed_results.extend(group)
+        by_index = dict(indexed_results)
+        for index, original in duplicate_of.items():
+            primary = by_index[original]
+            if primary["status"] == "infra_retry":
+                duplicate = dict(primary)
+                duplicate["candidate"] = str(paths[index])
+            else:
+                duplicate = {
+                    "schema": "owner_campaign_result/v1", "status": "deduplicated",
+                    "candidate_key": primary.get("candidate_key"),
+                    "function": hints[index]["function"], "authority_advanced": False,
+                }
+                cleanup = [paths[index]]
+                binding = hints[index].get("candidate_source")
+                if (
+                    isinstance(binding, Mapping)
+                    and isinstance(binding.get("path"), str)
+                ):
+                    cleanup.append(Path(binding["path"]))
+                base_binding = hints[index].get("base_source")
+                if (
+                    isinstance(base_binding, Mapping)
+                    and isinstance(base_binding.get("path"), str)
+                ):
+                    cleanup.append(Path(base_binding["path"]))
+                _cleanup_candidate_artifacts(root, campaign, cleanup)
+            indexed_results.append((index, duplicate))
+        indexed_results.sort(key=lambda item: item[0])
+        results = [item[1] for item in indexed_results]
+    except BaseException as exc:
+        primary_error = exc
+    try:
+        _check_limits(root, campaign)
+    except BaseException as exc:
+        if primary_error is not None:
+            try:
+                primary_error.add_note(f"batch maintenance failed: {exc}")
+            except AttributeError:
+                pass
+            raise primary_error
+        error = CampaignError(
+            "batch maintenance failed after candidate results were finalized: "
+            f"{exc}"
+        )
+        # Preserve primary outcomes for callers that need to reconcile retained
+        # gains after a terminal maintenance failure.  The normal return schema
+        # stays unchanged, and direct run_candidate callers keep their existing
+        # per-candidate cleanup contract.
+        error.candidate_results = tuple(results)  # type: ignore[attr-defined]
+        raise error from exc
+    if primary_error is not None:
+        raise primary_error
+    return results
 
 
 def main(argv: Sequence[str] | None = None) -> int:

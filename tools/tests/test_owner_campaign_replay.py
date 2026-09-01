@@ -429,7 +429,10 @@ class ReplayTests(unittest.TestCase):
                 "forbidden_constructs": [],
                 "_source": Path(prepared["source_path"]),
             }
-            frontier = {"function": "focus", "frontier_sha256": "a" * 64}
+            frontier = {
+                "function": "focus", "frontier_sha256": "a" * 64,
+                "source_sha256": prepared["base_source_sha256"],
+            }
             descriptor = replay._candidate_descriptor(
                 prepared["spec"],
                 campaign,
@@ -437,6 +440,8 @@ class ReplayTests(unittest.TestCase):
                 candidate_relpath,
                 prepared["candidate_source_sha256"],
                 prepared["function_span"],
+                base_path=Path(prepared["base_path"]).relative_to(worktree).as_posix(),
+                base_sha256=prepared["base_source_sha256"],
             )
             descriptor_path = worktree / "build/owner-replay/moved-owner.json"
             descriptor_path.parent.mkdir(parents=True, exist_ok=True)
@@ -468,6 +473,8 @@ class ReplayTests(unittest.TestCase):
                 "build/owner-replay/input/candidate.c",
                 prepared["candidate_source_sha256"],
                 prepared["function_span"],
+                base_path="build/owner-replay/input/base.c",
+                base_sha256=prepared["base_source_sha256"],
             )
             self.assertEqual(descriptor["function"], "focus")
             self.assertEqual(descriptor["hypothesis_family"], "historical-replay-focus")

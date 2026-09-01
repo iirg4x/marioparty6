@@ -24,6 +24,8 @@ from typing import Any, Mapping, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools import owner_campaign_reconstruction as reconstruction
+
 
 REPORT_SCHEMA = "CRACK_REPORT/v1"
 MEASUREMENT_SCHEMA = "owner_campaign_measurement/v1"
@@ -578,7 +580,11 @@ def verify_measurement(
         "candidate_object_sha256", "metrics", "report_receipts", "proofs",
         "focus_evidence", "exact_report", "measurement_sha256",
     }
-    if set(measurement) != measurement_fields:
+    optional_measurement_fields = {"reconstruction_evidence"}
+    if (
+        not measurement_fields <= set(measurement)
+        or set(measurement) - measurement_fields > optional_measurement_fields
+    ):
         raise VerificationError("measurement has noncanonical fields")
     body = dict(measurement)
     digest = _sha(body.pop("measurement_sha256", None), "measurement_sha256")
@@ -616,6 +622,95 @@ def verify_measurement(
     )
     if measurement["report_receipts"].get("focus") != focus["focus_evidence_sha256"]:
         raise VerificationError("measurement focus receipt mismatch")
+    packet = measurement.get("reconstruction_evidence")
+    if packet is not None:
+        if not isinstance(packet, Mapping):
+            raise VerificationError("measurement reconstruction evidence is invalid")
+        try:
+            reconstruction.verify_packet(packet)
+        except reconstruction.ReconstructionPacketError as exc:
+            raise VerificationError(
+                f"measurement reconstruction evidence failed verification: {exc}"
+            ) from exc
+        expected_packet = {
+            "owner": measurement["owner"],
+            "unit": measurement["unit"],
+            "function": measurement["function"],
+            "source_path": measurement["source_path"],
+            "source_sha256": measurement["source_sha256"],
+            "frontier_source_sha256": measurement["source_sha256"],
+            "base_commit": measurement["base_commit"],
+            "target_object_sha256": measurement["target_object_sha256"],
+            "candidate_object_sha256": measurement["candidate_object_sha256"],
+            "toolchain_sha256": measurement["toolchain_sha256"],
+            "authority_advanced": False,
+        }
+        if any(packet.get(field) != value for field, value in expected_packet.items()):
+            raise VerificationError(
+                "measurement reconstruction evidence identity is not measurement-bound"
+            )
+        if packet.get("strict_residuals") != focus["strict_row_ids"]:
+            raise VerificationError(
+                "measurement reconstruction strict identities drifted from focus"
+            )
+        if packet.get("data_residuals") != focus["data_row_ids"]:
+            raise VerificationError(
+                "measurement reconstruction data identities drifted from focus"
+            )
+        if packet.get("strict_residual_count") != focus["strict_row_count"]:
+            raise VerificationError(
+                "measurement reconstruction strict count drifted from focus"
+            )
+        if packet.get("data_residual_count") != focus["data_row_count"]:
+            raise VerificationError(
+                "measurement reconstruction data count drifted from focus"
+            )
+        if packet.get("status") not in {"READY", "UNKNOWN"}:
+            raise VerificationError("measurement reconstruction status is invalid")
+        if type(packet.get("exact_terminal_possible")) is not bool:
+            raise VerificationError(
+                "measurement reconstruction exact-terminal status is invalid"
+            )
+        if packet.get("diagnostic_only") is not True:
+            raise VerificationError(
+                "measurement reconstruction evidence is not diagnostic-only"
+            )
+        span = packet.get("source_span")
+        if not isinstance(span, Mapping):
+            raise VerificationError("measurement reconstruction source span is missing")
+        if span.get("function") != measurement["function"]:
+            raise VerificationError("measurement reconstruction source span drifted")
+        if packet.get("source_span_sha256") != reconstruction.canonical_sha256(span):
+            raise VerificationError(
+                "measurement reconstruction source span digest is invalid"
+            )
+        parent = packet.get("parent_frontier_sha256")
+        if parent is not None:
+            _sha(parent, "measurement reconstruction parent_frontier_sha256")
+        policy = packet.get("reconstruction_policy")
+        if (
+            not isinstance(policy, Mapping)
+            or policy.get("target_first") is not True
+            or policy.get("donor_required") is not False
+            or policy.get("history_required") is not False
+            or policy.get("compile_authorized") is not False
+        ):
+            raise VerificationError(
+                "measurement reconstruction policy is invalid"
+            )
+        physical = packet.get("physical_relocations")
+        if not isinstance(physical, Mapping):
+            raise VerificationError(
+                "measurement reconstruction physical evidence is missing"
+            )
+        if physical.get("difference_count") != focus["physical_difference_count"]:
+            raise VerificationError(
+                "measurement reconstruction physical count drifted from focus"
+            )
+        if packet.get("physical_difference_ids") != focus["physical_difference_ids"]:
+            raise VerificationError(
+                "measurement reconstruction physical identities drifted from focus"
+            )
     metrics = measurement.get("metrics")
     if not isinstance(metrics, Mapping):
         raise VerificationError("measurement metrics are missing")
@@ -692,13 +787,17 @@ def verify_measurement(
             _verify_proof_binding(name, proof, report=fake_report)
     if len(_canonical(measurement)) > MAX_MEASUREMENT_COMPACT:
         raise VerificationError("measurement exceeds 256 KiB compact limit")
-    return {
+    result = {
         "schema": "owner_campaign_measurement_verification/v1",
         "measurement_sha256": digest,
         "focus_evidence_sha256": focus["focus_evidence_sha256"],
         "verified": True,
         "authority_advanced": False,
     }
+    if packet is not None:
+        result["reconstruction_evidence_sha256"] = packet["packet_sha256"]
+        result["reconstruction_status"] = packet["status"]
+    return result
 
 
 def _parser() -> argparse.ArgumentParser:

@@ -2,8 +2,9 @@
 
 The driver deliberately stays small.  It does not choose hypotheses, create
 Codex tasks, or replace the campaign runtime.  Sol supplies sealed natural-C
-candidate descriptors to the campaign inbox; this module discovers at most
-five of them and delegates measurement/retention to :mod:`tools.owner_campaign`.
+candidate descriptors to the campaign inbox; this module discovers a bounded
+batch, arbitrates at most one selected proposal per function, and delegates
+measurement/retention to :mod:`tools.owner_campaign`.
 
 The inbox is a transport boundary, not a second authority boundary.  A
 descriptor must pass the same self-digest and campaign binding checks used by
@@ -17,6 +18,7 @@ invocation can retry them.
 from __future__ import annotations
 
 import math
+from concurrent.futures import ThreadPoolExecutor
 import difflib
 import json
 import os
@@ -24,12 +26,14 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+import threading
 import time
 from collections import Counter
 from contextlib import nullcontext
 from typing import Any, Callable, Mapping, Sequence
 
 from . import owner_campaign
+from . import owner_campaign_reconstruction
 from . import owner_campaign_selector
 
 
@@ -49,6 +53,36 @@ DEFAULT_INFRA_RETRY_LIMIT = 3
 TERMINAL_STATUSES = frozenset(
     {"deduplicated", "discarded", "exact", "improved", "no_gain"}
 )
+REBASED_STATUS = "rebased"
+REBASE_REJECTED_STATUS = "stale_rebase_rejected"
+REBASE_TOMBSTONE_SCHEMA = "owner_campaign_rebase_tombstone/v1"
+REBASE_TOMBSTONE_FIELDS = {
+    "schema", "campaign_id", "function", "status", "old_descriptor_sha256",
+    "old_candidate_sha256", "old_frontier_sha256", "new_descriptor",
+    "new_descriptor_sha256", "new_candidate_sha256", "rebase_depth",
+    "reason", "created_at", "tombstone_sha256",
+}
+
+RECONSTRUCTION_RESULT_SCHEMA = "owner_campaign_reconstruction_result/v1"
+# The core currently publishes the packet as a content-addressed sidecar.  A
+# few transition manifests use a nested reference, so the loader accepts the
+# documented names while treating every present-but-malformed reference as a
+# hard binding error.  Absence is the only legacy compatibility case.
+_RECONSTRUCTION_POINTER_FIELDS = (
+    "reconstruction_packet",
+    "reconstruction_evidence",
+    "reconstruction",
+    "reconstruction_packet_sha256",
+    "reconstruction_evidence_sha256",
+    "reconstruction_sha256",
+)
+
+
+# Windows byte-range locks do not provide a reliable same-process mutex for
+# independently opened handles.  Pair the persistent cross-process lock below
+# with this process-local guard.  It protects only the final directory link;
+# proposal preparation and every compiler/evidence pipeline remain parallel.
+_PROPOSAL_PUBLICATION_THREAD_LOCK = threading.Lock()
 
 
 def inbox_path(root: Path, campaign: Mapping[str, Any]) -> Path:
@@ -317,6 +351,563 @@ def _read_json_artifact(path: Path, label: str) -> dict[str, Any]:
     return dict(value)
 
 
+def _reconstruction_pointer(
+    frontier: Mapping[str, Any],
+) -> tuple[Any, str, str] | None:
+    """Return a frontier reconstruction pointer in a normalized form.
+
+    The packet itself is stored in the reconstruction CAS; the frontier only
+    carries a path/hash pointer.  ``sha256``/``file_sha256`` identify the CAS
+    file, while ``packet_sha256`` identifies the packet's internal seal.  The
+    latter is accepted for manifests produced during the v2 migration, but a
+    file hash is still checked whenever one is supplied.
+    """
+
+    for field in _RECONSTRUCTION_POINTER_FIELDS:
+        if field not in frontier or frontier[field] is None:
+            continue
+        raw = frontier[field]
+        if isinstance(raw, str):
+            if not _is_hex_sha(raw):
+                raise owner_campaign.CampaignError(
+                    "frontier reconstruction pointer hash is invalid"
+                )
+            # A scalar frontier field is the packet's content-addressed
+            # digest (the core publishes ``reconstruction_evidence_sha256``
+            # this way).  The packet self-hash is checked after loading.  A
+            # file digest is supported only by the explicit nested pointer
+            # form, where its role is unambiguous.
+            return None, raw, "packet"
+        if not isinstance(raw, Mapping):
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction pointer is invalid"
+            )
+        path = raw.get("path", raw.get("artifact_path", raw.get("packet_path")))
+        file_sha = raw.get("file_sha256", raw.get("sha256", raw.get("artifact_sha256")))
+        packet_sha = raw.get("packet_sha256")
+        if path is not None and (
+            not isinstance(path, str) or not path or "\x00" in path
+        ):
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction pointer path is invalid"
+            )
+        if file_sha is not None:
+            if not _is_hex_sha(file_sha):
+                raise owner_campaign.CampaignError(
+                    "frontier reconstruction file hash is invalid"
+                )
+            digest = str(file_sha)
+            hash_kind = "file"
+        elif packet_sha is not None:
+            if not _is_hex_sha(packet_sha):
+                raise owner_campaign.CampaignError(
+                    "frontier reconstruction packet hash is invalid"
+                )
+            digest = str(packet_sha)
+            hash_kind = "packet"
+        else:
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction pointer hash is missing"
+            )
+        if packet_sha is not None and not _is_hex_sha(packet_sha):
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction packet hash is invalid"
+            )
+        # Preserve both hashes in a compact tuple by encoding the optional
+        # packet hash as the third value.  A file pointer has no second seal.
+        return path, digest, hash_kind if packet_sha is None else f"{hash_kind}:{packet_sha}"
+    return None
+
+
+def _reconstruction_cas_path(root: Path, digest: str) -> Path:
+    state_root_reader = getattr(owner_campaign, "_state_root", None)
+    if not callable(state_root_reader):
+        raise owner_campaign.CampaignError("campaign state root is unavailable")
+    return (
+        state_root_reader(root)
+        / "proof-cas"
+        / "reconstruction"
+        / digest[:2]
+        / f"{digest}.json"
+    )
+
+
+def _reconstruction_identity(
+    root: Path,
+    campaign: Mapping[str, Any],
+    function: str,
+    frontier: Mapping[str, Any],
+    packet: Mapping[str, Any],
+) -> None:
+    """Reject a validly sealed packet that belongs to another frontier."""
+
+    expected = {
+        "owner": frontier.get("owner", campaign.get("owner")),
+        "unit": frontier.get("unit", campaign.get("unit")),
+        "function": function,
+        "source_path": frontier.get("source_relpath", campaign.get("source_relpath")),
+        "source_sha256": frontier.get("source_sha256"),
+        "base_commit": campaign.get("base_commit"),
+        "target_object_sha256": frontier.get("target_object_sha256"),
+        "candidate_object_sha256": frontier.get("candidate_object_sha256"),
+        "toolchain_sha256": frontier.get("toolchain_sha256"),
+        "frontier_source_sha256": frontier.get("source_sha256"),
+    }
+    for key, value in expected.items():
+        if value is None:
+            continue
+        if packet.get(key) != value:
+            raise owner_campaign.CampaignError(
+                f"frontier reconstruction {key} binding drift"
+            )
+    pointer_frontier = frontier.get("reconstruction_packet_frontier_sha256")
+    if pointer_frontier is None:
+        pointer_frontier = frontier.get("reconstruction_frontier_sha256")
+    if pointer_frontier is not None and pointer_frontier != frontier.get("frontier_sha256"):
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction frontier binding drift"
+        )
+    frontier_status = frontier.get("reconstruction_status")
+    packet_status = packet.get(
+        "status",
+        packet.get("target_first_signal", {}).get("status")
+        if isinstance(packet.get("target_first_signal"), Mapping) else None,
+    )
+    if frontier_status is not None and packet_status != frontier_status:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction status binding drift"
+        )
+
+
+def _load_reconstruction_for_frontier(
+    root: Path,
+    campaign: Mapping[str, Any],
+    function: str,
+    frontier: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Load and verify the current frontier's target-first packet.
+
+    ``None`` means an old frontier with no packet pointer and is intentionally
+    the sole legacy compatibility path.  Once a pointer is present, every
+    hash, packet identity, and status gate is strict.
+    """
+
+    pointer = _reconstruction_pointer(frontier)
+    if pointer is None:
+        return None
+    path_raw, digest, digest_kind = pointer
+    packet_digest: str | None = None
+    if ":" in digest_kind:
+        _kind, packet_digest = digest_kind.split(":", 1)
+        digest_kind = _kind
+    if path_raw is None:
+        path = _reconstruction_cas_path(root, digest)
+    else:
+        path = _input_path(root, path_raw, "frontier reconstruction artifact")
+    if not path.is_file():
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction artifact is missing"
+        )
+    try:
+        file_sha = owner_campaign._digest_file(path)
+    except OSError as exc:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction artifact cannot be hashed"
+        ) from exc
+    if digest_kind == "file" and file_sha != digest:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction artifact hash drift"
+        )
+    packet = _read_json_artifact(path, "frontier reconstruction artifact")
+    try:
+        owner_campaign_reconstruction.verify_packet(packet)
+    except owner_campaign_reconstruction.ReconstructionPacketError as exc:
+        raise owner_campaign.CampaignError(
+            f"frontier reconstruction packet is invalid: {exc}"
+        ) from exc
+    if packet_digest is not None and packet.get("packet_sha256") != packet_digest:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction packet hash drift"
+        )
+    if digest_kind == "packet" and packet.get("packet_sha256") != digest:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction packet hash drift"
+        )
+    signal = packet.get("target_first_signal")
+    if not isinstance(signal, Mapping):
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction target signal is missing"
+        )
+    status = packet.get("status", signal.get("status"))
+    if status not in {"READY", "UNKNOWN"}:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction packet status is invalid"
+        )
+    # The packet builder publishes the status at both the packet and signal
+    # levels.  Accepting the signal as the compatibility source keeps older
+    # packet-bearing frontiers readable while still rejecting disagreement.
+    signal_status = signal.get("status")
+    if signal_status != status:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction target signal drift"
+        )
+    if frontier.get("reconstruction_status") is not None:
+        packet_status = packet.get("status", status)
+        if packet_status != frontier.get("reconstruction_status"):
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction status binding drift"
+            )
+    _reconstruction_identity(root, campaign, function, frontier, packet)
+    exact_possible = packet.get("exact_terminal_possible")
+    if exact_possible is None:
+        exact_possible = signal.get("exact_terminal_possible")
+    if type(exact_possible) is not bool:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction exact-terminal status is invalid"
+        )
+    clusters = packet.get("causal_clusters")
+    if not isinstance(clusters, list):
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction causal clusters are missing"
+        )
+    ownership = packet.get("ownership_complete")
+    if ownership is None:
+        ownership = status == "READY"
+    if type(ownership) is not bool:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction ownership status is invalid"
+        )
+    action = packet.get("next_action", signal.get("next_action"))
+    if action is None:
+        action = (
+            "CRACK" if status == "READY"
+            else "DECOMPOSE" if any(
+                isinstance(packet.get(key), list)
+                for key in ("bounded_regions", "target_regions", "decomposition_regions")
+            ) else "PIVOT"
+        )
+    if action not in {"CRACK", "DECOMPOSE", "PIVOT"}:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction next action is invalid"
+        )
+    bounded_regions: list[dict[str, Any]] = []
+    for key in (
+        "bounded_regions", "target_regions", "decomposition_regions", "regions",
+    ):
+        raw_regions = packet.get(key)
+        if raw_regions is None:
+            raw_regions = signal.get(key)
+        if raw_regions is None:
+            continue
+        if not isinstance(raw_regions, list):
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction bounded regions are invalid"
+            )
+        for region in raw_regions:
+            if not isinstance(region, Mapping):
+                raise owner_campaign.CampaignError(
+                    "frontier reconstruction bounded region is invalid"
+                )
+            bounded_regions.append(dict(region))
+        break
+    if action == "DECOMPOSE" and not bounded_regions:
+        raise owner_campaign.CampaignError(
+            "frontier reconstruction decomposition has no bounded regions"
+        )
+    return {
+        "path": path,
+        "file_sha256": file_sha,
+        "packet_sha256": packet["packet_sha256"],
+        "packet": packet,
+        "status": status,
+        "signal": dict(signal),
+        "causal_clusters": [dict(cluster) for cluster in clusters],
+        "cluster_count": len(clusters),
+        "residual_event_count": packet.get("residual_event_count"),
+        "exact_terminal_possible": exact_possible,
+        "exact_terminal_reason": packet.get("exact_terminal_reason"),
+        "ownership_complete": ownership,
+        "next_action": action,
+        "bounded_regions": bounded_regions,
+    }
+
+
+def _reconstruction_cluster_for_rows(
+    reconstruction: Mapping[str, Any], predicted_rows: Sequence[str]
+) -> Mapping[str, Any]:
+    """Require one closed packet causal cluster for a source proposal.
+
+    Repeated target regions may be marked with the same ``mirror_group`` by
+    the reconstruction producer.  Such a group is one atomic source pattern:
+    selecting only one occurrence would create a misleading positive result,
+    so every row in every member cluster must be predicted together.
+    """
+
+    predicted = set(predicted_rows)
+    if not predicted:
+        raise owner_campaign.CampaignError(
+            "reconstruction proposals require predicted rows"
+        )
+
+    def cluster_rows(cluster: Mapping[str, Any]) -> set[str]:
+        ids: set[str] = set()
+        for key in (
+            "row_ids",
+            "strict_row_ids",
+            "data_row_ids",
+            "physical_difference_ids",
+            "residual_row_ids",
+        ):
+            values = cluster.get(key)
+            if isinstance(values, Mapping):
+                for nested in values.values():
+                    if isinstance(nested, list):
+                        ids.update(item for item in nested if isinstance(item, str))
+            elif isinstance(values, list):
+                ids.update(item for item in values if isinstance(item, str))
+        return ids
+
+    def cluster_group(cluster: Mapping[str, Any]) -> str:
+        raw_group = cluster.get("mirror_group", cluster.get("mirror_group_id"))
+        if isinstance(raw_group, Mapping):
+            raw_group = raw_group.get("id", raw_group.get("group_id"))
+        return str(raw_group) if raw_group is not None else ""
+
+    clusters: list[Mapping[str, Any]] = []
+    for cluster in reconstruction.get("causal_clusters", []):
+        if not isinstance(cluster, Mapping):
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction causal cluster is invalid"
+            )
+        clusters.append(cluster)
+    matches = [
+        (cluster, cluster_rows(cluster))
+        for cluster in clusters
+        if cluster_rows(cluster) and predicted & cluster_rows(cluster)
+    ]
+    if not matches:
+        raise owner_campaign.CampaignError("predicted rows cross causal clusters")
+    groups: dict[str, list[tuple[Mapping[str, Any], set[str]]]] = {}
+    for cluster, ids in matches:
+        groups.setdefault(cluster_group(cluster), []).append((cluster, ids))
+    if len(groups) > 1:
+        raise owner_campaign.CampaignError(
+            "predicted rows overlap multiple causal clusters"
+        )
+    group_key, selected = next(iter(groups.items()))
+    if not group_key:
+        if len(selected) != 1 or not predicted <= selected[0][1]:
+            raise owner_campaign.CampaignError("predicted rows cross causal clusters")
+        return selected[0][0]
+
+    group_members = [
+        (cluster, cluster_rows(cluster))
+        for cluster in clusters
+        if cluster_group(cluster) == group_key
+    ]
+    required_rows: set[str] = set()
+    for _cluster, ids in group_members:
+        required_rows.update(ids)
+    if not required_rows <= predicted:
+        raise owner_campaign.CampaignError(
+            "predicted rows omit a mirrored causal occurrence"
+        )
+    return {
+        "cluster_id": selected[0][0].get("cluster_id"),
+        "mirror_group": group_key,
+        "cluster_ids": [cluster.get("cluster_id") for cluster, _ids in group_members],
+        "strict_row_ids": sorted(
+            row for cluster, _ids in group_members
+            for row in cluster.get("strict_row_ids", [])
+            if isinstance(row, str)
+        ),
+        "data_row_ids": sorted(
+            row for cluster, _ids in group_members
+            for row in cluster.get("data_row_ids", [])
+            if isinstance(row, str)
+        ),
+    }
+
+
+def _reconstruction_region_for_cluster(
+    reconstruction: Mapping[str, Any],
+    cluster: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Bind a decomposable prediction to one sealed target region.
+
+    ``owner_campaign_reconstruction`` currently emits causal clusters.  Newer
+    producers may additionally attach a bounded target region to an UNKNOWN
+    packet so the lane can make one improved-only attempt instead of dropping
+    a broad function forever.  The region is accepted only when it names the
+    selected cluster (or its row IDs); a generic "decompose this function"
+    marker is not enough to authorize a proposal.
+    """
+
+    cluster_id = cluster.get("cluster_id")
+    mirror_group = cluster.get("mirror_group")
+    member_cluster_ids = set(
+        item for item in cluster.get("cluster_ids", []) if isinstance(item, str)
+    )
+    cluster_ids: set[str] = set()
+    for key in (
+        "row_ids", "strict_row_ids", "data_row_ids",
+        "physical_difference_ids", "residual_row_ids",
+    ):
+        values = cluster.get(key)
+        if isinstance(values, Mapping):
+            for nested in values.values():
+                if isinstance(nested, list):
+                    cluster_ids.update(item for item in nested if isinstance(item, str))
+        elif isinstance(values, list):
+            cluster_ids.update(item for item in values if isinstance(item, str))
+    for region in reconstruction.get("bounded_regions", []):
+        if not isinstance(region, Mapping):
+            continue
+        if region.get("closed") is False or region.get("complete") is False:
+            continue
+        named = region.get("cluster_id", region.get("causal_cluster_id"))
+        if cluster_id is not None and named == cluster_id:
+            return region
+        region_group = region.get("mirror_group", region.get("mirror_group_id"))
+        if isinstance(region_group, Mapping):
+            region_group = region_group.get("id", region_group.get("group_id"))
+        if mirror_group is not None and region_group == mirror_group:
+            return region
+        region_cluster_ids = region.get("cluster_ids")
+        if isinstance(region_cluster_ids, list) and member_cluster_ids <= set(
+            item for item in region_cluster_ids if isinstance(item, str)
+        ):
+            return region
+        region_ids: set[str] = set()
+        for key in (
+            "row_ids", "strict_row_ids", "data_row_ids",
+            "physical_difference_ids", "residual_row_ids",
+        ):
+            values = region.get(key)
+            if isinstance(values, Mapping):
+                for nested in values.values():
+                    if isinstance(nested, list):
+                        region_ids.update(item for item in nested if isinstance(item, str))
+            elif isinstance(values, list):
+                region_ids.update(item for item in values if isinstance(item, str))
+        if cluster_ids and cluster_ids <= region_ids:
+            return region
+    raise owner_campaign.CampaignError(
+        "reconstruction decomposition region does not bind predicted cluster"
+    )
+
+
+def reconstruct_frontier(
+    root: Path,
+    campaign: Mapping[str, Any],
+    function: str,
+    *,
+    snapshotter: Callable[..., Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Read the current frontier and summarize its target-first packet.
+
+    ``snapshot_frontier`` is deliberately called without ``force``.  The core
+    returns an existing frontier without running measurement, so this command
+    is a cheap context operation even for a live campaign.  A packet pointer is
+    strict: once present, its CAS file, self-digest, identity, status, and
+    target signal must all verify.  A frontier with no pointer is reported as
+    ``LEGACY`` for the old proposal path and never pretends that ownership was
+    proven.
+    """
+
+    root = Path(os.path.abspath(root))
+    if not isinstance(function, str) or not function:
+        raise owner_campaign.CampaignError("function is invalid")
+    functions = campaign.get("functions", [])
+    if function not in functions:
+        raise owner_campaign.CampaignError(
+            f"function is outside campaign scope: {function}"
+        )
+    if snapshotter is None:
+        snapshotter = getattr(owner_campaign, "snapshot_frontier", None)
+    if not callable(snapshotter):
+        raise owner_campaign.CampaignError(
+            "tools.owner_campaign does not expose snapshot_frontier"
+        )
+    current = snapshotter(root, campaign, function)
+    if not isinstance(current, Mapping):
+        raise owner_campaign.CampaignError("current frontier is invalid")
+    current = dict(current)
+    if current.get("function") != function:
+        raise owner_campaign.CampaignError("current frontier function binding is invalid")
+    frontier_sha = current.get("frontier_sha256")
+    if not _is_hex_sha(frontier_sha):
+        raise owner_campaign.CampaignError("current frontier hash is invalid")
+    body = dict(current)
+    body.pop("frontier_sha256", None)
+    if _canonical_digest(body) != frontier_sha:
+        raise owner_campaign.CampaignError("current frontier digest is invalid")
+
+    # Prefer the persisted frontier when the snapshotter wrote one.  This
+    # catches a writer race and ensures the packet pointer is read from the
+    # authoritative CAS-bound record, while still supporting pure fixtures
+    # that return an in-memory frontier without creating state files.
+    persisted_path = (
+        owner_campaign._function_root(root, campaign, function)
+        / "latest-frontier.json"
+    )
+    if persisted_path.is_file():
+        persisted = _frontier_for_proposal(root, campaign, function)
+        if persisted["frontier_sha256"] != frontier_sha:
+            raise owner_campaign.CampaignError("current frontier changed during reconstruction")
+        current = persisted
+
+    packet = _load_reconstruction_for_frontier(root, campaign, function, current)
+    result: dict[str, Any] = {
+        "schema": RECONSTRUCTION_RESULT_SCHEMA,
+        "campaign_id": current.get("campaign_id", campaign.get("campaign_id")),
+        "owner": current.get("owner", campaign.get("owner")),
+        "unit": current.get("unit", campaign.get("unit")),
+        "function": function,
+        "frontier_sha256": current["frontier_sha256"],
+        "frontier_source_sha256": current.get("source_sha256"),
+        "authority_advanced": False,
+    }
+    if packet is None:
+        result.update(
+            {
+                "status": "LEGACY",
+                "packet_path": None,
+                "artifact_sha256": None,
+                "packet_sha256": None,
+                "signal": {
+                    "status": "LEGACY",
+                    "reason": "frontier has no reconstruction CAS pointer",
+                },
+                "causal_cluster_count": None,
+                "residual_event_count": None,
+                "exact_terminal_possible": None,
+                "exact_terminal_reason": None,
+                "next_action": "LEGACY",
+                "bounded_regions": [],
+                "ownership_complete": None,
+            }
+        )
+        return result
+    result.update(
+        {
+            "status": packet["status"],
+            "packet_path": packet["path"].relative_to(root).as_posix(),
+            "artifact_sha256": packet["file_sha256"],
+            "packet_sha256": packet["packet_sha256"],
+            "signal": packet["signal"],
+            "causal_cluster_count": packet["cluster_count"],
+            "residual_event_count": packet["residual_event_count"],
+            "exact_terminal_possible": packet["exact_terminal_possible"],
+            "exact_terminal_reason": packet["exact_terminal_reason"],
+            "next_action": packet["next_action"],
+            "bounded_regions": packet["bounded_regions"],
+            "ownership_complete": packet["ownership_complete"],
+        }
+    )
+    return result
+
+
 def _focus_artifact_for_proposal(
     root: Path,
     campaign: Mapping[str, Any],
@@ -481,6 +1072,27 @@ def _selection_evidence_for_proposal(
     focus_path, focus_sha, focus = _focus_artifact_for_proposal(
         root, campaign, function, frontier
     )
+    reconstruction = _load_reconstruction_for_frontier(
+        root, campaign, function, frontier
+    )
+    if reconstruction is not None:
+        if reconstruction["status"] == "UNKNOWN":
+            if reconstruction["next_action"] != "DECOMPOSE":
+                raise owner_campaign.CampaignError(
+                    "frontier reconstruction is UNKNOWN; pivot required"
+                )
+            if expected_terminal != "improved":
+                raise owner_campaign.CampaignError(
+                    "UNKNOWN reconstruction allows improved-only decomposition"
+                )
+        elif reconstruction["status"] != "READY" or not reconstruction["ownership_complete"]:
+            raise owner_campaign.CampaignError(
+                "frontier reconstruction is UNKNOWN/incomplete; pivot required"
+            )
+        if expected_terminal == "exact" and not reconstruction["exact_terminal_possible"]:
+            raise owner_campaign.CampaignError(
+                "reconstruction does not support an exact terminal; use improved"
+            )
     physical_path, physical_sha, physical = _physical_cas_for_proposal(
         root, campaign, frontier, focus_path, focus_sha, focus
     )
@@ -558,6 +1170,16 @@ def _selection_evidence_for_proposal(
             raise owner_campaign.CampaignError(
                 "predicted remaining counts do not match predicted rows"
             )
+    reconstruction_cluster: Mapping[str, Any] | None = None
+    reconstruction_region: Mapping[str, Any] | None = None
+    if reconstruction is not None:
+        reconstruction_cluster = _reconstruction_cluster_for_rows(
+            reconstruction, predicted
+        )
+        if reconstruction["status"] == "UNKNOWN":
+            reconstruction_region = _reconstruction_region_for_cluster(
+                reconstruction, reconstruction_cluster
+            )
     protected = focus.get("sibling_digest", focus.get("protected_sibling_digest"))
     if not _is_hex_sha(protected):
         raise owner_campaign.CampaignError("current frontier sibling digest is missing")
@@ -624,9 +1246,27 @@ def _selection_evidence_for_proposal(
         "predicted_rows": predicted,
         "predicted_remaining_counts": counts,
         "protected_sibling_digest": protected,
-        "ownership_complete": True,
+        "ownership_complete": (
+            reconstruction["ownership_complete"]
+            if reconstruction is not None else True
+        ),
         "candidate_count": 1,
     }
+    if reconstruction is not None:
+        body["reconstruction"] = {
+            "path": reconstruction["path"].relative_to(root).as_posix(),
+            "sha256": reconstruction["file_sha256"],
+            "packet_sha256": reconstruction["packet_sha256"],
+            "status": reconstruction["status"],
+            "target_first_signal": reconstruction["signal"],
+            "causal_cluster_count": reconstruction["cluster_count"],
+            "causal_cluster_id": reconstruction_cluster.get("cluster_id")
+            if reconstruction_cluster is not None else None,
+            "exact_terminal_possible": reconstruction["exact_terminal_possible"],
+            "next_action": reconstruction["next_action"],
+            "bounded_region": dict(reconstruction_region)
+            if reconstruction_region is not None else None,
+        }
     return (
         {**body, "evidence_sha256": _canonical_digest(body)},
         focus_path,
@@ -636,7 +1276,7 @@ def _selection_evidence_for_proposal(
     )
 
 
-def _propose_candidate_locked(
+def _prepare_candidate_proposal(
     root: Path,
     campaign: Mapping[str, Any],
     function: str,
@@ -646,7 +1286,27 @@ def _propose_candidate_locked(
     expected_terminal: str,
     predicted_rows: Sequence[str] | None,
     predicted_remaining_counts: Mapping[str, int] | None,
+    rebase_depth: int = 0,
+    required_current_function: bytes | None = None,
 ) -> dict[str, Any]:
+    """Prepare immutable proposal inputs without holding the frontier locks.
+
+    Source decoding, span discovery, diff classification, and focus/physical
+    evidence parsing are read-only work.  Keeping them outside the CAS lock
+    allows independent Sol proposal workers to make progress concurrently.  A
+    later locked publication phase re-reads every bound input before the final
+    directory rename, so this optimization does not turn a stale proposal into
+    a queued candidate.
+    """
+
+    if type(rebase_depth) is not int or not 0 <= rebase_depth <= 5:
+        raise owner_campaign.CampaignError(
+            "candidate rebase_depth must be between 0 and 5"
+        )
+    if required_current_function is not None and not isinstance(
+        required_current_function, bytes
+    ):
+        raise owner_campaign.CampaignError("required current function snapshot is invalid")
     source_path = _campaign_source_path(root, campaign)
     source_bytes = _stable_file_bytes(source_path, "campaign source")
     source_sha256 = owner_campaign._digest_bytes(source_bytes)
@@ -667,6 +1327,13 @@ def _propose_candidate_locked(
     base_start, base_end, base_span = _function_span(
         base_text, function, "base function"
     )
+    if (
+        required_current_function is not None
+        and base_span != required_current_function
+    ):
+        raise owner_campaign.CampaignError(
+            "current function changed during stale rebase"
+        )
     candidate_start, candidate_end, candidate_span = _function_span(
         candidate_text, function, "candidate function"
     )
@@ -716,16 +1383,17 @@ def _propose_candidate_locked(
     function_slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", function).strip("_") or "function"
     name = f"{function_slug}-{candidate_sha256[:24]}"
     inbox = inbox_path(root, campaign)
-    inbox.mkdir(parents=True, exist_ok=True)
     final_dir = inbox / name
-    if final_dir.exists() or final_dir.is_symlink():
-        raise owner_campaign.CampaignError("duplicate candidate destination")
     created_at = owner_campaign._now()
     descriptor_body: dict[str, Any] = {
         "schema": owner_campaign.CANDIDATE_SCHEMA,
         "campaign_id": campaign["campaign_id"],
         "function": function,
         "base_frontier_sha256": frontier["frontier_sha256"],
+        "base_source": {
+            "path": (final_dir / "base.c").relative_to(root).as_posix(),
+            "sha256": source_sha256,
+        },
         "candidate_source": {
             "path": (final_dir / "candidate.c").relative_to(root).as_posix(),
             "sha256": candidate_sha256,
@@ -740,6 +1408,7 @@ def _propose_candidate_locked(
         },
         "hypothesis_family": hypothesis_family,
         "natural_c": True,
+        "rebase_depth": rebase_depth,
         "created_at": created_at,
     }
     descriptor = {
@@ -767,28 +1436,169 @@ def _propose_candidate_locked(
     _physical_sha = physical_ref.get("sha256")
     if not _is_hex_sha(_physical_sha):
         raise owner_campaign.CampaignError("selection physical artifact hash is invalid")
+    return {
+        "function": function,
+        "hypothesis_family": hypothesis_family,
+        "expected_terminal": expected_terminal,
+        "predicted_rows_input": (
+            None if predicted_rows is None else list(predicted_rows)
+        ),
+        "source_path": source_path,
+        "source_bytes": source_bytes,
+        "source_sha256": source_sha256,
+        "candidate_path": candidate_source,
+        "candidate_bytes": candidate_bytes,
+        "candidate_sha256": candidate_sha256,
+        "frontier": frontier,
+        "name": name,
+        "inbox": inbox,
+        "final_dir": final_dir,
+        "created_at": created_at,
+        "descriptor": descriptor,
+        "selection": selection,
+        "focus_path": _focus_path,
+        "focus_sha256": _focus_sha,
+        "physical_path": _physical_path,
+        "physical_sha256": _physical_sha,
+        "residual": residual,
+        "counts": counts,
+    }
+
+
+def _stage_prepared_proposal(prepared: Mapping[str, Any]) -> Path:
+    """Write a disposable proposal directory before acquiring CAS locks."""
+
+    inbox = Path(prepared["inbox"])
+    inbox.mkdir(parents=True, exist_ok=True)
     stage: Path | None = None
     try:
-        stage = Path(tempfile.mkdtemp(prefix=f".{name}.", dir=inbox))
-        owner_campaign._atomic_bytes(stage / "candidate.c", candidate_bytes)
-        owner_campaign._atomic_json(stage / "candidate.json", descriptor)
-        owner_campaign._atomic_json(stage / "candidate.selection.json", selection)
-        # Recheck both inputs immediately before the directory rename.  This
-        # closes the source/frontier race without making a candidate compile.
+        stage = Path(tempfile.mkdtemp(prefix=f".{prepared['name']}.", dir=inbox))
+        owner_campaign._atomic_bytes(stage / "base.c", prepared["source_bytes"])
+        owner_campaign._atomic_bytes(stage / "candidate.c", prepared["candidate_bytes"])
+        owner_campaign._atomic_json(stage / "candidate.json", prepared["descriptor"])
+        owner_campaign._atomic_json(
+            stage / "candidate.selection.json", prepared["selection"]
+        )
+        return stage
+    except BaseException:
+        if stage is not None:
+            try:
+                shutil.rmtree(stage)
+            except OSError:
+                pass
+        raise
+
+
+def _proposal_directory_matches(root: Path, stage: Path, final_dir: Path) -> bool:
+    """Return whether an already-published destination is this exact stage."""
+
+    indirection_checker = getattr(owner_campaign, "_path_has_indirection", None)
+    if (
+        final_dir.is_symlink()
+        or not final_dir.is_dir()
+        or (
+            callable(indirection_checker)
+            and indirection_checker(root, final_dir)
+        )
+    ):
+        return False
+    names = {"base.c", "candidate.c", "candidate.json", "candidate.selection.json"}
+    try:
+        if {item.name for item in final_dir.iterdir()} != names:
+            return False
+        return all(
+            owner_campaign._digest_file(final_dir / name)
+            == owner_campaign._digest_file(stage / name)
+            for name in names
+        )
+    except OSError:
+        return False
+
+
+def _commit_proposal_directory(
+    root: Path,
+    campaign: Mapping[str, Any],
+    stage: Path,
+    final_dir: Path,
+) -> None:
+    """Publish one prepared directory through a short process-safe link gate."""
+
+    timeout = (
+        owner_campaign._command_timeout_seconds(campaign)
+        if "limits" in campaign
+        else 30.0
+    )
+    publication_lock = inbox_path(root, campaign) / ".proposal-publication.lock"
+    with _PROPOSAL_PUBLICATION_THREAD_LOCK:
+        with owner_campaign._exclusive_lock(publication_lock, timeout):
+            deadline = time.monotonic() + min(timeout, 1.0)
+            while True:
+                if final_dir.exists() or final_dir.is_symlink():
+                    if _proposal_directory_matches(root, stage, final_dir):
+                        return
+                    raise owner_campaign.CampaignError(
+                        "duplicate candidate destination has conflicting content"
+                    )
+                try:
+                    # Same-parent rename is atomic and fail-if-present on both
+                    # supported platforms.  Windows can transiently return
+                    # ACCESS_DENIED/SHARING_VIOLATION while another thread's
+                    # directory notification is draining, so retry only those
+                    # bounded errors while this narrow publication gate is held.
+                    os.rename(stage, final_dir)
+                    return
+                except OSError as exc:
+                    transient = os.name == "nt" and getattr(exc, "winerror", None) in {
+                        5, 32, 33,
+                    }
+                    if not transient or time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.02)
+
+
+def _publish_prepared_proposal_locked(
+    root: Path,
+    campaign: Mapping[str, Any],
+    prepared: Mapping[str, Any],
+    stage: Path,
+) -> dict[str, Any]:
+    """Revalidate a prepared proposal and atomically publish it under CAS locks."""
+
+    function = str(prepared["function"])
+    frontier = prepared["frontier"]
+    final_dir = Path(prepared["final_dir"])
+    source_path = Path(prepared["source_path"])
+    candidate_path = Path(prepared["candidate_path"])
+    focus_path = Path(prepared["focus_path"])
+    physical_path = Path(prepared["physical_path"])
+    try:
         current_source = _stable_file_bytes(source_path, "campaign source")
-        if owner_campaign._digest_bytes(current_source) != source_sha256:
+        if owner_campaign._digest_bytes(current_source) != prepared["source_sha256"]:
             raise owner_campaign.CampaignError("campaign source drifted during proposal")
+        current_candidate = _stable_file_bytes(candidate_path, "candidate source")
+        if owner_campaign._digest_bytes(current_candidate) != prepared["candidate_sha256"]:
+            raise owner_campaign.CampaignError("candidate source drifted during proposal")
+        staged_base = stage / "base.c"
+        if owner_campaign._digest_bytes(
+            _stable_file_bytes(staged_base, "staged base source")
+        ) != prepared["source_sha256"]:
+            raise owner_campaign.CampaignError("staged base source drifted during proposal")
         current_frontier = _frontier_for_proposal(root, campaign, function)
         if current_frontier["frontier_sha256"] != frontier["frontier_sha256"]:
             raise owner_campaign.CampaignError("frontier advanced during proposal")
-        if owner_campaign._digest_file(_focus_path) != _focus_sha:
+        current_focus = _stable_file_bytes(focus_path, "frontier focus artifact")
+        if owner_campaign._digest_bytes(current_focus) != prepared["focus_sha256"]:
             raise owner_campaign.CampaignError("frontier focus artifact drifted during proposal")
-        if owner_campaign._digest_file(_physical_path) != _physical_sha:
-            raise owner_campaign.CampaignError("physical summary artifact drifted during proposal")
-        os.replace(stage, final_dir)
-        stage = None
+        current_physical = _stable_file_bytes(
+            physical_path, "physical summary artifact"
+        )
+        if owner_campaign._digest_bytes(current_physical) != prepared["physical_sha256"]:
+            raise owner_campaign.CampaignError(
+                "physical summary artifact drifted during proposal"
+            )
+        _commit_proposal_directory(root, campaign, stage, final_dir)
     except BaseException:
-        if stage is not None:
+        if stage.exists():
             try:
                 shutil.rmtree(stage)
             except OSError:
@@ -800,20 +1610,25 @@ def _propose_candidate_locked(
         "status": "queued",
         "campaign_id": campaign["campaign_id"],
         "function": function,
-        "hypothesis_family": hypothesis_family,
+        "hypothesis_family": prepared["hypothesis_family"],
         "base_frontier_sha256": frontier["frontier_sha256"],
-        "candidate_source_sha256": candidate_sha256,
+        "candidate_source_sha256": prepared["candidate_sha256"],
         "candidate_source": (final_dir / "candidate.c").relative_to(root).as_posix(),
         "candidate_descriptor": descriptor_path.relative_to(root).as_posix(),
         "descriptor_sha256": owner_campaign._digest_file(descriptor_path),
         "candidate_selection": (final_dir / "candidate.selection.json").relative_to(root).as_posix(),
         "selection_sha256": owner_campaign._digest_file(final_dir / "candidate.selection.json"),
         "selection_evidence": (final_dir / "candidate.selection.json").relative_to(root).as_posix(),
-        "selection_evidence_sha256": selection["evidence_sha256"],
-        "expected_terminal": expected_terminal,
-        "predicted_rows": residual if predicted_rows is None else list(predicted_rows),
-        "predicted_remaining_counts": counts,
-        "created_at": created_at,
+        "selection_evidence_sha256": prepared["selection"]["evidence_sha256"],
+        "reconstruction": prepared["selection"].get("reconstruction"),
+        "expected_terminal": prepared["expected_terminal"],
+        "predicted_rows": (
+            prepared["residual"]
+            if prepared["predicted_rows_input"] is None
+            else list(prepared["predicted_rows_input"])
+        ),
+        "predicted_remaining_counts": prepared["counts"],
+        "created_at": prepared["created_at"],
         "authority_advanced": False,
     }
 
@@ -828,6 +1643,8 @@ def propose_candidate(
     expected_terminal: str = "exact",
     predicted_rows: Sequence[str] | None = None,
     predicted_remaining_counts: Mapping[str, int] | None = None,
+    rebase_depth: int = 0,
+    _required_current_function: bytes | None = None,
 ) -> dict[str, Any]:
     """Seal one worker source into the inbox against the current frontier.
 
@@ -848,18 +1665,31 @@ def propose_candidate(
         raise owner_campaign.CampaignError("candidate source must be distinct from campaign source")
     if not _allowed_candidate_path(root, campaign, candidate_path):
         raise owner_campaign.CampaignError("candidate source is outside campaign allowed paths")
+    prepared = _prepare_candidate_proposal(
+        root, campaign, function, candidate_path, hypothesis_family,
+        expected_terminal=expected_terminal,
+        predicted_rows=predicted_rows,
+        predicted_remaining_counts=predicted_remaining_counts,
+        rebase_depth=rebase_depth,
+        required_current_function=_required_current_function,
+    )
+    stage = _stage_prepared_proposal(prepared)
     lock_factory = getattr(owner_campaign, "_frontier_lock_chain", None)
     if callable(lock_factory) and "_source" in campaign and "limits" in campaign:
         context = lock_factory(root, campaign, function)
     else:
         context = nullcontext()
-    with context:
-        return _propose_candidate_locked(
-            root, campaign, function, candidate_path, hypothesis_family,
-            expected_terminal=expected_terminal,
-            predicted_rows=predicted_rows,
-            predicted_remaining_counts=predicted_remaining_counts,
-        )
+    try:
+        with context:
+            return _publish_prepared_proposal_locked(
+                root, campaign, prepared, stage
+            )
+    finally:
+        if stage.exists():
+            try:
+                shutil.rmtree(stage)
+            except OSError:
+                pass
 
 
 submit_candidate = propose_candidate
@@ -967,6 +1797,24 @@ def _sealed_descriptor(
             return None
     except OSError:
         return None
+    base_source = value.get("base_source")
+    if not isinstance(base_source, Mapping) or set(base_source) != {"path", "sha256"}:
+        return None
+    base_path = _relative_path(root, base_source.get("path"))
+    if (
+        base_path is None
+        or not _under_allowed_build(root, base_path, campaign)
+        or not _is_hex_sha(base_source.get("sha256"))
+    ):
+        return None
+    try:
+        if (
+            not base_path.is_file()
+            or owner_campaign._digest_file(base_path) != base_source["sha256"]
+        ):
+            return None
+    except OSError:
+        return None
     return dict(value), source_path
 
 
@@ -981,7 +1829,7 @@ def discover_candidates(
     inbox = inbox_path(root, campaign)
     if not inbox.is_dir():
         return []
-    found: list[tuple[str, str, Path]] = []
+    found: list[tuple[str, str, Path, str]] = []
     try:
         entries = sorted(
             inbox.rglob("*.json"),
@@ -1001,8 +1849,36 @@ def discover_candidates(
         # deterministic after well-formed candidates and are fully validated
         # by the core loader before compile.
         created_key = created if isinstance(created, str) else ""
-        found.append((created_key, path.relative_to(inbox).as_posix(), path))
+        found.append((created_key, path.relative_to(inbox).as_posix(), path, descriptor["function"]))
     found.sort(key=lambda item: (item[0], item[1]))
+    # A global first-N slice can hide an eligible function behind a stalled
+    # function's proposal run.  Interleave candidates by manifest function
+    # order while preserving created/path order within each function.  The
+    # Arbitration later dispatches at most one winner per selected function,
+    # but it can now pivot to a different function in the same bounded scan.
+    scoped_functions = [
+        function for function in campaign.get("functions", [])
+        if isinstance(function, str)
+    ]
+    if len(scoped_functions) > 1:
+        buckets: dict[str, list[tuple[str, str, Path, str]]] = {
+            function: [] for function in scoped_functions
+        }
+        for entry in found:
+            buckets.setdefault(entry[3], []).append(entry)
+        ordered: list[tuple[str, str, Path, str]] = []
+        offset = 0
+        while len(ordered) < len(found):
+            added = False
+            for function in scoped_functions:
+                bucket = buckets.get(function, [])
+                if offset < len(bucket):
+                    ordered.append(bucket[offset])
+                    added = True
+            if not added:
+                break
+            offset += 1
+        found = ordered
     return [item[2] for item in found[:limit]]
 
 
@@ -1030,6 +1906,7 @@ def _compact_terminal_input(
     try:
         sealed = _sealed_descriptor(root, campaign, descriptor_path)
         source_path = sealed[1] if sealed is not None else None
+        base_snapshot = descriptor_path.parent / "base.c"
         if descriptor_path.exists():
             descriptor_path.unlink()
             removed.append(descriptor_path.relative_to(root).as_posix())
@@ -1043,6 +1920,13 @@ def _compact_terminal_input(
         ):
             source_path.unlink()
             removed.append(source_path.relative_to(root).as_posix())
+        if (
+            base_snapshot != source_path
+            and base_snapshot.exists()
+            and _under_allowed_build(root, base_snapshot, campaign)
+        ):
+            base_snapshot.unlink()
+            removed.append(base_snapshot.relative_to(root).as_posix())
     except (OSError, ValueError) as exc:
         # The measurement result is still authoritative.  Surface cleanup
         # trouble to the caller while leaving an infra retry distinguishable.
@@ -1050,8 +1934,722 @@ def _compact_terminal_input(
     return removed
 
 
+def _rebase_tombstone_path(
+    root: Path, campaign: Mapping[str, Any], descriptor_sha256: str
+) -> Path:
+    return inbox_path(root, campaign) / ".rebases" / f"{descriptor_sha256}.receipt"
+
+
+def _read_rebase_tombstone(path: Path) -> dict[str, Any] | None:
+    if not path.is_file() or path.is_symlink():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(value, Mapping) or set(value) != REBASE_TOMBSTONE_FIELDS:
+        return None
+    body = dict(value)
+    digest = body.pop("tombstone_sha256", None)
+    status = value.get("status")
+    if (
+        not _is_hex_sha(digest)
+        or _canonical_digest(body) != digest
+        or value.get("schema") != REBASE_TOMBSTONE_SCHEMA
+        or status not in {REBASED_STATUS, REBASE_REJECTED_STATUS}
+        or not isinstance(value.get("campaign_id"), str)
+        or not value["campaign_id"]
+        or not isinstance(value.get("function"), str)
+        or not value["function"]
+        or not _is_hex_sha(value.get("old_descriptor_sha256"))
+        or not _is_hex_sha(value.get("old_candidate_sha256"))
+        or not _is_hex_sha(value.get("old_frontier_sha256"))
+        or type(value.get("rebase_depth")) is not int
+        or not 0 <= value["rebase_depth"] <= 5
+        or not isinstance(value.get("reason"), str)
+        or not isinstance(value.get("created_at"), str)
+    ):
+        return None
+    if status == REBASED_STATUS:
+        if (
+            not isinstance(value.get("new_descriptor"), str)
+            or not value["new_descriptor"]
+            or Path(value["new_descriptor"]).is_absolute()
+            or not _is_hex_sha(value.get("new_descriptor_sha256"))
+            or not _is_hex_sha(value.get("new_candidate_sha256"))
+            or value["rebase_depth"] < 1
+        ):
+            return None
+    elif any(
+        value.get(field) is not None
+        for field in (
+            "new_descriptor", "new_descriptor_sha256", "new_candidate_sha256"
+        )
+    ):
+        return None
+    return dict(value)
+
+
+def _publish_rebase_tombstone(
+    root: Path,
+    campaign: Mapping[str, Any],
+    *,
+    function: str,
+    status: str,
+    old_descriptor_sha256: str,
+    old_candidate_sha256: str,
+    old_frontier_sha256: str,
+    new_descriptor: str | None,
+    new_descriptor_sha256: str | None,
+    new_candidate_sha256: str | None,
+    rebase_depth: int,
+    reason: str,
+) -> dict[str, Any]:
+    body = {
+        "schema": REBASE_TOMBSTONE_SCHEMA,
+        "campaign_id": campaign["campaign_id"],
+        "function": function,
+        "status": status,
+        "old_descriptor_sha256": old_descriptor_sha256,
+        "old_candidate_sha256": old_candidate_sha256,
+        "old_frontier_sha256": old_frontier_sha256,
+        "new_descriptor": new_descriptor,
+        "new_descriptor_sha256": new_descriptor_sha256,
+        "new_candidate_sha256": new_candidate_sha256,
+        "rebase_depth": rebase_depth,
+        "reason": reason[:1000],
+        "created_at": owner_campaign._now(),
+    }
+    value = {**body, "tombstone_sha256": _canonical_digest(body)}
+    path = _rebase_tombstone_path(root, campaign, old_descriptor_sha256)
+    existing = _read_rebase_tombstone(path)
+    if existing is not None:
+        # The old descriptor identity may reach this boundary again after a
+        # process interruption.  Its first durable disposition is final.
+        return existing
+    owner_campaign._atomic_json(path, value, limit=16 << 10)
+    observed = _read_rebase_tombstone(path)
+    if observed != value:
+        raise owner_campaign.CampaignError("stale rebase tombstone publication failed")
+    return value
+
+
+def _cleanup_selection_input(
+    root: Path, campaign: Mapping[str, Any], selected: Mapping[str, Any]
+) -> list[str]:
+    removed: list[str] = []
+    raw = selected.get("evidence_path")
+    if not isinstance(raw, (str, os.PathLike)):
+        return removed
+    path = Path(raw)
+    if not path.is_absolute():
+        path = root / path
+    path = Path(os.path.abspath(path))
+    try:
+        if (
+            path.is_file()
+            and _path_inside(inbox_path(root, campaign), path)
+            and not path.is_symlink()
+        ):
+            path.unlink()
+            removed.append(path.relative_to(root).as_posix())
+    except (OSError, ValueError) as exc:
+        removed.append(f"cleanup-error:{path}:{exc}")
+    return removed
+
+
+def _row_rebase_key(row: str) -> tuple[str, int, str] | None:
+    match = re.match(
+        r"^(strict|data):[^:]+:row:(\d+):kind=([^:]+)(?::|$)", row
+    )
+    if match is None:
+        return None
+    return match.group(1), int(match.group(2)), match.group(3)
+
+
+def _remap_predicted_rows(
+    predicted_rows: Sequence[str], current_rows: Sequence[str]
+) -> list[str]:
+    indexed: dict[tuple[str, int, str], list[str]] = {}
+    current_set = set(current_rows)
+    for row in current_rows:
+        key = _row_rebase_key(row)
+        if key is not None:
+            indexed.setdefault(key, []).append(row)
+    remapped: list[str] = []
+    for row in predicted_rows:
+        if row in current_set:
+            selected = row
+        else:
+            key = _row_rebase_key(row)
+            matches = indexed.get(key, []) if key is not None else []
+            # Physical-difference identities intentionally include the
+            # candidate relocation payload.  A disjoint TU gain can change
+            # that hash even though this source cell still targets the same
+            # strict/data rows.  Do not invent a physical mapping: drop only
+            # that unmatched prediction and downgrade the refreshed proposal
+            # to ``improved`` below.  The candidate measurement must preserve
+            # the current physical channel before it can be retained.
+            if row.startswith("physical:") and not matches:
+                continue
+            if len(matches) != 1:
+                raise owner_campaign.CampaignError(
+                    "stale candidate prediction no longer maps uniquely to the current residual"
+                )
+            selected = matches[0]
+        if selected in remapped:
+            raise owner_campaign.CampaignError(
+                "stale candidate prediction maps to duplicate current rows"
+            )
+        remapped.append(selected)
+    if not remapped:
+        raise owner_campaign.CampaignError("stale candidate has no current predicted rows")
+    return remapped
+
+
+def _current_residual_for_rebase(
+    root: Path,
+    campaign: Mapping[str, Any],
+    function: str,
+    *,
+    worker: int,
+) -> tuple[dict[str, Any], list[str], dict[str, int]]:
+    # The first retained function advances the shared TU source.  Refresh
+    # this function's baseline independently on its assigned worker before
+    # rebuilding the proposal against that source.
+    if "_source" in campaign and "limits" in campaign:
+        frontier = owner_campaign.snapshot_frontier(
+            root,
+            campaign,
+            function,
+            worker=worker,
+            _defer_maintenance=True,
+        )
+    else:
+        # Descriptor-only fixtures and authorized replay callers predate the
+        # loaded production manifest.  Their frontier is already advanced by
+        # the caller and remains fully checked by proposal publication.
+        frontier = _frontier_for_proposal(root, campaign, function)
+    focus_path, focus_sha, focus = _focus_artifact_for_proposal(
+        root, campaign, function, frontier
+    )
+    _physical_path, _physical_sha, physical = _physical_cas_for_proposal(
+        root, campaign, frontier, focus_path, focus_sha, focus
+    )
+    try:
+        strict_rows, data_rows, physical_rows = (
+            owner_campaign_selector._artifact_row_groups(focus, physical)
+        )
+        residual = owner_campaign_selector._ordered_union(
+            strict_rows, data_rows, physical_rows
+        )
+    except owner_campaign_selector.SelectionError as exc:
+        raise owner_campaign.CampaignError(str(exc)) from exc
+    if not residual:
+        raise owner_campaign.CampaignError(
+            "stale candidate function is already exact on the current source"
+        )
+    return dict(frontier), residual, {
+        "strict": len(strict_rows),
+        "data": len(data_rows),
+        "physical": len(physical_rows),
+    }
+
+
+def _find_rebased_proposal(
+    root: Path,
+    campaign: Mapping[str, Any],
+    function: str,
+    frontier_sha256: str,
+    candidate_sha256: str,
+) -> Path | None:
+    inbox = inbox_path(root, campaign)
+    if not inbox.is_dir():
+        return None
+    for path in inbox.rglob("candidate.json"):
+        sealed = _sealed_descriptor(root, campaign, path)
+        if sealed is None:
+            continue
+        descriptor = sealed[0]
+        if (
+            descriptor.get("function") == function
+            and descriptor.get("base_frontier_sha256") == frontier_sha256
+            and descriptor.get("candidate_source", {}).get("sha256")
+            == candidate_sha256
+        ):
+            return path
+    return None
+
+
+def _rebase_result(
+    *,
+    status: str,
+    function: str,
+    reason: str,
+    old_descriptor: Path,
+    old_descriptor_sha256: str,
+    rebase_depth: int,
+    cleaned: Sequence[str],
+    new_descriptor: Path | None = None,
+    new_candidate: Path | None = None,
+    new_candidate_sha256: str | None = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "schema": "owner_campaign_result/v1",
+        "status": status,
+        "function": function,
+        "reason": reason[:1000],
+        "old_descriptor": str(old_descriptor),
+        "old_descriptor_sha256": old_descriptor_sha256,
+        "rebase_depth": rebase_depth,
+        "cleaned": list(cleaned),
+        "new_descriptor": str(new_descriptor) if new_descriptor is not None else None,
+        "new_candidate": str(new_candidate) if new_candidate is not None else None,
+        "new_candidate_sha256": new_candidate_sha256,
+        "cleanup_status": (
+            "cleanup_incomplete"
+            if any(item.startswith("cleanup-error:") for item in cleaned)
+            else "complete"
+        ),
+        "authority_advanced": False,
+    }
+    return {**body, "result_sha256": _canonical_digest(body)}
+
+
+def _auto_rebase_stale_candidate(
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptor_path: Path,
+    selected: Mapping[str, Any],
+    *,
+    worker: int,
+) -> dict[str, Any]:
+    """Requeue one disjoint stale function edit against the current TU source.
+
+    The immutable base snapshot proves what the candidate changed.  Rebasing
+    is allowed only when the named function is still byte-identical in the
+    live source; all other source changes are inherited.  Current focus and
+    physical residuals are refreshed before a new selector packet is sealed.
+    """
+
+    descriptor_path = Path(os.path.abspath(descriptor_path))
+    sealed = _sealed_descriptor(root, campaign, descriptor_path)
+    if sealed is None:
+        raise owner_campaign.CampaignError("stale candidate descriptor is not sealed")
+    descriptor, candidate_path = sealed
+    descriptor_file_sha = owner_campaign._digest_file(descriptor_path)
+    function = descriptor["function"]
+    old_candidate_sha = descriptor["candidate_source"]["sha256"]
+    old_frontier_sha = descriptor["base_frontier_sha256"]
+    old_depth = descriptor["rebase_depth"]
+    if (
+        selected.get("function") != function
+        or selected.get("candidate_sha256") != old_candidate_sha
+        or selected.get("frontier_sha256") != old_frontier_sha
+        or selected.get("rebase_depth") != old_depth
+        or selected.get("base_source_sha256")
+        != descriptor["base_source"]["sha256"]
+    ):
+        raise owner_campaign.CampaignError("stale selection binding drift")
+    tombstone_path = _rebase_tombstone_path(root, campaign, descriptor_file_sha)
+    prior = _read_rebase_tombstone(tombstone_path)
+    if prior is not None:
+        if (
+            prior["campaign_id"] != campaign["campaign_id"]
+            or prior["function"] != function
+            or prior["old_descriptor_sha256"] != descriptor_file_sha
+            or prior["old_candidate_sha256"] != old_candidate_sha
+            or prior["old_frontier_sha256"] != old_frontier_sha
+        ):
+            raise owner_campaign.CampaignError("stale rebase tombstone binding drift")
+        next_path = (
+            _relative_path(root, prior["new_descriptor"])
+            if isinstance(prior.get("new_descriptor"), str)
+            else None
+        )
+        next_candidate: Path | None = None
+        if next_path is not None:
+            next_sealed = _sealed_descriptor(root, campaign, next_path)
+            if (
+                next_sealed is None
+                or owner_campaign._digest_file(next_path)
+                != prior["new_descriptor_sha256"]
+                or next_sealed[0]["candidate_source"]["sha256"]
+                != prior["new_candidate_sha256"]
+            ):
+                raise owner_campaign.CampaignError(
+                    "stale rebase tombstone destination drift"
+                )
+            next_candidate = next_sealed[1]
+        cleaned = _compact_terminal_input(root, campaign, descriptor_path)
+        cleaned.extend(_cleanup_selection_input(root, campaign, selected))
+        return _rebase_result(
+            status=prior["status"],
+            function=function,
+            reason="recovered durable stale rebase disposition",
+            old_descriptor=descriptor_path,
+            old_descriptor_sha256=descriptor_file_sha,
+            rebase_depth=prior["rebase_depth"],
+            cleaned=cleaned,
+            new_descriptor=next_path,
+            new_candidate=next_candidate,
+            new_candidate_sha256=prior.get("new_candidate_sha256"),
+        )
+    if old_depth >= 5:
+        raise owner_campaign.CampaignError("stale candidate reached maximum rebase depth")
+
+    base_path = _relative_path(root, descriptor["base_source"]["path"])
+    if base_path is None:
+        raise owner_campaign.CampaignError("stale candidate base snapshot is invalid")
+    base_bytes = _stable_file_bytes(base_path, "stale candidate base source")
+    candidate_bytes = _stable_file_bytes(candidate_path, "stale candidate source")
+    current_path = _campaign_source_path(root, campaign)
+    current_bytes = _stable_file_bytes(current_path, "current campaign source")
+    if owner_campaign._digest_bytes(base_bytes) != descriptor["base_source"]["sha256"]:
+        raise owner_campaign.CampaignError("stale candidate base snapshot drift")
+    if owner_campaign._digest_bytes(candidate_bytes) != old_candidate_sha:
+        raise owner_campaign.CampaignError("stale candidate source drift")
+    try:
+        base_text = base_bytes.decode("utf-8")
+        candidate_text = candidate_bytes.decode("utf-8")
+        current_text = current_bytes.decode("utf-8")
+    except UnicodeError as exc:
+        raise owner_campaign.CampaignError("stale rebase source is not UTF-8") from exc
+    base_start, base_end, base_span = _function_span(base_text, function, "stale base function")
+    candidate_start, candidate_end, candidate_span = _function_span(
+        candidate_text, function, "stale candidate function"
+    )
+    current_start, current_end, current_span = _function_span(
+        current_text, function, "current stale function"
+    )
+    span = descriptor["function_span"]
+    if (
+        (base_start, base_end, candidate_start, candidate_end)
+        != (
+            span["base_start_line"], span["base_end_line"],
+            span["candidate_start_line"], span["candidate_end_line"],
+        )
+        or owner_campaign._digest_bytes(base_span) != span["base_sha256"]
+        or owner_campaign._digest_bytes(candidate_span) != span["candidate_sha256"]
+    ):
+        raise owner_campaign.CampaignError("stale candidate function span drift")
+    base_lines = base_text.splitlines(keepends=True)
+    candidate_lines = candidate_text.splitlines(keepends=True)
+    if (
+        base_lines[: base_start - 1] != candidate_lines[: candidate_start - 1]
+        or base_lines[base_end:] != candidate_lines[candidate_end:]
+    ):
+        raise owner_campaign.CampaignError("stale candidate edits escape its function")
+    if current_span != base_span:
+        raise owner_campaign.CampaignError(
+            "current function changed; stale candidate cannot be rebased safely"
+        )
+    current_lines = current_text.splitlines(keepends=True)
+    rebased_text = "".join(
+        [
+            *current_lines[: current_start - 1],
+            *candidate_lines[candidate_start - 1:candidate_end],
+            *current_lines[current_end:],
+        ]
+    )
+    rebased_bytes = rebased_text.encode("utf-8")
+    rebased_sha = owner_campaign._digest_bytes(rebased_bytes)
+    if rebased_sha == owner_campaign._digest_bytes(current_bytes):
+        raise owner_campaign.CampaignError("stale candidate is already present in current source")
+
+    frontier, residual, current_counts = _current_residual_for_rebase(
+        root, campaign, function, worker=worker
+    )
+    predicted_raw = selected.get("predicted_rows")
+    if not isinstance(predicted_raw, list):
+        raise owner_campaign.CampaignError("stale selection predicted rows are invalid")
+    predicted = _remap_predicted_rows(predicted_raw, residual)
+    old_expected = selected.get("expected_terminal")
+    expected_terminal = (
+        "exact"
+        if old_expected == "exact" and set(predicted) == set(residual)
+        else "improved"
+    )
+    remaining = {
+        channel: current_counts[channel]
+        - sum(row.startswith(f"{channel}:") for row in predicted)
+        for channel in current_counts
+    }
+
+    existing = _find_rebased_proposal(
+        root, campaign, function, frontier["frontier_sha256"], rebased_sha
+    )
+    temp_path: Path | None = None
+    if existing is None:
+        inbox = inbox_path(root, campaign)
+        inbox.mkdir(parents=True, exist_ok=True)
+        if not _allowed_candidate_path(root, campaign, inbox):
+            raise owner_campaign.CampaignError(
+                "campaign inbox is outside allowed build paths"
+            )
+        fd, raw = tempfile.mkstemp(prefix=".stale-rebase-", suffix=".c", dir=inbox)
+        temp_path = Path(raw)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(rebased_bytes)
+                stream.flush()
+                os.fsync(stream.fileno())
+            proposal = propose_candidate(
+                root,
+                campaign,
+                function,
+                temp_path,
+                str(selected.get("source_class") or descriptor["hypothesis_family"]),
+                expected_terminal=expected_terminal,
+                predicted_rows=predicted,
+                predicted_remaining_counts=(
+                    {"strict": 0, "data": 0, "physical": 0}
+                    if expected_terminal == "exact" else remaining
+                ),
+                rebase_depth=old_depth + 1,
+                _required_current_function=base_span,
+            )
+        finally:
+            temp_path.unlink(missing_ok=True)
+        new_descriptor = _relative_path(root, proposal["candidate_descriptor"])
+        if new_descriptor is None:
+            raise owner_campaign.CampaignError("rebased proposal path is invalid")
+    else:
+        new_descriptor = existing
+    new_descriptor_sha = owner_campaign._digest_file(new_descriptor)
+    new_sealed = _sealed_descriptor(root, campaign, new_descriptor)
+    if new_sealed is None:
+        raise owner_campaign.CampaignError("rebased proposal did not seal")
+    new_candidate = new_sealed[1]
+    _publish_rebase_tombstone(
+        root,
+        campaign,
+        function=function,
+        status=REBASED_STATUS,
+        old_descriptor_sha256=descriptor_file_sha,
+        old_candidate_sha256=old_candidate_sha,
+        old_frontier_sha256=old_frontier_sha,
+        new_descriptor=new_descriptor.relative_to(root).as_posix(),
+        new_descriptor_sha256=new_descriptor_sha,
+        new_candidate_sha256=rebased_sha,
+        rebase_depth=old_depth + 1,
+        reason="disjoint current-source gain inherited and proposal evidence refreshed",
+    )
+    cleaned = _compact_terminal_input(root, campaign, descriptor_path)
+    cleaned.extend(_cleanup_selection_input(root, campaign, selected))
+    try:
+        descriptor_path.parent.rmdir()
+    except OSError:
+        pass
+    return _rebase_result(
+        status=REBASED_STATUS,
+        function=function,
+        reason="stale candidate automatically rebased onto the current source",
+        old_descriptor=descriptor_path,
+        old_descriptor_sha256=descriptor_file_sha,
+        rebase_depth=old_depth + 1,
+        cleaned=cleaned,
+        new_descriptor=new_descriptor,
+        new_candidate=new_candidate,
+        new_candidate_sha256=rebased_sha,
+    )
+
+
+def _reject_stale_rebase(
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptor_path: Path,
+    selected: Mapping[str, Any],
+    reason: str,
+) -> dict[str, Any]:
+    sealed = _sealed_descriptor(root, campaign, descriptor_path)
+    if sealed is None:
+        return {
+            "schema": "owner_campaign_result/v1",
+            "status": "infra_retry",
+            "reason": "stale descriptor vanished before deterministic rejection",
+            "authority_advanced": False,
+        }
+    descriptor = sealed[0]
+    descriptor_sha = owner_campaign._digest_file(descriptor_path)
+    depth = descriptor["rebase_depth"]
+    prior = _read_rebase_tombstone(
+        _rebase_tombstone_path(root, campaign, descriptor_sha)
+    )
+    if prior is not None and prior["status"] != REBASE_REJECTED_STATUS:
+        raise owner_campaign.CampaignError(
+            "cannot replace a durable successful stale rebase disposition"
+        )
+    _publish_rebase_tombstone(
+        root,
+        campaign,
+        function=descriptor["function"],
+        status=REBASE_REJECTED_STATUS,
+        old_descriptor_sha256=descriptor_sha,
+        old_candidate_sha256=descriptor["candidate_source"]["sha256"],
+        old_frontier_sha256=descriptor["base_frontier_sha256"],
+        new_descriptor=None,
+        new_descriptor_sha256=None,
+        new_candidate_sha256=None,
+        rebase_depth=depth,
+        reason=reason,
+    )
+    cleaned = _compact_terminal_input(root, campaign, descriptor_path)
+    cleaned.extend(_cleanup_selection_input(root, campaign, selected))
+    try:
+        descriptor_path.parent.rmdir()
+    except OSError:
+        pass
+    return _rebase_result(
+        status=REBASE_REJECTED_STATUS,
+        function=descriptor["function"],
+        reason=reason,
+        old_descriptor=descriptor_path,
+        old_descriptor_sha256=descriptor_sha,
+        rebase_depth=depth,
+        cleaned=cleaned,
+    )
+
+
 def _result_status(value: Any) -> str:
     return value.get("status", "unknown") if isinstance(value, Mapping) else "unknown"
+
+
+def _group_descriptors_by_function(
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptors: Sequence[Path],
+) -> dict[str, list[Path]]:
+    """Group a discovered v2 batch without weakening descriptor validation.
+
+    ``discover_candidates`` has already performed the inexpensive sealed-input
+    check.  Re-read the descriptor here because the selector is a second
+    boundary and must never dispatch a path whose identity changed between the
+    scan and arbitration.  A changed or deleted descriptor is an infrastructure
+    error, rather than an opportunity to guess its function.
+    """
+
+    grouped: dict[str, list[Path]] = {}
+    for descriptor_path in descriptors:
+        sealed = _sealed_descriptor(root, campaign, descriptor_path)
+        if sealed is None:
+            raise owner_campaign.CampaignError(
+                f"candidate descriptor changed during arbitration: {descriptor_path}"
+            )
+        descriptor = sealed[0]
+        function = descriptor.get("function")
+        if not isinstance(function, str) or not function:
+            raise owner_campaign.CampaignError(
+                f"candidate descriptor function is invalid: {descriptor_path}"
+            )
+        grouped.setdefault(function, []).append(descriptor_path)
+    return grouped
+
+
+def _pre_discovered_descriptor_batch(
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptors: Sequence[Path],
+) -> list[Path]:
+    """Normalize a supervisor-owned discovery batch without rescanning it.
+
+    The supervisor has already performed the sealed descriptor scan.  This
+    boundary therefore checks only path shape/containment and preserves the
+    scan order; selector arbitration performs the required identity reread
+    immediately before selecting a proposal.  Keeping those responsibilities
+    separate avoids a second full inbox scan while still preventing a caller
+    from injecting an arbitrary path into the legacy dispatch path.
+    """
+
+    if isinstance(descriptors, (str, bytes)) or not isinstance(descriptors, Sequence):
+        raise owner_campaign.CampaignError(
+            "pre-discovered descriptor batch is invalid"
+        )
+    inbox = inbox_path(root, campaign)
+    normalized: list[Path] = []
+    seen: set[Path] = set()
+    for raw in descriptors:
+        if not isinstance(raw, (str, os.PathLike)):
+            raise owner_campaign.CampaignError(
+                "pre-discovered descriptor path is invalid"
+            )
+        try:
+            path = _input_path(root, raw, "pre-discovered descriptor")
+        except owner_campaign.CampaignError:
+            raise
+        if not _path_inside(inbox, path) or path.suffix.lower() != ".json":
+            raise owner_campaign.CampaignError(
+                "pre-discovered descriptor is outside campaign inbox"
+            )
+        if path in seen:
+            raise owner_campaign.CampaignError(
+                "pre-discovered descriptor batch contains duplicates"
+            )
+        seen.add(path)
+        normalized.append(path)
+    return normalized
+
+
+def _relative_paths(root: Path, paths: Sequence[Path]) -> list[str]:
+    """Render paths for lane output while preserving deterministic order."""
+
+    return [path.relative_to(root).as_posix() for path in paths]
+
+
+def _dispatch_selected_candidate(
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptor_path: Path,
+    *,
+    worker: int,
+) -> dict[str, Any]:
+    """Measure one selected function without running per-cell maintenance.
+
+    V2 selection and measurement form one function-local pipeline.  The core
+    candidate runner still owns scratch isolation, source/frontier CAS, proof,
+    and retention; only its storage-maintenance pass is deferred until every
+    function pipeline in this bounded batch has finished.
+    """
+
+    try:
+        return owner_campaign.run_candidate(
+            root,
+            campaign,
+            descriptor_path,
+            worker=worker,
+            _defer_maintenance=True,
+        )
+    except owner_campaign.InfrastructureError as exc:
+        return {
+            "schema": "owner_campaign_result/v1",
+            "status": "infra_retry",
+            "candidate": str(descriptor_path),
+            "reason": str(exc)[:1000],
+            "authority_advanced": False,
+        }
+
+
+def _post_pipeline_maintenance(
+    root: Path,
+    campaign: Mapping[str, Any],
+    results: Sequence[Mapping[str, Any]],
+) -> None:
+    """Run the one serialized maintenance pass after all v2 pipelines."""
+
+    # Descriptor-only selector/replay fixtures intentionally omit the loaded
+    # campaign's canonical limits block.  They have no production scratch or
+    # retention tree to maintain.  Every load_campaign result has ``limits``.
+    if "limits" not in campaign:
+        return
+    try:
+        owner_campaign._check_limits(root, campaign)
+    except BaseException as exc:
+        error = owner_campaign.CampaignError(
+            "batch maintenance failed after candidate results were finalized: "
+            f"{exc}"
+        )
+        error.candidate_results = tuple(results)  # type: ignore[attr-defined]
+        raise error from exc
 
 
 def run_inbox(
@@ -1059,13 +2657,33 @@ def run_inbox(
     campaign: Mapping[str, Any],
     *,
     max_candidates: int = DEFAULT_BATCH_SIZE,
+    _pre_discovered: Sequence[Path] | None = None,
 ) -> dict[str, Any]:
-    """Dispatch one bounded inbox batch through the core campaign loop."""
+    """Dispatch one bounded inbox batch through the core campaign loop.
+
+    ``_pre_discovered`` is an internal supervisor handoff.  When supplied,
+    the batch is consumed as-is and is not rediscovered; v2 selector mode
+    revalidates each descriptor at its grouping boundary before arbitration.
+    """
 
     if type(max_candidates) is not int or not 1 <= max_candidates <= DEFAULT_BATCH_SIZE:
         raise ValueError(f"max_candidates must be between 1 and {DEFAULT_BATCH_SIZE}")
     root = Path(os.path.abspath(root))
-    descriptors = discover_candidates(root, campaign, limit=max_candidates)
+    if _pre_discovered is None:
+        # Scan a bounded slice per campaign function.  A single global slice
+        # can contain only exhausted proposals from the first function and
+        # falsely terminate a lane while another function has an eligible
+        # winner.  The selector arbitrates one winner per function from this
+        # widened read-only pool.
+        function_count = sum(
+            isinstance(function, str) for function in campaign.get("functions", [])
+        )
+        scan_limit = max_candidates * max(1, function_count)
+        descriptors = discover_candidates(root, campaign, limit=scan_limit)
+    else:
+        descriptors = _pre_discovered_descriptor_batch(
+            root, campaign, _pre_discovered
+        )
     if not descriptors:
         return {
             "schema": LANE_RESULT_SCHEMA,
@@ -1077,6 +2695,7 @@ def run_inbox(
             "results": [],
             "cleaned": [],
             "preserved_infrastructure": [],
+            "recorded_outcomes": [],
             "authority_advanced": False,
         }
 
@@ -1086,61 +2705,373 @@ def run_inbox(
     # ``base_commit`` is mandatory there.  This keeps replay compatibility
     # without allowing a production campaign to compile an unranked batch.
     selection: dict[str, Any] | None = None
+    selections: list[dict[str, Any]] = []
+    selection_by_descriptor: dict[Path, Mapping[str, Any]] = {}
     selection_required = "base_commit" in campaign or any(
         any(path.is_file() for path in owner_campaign_selector.selection_evidence_paths(descriptor))
         for descriptor in descriptors
     )
     dispatch_descriptors = descriptors
+    pipeline_results: list[dict[str, Any]] | None = None
     if selection_required:
-        selection = owner_campaign_selector.select_winning_candidate(
-            root, campaign, descriptors
-        )
-        if selection.get("status") != owner_campaign_selector.SELECTED:
+        streaming_dispatch = "_source" in campaign and "limits" in campaign
+        grouped = _group_descriptors_by_function(root, campaign, descriptors)
+        # One winner per function is the unit of work.  Each function now owns
+        # a complete select -> validate -> measure pipeline: a ready function
+        # reaches its scratch worker immediately instead of waiting at a
+        # whole-batch selector barrier.  ``executor.map`` still yields the
+        # completed pipeline records in manifest order, keeping result and
+        # selection publication deterministic regardless of completion order.
+        manifest_order = {
+            function: index
+            for index, function in enumerate(campaign.get("functions", []))
+            if isinstance(function, str)
+        }
+        selected_groups = sorted(
+            grouped.items(),
+            key=lambda item: (manifest_order.get(item[0], len(manifest_order)), item[0]),
+        )[:max_candidates]
+
+        def select_and_dispatch(
+            indexed_item: tuple[int, tuple[str, list[Path]]],
+        ) -> dict[str, Any]:
+            worker, item = indexed_item
+            _function, function_descriptors = item
+
+            def selection_failure(reason: str) -> dict[str, Any]:
+                return {
+                    "function": _function,
+                    "selection": {
+                        "status": owner_campaign_selector.UNKNOWN,
+                        "reason": reason[:1000],
+                    },
+                    "descriptor": None,
+                    "selected": None,
+                    "result": None,
+                }
+
+            try:
+                current_selection = owner_campaign_selector.select_winning_candidate(
+                    root, campaign, function_descriptors
+                )
+            except Exception as exc:
+                return selection_failure(
+                    f"selector arbitration failed for {_function}: {exc}"
+                )
+            if not isinstance(current_selection, Mapping):
+                return selection_failure(
+                    f"selector returned an invalid result for {_function}"
+                )
+            current_selection = dict(current_selection)
+            if current_selection.get("status") != owner_campaign_selector.SELECTED:
+                return {
+                    "function": _function,
+                    "selection": current_selection,
+                    "descriptor": None,
+                    "selected": None,
+                    "result": None,
+                }
+            selected = current_selection.get("selected")
+            if not isinstance(selected, Mapping):
+                return selection_failure(
+                    "selector returned selected status without a selection binding"
+                )
+            if selected.get("function") != _function:
+                return selection_failure(
+                    "selector selected a descriptor with the wrong function binding"
+                )
+            selected_raw = selected.get("descriptor_path")
+            selected_path = Path(selected_raw) if isinstance(selected_raw, str) else None
+            if selected_path is None:
+                return selection_failure(
+                    "selector returned selected status without a descriptor path"
+                )
+            if not selected_path.is_absolute():
+                selected_path = root / selected_path
+            selected_path = Path(os.path.abspath(selected_path))
+            function_paths = {
+                Path(os.path.abspath(path)) for path in function_descriptors
+            }
+            if selected_path not in function_paths:
+                return selection_failure(
+                    "selector selected a descriptor outside its function group"
+                )
+            result: Mapping[str, Any] | None = None
+            if streaming_dispatch:
+                try:
+                    result = _dispatch_selected_candidate(
+                        root,
+                        campaign,
+                        selected_path,
+                        worker=worker,
+                    )
+                except Exception as exc:
+                    result = {
+                        "schema": "owner_campaign_result/v1",
+                        "status": "infra_retry",
+                        "candidate": str(selected_path),
+                        "function": _function,
+                        "reason": f"candidate pipeline failed: {exc}"[:1000],
+                        "authority_advanced": False,
+                    }
+                if not isinstance(result, Mapping):
+                    result = {
+                        "schema": "owner_campaign_result/v1",
+                        "status": "infra_retry",
+                        "candidate": str(selected_path),
+                        "function": _function,
+                        "reason": "candidate pipeline returned an invalid result",
+                        "authority_advanced": False,
+                    }
+            return {
+                "function": _function,
+                "selection": current_selection,
+                "descriptor": selected_path,
+                "selected": dict(selected),
+                "result": None if result is None else dict(result),
+            }
+
+        worker_count = min(DEFAULT_BATCH_SIZE, len(selected_groups))
+        with ThreadPoolExecutor(
+            max_workers=worker_count,
+            thread_name_prefix="owner-campaign-pipeline",
+        ) as executor:
+            completed_pipelines = list(
+                executor.map(select_and_dispatch, enumerate(selected_groups))
+            )
+
+        dispatch_descriptors = []
+        pipeline_results = [] if streaming_dispatch else None
+        for pipeline in completed_pipelines:
+            _function = pipeline["function"]
+            current_selection = pipeline["selection"]
+            selections.append(current_selection)
+            selected_path = pipeline["descriptor"]
+            selected = pipeline["selected"]
+            result = pipeline["result"]
+            if selected_path is None:
+                continue
+            if selected_path in selection_by_descriptor:
+                raise owner_campaign.CampaignError(
+                    "selector selected one descriptor more than once"
+                )
+            selection_by_descriptor[selected_path] = selected
+            dispatch_descriptors.append(selected_path)
+            if pipeline_results is not None:
+                pipeline_results.append(result)
+        if not dispatch_descriptors:
+            selection_statuses = [item.get("status") for item in selections]
+            lane_status = (
+                "pivot_required"
+                if owner_campaign_selector.PIVOT_REQUIRED in selection_statuses
+                else "selection_unknown"
+            )
+            reasons = [
+                str(item.get("reason", "no deterministic winner"))
+                for item in selections
+                if item.get("reason")
+            ]
             return {
                 "schema": LANE_RESULT_SCHEMA,
-                "status": "selection_unknown",
-                "reason": selection.get("reason", "no deterministic winner"),
+                "status": lane_status,
+                "reason": "; ".join(reasons[:3]) or "no deterministic winner",
                 "campaign_id": campaign["campaign_id"],
                 "discovered": len(descriptors),
                 "dispatched": 0,
                 "results": [],
                 "cleaned": [],
-                "preserved_infrastructure": [
-                    path.relative_to(root).as_posix() for path in descriptors
-                ],
-                "selection": selection,
+                "preserved_infrastructure": _relative_paths(root, descriptors),
+                "selection": selections[0] if len(selections) == 1 else None,
+                "selections": selections,
+                "recorded_outcomes": [],
                 "authority_advanced": False,
             }
-        selected_path = Path(selection["selected"]["descriptor_path"])
-        dispatch_descriptors = [selected_path]
+        # Preserve the old scalar field when this was a one-function selection;
+        # callers that understand the widened scheduler consume ``selections``.
+        selection = selections[0] if len(selections) == 1 else None
+    else:
+        # The descriptor-only compatibility path has no selector to arbitrate
+        # a widened cross-function scan, so retain its historical dispatch cap.
+        dispatch_descriptors = descriptors[:max_candidates]
 
-    try:
-        results = owner_campaign.run_loop(root, campaign, dispatch_descriptors)
-    except owner_campaign.InfrastructureError as exc:
-        # A batch-level infrastructure error must not consume its inputs.
-        results = [
-            {
-                "schema": "owner_campaign_result/v1",
-                "status": "infra_retry",
-                "candidate": str(path),
-                "reason": str(exc)[:1000],
-                "authority_advanced": False,
-            }
-            for path in dispatch_descriptors
-        ]
+    if pipeline_results is not None:
+        results = pipeline_results
+    else:
+        try:
+            results = owner_campaign.run_loop(root, campaign, dispatch_descriptors)
+        except owner_campaign.InfrastructureError as exc:
+            # A batch-level infrastructure error must not consume its inputs.
+            results = [
+                {
+                    "schema": "owner_campaign_result/v1",
+                    "status": "infra_retry",
+                    "candidate": str(path),
+                    "reason": str(exc)[:1000],
+                    "authority_advanced": False,
+                }
+                for path in dispatch_descriptors
+            ]
+
+    # A gain retained by one worker advances the shared translation-unit
+    # source.  Other functions may have completed useful measurements against
+    # the prior source in parallel; convert those stale results into refreshed
+    # proposals concurrently instead of throwing the work away or forcing a
+    # manager-controlled retry.  The descriptor-only legacy path intentionally
+    # keeps its old preservation behavior because it has no selector evidence
+    # with which to revalidate the row prediction.
+    if selection_required:
+        mutable_results = list(results)
+        stale_jobs: list[tuple[int, Path, Mapping[str, Any]]] = []
+        for index, descriptor_path in enumerate(dispatch_descriptors):
+            if index >= len(mutable_results):
+                continue
+            if _result_status(mutable_results[index]) not in {"stale_rebase", "stale"}:
+                continue
+            selected = selection_by_descriptor.get(
+                Path(os.path.abspath(descriptor_path))
+            )
+            if selected is None:
+                raise owner_campaign.CampaignError(
+                    "stale selected result has no selection binding"
+                )
+            stale_jobs.append((index, descriptor_path, selected))
+
+        def rebase_job(
+            item: tuple[int, Path, Mapping[str, Any]],
+        ) -> tuple[int, dict[str, Any]]:
+            index, descriptor_path, selected = item
+            try:
+                try:
+                    value = _auto_rebase_stale_candidate(
+                        root,
+                        campaign,
+                        descriptor_path,
+                        selected,
+                        worker=index % DEFAULT_BATCH_SIZE,
+                    )
+                except owner_campaign.InfrastructureError as exc:
+                    value = {
+                        "schema": "owner_campaign_result/v1",
+                        "status": "infra_retry",
+                        "function": selected.get("function"),
+                        "candidate": str(descriptor_path),
+                        "reason": f"automatic stale rebase infrastructure failure: {exc}"[:1000],
+                        "authority_advanced": False,
+                    }
+                except owner_campaign.CampaignError as exc:
+                    value = _reject_stale_rebase(
+                        root, campaign, descriptor_path, selected, str(exc)
+                    )
+            except Exception as exc:
+                # One failed rebase publication must not abort sibling jobs or
+                # skip the batch's sole maintenance pass.  Preserve the input
+                # for recovery and surface the failure in its function slot.
+                value = {
+                    "schema": "owner_campaign_result/v1",
+                    "status": "infra_retry",
+                    "function": selected.get("function"),
+                    "candidate": str(descriptor_path),
+                    "reason": f"automatic stale rebase failed: {exc}"[:1000],
+                    "authority_advanced": False,
+                }
+            return index, value
+
+        if stale_jobs:
+            with ThreadPoolExecutor(
+                max_workers=min(DEFAULT_BATCH_SIZE, len(stale_jobs)),
+                thread_name_prefix="owner-campaign-rebase",
+            ) as executor:
+                for index, value in executor.map(rebase_job, stale_jobs):
+                    mutable_results[index] = value
+            results = mutable_results
+
+    if pipeline_results is not None:
+        # Candidate measurement and every stale-frontier refresh defer their
+        # individual maintenance.  Run one serialized pass only after all
+        # function pipelines and rebase jobs have reached inspectable results.
+        _post_pipeline_maintenance(root, campaign, results)
 
     cleaned: list[str] = []
-    preserved: list[str] = []
+    dispatched_paths = {Path(os.path.abspath(path)) for path in dispatch_descriptors}
+    preserved: list[str] = [
+        path.relative_to(root).as_posix()
+        for path in descriptors
+        if Path(os.path.abspath(path)) not in dispatched_paths
+    ]
+    recorded_outcomes: list[dict[str, Any]] = []
     for index, descriptor_path in enumerate(dispatch_descriptors):
         result = results[index] if index < len(results) else {
             "status": "infra_retry",
             "reason": "core returned fewer results than dispatched",
         }
         status = _result_status(result)
+        if status == REBASED_STATUS:
+            if isinstance(result, Mapping):
+                result_cleaned = result.get("cleaned", [])
+                if isinstance(result_cleaned, list):
+                    cleaned.extend(str(item) for item in result_cleaned)
+                new_raw = result.get("new_descriptor")
+                if isinstance(new_raw, str):
+                    new_path = Path(new_raw)
+                    if not new_path.is_absolute():
+                        new_path = root / new_path
+                    try:
+                        preserved.append(
+                            Path(os.path.abspath(new_path)).relative_to(root).as_posix()
+                        )
+                    except ValueError:
+                        cleaned.append(f"cleanup-error:{new_path}:rebased path escapes root")
+            continue
+        if status == REBASE_REJECTED_STATUS:
+            if isinstance(result, Mapping):
+                result_cleaned = result.get("cleaned", [])
+                if isinstance(result_cleaned, list):
+                    cleaned.extend(str(item) for item in result_cleaned)
+            continue
         if status in TERMINAL_STATUSES:
+            selected = selection_by_descriptor.get(
+                Path(os.path.abspath(descriptor_path))
+            )
+            if selection_required:
+                if selected is None:
+                    raise owner_campaign.CampaignError(
+                        "terminal selected result has no selection binding"
+                    )
+                result_function = (
+                    result.get("function")
+                    if isinstance(result, Mapping)
+                    else None
+                )
+                if (
+                    result_function is not None
+                    and result_function != selected.get("function")
+                ):
+                    raise owner_campaign.CampaignError(
+                        "terminal result function does not bind to its selection"
+                    )
+                try:
+                    outcome = owner_campaign_selector.append_selection_outcome(
+                        root, campaign, selected, result
+                    )
+                except (owner_campaign_selector.SelectionError, OSError) as exc:
+                    # Do not delete a descriptor/sidecar unless the compact
+                    # source-class outcome is durable.  A missing outcome
+                    # would make a measured no-gain invisible on recovery.
+                    raise owner_campaign.CampaignError(
+                        f"selection outcome publication failed: {exc}"
+                    ) from exc
+                recorded_outcomes.append(outcome)
             cleaned.extend(_compact_terminal_input(root, campaign, descriptor_path))
-            if selection is not None:
-                evidence_path = Path(selection["selected"]["evidence_path"])
+            if selected is not None:
+                evidence_raw = selected.get("evidence_path")
+                if not isinstance(evidence_raw, (str, os.PathLike)):
+                    raise owner_campaign.CampaignError(
+                        "terminal selected result has no evidence binding"
+                    )
+                evidence_path = Path(evidence_raw)
+                if not evidence_path.is_absolute():
+                    evidence_path = root / evidence_path
+                evidence_path = Path(os.path.abspath(evidence_path))
                 try:
                     if evidence_path.is_file():
                         evidence_path.unlink()
@@ -1167,6 +3098,8 @@ def run_inbox(
         "cleaned": cleaned,
         "preserved_infrastructure": preserved,
         "selection": selection,
+        "selections": selections,
+        "recorded_outcomes": recorded_outcomes,
         "authority_advanced": False,
     }
 
@@ -1234,7 +3167,16 @@ def _campaign_terminal_state(
             return "cancelled", str(exc)
         return "infrastructure_terminal", str(exc)[:1000]
     try:
-        state = owner_campaign.campaign_status(root, campaign)
+        # Supervisor polling only needs the exact-manifest count.  Avoid the
+        # full per-function frontier/proof-CAS walk on every loop; explicit
+        # status commands continue to use campaign_status for diagnostics.
+        progress_reader = getattr(owner_campaign, "campaign_terminal_progress", None)
+        if callable(progress_reader) and "_source" in campaign and "limits" in campaign:
+            state = progress_reader(root, campaign)
+        else:
+            # Legacy in-memory fixtures and pre-v2 callers do not carry the
+            # loaded campaign fields required by campaign_terminal_progress.
+            state = owner_campaign.campaign_status(root, campaign)
     except owner_campaign.CampaignError as exc:
         return "infrastructure_terminal", str(exc)[:1000]
     if (
@@ -1262,11 +3204,12 @@ def run_supervisor(
     """Keep a Sol-owned campaign live until a bounded terminal state.
 
     The supervisor resolves the lane's sealed evidence through the deterministic
-    winning-cell selector, dispatches at most its single rank-1 candidate, and
-    waits with bounded exponential backoff when no candidate is supportable or
-    an infrastructure retry is pending. Portfolio scope and cross-owner
-    priorities remain outside the lane. ``--once`` uses :func:`run_inbox`
-    instead for deterministic snapshots and tests.
+    winning-cell selector, dispatches at most one rank-1 candidate per function
+    (up to five isolated functions), and waits with bounded exponential backoff
+    when no candidate is supportable or an infrastructure retry is pending.
+    Portfolio scope and cross-owner priorities remain outside the lane.
+    ``--once`` uses :func:`run_inbox` instead for deterministic snapshots and
+    tests.
     """
 
     if type(max_candidates) is not int or not 1 <= max_candidates <= DEFAULT_BATCH_SIZE:
@@ -1330,11 +3273,18 @@ def run_supervisor(
                 last_batch_status=last_batch_status,
             )
 
-        descriptors = discover_candidates(root, campaign, limit=max_candidates)
+        function_count = sum(
+            isinstance(function, str) for function in campaign.get("functions", [])
+        )
+        scan_limit = max_candidates * max(1, function_count)
+        descriptors = discover_candidates(root, campaign, limit=scan_limit)
         if descriptors:
             try:
                 batch = run_inbox(
-                    root, campaign, max_candidates=max_candidates
+                    root,
+                    campaign,
+                    max_candidates=max_candidates,
+                    _pre_discovered=descriptors,
                 )
             except owner_campaign.CampaignError as exc:
                 return _terminal_result(
@@ -1356,7 +3306,7 @@ def run_supervisor(
             batch_statuses = [_result_status(item) for item in batch_results]
             outcomes.update(batch_statuses)
             last_batch_status = str(batch.get("status", "unknown"))
-            if last_batch_status == "selection_unknown":
+            if last_batch_status in {"selection_unknown", "pivot_required"}:
                 return _terminal_result(
                     campaign,
                     status="pivot_required",
@@ -1368,9 +3318,13 @@ def run_supervisor(
                     outcomes=outcomes,
                     last_batch_status=last_batch_status,
                 )
+            infra_statuses = (
+                {"infra_retry"}
+                if "base_commit" in campaign
+                else {"infra_retry", "stale_rebase", "stale"}
+            )
             infra_only = bool(batch_statuses) and all(
-                status in {"infra_retry", "stale_rebase", "stale"}
-                for status in batch_statuses
+                status in infra_statuses for status in batch_statuses
             )
             if last_batch_status == "infra_retry" or infra_only:
                 infra_retries += 1
@@ -1433,6 +3387,7 @@ __all__ = [
     "INBOX_SCHEMA",
     "LANE_RESULT_SCHEMA",
     "PROPOSAL_RESULT_SCHEMA",
+    "RECONSTRUCTION_RESULT_SCHEMA",
     "SUPERVISOR_RESULT_SCHEMA",
     "TERMINAL_STATUSES",
     "discover_candidates",
@@ -1441,6 +3396,7 @@ __all__ = [
     "propose",
     "propose_candidate",
     "queue_candidate",
+    "reconstruct_frontier",
     "run_inbox",
     "run_owner_campaign_inbox",
     "run_supervisor",

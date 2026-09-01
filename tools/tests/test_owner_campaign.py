@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest import mock
@@ -78,7 +79,7 @@ source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
 receipts = {name: hashlib.sha256((name + source_sha).encode()).hexdigest() for name in ("strict", "data", "physical", "siblings", "source_link", "focus")}
 protected_names = [
     item for item in os.environ["OWNER_CAMPAIGN_PROTECTED_FUNCTIONS"].split(",")
-    if item != os.environ["OWNER_CAMPAIGN_FUNCTION"]
+    if item and item != os.environ["OWNER_CAMPAIGN_FUNCTION"]
 ]
 protected_total = len(protected_names)
 focus_body = {
@@ -90,11 +91,11 @@ focus_body = {
     "base_commit": os.environ["OWNER_CAMPAIGN_BASE_COMMIT"],
     "source_sha256": source_sha,
     "target_object_sha256": os.environ["OWNER_CAMPAIGN_TARGET_SHA256"],
-    "strict_rows": [f"strict:{index}" for index in range(diff)],
-    "data_rows": [f"data:{index}" for index in range(data_diff)],
+    "strict_rows": [f"strict:{os.environ['OWNER_CAMPAIGN_FUNCTION']}:row:{index}:kind=DIFF_ARG_MISMATCH:target={index}:candidate={index}" for index in range(diff)],
+    "data_rows": [f"data:{os.environ['OWNER_CAMPAIGN_FUNCTION']}:row:{index}:kind=DIFF_ARG_MISMATCH:target={index}:candidate={index}" for index in range(data_diff)],
     "physical_differences": [f"physical:{index}" for index in range(physical)],
-    "strict_row_ids": [f"strict:{index}" for index in range(diff)],
-    "data_row_ids": [f"data:{index}" for index in range(data_diff)],
+    "strict_row_ids": [f"strict:{os.environ['OWNER_CAMPAIGN_FUNCTION']}:row:{index}:kind=DIFF_ARG_MISMATCH:target={index}:candidate={index}" for index in range(diff)],
+    "data_row_ids": [f"data:{os.environ['OWNER_CAMPAIGN_FUNCTION']}:row:{index}:kind=DIFF_ARG_MISMATCH:target={index}:candidate={index}" for index in range(data_diff)],
     "physical_difference_ids": [f"physical:{index}" for index in range(physical)],
     "physical_target_identity_sha256": hashlib.sha256(b"physical-target").hexdigest(),
     "physical_candidate_identity_sha256": hashlib.sha256(b"physical-target").hexdigest() if physical == 0 else hashlib.sha256(("physical-candidate:" + str(physical)).encode()).hexdigest(),
@@ -103,8 +104,8 @@ focus_body = {
     "physical_difference_count": physical,
     "protected_total": protected_total,
     "protected_losses": 1 if "LOSS" in text else 0,
-    "sibling_identities": ["sibling"],
-    "sibling_digest": hashlib.sha256(json.dumps(["sibling"], sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+    "sibling_identities": protected_names,
+    "sibling_digest": hashlib.sha256(json.dumps(protected_names, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
 }
 focus_body["strict_row_ids_sha256"] = hashlib.sha256(json.dumps(focus_body["strict_row_ids"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 focus_body["data_row_ids_sha256"] = hashlib.sha256(json.dumps(focus_body["data_row_ids"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -166,6 +167,120 @@ body = {
     "focus_evidence": focus_body,
     "exact_report": None,
 }
+if os.environ.get("OWNER_CAMPAIGN_RECONSTRUCTION") == "1":
+    residual_count = max(diff, data_diff)
+    residual_rows = []
+    for index in range(residual_count):
+        row_ids = {
+            "strict": [focus_body["strict_row_ids"][index]] if index < diff else [],
+            "data": [focus_body["data_row_ids"][index]] if index < data_diff else [],
+        }
+        residual_rows.append({
+            "anchor_index": index,
+            "channels": [name for name in ("data", "strict") if row_ids[name]],
+            "row_ids": row_ids,
+            "target": {"index": index, "present": True},
+            "candidate": {"index": index, "present": True},
+            "target_row_sha256": hashlib.sha256(("target:" + str(index)).encode()).hexdigest(),
+            "candidate_row_sha256": hashlib.sha256(("candidate:" + str(index)).encode()).hexdigest(),
+        })
+    clusters = []
+    if residual_rows:
+        clusters.append({
+            "cluster_id": "cluster-000", "first_index": 0,
+            "last_index": residual_count - 1,
+            "row_indices": list(range(residual_count)),
+            "residual_event_count": residual_count,
+            "channels": [name for name in ("data", "strict") if focus_body[name + "_row_ids"]],
+            "strict_row_ids": focus_body["strict_row_ids"],
+            "data_row_ids": focus_body["data_row_ids"],
+            "window_ids": [], "mirror_group": "mirror-000",
+            "mirror_group_size": 1, "mirror_occurrence": 0,
+        })
+    physical_rows = [{"index": index} for index in range(physical)]
+    physical_ids = focus_body["physical_difference_ids"]
+    status = "READY"
+    exact_possible = physical == 0
+    exact_reason = (
+        "size_control_flow_and_physical_invariants_closed"
+        if exact_possible else "physical_relocation_difference"
+    )
+    source_span = {
+        "function": body["function"], "start_line": 1, "end_line": 1,
+        "start_offset": 0, "end_offset": len(text),
+        "span_sha256": hashlib.sha256(text.encode()).hexdigest(),
+    }
+    physical_payload = {
+        "status": "exact" if physical == 0 else "mismatch",
+        "status_known": True,
+        "target": {"count": 5, "count_valid": True,
+                   "relocations_sha256": focus_body["physical_target_identity_sha256"]},
+        "candidate": {"count": 5, "count_valid": True,
+                      "relocations_sha256": focus_body["physical_candidate_identity_sha256"]},
+        "difference_count": physical, "difference_count_valid": True,
+        "differences": physical_rows,
+        "differences_sha256": hashlib.sha256(json.dumps(physical_rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "difference_ids": physical_ids,
+        "difference_ids_sha256": hashlib.sha256(json.dumps(physical_ids, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+    }
+    reconstruction = {
+        "schema": "owner_campaign_reconstruction_packet/v1", "schema_version": 1,
+        "owner": body["owner"], "unit": body["unit"], "function": body["function"],
+        "source_path": body["source_path"], "source_sha256": source_sha,
+        "frontier_source_sha256": source_sha,
+        "base_commit": body["base_commit"],
+        "target_object_sha256": body["target_object_sha256"],
+        "candidate_object_sha256": candidate_object_sha,
+        "toolchain_sha256": body["toolchain_sha256"],
+        "parent_frontier_sha256": None, "source_span": source_span,
+        "source_span_sha256": hashlib.sha256(json.dumps(source_span, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "focus_artifact_sha256": focus_body["focus_evidence_sha256"],
+        "focus_report_schema": "focus_symbol_report/v1",
+        "strict_residuals": focus_body["strict_row_ids"],
+        "data_residuals": focus_body["data_row_ids"],
+        "strict_residual_count": len(focus_body["strict_row_ids"]),
+        "data_residual_count": len(focus_body["data_row_ids"]),
+        "residual_event_count": residual_count,
+        "residual_rows_complete": True, "residual_rows_total_count": residual_count,
+        "residual_rows_full_sha256": hashlib.sha256(json.dumps(residual_rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "residual_rows": residual_rows,
+        "causal_clusters_complete": True, "causal_clusters_total_count": len(clusters),
+        "causal_clusters_full_sha256": hashlib.sha256(json.dumps(clusters, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "causal_clusters": clusters, "causal_cluster_count": len(clusters),
+        "selected_cluster_count": len(clusters),
+        "instruction_windows_complete": True, "instruction_windows": [],
+        "decomposition_regions": [],
+        "status": status, "exact_terminal_possible": exact_possible,
+        "exact_terminal_reason": exact_reason,
+        "target_first_signal": {
+            "status": status, "reason": "fixture",
+            "exact_terminal_possible": exact_possible,
+            "exact_terminal_reason": exact_reason,
+            "first_residual_index": 0 if residual_rows else None,
+            "cluster_count": len(clusters), "owner_inference": "none",
+            "next_action": "CRACK", "decomposition_required": False,
+            "decomposition_regions": [],
+        },
+        "control_flow": {"target": {}, "candidate": {}},
+        "stack_relative": {"target": {}, "candidate": {}},
+        "machine_summary": {"target": {}, "candidate": {}},
+        "physical_relocations": physical_payload,
+        "physical_relocation_differences": physical_rows,
+        "physical_difference_ids": physical_ids,
+        "physical_difference_ids_sha256": physical_payload["difference_ids_sha256"],
+        "diagnostic_only": True, "authority_advanced": False,
+        "reconstruction_policy": {
+            "target_first": True, "donor_required": False,
+            "history_required": False, "compile_authorized": False,
+            "window_radius": 0, "cluster_gap": 8,
+            "source_text_emitted": False, "source_patch_emitted": False,
+            "broad_residual_requires_decomposition": False,
+        },
+    }
+    reconstruction["packet_sha256"] = hashlib.sha256(json.dumps(
+        reconstruction, sort_keys=True, separators=(",", ":")
+    ).encode()).hexdigest()
+    body["reconstruction_evidence"] = reconstruction
 body["measurement_sha256"] = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text(json.dumps(body, sort_keys=True, separators=(",", ":")), encoding="utf-8")
@@ -264,13 +379,19 @@ class OwnerCampaignTests(unittest.TestCase):
         function: str = "focus",
     ) -> Path:
         candidate_source = self.root / "build" / "candidates" / f"{name}.c"
+        base_source = self.root / "build" / "candidates" / f"{name}.base.c"
         candidate_source.parent.mkdir(parents=True, exist_ok=True)
+        base_source.write_bytes(self.source.read_bytes())
         candidate_source.write_text(f"int focus(void) {{ return 0; }} /* {marker} */\n", encoding="utf-8")
-        base_span = self.source.read_bytes()
+        base_span = base_source.read_bytes()
         candidate_span = candidate_source.read_bytes()
         body: dict[str, object] = {
             "schema": "owner_campaign_candidate/v1", "campaign_id": "test-owner-v1",
             "function": function, "base_frontier_sha256": frontier["frontier_sha256"],
+            "base_source": {
+                "path": base_source.relative_to(self.root).as_posix(),
+                "sha256": campaign._digest_file(base_source),
+            },
             "candidate_source": {
                 "path": candidate_source.relative_to(self.root).as_posix(),
                 "sha256": campaign._digest_file(candidate_source),
@@ -282,6 +403,7 @@ class OwnerCampaignTests(unittest.TestCase):
                 "candidate_sha256": digest_bytes(candidate_span),
             },
             "hypothesis_family": f"family-{name}", "natural_c": True,
+            "rebase_depth": 0,
             "created_at": "2026-08-31T00:00:00Z",
         }
         descriptor = seal(body, "candidate_sha256")
@@ -355,6 +477,272 @@ class OwnerCampaignTests(unittest.TestCase):
         first = campaign.snapshot_frontier(self.root, loaded, "focus")
         second = campaign.snapshot_frontier(self.root, loaded, "focus")
         self.assertEqual(first["frontier_sha256"], second["frontier_sha256"])
+
+    def test_snapshot_frontiers_deduplicates_and_runs_distinct_functions_concurrently(self) -> None:
+        loaded = self.load()
+        barrier = threading.Barrier(2, timeout=5)
+        calls: list[tuple[str, int]] = []
+        calls_lock = threading.Lock()
+
+        def fake_snapshot(
+            root: Path, loaded_campaign: dict[str, object], function: str, *,
+            force: bool = False, worker: int = 0,
+            _defer_maintenance: bool = False,
+        ) -> dict[str, object]:
+            self.assertEqual(root, self.root)
+            self.assertIs(loaded_campaign, loaded)
+            self.assertFalse(force)
+            self.assertTrue(_defer_maintenance)
+            with calls_lock:
+                calls.append((function, worker))
+            barrier.wait()
+            return {"function": function, "worker": worker}
+
+        with mock.patch.object(campaign, "snapshot_frontier", side_effect=fake_snapshot):
+            result = campaign.snapshot_frontiers(
+                self.root, loaded, ["focus", "sibling", "focus"]
+            )
+        self.assertEqual(list(result), ["focus", "sibling"])
+        self.assertEqual(sorted(calls), [("focus", 0), ("sibling", 1)])
+
+    def test_snapshot_frontiers_propagates_worker_failure_without_mapping(self) -> None:
+        loaded = self.load()
+
+        def fake_snapshot(
+            root: Path, loaded_campaign: dict[str, object], function: str, *,
+            force: bool = False, worker: int = 0,
+            _defer_maintenance: bool = False,
+        ) -> dict[str, object]:
+            if function == "sibling":
+                raise campaign.CampaignError("snapshot sentinel")
+            return {"function": function, "worker": worker}
+
+        with mock.patch.object(
+            campaign, "snapshot_frontier", side_effect=fake_snapshot
+        ), self.assertRaisesRegex(campaign.CampaignError, "snapshot sentinel"):
+            campaign.snapshot_frontiers(self.root, loaded, ["focus", "sibling"])
+
+    def test_snapshot_frontier_uses_requested_isolated_worker_scratch(self) -> None:
+        loaded = self.load()
+        original = campaign._ensure_scratch
+        calls: list[int] = []
+
+        def capture_scratch(
+            root: Path, loaded_campaign: dict[str, object], worker: int = 0,
+        ) -> Path:
+            calls.append(worker)
+            return original(root, loaded_campaign, worker)
+
+        with mock.patch.object(campaign, "_ensure_scratch", side_effect=capture_scratch):
+            campaign.snapshot_frontier(self.root, loaded, "focus", worker=3)
+        self.assertEqual(calls, [3])
+        scratch = (
+            self.root / "build" / "owner-campaign" / "scratch"
+            / campaign._slug("test-owner-v1") / "repo-3"
+        )
+        self.assertTrue(scratch.is_dir())
+
+    def test_ready_candidate_starts_before_unrelated_snapshot_releases(self) -> None:
+        loaded = self.load()
+        frontiers = campaign.snapshot_frontiers(
+            self.root, loaded, ["focus", "sibling"]
+        )
+        first = self.candidate("REGRESS A", frontiers["focus"], "unique-a", "focus")
+        second = self.candidate(
+            "REGRESS B", frontiers["sibling"], "unique-b", "sibling"
+        )
+        original_snapshot = campaign.snapshot_frontier
+        original_hook = campaign._run_hook
+        first_snapshot_entered = threading.Event()
+        second_candidate_started = threading.Event()
+
+        def blocked_snapshot(
+            root: Path, loaded_campaign: dict[str, object], function: str, *,
+            force: bool = False, worker: int = 0,
+            _defer_maintenance: bool = False,
+        ) -> dict[str, object]:
+            if function == "focus":
+                first_snapshot_entered.set()
+                if not second_candidate_started.wait(timeout=5):
+                    raise AssertionError(
+                        "unrelated candidate remained behind the snapshot barrier"
+                    )
+            return original_snapshot(
+                root, loaded_campaign, function, force=force, worker=worker,
+                _defer_maintenance=_defer_maintenance,
+            )
+
+        def capture_hook(
+            root: Path, scratch: Path, loaded_campaign: dict[str, object],
+            function: str, source_sha256: str, phase: str,
+        ) -> dict[str, object]:
+            if function == "sibling" and phase == "candidate":
+                self.assertTrue(first_snapshot_entered.wait(timeout=5))
+                second_candidate_started.set()
+            return original_hook(
+                root, scratch, loaded_campaign, function, source_sha256, phase
+            )
+
+        with mock.patch.object(
+            campaign, "snapshot_frontier", side_effect=blocked_snapshot
+        ), mock.patch.object(campaign, "_run_hook", side_effect=capture_hook):
+            results = campaign.run_loop(self.root, loaded, [first, second])
+        self.assertTrue(first_snapshot_entered.is_set())
+        self.assertTrue(second_candidate_started.is_set())
+        self.assertEqual([item["status"] for item in results], ["no_gain", "no_gain"])
+
+    def test_five_candidate_batch_runs_one_deferred_maintenance_pass(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        paths = [
+            self.candidate(f"REGRESS {index}", frontier, f"batch-{index}")
+            for index in range(5)
+        ]
+        original = campaign._check_limits
+        with mock.patch.object(
+            campaign, "_check_limits", wraps=original
+        ) as maintenance:
+            results = campaign.run_loop(self.root, loaded, paths)
+        self.assertEqual(maintenance.call_count, 1)
+        self.assertEqual([item["status"] for item in results], ["no_gain"] * 5)
+        for path in paths:
+            self.assertFalse(path.exists())
+            self.assertFalse(path.with_suffix(".c").exists())
+            self.assertFalse(path.with_suffix(".base.c").exists())
+
+    def test_batch_maintenance_failure_exposes_finalized_primary_results(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        paths = [
+            self.candidate(f"REGRESS {index}", frontier, f"maintenance-{index}")
+            for index in range(2)
+        ]
+        with mock.patch.object(
+            campaign, "_check_limits",
+            side_effect=campaign.CampaignError("maintenance sentinel"),
+        ), self.assertRaisesRegex(
+            campaign.CampaignError,
+            "batch maintenance failed after candidate results were finalized",
+        ) as caught:
+            campaign.run_loop(self.root, loaded, paths)
+        results = caught.exception.candidate_results
+        self.assertEqual([item["status"] for item in results], ["no_gain", "no_gain"])
+        for path in paths:
+            self.assertFalse(path.exists())
+
+    def test_worker_failure_still_runs_one_maintenance_without_masking_primary(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        paths = [
+            self.candidate("REGRESS A", frontier, "worker-error-a"),
+            self.candidate("REGRESS B", frontier, "worker-error-b"),
+        ]
+        primary = campaign.CampaignError("worker sentinel")
+        maintenance = campaign.CampaignError("maintenance sentinel")
+        with mock.patch.object(
+            campaign, "run_candidate", side_effect=primary,
+        ), mock.patch.object(
+            campaign, "_check_limits", side_effect=maintenance,
+        ) as check_limits, self.assertRaisesRegex(
+            campaign.CampaignError, "worker sentinel"
+        ) as caught:
+            campaign.run_loop(self.root, loaded, paths)
+        self.assertIs(caught.exception, primary)
+        self.assertEqual(check_limits.call_count, 1)
+        self.assertIn(
+            "batch maintenance failed: maintenance sentinel",
+            getattr(caught.exception, "__notes__", []),
+        )
+
+    def test_snapshot_publishes_and_status_loads_reconstruction_packet(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        digest = frontier["reconstruction_evidence_sha256"]
+        path = (
+            self.root / "build" / "owner-campaign" / "proof-cas"
+            / "reconstruction" / digest[:2] / f"{digest}.json"
+        )
+        self.assertTrue(path.is_file())
+        status = campaign.campaign_status(self.root, loaded)
+        self.assertEqual(
+            status["reconstruction_evidence"]["focus"]["sha256"], digest
+        )
+        self.assertEqual(
+            status["reconstruction_evidence"]["focus"]["status"],
+            frontier["reconstruction_status"],
+        )
+
+    def test_old_frontier_without_reconstruction_fields_remains_readable(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        legacy_body = {
+            key: value for key, value in frontier.items()
+            if key not in {
+                "frontier_sha256", "reconstruction_evidence_sha256",
+                "reconstruction_status",
+            }
+        }
+        legacy = {**legacy_body, "frontier_sha256": campaign._digest_json(legacy_body)}
+        checked = campaign._validate_frontier(legacy, loaded, "focus")
+        self.assertNotIn("reconstruction_evidence_sha256", checked)
+
+    def test_reconstruction_cas_gc_preserves_referenced_and_removes_orphan(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        root = self.root / "build" / "owner-campaign" / "proof-cas" / "reconstruction"
+        orphan_digest = "f" * 64
+        orphan = root / orphan_digest[:2] / f"{orphan_digest}.json"
+        orphan.parent.mkdir(parents=True, exist_ok=True)
+        orphan.write_text("{}\n", encoding="utf-8")
+        campaign._gc_reconstruction_evidence(
+            self.root, minimum_age_seconds=0
+        )
+        self.assertTrue(orphan.exists())
+        campaign._gc_reconstruction_evidence(
+            self.root, minimum_age_seconds=0
+        )
+        self.assertFalse(orphan.exists())
+        digest = frontier["reconstruction_evidence_sha256"]
+        self.assertTrue((root / digest[:2] / f"{digest}.json").is_file())
+
+    def test_tampered_reconstruction_cas_is_rejected_on_load(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        digest = frontier["reconstruction_evidence_sha256"]
+        path = (
+            self.root / "build" / "owner-campaign" / "proof-cas"
+            / "reconstruction" / digest[:2] / f"{digest}.json"
+        )
+        path.write_text("{}\n", encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "reconstruction evidence"):
+            campaign.campaign_status(self.root, loaded)
+
+    def test_current_producer_measurement_cannot_downgrade_to_legacy_envelope(self) -> None:
+        loaded = self.load()
+        scratch = campaign._ensure_scratch(self.root, loaded)
+        source_sha = campaign._digest_file(self.source)
+        campaign._sync_scratch_source(
+            self.root, scratch, loaded, self.source.read_bytes()
+        )
+        measurement = campaign._run_hook(
+            self.root, scratch, loaded, "focus", source_sha, "snapshot"
+        )
+        measurement.pop("reconstruction_evidence")
+        unsigned = {
+            key: value for key, value in measurement.items()
+            if key != "measurement_sha256"
+        }
+        measurement["measurement_sha256"] = campaign._digest_json(unsigned)
+        with mock.patch.object(
+            campaign, "_measurement_requires_reconstruction", return_value=True
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError, "omitted reconstruction evidence"
+            ):
+                campaign._validate_measurement(
+                    measurement, campaign=loaded, function="focus",
+                    phase="snapshot", source_sha256=source_sha,
+                )
         lines = (self.root / "build" / "invocations.log").read_text().splitlines()
         self.assertEqual([line.split(":", 1)[0] for line in lines], ["snapshot"])
 
@@ -479,6 +867,25 @@ class OwnerCampaignTests(unittest.TestCase):
         self.assertEqual(latest["generation"], 1)
         self.assertEqual(latest["metrics"]["strict"]["differences"], 6)
         self.assertFalse((campaign._function_root(self.root, loaded, "focus") / "frontier.pending.json").exists())
+
+    def test_snapshot_refreshes_stale_function_after_disjoint_tu_gain(self) -> None:
+        loaded = self.load()
+        base = campaign.snapshot_frontier(self.root, loaded, "focus")
+        original = self.source.read_text(encoding="utf-8")
+        self.source.write_text(
+            "int unrelated_retained_gain = 1;\n" + original,
+            encoding="utf-8",
+        )
+
+        refreshed = campaign.snapshot_frontier(self.root, loaded, "focus")
+
+        self.assertEqual(refreshed["generation"], base["generation"] + 1)
+        self.assertEqual(
+            refreshed["parent_frontier_sha256"], base["frontier_sha256"]
+        )
+        self.assertEqual(
+            refreshed["source_sha256"], campaign._digest_file(self.source)
+        )
 
     def test_no_gain_is_deduplicated_without_source_change(self) -> None:
         loaded = self.load()
@@ -844,9 +1251,107 @@ class OwnerCampaignTests(unittest.TestCase):
 
         gain = self.candidate("IMPROVE", base, "focus-gain")
         self.assertEqual(campaign.run_candidate(self.root, loaded, gain)["status"], "improved")
+        # The displaced blob is marked during the candidate's maintenance pass
+        # and survives one reader grace generation.  A later pass may collect
+        # it after rechecking the retained frontier.
+        campaign._gc_focus_evidence(self.root, minimum_age_seconds=0)
         blobs = list(focus_root.rglob("*.json"))
         self.assertEqual(len(blobs), 1)
         self.assertNotEqual(blobs[0].stem, base["focus_evidence_sha256"])
+
+    def test_gc_scan_does_not_hold_focus_publication_lock(self) -> None:
+        loaded = self.load()
+        entered = threading.Event()
+        release = threading.Event()
+        errors: list[BaseException] = []
+
+        def blocked_gc(
+            root: Path, *, minimum_age_seconds: float = 0,
+        ) -> None:
+            entered.set()
+            if not release.wait(timeout=5):
+                raise AssertionError("GC scan release timed out")
+
+        def maintain() -> None:
+            try:
+                campaign._check_limits(self.root, loaded)
+            except BaseException as exc:
+                errors.append(exc)
+
+        with mock.patch.object(
+            campaign, "_gc_focus_evidence", side_effect=blocked_gc
+        ):
+            worker = threading.Thread(target=maintain)
+            worker.start()
+            self.assertTrue(entered.wait(timeout=5))
+            with campaign._exclusive_lock(
+                self.root / "build" / "owner-campaign" / "proof-cas"
+                / "focus-cas.lock",
+                0.5,
+            ):
+                pass
+            release.set()
+            worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
+
+    def test_concurrent_gc_scan_cannot_block_or_delete_snapshot_publication(self) -> None:
+        loaded = self.load()
+        entered = threading.Event()
+        release = threading.Event()
+        snapshot_done = threading.Event()
+        errors: list[BaseException] = []
+        original_references = campaign._evidence_gc_references
+
+        def blocked_references(
+            root: Path, digest_field: str, label: str,
+        ) -> set[str] | None:
+            if digest_field == "focus_evidence_sha256" and not entered.is_set():
+                entered.set()
+                if not release.wait(timeout=5):
+                    raise AssertionError("reference scan release timed out")
+            return original_references(root, digest_field, label)
+
+        def maintain() -> None:
+            try:
+                campaign._check_limits(self.root, loaded)
+            except BaseException as exc:
+                errors.append(exc)
+
+        published: list[dict[str, object]] = []
+
+        def snapshot() -> None:
+            try:
+                published.append(campaign.snapshot_frontier(
+                    self.root, loaded, "focus", _defer_maintenance=True
+                ))
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                snapshot_done.set()
+
+        with mock.patch.object(
+            campaign, "_evidence_gc_references", side_effect=blocked_references
+        ):
+            gc_worker = threading.Thread(target=maintain)
+            gc_worker.start()
+            self.assertTrue(entered.wait(timeout=5))
+            publisher = threading.Thread(target=snapshot)
+            publisher.start()
+            self.assertTrue(snapshot_done.wait(timeout=5))
+            self.assertEqual(len(published), 1)
+            release.set()
+            publisher.join(timeout=5)
+            gc_worker.join(timeout=5)
+        self.assertFalse(publisher.is_alive())
+        self.assertFalse(gc_worker.is_alive())
+        self.assertEqual(errors, [])
+        digest = published[0]["focus_evidence_sha256"]
+        blob = (
+            self.root / "build" / "owner-campaign" / "proof-cas" / "focus"
+            / str(digest)[:2] / f"{digest}.json"
+        )
+        self.assertTrue(blob.is_file())
 
     def test_gain_rejects_code_size_and_relocation_count_regressions(self) -> None:
         base = {
@@ -877,6 +1382,60 @@ class OwnerCampaignTests(unittest.TestCase):
         self.assertLessEqual(report.stat().st_size, 64 << 10)
         status = campaign.campaign_status(self.root, loaded)
         self.assertEqual((status["exact_count"], status["total"]), (1, 2))
+
+    def test_terminal_progress_reads_only_valid_exact_manifest(self) -> None:
+        loaded = self.load()
+        self.assertEqual(
+            campaign.campaign_terminal_progress(self.root, loaded),
+            {"exact_count": 0, "total": 2, "closed": False},
+        )
+        base = campaign.snapshot_frontier(self.root, loaded, "focus")
+        result = campaign.run_candidate(
+            self.root, loaded, self.candidate("EXACT", base, "progress")
+        )
+        Path(result["exact"]["report_path"]).unlink()
+        self.assertEqual(
+            campaign.campaign_terminal_progress(self.root, loaded),
+            {"exact_count": 1, "total": 2, "closed": False},
+        )
+
+    def test_terminal_progress_fails_closed_on_self_hashed_malformed_manifest(self) -> None:
+        loaded = self.load()
+        base = campaign.snapshot_frontier(self.root, loaded, "focus")
+        campaign.run_candidate(
+            self.root, loaded, self.candidate("EXACT", base, "bad-progress")
+        )
+        path = (
+            self.root / "build" / "owner-campaign" / "owners"
+            / campaign._slug("main:test/owner") / "exact-manifest.json"
+        )
+        value = json.loads(path.read_text())
+        value["exact"]["focus"]["report_sha256"] = "not-a-sha"
+        body = {key: item for key, item in value.items() if key != "exact_manifest_sha256"}
+        value["exact_manifest_sha256"] = campaign._digest_json(body)
+        path.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "report_sha256"):
+            campaign.campaign_terminal_progress(self.root, loaded)
+
+    def test_terminal_progress_reports_closed_single_function_campaign(self) -> None:
+        body = {
+            key: value for key, value in self.manifest.items()
+            if key != "manifest_sha256"
+        }
+        body["functions"] = ["focus"]
+        body["protected_exact_functions"] = []
+        self.manifest = seal(body, "manifest_sha256")
+        self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
+        loaded = self.load()
+        base = campaign.snapshot_frontier(self.root, loaded, "focus")
+        result = campaign.run_candidate(
+            self.root, loaded, self.candidate("EXACT", base, "closed-progress")
+        )
+        self.assertEqual(result["status"], "exact")
+        self.assertEqual(
+            campaign.campaign_terminal_progress(self.root, loaded),
+            {"exact_count": 1, "total": 1, "closed": True},
+        )
 
     def test_pending_frontier_recovers_after_source_cas(self) -> None:
         loaded = self.load()
@@ -935,12 +1494,85 @@ class OwnerCampaignTests(unittest.TestCase):
         after = len((self.root / "build" / "invocations.log").read_text().splitlines())
         self.assertEqual(before, after)
 
+    def test_candidate_requires_immutable_base_source_binding(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        path = self.candidate("REGRESS", frontier, "missing-base")
+        descriptor = json.loads(path.read_text(encoding="utf-8"))
+        descriptor.pop("base_source")
+        descriptor["candidate_sha256"] = campaign._digest_json({
+            key: value for key, value in descriptor.items()
+            if key != "candidate_sha256"
+        })
+        path.write_text(json.dumps(descriptor), encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "strict closed object"):
+            campaign._load_candidate(self.root, path, loaded, frontier)
+
+    def test_candidate_rejects_base_source_hash_and_frontier_drift(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        path = self.candidate("REGRESS", frontier, "base-drift")
+        descriptor = json.loads(path.read_text(encoding="utf-8"))
+        base_path = self.root / descriptor["base_source"]["path"]
+        base_path.write_text("int focus(void) { return 7; }\n", encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "base source hash drift"):
+            campaign._load_candidate(self.root, path, loaded, frontier)
+
+        descriptor["base_source"]["sha256"] = campaign._digest_file(base_path)
+        descriptor["candidate_sha256"] = campaign._digest_json({
+            key: value for key, value in descriptor.items()
+            if key != "candidate_sha256"
+        })
+        path.write_text(json.dumps(descriptor), encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "match the frontier"):
+            campaign._load_candidate(self.root, path, loaded, frontier)
+
+    def test_candidate_rejects_base_source_path_escape(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        path = self.candidate("REGRESS", frontier, "base-escape")
+        descriptor = json.loads(path.read_text(encoding="utf-8"))
+        descriptor["base_source"]["path"] = "../outside.c"
+        descriptor["candidate_sha256"] = campaign._digest_json({
+            key: value for key, value in descriptor.items()
+            if key != "candidate_sha256"
+        })
+        path.write_text(json.dumps(descriptor), encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "escapes the campaign root"):
+            campaign._load_candidate(self.root, path, loaded, frontier)
+
+    def test_candidate_rebase_depth_is_bounded_integer(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        for index, depth in enumerate((-1, 6, True, "0")):
+            with self.subTest(depth=depth):
+                path = self.candidate("REGRESS", frontier, f"depth-{index}")
+                descriptor = json.loads(path.read_text(encoding="utf-8"))
+                descriptor["rebase_depth"] = depth
+                descriptor["candidate_sha256"] = campaign._digest_json({
+                    key: value for key, value in descriptor.items()
+                    if key != "candidate_sha256"
+                })
+                path.write_text(json.dumps(descriptor), encoding="utf-8")
+                with self.assertRaisesRegex(campaign.CampaignError, "rebase_depth"):
+                    campaign._load_candidate(self.root, path, loaded, frontier)
+
+    def test_candidate_load_separately_rejects_live_source_frontier_drift(self) -> None:
+        loaded = self.load()
+        frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
+        path = self.candidate("REGRESS", frontier, "live-drift")
+        self.source.write_text("int focus(void) { return 9; }\n", encoding="utf-8")
+        with self.assertRaisesRegex(campaign.CampaignError, "live source"):
+            campaign._load_candidate(self.root, path, loaded, frontier)
+
     def test_full_function_replacement_over_80_lines_is_admitted_inside_span(self) -> None:
         """A real full-body recovery must not be rejected as an oversized hunk."""
         loaded = self.load()
         frontier = campaign.snapshot_frontier(self.root, loaded, "focus")
         candidate_source = self.root / "build" / "candidates" / "full-function.c"
+        base_source = self.root / "build" / "candidates" / "full-function.base.c"
         candidate_source.parent.mkdir(parents=True, exist_ok=True)
+        base_source.write_bytes(self.source.read_bytes())
         candidate_lines = ["int focus(void) {\n"]
         candidate_lines.extend(
             f"    int value_{index} = {index};\n" for index in range(90)
@@ -948,12 +1580,16 @@ class OwnerCampaignTests(unittest.TestCase):
         candidate_lines.extend(["    return value_89;\n", "} /* IMPROVE */\n"])
         candidate_source.write_text("".join(candidate_lines), encoding="utf-8")
         candidate_bytes = candidate_source.read_bytes()
-        base_bytes = self.source.read_bytes()
+        base_bytes = base_source.read_bytes()
         descriptor_body: dict[str, object] = {
             "schema": "owner_campaign_candidate/v1",
             "campaign_id": "test-owner-v1",
             "function": "focus",
             "base_frontier_sha256": frontier["frontier_sha256"],
+            "base_source": {
+                "path": base_source.relative_to(self.root).as_posix(),
+                "sha256": campaign._digest_file(base_source),
+            },
             "candidate_source": {
                 "path": candidate_source.relative_to(self.root).as_posix(),
                 "sha256": campaign._digest_file(candidate_source),
@@ -968,6 +1604,7 @@ class OwnerCampaignTests(unittest.TestCase):
             },
             "hypothesis_family": "full-function-body-recovery",
             "natural_c": True,
+            "rebase_depth": 0,
             "created_at": "2026-08-31T00:00:00Z",
         }
         descriptor = seal(descriptor_body, "candidate_sha256")
@@ -1006,6 +1643,8 @@ class OwnerCampaignTests(unittest.TestCase):
         stale = next(item for item in results if item["status"] == "stale_rebase")
         self.assertTrue((self.root / stale["rebase_input"]["descriptor_path"]).is_file())
         self.assertTrue((self.root / stale["rebase_input"]["candidate_source_path"]).is_file())
+        self.assertTrue((self.root / stale["rebase_input"]["base_source_path"]).is_file())
+        self.assertEqual(stale["rebase_input"]["rebase_depth"], 0)
 
     def test_retained_gain_survives_cleanup_failure_with_sealed_outcome(self) -> None:
         loaded = self.load()

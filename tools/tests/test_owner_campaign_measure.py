@@ -167,6 +167,43 @@ class OwnerCampaignMeasureTests(unittest.TestCase):
                 "proofs", "exact_report", "measurement_producer_sha256", "measurement_sha256",
             })
 
+    def test_measurement_builds_target_first_packet_before_focus_compaction(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "src" / "test.c"
+            source.parent.mkdir()
+            source.write_text("int fn(void) { return 1; }\n", encoding="utf-8")
+            candidate = root / "candidate.o"
+            candidate.write_bytes(b"candidate")
+            paths = [root / name for name in ("strict.json", "data.json", "physical.json")]
+            for path in paths:
+                path.write_text(path.stem, encoding="utf-8")
+            identity = adapter.Identity(
+                phase="snapshot", campaign_id="campaign", manifest_sha256="a" * 64,
+                owner="main:board/test", unit="main/board/test", function="fn",
+                source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+                target_object_sha256="c" * 64, toolchain_sha256="d" * 64,
+                base_commit="e" * 40, source_path="src/test.c",
+            )
+            focus = _focus(differences=1)
+            focus["schema"] = "focus_symbol_report/v1"
+            value = adapter._measurement(
+                identity, focus, adapter._parser().parse_args(["--protected-total", "1"]),
+                strict_path=paths[0], data_path=paths[1], physical_path=paths[2],
+                candidate=candidate, root=root,
+            )
+            packet = value["reconstruction_evidence"]
+            self.assertEqual(
+                packet["strict_residuals"], value["focus_evidence"]["strict_row_ids"]
+            )
+            self.assertEqual(
+                packet["data_residuals"], value["focus_evidence"]["data_row_ids"]
+            )
+            self.assertEqual(
+                packet["candidate_object_sha256"], hashlib.sha256(b"candidate").hexdigest()
+            )
+            self.assertEqual(packet["source_span"]["start_line"], 1)
+
     def test_exact_measurement_passes_independent_verifier(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

@@ -33,8 +33,10 @@ The intended lane entry point is:
 rtk python tools/agent.py crack loop --campaign <campaign-manifest.json>
 ```
 
-This is a live supervisor: it polls the compact inbox, dispatches up to five
-sealed candidates per batch, and continues until the campaign closes, is
+This is a live supervisor: it polls a bounded batch of independently produced
+sealed proposals, selects at most one evidence-ranked winner for each distinct
+function, and dispatches up to five functions concurrently. It continues until
+the campaign closes, is
 cancelled, reaches its bounded idle/watchdog policy, or encounters a terminal
 infrastructure failure. The default idle timeout is 60 seconds and the
 idle timeout and watchdog are both 30 minutes; use `--idle-timeout`, `--watchdog-seconds`, and
@@ -68,11 +70,11 @@ draft omits snapshot/candidate argv, the initializer supplies the production
 
 ### Bootstrap the first frontier
 
-Before emitting any candidate descriptor, the Sol parent must establish the
-function's current frontier. This is a reusable baseline boundary for all five
-workers: it binds the live source, target, toolchain, function, and compact
-focus evidence once, and makes a repeated call a no-op while that frontier is
-still current:
+Before emitting any candidate descriptor, the Sol parent must establish each
+selected function's current frontier. This is a reusable baseline boundary for
+the whole batch: it binds the live source, target, toolchain, function, and
+compact focus evidence once, and makes a repeated call a no-op while that
+frontier is still current:
 
 ```sh
 rtk python tools/agent.py owner-campaign snapshot \
@@ -86,29 +88,64 @@ write legacy permits/STOP state, or enter the candidate loop. Workers consume
 that returned frontier identity before writing their distinct descriptors to
 the inbox.
 
+### Target-first reconstruction
+
+Candidate discovery starts from the retail object, not repository history.  A
+snapshot produces a content-addressed
+`owner_campaign_reconstruction_packet/v1` alongside the compact frontier.  The
+packet binds the source, target and candidate objects, toolchain, source span,
+residual identities, physical relocations, and bounded target/candidate
+instruction windows.  It also records call/branch chronology and stack-relative
+accesses that can be proved from the instruction stream.
+
+Every cracking helper must read that packet before proposing source.  A
+`READY` packet qualifies one natural-C change tied to one causal cluster.  A
+broad-residual `UNKNOWN` packet is still actionable: it carries bounded
+representative clusters/windows, full residual counts and digests, compact
+whole-function frame/save-set/CFG/call/stack facts, and
+`target_first_signal.next_action=DECOMPOSE`; the lane must crack those bounded
+regions one at a time instead of abandoning the owner.  An `UNKNOWN` packet
+whose signal is `PIVOT` means the required evidence is genuinely absent or
+ambiguous, so the lane pivots without compiling a blind control or syntax
+matrix.  History, donors, and prior source may corroborate a target-first
+reconstruction, but they are optional and cannot block or authorize a proposal.
+Static register names and stack offsets remain target pseudo-owners unless a
+same-session compiler trace proves the source-to-vreg join.
+
+The reconstruction packet is diagnostic only.  It never emits a source patch,
+authorizes a compile, retains a candidate, or advances authority.  Exactness
+still requires the normal strict/data/physical/sibling/source-link proof ladder.
+
 ### Sol lane protocol
 
 The Sol parent owns orchestration, not candidate selection by management. At
-startup it must spawn five Luna/max cracking subagents with distinct
-hypothesis families, then collect their sealed `owner_campaign_candidate/v1`
-descriptors in the campaign inbox:
+startup it may fill up to five Luna/max worker slots with distinct open
+functions (or bounded decomposition regions of broad functions), then collect
+their sealed `owner_campaign_candidate/v1` descriptors in the campaign inbox:
 
 ```text
 build/owner-campaign/inbox/<campaign-slug>/*.json
 ```
 
-The five families are CFG/frame/topology; lifetime/stack/register chronology;
-expression scheduling/types/promotions; ABI/inline/header/TU visibility; and
-static data/pools/relocations/layout. Each subagent independently inspects the
-current compact focus evidence, proposes a natural-C cell, and writes only a
-sealed descriptor plus its source under the campaign's allowed build roots.
-The Sol parent then runs the inbox command above. It may continue from a
-retained frontier, pivot a function or family after the configured time/no-gain
-budget, and repeat until the owner is exact. Python does not create or control
-Codex subagents; the Sol parent performs that delegation in the task runtime.
+The available evidence classes are CFG/frame/topology;
+lifetime/stack/register chronology; expression scheduling/types/promotions;
+ABI/inline/header/TU visibility; and static data/pools/relocations/layout.
+They are ranking labels, not a five-way same-function probe matrix. Each worker
+independently reads its function's current reconstruction packet, reconstructs
+one natural-C boundary from target evidence, and writes only a sealed
+descriptor plus its source under the campaign's allowed build roots.
+Donor/history search may corroborate a reconstruction but is never required.
+The Sol parent then runs the inbox command above. It may continue from retained
+frontiers, decompose a broad residual while other functions proceed, and pivot a
+function after the configured time/no-gain budget. Python does not create or
+control Codex subagents; the Sol parent performs that delegation in the task
+runtime.
 
-The inbox driver dispatches at most five descriptors per invocation. Terminal
-descriptors and unshared candidate sources are deleted after measurement;
+The inbox driver groups proposals by function and runs up to five independent
+`select -> validate -> snapshot -> compile/proof` pipelines. A ready function
+does not wait for an unrelated slow selector or snapshot. Each pipeline
+arbitrates at most one winner for its function; the batch never spends five
+slots on same-function syntax variants. Terminal descriptors and unshared candidate sources are deleted after measurement;
 `infra_retry` descriptors and sources stay in place for retry. Empty inboxes
 return an explicit `idle` result, not a false successful empty batch. The only
 upward lane message after success is the completed, evidence-bound
@@ -116,30 +153,30 @@ upward lane message after success is the completed, evidence-bound
 
 ## Lane topology
 
-One Sol orchestrator is the only live-source writer. Five Luna/max subagents
-run end-to-end cracking lanes in parallel; they are not approval auditors:
+One Sol orchestrator is the only live-source writer. Up to five Luna/max
+workers run end-to-end cracking lanes in parallel, each attached to a distinct
+function or bounded decomposition region; they are not approval auditors or
+same-function probe slots. The evidence classes above remain available when a
+worker ranks its one winning source boundary.
 
-| Lane | Independent hypothesis family |
-| --- | --- |
-| 1 | CFG, frame, size, switch, branch, and loop topology |
-| 2 | Lifetime, stack ownership, saved-register allocation, and declaration chronology |
-| 3 | Expression trees, operand scheduling, casts, promotions, and constant folding |
-| 4 | ABI, prototypes, inline boundaries, definition visibility, headers, and TU chronology |
-| 5 | Static data, pools, strings, relocations, section ownership, and linked layout |
-
-Each helper may inspect evidence, create an isolated overlay, compile, measure,
-and propose retention. Helpers do not wait for the manager or for another
-helper. The Sol parent adopts a winner with a per-function frontier compare and
-swap (CAS), so only the short live-source/frontier publication and final link
-are serialized.
+Each worker may inspect evidence, create an isolated overlay, compile, measure,
+and propose retention. Baselines, reconstruction packets, proposal validation,
+candidate compilation, and proof hooks for distinct functions overlap as
+streaming per-function pipelines. Workers do not wait for the manager, for the
+slowest selector, or for the slowest baseline. GC and storage-limit maintenance
+run once at the batch tail, outside the source/frontier hot path. The Sol parent
+adopts each winner with a per-function frontier compare-and-swap (CAS), so only
+the short live-source/frontier publication and final link are serialized.
 
 ## Baseline and cracking loop
 
-`SNAPSHOT` compiles the current frontier once and stores compact focus evidence
-keyed by `(frontier source, target object, toolchain, unit)`. Candidate cells
-compile only their candidate against that reusable baseline. Unrelated
-functions build in isolated roots; a candidate does not reconstruct or
-reauthorize the retained frontier.
+`SNAPSHOT` compiles each current frontier once and stores compact focus evidence
+keyed by `(frontier source, target object, toolchain, unit)`. Snapshots and
+target-first reconstruction packets for distinct functions are produced in
+parallel. Candidate cells compile only their candidate against the reusable
+baseline; selection validation and candidate measurement/proof also overlap
+across isolated function roots. A candidate does not reconstruct or
+reauthorize another function's retained frontier.
 
 The state machine is:
 
@@ -157,16 +194,26 @@ all functions exact -> source-link -> protected-sibling -> full-owner/link proof
 
 For each dispatch:
 
-1. Select the most crackable remaining function from the current evidence.
-2. Reduce it to the earliest independent cause, rather than a percentage or a
-   full mismatch list.
-3. Give each helper a distinct hypothesis family.
-4. Compile the first evidence-backed natural-C candidate immediately.
-5. Measure strict, data, size, physical relocations, and protected siblings.
-6. Retain a safe gain atomically; discard and fingerprint a neutral/regression.
-7. Continue from the retained source. A retained gain resets the pivot
-   counters.
-8. When exact, run the proof ladder and emit the report automatically.
+1. Select the most crackable remaining function, or the next bounded
+   decomposition region for a broad function, from the current target-derived
+   reconstruction packets.
+2. Reduce it to the earliest independent target/candidate dataflow cause,
+   rather than a percentage or a full mismatch list.  A broad packet's
+   decomposition regions are the bounded work units; do not expand them back
+   into a full-function syntax search.
+3. Give each selected function one evidence-ranked source boundary; evidence
+   classes are not serialized same-function alternatives.
+4. Reconstruct and compile the first target-backed natural-C candidate for each
+   selected function immediately. Do not compile controls merely to prove
+   alternatives wrong.
+5. Measure strict, data, size, physical relocations, and protected siblings in
+   parallel across functions.
+6. Retain each safe gain atomically; discard and fingerprint a
+   neutral/regression.
+7. Continue each function from its retained source. A retained gain resets that
+   function's pivot counters.
+8. When a function is exact, run its proof ladder and emit its report without
+   blocking other functions.
 
 The 30-minute watchdog is not an approval boundary. Two no-gain candidates in
 one hypothesis family close that family; six compiled candidates or 15 active
@@ -184,8 +231,14 @@ source/target/toolchain bindings remain valid.
 The campaign keeps one live champion and at most two speculative Pareto
 frontiers per function. A retained frontier records its parent frontier hash,
 generation, source/object/target/toolchain hashes, metrics, report receipts,
-and its own `frontier_sha256`. Stale candidates rebase and remeasure before
-adoption; neutral or regressing candidates never change the live source.
+and its own `frontier_sha256`. A candidate that becomes stale is revalidated
+against its immutable base. When the named function itself is unchanged, the
+lane transplants that function edit onto the current source, refreshes the
+function baseline and residual evidence, and queues it again without another
+manager decision. Refresh and rebase work runs concurrently across distinct
+functions. A compact self-hashed tombstone makes the handoff idempotent;
+overlapping edits and ambiguous row remaps are retired without a retry loop.
+Neutral or regressing candidates never change the live source.
 
 Keep only this compact state:
 

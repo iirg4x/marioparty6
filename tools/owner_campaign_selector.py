@@ -6,7 +6,9 @@ see at most one proposal at a time.  A proposal is accompanied by a compact
 sidecar is evidence, not authority: it binds the current frontier, source,
 unit, toolchain, focus/physical artifacts, residual row identities, predicted
 remaining counts, and protected-sibling census.  This module never writes,
-compiles, consumes, or deletes a candidate.
+compiles, consumes, or deletes a candidate.  It may append a compact terminal
+selection outcome after a selected measurement so the lane can enforce bounded
+retries after the candidate sidecar is removed.
 
 The companion sidecar convention is intentionally separate from
 ``owner_campaign_candidate/v1``.  Existing candidate descriptors therefore
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import re
 from typing import Any, Mapping, Sequence
@@ -32,8 +35,20 @@ SELECTION_SCHEMA = SCHEMA
 UNKNOWN = "UNKNOWN"
 SELECTED = "selected"
 MAX_PROPOSALS = 5
+# Proposal validation is read-only.  Keep this bound aligned with the five-Luna
+# proposal batch so arbitration can overlap I/O and hashing without creating an
+# unbounded pool or changing the single-winner dispatch contract.
+MAX_VALIDATION_WORKERS = 5
 OUTCOME_SCHEMA = "owner_campaign_selection_outcome/v1"
 SELECTION_OUTCOME_SCHEMA = OUTCOME_SCHEMA
+# A source class is allowed one measured no-gain for a particular row group.
+# Two no-gains for the normalized family close that family on the current
+# frontier, while six no-gains exhaust the function frontier.  These limits
+# are deliberately small: an exhausted function must pivot to another open
+# function instead of consuming an unbounded syntax matrix.
+MAX_NO_GAIN_PER_FAMILY = 2
+MAX_NO_GAIN_PER_FUNCTION = 6
+PIVOT_REQUIRED = "pivot_required"
 _OUTCOME_LEDGER_NAMES = (
     "selection-outcomes.jsonl",
     "selection-ledger.jsonl",
@@ -88,6 +103,39 @@ def _selection_key(
 
 def _is_sha(value: Any) -> bool:
     return isinstance(value, str) and _SHA_RE.fullmatch(value) is not None
+
+
+_COSMETIC_CLASS_SUFFIX_RE = re.compile(
+    r"(?:[\s._:/-]+(?:v(?:er(?:sion)?)?|variant|candidate|cell|probe|"
+    r"attempt|trial)?[\s._:/-]*\d+)+$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_source_class(value: Any) -> str:
+    """Return the stable family identity for a proposed source class.
+
+    Sol workers often decorate the same causal class with ``-v2``/``cell-3``
+    labels.  Those labels must not evade the no-gain family budget.  Keep the
+    semantic words, normalize punctuation/whitespace, and strip only a
+    trailing numeric/cosmetic variant suffix.  Invalid values normalize to
+    the empty string and are rejected by the normal source-class validator.
+    """
+
+    if not isinstance(value, str):
+        return ""
+    text = value.strip().lower()
+    text = re.sub(r"[\s._:/\\-]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    while text:
+        reduced = _COSMETIC_CLASS_SUFFIX_RE.sub("", text).strip()
+        if reduced == text:
+            break
+        text = reduced
+    return text
+
+
+normalize_source_class = _normalize_source_class
 
 
 def _path_inside(root: Path, path: Path) -> bool:
@@ -181,9 +229,10 @@ def selection_outcome_ledger_path(
 ) -> Path:
     """Return the compact per-function outcome ledger location.
 
-    The selector never creates this file.  Owner-campaign/import tooling may
-    seed it with sealed outcomes so a fresh batch can suppress already measured
-    ``no_gain`` classes without replaying a large historical transcript.
+    The selector may create this file when the lane records a terminal
+    measurement.  Owner-campaign/import tooling may also seed it with sealed
+    outcomes so a fresh batch can suppress already measured ``no_gain`` classes
+    without replaying a large historical transcript.
     """
 
     return owner_campaign._function_root(Path(root), campaign, function) / _OUTCOME_LEDGER_NAMES[0]
@@ -231,14 +280,19 @@ def _outcome_ledger_paths(
     return tuple(paths)
 
 
-def _ledger_path(root: Path, path: Path) -> Path:
+def _ledger_path(
+    root: Path, path: Path, *, require_file: bool = True,
+) -> Path:
     """Bind an internally discovered ledger path without following links."""
 
     try:
         relative = path.relative_to(root)
     except ValueError as exc:
         raise SelectionError("selection outcome ledger escapes campaign root") from exc
-    return _bound_path(root, relative.as_posix(), "selection outcome ledger")
+    return _bound_path(
+        root, relative.as_posix(), "selection outcome ledger",
+        require_file=require_file,
+    )
 
 
 def _ledger_records(path: Path) -> list[dict[str, Any]]:
@@ -310,6 +364,255 @@ def _read_selection_outcomes(
     return records
 
 
+def _record_source_class(record: Mapping[str, Any]) -> str:
+    """Read and normalize a source class from a compact outcome record."""
+
+    for value in (
+        record.get("source_class"),
+        record.get("hypothesis_family"),
+        record.get("source_class_normalized"),
+    ):
+        normalized = _normalize_source_class(value)
+        if normalized:
+            return normalized
+    nested = record.get("selection")
+    if isinstance(nested, Mapping):
+        return _record_source_class(nested)
+    return ""
+
+
+def _record_frontier(record: Mapping[str, Any]) -> str | None:
+    return _record_hash(
+        record, "frontier_sha256", "base_frontier_sha256", "current_frontier_sha256",
+    )
+
+
+def _record_selection_key(record: Mapping[str, Any]) -> str | None:
+    key = _record_hash(record, "selection_key_sha256", "suppression_key_sha256")
+    if key is not None:
+        return key
+    frontier = _record_frontier(record)
+    source_class = _record_source_class(record)
+    rows = _record_rows(record)
+    if frontier is None or not source_class or rows is None:
+        return None
+    return _selection_key(frontier, source_class, rows)
+
+
+def _record_identity(record: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return a compact identity used to de-duplicate migrated ledgers."""
+
+    frontier = _record_frontier(record) or ""
+    function = record.get("function")
+    status = record.get("status")
+    candidate = record.get("candidate_source_sha256", record.get("candidate_sha256"))
+    if _is_sha(candidate):
+        return (str(function or ""), frontier, str(status or ""), str(candidate))
+    key = _record_selection_key(record)
+    if key is not None:
+        return (str(function or ""), frontier, str(status or ""), key)
+    result = _record_hash(record, "result_sha256", "outcome_sha256", "selection_outcome_sha256")
+    return (str(function or ""), frontier, str(status or ""), result or _canonical_digest(dict(record)))
+
+
+def _no_gain_records(
+    root: Path, campaign: Mapping[str, Any], function: str, frontier_sha256: str,
+) -> list[dict[str, Any]]:
+    """Return distinct measured no-gains on one function frontier."""
+
+    records: list[dict[str, Any]] = []
+    seen: set[tuple[str, ...]] = set()
+    for record in _read_selection_outcomes(root, campaign, function):
+        if str(record.get("status", "")).lower() != "no_gain":
+            continue
+        record_function = record.get("function")
+        if record_function not in {None, function}:
+            continue
+        if record.get("campaign_id") not in {None, campaign.get("campaign_id")}:
+            continue
+        if record.get("owner") not in {None, campaign.get("owner")}:
+            continue
+        if _record_frontier(record) != frontier_sha256:
+            continue
+        identity = _record_identity(record)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        records.append(record)
+    return records
+
+
+def _family_no_gain_count(
+    root: Path, campaign: Mapping[str, Any], function: str,
+    frontier_sha256: str, source_class: str,
+) -> int:
+    family = _normalize_source_class(source_class)
+    if not family:
+        return 0
+    return sum(
+        1 for record in _no_gain_records(root, campaign, function, frontier_sha256)
+        if _record_source_class(record) == family
+    )
+
+
+def _function_no_gain_count(
+    root: Path, campaign: Mapping[str, Any], function: str,
+    frontier_sha256: str,
+) -> int:
+    return len(_no_gain_records(root, campaign, function, frontier_sha256))
+
+
+def _result_hash(result: Mapping[str, Any], selection: Mapping[str, Any]) -> str:
+    """Use the core result seal, with a compact deterministic fallback for tests."""
+
+    supplied = result.get("result_sha256")
+    if supplied is not None:
+        if not _is_sha(supplied):
+            raise SelectionError("selection outcome result hash is invalid")
+        return str(supplied)
+    # Do not persist the result payload.  The fallback only identifies the
+    # terminal event using fields that are already compact and non-source data.
+    body = {
+        "status": result.get("status"),
+        "candidate_key": result.get("candidate_key"),
+        "frontier_sha256": result.get("frontier_sha256", selection.get("frontier_sha256")),
+        "metrics": result.get("metrics"),
+    }
+    return _canonical_digest(body)
+
+
+def append_selection_outcome(
+    root: Path,
+    campaign: Mapping[str, Any],
+    selection: Mapping[str, Any],
+    result: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Append one sealed terminal selection outcome under an exclusive lock.
+
+    This ledger is intentionally separate from the core candidate-results
+    ledger: it preserves the source class and predicted row group after the
+    selector sidecar is compacted.  The selection key is idempotent, so a
+    crash after publication and before cleanup cannot duplicate a record on
+    recovery.  Only hashes/status/row IDs are retained; source and object
+    bytes (and their paths) never enter the compact record.
+    """
+
+    root = Path(os.path.abspath(root))
+    required = (
+        "function", "frontier_sha256",
+        "source_class", "predicted_rows", "selection_key_sha256",
+        "candidate_sha256",
+    )
+    if any(key not in selection for key in required):
+        raise SelectionError("selection outcome binding is incomplete")
+    function = selection["function"]
+    source_class = selection["source_class"]
+    normalized_class = _normalize_source_class(source_class)
+    rows = _rows(selection["predicted_rows"], "selection outcome predicted rows")
+    frontier = selection["frontier_sha256"]
+    selection_key = selection["selection_key_sha256"]
+    candidate_sha = selection["candidate_sha256"]
+    campaign_id = selection.get("campaign_id", campaign.get("campaign_id"))
+    owner = selection.get("owner", campaign.get("owner"))
+    unit = selection.get("unit", campaign.get("unit"))
+    if (
+        campaign_id != campaign.get("campaign_id")
+        or not isinstance(owner, str)
+        or owner != campaign.get("owner")
+        or not isinstance(unit, str)
+        or unit != campaign.get("unit")
+        or not isinstance(function, str)
+        or not _is_sha(frontier)
+        or not normalized_class
+        or not _is_sha(selection_key)
+        or not _is_sha(candidate_sha)
+    ):
+        raise SelectionError("selection outcome identity is invalid")
+    expected_key = _selection_key(frontier, source_class, rows)
+    normalized_key = _selection_key(frontier, normalized_class, rows)
+    if selection_key not in {expected_key, normalized_key}:
+        raise SelectionError("selection outcome key is not bound to the selection")
+    status = result.get("status")
+    if not isinstance(status, str) or status not in {
+        "deduplicated", "discarded", "exact", "improved", "no_gain",
+    }:
+        raise SelectionError("selection outcome status is not terminal")
+    result_sha = _result_hash(result, selection)
+    body: dict[str, Any] = {
+        "schema": OUTCOME_SCHEMA,
+        "campaign_id": campaign_id,
+        "owner": owner,
+        "unit": unit,
+        "function": function,
+        "frontier_sha256": frontier,
+        "source_class": source_class,
+        "source_class_normalized": normalized_class,
+        "predicted_rows": rows,
+        "predicted_row_group_sha256": _row_group_digest(rows),
+        "selection_key_sha256": selection_key,
+        "candidate_source_sha256": candidate_sha,
+        "candidate_identity_sha256": selection.get("candidate_identity_sha256"),
+        "status": status,
+        "result_sha256": result_sha,
+        "recorded_at": owner_campaign._now(),
+    }
+    if not _is_sha(body["candidate_identity_sha256"]):
+        body.pop("candidate_identity_sha256")
+    record = {**body, "outcome_sha256": _canonical_digest(body)}
+    ledger = _ledger_path(
+        root,
+        selection_outcome_ledger_path(root, campaign, function),
+        require_file=False,
+    )
+    lock_path = ledger.with_name(f"{ledger.name}.lock")
+    timeout = owner_campaign._command_timeout_seconds(campaign)
+    with owner_campaign._exclusive_lock(lock_path, timeout):
+        existing = _ledger_records(ledger) if ledger.is_file() else []
+        # The selection key is the idempotency token.  Return an identical
+        # existing record after a recovery; conflicting bindings fail closed.
+        for prior in existing:
+            if _record_selection_key(prior) != selection_key:
+                continue
+            comparable = {
+                key: prior.get(key)
+                for key in (
+                    "campaign_id", "owner", "unit", "function", "frontier_sha256",
+                    "source_class_normalized", "predicted_row_group_sha256",
+                    "selection_key_sha256", "candidate_source_sha256", "status",
+                    "result_sha256",
+                )
+            }
+            expected = {
+                key: record.get(key)
+                for key in comparable
+            }
+            if comparable != expected:
+                raise SelectionError("selection outcome idempotency conflict")
+            return prior
+        if len(existing) >= _MAX_OUTCOME_LEDGER_LINES:
+            raise SelectionError("selection outcome ledger exceeds line limit")
+        try:
+            current_bytes = ledger.read_bytes() if ledger.is_file() else b""
+        except OSError as exc:
+            raise SelectionError("selection outcome ledger is unreadable") from exc
+        if current_bytes and not current_bytes.endswith(b"\n"):
+            raise SelectionError("selection outcome ledger has an unterminated record")
+        payload = _canonical_digest(record)  # force canonicalization before I/O
+        del payload
+        line = owner_campaign._canonical(record) + b"\n"
+        if len(current_bytes) + len(line) > _MAX_OUTCOME_LEDGER_BYTES:
+            raise SelectionError("selection outcome ledger exceeds compact limit")
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with ledger.open("ab") as stream:
+                stream.write(line)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except OSError as exc:
+            raise SelectionError("selection outcome ledger publication failed") from exc
+    return record
+
+
 def _record_rows(record: Mapping[str, Any]) -> list[str] | None:
     for key in ("predicted_rows", "predicted_row_ids", "row_group", "predicted_row_group"):
         value = record.get(key)
@@ -344,6 +647,7 @@ def _prior_no_gain(
     """Find a sealed prior no-gain for the same causal selection identity."""
 
     key = _selection_key(frontier_sha256, source_class, predicted_rows)
+    normalized_class = _normalize_source_class(source_class)
     row_group = _row_group_digest(predicted_rows)
     for record in _read_selection_outcomes(root, campaign, function):
         status = record.get("status")
@@ -360,34 +664,51 @@ def _prior_no_gain(
         record_frontier = _record_hash(
             record, "frontier_sha256", "base_frontier_sha256", "current_frontier_sha256",
         )
-        record_class = record.get("source_class")
+        record_class = _record_source_class(record)
         record_rows = _record_rows(record)
         record_group = _record_hash(
             record, "predicted_row_group_sha256", "row_group_sha256",
             "predicted_rows_sha256", "predicted_row_group",
         )
         record_key = _record_hash(record, "selection_key_sha256", "suppression_key_sha256")
-        if record_key is not None and record_key != key:
-            continue
         if record_frontier is not None and record_frontier != frontier_sha256:
             continue
-        if not isinstance(record_class, str) or record_class != source_class:
-            nested = record.get("selection")
-            if isinstance(nested, Mapping):
-                record_class = nested.get("source_class")
-            if record_class != source_class:
-                continue
+        if record_class != normalized_class:
+            continue
         if record_rows is not None:
             if len(record_rows) != len(set(record_rows)) or _row_group_digest(record_rows) != row_group:
                 continue
         elif record_group != row_group:
             continue
-        # A key-only record is accepted only when its key is valid and the
-        # frontier/class fields above also match (or are carried by ``selection``).
-        if record_key is not None or (
-            record_frontier == frontier_sha256 and record_class == source_class
-        ):
+        # The normalized class/row-group identity is authoritative.  A raw
+        # selection key may differ only because a worker used a cosmetic
+        # ``-v2`` suffix; that must still be suppressed.
+        if record_key is None or record_key == key or record_class == normalized_class:
             return record
+    return None
+
+
+def _budget_reason(
+    root: Path, campaign: Mapping[str, Any], function: str,
+    frontier_sha256: str, source_class: str,
+) -> str | None:
+    """Return a deterministic pivot reason when a frontier budget is closed."""
+
+    function_count = _function_no_gain_count(root, campaign, function, frontier_sha256)
+    if function_count >= MAX_NO_GAIN_PER_FUNCTION:
+        return (
+            f"function no_gain budget exhausted on frontier "
+            f"({function_count}/{MAX_NO_GAIN_PER_FUNCTION} compiled candidates)"
+        )
+    family_count = _family_no_gain_count(
+        root, campaign, function, frontier_sha256, source_class
+    )
+    if family_count >= MAX_NO_GAIN_PER_FAMILY:
+        return (
+            f"hypothesis family no_gain budget exhausted on frontier "
+            f"({family_count}/{MAX_NO_GAIN_PER_FAMILY}; "
+            f"family={_normalize_source_class(source_class)})"
+        )
     return None
 
 
@@ -426,6 +747,34 @@ def _descriptor(root: Path, path: Path, campaign: Mapping[str, Any]) -> dict[str
     source_sha = source.get("sha256")
     if not _is_sha(source_sha) or owner_campaign._digest_file(source_path) != source_sha:
         raise SelectionError("candidate source hash drift")
+    rebase_depth = value.get("rebase_depth")
+    if type(rebase_depth) is not int or not 0 <= rebase_depth <= 5:
+        raise SelectionError("candidate rebase_depth must be between 0 and 5")
+    base = value.get("base_source")
+    if not isinstance(base, Mapping) or set(base) != {"path", "sha256"}:
+        raise SelectionError("candidate base source binding is invalid")
+    base_path = _bound_path(root, base.get("path"), "candidate base source")
+    base_sha = base.get("sha256")
+    if not _is_sha(base_sha):
+        raise SelectionError("candidate base source sha256 is invalid")
+    try:
+        base_actual = owner_campaign._digest_file(base_path)
+    except OSError as exc:
+        raise SelectionError("candidate base source cannot be hashed") from exc
+    if base_actual != base_sha:
+        raise SelectionError("candidate base source hash drift")
+    allowed_build_paths = campaign.get("allowed_build_paths")
+    if not isinstance(allowed_build_paths, (list, tuple)):
+        raise SelectionError("candidate base source allowed paths are missing")
+    allowed_build_roots = [
+        _bound_path(root, item, "allowed candidate base path", require_file=False)
+        for item in allowed_build_paths
+    ]
+    if not any(
+        base_path == allowed or _path_inside(allowed, base_path)
+        for allowed in allowed_build_roots
+    ):
+        raise SelectionError("candidate base source is outside campaign allowed build paths")
     return {
         "path": path,
         "path_relative": path.relative_to(root).as_posix(),
@@ -434,6 +783,10 @@ def _descriptor(root: Path, path: Path, campaign: Mapping[str, Any]) -> dict[str
         "source_path": source_path,
         "source_relative": source_path.relative_to(root).as_posix(),
         "source_sha256": source_sha,
+        "base_source_path": base_path,
+        "base_source_relative": base_path.relative_to(root).as_posix(),
+        "base_source_sha256": base_sha,
+        "rebase_depth": rebase_depth,
     }
 
 
@@ -451,14 +804,28 @@ def _frontier_file(root: Path, campaign: Mapping[str, Any], function: str) -> Ma
         except owner_campaign.CampaignError as exc:
             raise SelectionError(f"current frontier is invalid: {exc}") from exc
     # Pure unit callers can provide a sealed in-memory frontier.  Production
-    # manifests always have a persisted frontier and never take this branch.
-    supplied = campaign.get("_selection_frontier")
+    # Manifests always have a persisted frontier and never take this branch.
+    # Unit/replay callers may provide one sealed frontier per function.  Keep
+    # the legacy single-frontier form as a compatibility fallback, but never
+    # reuse it for a different function when a per-function map is available.
+    supplied = None
+    supplied_by_function = campaign.get("_selection_frontiers")
+    if isinstance(supplied_by_function, Mapping):
+        candidate = supplied_by_function.get(function)
+        if isinstance(candidate, Mapping):
+            supplied = candidate
+    if supplied is None:
+        candidate = campaign.get("_selection_frontier")
+        if isinstance(candidate, Mapping):
+            supplied = candidate
     if isinstance(supplied, Mapping):
         digest = supplied.get("frontier_sha256")
         body = dict(supplied)
         body.pop("frontier_sha256", None)
         if not _is_sha(digest) or _canonical_digest(body) != digest:
             raise SelectionError("in-memory current frontier digest is invalid")
+        if supplied.get("function") != function:
+            raise SelectionError("in-memory current frontier function mismatch")
         return dict(supplied)
     return None
 
@@ -746,6 +1113,14 @@ def _validate_proposal(
         raise SelectionError("current frontier identity is incomplete")
     if frontier_ref["source_sha256"] != expected_source or frontier_ref["toolchain_sha256"] != expected_toolchain:
         raise SelectionError("selection frontier source/toolchain drift")
+    if proposal["base_source_sha256"] != expected_source:
+        raise SelectionError("candidate base source does not match the current frontier")
+    try:
+        base_actual = owner_campaign._digest_file(proposal["base_source_path"])
+    except OSError as exc:
+        raise SelectionError("candidate base source cannot be hashed") from exc
+    if base_actual != proposal["base_source_sha256"]:
+        raise SelectionError("candidate base source hash drift")
     evidence_source = value.get("source_sha256")
     evidence_toolchain = value.get("toolchain_sha256")
     if evidence_source != expected_source or evidence_toolchain != expected_toolchain:
@@ -835,12 +1210,21 @@ def _validate_proposal(
             "selection suppressed by prior no_gain for the same frontier/source class/row group "
             f"({prior_identity})"
         )
+    budget_reason = _budget_reason(
+        root, campaign, function, frontier_ref["sha256"], source_class
+    )
+    if budget_reason is not None:
+        raise SelectionError(budget_reason)
     return {
         "descriptor_path": proposal["path"],
         "descriptor_relative": proposal["path_relative"],
         "source_path": proposal["source_path"],
         "source_relative": proposal["source_relative"],
         "candidate_sha256": candidate_sha,
+        "base_source_path": proposal["base_source_path"],
+        "base_source_relative": proposal["base_source_relative"],
+        "base_source_sha256": proposal["base_source_sha256"],
+        "rebase_depth": proposal["rebase_depth"],
         "evidence_path": sidecar,
         "evidence_relative": sidecar.relative_to(root).as_posix(),
         "evidence_sha256": value["evidence_sha256"],
@@ -848,6 +1232,7 @@ def _validate_proposal(
         "function": function,
         "unit": expected_unit,
         "source_class": source_class,
+        "source_class_normalized": _normalize_source_class(source_class),
         "status": status,
         "rank": rank,
         "expected_terminal": value.get("expected_terminal"),
@@ -865,6 +1250,39 @@ def _validate_proposal(
             if candidate_object_sha is not None else {}
         ),
     }
+
+
+def _validate_proposal_for_selection(
+    index: int,
+    root: Path,
+    campaign: Mapping[str, Any],
+    descriptor_path: Path,
+    current_frontiers: Mapping[str, Mapping[str, Any] | None],
+) -> tuple[int, dict[str, Any] | None, dict[str, str] | None]:
+    """Validate one proposal in a read-only worker.
+
+    The selector historically treated malformed/stale proposals as individual
+    rejections, so those expected validation errors are converted to the same
+    compact rejection record here.  Unexpected exceptions deliberately escape
+    the worker and are re-raised by ``future.result()``; silently converting a
+    worker/runtime failure into a rejected proposal would make a partial batch
+    look authoritative.
+    """
+
+    try:
+        raw = _read_json(
+            _bound_path(root, str(descriptor_path), "candidate descriptor"),
+            "candidate descriptor",
+        )
+        function = raw.get("function")
+        current = current_frontiers.get(function) if isinstance(function, str) else None
+        return index, _validate_proposal(root, campaign, descriptor_path, current), None
+    except (SelectionError, OSError, owner_campaign.CampaignError) as exc:
+        try:
+            relative = Path(descriptor_path).relative_to(root).as_posix()
+        except ValueError:
+            relative = str(descriptor_path)
+        return index, None, {"descriptor": relative, "reason": str(exc)[:256]}
 
 
 def _result(
@@ -917,13 +1335,31 @@ def select_winning_candidate(
 
     root = Path(os.path.abspath(root))
     paths = list(descriptor_paths)
+    # Five is the normal single-function Sol batch.  A lane may pass a wider
+    # read-only arbitration pool when it must pivot across functions; the
+    # selector still returns one winner and never dispatches the pool itself.
+    # Retain the old malformed same-function guard for callers that accidentally
+    # hand us an unbounded worker batch.
     if len(paths) > MAX_PROPOSALS:
-        return _result(
-            status=UNKNOWN,
-            reason=f"proposal batch exceeds {MAX_PROPOSALS}",
-            discovered=len(paths),
-            evaluations=[],
-        )
+        candidate_functions: set[str] = set()
+        for path in paths:
+            try:
+                raw = _read_json(
+                    _bound_path(root, str(path), "candidate descriptor"),
+                    "candidate descriptor",
+                )
+            except SelectionError:
+                continue
+            function = raw.get("function")
+            if isinstance(function, str):
+                candidate_functions.add(function)
+        if len(candidate_functions) <= 1:
+            return _result(
+                status=UNKNOWN,
+                reason=f"proposal batch exceeds {MAX_PROPOSALS}",
+                discovered=len(paths),
+                evaluations=[],
+            )
     if not paths:
         return _result(status=UNKNOWN, reason="proposal batch is empty", discovered=0, evaluations=[])
 
@@ -946,26 +1382,69 @@ def select_winning_candidate(
     except SelectionError as exc:
         return _result(status=UNKNOWN, reason=str(exc), discovered=len(paths), evaluations=[])
 
-    eligible: list[dict[str, Any]] = []
-    rejected: list[dict[str, str]] = []
-    for path in paths:
-        try:
-            raw = _read_json(_bound_path(root, str(path), "candidate descriptor"), "candidate descriptor")
-            function = raw.get("function")
-            current = current_frontiers.get(function) if isinstance(function, str) else None
-            eligible.append(_validate_proposal(root, campaign, path, current))
-        except (SelectionError, OSError, owner_campaign.CampaignError) as exc:
-            try:
-                relative = Path(path).relative_to(root).as_posix()
-            except ValueError:
-                relative = str(path)
-            rejected.append({"descriptor": relative, "reason": str(exc)[:256]})
+    # Validation is read-only, so the five-proposal Sol batch can overlap file
+    # reads/hashing.  Futures are consumed in submission order rather than
+    # completion order: eligible/rejected lists, diagnostics, and downstream
+    # arbitration remain byte-for-byte deterministic for a given input order.
+    # The worker only catches the same expected per-proposal errors as the old
+    # loop; an unexpected worker exception propagates through ``result()`` and
+    # fails closed instead of being misreported as a malformed proposal.
+    validation_results: list[
+        tuple[int, dict[str, Any] | None, dict[str, str] | None]
+    ] = []
+    worker_count = min(MAX_VALIDATION_WORKERS, len(paths))
+    with ThreadPoolExecutor(
+        max_workers=worker_count,
+        thread_name_prefix="owner-campaign-select",
+    ) as executor:
+        futures = [
+            executor.submit(
+                _validate_proposal_for_selection,
+                index,
+                root,
+                campaign,
+                path,
+                current_frontiers,
+            )
+            for index, path in enumerate(paths)
+        ]
+        for future in futures:
+            validation_results.append(future.result())
+
+    # Preserve the explicit input order even if a future implementation or
+    # executor changes completion order.  The index is part of the worker
+    # contract so an accidental result mix-up fails closed rather than silently
+    # reordering proposal diagnostics.
+    if [item[0] for item in validation_results] != list(range(len(paths))):
+        raise SelectionError("proposal validation results are out of order")
+    eligible = [
+        item[1] for item in validation_results
+        if item[1] is not None
+    ]
+    rejected = [
+        item[2] for item in validation_results
+        if item[2] is not None
+    ]
 
     ranked = [item for item in eligible if item["rank"] == 1]
     if not ranked:
         reason = "no current-bound rank-1 proposal"
         if rejected:
             reason += ": " + "; ".join(item["reason"] for item in rejected[:2])
+        budget_rejections = [
+            item for item in rejected
+            if "no_gain budget exhausted" in item.get("reason", "")
+        ]
+        if budget_rejections and len(budget_rejections) == len(rejected) and not eligible:
+            reason = "all current-bound proposals exhausted; pivot required: " + "; ".join(
+                item["reason"] for item in budget_rejections[:2]
+            )
+            return _result(
+                status=PIVOT_REQUIRED,
+                reason=reason,
+                discovered=len(paths),
+                evaluations=[*eligible, *rejected],
+            )
         return _result(
             status=UNKNOWN,
             reason=reason,
@@ -1007,7 +1486,11 @@ select_batch = select_winning_candidate
 
 
 __all__ = [
+    "MAX_NO_GAIN_PER_FAMILY",
+    "MAX_NO_GAIN_PER_FUNCTION",
     "MAX_PROPOSALS",
+    "MAX_VALIDATION_WORKERS",
+    "PIVOT_REQUIRED",
     "SCHEMA",
     "SELECTION_SCHEMA",
     "SELECTED",
@@ -1020,4 +1503,6 @@ __all__ = [
     "selection_evidence_paths",
     "selection_ledger_path",
     "selection_outcome_ledger_path",
+    "append_selection_outcome",
+    "normalize_source_class",
 ]

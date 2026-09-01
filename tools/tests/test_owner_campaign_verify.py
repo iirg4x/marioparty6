@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 from tools import owner_campaign_measure as adapter
+from tools import owner_campaign_reconstruction as reconstruction
 from tools.owner_campaign_verify import VerificationError, verify_measurement, verify_report
 
 
@@ -109,6 +110,33 @@ def _measurement(*, exact: bool) -> dict[str, object]:
 
 
 class OwnerCampaignVerifyTests(unittest.TestCase):
+    def _with_reconstruction(self, value: dict[str, object]) -> dict[str, object]:
+        focus = _focus(differences=1)
+        focus["schema"] = "focus_symbol_report/v1"
+        focus["strict_row_ids"] = value["focus_evidence"]["strict_row_ids"]
+        focus["data_row_ids"] = value["focus_evidence"]["data_row_ids"]
+        packet = reconstruction.build_packet(
+            focus,
+            {
+                "owner": value["owner"], "unit": value["unit"],
+                "function": value["function"], "source_path": value["source_path"],
+                "source_sha256": value["source_sha256"],
+                "frontier_source_sha256": value["source_sha256"],
+                "base_commit": value["base_commit"],
+                "target_object_sha256": value["target_object_sha256"],
+                "candidate_object_sha256": value["candidate_object_sha256"],
+                "toolchain_sha256": value["toolchain_sha256"],
+            },
+            {"function": "fn", "start_line": 1, "end_line": 1,
+             "start_offset": 0, "end_offset": 1, "span_sha256": "f" * 64},
+        )
+        result = copy.deepcopy(value)
+        result["reconstruction_evidence"] = packet
+        unsigned = dict(result)
+        unsigned.pop("measurement_sha256")
+        result["measurement_sha256"] = _sha(unsigned)
+        return result
+
     def test_snapshot_pending_source_link_is_explicitly_valid(self) -> None:
         value = _measurement(exact=False)
         checked = verify_measurement(value)
@@ -120,6 +148,18 @@ class OwnerCampaignVerifyTests(unittest.TestCase):
         checked = verify_measurement(value)
         self.assertTrue(checked["verified"])
         self.assertEqual(checked["focus_evidence_sha256"], value["focus_evidence"]["focus_evidence_sha256"])
+
+    def test_tampered_reconstruction_packet_is_rejected_even_when_measurement_resealed(self) -> None:
+        value = self._with_reconstruction(_measurement(exact=False))
+        forged = copy.deepcopy(value)
+        packet = dict(forged["reconstruction_evidence"])
+        packet["candidate_object_sha256"] = "9" * 64
+        forged["reconstruction_evidence"] = reconstruction.seal(packet)
+        unsigned = dict(forged)
+        unsigned.pop("measurement_sha256")
+        forged["measurement_sha256"] = _sha(unsigned)
+        with self.assertRaisesRegex(VerificationError, "identity is not measurement-bound"):
+            verify_measurement(forged)
 
     def test_candidate_address_change_does_not_migrate_target_identity(self) -> None:
         identity = _identity()

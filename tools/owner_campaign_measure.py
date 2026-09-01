@@ -44,6 +44,7 @@ if __package__ in {None, ""}:
 
 from tools import crack_evidence_bundle as bundle
 from tools import focus_symbol_report
+from tools import owner_campaign_reconstruction as reconstruction
 from tools.crack_contract import is_closed_objdiff_unit_name
 
 
@@ -1204,6 +1205,46 @@ def _measurement(identity: Identity, focus: Mapping[str, Any], args: argparse.Na
     if not identity.source_path:
         raise MeasurementError("measurement requires a bound source_path")
     focus_evidence = _focus_evidence(identity, focus, args)
+    reconstruction_packet: dict[str, Any] | None = None
+    if root is not None:
+        source = root / identity.source_path
+        try:
+            source_text = source.read_text(encoding="utf-8")
+            source_span = reconstruction.source_span_metadata(
+                source_text, identity.function
+            )
+            # Build from the complete in-memory focus report, before compact
+            # focus fitting can omit descriptions.  Pass canonical row
+            # identities through the builder's explicit override contract so
+            # it validates the original focus digest first, then reseals the
+            # augmented row census.  Mutating the focus mapping here would put
+            # the original artifact hash out of sync with its contents.
+            reconstruction_packet = reconstruction.build_packet(
+                focus,
+                {
+                    "owner": identity.owner,
+                    "unit": identity.unit,
+                    "function": identity.function,
+                    "source_path": identity.source_path,
+                    "source_sha256": identity.source_sha256,
+                    "base_commit": identity.base_commit,
+                    "target_object_sha256": identity.target_object_sha256,
+                    "candidate_object_sha256": _sha_file(candidate),
+                    "toolchain_sha256": identity.toolchain_sha256,
+                    "frontier_source_sha256": identity.source_sha256,
+                },
+                source_span,
+                strict_row_ids=focus_evidence["strict_row_ids"],
+                data_row_ids=focus_evidence["data_row_ids"],
+                physical_difference_ids=focus_evidence[
+                    "physical_difference_ids"
+                ],
+            )
+            reconstruction.verify_packet(reconstruction_packet)
+        except (OSError, UnicodeError, reconstruction.ReconstructionPacketError) as exc:
+            raise MeasurementError(
+                f"target-first reconstruction packet failed: {exc}"
+            ) from exc
     metrics, receipts = _metrics(identity, focus, args, source_link_exact=source_link_exact)
     if source_link_exact and source_link_proof is None and source_link_receipt is None:
         raise MeasurementError(
@@ -1274,6 +1315,8 @@ def _measurement(identity: Identity, focus: Mapping[str, Any], args: argparse.Na
         "focus_evidence": focus_evidence,
         "exact_report": None,
     }
+    if reconstruction_packet is not None:
+        body["reconstruction_evidence"] = reconstruction_packet
     return {**body, "measurement_sha256": _sha_json(body)}
 
 

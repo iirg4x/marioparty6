@@ -3,12 +3,17 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
 from tools import owner_campaign
 from tools import owner_campaign_lane as lane
+from tools import owner_campaign_reconstruction as reconstruction
+from tools.tests.test_owner_campaign import HOOK as CAMPAIGN_HOOK
 
 
 def _digest(value: bytes) -> str:
@@ -19,6 +24,115 @@ def _seal(body: dict[str, object], field: str) -> dict[str, object]:
     value = dict(body)
     value[field] = owner_campaign._digest_json(body)
     return value
+
+
+def _reconstruction_focus_report(
+    frontier: dict[str, object],
+    *,
+    physical: bool = False,
+    size_drift: bool = False,
+    include_residual: bool = True,
+    broad: bool = False,
+) -> dict[str, object]:
+    """Build a small, complete focus report for packet-builder fixtures.
+
+    The lane's compact focus CAS object intentionally remains in the older
+    selector shape.  Reconstruction packets consume a separate synthetic
+    ``focus_symbol_report`` so the test exercises the production packet
+    builder/verifier rather than hand-authoring a partial packet.
+    """
+
+    def instruction_row(index: int, *, candidate: bool) -> dict[str, object]:
+        register = "r4" if candidate else "r3"
+        offset = "0x14" if candidate else "0x10"
+        row: dict[str, object] = {
+            "index": index,
+            "instruction": {
+                "address": hex(0x1000 + index * 4),
+                "formatted": f"lwz {register},{offset}(r1)",
+                "size": 4,
+                "parts": [{"opcode": "lwz"}],
+            },
+        }
+        kind = {20: "DIFF_INSERT", 40: "DIFF_DELETE", 60: "DIFF_REPLACE"}.get(index)
+        if kind is not None:
+            row["diff_kind"] = kind
+        return row
+
+    indexes = [1, 20, 40, 60] if broad else [1]
+    target_rows = [instruction_row(index, candidate=False) for index in indexes]
+    candidate_rows = [instruction_row(index, candidate=True) for index in indexes]
+    target_relocations: list[dict[str, object]] = []
+    candidate_relocations: list[dict[str, object]] = []
+    differences: list[dict[str, object]] = []
+    if physical:
+        differences = [{"offset": 4, "target": ["helper"], "candidate": ["other"]}]
+
+    if not include_residual:
+        target_rows = []
+        candidate_rows = []
+    target_size = max(4, len(target_rows) * 4)
+    candidate_size = 5 if size_drift else target_size
+    strict_row_ids = []
+    if include_residual:
+        for index in indexes:
+            kind = {20: "DIFF_INSERT", 40: "DIFF_DELETE", 60: "DIFF_REPLACE"}.get(index)
+            suffix = f"kind={kind}" if kind is not None else ""
+            strict_row_ids.append(f"strict:focus:row:{index}:{suffix}")
+    body: dict[str, object] = {
+        "schema": "focus_symbol_report/v1",
+        "owner": frontier["owner"],
+        "unit": frontier["unit"],
+        "function": frontier["function"],
+        "source_path": frontier["source_relpath"],
+        "base_commit": "0" * 40,
+        "source_sha256": frontier["source_sha256"],
+        "target_object_sha256": frontier["target_object_sha256"],
+        "candidate_object_sha256": frontier["candidate_object_sha256"],
+        "toolchain_sha256": frontier["toolchain_sha256"],
+        "strict_row_ids": strict_row_ids,
+        "data_row_ids": [],
+        "channels": {
+            "strict": {
+                "metric": {
+                    "target_size": target_size,
+                    "candidate_size": candidate_size,
+                    "diff_rows": len(target_rows),
+                },
+                "target": {
+                    "instruction_count": len(target_rows),
+                    "rows": target_rows,
+                },
+                "candidate": {
+                    "instruction_count": len(candidate_rows),
+                    "rows": candidate_rows,
+                },
+            },
+            "data": {
+                "metric": {
+                    "target_size": target_size,
+                    "candidate_size": candidate_size,
+                    "diff_rows": 0,
+                },
+                "target": {"instruction_count": 1, "rows": []},
+                "candidate": {"instruction_count": 1, "rows": []},
+            },
+        },
+        "physical_relocations": {
+            "status": "mismatch" if physical else "exact",
+            "target": {
+                "physical_relocation_count": 0,
+                "physical_relocations": target_relocations,
+            },
+            "candidate": {
+                "physical_relocation_count": 0,
+                "physical_relocations": candidate_relocations,
+            },
+            "physical_relocation_differences": differences,
+        },
+    }
+    body["artifact_sha256"] = reconstruction.canonical_sha256(body)
+    return body
 
 
 class OwnerCampaignLaneTests(unittest.TestCase):
@@ -38,15 +152,28 @@ class OwnerCampaignLaneTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def _candidate(self, name: str, *, created_at: str = "2026-08-31T00:00:00Z") -> Path:
+    def _candidate(
+        self,
+        name: str,
+        *,
+        function: str = "focus",
+        created_at: str = "2026-08-31T00:00:00Z",
+    ) -> Path:
         source = self.root / "build" / "candidates" / f"{name}.c"
-        source.write_text(f"int focus(void) {{ return 0; }} /* {name} */\n", encoding="utf-8")
+        source.write_text(
+            f"int {function}(void) {{ return 0; }} /* {name} */\n",
+            encoding="utf-8",
+        )
         span_sha = owner_campaign._digest_file(source)
         body: dict[str, object] = {
             "schema": owner_campaign.CANDIDATE_SCHEMA,
             "campaign_id": self.campaign["campaign_id"],
-            "function": "focus",
+            "function": function,
             "base_frontier_sha256": "a" * 64,
+            "base_source": {
+                "path": source.relative_to(self.root).as_posix(),
+                "sha256": owner_campaign._digest_file(source),
+            },
             "candidate_source": {
                 "path": source.relative_to(self.root).as_posix(),
                 "sha256": owner_campaign._digest_file(source),
@@ -61,6 +188,7 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             },
             "hypothesis_family": f"family-{name}",
             "natural_c": True,
+            "rebase_depth": 0,
             "created_at": created_at,
         }
         descriptor = self.inbox / f"{name}.json"
@@ -68,6 +196,22 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             json.dumps(_seal(body, "candidate_sha256")), encoding="utf-8"
         )
         return descriptor
+
+    def _candidate_source(self, name: str, result: int) -> Path:
+        source = self.root / "build" / "candidates" / f"{name}.c"
+        source.write_text(
+            "int before = 1;\n\n"
+            f"int focus(void) {{ return {result}; }}\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        return source
+
+    def _enable_streaming_pipeline(self) -> None:
+        """Mark a compact fixture as the loaded v2 pipeline contract."""
+
+        self.campaign["_source"] = self.root / "src" / "owner.c"
+        self.campaign["limits"] = {}
 
     def test_empty_inbox_is_explicit_idle(self) -> None:
         result = lane.run_inbox(self.root, self.campaign)
@@ -239,6 +383,481 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         self.assertTrue(all(path.exists() for path in descriptors))
         self.assertEqual(len(list((self.root / "build" / "candidates").glob("*.c"))), 2)
 
+    def test_v2_dispatches_one_winner_per_function_to_five_workers(self) -> None:
+        self._enable_streaming_pipeline()
+        functions = [f"focus{index}" for index in range(5)]
+        self.campaign["functions"] = functions
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [
+            self._candidate(f"cell-{function}", function=function)
+            for function in functions
+        ]
+        selector_calls: list[tuple[str, int]] = []
+        observed: list[Path] = []
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            function = json.loads(paths[0].read_text(encoding="utf-8"))["function"]
+            selector_calls.append((function, len(paths)))
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {"descriptor_path": str(paths[0]), "function": function},
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            observed.append(path)
+            return {
+                "status": "infra_retry",
+                "function": json.loads(path.read_text(encoding="utf-8"))["function"],
+                "authority_advanced": False,
+            }
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance"),
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(len(selector_calls), 5)
+        self.assertEqual({function for function, _count in selector_calls}, set(functions))
+        self.assertEqual([count for _function, count in selector_calls], [1] * 5)
+        self.assertEqual(set(observed), set(descriptors))
+        self.assertEqual(result["dispatched"], 5)
+        self.assertEqual(result["status"], "infra_retry")
+        self.assertIsNone(result["selection"])
+        self.assertEqual(len(result["selections"]), 5)
+        self.assertEqual(
+            [item["selected"]["function"] for item in result["selections"]],
+            functions,
+        )
+
+    def test_v2_same_function_still_dispatches_only_one_winner(self) -> None:
+        self._enable_streaming_pipeline()
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [self._candidate(f"same-{index}") for index in range(3)]
+        selector_calls: list[list[Path]] = []
+        observed: list[Path] = []
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            selector_calls.append(paths)
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {"descriptor_path": str(paths[0]), "function": "focus"},
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            observed.append(path)
+            return {"status": "infra_retry", "function": "focus"}
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance"),
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(selector_calls, [descriptors])
+        self.assertEqual(observed, [descriptors[0]])
+        self.assertEqual(result["dispatched"], 1)
+        self.assertEqual(result["selection"]["status"], lane.owner_campaign_selector.SELECTED)
+        self.assertEqual(len(result["selections"]), 1)
+
+    def test_v2_unknown_function_does_not_block_other_winner(self) -> None:
+        self._enable_streaming_pipeline()
+        functions = ["blocked", "ready"]
+        self.campaign["functions"] = functions
+        self.campaign["base_commit"] = "base-commit"
+        blocked = self._candidate("blocked-cell", function="blocked")
+        ready = self._candidate("ready-cell", function="ready")
+        observed: list[Path] = []
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            function = json.loads(paths[0].read_text(encoding="utf-8"))["function"]
+            if function == "blocked":
+                return {
+                    "status": lane.owner_campaign_selector.UNKNOWN,
+                    "reason": "no current-bound winner",
+                }
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {"descriptor_path": str(paths[0]), "function": function},
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            observed.append(path)
+            return {"status": "infra_retry", "function": "ready"}
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance"),
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(observed, [ready])
+        self.assertEqual(result["status"], "infra_retry")
+        self.assertEqual(result["dispatched"], 1)
+        self.assertIn(blocked.relative_to(self.root).as_posix(), result["preserved_infrastructure"])
+        self.assertEqual(
+            [item["status"] for item in result["selections"]],
+            [lane.owner_campaign_selector.UNKNOWN, lane.owner_campaign_selector.SELECTED],
+        )
+
+    def test_v2_terminal_outcomes_bind_to_their_function_selection(self) -> None:
+        self._enable_streaming_pipeline()
+        functions = [f"owner{index}" for index in range(5)]
+        self.campaign["functions"] = functions
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [
+            self._candidate(f"terminal-{function}", function=function)
+            for function in functions
+        ]
+        outcome_calls: list[tuple[str, str]] = []
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            descriptor_path = paths[0]
+            function = json.loads(descriptor_path.read_text(encoding="utf-8"))["function"]
+            evidence_path = descriptor_path.with_suffix(".evidence.json")
+            evidence_path.write_text("{}", encoding="utf-8")
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {
+                    "descriptor_path": str(descriptor_path),
+                    "evidence_path": str(evidence_path),
+                    "function": function,
+                },
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            return {
+                "status": "no_gain",
+                "function": json.loads(path.read_text(encoding="utf-8"))["function"],
+                "authority_advanced": False,
+            }
+
+        def record(
+            root: Path,
+            campaign: dict[str, object],
+            selected: dict[str, object],
+            result: dict[str, object],
+        ) -> dict[str, object]:
+            outcome_calls.append((str(selected["function"]), str(result["function"])))
+            return {"function": selected["function"], "status": result["status"]}
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance"),
+            patch.object(
+                lane.owner_campaign_selector,
+                "append_selection_outcome",
+                side_effect=record,
+            ),
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(outcome_calls, [(function, function) for function in functions])
+        self.assertEqual(
+            [item["function"] for item in result["recorded_outcomes"]],
+            functions,
+        )
+        self.assertEqual(
+            [item["function"] for item in result["results"]],
+            functions,
+        )
+        self.assertEqual(result["dispatched"], 5)
+
+    def test_v2_ready_function_dispatches_while_slow_selector_is_blocked(self) -> None:
+        """Selection is a per-function pipeline, not a whole-batch barrier."""
+
+        self._enable_streaming_pipeline()
+        functions = ["slow", "ready"]
+        self.campaign["functions"] = functions
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [
+            self._candidate(f"parallel-{function}", function=function)
+            for function in functions
+        ]
+        selector_calls: list[str] = []
+        ready_measurement_started = threading.Event()
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            function = json.loads(paths[0].read_text(encoding="utf-8"))["function"]
+            selector_calls.append(function)
+            if function == "slow":
+                self.assertTrue(
+                    ready_measurement_started.wait(timeout=5),
+                    "ready function remained behind the selector batch barrier",
+                )
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {
+                    "descriptor_path": str(paths[0]),
+                    "function": function,
+                },
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            function = json.loads(path.read_text(encoding="utf-8"))["function"]
+            if function == "ready":
+                ready_measurement_started.set()
+            return {"status": "infra_retry", "function": function}
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance") as maintenance,
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(set(selector_calls), set(functions))
+        self.assertEqual(
+            [item["selected"]["function"] for item in result["selections"]],
+            functions,
+        )
+        self.assertEqual(
+            [item["function"] for item in result["results"]],
+            functions,
+        )
+        maintenance.assert_called_once()
+
+    def test_v2_selector_exception_isolated_to_its_function_pipeline(self) -> None:
+        self._enable_streaming_pipeline()
+        self.campaign["base_commit"] = "base-commit"
+        self._candidate("selector-error")
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=RuntimeError("selector exploded"),
+            ),
+            patch.object(lane, "_dispatch_selected_candidate") as dispatch,
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+        self.assertEqual(result["status"], "selection_unknown")
+        self.assertIn("selector arbitration failed", result["reason"])
+        dispatch.assert_not_called()
+
+    def test_v2_selector_error_does_not_mask_ready_retained_outcome(self) -> None:
+        self._enable_streaming_pipeline()
+        functions = ["broken", "ready"]
+        self.campaign["functions"] = functions
+        self.campaign["base_commit"] = "base-commit"
+        broken = self._candidate("broken-cell", function="broken")
+        ready = self._candidate("ready-cell-error-peer", function="ready")
+        ready_started = threading.Event()
+
+        def select(root: Path, campaign: dict[str, object], paths: list[Path]):
+            function = json.loads(paths[0].read_text(encoding="utf-8"))["function"]
+            if function == "broken":
+                self.assertTrue(ready_started.wait(timeout=5))
+                raise RuntimeError("selector exploded late")
+            evidence = paths[0].with_suffix(".evidence.json")
+            evidence.write_text("{}", encoding="utf-8")
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {
+                    "descriptor_path": str(paths[0]),
+                    "evidence_path": str(evidence),
+                    "function": function,
+                },
+            }
+
+        def dispatch(
+            root: Path,
+            campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            ready_started.set()
+            return {
+                "status": "improved",
+                "function": "ready",
+                "authority_advanced": False,
+            }
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=dispatch),
+            patch.object(lane, "_post_pipeline_maintenance") as maintenance,
+            patch.object(
+                lane.owner_campaign_selector,
+                "append_selection_outcome",
+                return_value={"function": "ready", "status": "improved"},
+            ),
+        ):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(result["status"], "processed")
+        self.assertEqual(result["results"], [{
+            "status": "improved",
+            "function": "ready",
+            "authority_advanced": False,
+        }])
+        self.assertTrue(broken.exists())
+        self.assertFalse(ready.exists())
+        self.assertIn("selector arbitration failed", result["selections"][0]["reason"])
+        maintenance.assert_called_once()
+
+    def test_supervisor_reuses_one_pre_discovered_batch(self) -> None:
+        functions = ["focus0", "focus1"]
+        self.campaign["functions"] = functions
+        descriptors = [
+            self._candidate(f"supervisor-{function}", function=function)
+            for function in functions
+        ]
+        discovery_limits: list[int] = []
+        inbox_batches: list[list[Path] | None] = []
+
+        def discover(
+            root: Path,
+            campaign: dict[str, object],
+            *,
+            limit: int,
+        ) -> list[Path]:
+            discovery_limits.append(limit)
+            return descriptors
+
+        def inbox(
+            root: Path,
+            campaign: dict[str, object],
+            *,
+            max_candidates: int,
+            _pre_discovered: list[Path] | None = None,
+        ) -> dict[str, object]:
+            inbox_batches.append(_pre_discovered)
+            return {
+                "status": "processed",
+                "dispatched": 2,
+                "results": [
+                    {"status": "improved"},
+                    {"status": "improved"},
+                ],
+            }
+
+        with (
+            patch.object(lane, "discover_candidates", side_effect=discover),
+            patch.object(lane, "run_inbox", side_effect=inbox),
+            patch.object(
+                lane,
+                "_campaign_terminal_state",
+                side_effect=[(None, None), ("closed", "done")],
+            ),
+        ):
+            result = lane.run_supervisor(
+                self.root,
+                self.campaign,
+                clock=lambda: 0.0,
+                sleeper=lambda _duration: self.fail("closed supervisor slept"),
+            )
+
+        self.assertEqual(result["status"], "closed")
+        self.assertEqual(result["batches"], 1)
+        self.assertEqual(result["dispatched"], 2)
+        self.assertEqual(discovery_limits, [10])
+        self.assertEqual(inbox_batches, [descriptors])
+
+    def test_supervisor_uses_constant_cost_terminal_progress(self) -> None:
+        campaign = dict(self.campaign)
+        campaign["_source"] = self.root / "src" / "owner.c"
+        campaign["limits"] = {"command_timeout_seconds": 1}
+        with (
+            patch.object(
+                owner_campaign,
+                "campaign_terminal_progress",
+                return_value={"exact_count": 1, "total": 1, "closed": True},
+            ) as progress,
+            patch.object(
+                owner_campaign,
+                "campaign_status",
+                side_effect=AssertionError("full status must not be polled"),
+            ),
+        ):
+            result = lane.run_supervisor(
+                self.root,
+                campaign,
+                clock=lambda: 0.0,
+                sleeper=lambda _duration: self.fail("closed supervisor slept"),
+            )
+
+        self.assertEqual(result["status"], "closed")
+        progress.assert_called_once_with(self.root, campaign)
+
     def test_driver_has_no_legacy_control_dependency(self) -> None:
         source = Path(lane.__file__).read_text(encoding="utf-8").lower()
         for forbidden in ("stop", "permit", "hmac"):
@@ -278,11 +897,11 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             "base_commit": "0" * 40,
             "source_sha256": source_sha256,
             "target_object_sha256": "d" * 64,
-            "strict_rows": ["strict:focus:row:1"],
+            "strict_rows": ["strict:focus:row:1:"],
             "data_rows": [],
             "physical_differences": [],
-            "strict_row_ids": ["strict:focus:row:1"],
-            "strict_row_ids_sha256": owner_campaign._digest_json(["strict:focus:row:1"]),
+            "strict_row_ids": ["strict:focus:row:1:"],
+            "strict_row_ids_sha256": owner_campaign._digest_json(["strict:focus:row:1:"]),
             "data_row_ids": [],
             "data_row_ids_sha256": owner_campaign._digest_json([]),
             "physical_difference_ids": [],
@@ -340,6 +959,72 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         candidate_source = candidate_dir / "focus.c"
         return campaign, campaign_source, candidate_source
 
+    def _attach_reconstruction(
+        self,
+        campaign: dict[str, object],
+        *,
+        status: str = "READY",
+        exact_terminal_possible: bool = True,
+        next_action: str | None = None,
+    ) -> dict[str, object]:
+        frontier_path = (
+            owner_campaign._function_root(self.root, campaign, "focus")
+            / "latest-frontier.json"
+        )
+        frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+        # Every fixture packet starts from the production builder.  A broad
+        # report naturally produces UNKNOWN/DECOMPOSE; a physical-only report
+        # naturally produces UNKNOWN/PIVOT.
+        report = _reconstruction_focus_report(
+            frontier,
+            physical=(
+                (status == "UNKNOWN" and next_action != "DECOMPOSE")
+                or (status == "READY" and not exact_terminal_possible)
+            ),
+            broad=status == "UNKNOWN" and next_action == "DECOMPOSE",
+            include_residual=not (status == "UNKNOWN" and next_action != "DECOMPOSE"),
+        )
+        binding = {
+            "owner": frontier["owner"],
+            "unit": frontier["unit"],
+            "function": frontier["function"],
+            "source_path": frontier["source_relpath"],
+            "source_sha256": frontier["source_sha256"],
+            "base_commit": "0" * 40,
+            "target_object_sha256": frontier["target_object_sha256"],
+            "candidate_object_sha256": frontier["candidate_object_sha256"],
+            "toolchain_sha256": frontier["toolchain_sha256"],
+            "frontier_source_sha256": frontier["source_sha256"],
+        }
+        packet = reconstruction.build_packet(
+            report,
+            binding,
+            {"function": frontier["function"], "start_line": 3, "end_line": 5},
+        )
+        packet_sha = packet["packet_sha256"]
+        packet_path = (
+            owner_campaign._state_root(self.root) / "proof-cas" / "reconstruction"
+            / packet_sha[:2] / f"{packet_sha}.json"
+        )
+        packet_path.parent.mkdir(parents=True, exist_ok=True)
+        packet_path.write_text(
+            json.dumps(packet, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        frontier_body = dict(frontier)
+        frontier_body["reconstruction_evidence_sha256"] = packet_sha
+        frontier_body["reconstruction_status"] = status
+        frontier_body.pop("frontier_sha256", None)
+        frontier = {
+            **frontier_body,
+            "frontier_sha256": owner_campaign._digest_json(frontier_body),
+        }
+        frontier_path.write_text(
+            json.dumps(frontier, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        return packet
+
     def test_propose_seals_current_frontier_bound_source_pair(self) -> None:
         campaign, _base, candidate_source = self._proposal_fixture()
         candidate_source.write_text(
@@ -367,6 +1052,15 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             descriptor["candidate_source"]["sha256"],
             owner_campaign._digest_file(source_path),
         )
+        base_path = self.root / descriptor["base_source"]["path"]
+        self.assertEqual(base_path, descriptor_path.parent / "base.c")
+        self.assertTrue(base_path.is_file())
+        self.assertEqual(
+            descriptor["base_source"]["sha256"],
+            owner_campaign._digest_file(base_path),
+        )
+        self.assertNotEqual(base_path, _base)
+        self.assertEqual(descriptor["rebase_depth"], 0)
         self.assertEqual(lane.discover_candidates(self.root, campaign), [descriptor_path])
 
     def test_propose_publishes_selector_sidecar_and_exact_defaults(self) -> None:
@@ -404,6 +1098,212 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             ),
         )
 
+    def test_reconstruct_frontier_reads_verified_ready_packet_without_compile(self) -> None:
+        campaign, _base, _candidate = self._proposal_fixture()
+        packet = self._attach_reconstruction(campaign)
+        frontier = json.loads(
+            (
+                owner_campaign._function_root(self.root, campaign, "focus")
+                / "latest-frontier.json"
+            ).read_text(encoding="utf-8")
+        )
+        with patch.object(
+            owner_campaign,
+            "snapshot_frontier",
+            side_effect=AssertionError("reconstruct must use supplied snapshotter"),
+        ):
+            result = lane.reconstruct_frontier(
+                self.root,
+                campaign,
+                "focus",
+                snapshotter=lambda _root, _campaign, _function: frontier,
+            )
+        self.assertEqual(result["schema"], lane.RECONSTRUCTION_RESULT_SCHEMA)
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["packet_sha256"], packet["packet_sha256"])
+        self.assertTrue(result["ownership_complete"])
+        self.assertEqual(result["next_action"], "CRACK")
+        self.assertFalse(result["authority_advanced"])
+
+    def test_packet_ready_exact_proposal_carries_reconstruction_reference(self) -> None:
+        campaign, _base, candidate_source = self._proposal_fixture()
+        self._attach_reconstruction(campaign, exact_terminal_possible=True)
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        result = lane.propose_candidate(
+            self.root, campaign, "focus", candidate_source, "reconstructed-return"
+        )
+        sidecar = json.loads(
+            (self.root / result["candidate_selection"]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(sidecar["reconstruction"]["status"], "READY")
+        self.assertEqual(sidecar["reconstruction"]["exact_terminal_possible"], True)
+        self.assertEqual(sidecar["reconstruction"]["causal_cluster_id"], "cluster-000")
+        self.assertEqual(sidecar["ownership_complete"], True)
+
+    def test_ready_packet_without_exact_support_allows_only_improved(self) -> None:
+        campaign, _base, candidate_source = self._proposal_fixture()
+        self._attach_reconstruction(campaign, exact_terminal_possible=False)
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "exact terminal"):
+            lane.propose_candidate(
+                self.root, campaign, "focus", candidate_source, "unsupported-exact"
+            )
+        result = lane.propose_candidate(
+            self.root,
+            campaign,
+            "focus",
+            candidate_source,
+            "improved-reconstruction",
+            expected_terminal="improved",
+            predicted_rows=["strict:focus:row:1:"],
+            predicted_remaining_counts={"strict": 0, "data": 0, "physical": 0},
+        )
+        self.assertEqual(result["status"], "queued")
+
+    def test_unknown_packet_requires_pivot_when_no_bounded_decomposition(self) -> None:
+        campaign, _base, candidate_source = self._proposal_fixture()
+        self._attach_reconstruction(campaign, status="UNKNOWN")
+        frontier = json.loads(
+            (
+                owner_campaign._function_root(self.root, campaign, "focus")
+                / "latest-frontier.json"
+            ).read_text(encoding="utf-8")
+        )
+        result = lane.reconstruct_frontier(
+            self.root,
+            campaign,
+            "focus",
+            snapshotter=lambda _root, _campaign, _function: frontier,
+        )
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["next_action"], "PIVOT")
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "pivot"):
+            lane.propose_candidate(
+                self.root,
+                campaign,
+                "focus",
+                candidate_source,
+                "unknown-reconstruction",
+                expected_terminal="improved",
+                predicted_rows=["strict:focus:row:1:"],
+                predicted_remaining_counts={"strict": 0, "data": 0, "physical": 0},
+            )
+
+    def test_unknown_decompose_packet_accepts_one_closed_improved_region(self) -> None:
+        campaign, _base, candidate_source = self._proposal_fixture()
+        self._attach_reconstruction(
+            campaign,
+            status="UNKNOWN",
+            next_action="DECOMPOSE",
+        )
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        result = lane.propose_candidate(
+            self.root,
+            campaign,
+            "focus",
+            candidate_source,
+            "bounded-reconstruction",
+            expected_terminal="improved",
+            predicted_rows=["strict:focus:row:1:"],
+            predicted_remaining_counts={"strict": 0, "data": 0, "physical": 0},
+        )
+        sidecar = json.loads(
+            (self.root / result["candidate_selection"]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(sidecar["reconstruction"]["next_action"], "DECOMPOSE")
+        self.assertEqual(
+            sidecar["reconstruction"]["bounded_region"]["cluster_id"],
+            "cluster-000",
+        )
+
+    def test_reconstruction_tamper_and_stale_identity_fail_closed(self) -> None:
+        campaign, _base, _candidate = self._proposal_fixture()
+        packet = self._attach_reconstruction(campaign)
+        packet_path = (
+            owner_campaign._state_root(self.root) / "proof-cas" / "reconstruction"
+            / packet["packet_sha256"][:2] / f"{packet['packet_sha256']}.json"
+        )
+        tampered = dict(packet)
+        tampered["function"] = "other"
+        tampered = reconstruction.seal(tampered)
+        packet_path.write_text(
+            json.dumps(tampered, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        frontier_path = (
+            owner_campaign._function_root(self.root, campaign, "focus")
+            / "latest-frontier.json"
+        )
+        frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+        with self.assertRaisesRegex(owner_campaign.CampaignError, r"packet .*drift"):
+            lane.reconstruct_frontier(
+                self.root,
+                campaign,
+                "focus",
+                snapshotter=lambda _root, _campaign, _function: frontier,
+            )
+
+    def test_reconstruction_predicted_rows_cannot_cross_clusters(self) -> None:
+        reconstruction_view = {
+            "causal_clusters": [
+                {"cluster_id": "a", "strict_row_ids": ["strict:row:1"]},
+                {"cluster_id": "b", "strict_row_ids": ["strict:row:2"]},
+            ]
+        }
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "cross causal"):
+            lane._reconstruction_cluster_for_rows(
+                reconstruction_view,
+                ["strict:row:1", "strict:row:2"],
+            )
+
+    def test_mirrored_clusters_are_one_atomic_prediction_group(self) -> None:
+        reconstruction_view = {
+            "causal_clusters": [
+                {
+                    "cluster_id": "a",
+                    "mirror_group": "mirrored-0",
+                    "strict_row_ids": ["strict:row:1"],
+                },
+                {
+                    "cluster_id": "b",
+                    "mirror_group": "mirrored-0",
+                    "strict_row_ids": ["strict:row:2"],
+                },
+            ]
+        }
+        selected = lane._reconstruction_cluster_for_rows(
+            reconstruction_view,
+            ["strict:row:1", "strict:row:2"],
+        )
+        self.assertEqual(selected["mirror_group"], "mirrored-0")
+        self.assertEqual(selected["cluster_ids"], ["a", "b"])
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "mirrored"):
+            lane._reconstruction_cluster_for_rows(
+                reconstruction_view,
+                ["strict:row:1"],
+            )
+
     def test_propose_requires_improved_remaining_counts(self) -> None:
         campaign, _base, candidate_source = self._proposal_fixture()
         candidate_source.write_text(
@@ -420,7 +1320,7 @@ class OwnerCampaignLaneTests(unittest.TestCase):
                 candidate_source,
                 "return-shape",
                 expected_terminal="improved",
-                predicted_rows=["strict:focus:row:1"],
+                predicted_rows=["strict:focus:row:1:"],
             )
         self.assertEqual(list(lane.inbox_path(self.root, campaign).rglob("*")), [])
 
@@ -439,7 +1339,7 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             candidate_source,
             "return-shape",
             expected_terminal="improved",
-            predicted_rows=["strict:focus:row:1"],
+            predicted_rows=["strict:focus:row:1:"],
             predicted_remaining_counts={"strict": 0, "data": 0, "physical": 0},
         )
         sidecar = json.loads(
@@ -464,7 +1364,7 @@ class OwnerCampaignLaneTests(unittest.TestCase):
                 candidate_source,
                 "return-shape",
                 expected_terminal="improved",
-                predicted_rows=["strict:focus:row:1"],
+                predicted_rows=["strict:focus:row:1:"],
                 predicted_remaining_counts={"strict": 1, "data": 0, "physical": 0},
             )
 
@@ -570,6 +1470,752 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             lane.propose_candidate(
                 self.root, campaign, "focus", candidate_source, "drift"
             )
+
+    def _v2_rebase_fixture(
+        self, *, rebase_depth: int = 0
+    ) -> tuple[dict[str, object], Path, Path, Path, dict[str, object]]:
+        """Create one valid v2 proposal and return its selector binding.
+
+        The source/frontier mutation is deliberately performed later, after
+        selector arbitration, by the tests below.  That models the real race
+        where another function is retained while a candidate is compiling.
+        """
+
+        campaign, campaign_source, candidate_source = self._proposal_fixture()
+        campaign["base_commit"] = "0" * 40
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) {\n"
+            "    return 1;\n"
+            "}\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        queued = lane.propose_candidate(
+            self.root,
+            campaign,
+            "focus",
+            candidate_source,
+            "rebase-winning-cell",
+            rebase_depth=rebase_depth,
+        )
+        descriptor_path = self.root / queued["candidate_descriptor"]
+        descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+        selection_path = descriptor_path.parent / "candidate.selection.json"
+        selection = json.loads(selection_path.read_text(encoding="utf-8"))
+        selected = {
+            "descriptor_path": str(descriptor_path),
+            "descriptor_relative": descriptor_path.relative_to(self.root).as_posix(),
+            "descriptor_sha256": owner_campaign._digest_file(descriptor_path),
+            "source_path": str(descriptor_path.parent / "candidate.c"),
+            "source_relative": descriptor["candidate_source"]["path"],
+            "candidate_sha256": descriptor["candidate_source"]["sha256"],
+            "base_source_path": str(descriptor_path.parent / "base.c"),
+            "base_source_relative": descriptor["base_source"]["path"],
+            "base_source_sha256": descriptor["base_source"]["sha256"],
+            "rebase_depth": descriptor["rebase_depth"],
+            "evidence_path": str(selection_path),
+            "evidence_relative": selection_path.relative_to(self.root).as_posix(),
+            "evidence_sha256": selection["evidence_sha256"],
+            "frontier_sha256": descriptor["base_frontier_sha256"],
+            "function": descriptor["function"],
+            "unit": campaign["unit"],
+            "source_class": descriptor["hypothesis_family"],
+            "source_class_normalized": descriptor["hypothesis_family"],
+            "status": "RANKED_SOURCE_CLASS",
+            "rank": 1,
+            "expected_terminal": selection["expected_terminal"],
+            "residual_rows": selection["residual_rows"],
+            "predicted_rows": selection["predicted_rows"],
+            "predicted_remaining_counts": selection["predicted_remaining_counts"],
+            "protected_sibling_digest": selection["protected_sibling_digest"],
+            "focus_artifact_sha256": selection["focus_artifact"]["sha256"],
+            "physical_artifact_sha256": selection["physical_artifact"]["sha256"],
+            "predicted_row_group_sha256": owner_campaign._digest_json(
+                selection["predicted_rows"]
+            ),
+            "selection_key_sha256": "a" * 64,
+            "candidate_identity_sha256": "b" * 64,
+        }
+        return campaign, campaign_source, candidate_source, descriptor_path, selected
+
+    def _refresh_v2_source_binding(
+        self,
+        campaign: dict[str, object],
+        campaign_source: Path,
+        *,
+        before: int,
+        focus_result: int,
+    ) -> None:
+        """Advance only the live source/frontier while preserving focus rows."""
+
+        campaign_source.write_text(
+            f"int before = {before};\n\n"
+            "int focus(void) {\n"
+            f"    return {focus_result};\n"
+            "}\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        source_sha = owner_campaign._digest_file(campaign_source)
+        frontier_path = (
+            owner_campaign._function_root(self.root, campaign, "focus")
+            / "latest-frontier.json"
+        )
+        frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+        old_focus_digest = frontier["focus_evidence_sha256"]
+        old_focus_path = (
+            owner_campaign._state_root(self.root)
+            / "proof-cas"
+            / "focus"
+            / old_focus_digest[:2]
+            / f"{old_focus_digest}.json"
+        )
+        focus = json.loads(old_focus_path.read_text(encoding="utf-8"))
+        focus_body = dict(focus)
+        focus_body.pop("focus_evidence_sha256", None)
+        focus_body["source_sha256"] = source_sha
+        new_focus_digest = owner_campaign._digest_json(focus_body)
+        focus = {
+            **focus_body,
+            "focus_evidence_sha256": new_focus_digest,
+        }
+        new_focus_path = (
+            owner_campaign._state_root(self.root)
+            / "proof-cas"
+            / "focus"
+            / new_focus_digest[:2]
+            / f"{new_focus_digest}.json"
+        )
+        new_focus_path.parent.mkdir(parents=True, exist_ok=True)
+        new_focus_path.write_text(
+            json.dumps(focus, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        frontier_body = dict(frontier)
+        frontier_body.pop("frontier_sha256", None)
+        frontier_body["source_sha256"] = source_sha
+        frontier_body["focus_evidence_sha256"] = new_focus_digest
+        frontier = {
+            **frontier_body,
+            "frontier_sha256": owner_campaign._digest_json(frontier_body),
+        }
+        frontier_path.write_text(
+            json.dumps(frontier, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+
+    def _stale_result(
+        self, descriptor_path: Path, *, function: str = "focus"
+    ) -> dict[str, object]:
+        descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+        return {
+            "schema": "owner_campaign_result/v1",
+            "status": "stale_rebase",
+            "function": function,
+            "authority_advanced": False,
+            "rebase_input": {
+                "descriptor_path": descriptor_path.relative_to(self.root).as_posix(),
+                "descriptor_sha256": owner_campaign._digest_file(descriptor_path),
+                "candidate_source_path": descriptor["candidate_source"]["path"],
+                "candidate_source_sha256": descriptor["candidate_source"]["sha256"],
+                "base_source_path": descriptor["base_source"]["path"],
+                "base_source_sha256": descriptor["base_source"]["sha256"],
+                "rebase_depth": descriptor["rebase_depth"],
+                "function_span": descriptor["function_span"],
+            },
+        }
+
+    def _find_rebase_tombstones(self) -> list[dict[str, object]]:
+        state_root = owner_campaign._state_root(self.root)
+        found: list[dict[str, object]] = []
+        if not state_root.is_dir():
+            return found
+        for path in state_root.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if isinstance(value, dict) and value.get("schema") == lane.REBASE_TOMBSTONE_SCHEMA:
+                found.append(value)
+        return found
+
+    def _assert_sealed_tombstone(self, tombstone: dict[str, object], *, status: str) -> None:
+        self.assertEqual(set(tombstone), lane.REBASE_TOMBSTONE_FIELDS)
+        body = dict(tombstone)
+        digest = body.pop("tombstone_sha256")
+        self.assertEqual(digest, owner_campaign._digest_json(body))
+        self.assertEqual(tombstone["status"], status)
+        self.assertEqual(tombstone["function"], "focus")
+
+    def test_v2_disjoint_stale_candidate_rebases_and_combines_edits(self) -> None:
+        """A disjoint live-source advance must not discard a winning cell."""
+
+        campaign, campaign_source, _candidate_source, descriptor_path, selected = (
+            self._v2_rebase_fixture()
+        )
+        dispatch_calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path,
+            current_campaign: dict[str, object],
+            paths: list[Path],
+        ) -> list[dict[str, object]]:
+            dispatch_calls.append(paths)
+            return [self._stale_result(paths[0])]
+
+        def select_then_advance(
+            root: Path,
+            current_campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            self._refresh_v2_source_binding(
+                current_campaign, campaign_source, before=9, focus_result=0
+            )
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": selected,
+            }
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select_then_advance,
+            ),
+            patch.object(owner_campaign, "run_loop", side_effect=dispatch),
+        ):
+            result = lane.run_inbox(self.root, campaign)
+
+        self.assertEqual(dispatch_calls, [[descriptor_path]])
+        self.assertEqual(result["status"], "processed")
+        self.assertEqual(result["results"][0]["status"], lane.REBASED_STATUS)
+        self.assertEqual(result["results"][0]["rebase_depth"], 1)
+        new_descriptor = self.root / result["results"][0]["new_descriptor"]
+        self.assertTrue(new_descriptor.is_file())
+        self.assertFalse(descriptor_path.exists())
+        new_candidate = self.root / result["results"][0]["new_candidate"]
+        self.assertEqual(
+            new_candidate.read_text(encoding="utf-8"),
+            "int before = 9;\n\n"
+            "int focus(void) {\n"
+            "    return 1;\n"
+            "}\n"
+            "int after = 2;\n",
+        )
+        new_descriptor_body = json.loads(new_descriptor.read_text(encoding="utf-8"))
+        self.assertEqual(new_descriptor_body["rebase_depth"], 1)
+        self.assertEqual(
+            new_descriptor_body["base_source"]["sha256"],
+            owner_campaign._digest_file(new_descriptor.parent / "base.c"),
+        )
+        self.assertEqual(len(self._find_rebase_tombstones()), 1)
+        tombstone = self._find_rebase_tombstones()[0]
+        self._assert_sealed_tombstone(tombstone, status=lane.REBASED_STATUS)
+        self.assertEqual(tombstone["old_descriptor_sha256"], selected["descriptor_sha256"])
+        self.assertEqual(tombstone["new_candidate_sha256"], new_descriptor_body["candidate_source"]["sha256"])
+
+    def test_v2_overlapping_stale_candidate_is_rejected_without_retry_loop(self) -> None:
+        """Changing the named function invalidates, retires, and cannot spin."""
+
+        campaign, campaign_source, _candidate_source, descriptor_path, selected = (
+            self._v2_rebase_fixture()
+        )
+        dispatch_calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path,
+            current_campaign: dict[str, object],
+            paths: list[Path],
+        ) -> list[dict[str, object]]:
+            dispatch_calls.append(paths)
+            return [self._stale_result(paths[0])]
+
+        def select_then_overlap(
+            root: Path,
+            current_campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            self._refresh_v2_source_binding(
+                current_campaign, campaign_source, before=1, focus_result=7
+            )
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": selected,
+            }
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select_then_overlap,
+            ),
+            patch.object(owner_campaign, "run_loop", side_effect=dispatch),
+        ):
+            result = lane.run_inbox(self.root, campaign)
+
+        self.assertEqual(dispatch_calls, [[descriptor_path]])
+        self.assertEqual(result["results"][0]["status"], lane.REBASE_REJECTED_STATUS)
+        self.assertFalse(descriptor_path.exists())
+        tombstones = self._find_rebase_tombstones()
+        self.assertEqual(len(tombstones), 1)
+        self._assert_sealed_tombstone(tombstones[0], status=lane.REBASE_REJECTED_STATUS)
+
+        with patch.object(owner_campaign, "run_loop") as retry:
+            second = lane.run_inbox(self.root, campaign)
+        self.assertEqual(second["status"], "idle")
+        retry.assert_not_called()
+
+    def test_v2_rebase_depth_limit_is_sealed_and_idempotent(self) -> None:
+        """Depth five is a terminal tombstone, not an endlessly stale input."""
+
+        campaign, campaign_source, _candidate_source, descriptor_path, selected = (
+            self._v2_rebase_fixture(rebase_depth=5)
+        )
+        dispatch_calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path,
+            current_campaign: dict[str, object],
+            paths: list[Path],
+        ) -> list[dict[str, object]]:
+            dispatch_calls.append(paths)
+            return [self._stale_result(paths[0])]
+
+        def select_then_advance(
+            root: Path,
+            current_campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            self._refresh_v2_source_binding(
+                current_campaign, campaign_source, before=8, focus_result=0
+            )
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": selected,
+            }
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select_then_advance,
+            ),
+            patch.object(owner_campaign, "run_loop", side_effect=dispatch),
+        ):
+            result = lane.run_inbox(self.root, campaign)
+
+        self.assertEqual(dispatch_calls, [[descriptor_path]])
+        self.assertEqual(result["results"][0]["status"], lane.REBASE_REJECTED_STATUS)
+        self.assertFalse(descriptor_path.exists())
+        tombstones = self._find_rebase_tombstones()
+        self.assertEqual(len(tombstones), 1)
+        self._assert_sealed_tombstone(tombstones[0], status=lane.REBASE_REJECTED_STATUS)
+        self.assertEqual(tombstones[0]["rebase_depth"], 5)
+
+        with patch.object(owner_campaign, "run_loop") as retry:
+            second = lane.run_inbox(self.root, campaign)
+        self.assertEqual(second["status"], "idle")
+        retry.assert_not_called()
+
+    def test_loaded_campaign_concurrently_rebases_two_disjoint_stale_cells(self) -> None:
+        """Real snapshots/proposals refresh source and publish tombstones once."""
+
+        source = self.root / "src" / "owner.c"
+        source.parent.mkdir()
+        source.write_text(
+            "int focus(void) { /* BASE */ return 0; }\n"
+            "int other(void) { /* BASE */ return 0; }\n"
+            "int anchor(void) { return 0; }\n",
+            encoding="utf-8",
+        )
+        target = self.root / "build" / "evidence" / "target.o"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"target")
+        toolchain = self.root / "build" / "evidence" / "toolchain.json"
+        toolchain.write_text("{}\n", encoding="utf-8")
+        hook = self.root / "hook.py"
+        # Make physical row identity source-bound.  A disjoint TU edit then
+        # exercises the production unmatched-physical downgrade path while
+        # strict/data row identities remain remappable.
+        hook.write_text(
+            CAMPAIGN_HOOK.replace(
+                '"physical_difference_ids": [f"physical:{index}" for index in range(physical)],',
+                '"physical_difference_ids": [f"physical:{index}:sha256={hashlib.sha256((source_sha + str(index)).encode()).hexdigest()}" for index in range(physical)],',
+            ),
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "config", "core.autocrlf", "false"], cwd=self.root, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.invalid"],
+            cwd=self.root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Lane Test"], cwd=self.root, check=True
+        )
+        subprocess.run(["git", "add", "src/owner.c", "hook.py"], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "fixture"], cwd=self.root, check=True)
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
+        ).strip()
+        manifest_path = self.root / "build" / "campaign.json"
+        manifest_body: dict[str, object] = {
+            "schema": owner_campaign.CAMPAIGN_SCHEMA,
+            "campaign_id": "loaded-lane-rebase-v2",
+            "owner": "main:test/owner",
+            "unit": "main/test/owner",
+            "source_relpath": "src/owner.c",
+            "base_commit": commit,
+            "target_object": {
+                "path": "build/evidence/target.o",
+                "sha256": _digest(b"target"),
+            },
+            "toolchain": {
+                "path": "build/evidence/toolchain.json",
+                "sha256": owner_campaign._digest_file(toolchain),
+            },
+            "measurement_producer": {
+                "path": "hook.py",
+                "sha256": owner_campaign._digest_file(hook),
+            },
+            "functions": ["focus", "other", "anchor"],
+            "protected_exact_functions": ["anchor"],
+            "allowed_source_paths": ["src/owner.c"],
+            "allowed_build_paths": ["build"],
+            "forbidden_constructs": [r"\b(?:asm|volatile|register)\b", r"#\s*pragma"],
+            "commands": {
+                phase: {
+                    "argv": [
+                        sys.executable,
+                        "{MEASUREMENT_PRODUCER}",
+                        "{SOURCE}",
+                        f"build/hook/{phase}.json",
+                        "{ROOT}/build/invocations.log",
+                    ],
+                    "measurement_relpath": f"build/hook/{phase}.json",
+                }
+                for phase in ("snapshot", "candidate", "final_owner")
+            },
+            "cancellation_epoch": 1,
+            "limits": {
+                "command_timeout_seconds": 20,
+                "scratch_soft_bytes": 32 << 20,
+                "scratch_hard_bytes": 64 << 20,
+                "cell_temporary_bytes": 1 << 20,
+                "focus_evidence_bytes": 256 << 10,
+                "frontier_bytes": 64 << 10,
+                "report_bytes": 64 << 10,
+                "dedupe_bytes": 1 << 20,
+                "owner_state_bytes": 16 << 20,
+            },
+        }
+        manifest = _seal(manifest_body, "manifest_sha256")
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        campaign = owner_campaign.load_campaign(self.root, manifest_path)
+
+        descriptors: list[Path] = []
+        for function, replacement in (("focus", "return 1"), ("other", "return 2")):
+            frontier = owner_campaign.snapshot_frontier(self.root, campaign, function)
+            focus_path, focus_sha, focus = lane._focus_artifact_for_proposal(
+                self.root, campaign, function, frontier
+            )
+            _physical_path, _physical_sha, physical = lane._physical_cas_for_proposal(
+                self.root, campaign, frontier, focus_path, focus_sha, focus
+            )
+            strict_rows, data_rows, physical_rows = (
+                lane.owner_campaign_selector._artifact_row_groups(focus, physical)
+            )
+            predicted_rows = lane.owner_campaign_selector._ordered_union(
+                strict_rows, data_rows, physical_rows
+            )
+            candidate = self.root / "build" / "candidates" / f"{function}.c"
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.write_text(
+                source.read_text(encoding="utf-8").replace(
+                    f"int {function}(void) {{ /* BASE */ return 0; }}",
+                    f"int {function}(void) {{ /* BASE */ {replacement}; }}",
+                ),
+                encoding="utf-8",
+            )
+            proposal = lane.propose_candidate(
+                self.root,
+                campaign,
+                function,
+                candidate,
+                f"{function}-winning-cell",
+                expected_terminal="improved",
+                predicted_rows=predicted_rows,
+                predicted_remaining_counts={"strict": 0, "data": 0, "physical": 0},
+            )
+            descriptors.append(self.root / proposal["candidate_descriptor"])
+
+        dispatch_barrier = threading.Barrier(2, timeout=5)
+        source_advanced = threading.Event()
+
+        def stale_dispatch(
+            root: Path,
+            current_campaign: dict[str, object],
+            path: Path,
+            *,
+            worker: int,
+        ) -> dict[str, object]:
+            descriptor = json.loads(path.read_text(encoding="utf-8"))
+            dispatch_barrier.wait()
+            if descriptor["function"] == "focus":
+                source.write_text(
+                    source.read_text(encoding="utf-8").replace(
+                        "int anchor(void) { return 0; }",
+                        "int anchor(void) { return 9; }",
+                    ),
+                    encoding="utf-8",
+                )
+                source_advanced.set()
+            else:
+                self.assertTrue(source_advanced.wait(timeout=5))
+            return self._stale_result(path, function=str(descriptor["function"]))
+
+        with (
+            patch.object(lane, "_dispatch_selected_candidate", side_effect=stale_dispatch),
+            patch.object(
+                owner_campaign,
+                "snapshot_frontier",
+                wraps=owner_campaign.snapshot_frontier,
+            ) as snapshots,
+            patch.object(lane, "_post_pipeline_maintenance") as maintenance,
+        ):
+            result = lane.run_inbox(self.root, campaign, _pre_discovered=descriptors)
+
+        maintenance.assert_called_once_with(self.root, campaign, result["results"])
+        self.assertEqual(snapshots.call_count, 2)
+        self.assertTrue(
+            all(
+                invocation.kwargs.get("_defer_maintenance") is True
+                for invocation in snapshots.call_args_list
+            )
+        )
+        self.assertEqual([item["status"] for item in result["results"]], [
+            lane.REBASED_STATUS,
+            lane.REBASED_STATUS,
+        ], result)
+        self.assertEqual([item["function"] for item in result["results"]], [
+            "focus",
+            "other",
+        ])
+        for item in result["results"]:
+            descriptor = json.loads(
+                (self.root / item["new_descriptor"]).read_text(encoding="utf-8")
+            )
+            selection = json.loads(
+                (self.root / item["new_descriptor"]).with_name(
+                    "candidate.selection.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(descriptor["base_source"]["sha256"], owner_campaign._digest_file(source))
+            self.assertEqual(descriptor["rebase_depth"], 1)
+            self.assertEqual(selection["expected_terminal"], "improved")
+            self.assertFalse(any(row.startswith("physical:") for row in selection["predicted_rows"]))
+        tombstones = self._find_rebase_tombstones()
+        self.assertEqual(len(tombstones), 2)
+        self.assertEqual({item["function"] for item in tombstones}, {"focus", "other"})
+        tombstone_digests = {item["tombstone_sha256"] for item in tombstones}
+
+        with patch.object(lane, "_dispatch_selected_candidate") as retry:
+            second = lane.run_inbox(self.root, campaign, _pre_discovered=[])
+        self.assertEqual(second["status"], "idle")
+        retry.assert_not_called()
+        self.assertEqual(
+            {item["tombstone_sha256"] for item in self._find_rebase_tombstones()},
+            tombstone_digests,
+        )
+
+    def test_stale_row_remap_downgrades_unmatched_physical_identity(self) -> None:
+        old = [
+            "strict:focus:row:7:kind=DIFF_ARG_MISMATCH:target=10:candidate=12",
+            "physical:focus:row:0:sha256=" + "1" * 64,
+        ]
+        current = [
+            "strict:focus:row:7:kind=DIFF_ARG_MISMATCH:target=10:candidate=44",
+            "physical:focus:row:0:sha256=" + "2" * 64,
+        ]
+
+        self.assertEqual(lane._remap_predicted_rows(old, current), current[:1])
+        with self.assertRaisesRegex(
+            owner_campaign.CampaignError, "no current predicted rows"
+        ):
+            lane._remap_predicted_rows(old[1:], current)
+
+    def test_proposal_preparation_runs_concurrently_before_publication_lock(self) -> None:
+        """Immutable evidence work must not serialize on the frontier lock."""
+
+        campaign, campaign_source, _unused = self._proposal_fixture()
+        campaign["_source"] = campaign_source
+        campaign["limits"] = {"command_timeout_seconds": 1}
+        candidate_a = self._candidate_source("parallel-a", 1)
+        candidate_b = self._candidate_source("parallel-b", 2)
+        focus_path = self.root / "build" / "focus.json"
+        physical_path = self.root / "build" / "physical.json"
+        focus_path.write_bytes(b"focus")
+        physical_path.write_bytes(b"physical")
+        frontier = json.loads(
+            (
+                owner_campaign._function_root(self.root, campaign, "focus")
+                / "latest-frontier.json"
+            ).read_text(encoding="utf-8")
+        )
+        selection = {
+            "evidence_sha256": "a" * 64,
+            "physical_artifact": {
+                "path": physical_path.relative_to(self.root).as_posix(),
+                "sha256": _digest(physical_path.read_bytes()),
+            },
+        }
+        barrier = threading.Barrier(2, timeout=5)
+        publish_lock = threading.Lock()
+
+        class SerialLock:
+            def __enter__(self):
+                publish_lock.acquire()
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                publish_lock.release()
+                return False
+
+        def evidence(*_args, **_kwargs):
+            # Both workers must reach the expensive preparation barrier before
+            # either can enter the serialized publication phase.
+            barrier.wait()
+            return (
+                selection,
+                focus_path,
+                _digest(focus_path.read_bytes()),
+                ["strict:focus:row:1:"],
+                {"strict": 0, "data": 0, "physical": 0},
+            )
+
+        results: list[dict[str, object]] = []
+        errors: list[BaseException] = []
+
+        def worker(candidate: Path, family: str) -> None:
+            try:
+                results.append(
+                    lane.propose_candidate(
+                        self.root,
+                        campaign,
+                        "focus",
+                        candidate,
+                        family,
+                        expected_terminal="improved",
+                        predicted_rows=["strict:focus:row:1:"],
+                        predicted_remaining_counts={
+                            "strict": 0,
+                            "data": 0,
+                            "physical": 0,
+                        },
+                    )
+                )
+            except BaseException as exc:  # surfaced below with thread context
+                errors.append(exc)
+
+        with (
+            patch.object(lane, "_frontier_for_proposal", return_value=frontier),
+            patch.object(
+                lane, "_selection_evidence_for_proposal", side_effect=evidence
+            ),
+            patch.object(
+                owner_campaign,
+                "_frontier_lock_chain",
+                side_effect=lambda *_args, **_kwargs: SerialLock(),
+            ),
+        ):
+            threads = [
+                threading.Thread(target=worker, args=(candidate_a, "parallel-a")),
+                threading.Thread(target=worker, args=(candidate_b, "parallel-b")),
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=10)
+
+        self.assertFalse(errors, errors)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(
+            {result["hypothesis_family"] for result in results},
+            {"parallel-a", "parallel-b"},
+        )
+
+    def test_proposal_rejects_source_drift_after_immutable_preparation(self) -> None:
+        """A source change between preparation and publish must fail closed."""
+
+        campaign, campaign_source, candidate_source = self._proposal_fixture()
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        original_stage = lane._stage_prepared_proposal
+
+        def stage_then_drift(prepared):
+            stage = original_stage(prepared)
+            campaign_source.write_text(
+                "int before = 9;\n\n"
+                "int focus(void) { return 0; }\n"
+                "int after = 2;\n",
+                encoding="utf-8",
+            )
+            return stage
+
+        with patch.object(
+            lane, "_stage_prepared_proposal", side_effect=stage_then_drift
+        ):
+            with self.assertRaisesRegex(owner_campaign.CampaignError, "drift"):
+                lane.propose_candidate(
+                    self.root, campaign, "focus", candidate_source, "stale-after-prep"
+                )
+        self.assertFalse(
+            any(path.is_dir() for path in lane.inbox_path(self.root, campaign).iterdir())
+        )
+
+    def test_proposal_publication_retries_transient_windows_access_denied(self) -> None:
+        """A transient Windows directory-link denial does not lose the cell."""
+
+        campaign, _campaign_source, candidate_source = self._proposal_fixture()
+        candidate_source.write_text(
+            "int before = 1;\n\n"
+            "int focus(void) { return 1; }\n"
+            "int after = 2;\n",
+            encoding="utf-8",
+        )
+        real_rename = lane.os.rename
+        attempts = 0
+
+        def transient_once(source: Path, destination: Path) -> None:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                error = PermissionError("transient directory notification")
+                error.winerror = 5
+                raise error
+            real_rename(source, destination)
+
+        with (
+            patch.object(lane.os, "name", "nt"),
+            patch.object(lane.os, "rename", side_effect=transient_once),
+        ):
+            result = lane.propose_candidate(
+                self.root, campaign, "focus", candidate_source, "transient-link"
+            )
+
+        self.assertEqual(attempts, 2)
+        self.assertEqual(result["status"], "queued")
+        self.assertTrue((self.root / result["candidate_descriptor"]).is_file())
 
 
 if __name__ == "__main__":

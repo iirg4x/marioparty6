@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -36,10 +37,16 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.inbox = lane.inbox_path(self.root, self.campaign)
         self.inbox.mkdir(parents=True)
         (self.root / "build" / "candidates").mkdir(parents=True)
+        self.base_source = self.root / "build" / "candidates" / "frontier.base.c"
+        self.base_source.write_text(
+            "int focus(void) { return 0; } /* frontier base */\n",
+            encoding="utf-8",
+        )
+        base_source_sha = _sha_bytes(self.base_source.read_bytes())
         frontier_body: dict[str, object] = {
             "function": "focus",
             "unit": "main/test",
-            "source_sha256": "a" * 64,
+            "source_sha256": base_source_sha,
             "toolchain_sha256": "b" * 64,
         }
         self.frontier = _seal(frontier_body, "frontier_sha256")
@@ -66,18 +73,25 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         predicted_counts: dict[str, int] | None = None,
         ownership_complete: bool = True,
         source_class: str = "direct_semantic_owner",
+        function: str = "focus",
+        frontier: dict[str, object] | None = None,
     ) -> tuple[Path, Path, Path]:
+        frontier = frontier or self.frontier
         residual = residual if residual is not None else ["strict:focus:row:1"]
         predicted = predicted if predicted is not None else list(residual)
         predicted_counts = predicted_counts or {"strict": 0, "data": 0, "physical": 0}
         source = self.root / "build" / "candidates" / f"{name}.c"
-        source.write_text(f"int focus(void) {{ return 0; }} /* {name} */\n", encoding="utf-8")
+        source.write_text(f"int {function}(void) {{ return 0; }} /* {name} */\n", encoding="utf-8")
         source_sha = _sha_bytes(source.read_bytes())
         descriptor_body: dict[str, object] = {
             "schema": owner_campaign.CANDIDATE_SCHEMA,
             "campaign_id": self.campaign["campaign_id"],
-            "function": "focus",
-            "base_frontier_sha256": self.frontier["frontier_sha256"],
+            "function": function,
+            "base_frontier_sha256": frontier["frontier_sha256"],
+            "base_source": {
+                "path": self.base_source.relative_to(self.root).as_posix(),
+                "sha256": frontier["source_sha256"],
+            },
             "candidate_source": {
                 "path": source.relative_to(self.root).as_posix(),
                 "sha256": source_sha,
@@ -87,11 +101,12 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
                 "base_end_line": 1,
                 "candidate_start_line": 1,
                 "candidate_end_line": 1,
-                "base_sha256": source_sha,
+                "base_sha256": frontier["source_sha256"],
                 "candidate_sha256": source_sha,
             },
             "hypothesis_family": f"family-{name}",
             "natural_c": True,
+            "rebase_depth": 0,
             "created_at": "2026-08-31T00:00:00Z",
         }
         descriptor = self.inbox / f"{name}.json"
@@ -120,7 +135,7 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
             "campaign_id": self.campaign["campaign_id"],
             "owner": self.campaign["owner"],
             "unit": self.campaign["unit"],
-            "function": "focus",
+            "function": function,
             "rank": rank,
             "source_class": source_class,
             "candidate": {
@@ -128,14 +143,14 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
                 "sha256": source_sha,
             },
             "frontier": {
-                "sha256": self.frontier["frontier_sha256"],
-                "source_sha256": self.frontier["source_sha256"],
-                "function": "focus",
+                "sha256": frontier["frontier_sha256"],
+                "source_sha256": frontier["source_sha256"],
+                "function": function,
                 "unit": self.campaign["unit"],
-                "toolchain_sha256": self.frontier["toolchain_sha256"],
+                "toolchain_sha256": frontier["toolchain_sha256"],
             },
-            "source_sha256": self.frontier["source_sha256"],
-            "toolchain_sha256": self.frontier["toolchain_sha256"],
+            "source_sha256": frontier["source_sha256"],
+            "toolchain_sha256": frontier["toolchain_sha256"],
             "focus_artifact": {
                 "path": focus.relative_to(self.root).as_posix(),
                 "sha256": focus_sha,
@@ -160,6 +175,7 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
     def _write_outcome(
         self, *, status: str, source_class: str = "direct_semantic_owner",
         predicted: list[str] | None = None,
+        candidate_sha: str = "d" * 64,
     ) -> Path:
         predicted = predicted if predicted is not None else ["strict:focus:row:1"]
         body: dict[str, object] = {
@@ -173,13 +189,14 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
             "source_class": source_class,
             "predicted_rows": predicted,
             "predicted_row_group_sha256": selector._row_group_digest(predicted),
-            "candidate_source_sha256": "d" * 64,
+            "candidate_source_sha256": candidate_sha,
             "candidate_object_sha256": "e" * 64,
         }
         record = _seal(body, "outcome_sha256")
         path = selector.selection_outcome_ledger_path(self.root, self.campaign, "focus")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, sort_keys=True) + "\n")
         return path
 
     def test_one_valid_proposal_among_five_dispatches_only_one(self) -> None:
@@ -259,6 +276,85 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertFalse(consumed[0].exists())
         self.assertFalse(consumed[1].exists())
         self.assertTrue(preserved[1].exists())
+
+    def test_proposal_validation_uses_bounded_concurrent_workers(self) -> None:
+        proposals = [self._proposal(f"parallel-{index}")[0] for index in range(5)]
+        barrier = threading.Barrier(len(proposals), timeout=5)
+        worker_ids: set[int] = set()
+        original = selector._validate_proposal
+
+        def validate(*args: object, **kwargs: object) -> dict[str, object]:
+            worker_ids.add(threading.get_ident())
+            barrier.wait()
+            return original(*args, **kwargs)  # type: ignore[arg-type]
+
+        with patch.object(selector, "_validate_proposal", side_effect=validate):
+            result = selector.select_winning_candidate(self.root, self.campaign, proposals)
+
+        self.assertEqual(result["status"], selector.SELECTED)
+        self.assertEqual(len(worker_ids), len(proposals))
+        self.assertLessEqual(len(worker_ids), selector.MAX_VALIDATION_WORKERS)
+
+    def test_parallel_validation_keeps_selection_and_error_order_deterministic(self) -> None:
+        proposals = [
+            self._proposal("stable-winner")[0],
+            self._proposal("stable-invalid", ownership_complete=False)[0],
+            self._proposal("stable-lower", rank=2)[0],
+        ]
+        original = selector._validate_proposal
+
+        def run_with_concurrent_barrier() -> dict[str, object]:
+            barrier = threading.Barrier(len(proposals), timeout=5)
+
+            def validate(*args: object, **kwargs: object) -> dict[str, object]:
+                barrier.wait()
+                return original(*args, **kwargs)  # type: ignore[arg-type]
+
+            with patch.object(selector, "_validate_proposal", side_effect=validate):
+                return selector.select_winning_candidate(self.root, self.campaign, proposals)
+
+        first = run_with_concurrent_barrier()
+        second = run_with_concurrent_barrier()
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["status"], selector.SELECTED)
+        self.assertEqual(
+            [
+                item["descriptor_relative"]
+                for item in first["eligible"]
+                if "descriptor_relative" in item
+            ],
+            [proposals[0].relative_to(self.root).as_posix()],
+        )
+        self.assertEqual(
+            [item["descriptor"] for item in first["eligible"] if "reason" in item],
+            [
+                proposals[1].relative_to(self.root).as_posix(),
+                proposals[2].relative_to(self.root).as_posix(),
+            ],
+        )
+
+    def test_candidate_missing_base_source_is_rejected(self) -> None:
+        descriptor, _source, _sidecar = self._proposal("missing-base-source")
+        value = json.loads(descriptor.read_text(encoding="utf-8"))
+        value.pop("base_source")
+        descriptor.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
+
+        result = selector.select_winning_candidate(self.root, self.campaign, [descriptor])
+
+        self.assertEqual(result["status"], selector.UNKNOWN)
+        self.assertIn("candidate descriptor is not a closed object", result["reason"])
+
+    def test_candidate_base_source_hash_drift_is_rejected(self) -> None:
+        descriptor, _source, _sidecar = self._proposal("drifted-base-source")
+        value = json.loads(descriptor.read_text(encoding="utf-8"))
+        base_path = self.root / value["base_source"]["path"]
+        base_path.write_text("int focus(void) { return 1; }\n", encoding="utf-8")
+
+        result = selector.select_winning_candidate(self.root, self.campaign, [descriptor])
+
+        self.assertEqual(result["status"], selector.UNKNOWN)
+        self.assertIn("candidate base source hash drift", result["reason"])
 
     def test_predicted_row_outside_current_residual_dispatches_zero(self) -> None:
         descriptor, source, sidecar = self._proposal(
@@ -358,6 +454,206 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertEqual(selection["selected"]["selection_key_sha256"], selector._selection_key(
             self.frontier["frontier_sha256"], "direct_semantic_owner", ["strict:focus:row:1"]
         ))
+
+    def test_terminal_no_gain_outcome_survives_sidecar_cleanup(self) -> None:
+        descriptor, source, sidecar = self._proposal("recorded")
+
+        def dispatch(
+            root: Path, campaign: dict[str, object], paths: list[Path]
+        ) -> list[dict[str, object]]:
+            return [{
+                "status": "no_gain",
+                "candidate_key": "candidate-key",
+                "authority_advanced": False,
+            }]
+
+        with patch.object(owner_campaign, "run_loop", side_effect=dispatch):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(result["results"][0]["status"], "no_gain")
+        self.assertFalse(descriptor.exists())
+        self.assertFalse(source.exists())
+        self.assertFalse(sidecar.exists())
+        ledger = selector.selection_outcome_ledger_path(
+            self.root, self.campaign, "focus"
+        )
+        records = selector._ledger_records(ledger)
+        self.assertEqual(len(records), 1)
+        record = records[0]
+        self.assertEqual(record["status"], "no_gain")
+        self.assertEqual(record["source_class"], "direct_semantic_owner")
+        self.assertEqual(record["predicted_rows"], ["strict:focus:row:1"])
+        self.assertEqual(record["selection_key_sha256"], result["selection"]["selected"]["selection_key_sha256"])
+        self.assertNotIn("candidate_source_path", record)
+        self.assertNotIn("candidate_object_path", record)
+
+    def test_selection_outcome_append_is_idempotent_after_recovery(self) -> None:
+        descriptor, _source, _sidecar = self._proposal("idempotent")
+        selection_result = selector.select_winning_candidate(
+            self.root, self.campaign, [descriptor]
+        )
+        selection = selection_result["selected"]
+        result = {
+            "status": "no_gain",
+            "result_sha256": "f" * 64,
+            "authority_advanced": False,
+        }
+
+        first = selector.append_selection_outcome(
+            self.root, self.campaign, selection, result
+        )
+        recovered = selector.append_selection_outcome(
+            self.root, self.campaign, selection, result
+        )
+
+        self.assertEqual(recovered, first)
+        ledger = selector.selection_outcome_ledger_path(
+            self.root, self.campaign, "focus"
+        )
+        self.assertEqual(len(selector._ledger_records(ledger)), 1)
+
+    def test_function_no_gain_budget_pivots_after_six_compiles(self) -> None:
+        classes = [
+            "index-owner", "base-owner", "result-owner", "aggregate-owner",
+            "call-owner", "lifetime-owner", "loop-owner", "field-owner",
+            "cursor-owner", "scalar-owner", "vector-owner", "return-owner",
+        ]
+        for index, source_class in enumerate(classes):
+            self._proposal(
+                f"budget-{index:02d}",
+                residual=[f"strict:focus:row:{index + 1}"],
+                predicted=[f"strict:focus:row:{index + 1}"],
+                predicted_counts={"strict": 0, "data": 0, "physical": 0},
+                source_class=source_class,
+            )
+
+        compile_calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path, campaign: dict[str, object], paths: list[Path]
+        ) -> list[dict[str, object]]:
+            compile_calls.append(paths)
+            return [{"status": "no_gain", "authority_advanced": False}]
+
+        with patch.object(owner_campaign, "run_loop", side_effect=dispatch):
+            for _ in range(6):
+                result = lane.run_inbox(self.root, self.campaign)
+            blocked = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(len(compile_calls), 6)
+        self.assertEqual(blocked["status"], "pivot_required")
+        self.assertEqual(blocked["dispatched"], 0)
+        self.assertIn("function no_gain budget exhausted", blocked["reason"])
+
+    def test_hypothesis_family_budget_closes_after_two_cosmetic_variants(self) -> None:
+        proposals = []
+        for index, source_class in enumerate(("owner-birth-v1", "owner-birth-v2", "owner-birth-v3")):
+            proposals.append(self._proposal(
+                f"family-{index}",
+                residual=[f"strict:focus:row:{index + 1}"],
+                predicted=[f"strict:focus:row:{index + 1}"],
+                predicted_counts={"strict": 0, "data": 0, "physical": 0},
+                source_class=source_class,
+            )[0])
+
+        calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path, campaign: dict[str, object], paths: list[Path]
+        ) -> list[dict[str, object]]:
+            calls.append(paths)
+            return [{"status": "no_gain", "authority_advanced": False}]
+
+        with patch.object(owner_campaign, "run_loop", side_effect=dispatch):
+            lane.run_inbox(self.root, self.campaign)
+            lane.run_inbox(self.root, self.campaign)
+            blocked = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(blocked["status"], "pivot_required")
+        self.assertIn("hypothesis family no_gain budget exhausted", blocked["reason"])
+        self.assertEqual(
+            selector.normalize_source_class("owner-birth-v1"),
+            selector.normalize_source_class("owner-birth-v2"),
+        )
+
+    def test_improved_frontier_resets_no_gain_budget(self) -> None:
+        self._proposal("old-frontier", source_class="old-owner")
+        calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path, campaign: dict[str, object], paths: list[Path]
+        ) -> list[dict[str, object]]:
+            calls.append(paths)
+            return [{"status": "no_gain", "authority_advanced": False}]
+
+        with patch.object(owner_campaign, "run_loop", side_effect=dispatch):
+            lane.run_inbox(self.root, self.campaign)
+            old_body = dict(self.frontier)
+            old_body.pop("frontier_sha256", None)
+            old_body["generation"] = 1
+            new_frontier = _seal(old_body, "frontier_sha256")
+            self.frontier = new_frontier
+            self.campaign["_selection_frontier"] = new_frontier
+            self._proposal("new-frontier", source_class="new-owner")
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(result["dispatched"], 1)
+        self.assertEqual(result["results"][0]["status"], "no_gain")
+
+    def test_cross_function_selection_continues_when_first_frontier_is_exhausted(self) -> None:
+        self.campaign["functions"] = ["focus", "other"]
+        other_body: dict[str, object] = {
+            "function": "other",
+            "unit": "main/test",
+            "source_sha256": self.frontier["source_sha256"],
+            "toolchain_sha256": "b" * 64,
+        }
+        other_frontier = _seal(other_body, "frontier_sha256")
+        self.campaign["_selection_frontiers"] = {
+            "focus": self.frontier,
+            "other": other_frontier,
+        }
+        self._proposal(
+            "focus-next",
+            residual=["strict:focus:row:99"],
+            predicted=["strict:focus:row:99"],
+            predicted_counts={"strict": 0, "data": 0, "physical": 0},
+            source_class="focus-owner",
+        )
+        self._proposal(
+            "other-next",
+            function="other",
+            frontier=other_frontier,
+            residual=["strict:other:row:1"],
+            predicted=["strict:other:row:1"],
+            predicted_counts={"strict": 0, "data": 0, "physical": 0},
+            source_class="other-owner",
+        )
+        for index in range(6):
+            self._write_outcome(
+                status="no_gain",
+                source_class=f"closed-{index}",
+                predicted=[f"strict:focus:row:{index + 10}"],
+                candidate_sha=f"{index + 1:064x}",
+            )
+        # The six seeded rows are function-scoped to focus and do not overlap
+        # the eligible focus proposal; they exhaust only that frontier.
+        calls: list[list[Path]] = []
+
+        def dispatch(
+            root: Path, campaign: dict[str, object], paths: list[Path]
+        ) -> list[dict[str, object]]:
+            calls.append(paths)
+            return [{"status": "no_gain", "authority_advanced": False}]
+
+        with patch.object(owner_campaign, "run_loop", side_effect=dispatch):
+            result = lane.run_inbox(self.root, self.campaign)
+
+        self.assertEqual(result["dispatched"], 1)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0][0].name.startswith("other-next"))
 
 
 if __name__ == "__main__":

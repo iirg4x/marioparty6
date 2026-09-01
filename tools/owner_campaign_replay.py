@@ -1404,7 +1404,8 @@ def _build_manifest(
 
 def _candidate_descriptor(
     spec: Mapping[str, Any], campaign: Mapping[str, Any], frontier: Mapping[str, Any],
-    path: str, sha256: str, function_span: Mapping[str, Any],
+    path: str, sha256: str, function_span: Mapping[str, Any], *,
+    base_path: str, base_sha256: str, rebase_depth: int = 0,
 ) -> dict[str, Any]:
     function = spec.get("function")
     if not isinstance(function, str) or not function:
@@ -1416,10 +1417,12 @@ def _candidate_descriptor(
         "campaign_id": campaign["campaign_id"],
         "function": function,
         "base_frontier_sha256": frontier["frontier_sha256"],
+        "base_source": {"path": base_path, "sha256": base_sha256},
         "candidate_source": {"path": path, "sha256": sha256},
         "function_span": dict(function_span),
         "hypothesis_family": f"historical-replay-{function}",
         "natural_c": True,
+        "rebase_depth": rebase_depth,
         "created_at": _now(),
     }
     return {**body, "candidate_sha256": _sha_json(body)}
@@ -2119,6 +2122,8 @@ def _verify_replay_inputs(
     )
     for label, key, expected in checks:
         path = Path(str(prepared[key]))
+        if label == "base source" and allow_candidate_cleanup and not path.exists():
+            continue
         try:
             actual = _sha_file(_real_file(path, label))
         except ReplayError as exc:
@@ -2255,6 +2260,8 @@ def _run_replay_once(
         candidate_path.relative_to(worktree).as_posix(),
         str(prepared["candidate_source_sha256"]),
         prepared["function_span"],
+        base_path=Path(str(prepared["base_path"])).relative_to(worktree).as_posix(),
+        base_sha256=str(prepared["base_source_sha256"]),
     )
     descriptor_path = worktree / "build/owner-replay/candidate.json"
     _write_json(descriptor_path, descriptor)

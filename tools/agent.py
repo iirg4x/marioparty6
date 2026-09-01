@@ -1033,6 +1033,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
         ("initialize", ["init"]),
         ("status", []),
         ("snapshot", []),
+        ("reconstruct", ["context"]),
         ("run", []),
         ("propose", ["submit"]),
         ("import", ["migrate"]),
@@ -1044,6 +1045,7 @@ def _add_owner_campaign_commands(parser: argparse.ArgumentParser) -> None:
                 "initialize": "create an owner-scoped campaign manifest",
                 "status": "inspect campaign state and recover pending frontiers",
                 "snapshot": "establish or read the current compact frontier",
+                "reconstruct": "read the current target-first reconstruction packet",
                 "run": "run the autonomous owner campaign loop",
                 "propose": "queue one current-frontier-bound natural-C candidate",
                 "import": "import authenticated legacy exact receipts and compiled dedupe outcomes",
@@ -1087,6 +1089,12 @@ def _add_owner_campaign_parser(
                     help="queue one current-frontier-bound natural-C candidate",
                 )
                 _add_owner_campaign_command_arguments(propose, "propose")
+                reconstruct = action.add_parser(
+                    "reconstruct",
+                    aliases=["context"],
+                    help="read the current target-first reconstruction packet",
+                )
+                _add_owner_campaign_command_arguments(reconstruct, "reconstruct")
                 break
     return parser
 
@@ -1343,6 +1351,47 @@ def _run_owner_campaign_snapshot(
     return _print_owner_campaign_result(compact)
 
 
+def _run_owner_campaign_reconstruct(
+    args: argparse.Namespace, *, root: Path, module: Any
+) -> int:
+    """Summarize the current target-first packet without compiling."""
+
+    campaign_path = _campaign_path(args)
+    if campaign_path is None:
+        raise OwnerCampaignCLIError(
+            "owner campaign reconstruct requires --campaign"
+        )
+    functions = list(getattr(args, "functions", None) or [])
+    if len(functions) != 1:
+        raise OwnerCampaignCLIError(
+            "owner campaign reconstruct requires exactly one --function"
+        )
+    loader = getattr(module, "load_campaign", None)
+    if not callable(loader):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose load_campaign"
+        )
+    snapshotter = getattr(module, "snapshot_frontier", None)
+    if not callable(snapshotter):
+        raise OwnerCampaignCLIError(
+            "tools.owner_campaign does not expose snapshot_frontier"
+        )
+    campaign = loader(root, campaign_path)
+    from tools.owner_campaign_lane import reconstruct_frontier
+
+    try:
+        value = reconstruct_frontier(
+            root,
+            campaign,
+            functions[0],
+            snapshotter=snapshotter,
+        )
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"error: {exc}")
+        return 2
+    return _print_owner_campaign_result(value)
+
+
 def _run_owner_campaign_command(
     args: argparse.Namespace, *, root: Path
 ) -> int:
@@ -1350,7 +1399,9 @@ def _run_owner_campaign_command(
     operation = getattr(args, "owner_campaign_operation", None) or (
         "run" if getattr(args, "crack_command", None) == "loop" else None
     )
-    if operation not in {"initialize", "status", "snapshot", "run", "propose", "import"}:
+    if operation not in {
+        "initialize", "status", "snapshot", "reconstruct", "run", "propose", "import"
+    }:
         raise OwnerCampaignCLIError("owner campaign operation is missing")
 
     if operation == "initialize":
@@ -1441,6 +1492,9 @@ def _run_owner_campaign_command(
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"error: {exc}")
             return 2
+
+    if operation == "reconstruct":
+        return _run_owner_campaign_reconstruct(args, root=root, module=module)
 
     # A normal Sol lane does not pass cells through the manager CLI.  When no
     # explicit descriptor is supplied, consume the compact per-campaign inbox
@@ -1615,7 +1669,8 @@ def main() -> int:
             return run_match_command(args, root=root)
         if args.command in {"owner-campaign", "campaign", "owner_campaign"} or (
             args.command == "crack"
-            and getattr(args, "crack_command", None) in {"loop", "propose", "submit"}
+            and getattr(args, "crack_command", None)
+            in {"loop", "propose", "submit", "reconstruct", "context"}
         ):
             return _run_owner_campaign_command(
                 args,

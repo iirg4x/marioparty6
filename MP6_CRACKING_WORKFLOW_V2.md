@@ -14,15 +14,27 @@ This one manifest replaces global `STOP`, per-cell HMAC permits, manager-issued 
 
 ## Lane topology
 
-One Sol orchestrator is the sole live-source writer. Five Luna/max subagents run concurrently as end-to-end crackers rather than auditors:
+One Sol orchestrator is the sole live-source writer. Up to five Luna/max
+workers run concurrently as end-to-end crackers, each attached to a distinct
+open function or bounded decomposition region of a broad function. They are
+not approval auditors or five same-function probe slots. Each function gets at
+most one evidence-ranked winning cell in a dispatch batch.
 
-1. CFG, frame, size, switch, branch, and loop topology.
-2. Lifetime, stack ownership, saved-register allocation, and declaration chronology.
-3. Expression trees, operand scheduling, casts, promotions, and constant folding.
-4. ABI, prototypes, inline boundaries, definition visibility, headers, and TU chronology.
-5. Static data, pools, strings, relocations, section ownership, and linked layout.
+The available evidence classes are structural CFG/frame/topology; lifetime,
+stack ownership, saved-register allocation, and declaration chronology;
+expression trees, operand scheduling, casts, promotions, and constant folding;
+ABI, prototypes, inline boundaries, definition visibility, headers, and TU
+chronology; and static data, pools, strings, relocations, section ownership,
+and linked layout. These classes rank a function's one candidate; they do not
+force a serialized syntax matrix.
 
-Each helper may inspect evidence, create an isolated overlay, compile, measure, and propose retention. Helpers do not wait for the manager or another helper. The Sol parent adopts a winner through frontier compare-and-swap.
+Each worker may inspect target-first evidence, create an isolated overlay,
+compile, measure, and prove its candidate. Baselines, reconstruction,
+proposal validation, candidate compilation, and proof hooks overlap across
+distinct functions. Workers do not wait for the manager or another worker.
+The Sol parent adopts each winner through per-function frontier
+compare-and-swap; only short live-source/frontier retention and final linking
+are serialized.
 
 ## State machine
 
@@ -38,18 +50,35 @@ EXACT(function) -> compact CRACK_REPORT/v1 -> next function
 all functions exact -> source-link -> protected-sibling -> full-owner/link proof
 ```
 
-`SNAPSHOT` compiles the current frontier once and caches compact focus evidence by `(frontier source, target object, toolchain, unit)`. Candidate cells compile only their candidate. Unrelated functions build concurrently in isolated roots. Only live-source/frontier publication and final linking are serialized.
+`SNAPSHOT` compiles each current frontier once and caches compact focus
+evidence by `(frontier source, target object, toolchain, unit)`. Each function
+is an independent streaming pipeline: as soon as its selector has one winner
+and its own snapshot is ready, that candidate compiles and runs proof hooks in
+an isolated root without waiting for unrelated selectors or snapshots. Up to
+five function pipelines run at once. Storage/GC maintenance runs once after the
+batch. Only short live-source/frontier publication and final linking are
+serialized.
 
 ## Cracking loop
 
-1. Select the most crackable remaining function from current evidence.
-2. Reduce it to the earliest independent cause, not a percentage or a full mismatch list.
-3. Give each helper a distinct hypothesis family.
-4. Compile the first evidence-backed natural-C candidate immediately.
-5. Measure strict, data, size, physical relocations, and protected siblings once.
-6. Retain a safe gain atomically; discard and fingerprint a neutral or regression.
-7. Continue from retained source without reconstructing or reauthorizing it.
-8. When exact, run the proof ladder and emit the report automatically.
+1. Select up to five distinct most-crackable functions, or bounded
+   decomposition regions for broad functions, from current target-first
+   evidence.
+2. Reduce each to its earliest independent cause, not a percentage or a full
+   mismatch list.
+3. Rank one natural-C winning cell per selected function; do not fill unused
+   slots with same-function alternatives.
+4. Compile the first target-backed candidate for each selected function
+   immediately.
+5. Measure strict, data, size, physical relocations, and protected siblings
+   concurrently across the isolated functions.
+6. Retain each safe gain atomically; discard and fingerprint a neutral or
+   regression.
+7. Continue each function from its retained source without reconstructing or
+   reauthorizing another function's frontier. Broad residuals decompose while
+   other functions continue.
+8. When any function is exact, run its proof ladder and emit its report without
+   blocking the other functions.
 
 No declaration matrices, negative controls, or failure-explanation campaigns are required. A failed hypothesis is useful only as a compact dedupe constraint.
 
@@ -59,7 +88,14 @@ Large functions may require many retained turns. A partial gain is never rolled 
 
 A candidate is retainable only when protected exact siblings have zero losses, already-exact channels remain exact, strict/data/physical differences and absolute data-size error do not increase, and at least one strict row, data row, size distance, or physical distance improves. Source must remain natural C and all source/target/toolchain bindings must remain valid.
 
-Keep one live champion and at most two speculative Pareto frontiers per function. Stale candidates rebase and remeasure before adoption. Neutral or regressing candidates never change live source.
+Keep one live champion and at most two speculative Pareto frontiers per
+function. A stale candidate is revalidated against its immutable base. When
+the named function is unchanged, the lane composes it onto the current source,
+refreshes baseline and residual evidence concurrently with the other stale
+functions, and queues it again. A compact self-hashed tombstone makes the
+handoff idempotent. Overlapping edits and ambiguous residual remaps are retired
+without a retry loop. Neutral or regressing candidates never change live
+source.
 
 Exact means equal function bytes and size, strict/data 100% with zero focus rows, exact physical relocations and effective targets, zero protected-sibling losses, and valid source/object/target/toolchain hashes. Percent alone is never exact.
 
@@ -68,7 +104,8 @@ Exact means equal function bytes and size, strict/data 100% with zero focus rows
 The 30-minute budget is a watchdog, not an approval boundary:
 
 - 0–2 minutes: load or create the cached frontier snapshot.
-- 2–12 minutes: first five parallel cracking attempts.
+- 2–12 minutes: first parallel batch of up to five distinct function/region
+  winners.
 - 12–15 minutes: adopt gains immediately and rebase remaining work.
 - 15–25 minutes: second wave on new causes or another function.
 - 25–30 minutes: exact proof/report or automatic role/function rotation.
@@ -89,7 +126,7 @@ owners/<owner>/exact-manifest.json
 
 The tracked source is the frontier source; do not duplicate it in retained state.
 
-- scratch: 128 MiB soft, 256 MiB hard;
+- scratch: 384 MiB soft, 512 MiB hard;
 - one cell temporary output: 64 MiB;
 - compact focus evidence: 256 KiB;
 - transient measurement envelope (focus plus bound proof bodies): 16 MiB, deleted after CAS;

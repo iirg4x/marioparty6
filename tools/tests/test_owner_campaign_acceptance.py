@@ -294,11 +294,17 @@ class OwnerCampaignAcceptanceTests(unittest.TestCase):
         )
         base_span = self.source.read_bytes()
         candidate_span = source.read_bytes()
+        base_source = self.root / "build" / "candidates" / f"{name}.base.c"
+        base_source.write_bytes(base_span)
         body: dict[str, object] = {
             "schema": "owner_campaign_candidate/v1",
             "campaign_id": "acceptance-owner-v2",
             "function": "focus",
             "base_frontier_sha256": frontier["frontier_sha256"],
+            "base_source": {
+                "path": base_source.relative_to(self.root).as_posix(),
+                "sha256": campaign._digest_file(base_source),
+            },
             "candidate_source": {
                 "path": source.relative_to(self.root).as_posix(),
                 "sha256": campaign._digest_file(source),
@@ -311,6 +317,7 @@ class OwnerCampaignAcceptanceTests(unittest.TestCase):
             },
             "hypothesis_family": hypothesis_family or f"family-{name}",
             "natural_c": True,
+            "rebase_depth": 0,
             "created_at": "2026-08-31T00:00:00Z",
         }
         descriptor = seal(body, "candidate_sha256")
