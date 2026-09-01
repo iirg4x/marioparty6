@@ -347,6 +347,85 @@ class OwnerCampaignSelectorTests(unittest.TestCase):
         self.assertEqual(result["status"], selector.UNKNOWN)
         self.assertIn("ownership is incomplete", result["reason"])
 
+    def test_near_exact_selection_rejects_later_only_probe(self) -> None:
+        frontier_body = {
+            key: value
+            for key, value in self.frontier.items()
+            if key != "frontier_sha256"
+        }
+        frontier_body["metrics"] = {
+            "strict": {
+                "target_bytes": 1000,
+                "candidate_bytes": 1000,
+                "differences": 2,
+            },
+            "data": {
+                "target_bytes": 1000,
+                "candidate_bytes": 1000,
+                "differences": 2,
+            },
+        }
+        frontier = _seal(frontier_body, "frontier_sha256")
+        self.campaign["_selection_frontier"] = frontier
+        residual = [
+            "strict:focus:first", "strict:focus:later",
+            "data:focus:first", "data:focus:later",
+        ]
+        descriptor, _source, _sidecar = self._proposal(
+            "later-only",
+            frontier=frontier,
+            residual=residual,
+            predicted=["strict:focus:later", "data:focus:later"],
+            predicted_counts={"strict": 1, "data": 1, "physical": 0},
+        )
+
+        result = selector.select_winning_candidate(
+            self.root, self.campaign, [descriptor]
+        )
+        self.assertEqual(result["status"], selector.UNKNOWN)
+        self.assertIn("first mismatch", result["reason"])
+
+    def test_near_exact_selection_admits_first_mismatch_cluster(self) -> None:
+        frontier_body = {
+            key: value
+            for key, value in self.frontier.items()
+            if key != "frontier_sha256"
+        }
+        frontier_body["metrics"] = {
+            "strict": {
+                "target_bytes": 1000,
+                "candidate_bytes": 1000,
+                "differences": 2,
+            },
+            "data": {
+                "target_bytes": 1000,
+                "candidate_bytes": 1000,
+                "differences": 2,
+            },
+        }
+        frontier = _seal(frontier_body, "frontier_sha256")
+        self.campaign["_selection_frontier"] = frontier
+        residual = [
+            "strict:focus:first", "strict:focus:later",
+            "data:focus:first", "data:focus:later",
+        ]
+        descriptor, _source, _sidecar = self._proposal(
+            "first-cluster",
+            frontier=frontier,
+            residual=residual,
+            predicted=["strict:focus:first", "data:focus:first"],
+            predicted_counts={"strict": 1, "data": 1, "physical": 0},
+        )
+
+        result = selector.select_winning_candidate(
+            self.root, self.campaign, [descriptor]
+        )
+        self.assertEqual(result["status"], selector.SELECTED)
+        self.assertEqual(
+            result["selected"]["first_mismatch_rows"],
+            ["strict:focus:first", "data:focus:first"],
+        )
+
     def test_bounded_decomposition_never_authorizes_exact(self) -> None:
         descriptor, _packet = self._decomposition_proposal(
             "exact-prohibited", expected_terminal="exact"

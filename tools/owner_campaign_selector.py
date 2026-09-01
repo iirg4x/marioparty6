@@ -49,6 +49,10 @@ SELECTION_OUTCOME_SCHEMA = OUTCOME_SCHEMA
 # function instead of consuming an unbounded syntax matrix.
 MAX_NO_GAIN_PER_FAMILY = 2
 MAX_NO_GAIN_PER_FUNCTION = 6
+# Once a function is this close by instruction-density, later-row probing is
+# almost always allocator-cascade guesswork.  Require every admitted cell to
+# own the first remaining mismatch (and its data-channel twin when present).
+FIRST_MISMATCH_MIN_PERCENT = 98.0
 PIVOT_REQUIRED = "pivot_required"
 _OUTCOME_LEDGER_NAMES = (
     "selection-outcomes.jsonl",
@@ -932,6 +936,43 @@ def _ordered_union(*groups: Sequence[str]) -> list[str]:
     return result
 
 
+def _first_mismatch_rows(
+    frontier: Mapping[str, Any],
+    strict_rows: Sequence[str],
+    data_rows: Sequence[str],
+) -> list[str]:
+    """Return the mandatory first residuals for a near-exact frontier.
+
+    Frontier metrics intentionally retain compact byte and difference counts,
+    not the large raw objdiff score.  Four bytes per residual instruction gives
+    a conservative lower-bound match density.  Legacy/test frontiers without
+    metrics keep their existing behavior.
+    """
+
+    metrics = frontier.get("metrics")
+    if not isinstance(metrics, Mapping):
+        return []
+    required: list[str] = []
+    for channel, rows in (("strict", strict_rows), ("data", data_rows)):
+        metric = metrics.get(channel)
+        if not isinstance(metric, Mapping) or not rows:
+            continue
+        target_bytes = metric.get("target_bytes")
+        differences = metric.get("differences")
+        if (
+            type(target_bytes) is not int
+            or target_bytes <= 0
+            or type(differences) is not int
+            or differences <= 0
+        ):
+            continue
+        mismatch_bytes = min(target_bytes, differences * 4)
+        lower_bound = 100.0 * (target_bytes - mismatch_bytes) / target_bytes
+        if lower_bound >= FIRST_MISMATCH_MIN_PERCENT:
+            required.append(rows[0])
+    return required
+
+
 def _candidate_reference(value: Mapping[str, Any], proposal: Mapping[str, Any]) -> tuple[str | None, str]:
     nested = value.get("candidate")
     candidate = dict(nested) if isinstance(nested, Mapping) else {}
@@ -1306,6 +1347,13 @@ def _validate_proposal(
     predicted = _rows(value.get("predicted_rows"), "selection predicted rows")
     if not predicted or not set(predicted) <= set(residual):
         raise SelectionError("selection predicted rows are outside current residual")
+    first_mismatch_rows = _first_mismatch_rows(
+        current, strict_rows, data_rows
+    )
+    if first_mismatch_rows and not set(first_mismatch_rows) <= set(predicted):
+        raise SelectionError(
+            "near-exact selection does not cover the first mismatch"
+        )
     current_counts = {
         "strict": len(strict_rows),
         "data": len(data_rows),
@@ -1397,6 +1445,7 @@ def _validate_proposal(
         "expected_terminal": value.get("expected_terminal"),
         "residual_rows": residual,
         "predicted_rows": predicted,
+        "first_mismatch_rows": first_mismatch_rows,
         "predicted_remaining_counts": counts,
         "protected_sibling_digest": protected,
         "focus_artifact_sha256": focus_file_sha,
