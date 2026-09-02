@@ -124,6 +124,121 @@ def _binding(
     return {"path": _repo_rel(root, path, label), "sha256": actual}
 
 
+def _external_regular_file(raw: Any, label: str) -> Path:
+    """Resolve one absolute deployment input without trusting indirection.
+
+    Campaign manifests remain repository-contained.  This helper is used only
+    as the read boundary before an external tool is copied into campaign-local
+    content-addressed storage.
+    """
+
+    if not isinstance(raw, (str, os.PathLike)):
+        raise ManifestError(f"{label} path is invalid")
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        raise ManifestError(f"{label} external path is not absolute")
+    path = Path(os.path.abspath(candidate))
+    current = Path(path.anchor)
+    try:
+        parts = path.relative_to(current).parts
+    except ValueError as exc:
+        raise ManifestError(f"{label} external path is invalid: {raw}") from exc
+    for part in parts:
+        current = current / part
+        try:
+            details = current.lstat()
+        except OSError as exc:
+            raise ManifestError(f"{label} is not a file: {path}") from exc
+        if current.is_symlink() or getattr(details, "st_file_attributes", 0) & 0x400:
+            raise ManifestError(f"{label} uses symlink/reparse indirection: {current}")
+    if not _is_regular_file(path):
+        raise ManifestError(f"{label} is not a regular file: {path}")
+    return path
+
+
+def _portable_tool_binding(
+    root: Path,
+    direct: Any,
+    drafted: Any,
+    label: str,
+    *,
+    filename: str,
+) -> dict[str, str]:
+    """Bind a contained tool or snapshot one absolute deployment input."""
+
+    raw: Any
+    expected: str | None
+    if direct is not None:
+        raw = direct
+        expected = None
+    else:
+        if not isinstance(drafted, Mapping) or set(drafted) != {"path", "sha256"}:
+            raise ManifestError(f"{label} binding must contain path and sha256")
+        raw = drafted["path"]
+        expected = _sha(drafted["sha256"], f"{label}.sha256")
+
+    candidate = Path(raw) if isinstance(raw, (str, os.PathLike)) else Path()
+    if not candidate.is_absolute():
+        return _binding(root, direct, drafted, label)
+
+    source = _external_regular_file(candidate, label)
+    try:
+        payload = source.read_bytes()
+    except OSError as exc:
+        raise ManifestError(f"{label} is unreadable: {source}") from exc
+    actual = owner_campaign._digest_bytes(payload)
+    if expected is not None and actual != expected:
+        raise ManifestError(f"{label} hash drift: {actual} != {expected}")
+
+    relative = (
+        Path("build") / "owner-campaign" / "tool-cas" / actual / filename
+    )
+    cas = _safe_path(root, relative, f"{label} CAS", exists=False)
+    if owner_campaign._path_has_indirection(root, cas):
+        raise ManifestError(f"{label} CAS uses indirection")
+    try:
+        cas.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise ManifestError(f"{label} CAS is unreadable: {cas}") from exc
+    else:
+        if not _is_regular_file(cas):
+            raise ManifestError(f"{label} CAS is not a regular file")
+        if owner_campaign._digest_file(cas) != actual:
+            raise ManifestError(f"{label} CAS hash drift")
+        return {"path": _repo_rel(root, cas, label), "sha256": actual}
+
+    try:
+        cas.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ManifestError(f"{label} CAS directory is unavailable: {cas.parent}") from exc
+    if owner_campaign._path_has_indirection(root, cas):
+        raise ManifestError(f"{label} CAS uses indirection")
+    fd, raw_temp = tempfile.mkstemp(prefix=f".{filename}.", dir=cas.parent)
+    temporary = Path(raw_temp)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary, cas)
+        except FileExistsError:
+            if (
+                _is_regular_file(cas)
+                and not owner_campaign._path_has_indirection(root, cas)
+                and owner_campaign._digest_file(cas) == actual
+            ):
+                return {"path": _repo_rel(root, cas, label), "sha256": actual}
+            raise ManifestError(f"{label} CAS hash drift")
+        except OSError as exc:
+            raise ManifestError(f"{label} CAS publication failed: {cas}") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+    return {"path": _repo_rel(root, cas, label), "sha256": actual}
+
+
 def _load_draft(root: Path, path: Path) -> dict[str, Any]:
     path = _safe_path(root, path, "campaign draft", exists=True)
     try:
@@ -485,14 +600,19 @@ def initialize_campaign(
     target_binding = _binding(
         root, target_object, draft_value.get("target_object"), "target object"
     )
-    toolchain_binding = _binding(
-        root, toolchain, draft_value.get("toolchain"), "toolchain"
+    toolchain_binding = _portable_tool_binding(
+        root,
+        toolchain,
+        draft_value.get("toolchain"),
+        "toolchain",
+        filename="toolchain.json",
     )
-    producer_binding = _binding(
+    producer_binding = _portable_tool_binding(
         root,
         measurement_producer,
         draft_value.get("measurement_producer"),
         "measurement producer",
+        filename="owner_campaign_measure.py",
     )
     commands = _commands(
         draft_value, snapshot_command, candidate_command, final_owner_command

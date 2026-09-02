@@ -177,6 +177,64 @@ class OwnerCampaignManifestTests(unittest.TestCase):
             self.root, self.root / "build" / "cli-campaign.json"
         )
 
+    def test_agent_cli_snapshots_external_release_inputs(self) -> None:
+        script = Path(__file__).parents[1] / "agent.py"
+        with tempfile.TemporaryDirectory() as external_raw:
+            external = Path(external_raw).resolve()
+            toolchain = external / "toolchain.json"
+            producer = external / "owner_campaign_measure.py"
+            toolchain.write_bytes(b"external toolchain\n")
+            producer.write_bytes(b"# external producer\n")
+            command = [
+                sys.executable,
+                str(script),
+                "--root",
+                str(self.root),
+                "owner-campaign",
+                "initialize",
+                "--campaign",
+                "build/external-cli-campaign.json",
+                "--campaign-id",
+                "external-cli-v1",
+                "--owner",
+                "main:test/owner",
+                "--unit",
+                "main/test/owner",
+                "--source",
+                "src/test.c",
+                "--base-commit",
+                self.commit,
+                "--target-object",
+                "build/target.o",
+                "--toolchain",
+                str(toolchain),
+                "--measurement-producer",
+                str(producer),
+                "--function",
+                "focus",
+                "--final-owner-command",
+                sys.executable,
+                "--final-owner-command",
+                "{MEASUREMENT_PRODUCER}",
+            ]
+            completed = subprocess.run(
+                command,
+                cwd=Path(__file__).parents[2],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
+        loaded = owner_campaign.load_campaign(
+            self.root, self.root / "build" / "external-cli-campaign.json"
+        )
+        self.assertTrue(str(loaded["toolchain"]["path"]).startswith(
+            "build/owner-campaign/tool-cas/"
+        ))
+        self.assertTrue(str(loaded["measurement_producer"]["path"]).startswith(
+            "build/owner-campaign/tool-cas/"
+        ))
+
     def test_draft_hash_drift_is_rejected_before_output(self) -> None:
         draft = self.root / "build" / "draft.json"
         values = self._direct(output=None)
@@ -262,6 +320,75 @@ class OwnerCampaignManifestTests(unittest.TestCase):
             manifest.initialize_campaign(
                 **self._direct(target_object=outside)
             )
+
+    def test_external_tools_are_snapshotted_into_campaign_cas(self) -> None:
+        with tempfile.TemporaryDirectory() as external_raw:
+            external = Path(external_raw).resolve()
+            toolchain = external / "central-toolchain.json"
+            producer = external / "released-owner-campaign-measure.py"
+            toolchain.write_bytes(b"central toolchain\n")
+            producer.write_bytes(b"# released producer\n")
+
+            result = manifest.initialize_campaign(
+                **self._direct(
+                    toolchain=toolchain,
+                    measurement_producer=producer,
+                )
+            )
+
+        self.assertEqual(result["status"], "initialized")
+        raw = json.loads((self.root / "build" / "campaign.json").read_text())
+        toolchain_sha = hashlib.sha256(b"central toolchain\n").hexdigest()
+        producer_sha = hashlib.sha256(b"# released producer\n").hexdigest()
+        self.assertEqual(
+            raw["toolchain"],
+            {
+                "path": (
+                    "build/owner-campaign/tool-cas/"
+                    f"{toolchain_sha}/toolchain.json"
+                ),
+                "sha256": toolchain_sha,
+            },
+        )
+        self.assertEqual(
+            raw["measurement_producer"],
+            {
+                "path": (
+                    "build/owner-campaign/tool-cas/"
+                    f"{producer_sha}/owner_campaign_measure.py"
+                ),
+                "sha256": producer_sha,
+            },
+        )
+        self.assertEqual(
+            (self.root / raw["toolchain"]["path"]).read_bytes(),
+            b"central toolchain\n",
+        )
+        self.assertEqual(
+            (self.root / raw["measurement_producer"]["path"]).read_bytes(),
+            b"# released producer\n",
+        )
+        owner_campaign.load_campaign(
+            self.root, self.root / "build" / "campaign.json"
+        )
+
+    def test_external_toolchain_wrong_existing_cas_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as external_raw:
+            toolchain = Path(external_raw).resolve() / "toolchain.json"
+            toolchain.write_bytes(b"central toolchain\n")
+            expected = hashlib.sha256(toolchain.read_bytes()).hexdigest()
+            cas = (
+                self.root / "build" / "owner-campaign" / "tool-cas"
+                / expected / "toolchain.json"
+            )
+            cas.parent.mkdir(parents=True, exist_ok=True)
+            cas.write_bytes(b"wrong toolchain snapshot")
+
+            with self.assertRaisesRegex(manifest.ManifestError, "toolchain CAS hash drift"):
+                manifest.initialize_campaign(
+                    **self._direct(toolchain=toolchain)
+                )
+        self.assertFalse((self.root / "build" / "campaign.json").exists())
 
     def test_final_owner_command_is_required(self) -> None:
         values = self._direct()

@@ -1120,8 +1120,8 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         )
         self.assertEqual(len({worker for _function, worker in starts}), 5)
 
-    def test_streaming_fills_five_slots_across_three_functions(self) -> None:
-        """Ranked siblings may occupy free slots and race through one CAS."""
+    def test_streaming_prioritizes_distinct_functions_and_serializes_siblings(self) -> None:
+        """Distinct functions fill the initial slots; siblings never overlap."""
 
         self._enable_streaming_pipeline()
         functions = ["owner0", "owner0", "owner0", "owner1", "owner2"]
@@ -1134,10 +1134,10 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         selector_calls: list[list[Path]] = []
         starts: list[tuple[Path, int]] = []
         start_lock = threading.Lock()
-        all_started = threading.Event()
+        first_wave_started = threading.Event()
         release = threading.Event()
-        cas_lock = threading.Lock()
-        same_function_winner = False
+        active_functions: set[str] = set()
+        active_lock = threading.Lock()
 
         def select(
             root: Path,
@@ -1162,43 +1162,45 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             worker: int,
             preselection: dict[str, object],
         ) -> dict[str, object]:
-            nonlocal same_function_winner
             path = paths[0]
             function = json.loads(path.read_text(encoding="utf-8"))["function"]
             self.assertEqual(
                 preselection["selected"]["descriptor_path"], str(path)
             )
-            with start_lock:
-                starts.append((path, worker))
-                if len(starts) == 5:
-                    all_started.set()
-            self.assertTrue(release.wait(timeout=5))
-            status = "infra_retry"
-            if function == "owner0":
-                with cas_lock:
-                    if not same_function_winner:
-                        same_function_winner = True
-                        status = "improved"
-                    else:
-                        status = "stale"
-            return {
-                "schema": lane.LANE_RESULT_SCHEMA,
-                "status": "processed",
-                "campaign_id": self.campaign["campaign_id"],
-                "discovered": 1,
-                "dispatched": 1,
-                "results": [{
-                    "status": status,
-                    "function": function,
+            with active_lock:
+                self.assertNotIn(
+                    function,
+                    active_functions,
+                    f"same-function sibling overlapped for {function}",
+                )
+                active_functions.add(function)
+            try:
+                with start_lock:
+                    starts.append((path, worker))
+                    if len(starts) == 3:
+                        first_wave_started.set()
+                self.assertTrue(release.wait(timeout=5))
+                return {
+                    "schema": lane.LANE_RESULT_SCHEMA,
+                    "status": "processed",
+                    "campaign_id": self.campaign["campaign_id"],
+                    "discovered": 1,
+                    "dispatched": 1,
+                    "results": [{
+                        "status": "infra_retry",
+                        "function": function,
+                        "authority_advanced": False,
+                    }],
+                    "cleaned": [],
+                    "preserved_infrastructure": [],
+                    "selection": None,
+                    "selections": [],
+                    "recorded_outcomes": [],
                     "authority_advanced": False,
-                }],
-                "cleaned": [],
-                "preserved_infrastructure": [],
-                "selection": None,
-                "selections": [],
-                "recorded_outcomes": [],
-                "authority_advanced": False,
-            }
+                }
+            finally:
+                with active_lock:
+                    active_functions.remove(function)
 
         with (
             patch.object(
@@ -1233,8 +1235,15 @@ class OwnerCampaignLaneTests(unittest.TestCase):
             thread = threading.Thread(target=drain)
             thread.start()
             try:
-                self.assertTrue(all_started.wait(timeout=5), starts)
-                self.assertEqual(len(starts), 5)
+                self.assertTrue(first_wave_started.wait(timeout=5), starts)
+                self.assertEqual(len(starts), 3)
+                self.assertEqual(
+                    {
+                        json.loads(path.read_text(encoding="utf-8"))["function"]
+                        for path, _worker in starts
+                    },
+                    {"owner0", "owner1", "owner2"},
+                )
             finally:
                 release.set()
             thread.join(timeout=5)
@@ -1242,21 +1251,155 @@ class OwnerCampaignLaneTests(unittest.TestCase):
         self.assertFalse(thread.is_alive())
         self.assertFalse(error_holder, error_holder)
         self.assertEqual(len(selector_calls), 5)
-        self.assertEqual([len(paths) for paths in selector_calls], [3, 2, 1, 1, 1])
+        self.assertEqual([len(paths) for paths in selector_calls], [3, 1, 1, 2, 1])
         self.assertEqual(
-            {json.loads(path.read_text(encoding="utf-8"))["function"] for path, _ in starts},
-            {"owner0", "owner1", "owner2"},
-        )
-        self.assertEqual(len({worker for _path, worker in starts}), 5)
-        owner0_results = [
-            item for item in result_holder[0]["results"]
-            if item.get("function") == "owner0"
-        ]
-        self.assertEqual(
-            sorted(item["status"] for item in owner0_results),
-            ["improved", "stale", "stale"],
+            [json.loads(path.read_text(encoding="utf-8"))["function"]
+             for path, _worker in starts],
+            ["owner0", "owner1", "owner2", "owner0", "owner0"],
         )
         self.assertEqual(result_holder[0]["dispatched"], 5)
+
+    def test_streaming_ready_function_precedes_a_finished_function_sibling(self) -> None:
+        """A newly ready owner gets a released slot before old siblings."""
+
+        self._enable_streaming_pipeline()
+        self.campaign["functions"] = ["owner0", "owner1", "owner2", "owner3"]
+        self.campaign["base_commit"] = "base-commit"
+        descriptors = [
+            self._candidate("fair-owner0-first", function="owner0"),
+            self._candidate("fair-owner0-next", function="owner0"),
+            self._candidate("fair-owner1", function="owner1"),
+            self._candidate("fair-owner2", function="owner2"),
+            self._candidate("fair-owner3", function="owner3"),
+        ]
+        starts: list[str] = []
+        starts_lock = threading.Lock()
+        active_functions: set[str] = set()
+        active_lock = threading.Lock()
+        initial_started = threading.Event()
+        owner0_release = threading.Event()
+        owner3_started = threading.Event()
+        owner3_release = threading.Event()
+        other_release = threading.Event()
+
+        def select(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+        ) -> dict[str, object]:
+            function = json.loads(paths[0].read_text(encoding="utf-8"))["function"]
+            return {
+                "status": lane.owner_campaign_selector.SELECTED,
+                "selected": {
+                    "descriptor_path": str(paths[0]),
+                    "function": function,
+                },
+            }
+
+        def pipeline(
+            root: Path,
+            campaign: dict[str, object],
+            paths: list[Path],
+            *,
+            worker: int,
+            preselection: dict[str, object],
+        ) -> dict[str, object]:
+            path = paths[0]
+            function = json.loads(path.read_text(encoding="utf-8"))["function"]
+            self.assertEqual(
+                preselection["selected"]["descriptor_path"], str(path)
+            )
+            with active_lock:
+                self.assertNotIn(function, active_functions)
+                active_functions.add(function)
+            try:
+                with starts_lock:
+                    starts.append(function)
+                    if set(starts[:3]) == {"owner0", "owner1", "owner2"}:
+                        initial_started.set()
+                if function == "owner0" and path == descriptors[0]:
+                    self.assertTrue(owner0_release.wait(timeout=5))
+                elif function in {"owner1", "owner2"}:
+                    self.assertTrue(other_release.wait(timeout=5))
+                elif function == "owner3":
+                    owner3_started.set()
+                    self.assertTrue(owner3_release.wait(timeout=5))
+                return {
+                    "schema": lane.LANE_RESULT_SCHEMA,
+                    "status": "processed",
+                    "campaign_id": self.campaign["campaign_id"],
+                    "discovered": 1,
+                    "dispatched": 1,
+                    "results": [{
+                        "status": "infra_retry",
+                        "function": function,
+                        "authority_advanced": False,
+                    }],
+                    "cleaned": [],
+                    "preserved_infrastructure": [],
+                    "selection": None,
+                    "selections": [],
+                    "recorded_outcomes": [],
+                    "authority_advanced": False,
+                }
+            finally:
+                with active_lock:
+                    active_functions.remove(function)
+
+        with (
+            patch.object(
+                lane.owner_campaign_selector,
+                "select_winning_candidate",
+                side_effect=select,
+            ),
+            patch.object(lane, "_streaming_pipeline", side_effect=pipeline),
+            patch.object(lane, "discover_candidates", return_value=descriptors),
+            patch.object(lane, "_post_pipeline_maintenance"),
+            patch.object(lane.owner_campaign, "_check_cancelled"),
+        ):
+            result_holder: list[dict[str, object]] = []
+            error_holder: list[BaseException] = []
+
+            def drain() -> None:
+                try:
+                    result_holder.append(
+                        lane._run_streaming_inbox(
+                            self.root,
+                            self.campaign,
+                            max_candidates=3,
+                            initial_descriptors=descriptors,
+                            poll_interval=0.01,
+                            clock=time.monotonic,
+                            watchdog_deadline=time.monotonic() + 10,
+                        )
+                    )
+                except BaseException as exc:
+                    error_holder.append(exc)
+
+            thread = threading.Thread(target=drain)
+            thread.start()
+            try:
+                self.assertTrue(initial_started.wait(timeout=5), starts)
+                with starts_lock:
+                    self.assertEqual(set(starts), {"owner0", "owner1", "owner2"})
+                owner0_release.set()
+                self.assertTrue(owner3_started.wait(timeout=5), starts)
+                with starts_lock:
+                    self.assertEqual(len(starts), 4)
+                    self.assertEqual(starts[3], "owner3")
+                    self.assertEqual(starts.count("owner0"), 1)
+                owner3_release.set()
+                other_release.set()
+            finally:
+                owner0_release.set()
+                owner3_release.set()
+                other_release.set()
+            thread.join(timeout=5)
+
+        self.assertFalse(thread.is_alive())
+        self.assertFalse(error_holder, error_holder)
+        self.assertEqual(result_holder[0]["dispatched"], 5)
+        self.assertEqual(starts.count("owner0"), 2)
 
     def test_streaming_gives_selector_the_complete_same_function_group(self) -> None:
         """A lower-ranked first entry cannot bypass its ranked sibling."""

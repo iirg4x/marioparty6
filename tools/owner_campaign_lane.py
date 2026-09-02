@@ -2299,8 +2299,8 @@ def discover_candidates(
     # function's proposal run.  Interleave candidates by manifest function
     # order while preserving created/path order within each function.  The
     # Arbitration later preserves deterministic proposal order while allowing
-    # the streaming scheduler to fill every worker slot when a function has
-    # multiple current-bound candidates.
+    # the streaming scheduler to fill available slots with distinct functions
+    # before it revisits a function's remaining siblings.
     scoped_functions = [
         function for function in campaign.get("functions", [])
         if isinstance(function, str)
@@ -3205,8 +3205,8 @@ def run_inbox(
         # can contain only exhausted proposals from the first function and
         # falsely terminate a lane while another function has an eligible
         # winner.  The selector arbitrates the widened read-only pool; the
-        # streaming supervisor may preselect one descriptor at a time from a
-        # same-function group to keep every worker occupied.
+        # streaming supervisor preselects one descriptor at a time and
+        # serializes any remaining siblings for that function.
         function_count = sum(
             isinstance(function, str) for function in campaign.get("functions", [])
         )
@@ -3715,8 +3715,8 @@ def _streaming_pipeline(
     read-only selector arbitration.  The complete ranked same-function group
     is selected before this call; passing that sealed selection through keeps
     rank selection, source/frontier CAS, and stale-rebase invariants in one
-    implementation while allowing several descriptors for one function to
-    occupy independent slots.
+    implementation while ensuring only one descriptor for a function occupies
+    a slot at a time.
     """
 
     if isinstance(descriptor_paths, (str, os.PathLike)):
@@ -3829,12 +3829,14 @@ def _run_streaming_inbox(
 
     The old supervisor waited for a complete five-function wave and claimed a
     function for the whole drain.  This scheduler refills every free slot with
-    the next sealed descriptor, even when several descriptors belong to the
-    same function.  A same-function group is still passed through the selector
-    in deterministic rank order before each descriptor is submitted; the core
-    runner remains the authority for source/frontier CAS and stale rebases.
-    Only the batch-tail maintenance is deferred until this drain reaches a
-    terminal boundary.
+    the next sealed descriptor, preferring distinct eligible functions in
+    manifest order.  A function with a pipeline already in flight is excluded
+    until that pipeline completes, so same-function siblings are serialized;
+    the next ranked sibling can then refill the released slot.  A same-function
+    group is still passed through the selector in deterministic rank order
+    before each descriptor is submitted; the core runner remains the authority
+    for source/frontier CAS and stale rebases.  Only the batch-tail maintenance
+    is deferred until this drain reaches a terminal boundary.
     """
 
     root = Path(os.path.abspath(root))
@@ -3858,6 +3860,8 @@ def _run_streaming_inbox(
     discovered_set: set[Path] = set()
     attempted: set[Path] = set()
     source_race_retries: dict[Path, int] = {}
+    in_flight_functions: set[str] = set()
+    round_seen_functions: set[str] = set()
     initial_index = 0
     slot_ids = set(range(max_candidates))
     completed: dict[int, dict[str, Any]] = {}
@@ -3896,11 +3900,13 @@ def _run_streaming_inbox(
     def next_eligible() -> tuple[list[Path], str, Mapping[str, Any] | None] | None:
         # Re-scan after every completed slot.  ``discover_candidates`` is
         # bounded and deterministic; attempted paths prevent duplicate
-        # dispatch while allowing same-function siblings to fill free slots.
-        # The selector sees all currently eligible siblings for the chosen
-        # function and returns the next deterministic winner.  Removing only
-        # that winner from ``attempted`` leaves the remaining ranked siblings
-        # available for later slots.
+        # dispatch.  Do not select a function that already has a pipeline in
+        # flight: this makes the initial wave cover distinct functions and
+        # keeps same-function siblings serialized.  The selector sees all
+        # currently eligible siblings for the chosen function and returns the
+        # next deterministic winner.  Removing only that winner from
+        # ``attempted`` leaves the remaining ranked siblings available after
+        # the function's current pipeline completes.
         for _ in range(2):
             groups: dict[str, list[Path]] = {}
             for path in refill_source():
@@ -3912,16 +3918,37 @@ def _run_streaming_inbox(
                 groups.setdefault(function, []).append(path)
             if not groups:
                 return None
+            eligible_groups = {
+                function: group
+                for function, group in groups.items()
+                if function not in in_flight_functions
+            }
+            if not eligible_groups:
+                return None
+            # Give each ready function one turn before revisiting a function
+            # whose sibling queue is already active.  Once every currently
+            # eligible function has had a turn, start a new deterministic
+            # manifest-ordered round.  This prevents a fast function from
+            # monopolizing released slots while preserving sibling ranking.
+            unserved_groups = {
+                function: group
+                for function, group in eligible_groups.items()
+                if function not in round_seen_functions
+            }
+            if not unserved_groups:
+                round_seen_functions.clear()
+                unserved_groups = eligible_groups
             manifest_order = {
                 function: index
                 for index, function in enumerate(campaign.get("functions", []))
                 if isinstance(function, str)
             }
             function = min(
-                groups,
+                unserved_groups,
                 key=lambda item: (manifest_order.get(item, len(manifest_order)), item),
             )
-            group = groups[function]
+            round_seen_functions.add(function)
+            group = unserved_groups[function]
             selection_required = "base_commit" in campaign or any(
                 any(
                     path.is_file()
@@ -3988,6 +4015,7 @@ def _run_streaming_inbox(
             paths, function, preselection = candidate
             slot = min(slot_ids)
             slot_ids.remove(slot)
+            in_flight_functions.add(function)
             sequence = next_sequence
             next_sequence += 1
             planned.append((sequence, list(paths), function, slot, preselection))
@@ -4023,6 +4051,7 @@ def _run_streaming_inbox(
                 continue
             sequence, path, function, slot, _preselection = meta
             slot_ids.add(slot)
+            in_flight_functions.discard(function)
             value: Mapping[str, Any]
             try:
                 raw_value = future.result()

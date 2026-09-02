@@ -43,6 +43,13 @@ idle timeout and watchdog are both 30 minutes; use `--idle-timeout`, `--watchdog
 `--poll-interval` to tune a bounded run. For a single administrative/test
 snapshot, add `--once`; that mode dispatches one batch and returns immediately.
 
+The five compiler slots are portfolio slots. Ready functions are scheduled
+distinct-function-first in manifest order, so one function cannot occupy a
+second slot while another ready function is waiting. A later ranked cell for a
+function becomes eligible after that function's active cell completes. This
+keeps one source mutation in flight per function while allowing independent
+functions to compile and prove concurrently.
+
 The manifest itself is the authority boundary. Helpers must remain within its
 path, command, source-shape, hash, and cancellation-epoch bindings.
 
@@ -67,6 +74,29 @@ hash-drifting draft inputs are rejected before replacing the manifest. When a
 draft omits snapshot/candidate argv, the initializer supplies the production
 `owner_campaign_measure.py` command, but it never invents the required
 `final_owner` command.
+
+### Consume workflow releases without rebasing owner source
+
+Workflow tooling is intentionally independent from an owner's source branch.
+An active lane may invoke `tools/agent.py` from the current released workflow
+checkout and point `--root` at its own worktree. The lane does not merge,
+rebase, or pause its source work:
+
+```sh
+rtk python <released-workflow>/tools/agent.py \
+  --root <owner-worktree> owner-campaign initialize \
+  --campaign build/owner-campaign/<owner>.json \
+  --draft build/owner-campaign/<owner>.draft.json \
+  --measurement-producer <released-workflow>/tools/owner_campaign_measure.py \
+  --toolchain <central-toolchain>/toolchain.json
+```
+
+The initializer copies the external measurement producer and toolchain
+descriptor into hash-addressed campaign-local storage, then records only those
+contained immutable paths in the manifest. Hash drift, indirection, or a CAS
+collision fails before the campaign is published. This lets manager-side
+workflow fixes ship while cracking lanes continue on their existing source
+frontiers; source integration remains a separate operation.
 
 ### Bootstrap the first frontier
 
@@ -179,9 +209,9 @@ build/owner-campaign/inbox/<campaign-slug>/*.json
 The available evidence classes are CFG/frame/topology;
 lifetime/stack/register chronology; expression scheduling/types/promotions;
 ABI/inline/header/TU visibility; and static data/pools/relocations/layout.
-They are ranking labels, not a blind syntax matrix. If fewer than five
-functions are open, independently justified candidates for the same function
-may fill idle slots. Every candidate must own the first remaining strict/data
+They are ranking labels, not a blind syntax matrix. One function may occupy at
+most one active slot; its next independently justified candidate waits for that
+pipeline to finish. Every candidate must own the first remaining strict/data
 mismatch or its complete authenticated causal/mirror cluster; a later-row-only
 candidate is rejected before compilation. Each worker independently reads its
 function's current reconstruction packet, reconstructs one natural-C boundary
@@ -197,9 +227,10 @@ runtime.
 The inbox driver groups proposals by function and runs up to five independent
 `select -> validate -> snapshot -> compile/proof` pipelines. A ready function
 does not wait for an unrelated slow selector or snapshot. Each pipeline
-arbitrates at most one winner for its function; the batch never spends five
-slots serially when independent same-function cells can be measured in
-parallel. Terminal descriptors and unshared candidate sources are deleted after measurement;
+arbitrates at most one winner for its function. A released slot first goes to a
+ready function that has not run in the current scheduling round; only after all
+ready functions have had a turn may the next sibling for a completed function
+run. Terminal descriptors and unshared candidate sources are deleted after measurement;
 `infra_retry` descriptors and sources stay in place for retry. Empty inboxes
 return an explicit `idle` result, not a false successful empty batch. The only
 upward lane message after success is the completed, evidence-bound
