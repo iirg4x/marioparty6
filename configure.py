@@ -1068,7 +1068,7 @@ config.libs = [
             Object(Matching, "board/shopevent.c"),
             Object(Matching, "board/guide.c"),
             Object(Matching, "board/branch.c"),
-            Object(NonMatching, "board/mgcall.c"),
+            Object(Matching, "board/mgcall.c"),
             Object(NonMatching, "board/effect.c", extra_cflags=["-O4,p"]),
             Object(Matching, "board/config.c"),
             Object(Matching, "board/gate.c"),

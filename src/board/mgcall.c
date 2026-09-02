@@ -25,12 +25,16 @@
 
 #include "dolphin/mtx.h"
 
+#include <stdio.h>
 #include <string.h>
 
+extern s8 mbPadStkXGet(int padNo);
 extern int mbSingleOppCharGet(void);
 extern int mbSingleTeamCharGet(void);
 extern void mbDirClose(void);
 extern void mbev_CapPlayerMotShiftSet(int modelId, int motionNo, int attr, BOOL waitF);
+extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
+    HuVecF *result);
 extern void mbev_CapEffColorSet(GXColor *color, int colorNo);
 extern s32 mbBGRead(s32 dataNum);
 extern void mbBGReadWait(s32 statId);
@@ -172,11 +176,11 @@ enum {
 };
 
 #define MGCALL_MESSAGE_POINTER_BASE (1u << 31)
-#define MGCALL_MESSAGE_BATTLE_INTRO MESSNUM(MESS_MGPACK_NAME, 0)
-#define MGCALL_MESSAGE_BATTLE_COIN_HIGH MESSNUM(MESS_MGPACK_NAME, 1)
-#define MGCALL_MESSAGE_BATTLE_COIN_LOW MESSNUM(MESS_MGPACK_NAME, 2)
-#define MGCALL_MESSAGE_BATTLE_RESULT MESSNUM(MESS_MGPACK_NAME, 3)
-#define MGCALL_MESSAGE_BATTLE_HELP MESSNUM(MESS_MGPACK_NAME, 8)
+#define MGCALL_MESSAGE_BATTLE_INTRO MESSNUM(MESS_MGC_BATTLE, 0)
+#define MGCALL_MESSAGE_BATTLE_COIN_HIGH MESSNUM(MESS_MGC_BATTLE, 1)
+#define MGCALL_MESSAGE_BATTLE_COIN_LOW MESSNUM(MESS_MGC_BATTLE, 2)
+#define MGCALL_MESSAGE_BATTLE_RESULT MESSNUM(MESS_MGC_BATTLE, 3)
+#define MGCALL_MESSAGE_BATTLE_HELP MESSNUM(MESS_MGC_BATTLE, 8)
 
 #define MGCALL_TUTORIAL_MESSAGE_BEGIN MESSNUM(MESS_BOARD_TUTORIAL, 45)
 #define MGCALL_TUTORIAL_MESSAGE_ENDTURN MESSNUM(MESS_BOARD_TUTORIAL, 46)
@@ -198,18 +202,18 @@ static const HuVec2f statusPos4PBase[GW_PLAYER_MAX] = {
     { 400.0f, 296.0f },
 };
 
-static const HuVec2f statusPos2Vs2Base[GW_PLAYER_MAX] = {
-    { 176.0f, 200.0f },
-    { 176.0f, 280.0f },
-    { 400.0f, 200.0f },
-    { 400.0f, 280.0f },
-};
-
 static const HuVec2f statusPos1Vs3Base[GW_PLAYER_MAX] = {
     { 176.0f, 240.0f },
     { 400.0f, 160.0f },
     { 400.0f, 240.0f },
     { 400.0f, 320.0f },
+};
+
+static const HuVec2f statusPos2Vs2Base[GW_PLAYER_MAX] = {
+    { 176.0f, 200.0f },
+    { 176.0f, 280.0f },
+    { 400.0f, 200.0f },
+    { 400.0f, 280.0f },
 };
 
 static const HuVec2f statusPosKettouBase[2] = {
@@ -287,8 +291,8 @@ static int mgCallColorChanceTbl[3] = { 60, 10, 30 };
 static int mgCallColorChanceTbl2[3] = { 30, 40, 30 };
 
 static u32 mgCallDataDir = -1;
-static OMOBJ *mgCallVsEffOMObj;
 static s16 mgCallFocus;
+static OMOBJ *mgCallVsEffOMObj;
 static BOOL mgCallSingleKoopaF;
 
 void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF);
@@ -331,8 +335,8 @@ void mbMgCallInit(void)
     memset(mgCallHisBattle, 0, sizeof(mgCallHisBattle));
     memset(mgCallHisKettou, 0, sizeof(mgCallHisKettou));
     memcpy(mgStatusPos4P, statusPos4PBase, sizeof(mgStatusPos4P));
-    memcpy(mgStatusPos1Vs3, statusPos1Vs3Base, sizeof(mgStatusPos1Vs3));
-    memcpy(mgStatusPos2Vs2, statusPos2Vs2Base, sizeof(mgStatusPos2Vs2));
+    memcpy(mgStatusPos1Vs3, statusPos2Vs2Base, sizeof(mgStatusPos1Vs3));
+    memcpy(mgStatusPos2Vs2, statusPos1Vs3Base, sizeof(mgStatusPos2Vs2));
 }
 
 s32 mbev_MgCall(void)
@@ -738,7 +742,11 @@ static int SetupMgType(int *color)
             if (playerNum == 0) {
                 preferRedF = (frandf() < 0.5f) ? FALSE : TRUE;
             } else {
-                preferRedF = (blueNum != 0) ? FALSE : TRUE;
+                if (blueNum != 0) {
+                    preferRedF = FALSE;
+                } else {
+                    preferRedF = TRUE;
+                }
             }
             no = 0;
             if (!preferRedF) {
@@ -1087,8 +1095,17 @@ static s16 MgNameColorGet(u32 nameMes)
     return 7;
 }
 
+static inline BOOL MgPackMatch(MGPACKTYPE *packData, int pack)
+{
+    return packData->pack == pack;
+}
+
 static int MgRouletteNumGet(int type, int height, s16 *noTbl)
 {
+    int randNo;
+    int noNew;
+    int temp;
+    BOOL micF = FALSE;
     MGPACKTYPE packTbl[4] = {
         { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
         { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
@@ -1096,25 +1113,22 @@ static int MgRouletteNumGet(int type, int height, s16 *noTbl)
         { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
     };
     s16 tempTbl[128];
-    s16 historyNo;
+    int historyNo;
     int i;
     int j;
     int no;
     int num;
     int packNo;
     int pack;
-    int historyOfs;
-    BOOL micF;
     BOOL skipF;
     MGDATA *mgData;
 
-    micF = FALSE;
     for (packNo = 0; packNo < 4; packNo++) {
         if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
             GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
         }
         pack = GwSystem.mgPack;
-        if (packTbl[packNo].pack == pack) {
+        if (MgPackMatch(&packTbl[packNo], pack)) {
             break;
         }
     }
@@ -1145,45 +1159,45 @@ static int MgRouletteNumGet(int type, int height, s16 *noTbl)
         tempTbl[num++] = no;
     }
     if (num < height) {
-        historyOfs = mgCallHisOfsTbl[type];
+        no = mgCallHisOfsTbl[type];
         for (i = 0; i < mgCallHisSize[type]; i++) {
-            historyNo = mgCallHisPtr[type][historyOfs];
+            historyNo = mgCallHisPtr[type][no];
             if (historyNo) {
-                no = historyNo - GW_MGNO_BASE;
+                historyNo -= GW_MGNO_BASE;
                 skipF = FALSE;
-                if (packNo >= 0 && !(MgDataTbl[no].flag & packTbl[packNo].flag)) {
+                if (packNo >= 0 && !(MgDataTbl[historyNo].flag & packTbl[packNo].flag)) {
                     skipF = TRUE;
                 }
-                if (!micF && (MgDataTbl[no].flag & MG_FLAG_MIC)) {
+                if (!micF && (MgDataTbl[historyNo].flag & MG_FLAG_MIC)) {
                     skipF = TRUE;
                 }
-                if (GwSystem.curTime && (MgDataTbl[no].flag & MG_FLAG_DISABLE_NIGHT)) {
+                if (GwSystem.curTime && (MgDataTbl[historyNo].flag & MG_FLAG_DISABLE_NIGHT)) {
                     skipF = TRUE;
                 }
-                if (!GwSystem.curTime && (MgDataTbl[no].flag & MG_FLAG_DISABLE_DAY)) {
+                if (!GwSystem.curTime && (MgDataTbl[historyNo].flag & MG_FLAG_DISABLE_DAY)) {
                     skipF = TRUE;
                 }
                 for (j = 0; j < num; j++) {
-                    if (no == tempTbl[j]) {
+                    if (historyNo == tempTbl[j]) {
                         break;
                     }
                 }
                 if (j >= num && !skipF) {
-                    tempTbl[num++] = no;
+                    tempTbl[num++] = historyNo;
                     if (num >= height) {
                         break;
                     }
                 }
             }
-            historyOfs = (historyOfs + 1) % mgCallHisSize[type];
+            no = (no + 1) % mgCallHisSize[type];
         }
     }
     for (i = 0; i < 100; i++) {
-        j = mbRandMod(num);
-        no = mbRandMod(num);
-        historyNo = tempTbl[j];
-        tempTbl[j] = tempTbl[no];
-        tempTbl[no] = historyNo;
+        randNo = mbRandMod(num);
+        noNew = mbRandMod(num);
+        temp = tempTbl[randNo];
+        tempTbl[randNo] = tempTbl[noNew];
+        tempTbl[noNew] = temp;
     }
     if (num > height) {
         num = height;
@@ -1199,32 +1213,34 @@ static int MgRouletteNumGet(int type, int height, s16 *noTbl)
 
 static int MgRouletteNumSingleGet(int type, int height, s16 *noTbl)
 {
+    BOOL micF = FALSE;
     MGPACKTYPE packTbl[4] = {
         { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
         { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
         { GW_MINIGAME_PACK_HARD, MG_FLAG_PACK_SKILL },
         { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
     };
-    s16 partyTbl[128];
-    s16 storyTbl[128];
     s16 unownedTbl[128];
-    s16 historyNo;
+    s16 storyTbl[128];
+    s16 partyTbl[128];
+    int historyNo;
     int i;
-    int j;
+    int j, noNew;
     int no;
     int num;
-    int partyNum;
-    int storyNum;
+    int numLeft;
     int packNo;
-    BOOL micF;
+    int storyNum;
+    int partyNum;
+    int pack;
     MGDATA *mgData;
 
-    micF = FALSE;
     for (packNo = 0; packNo < 4; packNo++) {
         if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
             GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
         }
-        if (packTbl[packNo].pack == GwSystem.mgPack) {
+        pack = GwSystem.mgPack;
+        if (MgPackMatch(&packTbl[packNo], pack)) {
             break;
         }
     }
@@ -1245,13 +1261,15 @@ static int MgRouletteNumSingleGet(int type, int height, s16 *noTbl)
         if (!micF && (mgData->flag & MG_FLAG_MIC)) {
             continue;
         }
-        if (mgCallSingleKoopaF && (mgData->flag & MG_FLAG_GRPORDER)) {
+        if (mgCallSingleKoopaF && (mgData->flag & MG_FLAG_COIN)) {
             continue;
         }
         if (mbSingleMgUnlockGet(no + GW_MGNO_BASE)) {
-            storyTbl[storyNum++] = no;
+            storyTbl[storyNum] = no;
+            storyNum++;
         } else if (GWMgUnlockGet(no + GW_MGNO_BASE)) {
-            partyTbl[partyNum++] = no;
+            partyTbl[partyNum] = no;
+            partyNum++;
         } else {
             unownedTbl[num++] = no;
         }
@@ -1260,15 +1278,16 @@ static int MgRouletteNumSingleGet(int type, int height, s16 *noTbl)
         if (partyNum >= 2) {
             for (i = 0; i < 100; i++) {
                 j = i % partyNum;
-                no = mbRandMod(partyNum);
-                if (j != no) {
+                noNew = mbRandMod(partyNum);
+                if (j != noNew) {
                     historyNo = partyTbl[j];
-                    partyTbl[j] = partyTbl[no];
-                    partyTbl[no] = historyNo;
+                    partyTbl[j] = partyTbl[noNew];
+                    partyTbl[noNew] = historyNo;
                 }
             }
         }
-        for (i = 0; i < height - num && i < partyNum; i++) {
+        numLeft = height - num;
+        for (i = 0; i < numLeft && i < partyNum; i++) {
             unownedTbl[num++] = partyTbl[i];
         }
     }
@@ -1276,24 +1295,25 @@ static int MgRouletteNumSingleGet(int type, int height, s16 *noTbl)
         if (storyNum >= 2) {
             for (i = 0; i < 100; i++) {
                 j = i % storyNum;
-                no = mbRandMod(storyNum);
-                if (j != no) {
+                noNew = mbRandMod(storyNum);
+                if (j != noNew) {
                     historyNo = storyTbl[j];
-                    storyTbl[j] = storyTbl[no];
-                    storyTbl[no] = historyNo;
+                    storyTbl[j] = storyTbl[noNew];
+                    storyTbl[noNew] = historyNo;
                 }
             }
         }
-        for (i = 0; i < height - num && i < storyNum; i++) {
+        numLeft = height - num;
+        for (i = 0; i < numLeft && i < storyNum; i++) {
             unownedTbl[num++] = storyTbl[i];
         }
     }
     for (i = 0; i < 100; i++) {
         j = mbRandMod(num);
-        no = mbRandMod(num);
+        noNew = mbRandMod(num);
         historyNo = unownedTbl[j];
-        unownedTbl[j] = unownedTbl[no];
-        unownedTbl[no] = historyNo;
+        unownedTbl[j] = unownedTbl[noNew];
+        unownedTbl[noNew] = historyNo;
     }
     if (num > height) {
         num = height;
@@ -1309,6 +1329,7 @@ static int MgRouletteNumSingleGet(int type, int height, s16 *noTbl)
 
 static int MgRouletteNumMicGet(int type, int height, s16 *noTbl)
 {
+    BOOL micF = FALSE;
     MGPACKTYPE packTbl[4] = {
         { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
         { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
@@ -1316,18 +1337,22 @@ static int MgRouletteNumMicGet(int type, int height, s16 *noTbl)
         { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
     };
     s16 tempTbl[128];
-    s16 temp;
+    int temp;
     int i;
+    int j;
     int no;
+    int noNew;
     int num;
     int packNo;
+    int pack;
     MGDATA *mgData;
 
     for (packNo = 0; packNo < 4; packNo++) {
         if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
             GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
         }
-        if (packTbl[packNo].pack == GwSystem.mgPack) {
+        pack = GwSystem.mgPack;
+        if (MgPackMatch(&packTbl[packNo], pack)) {
             break;
         }
     }
@@ -1355,11 +1380,11 @@ static int MgRouletteNumMicGet(int type, int height, s16 *noTbl)
         tempTbl[num++] = no;
     }
     for (i = 0; i < 100; i++) {
-        no = mbRandMod(num);
-        packNo = mbRandMod(num);
-        temp = tempTbl[no];
-        tempTbl[no] = tempTbl[packNo];
-        tempTbl[packNo] = temp;
+        j = mbRandMod(num);
+        noNew = mbRandMod(num);
+        temp = tempTbl[j];
+        tempTbl[j] = tempTbl[noNew];
+        tempTbl[noNew] = temp;
     }
     if (num > height) {
         num = height;
@@ -1375,29 +1400,34 @@ static int MgRouletteNumMicGet(int type, int height, s16 *noTbl)
 
 static int MgRouletteNumMicSingleGet(int type, int height, s16 *noTbl)
 {
+    BOOL micF = FALSE;
     MGPACKTYPE packTbl[4] = {
         { GW_MINIGAME_PACK_EASY, MG_FLAG_PACK_EASY },
         { GW_MINIGAME_PACK_ACTION, MG_FLAG_PACK_ACTION },
         { GW_MINIGAME_PACK_HARD, MG_FLAG_PACK_SKILL },
         { GW_MINIGAME_PACK_WEIRD, MG_FLAG_PACK_WEIRD },
     };
-    s16 partyTbl[128];
-    s16 storyTbl[128];
+    static const HuVecF zeroVec = { 0.0f, 0.0f, 0.0f };
     s16 unownedTbl[128];
-    s16 temp;
+    s16 storyTbl[128];
+    s16 partyTbl[128];
+    int temp;
     int i;
+    int j, noNew, pack;
     int no;
     int num;
-    int partyNum;
-    int storyNum;
+    int numLeft;
     int packNo;
+    int storyNum;
+    int partyNum;
     MGDATA *mgData;
 
     for (packNo = 0; packNo < 4; packNo++) {
         if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
             GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
         }
-        if (packTbl[packNo].pack == GwSystem.mgPack) {
+        pack = GwSystem.mgPack;
+        if (MgPackMatch(&packTbl[packNo], pack)) {
             break;
         }
     }
@@ -1425,9 +1455,11 @@ static int MgRouletteNumMicSingleGet(int type, int height, s16 *noTbl)
             continue;
         }
         if (mbSingleMgUnlockGet(no + GW_MGNO_BASE)) {
-            storyTbl[storyNum++] = no;
+            storyTbl[storyNum] = no;
+            storyNum++;
         } else if (GWMgUnlockGet(no + GW_MGNO_BASE)) {
-            partyTbl[partyNum++] = no;
+            partyTbl[partyNum] = no;
+            partyNum++;
         } else {
             unownedTbl[num++] = no;
         }
@@ -1435,41 +1467,43 @@ static int MgRouletteNumMicSingleGet(int type, int height, s16 *noTbl)
     if (num < height && partyNum > 0) {
         if (partyNum >= 2) {
             for (i = 0; i < 100; i++) {
-                no = i % partyNum;
-                packNo = mbRandMod(partyNum);
-                if (no != packNo) {
-                    temp = partyTbl[no];
-                    partyTbl[no] = partyTbl[packNo];
-                    partyTbl[packNo] = temp;
+                j = i % partyNum;
+                noNew = mbRandMod(partyNum);
+                if (j != noNew) {
+                    temp = partyTbl[j];
+                    partyTbl[j] = partyTbl[noNew];
+                    partyTbl[noNew] = temp;
                 }
             }
         }
-        for (i = 0; i < height - num && i < partyNum; i++) {
+        numLeft = height - num;
+        for (i = 0; i < numLeft && i < partyNum; i++) {
             unownedTbl[num++] = partyTbl[i];
         }
     }
     if (num < height && storyNum > 0) {
         if (storyNum >= 2) {
             for (i = 0; i < 100; i++) {
-                no = i % storyNum;
-                packNo = mbRandMod(storyNum);
-                if (no != packNo) {
-                    temp = storyTbl[no];
-                    storyTbl[no] = storyTbl[packNo];
-                    storyTbl[packNo] = temp;
+                j = i % storyNum;
+                noNew = mbRandMod(storyNum);
+                if (j != noNew) {
+                    temp = storyTbl[j];
+                    storyTbl[j] = storyTbl[noNew];
+                    storyTbl[noNew] = temp;
                 }
             }
         }
-        for (i = 0; i < height - num && i < storyNum; i++) {
+        numLeft = height - num;
+        for (i = 0; i < numLeft && i < storyNum; i++) {
             unownedTbl[num++] = storyTbl[i];
         }
     }
     for (i = 0; i < 100; i++) {
-        no = mbRandMod(num);
-        packNo = mbRandMod(num);
-        temp = unownedTbl[no];
-        unownedTbl[no] = unownedTbl[packNo];
-        unownedTbl[packNo] = temp;
+        j = mbRandMod(num);
+        noNew = mbRandMod(num);
+        temp = unownedTbl[j];
+        unownedTbl[j] = unownedTbl[noNew];
+        unownedTbl[noNew] = temp;
     }
     if (num > height) {
         num = height;
@@ -1630,9 +1664,11 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     BOOL coinHighF;
     int result;
     int battleCoin;
+    BOOL soundF;
+    int listNum;
     BOOL fastFocusF;
     int nextDelay;
-    int listNum;
+    HuVecF statusPos;
     HuVecF pos;
     HuVecF guidePos;
     HuVecF movePos;
@@ -1641,12 +1677,15 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     int battleCoinOfs;
     s16 playerMaxSteal;
     s16 teamMaxSteal;
+    float guideWeight;
     float weight;
     float scale;
     float posY;
     float zRot;
     float velY;
+    float guideRot;
 
+    soundF = FALSE;
     espKill(workP->sprId[2]);
     workP->sprId[2] = -1;
     mbMusFadeOutSpeed(0, 1000);
@@ -1670,8 +1709,9 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         espPosSet(workP->sprId[1], 288.0f,
             88.0f - (120.0f * sin((M_PI * (90.0f * (1.0f - weight))) / 180.0)));
         if (weight >= 0.6f) {
-            if (i == 0) {
+            if (!soundF) {
                 mbAudFXPlay(1116);
+                soundF = TRUE;
             }
             if (zRot > -40.0f) {
                 zRot--;
@@ -1684,28 +1724,28 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         HuPrcVSleep();
         i++;
     } while (posY < 576.0f);
-    pos.x = 288.0f;
-    pos.y = 240.0f;
-    pos.z = 800.0f;
+    statusPos.x = 288.0f;
+    statusPos.y = 240.0f;
+    statusPos.z = 800.0f;
     if (!GWTeamFGet()) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             mbStatusColorSet(i, STATUS_COLOR_BLUE);
         }
         for (i = 0; i < GW_PLAYER_MAX; i++) {
-            mbStatusPosOnGet(i, &pos);
-            mbStatusMoveSet(i, NULL, &pos, STATUS_MOVE_SIN, 12);
+            mbStatusPosOnGet(i, &statusPos);
+            mbStatusMoveSet(i, NULL, &statusPos, STATUS_MOVE_SIN, 12);
         }
     } else {
         for (i = 0; i < GW_PLAYER_MAX / 2; i++) {
-            mbStatusPosOnGet(i, &pos);
-            mbStatusNoMoveSet(i, NULL, &pos, STATUS_MOVE_SIN, 12);
+            mbStatusPosOnGet(i, &statusPos);
+            mbStatusNoMoveSet(i, NULL, &statusPos, STATUS_MOVE_SIN, 12);
         }
     }
     while (!mbStatusOffCheckAll()) {
         HuPrcVSleep();
     }
     HuPrcSleep(12);
-    mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 0.0f,
+    mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
     mbAudFXPlay(0);
@@ -1718,12 +1758,12 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     workP->sprId[8] = espEntry(
         mbBoardDataNumGet(
             DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_COIN_NUMBER)), 99, 0);
-    for (i = 0; i < 30u; i++) {
+    for (i = 0; i < 30; i++) {
         weight = i / 30.0f;
-        pos.x = 288.0f;
-        pos.y = 516.0f - (224.0f * weight);
-        espPosSet(workP->sprId[7], pos.x, pos.y);
-        espPosSet(workP->sprId[8], pos.x + 32.0f, pos.y);
+        statusPos.x = 288.0f;
+        statusPos.y = 516.0f - (224.0f * weight);
+        espPosSet(workP->sprId[7], statusPos.x, statusPos.y);
+        espPosSet(workP->sprId[8], statusPos.x + 16.0f, statusPos.y);
         espPosSet(workP->sprId[1], 288.0f,
             88.0f - (120.0f * sin((M_PI * (90.0f * weight)) / 180.0)));
         HuPrcVSleep();
@@ -1732,7 +1772,7 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     coinType = 0;
     battleCoin = MgCallBattleCoinGet();
     delay = mbRandMod(30) + 60;
-    battleCoinOfs = (int)((-7.0f + sqrtf((delay * 8.0f) + 49.0f)) / 2.0f);
+    battleCoinOfs = (int)((-5.0f + sqrtf((delay * 8.0f) + 25.0f)) / 2.0f);
     speed = (battleCoin - battleCoinOfs) % 5;
     if (fastFocusF) {
         speed--;
@@ -1763,7 +1803,7 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         weight = i / 90.0f;
         scale = (0.2f * sin((M_PI * (1080.0f * (1.0f - weight))) / 180.0)) + 1.0f;
         espScaleSet(workP->sprId[8], scale, scale);
-        espPosSet(workP->sprId[8], pos.x + (32.0f * scale), pos.y);
+        espPosSet(workP->sprId[8], statusPos.x + (16.0f * scale), statusPos.y);
         HuPrcVSleep();
     }
     coinNum = battleCoinTbl[coinType];
@@ -1796,11 +1836,11 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     }
     mbCoinAddAllExec(-battleCoinTbl[coinType], -battleCoinTbl[coinType],
         -battleCoinTbl[coinType], -battleCoinTbl[coinType]);
-    for (i = 1; i < 12; i++) {
+    for (i = 1; i < 12u; i++) {
         scale = cos((M_PI * (90.0f * (i / 12.0f))) / 180.0);
         espScaleSet(workP->sprId[7], scale, scale);
         espScaleSet(workP->sprId[8], scale, scale);
-        espPosSet(workP->sprId[8], pos.x + (32.0f * scale), pos.y);
+        espPosSet(workP->sprId[8], statusPos.x + (16.0f * scale), statusPos.y);
         HuPrcVSleep();
     }
     espDispOff(workP->sprId[7]);
@@ -1823,28 +1863,30 @@ static int MgCallBattleExec(MGCALLWORK *workP)
     result = MgCallBattleSelectExec(workP, listNum, mgTbl);
     if (workP->guideMdlId >= 0) {
         mbObjPosGet(workP->guideMdlId, &pos);
-        guidePos = pos;
-        guidePos.x -= 200.0f;
-        mbObjMotionShiftSet(workP->guideMdlId, 3, 0.0f, 0.0f, FALSE);
-        for (i = 1; i <= 45; i++) {
-            weight = i / 45.0f;
-            if (weight <= 0.25f) {
-                zRot = -90.0f
-                    * sin((M_PI * (16.0f * weight)) / 180.0);
-            } else if (weight < 0.75f) {
-                zRot = -90.0f;
+        guidePos.x = pos.x - 200.0f;
+        guidePos.y = pos.y;
+        guidePos.z = pos.z;
+        mbObjMotionShiftSet(workP->guideMdlId, 3, 0.0f, 8.0f, FALSE);
+        for (i = 1; i <= 45u; i++) {
+            guideWeight = i / 45.0f;
+            if (guideWeight <= 0.25f) {
+                guideRot = -90.0f
+                    * sin((M_PI * (90.0f * (4.0f * guideWeight))) / 180.0);
+            } else if (guideWeight < 0.75) {
+                guideRot = -90.0f;
             } else {
-                zRot = -90.0f
-                    * cos((M_PI * (360.0f * (weight - 0.75f))) / 180.0);
+                guideRot = -90.0f
+                    * cos((M_PI * (90.0f * (4.0f * (guideWeight - 0.75f))))
+                        / 180.0);
             }
             mbev_CapVecChase(
-                sin((M_PI * (90.0f * weight)) / 180.0), &pos, &guidePos,
-                &movePos);
+                (float)sin((M_PI * (90.0f * guideWeight)) / 180.0), &pos,
+                &guidePos, &movePos);
             mbObjPosSetV(workP->guideMdlId, &movePos);
-            mbObjRotSet(workP->guideMdlId, 0.0f, zRot, 0.0f);
+            mbObjRotSet(workP->guideMdlId, 0.0f, guideRot, 0.0f);
             HuPrcVSleep();
         }
-        mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 0.0f,
+        mbObjMotionShiftSet(workP->guideMdlId, 2, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
     }
     mbAudGuidePlay(952);
@@ -1852,8 +1894,8 @@ static int MgCallBattleExec(MGCALLWORK *workP)
         mbGuideSpeakerNoGet());
     mbWinTopWait();
     _SetFlag(FLAG_BOARD_MG);
-    mbCameraEyeGet(&pos);
-    mbCameraMovePos(&pos, NULL, NULL, 80.0f, -1.0f, 60);
+    mbCameraEyeGet(&statusPos);
+    mbCameraMovePos(&statusPos, NULL, NULL, 80.0f, -1.0f, 60);
     return mgTbl[result];
 }
 
@@ -1869,41 +1911,43 @@ typedef struct MgCallBattlePlayer_s {
     s16 comBtnTime;
 } MGCALLBATTLEPLAYER;
 
+static const u32 battleCharFileTbl[11] = {
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_MARIO),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_LUIGI),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_PEACH),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_YOSHI),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_WARIO),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_DAISY),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_WALUIGI),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPIO),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_TERESA),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_MINIKOOPA),
+    DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPICO),
+};
+
+static const u32 battleMgDataTbl[6][3] = {
+    { MG_NAME_M646,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M646),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M646) },
+    { MG_NAME_M647,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M647_DAY),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M647_NIGHT) },
+    { MG_NAME_M649,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M649),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M649) },
+    { MG_NAME_M664,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M664_DAY),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M664_NIGHT) },
+    { MG_NAME_M680,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M680),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M680) },
+    { MG_NAME_M681,
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M681),
+        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M681) },
+};
+
 static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
 {
-    static const u32 battleCharFileTbl[11] = {
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_MARIO),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_LUIGI),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_PEACH),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_YOSHI),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_WARIO),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_DAISY),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_WALUIGI),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPIO),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_TERESA),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_MINIKOOPA),
-        DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_CHAR_KINOPICO),
-    };
-    static const u32 battleMgDataTbl[6][3] = {
-        { MG_NAME_M646,
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M646),
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M646) },
-        { MG_NAME_M647,
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M647_DAY),
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M647_NIGHT) },
-        { MG_NAME_M649,
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M649),
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M649) },
-        { MG_NAME_M664,
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M664_DAY),
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M664_NIGHT) },
-        { MG_NAME_M680,
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M680),
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M680) },
-        { MG_NAME_M681,
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M681),
-            DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_M681) },
-    };
     static HuVec2f mgBattlePosTbl[4][3] = {
         { { 0.0f, 0.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f } },
         { { 288.0f, 240.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f } },
@@ -1916,33 +1960,37 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
         { 6.0f, -48.0f },
         { 24.0f, -16.0f },
     };
-    MGCALLBATTLEPLAYER *battlePlayer;
     int i;
+    MGCALLBATTLEPLAYER *battlePlayer;
     u16 btn;
+    int result;
     int j;
     int cursorDupeNum;
     int ignoreNum;
     int selectNum;
+    int helpWinNo;
     s16 playerDoneNum;
     u16 padNo;
     MBCAMERA *cameraP;
-    s16 helpWinNo;
     MGCALLBATTLEPLAYER playerAll[GW_PLAYER_MAX];
     int ignoreTbl[3];
     int selectTbl[3];
-    HuVec2f winPosOfs[3];
     HuVec2f winScale[3];
-    HuVec2f scale;
-    HuVec2f pos;
-    HuVec2f winSize;
+    HuVec2f winPosOfs[3];
     s16 cursorNumTbl[3];
+    HuVec2f winSize;
+    HuVec2f scale;
+    HuVec2f battlePos;
+    HuVec2f namePos;
+    HuVec2f winPos;
+    HuVec2f pos;
     float posX;
     float posY;
+    float moveWeight;
     float weight;
     float time;
     float scaleX;
     float scaleY;
-    int result;
 
     cameraP = mbCameraGet();
     for (i = 0; i < listNum; i++) {
@@ -1958,45 +2006,48 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
             workP->battleSprId[i] = espEntry(
                 mbBoardDataNumGet(battleMgDataTbl[j][2]), 200, 0);
         }
-        pos.x = mgBattlePosTbl[listNum][i].x;
-        pos.y = mgBattlePosTbl[listNum][i].y;
-        espPosSet(workP->battleSprId[i], pos.x, pos.y);
+        battlePos.x = mgBattlePosTbl[listNum][i].x;
+        battlePos.y = mgBattlePosTbl[listNum][i].y;
+        espPosSet(workP->battleSprId[i], battlePos.x, battlePos.y);
         workP->battleNameSprId[i] = espEntry(
             mbBoardDataNumGet(
                 DATANUM(DATA_board, MGCALL_BOARD_FILE_BATTLE_NAME_BACKDROP)),
             150, 0);
-        espPosSet(workP->battleNameSprId[i],
-            mgBattlePosTbl[listNum][i].x,
-            mgBattlePosTbl[listNum][i].y + 80.0f);
+        namePos.x = mgBattlePosTbl[listNum][i].x;
+        namePos.y = mgBattlePosTbl[listNum][i].y + 80.0f;
+        espPosSet(workP->battleNameSprId[i], namePos.x, namePos.y);
         workP->battleWinId[i] = mbWinCreateHelp(battleMgDataTbl[j][0]);
         mbWinPriSet(workP->battleWinId[i], 120);
         mbWinMesMaxSizeGet(workP->battleWinId[i], &winSize);
         winScale[i].x = winScale[i].y = 1.0f;
         if (winSize.x > 160.0f) {
-            scale.x = scale.y = 160.0f / winSize.x;
+            scale.x = 160.0f / winSize.x;
+            scale.y = scale.x;
             mbWinScaleSet(workP->battleWinId[i], scale.x, scale.y);
             winSize.x *= scale.x;
             winSize.y *= scale.y;
             winScale[i] = scale;
         }
-        winPosOfs[i].x = 2.0f - (winSize.x / 2.0f);
+        winPosOfs[i].x = 2.0f + -(winSize.x / 2.0f);
         winPosOfs[i].y = 80.0f - (winSize.y / 2.0f);
-        mbWinPosSet(workP->battleWinId[i],
-            mgBattlePosTbl[listNum][i].x + winPosOfs[i].x,
-            mgBattlePosTbl[listNum][i].y + winPosOfs[i].y);
+        winPos.x = mgBattlePosTbl[listNum][i].x + winPosOfs[i].x;
+        winPos.y = mgBattlePosTbl[listNum][i].y + winPosOfs[i].y;
+        mbWinPosSet(workP->battleWinId[i], winPos.x, winPos.y);
     }
-    for (i = 1; i <= 30; i++) {
-        weight = i / 30.0f;
-        posY = 480.0f * cos((M_PI * (90.0f * weight)) / 180.0);
-        for (j = 0; j < listNum; j++) {
-            espPosSet(workP->battleSprId[j], mgBattlePosTbl[listNum][j].x,
-                mgBattlePosTbl[listNum][j].y + posY);
-            espPosSet(workP->battleNameSprId[j], mgBattlePosTbl[listNum][j].x,
-                mgBattlePosTbl[listNum][j].y + 80.0f + posY);
-            mbWinPosSet(workP->battleWinId[j],
-                winPosOfs[j].x + mgBattlePosTbl[listNum][j].x,
-                winPosOfs[j].y + mgBattlePosTbl[listNum][j].y + posY);
-            mbWinScaleSet(workP->battleWinId[j], winScale[j].x, winScale[j].y);
+    for (j = 1; j <= 30u; j++) {
+        weight = j / 30.0f;
+        weight = 480.0f * cos((M_PI * (90.0f * weight)) / 180.0);
+        for (i = 0; i < listNum; i++) {
+            battlePos.x = mgBattlePosTbl[listNum][i].x;
+            battlePos.y = mgBattlePosTbl[listNum][i].y + weight;
+            espPosSet(workP->battleSprId[i], battlePos.x, battlePos.y);
+            namePos.x = mgBattlePosTbl[listNum][i].x;
+            namePos.y = mgBattlePosTbl[listNum][i].y + 80.0f + weight;
+            espPosSet(workP->battleNameSprId[i], namePos.x, namePos.y);
+            winPos.x = winPosOfs[i].x + mgBattlePosTbl[listNum][i].x;
+            winPos.y = winPosOfs[i].y + mgBattlePosTbl[listNum][i].y + weight;
+            mbWinPosSet(workP->battleWinId[i], winPos.x, winPos.y);
+            mbWinScaleSet(workP->battleWinId[i], winScale[i].x, winScale[i].y);
         }
         HuPrcVSleep();
     }
@@ -2034,8 +2085,8 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
     }
     HuPrcVSleep(10);
     for (playerDoneNum = 0; playerDoneNum < GW_PLAYER_MAX;) {
-        for (j = 0; j < listNum; j++) {
-            mbWinScaleSet(workP->battleWinId[j], winScale[j].x, winScale[j].y);
+        for (i = 0; i < listNum; i++) {
+            mbWinScaleSet(workP->battleWinId[i], winScale[i].x, winScale[i].y);
         }
         for (battlePlayer = &playerAll[0], i = 0; i < GW_PLAYER_MAX;
              i++, battlePlayer++) {
@@ -2043,8 +2094,8 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
                 continue;
             }
             if (battlePlayer->cursorPos != battlePlayer->cursorPosPrev) {
-                weight = (float)(++battlePlayer->time) / battlePlayer->maxTime;
-                time = sin((M_PI * (90.0f * weight)) / 180.0);
+                moveWeight = (float)(++battlePlayer->time) / battlePlayer->maxTime;
+                time = sin((M_PI * (90.0f * moveWeight)) / 180.0);
                 posX = mgBattleCursorOfsTbl[i].x
                     + (mgBattlePosTbl[listNum][battlePlayer->cursorPosPrev].x
                         + (time
@@ -2140,45 +2191,52 @@ static int MgCallBattleSelectExec(MGCALLWORK *workP, int listNum, s16 *list)
     } else {
         result = selectTbl[mbRandMod(selectNum)];
     }
-    for (j = 0; j < listNum; j++) {
-        if (j != result) {
-            mbWinPosSet(workP->battleWinId[j], 0, 480);
+    for (i = 0; i < listNum; i++) {
+        if (i != result) {
+            mbWinPosSet(workP->battleWinId[i], 0, 480);
         }
     }
-    for (j = 1; j <= 60; j++) {
+    for (j = 1; j <= 60u; j++) {
         weight = j / 60.0f;
-        scaleY = cos((M_PI * (90.0f * weight)) / 180.0);
+        time = cos((M_PI * (90.0f * weight)) / 180.0);
         scaleX = cos((M_PI * (720.0f * weight)) / 180.0);
-        for (cursorDupeNum = 0; cursorDupeNum < listNum; cursorDupeNum++) {
-            if (cursorDupeNum != result) {
-                espScaleSet(workP->battleSprId[cursorDupeNum],
-                    scaleY * scaleX, scaleY);
-                espScaleSet(workP->battleNameSprId[cursorDupeNum],
-                    scaleY * scaleX, scaleY);
+        for (i = 0; i < listNum; i++) {
+            if (i != result) {
+                espScaleSet(workP->battleSprId[i],
+                    time * scaleX, time);
+                espScaleSet(workP->battleNameSprId[i],
+                    scaleX * time, time);
             }
         }
         HuPrcVSleep();
     }
-    for (j = 0; j < listNum; j++) {
-        if (j != result) {
-            espDispOff(workP->battleSprId[j]);
-            espDispOff(workP->battleNameSprId[j]);
+    for (i = 0; i < listNum; i++) {
+        if (i != result) {
+            espDispOff(workP->battleSprId[i]);
+            espDispOff(workP->battleNameSprId[i]);
         }
     }
-    for (j = 1; j <= 30; j++) {
-        weight = sin((M_PI * (90.0f * (j / 30.0f))) / 180.0);
-        pos.x = mgBattlePosTbl[listNum][result].x
-            + (weight
+    for (j = 1; j <= 30u; j++) {
+        weight = j / 30.0f;
+        time = sin((M_PI * (90.0f * weight)) / 180.0);
+        i = result;
+        pos.x = mgBattlePosTbl[listNum][i].x
+            + (time
                 * (mgBattlePosTbl[1][0].x
-                    - mgBattlePosTbl[listNum][result].x));
-        pos.y = mgBattlePosTbl[listNum][result].y
-            + (weight
+                    - mgBattlePosTbl[listNum][i].x));
+        pos.y = mgBattlePosTbl[listNum][i].y
+            + (time
                 * (mgBattlePosTbl[1][0].y
-                    - mgBattlePosTbl[listNum][result].y));
-        espPosSet(workP->battleSprId[result], pos.x, pos.y);
-        espPosSet(workP->battleNameSprId[result], pos.x, pos.y + 80.0f);
-        mbWinPosSet(workP->battleWinId[result], pos.x + winPosOfs[result].x,
-            pos.y + winPosOfs[result].y);
+                    - mgBattlePosTbl[listNum][i].y));
+        battlePos.x = pos.x;
+        battlePos.y = pos.y;
+        espPosSet(workP->battleSprId[i], battlePos.x, battlePos.y);
+        namePos.x = pos.x;
+        namePos.y = pos.y + 80.0f;
+        espPosSet(workP->battleNameSprId[i], namePos.x, namePos.y);
+        winPos.x = pos.x + winPosOfs[i].x;
+        winPos.y = pos.y + winPosOfs[i].y;
+        mbWinPosSet(workP->battleWinId[i], winPos.x, winPos.y);
         HuPrcVSleep();
     }
     return result;
@@ -2430,7 +2488,7 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
         GwPlayerConf[3].charNo = CHARNO_MINIKOOPAB;
     }
     switch (playerNo) {
-        case -1:
+        case 0:
             for (i = 0; i < GW_PLAYER_MAX; i++) {
                 GwPlayerConf[i].grpNo = i;
             }
@@ -2474,7 +2532,7 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
             GwPlayerConf[1].charNo = mbSingleOppCharGet();
             break;
 
-        case 0:
+        case -1:
             for (i = 0; i < GW_PLAYER_MAX; i++) {
                 GwPlayerConf[i].grpNo = i;
             }
@@ -2542,10 +2600,17 @@ void mbev_MgCallSingleKoopa(int playerNo, BOOL koopaF)
     HuPrcSleep(-1);
 }
 
+static inline BOOL MgCallTimeFGet(void)
+{
+    return !GwSystem.curTime;
+}
+
 static void MgCallCallMg(int type, int no)
 {
     int id;
     int readStat;
+    int dataNum;
+    BOOL mgNightF;
 
     id = no + GW_MGNO_BASE;
     GWMgUnlockSet(id);
@@ -2556,22 +2621,24 @@ static void MgCallCallMg(int type, int no)
             mgCallHisOfsTbl[type] = 0;
         }
     }
+    dataNum = DATA_inst;
     mgCallDataDir = MgDataTbl[no].dataDir;
     mbDirClose();
-    readStat = mbBGRead(DATA_inst);
-    if (GwSystem.curTime && GWPartyGet()) {
-        mbWipeCreate(WIPE_MODE_OUT,
-            WIPE_TYPE_MOON | WIPE_TYPE_FBKEEP, 60);
-    } else {
+    readStat = mbBGRead(dataNum);
+    if (GwSystem.curTime == FALSE || GWPartyGet() == FALSE) {
         mbWipeCreate(WIPE_MODE_OUT,
             WIPE_TYPE_SUN | WIPE_TYPE_FBKEEP, 60);
+    } else {
+        mbWipeCreate(WIPE_MODE_OUT,
+            WIPE_TYPE_MOON | WIPE_TYPE_FBKEEP, 60);
     }
     mbMusFadeOutSpeed(MB_MUS_CHAN_BG, 1000);
     mbMusFadeOutSpeed(MB_MUS_CHAN_FG, 1000);
     mbAudFXStopAll(1000);
     mbBGReadWait(readStat);
     mbWipeSpecialWait();
-    GwMgNightF = !GwSystem.curTime;
+    mgNightF = MgCallTimeFGet() ? FALSE : TRUE;
+    GwMgNightF = mgNightF;
     mbOvlCall(DLL_instdll);
 }
 
@@ -2599,16 +2666,16 @@ void mbev_MgCallTutorial(void)
     OMOBJ *listObj;
     float weight;
     float scale;
-    extern float lbl_802C4BE4;
-    extern float lbl_802C4BE8;
-    extern float lbl_802C4BEC;
-    extern double lbl_802C4BF0;
-    extern float lbl_802C4A64;
-    extern float lbl_802C4BF8;
-    extern float lbl_802C4BB4;
-    extern float lbl_802C4BFC;
-    extern double lbl_802C4AE8;
-    extern double lbl_802C4C00;
+    static const float lbl_802C4BE4 = 119.0f;
+    static const float lbl_802C4BE8 = 64.0f;
+    static const float lbl_802C4BEC = 304.0f;
+    static const double lbl_802C4BF0 = 0.8f;
+    static const float lbl_802C4A64 = 288.0f;
+    static const float lbl_802C4BF8 = 500.0f;
+    static const float lbl_802C4BB4 = 16.0f;
+    static const float lbl_802C4BFC = 5.0f;
+    static const double lbl_802C4AE8 = 0.4f;
+    static const double lbl_802C4C00 = 255.0;
 
     workP = &work;
     cameraP = mbCameraGet();
@@ -2829,7 +2896,8 @@ static void MgCallVsEffOMExec(OMOBJ *obj)
 
 static void MgCallVsEffPosSet(float x, float y)
 {
-    MGCALLVSEFFWORK *work = mgCallVsEffOMObj->data;
+    OMOBJ *obj = mgCallVsEffOMObj;
+    MGCALLVSEFFWORK *work = obj->data;
     int i;
     float angle;
     float speed;
@@ -2874,6 +2942,7 @@ static void MgCallVsEffKill(void)
 
 static int MgCallVsEffNumGet(void)
 {
+    OMOBJ *obj = mgCallVsEffOMObj;
     MGCALLVSEFFWORK *work;
     int i;
     int num;
@@ -2881,9 +2950,8 @@ static int MgCallVsEffNumGet(void)
     if (mgCallVsEffOMObj == NULL) {
         return 0;
     }
-    work = mgCallVsEffOMObj->data;
-    num = 0;
-    for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
+    work = obj->data;
+    for (i = 0, num = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
         if (work->activeF) {
             num++;
         }
@@ -2893,17 +2961,20 @@ static int MgCallVsEffNumGet(void)
 
 int mbMgCallVsEffCreate(void)
 {
+    OMOBJ *obj;
+    MGCALLVSEFFWORK *workP;
     MGCALLVSEFFWORK *work;
     int i;
 
-    mgCallVsEffOMObj = omAddObjEx(mbObjMan,
-        MGCALL_VS_EFFECT_OBJECT_PRIORITY, 0, 0, -1, MgCallVsEffOMExec);
-    work = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT, HU_MEMNUM_OVL);
-    mgCallVsEffOMObj->data = work;
+    obj = mgCallVsEffOMObj = omAddObjEx(mbObjMan,
+        MGCALL_VS_EFFECT_OBJECT_PRIORITY, 0, 0, -1,
+        MgCallVsEffOMExec);
+    workP = HuMemDirectMallocNum(
+        HEAP_HEAP, sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT,
+        HU_MEMNUM_OVL);
+    work = obj->data = workP;
     memset(work, 0, sizeof(MGCALLVSEFFWORK) * MGCALL_VS_EFFECT_COUNT);
-    mgCallVsEffOMObj->work[0] = mgCallVsEffOMObj->work[1]
-        = mgCallVsEffOMObj->work[2] = mgCallVsEffOMObj->work[3] = 0;
+    obj->work[0] = obj->work[1] = obj->work[2] = obj->work[3] = 0;
     for (i = 0; i < MGCALL_VS_EFFECT_COUNT; i++, work++) {
         work->activeF = FALSE;
         work->sprId = espEntry(
