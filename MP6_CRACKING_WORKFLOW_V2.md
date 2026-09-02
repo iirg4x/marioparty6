@@ -145,7 +145,7 @@ The lane sends upward only a completed compact `CRACK_REPORT/v1`, the updated ex
 
 The manager creates or resumes tasks, monitors liveness, fixes shared tooling, receives exact reports, and coordinates final landing. The manager does not select functions, source shapes, candidates, or retention decisions.
 
-## Release gates before four more owner lanes
+## Release gates for a candidate workflow release
 
 All gates are blocking:
 
@@ -159,7 +159,16 @@ All gates are blocking:
 8. Peak ephemeral data must remain at most 512 MiB per lane, retained state at most 16 MiB per owner, and cleanup at most 32 MiB scratch.
 9. One false exact, exact-sibling regression, source collision, manager intervention, or missed output/time bound fails release.
 
-Only after every gate passes may four additional Board owner lanes start.
+These gates quarantine the candidate workflow release, not owner cracking.
+Existing owner lanes continue on the last verified release while the candidate
+is tested.  No owner waits for another owner's pilot, exact report, or
+adoption.  After every gate passes, each lane may adopt the release
+independently at its next safe process boundary without rebasing or merging its
+source branch. Before the released agent starts, a current-release validation
+failure may select the single hash-bound, independently verified prior release.
+There is no fallback after child-process start: execution or cleanup failures
+stay lane-local and fail closed. A lane-local failure does not pause unrelated
+lanes, which continue cracking.
 
 ## Migration from the per-cell harness
 

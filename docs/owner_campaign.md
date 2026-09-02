@@ -98,6 +98,40 @@ collision fails before the campaign is published. This lets manager-side
 workflow fixes ship while cracking lanes continue on their existing source
 frontiers; source integration remains a separate operation.
 
+For persistent lanes, publish the verified workflow through the stable release
+launcher instead of relying on a lane-local `tools/agent.py`:
+
+```sh
+rtk python <released-workflow>/tools/owner_campaign_release.py install \
+  --release-root <released-workflow> \
+  --install-root <stable-runtime> \
+  --commit <full-release-commit>
+
+rtk python <stable-runtime>/owner_campaign_release.py run \
+  --root <owner-worktree> -- \
+  crack loop --campaign build/owner-campaign/<owner>.json
+
+rtk python <stable-runtime>/owner_campaign_release.py status \
+  --root <owner-worktree>
+```
+
+`install` accepts only a clean checkout at the named commit and atomically
+publishes a hash-bound release pointer while retaining one verified prior
+generation. Install, selection, and status reads share a cross-process lock, so
+concurrent release publication cannot expose mixed launcher/pointer state.
+Before spawning, `run` validates the current generation and may select that one
+verified prior generation if current validation fails. It never switches
+generations after the child starts. `run` executes the absolute released
+`tools/agent.py`, removes Python path overrides, validates the lane's manifest
+and tool CAS, and writes a compact active/terminal adoption receipt under
+`build/owner-campaign/`. Timeout and post-spawn failures terminate the complete
+process tree; an unproved cleanup leaves that lane quarantined instead of
+allowing an overlapping launch. `status` revalidates both sides and reports
+stale active processes or identity drift. It never checks out, rebases, merges,
+or edits owner source. A running Python process cannot change imported workflow
+code in place, so adoption occurs at that lane's next safe process boundary;
+other lanes continue independently.
+
 ### Bootstrap the first frontier
 
 Before emitting any candidate descriptor, the Sol parent must establish each
@@ -398,8 +432,8 @@ report, the updated exact/total owner count, and the final owner landing/push
 receipt. Candidate proposals, permits, routine progress, audit packets,
 negative results, and telemetry stay inside the lane.
 
-Before four additional Board owner lanes may start, all release gates in the
-v2 contract must pass: manager-offline exact replays of `SetupMgType`,
+Before a candidate workflow release may replace the last verified release, all
+release gates in the v2 contract must pass: manager-offline exact replays of `SetupMgType`,
 `mbev_CapBomheiMove`, and `ev_CapBobleOMExec`; the 60/30-second per-replay and
 180-second sequential bounds; concurrent replay plus duplicate/stale-candidate
 isolation and 1.5x slowdown bound; a manager-offline live pilot with a retained
@@ -451,5 +485,13 @@ are not consumed, and improved legacy outcomes are not promoted. Inputs are
 read-only and the import does not consult STOP or create permits. The
 transaction is idempotent and rolls back newly published state on failure.
 
-Existing lanes stay paused until those gates pass. The old harness page remains
-available only for legacy replay and migration reference.
+The candidate release stays quarantined until those gates pass. Existing lanes
+keep cracking on the last verified release and do not wait for another owner,
+pilot, or lane adoption. After release, each lane adopts independently at its
+next safe process boundary by invoking the released `tools/agent.py` with
+`--root`; no source rebase or merge is required. A current-generation
+validation failure may use the one verified prior generation only before the
+agent starts. Post-spawn failures remain fail-closed and lane-local. A
+lane-local failure does not pause unrelated lanes.
+The old harness page remains available only for legacy replay and migration
+reference.
