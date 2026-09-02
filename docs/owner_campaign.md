@@ -93,10 +93,15 @@ rtk python <released-workflow>/tools/agent.py \
 
 The initializer copies the external measurement producer and toolchain
 descriptor into hash-addressed campaign-local storage, then records only those
-contained immutable paths in the manifest. Hash drift, indirection, or a CAS
-collision fails before the campaign is published. This lets manager-side
-workflow fixes ship while cracking lanes continue on their existing source
-frontiers; source integration remains a separate operation.
+contained immutable paths in the manifest. If the lane already has tracked
+source or tooling changes, initialization snapshots at most 32 regular files
+and 16 MiB into a separate context CAS and overlays those exact bytes into every
+detached worker. The owner source may then advance only through its retained
+frontier; other bound context may keep changing in the live lane without
+changing the running campaign. New unbound tracked paths, unsupported Git
+states, hash drift, indirection, or a CAS collision fail before compilation.
+This lets manager-side workflow fixes ship while cracking lanes continue on
+their existing source frontiers; source integration remains separate.
 
 For persistent lanes, publish the verified workflow through the stable release
 launcher instead of relying on a lane-local `tools/agent.py`:
@@ -408,6 +413,7 @@ The storage contract is:
 | Transient measurement envelope | 16 MiB |
 | One frontier | 64 KiB |
 | One exact report | 64 KiB |
+| Initial tracked-context CAS | 32 files / 16 MiB |
 | Unresolved-function negative/dedupe ledger | 1 MiB |
 | Retained owner state | 16 MiB |
 | Retained global state | 64 MiB |

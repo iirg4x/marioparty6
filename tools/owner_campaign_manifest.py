@@ -473,6 +473,103 @@ def _snapshot_measurement_producer(
         temporary.unlink(missing_ok=True)
 
 
+def _publish_tracked_context_cas(
+    root: Path, payload: bytes, expected: str,
+) -> Path:
+    cas = owner_campaign._tracked_context_cas_path(root, expected)
+    try:
+        cas.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise ManifestError(f"tracked context CAS is unreadable: {cas}") from exc
+    else:
+        if (
+            not _is_regular_file(cas)
+            or owner_campaign._path_has_indirection(root, cas)
+            or owner_campaign._digest_file(cas) != expected
+            or cas.stat().st_size != len(payload)
+        ):
+            raise ManifestError("tracked context CAS hash drift")
+        return cas
+
+    try:
+        cas.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ManifestError(
+            f"tracked context CAS directory is unavailable: {cas.parent}"
+        ) from exc
+    if owner_campaign._path_has_indirection(root, cas):
+        raise ManifestError("tracked context CAS uses indirection")
+    fd, raw = tempfile.mkstemp(prefix=".tracked-context.", dir=cas.parent)
+    temporary = Path(raw)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary, cas)
+        except FileExistsError:
+            if (
+                _is_regular_file(cas)
+                and not owner_campaign._path_has_indirection(root, cas)
+                and owner_campaign._digest_file(cas) == expected
+                and cas.stat().st_size == len(payload)
+            ):
+                return cas
+            raise ManifestError("tracked context CAS hash drift")
+        except OSError as exc:
+            raise ManifestError(
+                f"tracked context CAS publication failed: {cas}"
+            ) from exc
+        return cas
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _snapshot_tracked_context(root: Path) -> list[dict[str, Any]]:
+    git_executable, _ = owner_campaign._resolve_git_executable(root)
+    changes = owner_campaign._tracked_worktree_changes(root, git_executable)
+    if len(changes) > owner_campaign.MAX_TRACKED_CONTEXT_FILES:
+        raise ManifestError("tracked context exceeds file-count limit")
+    descriptors: list[dict[str, Any]] = []
+    total = 0
+    for relative in sorted(changes):
+        path = _safe_path(root, relative, "tracked context", exists=True)
+        if (
+            owner_campaign._path_has_indirection(root, path)
+            or not _is_regular_file(path)
+        ):
+            raise ManifestError("tracked context is not a regular contained file")
+        try:
+            before = path.stat()
+            payload = path.read_bytes()
+            after = path.stat()
+        except OSError as exc:
+            raise ManifestError(f"tracked context is unreadable: {path}") from exc
+        identity_before = (
+            before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns
+        )
+        identity_after = (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
+        )
+        if identity_before != identity_after or len(payload) != before.st_size:
+            raise ManifestError("tracked context changed during snapshot")
+        total += len(payload)
+        if total > owner_campaign.MAX_TRACKED_CONTEXT_BYTES:
+            raise ManifestError("tracked context exceeds byte limit")
+        digest = owner_campaign._digest_bytes(payload)
+        _publish_tracked_context_cas(root, payload, digest)
+        descriptors.append({
+            "path": _repo_rel(root, path, "tracked context"),
+            "sha256": digest,
+            "size": len(payload),
+            "executable": bool(before.st_mode & 0o111),
+        })
+    return descriptors
+
+
 def _identity(root: Path, path: Path, campaign: Mapping[str, Any]) -> dict[str, Any]:
     loaded = owner_campaign.load_campaign(root, path)
     return {
@@ -628,6 +725,7 @@ def initialize_campaign(
     limits_value = dict(limits)
     for key, default in DEFAULT_LIMITS.items():
         limits_value.setdefault(key, default)
+    tracked_context = _snapshot_tracked_context(root)
 
     body: dict[str, Any] = {
         "schema": owner_campaign.CAMPAIGN_SCHEMA,
@@ -648,6 +746,8 @@ def initialize_campaign(
         "cancellation_epoch": epoch,
         "limits": limits_value,
     }
+    if tracked_context:
+        body["tracked_context"] = tracked_context
     manifest = {**body, "manifest_sha256": _digest_json(body)}
     _snapshot_measurement_producer(root, producer_binding)
     _atomic_json(output_path, manifest)

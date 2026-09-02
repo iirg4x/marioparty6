@@ -55,6 +55,8 @@ DEFAULT_COMMAND_TIMEOUT_SECONDS = 1800.0
 # the tighter limit for an active campaign.
 GLOBAL_SCRATCH_HARD_BYTES = 5 * (512 << 20)
 GC_MINIMUM_AGE_SECONDS = 60.0
+MAX_TRACKED_CONTEXT_FILES = 32
+MAX_TRACKED_CONTEXT_BYTES = 16 << 20
 
 # ``run_candidate`` may call ``snapshot_frontier`` while already holding the
 # worker lease.  A context variable keeps that fact local to the executing
@@ -181,6 +183,18 @@ def _closed_keys(value: Any, fields: set[str], label: str) -> Mapping[str, Any]:
     return value
 
 
+def _closed_keys_with_optional(
+    value: Any, required: set[str], optional: set[str], label: str,
+) -> Mapping[str, Any]:
+    if (
+        not isinstance(value, Mapping)
+        or not required <= set(value)
+        or not set(value) <= required | optional
+    ):
+        raise CampaignError(f"{label} is not a strict closed object")
+    return value
+
+
 def _command_timeout_seconds(campaign: Mapping[str, Any]) -> float:
     """Return the validated lock timeout, including for lightweight callers.
 
@@ -218,6 +232,8 @@ MANIFEST_FIELDS = {
     "forbidden_constructs", "commands", "cancellation_epoch", "limits",
     "manifest_sha256",
 }
+MANIFEST_OPTIONAL_FIELDS = {"tracked_context"}
+TRACKED_CONTEXT_FIELDS = {"path", "sha256", "size", "executable"}
 LIMIT_FIELDS = {
     "command_timeout_seconds", "scratch_soft_bytes", "scratch_hard_bytes",
     "cell_temporary_bytes", "focus_evidence_bytes", "frontier_bytes",
@@ -370,6 +386,109 @@ def _git_argv(campaign: Mapping[str, Any], *arguments: str) -> list[str]:
     ]
 
 
+def _tracked_worktree_changes(
+    root: Path, git_executable: Path,
+) -> dict[str, str]:
+    """Return tracked regular-file changes without pathname quoting ambiguity."""
+
+    status = subprocess.run(
+        [
+            str(git_executable), "-c", "core.quotepath=false", "status",
+            "--porcelain=v1", "-z", "--untracked-files=no",
+        ],
+        cwd=root, capture_output=True, check=False,
+    )
+    if status.returncode:
+        raise CampaignError("campaign repository cleanliness cannot be verified")
+    entries = status.stdout.split(b"\0")
+    if entries and entries[-1] == b"":
+        entries.pop()
+    changes: dict[str, str] = {}
+    for entry in entries:
+        if len(entry) < 4 or entry[2:3] != b" ":
+            raise CampaignError("campaign repository status is malformed")
+        try:
+            state = entry[:2].decode("ascii")
+            path_text = os.fsdecode(entry[3:]).replace("\\", "/")
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise CampaignError("campaign repository status is malformed") from exc
+        if not path_text or path_text in changes:
+            raise CampaignError("campaign repository status is ambiguous")
+        # Deletions, renames, copies, conflicts, and type changes cannot be
+        # materialized as a byte-stable regular-file overlay.
+        if any(marker not in {" ", "M", "A"} for marker in state):
+            raise CampaignError(
+                f"campaign tracked context has unsupported status {state}: {path_text}"
+            )
+        changes[path_text] = state
+    return changes
+
+
+def _tracked_context_cas_path(root: Path, sha256: str) -> Path:
+    return _bound_path(
+        root,
+        (Path("build") / "owner-campaign" / "context-cas" / sha256 / "payload").as_posix(),
+        "tracked context CAS",
+        exists=False,
+    )
+
+
+def _load_tracked_context(
+    root: Path, raw: Any,
+) -> list[dict[str, Any]]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list) or len(raw) > MAX_TRACKED_CONTEXT_FILES:
+        raise CampaignError("campaign tracked_context is invalid")
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    total = 0
+    for index, item in enumerate(raw):
+        descriptor = _closed_keys(
+            item, TRACKED_CONTEXT_FIELDS, f"tracked_context[{index}]"
+        )
+        path_text = descriptor["path"]
+        if (
+            not isinstance(path_text, str)
+            or not path_text
+            or Path(path_text).is_absolute()
+            or path_text == ".git"
+            or path_text.startswith(".git/")
+        ):
+            raise CampaignError("campaign tracked context path is invalid")
+        bound = _bound_path(root, path_text, "tracked context path", exists=False)
+        canonical = bound.relative_to(root).as_posix()
+        if canonical != path_text or canonical in seen:
+            raise CampaignError("campaign tracked context path is ambiguous")
+        seen.add(canonical)
+        expected = _sha(descriptor["sha256"], "tracked context sha256")
+        size = descriptor["size"]
+        executable = descriptor["executable"]
+        if type(size) is not int or size < 0 or type(executable) is not bool:
+            raise CampaignError("campaign tracked context descriptor is invalid")
+        total += size
+        if total > MAX_TRACKED_CONTEXT_BYTES:
+            raise CampaignError("campaign tracked context exceeds compact byte limit")
+        cas = _tracked_context_cas_path(root, expected)
+        if (
+            _path_has_indirection(root, cas)
+            or not _is_regular_file(cas)
+            or cas.stat().st_size != size
+            or _digest_file(cas) != expected
+        ):
+            raise CampaignError("campaign tracked context CAS hash drift")
+        result.append({
+            "path": canonical,
+            "sha256": expected,
+            "size": size,
+            "executable": executable,
+            "_cas": cas,
+        })
+    if [item["path"] for item in result] != sorted(seen):
+        raise CampaignError("campaign tracked_context is not canonically ordered")
+    return result
+
+
 def _load_campaign(
     root: Path,
     path: Path,
@@ -380,7 +499,12 @@ def _load_campaign(
         raise CampaignError("campaign source-binding mode is invalid")
     root = Path(os.path.abspath(root))
     path = _bound_path(root, str(path), "campaign manifest")
-    raw = _closed_keys(_read_json(path, "campaign manifest"), MANIFEST_FIELDS, "campaign manifest")
+    raw = _closed_keys_with_optional(
+        _read_json(path, "campaign manifest"),
+        MANIFEST_FIELDS,
+        MANIFEST_OPTIONAL_FIELDS,
+        "campaign manifest",
+    )
     body = dict(raw)
     manifest_sha = _sha(body.pop("manifest_sha256", None), "manifest_sha256")
     if _digest_json(body) != manifest_sha:
@@ -477,6 +601,7 @@ def _load_campaign(
     if type(raw["cancellation_epoch"]) is not int or raw["cancellation_epoch"] < 0:
         raise CampaignError("cancellation_epoch is invalid")
     git_executable, git_sha256 = _resolve_git_executable(root)
+    tracked_context = _load_tracked_context(root, raw.get("tracked_context"))
     check = subprocess.run(
         [str(git_executable), "cat-file", "-t", raw["base_commit"]],
         cwd=root, capture_output=True, text=True, check=False,
@@ -516,26 +641,27 @@ def _load_campaign(
     if blob.returncode:
         raise CampaignError("campaign source does not exist in base_commit")
     base_source_sha256 = _digest_bytes(blob.stdout)
-    tracked = subprocess.run(
-        [str(git_executable), "status", "--porcelain=v1", "--untracked-files=no"],
-        cwd=root, capture_output=True, text=True, check=False,
-    )
-    if tracked.returncode:
-        raise CampaignError("campaign repository cleanliness cannot be verified")
-    changed: set[str] = set()
-    for line in tracked.stdout.splitlines():
-        if len(line) < 4:
-            raise CampaignError("campaign repository status is malformed")
-        path_text = line[3:]
-        if " -> " in path_text:
-            path_text = path_text.split(" -> ", 1)[1]
-        changed.add(path_text.replace("\\", "/"))
+    changed = set(_tracked_worktree_changes(root, git_executable))
+    context_by_path = {item["path"]: item for item in tracked_context}
+    # The owner source has its own retained-frontier/initial-snapshot binding
+    # below.  Preserve that more precise error and compatibility path while
+    # requiring every other tracked write to be immutable context.
+    unapproved = changed - set(context_by_path) - {raw["source_relpath"]}
+    if unapproved:
+        raise CampaignError("campaign repository has unapproved tracked writes")
     live_source_sha256 = _digest_file(source)
-    if changed:
-        if changed != {raw["source_relpath"]}:
-            raise CampaignError("campaign repository has unapproved tracked writes")
+    initial_source = context_by_path.get(raw["source_relpath"])
+    initial_source_bound = (
+        initial_source is not None
+        and initial_source["sha256"] == live_source_sha256
+    )
+    source_requires_binding = (
+        raw["source_relpath"] in changed
+        or live_source_sha256 != base_source_sha256
+    )
+    bound_live = False
+    if source_requires_binding:
         owner_state = _state_root(root) / "owners" / _slug(str(raw["owner"]))
-        bound_live = False
         for state_path in [
             *owner_state.rglob("latest-frontier.json"),
             *owner_state.rglob("frontier.pending.json"),
@@ -558,12 +684,19 @@ def _load_campaign(
                     break
             except CampaignError:
                 continue
-        if not bound_live and not allow_unbound_live_source:
+    if raw["source_relpath"] in changed:
+        if (
+            not initial_source_bound
+            and not bound_live
+            and not allow_unbound_live_source
+        ):
             raise CampaignError(
                 "campaign source write is not bound to a retained frontier"
             )
     elif (
         live_source_sha256 != base_source_sha256
+        and not initial_source_bound
+        and not bound_live
         and not allow_unbound_live_source
     ):
         raise CampaignError("clean campaign source does not match the base blob")
@@ -578,6 +711,7 @@ def _load_campaign(
         raise CampaignError("measurement producer could not be resolved")
     result["_producer"] = producer
     result["_base_source_sha256"] = base_source_sha256
+    result["_tracked_context"] = tracked_context
     result["_git_executable"] = git_executable
     result["_git_sha256"] = git_sha256
     result["_live_source_sha256"] = live_source_sha256
@@ -1012,6 +1146,66 @@ def cancel_campaign(root: Path, campaign: Mapping[str, Any], epoch: int) -> dict
     return value
 
 
+def _verify_tracked_context_inputs(
+    campaign: Mapping[str, Any], scratch: Path | None = None,
+) -> None:
+    root = Path(campaign["_root"])
+    for descriptor in campaign.get("_tracked_context", []):
+        cas = Path(descriptor["_cas"])
+        if (
+            _path_has_indirection(root, cas)
+            or not _is_regular_file(cas)
+            or cas.stat().st_size != descriptor["size"]
+            or _digest_file(cas) != descriptor["sha256"]
+        ):
+            raise InfrastructureError("tracked context CAS drift before hook execution")
+        if scratch is None or descriptor["path"] == campaign["source_relpath"]:
+            continue
+        destination = _bound_path(
+            scratch, descriptor["path"], "scratch tracked context", exists=False
+        )
+        if (
+            _path_has_indirection(scratch, destination)
+            or not _is_regular_file(destination)
+            or destination.stat().st_size != descriptor["size"]
+            or _digest_file(destination) != descriptor["sha256"]
+        ):
+            raise InfrastructureError("scratch tracked context hash drift")
+        executable = bool(destination.stat().st_mode & 0o111)
+        if executable != descriptor["executable"]:
+            raise InfrastructureError("scratch tracked context mode drift")
+
+
+def _materialize_scratch_context(
+    root: Path, scratch: Path, campaign: Mapping[str, Any],
+) -> None:
+    for descriptor in campaign.get("_tracked_context", []):
+        if descriptor["path"] == campaign["source_relpath"]:
+            continue
+        cas = Path(descriptor["_cas"])
+        if (
+            _path_has_indirection(root, cas)
+            or not _is_regular_file(cas)
+            or cas.stat().st_size != descriptor["size"]
+            or _digest_file(cas) != descriptor["sha256"]
+        ):
+            raise InfrastructureError("tracked context CAS drift during scratch bootstrap")
+        payload = cas.read_bytes()
+        destination = _bound_path(
+            scratch, descriptor["path"], "scratch tracked context", exists=False
+        )
+        if _path_has_indirection(scratch, destination):
+            raise InfrastructureError("scratch tracked context uses indirection")
+        if _tree_size(scratch) + len(payload) > campaign["limits"]["scratch_hard_bytes"]:
+            raise InfrastructureError("tracked context exceeds scratch hard limit")
+        _atomic_bytes(destination, payload)
+        mode = destination.stat().st_mode
+        destination.chmod(
+            mode | 0o111 if descriptor["executable"] else mode & ~0o111
+        )
+    _verify_tracked_context_inputs(campaign, scratch)
+
+
 def _ensure_scratch(
     root: Path, campaign: Mapping[str, Any], worker: int = 0
 ) -> Path:
@@ -1050,6 +1244,7 @@ def _ensure_scratch(
             )
         if _digest_file(scratch / campaign["source_relpath"]) != campaign["_base_source_sha256"]:
             raise InfrastructureError("scratch base source identity drift")
+        _materialize_scratch_context(root, scratch, campaign)
         _materialize_scratch_target(root, scratch, campaign)
         return scratch
     if scratch.exists():
@@ -1077,6 +1272,7 @@ def _ensure_scratch(
         raise InfrastructureError("scratch worktree identity verification failed")
     if _digest_file(scratch / campaign["source_relpath"]) != campaign["_base_source_sha256"]:
         raise InfrastructureError("scratch source does not match manifest base blob")
+    _materialize_scratch_context(root, scratch, campaign)
     _materialize_scratch_target(root, scratch, campaign)
     return scratch
 
@@ -1300,6 +1496,7 @@ def _verify_publication_sources(
     scratch_source = scratch / campaign["source_relpath"]
     if _digest_file(scratch_source) != scratch_sha256:
         raise CampaignError("scratch source drifted before frontier publication")
+    _verify_tracked_context_inputs(campaign, scratch)
     _verify_scratch_target(Path(campaign["_root"]), scratch, campaign)
 
 
@@ -1325,7 +1522,9 @@ def _expand_argv(
     return expanded
 
 
-def _verify_hook_inputs(campaign: Mapping[str, Any]) -> None:
+def _verify_hook_inputs(
+    campaign: Mapping[str, Any], scratch: Path | None = None,
+) -> None:
     """Revalidate immutable command inputs immediately before every launch."""
 
     root = Path(campaign["_root"])
@@ -1359,6 +1558,7 @@ def _verify_hook_inputs(campaign: Mapping[str, Any]) -> None:
             ) from exc
         if digest != campaign[label]["sha256"]:
             raise InfrastructureError(f"{label} hash drift before hook execution")
+    _verify_tracked_context_inputs(campaign, scratch)
 
 
 def _hook_environment(
@@ -1472,7 +1672,7 @@ def _run_hook(
     root: Path, scratch: Path, campaign: Mapping[str, Any], function: str,
     source_sha256: str, phase: str,
 ) -> dict[str, Any]:
-    _verify_hook_inputs(campaign)
+    _verify_hook_inputs(campaign, scratch)
     _verify_scratch_target(root, scratch, campaign)
     descriptor = campaign["commands"][phase]
     output = _bound_path(scratch, descriptor["measurement_relpath"], "measurement output", exists=False)
@@ -1490,7 +1690,7 @@ def _run_hook(
         # creation.  The earlier check rejects stale state before touching the
         # scratch output; this final check closes the pre-launch replacement
         # window for target/toolchain/CAS producer inputs.
-        _verify_hook_inputs(campaign)
+        _verify_hook_inputs(campaign, scratch)
         _verify_scratch_target(root, scratch, campaign)
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,
@@ -1523,7 +1723,7 @@ def _run_final_owner(
     root: Path, scratch: Path, campaign: Mapping[str, Any], function: str,
     source_sha256: str,
 ) -> dict[str, Any]:
-    _verify_hook_inputs(campaign)
+    _verify_hook_inputs(campaign, scratch)
     descriptor = campaign["commands"]["final_owner"]
     output = _bound_path(
         scratch, descriptor["measurement_relpath"], "final owner output", exists=False
@@ -1538,7 +1738,7 @@ def _run_final_owner(
         scratch, campaign, function, source_sha256, "final_owner"
     )
     try:
-        _verify_hook_inputs(campaign)
+        _verify_hook_inputs(campaign, scratch)
         result = _run_bounded_process(
             argv, cwd=scratch, environment=environment,
             timeout=float(campaign["limits"]["command_timeout_seconds"]),

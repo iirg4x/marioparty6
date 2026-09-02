@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from tools import owner_campaign
 from tools import owner_campaign_manifest as manifest
@@ -395,6 +396,116 @@ class OwnerCampaignManifestTests(unittest.TestCase):
         values.pop("final_owner_command")
         with self.assertRaisesRegex(manifest.ManifestError, "final_owner command is required"):
             manifest.initialize_campaign(**values)
+
+    def test_dirty_tracked_context_is_snapshotted_and_materialized(self) -> None:
+        tools = self.root / "tools"
+        tools.mkdir()
+        context = tools / "lane_tool.py"
+        context.write_text("BASE = 1\n", encoding="utf-8")
+        subprocess.run(["git", "add", "tools/lane_tool.py"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "add lane context"], cwd=self.root, check=True
+        )
+        self.commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
+        ).strip()
+        source = self.root / "src" / "test.c"
+        source.write_text("int focus(void) { return 1; }\n", encoding="utf-8")
+        context.write_text("DIRTY = 2\n", encoding="utf-8")
+
+        manifest.initialize_campaign(**self._direct())
+        raw = json.loads((self.root / "build" / "campaign.json").read_text())
+        self.assertEqual(
+            [item["path"] for item in raw["tracked_context"]],
+            ["src/test.c", "tools/lane_tool.py"],
+        )
+        loaded = owner_campaign.load_campaign(
+            self.root, self.root / "build" / "campaign.json"
+        )
+        scratch = owner_campaign._ensure_scratch(self.root, loaded)
+        self.assertEqual(
+            (scratch / "tools" / "lane_tool.py").read_text(encoding="utf-8"),
+            "DIRTY = 2\n",
+        )
+        self.assertEqual(
+            (scratch / "src" / "test.c").read_text(encoding="utf-8"),
+            "int focus(void) { return 0; }\n",
+        )
+
+        # Independent lane work may continue on the already-bound context;
+        # the campaign keeps using its immutable CAS snapshot.
+        context.write_text("DIRTY = 3\n", encoding="utf-8")
+        reloaded = owner_campaign.load_campaign(
+            self.root, self.root / "build" / "campaign.json"
+        )
+        scratch = owner_campaign._ensure_scratch(self.root, reloaded)
+        self.assertEqual(
+            (scratch / "tools" / "lane_tool.py").read_text(encoding="utf-8"),
+            "DIRTY = 2\n",
+        )
+        (scratch / "tools" / "lane_tool.py").write_text(
+            "scratch drift\n", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(
+            owner_campaign.InfrastructureError, "scratch tracked context hash drift"
+        ):
+            owner_campaign._verify_hook_inputs(reloaded, scratch)
+        scratch = owner_campaign._ensure_scratch(self.root, reloaded)
+        self.assertEqual(
+            (scratch / "tools" / "lane_tool.py").read_text(encoding="utf-8"),
+            "DIRTY = 2\n",
+        )
+
+        source.write_text("int focus(void) { return 2; }\n", encoding="utf-8")
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "retained frontier"):
+            owner_campaign.load_campaign(
+                self.root, self.root / "build" / "campaign.json"
+            )
+
+    def test_new_unbound_tracked_write_is_rejected_after_initialization(self) -> None:
+        manifest.initialize_campaign(**self._direct())
+        added = self.root / "new_tracked.txt"
+        added.write_text("new\n", encoding="utf-8")
+        subprocess.run(["git", "add", "new_tracked.txt"], cwd=self.root, check=True)
+        with self.assertRaisesRegex(
+            owner_campaign.CampaignError, "unapproved tracked writes"
+        ):
+            owner_campaign.load_campaign(
+                self.root, self.root / "build" / "campaign.json"
+            )
+
+    def test_tracked_context_cas_drift_is_rejected(self) -> None:
+        source = self.root / "src" / "test.c"
+        source.write_text("int focus(void) { return 1; }\n", encoding="utf-8")
+        manifest.initialize_campaign(**self._direct())
+        raw = json.loads((self.root / "build" / "campaign.json").read_text())
+        descriptor = raw["tracked_context"][0]
+        cas = owner_campaign._tracked_context_cas_path(
+            self.root, descriptor["sha256"]
+        )
+        cas.write_bytes(b"drift")
+        with self.assertRaisesRegex(owner_campaign.CampaignError, "CAS hash drift"):
+            owner_campaign.load_campaign(
+                self.root, self.root / "build" / "campaign.json"
+            )
+
+    def test_tracked_context_count_is_bounded(self) -> None:
+        first = self.root / "first.txt"
+        second = self.root / "second.txt"
+        first.write_text("base\n", encoding="utf-8")
+        second.write_text("base\n", encoding="utf-8")
+        subprocess.run(["git", "add", "first.txt", "second.txt"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "add context fixtures"], cwd=self.root, check=True
+        )
+        self.commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
+        ).strip()
+        first.write_text("one\n", encoding="utf-8")
+        second.write_text("two\n", encoding="utf-8")
+        with mock.patch.object(owner_campaign, "MAX_TRACKED_CONTEXT_FILES", 1):
+            with self.assertRaisesRegex(manifest.ManifestError, "file-count"):
+                manifest.initialize_campaign(**self._direct())
 
 
 if __name__ == "__main__":
