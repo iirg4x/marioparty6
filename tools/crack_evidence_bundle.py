@@ -467,7 +467,7 @@ def _unit_paths(root: Path, unit_name: str) -> tuple[Path, Path]:
     return _inside(root, root / target_raw, "target object"), _inside(root, root / candidate_raw, "candidate object")
 
 
-def _run_objdiff(objdiff: Path, target: Path, candidate: Path, output: Path, *, data: bool, root: Path) -> None:
+def _run_objdiff(objdiff: Path, target: Path, candidate: Path, output: Path, *, data: bool, root: Path) -> Mapping[str, Any]:
     _assert_no_indirection(target)
     _assert_no_indirection(candidate)
     _assert_no_indirection(output.parent)
@@ -487,6 +487,7 @@ def _run_objdiff(objdiff: Path, target: Path, candidate: Path, output: Path, *, 
     _assert_no_indirection(temp)
     _assert_no_indirection(output.parent)
     os.replace(temp, output)
+    return document
 
 
 def _elf_u16(data: bytes, offset: int) -> int:
@@ -504,7 +505,7 @@ def _cstring(data: bytes, offset: int) -> str:
     return data[offset:end].decode("utf-8", errors="strict")
 
 
-def _parse_elf_relocations(path: Path, function: str) -> dict[str, Any]:
+def _parse_elf_structure(path: Path) -> dict[str, Any]:
     data = path.read_bytes()
     if len(data) < 52 or data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 2:
         raise EvidenceError(f"{path} is not a big-endian ELF32 object")
@@ -544,6 +545,15 @@ def _parse_elf_relocations(path: Path, function: str) -> dict[str, Any]:
             "name": _cstring(strings, _elf_u32(data, off)), "value": _elf_u32(data, off + 4),
             "size": _elf_u32(data, off + 8), "info": data[off + 12], "section": _elf_u16(data, off + 14),
         })
+    return {"data": data, "sections": sections, "symbols": symbols,
+            "sym_index": sym_index, "shnum": shnum,
+            "object": {"path": str(path.resolve()), "sha256": hashlib.sha256(data).hexdigest(), "size_bytes": len(data)}}
+
+
+def _parse_elf_relocations(path: Path, function: str, *, structure: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    parsed = structure if structure is not None else _parse_elf_structure(path)
+    data, sections, symbols = parsed["data"], parsed["sections"], parsed["symbols"]
+    sym_index, shnum = parsed["sym_index"], parsed["shnum"]
     matches = [row for row in symbols if (row["info"] & 0xF) == 2 and row["name"] == function]
     if len(matches) != 1:
         raise EvidenceError(f"ELF must contain exactly one function {function!r}; found {len(matches)}")
@@ -593,19 +603,29 @@ def _parse_elf_relocations(path: Path, function: str) -> dict[str, Any]:
             })
     rows.sort(key=lambda row: (row["offset"], row["type"], _canonical(row["effective_target"])))
     return {
-        "object": _descriptor(path), "section": focus_section["name"], "offset": start,
+        "object": dict(parsed["object"]), "section": focus_section["name"], "offset": start,
         "size": size, "instruction_count": size // 4, "physical_relocation_count": len(rows),
         "physical_relocations": rows,
     }
 
 
-def _physical_receipt(target: Path, candidate: Path, function: str, strict_report: Path, readelf: Path) -> dict[str, Any]:
+def _physical_receipt(target: Path, candidate: Path, function: str, strict_report: Path, readelf: Path,
+                      *, cache: dict[str, Any] | None = None) -> dict[str, Any]:
     # Run the pinned external tool first.  The independent parser below provides
     # deterministic structured rows and fails if the ELF shape is unsupported.
+    # Caller owns this per-object-pair cache; never persist it across builds.
+    if cache is None:
+        cache = {}
     for path in (target, candidate):
-        _run([str(readelf), "-SWsWr", "--", str(path)], cwd=path.parent, label="PowerPC readelf")
-    target_row = _parse_elf_relocations(target, function)
-    candidate_row = _parse_elf_relocations(candidate, function)
+        key = str(path.resolve())
+        if key not in cache:
+            _run([str(readelf), "-SWsWr", "--", str(path)], cwd=path.parent, label="PowerPC readelf")
+            cache[key] = _parse_elf_structure(path)
+    target_row = _parse_elf_relocations(target, function, structure=cache[str(target.resolve())])
+    candidate_row = _parse_elf_relocations(candidate, function, structure=cache[str(candidate.resolve())])
+    report_key = "report:" + str(strict_report.resolve())
+    if report_key not in cache:
+        cache[report_key] = _descriptor(strict_report)
     differences: list[dict[str, Any]] = []
     target_effective = [{k: row[k] for k in ("offset", "type", "effective_target")} for row in target_row["physical_relocations"]]
     candidate_effective = [{k: row[k] for k in ("offset", "type", "effective_target")} for row in candidate_row["physical_relocations"]]
@@ -613,7 +633,7 @@ def _physical_receipt(target: Path, candidate: Path, function: str, strict_repor
         differences.append({"target": target_effective, "candidate": candidate_effective})
     receipt: dict[str, Any] = {
         "schema": PHYSICAL_SCHEMA, "authority_advanced": False,
-        "report": _descriptor(strict_report), "function": function,
+        "report": cache[report_key], "function": function,
         "target": target_row, "candidate": candidate_row,
         "physical_relocations_exact": not differences,
         "physical_relocation_differences": differences,

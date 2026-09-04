@@ -56,6 +56,45 @@ def _focus(function: str = "fn", *, differences: int = 1) -> dict[str, object]:
 
 
 class OwnerCampaignMeasureTests(unittest.TestCase):
+    def test_final_owner_parses_pair_once_and_preserves_real_proof(self) -> None:
+        import subprocess
+        import shutil
+        from tools.tests.test_crack_evidence_bundle import RealEvidenceFixtureTests, OBJDFF
+        fixture = RealEvidenceFixtureTests()
+        fixture.setUp()
+        self.addCleanup(fixture.tearDown)
+        source = fixture.root / 'focus.s'
+        assembly = source.read_text(encoding='ascii')
+        source.write_text(assembly + assembly.replace('FocusFunction', 'SecondFunction'), encoding='ascii')
+        subprocess.run([fixture.assembler, '-mgekko', '-o', fixture.target, source], check=True)
+        shutil.copyfile(fixture.target, fixture.candidate)
+        identity = adapter.Identity('candidate', 'fixture', 'a'*64, 'main:board/test',
+                                    'main/board/test', 'FocusFunction', 'b'*64,
+                                    adapter._sha_file(fixture.target), 'd'*64)
+        with mock.patch.object(adapter.bundle, '_load_json', wraps=adapter.bundle._load_json) as loads, \
+             mock.patch.object(adapter.bundle, '_parse_elf_structure', wraps=adapter.bundle._parse_elf_structure) as parses:
+            protected, exact, proof, _ = adapter._verify_function_set(
+                root=fixture.root, identity=identity, target=fixture.target, candidate=fixture.candidate,
+                functions=['FocusFunction', 'SecondFunction'], protected=['SecondFunction'],
+                objdiff=OBJDFF, readelf=Path(fixture.readelf), temp=fixture.root,
+                deadline=adapter.Deadline(10))
+        self.assertTrue(protected and exact)
+        self.assertEqual(loads.call_count, 2)
+        self.assertEqual(parses.call_count, 2)
+        for summary in proof['summaries'].values():
+            self.assertEqual(summary['strict_differences'], 0)
+            self.assertEqual(summary['physical_relocations'], [1, 1])
+
+    def test_cleanup_failure_never_returns_success_without_receipt(self) -> None:
+        original = adapter.shutil.rmtree
+        def fail_measure_cleanup(path, *args, **kwargs):
+            if Path(path).name.startswith('.owner-campaign-measure-'):
+                raise OSError('cleanup sentinel')
+            return original(path, *args, **kwargs)
+        with mock.patch.object(adapter.shutil, 'rmtree', side_effect=fail_measure_cleanup):
+            with self.assertRaisesRegex(adapter.MeasurementError, 'cleanup sentinel'):
+                self.test_snapshot_cache_reuses_one_tu_baseline_and_invalidates_safely()
+
     def test_physical_identity_ignores_symbol_aliases_but_not_effective_target(self) -> None:
         focus = _focus(differences=0)
         target_rows = focus["physical_relocations"]["target"]["physical_relocations"]

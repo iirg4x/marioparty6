@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Fail-closed differential allocator causal solver.
+"""Fail-closed register-permutation and caller-hypothesis validator.
 
-The solver consumes hash-bound focus, physical-stream, relocation, source-span,
-and same-session ownership evidence.  It ranks at most one caller-declared
+The validator consumes hash-bound focus, physical-stream, relocation, source-span,
+and same-session ownership evidence. It selects at most one caller-declared
 natural source interaction when every residual row belongs to one maximal
 closed register permutation.  It never emits source or authorizes retention.
+VALIDATED_HYPOTHESIS means scope-consistent, not a proven compiler effect;
+prediction_validated is always false. This intentionally replaces the old
+RANKED_SOURCE_CLASS status so consumers cannot mistake validation for prediction.
 """
 
 from __future__ import annotations
@@ -229,8 +232,8 @@ def parse_context(value: Mapping[str, Any]) -> dict[str, Any]:
                 "source_action": _natural_text(axis["source_action"], f"{axis_label}.source_action"),
                 "topology_token": topology_token,
             })
-        if not 2 <= len(axes) <= 3 or len({axis["id"] for axis in axes}) != len(axes):
-            raise DifferentialAllocatorInputError(f"{label}.axes must contain two or three unique natural axes")
+        if not 1 <= len(axes) <= 3 or len({axis["id"] for axis in axes}) != len(axes):
+            raise DifferentialAllocatorInputError(f"{label}.axes must contain one to three unique natural axes")
         suppresses = [
             _identifier(value, f"{label}.suppresses_control_ids[{ordinal}]")
             for ordinal, value in enumerate(_sequence(item["suppresses_control_ids"], f"{label}.suppresses_control_ids"))
@@ -686,8 +689,10 @@ def solve(
         blockers.append("minimum_causal_frontier_not_unique")
 
     blockers = sorted(set(blockers))
-    status = "RANKED_SOURCE_CLASS" if not blockers else "UNKNOWN"
-    selected = minimum_frontier[0] if status == "RANKED_SOURCE_CLASS" else None
+    # Matching the caller's owner/row sets validates a hypothesis's scope, not
+    # its effect on allocation. Never call this a compiler-derived prediction.
+    status = "VALIDATED_HYPOTHESIS" if not blockers else "UNKNOWN"
+    selected = minimum_frontier[0] if status == "VALIDATED_HYPOTHESIS" else None
     missing_edges = sorted(blocker for blocker in blockers if "missing_edge:" in blocker)
     first_missing_edge = missing_edges[0] if missing_edges else (blockers[0] if blockers else None)
     evidence_sha256 = canonical_sha256({
@@ -699,9 +704,11 @@ def solve(
     result: dict[str, Any] = {
         "schema": SCHEMA,
         "status": status,
+        "prediction_validated": False,
+        "ranking_basis": "caller_supplied_axis_count",
         "function": context["function"],
         "inference_started": inference_started,
-        "failure_stage": (None if status == "RANKED_SOURCE_CLASS" else ("pre_allocator_gate" if pre_allocator_blockers or not inference_started else "allocator_join")),
+        "failure_stage": (None if status == "VALIDATED_HYPOTHESIS" else ("pre_allocator_gate" if pre_allocator_blockers or not inference_started else "allocator_join")),
         "first_missing_edge": first_missing_edge,
         "maximal_closed_permutation": {
             "complete": permutation_complete,
@@ -710,7 +717,7 @@ def solve(
             "owner_ids": sorted(owner_ids),
         },
         "minimum_causal_frontier": {
-            "unique": status == "RANKED_SOURCE_CLASS",
+            "unique": status == "VALIDATED_HYPOTHESIS",
             "axis_count": (len(selected["axes"]) if selected is not None else frontier_size),
             "source_class": (selected["source_class"] if selected is not None else None),
         },
@@ -820,7 +827,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
     else:
         sys.stdout.write(rendered)
-    return 0 if result["status"] == "RANKED_SOURCE_CLASS" else 1
+    return 0 if result["status"] == "VALIDATED_HYPOTHESIS" else 1
 
 
 if __name__ == "__main__":

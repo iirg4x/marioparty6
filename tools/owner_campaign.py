@@ -1635,37 +1635,19 @@ def _run_bounded_process(
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one hook while enforcing elapsed-time and peak-storage ceilings."""
 
-    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-    try:
-        process = subprocess.Popen(
-            list(argv), cwd=cwd, env=dict(environment), stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, creationflags=creationflags,
-            start_new_session=os.name != "nt",
-        )
-    except OSError as exc:
-        raise InfrastructureError(f"command failed to start: {exc}") from exc
-    deadline = time.monotonic() + timeout
-    failure: str | None = None
-    while process.poll() is None:
-        if time.monotonic() >= deadline:
-            failure = f"command timed out after {timeout:g} seconds"
-            break
+    from tools import bounded_process
+
+    def check_storage() -> None:
         if _tree_size(scratch) > scratch_hard_bytes:
-            failure = "campaign scratch exceeded hard limit during command"
-            break
+            raise InfrastructureError("campaign scratch exceeded hard limit during command")
         if _tree_size(temporary_root) > cell_temporary_bytes:
-            failure = "cell temporary storage exceeded limit during command"
-            break
-        time.sleep(0.05)
-    if failure is not None:
-        _terminate_process_tree(process)
-        stdout, stderr = process.communicate()
-        if len(stdout) + len(stderr) > MAX_OUTPUT:
-            stdout = stdout[: MAX_OUTPUT // 2]
-            stderr = stderr[: MAX_OUTPUT // 2]
-        raise InfrastructureError(failure)
-    stdout, stderr = process.communicate()
-    return subprocess.CompletedProcess(list(argv), process.returncode, stdout, stderr)
+            raise InfrastructureError("cell temporary storage exceeded limit during command")
+
+    try:
+        return bounded_process.run(argv, cwd=cwd, env=dict(environment), timeout=timeout,
+                                   max_output=MAX_OUTPUT, check=check_storage)
+    except (OSError, bounded_process.ProcessLimitError) as exc:
+        raise InfrastructureError(str(exc)) from exc
 
 
 def _run_hook(

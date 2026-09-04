@@ -161,9 +161,28 @@ class DifferentialAllocatorCausalTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
+    def test_unchanged_action_is_not_a_validated_prediction(self):
+        evidence = Evidence(self.root)
+        for axis in evidence.context['source_class_hypotheses'][0]['axes']:
+            axis['source_action'] = 'Leave the source byte-for-byte unchanged.'
+        seal(evidence.context, 'context_sha256')
+        result = evidence.solve()
+        self.assertEqual(result['status'], 'VALIDATED_HYPOTHESIS')
+        self.assertFalse(result['prediction_validated'])
+        self.assertEqual(result['ranking_basis'], 'caller_supplied_axis_count')
+        self.assertFalse(result['compile_authorized'])
+
+    def test_single_source_boundary_is_allowed(self):
+        evidence = Evidence(self.root)
+        evidence.context['source_class_hypotheses'][0]['axes'] = evidence.context['source_class_hypotheses'][0]['axes'][:1]
+        seal(evidence.context, 'context_sha256')
+        result = evidence.solve()
+        self.assertEqual(result['status'], 'VALIDATED_HYPOTHESIS')
+        self.assertEqual(result['minimum_causal_frontier']['axis_count'], 1)
+
     def test_two_gpr_closed_interaction_ranks_one_natural_class(self):
         result = Evidence(self.root).solve()
-        self.assertEqual(result["status"], "RANKED_SOURCE_CLASS")
+        self.assertEqual(result["status"], "VALIDATED_HYPOTHESIS")
         self.assertTrue(result["maximal_closed_permutation"]["complete"])
         self.assertEqual(result["ranked_source_classes"][0]["source_class"], "natural_lifetime_boundary")
         request = result["candidate_interaction_request"]
@@ -196,7 +215,7 @@ class DifferentialAllocatorCausalTests(unittest.TestCase):
     def test_config_pad_open_extra_data_owner_three_cycle(self):
         mappings = [("dataP", "r25", "r26"), ("pad", "r26", "r27"), ("state", "r27", "r25")]
         result = Evidence(self.root, function="ConfigPadOpen", mappings=mappings).solve()
-        self.assertEqual(result["status"], "RANKED_SOURCE_CLASS")
+        self.assertEqual(result["status"], "VALIDATED_HYPOTHESIS")
         self.assertEqual(len(result["maximal_closed_permutation"]["mapping"]), 3)
 
     def test_exact_c384_equivalent_has_zero_groups_and_does_not_infer(self):
@@ -216,7 +235,7 @@ class DifferentialAllocatorCausalTests(unittest.TestCase):
     def test_allocation_consumer_chain_replay(self):
         mappings = [("allocation", "r28", "r30"), ("cursor", "r30", "r31"), ("object", "r31", "r28")]
         result = Evidence(self.root, function="AllocationConsumer", mappings=mappings).solve()
-        self.assertEqual(result["status"], "RANKED_SOURCE_CLASS")
+        self.assertEqual(result["status"], "VALIDATED_HYPOTHESIS")
         self.assertEqual([fact["owner_id"] for fact in result["owner_facts"]], ["allocation", "cursor", "object"])
 
     def test_cfg_difference_fails_before_allocator_inference(self):
@@ -308,7 +327,7 @@ class DifferentialAllocatorCausalTests(unittest.TestCase):
             mappings=[("semanticWork", "r26", "r28"), ("resourceFlag", "r28", "r26")], controls=controls,
         )
         result = evidence.solve()
-        self.assertEqual(result["status"], "RANKED_SOURCE_CLASS")
+        self.assertEqual(result["status"], "VALIDATED_HYPOTHESIS")
         self.assertEqual(result["ranked_source_classes"][0]["suppresses_control_ids"], controls)
         self.assertEqual(result["owner_facts"][0]["lifetime"], {"birth": 10, "assignment": 11, "first_use": 12, "last_use": 13})
         self.assertNotIn("Koopa", json.dumps(result))
@@ -395,7 +414,7 @@ class DifferentialAllocatorCausalTests(unittest.TestCase):
         evidence = Evidence(self.root)
         context_path = evidence.materialize()
         result = dac.solve_from_paths(context_path, evidence.context["context_sha256"])
-        self.assertEqual(result["status"], "RANKED_SOURCE_CLASS")
+        self.assertEqual(result["status"], "VALIDATED_HYPOTHESIS")
         evidence.source_path.write_text("tampered", encoding="ascii")
         with self.assertRaisesRegex(dac.DifferentialAllocatorInputError, "source spans source file identity mismatch"):
             dac.solve_from_paths(context_path, evidence.context["context_sha256"])

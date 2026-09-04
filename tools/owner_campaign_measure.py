@@ -322,32 +322,16 @@ def _run_bounded(command: Sequence[str], *, cwd: Path, deadline: Deadline,
     if not normalized:
         raise MeasurementError(f"{label} command is invalid")
     _assert_no_indirection(cwd)
-    flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
-    kwargs: dict[str, Any] = {
-        "cwd": cwd, "stdin": subprocess.DEVNULL,
-        "stdout": subprocess.PIPE, "stderr": subprocess.PIPE,
-        "creationflags": flags,
-    }
-    if os.name != "nt":
-        kwargs["start_new_session"] = True
+    from tools import bounded_process
     try:
-        process = subprocess.Popen(normalized, **kwargs)
+        process = bounded_process.run(normalized, cwd=cwd, timeout=deadline.remaining(),
+                                      max_output=MAX_OUTPUT)
     except OSError as exc:
         raise MeasurementError(f"{label} could not start: {exc}") from exc
-    try:
-        stdout, stderr = process.communicate(timeout=deadline.remaining())
-    except subprocess.TimeoutExpired as exc:
-        _terminate_process(process)
-        try:
-            process.communicate(timeout=2)
-        except subprocess.TimeoutExpired:
-            try:
-                process.kill()
-            except OSError:
-                pass
-        raise MeasurementError(f"{label} exceeded the bounded deadline") from exc
-    if len(stdout) + len(stderr) > MAX_OUTPUT:
-        raise MeasurementError(f"{label} output exceeded {MAX_OUTPUT} bytes")
+    except bounded_process.ProcessLimitError as exc:
+        detail = "bounded deadline exceeded" if "timed out" in str(exc) else str(exc)
+        raise MeasurementError(f"{label}: {detail}") from exc
+    stdout, stderr = process.stdout, process.stderr
     text = stdout.decode("utf-8", "replace")
     if process.returncode:
         detail = stderr.decode("utf-8", "replace").strip() or text.strip() or "no diagnostic"
@@ -1859,7 +1843,6 @@ def measure_current(*, root: Path, args: argparse.Namespace) -> dict[str, Any]:
             toolchain_proof=toolchain_proof, root=root,
         )
         _atomic_json(output, result, limit=MAX_MEASUREMENT_COMPACT)
-        return result
     except BaseException as exc:
         failure = exc
     finally:
@@ -2105,25 +2088,31 @@ def _verify_function_set(*, root: Path, identity: Identity, target: Path, candid
     strict_path = temp / "owner-strict.json"
     data_path = temp / "owner-data.json"
     with _bounded_bundle_runner(deadline):
-        bundle._run_objdiff(objdiff, target, candidate, strict_path, data=False, root=root)
-        bundle._run_objdiff(objdiff, target, candidate, data_path, data=True, root=root)
+        strict_document = bundle._run_objdiff(objdiff, target, candidate, strict_path, data=False, root=root)
+        data_document = bundle._run_objdiff(objdiff, target, candidate, data_path, data=True, root=root)
     summaries: dict[str, Any] = {}
     physical_summaries: dict[str, Any] = {}
     exact_functions: set[str] = set()
+    strict_binding = bundle._descriptor(strict_path)
+    data_binding = bundle._descriptor(data_path)
+    object_cache: dict[str, Any] = {}
     with _bounded_bundle_runner(deadline):
         for function in functions:
             physical_path = temp / f"physical-{len(physical_summaries)}.json"
-            physical = bundle._physical_receipt(target, candidate, function, strict_path, readelf)
+            physical = bundle._physical_receipt(target, candidate, function, strict_path, readelf,
+                                                cache=object_cache)
             bundle._atomic_json(physical_path, physical)
             try:
-                focus = focus_symbol_report.build_from_paths(
-                    strict_report_path=strict_path,
-                    data_report_path=data_path,
-                    function=function,
-                    expected_strict_report_sha256=_sha_file(strict_path),
-                    expected_data_report_sha256=_sha_file(data_path),
-                    physical_receipt_path=physical_path,
-                    expected_physical_receipt_sha256=_sha_file(physical_path),
+                physical_binding = {"path": str(physical_path.resolve()),
+                                    "sha256": _sha_file(physical_path),
+                                    "size_bytes": physical_path.stat().st_size}
+                focus = focus_symbol_report.build_artifact(
+                    strict_document, data_document, function,
+                    {"strict_report": strict_binding, "data_report": data_binding,
+                     "physical_relocation_receipt": physical_binding,
+                     "retail_target_authenticated": True, "authority_advanced": False},
+                    physical_receipt=physical,
+                    physical_binding=physical_binding,
                     require_physical=True,
                 )
             except Exception as exc:
