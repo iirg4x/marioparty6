@@ -2543,6 +2543,8 @@ def main(argv: list[str] | None = None) -> int:
     from tools import recovery_evaluate
     evaluate_parser = sub.add_parser("evaluate", help="automate private candidate compile, duplicate detection and whole-owner checks")
     recovery_evaluate.add_arguments(evaluate_parser)
+    batch_parser = sub.add_parser("evaluate-batch", help="measure independent candidates concurrently against one current owner frontier")
+    recovery_evaluate.add_batch_arguments(batch_parser)
     access = sub.add_parser("accesses", help="find exact formatted displacement(base) accesses")
     access.add_argument("--strict", type=Path, required=True)
     access.add_argument("--function", required=True)
@@ -2576,6 +2578,8 @@ def main(argv: list[str] | None = None) -> int:
         root = Path(os.path.abspath(args.root))
         if args.action == "evaluate":
             return recovery_evaluate.dispatch(args)
+        elif args.action == "evaluate-batch":
+            return recovery_evaluate.dispatch_batch(args)
         elif args.action == "snapshot":
             value = snapshot(root=root, owner=args.owner, source=args.source, target=args.target_object,
                              candidate=args.candidate_object, strict=args.strict, data=args.data,

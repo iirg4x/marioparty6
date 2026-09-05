@@ -9,12 +9,13 @@ this module. The evaluator itself writes only its private build artifacts.
 """
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import hashlib
 import json
 import math
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
+import re
 import sys
 import tempfile
 import time
@@ -29,8 +30,15 @@ from tools import recovery_frontier as frontier
 from tools import recovery_object_inventory as objects
 
 SCHEMA = "recovery_candidate_evaluation/v1"
+BATCH_SCHEMA = "recovery_evaluation_batch/v1"
 LIMIT = 512 * 1024
 SEEN_LIMIT = 128
+BATCH_MAX_JOBS = 8
+BATCH_MAX_WORKERS = 3
+_BATCH_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
+_BATCH_DEVICE_IDS = {"CON", "PRN", "AUX", "NUL"} | {
+    f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)
+}
 
 
 def _sha(value: bytes) -> str:
@@ -508,6 +516,424 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                 result["result_sha256"] = _sha(frontier.canonical(result))
                 _atomic(out, result)
     return result
+
+
+def _batch_relative(root: Path, value: Any, field: str) -> Path:
+    """Resolve a manifest path while requiring an owner-root-relative name."""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty relative path")
+    text = value.replace("\\", "/")
+    windows = PureWindowsPath(text)
+    parts = PurePosixPath(text).parts
+    if (windows.is_absolute() or windows.drive or text.startswith("/")
+            or not parts or any(part in {"", ".", ".."} for part in parts)):
+        raise ValueError(f"{field} must be owner-root-relative")
+    return frontier.local(root, root.joinpath(*parts))
+
+
+def _batch_file(root: Path, value: Any, field: str, limit: int) -> tuple[Path, dict]:
+    path = _batch_relative(root, value, field)
+    if not path.is_file():
+        raise ValueError(f"{field} is not a file: {value}")
+    _, descriptor = frontier.read_bound(root, path, limit)
+    return path, descriptor
+
+
+def _batch_manifest(root: Path, manifest: Path) -> tuple[dict, dict, list[dict]]:
+    if not isinstance(manifest, Path):
+        manifest = Path(manifest)
+    raw, manifest_desc = frontier.read_bound(root, manifest, frontier.INDEX_LIMIT)
+    try:
+        document = frontier.load_json(raw)
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"malformed batch manifest: {manifest}") from exc
+    if not isinstance(document, dict) or set(document) != {"schema", "jobs"}:
+        raise ValueError("batch manifest must contain only schema and jobs")
+    if document.get("schema") != BATCH_SCHEMA:
+        raise ValueError(f"unsupported batch manifest schema: {document.get('schema')!r}")
+    raw_jobs = document.get("jobs")
+    if not isinstance(raw_jobs, list) or not raw_jobs or len(raw_jobs) > BATCH_MAX_JOBS:
+        raise ValueError(f"batch jobs must contain 1..{BATCH_MAX_JOBS} entries")
+    jobs = []
+    ids = set()
+    folded_ids = set()
+    for number, item in enumerate(raw_jobs, 1):
+        if not isinstance(item, dict):
+            raise ValueError(f"job {number} must be an object")
+        allowed = {"id", "candidate", "functions", "candidate_object"}
+        if set(item) - allowed or not {"id", "candidate", "functions"} <= set(item):
+            raise ValueError(f"job {number} must contain exactly id, candidate, functions and optional candidate_object")
+        job_id = item["id"]
+        device_name = job_id.upper().rstrip(".").split(".", 1)[0] if isinstance(job_id, str) else ""
+        if (not isinstance(job_id, str) or not _BATCH_ID.fullmatch(job_id)
+                or job_id.endswith(".") or device_name in _BATCH_DEVICE_IDS
+                or job_id in ids or job_id.casefold() in folded_ids):
+            raise ValueError(f"job {number} has an unsafe or duplicate id")
+        ids.add(job_id)
+        folded_ids.add(job_id.casefold())
+        functions = item["functions"]
+        if (not isinstance(functions, list) or not functions or len(functions) > 128
+                or any(not isinstance(name, str) or not name.strip() for name in functions)
+                or len(set(functions)) != len(functions)):
+            raise ValueError(f"job {job_id} functions must be distinct non-empty names")
+        candidate, candidate_desc = _batch_file(root, item["candidate"],
+                                                 f"job {job_id} candidate", 4 * 1024 * 1024)
+        candidate_object = candidate_object_desc = None
+        if "candidate_object" in item:
+            candidate_object, candidate_object_desc = _batch_file(
+                root, item["candidate_object"], f"job {job_id} candidate_object", 64 * 1024 * 1024)
+        jobs.append({"id": job_id, "candidate": candidate, "candidate_desc": candidate_desc,
+                     "functions": functions, "candidate_object": candidate_object,
+                     "candidate_object_desc": candidate_object_desc})
+    return document, manifest_desc, jobs
+
+
+def _batch_tools(objdiff: Path, readelf: Path) -> dict[str, str]:
+    paths = {"objdiff": Path(os.path.abspath(objdiff)), "readelf": Path(os.path.abspath(readelf))}
+    if any(not path.is_file() for path in paths.values()):
+        raise ValueError("objdiff and readelf must be existing files")
+    return {name: compiler.digest(path) for name, path in paths.items()}
+
+
+def _batch_snapshot(root: Path, index: Path, manifest: Path, manifest_desc: dict,
+                    jobs: list[dict], command_json: Path | None, compiler_tools: list[Path],
+                    objdiff: Path, readelf: Path, base: dict) -> dict:
+    context = (_command_context(root, command_json, compiler_tools) if command_json else None)
+    _, index_desc = frontier.read_bound(root, index, frontier.INDEX_LIMIT)
+    _, actual_manifest_desc = frontier.read_bound(root, manifest, frontier.INDEX_LIMIT)
+    if actual_manifest_desc != manifest_desc:
+        raise ValueError("batch manifest changed during preflight")
+    return {"index": index_desc, "manifest": actual_manifest_desc,
+            "jobs": {job["id"]: {"candidate": job["candidate_desc"],
+                                  "candidate_object": job["candidate_object_desc"]}
+                     for job in jobs},
+            "command_context": context,
+            "proof_tools": _batch_tools(objdiff, readelf),
+            "base_index_sha256": base.get("index_sha256"),
+            "implementation": _implementation_binding()}
+
+
+def _batch_drift(root: Path, index: Path, manifest: Path, snapshot: dict, jobs: list[dict],
+                 command_json: Path | None, compiler_tools: list[Path],
+                 objdiff: Path, readelf: Path, base: dict) -> list[str]:
+    reasons = []
+    try:
+        current_raw, current_index_desc = frontier.read_bound(root, index, frontier.INDEX_LIMIT)
+        if current_index_desc != snapshot["index"]:
+            reasons.append("index changed")
+        current_base = frontier.load_json(current_raw)
+        frontier.verify(root, current_base)
+        if current_base.get("index_sha256") != snapshot["base_index_sha256"]:
+            reasons.append("index identity changed")
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        reasons.append(f"index verification failed: {str(exc)[:300]}")
+    try:
+        _, current_manifest_desc = frontier.read_bound(root, manifest, frontier.INDEX_LIMIT)
+        if current_manifest_desc != snapshot["manifest"]:
+            reasons.append("manifest changed")
+    except (OSError, ValueError) as exc:
+        reasons.append(f"manifest changed: {str(exc)[:300]}")
+    for job in jobs:
+        expected = snapshot["jobs"][job["id"]]
+        try:
+            _, current_candidate_desc = frontier.read_bound(root, job["candidate"], 4 * 1024 * 1024)
+            if current_candidate_desc != expected["candidate"]:
+                reasons.append(f"candidate changed: {job['id']}")
+            if job["candidate_object"] is not None:
+                _, current_object_desc = frontier.read_bound(root, job["candidate_object"], 64 * 1024 * 1024)
+                if current_object_desc != expected["candidate_object"]:
+                    reasons.append(f"candidate object changed: {job['id']}")
+        except (OSError, ValueError) as exc:
+            reasons.append(f"candidate changed: {job['id']}: {str(exc)[:300]}")
+    if command_json:
+        try:
+            if _command_context(root, command_json, compiler_tools) != snapshot["command_context"]:
+                reasons.append("compiler context changed")
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+            reasons.append(f"compiler context changed: {str(exc)[:300]}")
+    try:
+        current_tools = _batch_tools(objdiff, readelf)
+        if current_tools != snapshot["proof_tools"]:
+            reasons.append("proof tool changed")
+    except (OSError, ValueError) as exc:
+        reasons.append(f"proof tool changed: {str(exc)[:300]}")
+    try:
+        if _implementation_binding() != snapshot["implementation"]:
+            reasons.append("evaluator implementation changed")
+    except (OSError, ValueError) as exc:
+        reasons.append(f"evaluator implementation changed: {str(exc)[:300]}")
+    return list(dict.fromkeys(reasons))
+
+
+def _batch_failure(job: dict, reason: str, status: str = "failed") -> dict:
+    return {"schema": SCHEMA, "owner": "batch", "functions": job["functions"],
+            "status": status, "reason": reason[:8000], "compiler_runs": 0,
+            "objdiff_runs": 0, "cleanup_errors": [], "retention_ready": False,
+            "retained": False, "authority_advanced": False, "stage": "batch"}
+
+
+def _batch_run(root: Path, index: Path, job: dict, result_path: Path,
+               objdiff: Path, readelf: Path, command_json: Path | None,
+               compiler_tools: list[Path], timeout: float) -> dict:
+    kwargs = {"root": root, "index": index, "candidate": job["candidate"],
+              "functions": job["functions"], "out": result_path, "objdiff": objdiff,
+              "readelf": readelf, "timeout": timeout}
+    if job["candidate_object"] is not None:
+        # A per-job object is an explicit replay request.  It wins over an
+        # optional common recipe in mixed manifests; no compile is performed.
+        kwargs["candidate_object"] = job["candidate_object"]
+    elif command_json is not None:
+        kwargs.update(command_json=command_json, compiler_tools=compiler_tools)
+    else:
+        raise ValueError("batch job has neither candidate_object nor common command_json")
+    return evaluate(**kwargs)
+
+
+def _batch_result_descriptor(root: Path, path: Path) -> dict:
+    raw, descriptor = frontier.read_bound(root, path, LIMIT)
+    # Loading here catches a corrupt/mock result before it enters the summary.
+    document = frontier.load_json(raw)
+    if not isinstance(document, dict):
+        raise ValueError(f"batch result is not an object: {path}")
+    return descriptor
+
+
+def _batch_alias_result(job: dict, canonical: dict, canonical_path: Path,
+                        canonical_id: str, root: Path) -> dict:
+    status = canonical.get("status")
+    if status in {"failed", "not_scheduled"}:
+        return _batch_failure(job, f"collapsed with {status} job {canonical_id}", status)
+    result = {"schema": SCHEMA, "owner": "batch", "functions": job["functions"],
+              "status": "duplicate_source", "reason": f"identical candidate/context collapsed with {canonical_id}",
+              "reused_batch_job": canonical_id, "reused_result": _batch_result_descriptor(root, canonical_path),
+              "compiler_runs": 0, "objdiff_runs": 0, "cleanup_errors": [],
+              "retention_ready": False, "retained": False, "authority_advanced": False}
+    for key in ("gains", "regressions", "strict", "data", "focus"):
+        if key in canonical:
+            result[key] = canonical[key]
+    return result
+
+
+def _batch_improvement_rows(result: dict) -> int:
+    structured = 0
+    has_structured = False
+    focus = set(result.get("functions", []))
+    for change in result.get("metric_changes", []):
+        if not isinstance(change, dict) or (focus and change.get("function") not in focus):
+            continue
+        before, after = change.get("before"), change.get("after")
+        if isinstance(before, dict) and isinstance(after, dict):
+            try:
+                has_structured = True
+                structured += max(0, int(before.get("diff_rows", 0)) - int(after.get("diff_rows", 0)))
+            except (TypeError, ValueError):
+                pass
+    if has_structured:
+        for value in result.get("gains", []):
+            if str(value).startswith(("relocation:", "physical:")):
+                match = re.search(r":\s*(-?\d+)\s*->\s*(-?\d+)", str(value))
+                if match:
+                    structured += max(0, int(match.group(1)) - int(match.group(2)))
+        return structured
+    total = 0
+    for value in result.get("gains", []):
+        match = re.search(r":\s*(-?\d+)\s*->\s*(-?\d+)", str(value))
+        if match:
+            total += max(0, int(match.group(1)) - int(match.group(2)))
+    return total
+
+
+def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
+                   objdiff: Path, readelf: Path, command_json: Path | None = None,
+                   compiler_tools: list[Path] | None = None, workers: int = 2,
+                   timeout: float = 120) -> dict:
+    """Measure a bounded batch of independent candidates using ``evaluate``.
+
+    The manifest and every input are frozen before the first worker is launched.
+    Batch scheduling is deliberately measurement-only: successful results are
+    retained as per-job evaluator files, while composition and adoption remain
+    explicit owner decisions.
+    """
+    started = time.monotonic()
+    root = Path(os.path.abspath(root))
+    index = frontier.local(root, Path(index))
+    manifest = frontier.local(root, Path(manifest))
+    out = frontier.local(root, Path(out))
+    out.relative_to(root / "build")
+    if out.exists():
+        raise ValueError(f"batch result already exists: {out}")
+    if not isinstance(workers, int) or isinstance(workers, bool) or not 1 <= workers <= BATCH_MAX_WORKERS:
+        raise ValueError(f"workers must be between 1 and {BATCH_MAX_WORKERS}")
+    if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("positive finite batch deadline required")
+    _, manifest_desc, jobs = _batch_manifest(root, manifest)
+    if bool(command_json) and all(job["candidate_object"] is not None for job in jobs):
+        # A supplied common recipe is harmless for replay, but it still becomes
+        # part of the frozen context and catches tool drift consistently.
+        command_json = frontier.local(root, Path(command_json))
+    elif command_json:
+        command_json = frontier.local(root, Path(command_json))
+    compiler_tools = [Path(os.path.abspath(root / Path(tool))) for tool in (compiler_tools or [])]
+    if command_json is None:
+        if compiler_tools:
+            raise ValueError("compiler_tools require a common command_json")
+        if any(job["candidate_object"] is None for job in jobs):
+            raise ValueError("common command_json is required unless every job supplies candidate_object")
+    elif not command_json.is_file():
+        raise ValueError(f"command_json is not a file: {command_json}")
+    objdiff = Path(os.path.abspath(objdiff))
+    readelf = Path(os.path.abspath(readelf))
+    raw, _ = frontier.read_bound(root, index, frontier.INDEX_LIMIT)
+    base = frontier.load_json(raw)
+    frontier.verify(root, base)
+    if base.get("data_functions") is None:
+        raise ValueError("baseline index must include strict and data reports")
+    known_functions = {row["function"] for row in base.get("functions", [])}
+    for job in jobs:
+        if not set(job["functions"]) <= known_functions:
+            raise ValueError(f"job {job['id']} focus function absent from current evidence")
+    snapshot = _batch_snapshot(root, index, manifest, manifest_desc, jobs, command_json,
+                               compiler_tools, objdiff, readelf, base)
+    job_dir = frontier.local(root, out.parent / (out.stem + ".jobs"))
+    job_dir.relative_to(root / "build")
+    if job_dir.exists():
+        raise ValueError(f"batch output directory already exists: {job_dir}")
+    job_dir.mkdir(parents=True, exist_ok=False)
+    result_paths = {job["id"]: job_dir / f"{job['id']}.json" for job in jobs}
+    for path in result_paths.values():
+        frontier.local(root, path)
+    # Collapse only byte/context/function-equivalent jobs. Paths themselves do
+    # not participate, so aliases are measured once and get explicit reuse files.
+    groups: dict[str, list[dict]] = {}
+    context_key = _sha(frontier.canonical({"command": snapshot["command_context"],
+                                           "index": snapshot["index"]["sha256"],
+                                           "proof": snapshot["proof_tools"]}))
+    for job in jobs:
+        key = _sha(frontier.canonical({"candidate": job["candidate_desc"]["sha256"],
+                                       "candidate_object": (job["candidate_object_desc"] or {}).get("sha256"),
+                                       "functions": sorted(job["functions"]), "context": context_key}))
+        groups.setdefault(key, []).append(job)
+    canonical = [entries[0] for entries in groups.values()]
+    aliases = {job["id"]: entries[0] for entries in groups.values() for job in entries[1:]}
+    results: dict[str, dict] = {}
+    drift_reasons = _batch_drift(root, index, manifest, snapshot, jobs, command_json,
+                                 compiler_tools, objdiff, readelf, base)
+    pending = list(canonical)
+    active = {}
+    def schedule(pool: ThreadPoolExecutor) -> None:
+        nonlocal drift_reasons
+        while pending and len(active) < workers and not drift_reasons:
+            drift_reasons = _batch_drift(root, index, manifest, snapshot, jobs, command_json,
+                                         compiler_tools, objdiff, readelf, base)
+            if drift_reasons:
+                break
+            job = pending.pop(0)
+            active[pool.submit(_batch_run, root, index, job, result_paths[job["id"]],
+                               objdiff, readelf, command_json, compiler_tools, timeout)] = job
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        schedule(pool)
+        while active:
+            done, _ = wait(tuple(active), return_when=FIRST_COMPLETED)
+            for future in done:
+                job = active.pop(future)
+                try:
+                    result = future.result()
+                    if not isinstance(result, dict) or not isinstance(result.get("status"), str):
+                        raise ValueError("evaluate returned a non-object result")
+                except Exception as exc:
+                    result = _batch_failure(job, str(exc))
+                if not result_paths[job["id"]].is_file():
+                    _atomic(result_paths[job["id"]], result)
+                results[job["id"]] = result
+            if not drift_reasons:
+                drift_reasons = _batch_drift(root, index, manifest, snapshot, jobs, command_json,
+                                             compiler_tools, objdiff, readelf, base)
+            schedule(pool)
+    for job in pending:
+        result = _batch_failure(job, "batch input drift stopped scheduling", "not_scheduled")
+        _atomic(result_paths[job["id"]], result)
+        results[job["id"]] = result
+    # Fan out aliases only after their canonical result is stable.
+    for job in jobs:
+        if job["id"] in aliases:
+            canonical_job = aliases[job["id"]]
+            canonical_path = result_paths[canonical_job["id"]]
+            result = _batch_alias_result(job, results[canonical_job["id"]], canonical_path,
+                                         canonical_job["id"], root)
+            _atomic(result_paths[job["id"]], result)
+            results[job["id"]] = result
+    final_drift = _batch_drift(root, index, manifest, snapshot, jobs, command_json,
+                               compiler_tools, objdiff, readelf, base)
+    drift_reasons = list(dict.fromkeys(drift_reasons + final_drift))
+    records = []
+    result_map = {}
+    positive = []
+    for job in jobs:
+        result = results[job["id"]]
+        descriptor = _batch_result_descriptor(root, result_paths[job["id"]])
+        record = {"id": job["id"], "status": result.get("status"),
+                  "canonical_id": aliases.get(job["id"], job)["id"],
+                  "candidate": job["candidate_desc"], "functions": job["functions"],
+                  "candidate_object": job["candidate_object_desc"],
+                  "result": descriptor, "compiler_runs": result.get("compiler_runs", 0),
+                  "objdiff_runs": result.get("objdiff_runs", 0),
+                  "retention_ready": bool(result.get("retention_ready", False))}
+        records.append(record)
+        result_map[job["id"]] = {"status": record["status"], "result": descriptor,
+                                  "gains": result.get("gains", [])[:16]}
+        if record["status"] in {"exact", "improved"} and job["id"] not in aliases:
+            gains = result.get("gains", [])
+            positive.append({"id": job["id"], "status": record["status"],
+                             "gains": gains[:16], "result": descriptor,
+                             "improvement_rows": _batch_improvement_rows(result),
+                             "retention_ready": record["retention_ready"]})
+    positive.sort(key=lambda item: (item["status"] != "exact", -item["improvement_rows"],
+                                    -len(item["gains"]), item["id"]))
+    statuses = [record["status"] for record in records]
+    if drift_reasons:
+        status = "drifted"
+    elif any(item == "failed" for item in statuses):
+        status = "partial" if any(item in {"exact", "improved"} for item in statuses) else "failed"
+    else:
+        status = "complete"
+    summary = {"schema": BATCH_SCHEMA, "status": status, "manifest": manifest_desc,
+               "baseline_index": snapshot["index"], "context_sha256": context_key,
+               "proof_tools": snapshot["proof_tools"],
+               "jobs": records, "results": result_map,
+               "measured_gains": positive, "best_positive_candidates": positive[:3],
+               "drift_detected": bool(drift_reasons), "drift_reasons": drift_reasons[:16],
+               "retention_ready": bool(positive) and not drift_reasons
+                   and all(item["retention_ready"] for item in positive),
+               "authority_advanced": False, "retained": False, "adoption_ready": False,
+               "composition": None, "compiler_runs": sum(r["compiler_runs"] for r in records),
+               "objdiff_runs": sum(r["objdiff_runs"] for r in records),
+               "seconds": time.monotonic() - started}
+    _atomic(out, summary)
+    return summary
+
+
+def add_batch_arguments(parser: Any) -> None:
+    parser.add_argument("--index", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--objdiff", type=Path, required=True)
+    parser.add_argument("--readelf", type=Path, required=True)
+    parser.add_argument("--command-json", type=Path)
+    parser.add_argument("--compiler-tool", type=Path, action="append", dest="compiler_tools")
+    parser.add_argument("--workers", type=int, default=2)
+    parser.add_argument("--timeout", type=float, default=120)
+
+
+def dispatch_batch(args: Any) -> int:
+    values = vars(args).copy()
+    values.pop("action", None)
+    result = evaluate_batch(**values)
+    summary = {key: result[key] for key in
+               ("status", "drift_detected", "drift_reasons", "compiler_runs", "objdiff_runs", "retention_ready", "seconds")}
+    summary.update(jobs=[{"id": row["id"], "status": row["status"]} for row in result["jobs"]],
+                   best_positive_candidates=result["best_positive_candidates"])
+    print(json.dumps(summary, sort_keys=True))
+    return 2 if result["status"] in {"failed", "drifted"} else 0
 
 
 def add_arguments(parser: Any) -> None:

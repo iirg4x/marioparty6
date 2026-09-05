@@ -1,7 +1,7 @@
 # Fast, current-source recovery handoff
 
 These are convenience commands, not new approval gates. Inspection commands do
-not compile; `evaluate` explicitly measures one supplied candidate. None writes
+not compile; `evaluate` and `evaluate-batch` explicitly measure supplied candidates. None writes
 live source or authorizes promotion or linked exactness.
 
 ## Fast cracking loop
@@ -95,6 +95,50 @@ objects are removed by default. `--keep-reports` is an explicit short-lived
 debugging option, not the normal campaign path. Compiler recipes are trusted
 owner inputs, not arbitrary programs sandboxed by this command. Cleanup errors remain attached
 to the primary result and disable readiness.
+
+## Parallel independent candidates
+
+Use separate workers for independent residuals or genuinely different unresolved
+evidence questions. A worker that already has a supported candidate need not wait
+for other workers' audit votes. Each worker owns its private candidate file; only
+the owner writer changes the retained source.
+
+Submit the resulting candidates to one bounded batch against the same current
+index. This automates measurement, not source inference or random source search:
+
+```json
+{
+  "schema": "recovery_evaluation_batch/v1",
+  "jobs": [
+    {"id": "first-owner", "candidate": "work/first.c", "functions": ["FirstFunction"]},
+    {"id": "second-owner", "candidate": "work/second.c", "functions": ["SecondFunction"]}
+  ]
+}
+```
+
+```text
+python tools/recovery_frontier.py --root OWNER_ROOT evaluate-batch \
+  --index build/recovery/current.json --manifest build/recovery/batch.json \
+  --command-json build/recovery/compiler-argv.json \
+  --compiler-tool build/compilers/GC/2.6/mwcceppc.exe \
+  --objdiff ABSOLUTE_OBJDFF_EXE --readelf ABSOLUTE_READELF_EXE \
+  --workers 2 --timeout 120 --out build/recovery/batches/current.json
+```
+
+The batch accepts at most eight jobs and one to three workers. Independent
+measurements overlap; compiler execution still uses the existing owner lock,
+while strict/data comparison runs concurrently. Identical source bytes with the
+same focus scope are deduplicated before dispatch. Inputs stay frozen, results
+stay separate, and an individual failure cannot erase another candidate's gain.
+Source or evidence drift stops new dispatch and prevents adoption from that batch.
+
+The summary identifies measured positive candidates and their compact receipts.
+It does not assume separately successful edits compose: the single owner writer
+combines compatible gains and re-proves that combined source. No manager permit,
+new worktree, negative-control matrix, or permanent attempt ban is added.
+For a compile-free replay, a job may provide `candidate_object`; that mode cannot
+authenticate a source-to-object relationship. Keep successful source/object
+snapshots and compact failed-result facts, not full report history.
 
 ## Reuse supported native captures
 

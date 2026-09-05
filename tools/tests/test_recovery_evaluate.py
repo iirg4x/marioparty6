@@ -201,6 +201,55 @@ class RecoveryEvaluateTests(unittest.TestCase):
             kwargs["compiler_tools"] = [Path("compiler.exe")]
         return evaluate.evaluate(**kwargs)  # type: ignore[arg-type]
 
+    def _batch_manifest(self, jobs: list[dict[str, object]], name: str = "batch.manifest.json",
+                        *, document: dict[str, object] | None = None) -> Path:
+        path = self.root / "build" / name
+        path.write_text(json.dumps(document or {"schema": evaluate.BATCH_SCHEMA, "jobs": jobs}),
+                        encoding="utf-8")
+        return path
+
+    def _evaluate_batch(self, jobs: list[dict[str, object]], out_name: str = "batch.json",
+                        *, manifest_name: str = "batch.manifest.json",
+                        manifest_document: dict[str, object] | None = None,
+                        **overrides: object) -> dict[str, object]:
+        self._batch_manifest(jobs, manifest_name, document=manifest_document)
+        kwargs: dict[str, object] = {
+            "root": self.root,
+            "index": Path("build/index.json"),
+            "manifest": Path("build") / manifest_name,
+            "out": Path("build") / out_name,
+            # The public CLI documents these proof tools as absolute paths;
+            # keep the fixture aligned with that contract while all owner
+            # inputs remain root-relative.
+            "objdiff": self.objdiff,
+            "readelf": self.readelf,
+            "command_json": Path("compile.json"),
+            "compiler_tools": [Path("compiler.exe")],
+            "workers": 2,
+            "timeout": 5,
+        }
+        kwargs.update(overrides)
+        return evaluate.evaluate_batch(**kwargs)  # type: ignore[arg-type]
+
+    @staticmethod
+    def _batch_result(kwargs: dict[str, object], status: str = "improved",
+                      gains: list[str] | None = None) -> dict[str, object]:
+        positive = status in {"exact", "improved"}
+        return {
+            "schema": evaluate.SCHEMA,
+            "owner": "main:board/snpc",
+            "functions": list(kwargs["functions"]),
+            "status": status,
+            "gains": gains if gains is not None else (["candidate gain"] if positive else []),
+            "regressions": [],
+            "compiler_runs": 1 if positive else 0,
+            "objdiff_runs": 2 if positive else 0,
+            "cleanup_errors": [],
+            "retention_ready": positive,
+            "retained": False,
+            "authority_advanced": False,
+        }
+
     def test_command_context_and_mocked_compile_bind_placeholders(self) -> None:
         context = evaluate._command_context(self.root, self.command_json, [Path("compiler.exe")])
         self.assertEqual(context["argv_template"][-2:], ["{source}", "{object}"])
@@ -516,6 +565,238 @@ class RecoveryEvaluateTests(unittest.TestCase):
         self.assertEqual(result["cleanup_errors"], [])
         self.assertEqual(self.candidate.read_bytes(), source_before)
         self.assertFalse(list((self.root / "build").glob(".evaluate-*")))
+
+    def test_evaluate_batch_runs_jobs_concurrently_with_worker_bound(self) -> None:
+        jobs = []
+        for number in range(3):
+            path = self.root / f"batch-{number}.c"
+            path.write_text(f"int f(void) {{ return {number + 10}; }}\n", encoding="utf-8")
+            jobs.append({"id": f"job-{number}", "candidate": path.name,
+                         "functions": ["FocusFunction"]})
+
+        calls: list[str] = []
+        lock = threading.Lock()
+        first_pair = threading.Barrier(2)
+        active = 0
+        peak = 0
+
+        def fake(**kwargs: object) -> dict[str, object]:
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                ordinal = len(calls)
+                calls.append(Path(kwargs["candidate"]).name)
+            try:
+                if ordinal < 2:
+                    first_pair.wait(timeout=2)
+                return self._batch_result(kwargs, "no_gain")
+            finally:
+                with lock:
+                    active -= 1
+
+        with mock.patch.object(evaluate, "evaluate", side_effect=fake):
+            summary = self._evaluate_batch(jobs, "parallel.json", workers=2)
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual(len(calls), 3)
+        self.assertGreaterEqual(peak, 2)
+        self.assertLessEqual(peak, 2)
+        self.assertEqual([row["status"] for row in summary["jobs"]], ["no_gain"] * 3)
+
+    def test_evaluate_batch_deduplicates_same_bytes_but_keeps_scope_difference(self) -> None:
+        same_a = self.root / "same-a.c"
+        same_b = self.root / "same-b.c"
+        same_a.write_bytes(self.source.read_bytes())
+        same_b.write_bytes(self.source.read_bytes())
+        jobs = [
+            {"id": "same-a", "candidate": same_a.name, "functions": ["FocusFunction"]},
+            {"id": "same-b", "candidate": same_b.name, "functions": ["FocusFunction"]},
+            {"id": "scope-diff", "candidate": same_b.name, "functions": ["ProtectedSibling"]},
+        ]
+        calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def fake(**kwargs: object) -> dict[str, object]:
+            calls.append((Path(kwargs["candidate"]).name, tuple(kwargs["functions"])))
+            return self._batch_result(kwargs)
+
+        with mock.patch.object(evaluate, "evaluate", side_effect=fake):
+            summary = self._evaluate_batch(jobs, "dedupe.json", workers=1)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual({scope for _, scope in calls},
+                         {("FocusFunction",), ("ProtectedSibling",)})
+        records = {row["id"]: row for row in summary["jobs"]}
+        self.assertEqual(records["same-a"]["status"], "improved")
+        self.assertEqual(records["same-b"]["status"], "duplicate_source")
+        self.assertEqual(records["same-b"]["canonical_id"], "same-a")
+        self.assertEqual(records["scope-diff"]["status"], "improved")
+
+    def test_evaluate_batch_rejects_bad_manifest_or_path_before_work(self) -> None:
+        cases = [
+            ({"schema": "wrong", "jobs": []}, "unsupported batch manifest schema", "bad-schema"),
+            ({"schema": evaluate.BATCH_SCHEMA, "jobs": [
+                {"id": "escape", "candidate": "../outside.c", "functions": ["FocusFunction"]},
+            ]}, "owner-root-relative", "bad-path"),
+        ]
+        with mock.patch.object(evaluate, "evaluate") as measured:
+            for document, message, stem in cases:
+                out_name = f"{stem}.json"
+                self._batch_manifest([], f"{stem}.manifest.json", document=document)
+                with self.assertRaisesRegex(ValueError, message):
+                    self._evaluate_batch([], out_name, manifest_name=f"{stem}.manifest.json",
+                                         manifest_document=document)
+                self.assertFalse((self.root / "build" / out_name).exists())
+                measured.assert_not_called()
+
+    def test_evaluate_batch_keeps_positive_result_when_another_job_fails(self) -> None:
+        failed = self.root / "failed.c"
+        positive = self.root / "positive.c"
+        failed.write_text("int f(void) { return 20; }\n", encoding="utf-8")
+        positive.write_text("int f(void) { return 21; }\n", encoding="utf-8")
+        jobs = [
+            {"id": "failed", "candidate": failed.name, "functions": ["FocusFunction"]},
+            {"id": "positive", "candidate": positive.name, "functions": ["FocusFunction"]},
+        ]
+        source_before = {path: path.read_bytes() for path in (failed, positive)}
+        index_before = self.index.read_bytes()
+
+        def fake(**kwargs: object) -> dict[str, object]:
+            if Path(kwargs["candidate"]).name == failed.name:
+                raise ValueError("sentinel batch failure")
+            return self._batch_result(kwargs, "improved", ["FocusFunction: gain"])
+
+        with mock.patch.object(evaluate, "evaluate", side_effect=fake):
+            summary = self._evaluate_batch(jobs, "failure-isolated.json", workers=2)
+        records = {row["id"]: row for row in summary["jobs"]}
+        self.assertEqual(summary["status"], "partial")
+        self.assertEqual(records["failed"]["status"], "failed")
+        self.assertEqual(records["positive"]["status"], "improved")
+        self.assertEqual(summary["best_positive_candidates"][0]["id"], "positive")
+        self.assertTrue((self.root / "build/failure-isolated.json").is_file())
+        self.assertEqual(self.index.read_bytes(), index_before)
+        self.assertEqual({path: path.read_bytes() for path in source_before}, source_before)
+
+    def test_evaluate_batch_does_not_rank_regression_or_duplicate_as_best(self) -> None:
+        jobs = []
+        for name, status in (("exact", "exact"), ("improved", "improved"),
+                             ("regression", "rejected"), ("duplicate", "duplicate_object")):
+            path = self.root / f"{name}.c"
+            path.write_text(f"int f(void) {{ return {len(jobs) + 30}; }}\n", encoding="utf-8")
+            jobs.append({"id": name, "candidate": path.name, "functions": ["FocusFunction"]})
+
+        def fake(**kwargs: object) -> dict[str, object]:
+            name = Path(kwargs["candidate"]).stem
+            return self._batch_result(kwargs, {
+                "exact": "exact", "improved": "improved", "regression": "rejected",
+                "duplicate": "duplicate_object",
+            }[name], [f"{name}: gain"])
+
+        with mock.patch.object(evaluate, "evaluate", side_effect=fake):
+            summary = self._evaluate_batch(jobs, "ranking.json", workers=1)
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual([item["id"] for item in summary["best_positive_candidates"]],
+                         ["exact", "improved"])
+        self.assertEqual([item["id"] for item in summary["measured_gains"]],
+                         ["exact", "improved"])
+        self.assertTrue(all(item["id"] not in {"regression", "duplicate"}
+                            for item in summary["best_positive_candidates"]))
+
+    def test_evaluate_batch_honors_per_job_candidate_object_with_common_recipe(self) -> None:
+        compiled = self.root / "compiled.c"
+        replay = self.root / "replay.c"
+        replay_object = self.root / "replay.o"
+        compiled.write_text("int f(void) { return 40; }\n", encoding="utf-8")
+        replay.write_text("int f(void) { return 41; }\n", encoding="utf-8")
+        replay_object.write_bytes(b"replay object")
+        jobs = [
+            {"id": "compiled", "candidate": compiled.name, "functions": ["FocusFunction"]},
+            {"id": "replay", "candidate": replay.name, "functions": ["FocusFunction"],
+             "candidate_object": replay_object.name},
+        ]
+        calls: dict[str, dict[str, object]] = {}
+
+        def fake(**kwargs: object) -> dict[str, object]:
+            calls[Path(kwargs["candidate"]).stem] = kwargs
+            return self._batch_result(kwargs, "no_gain")
+
+        with mock.patch.object(evaluate, "evaluate", side_effect=fake):
+            self._evaluate_batch(jobs, "mixed-mode.json", workers=1)
+        self.assertIn("command_json", calls["compiled"])
+        self.assertNotIn("candidate_object", calls["compiled"])
+        self.assertEqual(Path(calls["replay"]["candidate_object"]).resolve(), replay_object.resolve())
+        self.assertNotIn("command_json", calls["replay"])
+
+    def test_evaluate_batch_stops_scheduling_and_adoption_on_input_drift(self) -> None:
+        candidates = {}
+        objects_by_id = {}
+        jobs = []
+        for name in ("source", "index", "object"):
+            candidate = self.root / f"drift-{name}.c"
+            candidate.write_text(f"int f(void) {{ return {50 + len(jobs)}; }}\n", encoding="utf-8")
+            candidate_object = self.root / f"drift-{name}.o"
+            candidate_object.write_bytes(f"{name} object".encode("ascii"))
+            candidates[name] = candidate
+            objects_by_id[name] = candidate_object
+            jobs.append({"id": name, "candidate": candidate.name,
+                         "functions": ["FocusFunction"],
+                         "candidate_object": candidate_object.name})
+
+        calls: list[str] = []
+
+        def fake(**kwargs: object) -> dict[str, object]:
+            calls.append(Path(kwargs["candidate"]).stem)
+            if len(calls) == 1:
+                candidates["source"].write_text("int f(void) { return 999; }\n", encoding="utf-8")
+                self.index.write_bytes(self.index.read_bytes() + b" ")
+                objects_by_id["object"].write_bytes(b"drifted object")
+            return self._batch_result(kwargs, "improved", ["FocusFunction: gain"])
+
+        with mock.patch.object(evaluate, "evaluate", side_effect=fake):
+            summary = self._evaluate_batch(jobs, "drift.json", command_json=None,
+                                           compiler_tools=[], workers=1)
+        records = {row["id"]: row for row in summary["jobs"]}
+        self.assertEqual(calls, ["drift-source"])
+        self.assertEqual(summary["status"], "drifted")
+        self.assertTrue(summary["drift_detected"])
+        self.assertFalse(summary["retention_ready"])
+        self.assertFalse(summary["adoption_ready"])
+        self.assertEqual(records["source"]["status"], "improved")
+        self.assertEqual(records["index"]["status"], "not_scheduled")
+        self.assertEqual(records["object"]["status"], "not_scheduled")
+        self.assertTrue(any("index changed" in reason for reason in summary["drift_reasons"]))
+        self.assertTrue(any("candidate changed: source" in reason for reason in summary["drift_reasons"]))
+        self.assertTrue(any("candidate object changed: object" in reason
+                            for reason in summary["drift_reasons"]))
+
+
+    def test_batch_ranking_does_not_double_count_structured_and_text_gains(self) -> None:
+        result = {
+            "functions": ["FocusFunction"],
+            "metric_changes": [
+                {"function": "FocusFunction", "channel": channel,
+                 "before": {"diff_rows": 4}, "after": {"diff_rows": 2}}
+                for channel in ("strict", "data")
+            ],
+            "gains": ["strict:FocusFunction: 4 -> 2 differing rows",
+                      "data:FocusFunction: 4 -> 2 differing rows",
+                      "relocation:FocusFunction: 1 -> 0"],
+        }
+        self.assertEqual(evaluate._batch_improvement_rows(result), 5)
+
+    def test_batch_rejects_manifest_change_between_parse_and_snapshot(self) -> None:
+        original = evaluate._batch_snapshot
+
+        def change_then_snapshot(*args, **kwargs):
+            manifest = args[2]
+            manifest.write_bytes(manifest.read_bytes() + b" ")
+            return original(*args, **kwargs)
+
+        jobs = [{"id": "fresh", "candidate": self.candidate.name,
+                 "functions": ["FocusFunction"]}]
+        with mock.patch.object(evaluate, "_batch_snapshot", side_effect=change_then_snapshot), \
+                mock.patch.object(evaluate, "evaluate") as measured:
+            with self.assertRaisesRegex(ValueError, "manifest changed during preflight"):
+                self._evaluate_batch(jobs, "preflight-drift.json")
+            measured.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -976,5 +976,23 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.assertTrue(output.called)
 
 
+class BatchCliTests(unittest.TestCase):
+    def test_batch_cli_dispatches_without_running_measurement(self):
+        with mock.patch("tools.recovery_evaluate.dispatch_batch", return_value=0) as dispatch:
+            result = frontier.main([
+                "--root", "owner-root", "evaluate-batch",
+                "--index", "build/current.json", "--manifest", "build/jobs.json",
+                "--out", "build/batch.json", "--objdiff", "objdiff.exe",
+                "--readelf", "readelf.exe", "--command-json", "build/argv.json",
+                "--workers", "2", "--timeout", "120",
+            ])
+        self.assertEqual(result, 0)
+        args = dispatch.call_args.args[0]
+        self.assertEqual(args.action, "evaluate-batch")
+        self.assertEqual(args.manifest, Path("build/jobs.json"))
+        self.assertEqual(args.workers, 2)
+        self.assertEqual(args.timeout, 120)
+
+
 if __name__ == "__main__":
     unittest.main()
