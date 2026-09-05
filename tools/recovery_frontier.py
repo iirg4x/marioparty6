@@ -32,6 +32,8 @@ DIAGNOSE_SCHEMA = "recovery_source_diagnosis/v1"
 DIAGNOSE_OUTPUT_LIMIT = 32 * 1024
 DIAGNOSE_FOCUS_LIMIT = 8 * 1024
 VARINFO_LIMIT = INDEX_LIMIT
+VARINFO_PRIORITY_COMPILER_SHA256 = "316e2a98236c23f3fc902243b157eaebf8ef2ad6edb88cfd632a15b6676fa9a8"
+VARINFO_INLINE_ASM_FLAG = 0x40
 DEFAULT_ACCESS_MATCH_LIMIT = 64
 MAX_ACCESS_MATCH_LIMIT = 256
 MAX_ACCESS_CONTEXT = 3
@@ -1120,6 +1122,80 @@ def _varinfo_variable(value: Any, index: int, collection: str) -> dict[str, Any]
     return result
 
 
+def _varinfo_priority_hint(
+    document: dict[str, Any],
+    variables: list[dict[str, Any]],
+    *,
+    function_matches: bool,
+    malformed_rows: bool = False,
+    duplicate_names: bool = False,
+) -> dict[str, Any]:
+    """Explain the known GC/2.6 VarInfo flag without granting source authority."""
+    compiler_sha = None
+    for key in ("compiler_sha256", "compiler_sha", "compiler_hash"):
+        compiler_sha = _diagnose_sha(document.get(key))
+        if compiler_sha is not None:
+            break
+    compiler_matches = compiler_sha == VARINFO_PRIORITY_COMPILER_SHA256
+    flagged: list[str] = []
+    ordinary: list[str] = []
+    invalid: list[str] = []
+    for variable in variables[:256]:
+        name = variable.get("name")
+        flags = variable.get("flags")
+        if (isinstance(flags, bool) or not isinstance(flags, int)
+                or not 0 <= flags <= 0xFF):
+            if isinstance(name, str):
+                invalid.append(name)
+            continue
+        if flags & VARINFO_INLINE_ASM_FLAG:
+            if isinstance(name, str):
+                flagged.append(name)
+        elif isinstance(name, str):
+            ordinary.append(name)
+    valid = (compiler_matches and function_matches and not invalid
+             and not malformed_rows and not duplicate_names)
+    if valid:
+        status = "known"
+        origin = "inline_assembly_operand_priority" if flagged else "ordinary_observed_usage"
+        allocator_effect = "conditional_o0_usage_100000" if flagged else "not_applicable"
+        declaration_reordering = (
+            "conditional_o0_priority_barrier" if flagged else "ordinary_ties_only"
+        )
+        caution = (
+            "O0 allocator effect remains conditional; no register or inline-asm recommendation."
+            if flagged else "Only ordinary observed-use ties are order-sensitive."
+        )
+    else:
+        status = "UNKNOWN"
+        origin = "UNKNOWN"
+        allocator_effect = "UNKNOWN"
+        declaration_reordering = "UNKNOWN"
+        caution = "Unknown compiler/flags/function binding; no source conclusion."
+    trace_present = any(
+        key in document for key in ("raw_trace", "trace", "assignment_snapshots", "capture_assignments")
+    )
+    return {
+        "status": status,
+        "compiler_sha256": compiler_sha,
+        "compiler_hash_known": compiler_matches,
+        "flagged_count": len(flagged),
+        "flagged_names": flagged[:8],
+        "ordinary_count": len(ordinary),
+        "invalid_count": len(invalid),
+        "origin": origin,
+        "conditional_o0_usage": 100000 if valid and flagged else None,
+        "optimization_unverified": True,
+        "allocator_effect": allocator_effect,
+        "declaration_reordering": declaration_reordering,
+        "raw_trace": "unbound" if trace_present else "absent",
+        "source_binding": "not_advanced",
+        "caution": caution,
+        "diagnostic_only": True,
+        "authority_advanced": False,
+    }
+
+
 def _varinfo_diagnosis(
     *,
     root: Path,
@@ -1136,6 +1212,7 @@ def _varinfo_diagnosis(
         "locals": [],
         "usage_groups": [],
         "score_relation": {"status": "UNKNOWN", "known_scores": [], "unknown_count": 0},
+        "priority_hint": None,
         "compiler_output_binding": {
             "status": "unproven",
             "physical_proof": False,
@@ -1152,14 +1229,17 @@ def _varinfo_diagnosis(
     except (OSError, ValueError, TypeError) as exc:
         base["status"] = "malformed"
         base["reason"] = str(exc)[:256]
+        base["priority_hint"] = _varinfo_priority_hint({}, [], function_matches=False)
         return base
     base["path"] = dict(binding)
     if not isinstance(document, dict):
         base["status"] = "malformed"
         base["reason"] = "varinfo must be a JSON object"
+        base["priority_hint"] = _varinfo_priority_hint({}, [], function_matches=False)
         return base
     varinfo_function = document.get("function") or document.get("target")
-    if varinfo_function is not None and varinfo_function != function:
+    function_matches = varinfo_function is None or varinfo_function == function
+    if not function_matches:
         base["status"] = "function_mismatch"
         base["reason"] = f"varinfo target {varinfo_function!r} differs from {function!r}"
     malformed_rows: list[str] = []
@@ -1190,6 +1270,10 @@ def _varinfo_diagnosis(
         base[output_key] = rows
         base[collection] = rows
     all_variables = base["named_arguments"] + base["named_locals"]
+    base["priority_hint"] = _varinfo_priority_hint(
+        document, all_variables, function_matches=varinfo_function == function,
+        malformed_rows=bool(malformed_rows), duplicate_names=bool(duplicate_names),
+    )
     groups: dict[int, list[dict[str, Any]]] = {}
     unknown_count = 0
     for variable in all_variables:

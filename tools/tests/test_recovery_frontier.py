@@ -588,6 +588,104 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.assertEqual(varinfo["score_relation"]["tie_names"], ["nextMasu", "pathStack"])
         self.assertFalse(varinfo["compiler_output_binding"]["authority_advanced"])
 
+    def test_diagnose_varinfo_priority_known_40_and_42(self):
+        path = self.root / "varinfo.json"
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "compiler_sha256": frontier.VARINFO_PRIORITY_COMPILER_SHA256,
+            "locals": [
+                {"name": "xy", "flags": 0x40, "usage": 100000},
+                {"name": "z", "flags": 0x42, "usage": 100000},
+            ],
+        }), encoding="utf-8")
+        hint = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))["varinfo"]["priority_hint"]
+        self.assertEqual(hint["status"], "known")
+        self.assertEqual(hint["origin"], "inline_assembly_operand_priority")
+        self.assertEqual(hint["flagged_names"], ["xy", "z"])
+        self.assertEqual(hint["flagged_count"], 2)
+        self.assertEqual(hint["conditional_o0_usage"], 100000)
+        self.assertEqual(hint["allocator_effect"], "conditional_o0_usage_100000")
+        self.assertTrue(hint["optimization_unverified"])
+        self.assertEqual(hint["declaration_reordering"], "conditional_o0_priority_barrier")
+        self.assertFalse(hint["authority_advanced"])
+
+    def test_diagnose_varinfo_priority_unflagged_and_wrong_compiler(self):
+        path = self.root / "varinfo.json"
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "compiler_sha256": frontier.VARINFO_PRIORITY_COMPILER_SHA256,
+            "locals": [{"name": "ordinary", "flags": 0, "usage": 9}],
+        }), encoding="utf-8")
+        hint = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))["varinfo"]["priority_hint"]
+        self.assertEqual(hint["status"], "known")
+        self.assertEqual(hint["origin"], "ordinary_observed_usage")
+        self.assertEqual(hint["ordinary_count"], 1)
+        self.assertEqual(hint["allocator_effect"], "not_applicable")
+
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "compiler_sha256": "0" * 64,
+            "locals": [{"name": "asm", "flags": 0x40, "usage": 100000}],
+        }), encoding="utf-8")
+        unknown = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))["varinfo"]["priority_hint"]
+        self.assertEqual(unknown["status"], "UNKNOWN")
+        self.assertEqual(unknown["origin"], "UNKNOWN")
+        self.assertEqual(unknown["allocator_effect"], "UNKNOWN")
+        self.assertFalse(unknown["authority_advanced"])
+
+    def test_diagnose_varinfo_priority_rejects_malformed_flags_and_function(self):
+        path = self.root / "varinfo.json"
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "compiler_sha256": frontier.VARINFO_PRIORITY_COMPILER_SHA256,
+            "locals": [{"name": "bad", "flags": "0x40", "usage": 100000}],
+        }), encoding="utf-8")
+        malformed = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))["varinfo"]["priority_hint"]
+        self.assertEqual(malformed["status"], "UNKNOWN")
+        self.assertEqual(malformed["invalid_count"], 1)
+        self.assertEqual(malformed["declaration_reordering"], "UNKNOWN")
+
+        path.write_text(json.dumps({
+            "function": "OtherFunction",
+            "compiler_sha256": frontier.VARINFO_PRIORITY_COMPILER_SHA256,
+            "locals": [{"name": "asm", "flags": 0x40, "usage": 100000}],
+        }), encoding="utf-8")
+        mismatch = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))["varinfo"]
+        self.assertEqual(mismatch["status"], "function_mismatch")
+        self.assertEqual(mismatch["priority_hint"]["status"], "UNKNOWN")
+        self.assertFalse(mismatch["priority_hint"]["authority_advanced"])
+
+        for fields in (
+            {"locals": [{"name": "x", "flags": 64}]},
+            {"function": "FocusFunction", "locals": [False]},
+            {"function": "FocusFunction", "locals": [{"name": "x", "flags": True}]},
+            {"function": "FocusFunction", "locals": [{"name": "x", "flags": 256}]},
+            {"function": "FocusFunction", "locals": [{"name": "x", "flags": 64}] * 2},
+        ):
+            with self.subTest(fields=fields):
+                path.write_text(json.dumps({
+                    "compiler_sha256": frontier.VARINFO_PRIORITY_COMPILER_SHA256,
+                    **fields,
+                }), encoding="utf-8")
+                result = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))
+                self.assertEqual(result["varinfo"]["priority_hint"]["status"], "UNKNOWN")
+
+    def test_diagnose_varinfo_priority_raw_trace_is_unbound(self):
+        path = self.root / "varinfo.json"
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "compiler_sha256": frontier.VARINFO_PRIORITY_COMPILER_SHA256,
+            "locals": [{"name": "asm", "flags": 0x40, "usage": 100000}],
+            "assignment_snapshots": [{"index": 0, "locals": [{"name": "asm", "flags": 0x40}]}],
+        }), encoding="utf-8")
+        result = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))
+        hint = result["varinfo"]["priority_hint"]
+        self.assertEqual(hint["raw_trace"], "unbound")
+        self.assertEqual(hint["source_binding"], "not_advanced")
+        self.assertFalse(hint["authority_advanced"])
+        self.assertEqual(result["varinfo"]["compiler_output_binding"]["status"], "unproven")
+        self.assertFalse(result["authority_advanced"])
+
     def test_diagnose_strict_data_relocation_only_is_not_physical_proof(self):
         target = [_access_row(0, "lfs f1, pool@sda21"), _access_row(4, "blr")]
         data_report = copy.deepcopy(self.report)
