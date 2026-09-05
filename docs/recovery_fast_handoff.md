@@ -3,6 +3,59 @@
 These are convenience commands, not new approval gates. They do not compile
 automatically, retain source, or prove physical/link exactness.
 
+## Fast cracking loop
+
+Use this short loop against the current live report. Report elapsed time from
+selection to independently verified crack, including evidence preparation and
+required verification. Break out analysis, compilation, proof and optional tool
+development separately; do not subtract overhead to imply faster delivery.
+
+1. Select the current first **structural** mismatch (instruction, dataflow,
+   stack home, relocation, or branch) and record its upstream producer/consumer
+   path. Do not start from a cosmetic register difference when an earlier value
+   or control-flow mismatch explains it.
+2. Write one ranked semantic hypothesis and its predicted rows/bytes. Keep the
+   prediction falsifiable and tied to the current report hash; do not fan out
+   into five unranked source variants.
+3. Parallelize only distinct unresolved evidence questions, for example:
+   - does target dataflow produce the value and width at the predicted rows?
+   - do source ABI and consumers require that type, lifetime, or register role?
+   - which known failed equivalences already rule out a tempting explanation?
+   Do not require three answers before compiling an already supported cell.
+   Independent residual workers may stage and measure their own candidates in
+   isolated output directories, using the existing compiler lock. One writer
+   composes retained changes. This is not another approval round trip.
+4. After two non-improving attempts against the same cause, change evidence
+   method or residual. Also reassess after five minutes with neither a measured
+   candidate nor a new discriminating fact. These are strategy-change triggers,
+   not lifetime attempt caps, automatic rollbacks of gains, or function bans.
+   Before a trace, name the exact field/event needed and confirm the producer
+   actually records it. A successful capture missing that field is not useful
+   evidence. Do not spend a run on a purposeless negative control. Retain every
+   independently verified incremental gain.
+5. Leave a compact checkpoint before moving on: function, report/object hashes,
+   first mismatch and upstream path, one hypothesis, predicted versus observed
+   rows, accepted/rejected evidence, and the next distinct question. Keep the
+   best verified source/object and its proof beside the checkpoint.
+
+Keep optional tool development off the cracking path. Use focused tests for a
+small isolated utility; do not append an unrelated full-suite run to every
+function crack. Exact-function gains and retained source improvements are the
+outcome; captures, audit votes and report volume are not progress metrics.
+
+## Reuse supported native captures
+
+`tools/prepare_owner_capture.py prepare` accepts owner root, source, function,
+expected source hash, a pinned compiler argv JSON file and a fresh output root.
+It uses the existing capture implementation to derive the request and trust
+bindings without compiling. `run PREPARED_JSON` executes once under the existing
+owner compiler lock. No per-function Python adapter or new manager permit is
+needed. It remains diagnostic-only.
+
+The current producer does **not** record `VarInfo.usage+0x04`. Do not use this
+capture to decide GC2.6 O0 local-FPR usage ranking. Check the stated capability
+before spending preparation or capture time.
+
 ## Resume from one current index
 
 After selecting the actual live source, its candidate object, and canonical
