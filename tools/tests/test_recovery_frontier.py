@@ -623,6 +623,85 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.assertFalse(result["physical_proof"])
         self.assertFalse(result["authority_advanced"])
 
+    def test_diagnose_keeps_strict_relocation_annotation_separate_from_code_shape(self):
+        target = [
+            _access_row(0, "lwz r0, lbl_802c33dc@sda21", "DIFF_ARG_MISMATCH"),
+            _access_row(4, "blr"),
+        ]
+        candidate = [
+            _access_row(0, "lwz r0, @1131+0x4@sda21", "DIFF_ARG_MISMATCH"),
+            _access_row(4, "blr"),
+        ]
+        data_report = copy.deepcopy(self.report)
+        canonical_rows = [
+            _access_row(0, "lwz r0, lbl_802c33dc@sda21"),
+            _access_row(4, "blr"),
+        ]
+        data_report["left"]["symbols"][1]["instructions"] = canonical_rows
+        data_report["right"]["symbols"][1]["instructions"] = [
+            _access_row(0, "lwz r0, @1131+0x4@sda21"),
+            _access_row(4, "blr"),
+        ]
+
+        result = self.diagnose(target, candidate, data_report=data_report)
+        strict = result["strict"]
+        self.assertEqual(strict["diffs"]["diff_row_count"], 1)
+        self.assertEqual(strict["diffs"]["instruction_mismatch_count"], 0)
+        self.assertEqual(strict["diffs"]["annotation_only_count"], 1)
+        self.assertTrue(strict["gates"]["code_shape_exact"])
+        self.assertFalse(strict["gates"]["canonical_report_exact"])
+        self.assertFalse(strict["gates"]["exact"])
+        self.assertEqual(strict["first_mismatch"]["row"], 0)
+        self.assertEqual(strict["first_mismatch"]["kind"], "annotation")
+        self.assertTrue(strict["first_mismatch"]["context"][0]["different"])
+
+        data = result["data"]
+        self.assertEqual(data["diffs"]["diff_row_count"], 0)
+        self.assertEqual(data["diffs"]["instruction_mismatch_count"], 0)
+        self.assertTrue(data["gates"]["code_shape_exact"])
+        self.assertTrue(data["gates"]["canonical_report_exact"])
+        self.assertTrue(data["gates"]["exact"])
+        self.assertEqual(result["strict_vs_data"]["status"], "annotations_only")
+        self.assertEqual(result["strict_vs_data"]["residual_kinds"], {"diff_annotation": 2})
+
+    def test_diagnose_equal_strict_diff_annotations_are_not_report_exact(self):
+        target = [
+            _access_row(0, "lfd f1, lbl_802c33a8@sda21", "DIFF_ARG_MISMATCH"),
+            _access_row(4, "blr"),
+        ]
+        candidate = [
+            _access_row(0, "lfd f1, @960@sda21", "DIFF_ARG_MISMATCH"),
+            _access_row(4, "blr"),
+        ]
+        strict = self.diagnose(target, candidate)["strict"]
+        self.assertEqual(strict["diffs"]["diff_row_count"], 1)
+        self.assertEqual(strict["diffs"]["instruction_mismatch_count"], 0)
+        self.assertEqual(strict["diffs"]["annotation_only_count"], 1)
+        self.assertEqual(strict["first_mismatch"]["kind"], "annotation")
+        self.assertTrue(strict["gates"]["code_shape_exact"])
+        self.assertFalse(strict["gates"]["canonical_report_exact"])
+        self.assertFalse(strict["gates"]["exact"])
+
+    def test_diagnose_first_canonical_mismatch_precedes_later_instruction_mismatch(self):
+        strict = self.diagnose(
+            [
+                _access_row(0, "lwz r0, lbl_802c33dc@sda21", "DIFF_ARG_MISMATCH"),
+                _access_row(4, "li r3, 1"),
+            ],
+            [
+                _access_row(0, "lwz r0, @1131@sda21", "DIFF_ARG_MISMATCH"),
+                _access_row(4, "li r3, 2"),
+            ],
+        )["strict"]
+        self.assertEqual(strict["first_mismatch"]["row"], 0)
+        self.assertEqual(strict["first_mismatch"]["kind"], "annotation")
+        self.assertEqual(strict["first_instruction_mismatch"]["row"], 1)
+        self.assertEqual(strict["diffs"]["diff_row_count"], 2)
+        self.assertEqual(strict["diffs"]["instruction_mismatch_count"], 1)
+        self.assertEqual(strict["diffs"]["annotation_only_count"], 1)
+        self.assertFalse(strict["gates"]["code_shape_exact"])
+        self.assertFalse(strict["gates"]["canonical_report_exact"])
+
     def test_diagnose_closed_register_two_cycle_is_confirmed(self):
         target = [
             _access_row(0, "mr r3, r4"),

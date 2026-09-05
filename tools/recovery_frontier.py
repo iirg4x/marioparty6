@@ -727,8 +727,13 @@ def _diagnose_identity_text(value: str, index: int) -> str:
     # Relocation spellings are report-local symbol annotations (for example
     # lbl_802c32d8@sda21 versus @598@sda21), not source operands.  Their
     # attribution remains visible in the compact context/strict-data residual.
+    # Objdiff may spell the same relocation as a symbol, a numeric pool
+    # identity, or a numeric identity plus addend (for example
+    # ``@1131+0x4@sda21``).  Treat only that complete relocation operand as
+    # report-local identity; ordinary immediates remain part of code shape.
+    relocation_atom = r"(?:[A-Za-z_.$@][A-Za-z0-9_.$@]*|(?:0[xX][0-9a-fA-F]+|[0-9]+))"
     normalized = re.sub(
-        r"(?<![A-Za-z0-9_.])([A-Za-z_.$@][A-Za-z0-9_.$@]*)@(sda21|ha|h|l)\b",
+        rf"(?<![A-Za-z0-9_.]){relocation_atom}(?:[ \t]*[+-][ \t]*{relocation_atom})*@(sda21|ha|h|l)\b",
         "<reloc>",
         normalized,
         flags=re.IGNORECASE,
@@ -844,6 +849,7 @@ def _diagnose_rows(target_rows: list[dict], candidate_rows: list[dict]) -> dict[
     target_kinds: Counter[str] = Counter()
     candidate_kinds: Counter[str] = Counter()
     first: dict[str, Any] | None = None
+    first_instruction: dict[str, Any] | None = None
     mismatch_count = 0
     instruction_mismatch_count = 0
     annotation_only_count = 0
@@ -860,18 +866,30 @@ def _diagnose_rows(target_rows: list[dict], candidate_rows: list[dict]) -> dict[
         if candidate_kind:
             candidate_kinds[candidate_kind] += 1
         instruction_changed = target_payload != candidate_payload
-        annotation_changed = target_kind != candidate_kind
-        if not instruction_changed and not annotation_changed:
+        # A diff annotation is itself a canonical-report residual even when
+        # both sides carry the same annotation.  Previously comparing the two
+        # kinds dropped these rows after relocation identity normalization,
+        # making a non-100% strict report appear exact.  Keep this separate
+        # from the normalized code-shape comparison above.
+        annotation_present = target_kind is not None or candidate_kind is not None
+        if not instruction_changed and not annotation_present:
             continue
         mismatch_count += 1
         if instruction_changed:
             instruction_mismatch_count += 1
         else:
             annotation_only_count += 1
-        if first is None or (instruction_changed and first["kind"] == "annotation"):
+        if first is None:
             first = {
                 "row": index,
                 "kind": "instruction" if instruction_changed else "annotation",
+                "target": _diagnose_row(target_row, index),
+                "candidate": _diagnose_row(candidate_row, index),
+            }
+        if instruction_changed and first_instruction is None:
+            first_instruction = {
+                "row": index,
+                "kind": "instruction",
                 "target": _diagnose_row(target_row, index),
                 "candidate": _diagnose_row(candidate_row, index),
             }
@@ -889,7 +907,11 @@ def _diagnose_rows(target_rows: list[dict], candidate_rows: list[dict]) -> dict[
             context.append({
                 "row": index,
                 "relative": index - center,
-                "different": target_payload != candidate_payload,
+                "different": (
+                    target_payload != candidate_payload
+                    or _diagnose_kind(target_row) is not None
+                    or _diagnose_kind(candidate_row) is not None
+                ),
                 "target": _diagnose_row(target_row, index),
                 "candidate": _diagnose_row(candidate_row, index),
             })
@@ -903,12 +925,15 @@ def _diagnose_rows(target_rows: list[dict], candidate_rows: list[dict]) -> dict[
         "diff_row_count": mismatch_count,
         "instruction_mismatch_count": instruction_mismatch_count,
         "annotation_only_count": annotation_only_count,
+        "code_shape_exact": instruction_mismatch_count == 0,
+        "canonical_report_exact": mismatch_count == 0,
         "diff_kinds": {
             "target": dict(sorted(target_kinds.items())),
             "candidate": dict(sorted(candidate_kinds.items())),
             "combined": dict(sorted((target_kinds + candidate_kinds).items())),
         },
         "first_mismatch": first,
+        "first_instruction_mismatch": first_instruction,
     }
 
 
@@ -2043,6 +2068,7 @@ def _diagnose_channel(document: dict[str, Any], label: str, function: str) -> di
                 "exact": False,
             },
             "first_mismatch": None,
+            "first_instruction_mismatch": None,
             "diffs": None,
             "branch_destinations": None,
             "stack_home": None,
@@ -2053,11 +2079,17 @@ def _diagnose_channel(document: dict[str, Any], label: str, function: str) -> di
     candidate_rows = focus._rows(candidate, f"{label}.candidate.{function}")
     differences = _diagnose_rows(target_rows, candidate_rows)
     first_mismatch = differences.pop("first_mismatch")
+    first_instruction_mismatch = differences.pop("first_instruction_mismatch")
     target_size = focus._integer(target.get("size"))
     candidate_size = focus._integer(candidate.get("size"))
     size_exact = target_size is not None and candidate_size is not None and target_size == candidate_size
     count_exact = differences["target_instruction_count"] == differences["candidate_instruction_count"]
-    stream_exact = differences["diff_row_count"] == 0
+    code_shape_exact = differences["code_shape_exact"]
+    canonical_report_exact = differences["canonical_report_exact"]
+    # Preserve the historical gate name for callers: the stream gate includes
+    # report annotations, while code_shape_exact is the relocation-normalized
+    # comparison used to distinguish a real instruction change.
+    stream_exact = canonical_report_exact
     branch = _bounded_branch_category(_branch_category(target_rows, candidate_rows))
     branch["status"] = _diagnose_branch_status(branch)
     branch["exact"] = branch["status"] in {"exact", "none"}
@@ -2089,12 +2121,17 @@ def _diagnose_channel(document: dict[str, Any], label: str, function: str) -> di
             "size_exact": size_exact,
             "instruction_count_exact": count_exact,
             "instruction_stream_exact": stream_exact,
+            "code_shape_exact": code_shape_exact,
+            "canonical_report_exact": canonical_report_exact,
             "branch_destination_exact": branch["exact"],
             "exact": exact,
         },
         "size_exact": size_exact,
         "instruction_count_exact": count_exact,
+        "code_shape_exact": code_shape_exact,
+        "canonical_report_exact": canonical_report_exact,
         "first_mismatch": first_mismatch,
+        "first_instruction_mismatch": first_instruction_mismatch,
         "diffs": differences,
         "branch_destinations": branch,
         "stack_home": stack,
@@ -2123,6 +2160,7 @@ def _diagnose_channel_summary(channel: dict[str, Any], comparison: str) -> dict[
         "gates": {
             key: channel.get("gates", {}).get(key)
             for key in ("size_exact", "instruction_count_exact", "instruction_stream_exact",
+                        "code_shape_exact", "canonical_report_exact",
                         "branch_destination_exact", "exact")
             if key in channel.get("gates", {})
         },
