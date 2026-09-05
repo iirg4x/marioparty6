@@ -1773,6 +1773,10 @@ def main() -> int:
     context.add_argument("--report", action="append", default=[])
     context.add_argument("--output")
     context.add_argument("--stdout", action="store_true")
+    context.add_argument(
+        "--read-only", action="store_true",
+        help="print advisory context without startup synchronization or execution authorization",
+    )
 
     knowledge = sub.add_parser("knowledge")
     knowledge.add_argument("kind", choices=["function", "owner", "audit"])
@@ -1926,7 +1930,13 @@ def main() -> int:
                     )
             return 0 if matches else 1
         if args.command == "context":
-            startup_check(root, sync_reports=True, strict_reports=True)
+            if args.read_only:
+                if args.output:
+                    raise RecoveryError("--read-only context writes only to stdout; omit --output")
+                args.stdout = True
+                print("Advisory context only: startup not checked; no execution or retention authority.")
+            else:
+                startup_check(root, sync_reports=True, strict_reports=True)
             _write_context(data, args)
             return 0
         if args.command == "knowledge":
