@@ -212,3 +212,29 @@ and its coalescing. This is a reusable diagnosis, not a universal chain spelling
 Same-session capture commands now print compact summaries by default while
 preserving complete evidence files. Use `--full-output` only when a complete
 CLI payload is required; the Python APIs and saved event streams are unchanged.
+
+## Diagnose one current residual
+
+Use the bounded, read-only source diagnosis before selecting a source cell:
+
+```text
+python tools/recovery_frontier.py --root OWNER_ROOT diagnose \
+  --strict CURRENT_STRICT.json --data CURRENT_DATA.json \
+  --function FUNCTION [--varinfo CURRENT_VARINFO.json]
+```
+
+It reports the earliest differing instruction with two rows of context, counts
+and kinds, exact size/count/stream gates, branch-destination status, non-equal
+stack-home pairs, observed two-input operand order, and a conservative
+register-only residual classification. An optional VarInfo file exposes named
+usage/rclass/register observations and tied or unequal scores; it never infers
+a source-name-to-register mapping. Identical strict/data evidence is summarized
+instead of duplicated. The focused output is capped at 8 KiB (32 KiB hard cap),
+and every result remains diagnostic-only: it is not physical, link, source, or
+promotion proof.
+
+Apply the loop `first mismatch -> complete live consumer graph -> at most one
+evidence-ranked source cell -> immediate retain/reject`. Deduplicate only when
+the complete source graph and bindings are the same. Do not create per-cell
+manager requests or negative matrices. Report the exact input/proof paths and
+the retain/reject outcome immediately so parallel workers do not repeat a cell.

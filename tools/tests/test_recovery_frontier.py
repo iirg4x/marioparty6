@@ -454,6 +454,176 @@ class RecoveryFrontierTests(unittest.TestCase):
                                             "--strict", "strict.json", "--function", "FocusFunction"]), 0)
         self.assertTrue(output.called)
 
+    def diagnose(self, target_rows, candidate_rows=None, *, data_report=None, varinfo=None):
+        self.access_report(target_rows, candidate_rows)
+        data_path = None
+        if data_report is not None:
+            (self.root / "data.json").write_text(json.dumps(data_report), encoding="utf-8")
+            data_path = Path("data.json")
+        return frontier.diagnose(
+            root=self.root,
+            strict=Path("strict.json"),
+            data=data_path,
+            function="FocusFunction",
+            varinfo=varinfo,
+        )
+
+    def test_diagnose_first_mismatch_gates_and_context_are_bounded(self):
+        result = self.diagnose(
+            [_access_row(0, "li r3, 1"), _access_row(4, "mr r3, r4"), _access_row(8, "blr")],
+            [_access_row(0, "li r3, 1"), _access_row(4, "mr r4, r3"), _access_row(8, "blr")],
+        )
+        self.assertEqual(result["schema"], frontier.DIAGNOSE_SCHEMA)
+        mismatch = result["strict"]["first_mismatch"]
+        self.assertEqual(mismatch["row"], 1)
+        self.assertEqual(mismatch["kind"], "instruction")
+        self.assertEqual([row["relative"] for row in mismatch["context"]], [-1, 0, 1])
+        self.assertEqual(result["strict"]["diffs"]["diff_row_count"], 1)
+        self.assertFalse(result["strict"]["gates"]["exact"])
+        self.assertEqual(result["strict"]["branch_destinations"]["status"], "none")
+        self.assertFalse(result["physical_proof"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_diagnose_closed_register_two_cycle_is_confirmed(self):
+        target = [
+            _access_row(0, "mr r3, r4"),
+            _access_row(4, "addi r3, r3, 1"),
+            _access_row(8, "mr r4, r3"),
+            _access_row(12, "addi r4, r4, 2"),
+        ]
+        candidate = [
+            _access_row(0, "mr r4, r3"),
+            _access_row(4, "addi r4, r4, 0x1"),
+            _access_row(8, "mr r3, r4"),
+            _access_row(12, "addi r3, r3, 2"),
+        ]
+        permutation = self.diagnose(target, candidate)["strict"]["register_permutation"]
+        self.assertEqual(permutation["status"], "confirmed")
+        self.assertEqual(permutation["changed_mapping"], {"r3": "r4", "r4": "r3"})
+        self.assertTrue(permutation["closed"])
+        self.assertTrue(permutation["operations_immediates_agree"])
+
+    def test_diagnose_opcode_or_immediate_change_is_rejected(self):
+        permutation = self.diagnose(
+            [_access_row(0, "addi r3, r3, 1")],
+            [_access_row(0, "addi r4, r4, 2")],
+        )["strict"]["register_permutation"]
+        self.assertEqual(permutation["status"], "rejected")
+        self.assertEqual(permutation["reason"], "opcode_or_immediate_changed")
+        self.assertFalse(permutation["operations_immediates_agree"])
+
+    def test_diagnose_register_relation_ambiguity_is_not_permutation(self):
+        permutation = self.diagnose(
+            [_access_row(0, "mr r3, r4"), _access_row(4, "mr r3, r5")],
+            [_access_row(0, "mr r6, r7"), _access_row(4, "mr r8, r7")],
+        )["strict"]["register_permutation"]
+        self.assertEqual(permutation["status"], "ambiguous")
+        self.assertEqual(permutation["reason"], "conflicting_register_relations")
+        self.assertFalse(permutation["closed"])
+        self.assertTrue(permutation["register_set_cardinality_equal"])
+        self.assertTrue(permutation["mapping_conflicts"])
+
+    def test_diagnose_observes_two_input_operand_order_without_source_claim(self):
+        order = self.diagnose(
+            [_access_row(0, "or r0, r3, r0")],
+            [_access_row(0, "or r0, r0, r3")],
+        )["strict"]["input_operand_order"]
+        self.assertEqual(order["status"], "observed")
+        self.assertEqual(order["finding_count"], 1)
+        self.assertEqual(order["findings"][0]["classification"],
+                         "same_opcode_destination_two_input_swap")
+        self.assertFalse(order["findings"][0]["source_commutation_proven"])
+
+    def test_diagnose_stack_home_swap_is_separate_from_register_permutation(self):
+        result = self.diagnose(
+            [_access_row(0, "stw r3, 0x68(r1)"), _access_row(4, "stw r4, 0x6c(r1)")],
+            [_access_row(0, "stw r3, 0x6c(r1)"), _access_row(4, "stw r4, 0x68(r1)")],
+        )
+        pairs = result["strict"]["stack_home"]["d_form"]["pairs"]
+        self.assertEqual({(pair["target_offset"], pair["candidate_offset"])
+                          for pair in pairs}, {(0x68, 0x6c), (0x6c, 0x68)})
+        self.assertTrue(all(pair["status"] == "changed" for pair in pairs))
+        self.assertEqual(result["strict"]["register_permutation"]["status"], "none")
+
+    def test_diagnose_branch_destination_change_blocks_exact_and_permutation(self):
+        result = self.diagnose(
+            [_branch_row(0, "b 8", 8), _access_row(4, "blr"), _access_row(8, "blr")],
+            [_branch_row(0, "b 4", 4), _access_row(4, "blr"), _access_row(8, "blr")],
+        )
+        self.assertEqual(result["strict"]["branch_destinations"]["status"], "changed")
+        self.assertFalse(result["strict"]["gates"]["branch_destination_exact"])
+        self.assertEqual(result["strict"]["register_permutation"]["status"], "rejected")
+        self.assertEqual(result["strict"]["register_permutation"]["reason"],
+                         "branch_destination_changed")
+
+    def test_diagnose_varinfo_missing_usage_is_unknown_not_zero(self):
+        path = self.root / "varinfo.json"
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "locals": [{"name": "pathStack", "rclass": 4, "reg": 15}],
+        }), encoding="utf-8")
+        result = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))
+        varinfo = result["varinfo"]
+        self.assertEqual(varinfo["status"], "ok")
+        self.assertEqual(varinfo["named_locals"][0]["name"], "pathStack")
+        self.assertEqual(varinfo["named_locals"][0]["rclass"], 4)
+        self.assertEqual(varinfo["score_relation"]["status"], "UNKNOWN")
+        self.assertEqual(varinfo["score_relation"]["unknown_count"], 1)
+        self.assertNotIn(0, varinfo["score_relation"]["known_scores"])
+        self.assertFalse(varinfo["compiler_output_binding"]["physical_proof"])
+
+    def test_diagnose_varinfo_usage_ties_are_named_without_register_mapping(self):
+        path = self.root / "varinfo.json"
+        path.write_text(json.dumps({
+            "function": "FocusFunction",
+            "locals": [
+                {"name": "uselessdecl", "usage": 14, "rclass": 4, "reg": 14},
+                {"name": "pathStack", "usage": 15, "rclass": 4, "reg": 15},
+                {"name": "nextMasu", "usage": 15, "rclass": 4, "reg": 16},
+            ],
+        }), encoding="utf-8")
+        varinfo = self.diagnose([_access_row(0, "blr")], varinfo=Path("varinfo.json"))["varinfo"]
+        self.assertEqual(varinfo["score_relation"]["status"], "TIED")
+        self.assertEqual(varinfo["score_relation"]["known_scores"], [14, 15])
+        self.assertEqual(varinfo["score_relation"]["tie_names"], ["nextMasu", "pathStack"])
+        self.assertFalse(varinfo["compiler_output_binding"]["authority_advanced"])
+
+    def test_diagnose_strict_data_relocation_only_is_not_physical_proof(self):
+        target = [_access_row(0, "lfs f1, pool@sda21"), _access_row(4, "blr")]
+        data_report = copy.deepcopy(self.report)
+        data_target = data_report["left"]["symbols"][1]
+        data_candidate = data_report["right"]["symbols"][1]
+        data_target["instructions"] = copy.deepcopy(target)
+        data_candidate["instructions"] = copy.deepcopy(target)
+        for row in (data_target["instructions"][0], data_candidate["instructions"][0]):
+            row["instruction"]["relocation"] = {"target_symbol": 99, "type_name": "R_PPC_EMB_SDA21"}
+        result = self.diagnose(target, target, data_report=data_report)
+        residual = result["strict_vs_data"]
+        self.assertEqual(residual["status"], "relocation_only")
+        self.assertEqual(residual["residual_kinds"], {"relocation_annotation": 2})
+        self.assertEqual(residual["relocation_attribution"]["status"], "diagnostic_only")
+        self.assertFalse(residual["relocation_attribution"]["physical_proof"])
+        self.assertEqual(result["data"]["summary"], "residuals_in_strict_vs_data")
+        self.assertFalse(result["physical_proof"])
+
+    def test_diagnose_large_input_stays_within_32k_output_cap_and_cli(self):
+        rows = [_access_row(index * 4, f"lwz r3, 0x{index * 4:x}(r1)") for index in range(2200)]
+        result = self.diagnose(rows, list(reversed(rows)))
+        self.assertLessEqual(result["output_bytes"], frontier.DIAGNOSE_OUTPUT_LIMIT)
+        self.assertLessEqual(result["output_bytes"], frontier.DIAGNOSE_FOCUS_LIMIT)
+        self.assertLessEqual(len(frontier.canonical(result)) + 1, frontier.DIAGNOSE_OUTPUT_LIMIT)
+        stack = result["strict"].get("stack_home")
+        self.assertIsInstance(stack, dict)
+        for category in (stack.get("d_form"), stack.get("addi_pointer")):
+            if isinstance(category, dict):
+                self.assertEqual(category["returned_pair_count"], len(category["pairs"]))
+        with unittest.mock.patch("builtins.print") as output:
+            self.assertEqual(frontier.main([
+                "--root", str(self.root), "diagnose", "--strict", "strict.json",
+                "--function", "FocusFunction",
+            ]), 0)
+        self.assertTrue(output.called)
+
 
 if __name__ == "__main__":
     unittest.main()
