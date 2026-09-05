@@ -28,6 +28,77 @@ def _branch_row(address: int, text: str, destination: object | None = None) -> d
     return row
 
 
+def _abi_cycle_rows(*, unpaired=False, conflicting_use=False,
+                    changed_operation=False, body_data=False):
+    target_body = [
+        _access_row(24, "lfs f14, 0x0(r4)"),
+        _access_row(28, "lfs f15, 0x4(r4)"),
+        _access_row(32, "fadd f14, f15, f0"),
+        _access_row(36, "fadd f15, f14, f1"),
+    ]
+    candidate_body = [
+        _access_row(24, "lfs f15, 0x0(r4)"),
+        _access_row(28, "lfs f14, 0x4(r4)"),
+        _access_row(32, "fadd f15, f14, f0"),
+        _access_row(36, "fadd f14, f15, f1"),
+    ]
+    if conflicting_use:
+        target_body[:2] = [
+            _access_row(24, "fadd f14, f15, f0"),
+            _access_row(28, "fadd f15, f14, f1"),
+        ]
+        candidate_body[:2] = [
+            _access_row(24, "fadd f15, f14, f0"),
+            _access_row(28, "fadd f14, f15, f1"),
+        ]
+    if changed_operation:
+        candidate_body[2] = _access_row(32, "fsub f15, f14, f0")
+    if body_data:
+        target_body.append(_access_row(40, "stfd f14, 0x10(r1)"))
+        candidate_body.append(_access_row(40, "stfd f15, 0x10(r1)"))
+    target = [
+        _access_row(0, "stwu r1, -0x40(r1)"),
+        _access_row(4, "mflr r0"),
+        _access_row(8, "stw r0, 0x44(r1)"),
+        _access_row(12, "stfd f15, 0x20(r1)"),
+        _access_row(16, "psq_st f15, 0x28(r1), 0, qr0"),
+        _access_row(20, "stfd f14, 0x10(r1)"),
+        _access_row(24, "psq_st f14, 0x18(r1), 0, qr0"),
+        *target_body,
+        _access_row(48, "psq_l f15, 0x28(r1), 0, qr0"),
+        _access_row(52, "lfd f15, 0x20(r1)"),
+        _access_row(56, "psq_l f14, 0x18(r1), 0, qr0"),
+        _access_row(60, "lfd f14, 0x10(r1)"),
+        _access_row(64, "lwz r0, 0x44(r1)"),
+        _access_row(68, "mtlr r0"),
+        _access_row(72, "addi r1, r1, 0x40"),
+        _access_row(76, "blr"),
+    ]
+    candidate = [
+        _access_row(0, "stwu r1, -0x40(r1)"),
+        _access_row(4, "mflr r0"),
+        _access_row(8, "stw r0, 0x44(r1)"),
+        _access_row(12, "stfd f15, 0x20(r1)"),
+        _access_row(16, "psq_st f15, 0x28(r1), 0, qr0"),
+        _access_row(20, "stfd f14, 0x10(r1)"),
+        _access_row(24, "psq_st f14, 0x18(r1), 0, qr0"),
+        *candidate_body,
+        _access_row(48, "psq_l f15, 0x28(r1), 0, qr0"),
+        _access_row(52, "lfd f15, 0x20(r1)"),
+        _access_row(56, "psq_l f14, 0x18(r1), 0, qr0"),
+        _access_row(60, "lfd f14, 0x10(r1)"),
+        _access_row(64, "lwz r0, 0x44(r1)"),
+        _access_row(68, "mtlr r0"),
+        _access_row(72, "addi r1, r1, 0x40"),
+        _access_row(76, "blr"),
+    ]
+    if unpaired:
+        for rows in (target, candidate):
+            rows[4] = _access_row(16, "stw r3, 0x28(r1)")
+            rows[6] = _access_row(24, "stw r3, 0x18(r1)")
+    return target, candidate
+
+
 class RecoveryFrontierTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -502,6 +573,107 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.assertEqual(permutation["changed_mapping"], {"r3": "r4", "r4": "r3"})
         self.assertTrue(permutation["closed"])
         self.assertTrue(permutation["operations_immediates_agree"])
+
+    def test_diagnose_body_projection_excludes_authenticated_abi_cycle_pairs(self):
+        target, candidate = _abi_cycle_rows()
+        permutation = self.diagnose(target, candidate)["strict"]["register_permutation"]
+        projection = permutation["body_projection"]
+        self.assertEqual(permutation["status"], "ambiguous")
+        self.assertEqual(projection["status"], "confirmed")
+        self.assertEqual(projection["reason"], "closed_body_register_cycle")
+        self.assertEqual(projection["projected_cycle"], ["f14", "f15", "f14"])
+        self.assertEqual(projection["excluded_pair_count"], 2)
+        self.assertEqual(projection["excluded_paired_rows"]["target"],
+                         [3, 4, 5, 6, 11, 12, 13, 14])
+        self.assertEqual(projection["excluded_paired_rows"]["candidate"],
+                         [3, 4, 5, 6, 11, 12, 13, 14])
+        self.assertFalse(projection["authority_advanced"])
+
+    def test_diagnose_body_projection_rejects_low_fpr_pseudo_pairs(self):
+        target, candidate = _abi_cycle_rows()
+        for rows in (target, candidate):
+            for row in rows:
+                instruction = row.get("instruction")
+                if isinstance(instruction, dict):
+                    instruction["formatted"] = instruction["formatted"].replace("f14", "f2").replace("f15", "f3")
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "none")
+        self.assertEqual(projection["reason"], "no_authenticated_abi_pairs")
+        self.assertEqual(projection["excluded_pair_count"], 0)
+
+    def test_diagnose_body_projection_rejects_unpaired_stack_home_pattern(self):
+        target, candidate = _abi_cycle_rows(unpaired=True)
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "none")
+        self.assertEqual(projection["reason"], "no_authenticated_abi_pairs")
+        self.assertEqual(projection["projected_cycle"], [])
+
+    def test_diagnose_body_projection_rejects_incoming_and_changed_body_use(self):
+        target, candidate = _abi_cycle_rows(conflicting_use=True)
+        incoming = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(incoming["status"], "rejected")
+        self.assertEqual(incoming["reason"], "incoming_register_value_used")
+        self.assertEqual(incoming["excluded_paired_rows"]["target"], [])
+
+        target, candidate = _abi_cycle_rows(changed_operation=True)
+        changed = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(changed["status"], "rejected")
+        self.assertEqual(changed["reason"], "opcode_or_immediate_changed")
+        self.assertEqual(changed["projected_cycle"], [])
+
+    def test_diagnose_body_projection_rejects_real_body_use_of_abi_slot(self):
+        target, candidate = _abi_cycle_rows(body_data=True)
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "rejected")
+        self.assertEqual(projection["reason"], "abi_save_slot_used_by_body")
+        self.assertEqual(projection["conflicts"][0]["row"], 11)
+
+    def test_diagnose_body_projection_rejects_overlapping_stack_access(self):
+        target, candidate = _abi_cycle_rows(body_data=True)
+        target[11] = _access_row(40, "stfs f14, 0x14(r1)")
+        candidate[11] = _access_row(40, "stfs f15, 0x14(r1)")
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "rejected")
+        self.assertEqual(projection["reason"], "abi_save_slot_used_by_body")
+        self.assertEqual(projection["conflicts"][0]["row"], 11)
+
+    def test_diagnose_body_projection_rejects_stack_pointer_into_backup(self):
+        target, candidate = _abi_cycle_rows(body_data=True)
+        target[11] = _access_row(40, "addi r3, r1, 0x14")
+        candidate[11] = _access_row(40, "addi r3, r1, 0x14")
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "rejected")
+        self.assertEqual(projection["reason"], "abi_save_slot_used_by_body")
+        self.assertEqual(projection["conflicts"][0]["row"], 11)
+
+    def test_diagnose_body_projection_rejects_indexed_stack_access(self):
+        target, candidate = _abi_cycle_rows(body_data=True)
+        target[11] = _access_row(40, "stfdx f14, r3, r1")
+        candidate[11] = _access_row(40, "stfdx f15, r3, r1")
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "rejected")
+        self.assertEqual(projection["reason"], "unsupported_stack_access_form")
+        self.assertEqual(projection["conflicts"][0]["row"], 11)
+
+    def test_diagnose_body_projection_rejects_indirect_count_branch(self):
+        for opcode in ("bctr", "bcctr"):
+            with self.subTest(opcode=opcode):
+                target, candidate = _abi_cycle_rows(body_data=True)
+                target[11] = _access_row(40, f"{opcode} ")
+                candidate[11] = _access_row(40, f"{opcode} ")
+                projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+                self.assertEqual(projection["status"], "rejected")
+                self.assertEqual(projection["reason"], "body_control_flow_unresolved")
+                self.assertEqual(projection["conflicts"][0]["row"], 11)
+
+    def test_diagnose_body_projection_rejects_conditional_incoming_register(self):
+        target, candidate = _abi_cycle_rows()
+        target[7] = _branch_row(24, "bne 32", 32)
+        candidate[7] = _branch_row(24, "bne 32", 32)
+        projection = self.diagnose(target, candidate)["strict"]["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "rejected")
+        self.assertEqual(projection["reason"], "incoming_register_value_used")
+        self.assertEqual(projection["conflicts"][0]["row"], 9)
 
     def test_diagnose_opcode_or_immediate_change_is_rejected(self):
         permutation = self.diagnose(

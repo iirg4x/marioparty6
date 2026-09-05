@@ -64,10 +64,42 @@ _REGISTER_TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?P<register>[rf](?:[0-9]|[12][0-9]|3[01]))(?![A-Za-z0-9_])",
     re.IGNORECASE,
 )
+_FPR_RE = re.compile(r"f(?:[0-9]|[12][0-9]|3[01])\Z", re.IGNORECASE)
 _SHA256_RE = re.compile(r"[0-9a-fA-F]{64}\Z")
 _NUMBER_TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9_.])(?P<number>[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+))(?![A-Za-z0-9_.])"
 )
+
+_ABI_PROLOGUE_OPS = frozenset({"mflr", "stwu", "stw", "stmw"})
+_ABI_EPILOGUE_OPS = frozenset({"lwz", "mtlr", "addi", "lmw", "mr"})
+_STACK_ACCESS_WIDTHS = {
+    "lbz": 1, "lbzu": 1, "lbzx": 1, "lbzux": 1,
+    "lha": 2, "lhau": 2, "lhax": 2, "lhaux": 2,
+    "lhz": 2, "lhzu": 2, "lhzx": 2, "lhzux": 2,
+    "stb": 1, "stbu": 1, "stbx": 1, "stbux": 1,
+    "sth": 2, "sthu": 2, "sthx": 2, "sthux": 2,
+    "lwa": 4, "lwaux": 4, "lwax": 4, "lwz": 4, "lwzu": 4,
+    "lwzx": 4, "lwzux": 4, "stw": 4, "stwu": 4, "stwx": 4,
+    "stwux": 4, "lfs": 4, "lfsu": 4, "lfsx": 4, "lfsux": 4,
+    "stfs": 4, "stfsu": 4, "stfsx": 4, "stfsux": 4, "stfiwx": 4,
+    "lfd": 8, "lfdu": 8, "lfdx": 8, "lfdux": 8,
+    "stfd": 8, "stfdu": 8, "stfdx": 8, "stfdux": 8,
+    "psq_l": 8, "psq_lu": 8, "psq_lx": 8, "psq_lux": 8,
+    "psq_st": 8, "psq_stu": 8, "psq_stx": 8, "psq_stux": 8,
+    "lvx": 16, "lvxl": 16, "stvx": 16, "stvxl": 16,
+}
+_STACK_MEMORY_OPS = frozenset(_STACK_ACCESS_WIDTHS) | {"lmw", "stmw"}
+_STACK_POINTER_OPS = frozenset({"addi", "addic", "addic.", "addis", "addis."})
+_FPR_DEFINITION_OPS = frozenset({
+    "fadd", "fadds", "fsub", "fsubs", "fmul", "fmuls", "fdiv", "fdivs",
+    "fmadd", "fmadds", "fmsub", "fmsubs", "fnmadd", "fnmadds", "fnmsub",
+    "fnmsubs", "fsel", "fmr", "fneg", "fabs", "fnabs", "frsp", "fres",
+    "frsqrte", "fctiw", "fctiwz", "lfs", "lfsu", "lfsux", "lfsx", "lfd",
+    "lfdu", "lfdux", "lfdx", "ps_add", "ps_sub", "ps_mul", "ps_div",
+    "ps_madd", "ps_madds0", "ps_madds1", "ps_msub", "ps_nmadd",
+    "ps_nmsub", "ps_mr", "ps_neg", "ps_abs", "ps_sum0", "ps_sum1", "ps_sum2",
+    "ps_sum3", "ps_sel", "psq_l", "psq_lu", "psq_lux", "psq_lx",
+})
 
 
 def canonical(value: Any) -> bytes:
@@ -916,7 +948,515 @@ def _without_registers(text: str) -> str:
     return " ".join(masked.strip().split())
 
 
-def _register_permutation(target_rows: list[dict], candidate_rows: list[dict]) -> dict[str, Any]:
+def _instruction_parts(row: dict | None) -> tuple[str, list[str]] | None:
+    if not isinstance(row, dict):
+        return None
+    instruction = row.get("instruction")
+    if not isinstance(instruction, dict):
+        return None
+    text = instruction.get("formatted")
+    if not isinstance(text, str):
+        return None
+    match = _OPCODE_RE.match(text)
+    if match is None:
+        return None
+    operands = [part.strip().lower() for part in text[match.end():].split(",")]
+    return match.group("opcode").lower(), operands
+
+
+def _fpr_operand(value: str) -> str | None:
+    value = value.strip().lower()
+    return value if _FPR_RE.fullmatch(value) else None
+
+
+def _stack_operand_offset(value: str) -> int | None:
+    match = _MEMORY_OPERAND_RE.fullmatch(value.strip())
+    if match is None or match.group("base").lower() != "r1":
+        return None
+    try:
+        return _parse_access_offset(match.group("displacement"))
+    except ValueError:
+        return None
+
+
+def _abi_pair(rows: list[dict], index: int, kind: str) -> dict[str, Any] | None:
+    first = _instruction_parts(rows[index]) if index < len(rows) else None
+    second = _instruction_parts(rows[index + 1]) if index + 1 < len(rows) else None
+    if first is None or second is None:
+        return None
+    first_opcode, first_operands = first
+    second_opcode, second_operands = second
+    if kind == "save":
+        if first_opcode != "stfd" or second_opcode != "psq_st":
+            return None
+    elif kind == "restore":
+        if first_opcode != "psq_l" or second_opcode != "lfd":
+            return None
+    else:
+        raise ValueError(f"unknown ABI pair kind: {kind}")
+    if kind == "save" and (len(first_operands) != 2 or len(second_operands) != 4):
+        return None
+    if kind == "restore" and (len(first_operands) != 4 or len(second_operands) != 2):
+        return None
+    register = _fpr_operand(first_operands[0])
+    second_register = _fpr_operand(second_operands[0])
+    if register is None or register != second_register:
+        return None
+    # Only f14-f31 are callee-saved FPRs in the PowerPC ABI.  A matching
+    # low-register store/load shape is ordinary body traffic, not an
+    # authenticated ABI backup that may be projected away.
+    register_number = int(register[1:])
+    if not 14 <= register_number <= 31:
+        return None
+    mode_operands = second_operands if kind == "save" else first_operands
+    if mode_operands[2] not in {"0", "+0", "0x0", "+0x0"} or mode_operands[3] != "qr0":
+        return None
+    if kind == "save":
+        double_offset = _stack_operand_offset(first_operands[1])
+        paired_offset = _stack_operand_offset(second_operands[1])
+    else:
+        paired_offset = _stack_operand_offset(first_operands[1])
+        double_offset = _stack_operand_offset(second_operands[1])
+    if double_offset is None or paired_offset is None or paired_offset != double_offset + 8:
+        return None
+    if kind == "restore":
+        # The load pair reverses the store pair's width order.
+        if (_stack_operand_offset(first_operands[1]) != paired_offset
+                or _stack_operand_offset(second_operands[1]) != double_offset):
+            return None
+    return {
+        "register": register,
+        "rows": [index, index + 1],
+        "double_offset": double_offset,
+        "paired_offset": paired_offset,
+    }
+
+
+def _abi_pair_run(rows: list[dict], kind: str) -> tuple[list[dict[str, Any]], str | None]:
+    starts = [index for index in range(max(0, len(rows) - 1))
+              if _abi_pair(rows, index, kind) is not None]
+    if not starts:
+        return [], None
+    runs: list[list[int]] = []
+    run = [starts[0]]
+    for start in starts[1:]:
+        if start == run[-1] + 2:
+            run.append(start)
+        else:
+            runs.append(run)
+            run = [start]
+    runs.append(run)
+    if len(runs) != 1:
+        return [], "multiple_abi_pair_runs"
+    run = runs[0]
+    first = run[0]
+    after = run[-1] + 2
+    if kind == "save":
+        prefix = [_instruction_parts(row) for row in rows[:first]]
+        if any(parts is None or parts[0] not in _ABI_PROLOGUE_OPS for parts in prefix):
+            return [], "save_pair_not_in_prologue"
+    else:
+        suffix = [_instruction_parts(row) for row in rows[after:]]
+        for parts in suffix:
+            if parts is None:
+                return [], "restore_pair_not_in_epilogue"
+            opcode, operands = parts
+            if opcode == "blr":
+                continue
+            if opcode == "bl" and any("_restgpr" in operand for operand in operands):
+                continue
+            if opcode not in _ABI_EPILOGUE_OPS:
+                return [], "restore_pair_not_in_epilogue"
+    pairs = [_abi_pair(rows, start, kind) for start in run]
+    if any(pair is None for pair in pairs):
+        return [], "incomplete_abi_pair_run"
+    pairs = [pair for pair in pairs if pair is not None]
+    offsets = [pair["double_offset"] for pair in pairs]
+    if len(offsets) > 1:
+        stride = offsets[1] - offsets[0]
+        if stride not in {-16, 16} or any(
+            offsets[index + 1] - offsets[index] != stride
+            for index in range(len(offsets) - 1)
+        ):
+            return [], "ABI_stack_slots_not_sequential"
+    return pairs, None
+
+
+def _fpr_is_definition(opcode: str, operands: list[str], register: str) -> bool:
+    return bool(operands and operands[0] == register and opcode in _FPR_DEFINITION_OPS)
+
+
+def _stack_body_accesses(
+    opcode: str,
+    operands: list[str],
+) -> tuple[list[tuple[int, int]], str | None]:
+    """Return known r1-relative byte ranges and reject opaque stack forms."""
+    direct: list[int] = []
+    for operand in operands:
+        match = _MEMORY_OPERAND_RE.fullmatch(operand.strip())
+        if match is None or match.group("base").lower() != "r1":
+            continue
+        try:
+            direct.append(_parse_access_offset(match.group("displacement")))
+        except ValueError:
+            return [], "unsupported_stack_access_form"
+    if direct:
+        if len(direct) != 1:
+            return [], "unsupported_stack_access_form"
+        if opcode in {"lmw", "stmw"}:
+            if not operands or _REGISTER_RE.fullmatch(operands[0].strip()) is None:
+                return [], "unsupported_stack_access_form"
+            first_register = operands[0].strip().lower()
+            width = (32 - int(first_register[1:])) * 4
+            if width <= 0:
+                return [], "unsupported_stack_access_form"
+        else:
+            width = _STACK_ACCESS_WIDTHS.get(opcode)
+            if width is None:
+                return [], "unsupported_stack_access_form"
+        return [(direct[0], width)], None
+
+    # Indexed stack traffic has an r1 operand but no statically known
+    # displacement.  It cannot be proven disjoint from an ABI backup region.
+    if opcode in _STACK_MEMORY_OPS and any(
+        _REGISTER_RE.fullmatch(operand.strip()) is not None
+        and operand.strip().lower() == "r1"
+        for operand in operands
+    ):
+        return [], "unsupported_stack_access_form"
+
+    # An addi based stack pointer is an address into the frame even though it
+    # is not itself a load/store.  Only the canonical immediate form is safe
+    # to classify; addis/addic and symbolic forms remain opaque.
+    if opcode in _STACK_POINTER_OPS and len(operands) >= 2 and operands[1].strip().lower() == "r1":
+        if opcode != "addi" or len(operands) != 3:
+            return [], "unsupported_stack_access_form"
+        try:
+            offset = _parse_access_offset(operands[2])
+        except ValueError:
+            return [], "unsupported_stack_access_form"
+        return [(offset, 1)], None
+    return [], None
+
+
+def _body_definition_states(
+    rows: list[dict],
+    excluded_rows: set[int],
+    registers: set[str],
+) -> tuple[dict[int, set[str]] | None, int | None]:
+    """Compute must-defined selected FPRs at each reachable row.
+
+    A linear scan can incorrectly accept a use after a conditional jump over
+    its first definition.  This small direct-branch CFG keeps projection
+    conservative: unresolved/indirect branches and malformed rows invalidate
+    the diagnostic rather than being treated as fallthrough.
+    """
+    if not rows:
+        return {}, None
+    branches, addresses = _branch_rows(rows)
+    branch_by_index = {branch["row_index"]: branch for branch in branches}
+    successors: dict[int, list[int]] = {}
+    terminators = {"blr", "bclr", "rfi", "rfid", "sc"}
+    for index, row in enumerate(rows):
+        parts = _instruction_parts(row)
+        if parts is None and index not in excluded_rows:
+            return None, index
+        opcode = parts[0] if parts is not None else None
+        # Count-register branches are indirect control flow.  A bctr/bcctr
+        # may be a switch into the body, so treating it as a return would make
+        # later uses look unreachable and unsafely confirm the projection.
+        # bctrl remains a call with a fallthrough edge; f14-f31 are callee-save.
+        if opcode in {"bctr", "bcctr"}:
+            return None, index
+        branch = branch_by_index.get(index)
+        if branch is not None:
+            destination = branch.get("destination")
+            destination_rows = addresses.get(destination, []) if destination is not None else []
+            if len(destination_rows) != 1:
+                return None, index
+            next_rows = [destination_rows[0]]
+            if branch["opcode"] not in {"b", "ba"} and index + 1 < len(rows):
+                next_rows.append(index + 1)
+            successors[index] = sorted(set(next_rows))
+        elif opcode in terminators:
+            successors[index] = []
+        elif index + 1 < len(rows):
+            successors[index] = [index + 1]
+        else:
+            successors[index] = []
+
+    reachable: set[int] = set()
+    pending = [0]
+    while pending:
+        index = pending.pop()
+        if index in reachable:
+            continue
+        reachable.add(index)
+        pending.extend(successors[index])
+    predecessors: dict[int, set[int]] = {index: set() for index in reachable}
+    for index in reachable:
+        for successor in successors[index]:
+            if successor in reachable:
+                predecessors[successor].add(index)
+
+    def defined_after(index: int, before: set[str]) -> set[str]:
+        parts = _instruction_parts(rows[index])
+        if parts is None:
+            return set(before)
+        opcode, operands = parts
+        after = set(before)
+        for register in registers:
+            if _fpr_is_definition(opcode, operands, register):
+                after.add(register)
+        return after
+
+    in_states = {index: set(registers) for index in reachable}
+    in_states[0] = set()
+    # Each pass can remove at least one register from one row's incoming set;
+    # bound the fixed-point work by the finite row/register lattice.
+    for _ in range(max(1, len(reachable) * (len(registers) + 1) + 1)):
+        changed = False
+        out_states = {index: defined_after(index, in_states[index]) for index in reachable}
+        for index in sorted(reachable):
+            if index == 0:
+                incoming = set()
+            elif predecessors[index]:
+                incoming = set.intersection(*(out_states[pred] for pred in predecessors[index]))
+            else:
+                continue
+            if incoming != in_states[index]:
+                in_states[index] = incoming
+                changed = True
+        if not changed:
+            break
+    else:
+        return None, 0
+    return in_states, None
+
+
+def _body_conflicts(
+    rows: list[dict],
+    excluded_rows: set[int],
+    registers: set[str],
+    backup_regions: list[tuple[int, int]],
+    side: str,
+) -> list[dict[str, Any]]:
+    conflicts: list[dict[str, Any]] = []
+    in_states, cfg_error_row = _body_definition_states(rows, excluded_rows, registers)
+    if in_states is None:
+        return [{"side": side, "row": cfg_error_row, "reason": "body_control_flow_unresolved"}]
+    for index, row in enumerate(rows):
+        if index in excluded_rows or index not in in_states:
+            continue
+        parts = _instruction_parts(row)
+        if parts is None:
+            return [{"side": side, "row": index, "reason": "body_control_flow_unresolved"}]
+        opcode, operands = parts
+        accesses, access_error = _stack_body_accesses(opcode, operands)
+        if access_error is not None:
+            return [{"side": side, "row": index, "reason": access_error}]
+        for offset, width in accesses:
+            access_end = offset + width
+            if any(offset < region_end and access_end > region_start
+                   for region_start, region_end in backup_regions):
+                conflicts.append({"side": side, "row": index, "reason": "abi_save_slot_used_by_body"})
+                if len(conflicts) >= 4:
+                    return conflicts
+        before = in_states[index]
+        _, operands = parts
+        for register in sorted(registers):
+            positions = [position for position, operand in enumerate(operands)
+                         if operand == register]
+            if not positions:
+                continue
+            definition = _fpr_is_definition(opcode, operands, register)
+            if register not in before and not (definition and positions == [0]):
+                conflicts.append({"side": side, "row": index,
+                                  "register": register,
+                                  "reason": "incoming_register_value_used"})
+                if len(conflicts) >= 4:
+                    return conflicts
+    return conflicts
+
+
+def _body_stack_conflicts(
+    target_rows: list[dict],
+    candidate_rows: list[dict],
+    target_excluded: set[int],
+    candidate_excluded: set[int],
+) -> list[dict[str, Any]]:
+    conflicts: list[dict[str, Any]] = []
+    for index in range(max(len(target_rows), len(candidate_rows))):
+        if index in target_excluded or index in candidate_excluded:
+            continue
+        target_parts = _instruction_parts(target_rows[index]) if index < len(target_rows) else None
+        candidate_parts = _instruction_parts(candidate_rows[index]) if index < len(candidate_rows) else None
+        target_offsets = [] if target_parts is None else [
+            offset for operand in target_parts[1]
+            for offset in [_stack_operand_offset(operand)]
+            if offset is not None
+        ]
+        candidate_offsets = [] if candidate_parts is None else [
+            offset for operand in candidate_parts[1]
+            for offset in [_stack_operand_offset(operand)]
+            if offset is not None
+        ]
+        if target_offsets != candidate_offsets:
+            conflicts.append({"row": index, "reason": "stack_home_changed"})
+            if len(conflicts) >= 4:
+                break
+    return conflicts
+
+
+def _register_cycles(mapping: dict[str, str]) -> list[list[str]]:
+    cycles: list[list[str]] = []
+    visited: set[str] = set()
+    for start in sorted(mapping):
+        if start in visited:
+            continue
+        chain: list[str] = []
+        current = start
+        while current in mapping and current not in visited:
+            visited.add(current)
+            chain.append(current)
+            current = mapping[current]
+        if current == start and len(chain) > 1:
+            cycles.append(chain + [start])
+    return cycles
+
+
+def _body_register_projection(target_rows: list[dict], candidate_rows: list[dict]) -> dict[str, Any]:
+    empty: dict[str, Any] = {
+        "status": "none",
+        "reason": "no_authenticated_abi_pairs",
+        "projected_cycle": [],
+        "projected_mapping": {},
+        "excluded_paired_rows": {"target": [], "candidate": []},
+        "excluded_pair_count": 0,
+        "diagnostic_only": True,
+        "authority_advanced": False,
+    }
+    target_saves, target_save_reason = _abi_pair_run(target_rows, "save")
+    candidate_saves, candidate_save_reason = _abi_pair_run(candidate_rows, "save")
+    target_restores, target_restore_reason = _abi_pair_run(target_rows, "restore")
+    candidate_restores, candidate_restore_reason = _abi_pair_run(candidate_rows, "restore")
+    reasons = (target_save_reason, candidate_save_reason,
+               target_restore_reason, candidate_restore_reason)
+    if any(reason is not None for reason in reasons):
+        empty["status"] = "rejected"
+        empty["reason"] = next(reason for reason in reasons if reason is not None)
+        return empty
+    if not target_saves or not candidate_saves or not target_restores or not candidate_restores:
+        return empty
+    if len(target_saves) != len(candidate_saves) or len(target_restores) != len(candidate_restores):
+        empty["reason"] = "no_common_authenticated_abi_pairs"
+        return empty
+    for target_pair, candidate_pair in zip(target_saves, candidate_saves):
+        if target_pair != candidate_pair:
+            empty["status"] = "rejected"
+            empty["reason"] = "save_pair_alignment_changed"
+            return empty
+    for target_pair, candidate_pair in zip(target_restores, candidate_restores):
+        if target_pair != candidate_pair:
+            empty["status"] = "rejected"
+            empty["reason"] = "restore_pair_alignment_changed"
+            return empty
+    save_by_register = {pair["register"]: pair for pair in target_saves}
+    restore_by_register = {pair["register"]: pair for pair in target_restores}
+    if (len(save_by_register) != len(target_saves)
+            or len(restore_by_register) != len(target_restores)
+            or set(save_by_register) != set(restore_by_register)):
+        empty["status"] = "rejected"
+        empty["reason"] = "ABI_register_pairing_changed"
+        return empty
+    for register, save_pair in save_by_register.items():
+        restore_pair = restore_by_register[register]
+        if (save_pair["double_offset"] != restore_pair["double_offset"]
+                or save_pair["paired_offset"] != restore_pair["paired_offset"]):
+            empty["status"] = "rejected"
+            empty["reason"] = "ABI_stack_slot_changed"
+            return empty
+    target_excluded = {row for pair in target_saves + target_restores for row in pair["rows"]}
+    candidate_excluded = {row for pair in candidate_saves + candidate_restores for row in pair["rows"]}
+    body_target = [row for index, row in enumerate(target_rows) if index not in target_excluded]
+    body_candidate = [row for index, row in enumerate(candidate_rows) if index not in candidate_excluded]
+    body_comparison = _register_permutation(
+        body_target, body_candidate, _include_body_projection=False
+    )
+    body_mapping_registers = set(body_comparison.get("changed_mapping", {}))
+    body_mapping_registers.update(body_comparison.get("changed_mapping", {}).values())
+    for conflict in body_comparison.get("mapping_conflicts", [])[:8]:
+        for key in ("target", "candidate"):
+            register = conflict.get(key)
+            if isinstance(register, str):
+                body_mapping_registers.add(register)
+        for key in ("candidates", "targets"):
+            registers = conflict.get(key)
+            if isinstance(registers, list):
+                body_mapping_registers.update(
+                    register for register in registers if isinstance(register, str)
+                )
+    selected_registers = set(save_by_register) & body_mapping_registers
+    if not selected_registers:
+        empty["reason"] = "no_paired_registers_in_body"
+        return empty
+    selected_saves = [save_by_register[register] for register in sorted(selected_registers)]
+    selected_restores = [restore_by_register[register] for register in sorted(selected_registers)]
+    selected_rows_target = {row for pair in selected_saves + selected_restores for row in pair["rows"]}
+    selected_rows_candidate = {row for pair in selected_saves + selected_restores for row in pair["rows"]}
+    backup_regions = []
+    for register in sorted(selected_registers):
+        save_pair = save_by_register[register]
+        start = min(save_pair["double_offset"], save_pair["paired_offset"])
+        end = max(save_pair["double_offset"], save_pair["paired_offset"]) + 8
+        backup_regions.append((start, end))
+    conflicts = _body_stack_conflicts(
+        target_rows, candidate_rows, selected_rows_target, selected_rows_candidate
+    )
+    if conflicts:
+        empty["status"] = "rejected"
+        empty["reason"] = conflicts[0]["reason"]
+        empty["conflicts"] = conflicts[:4]
+        return empty
+    conflicts = _body_conflicts(
+        target_rows, selected_rows_target, selected_registers, backup_regions, "target"
+    )
+    conflicts.extend(_body_conflicts(
+        candidate_rows, selected_rows_candidate, selected_registers, backup_regions, "candidate"
+    ))
+    if conflicts:
+        empty["status"] = "rejected"
+        empty["reason"] = conflicts[0]["reason"]
+        empty["conflicts"] = conflicts[:4]
+        return empty
+    projected_target = [row for index, row in enumerate(target_rows) if index not in selected_rows_target]
+    projected_candidate = [row for index, row in enumerate(candidate_rows) if index not in selected_rows_candidate]
+    projected = _register_permutation(projected_target, projected_candidate, _include_body_projection=False)
+    cycles = _register_cycles(projected.get("changed_mapping", {}))
+    result = dict(empty)
+    result["excluded_paired_rows"] = {
+        "target": sorted(selected_rows_target),
+        "candidate": sorted(selected_rows_candidate),
+    }
+    result["excluded_pair_count"] = len(selected_registers)
+    result["excluded_row_count"] = len(selected_rows_target) + len(selected_rows_candidate)
+    result["status"] = projected.get("status", "rejected")
+    result["reason"] = projected.get("reason", "projected_register_comparison_failed")
+    if result["status"] == "confirmed":
+        result["projected_mapping"] = projected.get("changed_mapping", {})
+        result["projected_cycle"] = cycles[0] if cycles else []
+        result["projected_cycle_count"] = len(cycles)
+        if cycles:
+            result["reason"] = "closed_body_register_cycle"
+    return result
+
+
+def _register_permutation(
+    target_rows: list[dict],
+    candidate_rows: list[dict],
+    *,
+    _include_body_projection: bool = True,
+) -> dict[str, Any]:
     """Find a closed register-only rename without assigning source names.
 
     Every aligned instruction must retain its operation and immediates.  A
@@ -1053,7 +1593,7 @@ def _register_permutation(target_rows: list[dict], candidate_rows: list[dict]) -
     else:
         status = "confirmed"
         reason = "closed_register_only_permutation"
-    return {
+    result = {
         "status": status,
         "reason": reason,
         "closed": closed,
@@ -1073,6 +1613,9 @@ def _register_permutation(target_rows: list[dict], candidate_rows: list[dict]) -
         "diagnostic_only": True,
         "authority_advanced": False,
     }
+    if _include_body_projection:
+        result["body_projection"] = _body_register_projection(target_rows, candidate_rows)
+    return result
 
 
 def _diagnose_sha(value: Any) -> str | None:
