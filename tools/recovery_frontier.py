@@ -25,6 +25,7 @@ SCHEMA = "recovery_current_evidence/v1"
 INDEX_LIMIT = 256 * 1024
 REPORT_LIMIT = 32 * 1024 * 1024
 ACCESS_SCHEMA = "recovery_accesses/v1"
+STACK_MAP_SCHEMA = "recovery_stack_map/v1"
 DEFAULT_ACCESS_MATCH_LIMIT = 64
 MAX_ACCESS_MATCH_LIMIT = 256
 MAX_ACCESS_CONTEXT = 3
@@ -40,6 +41,13 @@ _MEMORY_OPERAND_RE = re.compile(
     r"(?P<displacement>[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+))"
     r"[ \t]*\([ \t]*(?P<base>r(?:[0-9]|[12][0-9]|3[01]))[ \t]*\)"
     r"(?![A-Za-z0-9_.+-])",
+    re.IGNORECASE,
+)
+_OPCODE_RE = re.compile(r"^\s*(?P<opcode>[A-Za-z][A-Za-z0-9_.]*)\b", re.IGNORECASE)
+_ADDI_POINTER_RE = re.compile(
+    r"^\s*(?P<opcode>addi)\s+"
+    r"(?P<destination>r(?:[0-9]|[12][0-9]|3[01]))\s*,\s*"
+    r"r1\s*,\s*(?P<displacement>[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+))\s*\Z",
     re.IGNORECASE,
 )
 
@@ -252,6 +260,163 @@ def accesses(
         result["truncated"] = True
     if len(canonical(result)) + 1 > INDEX_LIMIT:
         raise ValueError("accesses result exceeds 256 KiB")
+    return result
+
+
+def _stack_instruction(text: Any, index: int) -> dict[str, Any] | None:
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        raise ValueError(f"strict.instructions[{index}] formatted text must be text")
+    if len(text) > ACCESS_TEXT_LIMIT:
+        raise ValueError(f"strict.instructions[{index}] formatted text exceeds {ACCESS_TEXT_LIMIT} characters")
+    opcode_match = _OPCODE_RE.match(text)
+    if opcode_match is None:
+        return None
+    opcode = opcode_match.group("opcode").lower()
+    pointer = _ADDI_POINTER_RE.fullmatch(text)
+    if pointer is not None:
+        return {
+            "kind": "addi_pointer",
+            "opcode": opcode,
+            "operands": f"{pointer.group('destination').lower()}, r1",
+            "offset": _parse_access_offset(pointer.group("displacement")),
+        }
+    memory = [match for match in _MEMORY_OPERAND_RE.finditer(text)
+              if match.group("base").lower() == "r1"]
+    if len(memory) != 1:
+        return None
+    match = memory[0]
+    masked = text[:match.start()] + "<disp>(r1)" + text[match.end():]
+    return {
+        "kind": "d_form",
+        "opcode": opcode,
+        "operands": " ".join(masked[opcode_match.end():].split()).lower(),
+        "offset": _parse_access_offset(match.group("displacement")),
+    }
+
+
+def _stack_rows(rows: list[dict], kind: str) -> tuple[list[dict[str, Any]], int]:
+    parsed: list[dict[str, Any]] = []
+    for index, row in enumerate(rows):
+        compact = _access_row(row, index)
+        if compact is None:
+            continue
+        item = _stack_instruction(compact["text"], index)
+        if item is not None and item["kind"] == kind:
+            parsed.append({**item, "row_index": index})
+    return parsed, len(parsed)
+
+
+def _stack_offset_hex(offset: int) -> str:
+    return f"-0x{abs(offset):x}" if offset < 0 else f"0x{offset:x}"
+
+
+def _stack_category(target_rows: list[dict], candidate_rows: list[dict], kind: str) -> dict[str, Any]:
+    target, _ = _stack_rows(target_rows, kind)
+    candidate, _ = _stack_rows(candidate_rows, kind)
+    by_index = {item["row_index"]: item for item in candidate}
+    observations: dict[tuple[str, str, int, int], dict[str, Any]] = {}
+    target_links: dict[tuple[str, str, int], set[int]] = {}
+    candidate_links: dict[tuple[str, str, int], set[int]] = {}
+    for item in target:
+        other = by_index.get(item["row_index"])
+        if other is None or (item["opcode"], item["operands"]) != (other["opcode"], other["operands"]):
+            continue
+        signature = (item["opcode"], item["operands"])
+        key = (*signature, item["offset"], other["offset"])
+        entry = observations.setdefault(key, {"count": 0, "exemplars": []})
+        entry["count"] += 1
+        if len(entry["exemplars"]) < 3:
+            entry["exemplars"].append({"row_index": item["row_index"], "opcode": item["opcode"]})
+        target_links.setdefault((*signature, item["offset"]), set()).add(other["offset"])
+        candidate_links.setdefault((*signature, other["offset"]), set()).add(item["offset"])
+    pairs = []
+    for (opcode, operands, target_offset, candidate_offset), entry in observations.items():
+        ambiguous = (len(target_links[(opcode, operands, target_offset)]) > 1
+                     or len(candidate_links[(opcode, operands, candidate_offset)]) > 1)
+        pairs.append({
+            "opcode": opcode,
+            "operands": operands,
+            "target_offset": target_offset,
+            "target_offset_hex": _stack_offset_hex(target_offset),
+            "candidate_offset": candidate_offset,
+            "candidate_offset_hex": _stack_offset_hex(candidate_offset),
+            "status": "ambiguous_one_to_many" if ambiguous else (
+                "equal" if target_offset == candidate_offset else "changed"
+            ),
+            "count": entry["count"],
+            "exemplars": entry["exemplars"],
+        })
+    pairs.sort(key=lambda pair: (pair["opcode"], pair["operands"],
+                                 pair["target_offset"], pair["candidate_offset"]))
+    paired_rows = sum(entry["count"] for entry in observations.values())
+    return {
+        "target_access_count": len(target),
+        "candidate_access_count": len(candidate),
+        "paired_rows": paired_rows,
+        "unpaired_target_access_count": len(target) - paired_rows,
+        "unpaired_candidate_access_count": len(candidate) - paired_rows,
+        "pair_count": len(pairs),
+        "pairs": pairs,
+    }
+
+
+def _stack_function(symbols: list, name: str, side: str) -> dict | None:
+    matches = [symbol for symbol in symbols
+               if focus._is_function(symbol) and symbol.get("name") == name]
+    if len(matches) > 1:
+        raise ValueError(f"ambiguous {side} function {name!r}")
+    return matches[0] if matches else None
+
+
+def stack_map(*, root: Path, strict: Path, function: str) -> dict[str, Any]:
+    """Summarize aligned r1 stack accesses without assigning semantic owners."""
+    root = Path(os.path.abspath(root))
+    if not isinstance(function, str) or not function.strip():
+        raise ValueError("function must be nonempty text")
+    function = function.strip()
+    raw, report_binding = read_bound(root, Path(strict), REPORT_LIMIT)
+    document = load_json(raw)
+    if not isinstance(document, dict):
+        raise ValueError("strict report must be a JSON object")
+    left = focus._symbols(document, "left", "strict")
+    right = focus._symbols(document, "right", "strict")
+    target_symbol = _stack_function(left, function, "target")
+    candidate_symbol = _stack_function(right, function, "candidate")
+    result: dict[str, Any] = {
+        "schema": STACK_MAP_SCHEMA,
+        "schema_version": 1,
+        "report": dict(report_binding),
+        "report_sha256": report_binding["sha256"],
+        "function": function,
+        "status": "ok" if target_symbol is not None and candidate_symbol is not None else "missing_symbol",
+        "missing_sides": ([side for side, symbol in (("target", target_symbol), ("candidate", candidate_symbol))
+                           if symbol is None]),
+        "base_register": "r1",
+        "d_form": _stack_category(
+            focus._rows(target_symbol, f"strict.target.{function}") if target_symbol is not None else [],
+            focus._rows(candidate_symbol, f"strict.candidate.{function}") if candidate_symbol is not None else [],
+            "d_form",
+        ),
+        "addi_pointer": _stack_category(
+            focus._rows(target_symbol, f"strict.target.{function}") if target_symbol is not None else [],
+            focus._rows(candidate_symbol, f"strict.candidate.{function}") if candidate_symbol is not None else [],
+            "addi_pointer",
+        ),
+        "truncated": False,
+        "diagnostic_only": True,
+        "authority_advanced": False,
+    }
+    while len(canonical(result)) + 1 > INDEX_LIMIT:
+        category = max((result["d_form"], result["addi_pointer"]), key=lambda item: len(item["pairs"]))
+        if not category["pairs"]:
+            raise ValueError("stack-map result exceeds 256 KiB")
+        category.setdefault("returned_pair_count", len(category["pairs"]))
+        drop = max(1, len(category["pairs"]) // 2)
+        del category["pairs"][-drop:]
+        category["returned_pair_count"] = len(category["pairs"])
+        result["truncated"] = True
     return result
 
 
@@ -476,6 +641,9 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=DEFAULT_ACCESS_MATCH_LIMIT,
     )
+    stack = sub.add_parser("stack-map", help="summarize aligned r1 stack displacement pairs")
+    stack.add_argument("--strict", type=Path, required=True)
+    stack.add_argument("--function", required=True)
     args = parser.parse_args(argv)
     try:
         root = Path(os.path.abspath(args.root))
@@ -492,7 +660,7 @@ def main(argv: list[str] | None = None) -> int:
             verify(root, value)
             print(json.dumps({"status": "current", "owner": value["owner"], **value["summary"],
                               "compile_binding": value["compile_binding"], "authority_advanced": False}, sort_keys=True))
-        else:
+        elif args.action == "accesses":
             value = accesses(
                 root=root,
                 strict=args.strict,
@@ -503,6 +671,9 @@ def main(argv: list[str] | None = None) -> int:
                 context=args.context,
                 max_matches=args.max_matches,
             )
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        else:
+            value = stack_map(root=root, strict=args.strict, function=args.function)
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         return 0
     except (OSError, ValueError, KeyError, TypeError) as exc:

@@ -304,5 +304,84 @@ class RecoveryFrontierTests(unittest.TestCase):
             self.access()
 
 
+    def stack(self, target_rows, candidate_rows=None, function="FocusFunction"):
+        self.access_report(target_rows, candidate_rows)
+        return frontier.stack_map(root=self.root, strict=Path("strict.json"), function=function)
+
+    def test_stack_map_pairs_masked_d_form_and_addi_offsets(self):
+        target = [
+            _access_row(0, "stw r0, 0x68(r1)"),
+            _access_row(4, "stw r0, 0x6c(r1)"),
+            _access_row(8, "lwz r3, -0x4(r1)"),
+            _access_row(12, "addi r5, r1, 0x68"),
+            _access_row(16, "addi r5, r1, 136"),
+        ]
+        candidate = [
+            _access_row(0, "stw r0, 0x6c(r1)"),
+            _access_row(4, "stw r0, 0x68(r1)"),
+            _access_row(8, "lwz r3, -4(r1)"),
+            _access_row(12, "addi r5, r1, 104"),
+            _access_row(16, "addi r5, r1, 0x68"),
+        ]
+        result = self.stack(target, candidate)
+        d_pairs = {(row["target_offset"], row["candidate_offset"]): row
+                   for row in result["d_form"]["pairs"]}
+        self.assertEqual(d_pairs[(0x68, 0x6c)]["status"], "changed")
+        self.assertEqual(d_pairs[(0x6c, 0x68)]["status"], "changed")
+        self.assertEqual(d_pairs[(-4, -4)]["status"], "equal")
+        pointer = result["addi_pointer"]["pairs"]
+        pointer_pairs = {(row["target_offset"], row["candidate_offset"]): row for row in pointer}
+        self.assertEqual(pointer_pairs[(0x68, 0x68)]["status"], "ambiguous_one_to_many")
+        self.assertEqual(pointer_pairs[(136, 104)]["status"], "ambiguous_one_to_many")
+        self.assertEqual(pointer_pairs[(0x68, 0x68)]["count"], 1)
+        self.assertLessEqual(len(pointer_pairs[(0x68, 0x68)]["exemplars"]), 3)
+        self.assertEqual(result["report_sha256"], result["report"]["sha256"])
+        self.assertFalse(result["authority_advanced"])
+
+    def test_stack_map_requires_same_non_displacement_operands_and_marks_ambiguity(self):
+        target = [_access_row(0, "lwz r3, 0x68(r1)"),
+                  _access_row(4, "lwz r3, 0x68(r1)")]
+        candidate = [_access_row(0, "lwz r3, 0x6c(r1)"),
+                     _access_row(4, "lwz r3, 0x70(r1)")]
+        result = self.stack(target, candidate)
+        self.assertEqual(result["d_form"]["paired_rows"], 2)
+        self.assertEqual(result["d_form"]["pair_count"], 2)
+        self.assertTrue(all(row["status"] == "ambiguous_one_to_many"
+                            for row in result["d_form"]["pairs"]))
+        result = self.stack(
+            [_access_row(0, "lwz r3, 0x68(r1)")],
+            [_access_row(0, "lwz r4, 0x6c(r1)")],
+        )
+        self.assertEqual(result["d_form"]["paired_rows"], 0)
+        self.assertEqual(result["d_form"]["target_access_count"], 1)
+
+    def test_stack_map_placeholders_missing_symbol_and_malformed_json(self):
+        result = self.stack([{"instruction": None}, _access_row(4, "lwz r3, 0(r1)")])
+        self.assertEqual(result["d_form"]["target_access_count"], 1)
+        self.assertEqual(result["d_form"]["paired_rows"], 1)
+        report = copy.deepcopy(self.report)
+        report["right"]["symbols"][1]["name"] = "OtherFunction"
+        (self.root / "strict.json").write_text(json.dumps(report), encoding="utf-8")
+        result = frontier.stack_map(root=self.root, strict=Path("strict.json"), function="FocusFunction")
+        self.assertEqual(result["status"], "missing_symbol")
+        self.assertEqual(result["missing_sides"], ["candidate"])
+        self.assertEqual(result["d_form"]["candidate_access_count"], 0)
+        (self.root / "strict.json").write_text("[", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            frontier.stack_map(root=self.root, strict=Path("strict.json"), function="FocusFunction")
+
+    def test_stack_map_output_is_bounded_and_cli_is_wired(self):
+        target = [_access_row(index, f"lwz r3, 0x{0x100 + index * 4:x}(r1)") for index in range(2000)]
+        candidate = [_access_row(index, f"lwz r3, 0x{0x200 + index * 4:x}(r1)") for index in range(2000)]
+        result = self.stack(target, candidate)
+        self.assertTrue(result["truncated"])
+        self.assertLess(len(frontier.canonical(result)), 256 * 1024)
+        self.access_report([_access_row(0, "lwz r3, 0x68(r1)")])
+        with unittest.mock.patch("builtins.print") as output:
+            self.assertEqual(frontier.main(["--root", str(self.root), "stack-map",
+                                            "--strict", "strict.json", "--function", "FocusFunction"]), 0)
+        self.assertTrue(output.called)
+
+
 if __name__ == "__main__":
     unittest.main()

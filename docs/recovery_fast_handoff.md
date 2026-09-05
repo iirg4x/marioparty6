@@ -97,3 +97,19 @@ compiling a familiar source class. A new source filename is not a new hypothesis
 Whole-ELF hashes also include filename metadata; when source-path recompilation
 changes STT_FILE, compare allocated sections and relocation meanings before
 classifying it as a code-generation regression.
+# Repeated stack-home pairs
+
+Use `python tools/recovery_frontier.py --root OWNER_ROOT stack-map --strict REPORT --function NAME`
+to group aligned r1 accesses by observed target/candidate displacement pair.
+It matches opcodes and non-displacement operands; addi pointer consumers are
+reported separately. Each group includes counts and bounded row examples.
+One-to-many relationships remain explicitly ambiguous, not inferred source owners.
+The report is hash-bound, diagnostic-only and capped at 256 KiB with truncation
+flagged. It introduces no compile/admission gate.
+
+For the SNPC third-pass retained proof, use
+`work/manager-third-20260905/retained-proof.json` and `SNpcMoveExec`.
+The earlier ten repeated sound/attribute stack-pair inversions were exposed by
+the same query; the retained result has 150 D-form and 69 pointer rows paired
+with equal displacements. Superseded raw reports may be regenerated from the
+preserved objects rather than kept as permanent history.
