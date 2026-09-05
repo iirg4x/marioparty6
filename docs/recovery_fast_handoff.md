@@ -1,7 +1,8 @@
 # Fast, current-source recovery handoff
 
-These are convenience commands, not new approval gates. They do not compile
-automatically, retain source, or prove physical/link exactness.
+These are convenience commands, not new approval gates. Inspection commands do
+not compile; `evaluate` explicitly measures one supplied candidate. None writes
+live source or authorizes promotion or linked exactness.
 
 ## Fast cracking loop
 
@@ -42,6 +43,58 @@ Keep optional tool development off the cracking path. Use focused tests for a
 small isolated utility; do not append an unrelated full-suite run to every
 function crack. Exact-function gains and retained source improvements are the
 outcome; captures, audit votes and report volume are not progress metrics.
+
+## Automate candidate measurement
+
+Replace per-function copied probe scripts with:
+
+```text
+python tools/recovery_frontier.py --root OWNER_ROOT evaluate \
+  --index build/recovery/current.json --candidate work/candidate.c \
+  --function FUNCTION --command-json build/recovery/compiler-argv.json \
+  --compiler-tool build/compilers/GC/2.6/mwcceppc.exe \
+  --objdiff ABSOLUTE_OBJDFF_EXE --readelf ABSOLUTE_READELF_EXE \
+  --out build/recovery/evaluations/CELL.json
+```
+
+Use the complete pinned argv array, preserving flag order. Replace only the
+source and output arguments with the whole-cell strings `{source}` and
+`{object}`. Execution uses the owner root and its existing compiler lock; the
+object goes in an invocation-owned temporary directory, never the live object.
+Independent workers use distinct candidates/results in one shared evaluation
+directory per owner so they reuse the compact lookup. One owner writer still
+composes accepted source changes, with no manager request per candidate.
+
+The command validates the current index before and after work, binds compiler,
+headers, source and object, runs strict/data reports concurrently, checks every
+function and allocated section, and compares closed relocation rows with the
+target. It preserves first-mismatch context and up to 24 residual rows per focus
+channel so a rejected result remains useful without retaining a whole-TU report.
+Local call-address slides are compared by their callee identity for monotonic
+gains; data-owner offsets remain significant. Raw physical placement stays
+reported and must match before a selected function is called exact.
+Exact-source/context repeats skip compilation; equivalent allocated objects
+skip objdiff even when filename/debug metadata differs. The 128-entry compact
+lookup is not a function ban or attempt cap. The 512 KiB per-result limit is not
+a cumulative directory quota; successful candidate snapshots are deliberately
+kept for owner adoption. Do not create a new history directory for every cell.
+
+`retention_ready` means measurement gates passed, not original-source or link
+proof. Every freshly compiled positive candidate keeps its source/object/compiler
+receipt beside the compact result, including gains awaiting review; the owner
+reviews source fidelity and adopts it. `exact` is explicitly scoped to the
+selected functions, never a whole-owner or linked-binary claim. A missing
+baseline compile receipt or changed nontext data explicitly requires the
+existing independent owner proof/review. Do not silently upgrade a diagnostic
+baseline. The live source and current index are never overwritten by evaluation.
+
+Use `--candidate-object EXISTING_O` instead of `--command-json` to replay archived
+objects without compiling; this explicitly supplies no source-to-object proof.
+The default deadline is 120 seconds; complete objdiff reports and temporary
+objects are removed by default. `--keep-reports` is an explicit short-lived
+debugging option, not the normal campaign path. Compiler recipes are trusted
+owner inputs, not arbitrary programs sandboxed by this command. Cleanup errors remain attached
+to the primary result and disable readiness.
 
 ## Reuse supported native captures
 
