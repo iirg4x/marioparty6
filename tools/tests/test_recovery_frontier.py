@@ -12,6 +12,15 @@ from tools import recovery_frontier as frontier
 from tools.tests.test_focus_symbol_report import _report
 
 
+def _access_row(address: int, text: str, diff_kind: str | None = None) -> dict[str, object]:
+    row: dict[str, object] = {
+        "instruction": {"address": str(address), "formatted": text, "size": 4}
+    }
+    if diff_kind is not None:
+        row["diff_kind"] = diff_kind
+    return row
+
+
 class RecoveryFrontierTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -29,6 +38,29 @@ class RecoveryFrontierTests(unittest.TestCase):
                     strict=Path("strict.json"), data=None, toolchain_key="GC/2.6/test")
         args.update(options)
         return frontier.snapshot(**args)
+
+    def access_report(self, target_rows, candidate_rows=None):
+        report = copy.deepcopy(self.report)
+        target = report["left"]["symbols"][1]
+        candidate = report["right"]["symbols"][1]
+        target["instructions"] = target_rows
+        candidate["instructions"] = copy.deepcopy(
+            target_rows if candidate_rows is None else candidate_rows
+        )
+        (self.root / "strict.json").write_text(json.dumps(report), encoding="utf-8")
+
+    def access(self, **options):
+        args = dict(
+            root=self.root,
+            strict=Path("strict.json"),
+            function="FocusFunction",
+            side="target",
+            base_register="r1",
+            offset="0x88",
+            context=0,
+        )
+        args.update(options)
+        return frontier.accesses(**args)
 
     def test_first_mismatch_and_counts_are_retained(self):
         value = self.snapshot()
@@ -185,6 +217,91 @@ class RecoveryFrontierTests(unittest.TestCase):
         report['right']['symbols'][1]['instructions'] = [42]
         with self.assertRaises(ValueError):
             frontier.summarize(report, 'strict')
+
+    def test_accesses_match_exact_displacement_and_decimal_hex_equivalence(self):
+        self.access_report(
+            [
+                _access_row(0, "lwz r3, 0x88(r1)", "DIFF_ARG_MISMATCH"),
+                _access_row(4, "lwz r3, 0x188(r1)"),
+                _access_row(8, "lwz r3, 136(r1)"),
+                _access_row(12, "lwz r3, -0x88(r1)"),
+                _access_row(16, "lwz r3, 0x88(r10)"),
+                _access_row(20, "addi r3, r1, 0x88"),
+                _access_row(24, "lwz r3, 0(r1)"),
+            ]
+        )
+        hexadecimal = self.access(offset="0x88")
+        decimal = self.access(offset="136")
+        self.assertEqual([row["row_index"] for row in hexadecimal["matches"]], [0, 2])
+        self.assertEqual(
+            [row["row_index"] for row in decimal["matches"]],
+            [0, 2],
+        )
+        self.assertEqual(hexadecimal["match_count"], 2)
+        self.assertEqual(hexadecimal["matches"][0]["instruction_address"], "0")
+        self.assertEqual(hexadecimal["matches"][0]["text"], "lwz r3, 0x88(r1)")
+        self.assertEqual(hexadecimal["matches"][0]["diff_kind"], "DIFF_ARG_MISMATCH")
+
+    def test_accesses_separate_base_registers_and_sides(self):
+        target_rows = [
+            _access_row(0, "lwz r3, 0x88(r1)"),
+            _access_row(4, "lwz r3, 0x88(r10)"),
+        ]
+        candidate_rows = [
+            _access_row(0, "lwz r3, 0x88(r10)"),
+            _access_row(4, "lwz r3, 0x88(r1)"),
+        ]
+        self.access_report(target_rows, candidate_rows)
+        target = self.access(side="target")
+        candidate = self.access(side="candidate")
+        self.assertEqual([row["row_index"] for row in target["matches"]], [0])
+        self.assertEqual([row["row_index"] for row in candidate["matches"]], [1])
+        self.assertEqual(candidate["side"], "candidate")
+        self.assertEqual(candidate["report_sha256"], candidate["report"]["sha256"])
+
+    def test_accesses_context_is_bounded_and_deduplicated(self):
+        rows = [_access_row(index, f"addi r3, r3, {index}") for index in range(8)]
+        rows[2] = _access_row(8, "lwz r3, 0x88(r1)")
+        rows[4] = _access_row(16, "lwz r3, 0x88(r1)")
+        self.access_report(rows)
+        result = self.access(context=2)
+        context_indices = [row["row_index"] for row in result["context_rows"]]
+        self.assertEqual([row["row_index"] for row in result["matches"]], [2, 4])
+        self.assertEqual(context_indices, [0, 1, 3, 5, 6])
+        self.assertEqual(len(context_indices), len(set(context_indices)))
+        self.assertFalse(result["truncated"])
+
+        many = [_access_row(index, "lwz r3, 0x88(r1)") for index in range(70)]
+        self.access_report(many)
+        result = self.access(context=3, max_matches=2)
+        self.assertEqual(result["match_count"], 70)
+        self.assertEqual(len(result["matches"]), 2)
+        self.assertTrue(result["truncated"])
+        self.assertLess(len(json.dumps(result).encode("utf-8")), 256 * 1024)
+
+    def test_accesses_reject_invalid_queries_and_malformed_or_missing_reports(self):
+        self.access_report([_access_row(0, "lwz r3, 0x88(r1)")])
+        for options in (
+            {"function": "MissingFunction"},
+            {"side": "other"},
+            {"base_register": "r32"},
+            {"offset": "0xGG"},
+            {"context": 4},
+        ):
+            with self.subTest(options=options):
+                with self.assertRaises(ValueError):
+                    self.access(**options)
+        with self.assertRaises((OSError, ValueError)):
+            self.access(strict=Path("missing.json"))
+
+        (self.root / "strict.json").write_text("[]", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.access()
+        malformed = copy.deepcopy(self.report)
+        malformed["left"]["symbols"][1]["instructions"] = [42]
+        (self.root / "strict.json").write_text(json.dumps(malformed), encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.access()
 
 
 if __name__ == "__main__":

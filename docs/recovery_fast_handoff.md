@@ -71,3 +71,29 @@ checked for a shared pool/layout cause; changing each cast independently cannot
 repair an earlier translation-unit producer. Typed literal reconstruction can
 recover section extent while still moving physical owners or losing exact
 siblings. A 440-byte pool matching a 440-byte target is not an exact owner.
+
+## Trace a value's consumers before changing its source spelling
+
+For one observed stack home, inspect all its accesses in the already-bound report:
+
+```text
+python tools/recovery_frontier.py --root OWNER_ROOT accesses --strict build/current-strict.json --function SNpcMoveExec --side target --base-register r1 --offset 0x88 --context 2
+```
+
+This is a bounded, read-only instruction view, not a semantic-owner proof or a
+source generator. It distinguishes exact offsets and base registers, includes
+row/address/context, and explicitly reports truncation. Use the current index to
+verify the report/source binding first.
+
+In SNPC's second timed pass, the six accesses at that home exposed a missing
+eligibility counter and its actual decision consumer. Related list-consumer and
+inline-loop lifetime reconstruction improved `SNpcMoveExec` from 86.849370% to
+95.289660%, preserving all 84 sibling functions and all data sections. The owner
+was still not exact. This is why an apparent register cascade should be checked
+for missing values and wrong consumers before trying declaration permutations.
+
+Keep a compact rejected-cell list beside the current index and read it before
+compiling a familiar source class. A new source filename is not a new hypothesis.
+Whole-ELF hashes also include filename metadata; when source-path recompilation
+changes STT_FILE, compare allocated sections and relocation meanings before
+classifying it as a code-generation regression.

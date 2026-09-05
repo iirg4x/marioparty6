@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 from typing import Any
@@ -23,6 +24,24 @@ from tools import focus_symbol_report as focus
 SCHEMA = "recovery_current_evidence/v1"
 INDEX_LIMIT = 256 * 1024
 REPORT_LIMIT = 32 * 1024 * 1024
+ACCESS_SCHEMA = "recovery_accesses/v1"
+DEFAULT_ACCESS_MATCH_LIMIT = 64
+MAX_ACCESS_MATCH_LIMIT = 256
+MAX_ACCESS_CONTEXT = 3
+ACCESS_TEXT_LIMIT = 512
+
+_OFFSET_RE = re.compile(r"[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+)\Z")
+_REGISTER_RE = re.compile(r"r(?:[0-9]|[12][0-9]|3[01])\Z", re.IGNORECASE)
+# This intentionally recognizes only the canonical numeric displacement(base)
+# spelling.  In particular, the boundaries prevent finding 0x88 inside 0x188
+# or inside a symbolic expression such as foo+0x88(r1).
+_MEMORY_OPERAND_RE = re.compile(
+    r"(?<![A-Za-z0-9_.+-])"
+    r"(?P<displacement>[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+))"
+    r"[ \t]*\([ \t]*(?P<base>r(?:[0-9]|[12][0-9]|3[01]))[ \t]*\)"
+    r"(?![A-Za-z0-9_.+-])",
+    re.IGNORECASE,
+)
 
 
 def canonical(value: Any) -> bytes:
@@ -59,6 +78,181 @@ def load_json(raw: bytes) -> Any:
             result[key] = value
         return result
     return json.loads(raw, object_pairs_hook=unique)
+
+
+def _parse_access_offset(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("offset must be a decimal or hexadecimal integer")
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        raise ValueError("offset must be a decimal or hexadecimal integer")
+    text = value.strip()
+    if _OFFSET_RE.fullmatch(text) is None:
+        raise ValueError("offset must be a decimal or hexadecimal integer")
+    sign = -1 if text.startswith("-") else 1
+    digits = text[1:] if text[:1] in {"+", "-"} else text
+    base = 16 if digits.lower().startswith("0x") else 10
+    try:
+        return sign * int(digits[2:] if base == 16 else digits, base)
+    except ValueError as exc:
+        raise ValueError("offset must be a decimal or hexadecimal integer") from exc
+
+
+def _parse_access_register(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("base register must be a PowerPC GPR r0-r31")
+    register = value.strip().lower()
+    if _REGISTER_RE.fullmatch(register) is None:
+        raise ValueError("base register must be a PowerPC GPR r0-r31")
+    return register
+
+
+def _validate_access_context(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_ACCESS_CONTEXT:
+        raise ValueError(f"context must be between 0 and {MAX_ACCESS_CONTEXT}")
+    return value
+
+
+def _validate_access_limit(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= MAX_ACCESS_MATCH_LIMIT:
+        raise ValueError(f"max_matches must be between 1 and {MAX_ACCESS_MATCH_LIMIT}")
+    return value
+
+
+def _access_row(row: dict, index: int) -> dict[str, Any] | None:
+    instruction_value = row.get("instruction")
+    if instruction_value is None:
+        # Alignment placeholders in objdiff rows have no formatted instruction
+        # and cannot be a memory access or useful textual context.
+        return None
+    if not isinstance(instruction_value, dict):
+        raise ValueError(f"strict.instructions[{index}].instruction must be an object")
+    formatted = instruction_value.get("formatted")
+    if formatted is None:
+        return None
+    if not isinstance(formatted, str):
+        raise ValueError(f"strict.instructions[{index}].instruction.formatted must be text")
+    if len(formatted) > ACCESS_TEXT_LIMIT:
+        raise ValueError(f"strict.instructions[{index}] formatted text exceeds {ACCESS_TEXT_LIMIT} characters")
+    diff_kind = row.get("diff_kind")
+    if diff_kind is not None and not isinstance(diff_kind, str):
+        raise ValueError(f"strict.instructions[{index}].diff_kind must be text or null")
+    address = instruction_value.get("address")
+    if address is not None and (isinstance(address, bool) or not isinstance(address, (int, float, str))):
+        raise ValueError(f"strict.instructions[{index}].instruction.address must be scalar")
+    return {
+        "row_index": index,
+        "instruction_address": address,
+        "text": formatted,
+        "diff_kind": diff_kind,
+    }
+
+
+def _access_matches(text: str, base_register: str, offset: int) -> bool:
+    for match in _MEMORY_OPERAND_RE.finditer(text):
+        if match.group("base").lower() != base_register:
+            continue
+        if _parse_access_offset(match.group("displacement")) == offset:
+            return True
+    return False
+
+
+def accesses(
+    *,
+    root: Path,
+    strict: Path,
+    function: str,
+    side: str,
+    base_register: str,
+    offset: Any,
+    context: int,
+    max_matches: int = DEFAULT_ACCESS_MATCH_LIMIT,
+) -> dict[str, Any]:
+    """Return bounded formatted-instruction accesses from one objdiff side."""
+    root = Path(os.path.abspath(root))
+    if not isinstance(function, str) or not function.strip():
+        raise ValueError("function must be nonempty text")
+    function = function.strip()
+    if side not in {"target", "candidate"}:
+        raise ValueError("side must be target or candidate")
+    base_register = _parse_access_register(base_register)
+    offset = _parse_access_offset(offset)
+    context = _validate_access_context(context)
+    max_matches = _validate_access_limit(max_matches)
+
+    raw, report_binding = read_bound(root, Path(strict), REPORT_LIMIT)
+    document = load_json(raw)
+    if not isinstance(document, dict):
+        raise ValueError("strict report must be a JSON object")
+    # Validate both canonical channels, while only retaining the requested
+    # function's rows.  No relocation, symbol-owner or semantic identity is
+    # inferred from the numeric displacement.
+    left = focus._symbols(document, "left", "strict")
+    right = focus._symbols(document, "right", "strict")
+    symbols = left if side == "target" else right
+    functions = [symbol for symbol in symbols if focus._is_function(symbol)]
+    selected = [symbol for symbol in functions if symbol.get("name") == function]
+    if len(selected) != 1:
+        raise ValueError(
+            f"strict report must contain exactly one {side} function {function!r}; found {len(selected)}"
+        )
+    rows = focus._rows(selected[0], f"strict.{side}.{function}")
+    compact_rows: dict[int, dict[str, Any]] = {}
+    matching_indices: list[int] = []
+    for index, row in enumerate(rows):
+        compact = _access_row(row, index)
+        if compact is None:
+            continue
+        compact_rows[index] = compact
+        if _access_matches(compact["text"], base_register, offset):
+            matching_indices.append(index)
+    del raw, document, left, right
+
+    selected_indices = matching_indices[:max_matches]
+    selected_set = set(selected_indices)
+    context_rows: dict[int, dict[str, Any]] = {}
+    for index in selected_indices:
+        start = max(0, index - context)
+        stop = min(len(rows), index + context + 1)
+        for adjacent in range(start, stop):
+            if adjacent == index or adjacent in selected_set:
+                continue
+            compact = compact_rows.get(adjacent)
+            if compact is not None:
+                context_rows.setdefault(adjacent, compact)
+
+    result: dict[str, Any] = {
+        "schema": ACCESS_SCHEMA,
+        "schema_version": 1,
+        "report": dict(report_binding),
+        "report_sha256": report_binding["sha256"],
+        "function": function,
+        "side": side,
+        "base_register": base_register,
+        "offset": offset,
+        "context": context,
+        "max_matches": max_matches,
+        "match_count": len(matching_indices),
+        "matches": [compact_rows[index] for index in selected_indices],
+        "context_rows": [context_rows[index] for index in sorted(context_rows)],
+        "truncated": len(selected_indices) < len(matching_indices),
+        "diagnostic_only": True,
+        "authority_advanced": False,
+    }
+
+    # A caller may request 256 matches, but a diagnostic response must remain
+    # below the compact-index budget.  Drop trailing context first, then later
+    # matches, and make the bounded result explicit via truncated.
+    while len(canonical(result)) + 1 > INDEX_LIMIT and result["context_rows"]:
+        result["context_rows"].pop()
+        result["truncated"] = True
+    while len(canonical(result)) + 1 > INDEX_LIMIT and result["matches"]:
+        result["matches"].pop()
+        result["truncated"] = True
+    if len(canonical(result)) + 1 > INDEX_LIMIT:
+        raise ValueError("accesses result exceeds 256 KiB")
+    return result
 
 
 def instruction(row: dict | None) -> dict | None:
@@ -268,6 +462,20 @@ def main(argv: list[str] | None = None) -> int:
     create.add_argument("--compile-receipt", type=Path)
     check = sub.add_parser("verify")
     check.add_argument("index", type=Path)
+    access = sub.add_parser("accesses", help="find exact formatted displacement(base) accesses")
+    access.add_argument("--strict", type=Path, required=True)
+    access.add_argument("--function", required=True)
+    access.add_argument("--side", choices=("target", "candidate"), required=True)
+    access.add_argument("--base-register", required=True)
+    access.add_argument("--offset", required=True)
+    access.add_argument("--context", type=int, default=0)
+    access.add_argument(
+        "--max-matches",
+        "--limit",
+        dest="max_matches",
+        type=int,
+        default=DEFAULT_ACCESS_MATCH_LIMIT,
+    )
     args = parser.parse_args(argv)
     try:
         root = Path(os.path.abspath(args.root))
@@ -276,12 +484,26 @@ def main(argv: list[str] | None = None) -> int:
                              candidate=args.candidate_object, strict=args.strict, data=args.data,
                              toolchain_key=args.toolchain_key, compile_receipt=args.compile_receipt)
             publish(root, args.out, value)
-        else:
+            print(json.dumps({"status": "current", "owner": value["owner"], **value["summary"],
+                              "compile_binding": value["compile_binding"], "authority_advanced": False}, sort_keys=True))
+        elif args.action == "verify":
             raw, _ = read_bound(root, args.index, INDEX_LIMIT)
             value = load_json(raw)
             verify(root, value)
-        print(json.dumps({"status": "current", "owner": value["owner"], **value["summary"],
-                          "compile_binding": value["compile_binding"], "authority_advanced": False}, sort_keys=True))
+            print(json.dumps({"status": "current", "owner": value["owner"], **value["summary"],
+                              "compile_binding": value["compile_binding"], "authority_advanced": False}, sort_keys=True))
+        else:
+            value = accesses(
+                root=root,
+                strict=args.strict,
+                function=args.function,
+                side=args.side,
+                base_register=args.base_register,
+                offset=args.offset,
+                context=args.context,
+                max_matches=args.max_matches,
+            )
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         return 0
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print(f"current evidence: {exc}", file=sys.stderr)
