@@ -535,6 +535,71 @@ def _branch_side(item: dict[str, Any] | None, destination_row: int | None) -> di
     }
 
 
+def _branch_destination_window(rows: list[dict], start: int, *, window: int = 4) -> tuple[bytes, ...] | None:
+    """Return two nearby instruction identities for a shifted branch target.
+
+    A row index can move when a candidate inserts an instruction, while the
+    branch still lands on the same operation.  One opcode is not enough to
+    establish that relationship; require a second nearby instruction and keep
+    the window small so an unrelated repeated opcode cannot be selected.
+    Empty report rows are skipped because objdiff may leave an alignment hole
+    at a target that is otherwise present on both sides.
+    """
+    if start < 0 or start >= len(rows) or _diagnose_payload(rows[start], start) is None:
+        return None
+    identities: list[bytes] = []
+    for index in range(start, min(len(rows), start + window)):
+        payload = _diagnose_payload(rows[index], index)
+        if payload is None:
+            continue
+        identities.append(canonical(payload))
+        if len(identities) == 2:
+            return tuple(identities)
+    return None
+
+
+def _branch_destination_window_occurrences(
+    rows: list[dict],
+    expected: tuple[bytes, ...],
+    *,
+    window: int = 4,
+) -> list[int]:
+    """Return row starts whose canonical two-instruction window is ``expected``."""
+    return [
+        start
+        for start in range(len(rows))
+        if _branch_destination_window(rows, start, window=window) == expected
+    ]
+
+
+def _aligned_branch_destination(
+    target_rows: list[dict],
+    candidate_rows: list[dict],
+    target_row: int | None,
+    candidate_row: int | None,
+) -> bool:
+    """Confirm a shifted destination from a uniquely paired window anchor.
+
+    A repeated window at another shifted row is ambiguous and must not turn a
+    changed branch into an aligned one.  Windows already present at the same
+    row on both sides are exact row matches, so they are removed before the
+    shifted-anchor uniqueness check; this preserves independent exact matches
+    in a function that happens to reuse the same two instructions.
+    """
+    if target_row is None or candidate_row is None or target_row == candidate_row:
+        return False
+    target_window = _branch_destination_window(target_rows, target_row)
+    candidate_window = _branch_destination_window(candidate_rows, candidate_row)
+    if target_window is None or target_window != candidate_window:
+        return False
+    target_occurrences = _branch_destination_window_occurrences(target_rows, target_window)
+    candidate_occurrences = _branch_destination_window_occurrences(candidate_rows, candidate_window)
+    exact_rows = set(target_occurrences).intersection(candidate_occurrences)
+    target_shifted = [row for row in target_occurrences if row not in exact_rows]
+    candidate_shifted = [row for row in candidate_occurrences if row not in exact_rows]
+    return target_shifted == [target_row] and candidate_shifted == [candidate_row]
+
+
 def _branch_category(target_rows: list[dict], candidate_rows: list[dict]) -> dict[str, Any]:
     target, target_addresses = _branch_rows(target_rows)
     candidate, candidate_addresses = _branch_rows(candidate_rows)
@@ -548,7 +613,7 @@ def _branch_category(target_rows: list[dict], candidate_rows: list[dict]) -> dic
         return rows[0] if len(rows) == 1 else None
 
     findings: list[dict[str, Any]] = []
-    same = changed = unresolved = paired = 0
+    same = aligned = changed = unresolved = paired = 0
     for index in sorted(set(target_by_index) | set(candidate_by_index)):
         left = target_by_index.get(index)
         right = candidate_by_index.get(index)
@@ -570,6 +635,13 @@ def _branch_category(target_rows: list[dict], candidate_rows: list[dict]) -> dic
             elif target_row == candidate_row:
                 same += 1
                 continue
+            elif _aligned_branch_destination(target_rows, candidate_rows, target_row, candidate_row):
+                # The destination row shifted, but its local instruction
+                # window uniquely agrees.  This is alignment evidence, not a
+                # claim that an arbitrary same-opcode target is equivalent.
+                same += 1
+                aligned += 1
+                continue
             else:
                 changed += 1
                 status = "changed"
@@ -586,6 +658,7 @@ def _branch_category(target_rows: list[dict], candidate_rows: list[dict]) -> dic
         "candidate_branch_count": len(candidate),
         "paired_branch_count": paired,
         "same_destination_count": same,
+        "aligned_destination_count": aligned,
         "changed_destination_count": changed,
         "unresolved_count": unresolved,
         "finding_count": len(findings),
@@ -1380,8 +1453,17 @@ def _body_register_projection(target_rows: list[dict], candidate_rows: list[dict
     candidate_excluded = {row for pair in candidate_saves + candidate_restores for row in pair["rows"]}
     body_target = [row for index, row in enumerate(target_rows) if index not in target_excluded]
     body_candidate = [row for index, row in enumerate(candidate_rows) if index not in candidate_excluded]
+    # Removing ABI save/restore rows can also remove the row that a branch
+    # targets.  Re-running the branch resolver on the filtered lists would
+    # therefore turn an unchanged branch into an unresolved one (and, worse,
+    # report it as a changed destination).  Keep branch identity from the full
+    # authenticated rows while projecting only the register body.
+    branch_summary = _branch_category(target_rows, candidate_rows)
     body_comparison = _register_permutation(
-        body_target, body_candidate, _include_body_projection=False
+        body_target,
+        body_candidate,
+        _include_body_projection=False,
+        _branch_summary=branch_summary,
     )
     body_mapping_registers = set(body_comparison.get("changed_mapping", {}))
     body_mapping_registers.update(body_comparison.get("changed_mapping", {}).values())
@@ -1431,7 +1513,12 @@ def _body_register_projection(target_rows: list[dict], candidate_rows: list[dict
         return empty
     projected_target = [row for index, row in enumerate(target_rows) if index not in selected_rows_target]
     projected_candidate = [row for index, row in enumerate(candidate_rows) if index not in selected_rows_candidate]
-    projected = _register_permutation(projected_target, projected_candidate, _include_body_projection=False)
+    projected = _register_permutation(
+        projected_target,
+        projected_candidate,
+        _include_body_projection=False,
+        _branch_summary=branch_summary,
+    )
     cycles = _register_cycles(projected.get("changed_mapping", {}))
     result = dict(empty)
     result["excluded_paired_rows"] = {
@@ -1456,6 +1543,7 @@ def _register_permutation(
     candidate_rows: list[dict],
     *,
     _include_body_projection: bool = True,
+    _branch_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Find a closed register-only rename without assigning source names.
 
@@ -1540,14 +1628,17 @@ def _register_permutation(
     # destination row is a real control-flow residual.  Keep that separate from
     # the register-only comparison so a moved-but-equivalent branch does not
     # block a useful permutation hypothesis while a changed branch cannot pass.
-    branch_summary = _branch_category(target_rows, candidate_rows)
+    branch_summary = (_branch_summary if _branch_summary is not None
+                      else _branch_category(target_rows, candidate_rows))
     if _diagnose_branch_status(branch_summary) not in {"exact", "none"}:
         for finding in branch_summary.get("findings", [])[:4]:
             if len(nonregister_differences) >= 8:
                 break
             nonregister_differences.append({
                 "row": finding.get("row_index"),
-                "reason": "branch_destination_changed",
+                "reason": ("branch_destination_changed"
+                           if finding.get("status") == "changed"
+                           else "branch_destination_unresolved"),
             })
     mapping = {
         target: next(iter(candidates))

@@ -494,6 +494,74 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.assertEqual(finding["status"], "changed")
         self.assertEqual((finding["target_destination_row"], finding["candidate_destination_row"]), (2, 1))
 
+    def test_branch_map_accepts_unique_destination_window_after_insertion(self):
+        target = [
+            _branch_row(100, "b 108", 108),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "mr r3, r29"),
+            _access_row(112, "bl mbComChoiceListDownSet"),
+            _access_row(116, "blr"),
+        ]
+        candidate = [
+            _branch_row(100, "b 112", 112),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "mr r4, r3"),
+            _access_row(112, "mr r3, r29"),
+            _access_row(116, "bl mbComChoiceListDownSet"),
+            _access_row(120, "blr"),
+        ]
+        result = self.branch(target, candidate)["branches"]
+        self.assertEqual(result["same_destination_count"], 1)
+        self.assertEqual(result["aligned_destination_count"], 1)
+        self.assertEqual(result["changed_destination_count"], 0)
+        self.assertEqual(result["findings"], [])
+
+    def test_branch_map_rejects_same_destination_opcode_with_changed_followup(self):
+        target = [
+            _branch_row(100, "b 108", 108),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "mr r3, r29"),
+            _access_row(112, "bl mbComChoiceListDownSet"),
+            _access_row(116, "blr"),
+        ]
+        candidate = [
+            _branch_row(100, "b 112", 112),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "mr r4, r3"),
+            _access_row(112, "mr r3, r29"),
+            _access_row(116, "bl mbComChoiceListUpSet"),
+            _access_row(120, "blr"),
+        ]
+        result = self.branch(target, candidate)["branches"]
+        self.assertEqual(result["same_destination_count"], 0)
+        self.assertEqual(result["aligned_destination_count"], 0)
+        self.assertEqual(result["changed_destination_count"], 1)
+        self.assertEqual(result["findings"][0]["status"], "changed")
+
+    def test_branch_map_rejects_ambiguous_repeated_destination_window(self):
+        target = [
+            _branch_row(100, "b 108", 108),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "mr r3, r29"),
+            _access_row(112, "bl mbComChoiceListDownSet"),
+            _access_row(116, "blr"),
+        ]
+        candidate = [
+            _branch_row(100, "b 112", 112),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "mr r4, r3"),
+            _access_row(112, "mr r3, r29"),
+            _access_row(116, "bl mbComChoiceListDownSet"),
+            _access_row(120, "blr"),
+            _access_row(124, "mr r3, r29"),
+            _access_row(128, "bl mbComChoiceListDownSet"),
+        ]
+        result = self.branch(target, candidate)["branches"]
+        self.assertEqual(result["same_destination_count"], 0)
+        self.assertEqual(result["aligned_destination_count"], 0)
+        self.assertEqual(result["changed_destination_count"], 1)
+        self.assertEqual(result["findings"][0]["status"], "changed")
+
     def test_branch_map_unresolved_missing_destination_and_malformed_report(self):
         result = self.branch(
             [_branch_row(100, "b 0x999", 0x999), _access_row(104, "blr")],
@@ -588,6 +656,19 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.assertEqual(projection["excluded_paired_rows"]["candidate"],
                          [3, 4, 5, 6, 11, 12, 13, 14])
         self.assertFalse(projection["authority_advanced"])
+
+    def test_diagnose_body_projection_keeps_branch_target_in_excluded_abi_rows(self):
+        target, candidate = _abi_cycle_rows()
+        # The branch targets the first restore instruction.  That row is
+        # intentionally excluded from the projected body, but the branch is
+        # still identical in both full instruction streams.
+        target.insert(11, _branch_row(44, "b 48", 48))
+        candidate.insert(11, _branch_row(44, "b 48", 48))
+        strict = self.diagnose(target, candidate)["strict"]
+        self.assertEqual(strict["branch_destinations"]["status"], "exact")
+        projection = strict["register_permutation"]["body_projection"]
+        self.assertEqual(projection["status"], "confirmed")
+        self.assertEqual(projection["reason"], "closed_body_register_cycle")
 
     def test_diagnose_body_projection_rejects_low_fpr_pseudo_pairs(self):
         target, candidate = _abi_cycle_rows()
