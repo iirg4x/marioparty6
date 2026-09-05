@@ -29,9 +29,11 @@ from tools.recovery_memory import (
 DEFAULT_SECTION_WEIGHTS = {
     "Recovery contract": 7,
     "Owner state": 7,
+    "Current target": 14,
     "Durable rejected-probe/blocker history": 8,
     "Central recovery memory": 16,
     "Relevant recovered knowledge": 18,
+    "Broader recovery diagnostics": 8,
     "Operational dependency context": 12,
     "Local object-diff evidence": 10,
     "Target function": 34,
@@ -48,6 +50,7 @@ DEFAULT_SECTION_WEIGHTS = {
 MANDATORY = {
     "Recovery contract",
     "Owner state",
+    "Current target",
     "Durable rejected-probe/blocker history",
     "Central recovery memory",
     "Relevant recovered knowledge",
@@ -118,12 +121,12 @@ def select_context_knowledge(
 
 
 def render_compact_knowledge(
-    data: dict[str, Any], matches: Sequence[KnowledgeMatch]
+    data: dict[str, Any], matches: Sequence[KnowledgeMatch],
+    *, heading: str = "Relevant recovered knowledge",
 ) -> str:
     lines = [
-        "## Relevant recovered knowledge",
+        f"## {heading}",
         "",
-        "Selected deterministically. Compiler-wide cards are diagnostics; owner constraints never transfer to unrelated owners.",
     ]
     if not matches:
         lines.append("- No applicable cards after scope and symptom filtering.")
@@ -899,6 +902,113 @@ def _context_target_symbols(
     return list(dict.fromkeys(value for value in values if isinstance(value, str) and value.strip()))
 
 
+def _first_local_mismatch(path: Path, symbols: Sequence[str]) -> str | None:
+    """Read one bounded report, selecting the requested symbol before any row.
+
+    A local report is evidence, not proof that the current source produced it.
+    Keep that distinction in the capsule rather than inferring freshness from
+    a report filename or a percentage.
+    """
+    if not symbols:
+        return None
+    try:
+        if path.stat().st_size > 32 * 1024 * 1024:
+            return None
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return None
+    if not isinstance(value, Mapping):
+        return None
+
+    pairs: list[tuple[str, list[Any], list[Any]]] = []
+    left, right = value.get("left"), value.get("right")
+    if isinstance(left, Mapping) and isinstance(right, Mapping):
+        left_symbols, right_symbols = left.get("symbols"), right.get("symbols")
+        if isinstance(left_symbols, list) and isinstance(right_symbols, list):
+            candidates = {
+                item.get("name"): item for item in right_symbols
+                if isinstance(item, Mapping) and isinstance(item.get("name"), str)
+            }
+            for item in left_symbols:
+                if not isinstance(item, Mapping):
+                    continue
+                name = item.get("name")
+                if not isinstance(name, str) or (symbols and name not in symbols):
+                    continue
+                rows = item.get("instructions")
+                other = candidates.get(name, {}).get("instructions", [])
+                if isinstance(rows, list) and isinstance(other, list):
+                    pairs.append((name, rows, other))
+    if value.get("schema") == "focus_symbol_report/v1":
+        name = value.get("function")
+        channels = value.get("channels")
+        strict = channels.get("strict") if isinstance(channels, Mapping) else None
+        if isinstance(name, str) and (not symbols or name in symbols) and isinstance(strict, Mapping):
+            target_side, candidate_side = strict.get("target"), strict.get("candidate")
+            if isinstance(target_side, Mapping) and isinstance(candidate_side, Mapping):
+                rows, other = target_side.get("rows"), candidate_side.get("rows")
+                if isinstance(rows, list) and isinstance(other, list):
+                    pairs.append((name, rows, other))
+    for name, target_rows, candidate_rows in pairs:
+        for index in range(max(len(target_rows), len(candidate_rows))):
+            target_row = target_rows[index] if index < len(target_rows) else {}
+            candidate_row = candidate_rows[index] if index < len(candidate_rows) else {}
+            if not isinstance(target_row, Mapping) or not isinstance(candidate_row, Mapping):
+                continue
+            kind = next((value for value in (
+                target_row.get("diff_kind"), candidate_row.get("diff_kind"),
+            ) if isinstance(value, str) and value not in {"DIFF_NONE", "NONE"}), None)
+            if kind is None:
+                continue
+            target_ins = target_row.get("instruction") or {}
+            candidate_ins = candidate_row.get("instruction") or {}
+            if not isinstance(target_ins, Mapping) or not isinstance(candidate_ins, Mapping):
+                continue
+            target_text = _compact_history_text(target_ins.get("formatted") or "<absent>", 160)
+            candidate_text = _compact_history_text(candidate_ins.get("formatted") or "<absent>", 160)
+            row_index = target_row.get("index", candidate_row.get("index", index))
+            if not isinstance(row_index, int) or isinstance(row_index, bool):
+                row_index = index
+            return f"`{name}` row {row_index} ({kind}): target `{target_text}`; candidate `{candidate_text}`"
+    return None
+
+
+def _render_current_target(
+    data: Mapping[str, Any], owner: Mapping[str, Any], kind: str,
+    target: str, stable_identity: str | None, symbols: Sequence[str],
+    mismatch: tuple[Path, str] | None,
+) -> str:
+    source = str(owner.get("source") or "unavailable")
+    location = source
+    symbol = target
+    if kind == "function":
+        try:
+            parsed = parse_functions((Path(data["root"]) / source).read_text(encoding="utf-8"))
+            function = next((item for item in parsed if item.symbol in symbols), None)
+            if function is not None:
+                location = f"{source}:{function.start}-{function.end}"
+                symbol = function.symbol
+        except (OSError, UnicodeError, TypeError, ValueError):
+            pass
+    lines = [
+        "## Current target", "",
+        f"- Owner: `{owner.get('id')}`; target: `{symbol}`.",
+        f"- Stable identity: `{stable_identity or owner.get('id')}`.",
+        f"- Current source: `{location}`.",
+    ]
+    if mismatch is not None:
+        path, detail = mismatch
+        try:
+            report = path.relative_to(Path(data["root"]))
+        except ValueError:
+            report = path
+        lines.extend([
+            f"- First local mismatch: {detail}.",
+            f"- Report: `{report}` (current-source binding not verified).",
+        ])
+    return "\n".join(lines)
+
+
 def _budget_sections(
     preamble: str,
     sections: Sequence[tuple[str, str]],
@@ -917,7 +1027,7 @@ def _budget_sections(
             250 if name in MANDATORY else 120,
             int(remaining * weight / total_weight),
         )
-        if name in {"Relevant recovered knowledge", "Acceptance criteria"}:
+        if name in {"Current target", "Relevant recovered knowledge", "Authenticated constraints", "Acceptance criteria"}:
             clipped = text
         elif name == "Target function":
             clipped = _clip_target(text, quota)
@@ -928,6 +1038,7 @@ def _budget_sections(
     if len(result) <= char_budget:
         return result
     low_priority = {
+        "Broader recovery diagnostics",
         "Local reports",
         "Bounded owner neighbourhood",
         "Owner functions",
@@ -969,7 +1080,6 @@ def build_context(
         symptoms=symptoms,
         limit=knowledge_limit,
     )
-    knowledge = render_compact_knowledge(data, matches)
     base = base_context_pack(
         data,
         kind,
@@ -978,6 +1088,14 @@ def build_context(
         budget=max(20000, budget * 2),
     )
     preamble, sections = _split_sections(base)
+    # The base packet is intentionally oversized for section-level allocation;
+    # its internal construction budget is not the user's requested budget.
+    budget_line = f"- Approximate token budget: `{budget}`"
+    if re.search(r"(?m)^- Approximate token budget:", preamble):
+        preamble = re.sub(r"(?m)^- Approximate token budget:.*$", budget_line, preamble)
+    else:
+        preamble = preamble.rstrip() + "\n" + budget_line
+    target_symbols = _context_target_symbols(data, owner, kind, target, stable_identity)
     insertion = 2
     sections.insert(
         insertion,
@@ -986,9 +1104,7 @@ def build_context(
             render_rejected_probe_history(
                 Path(data["root"]),
                 owner,
-                target_symbols=_context_target_symbols(
-                    data, owner, kind, target, stable_identity
-                ),
+                target_symbols=target_symbols,
             ),
         ),
     )
@@ -1015,6 +1131,11 @@ def build_context(
         )
     sections.insert(insertion, ("Central recovery memory", central_text))
     insertion += 1
+    scoped = [match for match in matches if match.counterexample or match.relevance in {
+        "exact target", "confirmed example", "owner-specific", "confirmed owner example",
+    }]
+    diagnostics = [match for match in matches if match not in scoped]
+    knowledge = render_compact_knowledge(data, scoped)
     sections.insert(insertion, ("Relevant recovered knowledge", knowledge))
     insertion += 1
     sections.insert(
@@ -1032,6 +1153,15 @@ def build_context(
                 if isinstance(path, str)
             )
     summaries = []
+    mismatch = None
+    evidence_symbols = target_symbols
+    if kind == "owner":
+        try:
+            evidence_symbols = [function.symbol for function in parse_functions(
+                (root / str(owner["source"])).read_text(encoding="utf-8")
+            )]
+        except (OSError, UnicodeError, KeyError, TypeError, ValueError):
+            evidence_symbols = []
     for path in dict.fromkeys(requested):
         candidate = Path(path)
         candidate = candidate if candidate.is_absolute() else root / candidate
@@ -1041,11 +1171,22 @@ def build_context(
             summaries.append(summarize_report(candidate))
         except EvidenceError:
             continue
+        if mismatch is None:
+            detail = _first_local_mismatch(candidate, evidence_symbols)
+            if detail is not None:
+                mismatch = (candidate, detail)
     if local_evidence or reports:
         sections.insert(
             insertion + 1,
             ("Local object-diff evidence", render_summary(summaries)),
         )
+    sections.insert(2, ("Current target", _render_current_target(
+        data, owner, kind, target, stable_identity, target_symbols, mismatch,
+    )))
+    if diagnostics:
+        sections.append(("Broader recovery diagnostics", render_compact_knowledge(
+            data, diagnostics, heading="Broader recovery diagnostics",
+        )))
     return _budget_sections(preamble, sections, budget=budget)
 
 

@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from tools.agent_queue import QueueError
 from tools.context_engine import (
+    _first_local_mismatch,
     build_context,
     collect_rejected_probe_history,
     render_rejected_probe_history,
@@ -37,6 +38,120 @@ def card(identifier: str, title: str, category: str, change: str) -> dict:
 
 
 class ContextEngineTests(unittest.TestCase):
+    def test_low_budget_preserves_current_target_before_broad_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src").mkdir()
+            (root / "src/a.c").write_text("int focus(void)\n{\n    return 1;\n}\n", encoding="utf-8")
+            owner = {
+                "id": "owner", "source": "src/a.c", "compiler": "GC/1.3.2",
+                "symbols": [{"symbol": "focus", "stable_id": "owner:0x10"}],
+            }
+            data = {"root": root, "project": {}, "owners": [owner], "patterns": []}
+            report = root / "diff.json"
+            report.write_text(json.dumps({
+                "left": {"symbols": [
+                    {"name": "unrelated", "instructions": [{"diff_kind": "DIFF_REPLACE", "instruction": {"formatted": "FOREIGN ROW"}}]},
+                    {"name": "focus", "instructions": [
+                        {"instruction": {"formatted": "b 0x100"}},
+                        {"diff_kind": "DIFF_ARG_MISMATCH", "instruction": {"formatted": "or r0, r3, r0"}},
+                    ]},
+                ]},
+                "right": {"symbols": [{"name": "focus", "instructions": [
+                    {"instruction": {"formatted": "b 0x200"}},
+                    {"diff_kind": "DIFF_ARG_MISMATCH", "instruction": {"formatted": "or r0, r0, r3"}},
+                ]}]},
+            }), encoding="utf-8")
+            exact = card("exact", "Exact owner constraint", "owner", "keep scope")
+            exact["rule"] = "Preserve the authenticated layout."
+            exact["counterexamples"] = ["owner:0x10"]
+            generic = card("generic", "Generic compiler diagnostic", "compiler", "probe")
+            generic["rule"] = "generic metadata " * 3000
+            matches = [
+                KnowledgeMatch(exact, 100, "exact target", ("target counterexample",), counterexample=True),
+                KnowledgeMatch(generic, 40, "owner-tag related", ("tag, not exact owner",)),
+                KnowledgeMatch(generic, 35, "compiler-wide", ("compiler",)),
+            ]
+            base = """# Recovery context pack
+- Target: `owner:0x10`
+- Owner: `owner`
+- Source: `src/a.c`
+- Approximate token budget: `20000`
+
+## Recovery contract
+- Preserve original source.
+## Owner state
+- Not exact.
+## Target function
+- Stable identity: `owner:0x10`
+```c
+int focus(void) { return 1; }
+```
+## Authenticated constraints
+- Keep the exact layout constraint.
+## Acceptance criteria
+- No protected regressions.
+"""
+            with (
+                patch("tools.context_engine.resolve_context_target", return_value=(owner, "owner:0x10")),
+                patch("tools.context_engine.select_knowledge_cards", return_value=matches),
+                patch("tools.context_engine.base_context_pack", return_value=base),
+                patch("tools.context_engine.card_freshness", return_value={"status": "active"}),
+                patch("tools.context_engine.recovery_memory_available", return_value=False),
+                patch("tools.context_engine.render_operational_dependencies", return_value="## Operational dependency context\n" + "metadata " * 5000),
+                patch("tools.context_engine.render_rejected_probe_history", return_value="## Durable rejected-probe/blocker history\n- DO NOT REPEAT existing probes."),
+            ):
+                text = build_context(data, "function", "owner:0x10", owner_id="owner", budget=1500, reports=[str(report)])
+            self.assertIn("Approximate token budget: `1500`", text)
+            self.assertNotIn("Approximate token budget: `20000`", text)
+            self.assertIn("Current source: `src/a.c:1-4`", text)
+            self.assertIn("Stable identity: `owner:0x10`", text)
+            self.assertIn("First local mismatch: `focus` row 1", text)
+            self.assertIn("target `or r0, r3, r0`; candidate `or r0, r0, r3`", text)
+            self.assertIn("current-source binding not verified", text)
+            self.assertNotIn("FOREIGN ROW", text)
+            self.assertIn("Exact owner constraint", text)
+            self.assertIn("Counterexamples:", text)
+            self.assertIn("Keep the exact layout constraint", text)
+            self.assertIn("No protected regressions", text)
+            self.assertLessEqual(len(text), 6000)
+            if "## Broader recovery diagnostics" in text:
+                self.assertLess(text.index("## Current target"), text.index("## Broader recovery diagnostics"))
+
+    def test_first_local_mismatch_ignores_missing_target_and_malformed_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "diff.json"
+            for value in ([], {"left": [], "right": {}}, {
+                "left": {"symbols": [{"name": "other", "instructions": [None]}]},
+                "right": {"symbols": []},
+            }):
+                with self.subTest(value=value):
+                    report.write_text(json.dumps(value), encoding="utf-8")
+                    self.assertIsNone(_first_local_mismatch(report, ["focus"]))
+            report.write_text("{invalid", encoding="utf-8")
+            self.assertIsNone(_first_local_mismatch(report, ["focus"]))
+
+    def test_first_local_mismatch_reads_compact_focus_row_index(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "focus.json"
+            report.write_text(json.dumps({
+                "schema": "focus_symbol_report/v1", "function": "focus",
+                "channels": {"strict": {
+                    "target": {"rows_kind": "diff_only", "rows": [{
+                        "index": 39, "diff_kind": "DIFF_DELETE",
+                        "instruction": {"formatted": "stw r0, 0x10(r1)"},
+                    }]},
+                    "candidate": {"rows_kind": "diff_only", "rows": [{
+                        "index": 39, "diff_kind": "DIFF_DELETE",
+                    }]},
+                }},
+            }), encoding="utf-8")
+            result = _first_local_mismatch(report, ["focus"])
+            self.assertIn("row 39 (DIFF_DELETE)", result)
+            self.assertIn("candidate `<absent>`", result)
+            self.assertIsNone(_first_local_mismatch(report, ["other"]))
+            self.assertIsNone(_first_local_mismatch(report, []))
+
     def test_symptom_filter_and_budget(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -134,6 +249,7 @@ int fn(void) { return 1; }
                     symptoms=["header"],
                 )
             self.assertIn("Relevant recovered knowledge", text)
+            self.assertIn("Approximate token budget: `1200`", text)
             self.assertIn("Header visibility", text)
             self.assertNotIn("Loop shape", text)
             self.assertIn("Acceptance criteria", text)
