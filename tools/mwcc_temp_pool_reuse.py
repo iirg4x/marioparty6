@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Bounded, read-only evidence for MWCC virtual-register pool reuse.
 
-The report is deliberately limited to confirmed GPR operands observed by the
-same-session producer.  It does not assign source ownership or propose a
+The reuse analysis is deliberately limited to confirmed GPR operands observed
+by the same-session producer.  Capture coverage records other observed banks
+explicitly, so an FPR-only session is reported as unsupported evidence rather
+than as an empty GPR result.  It does not assign source ownership or propose a
 source change.  A candidate objdiff row is used only as the target-role and
 machine-row identity for an observed event.
 """
@@ -24,6 +26,7 @@ MAX_OUTPUT_BYTES = 256 * 1024
 MAX_COLLISIONS = 128
 MAX_EXEMPLARS = 3
 POOL_BASE = 32  # GPR 0..31 are pre-coloured; pool IDs begin at 32.
+SUPPORTED_OPERAND_BANKS = ("GPR",)
 OFFSET_DELTAS = (-3, -2, -1, 1, 2, 3)
 _INTEGER = re.compile(r"[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+)\Z")
 _GPR = re.compile(r"(?<![A-Za-z0-9_])r([0-9]|[12][0-9]|3[01])(?![A-Za-z0-9_])", re.I)
@@ -239,7 +242,7 @@ def _captures(events: list[dict[str, Any]], function: str) -> dict[str, list[dic
     for event in events:
         if event.get("event_kind") != "pcode_capture" or event.get("function") != function:
             continue
-        if event.get("confirmed") is not True or str(event.get("operand_bank", "")).upper() != "GPR":
+        if event.get("confirmed") is not True or event.get("operand_bank") != "GPR":
             continue
         token = event.get("pcode_token")
         if not isinstance(token, str) or not token:
@@ -263,6 +266,55 @@ def _captures(events: list[dict[str, Any]], function: str) -> dict[str, list[dic
         ):
             raise ValueError(f"invalid confirmed GPR identity for pcode token {token}")
     return grouped
+
+
+def _operand_coverage(events: list[dict[str, Any]], function: str) -> dict[str, Any]:
+    """Summarize operand-bank coverage before the GPR-only analysis runs.
+
+    The capture producer can emit both canonical GPR and FPR operands, but this
+    utility authenticates only canonical GPR virtual-register identities.
+    Counting recognized bank labels independently of confirmation makes
+    unsupported FPR evidence visible without treating malformed or missing
+    labels as a supported bank.
+    """
+    observed_counts: dict[str, int] = defaultdict(int)
+    confirmed_supported_counts: dict[str, int] = defaultdict(int)
+    for event in events:
+        if event.get("event_kind") != "pcode_capture" or event.get("function") != function:
+            continue
+        bank = event.get("operand_bank")
+        if bank not in {"GPR", "FPR"}:
+            continue
+        observed_counts[bank] += 1
+        if bank in SUPPORTED_OPERAND_BANKS and event.get("confirmed") is True:
+            confirmed_supported_counts[bank] += 1
+
+    observed_banks = sorted(observed_counts)
+    discarded = {
+        bank: count
+        for bank, count in sorted(observed_counts.items())
+        if bank not in SUPPORTED_OPERAND_BANKS
+    }
+    if not observed_banks:
+        status = "no_operand_evidence"
+        decision = "no_operand_evidence"
+    elif confirmed_supported_counts.get("GPR", 0) == 0:
+        if observed_counts.get("FPR", 0):
+            status = "unsupported_fpr_evidence"
+            decision = "unsupported_fpr_evidence"
+        else:
+            status = "no_confirmed_gpr_evidence"
+            decision = "no_confirmed_gpr_evidence"
+    else:
+        status = "supported_gpr_evidence"
+        decision = "analyze_gpr"
+    return {
+        "supported_operand_banks": list(SUPPORTED_OPERAND_BANKS),
+        "observed_banks": observed_banks,
+        "discarded_unsupported_bank_counts": discarded,
+        "status": status,
+        "decision": decision,
+    }
 
 
 def _collision_items(observations: list[dict[str, Any]], adjustments: dict[int, tuple[int, int]] | None = None) -> tuple[int, list[dict[str, Any]]]:
@@ -376,6 +428,7 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
     machine = [event for event in events if event.get("event_kind") == "machine_emission" and event.get("function") == function]
     if not machine:
         raise ValueError(f"envelope has no machine emissions for {function!r}")
+    coverage = _operand_coverage(events, function)
     word_check = _verify_machine_rows(right_symbol, right_rows, machine, function)
     captures = _captures(events, function)
     machine_by_token: dict[str, int] = {}
@@ -432,15 +485,25 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
             })
     pooled = [item for item in observations if item["virtual_id"] >= POOL_BASE]
     baseline_count, collision_rows = _collision_items(pooled)
-    fit = _suffix_fit(pooled, reset, baseline_count)
+    if coverage["status"] == "supported_gpr_evidence":
+        fit = _suffix_fit(pooled, reset, baseline_count)
+    else:
+        fit = {
+            "status": coverage["status"],
+            "decision": coverage["decision"],
+            "reason": "GPR pool-fit analysis requires confirmed GPR operand evidence",
+        }
     result: dict[str, Any] = {
         "schema": SCHEMA,
         "schema_version": 1,
         "function": function,
+        "status": coverage["status"],
+        "decision": coverage["decision"],
         "inputs": {"envelope": envelope_binding, "report": report_binding},
         "envelope_sha256": envelope_binding["sha256"],
         "report_sha256": report_binding["sha256"],
         "machine_word_verification": word_check,
+        "coverage": coverage,
         "observations": {
             "confirmed_gpr_roles": len(observations),
             "pooled_roles": len(pooled),

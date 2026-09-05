@@ -114,6 +114,54 @@ class MwccTempPoolReuseTests(unittest.TestCase):
         self.assertEqual(result["reset"]["to_virtual_id"], 32)
         self.assertEqual(result["collisions"]["count"], 0)
 
+    def test_fpr_only_capture_is_explicitly_unsupported(self) -> None:
+        envelope, report = _fixture([3, 4], [32, 33])
+        for event in envelope["events"]:
+            if event.get("event_kind") == "pcode_capture":
+                event["operand_bank"] = "FPR"
+        result = self._analyze(envelope, report)
+        coverage = result["coverage"]
+        self.assertEqual(result["status"], "unsupported_fpr_evidence")
+        self.assertEqual(result["decision"], "unsupported_fpr_evidence")
+        self.assertEqual(result["suffix_fit"]["status"], "unsupported_fpr_evidence")
+        self.assertEqual(coverage["supported_operand_banks"], ["GPR"])
+        self.assertEqual(coverage["observed_banks"], ["FPR"])
+        self.assertEqual(coverage["discarded_unsupported_bank_counts"], {"FPR": 2})
+
+    def test_empty_operand_capture_is_not_reported_as_pool_absence(self) -> None:
+        envelope, report = _fixture([3], [32])
+        envelope["events"] = [
+            event for event in envelope["events"] if event.get("event_kind") == "machine_emission"
+        ]
+        result = self._analyze(envelope, report)
+        self.assertEqual(result["status"], "no_operand_evidence")
+        self.assertEqual(result["decision"], "no_operand_evidence")
+        self.assertEqual(result["coverage"]["observed_banks"], [])
+        self.assertEqual(result["coverage"]["discarded_unsupported_bank_counts"], {})
+        self.assertEqual(result["suffix_fit"]["status"], "no_operand_evidence")
+
+    def test_noncanonical_lowercase_bank_cannot_claim_gpr_analysis(self) -> None:
+        envelope, report = _fixture([3], [32])
+        for event in envelope["events"]:
+            if event.get("event_kind") == "pcode_capture":
+                event["operand_bank"] = "gpr"
+        result = self._analyze(envelope, report)
+        self.assertEqual(result["status"], "no_operand_evidence")
+        self.assertEqual(result["decision"], "no_operand_evidence")
+        self.assertEqual(result["coverage"]["observed_banks"], [])
+        self.assertEqual(result["observations"]["confirmed_gpr_roles"], 0)
+        self.assertEqual(result["suffix_fit"]["status"], "no_operand_evidence")
+
+    def test_gpr_aliases_remain_supported_evidence(self) -> None:
+        envelope, report = _fixture([3, 4], [32, 32])
+        result = self._analyze(envelope, report)
+        self.assertEqual(result["status"], "supported_gpr_evidence")
+        self.assertEqual(result["decision"], "analyze_gpr")
+        self.assertEqual(result["coverage"]["supported_operand_banks"], ["GPR"])
+        self.assertEqual(result["coverage"]["observed_banks"], ["GPR"])
+        self.assertEqual(result["coverage"]["discarded_unsupported_bank_counts"], {})
+        self.assertEqual(result["collisions"]["count"], 1)
+
     def test_ambiguous_target_roles_remain_unknown(self) -> None:
         envelope, report = _fixture([3, 4], [32, 32])
         result = self._analyze(envelope, report)
