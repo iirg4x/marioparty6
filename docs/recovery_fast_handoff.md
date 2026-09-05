@@ -113,3 +113,23 @@ The earlier ten repeated sound/attribute stack-pair inversions were exposed by
 the same query; the retained result has 150 D-form and 69 pointer rows paired
 with equal displacements. Superseded raw reports may be regenerated from the
 preserved objects rather than kept as permanent history.
+
+## Compare branch destinations before calling a residual an allocator problem
+
+```text
+python tools/recovery_frontier.py --root OWNER_ROOT branch-map --strict REPORT --function NAME
+```
+
+This read-only check resolves destinations to aligned instruction rows, so a
+uniform address shift is not mistaken for a changed branch target. It shows
+changed and unresolved destinations, excludes calls/returns, binds the report
+hash, and caps output at 256 KiB. It does not prove source ownership, full CFG
+equivalence, or source admissibility, and adds no compile/approval gate.
+
+SNPC Pass 3's retained report had 100 paired branches but three real destination
+differences (rows 22, 428, 522). The Pass 4 report has 100 equal destinations.
+Those differences exposed an early-return boundary and two incorrect source
+scopes; fixing them reduced 109 mismatching rows to 81. The early nonvoid bare
+return is documented target-specific portability debt, not portable C proof.
+Inspect actual control-flow relationships before changing volatile register
+owners. Keep observed branch facts distinct from proposed source repairs.

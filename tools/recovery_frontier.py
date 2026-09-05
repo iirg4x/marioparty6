@@ -26,6 +26,7 @@ INDEX_LIMIT = 256 * 1024
 REPORT_LIMIT = 32 * 1024 * 1024
 ACCESS_SCHEMA = "recovery_accesses/v1"
 STACK_MAP_SCHEMA = "recovery_stack_map/v1"
+BRANCH_MAP_SCHEMA = "recovery_branch_map/v1"
 DEFAULT_ACCESS_MATCH_LIMIT = 64
 MAX_ACCESS_MATCH_LIMIT = 256
 MAX_ACCESS_CONTEXT = 3
@@ -50,6 +51,8 @@ _ADDI_POINTER_RE = re.compile(
     r"r1\s*,\s*(?P<displacement>[+-]?(?:0[xX][0-9a-fA-F]+|[0-9]+))\s*\Z",
     re.IGNORECASE,
 )
+_LINK_BRANCHES = frozenset({"bl", "bla", "blr", "blrl", "bcl", "bcla", "bclr",
+                            "bcctr", "bctrl"})
 
 
 def canonical(value: Any) -> bytes:
@@ -420,6 +423,173 @@ def stack_map(*, root: Path, strict: Path, function: str) -> dict[str, Any]:
     return result
 
 
+def _branch_instruction(text: Any, index: int, branch_dest: Any = None) -> dict[str, Any] | None:
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        raise ValueError(f"strict.instructions[{index}] formatted text must be text")
+    if len(text) > ACCESS_TEXT_LIMIT:
+        raise ValueError(f"strict.instructions[{index}] formatted text exceeds {ACCESS_TEXT_LIMIT} characters")
+    opcode_match = _OPCODE_RE.match(text)
+    if opcode_match is None:
+        return None
+    opcode = opcode_match.group("opcode").lower()
+    if not opcode.startswith("b") or opcode in _LINK_BRANCHES:
+        return None
+    operands = text[opcode_match.end():].strip()
+    if opcode not in {"b", "ba"} and operands[:1] in {"+", "-"}:
+        opcode += operands[0]
+        operands = operands[1:].lstrip()
+    destination_text = operands.rsplit(",", 1)[-1].strip() if operands else None
+    destination = None
+    if branch_dest is not None:
+        try:
+            destination = _parse_access_offset(branch_dest)
+        except ValueError:
+            pass
+    elif destination_text:
+        try:
+            destination = _parse_access_offset(destination_text)
+        except ValueError:
+            pass
+    return {"opcode": opcode, "destination_text": destination_text, "destination": destination}
+
+
+def _branch_rows(rows: list[dict]) -> tuple[list[dict[str, Any]], dict[int, list[int]]]:
+    branches: list[dict[str, Any]] = []
+    addresses: dict[int, list[int]] = {}
+    for index, row in enumerate(rows):
+        compact = _access_row(row, index)
+        if compact is None:
+            continue
+        try:
+            address = _parse_access_offset(compact["instruction_address"])
+        except ValueError:
+            address = None
+        if address is not None:
+            addresses.setdefault(address, []).append(index)
+        instruction_value = row.get("instruction")
+        branch_dest = instruction_value.get("branch_dest") if isinstance(instruction_value, dict) else None
+        branch = _branch_instruction(compact["text"], index, branch_dest)
+        if branch is None:
+            continue
+        branches.append({**branch, "row_index": index})
+    return branches, addresses
+
+
+def _branch_side(item: dict[str, Any] | None, destination_row: int | None) -> dict[str, Any] | None:
+    if item is None:
+        return None
+    return {
+        "opcode": item["opcode"],
+        "destination_text": item["destination_text"],
+        "destination_address": item["destination"],
+        "destination_row": destination_row,
+    }
+
+
+def _branch_category(target_rows: list[dict], candidate_rows: list[dict]) -> dict[str, Any]:
+    target, target_addresses = _branch_rows(target_rows)
+    candidate, candidate_addresses = _branch_rows(candidate_rows)
+    target_by_index = {item["row_index"]: item for item in target}
+    candidate_by_index = {item["row_index"]: item for item in candidate}
+
+    def resolve(item: dict[str, Any] | None, addresses: dict[int, list[int]]) -> int | None:
+        if item is None or item["destination"] is None:
+            return None
+        rows = addresses.get(item["destination"], [])
+        return rows[0] if len(rows) == 1 else None
+
+    findings: list[dict[str, Any]] = []
+    same = changed = unresolved = paired = 0
+    for index in sorted(set(target_by_index) | set(candidate_by_index)):
+        left = target_by_index.get(index)
+        right = candidate_by_index.get(index)
+        if left is None or right is None:
+            unresolved += 1
+            target_row = resolve(left, target_addresses)
+            candidate_row = resolve(right, candidate_addresses)
+            status = "unresolved"
+        else:
+            paired += 1
+            target_row = resolve(left, target_addresses)
+            candidate_row = resolve(right, candidate_addresses)
+            if left["opcode"] != right["opcode"]:
+                unresolved += 1
+                status = "unresolved"
+            elif target_row is None or candidate_row is None:
+                unresolved += 1
+                status = "unresolved"
+            elif target_row == candidate_row:
+                same += 1
+                continue
+            else:
+                changed += 1
+                status = "changed"
+        findings.append({
+            "row_index": index,
+            "status": status,
+            "target_destination_row": target_row,
+            "candidate_destination_row": candidate_row,
+            "target": _branch_side(left, target_row),
+            "candidate": _branch_side(right, candidate_row),
+        })
+    return {
+        "target_branch_count": len(target),
+        "candidate_branch_count": len(candidate),
+        "paired_branch_count": paired,
+        "same_destination_count": same,
+        "changed_destination_count": changed,
+        "unresolved_count": unresolved,
+        "finding_count": len(findings),
+        "findings": findings,
+    }
+
+
+def branch_map(*, root: Path, strict: Path, function: str) -> dict[str, Any]:
+    """Compare branch destination row identities without source/owner inference."""
+    root = Path(os.path.abspath(root))
+    if not isinstance(function, str) or not function.strip():
+        raise ValueError("function must be nonempty text")
+    function = function.strip()
+    raw, report_binding = read_bound(root, Path(strict), REPORT_LIMIT)
+    document = load_json(raw)
+    if not isinstance(document, dict):
+        raise ValueError("strict report must be a JSON object")
+    left = focus._symbols(document, "left", "strict")
+    right = focus._symbols(document, "right", "strict")
+    target_symbol = _stack_function(left, function, "target")
+    candidate_symbol = _stack_function(right, function, "candidate")
+    missing = [side for side, symbol in (("target", target_symbol), ("candidate", candidate_symbol))
+               if symbol is None]
+    result: dict[str, Any] = {
+        "schema": BRANCH_MAP_SCHEMA,
+        "schema_version": 1,
+        "report": dict(report_binding),
+        "report_sha256": report_binding["sha256"],
+        "function": function,
+        "status": "ok" if not missing else "missing_symbol",
+        "missing_sides": missing,
+        "branches": _branch_category(
+            focus._rows(target_symbol, f"strict.target.{function}") if target_symbol is not None else [],
+            focus._rows(candidate_symbol, f"strict.candidate.{function}") if candidate_symbol is not None else [],
+        ),
+        "truncated": False,
+        "diagnostic_only": True,
+        "authority_advanced": False,
+    }
+    while len(canonical(result)) + 1 > INDEX_LIMIT:
+        findings = result["branches"]["findings"]
+        if not findings:
+            raise ValueError("branch-map result exceeds 256 KiB")
+        result["branches"].setdefault("returned_finding_count", len(findings))
+        drop = max(1, len(findings) // 2)
+        del findings[-drop:]
+        result["branches"]["returned_finding_count"] = len(findings)
+        result["truncated"] = True
+    return result
+
+
 def instruction(row: dict | None) -> dict | None:
     if row is None:
         return None
@@ -644,6 +814,9 @@ def main(argv: list[str] | None = None) -> int:
     stack = sub.add_parser("stack-map", help="summarize aligned r1 stack displacement pairs")
     stack.add_argument("--strict", type=Path, required=True)
     stack.add_argument("--function", required=True)
+    branch = sub.add_parser("branch-map", help="compare aligned branch destination row identities")
+    branch.add_argument("--strict", type=Path, required=True)
+    branch.add_argument("--function", required=True)
     args = parser.parse_args(argv)
     try:
         root = Path(os.path.abspath(args.root))
@@ -672,8 +845,11 @@ def main(argv: list[str] | None = None) -> int:
                 max_matches=args.max_matches,
             )
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
-        else:
+        elif args.action == "stack-map":
             value = stack_map(root=root, strict=args.strict, function=args.function)
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        else:
+            value = branch_map(root=root, strict=args.strict, function=args.function)
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         return 0
     except (OSError, ValueError, KeyError, TypeError) as exc:

@@ -21,6 +21,13 @@ def _access_row(address: int, text: str, diff_kind: str | None = None) -> dict[s
     return row
 
 
+def _branch_row(address: int, text: str, destination: object | None = None) -> dict[str, object]:
+    row = _access_row(address, text)
+    if destination is not None:
+        row["instruction"]["branch_dest"] = destination
+    return row
+
+
 class RecoveryFrontierTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -308,6 +315,10 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.access_report(target_rows, candidate_rows)
         return frontier.stack_map(root=self.root, strict=Path("strict.json"), function=function)
 
+    def branch(self, target_rows, candidate_rows=None, function="FocusFunction"):
+        self.access_report(target_rows, candidate_rows)
+        return frontier.branch_map(root=self.root, strict=Path("strict.json"), function=function)
+
     def test_stack_map_pairs_masked_d_form_and_addi_offsets(self):
         target = [
             _access_row(0, "stw r0, 0x68(r1)"),
@@ -379,6 +390,67 @@ class RecoveryFrontierTests(unittest.TestCase):
         self.access_report([_access_row(0, "lwz r3, 0x68(r1)")])
         with unittest.mock.patch("builtins.print") as output:
             self.assertEqual(frontier.main(["--root", str(self.root), "stack-map",
+                                            "--strict", "strict.json", "--function", "FocusFunction"]), 0)
+        self.assertTrue(output.called)
+
+
+    def test_branch_map_uses_destination_row_identity_and_excludes_calls(self):
+        target = [
+            _branch_row(100, "b 108", "108"),
+            _access_row(104, "li r3, 0x0"),
+            _access_row(108, "blr"),
+        ]
+        candidate = [
+            _branch_row(200, "b 208", "0xd0"),
+            _access_row(204, "li r3, 0x0"),
+            _access_row(208, "blr"),
+        ]
+        result = self.branch(target, candidate)
+        summary = result["branches"]
+        self.assertEqual(summary["paired_branch_count"], 1)
+        self.assertEqual(summary["same_destination_count"], 1)
+        self.assertEqual(summary["changed_destination_count"], 0)
+        self.assertEqual(summary["findings"], [])
+        calls = self.branch([_access_row(100, "bl helper"), _access_row(104, "blr")])
+        self.assertEqual(calls["branches"]["target_branch_count"], 0)
+        self.assertEqual(calls["branches"]["candidate_branch_count"], 0)
+
+        result = self.branch(
+            [_branch_row(100, "b 108", 108), _access_row(104, "li r3, 0x0"), _access_row(108, "blr")],
+            [_branch_row(200, "b 204", 204), _access_row(204, "li r3, 0x0"), _access_row(208, "blr")],
+        )
+        finding = result["branches"]["findings"][0]
+        self.assertEqual(finding["status"], "changed")
+        self.assertEqual((finding["target_destination_row"], finding["candidate_destination_row"]), (2, 1))
+
+    def test_branch_map_unresolved_missing_destination_and_malformed_report(self):
+        result = self.branch(
+            [_branch_row(100, "b 0x999", 0x999), _access_row(104, "blr")],
+            [_branch_row(200, "b 204", 204), _access_row(204, "blr")],
+        )
+        finding = result["branches"]["findings"][0]
+        self.assertEqual(finding["status"], "unresolved")
+        self.assertIsNone(finding["target_destination_row"])
+        self.assertEqual(finding["candidate_destination_row"], 1)
+        report = copy.deepcopy(self.report)
+        report["right"]["symbols"][1]["name"] = "OtherFunction"
+        (self.root / "strict.json").write_text(json.dumps(report), encoding="utf-8")
+        result = frontier.branch_map(root=self.root, strict=Path("strict.json"), function="FocusFunction")
+        self.assertEqual(result["status"], "missing_symbol")
+        self.assertEqual(result["missing_sides"], ["candidate"])
+        (self.root / "strict.json").write_text("[", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            frontier.branch_map(root=self.root, strict=Path("strict.json"), function="FocusFunction")
+
+    def test_branch_map_output_is_bounded_and_cli_is_wired(self):
+        target = [_branch_row(index * 4, f"b 0x{0x100000 + index * 4:x}") for index in range(2000)]
+        candidate = [_branch_row(index * 4, f"b 0x{0x200000 + index * 4:x}") for index in range(2000)]
+        result = self.branch(target, candidate)
+        self.assertTrue(result["truncated"])
+        self.assertLess(len(frontier.canonical(result)), 256 * 1024)
+        self.branch([_branch_row(100, "b 104"), _access_row(104, "blr")])
+        with unittest.mock.patch("builtins.print") as output:
+            self.assertEqual(frontier.main(["--root", str(self.root), "branch-map",
                                             "--strict", "strict.json", "--function", "FocusFunction"]), 0)
         self.assertTrue(output.called)
 
