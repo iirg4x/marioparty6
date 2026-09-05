@@ -207,10 +207,14 @@ class FakeBackend:
             for _ in range(physical_rows):
                 session.on_breakpoint(int(hook_by_id[physical_hook_id]["address"]), 1)
                 session.on_single_step(1)
+        machine_hook = next(
+            (row for row in session.auth["hooks"] if row.get("role") == "machine_emit"),
+            None,
+        )
         machine_count = len(self.machine_rows)
-        if machine_count and int(MODULE.GC27_MACHINE_EMIT_HOOK["address"]) in self.active:
+        if machine_count and machine_hook is not None and int(machine_hook["address"]) in self.active:
             for _ in range(machine_count):
-                session.on_breakpoint(int(MODULE.GC27_MACHINE_EMIT_HOOK["address"]), 1)
+                session.on_breakpoint(int(machine_hook["address"]), 1)
                 session.on_single_step(1)
         if self.rewrite is not None:
             self.rewrite.write_text("rewritten", encoding="utf-8")
@@ -718,6 +722,35 @@ else:
             ],
         )
         self.assertNotIn(0x004D03E8, {row["address"] for row in MODULE.GC27_HOOKS})
+        gc26_by_id = {str(row["id"]): row for row in MODULE.GC26_HOOKS}
+        self.assertEqual(
+            {
+                hook_id: {
+                    "address": gc26_by_id[hook_id]["address"],
+                    "prefix": gc26_by_id[hook_id]["prefix"],
+                }
+                for hook_id in (
+                    "gc26_pcode_color_pre",
+                    "gc26_pcode_color_post",
+                    "gc26_machine_emit",
+                )
+            },
+            {
+                "gc26_pcode_color_pre": {
+                    "address": 0x005087A4,
+                    "prefix": "6689420483c20c83",
+                },
+                "gc26_pcode_color_post": {
+                    "address": 0x005087A8,
+                    "prefix": "83c20c83ed0173d3",
+                },
+                "gc26_machine_emit": {
+                    "address": 0x004EB2FF,
+                    "prefix": "8b178b0a030dd00b5e0001e989018b43",
+                },
+            },
+        )
+        self.assertEqual(MODULE._hooks_for_compiler(MODULE.GC26_COMPILER_SHA256), MODULE.GC26_HOOKS)
         gc27_by_id = {str(row["id"]): row for row in MODULE.GC27_HOOKS}
         self.assertEqual(
             {
@@ -5218,6 +5251,296 @@ class NativeWow64BackendCapabilityTests(unittest.TestCase):
         self.assertEqual(post["operand_index"], 17)
         self.assertEqual(post["object_pointer"], 0x1010)
         self.assertEqual(noop, {"status": "NOOP"})
+
+    def _gc26_color_fixture(self, *, remaining: int = 1) -> tuple[MODULE.NativeWow64Backend, dict[str, int], object]:
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC26_COMPILER_SHA256
+        )
+        registers = {"edx": 0x1030, "esi": 0x1000, "ecx": 0x2000, "ebp": remaining, "eax": 17}
+        operand = bytes((2, 4, 0, 0, 17, 0))
+        node = bytearray(0x18)
+        node[4:8] = (0x1010).to_bytes(4, "little")
+        node[0x14:0x16] = (17).to_bytes(2, "little", signed=True)
+
+        def read(address: int, size: int) -> bytes:
+            rows = {
+                (0x1022, 2): (3).to_bytes(2, "little", signed=True),
+                (0x1030, 6): operand,
+                (0x2000, 0x18): bytes(node),
+                (0x1034, 2): (17).to_bytes(2, "little", signed=True),
+            }
+            return rows[(address, size)]
+
+        return backend, registers, read
+
+    def test_native_backend_captures_gc26_pcode_color_with_profile_specific_hooks(self) -> None:
+        backend, registers, read = self._gc26_color_fixture()
+        with (
+            mock.patch.object(backend, "read_register", side_effect=lambda _thread, name: registers[name]),
+            mock.patch.object(backend, "_read", side_effect=read),
+        ):
+            pre = backend.capture_pcode("gc26_pcode_color_pre", 7)
+            post = backend.capture_pcode("gc26_pcode_color_post", 7)
+            noop = backend.capture_pcode("gc26_pcode_color_post", 8)
+        self.assertEqual(pre["status"], "PENDING")
+        self.assertEqual(post["status"], "CAPTURED")
+        self.assertEqual(post["operand_index"], 17)
+        self.assertEqual(post["object_pointer"], 0x1010)
+        self.assertEqual(noop, {"status": "NOOP"})
+
+    def test_native_backend_rejects_malformed_gc26_pcode_color_context(self) -> None:
+        backend, registers, read = self._gc26_color_fixture(remaining=3)
+        with (
+            mock.patch.object(backend, "read_register", side_effect=lambda _thread, name: registers[name]),
+            mock.patch.object(backend, "_read", side_effect=read),
+        ):
+            with self.assertRaisesRegex(MODULE.Rejected, "writeback count is invalid"):
+                backend.capture_pcode("gc26_pcode_color_pre", 7)
+        self.assertNotIn(7, backend._pending_pcode_color)
+
+    def test_gc26_rewrite_profile_is_exact_and_gc27_is_unchanged(self) -> None:
+        expected = {
+            "gc26_alias_union_pre": (0x0057BC77, "66890c7831ed396c2410"),
+            "gc26_alias_union_post": (0x0057BC7B, "31ed396c24100f86c6000000"),
+            "gc26_alias_rewrite_pre": (0x0057BDDA, "6689410483c10c"),
+            "gc26_alias_rewrite_post": (0x0057BDDE, "83c10c83eb0173ba"),
+            "gc26_split_rewrite_pre": (0x0057C9D1, "66895a0466834a0240"),
+            "gc26_split_rewrite_post": (0x0057C9D5, "66834a02404683c20c"),
+            "gc26_phase_set_pre": (0x00508634, "a2cfb25e00807c240404"),
+            "gc26_phase_set_post": (0x00508639, "807c2404047507"),
+        }
+        gc26 = {str(row["id"]): row for row in MODULE.GC26_HOOKS}
+        self.assertEqual(
+            {key: (int(gc26[key]["address"]), str(gc26[key]["prefix"])) for key in expected},
+            expected,
+        )
+        self.assertEqual(len(MODULE.GC27_HOOKS), 13)
+        self.assertFalse(set(expected).intersection(str(row["id"]) for row in MODULE.GC27_HOOKS))
+
+    def test_native_backend_captures_gc26_union_and_canonical_rewrite_observations(self) -> None:
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC26_COMPILER_SHA256
+        )
+        phase_addr = backend._runtime(MODULE.GC26_PHASE_SELECTOR)
+        union_alias = 0x2000
+        union_stack = 0x4000
+        union_reads = {"count": 0}
+
+        def union_read(address: int, size: int) -> bytes:
+            if (address, size) == (phase_addr, 1):
+                return b"\x02"
+            if (address, size) == (union_stack + 0xC, 4):
+                return (0x1000).to_bytes(4, "little")
+            if (address, size) == (union_alias + 41 * 2, 2):
+                value = 41 if union_reads["count"] == 0 else 7
+                union_reads["count"] += 1
+                return value.to_bytes(2, "little", signed=True)
+            self.fail(f"unexpected union read 0x{address:x}/{size}")
+
+        registers = {"ecx": 7, "edi": 41, "eax": union_alias, "esp": union_stack}
+        read_register = mock.Mock(side_effect=lambda _thread, name: registers[name])
+        with (
+            mock.patch.object(backend, "read_register", read_register),
+            mock.patch.object(backend, "_read", side_effect=union_read),
+        ):
+            pending = backend.capture_pcode("gc26_alias_union_pre", 7)
+            union = backend.capture_pcode("gc26_alias_union_post", 7)
+        self.assertEqual(pending["status"], "PENDING")
+        self.assertEqual(
+            {key: union[key] for key in ("old_index", "new_index", "phase", "iteration")},
+            {"old_index": 41, "new_index": 7, "phase": 2, "iteration": 0},
+        )
+        self.assertEqual(read_register.call_args_list[:4], [
+            mock.call(7, "ecx"), mock.call(7, "edi"),
+            mock.call(7, "eax"), mock.call(7, "esp"),
+        ])
+
+        pcode = 0x3000
+        operand = pcode + 0x24 + 2 * 0xC
+        canonical_registers = {"ecx": operand, "edi": pcode, "eax": 7}
+
+        def canonical_read(address: int, size: int) -> bytes:
+            if (address, size) == (phase_addr, 1):
+                return b"\x02"
+            if (address, size) == (pcode + 0x22, 2):
+                return (3).to_bytes(2, "little", signed=True)
+            if (address, size) == (operand, 6):
+                return bytes((2, 4, 0x34, 0x12, 41, 0))
+            if (address, size) == (operand + 4, 2):
+                return (7).to_bytes(2, "little", signed=True)
+            self.fail(f"unexpected canonical read 0x{address:x}/{size}")
+
+        with (
+            mock.patch.object(backend, "read_register", side_effect=lambda _thread, name: canonical_registers[name]) as read_register,
+            mock.patch.object(backend, "_read", side_effect=canonical_read),
+        ):
+            pending = backend.capture_pcode("gc26_alias_rewrite_pre", 7)
+            rewrite = backend.capture_pcode("gc26_alias_rewrite_post", 7)
+        self.assertEqual(pending["status"], "PENDING")
+        self.assertEqual(
+            {key: rewrite[key] for key in ("old_index", "new_index", "operand_ordinal", "operand_count", "operand_flags")},
+            {"old_index": 41, "new_index": 7, "operand_ordinal": 2, "operand_count": 3, "operand_flags": 0x1234},
+        )
+        self.assertEqual(read_register.call_args_list, [
+            mock.call(7, "ecx"), mock.call(7, "edi"), mock.call(7, "eax"),
+        ])
+
+    def test_native_backend_captures_gc26_split_phase_and_rejects_bad_context(self) -> None:
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC26_COMPILER_SHA256
+        )
+        phase_addr = backend._runtime(MODULE.GC26_PHASE_SELECTOR)
+        split_pcode = 0x4000
+        split_operand = split_pcode + 0x24 + 0xC
+        split_registers = {"edx": split_operand, "ebp": split_pcode, "edi": 7, "ebx": 99, "esi": 1}
+
+        def split_read(address: int, size: int) -> bytes:
+            if (address, size) == (phase_addr, 1):
+                return b"\x02"
+            if (address, size) == (split_pcode + 0x22, 2):
+                return (3).to_bytes(2, "little", signed=True)
+            if (address, size) == (split_operand, 6):
+                return bytes((2, 4, 0x06, 0x00, 7, 0))
+            if (address, size) == (split_operand + 4, 2):
+                return (99).to_bytes(2, "little", signed=True)
+            self.fail(f"unexpected split read 0x{address:x}/{size}")
+
+        with (
+            mock.patch.object(backend, "read_register", side_effect=lambda _thread, name: split_registers[name]),
+            mock.patch.object(backend, "_read", side_effect=split_read),
+        ):
+            pending = backend.capture_pcode("gc26_split_rewrite_pre", 7)
+            split = backend.capture_pcode("gc26_split_rewrite_post", 7)
+        self.assertEqual(pending["status"], "PENDING")
+        self.assertEqual(split["old_index"], 7)
+        self.assertEqual(split["new_index"], 99)
+        self.assertEqual(split["operand_flags"], 6)
+
+        phase_backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC26_COMPILER_SHA256
+        )
+        phase_stack = 0x5000
+        phase_registers = {"eax": 2, "esp": phase_stack}
+        phase_count_addr = phase_backend._runtime(MODULE.GC26_PHASE_COUNTERS + 8)
+        phase_base_addr = phase_backend._runtime(MODULE.GC26_PHASE_BASES + 8)
+
+        def phase_read(address: int, size: int) -> bytes:
+            if (address, size) == (phase_backend._runtime(MODULE.GC26_PHASE_SELECTOR), 1):
+                return b"\x02"
+            if (address, size) == (phase_stack + 4, 1):
+                return b"\x02"
+            if (address, size) == (phase_count_addr, 4):
+                return (32).to_bytes(4, "little")
+            if (address, size) == (phase_base_addr, 4):
+                return (32).to_bytes(4, "little")
+            self.fail(f"unexpected phase read 0x{address:x}/{size}")
+
+        with (
+            mock.patch.object(phase_backend, "read_register", side_effect=lambda _thread, name: phase_registers[name]),
+            mock.patch.object(phase_backend, "_read", side_effect=phase_read),
+        ):
+            first = phase_backend.capture_pcode("gc26_phase_set_pre", 7)
+            first_post = phase_backend.capture_pcode("gc26_phase_set_post", 7)
+            second = phase_backend.capture_pcode("gc26_phase_set_pre", 7)
+            second_post = phase_backend.capture_pcode("gc26_phase_set_post", 7)
+        self.assertEqual(first["status"], "PENDING")
+        self.assertEqual(first_post["iteration"], 0)
+        self.assertEqual(second_post["iteration"], 1)
+        self.assertEqual(first_post["count_before"], first_post["count_after"])
+
+        bad_backend = MODULE.NativeWow64Backend(
+            object(), 1, 0, 4321, compiler_sha256=MODULE.GC26_COMPILER_SHA256
+        )
+        bad_registers = {"eax": 2, "esp": phase_stack}
+
+        def bad_read(address: int, size: int) -> bytes:
+            if (address, size) == (bad_backend._runtime(MODULE.GC26_PHASE_SELECTOR), 1):
+                return b"\x02"
+            if (address, size) == (phase_stack + 4, 1):
+                return b"\x03"
+            self.fail(f"unexpected malformed phase read 0x{address:x}/{size}")
+
+        with (
+            mock.patch.object(bad_backend, "read_register", side_effect=lambda _thread, name: bad_registers[name]),
+            mock.patch.object(bad_backend, "_read", side_effect=bad_read),
+        ):
+            with self.assertRaisesRegex(MODULE.Rejected, "register/stack context"):
+                bad_backend.capture_pcode("gc26_phase_set_pre", 7)
+        self.assertFalse(bad_backend._pending_pcode_diagnostics)
+
+    def test_session_emits_pointer_free_gc26_rewrite_event_that_validates(self) -> None:
+        with TemporaryDirectory() as directory:
+            backend = FakeBackend()
+            raw = {
+                "pcode_pointer": 0x12340000,
+                "phase": 2,
+                "iteration": 1,
+                "old_index": 41,
+                "new_index": 7,
+            }
+            backend.capture_pcode = mock.Mock(
+                side_effect=[{"status": "PENDING", **raw}, {"status": "CAPTURED", **raw}]
+            )
+            session = MODULE.CombinedCaptureSession(auth(Path(directory)), backend)
+            session.auth["request"]["compiler"]["sha256"] = MODULE.GC26_COMPILER_SHA256
+            session.auth["hooks"] = [dict(row) for row in MODULE.GC26_HOOKS]
+            session.bus.bind_process(4321)
+            pre = next(row for row in MODULE.GC26_HOOKS if row["id"] == "gc26_alias_union_pre")
+            post = next(row for row in MODULE.GC26_HOOKS if row["id"] == "gc26_alias_union_post")
+            self.assertIsNone(session._capture_pcode_diagnostic(pre, 7))
+            payload = session._capture_pcode_diagnostic(post, 7)
+            assert payload is not None
+            event_kind = str(payload.pop("_event_kind"))
+            event = session.bus.emit("pcode", event_kind, payload)
+            MODULE._validate_event(
+                event,
+                0,
+                {
+                    "session_id": session.session_id,
+                    "process_id": 4321,
+                    "function": "mbCapListDebug",
+                    "compiler": {"sha256": MODULE.GC26_COMPILER_SHA256},
+                },
+            )
+        serialized = json.dumps(event, sort_keys=True)
+        self.assertNotIn("pcode_pointer", serialized)
+        self.assertNotIn("305397760", serialized)
+
+    def test_native_machine_capture_accepts_gc26_profile_and_shared_descriptor_table(self) -> None:
+        backend = MODULE.NativeWow64Backend(
+            object(), 1, MODULE.KNOWN_IMAGE_BASE, 4321, compiler_sha256=MODULE.GC26_COMPILER_SHA256
+        )
+        word = (14 << 26) | (30 << 21) | (1 << 16) | 8
+        encoded = word ^ 0x40000000
+        backend.read_register = mock.Mock(side_effect=lambda _thread, name: {
+            "ebx": 0x12340000,
+            "ebp": 12,
+            "eax": encoded,
+        }[name])
+        descriptor_address = (
+            MODULE.PCODE_OPCODE_DESCRIPTOR_TABLE
+            + 1 * MODULE.PCODE_OPCODE_DESCRIPTOR_STRIDE
+            + MODULE.PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET
+        )
+
+        def read(address: int, size: int) -> bytes:
+            if (address, size) == (0x12340020, 2):
+                return (1).to_bytes(2, "little")
+            if (address, size) == (descriptor_address, 4):
+                return (word & 0xFC000000).to_bytes(4, "little")
+            self.fail(f"unexpected native read 0x{address:x}/{size}")
+
+        backend._read = mock.Mock(side_effect=read)
+        self.assertEqual(
+            backend.capture_machine_emission("gc26_machine_emit", 7),
+            {
+                "pcode_pointer": 0x12340000,
+                "emitted_offset": 12,
+                "opcode_enum": 1,
+                "encoded_value": encoded,
+                "descriptor_base": word & 0xFC000000,
+            },
+        )
 
     def test_native_backend_selects_authenticated_compiler_child_not_wrapper_parent(self) -> None:
         with TemporaryDirectory() as directory:

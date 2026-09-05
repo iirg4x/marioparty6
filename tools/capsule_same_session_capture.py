@@ -313,7 +313,106 @@ GC26_FRONTEND_HOOKS: tuple[dict[str, Any], ...] = tuple(
     if row["id"] != "target_boundary"
 )
 GC26_FRONTEND_HOOK_IDS = tuple(str(row["id"]) for row in GC26_FRONTEND_HOOKS)
-GC26_HOOKS: tuple[dict[str, Any], ...] = HOOKS + GC26_FRONTEND_HOOKS
+# GC/2.6 and GC/2.7 retain the same PCode color-loop and machine-emission
+# layouts, but the GC/2.6 image places the sites 0xe0 bytes later.  Keep these
+# IDs compiler-specific: a shared ID would make the closed hook union resolve
+# to the last profile in HOOK_BY_ID and could silently authorize the wrong image.
+GC26_PCODE_COLOR_HOOKS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "gc26_pcode_color_pre",
+        "address": 0x005087A4,
+        "prefix": "6689420483c20c83",
+        "lane": "pcode",
+        "role": "pcode_color_diagnostic",
+    },
+    {
+        "id": "gc26_pcode_color_post",
+        "address": 0x005087A8,
+        "prefix": "83c20c83ed0173d3",
+        "lane": "pcode",
+        "role": "pcode_color_diagnostic",
+    },
+)
+GC26_MACHINE_EMIT_HOOK: dict[str, Any] = {
+    "id": "gc26_machine_emit",
+    "address": 0x004EB2FF,
+    "prefix": "8b178b0a030dd00b5e0001e989018b43",
+    "lane": "pcode",
+    "role": "machine_emit",
+}
+# GC/2.6's allocator/coalescer keeps the same closed x86 layout across the
+# target's repeated PCode passes.  These hooks observe only the authenticated
+# writes themselves; they do not expose compiler pointers or claim a source
+# owner.  The post sites are the next instruction, so the event can confirm
+# the write without replaying or modifying the compiler state.
+GC26_PCODE_REWRITE_HOOKS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "gc26_alias_union_pre",
+        "address": 0x0057BC77,
+        "prefix": "66890c7831ed396c2410",
+        "lane": "pcode",
+        "role": "pcode_rewrite_diagnostic",
+    },
+    {
+        "id": "gc26_alias_union_post",
+        "address": 0x0057BC7B,
+        "prefix": "31ed396c24100f86c6000000",
+        "lane": "pcode",
+        "role": "pcode_rewrite_diagnostic",
+    },
+    {
+        "id": "gc26_alias_rewrite_pre",
+        "address": 0x0057BDDA,
+        "prefix": "6689410483c10c",
+        "lane": "pcode",
+        "role": "pcode_rewrite_diagnostic",
+    },
+    {
+        "id": "gc26_alias_rewrite_post",
+        "address": 0x0057BDDE,
+        "prefix": "83c10c83eb0173ba",
+        "lane": "pcode",
+        "role": "pcode_rewrite_diagnostic",
+    },
+    {
+        "id": "gc26_split_rewrite_pre",
+        "address": 0x0057C9D1,
+        "prefix": "66895a0466834a0240",
+        "lane": "pcode",
+        "role": "pcode_rewrite_diagnostic",
+    },
+    {
+        "id": "gc26_split_rewrite_post",
+        "address": 0x0057C9D5,
+        "prefix": "66834a02404683c20c",
+        "lane": "pcode",
+        "role": "pcode_rewrite_diagnostic",
+    },
+)
+GC26_PHASE_HOOKS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "gc26_phase_set_pre",
+        "address": 0x00508634,
+        "prefix": "a2cfb25e00807c240404",
+        "lane": "pcode",
+        "role": "pcode_phase_diagnostic",
+    },
+    {
+        "id": "gc26_phase_set_post",
+        "address": 0x00508639,
+        "prefix": "807c2404047507",
+        "lane": "pcode",
+        "role": "pcode_phase_diagnostic",
+    },
+)
+GC26_HOOKS: tuple[dict[str, Any], ...] = (
+    HOOKS
+    + GC26_FRONTEND_HOOKS
+    + GC26_PCODE_COLOR_HOOKS
+    + (GC26_MACHINE_EMIT_HOOK,)
+    + GC26_PCODE_REWRITE_HOOKS
+    + GC26_PHASE_HOOKS
+)
 # GC/2.7 keeps the same stack-hook meanings, but its allocator helper is
 # 0xe0 bytes earlier than the authenticated GC/2.6 image.  Three Object-write
 # sites therefore move with that helper, while the call at allocation_pre
@@ -403,9 +502,22 @@ GC27_HOOKS: tuple[dict[str, Any], ...] = (
     + GC27_PCODE_COLOR_HOOKS
     + (GC27_MACHINE_EMIT_HOOK,)
 )
-GC27_OPCODE_DESCRIPTOR_TABLE = 0x005C0FA8
-GC27_OPCODE_DESCRIPTOR_STRIDE = 18
-GC27_OPCODE_DESCRIPTOR_BASE_OFFSET = 0x0E
+PCODE_OPCODE_DESCRIPTOR_TABLE = 0x005C0FA8
+PCODE_OPCODE_DESCRIPTOR_STRIDE = 18
+PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET = 0x0E
+# Closed GC/2.6 compiler globals used only to bind a diagnostic observation to
+# its phase.  They are code-profile metadata, never serialized addresses.
+GC26_PHASE_SELECTOR = 0x005EB2CF
+GC26_PHASE_COUNTERS = 0x005EAA2C
+GC26_PHASE_BASES = 0x005EA710
+# Compatibility spellings retained for callers that used the original
+# GC/2.7-only names.  The decoder below uses the profile-neutral constants.
+GC26_OPCODE_DESCRIPTOR_TABLE = PCODE_OPCODE_DESCRIPTOR_TABLE
+GC26_OPCODE_DESCRIPTOR_STRIDE = PCODE_OPCODE_DESCRIPTOR_STRIDE
+GC26_OPCODE_DESCRIPTOR_BASE_OFFSET = PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET
+GC27_OPCODE_DESCRIPTOR_TABLE = PCODE_OPCODE_DESCRIPTOR_TABLE
+GC27_OPCODE_DESCRIPTOR_STRIDE = PCODE_OPCODE_DESCRIPTOR_STRIDE
+GC27_OPCODE_DESCRIPTOR_BASE_OFFSET = PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET
 _HOOK_SETS: tuple[tuple[dict[str, Any], ...], ...] = (HOOKS, GC26_HOOKS, GC27_HOOKS)
 HOOK_BY_ID = {str(row["id"]): row for rows in _HOOK_SETS for row in rows}
 HOOK_BY_ADDRESS = {int(row["address"]): row for rows in _HOOK_SETS for row in rows}
@@ -415,13 +527,111 @@ PCODE_HOOK_IDS = tuple(
     for row in HOOKS
     if row["lane"] == "pcode" and row["role"] not in {"regalloc", "regalloc_post", "machine_emit"}
 )
-MACHINE_HOOK_IDS = (GC27_MACHINE_EMIT_HOOK["id"],)
+MACHINE_HOOK_IDS = tuple(
+    str(row["id"])
+    for rows in (GC26_HOOKS, GC27_HOOKS)
+    for row in rows
+    if row["role"] == "machine_emit"
+)
+PCODE_COLOR_HOOK_PAIRS: Mapping[str, tuple[str, str]] = {
+    "pcode_color_pre": ("pcode_color_pre", "pcode_color_post"),
+    "pcode_color_post": ("pcode_color_pre", "pcode_color_post"),
+    "gc26_pcode_color_pre": ("gc26_pcode_color_pre", "gc26_pcode_color_post"),
+    "gc26_pcode_color_post": ("gc26_pcode_color_pre", "gc26_pcode_color_post"),
+}
+PCODE_COLOR_PRE_HOOK_IDS = frozenset(
+    pair[0] for pair in PCODE_COLOR_HOOK_PAIRS.values()
+)
+PCODE_COLOR_POST_HOOK_IDS = frozenset(
+    pair[1] for pair in PCODE_COLOR_HOOK_PAIRS.values()
+)
+
+# A diagnostic post edge emits one event after its matching pre edge has been
+# validated.  Keep this table outside the hook rows: _validate_hook_rows
+# intentionally permits only the five authenticated profile fields.
+PCODE_DIAGNOSTIC_SPECS: Mapping[str, Mapping[str, str]] = {
+    "gc26_alias_union_pre": {
+        "post": "gc26_alias_union_post",
+        "event_kind": "pcode_alias_union",
+        "stage": "alias_union",
+        "edge": "pre",
+    },
+    "gc26_alias_union_post": {
+        "post": "gc26_alias_union_post",
+        "event_kind": "pcode_alias_union",
+        "stage": "alias_union",
+        "edge": "post",
+    },
+    "gc26_alias_rewrite_pre": {
+        "post": "gc26_alias_rewrite_post",
+        "event_kind": "pcode_alias_rewrite",
+        "stage": "canonical_rewrite",
+        "edge": "pre",
+    },
+    "gc26_alias_rewrite_post": {
+        "post": "gc26_alias_rewrite_post",
+        "event_kind": "pcode_alias_rewrite",
+        "stage": "canonical_rewrite",
+        "edge": "post",
+    },
+    "gc26_split_rewrite_pre": {
+        "post": "gc26_split_rewrite_post",
+        "event_kind": "pcode_split_rewrite",
+        "stage": "split_rewrite",
+        "edge": "pre",
+    },
+    "gc26_split_rewrite_post": {
+        "post": "gc26_split_rewrite_post",
+        "event_kind": "pcode_split_rewrite",
+        "stage": "split_rewrite",
+        "edge": "post",
+    },
+    "gc26_phase_set_pre": {
+        "post": "gc26_phase_set_post",
+        "event_kind": "pcode_phase",
+        "stage": "phase_set",
+        "edge": "pre",
+    },
+    "gc26_phase_set_post": {
+        "post": "gc26_phase_set_post",
+        "event_kind": "pcode_phase",
+        "stage": "phase_set",
+        "edge": "post",
+    },
+}
+PCODE_DIAGNOSTIC_PRE_HOOK_IDS = frozenset(
+    hook_id
+    for hook_id, spec in PCODE_DIAGNOSTIC_SPECS.items()
+    if spec["edge"] == "pre"
+)
+PCODE_DIAGNOSTIC_POST_HOOK_IDS = frozenset(
+    hook_id
+    for hook_id, spec in PCODE_DIAGNOSTIC_SPECS.items()
+    if spec["edge"] == "post"
+)
+
+
+def _pcode_diagnostic_spec(hook_id: str) -> Mapping[str, str] | None:
+    return PCODE_DIAGNOSTIC_SPECS.get(str(hook_id))
+
+
+def _pcode_color_pair(hook_id: str) -> tuple[str, str] | None:
+    """Return the closed pre/post IDs for one profile-specific color hook."""
+
+    return PCODE_COLOR_HOOK_PAIRS.get(str(hook_id))
 
 
 def _pcode_stage_hook_ids(hooks: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     """Return required generic PCode-stage hooks for one closed profile."""
 
-    excluded = {"regalloc", "regalloc_post", "pcode_color_diagnostic", "machine_emit"}
+    excluded = {
+        "regalloc",
+        "regalloc_post",
+        "pcode_color_diagnostic",
+        "pcode_rewrite_diagnostic",
+        "pcode_phase_diagnostic",
+        "machine_emit",
+    }
     return tuple(
         str(row["id"])
         for row in hooks
@@ -509,9 +719,10 @@ def _validate_authenticated_compiler_hook_image(
     compiler: Mapping[str, Any],
     hooks: Sequence[Mapping[str, Any]],
 ) -> None:
-    """Fail before launch when the pinned GC/2.7 profile is stale on disk."""
+    """Fail before launch when an authenticated compiler profile is stale."""
 
-    if str(compiler["sha256"]).lower() != GC27_COMPILER_SHA256:
+    compiler_sha256 = str(compiler["sha256"]).lower()
+    if compiler_sha256 not in {GC26_COMPILER_SHA256, GC27_COMPILER_SHA256}:
         return
     path = Path(str(compiler["path"]))
     mismatches: list[str] = []
@@ -622,9 +833,17 @@ _EVENT_EXTRA_KEYS = {
     "operand_class",
     "operand_bank",
     "operand_index",
+    "operand_flags",
     "final_color",
     "ig_flags",
     "confirmed",
+    "old_index",
+    "new_index",
+    "phase",
+    "iteration",
+    "count_before",
+    "count_after",
+    "base_count",
     "exit_code",
 }
 _LANES = ("stack", "pcode")
@@ -636,6 +855,10 @@ _EVENT_KINDS = {
     "object_stack_write_pre",
     "object_stack_write_post",
     "pcode_capture",
+    "pcode_alias_union",
+    "pcode_alias_rewrite",
+    "pcode_split_rewrite",
+    "pcode_phase",
     "regalloc_assignment",
     "physical_reg_assignment",
     "machine_emission",
@@ -654,7 +877,25 @@ _EVENT_ALLOWED_FIELDS = {
         "pcode_token", "source_offset", "block", "order", "operands",
         "ig_token", "object_token", "hidden_owner_token", "operand_ordinal",
         "operand_count", "operand_kind", "operand_class", "operand_bank",
-        "operand_index", "final_color", "ig_flags", "confirmed",
+        "operand_index", "operand_flags", "final_color", "ig_flags", "confirmed",
+    },
+    "pcode_alias_union": {
+        "hook_id", "status", "stage", "pcode_token", "phase", "iteration",
+        "old_index", "new_index", "confirmed",
+    },
+    "pcode_alias_rewrite": {
+        "hook_id", "status", "stage", "pcode_token", "phase", "iteration",
+        "old_index", "new_index", "operand_ordinal", "operand_count",
+        "operand_flags", "confirmed",
+    },
+    "pcode_split_rewrite": {
+        "hook_id", "status", "stage", "pcode_token", "phase", "iteration",
+        "old_index", "new_index", "operand_ordinal", "operand_count",
+        "operand_flags", "confirmed",
+    },
+    "pcode_phase": {
+        "hook_id", "status", "stage", "phase", "iteration", "count_before",
+        "count_after", "base_count", "confirmed",
     },
     "regalloc_assignment": {"object_token", "status", "reason", "vreg_id", "bank"},
     "physical_reg_assignment": {"object_token", "status", "reason", "physical_reg", "bank"},
@@ -678,6 +919,24 @@ _EVENT_REQUIRED_FIELDS = {
     "object_stack_write_pre": {"hook_id", "object_token", "target_slot"},
     "object_stack_write_post": {"hook_id", "object_token", "target_slot", "write_observed"},
     "pcode_capture": {"hook_id", "status"},
+    "pcode_alias_union": {
+        "hook_id", "status", "stage", "pcode_token", "phase", "iteration",
+        "old_index", "new_index", "confirmed",
+    },
+    "pcode_alias_rewrite": {
+        "hook_id", "status", "stage", "pcode_token", "phase", "iteration",
+        "old_index", "new_index", "operand_ordinal", "operand_count",
+        "operand_flags", "confirmed",
+    },
+    "pcode_split_rewrite": {
+        "hook_id", "status", "stage", "pcode_token", "phase", "iteration",
+        "old_index", "new_index", "operand_ordinal", "operand_count",
+        "operand_flags", "confirmed",
+    },
+    "pcode_phase": {
+        "hook_id", "status", "stage", "phase", "iteration", "count_before",
+        "count_after", "base_count", "confirmed",
+    },
     "regalloc_assignment": {"status"},
     "physical_reg_assignment": {"status"},
     "machine_emission": {"hook_id", "status"},
@@ -2158,13 +2417,18 @@ class CombinedCaptureSession:
         return token
 
     def _capture_pcode_color(self, row: Mapping[str, Any], thread: int) -> dict[str, Any] | None:
+        hook_id = _text(row.get("id"), "PCode color hook")
+        pair = _pcode_color_pair(hook_id)
+        if pair is None:
+            raise Rejected("unowned PCode color hook")
+        pre_hook_id, post_hook_id = pair
         method = getattr(self.backend, "capture_pcode", None)
-        raw = method(row["id"], thread) if callable(method) else None
+        raw = method(hook_id, thread) if callable(method) else None
         if not isinstance(raw, Mapping):
             raise Rejected("PCode color backend returned a non-object")
         status = raw.get("status")
         if status == "NOOP":
-            if row["id"] != "pcode_color_post" or thread in self.pending_pcode_colors:
+            if hook_id != post_hook_id or thread in self.pending_pcode_colors:
                 raise Rejected("PCode color NOOP is not a non-register post path")
             return None
         required = {
@@ -2192,9 +2456,11 @@ class CombinedCaptureSession:
             raise Rejected(self.unknown[-1])
         bank = "GPR" if values["register_class"] == 4 else "FPR"
         payload: dict[str, Any] = {
-            "hook_id": "pcode_color_post",
+            # The event is emitted on the post edge.  Use the profile-specific
+            # post ID for GC/2.6 so validation cannot mistake it for GC/2.7.
+            "hook_id": post_hook_id,
             "status": "CAPTURED",
-            "stage": "pcode_color_post",
+            "stage": post_hook_id,
             "pcode_token": pcode_token,
             "ig_token": ig_token,
             "operand_ordinal": values["operand_ordinal"],
@@ -2207,6 +2473,11 @@ class CombinedCaptureSession:
             "ig_flags": values["ig_flags"],
             "confirmed": True,
         }
+        if "operand_flags" in raw:
+            operand_flags = _integer(raw["operand_flags"], "PCode color operand flags", nonnegative=True)
+            if operand_flags > 0xFFFF:
+                raise Rejected("PCode color operand flags are invalid")
+            payload["operand_flags"] = operand_flags
         object_pointer = values["object_pointer"]
         binding = self.ledger.kind_for(object_pointer) if object_pointer else None
         if binding is None:
@@ -2214,12 +2485,12 @@ class CombinedCaptureSession:
         else:
             _kind, object_token = binding
             payload["object_token"] = object_token
-        if row["id"] == "pcode_color_pre":
+        if hook_id == pre_hook_id:
             if status != "PENDING" or thread in self.pending_pcode_colors:
                 raise Rejected("nested PCode color writeback")
             self.pending_pcode_colors[thread] = {"raw": values, "payload": payload}
             return None
-        if row["id"] != "pcode_color_post" or status != "CAPTURED":
+        if hook_id != post_hook_id or status != "CAPTURED":
             raise Rejected("PCode color hook/status mismatch")
         pending = self.pending_pcode_colors.pop(thread, None)
         if pending is None or pending["raw"] != values or pending["payload"] != payload:
@@ -2234,6 +2505,66 @@ class CombinedCaptureSession:
             if prior_owner not in (None, payload["object_token"]):
                 raise Rejected("PCode color evidence maps one physical color to multiple Objects")
             self.pcode_color_owners[color_key] = str(payload["object_token"])
+        return payload
+
+    def _capture_pcode_diagnostic(
+        self,
+        row: Mapping[str, Any],
+        thread: int,
+    ) -> dict[str, Any] | None:
+        """Convert one authenticated GC/2.6 rewrite observation to tokens."""
+
+        hook_id = _text(row.get("id"), "PCode diagnostic hook")
+        spec = _pcode_diagnostic_spec(hook_id)
+        if spec is None:
+            raise Rejected("unowned PCode diagnostic hook")
+        method = getattr(self.backend, "capture_pcode", None)
+        raw = method(hook_id, thread) if callable(method) else None
+        if not isinstance(raw, Mapping):
+            raise Rejected("PCode diagnostic backend returned a non-object")
+        status = raw.get("status")
+        if status == "NOOP":
+            if spec["edge"] != "post":
+                raise Rejected("PCode diagnostic NOOP is not a post path")
+            return None
+        if status == "PENDING":
+            if spec["edge"] != "pre":
+                raise Rejected("PCode diagnostic pending row is not a pre path")
+            return None
+        if status != "CAPTURED" or spec["edge"] != "post":
+            raise Rejected("PCode diagnostic status/edge mismatch")
+        required = {"phase", "iteration"}
+        if spec["event_kind"] == "pcode_phase":
+            required.update({"count_before", "count_after", "base_count"})
+        else:
+            required.update({"pcode_pointer", "old_index", "new_index"})
+            if spec["event_kind"] in {"pcode_alias_rewrite", "pcode_split_rewrite"}:
+                required.update({"operand_ordinal", "operand_count", "operand_flags"})
+        if not required.issubset(raw):
+            raise Rejected("PCode diagnostic evidence is incomplete")
+        payload: dict[str, Any] = {
+            "hook_id": spec["post"],
+            "status": "CAPTURED",
+            "stage": spec["stage"],
+            "phase": _integer(raw["phase"], "PCode diagnostic phase", nonnegative=True),
+            "iteration": _integer(raw["iteration"], "PCode diagnostic iteration", nonnegative=True),
+            "confirmed": True,
+        }
+        if spec["event_kind"] == "pcode_phase":
+            for key in ("count_before", "count_after", "base_count"):
+                payload[key] = _integer(raw[key], f"PCode diagnostic {key}", nonnegative=True)
+        else:
+            token = self._pcode_token(raw["pcode_pointer"])
+            if token is None:
+                raise Rejected(self.unknown[-1])
+            payload["pcode_token"] = token
+            for key in ("old_index", "new_index"):
+                payload[key] = _integer(raw[key], f"PCode diagnostic {key}", nonnegative=True)
+            if spec["event_kind"] in {"pcode_alias_rewrite", "pcode_split_rewrite"}:
+                for key in ("operand_ordinal", "operand_count", "operand_flags"):
+                    payload[key] = _integer(raw[key], f"PCode rewrite {key}", nonnegative=True)
+        payload["_event_kind"] = spec["event_kind"]
+        _pointer_free(payload)
         return payload
 
     def _machine_owner_joins(
@@ -2964,6 +3295,12 @@ class CombinedCaptureSession:
             if payload is not None:
                 self.bus.emit("pcode", "pcode_capture", payload)
             return True
+        if role in {"pcode_rewrite_diagnostic", "pcode_phase_diagnostic"}:
+            payload = self._capture_pcode_diagnostic(row, thread)
+            if payload is not None:
+                event_kind = _text(payload.pop("_event_kind", None), "PCode diagnostic event kind")
+                self.bus.emit("pcode", event_kind, payload)
+            return True
         if row.get("lane") == "pcode" and role not in {"regalloc", "regalloc_post"}:
             method = getattr(self.backend, "capture_pcode", None)
             raw = method(row["id"], thread) if callable(method) else {"hook_id": row["id"], "status": "UNKNOWN"}
@@ -3094,8 +3431,15 @@ class CombinedCaptureSession:
             missing_pcode.add("regalloc")
         if "physical_reg_assignment" not in pcode_kinds:
             missing_pcode.add("regalloc_post")
-        if any(row.get("role") == "machine_emit" for row in profile_hooks) and "machine_emission" not in pcode_kinds:
-            missing_pcode.add("gc27_machine_emit")
+        machine_hook_ids = {
+            str(row["id"]) for row in profile_hooks if row.get("role") == "machine_emit"
+        }
+        machine_event_hook_ids = {
+            str(event.get("hook_id"))
+            for event in events
+            if event["event_kind"] == "machine_emission"
+        }
+        missing_pcode.update(machine_hook_ids - machine_event_hook_ids)
         if missing_stack and "lane_unknown" not in stack_kinds:
             reason = "incomplete stack evidence"
             self._unknown(reason)
@@ -5194,7 +5538,19 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
         raise Rejected(f"event[{index}] {event_kind} payload is not closed (missing={missing}, extra={extra})")
     profile_hooks = _hooks_for_compiler(str(context["compiler"]["sha256"]))
     profile_hook_by_id = {str(row["id"]): row for row in profile_hooks}
-    if event_kind in {"function_entry", "numeric_stack_alloc_pre", "numeric_stack_alloc_post", "object_stack_write_pre", "object_stack_write_post", "pcode_capture", "machine_emission"}:
+    if event_kind in {
+        "function_entry",
+        "numeric_stack_alloc_pre",
+        "numeric_stack_alloc_post",
+        "object_stack_write_pre",
+        "object_stack_write_post",
+        "pcode_capture",
+        "pcode_alias_union",
+        "pcode_alias_rewrite",
+        "pcode_split_rewrite",
+        "pcode_phase",
+        "machine_emission",
+    }:
         hook_id = _text(event["hook_id"], f"event[{index}].hook_id")
         hook = profile_hook_by_id.get(hook_id)
         if hook is None:
@@ -5227,6 +5583,9 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 _integer(event[key], f"event[{index}].{key}")
         if "operands" in event and not isinstance(event["operands"], list):
             raise Rejected(f"event[{index}].operands must be a list")
+        if "operand_flags" in event:
+            if not isinstance(event["operand_flags"], int) or isinstance(event["operand_flags"], bool) or not 0 <= event["operand_flags"] <= 0xFFFF:
+                raise Rejected(f"event[{index}].operand_flags is invalid")
         if status == "UNKNOWN" and ("reason" not in event or not event["reason"]):
             raise Rejected(f"event[{index}] UNKNOWN PCode evidence lacks a reason")
         color_fields = {
@@ -5259,6 +5618,59 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
             expected_bank = "GPR" if event["operand_class"] == 4 else "FPR"
             if event["operand_bank"] != expected_bank or not 0 <= event["operand_index"] <= 0x7FFF or not 0 <= event["final_color"] <= 31 or event["confirmed"] is not True:
                 raise Rejected(f"event[{index}] PCode color operand/result is invalid")
+    if event_kind in {
+        "pcode_alias_union",
+        "pcode_alias_rewrite",
+        "pcode_split_rewrite",
+        "pcode_phase",
+    }:
+        if event["lane"] != "pcode":
+            raise Rejected(f"event[{index}] PCode diagnostic lane is invalid")
+        hook_id = _text(event["hook_id"], f"event[{index}].hook_id")
+        spec = _pcode_diagnostic_spec(hook_id)
+        if (
+            spec is None
+            or spec["edge"] != "post"
+            or spec["event_kind"] != event_kind
+            or spec["post"] != hook_id
+        ):
+            raise Rejected(f"event[{index}] PCode diagnostic hook is invalid")
+        if event["status"] != "CAPTURED":
+            raise Rejected(f"event[{index}] PCode diagnostic status is invalid")
+        if event["stage"] != spec["stage"] or event["confirmed"] is not True:
+            raise Rejected(f"event[{index}] PCode diagnostic stage is not confirmed")
+        integer_fields = {"phase", "iteration"}
+        if event_kind == "pcode_phase":
+            integer_fields.update({"count_before", "count_after", "base_count"})
+        else:
+            integer_fields.update({"old_index", "new_index"})
+        if event_kind in {"pcode_alias_rewrite", "pcode_split_rewrite"}:
+            integer_fields.update({"operand_ordinal", "operand_count", "operand_flags"})
+        for key in integer_fields:
+            if not isinstance(event[key], int) or isinstance(event[key], bool):
+                raise Rejected(f"event[{index}].{key} is not type-canonical")
+            _integer(event[key], f"event[{index}].{key}", nonnegative=True)
+        if not 0 <= event["phase"] <= 4 or event["iteration"] > 0xFFFF:
+            raise Rejected(f"event[{index}] PCode diagnostic phase identity is invalid")
+        if event_kind == "pcode_phase":
+            if any(event[key] > 0x7FFF for key in ("count_before", "count_after", "base_count")):
+                raise Rejected(f"event[{index}] PCode phase counter is invalid")
+        else:
+            if (
+                not 0 <= event["old_index"] <= 0x7FFF
+                or not 0 <= event["new_index"] <= 0x7FFF
+                or event["old_index"] == event["new_index"]
+            ):
+                raise Rejected(f"event[{index}] PCode rewrite tuple is invalid")
+            token = _text(event["pcode_token"], f"event[{index}].pcode_token")
+            match = PCODE_TOKEN_RE.fullmatch(token)
+            if match is None or match.group("session") != context["session_id"]:
+                raise Rejected(f"event[{index}] PCode diagnostic token provenance is invalid")
+            if event_kind in {"pcode_alias_rewrite", "pcode_split_rewrite"} and not (
+                0 <= event["operand_ordinal"] < event["operand_count"] <= 256
+                and 0 <= event["operand_flags"] <= 0xFFFF
+            ):
+                raise Rejected(f"event[{index}] PCode rewrite operand identity is invalid")
     if event_kind == "regalloc_assignment":
         status = _text(event["status"], f"event[{index}].status")
         if status not in {"EXACT", "UNKNOWN"}:
@@ -7381,6 +7793,12 @@ class NativeWow64Backend:
         self._direct_vreg_evidence: dict[int, dict[str, Any]] = {}
         self._pcode_events: list[dict[str, Any]] = []
         self._pending_pcode_color: dict[int, dict[str, int]] = {}
+        # Diagnostic pre/post pairs retain native addresses only while the
+        # paused thread is between the two authenticated instructions.  The
+        # session converts the completed row to tokens before it reaches the
+        # event bus.
+        self._pending_pcode_diagnostics: dict[tuple[str, int], dict[str, Any]] = {}
+        self._pcode_phase_iterations: dict[int, int] = {}
         self._transport_image_seen = False
         self._transport_exited = False
         self._memexec_probe_requested = False
@@ -8167,6 +8585,219 @@ class NativeWow64Backend:
             raise Rejected(f"{label} is truncated")
         return data[0]
 
+    def _gc26_phase_context(self) -> tuple[int, int]:
+        """Read the selected GC/2.6 phase and its observed pass ordinal."""
+
+        raw = self._read(self._runtime(GC26_PHASE_SELECTOR), 1)
+        if len(raw) != 1 or raw[0] > 4:
+            raise Rejected("PCode diagnostic phase is invalid")
+        phase = int(raw[0])
+        return phase, self._pcode_phase_iterations.get(phase, 0)
+
+    def _gc26_phase_counter(self, phase: int) -> int:
+        data = self._read(self._runtime(GC26_PHASE_COUNTERS + phase * 4), 4)
+        if len(data) != 4:
+            raise Rejected("PCode diagnostic phase counter is truncated")
+        value = int.from_bytes(data, "little", signed=False)
+        if value > 0x7FFF:
+            raise Rejected("PCode diagnostic phase counter is invalid")
+        return value
+
+    def _gc26_phase_base(self, phase: int) -> int:
+        data = self._read(self._runtime(GC26_PHASE_BASES + phase * 4), 4)
+        if len(data) != 4:
+            raise Rejected("PCode diagnostic phase base is truncated")
+        value = int.from_bytes(data, "little", signed=False)
+        if value > 0x7FFF:
+            raise Rejected("PCode diagnostic phase base is invalid")
+        return value
+
+    def _gc26_operand_context(
+        self,
+        pcode_pointer: int,
+        operand_pointer: int,
+    ) -> tuple[int, int, int, int]:
+        """Read one PCode operand at the closed GC/2.6 layout."""
+
+        if pcode_pointer <= 0 or operand_pointer <= 0:
+            raise Rejected("PCode rewrite has a null identity")
+        header = self._read(pcode_pointer + 0x22, 2)
+        operand = self._read(operand_pointer, 6)
+        if len(header) != 2 or len(operand) != 6:
+            raise Rejected("PCode rewrite record is truncated")
+        count = int.from_bytes(header, "little", signed=True)
+        delta = operand_pointer - (pcode_pointer + 0x24)
+        if not 1 <= count <= 256 or delta < 0 or delta % 0xC:
+            raise Rejected("PCode rewrite operand chronology is invalid")
+        ordinal = delta // 0xC
+        if ordinal >= count:
+            raise Rejected("PCode rewrite operand ordinal is invalid")
+        old_index = int.from_bytes(operand[4:6], "little", signed=True)
+        flags = int.from_bytes(operand[2:4], "little", signed=False)
+        if not 0 <= old_index <= 0x7FFF:
+            raise Rejected("PCode rewrite operand index is invalid")
+        return ordinal, count, flags, old_index
+
+    def _capture_gc26_phase_diagnostic(
+        self,
+        hook_id: str,
+        thread_id: int,
+        spec: Mapping[str, str],
+    ) -> Mapping[str, Any]:
+        key = (str(spec["post"]), int(thread_id))
+        if spec["edge"] == "pre":
+            if key in self._pending_pcode_diagnostics:
+                raise Rejected("nested PCode phase diagnostic")
+            phase = self.read_register(thread_id, "eax") & 0xFF
+            stack_pointer = self.read_register(thread_id, "esp")
+            stack_phase = self._read(stack_pointer + 4, 1)
+            if len(stack_phase) != 1 or stack_phase[0] != phase or phase > 4:
+                raise Rejected("PCode phase register/stack context conflicts")
+            count = self._gc26_phase_counter(phase)
+            base_count = self._gc26_phase_base(phase)
+            iteration = self._pcode_phase_iterations.get(phase, 0)
+            row = {
+                "phase": phase,
+                "iteration": iteration,
+                "count_before": count,
+                "base_count": base_count,
+            }
+            self._pending_pcode_diagnostics[key] = row
+            return {"status": "PENDING", **row}
+        row = self._pending_pcode_diagnostics.pop(key, None)
+        if row is None:
+            return {"status": "NOOP"}
+        phase, iteration = self._gc26_phase_context()
+        if (phase, iteration) != (row["phase"], row["iteration"]):
+            raise Rejected("PCode phase pre/post identity conflicts")
+        count_after = self._gc26_phase_counter(phase)
+        self._pcode_phase_iterations[phase] = iteration + 1
+        return {
+            "status": "CAPTURED",
+            "phase": phase,
+            "iteration": iteration,
+            "count_before": row["count_before"],
+            "count_after": count_after,
+            "base_count": row["base_count"],
+        }
+
+    def _capture_gc26_rewrite_diagnostic(
+        self,
+        hook_id: str,
+        thread_id: int,
+        spec: Mapping[str, str],
+    ) -> Mapping[str, Any]:
+        key = (str(spec["post"]), int(thread_id))
+        stage = str(spec["stage"])
+        if spec["edge"] == "pre":
+            if key in self._pending_pcode_diagnostics:
+                raise Rejected("nested PCode rewrite diagnostic")
+            if stage == "alias_union":
+                minimum = _signed_field(self.read_register(thread_id, "ecx") & 0xFFFF, 16)
+                maximum = _signed_field(self.read_register(thread_id, "edi") & 0xFFFF, 16)
+                alias_pointer = self.read_register(thread_id, "eax")
+                stack_pointer = self.read_register(thread_id, "esp")
+                pcode_data = self._read(stack_pointer + 0xC, 4)
+                pcode_pointer = int.from_bytes(pcode_data, "little", signed=False)
+                if alias_pointer <= 0 or pcode_pointer <= 0:
+                    raise Rejected("PCode alias union has a null identity")
+                if not 0 <= minimum <= 0x7FFF or not 0 <= maximum <= 0x7FFF or minimum == maximum:
+                    raise Rejected("PCode alias union tuple is invalid")
+                # The write is [EAX + EDI*2] = CX.  Keep the pre-value only as
+                # an internal check; no native address crosses the event bus.
+                before = self._read(alias_pointer + maximum * 2, 2)
+                if len(before) != 2:
+                    raise Rejected("PCode alias union map is truncated")
+                phase, iteration = self._gc26_phase_context()
+                row = {
+                    "pcode_pointer": pcode_pointer,
+                    "alias_pointer": alias_pointer,
+                    "phase": phase,
+                    "iteration": iteration,
+                    "old_index": maximum,
+                    "new_index": minimum,
+                }
+            elif stage == "canonical_rewrite":
+                operand_pointer = self.read_register(thread_id, "ecx")
+                pcode_pointer = self.read_register(thread_id, "edi")
+                new_index = _signed_field(self.read_register(thread_id, "eax") & 0xFFFF, 16)
+                ordinal, count, flags, old_index = self._gc26_operand_context(
+                    pcode_pointer, operand_pointer
+                )
+                if old_index == new_index or not 0 <= new_index <= 0x7FFF:
+                    raise Rejected("PCode canonical rewrite tuple is invalid")
+                phase, iteration = self._gc26_phase_context()
+                row = {
+                    "pcode_pointer": pcode_pointer,
+                    "operand_pointer": operand_pointer,
+                    "phase": phase,
+                    "iteration": iteration,
+                    "old_index": old_index,
+                    "new_index": new_index,
+                    "operand_ordinal": ordinal,
+                    "operand_count": count,
+                    "operand_flags": flags,
+                }
+            elif stage == "split_rewrite":
+                operand_pointer = self.read_register(thread_id, "edx")
+                pcode_pointer = self.read_register(thread_id, "ebp")
+                old_index = _signed_field(self.read_register(thread_id, "edi") & 0xFFFF, 16)
+                new_index = _signed_field(self.read_register(thread_id, "ebx") & 0xFFFF, 16)
+                ordinal = self.read_register(thread_id, "esi")
+                parsed_ordinal, count, flags, stored_old = self._gc26_operand_context(
+                    pcode_pointer, operand_pointer
+                )
+                if ordinal != parsed_ordinal or stored_old != old_index:
+                    raise Rejected("PCode split rewrite register/operand context conflicts")
+                if old_index == new_index or not 0 <= new_index <= 0x7FFF:
+                    raise Rejected("PCode split rewrite tuple is invalid")
+                phase, iteration = self._gc26_phase_context()
+                row = {
+                    "pcode_pointer": pcode_pointer,
+                    "operand_pointer": operand_pointer,
+                    "phase": phase,
+                    "iteration": iteration,
+                    "old_index": old_index,
+                    "new_index": new_index,
+                    "operand_ordinal": ordinal,
+                    "operand_count": count,
+                    "operand_flags": flags,
+                }
+            else:
+                raise Rejected("unsupported GC/2.6 PCode diagnostic stage")
+            self._pending_pcode_diagnostics[key] = row
+            return {"status": "PENDING", **row}
+        row = self._pending_pcode_diagnostics.pop(key, None)
+        if row is None:
+            return {"status": "NOOP"}
+        phase, iteration = self._gc26_phase_context()
+        if (phase, iteration) != (row["phase"], row["iteration"]):
+            raise Rejected("PCode rewrite pre/post identity conflicts")
+        if stage == "alias_union":
+            stored = self._read(int(row["alias_pointer"]) + int(row["old_index"]) * 2, 2)
+            observed = int.from_bytes(stored, "little", signed=True) if len(stored) == 2 else -1
+            if observed != row["new_index"]:
+                raise Rejected("PCode alias union post-write value mismatch")
+        else:
+            stored = self._read(int(row["operand_pointer"]) + 4, 2)
+            observed = int.from_bytes(stored, "little", signed=True) if len(stored) == 2 else -1
+            if observed != row["new_index"]:
+                raise Rejected("PCode rewrite post-write value mismatch")
+        return {"status": "CAPTURED", **row}
+
+    def _capture_pcode_diagnostic(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
+        spec = _pcode_diagnostic_spec(hook_id)
+        profile_ids = {
+            str(row["id"])
+            for row in _hooks_for_compiler(self.compiler_sha256 or "")
+            if row.get("role") in {"pcode_rewrite_diagnostic", "pcode_phase_diagnostic"}
+        }
+        if spec is None or hook_id not in profile_ids or self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("unowned PCode diagnostic hook")
+        if spec["event_kind"] == "pcode_phase":
+            return self._capture_gc26_phase_diagnostic(hook_id, thread_id, spec)
+        return self._capture_gc26_rewrite_diagnostic(hook_id, thread_id, spec)
+
     def _get_context(self, handle: int) -> Any:
         context_type = getattr(self.native, "WOW64_CONTEXT", None)
         if context_type is None:
@@ -8404,11 +9035,20 @@ class NativeWow64Backend:
     def capture_pcode(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
         """Capture only a hook-bound PCode stage, never guessed ownership."""
 
-        hook = HOOK_BY_ID.get(str(hook_id))
+        hook = next(
+            (
+                row
+                for row in _hooks_for_compiler(self.compiler_sha256 or "")
+                if str(row["id"]) == str(hook_id)
+            ),
+            None,
+        )
         if hook is None or hook.get("lane") != "pcode" or hook.get("role") == "regalloc":
             raise Rejected("unowned PCode hook")
         if hook.get("role") == "pcode_color_diagnostic":
             return self._capture_pcode_color(str(hook_id), int(thread_id))
+        if hook.get("role") in {"pcode_rewrite_diagnostic", "pcode_phase_diagnostic"}:
+            return self._capture_pcode_diagnostic(str(hook_id), int(thread_id))
         # A stage marker is useful chronology, but it is not direct ownership
         # evidence.  The latter is emitted only by capture_regalloc after a
         # one-to-one Object/IG/vreg table has been validated.
@@ -8435,9 +9075,18 @@ class NativeWow64Backend:
         return result
 
     def _capture_pcode_color(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
-        if self.compiler_sha256 != GC27_COMPILER_SHA256:
+        pair = _pcode_color_pair(str(hook_id))
+        profile_hook_ids = {
+            str(row["id"])
+            for row in _hooks_for_compiler(self.compiler_sha256 or "")
+            if row.get("role") == "pcode_color_diagnostic"
+        }
+        if pair is None or str(hook_id) not in profile_hook_ids:
+            raise Rejected("unowned PCode color hook")
+        pre_hook_id, post_hook_id = pair
+        if self.compiler_sha256 not in {GC26_COMPILER_SHA256, GC27_COMPILER_SHA256}:
             raise Rejected("PCode color hook is not authenticated for this compiler")
-        if hook_id == "pcode_color_pre":
+        if hook_id == pre_hook_id:
             if thread_id in self._pending_pcode_color:
                 raise Rejected("nested PCode color writeback")
             operand_pointer = self.read_register(thread_id, "edx")
@@ -8469,6 +9118,7 @@ class NativeWow64Backend:
                 "operand_ordinal": ordinal,
                 "operand_count": operand_count,
                 "operand_kind": int(operand[0]),
+                "operand_flags": int.from_bytes(operand[2:4], "little", signed=False),
                 "register_class": int(operand[1]),
                 "operand_index": operand_index,
                 "final_color": final_color,
@@ -8480,7 +9130,7 @@ class NativeWow64Backend:
                 raise Rejected("PCode color operand/result conflicts with its IG node")
             self._pending_pcode_color[thread_id] = {**row, "operand_pointer": operand_pointer}
             return {"status": "PENDING", **row}
-        if hook_id != "pcode_color_post":
+        if hook_id != post_hook_id:
             raise Rejected("unowned PCode color hook")
         row = self._pending_pcode_color.pop(thread_id, None)
         if row is None:
@@ -8491,12 +9141,19 @@ class NativeWow64Backend:
         return {"status": "CAPTURED", **row}
 
     def capture_machine_emission(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
-        """Read the authenticated GC/2.7 post-encoder machine event."""
+        """Read an authenticated post-encoder machine event."""
 
-        hook = HOOK_BY_ID.get(str(hook_id))
+        hook = next(
+            (
+                row
+                for row in _hooks_for_compiler(self.compiler_sha256 or "")
+                if str(row["id"]) == str(hook_id)
+            ),
+            None,
+        )
         if hook is None or hook.get("role") != "machine_emit":
             raise Rejected("unowned machine-emission hook")
-        if self.compiler_sha256 != GC27_COMPILER_SHA256:
+        if self.compiler_sha256 not in {GC26_COMPILER_SHA256, GC27_COMPILER_SHA256}:
             raise Rejected("machine-emission hook is not authenticated for this compiler")
         pcode_pointer = self.read_register(thread_id, "ebx")
         emitted_offset = self.read_register(thread_id, "ebp")
@@ -8507,9 +9164,9 @@ class NativeWow64Backend:
         if not 0 <= opcode_enum <= 0x1D4:
             return {"status": "UNKNOWN", "reason": "unsupported machine operand"}
         descriptor = self._runtime(
-            GC27_OPCODE_DESCRIPTOR_TABLE
-            + opcode_enum * GC27_OPCODE_DESCRIPTOR_STRIDE
-            + GC27_OPCODE_DESCRIPTOR_BASE_OFFSET
+            PCODE_OPCODE_DESCRIPTOR_TABLE
+            + opcode_enum * PCODE_OPCODE_DESCRIPTOR_STRIDE
+            + PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET
         )
         descriptor_base = int.from_bytes(self._read(descriptor, 4), "little", signed=False)
         return {
@@ -9247,7 +9904,7 @@ def unknown_result(reason: str) -> dict[str, Any]:
 
 
 def self_test() -> dict[str, Any]:
-    if len(LEGACY_HOOKS) != 8 or len(GC26_HOOKS) != 13 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 22:
+    if len(LEGACY_HOOKS) != 8 or len(GC26_HOOKS) != 24 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 33:
         raise Rejected("hook union is not closed")
     if tuple(HOOKS) not in (LEGACY_HOOKS, GC26_HOOKS, GC27_HOOKS):
         raise Rejected("private backend hook patch does not match a closed profile")
@@ -9263,6 +9920,34 @@ def self_test() -> dict[str, Any]:
     else:
         raise Rejected("duplicate-key parser accepted a duplicate")
     return {"schema": f"{SCHEMA}/self-test", "status": "OK", "tests": 3, "diagnostic_only": True, "board_admission": False}
+
+
+def _cli_result(result: Mapping[str, Any], *, full_output: bool) -> Mapping[str, Any]:
+    """Project complete envelopes for display without changing API/file results."""
+
+    if full_output or result.get("schema") != SCHEMA or not isinstance(result.get("events"), list):
+        return result
+    context = result["context"]
+    # Successful envelope validation binds this published filename to the
+    # authenticated request directory. No artifact is reopened or rewritten.
+    envelope_path = Path(context["request"]["path"]).parent / "same-session.envelope.json"
+    return {
+        "schema": f"{SCHEMA}/cli-summary",
+        "envelope_schema": result["schema"],
+        "status": result["status"],
+        "diagnostic_only": result["diagnostic_only"],
+        "board_admission": result["board_admission"],
+        "exactness_claim": result["exactness_claim"],
+        "authority_advanced": result["authority_advanced"],
+        "session_id": context["session_id"],
+        "function": context["function"],
+        "envelope_path": str(envelope_path),
+        "envelope_canonical_sha256": result["envelope_sha256"],
+        "event_count": result["event_count"],
+        "unknown_count": len(result["unknown"]),
+        "outputs": result["outputs"],
+        "full_output_hint": "Use --full-output to print the complete envelope; file artifacts are unchanged.",
+    }
 
 
 def parser() -> argparse.ArgumentParser:
@@ -9315,7 +10000,15 @@ def parser() -> argparse.ArgumentParser:
     normalize_spans.add_argument("--template", type=Path, required=True)
     normalize_spans.add_argument("--binding-plan", type=Path, required=True)
     normalize_spans.add_argument("--output", type=Path, required=True)
-    sub.add_parser("self-test")
+    self_check = sub.add_parser("self-test")
+    for command_parser in (
+        prepare, preflight, capture, validate, causal, seal_spans, normalize_spans, self_check,
+    ):
+        command_parser.add_argument(
+            "--full-output",
+            action="store_true",
+            help="print complete results (capture envelopes are summarized by default)",
+        )
     return parser
 
 
@@ -9376,7 +10069,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         else:
             result = self_test()
-        print(json.dumps(result, indent=2, sort_keys=True))
+        print(json.dumps(_cli_result(result, full_output=args.full_output), indent=2, sort_keys=True))
         return 0 if result.get("status") in {"OK", "READY", "CAPTURED", "CAPTURED_UNKNOWN_OWNERSHIP"} else 2
     except (OSError, Rejected, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps(unknown_result(str(exc)), indent=2, sort_keys=True))

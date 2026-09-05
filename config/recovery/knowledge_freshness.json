@@ -1,6 +1,19 @@
 {
   "schema_version": 1,
   "cards": {
+    "gc26-temporary-pool-reuse-assignment-result": {
+      "status": "experimental",
+      "validated_commit": "da9231c8768c26430a2337038af8d7112114fa6d",
+      "validated_at": "2026-09-05",
+      "watch_paths": [
+        "config/recovery/compiler_patterns.json",
+        "tools/mwcc_temp_pool_reuse.py",
+        "tools/capsule_same_session_capture.py",
+        "tools/tests/test_mwcc_temp_pool_reuse.py"
+      ],
+      "supersedes": [],
+      "superseded_by": null
+    },
     "gc132-declaration-chronology": {
       "status": "active",
       "validated_commit": "bf45d86dda0039be430544f4712cde069aaf59d3",

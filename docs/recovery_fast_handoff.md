@@ -133,3 +133,29 @@ scopes; fixing them reduced 109 mismatching rows to 81. The early nonvoid bare
 return is documented target-specific portability debt, not portable C proof.
 Inspect actual control-flow relationships before changing volatile register
 owners. Keep observed branch facts distinct from proposed source repairs.
+
+## Diagnose reused compiler temporary IDs across distant mismatches
+
+```text
+python tools/mwcc_temp_pool_reuse.py --envelope CURRENT_CAPTURE --report CURRENT_STRICT_REPORT --function NAME
+```
+
+Use an already reproduced GC/2.6 capture. This read-only diagnostic finds
+observed temporary-ID resets, conflicting target register roles, and bounded
+suffix-offset hypotheses. It hashes its inputs, caps output at 256 KiB, and
+does not create source, compile, or confer source ownership. When the report
+omits raw instruction words, report-word identity is explicitly unverified;
+the caller must independently bind the report to the captured object.
+
+SNpcMoveExec Pass 5 exposed a native statement-boundary reset after the
+temporary counter exceeded 256. A unique +1 suffix beginning at ID 165
+resolved 32 conflicting register requirements across two distant regions.
+Putting the existing stack-backed eligibility counter inside its zero-assignment
+chain created the missing real expression result. Independent recompilation
+closed all 79 remaining rows: 4,488 bytes, zero strict/data differences, and
+84 unchanged siblings. The successful-source trace confirmed the new temporary
+and its coalescing. This is a reusable diagnosis, not a universal chain spelling.
+
+Same-session capture commands now print compact summaries by default while
+preserving complete evidence files. Use `--full-output` only when a complete
+CLI payload is required; the Python APIs and saved event streams are unchanged.
