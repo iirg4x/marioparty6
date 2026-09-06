@@ -19,7 +19,7 @@ import re
 import sys
 import tempfile
 import time
-from typing import Any
+from typing import Any, Callable
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -31,6 +31,7 @@ from tools import recovery_object_inventory as objects
 
 SCHEMA = "recovery_candidate_evaluation/v1"
 BATCH_SCHEMA = "recovery_evaluation_batch/v1"
+BATCH_EVENT_SCHEMA = "recovery_evaluation_event/v1"
 LIMIT = 512 * 1024
 SEEN_LIMIT = 128
 BATCH_MAX_JOBS = 8
@@ -1006,10 +1007,36 @@ def _batch_improvement_rows(result: dict) -> int:
     return total
 
 
+def _batch_result_event(*, root: Path, job: dict, result: dict, path: Path,
+                        baseline: dict, drift_reasons: list[str]) -> dict:
+    # Notify only after the per-job result is durable. This is early diagnostic
+    # delivery, not a substitute for final drift checks or composition proof.
+    defaults = {"status": "unknown", "functions": job["functions"], "compiler_runs": 0,
+                "objdiff_runs": 0, "retention_ready": False, "retained": False,
+                "seconds": None, "cleanup_errors": []}
+    summary = _dispatch_summary(defaults | result)
+    event = {"schema": BATCH_EVENT_SCHEMA, "event": "job_completed", "id": job["id"],
+             "status": result.get("status", "unknown"), "functions": job["functions"],
+             "result": _batch_result_descriptor(root, path), "baseline_index": baseline,
+             "summary": summary, "diagnostic_only": True, "authority_advanced": False,
+             "adoption_ready": False, "batch_complete": False,
+             "drift_detected_so_far": bool(drift_reasons)}
+    if len(frontier.canonical(event)) > 16 * 1024:
+        event["summary"] = {"status": event["status"], "details_in_result": True,
+                            "compiler_runs": result.get("compiler_runs", 0),
+                            "objdiff_runs": result.get("objdiff_runs", 0)}
+    if len(frontier.canonical(event)) > 16 * 1024:
+        raise ValueError("batch result notification exceeds compact event limit; use durable result")
+    # A consumer may annotate its event; never expose mutable frozen bindings
+    # or evaluator payloads shared with the scheduler.
+    return frontier.load_json(frontier.canonical(event))
+
+
 def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
                    objdiff: Path, readelf: Path, command_json: Path | None = None,
                    compiler_tools: list[Path] | None = None, workers: int = 2,
-                   timeout: float = 120) -> dict:
+                   timeout: float = 120,
+                   on_result: Callable[[dict], None] | None = None) -> dict:
     """Measure a bounded batch of independent candidates using ``evaluate``.
 
     The manifest and every input are frozen before the first worker is launched.
@@ -1029,6 +1056,8 @@ def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
         raise ValueError(f"workers must be between 1 and {BATCH_MAX_WORKERS}")
     if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("positive finite batch deadline required")
+    if on_result is not None and not callable(on_result):
+        raise ValueError("on_result must be callable")
     _, manifest_desc, jobs = _batch_manifest(root, manifest)
     if bool(command_json) and all(job["candidate_object"] is not None for job in jobs):
         # A supplied common recipe is harmless for replay, but it still becomes
@@ -1083,6 +1112,24 @@ def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
                                  compiler_tools, objdiff, readelf, base)
     pending = list(canonical)
     active = {}
+    notification_errors: list[str] = []
+    notifications_enabled = on_result is not None
+
+    def notify(job: dict) -> None:
+        nonlocal notifications_enabled
+        if not notifications_enabled:
+            return
+        try:
+            event = _batch_result_event(root=root, job=job, result=results[job["id"]],
+                                        path=result_paths[job["id"]], baseline=snapshot["index"],
+                                        drift_reasons=drift_reasons)
+            on_result(event)
+        except Exception as exc:
+            # A broken consumer/pipe must not mask a measured outcome or stop
+            # siblings. Keep the ordinary durable batch result and stop writes.
+            notification_errors.append(f"{type(exc).__name__}: {exc}"[:1000])
+            notifications_enabled = False
+
     def schedule(pool: ThreadPoolExecutor) -> None:
         nonlocal drift_reasons
         while pending and len(active) < workers and not drift_reasons:
@@ -1097,6 +1144,7 @@ def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
         schedule(pool)
         while active:
             done, _ = wait(tuple(active), return_when=FIRST_COMPLETED)
+            completed_jobs = []
             for future in done:
                 job = active.pop(future)
                 try:
@@ -1108,14 +1156,18 @@ def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
                 if not result_paths[job["id"]].is_file():
                     _atomic(result_paths[job["id"]], result)
                 results[job["id"]] = result
+                completed_jobs.append(job)
             if not drift_reasons:
                 drift_reasons = _batch_drift(root, index, manifest, snapshot, jobs, command_json,
                                              compiler_tools, objdiff, readelf, base)
+            for job in completed_jobs:
+                notify(job)
             schedule(pool)
     for job in pending:
         result = _batch_failure(job, "batch input drift stopped scheduling", "not_scheduled")
         _atomic(result_paths[job["id"]], result)
         results[job["id"]] = result
+        notify(job)
     # Fan out aliases only after their canonical result is stable.
     for job in jobs:
         if job["id"] in aliases:
@@ -1125,6 +1177,7 @@ def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
                                          canonical_job["id"], root)
             _atomic(result_paths[job["id"]], result)
             results[job["id"]] = result
+            notify(job)
     final_drift = _batch_drift(root, index, manifest, snapshot, jobs, command_json,
                                compiler_tools, objdiff, readelf, base)
     drift_reasons = list(dict.fromkeys(drift_reasons + final_drift))
@@ -1171,6 +1224,8 @@ def evaluate_batch(*, root: Path, index: Path, manifest: Path, out: Path,
                "composition": None, "compiler_runs": sum(r["compiler_runs"] for r in records),
                "objdiff_runs": sum(r["objdiff_runs"] for r in records),
                "seconds": time.monotonic() - started}
+    if notification_errors:
+        summary["notification_errors"] = notification_errors
     _atomic(out, summary)
     return summary
 
@@ -1185,17 +1240,33 @@ def add_batch_arguments(parser: Any) -> None:
     parser.add_argument("--compiler-tool", type=Path, action="append", dest="compiler_tools")
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--stream", action="store_true",
+                        help="emit bounded JSONL results as jobs finish, then the final batch summary")
 
 
 def dispatch_batch(args: Any) -> int:
     values = vars(args).copy()
     values.pop("action", None)
+    stream = values.pop("stream", False)
+    if stream:
+        values["on_result"] = lambda event: print(json.dumps(event, sort_keys=True), flush=True)
     result = evaluate_batch(**values)
     summary = {key: result[key] for key in
                ("status", "drift_detected", "drift_reasons", "compiler_runs", "objdiff_runs", "retention_ready", "seconds")}
     summary.update(jobs=[{"id": row["id"], "status": row["status"]} for row in result["jobs"]],
                    best_positive_candidates=result["best_positive_candidates"])
-    print(json.dumps(summary, sort_keys=True))
+    if stream:
+        summary.update(schema=BATCH_EVENT_SCHEMA, event="batch_completed", batch_complete=True,
+                       result=_descriptor(Path(os.path.abspath(Path(args.root) / args.out))),
+                       adoption_ready=False, authority_advanced=False)
+    if result.get("notification_errors"):
+        summary["notification_errors"] = result["notification_errors"]
+    try:
+        print(json.dumps(summary, sort_keys=True), flush=stream)
+    except OSError:
+        if not stream:
+            raise
+        # Final durable result already exists even when the output reader left.
     return 2 if result["status"] in {"failed", "drifted"} else 0
 
 

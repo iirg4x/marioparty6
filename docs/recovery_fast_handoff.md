@@ -125,6 +125,18 @@ python tools/recovery_frontier.py --root OWNER_ROOT evaluate-batch \
   --workers 2 --timeout 120 --out build/recovery/batches/current.json
 ```
 
+Add `--stream` to receive flushed JSONL `job_completed` events as individual
+results become durable, followed by a `batch_completed` summary. An owner can
+reduce the finished candidate's compact first-mismatch/physical-progress result
+while other measurements run; it need not wait for the slowest job to start
+analysis. Each event includes the result path/hash and frozen baseline binding.
+Early events are diagnostic-only: keep the live source/index frozen until the
+final drift check, then compose and re-prove compatible gains. Do not treat an
+early positive result as permission to overwrite another worker's baseline.
+Events are capped at 16 KiB; detailed evidence stays in the compact result file.
+A failed notification consumer cannot cancel siblings or erase their durable
+results; the final batch artifact records `notification_errors`.
+
 The batch accepts at most eight jobs and one to three workers. Independent
 measurements overlap; compiler execution still uses the existing owner lock,
 while strict/data comparison runs concurrently. Identical source bytes with the
