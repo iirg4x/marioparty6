@@ -35,6 +35,9 @@ LIMIT = 512 * 1024
 SEEN_LIMIT = 128
 BATCH_MAX_JOBS = 8
 BATCH_MAX_WORKERS = 3
+_DIAGNOSTIC_FUNCTION_LIMIT = 3
+_DIAGNOSTIC_CONTEXT_LIMIT = 2
+_EVALUATE_STDOUT_LIMIT = 12 * 1024
 _BATCH_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 _BATCH_DEVICE_IDS = {"CON", "PRN", "AUX", "NUL"} | {
     f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)
@@ -307,6 +310,173 @@ def _focus_evidence(document: dict, functions: list[str]) -> dict:
     return result
 
 
+def _diagnostic_rows(document: dict, name: str) -> tuple[list[dict], list[dict]] | None:
+    sides = {side: frontier.focus._symbols(document, side, "changed-result diagnostic")
+             for side in ("left", "right")}
+    target = frontier._stack_function(sides["left"], name, "target")
+    candidate = frontier._stack_function(sides["right"], name, "candidate")
+    if target is None or candidate is None:
+        return None
+    return (frontier.focus._rows(target, name), frontier.focus._rows(candidate, name))
+
+
+def _diagnostic_mismatches(target: list[dict], candidate: list[dict]) -> dict[int, tuple[Any, Any]]:
+    result: dict[int, tuple[Any, Any]] = {}
+    for index in range(max(len(target), len(candidate))):
+        target_payload = frontier._diagnose_payload(target[index] if index < len(target) else None, index)
+        candidate_payload = frontier._diagnose_payload(candidate[index] if index < len(candidate) else None, index)
+        if target_payload != candidate_payload:
+            result[index] = (target_payload, candidate_payload)
+    return result
+
+
+def _diagnostic_context(target: list[dict], candidate: list[dict], center: int) -> list[dict]:
+    result = []
+    for index in (center - 1, center + 1):
+        if 0 <= index < max(len(target), len(candidate)):
+            result.append({"row": index,
+                           "target": frontier._diagnose_row(target[index] if index < len(target) else None, index),
+                           "candidate": frontier._diagnose_row(candidate[index] if index < len(candidate) else None, index)})
+    return result[:_DIAGNOSTIC_CONTEXT_LIMIT]
+
+
+def _compact_first_mismatch(summary: dict | None) -> dict | None:
+    first = summary.get("first_instruction_mismatch") if isinstance(summary, dict) else None
+    if not isinstance(first, dict):
+        return None
+    return {key: first[key] for key in ("row", "kind", "target", "candidate") if key in first}
+
+
+def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dict],
+                                after_documents: dict[str, dict], strict_path: Path,
+                                data_path: Path, metric_changes: list[dict],
+                                object_comparison: dict, reports_retained: bool = False) -> dict:
+    changes_by_function: dict[str, dict[str, dict]] = {}
+    for change in metric_changes:
+        if isinstance(change, dict) and isinstance(change.get("function"), str):
+            changes_by_function.setdefault(change["function"], {})[change.get("channel", "unknown")] = change
+    object_rows = object_comparison.get("functions", {}) if isinstance(object_comparison, dict) else {}
+    if not isinstance(object_rows, dict):
+        object_rows = {}
+    for name, row in object_rows.items():
+        if isinstance(row, dict) and row.get("raw_equal_base") is False:
+            changes_by_function.setdefault(name, {})
+    raw_names = [name for name, row in object_rows.items()
+                 if isinstance(row, dict) and row.get("raw_equal_base") is False]
+    names = raw_names + [name for name in changes_by_function if name not in raw_names]
+    selected = names[:_DIAGNOSTIC_FUNCTION_LIMIT]
+    result: dict[str, Any] = {"diagnostic_only": True, "status": "none" if not names else "bounded",
+                              "affected_function_count": len(names), "truncated": len(names) > len(selected),
+                              "functions": []}
+    for name in selected:
+        object_row = object_rows.get(name, {}) if isinstance(object_rows, dict) else {}
+        if not isinstance(object_row, dict):
+            object_row = {}
+        if "raw_equal_base" not in object_row:
+            object_relation = "unknown"
+        elif not object_row["raw_equal_base"]:
+            object_relation = "raw_changed"
+        else:
+            base_relocations = object_row.get("base_relocations")
+            candidate_relocations = object_row.get("candidate_relocations")
+            if (isinstance(base_relocations, dict) and isinstance(candidate_relocations, dict)
+                    and isinstance(base_relocations.get("sha256"), str)
+                    and isinstance(candidate_relocations.get("sha256"), str)):
+                object_relation = ("relocation_only" if base_relocations["sha256"] != candidate_relocations["sha256"]
+                                   else "unchanged")
+            else:
+                object_relation = "unknown"
+        item: dict[str, Any] = {"function": name, "object_relation": object_relation,
+                                "metric_changes": {channel: {"before": change.get("before"), "after": change.get("after")}
+                                                    for channel, change in changes_by_function[name].items()},
+                                "diagnose_argv": (["python", "tools/recovery_frontier.py", "--root", str(root),
+                                                   "diagnose", "--strict", str(strict_path), "--data", str(data_path),
+                                                   "--function", name] if reports_retained else None),
+                                "diagnose_argv_available": reports_retained, "channels": {}}
+        for channel, path in (("strict", strict_path), ("data", data_path)):
+            after = after_documents.get(channel)
+            before = baseline_documents.get(channel)
+            channel_item: dict[str, Any] = {}
+            try:
+                after_rows = _diagnostic_rows(after, name) if after is not None else None
+                before_rows = _diagnostic_rows(before, name) if before is not None else None
+                if after_rows is None or before_rows is None:
+                    raise ValueError("report function missing")
+                before_target, before_candidate = before_rows
+                after_target, after_candidate = after_rows
+                after_summary = frontier._diagnose_rows(after_target, after_candidate)
+                before_summary = frontier._diagnose_rows(before_target, before_candidate)
+                channel_item["current_first_instruction_mismatch"] = _compact_first_mismatch(after_summary)
+                channel_item["existing_first_instruction_mismatch"] = _compact_first_mismatch(before_summary)
+                if len(before_target) != len(after_target) or len(before_candidate) != len(after_candidate):
+                    raise ValueError("aligned report row count changed")
+                for index in range(len(before_target)):
+                    if frontier._diagnose_payload(before_target[index], index) != frontier._diagnose_payload(after_target[index], index):
+                        raise ValueError("target code stream changed")
+                old = _diagnostic_mismatches(before_target, before_candidate)
+                new = _diagnostic_mismatches(after_target, after_candidate)
+                introduced = sorted(set(new) - set(old))
+                changed_existing = sorted(index for index in set(new) & set(old) if new[index] != old[index])
+                if introduced:
+                    row = introduced[0]
+                    channel_item.update(status="new_code_difference", row=row,
+                                        mismatch={"target": frontier._diagnose_row(after_target[row], row),
+                                                  "candidate": frontier._diagnose_row(after_candidate[row], row)},
+                                        context=_diagnostic_context(after_target, after_candidate, row))
+                elif changed_existing:
+                    channel_item.update(status="unknown", reason="existing row changed; not_newly_proven")
+                elif new:
+                    channel_item.update(status="existing", reason="canonical code mismatch predates candidate",
+                                        row=min(new))
+                else:
+                    channel_item.update(status="none")
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError, IndexError, AttributeError) as exc:
+                channel_item.update(status="unknown", reason=f"{str(exc)[:180]}; not_newly_proven")
+            item["channels"][channel] = channel_item
+        result["functions"].append(item)
+    result["unknown_count"] = sum(
+        1 for item in result["functions"] for channel in item["channels"].values()
+        if channel.get("status") == "unknown"
+    )
+    return result
+
+
+def _dispatch_summary(result: dict) -> dict:
+    summary = {key: result[key] for key in
+               ("status", "functions", "compiler_runs", "objdiff_runs", "retention_ready", "retained", "seconds", "cleanup_errors")}
+    summary.update(gains=result.get("gains", [])[:8], regressions=result.get("regressions", [])[:8],
+                   regression_count=len(result.get("regressions", [])), reason=result.get("reason"),
+                   changed_result_diagnostics=result.get("changed_result_diagnostics"))
+    encoded = json.dumps(summary, sort_keys=True).encode("utf-8")
+    if len(encoded) > _EVALUATE_STDOUT_LIMIT:
+        diagnostic = result.get("changed_result_diagnostics") or {}
+        summary["changed_result_diagnostics"] = {
+            "diagnostic_only": True, "status": diagnostic.get("status", "unknown"),
+            "affected_function_count": diagnostic.get("affected_function_count", 0),
+            "unknown_count": diagnostic.get("unknown_count", 0), "truncated": True,
+        }
+    if len(json.dumps(summary, sort_keys=True).encode("utf-8")) > _EVALUATE_STDOUT_LIMIT:
+        diagnostic = result.get("changed_result_diagnostics") or {}
+        summary = {
+            "status": str(result.get("status", "unknown"))[:128],
+            "functions": [str(value)[:96] for value in result.get("functions", [])[:8]],
+            "function_count": len(result.get("functions", [])),
+            "compiler_runs": result.get("compiler_runs", 0), "objdiff_runs": result.get("objdiff_runs", 0),
+            "retention_ready": bool(result.get("retention_ready", False)),
+            "retained": bool(result.get("retained", False)), "seconds": result.get("seconds"),
+            "cleanup_error_count": len(result.get("cleanup_errors", [])),
+            "gains_count": len(result.get("gains", [])), "regressions_count": len(result.get("regressions", [])),
+            "reason": str(result.get("reason") or "")[:500],
+            "changed_result_diagnostics": {
+                "diagnostic_only": True, "status": diagnostic.get("status", "unknown"),
+                "affected_function_count": diagnostic.get("affected_function_count", 0),
+                "unknown_count": diagnostic.get("unknown_count", 0), "truncated": True,
+            },
+            "stdout_truncated": True,
+        }
+    return summary
+
+
 def _cleanup(directory: Path, root: Path) -> list[str]:
     """Remove only this invocation's explicit, flat temporary output directory."""
     errors = []
@@ -440,9 +610,11 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                     for task in tasks:
                         task.result()
                 summaries = {}
+                after_documents = {}
                 result["next_mismatch_evidence"] = {}
                 for channel, path in (("strict", strict_path), ("data", data_path)):
                     document = frontier.load_json(path.read_bytes())
+                    after_documents[channel] = document
                     _validate_report_objects(document, target_inventory, candidate_inventory)
                     summaries[channel] = frontier.summarize(document, channel)
                     result[channel + "_report"] = _descriptor(path)
@@ -450,6 +622,26 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                     result["next_mismatch_evidence"][channel] = _focus_evidence(document, functions)
                 result.update(_classify(base["functions"], base["data_functions"],
                                         summaries["strict"], summaries["data"], comparison, functions))
+                baseline_documents = {}
+                try:
+                    for channel in ("strict", "data"):
+                        descriptor = base.get("inputs", {}).get(channel + "_report")
+                        if not isinstance(descriptor, dict):
+                            raise ValueError(f"baseline {channel} report descriptor missing")
+                        baseline_raw, actual = frontier.read_bound(root, Path(descriptor["path"]), frontier.REPORT_LIMIT)
+                        if actual != descriptor:
+                            raise ValueError(f"baseline {channel} report changed")
+                        baseline_document = frontier.load_json(baseline_raw)
+                        if not isinstance(baseline_document, dict):
+                            raise ValueError(f"baseline {channel} report is not an object")
+                        baseline_documents[channel] = baseline_document
+                except (OSError, ValueError, RuntimeError, KeyError, TypeError):
+                    baseline_documents = {}
+                result["changed_result_diagnostics"] = _changed_result_diagnostics(
+                    root=root, baseline_documents=baseline_documents, after_documents=after_documents,
+                    strict_path=strict_path, data_path=data_path, metric_changes=result.get("metric_changes", []),
+                    object_comparison=comparison, reports_retained=keep_reports,
+                )
                 result["focus"] = {channel: [r for r in summaries[channel] if r["function"] in functions]
                                    for channel in ("strict", "data")}
                 if candidate_object is not None:
@@ -955,10 +1147,7 @@ def dispatch(args: Any) -> int:
     values = vars(args).copy()
     values.pop("action", None)
     result = evaluate(**values)
-    summary = {k: result[k] for k in ("status", "functions", "compiler_runs", "objdiff_runs", "retention_ready", "retained", "seconds", "cleanup_errors")}
-    summary.update(gains=result.get("gains", [])[:8], regressions=result.get("regressions", [])[:8],
-                   regression_count=len(result.get("regressions", [])), reason=result.get("reason"))
-    print(json.dumps(summary, sort_keys=True))
+    print(json.dumps(_dispatch_summary(result), sort_keys=True))
     return 2 if result["status"] == "failed" else 0
 
 

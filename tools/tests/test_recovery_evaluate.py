@@ -554,6 +554,69 @@ class RecoveryEvaluateTests(unittest.TestCase):
         self.assertEqual(result["objdiff_runs"], 2)
         self.assertFalse(list((self.root / "build").glob(".evaluate-*")))
 
+    def test_changed_result_diagnostic_separates_new_code_from_existing_mismatch(self) -> None:
+        after = copy.deepcopy(self.after)
+        after["right"]["symbols"][1]["instructions"][1]["instruction"]["formatted"] = "addi r3, r3, 1"
+        changes = [{"channel": "strict", "function": "FocusFunction",
+                    "before": {"diff_rows": 1}, "after": {"diff_rows": 2}}]
+        diagnostic = evaluate._changed_result_diagnostics(
+            root=self.root, baseline_documents={"strict": self.before, "data": self.before},
+            after_documents={"strict": after, "data": after}, strict_path=self.root / "after-strict.json",
+            data_path=self.root / "after-data.json", metric_changes=changes,
+            object_comparison={"functions": {"FocusFunction": {"raw_equal_base": False}}},
+        )
+        item = diagnostic["functions"][0]
+        strict = item["channels"]["strict"]
+        self.assertEqual(item["object_relation"], "raw_changed")
+        self.assertEqual(strict["status"], "new_code_difference")
+        self.assertEqual(strict["row"], 1)
+        self.assertEqual(strict["existing_first_instruction_mismatch"]["row"], 0)
+        self.assertLessEqual(len(strict["context"]), 2)
+
+    def test_changed_result_diagnostic_marks_alignment_changes_unknown(self) -> None:
+        after = copy.deepcopy(self.after)
+        after["left"]["symbols"][1]["instructions"][1]["instruction"]["formatted"] = "nop"
+        diagnostic = evaluate._changed_result_diagnostics(
+            root=self.root, baseline_documents={"strict": self.before, "data": self.before},
+            after_documents={"strict": after, "data": after}, strict_path=self.root / "after-strict.json",
+            data_path=self.root / "after-data.json", metric_changes=[
+                {"channel": "strict", "function": "FocusFunction", "before": {}, "after": {}}
+            ], object_comparison={"functions": {}},
+        )
+        strict = diagnostic["functions"][0]["channels"]["strict"]
+        self.assertEqual(strict["status"], "unknown")
+        self.assertIn("not_newly_proven", strict["reason"])
+
+    def test_changed_result_diagnostic_does_not_call_equal_count_relocations_unchanged(self) -> None:
+        hashes = {"base_relocations": {"count": 1, "sha256": "11" * 32},
+                  "candidate_relocations": {"count": 1, "sha256": "22" * 32}}
+        diagnostic = evaluate._changed_result_diagnostics(
+            root=self.root, baseline_documents={"strict": self.after, "data": self.after},
+            after_documents={"strict": self.after, "data": self.after}, strict_path=self.root / "after-strict.json",
+            data_path=self.root / "after-data.json", metric_changes=[
+                {"channel": "strict", "function": "FocusFunction", "before": {}, "after": {}}
+            ], object_comparison={"functions": {"FocusFunction": {"raw_equal_base": True, **hashes}}},
+        )
+        self.assertEqual(diagnostic["functions"][0]["object_relation"], "relocation_only")
+
+    def test_dispatch_summary_is_hard_bounded(self) -> None:
+        result = {
+            "status": "improved", "functions": ["f" * 1000] * 300, "compiler_runs": 0,
+            "objdiff_runs": 2, "retention_ready": False, "retained": False, "seconds": 1.0,
+            "cleanup_errors": ["e" * 2000] * 20, "gains": ["g" * 2000] * 20,
+            "regressions": ["r" * 2000] * 20, "reason": "x" * 2000,
+            "changed_result_diagnostics": {
+                "status": "bounded", "affected_function_count": 1,
+                "functions": [{"function": "FocusFunction", "channels": {
+                    "strict": {"status": "new_code_difference", "mismatch": {"x": "y" * 20000}}
+                }}]
+            },
+        }
+        summary = evaluate._dispatch_summary(result)
+        self.assertLessEqual(len(json.dumps(summary).encode("utf-8")), evaluate._EVALUATE_STDOUT_LIMIT)
+        self.assertTrue(summary["changed_result_diagnostics"]["truncated"])
+        self.assertTrue(summary["stdout_truncated"])
+
     def test_compile_failure_returns_compact_result_and_cleans_private_directory(self) -> None:
         source_before = self.candidate.read_bytes()
         with mock.patch.object(evaluate, "_compile_candidate", side_effect=ValueError("sentinel compile failure")):
