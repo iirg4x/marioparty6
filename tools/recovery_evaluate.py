@@ -348,6 +348,61 @@ def _compact_first_mismatch(summary: dict | None) -> dict | None:
     return {key: first[key] for key in ("row", "kind", "target", "candidate") if key in first}
 
 
+def _target_anchor_context(before_target: list[dict], after_target: list[dict],
+                           after_candidate: list[dict], first: dict | None) -> dict:
+    """Keep the original problem site visible through inserted prologue rows.
+
+    An anchor is report context, not a causal or retention verdict. Require the
+    whole non-gap target stream to agree, not merely a coincident address.
+    """
+    result: dict[str, Any] = {"diagnostic_only": True, "status": "unknown"}
+    if first is None:
+        return {**result, "status": "none", "reason": "no baseline instruction mismatch"}
+    try:
+        def stream(rows: list[dict]) -> tuple[list[tuple[int, dict]], dict[int, int]]:
+            identities, positions = [], {}
+            for index, row in enumerate(rows):
+                payload = frontier._diagnose_payload(row, index)
+                if payload is None:
+                    continue
+                value = row["instruction"].get("address")
+                if isinstance(value, bool) or not isinstance(value, (str, int)):
+                    raise ValueError("target instruction address missing or invalid")
+                if isinstance(value, str):
+                    if len(value) > 32:
+                        raise ValueError("target instruction address too long")
+                    address = int(value, 16 if value.lower().startswith("0x") else 10)
+                else:
+                    address = value
+                if address < 0 or address >= 2 ** 64:
+                    raise ValueError("target instruction address out of range")
+                if address in positions:
+                    raise ValueError("ambiguous target instruction address")
+                positions[address] = index
+                identities.append((address, payload))
+            return identities, positions
+
+        before, before_positions = stream(before_target)
+        after, after_positions = stream(after_target)
+        if before != after:
+            raise ValueError("non-gap target stream changed")
+        baseline_row = first.get("row")
+        matches = [address for address, index in before_positions.items() if index == baseline_row]
+        if len(matches) != 1:
+            raise ValueError("baseline mismatch has no unique target instruction")
+        address = matches[0]
+        row = after_positions[address]
+        result.update(status="located", target_address=address, baseline_row=baseline_row,
+                      current_row=row, target_stream_sha256=_sha(frontier.canonical(before)),
+                      target=frontier._diagnose_row(after_target[row], row),
+                      candidate=frontier._diagnose_row(
+                          after_candidate[row] if row < len(after_candidate) else None, row),
+                      context=_diagnostic_context(after_target, after_candidate, row))
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        result.update(reason=str(exc)[:180])
+    return result
+
+
 def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dict],
                                 after_documents: dict[str, dict], strict_path: Path,
                                 data_path: Path, metric_changes: list[dict],
@@ -409,6 +464,9 @@ def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dic
                 before_summary = frontier._diagnose_rows(before_target, before_candidate)
                 channel_item["current_first_instruction_mismatch"] = _compact_first_mismatch(after_summary)
                 channel_item["existing_first_instruction_mismatch"] = _compact_first_mismatch(before_summary)
+                channel_item["baseline_target_context"] = _target_anchor_context(
+                    before_target, after_target, after_candidate,
+                    channel_item["existing_first_instruction_mismatch"])
                 if len(before_target) != len(after_target) or len(before_candidate) != len(after_candidate):
                     raise ValueError("aligned report row count changed")
                 for index in range(len(before_target)):

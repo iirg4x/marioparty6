@@ -70,6 +70,12 @@ headers, source and object, runs strict/data reports concurrently, checks every
 function and allocated section, and compares closed relocation rows with the
 target. It preserves first-mismatch context and up to 24 residual rows per focus
 channel so a rejected result remains useful without retaining a whole-TU report.
+Changed-result diagnostics also keep `baseline_target_context`: the current
+aligned row and two neighbors at the baseline's first mismatching target
+instruction address. This remains available when inserted prologue rows defeat
+row-index comparison. The entire non-gap target stream must agree and the
+address must be unique; otherwise the context is explicitly unknown. A located
+site is not a causal, exactness, or retention verdict.
 Local call-address slides are compared by their callee identity for monotonic
 gains; data-owner offsets remain significant. Raw physical placement stays
 reported and must match before a selected function is called exact.
