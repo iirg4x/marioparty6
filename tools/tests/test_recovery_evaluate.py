@@ -13,7 +13,7 @@ from unittest import mock
 
 from tools import recovery_evaluate as evaluate
 from tools import recovery_frontier as frontier
-from tools.tests.test_focus_symbol_report import _report
+from tools.tests.test_focus_symbol_report import _instruction, _report
 
 
 class RecoveryEvaluateTests(unittest.TestCase):
@@ -249,6 +249,20 @@ class RecoveryEvaluateTests(unittest.TestCase):
             "retained": False,
             "authority_advanced": False,
         }
+
+    def _focus_site_report(self, target_rows: list[dict], candidate_rows: list[dict]) -> dict:
+        report = copy.deepcopy(self.after)
+        report["left"]["symbols"][1]["instructions"] = target_rows
+        report["right"]["symbols"][1]["instructions"] = candidate_rows
+        return report
+
+    def _site_diagnostics(self, report: dict) -> dict:
+        return evaluate._changed_result_diagnostics(
+            root=self.root, baseline_documents={"strict": self.before, "data": self.before},
+            after_documents={"strict": report, "data": report},
+            strict_path=self.root / "after-strict.json", data_path=self.root / "after-data.json",
+            metric_changes=[], object_comparison={"functions": {"FocusFunction": {"raw_equal_base": False}}},
+        )
 
     def test_command_context_and_mocked_compile_bind_placeholders(self) -> None:
         context = evaluate._command_context(self.root, self.command_json, [Path("compiler.exe")])
@@ -598,6 +612,115 @@ class RecoveryEvaluateTests(unittest.TestCase):
             ], object_comparison={"functions": {"FocusFunction": {"raw_equal_base": True, **hashes}}},
         )
         self.assertEqual(diagnostic["functions"][0]["object_relation"], "relocation_only")
+
+    def test_changed_result_diagnostic_censuses_d_form_and_indexed_paired_sites(self) -> None:
+        target_rows = [
+            _instruction(0x100, "lfs f1, 0(r3)"),
+            _instruction(0x104, "psq_l f1, 8(r3), 0, 0"),
+            _instruction(0x108, "stfs f1, 0(r3)"),
+        ]
+        candidate_rows = [
+            _instruction(0x200, "lfs f1, 0(r3)"),
+            _instruction(0x204, "psq_lx f1, r3, r4, 0, 0"),
+            _instruction(0x208, "stfs f1, 0(r3)"),
+        ]
+        report = self._focus_site_report(target_rows, candidate_rows)
+        diagnostic = self._site_diagnostics(report)
+        channels = diagnostic["functions"][0]["channels"]
+        target = channels["strict"]["paired_memory_sites"]["target"]
+        candidate = channels["strict"]["paired_memory_sites"]["candidate"]
+        self.assertEqual((target["total"], target["truncated"]), (1, False))
+        self.assertEqual((candidate["total"], candidate["truncated"]), (1, False))
+        self.assertEqual(target["sites"][0]["formatted"], "psq_l f1, 8(r3), 0, 0")
+        self.assertEqual(candidate["sites"][0]["formatted"], "psq_lx f1, r3, r4, 0, 0")
+        self.assertEqual(target["sites"][0]["neighbors"]["before"]["formatted"], "lfs f1, 0(r3)")
+        self.assertEqual(target["sites"][0]["neighbors"]["after"]["formatted"], "stfs f1, 0(r3)")
+        self.assertEqual(channels["strict"]["scalar_abs_conversion_sites"]["target"]["total"], 0)
+
+    def test_changed_result_diagnostic_censuses_scalar_abs_conversion_sites(self) -> None:
+        rows = [
+            _instruction(0x280, "lfs f1, 0(r3)"),
+            _instruction(0x284, "fabs f1, f1"),
+            _instruction(0x288, "frsp f1, f1"),
+            _instruction(0x28C, "stfs f1, 0(r3)"),
+        ]
+        channel = self._site_diagnostics(self._focus_site_report(rows, copy.deepcopy(rows)))["functions"][0]["channels"]["strict"]
+        census = channel["scalar_abs_conversion_sites"]["target"]
+        self.assertEqual((census["total"], census["truncated"]), (2, False))
+        self.assertEqual(census["sites"][0]["formatted"], "fabs f1, f1")
+        self.assertEqual(census["sites"][1]["formatted"], "frsp f1, f1")
+        self.assertEqual(census["sites"][0]["neighbors"]["before"]["formatted"], "lfs f1, 0(r3)")
+        self.assertEqual(census["sites"][1]["neighbors"]["after"]["formatted"], "stfs f1, 0(r3)")
+
+    def test_changed_result_diagnostic_census_survives_changed_row_counts(self) -> None:
+        target_rows = [{}] + [
+            _instruction(0x300, "psq_st f1, 0(r3), 0, 0"),
+            _instruction(0x304, "blr"),
+        ]
+        candidate_rows = [_instruction(0x400, "nop")] + [
+            _instruction(0x404, "psq_stx f1, r3, r4, 0, 0"),
+            _instruction(0x408, "blr"),
+        ]
+        channel = self._site_diagnostics(self._focus_site_report(target_rows, candidate_rows))["functions"][0]["channels"]["strict"]
+        self.assertEqual(channel["status"], "unknown")
+        self.assertIn("row count changed", channel["reason"])
+        self.assertEqual(channel["paired_memory_sites"]["target"]["total"], 1)
+        self.assertEqual(channel["paired_memory_sites"]["candidate"]["total"], 1)
+
+    def test_changed_result_diagnostic_census_reports_empty_streams(self) -> None:
+        rows = [_instruction(0x500, "blr")]
+        channel = self._site_diagnostics(self._focus_site_report(rows, copy.deepcopy(rows)))["functions"][0]["channels"]["strict"]
+        for key in ("paired_memory_sites", "scalar_abs_conversion_sites"):
+            for side in ("target", "candidate"):
+                self.assertEqual(channel[key][side]["sites"], [])
+                self.assertEqual(channel[key][side]["total"], 0)
+                self.assertFalse(channel[key][side]["truncated"])
+
+    def test_changed_result_diagnostic_census_truncates_each_stream_at_eight(self) -> None:
+        target_rows = []
+        candidate_rows = []
+        for index in range(10):
+            target_rows.append(_instruction(0x600 + index * 4, "psq_l f1, 0(r3), 0, 0"))
+            candidate_rows.append(_instruction(0x700 + index * 4, "psq_stx f1, r3, r4, 0, 0"))
+        channels = self._site_diagnostics(self._focus_site_report(target_rows, candidate_rows))["functions"][0]["channels"]
+        for side, expected in (("target", "psq_l f1, 0(r3), 0, 0"),
+                               ("candidate", "psq_stx f1, r3, r4, 0, 0")):
+            census = channels["strict"]["paired_memory_sites"][side]
+            self.assertEqual(census["total"], 10)
+            self.assertTrue(census["truncated"])
+            self.assertEqual(len(census["sites"]), 8)
+            self.assertEqual(census["sites"][0]["formatted"], expected)
+
+    def test_changed_result_diagnostic_census_prioritizes_non_stack_paired_sites(self) -> None:
+        target_rows = [
+            _instruction(0xA00 + index * 4, "psq_st f1, 0(r1), 0, 0")
+            for index in range(10)
+        ] + [
+            _instruction(0xA28, "psq_l f1, 0(r3), 0, 0"),
+            _instruction(0xA2C, "psq_st f1, 8(r3), 0, 0"),
+        ]
+        channel = self._site_diagnostics(self._focus_site_report(target_rows, copy.deepcopy(target_rows)))["functions"][0]["channels"]["strict"]
+        census = channel["paired_memory_sites"]["target"]
+        self.assertEqual((census["total"], census["non_stack_base_total"], census["stack_base_total"]), (12, 2, 10))
+        self.assertEqual(census["selection_policy"], "non_stack_base_first_then_chronological")
+        self.assertTrue(census["truncated"])
+        self.assertEqual([site["row"] for site in census["sites"]], [0, 1, 2, 3, 4, 5, 10, 11])
+        self.assertEqual([site["formatted"] for site in census["sites"][-2:]], [
+            "psq_l f1, 0(r3), 0, 0", "psq_st f1, 8(r3), 0, 0",
+        ])
+        self.assertFalse(census["sites"][-1]["stack_base"])
+
+    def test_changed_result_diagnostic_census_rejects_false_opcode_substrings_and_bounds_text(self) -> None:
+        rows = [
+            _instruction(0x800, "psq_lu f1, 0(r3), 0, 0"),
+            _instruction(0x804, "not_psq_l f1, 0(r3), 0, 0"),
+            _instruction(0x808, "psq_l_extra f1, 0(r3), 0, 0"),
+        ]
+        channel = self._site_diagnostics(self._focus_site_report(rows, copy.deepcopy(rows)))["functions"][0]["channels"]["strict"]
+        self.assertEqual(channel["paired_memory_sites"]["target"]["total"], 0)
+        malformed = _instruction(0x900, "psq_l " + "x" * (frontier.ACCESS_TEXT_LIMIT + 1))
+        with self.assertRaisesRegex(ValueError, "formatted text exceeds"):
+            evaluate._paired_memory_site_census([malformed])
 
     def test_physical_progress_reports_cross_channel_improvement(self) -> None:
         comparison = {"function_census_equal": True, "functions": {

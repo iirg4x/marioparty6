@@ -39,6 +39,18 @@ BATCH_MAX_WORKERS = 3
 _DIAGNOSTIC_FUNCTION_LIMIT = 3
 _DIAGNOSTIC_CONTEXT_LIMIT = 2
 _EVALUATE_STDOUT_LIMIT = 12 * 1024
+_DIAGNOSTIC_SITE_LIMIT = 8
+_PAIRED_MEMORY_MNEMONICS = frozenset({"psq_l", "psq_lx", "psq_st", "psq_stx"})
+_SCALAR_ABS_CONVERSION_MNEMONICS = frozenset({"fabs", "frsp"})
+_SCALAR_MEMORY_MNEMONICS = frozenset(
+    opcode for opcode in frontier._STACK_ACCESS_WIDTHS
+    if not opcode.startswith("psq_")
+    and opcode not in {"lvx", "lvxl", "stvx", "stvxl"}
+)
+_SCALAR_UNARY_MNEMONICS = frozenset({
+    "fabs", "fctiw", "fctiwz", "fmr", "fneg", "fnabs", "fres", "frsp", "frsqrte",
+})
+_STACK_BASE_REGISTER_RE = re.compile(r"(?<![A-Za-z0-9_])r1(?![A-Za-z0-9_])", re.IGNORECASE)
 _BATCH_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 _BATCH_DEVICE_IDS = {"CON", "PRN", "AUX", "NUL"} | {
     f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)
@@ -355,6 +367,103 @@ def _compact_canonical_mismatch(summary: dict | None) -> dict | None:
     return {key: first[key] for key in ("row", "kind", "target", "candidate") if key in first}
 
 
+def _compact_site_instruction(row: dict | None, index: int) -> tuple[dict[str, Any], str, bool] | None:
+    """Return one bounded instruction site and its exact report opcode."""
+    compact = frontier._diagnose_row(row, index)
+    instruction = compact.get("instruction")
+    if not isinstance(instruction, dict):
+        return None
+    formatted = instruction.get("formatted")
+    if not isinstance(formatted, str):
+        return None
+    opcode_match = frontier._OPCODE_RE.match(formatted)
+    if opcode_match is None:
+        return None
+    opcode = opcode_match.group("opcode").lower()
+    operands = formatted[opcode_match.end():]
+    stack_base = bool(_STACK_BASE_REGISTER_RE.search(operands)) if opcode.endswith("x") else any(
+        match.group("base").lower() == "r1"
+        for match in frontier._MEMORY_OPERAND_RE.finditer(formatted)
+    )
+    return ({"row": compact["row"], "address": instruction.get("address"),
+             "formatted": formatted}, opcode, stack_base)
+
+
+def _diagnostic_site_census(rows: list[dict], mnemonics: frozenset[str],
+                            neighbor_mnemonics: frozenset[str],
+                            *, prioritize_non_stack_base: bool = False) -> dict[str, Any]:
+    """Collect a bounded exact-opcode site census from one report stream."""
+    parsed = [_compact_site_instruction(row, index) for index, row in enumerate(rows)]
+    matches = [(index, item) for index, item in enumerate(parsed)
+               if item is not None and item[1] in mnemonics]
+    stack_base_total = sum(item[2] for _, item in matches)
+    if prioritize_non_stack_base:
+        selected = [entry for entry in matches if not entry[1][2]][:_DIAGNOSTIC_SITE_LIMIT]
+        selected.extend(entry for entry in matches if entry[1][2]
+                        and len(selected) < _DIAGNOSTIC_SITE_LIMIT)
+        selected.sort(key=lambda entry: entry[0])
+        selection_policy = "non_stack_base_first_then_chronological"
+    else:
+        selected = matches[:_DIAGNOSTIC_SITE_LIMIT]
+        selection_policy = "chronological"
+    sites = []
+    for index, current in selected:
+        if current is None:  # pragma: no cover - selected from ``matches`` above
+            continue
+        site = dict(current[0])
+        site["stack_base"] = current[2]
+        neighbors = {}
+        for side, delta in (("before", -1), ("after", 1)):
+            adjacent = index + delta
+            if not 0 <= adjacent < len(parsed):
+                continue
+            neighbor = parsed[adjacent]
+            if neighbor is not None and neighbor[1] in neighbor_mnemonics:
+                neighbors[side] = dict(neighbor[0])
+        if neighbors:
+            site["neighbors"] = neighbors
+        sites.append(site)
+    return {
+        "diagnostic_only": True,
+        "selection_policy": selection_policy,
+        "sites": sites,
+        "total": len(matches),
+        "non_stack_base_total": len(matches) - stack_base_total,
+        "stack_base_total": stack_base_total,
+        "truncated": len(matches) > _DIAGNOSTIC_SITE_LIMIT,
+    }
+
+
+def _diagnostic_site_streams(target_rows: list[dict], candidate_rows: list[dict],
+                             mnemonics: frozenset[str],
+                             neighbor_mnemonics: frozenset[str],
+                             *, prioritize_non_stack_base: bool = False) -> dict[str, Any]:
+    return {
+        "target": _diagnostic_site_census(
+            target_rows, mnemonics, neighbor_mnemonics,
+            prioritize_non_stack_base=prioritize_non_stack_base,
+        ),
+        "candidate": _diagnostic_site_census(
+            candidate_rows, mnemonics, neighbor_mnemonics,
+            prioritize_non_stack_base=prioritize_non_stack_base,
+        ),
+    }
+
+
+def _paired_memory_site_census(rows: list[dict]) -> dict[str, Any]:
+    return _diagnostic_site_census(
+        rows, _PAIRED_MEMORY_MNEMONICS, _SCALAR_MEMORY_MNEMONICS,
+        prioritize_non_stack_base=True,
+    )
+
+
+def _scalar_abs_conversion_site_census(rows: list[dict]) -> dict[str, Any]:
+    return _diagnostic_site_census(
+        rows, _SCALAR_ABS_CONVERSION_MNEMONICS,
+        _SCALAR_MEMORY_MNEMONICS | _SCALAR_UNARY_MNEMONICS,
+    )
+
+
 def _target_anchor_context(before_target: list[dict], after_target: list[dict],
                            after_candidate: list[dict], first: dict | None) -> dict:
     """Keep the original problem site visible through inserted prologue rows.
@@ -481,6 +590,12 @@ def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dic
                     before_target, after_target, after_candidate, anchor)
                 if anchor is not None:
                     channel_item["baseline_target_context"]["anchor_basis"] = anchor_basis
+                channel_item["paired_memory_sites"] = _diagnostic_site_streams(
+                    after_target, after_candidate, _PAIRED_MEMORY_MNEMONICS, _SCALAR_MEMORY_MNEMONICS,
+                    prioritize_non_stack_base=True)
+                channel_item["scalar_abs_conversion_sites"] = _diagnostic_site_streams(
+                    after_target, after_candidate, _SCALAR_ABS_CONVERSION_MNEMONICS,
+                    _SCALAR_MEMORY_MNEMONICS | _SCALAR_UNARY_MNEMONICS)
                 if len(before_target) != len(after_target) or len(before_candidate) != len(after_candidate):
                     raise ValueError("aligned report row count changed")
                 for index in range(len(before_target)):
