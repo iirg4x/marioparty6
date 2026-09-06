@@ -34,9 +34,11 @@ SHT_REL = 9
 SHT_NOBITS = 8
 SHF_ALLOC = 0x2
 SHF_EXECINSTR = 0x4
+SHF_WRITE = 0x1
 SHN_UNDEF = 0
 SHN_ABS = 0xFFF1
 SHN_COMMON = 0xFFF2
+STT_OBJECT = 1
 STT_SECTION = 3
 STT_FILE = 4
 STT_FUNC = 2
@@ -45,9 +47,14 @@ _RELA_ENTSIZE = 12
 _SECTION_ENTSIZE = 40
 _SYMBOL_ENTSIZE = 16
 _MAX_CLOSED_DETAILS = 64
+_MAX_POOL_OWNER_BYTES = 256
+_MAX_POOL_OWNERS = 4096
+_MAX_POOL_USES = 32768
+_MAX_POOL_ISSUES = 256
 _DEBUG_SECTION_PREFIXES = (".debug", ".zdebug")
 _DEBUG_SECTIONS = {".line", ".comment", ".note", ".gnu.attributes"}
 SCHEMA = "recovery_object_inventory/v1"
+POOL_SCHEMA = "recovery_readonly_pool_census/v1"
 
 
 class ObjectInventoryError(EvidenceError):
@@ -386,6 +393,295 @@ def _function_physical_rows(
     normalized_rows.sort(key=lambda row: (row["offset"], row["type"], _canonical(row["effective_target"])))
     physical_rows.sort(key=lambda row: (row["offset"], row["type"], _canonical(row)))
     return normalized_rows, physical_rows
+
+
+# D-form opcodes used by the relocations most commonly found in readonly
+# literal pools.  The instruction bytes, rather than a report spelling or
+# symbol label, establish the consumer width.  ``u32_or_address`` remains
+# intentionally unresolved: a word load alone does not prove whether the
+# value is an integer or a pointer.
+_POOL_D_FORM_ACCESS = {
+    32: ("lwz", 4, "u32_or_address", "read"),
+    33: ("lwzu", 4, "u32_or_address", "read"),
+    34: ("lbz", 1, "u8", "read"),
+    35: ("lbzu", 1, "u8", "read"),
+    36: ("stw", 4, "write", "write"),
+    37: ("stwu", 4, "write", "write"),
+    38: ("stb", 1, "write", "write"),
+    39: ("stbu", 1, "write", "write"),
+    40: ("lhz", 2, "u16", "read"),
+    41: ("lhzu", 2, "u16", "read"),
+    42: ("lha", 2, "s16", "read"),
+    43: ("lhau", 2, "s16", "read"),
+    44: ("sth", 2, "write", "write"),
+    45: ("sthu", 2, "write", "write"),
+    48: ("lfs", 4, "f32", "read"),
+    49: ("lfsu", 4, "f32", "read"),
+    50: ("lfd", 8, "f64", "read"),
+    51: ("lfdu", 8, "f64", "read"),
+    52: ("stfs", 4, "write", "write"),
+    53: ("stfsu", 4, "write", "write"),
+    54: ("stfd", 8, "write", "write"),
+    55: ("stfdu", 8, "write", "write"),
+}
+
+
+def _pool_access(section: Mapping[str, Any], offset: int, path: Path) -> dict[str, Any]:
+    if str(section.get("name")) != ".text":
+        return {"status": "unknown", "reason": "readonly-owner-relocation-not-in-text"}
+    content = bytes(section.get("content", b""))
+    instruction_offset = offset - (offset % 4)
+    if offset < 0 or instruction_offset + 4 > len(content):
+        return {"status": "unknown", "reason": "consumer-instruction-truncated"}
+    try:
+        word = struct.unpack_from(">I", content, instruction_offset)[0]
+    except struct.error as exc:
+        raise ObjectInventoryError(f"{path}: truncated pool consumer instruction") from exc
+    access = _POOL_D_FORM_ACCESS.get(word >> 26)
+    if access is None:
+        return {"status": "unknown", "reason": "unsupported-or-non-load-store-opcode", "word": word}
+    opcode, width, value_type, mode = access
+    return {"status": "known", "opcode": opcode, "width_bytes": width,
+            "type": value_type, "mode": mode, "word": word,
+            "instruction_offset": instruction_offset}
+
+
+def _pool_owner_records(
+    sections: Sequence[Mapping[str, Any]],
+    symbols: Sequence[Mapping[str, Any]],
+    path: Path,
+) -> tuple[list[dict[str, Any]], dict[int, list[dict[str, Any]]]]:
+    owners: list[dict[str, Any]] = []
+    by_section: dict[int, list[dict[str, Any]]] = {}
+    for symbol_index, symbol in enumerate(symbols):
+        if int(symbol.get("info", 0)) & 0xF != STT_OBJECT or not str(symbol.get("name")):
+            continue
+        section_index = int(symbol.get("section", SHN_UNDEF))
+        if section_index < 0 or section_index >= len(sections):
+            continue
+        section = sections[section_index]
+        flags = int(section.get("flags", 0))
+        size = int(symbol.get("size", 0))
+        start = int(symbol.get("value", 0))
+        if (not flags & SHF_ALLOC or flags & SHF_EXECINSTR
+                or int(section.get("type", 0)) == SHT_NOBITS or size <= 0):
+            continue
+        content = bytes(section.get("content", b""))
+        if start < 0 or start + size > len(content):
+            raise ObjectInventoryError(f"{path}: readonly pool owner {symbol['name']!r} exceeds section")
+        raw = content[start:start + size]
+        record = {
+            "symbol_index": symbol_index,
+            "name": str(symbol["name"]),
+            "section": str(section["name"]),
+            "section_index": section_index,
+            "offset": start,
+            "size_bytes": size,
+            "bytes": raw.hex() if size <= _MAX_POOL_OWNER_BYTES else None,
+            "bytes_sha256": hashlib.sha256(raw).hexdigest(),
+            "bytes_complete": size <= _MAX_POOL_OWNER_BYTES,
+            "binding": int(symbol.get("info", 0)) >> 4,
+            "writable": bool(flags & SHF_WRITE),
+            "uses": [],
+            "issues": [],
+        }
+        owners.append(record)
+        by_section.setdefault(section_index, []).append(record)
+    if len(owners) > _MAX_POOL_OWNERS:
+        raise ObjectInventoryError(f"{path}: readonly pool owner census exceeds {_MAX_POOL_OWNERS} owners")
+    for rows in by_section.values():
+        rows.sort(key=lambda row: (int(row["offset"]), int(row["size_bytes"]), str(row["name"])))
+    owners.sort(key=lambda row: (str(row["section"]), int(row["offset"]), str(row["name"])))
+    return owners, by_section
+
+
+def _pool_census_from_parts(
+    path: Path,
+    parsed: Mapping[str, Any],
+    sections: Sequence[Mapping[str, Any]],
+    functions: Sequence[Mapping[str, Any]],
+    all_rows: Mapping[tuple[int, int, int], Mapping[str, Any]],
+) -> dict[str, Any]:
+    owners, owners_by_section = _pool_owner_records(sections, parsed["symbols"], path)
+    function_rows = sorted(
+        ({"name": str(row["name"]), "offset": int(row["start"]), "size": int(row["size"])} for row in functions),
+        key=lambda row: row["name"],
+    )
+    function_by_section: dict[int, list[dict[str, Any]]] = {}
+    for row in functions:
+        function_by_section.setdefault(int(row["section_index"]), []).append(row)
+    for rows in function_by_section.values():
+        rows.sort(key=lambda row: int(row["start"]))
+    issues: list[dict[str, Any]] = []
+    issue_count = 0
+    use_count = 0
+
+    def add_issue(owner: dict[str, Any] | None, issue: str, detail: Mapping[str, Any]) -> None:
+        nonlocal issue_count
+        issue_count += 1
+        row = {"issue": issue, **dict(detail)}
+        if owner is not None:
+            owner["issues"].append(row)
+        if len(issues) < _MAX_POOL_ISSUES:
+            issues.append(row)
+
+    for (target_index, rel_offset, relocation_kind), relocation in sorted(all_rows.items()):
+        effective = relocation.get("effective_target")
+        if not isinstance(effective, Mapping) or effective.get("kind") != "section":
+            continue
+        section_name = str(effective.get("section"))
+        pool_sections = [
+            index for index, section in enumerate(sections)
+            if str(section.get("name")) == section_name
+            and int(section.get("flags", 0)) & SHF_ALLOC
+            and not int(section.get("flags", 0)) & SHF_EXECINSTR
+            and int(section.get("type", 0)) != SHT_NOBITS
+        ]
+        if len(pool_sections) != 1:
+            continue
+        pool_section_index = pool_sections[0]
+        pool_offset = int(effective.get("offset", -1))
+        matching = [
+            owner for owner in owners_by_section.get(pool_section_index, [])
+            if int(owner["offset"]) <= pool_offset < int(owner["offset"]) + int(owner["size_bytes"])
+        ]
+        if len(matching) > 1:
+            add_issue(None, "ambiguous_duplicate_value_owner", {
+                "section": section_name, "offset": pool_offset,
+                "owner_names": [str(owner["name"]) for owner in matching],
+            })
+            for owner in matching:
+                add_issue(owner, "ambiguous_duplicate_value_owner", {
+                    "section": section_name, "offset": pool_offset,
+                })
+            continue
+        owner = matching[0] if matching else None
+        if owner is None:
+            add_issue(None, "unknown_pool_owner", {
+                "section": section_name, "offset": pool_offset,
+            })
+            continue
+        if owner.get("writable") and not any(
+            isinstance(item, dict) and item.get("issue") == "writable_pool_owner"
+            for item in owner.get("issues", [])
+        ):
+            add_issue(owner, "writable_pool_owner", {
+                "section": section_name, "offset": pool_offset,
+            })
+        relocation_section = sections[target_index]
+        access = _pool_access(relocation_section, int(rel_offset), path)
+        if access.get("status") != "known":
+            add_issue(owner, "unknown_typed_use", {
+                "section": str(relocation_section.get("name")),
+                "offset": int(rel_offset), "reason": access.get("reason"),
+            })
+            continue
+        width = int(access["width_bytes"])
+        used_offset = pool_offset - int(owner["offset"])
+        content = bytes(sections[pool_section_index].get("content", b""))
+        if used_offset < 0 or pool_offset + width > len(content) or used_offset + width > int(owner["size_bytes"]):
+            add_issue(owner, "typed_extent_mismatch", {
+                "section": section_name, "offset": pool_offset, "width_bytes": width,
+            })
+            continue
+        used_raw = content[pool_offset:pool_offset + width]
+        if access.get("mode") == "write":
+            add_issue(owner, "writable_use", {
+                "section": str(relocation_section.get("name")), "offset": int(rel_offset),
+            })
+            continue
+        function_name = None
+        function_offset = None
+        if target_index in function_by_section:
+            matches = [
+                row for row in function_by_section[target_index]
+                if int(row["start"]) <= int(rel_offset) < int(row["start"]) + int(row["size"])
+            ]
+            if len(matches) == 1:
+                function_name = str(matches[0]["name"])
+                function_offset = int(rel_offset) - int(matches[0]["start"])
+            elif len(matches) > 1:
+                add_issue(owner, "ambiguous_consumer_function", {"offset": int(rel_offset)})
+                continue
+        if function_name is None:
+            add_issue(owner, "address_escaping_or_unknown_consumer", {
+                "section": str(relocation_section.get("name")), "offset": int(rel_offset),
+            })
+            continue
+        use_count += 1
+        if use_count > _MAX_POOL_USES:
+            add_issue(owner, "use_census_limit", {"limit": _MAX_POOL_USES})
+            continue
+        owner["uses"].append({
+            "function": function_name,
+            "function_offset": function_offset,
+            "instruction_offset": int(access["instruction_offset"]),
+            "owner_offset": int(owner["offset"]),
+            "use_offset": used_offset,
+            "width_bytes": width,
+            "type": str(access["type"]),
+            "opcode": str(access["opcode"]),
+            "bytes": used_raw.hex(),
+            "relocation_type": int(relocation_kind),
+            "relocation_addend": int(relocation.get("addend", 0)),
+        })
+    for owner in owners:
+        owner["uses"].sort(key=lambda row: (str(row["function"]), int(row["function_offset"])))
+        owner["issues"].sort(key=_canonical)
+        owner["consumer_count"] = len({str(row["function"]) for row in owner["uses"]})
+        owner["consumer_relocation_count"] = len(owner["uses"])
+        owner["uses_complete"] = not any(
+            isinstance(item, dict) and item.get("issue") == "use_census_limit"
+            for item in owner["issues"]
+        )
+        owner["safe"] = bool(owner["uses"]) and not owner["issues"]
+    section_output = {
+        str(section["name"]): {
+            "size_bytes": int(section["size"]),
+            "align": int(section["align"]),
+            "flags": int(section["flags"]),
+            "readonly": bool(int(section["flags"]) & SHF_ALLOC and not int(section["flags"]) & (SHF_WRITE | SHF_EXECINSTR)),
+        }
+        for section in sections
+        if int(section["flags"]) & SHF_ALLOC
+    }
+    return {
+        "schema": POOL_SCHEMA,
+        "schema_version": 1,
+        "object": dict(parsed["object"]),
+        "sections": section_output,
+        "functions": function_rows,
+        "owners": owners,
+        "issues": issues,
+        "issue_count": issue_count,
+        "issues_returned_count": len(issues),
+        "issues_truncated": issue_count > len(issues),
+        "complete": issue_count == len(issues) and all(owner.get("uses_complete") for owner in owners),
+        "authority_advanced": False,
+        "diagnostic_only": True,
+    }
+
+
+def pool_census(path: Path) -> dict[str, Any]:
+    """Return a bounded, actual-ELF readonly-pool value/consumer census."""
+
+    path = Path(path)
+    try:
+        parsed = _parse_elf_structure(path)
+        sections = _section_views(parsed, path)
+        functions = _function_metadata(parsed, sections, path)
+        by_section: dict[str, list[dict[str, Any]]] = {}
+        for function in functions:
+            by_section.setdefault(str(function["section"]), []).append(function)
+        all_rows = _all_relocations(parsed, sections, by_section, path)
+        result = _pool_census_from_parts(path, parsed, sections, functions, all_rows)
+        if len(_canonical(result)) + 1 > 256 * 1024:
+            raise ObjectInventoryError(f"{path}: readonly pool census exceeds 256 KiB")
+        return result
+    except ObjectInventoryError:
+        raise
+    except (EvidenceError, OSError, struct.error, TypeError, ValueError, KeyError) as exc:
+        raise ObjectInventoryError(f"{path}: pool census failed: {exc}") from exc
 
 
 def inventory(path: Path) -> dict[str, Any]:
@@ -730,7 +1026,7 @@ def compare(
     }
 
 
-__all__ = ["ObjectInventoryError", "compare", "inventory"]
+__all__ = ["ObjectInventoryError", "compare", "inventory", "pool_census"]
 
 
 def main(argv: Sequence[str] | None = None) -> int:

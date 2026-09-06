@@ -10,6 +10,7 @@ from unittest import mock
 
 from tools import recovery_frontier as frontier
 from tools.tests.test_focus_symbol_report import _report
+from tools.tests.test_recovery_object_inventory import _write_pool_elf
 
 
 def _access_row(address: int, text: str, diff_kind: str | None = None) -> dict[str, object]:
@@ -1052,6 +1053,159 @@ class RecoveryFrontierTests(unittest.TestCase):
                 "--root", str(self.root), "diagnose", "--strict", "strict.json",
                 "--function", "FocusFunction",
             ]), 0)
+        self.assertTrue(output.called)
+
+    def test_pool_plan_groups_shared_value_and_keeps_nominal_strict100(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target.o"
+            candidate = root / "candidate.o"
+            source = root / "source.c"
+            strict = root / "strict.json"
+            _write_pool_elf(target, pool_offset=0, owner_name="named_pool")
+            _write_pool_elf(candidate, pool_offset=4, owner_name="@1")
+            source.write_text("static const float named_pool[1] = {1.0f};\n", encoding="utf-8")
+            report = _report(focus_exact=True, sibling_exact=True)
+            for side in ("left", "right"):
+                for symbol in report[side]["symbols"]:
+                    if symbol.get("name") == "FocusFunction":
+                        symbol["name"] = "foo"
+            strict.write_text(json.dumps(report), encoding="utf-8")
+            result = frontier.pool_plan(
+                root=root, target_object=target, candidate_object=candidate, source=source, strict=strict
+            )
+
+        self.assertEqual(result["summary"]["physical_pool_difference_function_count"], 2)
+        self.assertEqual(result["summary"]["nominal_strict100_physical_difference_function_count"], 1)
+        self.assertEqual(result["summary"]["pool_family_count"], 1)
+        family = result["families"][0]
+        self.assertEqual(family["status"], "actionable")
+        self.assertEqual(family["consumer_count"], 2)
+        self.assertEqual(family["affected_functions"], ["bar", "foo"])
+        self.assertEqual(family["target_owner_offset"], 0)
+        self.assertEqual(family["current_owner_offset"], 4)
+        self.assertIn("Freeze code", family["next_action"])
+        self.assertTrue(family["representation_review"]["one_element_const_array"])
+
+    def test_pool_plan_excludes_physical_label_only_and_rejects_wrong_or_writable_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target.o"
+            same = root / "same.o"
+            wrong = root / "wrong.o"
+            writable_target = root / "writable-target.o"
+            metadata_candidate = root / "metadata-candidate.o"
+            writable_candidate = root / "writable-candidate.o"
+            store_target = root / "store-target.o"
+            store_candidate = root / "store-candidate.o"
+            unknown_target = root / "unknown-target.o"
+            unknown_candidate = root / "unknown-candidate.o"
+            source = root / "source.c"
+            _write_pool_elf(target, owner_name="target_pool")
+            _write_pool_elf(same, owner_name="candidate_pool")
+            _write_pool_elf(wrong, pool_offset=4, owner_name="wrong_pool", pool_bytes=bytes.fromhex("3f000000"))
+            _write_pool_elf(metadata_candidate, pool_offset=4, owner_name="metadata_pool", pool_flags=3)
+            _write_pool_elf(writable_target, owner_name="writable_target_pool", pool_flags=3)
+            _write_pool_elf(writable_candidate, pool_offset=4, owner_name="writable_candidate_pool")
+            _write_pool_elf(store_target, owner_name="store_target_pool", instruction_opcode=52)
+            _write_pool_elf(store_candidate, pool_offset=4, owner_name="store_candidate_pool", instruction_opcode=52)
+            _write_pool_elf(unknown_target, owner_name="unknown_target_pool", instruction_opcode=14)
+            _write_pool_elf(unknown_candidate, pool_offset=4, owner_name="unknown_candidate_pool", instruction_opcode=14)
+            source.write_text("const float pool[1] = {1.0f};\n", encoding="utf-8")
+            label_only = frontier.pool_plan(root=root, target_object=target, candidate_object=same, source=source)
+            wrong_result = frontier.pool_plan(root=root, target_object=target, candidate_object=wrong, source=source)
+            metadata_result = frontier.pool_plan(root=root, target_object=target, candidate_object=metadata_candidate, source=source)
+            target_writable_result = frontier.pool_plan(
+                root=root, target_object=writable_target, candidate_object=writable_candidate, source=source
+            )
+            store_result = frontier.pool_plan(
+                root=root, target_object=store_target, candidate_object=store_candidate, source=source
+            )
+            unknown_result = frontier.pool_plan(
+                root=root, target_object=unknown_target, candidate_object=unknown_candidate, source=source
+            )
+
+        self.assertEqual(label_only["summary"]["pool_family_count"], 0)
+        self.assertGreater(label_only["summary"]["label_only_excluded_count"], 0)
+        self.assertEqual(wrong_result["families"][0]["status"], "unresolved")
+        self.assertIn("wrong_value", wrong_result["families"][0]["flags"])
+        self.assertEqual(metadata_result["families"][0]["status"], "actionable")
+        self.assertIn("candidate_section_flag_drift", metadata_result["families"][0]["flags"])
+        self.assertEqual(target_writable_result["families"][0]["status"], "unresolved")
+        self.assertIn("writable_pool_owner", target_writable_result["families"][0]["flags"])
+        self.assertEqual(store_result["families"][0]["status"], "unresolved")
+        self.assertIn("writable_pool_owner", store_result["families"][0]["flags"])
+        self.assertEqual(unknown_result["families"][0]["status"], "unresolved")
+        self.assertIn("unknown_typed_use", unknown_result["families"][0]["flags"])
+
+    def test_pool_plan_lis_reports_unique_and_tied_orderings(self):
+        selected, alternatives = frontier._pool_plan_lis([0, 3, 1, 2, 4])
+        self.assertEqual(selected, [0, 2, 3, 4])
+        self.assertEqual(len(alternatives), 1)
+        selected, alternatives = frontier._pool_plan_lis([0, 2, 1, 3])
+        self.assertEqual(selected, [])
+        self.assertEqual(len(alternatives), 2)
+
+    def test_pool_plan_owner_frontier_keeps_unmatched_duplicate_uncertainty(self):
+        def owner(offset: int, value: str, name: str) -> dict[str, object]:
+            return {
+                "name": name, "section": ".sdata2", "offset": offset, "size_bytes": 4,
+                "bytes": value, "bytes_complete": True, "bytes_sha256": value,
+                "writable": False, "issues": [], "uses_complete": True,
+                "uses": [{"function": name, "type": "f32", "width_bytes": 4}],
+                "consumer_count": 1, "consumer_relocation_count": 1,
+            }
+
+        values = ["3f800000", "40000000", "40400000", "40800000", "40a00000"]
+        target_owners = [owner(index * 4, value, f"t{index}") for index, value in enumerate(values)]
+        target_owners.extend([owner(20, "00000000", "td0"), owner(24, "00000000", "td1")])
+        current_offsets = [0, 8, 4, 5, 12]
+        candidate_owners = [owner(offset, value, f"c{index}") for index, (offset, value) in enumerate(zip(current_offsets, values))]
+        candidate_owners.extend([owner(20, "00000000", "cd0"), owner(24, "00000000", "cd1")])
+        target = {"sections": {".sdata2": {"readonly": True}}, "owners": target_owners, "complete": True}
+        candidate = {"sections": {".sdata2": {"readonly": True}}, "owners": candidate_owners, "complete": True}
+        result = frontier._pool_plan_frontier_section(target, candidate, ".sdata2")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["status"], "actionable")
+        self.assertEqual(result["excluded_moved_owner_count"], 1)
+        self.assertTrue(result["ambiguity_requires_review"])
+        self.assertIn("ambiguous_duplicate_value_owner", result["flags"])
+        self.assertEqual(result["candidate_owners"][0]["current_owner"]["offset"], 8)
+
+    def test_pool_plan_index_mode_and_cli_are_hash_bound(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target.o"
+            candidate = root / "candidate.o"
+            source = root / "source.c"
+            index_path = root / "build" / "current.json"
+            index_path.parent.mkdir()
+            _write_pool_elf(target, pool_offset=0, owner_name="target_pool")
+            _write_pool_elf(candidate, pool_offset=4, owner_name="candidate_pool")
+            source.write_text("const float pool[1] = {1.0f};\n", encoding="utf-8")
+            def binding(path: Path) -> dict[str, object]:
+                data = path.read_bytes()
+                return {"path": path.name, "size_bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            value = {
+                "schema": frontier.SCHEMA, "owner": "test", "toolchain_key": "test",
+                "authority_advanced": False, "report_binding": "caller_selected_diagnostic",
+                "compile_binding": "not_supplied", "physical_exact": None, "linked_exact": None,
+                "function_census_binding": "report_only_not_independently_verified", "candidate_only_functions": [],
+                "inputs": {"source": binding(source), "target_object": binding(target), "candidate_object": binding(candidate)},
+                "functions": [], "data_functions": None,
+                "summary": {"functions": 0, "strict_instruction_exact": 0, "data_instruction_exact": None},
+                "shared_relocation_diagnostics": [],
+            }
+            value["index_sha256"] = hashlib.sha256(frontier.canonical(value)).hexdigest()
+            index_path.write_bytes(frontier.canonical(value) + b"\n")
+            result = frontier.pool_plan(root=root, index=index_path)
+            with mock.patch("builtins.print") as output:
+                cli_result = frontier.main(["--root", str(root), "pool-plan", "--index", str(index_path)])
+
+        self.assertEqual(result["mode"], "index")
+        self.assertEqual(result["summary"]["pool_family_count"], 1)
+        self.assertEqual(cli_result, 0)
         self.assertTrue(output.called)
 
 

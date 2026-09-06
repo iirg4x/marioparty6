@@ -127,7 +127,128 @@ def _write_elf(
     path.write_bytes(bytes(image))
 
 
+def _write_pool_elf(
+    path: Path,
+    *,
+    pool_offset: int = 0,
+    pool_flags: int = 2,
+    pool_bytes: bytes = bytes.fromhex("3f800000"),
+    owner_name: str = "pool_owner",
+    function_names: tuple[str, ...] = ("foo", "bar"),
+    instruction_opcode: int = 48,
+    relocation_bias: int = 0,
+    duplicate_owner_name: str | None = None,
+) -> None:
+    """Small relocatable fixture with shared pool consumers and a moved owner."""
+    section_names = ["", ".text", ".sdata2", ".shstrtab", ".symtab", ".strtab", ".rela.text"]
+    shstrtab, section_name_offsets = _table_string(section_names[1:])
+    symbol_names = ["", *function_names, owner_name]
+    if duplicate_owner_name is not None:
+        symbol_names.append(duplicate_owner_name)
+    symbol_names.append("fixture.c")
+    strtab, symbol_name_offsets = _table_string(symbol_names[1:])
+    symbols = [struct.pack(">IIIBBH", 0, 0, 0, 0, 0, 0)]
+    for index, name in enumerate(function_names):
+        symbols.append(_symbol(symbol_name_offsets[name], index * 4, 4, 0x12, 1))
+    owner_index = len(symbols)
+    symbols.append(_symbol(symbol_name_offsets[owner_name], pool_offset, len(pool_bytes), 0x11, 2))
+    if duplicate_owner_name is not None:
+        duplicate_offset = pool_offset + len(pool_bytes) + 4
+        symbols.append(_symbol(symbol_name_offsets[duplicate_owner_name], duplicate_offset, len(pool_bytes), 0x11, 2))
+    symbols.append(_symbol(symbol_name_offsets["fixture.c"], 0, 0, 0x04, 0))
+    symbol_bytes = b"".join(symbols)
+    rela = b"".join(
+        struct.pack(">IIi", index * 4 + relocation_bias, (owner_index << 8) | 109, 0)
+        for index in range(len(function_names))
+    )
+    text = b"".join(struct.pack(">I", instruction_opcode << 26) for _ in function_names)
+    pool = b"\0" * pool_offset + pool_bytes
+    if duplicate_owner_name is not None:
+        pool += b"\0" * 4 + pool_bytes
+    sections = [
+        {"name": "", "type": 0, "flags": 0, "align": 0, "content": b"", "link": 0, "info": 0, "entsize": 0},
+        {"name": ".text", "type": 1, "flags": 0x6, "align": 4, "content": text, "link": 0, "info": 0, "entsize": 0},
+        {"name": ".sdata2", "type": 1, "flags": pool_flags, "align": 4, "content": pool, "link": 0, "info": 0, "entsize": 0},
+        {"name": ".shstrtab", "type": 3, "flags": 0, "align": 1, "content": shstrtab, "link": 0, "info": 0, "entsize": 0},
+        {"name": ".symtab", "type": 2, "flags": 0, "align": 4, "content": symbol_bytes, "link": 5, "info": 1, "entsize": 16},
+        {"name": ".strtab", "type": 3, "flags": 0, "align": 1, "content": strtab, "link": 0, "info": 0, "entsize": 0},
+        {"name": ".rela.text", "type": 4, "flags": 0, "align": 4, "content": rela, "link": 4, "info": 1, "entsize": 12},
+    ]
+    offset = 0x100
+    image = bytearray(offset)
+    for section in sections:
+        content = bytes(section["content"])
+        offset = (offset + 3) & ~3
+        section["offset"] = offset
+        section["size"] = len(content)
+        image.extend(b"\0" * (offset + len(content) - len(image)))
+        image[offset:offset + len(content)] = content
+        offset += len(content)
+    shoff = (offset + 3) & ~3
+    image.extend(b"\0" * (shoff + len(sections) * 40 - len(image)))
+    ident = b"\x7fELF" + bytes((1, 2, 1)) + b"\0" * 9
+    image[0:52] = struct.pack(">16sHHIIIIIHHHHHH", ident, 1, 20, 1, 0, 0, shoff, 0, 52, 0, 0, 40, len(sections), 3)
+    for index, section in enumerate(sections):
+        entry = shoff + index * 40
+        image[entry:entry + 40] = struct.pack(
+            ">IIIIIIIIII", section_name_offsets[section["name"]], int(section["type"]),
+            int(section["flags"]), 0, int(section["offset"]), int(section["size"]),
+            int(section["link"]), int(section["info"]), int(section["align"]), int(section["entsize"]),
+        )
+    path.write_bytes(bytes(image))
+
+
 class RecoveryObjectInventoryTests(unittest.TestCase):
+    def test_pool_census_uses_actual_bytes_and_typed_consumers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "pool.o"
+            _write_pool_elf(path)
+            result = inventory.pool_census(path)
+
+        owner = next(item for item in result["owners"] if item["name"] == "pool_owner")
+        self.assertEqual(owner["bytes"], "3f800000")
+        self.assertTrue(owner["safe"])
+        self.assertEqual(owner["consumer_count"], 2)
+        self.assertEqual({use["type"] for use in owner["uses"]}, {"f32"})
+        self.assertEqual({use["bytes"] for use in owner["uses"]}, {"3f800000"})
+
+    def test_pool_census_flags_writable_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "writable.o"
+            _write_pool_elf(path, pool_flags=3)
+            result = inventory.pool_census(path)
+
+        owner = next(item for item in result["owners"] if item["name"] == "pool_owner")
+        self.assertTrue(owner["writable"])
+        self.assertFalse(owner["safe"])
+        self.assertIn("writable_pool_owner", {item["issue"] for item in owner["issues"]})
+
+    def test_pool_census_decodes_instruction_when_relocation_has_intra_word_bias(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "biased.o"
+            _write_pool_elf(path, function_names=("foo",), relocation_bias=2)
+            result = inventory.pool_census(path)
+
+        owner = next(item for item in result["owners"] if item["name"] == "pool_owner")
+        self.assertTrue(owner["safe"])
+        self.assertEqual(owner["uses"][0]["instruction_offset"], 0)
+        self.assertEqual(owner["uses"][0]["function_offset"], 2)
+        self.assertEqual(owner["uses"][0]["type"], "f32")
+
+    def test_pool_census_flags_actual_store_and_unknown_consumer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store_path = Path(directory) / "store.o"
+            unknown_path = Path(directory) / "unknown.o"
+            _write_pool_elf(store_path, instruction_opcode=52)
+            _write_pool_elf(unknown_path, instruction_opcode=14)
+            store = inventory.pool_census(store_path)
+            unknown = inventory.pool_census(unknown_path)
+
+        store_owner = next(item for item in store["owners"] if item["name"] == "pool_owner")
+        unknown_owner = next(item for item in unknown["owners"] if item["name"] == "pool_owner")
+        self.assertIn("writable_use", {item["issue"] for item in store_owner["issues"]})
+        self.assertIn("unknown_typed_use", {item["issue"] for item in unknown_owner["issues"]})
+
     def test_inventory_has_allocated_sections_and_function_relative_targets(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.o"

@@ -23,9 +23,12 @@ development separately; do not subtract overhead to imply faster delivery.
    - do source ABI and consumers require that type, lifetime, or register role?
    - which known failed equivalences already rule out a tempting explanation?
    Do not require three answers before compiling an already supported cell.
-   Independent residual workers may stage and measure their own candidates in
-   isolated output directories, using the existing compiler lock. One writer
-   composes retained changes. This is not another approval round trip.
+   The lane lead owns reconstruction, candidate selection, compilation decisions,
+   and retention. Luna workers support bounded factual checks, tests, and
+   parent-specified tooling; they do not choose the cracking strategy or substitute
+   an audit vote for the lead's source reasoning. A worker may mechanically stage
+   or measure an explicitly assigned cell in an isolated output directory using
+   the existing compiler lock. Do not make the lead wait for unrelated checks.
 4. After two non-improving attempts against the same cause, change evidence
    method or residual. Also reassess after five minutes with neither a measured
    candidate nor a new discriminating fact. These are strategy-change triggers,
@@ -104,10 +107,11 @@ to the primary result and disable readiness.
 
 ## Parallel independent candidates
 
-Use separate workers for independent residuals or genuinely different unresolved
-evidence questions. A worker that already has a supported candidate need not wait
-for other workers' audit votes. Each worker owns its private candidate file; only
-the owner writer changes the retained source.
+Use separate workers for genuinely different bounded evidence questions or
+mechanical execution of lead-selected cells. The lane lead must reconstruct and
+select those cells rather than delegate crack leadership to Luna. An already
+supported cell need not wait for workers' audit votes. Each assigned measurement
+has a private candidate file; only the owner writer changes retained source.
 
 Submit the resulting candidates to one bounded batch against the same current
 index. This automates measurement, not source inference or random source search:
@@ -157,6 +161,44 @@ new worktree, negative-control matrix, or permanent attempt ban is added.
 For a compile-free replay, a job may provide `candidate_object`; that mode cannot
 authenticate a source-to-object relationship. Keep successful source/object
 snapshots and compact failed-result facts, not full report history.
+
+## Diagnose a shared readonly-pool family once
+
+When several otherwise byte-exact functions differ only in physical constant
+owners, freeze their C bodies and inspect the shared TU producers:
+
+```text
+python tools/recovery_frontier.py --root OWNER_ROOT pool-plan \
+  --index build/recovery/current.json
+```
+
+For retained before/after objects, use `--source`, `--target-object`, and
+`--candidate-object` instead of `--index`; optional `--strict` adds nominal-score
+context. These explicit inputs are an object replay, not compile provenance.
+
+The command reads actual ELF values, owner extents, scalar load widths, and
+relocations. It includes physically wrong functions hidden behind a nominal
+100% score and excludes label-only differences whose bytes and physical targets
+already agree. Output is bounded to 256 KiB, with no compile or live-source edit.
+Stores, unknown/address-escaping consumers, wrong typed values, or ambiguous
+owners remain unresolved. Candidate section-flag drift is explicitly reported;
+target writable storage is not treated as a readonly family.
+
+Do not edit the owner with the most downstream consumers merely because it ranks
+first by count. `owner_frontier` compares uniquely matched pool-value order and
+reports the minimum displaced-producer sequence as a hypothesis, including
+ambiguous matches. Start from the earliest implicated producer, inspect the
+complete same-section family, and compose one source cell. A real four-byte f32
+owner with only four-byte scalar reads may support a one-element const array;
+this remains source review, never automatic padding or a fabricated pool seeder.
+
+SNPC replay: the pre-repair objects identify 12 raw-exact functions with 40
+physical pool-difference rows. Whole-pool ordering identifies the six upstream
+producers instead of independently editing 20 affected value families. The
+retained six-owner repair removes all those families and closes 12 functions
+without changing any of the 85 raw function bodies. Each read-only replay took
+about 0.15 seconds locally. This is diagnostic runtime, not crack/hour, and does
+not declare the remaining three code residuals exact.
 
 ## Reuse supported native captures
 

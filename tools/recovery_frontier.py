@@ -21,6 +21,7 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import focus_symbol_report as focus
+from tools import recovery_object_inventory as objects
 
 SCHEMA = "recovery_current_evidence/v1"
 INDEX_LIMIT = 256 * 1024
@@ -29,8 +30,12 @@ ACCESS_SCHEMA = "recovery_accesses/v1"
 STACK_MAP_SCHEMA = "recovery_stack_map/v1"
 BRANCH_MAP_SCHEMA = "recovery_branch_map/v1"
 DIAGNOSE_SCHEMA = "recovery_source_diagnosis/v1"
+POOL_PLAN_SCHEMA = "recovery_pool_plan/v1"
 DIAGNOSE_OUTPUT_LIMIT = 32 * 1024
 DIAGNOSE_FOCUS_LIMIT = 8 * 1024
+POOL_PLAN_OUTPUT_LIMIT = 256 * 1024
+POOL_PLAN_MAX_FAMILIES = 128
+POOL_PLAN_MAX_CONSUMERS = 512
 VARINFO_LIMIT = INDEX_LIMIT
 VARINFO_PRIORITY_COMPILER_SHA256 = "316e2a98236c23f3fc902243b157eaebf8ef2ad6edb88cfd632a15b6676fa9a8"
 VARINFO_INLINE_ASM_FLAG = 0x40
@@ -2464,6 +2469,739 @@ def candidate_only(document: dict, metrics: list[dict]) -> list[dict]:
             if focus._is_function(symbol) and i not in paired]
 
 
+def _pool_plan_owner(census: dict[str, Any], section: str, offset: int) -> tuple[dict[str, Any] | None, str | None]:
+    owners = [
+        owner for owner in census.get("owners", [])
+        if isinstance(owner, dict) and owner.get("section") == section
+        and isinstance(owner.get("offset"), int)
+        and int(owner["offset"]) <= offset < int(owner["offset"]) + int(owner.get("size_bytes", 0))
+    ]
+    if len(owners) > 1:
+        return None, "ambiguous_duplicate_value_owner"
+    if not owners:
+        return None, "unknown_pool_owner"
+    return owners[0], None
+
+
+def _pool_plan_uses(census: dict[str, Any]) -> dict[tuple[str, int, int], list[dict[str, Any]]]:
+    result: dict[tuple[str, int, int], list[dict[str, Any]]] = {}
+    for owner in census.get("owners", []):
+        if not isinstance(owner, dict):
+            continue
+        for use in owner.get("uses", []):
+            if not isinstance(use, dict):
+                continue
+            try:
+                key = (str(use["function"]), int(use["function_offset"]), int(use["relocation_type"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            result.setdefault(key, []).append({"owner": owner, "use": use})
+    return result
+
+
+def _pool_plan_compact_owner(owner: dict[str, Any] | None) -> dict[str, Any] | None:
+    if owner is None:
+        return None
+    return {
+        key: owner.get(key)
+        for key in ("name", "section", "offset", "size_bytes", "bytes", "bytes_sha256",
+                    "bytes_complete", "writable", "consumer_count", "consumer_relocation_count")
+    } | {"issues": list(owner.get("issues", []))}
+
+
+def _pool_plan_issue_flags(owner: dict[str, Any] | None, owner_error: str | None, *, side: str) -> set[str]:
+    flags: set[str] = set()
+    if owner_error:
+        flags.add(owner_error)
+    if owner is None:
+        flags.add("unknown_typed_use")
+        return flags
+    if owner.get("writable"):
+        flags.add("candidate_section_flag_drift" if side == "candidate" else "writable_pool_owner")
+    for issue in owner.get("issues", []):
+        if not isinstance(issue, dict):
+            continue
+        name = str(issue.get("issue", ""))
+        if name == "writable_pool_owner":
+            flags.add("candidate_section_flag_drift" if side == "candidate" else "writable_pool_owner")
+        elif name == "writable_use":
+            flags.add("writable_pool_owner")
+        elif name in {"unknown_typed_use", "typed_extent_mismatch"}:
+            flags.add("unknown_typed_use")
+        elif name in {"address_escaping_or_unknown_consumer", "ambiguous_consumer_function"}:
+            flags.add("address_escaping")
+        elif name == "ambiguous_duplicate_value_owner":
+            flags.add(name)
+        elif name == "use_census_limit":
+            flags.add("unknown_typed_use")
+    if owner.get("uses_complete") is False:
+        flags.add("unknown_typed_use")
+    return flags
+
+
+def _pool_plan_duplicate_values(census: dict[str, Any]) -> dict[tuple[Any, ...], list[int]]:
+    values: dict[tuple[Any, ...], set[int]] = {}
+    for owner in census.get("owners", []):
+        if not isinstance(owner, dict):
+            continue
+        for use in owner.get("uses", []):
+            if not isinstance(use, dict):
+                continue
+            key = (owner.get("section"), use.get("type"), use.get("width_bytes"), use.get("bytes"))
+            if None in key:
+                continue
+            values.setdefault(key, set()).add(int(owner.get("offset", -1)))
+    return {key: sorted(offsets) for key, offsets in values.items() if len(offsets) > 1}
+
+
+def _pool_plan_owner_value_key(owner: dict[str, Any]) -> tuple[int, str] | None:
+    try:
+        size = int(owner["size_bytes"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    value = owner.get("bytes")
+    if size <= 0 or not isinstance(value, str) or not owner.get("bytes_complete", False):
+        return None
+    return size, value
+
+
+def _pool_plan_owner_types(owner: dict[str, Any]) -> tuple[list[dict[str, Any]], set[str]]:
+    typed: set[tuple[str, int]] = set()
+    for use in owner.get("uses", []):
+        if not isinstance(use, dict):
+            continue
+        value_type = use.get("type")
+        width = use.get("width_bytes")
+        if not isinstance(value_type, str) or not isinstance(width, int):
+            continue
+        typed.add((value_type, width))
+    typed_rows = [
+        {"type": value_type, "width_bytes": width}
+        for value_type, width in sorted(typed)
+    ]
+    flags: set[str] = set()
+    if owner.get("uses_complete") is False or not typed:
+        flags.add("unknown_typed_use")
+    if len(typed) > 1:
+        flags.add("unknown_typed_use")
+    return typed_rows, flags
+
+
+def _pool_plan_lis(sequence: list[int]) -> tuple[list[int], list[list[int]]]:
+    """Return one unique LIS, or bounded alternatives when tied.
+
+    Only lengths, capped path counts, and a few predecessor indices are kept
+    for each owner.  Full paths are materialized only for the at-most-three
+    alternatives returned to the caller.
+    """
+    lengths: list[int] = []
+    counts: list[int] = []
+    predecessors: list[list[int]] = []
+    for index, value in enumerate(sequence):
+        best_length = 0
+        best_predecessors: list[int] = []
+        for previous, previous_value in enumerate(sequence[:index]):
+            if previous_value >= value:
+                continue
+            candidate_length = lengths[previous]
+            if candidate_length > best_length:
+                best_length = candidate_length
+                best_predecessors = [previous]
+            elif candidate_length == best_length:
+                best_predecessors.append(previous)
+        if best_length == 0:
+            lengths.append(1)
+            counts.append(1)
+            predecessors.append([])
+            continue
+        lengths.append(best_length + 1)
+        counts.append(min(3, sum(counts[previous] for previous in best_predecessors)))
+        predecessors.append(best_predecessors[:3])
+    if not lengths:
+        return [], []
+    maximum = max(lengths)
+    ends = [index for index, length in enumerate(lengths) if length == maximum]
+    alternatives: list[list[int]] = []
+    for end in ends:
+        path = [end]
+        stack = [iter(predecessors[end])]
+        while path and len(alternatives) < 3:
+            if not predecessors[path[-1]]:
+                alternatives.append(list(reversed(path)))
+                path.pop()
+                stack.pop()
+                continue
+            previous = next(stack[-1], None)
+            if previous is None:
+                path.pop()
+                stack.pop()
+            else:
+                path.append(previous)
+                stack.append(iter(predecessors[previous]))
+        if len(alternatives) == 3:
+            break
+    alternatives.sort()
+    return alternatives[0] if len(alternatives) == 1 else [], alternatives
+
+
+def _pool_plan_frontier_section(
+    target_census: dict[str, Any],
+    candidate_census: dict[str, Any],
+    section: str,
+) -> dict[str, Any] | None:
+    target_section = target_census.get("sections", {}).get(section)
+    candidate_section = candidate_census.get("sections", {}).get(section)
+    if not isinstance(target_section, dict) or not isinstance(candidate_section, dict):
+        return None
+    if not bool(target_section.get("readonly")):
+        return None
+    target_owners = [
+        owner for owner in target_census.get("owners", [])
+        if isinstance(owner, dict) and owner.get("section") == section
+    ]
+    candidate_owners = [
+        owner for owner in candidate_census.get("owners", [])
+        if isinstance(owner, dict) and owner.get("section") == section
+    ]
+    target_by_key: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    candidate_by_key: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    for owner, by_key in ((target_owners, target_by_key), (candidate_owners, candidate_by_key)):
+        for row in owner:
+            key = _pool_plan_owner_value_key(row)
+            if key is not None:
+                by_key.setdefault(key, []).append(row)
+    ambiguous_keys = sorted(
+        repr(key) for key in set(target_by_key) & set(candidate_by_key)
+        if len(target_by_key.get(key, [])) > 1 or len(candidate_by_key.get(key, [])) > 1
+    )
+    ambiguous_duplicate_key_count = len(ambiguous_keys)
+    matched: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for key in sorted(set(target_by_key) & set(candidate_by_key)):
+        if len(target_by_key[key]) == 1 and len(candidate_by_key[key]) == 1:
+            matched.append((target_by_key[key][0], candidate_by_key[key][0]))
+    matched.sort(key=lambda pair: (
+        int(pair[0].get("offset", -1)), int(pair[1].get("offset", -1)), str(pair[0].get("name", ""))
+    ))
+    target_offsets = [int(target.get("offset", -1)) for target, _ in matched]
+    current_offsets = [int(current.get("offset", -1)) for _, current in matched]
+    offset_collision = len(set(target_offsets)) != len(target_offsets) or len(set(current_offsets)) != len(current_offsets)
+    if offset_collision:
+        ambiguous_keys.append("offset-collision")
+    selected_indices, alternatives = _pool_plan_lis(current_offsets)
+    selected = set(selected_indices)
+    excluded = [pair for index, pair in enumerate(matched) if index not in selected]
+    if alternatives and len(alternatives) > 1:
+        excluded = []
+    if not matched:
+        return None
+    frontier_rows: list[dict[str, Any]] = []
+    frontier_flags: set[str] = set()
+    for target_owner, candidate_owner in excluded:
+        target_types, target_type_flags = _pool_plan_owner_types(target_owner)
+        candidate_types, candidate_type_flags = _pool_plan_owner_types(candidate_owner)
+        flags = (_pool_plan_issue_flags(target_owner, None, side="target")
+                 | _pool_plan_issue_flags(candidate_owner, None, side="candidate")
+                 | target_type_flags | candidate_type_flags)
+        if target_types != candidate_types:
+            flags.add("unknown_typed_use")
+        frontier_flags.update(flags)
+        target_functions = sorted({str(use.get("function")) for use in target_owner.get("uses", [])
+                                   if isinstance(use, dict) and use.get("function") is not None})
+        candidate_functions = sorted({str(use.get("function")) for use in candidate_owner.get("uses", [])
+                                      if isinstance(use, dict) and use.get("function") is not None})
+        frontier_rows.append({
+            "target_owner": _pool_plan_compact_owner(target_owner),
+            "current_owner": _pool_plan_compact_owner(candidate_owner),
+            "target_types": target_types,
+            "current_types": candidate_types,
+            "target_consumer_count": target_owner.get("consumer_count", 0),
+            "current_consumer_count": candidate_owner.get("consumer_count", 0),
+            "affected_functions": sorted(set(target_functions) | set(candidate_functions)),
+            "flags": sorted(flags),
+        })
+    frontier_rows.sort(key=lambda row: (
+        int((row.get("target_owner") or {}).get("offset", 1 << 60)),
+        int((row.get("current_owner") or {}).get("offset", 1 << 60)),
+    ))
+    if ambiguous_keys:
+        frontier_flags.add("ambiguous_duplicate_value_owner")
+    if not target_census.get("complete") or not candidate_census.get("complete"):
+        frontier_flags.add("unknown_typed_use")
+    blocking_frontier_flags = {
+        flag for flag in frontier_flags
+        if flag not in {"candidate_section_flag_drift", "ambiguous_duplicate_value_owner"}
+    }
+    status = "actionable"
+    if offset_collision or len(alternatives) != 1:
+        status = "ambiguous"
+    elif not frontier_rows:
+        status = "exact_order"
+    elif blocking_frontier_flags:
+        status = "unresolved"
+    return {
+        "section": section,
+        "status": status,
+        "reason": "minimum_source_order_reconstruction",
+        "target_section_readonly": True,
+        "candidate_section_readonly": bool(candidate_section.get("readonly")),
+        "candidate_section_flag_drift": bool(target_section.get("readonly")) and not bool(candidate_section.get("readonly")),
+        "target_owner_count": len(target_owners),
+        "current_owner_count": len(candidate_owners),
+        "matched_unique_owner_count": len(matched),
+        "common_order_owner_count": len(selected_indices),
+        "excluded_moved_owner_count": len(frontier_rows),
+        "ambiguous_key_count": ambiguous_duplicate_key_count,
+        "ambiguous_duplicate_value_keys": ambiguous_keys[:16],
+        "ambiguity_requires_review": bool(ambiguous_keys),
+        "ambiguous_alternatives": [
+            [{"target_offset": target_offsets[index], "current_offset": current_offsets[index]}
+             for index in alternative]
+            for alternative in alternatives[1:3]
+        ],
+        "flags": sorted(frontier_flags),
+        "blocking_flags": sorted(blocking_frontier_flags),
+        "candidate_owners": frontier_rows,
+        "consumers_complete": bool(target_census.get("complete")) and bool(candidate_census.get("complete")),
+    }
+
+
+def _pool_plan_owner_frontier(
+    target_census: dict[str, Any],
+    candidate_census: dict[str, Any],
+    changed_sections: set[str] | None = None,
+) -> dict[str, Any] | None:
+    sections = sorted(set(target_census.get("sections", {})) & set(candidate_census.get("sections", {})))
+    if changed_sections is not None:
+        sections = [section for section in sections if section in changed_sections]
+    candidates = [
+        result for section in sections
+        if (result := _pool_plan_frontier_section(target_census, candidate_census, section)) is not None
+        and (result.get("excluded_moved_owner_count", 0) > 0 or result.get("status") == "ambiguous")
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda result: (-int(result.get("excluded_moved_owner_count", 0)), str(result.get("section"))))
+    return candidates[0]
+
+
+def _pool_plan_observation(
+    census: dict[str, Any],
+    uses: dict[tuple[str, int, int], list[dict[str, Any]]],
+    function: str,
+    row: dict[str, Any],
+    *,
+    side: str,
+) -> tuple[dict[str, Any], set[str]]:
+    effective = row.get("effective_target")
+    if not isinstance(effective, dict) or effective.get("kind") != "section":
+        return {"section": None, "offset": None, "type": None, "width_bytes": None, "bytes": None,
+                "owner": None}, {"unknown_typed_use"}
+    section = str(effective.get("section"))
+    try:
+        offset = int(effective["offset"])
+    except (KeyError, TypeError, ValueError):
+        return {"section": section, "offset": None, "type": None, "width_bytes": None, "bytes": None,
+                "owner": None}, {"unknown_typed_use"}
+    try:
+        key = (function, int(row["offset"]), int(row["type"]))
+    except (KeyError, TypeError, ValueError):
+        key = (function, -1, -1)
+    candidates = uses.get(key, [])
+    if len(candidates) == 1:
+        entry = candidates[0]
+        use = entry["use"]
+        owner = entry["owner"]
+        return {
+            "section": section, "offset": offset, "type": use.get("type"),
+            "width_bytes": use.get("width_bytes"), "bytes": use.get("bytes"),
+            "owner": owner,
+        }, _pool_plan_issue_flags(owner, None, side=side)
+    owner, owner_error = _pool_plan_owner(census, section, offset)
+    flags = _pool_plan_issue_flags(owner, owner_error, side=side)
+    flags.add("unknown_typed_use")
+    return {
+        "section": section, "offset": offset, "type": None, "width_bytes": None, "bytes": None,
+        "owner": owner,
+    }, flags
+
+
+def _pool_plan_strict_scores(root: Path, strict: Path | None) -> dict[str, Any]:
+    if strict is None:
+        return {}
+    raw, _ = read_bound(root, Path(strict), REPORT_LIMIT)
+    document = load_json(raw)
+    if not isinstance(document, dict):
+        raise ValueError("strict report must be a JSON object")
+    return {
+        str(row["function"]): row.get("match_percent")
+        for row in summarize(document, "strict")
+        if isinstance(row.get("function"), str)
+    }
+
+
+def _pool_plan_bindings(
+    root: Path,
+    *,
+    index: Path | None,
+    target_object: Path | None,
+    candidate_object: Path | None,
+    source: Path | None,
+    strict: Path | None,
+) -> tuple[Path, Path, Path, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    if index is not None:
+        if any(value is not None for value in (target_object, candidate_object, source)):
+            raise ValueError("pool-plan accepts either --index or explicit object/source paths")
+        raw, index_binding = read_bound(root, Path(index), INDEX_LIMIT)
+        index_value = load_json(raw)
+        if not isinstance(index_value, dict):
+            raise ValueError("current index must be a JSON object")
+        verify(root, index_value)
+        inputs = index_value.get("inputs")
+        if not isinstance(inputs, dict):
+            raise ValueError("current index lacks bound inputs")
+        paths: list[Path] = []
+        descs: list[dict[str, Any]] = []
+        for role in ("target_object", "candidate_object", "source"):
+            desc = inputs.get(role)
+            if not isinstance(desc, dict) or not isinstance(desc.get("path"), str):
+                raise ValueError(f"current index lacks bound {role}")
+            paths.append(Path(desc["path"]))
+            descs.append(dict(desc))
+        scores = {str(row.get("function")): row.get("match_percent")
+                  for row in index_value.get("functions", []) if isinstance(row, dict)}
+        return paths[0], paths[1], paths[2], {"path": str(Path(index)), **index_binding,
+            "verified": True}, descs[0], descs[1], {"source": descs[2], "strict_scores": scores}
+    if target_object is None or candidate_object is None or source is None:
+        raise ValueError("pool-plan requires --index or --target-object, --candidate-object and --source")
+    if strict is not None:
+        strict_scores = _pool_plan_strict_scores(root, strict)
+    else:
+        strict_scores = {}
+    source_raw, source_binding = read_bound(root, Path(source), 4 * 1024 * 1024)
+    _, target_binding = read_bound(root, Path(target_object), 16 * 1024 * 1024)
+    _, candidate_binding = read_bound(root, Path(candidate_object), 16 * 1024 * 1024)
+    return (Path(target_object), Path(candidate_object), Path(source),
+            {"mode": "explicit"}, target_binding, candidate_binding,
+            {"source": source_binding, "strict_scores": strict_scores})
+
+
+def pool_plan(
+    *,
+    root: Path,
+    index: Path | None = None,
+    target_object: Path | None = None,
+    candidate_object: Path | None = None,
+    source: Path | None = None,
+    strict: Path | None = None,
+    max_families: int = POOL_PLAN_MAX_FAMILIES,
+) -> dict[str, Any]:
+    """Build a bounded, read-only shared readonly-pool action plan."""
+    root = Path(os.path.abspath(root))
+    if isinstance(max_families, bool) or not isinstance(max_families, int) or not 1 <= max_families <= POOL_PLAN_MAX_FAMILIES:
+        raise ValueError(f"max_families must be between 1 and {POOL_PLAN_MAX_FAMILIES}")
+    target_path, candidate_path, source_path, index_binding, target_binding, candidate_binding, extra = _pool_plan_bindings(
+        root, index=index, target_object=target_object, candidate_object=candidate_object,
+        source=source, strict=strict,
+    )
+    target_inventory = objects.inventory(local(root, target_path))
+    candidate_inventory = objects.inventory(local(root, candidate_path))
+    target_census = objects.pool_census(local(root, target_path))
+    candidate_census = objects.pool_census(local(root, candidate_path))
+    target_functions = target_inventory["functions"]
+    candidate_functions = candidate_inventory["functions"]
+    target_uses = _pool_plan_uses(target_census)
+    candidate_uses = _pool_plan_uses(candidate_census)
+    target_duplicate_values = _pool_plan_duplicate_values(target_census)
+    candidate_duplicate_values = _pool_plan_duplicate_values(candidate_census)
+    target_census_complete = bool(target_census.get("complete")) and not bool(target_census.get("issues_truncated"))
+    candidate_census_complete = bool(candidate_census.get("complete")) and not bool(candidate_census.get("issues_truncated"))
+    strict_scores = extra.get("strict_scores", {})
+    groups: dict[tuple[Any, ...], dict[str, Any]] = {}
+    label_only = 0
+    raw_exact_count = 0
+    physical_pool_functions: set[str] = set()
+    changed_pool_sections: set[str] = set()
+    strict100_physical: set[str] = set()
+    for function in sorted(set(target_functions) & set(candidate_functions)):
+        target_row = target_functions[function]
+        candidate_row = candidate_functions[function]
+        if target_row.get("raw_sha256") != candidate_row.get("raw_sha256"):
+            continue
+        raw_exact_count += 1
+        t_rows = {(int(row["offset"]), int(row["type"])): row for row in target_row.get("physical_relocations", [])}
+        c_rows = {(int(row["offset"]), int(row["type"])): row for row in candidate_row.get("physical_relocations", [])}
+        for key in sorted(set(t_rows) | set(c_rows)):
+            tr, cr = t_rows.get(key), c_rows.get(key)
+            if tr is None or cr is None:
+                continue
+            if tr.get("effective_target") == cr.get("effective_target"):
+                if ((tr.get("symbol") or {}).get("name") != (cr.get("symbol") or {}).get("name")):
+                    label_only += 1
+                continue
+            tobs, tflags = _pool_plan_observation(target_census, target_uses, function, tr, side="target")
+            cobs, cflags = _pool_plan_observation(candidate_census, candidate_uses, function, cr, side="candidate")
+            if tobs.get("section") is None or cobs.get("section") is None:
+                continue
+            if tobs.get("section") != cobs.get("section"):
+                continue
+            physical_pool_functions.add(function)
+            changed_pool_sections.add(str(tobs.get("section")))
+            score = strict_scores.get(function)
+            if score == 100 or score == 100.0:
+                strict100_physical.add(function)
+            target_owner = tobs.get("owner")
+            candidate_owner = cobs.get("owner")
+            flags = set(tflags) | set(cflags)
+            target_bytes, candidate_bytes = tobs.get("bytes"), cobs.get("bytes")
+            value_equal = target_bytes is not None and target_bytes == candidate_bytes
+            type_equal = tobs.get("type") is not None and tobs.get("type") == cobs.get("type")
+            width_equal = tobs.get("width_bytes") is not None and tobs.get("width_bytes") == cobs.get("width_bytes")
+            if not value_equal:
+                flags.add("wrong_value")
+            if not type_equal or not width_equal:
+                flags.add("unknown_typed_use")
+            # A decoded word load is a known four-byte scalar/address-width
+            # consumer.  Keep its conservative ``u32_or_address`` type in the
+            # evidence, but do not call it an unknown use merely because the
+            # source-level signedness is not recoverable from the instruction.
+            # Unsupported opcodes, missing consumers, and address-escaping
+            # owners are already reported by the actual census as blockers.
+            if tobs.get("type") in {None, "unknown"} or cobs.get("type") in {None, "unknown"}:
+                flags.add("unknown_typed_use")
+            if target_owner is None or candidate_owner is None:
+                flags.add("unknown_pool_owner")
+            if not target_census_complete or not candidate_census_complete:
+                flags.add("unknown_typed_use")
+            group_key = (tobs.get("section"), tobs.get("type"), tobs.get("width_bytes"), target_bytes,
+                         cobs.get("type"), cobs.get("width_bytes"), candidate_bytes,
+                         (target_owner or {}).get("offset"), (candidate_owner or {}).get("offset"))
+            group = groups.setdefault(group_key, {
+                "target_observation": tobs, "candidate_observation": cobs,
+                "flags": set(), "consumers": {}, "pairs": [],
+            })
+            group["flags"].update(flags)
+            group["pairs"].append({"function": function, "target_row": key[0], "relocation_type": key[1],
+                                   "target_offset": tobs.get("offset"), "candidate_offset": cobs.get("offset")})
+            group["consumers"].setdefault(function, 0)
+            group["consumers"][function] += 1
+    ordered_groups = sorted(groups.values(), key=lambda item: (-len(item["consumers"]), -len(item["pairs"]),
+                                                                str(item["target_observation"].get("bytes"))))
+    families: list[dict[str, Any]] = []
+    for index_number, group in enumerate(ordered_groups[:max_families], 1):
+        tobs, cobs = group["target_observation"], group["candidate_observation"]
+        target_owner, candidate_owner = tobs.get("owner"), cobs.get("owner")
+        all_consumers = [
+            {"function": name, "relocation_count": count, "nominal_strict_score": strict_scores.get(name),
+             "raw_byte_exact": True}
+            for name, count in sorted(group["consumers"].items())
+        ]
+        consumers = all_consumers[:POOL_PLAN_MAX_CONSUMERS]
+        flags = sorted(group["flags"])
+        consumers_truncated = len(all_consumers) > len(consumers)
+        pairs_truncated = len(group["pairs"]) > POOL_PLAN_MAX_CONSUMERS
+        if consumers_truncated or pairs_truncated:
+            flags = sorted(set(flags) | {"consumer_census_truncated"})
+        blocking_flags = [flag for flag in flags if flag != "candidate_section_flag_drift"]
+        status = "actionable" if not blocking_flags and tobs.get("offset") != cobs.get("offset") else "unresolved"
+        observations: list[dict[str, Any]] = []
+        if (tobs.get("bytes") is not None and tobs.get("bytes") == cobs.get("bytes")
+                and target_owner and candidate_owner
+                and not str(target_owner.get("name", "")).startswith("@")
+                and str(candidate_owner.get("name", "")).startswith("@")):
+            observations.append({
+                "kind": "possible_scalar_const_folding",
+                "evidence": "target_named_current_compiler_anonymous_same_typed_bytes",
+            })
+        duplicate_key_target = (tobs.get("section"), tobs.get("type"), tobs.get("width_bytes"), tobs.get("bytes"))
+        duplicate_key_candidate = (cobs.get("section"), cobs.get("type"), cobs.get("width_bytes"), cobs.get("bytes"))
+        if duplicate_key_target in target_duplicate_values or duplicate_key_candidate in candidate_duplicate_values:
+            observations.append({
+                "kind": "late_duplicate_pool_value",
+                "evidence": "same_typed_bytes_have_multiple_physical_owner_offsets",
+                "target_owner_offsets": target_duplicate_values.get(duplicate_key_target, []),
+                "current_owner_offsets": candidate_duplicate_values.get(duplicate_key_candidate, []),
+            })
+        representation = {"one_element_const_array": False, "reason": "owner_extent_or_typed_use_not_proven"}
+        if (not blocking_flags and target_owner and candidate_owner and target_owner.get("size_bytes") == 4
+                and candidate_owner.get("size_bytes") == 4 and tobs.get("width_bytes") == 4
+                and cobs.get("width_bytes") == 4 and tobs.get("type") in {"f32", "s32", "u16", "s16"}):
+            representation = {"one_element_const_array": True,
+                              "reason": "real_4B_readonly_owner_and_4B_typed_consumers"}
+        family = {
+            "id": f"pool-family-{index_number:03d}", "status": status,
+            "type": tobs.get("type"), "width_bytes": tobs.get("width_bytes"),
+            "target_bytes": tobs.get("bytes"), "candidate_bytes": cobs.get("bytes"),
+            "value_equal": tobs.get("bytes") is not None and tobs.get("bytes") == cobs.get("bytes"),
+            "target_owner": _pool_plan_compact_owner(target_owner),
+            "current_owner": _pool_plan_compact_owner(candidate_owner),
+            "target_owner_offset": (target_owner or {}).get("offset"),
+            "current_owner_offset": (candidate_owner or {}).get("offset"),
+            "target_use_offset": tobs.get("offset"), "current_use_offset": cobs.get("offset"),
+            "binding": {
+                "target": {"owner_offset": (target_owner or {}).get("offset"), "use_offset": tobs.get("offset"),
+                            "type": tobs.get("type"), "width_bytes": tobs.get("width_bytes"), "bytes": tobs.get("bytes")},
+                "current": {"owner_offset": (candidate_owner or {}).get("offset"), "use_offset": cobs.get("offset"),
+                             "type": cobs.get("type"), "width_bytes": cobs.get("width_bytes"), "bytes": cobs.get("bytes")},
+            },
+            "owner_offset_delta": ((target_owner or {}).get("offset") - (candidate_owner or {}).get("offset")
+                                   if isinstance((target_owner or {}).get("offset"), int)
+                                   and isinstance((candidate_owner or {}).get("offset"), int) else None),
+            "consumer_count": len(all_consumers), "consumer_relocation_count": len(group["pairs"]),
+            "consumers": consumers, "consumers_returned_count": len(consumers),
+            "consumers_truncated": consumers_truncated,
+            "consumer_census_complete": not consumers_truncated and not pairs_truncated,
+            "affected_functions": [item["function"] for item in consumers],
+            "affected_function_count": len(all_consumers),
+            "pairs": group["pairs"][:POOL_PLAN_MAX_CONSUMERS],
+            "pairs_returned_count": min(len(group["pairs"]), POOL_PLAN_MAX_CONSUMERS),
+            "pairs_truncated": pairs_truncated, "flags": flags, "blocking_flags": blocking_flags,
+            "observations": observations,
+            "representation_review": representation,
+            "observed_owner_classes": {
+                "target": "named_or_local" if target_owner else "unknown",
+                "current": "named_or_local" if candidate_owner else "unknown",
+            },
+            "next_action": (
+                "Freeze code and restore the actual typed storage producers/consumers as one family; recompile once."
+                if status == "actionable" else
+                "Freeze code; resolve the flagged physical owner/type/value issue before restoring the actual typed storage producers/consumers as one family."
+            ),
+        }
+        families.append(family)
+    omitted_families = max(0, len(ordered_groups) - len(families))
+    actionable = [family for family in families if family["status"] == "actionable"]
+    owner_frontier = _pool_plan_owner_frontier(target_census, candidate_census, changed_pool_sections)
+    highest = max(actionable or families,
+                  key=lambda item: (item["consumer_count"], item["consumer_relocation_count"]),
+                  default=None)
+    owner_level_guidance = None
+    if owner_frontier is not None:
+        frontier_rows = owner_frontier.get("candidate_owners", [])
+        if owner_frontier.get("status") == "ambiguous":
+            owner_level_guidance = {
+                "section": owner_frontier.get("section"),
+                "source": "owner_frontier",
+                "status": "ambiguous",
+                "reason": owner_frontier.get("reason"),
+                "ambiguous_alternatives": owner_frontier.get("ambiguous_alternatives", []),
+                "next_action": (
+                    "Freeze code; resolve the ambiguous same-typed owner ordering before restoring "
+                    "any producer/consumer family."
+                ),
+            }
+        elif frontier_rows:
+            earliest_row = frontier_rows[0]
+            target_owner = earliest_row.get("target_owner") or {}
+            current_owner = earliest_row.get("current_owner") or {}
+            section = str(owner_frontier.get("section"))
+            target_offset = int(target_owner.get("offset", 0))
+            same_section = [
+                family for family in families
+                if isinstance(family.get("target_owner"), dict)
+                and str(family["target_owner"].get("section")) == section
+            ]
+            owner_level_guidance = {
+                "section": section,
+                "source": "owner_frontier",
+                "status": owner_frontier.get("status"),
+                "reason": owner_frontier.get("reason"),
+                "earliest_displaced_target_owner": {
+                    "name": target_owner.get("name"),
+                    "offset": target_offset,
+                    "offset_hex": f"0x{target_offset:X}",
+                    "current_name": current_owner.get("name"),
+                    "current_offset": current_owner.get("offset"),
+                    "type": (earliest_row.get("target_types") or [{}])[0].get("type"),
+                    "width_bytes": (earliest_row.get("target_types") or [{}])[0].get("width_bytes"),
+                    "bytes": target_owner.get("bytes"),
+                    "flags": earliest_row.get("flags", []),
+                },
+                "same_section_family_ids": [family["id"] for family in same_section],
+                "same_section_family_count": len(same_section),
+                "source_ordering": "earliest_displaced_target_owner_first",
+                "consumer_leverage_is_not_source_edit_order": True,
+                "next_action": (
+                    f"Start with the earliest displaced target owner at {section}+0x{target_offset:X}; "
+                    "batch its same-section typed storage producers/consumers as one owner family, "
+                    "then freeze downstream displaced consumers and unchanged raw code. "
+                    "Do not edit the highest-consumer family independently."
+                ) if owner_frontier.get("status") == "actionable" else (
+                    "Freeze code; resolve the owner-frontier flags before restoring the actual typed "
+                    "storage producers/consumers as one family."
+                ),
+            }
+    if owner_level_guidance is not None:
+        global_next_action = owner_level_guidance["next_action"]
+    elif actionable:
+        global_next_action = "Freeze code and restore the actual typed storage producers/consumers as one family; recompile once."
+    elif families:
+        global_next_action = "Freeze code; resolve the flagged physical owner/type/value issue before restoring the actual typed storage producers/consumers as one family."
+    else:
+        global_next_action = "No actionable unresolved readonly-pool family; keep code frozen and refresh after the next physical change."
+    result = {
+        "schema": POOL_PLAN_SCHEMA, "schema_version": 1,
+        "mode": "index" if index is not None else "explicit",
+        "inputs": {"index": index_binding if index is not None else None,
+                   "source": {"path": str(source_path), "binding": extra["source"]},
+                   "target_object": target_binding, "candidate_object": candidate_binding},
+        "summary": {
+            "target_function_count": len(target_functions), "candidate_function_count": len(candidate_functions),
+            "raw_byte_exact_function_count": raw_exact_count,
+            "physical_pool_difference_function_count": len(physical_pool_functions),
+            "raw_byte_exact_pool_function_count": len(physical_pool_functions),
+            "physical_pool_difference_count": sum(len(group["pairs"]) for group in ordered_groups),
+            "nominal_strict100_physical_difference_function_count": len(strict100_physical),
+            "strict100_hidden_physical_pool_case_count": len(strict100_physical),
+            "pool_family_count": len(ordered_groups), "returned_family_count": len(families),
+            "omitted_family_count": omitted_families, "actionable_family_count": len(actionable),
+            "unresolved_family_count": len(families) - len(actionable),
+            "label_only_excluded_count": label_only,
+            "target_pool_census_complete": target_census_complete,
+            "candidate_pool_census_complete": candidate_census_complete,
+            "target_object_sha256": target_inventory["object"]["sha256"],
+            "candidate_object_sha256": candidate_inventory["object"]["sha256"],
+        },
+        "families": families,
+        "owner_frontier": owner_frontier,
+        "pool_census": {
+            "target": {
+                "complete": target_census_complete,
+                "owner_count": len(target_census.get("owners", [])),
+                "issue_count": target_census.get("issue_count", 0),
+                "issues_returned_count": target_census.get("issues_returned_count", 0),
+                "issues_truncated": bool(target_census.get("issues_truncated")),
+            },
+            "current": {
+                "complete": candidate_census_complete,
+                "owner_count": len(candidate_census.get("owners", [])),
+                "issue_count": candidate_census.get("issue_count", 0),
+                "issues_returned_count": candidate_census.get("issues_returned_count", 0),
+                "issues_truncated": bool(candidate_census.get("issues_truncated")),
+            },
+        },
+        "highest_leverage_shared_owner_family": None if highest is None else {
+            "id": highest["id"], "status": highest["status"],
+            "consumer_count": highest["consumer_count"],
+            "consumer_relocation_count": highest["consumer_relocation_count"],
+            "type": highest["type"], "target_bytes": highest["target_bytes"],
+            "candidate_bytes": highest["candidate_bytes"],
+            "target_owner_offset": highest["target_owner_offset"],
+            "current_owner_offset": highest["current_owner_offset"],
+            "affected_functions": highest["affected_functions"],
+            "selection_scope": "actionable" if actionable else "unresolved",
+            "source_edit_order": "owner_offset_ascending",
+            "consumer_leverage_is_not_source_edit_order": True,
+        },
+        "owner_level_guidance": owner_level_guidance,
+        "next_action": global_next_action,
+        "diagnostic_only": True, "physical_proof": False, "source_emission_authorized": False,
+        "promotion_authorized": False, "authority_advanced": False,
+    }
+    if len(canonical(result)) + 1 > POOL_PLAN_OUTPUT_LIMIT:
+        raise ValueError("pool-plan result exceeds 256 KiB; reduce the selected family scope")
+    return result
+
+
 def snapshot(*, root: Path, owner: str, source: Path, target: Path, candidate: Path,
              strict: Path, data: Path | None, toolchain_key: str,
              compile_receipt: Path | None = None) -> dict:
@@ -2611,6 +3349,13 @@ def main(argv: list[str] | None = None) -> int:
     diagnose_parser.add_argument("--data", type=Path)
     diagnose_parser.add_argument("--function", required=True)
     diagnose_parser.add_argument("--varinfo", type=Path)
+    pool_parser = sub.add_parser("pool-plan", help="plan one shared readonly-pool owner family from ELF facts")
+    pool_parser.add_argument("--index", type=Path)
+    pool_parser.add_argument("--source", type=Path)
+    pool_parser.add_argument("--target-object", "--target", dest="target_object", type=Path)
+    pool_parser.add_argument("--candidate-object", "--candidate", dest="candidate_object", type=Path)
+    pool_parser.add_argument("--strict", type=Path, help="optional strict report for explicit nominal scores")
+    pool_parser.add_argument("--max-families", type=int, default=POOL_PLAN_MAX_FAMILIES)
     args = parser.parse_args(argv)
     try:
         root = Path(os.path.abspath(args.root))
@@ -2655,11 +3400,22 @@ def main(argv: list[str] | None = None) -> int:
                 varinfo=args.varinfo,
             )
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        elif args.action == "pool-plan":
+            value = pool_plan(
+                root=root,
+                index=args.index,
+                target_object=args.target_object,
+                candidate_object=args.candidate_object,
+                source=args.source,
+                strict=args.strict,
+                max_families=args.max_families,
+            )
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         else:
             value = branch_map(root=root, strict=args.strict, function=args.function)
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         return 0
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, objects.ObjectInventoryError) as exc:
         print(f"current evidence: {exc}", file=sys.stderr)
         return 2
 
