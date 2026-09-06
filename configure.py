@@ -1039,7 +1039,7 @@ config.libs = [
             Object(NonMatching, "board/math.c", extra_cflags=["-O4,p"]),
             Object(Matching, "board/camera.c"),
             Object(Matching, "board/player.c"),
-            Object(NonMatching, "board/snpc.c"),
+            Object(Matching, "board/snpc.c"),
             Object(Matching, "board/object.c"),
             Object(Matching, "board/window.c"),
             Object(Matching, "board/audio.c"),
