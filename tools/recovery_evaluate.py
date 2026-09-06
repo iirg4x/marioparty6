@@ -441,12 +441,81 @@ def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dic
     return result
 
 
+def _physical_progress_summary(object_comparison: dict) -> dict:
+    result: dict[str, Any] = {
+        "diagnostic_only": True,
+        "scope": "raw+normalized-physical only",
+        "strict_exact": "not_measured",
+        "linked_or_whole_owner_completion": "not_measured",
+        "status": "unknown",
+        "functions_inspected": None,
+        "raw_target_exact_count": None,
+        "raw_and_normalized_physical_exact_count": None,
+        "normalized_mismatch_rows_before": None,
+        "normalized_mismatch_rows_after": None,
+        "previously_closed_normalized_row_loss_count": None,
+        "raw_changed_function_count": None,
+    }
+    if not isinstance(object_comparison, dict) or object_comparison.get("function_census_equal") is not True:
+        result["reason"] = "function census or comparison fields incomplete"
+        return result
+    rows = object_comparison.get("functions")
+    if not isinstance(rows, dict) or not rows:
+        result["reason"] = "function comparison rows missing"
+        return result
+    result["functions_inspected"] = len(rows)
+    required_bool = ("base_raw_exact_target", "raw_exact_target", "base_normalized_exact",
+                     "candidate_normalized_exact", "raw_equal_base")
+    required_int = ("normalized_diff_before", "normalized_diff_after", "closed_normalized_row_loss_count")
+    values = []
+    for name, row in rows.items():
+        if not isinstance(row, dict):
+            result["reason"] = f"incomplete function row: {str(name)[:96]}"
+            return result
+        if any(not isinstance(row.get(field), bool) for field in required_bool):
+            result["reason"] = f"incomplete boolean fields: {str(name)[:96]}"
+            return result
+        if any(isinstance(row.get(field), bool) or not isinstance(row.get(field), int)
+               or row[field] < 0 for field in required_int):
+            result["reason"] = f"incomplete numeric fields: {str(name)[:96]}"
+            return result
+        if (row["base_normalized_exact"] != (row["normalized_diff_before"] == 0)
+                or row["candidate_normalized_exact"] != (row["normalized_diff_after"] == 0)):
+            result["reason"] = f"contradictory normalized exactness: {str(name)[:96]}"
+            return result
+        if ((row["raw_equal_base"] and row["base_raw_exact_target"] != row["raw_exact_target"])
+                or (row["base_raw_exact_target"] and row["raw_exact_target"] and not row["raw_equal_base"])):
+            result["reason"] = f"contradictory raw identity: {str(name)[:96]}"
+            return result
+        values.append(row)
+    result.update(
+        status="known",
+        raw_target_exact_count={
+            "before": sum(row["base_raw_exact_target"] for row in values),
+            "after": sum(row["raw_exact_target"] for row in values),
+        },
+        raw_and_normalized_physical_exact_count={
+            "before": sum(row["base_raw_exact_target"] and row["base_normalized_exact"] for row in values),
+            "after": sum(row["raw_exact_target"] and row["candidate_normalized_exact"] for row in values),
+        },
+        normalized_mismatch_rows_before=sum(row["normalized_diff_before"] for row in values),
+        normalized_mismatch_rows_after=sum(row["normalized_diff_after"] for row in values),
+        previously_closed_normalized_row_loss_count=sum(
+            row["closed_normalized_row_loss_count"] for row in values
+        ),
+        raw_changed_function_count=sum(not row["raw_equal_base"] for row in values),
+        definition="raw exact AND canonical normalized relocation exact",
+    )
+    return result
+
+
 def _dispatch_summary(result: dict) -> dict:
     summary = {key: result[key] for key in
                ("status", "functions", "compiler_runs", "objdiff_runs", "retention_ready", "retained", "seconds", "cleanup_errors")}
     summary.update(gains=result.get("gains", [])[:8], regressions=result.get("regressions", [])[:8],
                    regression_count=len(result.get("regressions", [])), reason=result.get("reason"),
-                   changed_result_diagnostics=result.get("changed_result_diagnostics"))
+                   changed_result_diagnostics=result.get("changed_result_diagnostics"),
+                   physical_progress=result.get("physical_progress"))
     encoded = json.dumps(summary, sort_keys=True).encode("utf-8")
     if len(encoded) > _EVALUATE_STDOUT_LIMIT:
         diagnostic = result.get("changed_result_diagnostics") or {}
@@ -472,6 +541,7 @@ def _dispatch_summary(result: dict) -> dict:
                 "affected_function_count": diagnostic.get("affected_function_count", 0),
                 "unknown_count": diagnostic.get("unknown_count", 0), "truncated": True,
             },
+            "physical_progress": result.get("physical_progress"),
             "stdout_truncated": True,
         }
     return summary
@@ -593,6 +663,7 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
             result["semantic_object_equal_baseline"] = candidate_inventory["semantic_sha256"] == base_inventory["semantic_sha256"]
             comparison = objects.compare(target_inventory, base_inventory, candidate_inventory, functions)
             result["object_comparison"] = comparison
+            result["physical_progress"] = _physical_progress_summary(comparison)
             if result["semantic_object_equal_baseline"]:
                 result.update(status="duplicate_object", reason="allocated object/link semantics unchanged; skip objdiff")
             else:

@@ -599,6 +599,69 @@ class RecoveryEvaluateTests(unittest.TestCase):
         )
         self.assertEqual(diagnostic["functions"][0]["object_relation"], "relocation_only")
 
+    def test_physical_progress_reports_cross_channel_improvement(self) -> None:
+        comparison = {"function_census_equal": True, "functions": {
+            "FocusFunction": {
+                "base_raw_exact_target": True, "raw_exact_target": True,
+                "base_normalized_exact": True, "candidate_normalized_exact": True,
+                "normalized_diff_before": 0, "normalized_diff_after": 0,
+                "closed_normalized_row_loss_count": 0, "raw_equal_base": True,
+            },
+            "ProtectedSibling": {
+                "base_raw_exact_target": False, "raw_exact_target": True,
+                "base_normalized_exact": False, "candidate_normalized_exact": True,
+                "normalized_diff_before": 3, "normalized_diff_after": 0,
+                "closed_normalized_row_loss_count": 0, "raw_equal_base": False,
+            },
+        }}
+        summary = evaluate._physical_progress_summary(comparison)
+        self.assertEqual(summary["status"], "known")
+        self.assertEqual(summary["raw_target_exact_count"], {"before": 1, "after": 2})
+        self.assertEqual(summary["raw_and_normalized_physical_exact_count"], {"before": 1, "after": 2})
+        self.assertEqual(summary["normalized_mismatch_rows_before"], 3)
+        self.assertEqual(summary["normalized_mismatch_rows_after"], 0)
+        self.assertEqual(summary["previously_closed_normalized_row_loss_count"], 0)
+        self.assertEqual(summary["raw_changed_function_count"], 1)
+        self.assertEqual(summary["strict_exact"], "not_measured")
+
+    def test_physical_progress_reports_regression_and_unknown_missing_field(self) -> None:
+        row = {
+            "base_raw_exact_target": True, "raw_exact_target": False,
+            "base_normalized_exact": True, "candidate_normalized_exact": False,
+            "normalized_diff_before": 0, "normalized_diff_after": 4,
+            "closed_normalized_row_loss_count": 2, "raw_equal_base": False,
+        }
+        summary = evaluate._physical_progress_summary({"function_census_equal": True, "functions": {"f": row}})
+        self.assertEqual(summary["raw_target_exact_count"], {"before": 1, "after": 0})
+        self.assertEqual(summary["raw_and_normalized_physical_exact_count"], {"before": 1, "after": 0})
+        self.assertEqual(summary["normalized_mismatch_rows_before"], 0)
+        self.assertEqual(summary["normalized_mismatch_rows_after"], 4)
+        self.assertEqual(summary["previously_closed_normalized_row_loss_count"], 2)
+        self.assertEqual(summary["raw_changed_function_count"], 1)
+        del row["candidate_normalized_exact"]
+        unknown = evaluate._physical_progress_summary({"function_census_equal": True, "functions": {"f": row}})
+        self.assertEqual(unknown["status"], "unknown")
+        self.assertIsNone(unknown["raw_target_exact_count"])
+
+    def test_physical_progress_rejects_empty_census_bool_counts_and_contradictions(self) -> None:
+        row = {
+            "base_raw_exact_target": True, "raw_exact_target": True,
+            "base_normalized_exact": True, "candidate_normalized_exact": True,
+            "normalized_diff_before": 0, "normalized_diff_after": 0,
+            "closed_normalized_row_loss_count": 0, "raw_equal_base": True,
+        }
+        self.assertEqual(evaluate._physical_progress_summary({"function_census_equal": True, "functions": {}})["status"], "unknown")
+        self.assertEqual(evaluate._physical_progress_summary({"functions": {"f": row}})["status"], "unknown")
+        for field, value in (("normalized_diff_after", True), ("candidate_normalized_exact", False),
+                             ("raw_equal_base", True)):
+            malformed = copy.deepcopy(row)
+            malformed[field] = value
+            if field == "raw_equal_base":
+                malformed["base_raw_exact_target"] = False
+            summary = evaluate._physical_progress_summary({"function_census_equal": True, "functions": {"f": malformed}})
+            self.assertEqual(summary["status"], "unknown", field)
+            self.assertIsNone(summary["raw_and_normalized_physical_exact_count"])
+
     def test_dispatch_summary_is_hard_bounded(self) -> None:
         result = {
             "status": "improved", "functions": ["f" * 1000] * 300, "compiler_runs": 0,
