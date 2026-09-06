@@ -348,6 +348,13 @@ def _compact_first_mismatch(summary: dict | None) -> dict | None:
     return {key: first[key] for key in ("row", "kind", "target", "candidate") if key in first}
 
 
+def _compact_canonical_mismatch(summary: dict | None) -> dict | None:
+    first = summary.get("first_mismatch") if isinstance(summary, dict) else None
+    if not isinstance(first, dict):
+        return None
+    return {key: first[key] for key in ("row", "kind", "target", "candidate") if key in first}
+
+
 def _target_anchor_context(before_target: list[dict], after_target: list[dict],
                            after_candidate: list[dict], first: dict | None) -> dict:
     """Keep the original problem site visible through inserted prologue rows.
@@ -463,10 +470,17 @@ def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dic
                 after_summary = frontier._diagnose_rows(after_target, after_candidate)
                 before_summary = frontier._diagnose_rows(before_target, before_candidate)
                 channel_item["current_first_instruction_mismatch"] = _compact_first_mismatch(after_summary)
-                channel_item["existing_first_instruction_mismatch"] = _compact_first_mismatch(before_summary)
+                existing_instruction = _compact_first_mismatch(before_summary)
+                channel_item["existing_first_instruction_mismatch"] = existing_instruction
+                anchor = existing_instruction
+                anchor_basis = "instruction"
+                if anchor is None:
+                    anchor = _compact_canonical_mismatch(before_summary)
+                    anchor_basis = "annotation"
                 channel_item["baseline_target_context"] = _target_anchor_context(
-                    before_target, after_target, after_candidate,
-                    channel_item["existing_first_instruction_mismatch"])
+                    before_target, after_target, after_candidate, anchor)
+                if anchor is not None:
+                    channel_item["baseline_target_context"]["anchor_basis"] = anchor_basis
                 if len(before_target) != len(after_target) or len(before_candidate) != len(after_candidate):
                     raise ValueError("aligned report row count changed")
                 for index in range(len(before_target)):

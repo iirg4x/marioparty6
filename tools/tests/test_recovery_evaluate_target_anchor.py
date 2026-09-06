@@ -75,6 +75,37 @@ class RecoveryTargetAnchorTests(unittest.TestCase):
         self.assertEqual(anchor["status"], "located")
         self.assertEqual(anchor["current_row"], 1)
 
+    def test_annotation_only_baseline_anchors_actual_instruction(self) -> None:
+        before = _report(focus_exact=True, sibling_exact=True)
+        for side in ("left", "right"):
+            before[side]["symbols"][1]["instructions"][0]["diff_kind"] = "DIFF_ARG"
+        after = copy.deepcopy(before)
+        result = evaluate._changed_result_diagnostics(
+            root=Path("."), baseline_documents={"strict": before, "data": before},
+            after_documents={"strict": after, "data": after},
+            strict_path=Path("strict.json"), data_path=Path("data.json"), metric_changes=[],
+            object_comparison={"functions": {"FocusFunction": {"raw_equal_base": False}}})
+        anchor = result["functions"][0]["channels"]["data"]["baseline_target_context"]
+        self.assertIsNone(result["functions"][0]["channels"]["data"]["existing_first_instruction_mismatch"])
+        self.assertEqual(anchor["status"], "located")
+        self.assertEqual(anchor["anchor_basis"], "annotation")
+        self.assertEqual(anchor["target_address"], 256)
+
+    def test_instruction_anchor_precedes_earlier_annotation(self) -> None:
+        before = _report(focus_exact=True, sibling_exact=True)
+        for side in ("left", "right"):
+            before[side]["symbols"][1]["instructions"][0]["diff_kind"] = "DIFF_ARG"
+        before["right"]["symbols"][1]["instructions"][1]["instruction"]["formatted"] = "nop"
+        result = evaluate._changed_result_diagnostics(
+            root=Path("."), baseline_documents={"strict": before, "data": before},
+            after_documents={"strict": before, "data": before},
+            strict_path=Path("strict.json"), data_path=Path("data.json"), metric_changes=[],
+            object_comparison={"functions": {"FocusFunction": {"raw_equal_base": False}}})
+        channel = result["functions"][0]["channels"]["data"]
+        self.assertEqual(channel["existing_first_instruction_mismatch"]["row"], 1)
+        self.assertEqual(channel["baseline_target_context"]["anchor_basis"], "instruction")
+        self.assertEqual(channel["baseline_target_context"]["target_address"], 260)
+
 
 if __name__ == "__main__":
     unittest.main()
