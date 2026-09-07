@@ -1246,7 +1246,8 @@ config.libs = [
     Rel(
         "mdpresultdll",
         objects={
-            Object(NonMatching, "REL/mdpresultdll/mdpresult.c"),
+            Object(Matching, "REL/mdpresultdll/mdpresult.c"),
+            Object(Matching, "REL/mdpresultdll/utility.c"),
             Object(
                 Matching,
                 "REL/mdpresultdll/runtime.c",
