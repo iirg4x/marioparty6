@@ -7,10 +7,16 @@ Sections:
 	.bss        type:bss align:8
 
 REL/mdpresultdll/mdpresult.c:
-	.text       start:0x00000000 end:0x00026FA4
-	.rodata     start:0x00000000 end:0x00000FE0
-	.data       start:0x00000000 end:0x000007A4
-	.bss        start:0x00000000 end:0x000014E4
+	.text       start:0x00000000 end:0x0001F878
+	.rodata     start:0x00000000 end:0x00000E70
+	.data       start:0x00000000 end:0x00000788
+	.bss        start:0x00000000 end:0x00001318
+
+REL/mdpresultdll/utility.c:
+	.text       start:0x0001F878 end:0x00026FA4
+	.rodata     start:0x00000E70 end:0x00000FE0
+	.data       start:0x00000788 end:0x000007A4
+	.bss        start:0x00001318 end:0x000014E4
 
 REL/mdpresultdll/runtime.c:
 	.text       start:0x00026FA4 end:0x000279E8
