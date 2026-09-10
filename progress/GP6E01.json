@@ -5,27 +5,27 @@
     "all": {
       "label": "Code",
       "code": {
-        "matched": 2534380,
+        "matched": 2559868,
         "total": 12427492,
-        "percent": 20.393334
+        "percent": 20.598428
       },
       "data": {
-        "matched": 763486,
+        "matched": 764718,
         "total": 1849324,
-        "percent": 41.284599
+        "percent": 41.351218
       }
     },
     "dol": {
       "label": "DOL",
       "code": {
-        "matched": 1696792,
+        "matched": 1722280,
         "total": 2173968,
-        "percent": 78.050459
+        "percent": 79.222877
       },
       "data": {
-        "matched": 672559,
+        "matched": 673791,
         "total": 717328,
-        "percent": 93.758922
+        "percent": 93.93067
       }
     },
     "modules": {
