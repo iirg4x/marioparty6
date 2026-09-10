@@ -39,5 +39,6 @@ BOOL mbCoinDispKillCheck(s16 no);
 void mbCoinEffCreate(HuVecF *pos);
 
 int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF);
+int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF);
 
 #endif

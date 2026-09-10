@@ -26,29 +26,29 @@
 #define HU3D_WAVE_MAX 32
 
 //Motion attributes
-#define HU3D_MOTATTR 0x40000000
+#define HU3D_MOTATTR (1 << 30)
 #define HU3D_MOTATTR_NONE 0
-#define HU3D_MOTATTR_LOOP 0x40000001
-#define HU3D_MOTATTR_PAUSE 0x40000002
-#define HU3D_MOTATTR_REV 0x40000004
-#define HU3D_MOTATTR_SHIFT_LOOP 0x40000008
-#define HU3D_MOTATTR_SHIFT_PAUSE 0x40000010
-#define HU3D_MOTATTR_SHIFT_REV 0x40000020
-#define HU3D_MOTATTR_SHAPE_LOOP 0x40000040
-#define HU3D_MOTATTR_SHAPE_PAUSE 0x40000080
-#define HU3D_MOTATTR_SHAPE_REV 0x40000100
-#define HU3D_MOTATTR_OVL_LOOP 0x40000200
-#define HU3D_MOTATTR_OVL_PAUSE 0x40000400
-#define HU3D_MOTATTR_OVL_REV 0x40000800
-#define HU3D_MOTATTR_EXECSHIFT 0x40001000
+#define HU3D_MOTATTR_LOOP (HU3D_MOTATTR | (1 << 0))
+#define HU3D_MOTATTR_PAUSE (HU3D_MOTATTR | (1 << 1))
+#define HU3D_MOTATTR_REV (HU3D_MOTATTR | (1 << 2))
+#define HU3D_MOTATTR_SHIFT_LOOP (HU3D_MOTATTR | (1 << 3))
+#define HU3D_MOTATTR_SHIFT_PAUSE (HU3D_MOTATTR | (1 << 4))
+#define HU3D_MOTATTR_SHIFT_REV (HU3D_MOTATTR | (1 << 5))
+#define HU3D_MOTATTR_SHAPE_LOOP (HU3D_MOTATTR | (1 << 6))
+#define HU3D_MOTATTR_SHAPE_PAUSE (HU3D_MOTATTR | (1 << 7))
+#define HU3D_MOTATTR_SHAPE_REV (HU3D_MOTATTR | (1 << 8))
+#define HU3D_MOTATTR_OVL_LOOP (HU3D_MOTATTR | (1 << 9))
+#define HU3D_MOTATTR_OVL_PAUSE (HU3D_MOTATTR | (1 << 10))
+#define HU3D_MOTATTR_OVL_REV (HU3D_MOTATTR | (1 << 11))
+#define HU3D_MOTATTR_EXECSHIFT (HU3D_MOTATTR | (1 << 12))
 
 #define HU3D_ATTR_MOT_RESET_LOCK (1 << 0)
 
 //Cluster Attributes
-#define HU3D_CLUSTER_ATTR ((s32)0xC0000000)
-#define HU3D_CLUSTER_ATTR_LOOP ((s32)0xC0000001)
-#define HU3D_CLUSTER_ATTR_PAUSE ((s32)0xC0000002)
-#define HU3D_CLUSTER_ATTR_REV ((s32)0xC0000004)
+#define HU3D_CLUSTER_ATTR ((s32)(3U << 30))
+#define HU3D_CLUSTER_ATTR_LOOP ((s32)((3U << 30) | (1U << 0)))
+#define HU3D_CLUSTER_ATTR_PAUSE ((s32)((3U << 30) | (1U << 1)))
+#define HU3D_CLUSTER_ATTR_REV ((s32)((3U << 30) | (1U << 2)))
 
 //Model attributes
 #define HU3D_ATTR_NONE 0
@@ -146,7 +146,7 @@
 #define HU3D_CAM13 (1 << 13)
 #define HU3D_CAM14 (1 << 14)
 #define HU3D_CAM15 (1 << 15)
-#define HU3D_CAM_ALL 0xFFFF
+#define HU3D_CAM_ALL ((1 << 16) - 1)
 #define HU3D_CAM_NONE 0
 #define HU3D_CAM_MAX 16
 
@@ -202,7 +202,7 @@
 #define HU3D_LIGHT_TYPE_SPOT 0
 #define HU3D_LIGHT_TYPE_INFINITYT 1
 #define HU3D_LIGHT_TYPE_POINT 2
-#define HU3D_LIGHT_TYPE_STATIC 0x8000
+#define HU3D_LIGHT_TYPE_STATIC (1 << 15)
 #define HU3D_LIGHT_TYPE_NONE -1
 
 #define HU3D_WATER_ANIM_NONE ((ANIMDATA *)1)
@@ -646,7 +646,7 @@ HU3D_LIGHTID Hu3DGLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color);
 HU3D_LLIGHTID Hu3DLLightCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float dirX, float dirY, float dirZ, u8 colorR, u8 colorG, u8 colorB);
 HU3D_LLIGHTID Hu3DLLightCreateV(HU3D_MODELID modelId, HuVecF *pos, HuVecF *dir, GXColor *color);
 void Hu3DGLightSpotSet(HU3D_LIGHTID lightId, GXSpotFn spotFunc, float cutoff);
-void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, GXSpotFn spotFunc, float cutoff);
+void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float cutoff, GXSpotFn spotFunc);
 void Hu3DGLightInfinitytSet(HU3D_LIGHTID lightId);
 void Hu3DLLightInfinitytSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId);
 void Hu3DGLightPointSet(HU3D_LIGHTID lightId, float refDistance, float refBrightness, GXDistAttnFn distFunc);
