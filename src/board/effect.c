@@ -10,7 +10,10 @@
 
 #include "string.h"
 
-#define DATA_board 0x50000
+#define DATA_board (5 << 16)
+#define MB_EFFECT_COLOR_BUFFER_BYTES (16 * 1024)
+#define MB_PARTICLE_DISPLAY_LIST_BYTES (128 * 1024)
+#define MB_PARTICLE_SORT_MAGNITUDE_MASK 2147483647
 
 extern void *mbMallocNum(s32 size, u32 num);
 extern void *mbMallocFlushModelNum(s32 size, u32 num);
@@ -18,7 +21,7 @@ extern HU3D_MODELID mbObjModelIDGet(MBMODELID modelId);
 extern void mbObjLayerSet(MBMODELID modelId, s16 layer);
 extern void mbObjDispSet(MBMODELID modelId, BOOL dispF);
 extern void mbMtxRot(Mtx mtx, float x, float y, float z);
-extern void mbMtxRotAxisDeg(Mtx mtx, char axis, float angle);
+extern void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle);
 extern float mbSinDeg(float angle);
 extern float mbCosDeg(float angle);
 
@@ -31,7 +34,7 @@ void mbEffInit(void)
 {
     fadeOMObj = NULL;
     confettiOMObj = NULL;
-    tempColorBuf = HuMemDirectMallocNum(HEAP_HEAP, 0x4000, HU_MEMNUM_OVL);
+    tempColorBuf = HuMemDirectMallocNum(HEAP_HEAP, MB_EFFECT_COLOR_BUFFER_BYTES, HU_MEMNUM_OVL);
     tempColorNum = 0;
 }
 
@@ -161,7 +164,7 @@ static void FadeOMExec(OMOBJ *obj)
 
 static void FadeDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
-    static GXColor colorN = { 0xFF, 0xFF, 0xFF, 0xFF };
+    static GXColor colorN = { 255, 255, 255, 255 };
 	Mtx44 proj;
 	Mtx modelview;
 
@@ -498,7 +501,7 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
         stP++;
     }
     particleP->dl = mbMallocFlushModelNum((maxCnt * 24) + 128, modelP->mallocNo);
-    GXBeginDisplayList(particleP->dl, 0x20000);
+    GXBeginDisplayList(particleP->dl, MB_PARTICLE_DISPLAY_LIST_BYTES);
     GXBegin(GX_QUADS, GX_VTXFMT0, maxCnt * 4);
     for (i = 0; i < maxCnt; i++) {
         GXPosition1x16(i*4);
@@ -671,7 +674,7 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 + particleDataP->pos.y * mtxInv[1][2]
                 + particleDataP->pos.z * mtxInv[2][2];
             if (sortKey.key < 0) {
-                sortKey.key = -(sortKey.key & 0x7FFFFFFF);
+                sortKey.key = -(sortKey.key & MB_PARTICLE_SORT_MAGNITUDE_MASK);
             }
             colorSortP->key = sortKey.key;
             colorSortP->index = i;
