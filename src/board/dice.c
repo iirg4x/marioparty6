@@ -1,4 +1,3 @@
-#define _MATH_H
 #include "dolphin/math.h"
 
 #include "game/board/audio.h"
@@ -19,8 +18,8 @@
 #include "game/sprite.h"
 
 #include "humath.h"
-#include "stdio.h"
 #include "string.h"
+#include "messdir_enum.h"
 
 #define DICE_PLAYERNO_NULL GW_PLAYER_MAX
 #define DICE_MAX DICE_PLAYERNO_NULL+1
@@ -35,6 +34,9 @@
 #define DICETYPE_BLOCK 10
 
 #define DICE_COLOR_GREEN 0
+
+#define DICE_MATCH_STREAM_TWO 40
+#define DICE_MATCH_STREAM_THREE 41
 
 typedef void (*DICEHITHOOK)(int result);
 typedef u16 (*DICEPADBTNHOOK)(int playerNo);
@@ -117,20 +119,44 @@ typedef struct DiceNumVtx_s {
 } DICE_NUM_VTX;
 
 static const int diceObjFileTbl[] = {
-    0x00050017, 0x00050018, 0x00050019, 0x00050022, 0x0005001C,
-    0x00050020, 0x0005001F, 0x00050017, 0x0005001F, 0x00050017,
-    0x00030003, 0x0005001D, 0x0005001E, 0x00050021, 0x0005001A,
-    0x00050017, 0x00050017, 0x00050017, 0x00050018, 0x00050017,
-    0x00050017
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 24),
+    DATANUM(DATA_board, 25),
+    DATANUM(DATA_board, 34),
+    DATANUM(DATA_board, 28),
+    DATANUM(DATA_board, 32),
+    DATANUM(DATA_board, 31),
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 31),
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_blast5, 3),
+    DATANUM(DATA_board, 29),
+    DATANUM(DATA_board, 30),
+    DATANUM(DATA_board, 33),
+    DATANUM(DATA_board, 26),
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 24),
+    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 23)
 };
 
-static const u8 diceFadeFlagTbl[] = {
+static const u8 diceFadeFlagTbl[24] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 static const int numberFileTbl[] = {
-    0x0005000B, 0x0005000C, 0x0005000D, 0x0005000E, 0x0005000F,
-    0x00050010, 0x00050011, 0x00050012, 0x00050013, 0x00050014
+    DATANUM(DATA_board, 11),
+    DATANUM(DATA_board, 12),
+    DATANUM(DATA_board, 13),
+    DATANUM(DATA_board, 14),
+    DATANUM(DATA_board, 15),
+    DATANUM(DATA_board, 16),
+    DATANUM(DATA_board, 17),
+    DATANUM(DATA_board, 18),
+    DATANUM(DATA_board, 19),
+    DATANUM(DATA_board, 20)
 };
 
 static HUPROCESS *diceProc[DICE_MAX];
@@ -279,26 +305,49 @@ void mbDiceTutorialNumSet(int playerNo, int tutorialVal);
 int mbDiceTutorialNumGet(int playerNo);
 int mbDiceValueNoGet(int playerNo);
 
+static inline float DiceAbsFloat(register float value)
+{
+#ifdef __MWERKS__
+    asm {
+        fabs value, value
+    }
+    return value;
+#else
+    return __fabsf(value);
+#endif
+}
+
+static inline void DiceVecCopy(register const HuVecF *src, register HuVecF *dst)
+{
+#ifdef __MWERKS__
+    register __vec2x32float__ xy;
+    register float z;
+    asm {
+        psq_l xy, 0(src), 0, 0
+        lfs z, 8(src)
+        psq_st xy, 0(dst), 0, 0
+        stfs z, 8(dst)
+    }
+#else
+    HuVecF value = *src;
+    *dst = value;
+#endif
+}
+
 void mbDiceInit(void)
 {
-    HUPROCESS **proc = diceProc;
-    DICEHITHOOK *hitHook = diceHitHook;
-    DICEPADBTNHOOK *padBtnHook = dicePadBtnHook;
-    DICEMOTHOOK *motHook = diceMotHook;
-    OMOBJ **fadeObj = diceFadeOMObj;
-    OMOBJ **numObj = &diceNumOMObj[0][0];
     int i;
+    int j;
 
-    for (i = 0; i < DICE_MAX;
-        i++, proc++, hitHook++, padBtnHook++, motHook++, fadeObj++, numObj += 3) {
-        *proc = NULL;
-        *hitHook = NULL;
-        *padBtnHook = NULL;
-        *motHook = NULL;
-        *fadeObj = NULL;
-        numObj[0] = NULL;
-        numObj[1] = NULL;
-        numObj[2] = NULL;
+    for (i = 0; i < DICE_MAX; i++) {
+        diceProc[i] = NULL;
+        diceHitHook[i] = NULL;
+        dicePadBtnHook[i] = NULL;
+        diceMotHook[i] = NULL;
+        diceFadeOMObj[i] = NULL;
+        for (j = 0; j < 3; j++) {
+            diceNumOMObj[i][j] = NULL;
+        }
     }
 }
 
@@ -533,7 +582,7 @@ static void DiceHelpWinCreate(DICE_WORK *work)
         || work->diceType == 11 || work->diceType == 15
         || work->diceType == 19 || work->diceType == 20
         || work->diceType == 13 || work->diceType == DICETYPE_BLOCK) {
-        mess = 0x00260002;
+        mess = MESSNUM(MESS_BOARD_OPE, 2);
     } else if (work->no == 0) {
         int capsuleNum = mbPlayerCapsuleNumGet(work->playerNo);
 
@@ -544,18 +593,18 @@ static void DiceHelpWinCreate(DICE_WORK *work)
             }
         }
         if (mbPlayerCapsuleUseGet() != -1 || capsuleNum == 0) {
-            mess = 0x00260001;
+            mess = MESSNUM(MESS_BOARD_OPE, 1);
             if (GWPartyGet() == FALSE) {
-                mess = 0x0026000E;
+                mess = MESSNUM(MESS_BOARD_OPE, 14);
             }
         } else {
-            mess = 0x00260000;
+            mess = MESSNUM(MESS_BOARD_OPE, 0);
             if (GWPartyGet() == FALSE) {
-                mess = 0x0026000D;
+                mess = MESSNUM(MESS_BOARD_OPE, 13);
             }
         }
     } else {
-        mess = 0x00260002;
+        mess = MESSNUM(MESS_BOARD_OPE, 2);
     }
     mbWinCreateHelp(mess);
 }
@@ -580,7 +629,7 @@ static void DiceObjCreate(DICE_WORK *work)
     }
     mbObjLayerSet(obj->mdlId[0], 4);
     mbObjCameraSet(obj->mdlId[0], HU3D_CAM1);
-    mbAudFXPlay(0x3EF);
+    mbAudFXPlay(MSM_SE_BRD00_03);
     if (mbObjMotionIDGet(obj->mdlId[0], 0) >= 0) {
         mbObjMotionSet(obj->mdlId[0], 0, 0);
         mbObjMotionSpeedSet(obj->mdlId[0], 0.0f);
@@ -665,7 +714,7 @@ static void DiceObjOMExec(OMOBJ *obj)
                 objWork->mode = 1;
                 objWork->time = 0;
                 objWork->maxTime = 12;
-                objWork->diceSeNo = mbAudFXPlay(0x3ED);
+                objWork->diceSeNo = mbAudFXPlay(MSM_SE_BRD00_01);
             }
             break;
 
@@ -773,6 +822,10 @@ static void DiceObjKillSet(OMOBJ *obj)
     omObjGetWork(obj, DICE_OBJ_WORK)->killF = TRUE;
 }
 
+static const float lbl_802C3868 = 0.033333335f;
+static const float lbl_802C386C = 1.15f;
+static const float lbl_802C3870 = 0.15f;
+
 static void DiceFadeOMExec(OMOBJ *obj)
 {
     DICE_FADE_WORK *work = omObjGetWork(obj, DICE_FADE_WORK);
@@ -792,9 +845,9 @@ static void DiceFadeOMExec(OMOBJ *obj)
     if (work->angle >= 30) {
         work->angle -= 30;
     }
-    time = (float)work->angle * (1.0f / 30.0f);
-    time = 360.0f * time;
-    scale = 1.15f + (0.15f * mbSinDeg(time - 90.0f));
+    time = lbl_802C3868;
+    scale = time * (float)work->angle;
+    scale = lbl_802C386C + (lbl_802C3870 * mbSinDeg((time = 360.0f * scale) - 90.0f));
     mbObjScaleSet(obj->mdlId[0], scale, scale, scale);
     if (work->fadeF) {
         time = (float)work->time / 15.0f;
@@ -984,7 +1037,7 @@ static void DiceObjHit(DICE_WORK *work)
             work->result[work->no] = mbObjMotionTimeGet(obj->mdlId[0]) + 0.5f;
         }
     }
-    mbAudFXPlay(0x3F0);
+    mbAudFXPlay(MSM_SE_BRD00_04);
     if (diceHitHook[work->playerNo] != NULL) {
         diceHitHook[work->playerNo](work->result[work->no]);
     }
@@ -1223,7 +1276,6 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
 
 static void DiceNumObjOMExec(OMOBJ *obj)
 {
-    extern float lbl_802C3874;
     DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
     DICE_NUM_VTX **vtx = obj->data;
     float time;
@@ -1256,8 +1308,8 @@ static void DiceNumObjOMExec(OMOBJ *obj)
             continue;
         }
         angle = 450 * time;
-        if (angle > lbl_802C3874) {
-            angle = lbl_802C3874;
+        if (angle > 360.0f) {
+            angle = 360.0f;
         }
         MTXRotDeg(rot2, 'y', angle);
         angle = (450 * time) - 90;
@@ -1324,10 +1376,10 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
     DICE_NUM_VTX **vtx = obj->data;
     float angle;
     float time;
-    float posY;
     float rotAngle;
+    float posY;
     float maxAngle;
-    float colorTime = 0;
+    float colorTime;
     Mtx rot1;
     Mtx rot2;
     HuVecF pos;
@@ -1340,6 +1392,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
     if (!objWork->updateF) {
         return;
     }
+    colorTime = 0;
     switch (objWork->bendMode) {
         case 0:
             time = (float)objWork->time / objWork->maxTime;
@@ -1366,7 +1419,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
             break;
 
         case 1:
-            time = (float)objWork->time / objWork->maxTime;
+            colorTime = time = (float)objWork->time / objWork->maxTime;
             angle = time * 450;
             if (angle > 360) {
                 angle = 360;
@@ -1387,24 +1440,26 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
                     objWork->updateF = FALSE;
                 }
             }
-            colorTime = time;
             break;
     }
-    colorTime *= 360;
     for (i = 0; i < 2; i++) {
         GXColor biriQColor = { 255, 255, 255, 255 };
 
         if (obj->mdlId[i] >= 0) {
-            float alpha;
-
             DiceNumObjMdlBend(mbObjModelIDGet(obj->mdlId[i]), vtx[i], rot1,
                 rot2);
             mbObjPosGet(obj->mdlId[i], &pos);
             pos.y = posY;
             mbObjPosSetV(obj->mdlId[i], &pos);
-            alpha = fabs(0.4f * mbSinDeg(colorTime));
-            mbObjBiriQColorSet(obj->mdlId[i], TRUE, alpha, biriQColor);
+            mbObjBiriQColorSet(obj->mdlId[i], TRUE,
+                DiceAbsFloat(0.4f * mbSinDeg(360 * colorTime)),
+                biriQColor);
         }
+    }
+    if (obj->mdlId[2] >= 0) {
+        MBPARTICLE *particleP = Hu3DData[obj->mdlId[2]].hookData;
+
+        particleP->unk14 = posY - obj->rot.y;
     }
 }
 
@@ -1541,11 +1596,12 @@ void mbDiceStub(void)
 
 OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
 {
+    OMOBJ *obj;
+    int i;
     OMOBJ *snpcObj = NULL;
     int value = 0;
     int color = 0;
     BOOL createF = FALSE;
-    int i;
     HuVecF objPos;
     HuVecF offset;
 
@@ -1553,7 +1609,7 @@ OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
         playerNo = DICE_PLAYERNO_NULL;
     }
     for (i = 0; i < 3; i++) {
-        OMOBJ *obj = diceNumOMObj[playerNo][i];
+        obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
             DICE_NUM_WORK *work = omObjGetWork(obj, DICE_NUM_WORK);
@@ -1561,7 +1617,7 @@ OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
             value += (s8)work->value;
             if (!createF) {
                 color = work->color;
-                objPos = obj->rot;
+                DiceVecCopy(&obj->rot, &objPos);
                 VECSubtract(&objPos, pos, &offset);
                 createF = TRUE;
             }
@@ -1575,42 +1631,12 @@ OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
     return snpcObj;
 }
 
-static void ev_DiceZorome(DICE_WORK *work)
+static void DiceNumObjBendStart(int playerNo)
 {
-    int streamNo = -1;
-    int coin;
-    int streamId;
-    HuVecF posPlayer;
     int i;
-    int winNo;
 
-    switch (work->max) {
-        case 2:
-            if (work->result[0] == 7) {
-                coin = 30;
-            } else {
-                coin = 10;
-            }
-            streamId = 0x28;
-            break;
-
-        case 3:
-            if (work->result[0] == 7) {
-                coin = 50;
-            } else {
-                coin = 30;
-            }
-            streamId = 0x29;
-            break;
-
-        default:
-            return;
-    }
-    sprintf(diceMatchCoinStr, "%d", coin);
-    mbMusPauseFadeOut(0, TRUE, 1000);
-    mbPlayerPosGet(work->playerNo, &posPlayer);
     for (i = 0; i < 3; i++) {
-        OMOBJ *obj = diceNumOMObj[work->playerNo][i];
+        OMOBJ *obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
             DICE_NUM_WORK *numWork = omObjGetWork(obj, DICE_NUM_WORK);
@@ -1620,7 +1646,7 @@ static void ev_DiceZorome(DICE_WORK *work)
             numWork->time = 0;
             numWork->maxTime = 120;
             obj->mdlId[2] = mbParticleCreate(HuSprAnimDataRead(
-                mbBoardDataNumGet(0x00050064)), 100);
+                mbBoardDataNumGet(DATANUM(DATA_board, 100))), 100);
             mbParticleHookSet(obj->mdlId[2], DiceZoromeEffHook);
             Hu3DModelCameraSet(obj->mdlId[2], HU3D_CAM1);
             Hu3DModelLayerSet(obj->mdlId[2], 5);
@@ -1629,21 +1655,18 @@ static void ev_DiceZorome(DICE_WORK *work)
             obj->objFunc = DiceNumObjBendOMExec;
         }
     }
-    HuPrcSleep(10);
-    mbMusJingleWait(mbMusJinglePlay((s16)streamId));
-    mbMusPauseFadeOut(0, FALSE, 1000);
-    mbAudGuidePlay(0x3B6);
-    winNo = mbWinCreate(2, 0x0026000A, mbGuideSpeakerNoGet());
-    mbWinInsertMesSet(winNo, MESSNUM_PTR(diceMatchCoinStr), 0);
-    mbWinWait(winNo);
-    ev_DiceZoromeCoin(work->playerNo, coin);
+}
+
+static void DiceNumObjBendStop(int playerNo)
+{
+    int i, j;
+
     for (i = 0; i < 3; i++) {
         static GXColor biriQColor = { 0, 0, 0, 0 };
-        OMOBJ *obj = diceNumOMObj[work->playerNo][i];
+        OMOBJ *obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
             DICE_NUM_WORK *numWork = omObjGetWork(obj, DICE_NUM_WORK);
-            int j;
 
             for (j = 0; j < 2; j++) {
                 if (obj->mdlId[j] > 0) {
@@ -1658,6 +1681,50 @@ static void ev_DiceZorome(DICE_WORK *work)
             numWork->bendF = FALSE;
         }
     }
+}
+
+static void ev_DiceZorome(DICE_WORK *work)
+{
+    int streamNo = -1;
+    HuVecF posPlayer;
+    int coin;
+    int streamId;
+
+    switch (work->max) {
+        case 2:
+            if (work->result[0] == 7) {
+                coin = 30;
+            } else {
+                coin = 10;
+            }
+            streamId = DICE_MATCH_STREAM_TWO;
+            break;
+
+        case 3:
+            if (work->result[0] == 7) {
+                coin = 50;
+            } else {
+                coin = 30;
+            }
+            streamId = DICE_MATCH_STREAM_THREE;
+            break;
+
+        default:
+            return;
+    }
+    sprintf(diceMatchCoinStr, "%d", coin);
+    mbMusPauseFadeOut(0, TRUE, 1000);
+    mbPlayerPosGet(work->playerNo, &posPlayer);
+    DiceNumObjBendStart(work->playerNo);
+    HuPrcSleep(10);
+    mbMusJingleWait(mbMusJinglePlay((s16)streamId));
+    mbMusPauseFadeOut(0, FALSE, 1000);
+    mbAudGuidePlay(MSM_SE_GUIDE_26);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPE, 10), mbGuideSpeakerNoGet());
+    mbWinTopInsertMesSet(MESSNUM_PTR(diceMatchCoinStr), 0);
+    mbWinTopWait();
+    ev_DiceZoromeCoin(work->playerNo, coin);
+    DiceNumObjBendStop(work->playerNo);
     while (!mbDiceNumStopCheck(work->playerNo)) {
         HuPrcVSleep();
     }
@@ -1672,16 +1739,18 @@ static void ev_DiceZoromeCoin(int playerNo, int coin)
 {
     int coinObjId[64];
     float velocity[64];
-    HuVecF playerPos;
     HuVecF pos;
+    HuVecF playerPos;
+    int j = 0;
     int activeNum = 0;
-    int coinNum = coin;
+    int coinNum;
     int i;
 
     for (i = 0; i < 64; i++) {
         coinObjId[i] = 0;
     }
     mbPlayerPosGet(playerNo, &playerPos);
+    coinNum = coin;
     while (coinNum != 0 || activeNum != 0) {
         if (coinNum != 0) {
             for (i = 0; i < 64; i++) {
@@ -1692,6 +1761,7 @@ static void ev_DiceZoromeCoin(int playerNo, int coin)
             if (i < 64) {
                 coinObjId[i] = mbCoinCreate2();
                 velocity[i] = -13.333334f;
+                j = coinObjId[i];
                 coinNum--;
                 pos.x = playerPos.x +
                     (60.000004f * (frandf() - 0.5f));
@@ -1699,23 +1769,25 @@ static void ev_DiceZoromeCoin(int playerNo, int coin)
                 pos.z = playerPos.z +
                     (60.000004f * (frandf() - 0.5f));
                 pos.y += 800.0f;
-                mbCoinObjPosSetV(coinObjId[i], &pos);
-                mbCoinObjRotSet(coinObjId[i],
-                    40.0f * (frandf() - 0.5f), 360.0f * frandf(), 0.0f);
-                mbCoinObjScaleSet(coinObjId[i], 0.7f, 0.7f, 0.7f);
+                mbCoinObjPosSetV(j, &pos);
+                mbCoinObjRotSet(j,
+                    40.0f * (frandf() - 0.5f),
+                    360.0f * frandf(), 0.0f);
+                mbCoinObjScaleSet(j, 0.7f, 0.7f, 0.7f);
             }
         }
         activeNum = 0;
-        for (i = 0; i < 64; i++) {
-            if (coinObjId[i] != 0) {
+        for (j = 0; j < 64; j++) {
+            i = coinObjId[j];
+            if (i != 0) {
                 activeNum++;
-                mbCoinObjPosGet(coinObjId[i], &pos);
-                velocity[i] += -0.5444445f;
-                pos.y += velocity[i];
-                mbCoinObjPosSetV(coinObjId[i], &pos);
+                mbCoinObjPosGet(i, &pos);
+                velocity[j] += -0.5444445f;
+                pos.y += velocity[j];
+                mbCoinObjPosSetV(i, &pos);
                 if (pos.y < playerPos.y + 100.0f) {
-                    mbCoinObjKill(coinObjId[i]);
-                    coinObjId[i] = 0;
+                    mbCoinObjKill(i);
+                    coinObjId[j] = 0;
                 }
             }
         }
@@ -1727,18 +1799,19 @@ static void ev_DiceZoromeCoin(int playerNo, int coin)
 static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
-    MBPARTICLEDATA *data;
     int i;
     int createNum = 3;
+    MBPARTICLEDATA *data;
     int animBank;
     int colorNo;
     float angle;
-    float angleY;
+    register float pitch;
+    register float magnitude;
     float speed;
     float ratio;
     HuVecF vec;
 
-    if (particleP->count == 0 || particleP->mode == 0) {
+    if (particleP->count == 0 || particleP->mode != 0) {
         createNum = 0.5f * particleP->num;
         particleP->count = 1;
         particleP->mode = 0;
@@ -1753,33 +1826,43 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
         if (data->time == 0) {
             animBank = diceMatchEffAnimBankTbl[mbRandMod(16)];
             data->animBank = animBank;
-            data->pos.x = 0.0f;
-            data->pos.y = 0.0f;
             data->pos.z = 0.0f;
+            data->pos.y = 0.0f;
+            data->pos.x = 0.0f;
             data->pos.y += particleP->unk14;
             angle = 360.0f * frandf();
-            ratio = (1.6f * frandf()) - 0.8f;
-            angleY = 90.0f * (ratio * __fabsf(ratio));
-            data->vel.x = HuSin(angle) * HuCos(angleY);
-            data->vel.y = HuSin(angleY);
-            data->vel.z = HuCos(angle) * HuCos(angleY);
+            pitch = (1.6f * frandf()) - 0.8f;
+#ifdef __MWERKS__
+            asm {
+                fabs magnitude, pitch
+            }
+#else
+            magnitude = __fabsf(pitch);
+#endif
+            pitch = 90.0f * (pitch * magnitude);
+            data->vel.x = HuSin(angle) * HuCos(pitch);
+            data->vel.y = HuSin(pitch);
+            data->vel.z = HuCos(angle) * HuCos(pitch);
             speed = 0.016666668f *
                 (100.0f + (100.0f * (2.0f * frandf())));
             VECScale(&data->vel, &data->vel, speed);
             VECScale(&data->vel, &vec, 20.0f);
             VECAdd(&data->pos, &vec, &data->pos);
             VECScale(&data->vel, &data->vel, 0.25f);
-            data->guideScaleBase = data->scale =
-                diceMatchEffScale[animBank]
+            data->scale = diceMatchEffScale[animBank]
                 * (25.0f * (0.5f + (0.5f * frandf())));
+            data->guideScaleBase = data->scale;
             colorNo = mbRandMod(8);
             ratio = 0.2f + (0.5f * frandf());
-            data->color.r = diceMatchEffColorTbl[colorNo].r
-                + ratio * (255.0f - diceMatchEffColorTbl[colorNo].r);
-            data->color.g = diceMatchEffColorTbl[colorNo].g
-                + ratio * (255.0f - diceMatchEffColorTbl[colorNo].g);
-            data->color.b = diceMatchEffColorTbl[colorNo].b
-                + ratio * (255.0f - diceMatchEffColorTbl[colorNo].b);
+            data->color.r = ratio
+                    * (255.0f - diceMatchEffColorTbl[colorNo].r)
+                + diceMatchEffColorTbl[colorNo].r;
+            data->color.g = ratio
+                    * (255.0f - diceMatchEffColorTbl[colorNo].g)
+                + diceMatchEffColorTbl[colorNo].g;
+            data->color.b = ratio
+                    * (255.0f - diceMatchEffColorTbl[colorNo].b)
+                + diceMatchEffColorTbl[colorNo].b;
             data->color.a = 150 + mbRandMod(70);
             data->alphaF = data->color.a;
             data->color.a = 0;
@@ -1791,23 +1874,28 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
             createNum--;
         }
     }
-    data = particleP->data;
-    for (i = 0; i < particleP->num; i++, data++) {
-        if (data->time != 0) {
-            switch (particleP->time) {
-                case 0:
+    switch (particleP->time) {
+        case 0:
+            data = particleP->data;
+            for (i = 0; i < particleP->num; i++, data++) {
+                if (data->time != 0) {
                     VECScale(&data->vel, &data->vel, 0.96f);
                     VECAdd(&data->pos, &data->vel, &data->pos);
                     data->vel.y += 0.08333334f;
                     data->scale -= 0.4f;
-                    break;
+                }
+            }
+            break;
 
-                case 1:
+        case 1:
+            data = particleP->data;
+            for (i = 0; i < particleP->num; i++, data++) {
+                if (data->time != 0) {
                     VECAdd(&data->pos, &data->vel, &data->pos);
                     data->vel.y += -0.41666672f;
-                    break;
+                }
             }
-        }
+            break;
     }
     data = particleP->data;
     for (i = 0; i < particleP->num; i++, data++) {
@@ -1820,8 +1908,9 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     data->scale = 0.0f;
                 }
             } else {
-                data->color.a += 1.0f
-                    + (0.2f * (data->alphaF - data->color.a));
+                ratio = data->color.a;
+                ratio += 1.0f + (0.2f * (data->alphaF - ratio));
+                data->color.a = ratio;
             }
         }
     }
@@ -1832,7 +1921,7 @@ static HU3D_MODELID DiceInEffCreate(void)
     int modelId;
 
     modelId = mbParticleCreate(HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x00050064), HU_MEMNUM_OVL, HEAP_MODEL)), 80);
+        mbBoardDataNumGet(DATANUM(DATA_board, 100)), HU_MEMNUM_OVL, HEAP_MODEL)), 80);
     mbParticleHookSet(modelId, DiceInEffHook);
     Hu3DModelLayerSet(modelId, 5);
     mbParticleAttrSet(modelId, MB_PARTICLE_ATTR_3D);
@@ -1845,7 +1934,7 @@ static HU3D_MODELID DiceInDotEffCreate(void)
     int modelId;
 
     modelId = mbParticleCreate(HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x00050064), HU_MEMNUM_OVL, HEAP_MODEL)), 150);
+        mbBoardDataNumGet(DATANUM(DATA_board, 100)), HU_MEMNUM_OVL, HEAP_MODEL)), 150);
     mbParticleHookSet(modelId, DiceInDotEffHook);
     Hu3DModelLayerSet(modelId, 5);
     return modelId;
@@ -1863,20 +1952,21 @@ static void DiceHitEffSet(HU3D_MODELID modelId)
 static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
+    int i;
+    int animBank;
     MBPARTICLEDATA *data;
-    float rotY;
-    float rotX;
+    HuVecF angles;
     float ratio;
     float speed;
     int colorNo;
-    int i;
 
     if (!particleP->initF || particleP->mode != 0) {
         data = particleP->data;
         switch (particleP->time) {
             case 0:
                 for (i = 0; i < particleP->num; i++, data++) {
-                    data->animBank = diceInEffAnimTbl[mbRandMod(4)];
+                    animBank = diceInEffAnimTbl[mbRandMod(4)];
+                    data->animBank = animBank;
                     colorNo = mbRandMod(8);
                     data->color.r = diceInEffColorTbl[colorNo].r
                         + mbRandMod(20);
@@ -1885,20 +1975,22 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     data->color.b = diceInEffColorTbl[colorNo].b
                         + mbRandMod(20);
                     data->color.a = 250;
-                    data->pos.x = 0.0f;
-                    data->pos.y = 0.0f;
                     data->pos.z = 0.0f;
-                    rotY = 360.0f * frandf();
-                    ratio = (1.6f * frandf()) - 0.8f;
-                    rotX = 90.0f * (ratio * __fabsf(ratio));
-                    data->vel.x = HuSin(rotY) * HuCos(rotX);
-                    data->vel.y = HuSin(rotX);
-                    data->vel.z = HuCos(rotY) * HuCos(rotX);
-                    speed = (800.0f + (100.0f * (8.0f * frandf())))
-                        / 60.0f;
+                    data->pos.y = 0.0f;
+                    data->pos.x = 0.0f;
+                    angles.y = 360.0f * frandf();
+                    angles.x = (1.6f * frandf()) - 0.8f;
+                    ratio = DiceAbsFloat(angles.x);
+                    angles.x = angles.x * ratio;
+                    angles.x = 90.0f * angles.x;
+                    data->vel.x = HuSin(angles.y) * HuCos(angles.x);
+                    data->vel.y = HuSin(angles.x);
+                    data->vel.z = HuCos(angles.y) * HuCos(angles.x);
+                    speed = 0.016666668f *
+                        (800.0f + (100.0f * (8.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
                     data->scale = 60.0f * (0.5f + (0.7f * frandf()))
-                        * diceInEffScaleRatio[data->animBank];
+                        * diceInEffScaleRatio[animBank];
                     data->accel.x = data->scale;
                     data->speedDecay = 0.5f;
                     data->rot.x = 360.0f * frandf();
@@ -1912,17 +2004,20 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
 
             case 1:
                 for (i = 0; i < particleP->num; i++, data++) {
-                    data->pos.x = 0.0f;
-                    data->pos.y = 50.0f;
                     data->pos.z = 0.0f;
-                    rotY = 360.0f * frandf();
-                    ratio = 0.7f + (0.3f * frandf());
-                    rotX = 90.0f * (ratio * __fabsf(ratio));
-                    data->vel.x = HuSin(rotY) * HuCos(rotX);
-                    data->vel.y = HuSin(rotX);
-                    data->vel.z = HuCos(rotY) * HuCos(rotX);
-                    speed = (300.0f + (100.0f * (3.0f * frandf())))
-                        / 60.0f;
+                    data->pos.y = 0.0f;
+                    data->pos.x = 0.0f;
+                    data->pos.y += 50.0f;
+                    angles.y = 360.0f * frandf();
+                    angles.x = 0.7f + (0.3f * frandf());
+                    ratio = DiceAbsFloat(angles.x);
+                    angles.x = angles.x * ratio;
+                    angles.x = 90.0f * angles.x;
+                    data->vel.x = HuSin(angles.y) * HuCos(angles.x);
+                    data->vel.y = HuSin(angles.x);
+                    data->vel.z = HuCos(angles.y) * HuCos(angles.x);
+                    speed = 0.016666668f *
+                        (300.0f + (100.0f * (3.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
                     data->vel.y *= 1.5f;
                     data->scale = 0.7f * data->accel.x;
@@ -1969,43 +2064,44 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
 static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
+    int i;
     MBPARTICLEDATA *data;
+    float *scaleRatio;
     float rotY;
-    float rotX;
     float ratio;
+    float rotX;
     float speed;
     int colorNo;
-    int i;
 
     if (!particleP->initF || particleP->mode != 0) {
         data = particleP->data;
         switch (particleP->time) {
             case 0:
-                for (i = 0; i < particleP->num; i++, data++) {
+                for (i = 0, scaleRatio = diceInDotEffScaleRatio;
+                    i < particleP->num; i++, data++) {
                     data->animBank = 3;
-                    data->pos.x = 0.0f;
-                    data->pos.y = 0.0f;
-                    data->pos.z = 0.0f;
+                    data->pos.x = data->pos.y = data->pos.z = 0.0f;
                     rotY = 360.0f * frandf();
                     ratio = (1.6f * frandf()) - 0.8f;
-                    rotX = 90.0f * (ratio * __fabsf(ratio));
+                    rotX = __fabsf(ratio);
+                    rotX = 90.0f * (ratio * rotX);
                     data->vel.x = HuSin(rotY) * HuCos(rotX);
                     data->vel.y = HuSin(rotX);
                     data->vel.z = HuCos(rotY) * HuCos(rotX);
-                    speed = (500.0f + (100.0f * (9.0f * frandf())))
-                        / 60.0f;
+                    speed = 0.016666668f *
+                        (500.0f + (100.0f * (9.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
                     data->scale = 60.0f * (0.5f + (0.7f * frandf()))
-                        * diceInDotEffScaleRatio[data->animBank];
+                        * scaleRatio[3];
                     data->accel.x = data->scale;
                     colorNo = mbRandMod(8);
                     ratio = 0.2f + (0.4f * frandf());
-                    data->color.r = diceInDotEffColorTbl[colorNo].r
-                        + ratio * (255.0f - diceInDotEffColorTbl[colorNo].r);
-                    data->color.g = diceInDotEffColorTbl[colorNo].g
-                        + ratio * (255.0f - diceInDotEffColorTbl[colorNo].g);
-                    data->color.b = diceInDotEffColorTbl[colorNo].b
-                        + ratio * (255.0f - diceInDotEffColorTbl[colorNo].b);
+                    data->color.r = ratio * (255.0f - diceInDotEffColorTbl[colorNo].r)
+                        + diceInDotEffColorTbl[colorNo].r;
+                    data->color.g = ratio * (255.0f - diceInDotEffColorTbl[colorNo].g)
+                        + diceInDotEffColorTbl[colorNo].g;
+                    data->color.b = ratio * (255.0f - diceInDotEffColorTbl[colorNo].b)
+                        + diceInDotEffColorTbl[colorNo].b;
                     data->color.a = 100 + mbRandMod(50);
                     data->time = 20 + mbRandMod(20);
                 }
@@ -2013,17 +2109,17 @@ static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
 
             case 1:
                 for (i = 0; i < particleP->num; i++, data++) {
-                    data->pos.x = 0.0f;
-                    data->pos.y = 50.0f;
-                    data->pos.z = 0.0f;
+                    data->pos.x = data->pos.y = data->pos.z = 0.0f;
+                    data->pos.y += 50.0f;
                     rotY = 360.0f * frandf();
                     ratio = 0.7f + (0.3f * frandf());
-                    rotX = 90.0f * (ratio * __fabsf(ratio));
+                    rotX = __fabsf(ratio);
+                    rotX = 90.0f * (ratio * rotX);
                     data->vel.x = HuSin(rotY) * HuCos(rotX);
                     data->vel.y = HuSin(rotX);
                     data->vel.z = HuCos(rotY) * HuCos(rotX);
-                    speed = (300.0f + (100.0f * (3.0f * frandf())))
-                        / 60.0f;
+                    speed = 0.016666668f *
+                        (300.0f + (100.0f * (3.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
                     data->vel.y *= 1.5f;
                     data->scale = 0.8f * data->accel.x;
@@ -2036,22 +2132,33 @@ static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
         particleP->mode = 0;
         particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
     }
-    data = particleP->data;
-    for (i = 0; i < particleP->num; i++, data++) {
-        if (data->time != 0) {
-            switch (particleP->time) {
-                case 0:
+    switch (particleP->time) {
+        case 0:
+            data = particleP->data;
+            for (i = 0, ratio = lbl_802C3870;
+                i < particleP->num; i++, data++) {
+                if (data->time != 0) {
                     VECScale(&data->vel, &data->vel, 0.92f);
                     VECAdd(&data->pos, &data->vel, &data->pos);
                     data->vel.y += -0.22222224f;
-                    data->scale -= 0.15f;
-                    break;
+                    data->scale -= ratio;
+                }
+            }
+            break;
 
-                case 1:
+        case 1:
+            data = particleP->data;
+            for (i = 0; i < particleP->num; i++, data++) {
+                if (data->time != 0) {
                     VECAdd(&data->pos, &data->vel, &data->pos);
                     data->vel.y += -0.41666672f;
-                    break;
+                }
             }
+            break;
+    }
+    data = particleP->data;
+    for (i = 0; i < particleP->num; i++, data++) {
+        if (data->time != 0) {
             data->time--;
             if (data->time < 6) {
                 data->color.a *= 0.7f;
@@ -2076,13 +2183,16 @@ static void DiceObjEffCreate(DICE_WORK *work)
         2, 2, 2, 2, 2, 2
     };
     float posY;
-    DICE_EFF *eff;
+    u8 *dlAlloc;
     void *dlBuf;
+    DICE_EFF *eff;
+    void *effBuf;
     int i;
 
-    work->eff = eff = HuMemDirectMallocNum(HEAP_HEAP,
+    effBuf = HuMemDirectMallocNum(HEAP_HEAP,
         (DICE_EFF_PUFF_MAX + DICE_EFF_TRI_MAX) * sizeof(DICE_EFF),
         HU_MEMNUM_OVL);
+    work->eff = eff = effBuf;
     memset(eff, 0,
         (DICE_EFF_PUFF_MAX + DICE_EFF_TRI_MAX) * sizeof(DICE_EFF));
     for (i = 0; i < DICE_EFF_PUFF_MAX; i++, eff++) {
@@ -2111,7 +2221,8 @@ static void DiceObjEffCreate(DICE_WORK *work)
         eff->scale.z = 1.0f + (2.0f * frandf());
         posY += (360.0f * eff->scale.x) / 12.0f;
     }
-    dlBuf = HuMemDirectMallocNum(HEAP_HEAP, 4096, HU_MEMNUM_OVL);
+    dlAlloc = HuMemDirectMallocNum(HEAP_HEAP, 4096, HU_MEMNUM_OVL);
+    dlBuf = dlAlloc;
     DCInvalidateRange(dlBuf, 4096);
     GXBeginDisplayList(dlBuf, 4096);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
@@ -2131,9 +2242,9 @@ static void DiceObjEffCreate(DICE_WORK *work)
     HuMemDirectFree(dlBuf);
     DCFlushRangeNoSync(work->dlBuf, work->dlSize);
     work->animEffPuff = HuSprAnimDataRead(
-        mbBoardDataNumGet(0x0005005D));
+        mbBoardDataNumGet(DATANUM(DATA_board, 93)));
     work->animEffTri = HuSprAnimDataRead(
-        mbBoardDataNumGet(0x00050062));
+        mbBoardDataNumGet(DATANUM(DATA_board, 98)));
 }
 
 static void DiceObjEffKill(DICE_WORK *work)
@@ -2386,14 +2497,14 @@ static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx mtx1,
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     BOOL flagF, int color)
 {
+    int i;
     int modelId;
     OMOBJ *obj;
     DICE_SNPC_NUM_WORK *work;
-    int i;
     HuVecF posSum;
     HuVecF posNorm;
 
-    obj = omAddObjEx(mbObjMan, 0x7E02, 20, 0, OM_GRP_NONE,
+    obj = omAddObjEx(mbObjMan, 32258, 20, 0, OM_GRP_NONE,
         DiceSNpcNumUpdate);
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     work = omObjGetWork(obj, DICE_SNPC_NUM_WORK);
@@ -2410,8 +2521,8 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     HuAddVecF(&posSum, pos, offset);
     mbPos3DtoNorm(&posSum, 1, &posNorm);
     obj->rot.z = posNorm.z;
-    obj->trans = *pos;
-    obj->scale = *offset;
+    DiceVecCopy(pos, &obj->trans);
+    DiceVecCopy(offset, &obj->scale);
     return obj;
 }
 
@@ -2426,9 +2537,9 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     HuVecF posNorm;
     float scaleX;
     float scaleY;
+    float rotZ;
     float tanFov;
     float scale;
-    float rotZ;
 
     if (work->killF || mbExitCheck()) {
         for (i = 0; i < 20; i++) {
@@ -2451,7 +2562,7 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
     posNorm.y *= scaleY;
-    pos = posNorm;
+    DiceVecCopy(&posNorm, &pos);
     mbCameraRotGet(&posNorm);
     rotZ = -posNorm.x;
     for (i = 0; i < 20; i++) {
@@ -2504,15 +2615,15 @@ void mbDiceSNpcNumSet(OMOBJ *obj, u8 value)
 
 void mbDiceSNpcNumPosSet(OMOBJ *obj, HuVecF *pos)
 {
-    obj->trans = *pos;
+    DiceVecCopy(pos, &obj->trans);
 }
 
 void mbDiceSNpcNumOfsSet(OMOBJ *obj, HuVecF *offset)
 {
-    obj->scale = *offset;
+    DiceVecCopy(offset, &obj->scale);
 }
 
 void mbDiceSNpcNumOfsGet(OMOBJ *obj, HuVecF *offset)
 {
-    *offset = obj->scale;
+    DiceVecCopy(&obj->scale, offset);
 }
