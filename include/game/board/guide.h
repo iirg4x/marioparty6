@@ -79,7 +79,7 @@ void mbObjFadeTexRotSet(int modelId, HuVecF *pos, HuVecF *rot);
 
 float mbSinDeg(float deg);
 float mbCosDeg(float deg);
-void mbMtxRotAxisDeg(Mtx m, char axis, float deg);
+void mbMtxRotAxisDeg(Mtx m, u8 axis, float deg);
 BOOL mbPauseProcCheck(void);
 
 #endif
