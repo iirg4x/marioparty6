@@ -7,12 +7,69 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from tools import prepare_owner_capture as module
 
 
 class PrepareOwnerCaptureTests(unittest.TestCase):
+    def test_profile_scope_restores_on_error(self):
+        central = SimpleNamespace(HOOKS=('default',), COUNTER_WRITES=False,
+                                  GC26_EXPRESSION_ORIGIN_HOOKS=('sealed',))
+        def operation():
+            self.assertEqual(central.HOOKS, ('sealed',))
+            self.assertTrue(central.COUNTER_WRITES)
+            raise ValueError('stop')
+        with self.assertRaisesRegex(ValueError, 'stop'):
+            module._profile_call(central, 'gc26-counter-expression', operation)
+        self.assertEqual(central.HOOKS, ('default',))
+        self.assertFalse(central.COUNTER_WRITES)
+
+    def test_profile_flags_and_authority_tampering(self):
+        root, source, output, command = self._fixture()
+        prepared_path = self._prepare(root, source, output, command)
+        original = json.loads(prepared_path.read_text())
+        self.assertEqual(original['capture_profile'], 'default')
+        self.assertNotIn('--counter-writes', original['capture_argv'])
+        for field, value in [('capture_profile', 'gc26-counter-expression'),
+                             ('preflight_argv', original['preflight_argv']+['--counter-writes']),
+                             ('capture_argv', original['capture_argv']+['--expression-origins'])]:
+            prepared_path.write_text(json.dumps(dict(original, **{field: value})))
+            with self.assertRaises(module.OwnerCaptureError):
+                module.run_capture(prepared_path, capture_runner=lambda argv: self.fail('launched'))
+        self.assertFalse((output/'launch-started.json').exists())
+
+    def test_pinned_gc26_profile_prepares_and_authenticates_without_capture(self):
+        compiler = Path('C:/Users/Anony/.codex/tools/mp6/compilers-20240706/GC/2.6/mwcceppc.exe')
+        if not compiler.is_file():
+            self.skipTest('pinned native GC2.6 fixture unavailable')
+        root, source, output, command = self._fixture()
+        command[1] = str(compiler)
+        prepared_path = self._prepare(root, source, output, command, capture_profile='gc26-counter-expression')
+        prepared = json.loads(prepared_path.read_text())
+        request = json.loads((output/'capture/request.json').read_text())
+        self.assertGreater(prepared['hook_count'], 100)
+        for field in ('capture_argv', 'preflight_argv'):
+            self.assertEqual(prepared[field][-2:], ['--counter-writes', '--expression-origins'])
+        self.assertTrue(request)
+        original_receipt = prepared_path.read_bytes()
+        changed = dict(prepared, capture_profile='default',
+                       capture_argv=prepared['capture_argv'][:-2], preflight_argv=prepared['preflight_argv'][:-2])
+        prepared_path.write_text(json.dumps(changed))
+        with self.assertRaisesRegex(module.OwnerCaptureError, 'profile changed'):
+            module.run_capture(prepared_path, capture_runner=lambda argv: self.fail('launched'))
+        prepared_path.write_bytes(original_receipt)
+        calls = []
+        self.assertEqual(module.run_capture(prepared_path, capture_runner=lambda argv: calls.append(list(argv)) or 0), 0)
+        self.assertEqual(calls, [prepared['capture_argv']])
+
+    def test_profile_rejects_unpinned_compiler(self):
+        root, source, output, command = self._fixture()
+        with self.assertRaises(module.OwnerCaptureError):
+            self._prepare(root, source, output, command, capture_profile='gc26-counter-expression')
+        self.assertFalse((output/'launch-started.json').exists())
+
     def _fixture(self) -> tuple[Path, Path, Path, list[str]]:
         temporary = TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

@@ -19,6 +19,29 @@ from tools.tests.test_focus_symbol_report import _instruction, _report
 class RecoveryEvaluateTests(unittest.TestCase):
     """Exercise one bounded evaluation without a compiler or retail inputs."""
 
+    def test_causal_groups_keep_observations_after_report_cleanup(self) -> None:
+        with self._patch_measurement(), \
+                mock.patch.object(evaluate, "_compile_candidate", side_effect=self._fake_compile), \
+                mock.patch.object(evaluate, "_report", side_effect=self._fake_report), \
+                mock.patch.object(evaluate.bounded_process, "run", side_effect=self._fake_readelf):
+            result = self._evaluate("causal-groups.json")
+        observed = result["causal_groups"]["channels"]["strict"]["FocusFunction"]
+        self.assertEqual(observed["status"], "observed")
+        self.assertLess(observed["change"]["residual_rows_delta"], 0)
+        self.assertEqual(observed["after"]["group_count"], 0)
+        self.assertFalse(result["causal_groups"]["authority_advanced"])
+
+    def test_causal_group_failure_does_not_mask_primary_exact_result(self) -> None:
+        with self._patch_measurement(), \
+                mock.patch.object(evaluate, "_compile_candidate", side_effect=self._fake_compile), \
+                mock.patch.object(evaluate, "_report", side_effect=self._fake_report), \
+                mock.patch.object(evaluate.bounded_process, "run", side_effect=self._fake_readelf), \
+                mock.patch.object(evaluate.causal_groups, "summarize_groups",
+                               side_effect=ValueError("unreadable diagnostic")):
+            result = self._evaluate("causal-groups-unavailable.json")
+        self.assertEqual(result["status"], "exact")
+        self.assertEqual(result["causal_groups"]["channels"]["strict"]["FocusFunction"]["status"], "unknown")
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name) / "repo"
@@ -184,7 +207,8 @@ class RecoveryEvaluateTests(unittest.TestCase):
         )
 
     def _evaluate(self, out_name: str, *, candidate_object: Path | None = None,
-                  command_json: Path | None = None) -> dict[str, object]:
+                  command_json: Path | None = None,
+                  prediction: Path | None = None) -> dict[str, object]:
         kwargs: dict[str, object] = {
             "root": self.root,
             "index": self.index,
@@ -199,6 +223,8 @@ class RecoveryEvaluateTests(unittest.TestCase):
         else:
             kwargs["command_json"] = command_json or self.command_json
             kwargs["compiler_tools"] = [Path("compiler.exe")]
+        if prediction is not None:
+            kwargs["prediction"] = prediction
         return evaluate.evaluate(**kwargs)  # type: ignore[arg-type]
 
     def _batch_manifest(self, jobs: list[dict[str, object]], name: str = "batch.manifest.json",
@@ -262,6 +288,32 @@ class RecoveryEvaluateTests(unittest.TestCase):
             after_documents={"strict": report, "data": report},
             strict_path=self.root / "after-strict.json", data_path=self.root / "after-data.json",
             metric_changes=[], object_comparison={"functions": {"FocusFunction": {"raw_equal_base": False}}},
+        )
+
+    def _prediction(self, expected: list[dict[str, object]], *, index_sha: str | None = None,
+                   source_sha: str | None = None) -> Path:
+        _, index_desc = frontier.read_bound(self.root, self.index, frontier.INDEX_LIMIT)
+        _, source_desc = frontier.read_bound(self.root, self.candidate, 4 * 1024 * 1024)
+        value = {
+            "schema": evaluate.PREDICTION_SCHEMA,
+            "baseline_index_sha256": index_sha or index_desc["sha256"],
+            "candidate_source_sha256": source_sha or source_desc["sha256"],
+            "functions": ["FocusFunction"],
+            "expected": expected,
+        }
+        path = self.root / "prediction.json"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        return path
+
+    def _prediction_feedback(self, report: dict, prediction: Path | None = None,
+                             *, status: str = "improved") -> dict[str, object]:
+        loaded, descriptor, error = evaluate._load_prediction(self.root, prediction)
+        _, index_desc = frontier.read_bound(self.root, self.index, frontier.INDEX_LIMIT)
+        _, source_desc = frontier.read_bound(self.root, self.candidate, 4 * 1024 * 1024)
+        return evaluate._prediction_feedback(
+            spec=loaded, prediction_descriptor=descriptor, prediction_error=error,
+            index_desc=index_desc, source_desc=source_desc, functions=["FocusFunction"],
+            baseline_document=self.before, after_document=report, evaluation_status=status,
         )
 
     def test_command_context_and_mocked_compile_bind_placeholders(self) -> None:
@@ -334,6 +386,71 @@ class RecoveryEvaluateTests(unittest.TestCase):
         self.assertEqual(result["objdiff_runs"], 0)
         self.assertFalse(result["retention_ready"])
         self.assertFalse(list((self.root / "build").glob(".evaluate-*")))
+
+    def test_prediction_changed_row_reports_still_different(self) -> None:
+        prediction = self._prediction([{
+            "function": "FocusFunction", "target_address": 0x100,
+            "target_signature": "lfs f1, pool@sda21",
+        }])
+        feedback = self._prediction_feedback(self.before, prediction)
+        self.assertEqual(feedback["status"], "still_different")
+        self.assertEqual(feedback["counts"], {"closed": 0, "still_different": 1, "unmapped": 0})
+        self.assertEqual(feedback["sites"][0]["aligned_row"], 0)
+
+    def test_prediction_uses_target_address_after_alignment_shift(self) -> None:
+        report = copy.deepcopy(self.after)
+        report["left"]["symbols"][1]["instructions"].insert(0, {})
+        report["right"]["symbols"][1]["instructions"].insert(0, _instruction(0x400, "nop"))
+        prediction = self._prediction([{
+            "function": "FocusFunction", "target_address": 0x100,
+            "target_signature": "lfs f1, pool@sda21",
+        }])
+        feedback = self._prediction_feedback(report, prediction)
+        self.assertEqual(feedback["status"], "closed")
+        self.assertEqual(feedback["sites"][0]["aligned_row"], 1)
+
+    def test_prediction_missing_target_is_unmapped(self) -> None:
+        prediction = self._prediction([{
+            "function": "FocusFunction", "target_address": 0x999,
+            "target_signature": "blr",
+        }])
+        feedback = self._prediction_feedback(self.after, prediction)
+        self.assertEqual(feedback["status"], "unmapped")
+        self.assertEqual(feedback["sites"][0]["status"], "unmapped")
+
+    def test_prediction_source_or_index_drift_is_unmapped_without_gate(self) -> None:
+        prediction = self._prediction([{
+            "function": "FocusFunction", "target_address": 0x100,
+            "target_signature": "lfs f1, pool@sda21",
+        }], index_sha="0" * 64)
+        feedback = self._prediction_feedback(self.after, prediction)
+        self.assertEqual(feedback["status"], "unmapped")
+        self.assertEqual(feedback["binding_status"], "drifted")
+        self.assertIn("baseline index", feedback["reason"])
+
+        prediction = self._prediction([{
+            "function": "FocusFunction", "target_address": 0x100,
+            "target_signature": "lfs f1, pool@sda21",
+        }], source_sha="f" * 64)
+        feedback = self._prediction_feedback(self.after, prediction)
+        self.assertEqual(feedback["status"], "unmapped")
+        self.assertIn("candidate source", feedback["reason"])
+
+    def test_duplicate_object_prediction_reports_contradiction(self) -> None:
+        prediction = self._prediction([{
+            "function": "FocusFunction", "target_address": 0x100,
+            "target_signature": "lfs f1, pool@sda21",
+        }])
+        self._inventory_mode = "baseline"
+        with self._patch_measurement(), \
+                mock.patch.object(evaluate, "_report", side_effect=AssertionError("reported")), \
+                mock.patch.object(evaluate.bounded_process, "run", side_effect=AssertionError("readelf")):
+            result = self._evaluate("duplicate-object-prediction.json",
+                                     candidate_object=self.baseline_object,
+                                     prediction=prediction)
+        self.assertEqual(result["status"], "duplicate_object")
+        self.assertEqual(result["prediction_feedback"]["status"], "contradiction")
+        self.assertFalse(result["prediction_feedback"]["authority_advanced"])
 
     def test_exact_command_workflow_runs_parallel_reports_preserves_candidate(self) -> None:
         source_before = self.candidate.read_bytes()

@@ -28,14 +28,21 @@ from tools import compile_recovery_candidate as compiler
 from tools import owner_campaign
 from tools import recovery_frontier as frontier
 from tools import recovery_object_inventory as objects
+from tools import recovery_causal_groups as causal_groups
 
 SCHEMA = "recovery_candidate_evaluation/v1"
 BATCH_SCHEMA = "recovery_evaluation_batch/v1"
 BATCH_EVENT_SCHEMA = "recovery_evaluation_event/v1"
+PREDICTION_SCHEMA = "recovery_prediction/v1"
 LIMIT = 512 * 1024
 SEEN_LIMIT = 128
 BATCH_MAX_JOBS = 8
 BATCH_MAX_WORKERS = 3
+_PREDICTION_LIMIT = 64 * 1024
+_PREDICTION_SITE_LIMIT = 32
+_PREDICTION_FUNCTION_LIMIT = 128
+_PREDICTION_SIGNATURE_LIMIT = 1024
+_SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 _DIAGNOSTIC_FUNCTION_LIMIT = 3
 _DIAGNOSTIC_CONTEXT_LIMIT = 2
 _EVALUATE_STDOUT_LIMIT = 12 * 1024
@@ -70,7 +77,8 @@ def _implementation_binding() -> dict[str, str]:
     # this entry point did not change in the same release.
     paths = {Path(__file__), Path(frontier.__file__), Path(objects.__file__),
              Path(compiler.__file__), Path(bounded_process.__file__),
-             Path(frontier.focus.__file__), Path(__file__).with_name("crack_evidence_bundle.py")}
+             Path(frontier.focus.__file__), Path(causal_groups.__file__),
+             Path(__file__).with_name("crack_evidence_bundle.py")}
     return {str(path): compiler.digest(path) for path in sorted(paths)}
 
 
@@ -119,6 +127,222 @@ def _remember(root: Path, path: Path, key: str, out: Path) -> None:
         _atomic(path, {"schema": "recovery_evaluation_cache/v1", "entries": entries[-SEEN_LIMIT:]})
 
 
+def _prediction_address(value: Any, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a non-negative instruction address")
+    if isinstance(value, int):
+        address = value
+    elif isinstance(value, str):
+        text = value.strip()
+        try:
+            address = int(text, 16 if text.lower().startswith("0x") else 10)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{label} must be a non-negative instruction address") from exc
+    else:
+        raise ValueError(f"{label} must be a non-negative instruction address")
+    if not 0 <= address < 2 ** 64:
+        raise ValueError(f"{label} is outside the uint64 address range")
+    return address
+
+
+def _prediction_signature(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be non-empty instruction text")
+    value = " ".join(value.split())
+    if len(value) > _PREDICTION_SIGNATURE_LIMIT:
+        raise ValueError(f"{label} exceeds {_PREDICTION_SIGNATURE_LIMIT} characters")
+    return value
+
+
+def _prediction_row_signature(row: Any) -> str | None:
+    instruction = row.get("instruction") if isinstance(row, dict) else None
+    value = instruction.get("formatted") if isinstance(instruction, dict) else None
+    return " ".join(value.split())[:_PREDICTION_SIGNATURE_LIMIT] if isinstance(value, str) and value.strip() else None
+
+
+def _load_prediction(root: Path, path: Path | None) -> tuple[dict | None, dict | None, str | None]:
+    if path is None:
+        return None, None, None
+    try:
+        raw, descriptor = frontier.read_bound(root, path, _PREDICTION_LIMIT)
+        document = frontier.load_json(raw)
+        if not isinstance(document, dict) or document.get("schema") != PREDICTION_SCHEMA:
+            raise ValueError(f"prediction schema must be {PREDICTION_SCHEMA}")
+        def sha(field: str) -> str:
+            value = document.get(field)
+            if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+                raise ValueError(f"prediction {field} must be a lowercase SHA-256")
+            return value
+        baseline_sha, source_sha = sha("baseline_index_sha256"), sha("candidate_source_sha256")
+        functions, expected = document.get("functions"), document.get("expected")
+        if (not isinstance(functions, list) or not functions
+                or len(functions) > _PREDICTION_FUNCTION_LIMIT
+                or any(not isinstance(value, str) or not value.strip() for value in functions)
+                or len(set(functions)) != len(functions)):
+            raise ValueError("prediction functions must be distinct non-empty names")
+        if not isinstance(expected, list) or not expected or len(expected) > _PREDICTION_FUNCTION_LIMIT:
+            raise ValueError(f"prediction expected must contain 1..{_PREDICTION_FUNCTION_LIMIT} items")
+        functions = [value.strip() for value in functions]
+        normalized, seen = [], set()
+        for number, item in enumerate(expected, 1):
+            if not isinstance(item, dict):
+                raise ValueError(f"prediction expected instruction {number} must be an object")
+            function = item.get("function")
+            if not isinstance(function, str) or not function.strip():
+                raise ValueError(f"prediction expected instruction {number} function is required")
+            function = function.strip()
+            address = _prediction_address(
+                item.get("target_address"), f"prediction expected instruction {number} address"
+            )
+            signature = _prediction_signature(
+                item.get("target_signature"), f"prediction expected instruction {number} signature"
+            )
+            if (function, address) in seen:
+                raise ValueError(f"prediction expected instruction {number} duplicates {function}@{address}")
+            seen.add((function, address))
+            normalized.append({"function": function, "address": address, "signature": signature})
+        if not {item["function"] for item in normalized} <= set(functions):
+            raise ValueError("prediction expected instruction function is outside functions")
+        return {
+            "schema": PREDICTION_SCHEMA, "baseline_index_sha256": baseline_sha,
+            "candidate_source_sha256": source_sha, "functions": functions, "expected": normalized,
+        }, descriptor, None
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return None, None, str(exc)[:800]
+
+
+def _prediction_report_rows(document: dict | None, function: str) -> tuple[list[dict], list[dict]] | None:
+    if not isinstance(document, dict):
+        return None
+    sides = {side: frontier.focus._symbols(document, side, "prediction feedback")
+             for side in ("left", "right")}
+    target = frontier._stack_function(sides["left"], function, "target")
+    candidate = frontier._stack_function(sides["right"], function, "candidate")
+    return (frontier.focus._rows(target, function), frontier.focus._rows(candidate, function)) \
+        if target is not None and candidate is not None else None
+
+
+def _prediction_baseline_report(root: Path, base: dict) -> dict | None:
+    descriptor = base.get("inputs", {}).get("strict_report")
+    if not isinstance(descriptor, dict):
+        return None
+    try:
+        raw, actual = frontier.read_bound(root, Path(descriptor["path"]), frontier.REPORT_LIMIT)
+        document = frontier.load_json(raw)
+        return document if actual == descriptor and isinstance(document, dict) else None
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _prediction_feedback(*, spec: dict | None, prediction_descriptor: dict | None,
+                         prediction_error: str | None, index_desc: dict, source_desc: dict,
+                         functions: list[str], baseline_document: dict | None,
+                         after_document: dict | None, evaluation_status: str | None) -> dict:
+    """Compare predictions at target addresses, never at retained row numbers."""
+    result: dict[str, Any] = {
+        "schema": PREDICTION_SCHEMA, "diagnostic_only": True,
+        "authority_advanced": False, "prediction": prediction_descriptor,
+    }
+    empty = {"closed": 0, "still_different": 0, "unmapped": 0}
+    if prediction_error is not None:
+        result.update(status="unmapped", binding_status="invalid",
+                      reason=f"invalid prediction: {prediction_error}", sites=[], counts=empty)
+        return result
+    if spec is None:
+        result.update(status="unmapped", binding_status="invalid",
+                      reason="prediction was not loaded", sites=[], counts=empty)
+        return result
+
+    expected_index, actual_index = spec["baseline_index_sha256"], index_desc.get("sha256")
+    expected_source, actual_source = spec["candidate_source_sha256"], source_desc.get("sha256")
+    expected_functions = list(spec["functions"])
+    result.update(
+        binding={
+            "baseline_index_sha256": {"expected": expected_index, "actual": actual_index,
+                                      "matched": expected_index == actual_index},
+            "candidate_source_sha256": {"expected": expected_source, "actual": actual_source,
+                                        "matched": expected_source == actual_source},
+            "functions": {"expected": expected_functions, "actual": list(functions),
+                          "matched": set(expected_functions) == set(functions)},
+        },
+        functions=expected_functions, predicted_count=len(spec["expected"]),
+    )
+    reasons = []
+    if expected_index != actual_index:
+        reasons.append("baseline index file SHA-256 differs")
+    if expected_source != actual_source:
+        reasons.append("candidate source SHA-256 differs")
+    if set(expected_functions) != set(functions):
+        reasons.append("focus functions differ")
+    expected = spec["expected"][:_PREDICTION_SITE_LIMIT]
+    if reasons:
+        sites = [{
+            "function": item["function"], "target_address": item["address"],
+            "expected_target_signature": item["signature"], "status": "unmapped",
+            "reason": "; ".join(reasons)[:240],
+        } for item in expected]
+        result.update(status="unmapped", binding_status="drifted",
+                      reason="prediction binding mismatch: " + "; ".join(reasons),
+                      sites=sites, truncated=len(spec["expected"]) > len(sites),
+                      counts={"closed": 0, "still_different": 0, "unmapped": len(sites)})
+        return result
+
+    report = after_document
+    if report is None and evaluation_status in {"duplicate_object", "duplicate_source"}:
+        report = baseline_document
+    sites = []
+    for item in expected:
+        site = {
+            "function": item["function"], "target_address": item["address"],
+            "expected_target_signature": item["signature"], "status": "unmapped",
+        }
+        try:
+            rows = _prediction_report_rows(report, item["function"])
+            matches = []
+            if rows is not None:
+                for index, row in enumerate(rows[0]):
+                    instruction = row.get("instruction") if isinstance(row, dict) else None
+                    if not isinstance(instruction, dict):
+                        continue
+                    try:
+                        address = _prediction_address(instruction.get("address"), "target instruction address")
+                    except ValueError:
+                        continue
+                    if address == item["address"]:
+                        matches.append((index, row))
+            if len(matches) != 1:
+                site["reason"] = ("target instruction address is missing" if not matches
+                                  else "target instruction address is ambiguous")
+            else:
+                aligned_row, target_row = matches[0]
+                candidate_row = rows[1][aligned_row] if aligned_row < len(rows[1]) else None
+                target_signature = _prediction_row_signature(target_row)
+                candidate_signature = _prediction_row_signature(candidate_row)
+                site.update(aligned_row=aligned_row, target_signature=target_signature,
+                            candidate_signature=candidate_signature)
+                if target_signature is None:
+                    site["reason"] = "target instruction signature is missing"
+                elif target_signature != item["signature"]:
+                    site["reason"] = "target instruction signature changed since prediction"
+                elif candidate_signature is None:
+                    site["reason"] = "aligned candidate instruction is missing"
+                elif candidate_signature == item["signature"]:
+                    site["status"] = "closed"
+                else:
+                    site["status"] = "still_different"
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
+            site["reason"] = f"aligned report is not usable: {str(exc)[:160]}"
+        sites.append(site)
+
+    counts = {status: sum(site["status"] == status for site in sites)
+              for status in ("closed", "still_different", "unmapped")}
+    status = "contradiction" if evaluation_status == "duplicate_object" and counts["still_different"] \
+        else "unmapped" if counts["unmapped"] else "still_different" if counts["still_different"] else "closed"
+    if status == "contradiction":
+        result["contradiction"] = "semantic duplicate_object cannot satisfy a promised instruction change"
+    result.update(status=status, binding_status="matched", sites=sites,
+                  truncated=len(spec["expected"]) > len(sites), counts=counts)
+    return result
 def _metric_map(rows: list[dict]) -> dict[str, dict]:
     result = {row["function"]: dict(row) for row in rows}
     if len(result) != len(rows):
@@ -136,11 +360,43 @@ def _metric_map(rows: list[dict]) -> dict[str, dict]:
     return result
 
 
+def _qualified_positional_shift(name: str, row: dict, comparison: dict,
+                                channels: list[tuple[list[dict], list[dict]]],
+                                focus: set[str]) -> bool:
+    """Partial-gain exception; never an exactness proof or a reference waiver."""
+    if (name not in focus or row.get("raw_equal_base") is not False
+            or row.get("base_raw_exact_target") is not False
+            or row.get("ordered_normalized_relocations_equal") is not True
+            or comparison.get("function_census_equal") is not True
+            or comparison.get("allocated_nontext_changed") is not False):
+        return False
+    sizes = [frontier.focus._integer(row.get(key)) for key in
+             ("target_size", "base_size", "candidate_size")]
+    if any(value is None or value < 0 for value in sizes):
+        return False
+    target, base, candidate = sizes
+    if abs(candidate - target) >= abs(base - target):
+        return False
+    for before, after in channels:
+        left, right = _metric_map(before), _metric_map(after)
+        if name not in left or name not in right:
+            return False
+        a, b = left[name], right[name]
+        if a["instruction_exact"] or b["diff_rows"] > a["diff_rows"]:
+            return False
+    for sibling in comparison.get("functions", {}).values():
+        if sibling.get("base_raw_exact_target") and sibling.get("base_normalized_exact"):
+            if (sibling.get("raw_equal_base") is not True
+                    or sibling.get("candidate_normalized_exact") is not True):
+                return False
+    return True
+
+
 def _classify(before_strict: list[dict], before_data: list[dict],
               after_strict: list[dict], after_data: list[dict],
               object_comparison: dict, functions: list[str]) -> dict:
     """Conservative measurement gate, independent of percentage-only ranking."""
-    regressions, gains, changes = [], [], []
+    regressions, gains, changes, positional_shifts = [], [], [], []
     focus = set(functions)
     for channel, before, after in (("strict", before_strict, after_strict),
                                     ("data", before_data, after_data)):
@@ -185,7 +441,12 @@ def _classify(before_strict: list[dict], before_data: list[dict],
         )
         if use_normalized:
             if normalized_loss_count or normalized_losses:
-                regressions.append(f"relocation:{name}: canonical relocation rows lost")
+                if (normalized_after < normalized_before and not regressions
+                        and _qualified_positional_shift(name, row, object_comparison,
+                            [(before_strict, after_strict), (before_data, after_data)], focus)):
+                    positional_shifts.append(name)
+                else:
+                    regressions.append(f"relocation:{name}: canonical relocation rows lost")
             if normalized_after > normalized_before:
                 regressions.append(f"relocation:{name}: canonical differences increased")
             if name in focus and normalized_after < normalized_before:
@@ -214,6 +475,7 @@ def _classify(before_strict: list[dict], before_data: list[dict],
     return {"status": status, "exact_scope": "selected_functions_only", "owner_exact": False,
             "gains": gains, "regressions": sorted(set(regressions)),
             "review_required": review, "metric_changes": changes,
+            "qualified_positional_relocation_shifts": positional_shifts,
             "retention_ready": status in {"exact", "improved"} and not review}
 
 
@@ -629,6 +891,61 @@ def _changed_result_diagnostics(*, root: Path, baseline_documents: dict[str, dic
     return result
 
 
+def _causal_group_diagnostics(before: dict[str, dict], after: dict[str, dict],
+                              functions: list[str]) -> dict:
+    """Keep actionable machine relationships after disposable reports are removed.
+
+    These are observed relation buckets, not a source-causality proof and not a
+    new retention gate. Malformed diagnostic data cannot mask the primary proof.
+    """
+    result = {"schema": "recovery_evaluation_causal_groups/v1",
+              "authority_advanced": False, "channels": {},
+              "omitted_functions": functions[_DIAGNOSTIC_FUNCTION_LIMIT:]}
+    for channel in ("strict", "data"):
+        rows = {}
+        result["channels"][channel] = rows
+        for function in functions[:_DIAGNOSTIC_FUNCTION_LIMIT]:
+            try:
+                current = causal_groups.summarize_groups(after[channel], function)
+                previous = causal_groups.summarize_groups(before[channel], function)
+                change = causal_groups.compare_groups(previous, current)
+                # Full maps stay in the dedicated diagnostic tool. Per-evaluation
+                # memory is bounded independently of whole-TU report size.
+                current["group_count"] = len(current["groups"])
+                current["groups_omitted"] = max(0, len(current["groups"]) - 64)
+                current["groups"] = current["groups"][:64]
+                for group in current["groups"]:
+                    members = group.get("members", [])
+                    group["members_omitted"] = max(0, len(members) - 8)
+                    group["members"] = members[:8]
+                current["register_mapping"].pop("body_projection", None)
+                conflicts = current["register_mapping"].get("conflicts", [])
+                current["register_mapping"]["conflicts_omitted"] = max(0, len(conflicts) - 16)
+                current["register_mapping"]["conflicts"] = conflicts[:16]
+                for field in ("closed_groups", "new_groups", "changed_groups", "reclassified_groups", "disappeared_observation_buckets"):
+                    change[field + "_count"] = len(change[field])
+                    change[field + "_omitted"] = max(0, len(change[field]) - 64)
+                    change[field] = change[field][:64]
+                payload = {"status": "observed", "after": current, "change": change}
+                if len(frontier.canonical(payload)) > 32 * 1024:
+                    payload = {"status": "summary_only", "group_count": current["group_count"],
+                               "coverage": current["coverage"],
+                               "category_rows": current["category_rows"],
+                               "ranking_tuple": current["ranking_tuple"],
+                               "structural_hazard_count": current["structural_hazard_count"],
+                               "reason": "detailed relation groups exceed compact limit",
+                               "closure_status": change["status"],
+                               "closed_groups_count": change["closed_groups_count"],
+                               "reclassified_groups_count": change["reclassified_groups_count"],
+                               "resolved_target_site_count": change["resolved_target_site_count"],
+                               "introduced_target_site_count": change["introduced_target_site_count"],
+                               "residual_rows_delta": change["residual_rows_delta"]}
+                rows[function] = payload
+            except (ValueError, KeyError, TypeError, AttributeError, IndexError) as exc:
+                rows[function] = {"status": "unknown", "reason": str(exc)[:400]}
+    return result
+
+
 def _physical_progress_summary(object_comparison: dict) -> dict:
     result: dict[str, Any] = {
         "diagnostic_only": True,
@@ -704,6 +1021,8 @@ def _dispatch_summary(result: dict) -> dict:
                    regression_count=len(result.get("regressions", [])), reason=result.get("reason"),
                    changed_result_diagnostics=result.get("changed_result_diagnostics"),
                    physical_progress=result.get("physical_progress"))
+    if "prediction_feedback" in result:
+        summary["prediction_feedback"] = result["prediction_feedback"]
     encoded = json.dumps(summary, sort_keys=True).encode("utf-8")
     if len(encoded) > _EVALUATE_STDOUT_LIMIT:
         diagnostic = result.get("changed_result_diagnostics") or {}
@@ -730,6 +1049,13 @@ def _dispatch_summary(result: dict) -> dict:
                 "unknown_count": diagnostic.get("unknown_count", 0), "truncated": True,
             },
             "physical_progress": result.get("physical_progress"),
+            "prediction_feedback": (
+                {"schema": PREDICTION_SCHEMA,
+                 "diagnostic_only": True, "status": result.get("prediction_feedback", {}).get("status", "unknown"),
+                 "binding_status": result.get("prediction_feedback", {}).get("binding_status", "unknown"),
+                 "counts": result.get("prediction_feedback", {}).get("counts", {}), "truncated": True}
+                if isinstance(result.get("prediction_feedback"), dict) else None
+            ),
             "stdout_truncated": True,
         }
     return summary
@@ -751,14 +1077,70 @@ def _cleanup(directory: Path, root: Path) -> list[str]:
     return errors
 
 
+def working_source_binding(root: Path, index: Path, base: dict, working: dict) -> tuple[bytes, dict[str, str]]:
+    """Validate diagnostic reconstruction ancestry; it never replaces the frontier."""
+    if (not isinstance(working, dict)
+            or working.get("champion_source_sha256") != base["inputs"]["source"]["sha256"]
+            or working.get("baseline_index_sha256") != compiler.digest(index)
+            or not isinstance(working.get("lineage"), str) or not working["lineage"].strip()
+            or len(working["lineage"]) > 2000):
+        raise ValueError("working source requires current champion/index binding and bounded lineage")
+    evidence = working.get("evidence")
+    if not isinstance(evidence, list) or not 1 <= len(evidence) <= 8:
+        raise ValueError("working source requires 1..8 hash-bound diagnostic evidence descriptors")
+    watched = {}
+    raw = None
+    for number, desc in enumerate([working, *evidence]):
+        if not isinstance(desc, dict) or not isinstance(desc.get("path"), str):
+            raise ValueError("working source/evidence descriptor required")
+        path = frontier.local(root, Path(desc["path"]))
+        data, actual = frontier.read_bound(root, path, 4 * 1024 * 1024 if number == 0 else frontier.REPORT_LIMIT)
+        if actual["sha256"] != desc.get("sha256"):
+            raise ValueError("working source/evidence binding is stale")
+        watched[str(path)] = actual["sha256"]
+        if number == 0:
+            raw = data
+    return raw, watched
+
+
+def source_lineage(root: Path, index: Path, base: dict, working: dict, candidate: bytes) -> dict:
+    """Report both real source deltas, never call a working delta a champion delta."""
+    import difflib
+    source, _ = working_source_binding(root, index, base, working)
+    champion, actual = frontier.read_bound(root, Path(base["inputs"]["source"]["path"]), 4 * 1024 * 1024)
+    if actual["sha256"] != base["inputs"]["source"]["sha256"]:
+        raise ValueError("protected champion source binding is stale")
+
+    def delta(before: bytes, label: str) -> dict:
+        left, right = before.decode("utf-8").splitlines(True), candidate.decode("utf-8").splitlines(True)
+        operations = [op for op in difflib.SequenceMatcher(None, left, right, autojunk=False).get_opcodes() if op[0] != "equal"]
+        diff = "".join(difflib.unified_diff(left, right, fromfile=label, tofile="candidate")).encode("utf-8")
+        # Counts and digest describe the entire delta, not this bounded preview.
+        # Ignore only an incomplete UTF-8 character at the preview boundary.
+        preview = diff[:16 * 1024].decode("utf-8", errors="ignore")
+        return {"source_sha256": _sha(before), "candidate_sha256": _sha(candidate),
+                "changed_regions": len(operations), "removed_lines": sum(b-a for _, a, b, _, _ in operations),
+                "added_lines": sum(d-c for _, _, _, c, d in operations),
+                "diff": preview, "diff_sha256": _sha(diff), "diff_bytes": len(diff),
+                "diff_truncated": len(diff) > 16 * 1024}
+
+    return {"schema": "recovery_source_lineage/v1", "working_source": working,
+            "protected_champion": base["inputs"]["source"], "baseline_index_sha256": compiler.digest(index),
+            "working_to_candidate": delta(source, "canonical-working-source"),
+            "champion_to_candidate": delta(champion, "protected-champion"),
+            "diagnostic_only": True, "authority_advanced": False}
+
+
 def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], out: Path,
              objdiff: Path, readelf: Path, command_json: Path | None = None,
              compiler_tools: list[Path] | None = None, candidate_object: Path | None = None,
-             timeout: float = 120, keep_reports: bool = False) -> dict:
+             timeout: float = 120, keep_reports: bool = False,
+             prediction: Path | None = None, working_source: dict | None = None) -> dict:
     """Measure a candidate without modifying source, baseline, queue or permits."""
     started = time.monotonic()
     root = Path(os.path.abspath(root))
     index, candidate, out = [frontier.local(root, p) for p in (index, candidate, out)]
+    prediction = frontier.local(root, prediction) if prediction is not None else None
     out.relative_to(root / "build")
     if not functions or len(set(functions)) != len(functions):
         raise ValueError("distinct focus function names are required")
@@ -779,8 +1161,11 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
         raise ValueError("focus function absent from current evidence")
     source_bytes, source_desc = frontier.read_bound(root, candidate, 4 * 1024 * 1024)
     source_sha = _sha(source_bytes)
+    lineage = source_lineage(root, index, base, working_source, source_bytes) if working_source is not None else None
+    prediction_spec, prediction_descriptor, prediction_error = _load_prediction(root, prediction)
+    prediction_baseline_document = _prediction_baseline_report(root, base) if prediction is not None else None
     bound_paths = {frontier.local(root, Path(v["path"])) for v in base["inputs"].values()}
-    if out in bound_paths | {index, candidate}:
+    if out in bound_paths | {index, candidate} | ({prediction} if prediction is not None else set()):
         raise ValueError("evaluation output aliases an input")
     target = frontier.local(root, Path(base["inputs"]["target_object"]["path"]))
     baseline = frontier.local(root, Path(base["inputs"]["candidate_object"]["path"]))
@@ -790,6 +1175,9 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
         "baseline_index": index_desc, "candidate_source": source_desc,
         "compiler_runs": 0, "objdiff_runs": 0, "cleanup_errors": [], "stage": "preflight"}
     directory = None
+    if lineage is not None:
+        result["source_lineage"] = lineage
+    after_documents: dict[str, dict] = {}
     preserved = []
     cache_path = out.parent / "seen.json"
     try:
@@ -801,6 +1189,9 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
             result.update(status="duplicate_source", reason="candidate is the retained source; nothing to compile")
         else:
             def remaining() -> float:
+                if working_source is not None:
+                    working_source_binding(root, index, base, working_source)
+                    frontier.verify(root, base)
                 seconds = timeout - (time.monotonic() - started)
                 if seconds <= 0:
                     raise TimeoutError("evaluation deadline exhausted")
@@ -823,6 +1214,8 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                 frontier.verify(root, base)
                 if frontier.read_bound(root, candidate, 4 * 1024 * 1024)[1] != source_desc:
                     raise ValueError("candidate source changed during duplicate lookup")
+                if working_source is not None:
+                    working_source_binding(root, index, base, working_source)
                 result["stage"] = "complete"
                 return result
             out.parent.mkdir(parents=True, exist_ok=True)
@@ -901,6 +1294,8 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                     strict_path=strict_path, data_path=data_path, metric_changes=result.get("metric_changes", []),
                     object_comparison=comparison, reports_retained=keep_reports,
                 )
+                result["causal_groups"] = _causal_group_diagnostics(
+                    baseline_documents, after_documents, functions)
                 result["focus"] = {channel: [r for r in summaries[channel] if r["function"] in functions]
                                    for channel in ("strict", "data")}
                 if candidate_object is not None:
@@ -934,12 +1329,42 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
             result["measured_candidate"] = {p.suffix if p.suffix != ".json" else "receipt": _descriptor(p) for p in preserved}
             if result.get("retention_ready"):
                 result["verified_candidate"] = result["measured_candidate"]
+        if working_source is not None:
+            working_source_binding(root, index, base, working_source)
         result["stage"] = "complete"
     except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
         result.update(status="failed", reason=str(exc)[:8000], retention_ready=False)
         if isinstance(exc, bounded_process.ProcessLimitError):
             result["diagnostics"] = compiler._diagnostics(exc.stdout, exc.stderr)
     finally:
+        if prediction is not None:
+            try:
+                result["prediction_feedback"] = _prediction_feedback(
+                    spec=prediction_spec,
+                    prediction_descriptor=prediction_descriptor,
+                    prediction_error=prediction_error,
+                    index_desc=index_desc,
+                    source_desc=source_desc,
+                    functions=functions,
+                    baseline_document=(prediction_baseline_document
+                                       if result.get("status") in {"duplicate_object", "duplicate_source"}
+                                       and "reused_measurement" not in result
+                                       else None),
+                    after_document=after_documents.get("strict"),
+                    evaluation_status=("cached" if "reused_measurement" in result
+                                       else result.get("status")),
+                )
+            except (OSError, ValueError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
+                result["prediction_feedback"] = {
+                    "schema": PREDICTION_SCHEMA,
+                    "diagnostic_only": True,
+                    "authority_advanced": False,
+                    "status": "unmapped",
+                    "binding_status": "invalid",
+                    "reason": f"prediction feedback unavailable: {str(exc)[:800]}",
+                    "sites": [],
+                    "counts": {"closed": 0, "still_different": 0, "unmapped": 0},
+                }
         if result.get("status") == "failed":
             for path in preserved:
                 try:
@@ -1011,7 +1436,7 @@ def _batch_manifest(root: Path, manifest: Path) -> tuple[dict, dict, list[dict]]
     for number, item in enumerate(raw_jobs, 1):
         if not isinstance(item, dict):
             raise ValueError(f"job {number} must be an object")
-        allowed = {"id", "candidate", "functions", "candidate_object"}
+        allowed = {"id", "candidate", "functions", "candidate_object", "working_source"}
         if set(item) - allowed or not {"id", "candidate", "functions"} <= set(item):
             raise ValueError(f"job {number} must contain exactly id, candidate, functions and optional candidate_object")
         job_id = item["id"]
@@ -1036,6 +1461,8 @@ def _batch_manifest(root: Path, manifest: Path) -> tuple[dict, dict, list[dict]]
         jobs.append({"id": job_id, "candidate": candidate, "candidate_desc": candidate_desc,
                      "functions": functions, "candidate_object": candidate_object,
                      "candidate_object_desc": candidate_object_desc})
+        if "working_source" in item:
+            jobs[-1]["working_source"] = item["working_source"]
     return document, manifest_desc, jobs
 
 
@@ -1054,6 +1481,9 @@ def _batch_snapshot(root: Path, index: Path, manifest: Path, manifest_desc: dict
     _, actual_manifest_desc = frontier.read_bound(root, manifest, frontier.INDEX_LIMIT)
     if actual_manifest_desc != manifest_desc:
         raise ValueError("batch manifest changed during preflight")
+    for job in jobs:
+        if job.get("working_source") is not None:
+            working_source_binding(root, index, base, job["working_source"])
     return {"index": index_desc, "manifest": actual_manifest_desc,
             "jobs": {job["id"]: {"candidate": job["candidate_desc"],
                                   "candidate_object": job["candidate_object_desc"]}
@@ -1087,6 +1517,8 @@ def _batch_drift(root: Path, index: Path, manifest: Path, snapshot: dict, jobs: 
     for job in jobs:
         expected = snapshot["jobs"][job["id"]]
         try:
+            if job.get("working_source") is not None:
+                working_source_binding(root, index, base, job["working_source"])
             _, current_candidate_desc = frontier.read_bound(root, job["candidate"], 4 * 1024 * 1024)
             if current_candidate_desc != expected["candidate"]:
                 reasons.append(f"candidate changed: {job['id']}")
@@ -1129,6 +1561,8 @@ def _batch_run(root: Path, index: Path, job: dict, result_path: Path,
     kwargs = {"root": root, "index": index, "candidate": job["candidate"],
               "functions": job["functions"], "out": result_path, "objdiff": objdiff,
               "readelf": readelf, "timeout": timeout}
+    if "working_source" in job:
+        kwargs["working_source"] = job["working_source"]
     if job["candidate_object"] is not None:
         # A per-job object is an explicit replay request.  It wins over an
         # optional common recipe in mixed manifests; no compile is performed.
@@ -1460,6 +1894,8 @@ def dispatch_batch(args: Any) -> int:
 def add_arguments(parser: Any) -> None:
     parser.add_argument("--index", type=Path, required=True)
     parser.add_argument("--candidate", type=Path, required=True)
+    parser.add_argument("--prediction", type=Path,
+                        help="optional diagnostic prediction JSON (recovery_prediction/v1)")
     parser.add_argument("--function", action="append", required=True, dest="functions")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--objdiff", type=Path, required=True)

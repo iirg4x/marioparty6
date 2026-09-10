@@ -1,5 +1,25 @@
 # Agent instructions
 
+## Active model and execution policy
+
+Read [the workspace Astra policy](../AGENTS.md). Astra is the primary owner
+reconstructor and sole live-source integrator; Luna/max provides bounded
+support, and additional Astra agents develop tools/skills only. Historical
+`sol` directory names do not select a model. Tool changes must answer a concrete
+missing decision in an active residual; do not turn development into an owner
+approval gate. Preserve the proof and promotion rules below. Startup checks
+are for entering or changing a workspace, not repeated per candidate; the
+clean-commit worker verification section is a handoff boundary, not a per-probe
+ritual.
+
+For closed register cycles, consult the shared-producer and trace-source-region
+tools in [the reconstruction guide](docs/recovery_search.md#capspecial-closure-gaps-closed-2026-09-10)
+before local register permutations. Keep a diagnostic working reconstruction
+separate from the protected champion; use the dual-lineage plan fields when
+composing a change on that reconstruction. Hypothesis memory is advisory, not a
+function ban. Narrow-argument call mismatches should include declaration-conversion
+diagnosis; a non-prototype exception is never an automatic canonical repair.
+
 ## Permanent branch boundary
 
 This is the AI-forward recovery workspace. **Never merge, squash, rebase, or

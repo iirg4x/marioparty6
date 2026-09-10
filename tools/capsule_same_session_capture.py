@@ -85,12 +85,14 @@ def _load_sibling_modules(names: Sequence[str]) -> tuple[Any, ...]:
     _donor_cfg,
     _frontend_chronology,
     _correlator,
+    _expression_context,
 ) = _load_sibling_modules(
     (
         "capsule_stack_home_native",
         "donor_cfg_align",
         "mwcc_fe_chronology_native",
         "pcode_varinfo_correlator",
+        "mwcc_gc26_expression_context",
     )
 )
 
@@ -413,6 +415,33 @@ GC26_HOOKS: tuple[dict[str, Any], ...] = (
     + GC26_PCODE_REWRITE_HOOKS
     + GC26_PHASE_HOOKS
 )
+GC26_SOURCE_ORIGIN_HOOK = {
+    "id": "gc26_source_pcode_origin", "address": 0x004DD35C,
+    "prefix": "5bc3", "lane": "pcode", "role": "source_pcode_origin",
+}
+# Explicit opt-in profile. The default profile and its capture cost are unchanged.
+GC26_CALL_CONTEXT_HOOKS = (
+    {"id": "gc26_call_context_enter", "address": 0x44D130, "prefix": "53558b6c240c",
+     "lane": "pcode", "role": "call_context_enter"},
+    {"id": "gc26_call_context_exit", "address": 0x44D161, "prefix": "c3",
+     "lane": "pcode", "role": "call_context_exit"},
+)
+GC26_SOURCE_ORIGIN_HOOKS = GC26_HOOKS + (GC26_SOURCE_ORIGIN_HOOK,) + GC26_CALL_CONTEXT_HOOKS
+GC26_EXPRESSION_CONTEXT_HOOKS = tuple(
+    {"id": row["id"], "address": row["address"], "prefix": row["expected_bytes"],
+     "lane": "pcode", "role": "expression_context_" + row["phase"]}
+    for row in _expression_context.hook_descriptors()
+)
+GC26_TEMP_RESET_HOOKS = (
+    {"id": "gc26_return_temp_allocation", "address": 0x528907, "prefix": "6a030fbf400250",
+     "lane": "pcode", "role": "return_temp_allocation"},
+    {"id": "gc26_temp_reset_pre", "address": 0x4FE3B1, "prefix": "8b048d589f5e00",
+     "lane": "pcode", "role": "temp_reset_pre"},
+    {"id": "gc26_temp_reset_post", "address": 0x4FE3BF, "prefix": "fec280fa057cca",
+     "lane": "pcode", "role": "temp_reset_post"},
+)
+GC26_EXPRESSION_ORIGIN_HOOKS = GC26_HOOKS + (GC26_SOURCE_ORIGIN_HOOK,) + GC26_EXPRESSION_CONTEXT_HOOKS + GC26_TEMP_RESET_HOOKS
+GC26_EXPRESSION_TRACKER_SHA256 = "4e4a45ee9a42e126f74464cbde9d814b4a216a300c8ab61eccdb5a5bec3bb433"
 # GC/2.7 keeps the same stack-hook meanings, but its allocator helper is
 # 0xe0 bytes earlier than the authenticated GC/2.6 image.  Three Object-write
 # sites therefore move with that helper, while the call at allocation_pre
@@ -518,7 +547,7 @@ GC26_OPCODE_DESCRIPTOR_BASE_OFFSET = PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET
 GC27_OPCODE_DESCRIPTOR_TABLE = PCODE_OPCODE_DESCRIPTOR_TABLE
 GC27_OPCODE_DESCRIPTOR_STRIDE = PCODE_OPCODE_DESCRIPTOR_STRIDE
 GC27_OPCODE_DESCRIPTOR_BASE_OFFSET = PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET
-_HOOK_SETS: tuple[tuple[dict[str, Any], ...], ...] = (HOOKS, GC26_HOOKS, GC27_HOOKS)
+_HOOK_SETS: tuple[tuple[dict[str, Any], ...], ...] = (HOOKS, GC26_SOURCE_ORIGIN_HOOKS, GC27_HOOKS, GC26_EXPRESSION_ORIGIN_HOOKS)
 HOOK_BY_ID = {str(row["id"]): row for rows in _HOOK_SETS for row in rows}
 HOOK_BY_ADDRESS = {int(row["address"]): row for rows in _HOOK_SETS for row in rows}
 WRITE_HOOK_IDS = tuple(row["id"] for row in HOOKS if row["role"] == "object_stack_write")
@@ -625,6 +654,11 @@ def _pcode_stage_hook_ids(hooks: Sequence[Mapping[str, Any]]) -> tuple[str, ...]
     """Return required generic PCode-stage hooks for one closed profile."""
 
     excluded = {
+        "return_temp_allocation",
+        "temp_reset_pre", "temp_reset_post",
+        "expression_context_entry", "expression_context_exit",
+        "call_context_enter", "call_context_exit",
+        "source_pcode_origin",
         "regalloc",
         "regalloc_post",
         "pcode_color_diagnostic",
@@ -643,9 +677,18 @@ def _hooks_for_compiler(compiler_sha256: str) -> tuple[dict[str, Any], ...]:
     """Select only hook sites authenticated for the request compiler."""
 
     normalized = compiler_sha256.lower()
+    if tuple(HOOKS) in (GC26_SOURCE_ORIGIN_HOOKS, GC26_EXPRESSION_ORIGIN_HOOKS) and normalized != GC26_COMPILER_SHA256:
+        raise Rejected("source origins require pinned GC2.6")
     if normalized == GC27_COMPILER_SHA256:
         return GC27_HOOKS
     if normalized == GC26_COMPILER_SHA256:
+        if tuple(HOOKS) == GC26_EXPRESSION_ORIGIN_HOOKS:
+            tracker_path = Path(__file__).with_name("mwcc_gc26_expression_context.py")
+            if hashlib.sha256(tracker_path.read_bytes()).hexdigest() != GC26_EXPRESSION_TRACKER_SHA256:
+                raise Rejected("expression tracker implementation differs from sealed profile")
+            return GC26_EXPRESSION_ORIGIN_HOOKS
+        if tuple(HOOKS) == GC26_SOURCE_ORIGIN_HOOKS:
+            return GC26_SOURCE_ORIGIN_HOOKS
         return GC26_HOOKS
     return LEGACY_HOOKS
 
@@ -800,6 +843,15 @@ _EVENT_EXTRA_KEYS = {
     "opcode",
     "instruction",
     "pcode_token",
+    "codegen_token", "expression_token", "expression_kind", "owner_role", "child_edge",
+    "call_context_token", "call_context_role",
+    "temporary_counter", "counter_before", "counter_after", "temporary_class", "saved_base", "high_water",
+    "reset_inhibition", "preceding_gpr_reset_event",
+    "allocated_vreg",
+    "allocation_site", "instruction_bytes", "handler_arg2_state", "handler_arg3_state", "classification",
+    "destination_request",
+    "direct_callee_name",
+    "native_return_type_kind", "native_return_type_width", "native_return_type_code",
     "source_offset",
     "block",
     "order",
@@ -862,10 +914,26 @@ _EVENT_KINDS = {
     "regalloc_assignment",
     "physical_reg_assignment",
     "machine_emission",
+    "source_pcode_origin", "temporary_lane_reset", "return_temp_allocation",
     "lane_unknown",
     "function_exit",
 }
+COUNTER_WRITES = False
+_COUNTER_WRITE_FIELDS = {"hook_id", "status", "counter_before", "counter_after", "allocation_site",
+                         "instruction_bytes", "expression_token", "expression_kind",
+                         "handler_arg2_state", "handler_arg3_state", "classification"}
+_EVENT_KINDS.add("temporary_counter_write")
 _EVENT_ALLOWED_FIELDS = {
+    "temporary_counter_write": _COUNTER_WRITE_FIELDS | {"destination_request"},
+    "return_temp_allocation": {"hook_id", "status", "allocated_vreg", "counter_after",
+                               "expression_token", "expression_kind", "preceding_gpr_reset_event",
+                               "native_return_type_kind", "native_return_type_width", "native_return_type_code"},
+    "temporary_lane_reset": {"hook_id", "status", "counter_before", "counter_after",
+                             "temporary_class", "saved_base", "high_water", "source_offset", "reset_inhibition"},
+    "source_pcode_origin": {"hook_id", "status", "pcode_token", "codegen_token",
+                            "expression_token", "expression_kind", "source_offset",
+                            "owner_role", "child_edge", "call_context_token", "call_context_role", "temporary_counter",
+                            "preceding_gpr_reset_event", "reset_inhibition", "direct_callee_name"},
     "function_entry": {"hook_id"},
     "compiler_list": {"locals", "arguments"},
     "numeric_stack_alloc_pre": {"hook_id", "locals", "arguments"},
@@ -912,6 +980,14 @@ _EVENT_ALLOWED_FIELDS = {
     "function_exit": {"exit_code"},
 }
 _EVENT_REQUIRED_FIELDS = {
+    "temporary_counter_write": _COUNTER_WRITE_FIELDS,
+    "return_temp_allocation": {"hook_id", "status", "allocated_vreg", "counter_after",
+                               "expression_token", "expression_kind", "preceding_gpr_reset_event"},
+    "temporary_lane_reset": {"hook_id", "status", "counter_before", "counter_after",
+                             "temporary_class", "saved_base", "high_water", "source_offset"},
+    "source_pcode_origin": {"hook_id", "status", "pcode_token", "codegen_token",
+                             "expression_token", "expression_kind", "source_offset",
+                             "owner_role", "child_edge"},
     "function_entry": {"hook_id"},
     "compiler_list": {"locals", "arguments"},
     "numeric_stack_alloc_pre": {"hook_id", "locals", "arguments"},
@@ -1860,6 +1936,7 @@ class MachineEmissionDecoder:
                 "known_reaching_definitions",
                 "missing_reaching_registers",
                 "operand_role_order",
+                "immediate",
             ):
                 if key in located:
                     result[key] = located[key]
@@ -1918,7 +1995,20 @@ class MachineEmissionDecoder:
         primary = word >> 26
         reaching: set[int] = set()
 
-        if primary == 14:  # addi
+        if primary == 7:  # mulli: D-form RT, RA, signed SI; RA=0 is real r0.
+            destination = (word >> 21) & 31
+            source = (word >> 16) & 31
+            result.update(mnemonic="mulli",
+                          registers={"destination": f"r{destination}", "source": f"r{source}"},
+                          immediate=_signed_field(word, 16))
+            source_def = self.value_defs.get(("GPR", source))
+            if source_def is None:
+                result.update(known_reaching_definitions=[], missing_reaching_registers=[f"r{source}"])
+                return self._unknown("ambiguous reaching definition", result)
+            reaching.add(source_def)
+            self.address_defs.pop(destination, None)
+            self.value_defs[("GPR", destination)] = instruction_index
+        elif primary == 14:  # addi
             destination = (word >> 21) & 31
             base = (word >> 16) & 31
             immediate = _signed_field(word, 16)
@@ -2045,12 +2135,14 @@ class MachineEmissionDecoder:
                     "physical_register": f"f{register}",
                     "instruction_index": self.value_defs[("FPR", register)],
                 }
-                for register in sorted({source_a, source_b})
+                # Event schema canonicalizes physical-register *names*, not
+                # register numbers (for example f10 sorts before f2).
+                for register in sorted({source_a, source_b}, key=lambda value: f"f{value}")
                 if ("FPR", register) in self.value_defs
             ]
             missing_reaching = [
                 f"f{register}"
-                for register in sorted({source_a, source_b})
+                for register in sorted({source_a, source_b}, key=lambda value: f"f{value}")
                 if ("FPR", register) not in self.value_defs
             ]
             result.update(
@@ -3236,7 +3328,12 @@ class CombinedCaptureSession:
                 # site.  Mark it complete there; the physical hook itself is
                 # intentionally allowed to fire many times per function.
                 if self.function_entered:
+                    tracker = getattr(self, "_expression_tracker", None)
+                    if tracker is not None:
+                        tracker.assert_empty()
                     self.target_complete = True
+                    if COUNTER_WRITES:
+                        self._call_backend("counter_watch", thread, False)
                 return False
             if self.function_entered:
                 raise Rejected("target function entry observed twice")
@@ -3246,6 +3343,8 @@ class CombinedCaptureSession:
                 except Exception:
                     self._frontend_unknown()
             self.function_entered = True
+            if COUNTER_WRITES:
+                self._call_backend("counter_watch", thread, True)
             self.bus.emit("stack", "function_entry", {"hook_id": row["id"]})
             return True
         if row.get("lane") == "frontend":
@@ -3268,6 +3367,114 @@ class CombinedCaptureSession:
             raise Rejected(f"unsupported frontend hook role: {role}")
         if self.target_complete or not self.function_entered:
             return False
+        if role == "return_temp_allocation":
+            raw = self._call_backend("capture_return_temp_allocation", thread)
+            tracker = getattr(self, "_expression_tracker", None)
+            active = tracker.active(thread) if tracker else None
+            token = ("expression-" + self.session_id + "-" + hashlib.sha256(
+                (self.session_id + ":expression:" + str(active["expression_pointer"])).encode()
+            ).hexdigest()[:20]) if active else None
+            self.bus.emit("pcode", "return_temp_allocation", {
+                "hook_id": row["id"], "status": "CAPTURED", **raw,
+                "expression_token": token, "expression_kind": active["expression_kind"] if active else None,
+                "preceding_gpr_reset_event": getattr(self, "_preceding_gpr_reset", None),
+            })
+            return True
+        if role in {"temp_reset_pre", "temp_reset_post"}:
+            pending = getattr(self, "_temp_reset_pending", None)
+            if pending is None:
+                pending = self._temp_reset_pending = {}
+            if role == "temp_reset_pre":
+                if thread in pending:
+                    raise Rejected("nested temporary reset")
+                pending[thread] = self._call_backend("capture_temporary_reset", thread)
+            elif thread in pending:
+                before = pending.pop(thread)
+                after = self._call_backend("capture_temporary_reset", thread)
+                if (after["temporary_class"] != before["temporary_class"]
+                        or before["current"] <= 256 or after["current"] != before["saved_base"]):
+                    raise Rejected("temporary reset post-store mismatch")
+                reset_event = self.bus.emit("pcode", "temporary_lane_reset", {
+                    "hook_id": row["id"], "status": "CAPTURED",
+                    "counter_before": before["current"], "counter_after": after["current"],
+                    "temporary_class": before["temporary_class"], "saved_base": before["saved_base"],
+                    "high_water": after["high_water"], "source_offset": before["source_offset"],
+                    "reset_inhibition": before["reset_inhibition"],
+                })
+                if before["temporary_class"] == 4:
+                    self._preceding_gpr_reset = reset_event["event_id"]
+            return True
+        if role in {"expression_context_entry", "expression_context_exit"}:
+            tracker = getattr(self, "_expression_tracker", None)
+            if tracker is None:
+                tracker = self._expression_tracker = _expression_context.ExpressionTracker(GC26_COMPILER_SHA256)
+            raw = self._call_backend("capture_expression_context", thread, row)
+            if role == "expression_context_entry":
+                tracker.enter(thread, row["address"], **raw)
+            else:
+                tracker.exit(thread, row["address"], **raw)
+            return True
+        if role in {"call_context_enter", "call_context_exit"}:
+            raw = self._call_backend("capture_call_context", thread, role)
+            stacks = getattr(self, "_call_context_stacks", None)
+            if stacks is None:
+                stacks = self._call_context_stacks = {}
+            stack = stacks.setdefault(thread, [])
+            if role == "call_context_enter":
+                if len(stack) >= 16:
+                    raise Rejected("call context depth exceeded")
+                stack.append(raw)
+            elif not stack or any(stack[-1][key] != raw[key] for key in ("stack", "return")):
+                raise Rejected("call context return frame mismatch")
+            else:
+                stack.pop()
+            return True
+        if role == "source_pcode_origin":
+            raw = self._call_backend("capture_source_pcode_origin", thread)
+            if not isinstance(raw, Mapping):
+                raise Rejected("source origin reader missing")
+            if raw.get("status") == "UNKNOWN":
+                self._unknown(str(raw.get("reason", "source origin unavailable")))
+                return True
+            origins = getattr(self, "_source_origin_nodes", None)
+            if origins is None:
+                origins = self._source_origin_nodes = {}
+            pointer = int(raw["pcode_pointer"])
+            if pointer in origins:
+                raise Rejected("PCode creation pointer reused or observed twice")
+            if len(origins) >= 4096:
+                raise Rejected("source origin node budget exceeded")
+            token = self._pcode_token(pointer)
+            if token is None:
+                raise Rejected("missing source origin PCode")
+            origins[pointer] = token
+            def source_token(category: str, address: int) -> str:
+                # Same session, separate namespace; never equate an AST with a vreg.
+                return category + "-" + self.session_id + "-" + hashlib.sha256(
+                    (self.session_id + ":" + category + ":" + str(address)).encode()
+                ).hexdigest()[:20]
+            call_stack = getattr(self, "_call_context_stacks", {}).get(thread, [])
+            tracker = getattr(self, "_expression_tracker", None)
+            active_expression = tracker.active(thread) if tracker is not None else None
+            direct_callee = (self._call_backend("capture_direct_callee", active_expression["expression_pointer"])
+                             if active_expression and active_expression["expression_kind"] in (54, 55) else None)
+            self.bus.emit("pcode", "source_pcode_origin", {
+                "hook_id": row["id"], "status": "CAPTURED", "pcode_token": token,
+                "codegen_token": source_token("codegen", raw["codegen_pointer"]),
+                "expression_token": source_token("expression", active_expression["expression_pointer"]) if active_expression else None,
+                "expression_kind": active_expression["expression_kind"] if active_expression else None,
+                "direct_callee_name": direct_callee,
+                "source_offset": raw["source_offset"],
+                "temporary_counter": raw.get("temporary_counter"),
+                "reset_inhibition": raw.get("reset_inhibition"),
+                # Temporal epoch link, not a claim of an allocation or live range.
+                "preceding_gpr_reset_event": getattr(self, "_preceding_gpr_reset", None),
+                "owner_role": "enclosing_codegen",
+                "child_edge": "CAPTURED_ACTIVE_HANDLER" if active_expression else "MISSING_RECURSIVE_CHILD",
+                "call_context_token": source_token("callcontext", call_stack[-1]["expression"]) if call_stack else None,
+                "call_context_role": "ANCESTRY_ONLY_NOT_ARGUMENT_OWNER",
+            })
+            return True
         if role == "numeric_stack_alloc_pre":
             if any(event.get("event_kind") == "numeric_stack_alloc_pre" for event in self.bus.events):
                 return False
@@ -3977,6 +4184,17 @@ def _request_paths(request: Mapping[str, Any]) -> dict[str, Path]:
     return result
 
 
+def _require_compiler_output_parent(path: Path) -> None:
+    if not path.parent.is_dir():
+        raise Rejected("compiler -o parent directory does not exist: " + str(path.parent))
+
+
+def _postcapture_output_names(output_dir: Path, compiler_outputs: Sequence[Path]) -> set[str]:
+    names = {"request.json", "stack.events.jsonl", "pcode.events.jsonl", "same-session.envelope.json"}
+    names.update(Path(path).name for path in compiler_outputs if Path(path).parent == output_dir)
+    return names
+
+
 def _compiler_output_paths(request: Mapping[str, Any]) -> tuple[Path, ...]:
     """Derive only explicit compiler-owned ``-o`` paths from bound argv."""
 
@@ -4478,6 +4696,8 @@ def authenticate_request(
             raise Rejected("compiler -o output collides with request or capture evidence")
     prelaunch_empty_output_proof: dict[str, Any] | None = None
     if require_empty:
+        for compiler_output in compiler_output_paths:
+            _require_compiler_output_parent(compiler_output)
         extras = [entry for entry in output_dir.iterdir() if entry.name != request_path.name]
         if extras:
             raise Rejected("capture output directory contains stale or partial files")
@@ -5538,6 +5758,51 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
         raise Rejected(f"event[{index}] {event_kind} payload is not closed (missing={missing}, extra={extra})")
     profile_hooks = _hooks_for_compiler(str(context["compiler"]["sha256"]))
     profile_hook_by_id = {str(row["id"]): row for row in profile_hooks}
+    if event_kind == "return_temp_allocation":
+        for field in ("allocated_vreg", "counter_after"):
+            if type(event[field]) is not int or not 0 <= event[field] <= 0xffffffff:
+                raise Rejected("invalid return allocation integer")
+        if (tuple(profile_hooks) != GC26_EXPRESSION_ORIGIN_HOOKS
+                or event["hook_id"] != "gc26_return_temp_allocation" or event["status"] != "CAPTURED"
+                or event["lane"] != "pcode" or event["allocated_vreg"] + 1 != event["counter_after"]):
+            raise Rejected("invalid native return allocation")
+    if event_kind == "temporary_lane_reset":
+        for field in ("counter_before", "counter_after", "saved_base", "high_water", "temporary_class"):
+            if type(event[field]) is not int or not 0 <= event[field] <= 0xffffffff:
+                raise Rejected("invalid reset integer")
+        if (tuple(profile_hooks) != GC26_EXPRESSION_ORIGIN_HOOKS
+                or event["hook_id"] != "gc26_temp_reset_post" or event["status"] != "CAPTURED"
+                or event["lane"] != "pcode" or event["counter_before"] <= 256
+                or event["counter_after"] != event["saved_base"]
+                or not 0 <= event["temporary_class"] < 5 or event.get("reset_inhibition") != 0):
+            raise Rejected("invalid temporary reset event")
+    if event_kind == "source_pcode_origin":
+        if (context["compiler"]["sha256"] != GC26_COMPILER_SHA256
+                or event["hook_id"] != GC26_SOURCE_ORIGIN_HOOK["id"]
+                or event["lane"] != "pcode" or event["status"] != "CAPTURED"
+                or event["owner_role"] != "enclosing_codegen"
+                or event["child_edge"] not in {"MISSING_RECURSIVE_CHILD", "CAPTURED_ACTIVE_HANDLER"}):
+            raise Rejected("invalid source origin authority")
+        for field, category in (("pcode_token", "pcode"), ("codegen_token", "codegen")):
+            if not str(event[field]).startswith(category + "-" + context["session_id"] + "-"):
+                raise Rejected("source origin crosses session")
+        if event["child_edge"] == "MISSING_RECURSIVE_CHILD":
+            if event["expression_kind"] is not None or event["expression_token"] is not None:
+                raise Rejected("unproven enclosing expression identity")
+        elif (tuple(profile_hooks) != GC26_EXPRESSION_ORIGIN_HOOKS
+              or type(event["expression_kind"]) is not int
+              or event["expression_kind"] not in _expression_context.DISPATCH
+              or not str(event["expression_token"]).startswith("expression-" + context["session_id"] + "-")):
+            raise Rejected("unproven active expression handler")
+        if event.get("call_context_role", "ANCESTRY_ONLY_NOT_ARGUMENT_OWNER") != "ANCESTRY_ONLY_NOT_ARGUMENT_OWNER":
+            raise Rejected("unproven direct call ownership")
+        call_token = event.get("call_context_token")
+        if call_token is not None and not str(call_token).startswith("callcontext-" + context["session_id"] + "-"):
+            raise Rejected("call context crosses session")
+        callee_name = event.get("direct_callee_name")
+        if callee_name is not None and (not isinstance(callee_name, str) or not callee_name.isidentifier()
+                                       or event["expression_kind"] not in (54, 55)):
+            raise Rejected("invalid direct callee identity")
     if event_kind in {
         "function_entry",
         "numeric_stack_alloc_pre",
@@ -5727,17 +5992,20 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 "known_reaching_definitions", "missing_reaching_registers",
             }
             diagnostic_unknown_with_roles = diagnostic_unknown | {"operand_role_order"}
+            mulli_unknown = located_unknown | {"mnemonic", "registers", "immediate",
+                                               "known_reaching_definitions", "missing_reaching_registers"}
             unknown_fields = frozenset(fields)
             if unknown_fields not in {
                 frozenset(minimal_unknown),
                 frozenset(located_unknown),
                 frozenset(diagnostic_unknown),
                 frozenset(diagnostic_unknown_with_roles),
+                frozenset(mulli_unknown),
             }:
                 raise Rejected(f"event[{index}] UNKNOWN machine emission is not closed")
             if event["reason"] not in _KNOWN_UNKNOWN_REASONS:
                 raise Rejected(f"event[{index}] UNKNOWN machine reason is unsupported")
-            if unknown_fields in {frozenset(located_unknown), frozenset(diagnostic_unknown)}:
+            if unknown_fields in {frozenset(located_unknown), frozenset(diagnostic_unknown), frozenset(mulli_unknown)}:
                 token = _text(event["pcode_token"], f"event[{index}].pcode_token")
                 match = PCODE_TOKEN_RE.fullmatch(token)
                 if match is None or match.group("session") != context["session_id"]:
@@ -5753,6 +6021,15 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
                 ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
                 if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
                     raise Rejected(f"event[{index}] located UNKNOWN PPC bytes/word mismatch")
+            if unknown_fields == frozenset(mulli_unknown):
+                expected_source = f"r{(word >> 16) & 31}"
+                if (word >> 26 != 7 or event["mnemonic"] != "mulli"
+                        or event["reason"] != "ambiguous reaching definition"
+                        or event["registers"] != {"destination": f"r{(word >> 21) & 31}", "source": expected_source}
+                        or event["immediate"] != _signed_field(word, 16)
+                        or event["known_reaching_definitions"] != []
+                        or event["missing_reaching_registers"] != [expected_source]):
+                    raise Rejected(f"event[{index}] UNKNOWN mulli operands are inconsistent")
             if unknown_fields in {
                 frozenset(diagnostic_unknown),
                 frozenset(diagnostic_unknown_with_roles),
@@ -5829,7 +6106,7 @@ def _validate_event(event: Mapping[str, Any], index: int, context: Mapping[str, 
             ppc_bytes = _text(event["ppc_bytes"], f"event[{index}].ppc_bytes")
             if re.fullmatch(r"[0-9a-f]{8}", ppc_bytes) is None or int(ppc_bytes, 16) != word:
                 raise Rejected(f"event[{index}] PPC bytes/word mismatch")
-            if event["mnemonic"] not in {"addi", *[row[0] for row in MachineEmissionDecoder._D_MEMORY.values()], "psq_l", "psq_st", "psq_lx", "psq_stx", "bl", "fneg", "fmuls", "ps_mul"}:
+            if event["mnemonic"] not in {"addi", "mulli", *[row[0] for row in MachineEmissionDecoder._D_MEMORY.values()], "psq_l", "psq_st", "psq_lx", "psq_stx", "bl", "fneg", "fmuls", "ps_mul"}:
                 raise Rejected(f"event[{index}] machine mnemonic is unsupported")
             registers = event["registers"]
             if not isinstance(registers, Mapping) or (not registers and event["mnemonic"] != "bl"):
@@ -6513,7 +6790,9 @@ def validate_envelope(
         if anchor is None or outputs[name] != anchor:
             raise Rejected(f"external trust root.{name} does not match envelope output")
     output_dir = authenticated_request["paths"]["envelope"].parent
-    expected_names = {"request.json", "stack.events.jsonl", "pcode.events.jsonl", "same-session.envelope.json"}
+    # The native compiler may own an output in this same private directory.
+    # Only its authenticated -o path is permitted; never allow arbitrary extras.
+    expected_names = _postcapture_output_names(output_dir, authenticated_request["compiler_output_paths"])
     extras = [entry.name for entry in output_dir.iterdir() if entry.name not in expected_names]
     if extras:
         raise Rejected(f"capture output directory contains extra or partial files: {sorted(extras)}")
@@ -9140,6 +9419,177 @@ class NativeWow64Backend:
             raise Rejected("PCode color post-write value mismatch")
         return {"status": "CAPTURED", **row}
 
+
+    def capture_direct_callee(self, expression: int) -> str | None:
+        # ECALL +0E -> callee expression; EOBJREF(0x38) +0E -> Object.
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("callee identity requires pinned GC2.6")
+        def u32(address: int) -> int:
+            return int.from_bytes(self._read(address, 4), "little")
+        callee = u32(expression + 0x0E)
+        if not callee or self._read(callee, 1)[0] != 0x38:
+            return None
+        obj = u32(callee + 0x0E)
+        name = self._read_name(obj) if obj else None
+        return name if isinstance(name, str) and name.isidentifier() else None
+
+    def capture_return_temp_allocation(self, thread_id: int) -> Mapping[str, Any]:
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("return allocation requires pinned GC2.6")
+        descriptor = self.read_register(thread_id, "eax")
+        allocated = self.read_register(thread_id, "ecx")
+        stored = int.from_bytes(self._read(descriptor + 2, 2), "little")
+        counter = int.from_bytes(self._read(self._runtime(0x5EAA3C), 4), "little")
+        if allocated != stored or counter != allocated + 1:
+            raise Rejected("return allocation post-store mismatch")
+        # 5282A2..5282A8 saves ECALL+16 function-type+0E return type at ESP+0C.
+        # This is the formal result contract, not an enclosing void conversion.
+        esp = self.read_register(thread_id, "esp")
+        return_type = int.from_bytes(self._read(esp + 0x0C, 4), "little")
+        kind = self._read(return_type, 1)[0]
+        return {"allocated_vreg": allocated, "counter_after": counter,
+                "native_return_type_kind": kind,
+                "native_return_type_width": int.from_bytes(self._read(return_type + 2, 4), "little"),
+                "native_return_type_code": self._read(return_type + 6, 1)[0] if kind in (1, 2) else None}
+
+    def capture_temporary_reset(self, thread_id: int) -> Mapping[str, Any]:
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("temporary reset requires pinned GC2.6")
+        lane = self.read_register(thread_id, "ecx")
+        if not 0 <= lane < 5:
+            raise Rejected("invalid temporary lane")
+        def u32(address: int) -> int:
+            return int.from_bytes(self._read(self._runtime(address), 4), "little")
+        codegen = u32(0x5E9F10)
+        return {"temporary_class": lane, "current": u32(0x5EAA2C + 4 * lane),
+                "reset_inhibition": u32(0x5EA810),
+                "saved_base": u32(0x5E9F58 + 4 * lane), "high_water": u32(0x5EA640 + 4 * lane),
+                "source_offset": int.from_bytes(self._read(codegen + 0x16, 4), "little") if codegen else None}
+
+    def capture_expression_context(self, thread_id: int, row: Mapping[str, Any]) -> Mapping[str, Any]:
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("expression context requires pinned GC2.6")
+        esp = self.read_register(thread_id, "esp")
+        def u32(address: int) -> int:
+            return int.from_bytes(self._read(address, 4), "little")
+        result = {"esp": esp, "return_pc": u32(esp)}
+        if row["role"] == "expression_context_entry":
+            expression = u32(esp + 4)
+            result.update(expression_pointer=expression, expression_kind=self._read(expression, 1)[0],
+                          result_descriptor=u32(esp + 16))
+        return result
+
+    def counter_watch(self, thread_id: int, enable: bool) -> None:
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("counter watch requires pinned GC2.6")
+        context = self.native.WOW64_CONTEXT()
+        context.ContextFlags = 0x10010  # WOW64_CONTEXT_DEBUG_REGISTERS
+        handle = self.threads[thread_id]
+        if not self.native.kernel32.Wow64GetThreadContext(handle, ctypes.byref(context)):
+            raise Rejected("counter debug context unavailable")
+        if enable:
+            if context.Dr7 & 3:
+                raise Rejected("DR0 already owned")
+            self._counter_saved = (thread_id, context.Dr0, context.Dr6, context.Dr7)
+            self._counter_value = int.from_bytes(self._read(self._runtime(0x5EAA3C), 4), "little")
+            context.Dr0 = self._runtime(0x5EAA3C)
+            context.Dr7 = (context.Dr7 & ~0xf0003) | 0xd0001
+            context.Dr6 &= ~1
+        else:
+            saved = getattr(self, '_counter_saved', None)
+            if saved is None:
+                return
+            if saved[0] != thread_id:
+                raise Rejected("counter watch thread changed")
+            _, context.Dr0, context.Dr6, context.Dr7 = saved
+            self._counter_saved = None
+        if not self.native.kernel32.Wow64SetThreadContext(handle, ctypes.byref(context)):
+            raise Rejected("counter debug context write failed")
+
+    def counter_watch_event(self, session: CombinedCaptureSession, thread_id: int) -> bool:
+        if not COUNTER_WRITES or not getattr(self, '_counter_saved', None):
+            return False
+        if self._counter_saved[0] != thread_id:
+            raise Rejected("counter event crossed thread")
+        context = self.native.WOW64_CONTEXT()
+        context.ContextFlags = 0x10017
+        handle = self.threads[thread_id]
+        if not self.native.kernel32.Wow64GetThreadContext(handle, ctypes.byref(context)):
+            raise Rejected("counter event context unavailable")
+        if not context.Dr6 & 1:
+            return False
+        after = int.from_bytes(self._read(self._runtime(0x5EAA3C), 4), 'little')
+        before, self._counter_value = self._counter_value, after
+        raw = self._read(context.Eip - 6, 6)
+        increment = raw == b'\xff\x05' + self._runtime(0x5EAA3C).to_bytes(4, 'little') and after == before + 1
+        tracker = getattr(session, '_expression_tracker', None)
+        active = tracker.active(thread_id) if tracker else None
+        arg2 = arg3 = token = kind = None
+        if active:
+            token = 'expression-' + session.session_id + '-' + hashlib.sha256(
+                (session.session_id + ':expression:' + str(active['expression_pointer'])).encode()).hexdigest()[:20]
+            kind = active['expression_kind']
+            # Handler signatures are heterogeneous. Values can be pointers;
+            # publish presence only, never an asserted destination register ID.
+            arg2 = 'nonzero' if int.from_bytes(self._read(active['esp'] + 8, 4), 'little') else 'zero'
+            arg3 = 'nonzero' if int.from_bytes(self._read(active['esp'] + 12, 4), 'little') else 'zero'
+        self._counter_write_count = getattr(self, '_counter_write_count', 0) + 1
+        if self._counter_write_count > 4096:
+            raise Rejected('counter write budget exceeded')
+        extra = {}
+        if increment and context.Eip - 6 - self.base == 0xE2E9E:
+            try:
+                extra['destination_request'] = _expression_context.allocation_destination_request(
+                    allocation_site=0xE2E9E, esp=context.Esp, ebx=context.Ebx,
+                    ebp=context.Ebp, counter_before=before, base=self.base,
+                    active=active, read=self._read, compiler_sha256=self.compiler_sha256)
+            except _expression_context.ContextError as exc:
+                raise Rejected(str(exc)) from exc
+        session.bus.emit('pcode', 'temporary_counter_write', {
+            'hook_id': 'gc26_counter_watch', 'status': 'CAPTURED', 'counter_before': before,
+            'counter_after': after, 'allocation_site': context.Eip - 6 - self._runtime(0) if increment else None,
+            'instruction_bytes': raw.hex() if increment else None, 'expression_token': token,
+            'expression_kind': kind, 'handler_arg2_state': arg2, 'handler_arg3_state': arg3,
+            'classification': 'increment_argument_presence_not_reuse_proof' if increment else 'other_counter_write',
+            **extra})
+        context.Dr6 &= ~1
+        if not self.native.kernel32.Wow64SetThreadContext(handle, ctypes.byref(context)):
+            raise Rejected("counter status clear failed")
+        return True
+
+    def capture_call_context(self, thread_id: int, role: str) -> Mapping[str, Any]:
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("call context requires pinned GC2.6")
+        stack = self.read_register(thread_id, "esp")
+        def u32(address: int) -> int:
+            return int.from_bytes(self._read(address, 4), "little")
+        row = {"stack": stack, "return": u32(stack)}
+        if role == "call_context_enter":
+            row["expression"] = u32(stack + 4)
+            if not row["expression"] or self._read(row["expression"], 1)[0] not in (54, 55):
+                raise Rejected("call handler expression kind mismatch")
+        return row
+
+    def capture_source_pcode_origin(self, thread_id: int) -> Mapping[str, Any]:
+        """4DD35C: EAX is appended PCode; 5E9F10 is enclosing CodeGen.
+
+        4DD2FD..4DD314 copies CodeGen+16 to PCode+1C. No child claim.
+        """
+        if self.compiler_sha256 != GC26_COMPILER_SHA256:
+            raise Rejected("source origin requires pinned GC2.6")
+        def u32(address: int) -> int:
+            return int.from_bytes(self._read(address, 4), "little")
+        pcode = self.read_register(thread_id, "eax")
+        codegen = u32(self._runtime(0x5E9F10))
+        if not pcode or not codegen:
+            return {"status": "UNKNOWN", "reason": "source origin missing PCode/CodeGen"}
+        if u32(codegen + 0x16) != u32(pcode + 0x1C):
+            raise Rejected("source origin containment/offset mismatch")
+        return {"pcode_pointer": pcode, "codegen_pointer": codegen,
+                "temporary_counter": u32(self._runtime(0x5EAA3C)),
+                "reset_inhibition": u32(self._runtime(0x5EA810)),
+                "source_offset": u32(pcode + 0x1C)}
+
     def capture_machine_emission(self, hook_id: str, thread_id: int) -> Mapping[str, Any]:
         """Read an authenticated post-encoder machine event."""
 
@@ -9526,7 +9976,9 @@ class NativeWow64Backend:
                 exception_code = int(record.ExceptionCode)
                 address = int(record.ExceptionAddress or 0)
                 if exception_code in (getattr(self.native, "EXCEPTION_SINGLE_STEP", 0x80000004), getattr(self.native, "EXCEPTION_WX86_SINGLE_STEP", 0x4000001E)):
-                    session.on_single_step(tid, pid)
+                    watched = self.counter_watch_event(session, tid)
+                    if not watched or tid in session.dispatcher.pending_steps:
+                        session.on_single_step(tid, pid)
                 elif exception_code in (getattr(self.native, "EXCEPTION_BREAKPOINT", 0x80000003), getattr(self.native, "EXCEPTION_WX86_BREAKPOINT", 0x4000001F)):
                     self._handle_breakpoint_exception(session, address, tid, pid)
                 else:
@@ -9665,6 +10117,7 @@ class NativeWow64Backend:
                 errors.append(f"active debug event: {type(exc).__name__}: {exc}")
         exit_code = ctypes.c_uint32()
         live_process_handles = dict(self._process_handles)
+        termination_failures: set[int] = set()
         for pid, handles in self._debug_process_event_handles.items():
             if handles and handles[0]:
                 live_process_handles.setdefault(int(pid), int(handles[0]))
@@ -9681,7 +10134,7 @@ class NativeWow64Backend:
                         self.exited = True
                 continue
             if not self.native.kernel32.TerminateProcess(process_handle, 1):
-                errors.append(f"debug process {pid} could not be terminated before diagnostic sealing")
+                termination_failures.add(pid)
             elif pid == (self.compiler_process_id or self.transport_process_id):
                 self.compiler_terminated_by_capture = True
 
@@ -9708,6 +10161,10 @@ class NativeWow64Backend:
                     errors.append(f"native handle {handle}: CloseHandle returned FALSE")
                     unclosed_handles.add(handle)
         self._owned_handles = unclosed_handles
+        for pid in termination_failures:
+            if not (pid in self._exited_process_ids and self._active_debug_event is None
+                    and not self._process_handles and not unclosed_handles):
+                errors.append(f"debug process {pid} could not be terminated before diagnostic sealing")
         self.threads.clear()
         self.transport_threads.clear()
         self._descendant_threads.clear()
@@ -9904,9 +10361,9 @@ def unknown_result(reason: str) -> dict[str, Any]:
 
 
 def self_test() -> dict[str, Any]:
-    if len(LEGACY_HOOKS) != 8 or len(GC26_HOOKS) != 24 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 33:
+    if len(LEGACY_HOOKS) != 8 or len(GC26_HOOKS) != 24 or len(GC27_HOOKS) != 13 or len(HOOK_BY_ADDRESS) != 158:
         raise Rejected("hook union is not closed")
-    if tuple(HOOKS) not in (LEGACY_HOOKS, GC26_HOOKS, GC27_HOOKS):
+    if tuple(HOOKS) not in (LEGACY_HOOKS, GC26_HOOKS, GC26_SOURCE_ORIGIN_HOOKS, GC26_EXPRESSION_ORIGIN_HOOKS, GC27_HOOKS):
         raise Rejected("private backend hook patch does not match a closed profile")
     if any(row["address"] == 0x004D03E8 for row in GC27_HOOKS):
         raise Rejected("GC/2.7 profile contains stale GC/2.6 regalloc hook")
@@ -9974,6 +10431,13 @@ def parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate", help="validate a completed envelope")
     validate.add_argument("envelope", type=Path)
     validate.add_argument("--trust-root", type=Path, required=True)
+    for command_parser in (prepare, preflight, capture, validate):
+        command_parser.add_argument("--counter-writes", action="store_true",
+                                    help="opt into bounded DR0 temp-counter writes with expression origins")
+        command_parser.add_argument("--expression-origins", action="store_true",
+                                    help="opt into sealed GC2.6 active recursive expression origins")
+        command_parser.add_argument("--source-origins", action="store_true",
+                                    help="opt into sealed GC2.6 enclosing-CodeGen emission origins")
     causal = sub.add_parser("causal-map", help="join authenticated source spans to physical/stack chronology")
     causal.add_argument("--envelope", type=Path, required=True)
     causal.add_argument("--trust-root", type=Path, required=True)
@@ -10023,13 +10487,38 @@ def _load_trust_root(path: Path | None) -> ExternalTrustRoot | None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    global HOOKS, COUNTER_WRITES
     args = parser().parse_args(argv)
+    saved_hooks = HOOKS
+    saved_counter = COUNTER_WRITES
+    if getattr(args, 'counter_writes', False) and not getattr(args, 'expression_origins', False):
+        raise Rejected('counter writes require expression origins')
+    COUNTER_WRITES = getattr(args, 'counter_writes', False)
+    if getattr(args, "expression_origins", False) and getattr(args, "source_origins", False):
+        raise Rejected("choose one origin profile")
+    if getattr(args, "source_origins", False):
+        HOOKS = GC26_SOURCE_ORIGIN_HOOKS
+    if getattr(args, "expression_origins", False):
+        HOOKS = GC26_EXPRESSION_ORIGIN_HOOKS
+    try:
+        return _main_args(args)
+    finally:
+        HOOKS = saved_hooks
+        COUNTER_WRITES = saved_counter
+
+
+def _main_args(args: Any) -> int:
     try:
         if args.command == "prepare":
             result = {"schema": f"{REQUEST_SCHEMA}/prepare", "status": "READY", "request": str(prepare_request(args.manifest, args.output_dir, external_trust_root=_load_trust_root(args.trust_root))), "diagnostic_only": True, "board_admission": False}
         elif args.command == "preflight":
             auth = authenticate_request(args.request, external_trust_root=_load_trust_root(args.trust_root))
             result = {"schema": f"{REQUEST_SCHEMA}/preflight", "status": "READY", "session_id": auth["request"]["session_id"], "function": auth["request"]["function"], "request_sha256": auth["request_sha256"], "hooks": [dict(row) for row in auth["hooks"]], "diagnostic_only": True, "board_admission": False}
+            if not args.full_output:
+                hooks = result.pop("hooks")
+                result.update(hook_count=len(hooks), hooks_sha256=hashlib.sha256(
+                    json.dumps(hooks, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+                    full_output_hint="Use --full-output for the authenticated hook list; the immutable request retains it.")
         elif args.command == "capture":
             result = launch_native_capture(
                 args.request,

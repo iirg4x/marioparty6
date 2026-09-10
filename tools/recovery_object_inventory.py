@@ -872,6 +872,16 @@ def _physical_diff(left: Mapping[tuple[int, int], Any], right: Mapping[tuple[int
     return sum(left.get(key) != right.get(key) for key in set(left) | set(right))
 
 
+def _ordered_relocation_sequence(rows: Mapping[tuple[int, int], Any]) -> list[dict[str, Any]]:
+    """Canonical references in instruction order, omitting only source offsets.
+
+    Destination offsets/addends remain part of effective_target.  Do not sort
+    by destination: repeated references, order, and count are proof inputs.
+    """
+    return [{key: value for key, value in rows[position].items() if key != "offset"}
+            for position in sorted(rows)]
+
+
 def _closed_losses(
     target: Mapping[tuple[int, int], Any],
     base: Mapping[tuple[int, int], Any],
@@ -967,7 +977,16 @@ def compare(
         normalized_losses, normalized_loss_count = _closed_losses(
             target_normalized, base_normalized, candidate_normalized
         )
+        sequences = [_ordered_relocation_sequence(value) for value in
+                     (target_normalized, base_normalized, candidate_normalized)]
         rows[name] = {
+            "ordered_normalized_relocations": {
+                label: {"count": len(sequence), "sha256": _sha(sequence)}
+                for label, sequence in zip(("target", "base", "candidate"), sequences)
+            },
+            "ordered_normalized_relocations_equal": bool(
+                target_row and base_row and candidate_row and sequences[0] == sequences[1] == sequences[2]
+            ),
             "target_size": target_row.get("size") if isinstance(target_row, Mapping) else None,
             "base_size": base_row.get("size") if isinstance(base_row, Mapping) else None,
             "candidate_size": candidate_row.get("size") if isinstance(candidate_row, Mapping) else None,

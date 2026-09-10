@@ -117,6 +117,25 @@ class SameSessionCaptureCliTests(unittest.TestCase):
             Path("capture/same-session.envelope.json"), external_trust_root=None,
         )
 
+    def test_preflight_large_expression_profile_defaults_to_compact(self) -> None:
+        hooks = [{'id': f'hook-{i}', 'prefix': 'ab' * 20, 'address': 4194304 + i} for i in range(160)]
+        auth = {'request': {'session_id': 'session-test', 'function': 'f'},
+                'request_sha256': 'a' * 64, 'hooks': hooks}
+        for full in (False, True):
+            with patch.object(MODULE, '_load_trust_root', return_value=None), patch.object(
+                    MODULE, 'authenticate_request', return_value=auth):
+                code, output = self._main(['preflight', 'request.json', '--trust-root', 'trust.json'] + (['--full-output'] if full else []))
+            result = json.loads(output)
+            self.assertEqual(code, 0)
+            if full:
+                self.assertEqual(result['hooks'], hooks)
+            else:
+                self.assertLess(len(output), 1024)
+                self.assertNotIn('hooks', result)
+                self.assertEqual(result['hook_count'], 160)
+                self.assertEqual(len(result['hooks_sha256']), 64)
+            self.assertEqual(auth['hooks'], hooks)
+
     def test_full_output_restores_capture_and_validate_results(self) -> None:
         envelope = self._envelope(Path("capture"))
         for command, function, argument in (

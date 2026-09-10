@@ -2342,6 +2342,25 @@ class Gc27PcodeColorCrosswalkTests(unittest.TestCase):
 
 
 class MachineEmissionDecoderTests(unittest.TestCase):
+    def test_mulli_d_form_and_unknown_source(self):
+        decoder = MODULE.MachineEmissionDecoder()
+        row = self._decode(decoder, 0, 0x1C760108)
+        self.assertEqual(row["status"], "UNKNOWN")
+        self.assertEqual(row["mnemonic"], "mulli")
+        self.assertEqual(row["registers"], {"destination": "r3", "source": "r22"})
+        self.assertEqual(row["immediate"], 264)
+        self.assertEqual(row["missing_reaching_registers"], ["r22"])
+        self.assertNotIn(("GPR", 3), decoder.value_defs)
+        self._decode(decoder, 1, self._addi(22, 1, 8))
+        row = self._decode(decoder, 2, self._d(7, 3, 22, -264))
+        self.assertEqual(row["status"], "CAPTURED")
+        self.assertEqual(row["immediate"], -264)
+        self.assertEqual(row["reaching_definitions"], [1])
+        self.assertNotIn(3, decoder.address_defs)
+        row = self._decode(decoder, 3, self._d(7, 4, 0, 1))
+        self.assertEqual(row["status"], "UNKNOWN")
+        self.assertEqual(row["missing_reaching_registers"], ["r0"])
+
     SESSION_ID = "session-0000000000000001"
 
     @staticmethod
@@ -2603,6 +2622,39 @@ class MachineEmissionDecoderTests(unittest.TestCase):
             [{"physical_register": "f0", "instruction_index": 0}],
         )
         self.assertEqual(unresolved["missing_reaching_registers"], ["f31"])
+
+    def test_fmuls_unknown_register_names_are_schema_canonical(self) -> None:
+        context = {
+            "session_id": self.SESSION_ID,
+            "process_id": 1,
+            "function": "mbCapListDebug",
+            "compiler": {"sha256": MODULE.GC27_COMPILER_SHA256},
+        }
+        with TemporaryDirectory() as directory:
+            session = MODULE.CombinedCaptureSession(auth(Path(directory)), FakeBackend())
+            session.bus.bind_process(1)
+            for source_a in range(32):
+                for source_b in range(32):
+                    word = (59 << 26) | (source_a << 16) | (source_b << 6) | (25 << 1)
+                    row = self._decode(MODULE.MachineEmissionDecoder(), 0, word)
+                    self.assertEqual(row["status"], "UNKNOWN")
+                    self.assertEqual(row["reason"], "ambiguous reaching definition")
+                    self.assertEqual(row["known_reaching_definitions"], [])
+                    self.assertEqual(
+                        row["missing_reaching_registers"],
+                        sorted({f"f{source_a}", f"f{source_b}"}),
+                    )
+                    event = session.bus.emit("pcode", "machine_emission", {
+                        "hook_id": "gc27_machine_emit", **row,
+                    })
+                    MODULE._validate_event(event, event["sequence"], context)
+                    if (source_a, source_b) == (2, 10):
+                        reversed_names = dict(event, missing_reaching_registers=["f2", "f10"])
+                        with self.assertRaisesRegex(MODULE.Rejected, "missing reaching registers are noncanonical"):
+                            MODULE._validate_event(reversed_names, event["sequence"], context)
+                        incomplete = dict(event, missing_reaching_registers=["f10"])
+                        with self.assertRaisesRegex(MODULE.Rejected, "partition is inconsistent"):
+                            MODULE._validate_event(incomplete, event["sequence"], context)
 
     def test_machine_decoder_tracks_ps_mul_operands_result_and_type(self) -> None:
         decoder = MODULE.MachineEmissionDecoder()

@@ -1,5 +1,9 @@
 # MP6 Cracking Workflow v2
 
+Model/role update, 2026-09-08: follow [the Astra operating policy](../AGENTS.md).
+It supersedes older fixed worker counts and Sol/Luna leadership assignments.
+The latest user owner scope and pauses remain in force.
+
 ## Required outcome
 
 An owner lane independently turns nonmatching functions into strict/data/physical-relocation exact functions and reports completed `CRACK_REPORT/v1` artifacts. The manager is never on the candidate-selection, compile, proof, or retention path.
@@ -14,27 +18,24 @@ This one manifest replaces global `STOP`, per-cell HMAC permits, manager-issued 
 
 ## Lane topology
 
-One Sol orchestrator is the sole live-source writer. Up to five Luna/max
-workers run concurrently as end-to-end crackers, each attached to a distinct
-open function or bounded decomposition region of a broad function. They are
-not approval auditors or five same-function probe slots. Each function gets at
-most one evidence-ranked winning cell in a dispatch batch.
+The primary Astra agent leads reconstruction and is the sole live-source
+integrator. It selects the next causal hypothesis, writes the candidate,
+interprets the result, and decides retention. An external manager remains off
+this hot path; a primary explicitly assigned an owner is not that manager.
 
-The available evidence classes are structural CFG/frame/topology; lifetime,
-stack ownership, saved-register allocation, and declaration chronology;
-expression trees, operand scheduling, casts, promotions, and constant folding;
-ABI, prototypes, inline boundaries, definition visibility, headers, and TU
-chronology; and static data, pools, strings, relocations, section ownership,
-and linked layout. These classes rank a function's one candidate; they do not
-force a serialized syntax matrix.
+Luna/max helpers provide bounded, independent support on named questions:
+CFG/frame structure, source-owner lifetimes, expression scheduling, ABI/inline
+visibility, or data/relocation ownership. They may perform a specifically
+assigned isolated probe or verification, not run end-to-end cracking campaigns.
+Use up to five only when useful and within resource limits; do not require
+five workers, five functions, or five agreeing audits. Additional Astra agents
+are reserved for tool/skill development tied to a concrete missing decision.
 
-Each worker may inspect target-first evidence, create an isolated overlay,
-compile, measure, and prove its candidate. Baselines, reconstruction,
-proposal validation, candidate compilation, and proof hooks overlap across
-distinct functions. Workers do not wait for the manager or another worker.
-The Sol parent adopts each winner through per-function frontier
-compare-and-swap; only short live-source/frontier retention and final linking
-are serialized.
+The primary continues useful local cracking while support runs and consumes
+results as they arrive. Independent source investigation, isolated builds, and
+verification may overlap. Only shared-source/frontier publication and final
+linking serialize. A target-backed natural-C hypothesis may be tested without
+knowing that it will win; original-source identity is not a precompile gate.
 
 ## State machine
 
@@ -54,20 +55,19 @@ all functions exact -> source-link -> protected-sibling -> full-owner/link proof
 evidence by `(frontier source, target object, toolchain, unit)`. Each function
 is an independent streaming pipeline: as soon as its selector has one winner
 and its own snapshot is ready, that candidate compiles and runs proof hooks in
-an isolated root without waiting for unrelated selectors or snapshots. Up to
-five function pipelines run at once. Storage/GC maintenance runs once after the
-batch. Only short live-source/frontier publication and final linking are
-serialized.
+an isolated root without waiting for unrelated support. Parallel work is
+bounded by actual independent tasks and resource limits, not a five-function
+quota. Maintenance must not become a batch barrier. Only short live-source/
+frontier publication and final linking are serialized.
 
 ## Cracking loop
 
-1. Select up to five distinct most-crackable functions, or bounded
-   decomposition regions for broad functions, from current target-first
-   evidence.
+1. The Astra primary selects the most useful current residual. Delegate bounded
+   source/consumer/compiler questions and keep reconstructing locally in parallel.
 2. Reduce each to its earliest independent cause, not a percentage or a full
    mismatch list.
-3. Rank one natural-C winning cell per selected function; do not fill unused
-   slots with same-function alternatives.
+3. Rank one coherent natural-C hypothesis; do not fill a fixed worker batch.
+   Use m2c and target dataflow when donor evidence does not answer the question.
 4. Compile the first target-backed candidate for each selected function
    immediately.
 5. Measure strict, data, size, physical relocations, and protected siblings
@@ -104,8 +104,7 @@ Exact means equal function bytes and size, strict/data 100% with zero focus rows
 The 30-minute budget is a watchdog, not an approval boundary:
 
 - 0–2 minutes: load or create the cached frontier snapshot.
-- 2–12 minutes: first parallel batch of up to five distinct function/region
-  winners.
+- 2–12 minutes: primary-led candidate work with bounded support in parallel.
 - 12–15 minutes: adopt gains immediately and rebase remaining work.
 - 15–25 minutes: second wave on new causes or another function.
 - 25–30 minutes: exact proof/report or automatic role/function rotation.

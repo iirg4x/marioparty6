@@ -36,6 +36,7 @@ DEFAULT_LOCK_TIMEOUT_SECONDS = 30.0
 MAX_LOCK_TIMEOUT_SECONDS = 300.0
 MAX_COMMAND_BYTES = 1 << 20
 MAX_COMMAND_ARGS = 512
+CAPTURE_PROFILES = {'default': (), 'gc26-counter-expression': ('--counter-writes', '--expression-origins')}
 SHA256_RE = re.compile(r"[0-9a-fA-F]{64}\Z")
 FUNCTION_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 CAPTURE_LIMITATIONS = (
@@ -46,6 +47,30 @@ CAPTURE_LIMITATIONS = (
 
 class OwnerCaptureError(ValueError):
     """Raised when a capture request cannot be sealed or launched safely."""
+
+
+def _profile_flags(profile: str) -> list[str]:
+    if profile not in CAPTURE_PROFILES:
+        raise OwnerCaptureError('unknown capture profile')
+    return list(CAPTURE_PROFILES[profile])
+
+
+def _profile_call(module: Any, profile: str, operation: Callable, *args: Any, **kwargs: Any) -> Any:
+    """Use precisely the central CLI profile selection, restoring it on return.
+
+    Central prepare/authentication still validates compiler identity and every
+    hook byte; this adapter neither supplies alternative hooks nor relaxes them.
+    """
+    flags = _profile_flags(profile)
+    if not flags:
+        return operation(*args, **kwargs)
+    hooks, counter = module.HOOKS, module.COUNTER_WRITES
+    try:
+        module.HOOKS = module.GC26_EXPRESSION_ORIGIN_HOOKS
+        module.COUNTER_WRITES = True
+        return operation(*args, **kwargs)
+    finally:
+        module.HOOKS, module.COUNTER_WRITES = hooks, counter
 
 
 def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -368,9 +393,11 @@ def prepare_capture(
     tool_root: Path | str | None = None,
     authority_purpose: str | None = None,
     scratch_basename: str = "capture.o",
+    capture_profile: str = "default",
 ) -> Path:
     """Seal one fresh capture directory without launching a compiler."""
 
+    profile_flags = _profile_flags(capture_profile)
     root_path = _canonical_existing(root, "root", directory=True)
     source_path = _resolve_from_root(source, root_path, "source")
     if not FUNCTION_RE.fullmatch(function):
@@ -421,6 +448,9 @@ def prepare_capture(
         "exactness_claim": False,
         "authority_advanced": False,
     }
+    if profile_flags:
+        authority['capture_profile'] = capture_profile
+        authority['capture_profile_flags'] = profile_flags
 
     output_path.mkdir(parents=False, exist_ok=False)
     (output_path / "object").mkdir()
@@ -442,13 +472,13 @@ def prepare_capture(
 
     capture_dir = output_path / "capture"
     try:
-        request_path = capture_module.prepare_request(
+        request_path = _profile_call(capture_module, capture_profile, capture_module.prepare_request,
             manifest_path, capture_dir, external_trust_root=manifest
         )
         trust_root: dict[str, Any] = {**manifest, "request": _descriptor(request_path, "request")}
         trust_path = output_path / "trust-root.json"
         _write_json_new(trust_path, trust_root)
-        authenticated = capture_module.authenticate_request(
+        authenticated = _profile_call(capture_module, capture_profile, capture_module.authenticate_request,
             request_path, require_empty=True, external_trust_root=trust_root
         )
     except Exception as exc:
@@ -475,9 +505,11 @@ def prepare_capture(
         str(trust_path),
         "--partial-evidence-dir",
         str(output_path / "partial-evidence"),
+        *profile_flags,
     ]
     prepared: dict[str, Any] = {
         "schema": SCHEMA,
+        "capture_profile": capture_profile,
         "status": PREPARED_STATUS,
         "root": str(root_path),
         "output_root": str(output_path),
@@ -503,6 +535,7 @@ def prepare_capture(
             str(request_path),
             "--trust-root",
             str(trust_path),
+            *profile_flags,
         ],
         "session_id": authenticated["request"]["session_id"],
         "hook_count": len(authenticated["hooks"]),
@@ -588,9 +621,18 @@ def run_capture(
         raise OwnerCaptureError("partial evidence output already exists")
 
     capture_module = _load_capture_tool(tool_root)
+    profile = prepared.get('capture_profile', 'default')
+    profile_flags = _profile_flags(profile)
+    authority_descriptor = prepared.get('authority', {})
+    authority_path = _canonical_existing(authority_descriptor.get('path'), 'authority')
+    _check_descriptor(authority_path, authority_descriptor, 'authority')
+    authority = _read_json(authority_path, 'authority')
+    if (authority.get('capture_profile', 'default') != profile
+            or authority.get('capture_profile_flags', []) != profile_flags):
+        raise OwnerCaptureError('prepared capture profile changed')
     request_path = _canonical_existing(request_descriptor["path"], "request")
     try:
-        auth = capture_module.authenticate_request(
+        auth = _profile_call(capture_module, profile, capture_module.authenticate_request,
             request_path, require_empty=True, external_trust_root=trust_root
         )
     except Exception as exc:
@@ -613,11 +655,16 @@ def run_capture(
         str(trust_path),
         "--partial-evidence-dir",
         str(output_root / "partial-evidence"),
+        *profile_flags,
     ]
     # The prepared argv is a sealed, human-readable record.  Compare by value
     # but invoke the freshly derived argument list, never by positional index.
     if prepared.get("capture_argv") != capture_args:
         raise OwnerCaptureError("prepared capture argv changed")
+    if prepared.get('preflight_argv') != ['preflight', str(request_path), '--trust-root', str(trust_path), *profile_flags]:
+        raise OwnerCaptureError('prepared preflight argv changed')
+    if prepared.get('hook_count') != len(auth['hooks']):
+        raise OwnerCaptureError('prepared profile hook count changed')
 
     build_dir = root / "build"
     if build_dir.exists() and (build_dir.is_symlink() or not build_dir.is_dir()):
@@ -643,7 +690,8 @@ def run_capture(
     with _exclusive_lock(lock_path, timeout):
         # Reauthenticate after acquiring the shared lock so a source/tool
         # replacement cannot race the launch marker or native process.
-        capture_module.authenticate_request(request_path, require_empty=True, external_trust_root=trust_root)
+        _profile_call(capture_module, profile, capture_module.authenticate_request,
+                      request_path, require_empty=True, external_trust_root=trust_root)
         _write_json_new(marker, marker_value)
         result = runner(capture_args)
     if isinstance(result, bool) or not isinstance(result, int):
@@ -674,6 +722,7 @@ def parser() -> argparse.ArgumentParser:
     prepare.add_argument("--tool-root", type=Path)
     prepare.add_argument("--authority-purpose")
     prepare.add_argument("--scratch-basename", default="capture.o")
+    prepare.add_argument('--capture-profile', choices=tuple(CAPTURE_PROFILES), default='default')
     run = sub.add_parser("run", help="launch one prepared capture")
     run.add_argument("prepared", type=Path)
     run.add_argument("--lock-timeout", type=float, default=DEFAULT_LOCK_TIMEOUT_SECONDS)
@@ -694,6 +743,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 tool_root=args.tool_root,
                 authority_purpose=args.authority_purpose,
                 scratch_basename=args.scratch_basename,
+                capture_profile=args.capture_profile,
             )
             print(json.dumps({
                 "schema": f"{SCHEMA}/prepare",

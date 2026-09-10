@@ -608,6 +608,56 @@ class RecoveryFrontierTests(unittest.TestCase):
             varinfo=varinfo,
         )
 
+    def test_trace_slice_structural_site_and_counter_interval_are_observations(self):
+        self.access_report([_access_row(0, 'li r3, 1'), _access_row(4, 'li r4, 40')],
+                           [_access_row(0, 'li r3, 1'), _access_row(4, 'li r4, 39')])
+        document = json.loads((self.root / 'strict.json').read_bytes())
+        identity = dict(session_id='session-test', process_id=1, function='FocusFunction')
+        def event(sequence, kind, **fields):
+            return dict(identity, sequence=sequence, event_id=f'e{sequence}', event_kind=kind, **fields)
+        events = [
+            event(0, 'source_pcode_origin', pcode_token='pcode-session-test-0', source_offset=1,
+                  owner_role='enclosing_codegen', child_edge='CAPTURED_ACTIVE_HANDLER',
+                  status='CAPTURED', expression_token='expr0', temporary_counter=81),
+            event(1, 'temporary_counter_write', counter_before=81, counter_after=82,
+                  allocation_site=123, expression_token=None),
+            event(2, 'source_pcode_origin', pcode_token='pcode-session-test-1', source_offset=2,
+                  owner_role='enclosing_codegen', child_edge='MISSING_RECURSIVE_CHILD',
+                  status='CAPTURED', expression_token=None, temporary_counter=82),
+            event(3, 'temporary_lane_reset', temporary_class=4, status='CAPTURED',
+                  counter_before=257, counter_after=32, source_offset=9),
+            event(4, 'machine_emission', instruction_index=0, pcode_token='pcode-session-test-0'),
+            event(5, 'machine_emission', instruction_index=1, pcode_token='pcode-session-test-1'),
+        ]
+        capture = dict(context=identity, events=events)
+        result = frontier._trace_slice(document, capture, 'FocusFunction', b'first();\nthreshold();\n')
+        self.assertEqual(result['first_mismatch']['row'], 1)
+        self.assertEqual(len(result['sites']), 2)
+        first = result['sites'][0]
+        self.assertEqual(first['enclosing_source_line'], 'threshold();')
+        self.assertEqual(first['allocation_event_count'], 0)  # Never join null expression tokens.
+        self.assertEqual(first['preceding_emission_interval']['total'], 1)
+        self.assertFalse(first['preceding_emission_interval']['expression_ownership_proven'])
+        self.assertEqual(first['counter_epoch']['next_reset']['counter_before'], 257)
+        self.assertFalse(result['predicted_match'])
+        events[0]['session_id'] = 'session-foreign'
+        with self.assertRaisesRegex(ValueError, 'disconnected session'):
+            frontier._trace_slice(document, capture, 'FocusFunction', b'')
+
+    def test_diagnose_trace_requires_current_index(self):
+        with self.assertRaisesRegex(ValueError, '--trace and --index'):
+            frontier.diagnose(root=self.root, strict=Path('strict.json'), data=None,
+                              function='FocusFunction', trace=Path('capture.json'))
+
+    def test_diagnose_trace_rejects_report_drift_before_capture_join(self):
+        (self.root / 'index.json').write_text(json.dumps({'inputs': {
+            'strict_report': {'sha256': 'old'}}}), encoding='utf-8')
+        with unittest.mock.patch.object(frontier, 'verify'):
+            with self.assertRaisesRegex(ValueError, 'strict report differs'):
+                frontier._diagnose_trace(root=self.root, index=Path('index.json'),
+                    trace=Path('absent.json'), document={}, strict_binding={'sha256': 'new'},
+                    function='FocusFunction')
+
     def test_diagnose_first_mismatch_gates_and_context_are_bounded(self):
         result = self.diagnose(
             [_access_row(0, "li r3, 1"), _access_row(4, "mr r3, r4"), _access_row(8, "blr")],

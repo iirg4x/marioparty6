@@ -2278,6 +2278,118 @@ def _fit_diagnosis(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _trace_slice(document: dict, capture: dict, function: str, source: bytes) -> dict:
+    """At most two machine sites; source coordinates are enclosing CodeGen lines."""
+    from tools import recovery_expression_join as join, recovery_evaluate as evaluator
+    from tools import recovery_alias_cause as alias
+    session = join.validate_session(capture, function)
+    events = capture['events']
+    pair = evaluator._diagnostic_rows(document, function)
+    if pair is None:
+        raise ValueError('trace function absent from strict report')
+    left, right = pair
+    mismatches = evaluator._diagnostic_mismatches(left, right)
+    result = dict(status='exact' if not mismatches else 'observed_backward_slice',
+                  diagnostic_only=True, source_constraint_proven=False, predicted_match=False,
+                  source_coordinate_kind='enclosing CodeGen LINE, not exact child AST span', sites=[])
+    if not mismatches:
+        return result
+    row = min(mismatches)
+    result['first_mismatch'] = dict(row=row, target=instruction(left[row]) if row < len(left) else None,
+                                    candidate=instruction(right[row]) if row < len(right) else None)
+    if row >= len(right) or not right[row].get('instruction'):
+        result['next_missing_edge'] = 'first mismatch has no candidate instruction'
+        return result
+    ordinal = sum(bool(r.get('instruction')) for r in right[:row])
+    lines = source.decode('utf-8').splitlines()
+    resets = [e for e in events if e.get('event_kind') == 'temporary_lane_reset'
+              and e.get('temporary_class') == 4 and e.get('status') == 'CAPTURED']
+    for machine_index in (ordinal, ordinal - 1):
+        if machine_index < 0:
+            continue
+        machines = [e for e in events if e.get('event_kind') == 'machine_emission'
+                    and e.get('instruction_index') == machine_index]
+        if len(machines) != 1:
+            result['next_missing_edge'] = 'unique machine emission for selected site'
+            continue
+        machine = machines[0]
+        origin = join.compact_origin(join.source_origin_join(events, session, function, machine['pcode_token']))
+        site = dict(role='first_mismatch' if machine_index == ordinal else 'preceding_instruction',
+                    machine_index=machine_index, pcode_token=machine['pcode_token'],
+                    ppc_bytes=machine.get('ppc_bytes'), origin=origin)
+        line = origin.get('source_offset')
+        if type(line) is int and 1 <= line <= len(lines):
+            site['enclosing_source_line'] = lines[line - 1][:240]
+        token = origin.get('expression_token')
+        allocations = [e for e in events if token is not None and e.get('expression_token') == token
+                       and e.get('event_kind') in ('temporary_counter_write', 'return_temp_allocation')]
+        keys = ('event_id', 'event_kind', 'sequence', 'counter_before', 'counter_after',
+                'allocated_vreg', 'allocation_site', 'destination_request', 'preceding_gpr_reset_event')
+        site['allocation_event_count'] = len(allocations)
+        site['counter_increment_count'] = sum(e.get('event_kind') == 'temporary_counter_write'
+            and e.get('counter_after') == e.get('counter_before', -2) + 1 for e in allocations)
+        site['allocations'] = [{k: e[k] for k in keys if k in e} for e in allocations[:8]]
+        origins = [e for e in events if e.get('event_id') == origin.get('event_id')]
+        if len(origins) == 1:
+            sequence = origins[0]['sequence']
+            prior_origins = [e for e in events if e.get('event_kind') == 'source_pcode_origin'
+                             and e['sequence'] < sequence]
+            previous_sequence = max((e['sequence'] for e in prior_origins), default=-1)
+            between = [e for e in events if e.get('event_kind') == 'temporary_counter_write'
+                       and previous_sequence < e['sequence'] < sequence]
+            site['preceding_emission_interval'] = dict(
+                counter_writes=[{k: e.get(k) for k in ('event_id', 'counter_before', 'counter_after',
+                    'allocation_site', 'expression_token')} for e in between[:8]],
+                total=len(between), expression_ownership_proven=False)
+            preceding = [e for e in resets if e['sequence'] < sequence]
+            following = [e for e in resets if e['sequence'] > sequence]
+            reset = min(following, key=lambda e: e['sequence']) if following else None
+            site['counter_epoch'] = dict(
+                preceding_reset_event=max(preceding, key=lambda e: e['sequence'])['event_id'] if preceding else None,
+                current_counter=origin.get('temporary_counter'),
+                next_reset=None if reset is None else {k: reset.get(k) for k in
+                    ('event_id', 'sequence', 'counter_before', 'counter_after', 'source_offset')},
+                impact='observed chronology only; removing an allocation does not predict reset or matching outcome')
+        result['sites'].append(site)
+    projection = _register_permutation(left, right)
+    if len(left) == len(right) and not projection.get('nonregister_differences'):
+        sliced = alias.slice_events(document, events, function)
+        result['alias_lifecycle'] = alias.lifecycle_constraint(events, sliced)
+        result['alias_origins'] = [u['origin'] for u in sliced.get('alias_unions', [])[:2]]
+    else:
+        result['next_missing_edge'] = 'structural residual: target source identity and counterfactual allocation effect are unproven'
+    return result
+
+
+def _diagnose_trace(*, root: Path, index: Path, trace: Path, document: dict,
+                    strict_binding: dict, function: str) -> dict:
+    from tools import recovery_expression_join as join
+    from tools import mwcc_gc26_expression_context as native_context
+    index_raw, index_binding = read_bound(root, index, INDEX_LIMIT)
+    base = load_json(index_raw)
+    verify(root, base)
+    inputs = base['inputs']
+    if inputs['strict_report']['sha256'] != strict_binding['sha256']:
+        raise ValueError('trace strict report differs from current index')
+    trace_raw, trace_binding = read_bound(root, trace, 128 * 1024 * 1024)
+    capture = load_json(trace_raw)
+    if capture.get('context', {}).get('compiler', {}).get('sha256') != native_context.COMPILER_SHA256:
+        raise ValueError('trace requires pinned GC2.6 compiler')
+    source = local(root, Path(inputs['source']['path']))
+    obj = local(root, Path(inputs['candidate_object']['path']))
+    binding = join.bind(local(root, trace), obj, source, function)
+    if binding['envelope_sha256'] != trace_binding['sha256'] or binding['comparison']['status'] != 'exact_words':
+        raise ValueError('trace/object machine binding mismatch or input drift')
+    result = _trace_slice(document, capture, function, source.read_bytes())
+    verify(root, base)
+    if read_bound(root, index, INDEX_LIMIT)[1] != index_binding:
+        raise ValueError('current index changed during trace diagnosis')
+    if read_bound(root, trace, 128 * 1024 * 1024)[1] != trace_binding:
+        raise ValueError('trace changed during diagnosis')
+    result['bindings'] = dict(index=index_binding, trace=trace_binding, machine=binding)
+    return result
+
+
 def diagnose(
     *,
     root: Path,
@@ -2285,9 +2397,13 @@ def diagnose(
     data: Path | None,
     function: str,
     varinfo: Path | None = None,
+    trace: Path | None = None,
+    index: Path | None = None,
 ) -> dict[str, Any]:
     """Produce a read-only, bounded source-inference diagnosis."""
     root = Path(os.path.abspath(root))
+    if (trace is None) != (index is None):
+        raise ValueError('diagnose --trace and --index must be supplied together')
     if not isinstance(function, str) or not function.strip():
         raise ValueError("function must be nonempty text")
     function = function.strip()
@@ -2373,7 +2489,16 @@ def diagnose(
     }
     if result["varinfo"].get("path") is not None:
         result["inputs"]["varinfo"] = dict(result["varinfo"]["path"])
-    return _fit_diagnosis(result)
+    result = _fit_diagnosis(result)
+    if trace is not None:
+        result['trace'] = _diagnose_trace(root=root, index=index, trace=trace,
+            document=strict_document, strict_binding=strict_binding, function=function)
+        if len(canonical(result['trace'])) > 16 * 1024:
+            raise ValueError('trace slice exceeds 16 KiB budget')
+        result['focused_output_limit_bytes'] = DIAGNOSE_FOCUS_LIMIT + 16 * 1024
+        result['output_bytes'] = len(canonical(result)) + 1
+        result['output_bytes'] = len(canonical(result)) + 1
+    return result
 
 
 def instruction(row: dict | None) -> dict | None:
@@ -3303,6 +3428,33 @@ def publish(root: Path, path: Path, value: dict) -> None:
         Path(temp).unlink(missing_ok=True)
 
 
+def call_provenance(*, root: Path, strict: Path, function: str, contracts: Path,
+                    entry_arguments: list[str] | None = None) -> dict[str, Any]:
+    """Compare call-result identities, including on otherwise equal rows.
+
+    The prototype map is an explicit caller input, not ABI inference or a
+    matching/retention gate. Unsupported values stay unknown.
+    """
+    from tools import recovery_call_provenance
+    root = Path(os.path.abspath(root))
+    raw, report_binding = read_bound(root, strict, REPORT_LIMIT)
+    contract_raw, contract_binding = read_bound(root, contracts, 64 * 1024)
+    document, contract = load_json(raw), load_json(contract_raw)
+    if not isinstance(contract, dict) or contract.get("schema") != "recovery_call_contracts/v1":
+        raise ValueError("call contracts require recovery_call_contracts/v1")
+    rows = []
+    for side in ("left", "right"):
+        symbol = _stack_function(focus._symbols(document, side, "strict"), function, side)
+        if symbol is None:
+            raise ValueError(f"function missing on {side}: {function}")
+        rows.append(focus._rows(symbol, f"strict.{side}.{function}"))
+    result = recovery_call_provenance.compare(rows[0], rows[1], contract.get("calls"),
+                                             entry_arguments=entry_arguments or [])
+    result.update(function=function, strict_report=report_binding, contracts=contract_binding,
+                  prototype_authority="caller_supplied; independently review declarations")
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -3341,6 +3493,12 @@ def main(argv: list[str] | None = None) -> int:
     branch = sub.add_parser("branch-map", help="compare aligned branch destination row identities")
     branch.add_argument("--strict", type=Path, required=True)
     branch.add_argument("--function", required=True)
+    provenance = sub.add_parser("call-provenance", help="trace call-result owners into typed call arguments, even on equal rows")
+    provenance.add_argument("--strict", type=Path, required=True)
+    provenance.add_argument("--function", required=True)
+    provenance.add_argument("--contracts", type=Path, required=True)
+    provenance.add_argument("--out", type=Path)
+    provenance.add_argument("--entry-argument", dest="entry_arguments", action="append", default=[])
     diagnose_parser = sub.add_parser(
         "diagnose",
         help="bounded read-only source-inference diagnosis",
@@ -3349,6 +3507,8 @@ def main(argv: list[str] | None = None) -> int:
     diagnose_parser.add_argument("--data", type=Path)
     diagnose_parser.add_argument("--function", required=True)
     diagnose_parser.add_argument("--varinfo", type=Path)
+    diagnose_parser.add_argument("--trace", type=Path, help="same-session envelope for a bounded backward slice")
+    diagnose_parser.add_argument("--index", type=Path, help="current frontier binding required with --trace")
     pool_parser = sub.add_parser("pool-plan", help="plan one shared readonly-pool owner family from ELF facts")
     pool_parser.add_argument("--index", type=Path)
     pool_parser.add_argument("--source", type=Path)
@@ -3391,6 +3551,16 @@ def main(argv: list[str] | None = None) -> int:
         elif args.action == "stack-map":
             value = stack_map(root=root, strict=args.strict, function=args.function)
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        elif args.action == "call-provenance":
+            value = call_provenance(root=root, strict=args.strict, function=args.function, contracts=args.contracts,
+                                    entry_arguments=args.entry_arguments)
+            if args.out is not None:
+                output = local(root, args.out)
+                output.relative_to(root / "build")
+                if output in {local(root, args.strict), local(root, args.contracts)}:
+                    raise ValueError("call-provenance output aliases input")
+                recovery_evaluate._atomic(output, value)
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         elif args.action == "diagnose":
             value = diagnose(
                 root=root,
@@ -3398,6 +3568,8 @@ def main(argv: list[str] | None = None) -> int:
                 data=args.data,
                 function=args.function,
                 varinfo=args.varinfo,
+                trace=args.trace,
+                index=args.index,
             )
             print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
         elif args.action == "pool-plan":
