@@ -4,14 +4,14 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 7, 2026**
+Last published full-project snapshot: **September 10, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 19.83% | 41.15% | 365 / 926 |
-| Main DOL | 74.83% | 93.41% | 326 / 396 |
+| Entire project | 20.31% | 41.26% | 366 / 926 |
+| Main DOL | 77.55% | 93.71% | 327 / 396 |
 | REL modules | 8.17% | 8.03% | 39 / 530 |
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
