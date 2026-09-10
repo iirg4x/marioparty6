@@ -21,10 +21,16 @@ double tan(double x);
 #define REFLECT_TEX_W 128
 #define REFLECT_TEX_H 128
 
-#define LIGHT_TYPE_SET(lightP, lightType) ((lightP)->type &= 0xFF00); \
+#define LIGHT_TYPE_MASK ((1 << 8) - 1)
+#define LIGHT_FLAGS_MASK (LIGHT_TYPE_MASK << 8)
+#define MODEL_GLOBAL_LIGHTS_ALL ((1 << HU3D_GLIGHT_MAX) - 1)
+#define MODEL_LINK_FILE_FLAG (1U << 31)
+#define MATERIAL_HILITE_TYPE_MASK (((1 << 4) - 1) << 4)
+
+#define LIGHT_TYPE_SET(lightP, lightType) ((lightP)->type &= LIGHT_FLAGS_MASK); \
     ((lightP)->type |= (lightType))
 
-#define LIGHT_TYPE_GET(lightP) ((lightP)->type & 0xFF)
+#define LIGHT_TYPE_GET(lightP) ((lightP)->type & LIGHT_TYPE_MASK)
 
 
 #include "refMapData0.inc"
@@ -540,7 +546,7 @@ HU3D_MODELID Hu3DModelCreate(void *data)
     for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
         modelP->LLightId[i] = HU3D_LIGHTID_NONE;
     }
-    modelP->lightBit = 0xFF;
+    modelP->lightBit = MODEL_GLOBAL_LIGHTS_ALL;
     modelP->camInfoBit = 0;
     modelP->tick = modelId;
     MTXIdentity(modelP->mtx);
@@ -570,7 +576,7 @@ HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
     modelP->hsfLink = linkModelP->hsf;
     modelP->hsf = HuMemDirectMalloc(HEAP_MODEL, sizeof(HSF_DATA));
     modelP->linkMdlId = linkMdlId;
-    file = HuMemMemoryFileGet(linkModelP->hsf)|0x80000000;
+    file = HuMemMemoryFileGet(linkModelP->hsf)|MODEL_LINK_FILE_FLAG;
     HuMemMemoryFileSet(modelP->hsf, file);
     modelP->mallocNoLink = (u32)modelP->hsf;
     *modelP->hsf = *linkModelP->hsf;
@@ -625,7 +631,7 @@ HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
     for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
         modelP->LLightId[i] = HU3D_LIGHTID_NONE;
     }
-    modelP->lightBit = 0xFF;
+    modelP->lightBit = MODEL_GLOBAL_LIGHTS_ALL;
     modelP->camInfoBit = 0;
     MTXIdentity(modelP->mtx);
     layerNum[0]++;
@@ -672,7 +678,7 @@ HU3D_MODELID Hu3DHookFuncCreate(HU3D_MODEL_HOOK hookFunc)
     for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
         modelP->LLightId[i] = HU3D_LIGHTID_NONE;
     }
-    modelP->lightBit = 0xFF;
+    modelP->lightBit = MODEL_GLOBAL_LIGHTS_ALL;
     modelP->camInfoBit = 0;
     MTXIdentity(modelP->mtx);
     layerNum[0]++;
@@ -1233,7 +1239,7 @@ void Hu3DModelHiliteTypeSet(HU3D_MODELID modelId, s16 hiliteType)
     HSF_MATERIAL *matPtr = hsf->material;
     s16 i;
     hiliteType = hiliteType << 4;
-    hiliteType &= 0xF0;
+    hiliteType &= MATERIAL_HILITE_TYPE_MASK;
     for(i=0; i<hsf->materialNum; i++, matPtr++) {
         HSF_MATERIAL_SETHILITETYPE(matPtr, hiliteType);
         matPtr->flags |= HSF_MATERIAL_HILITE;
@@ -1638,7 +1644,7 @@ void Hu3DGLightSpotSet(HU3D_LIGHTID lightId, GXSpotFn spotFunc, float cutoff)
     Hu3DLightSpotSet(lightP, spotFunc, cutoff);
 }
 
-void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, GXSpotFn spotFunc, float cutoff)
+void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float cutoff, GXSpotFn spotFunc)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HU3D_LIGHT *lightP = &Hu3DLocalLight[modelP->LLightId[lightId]];
@@ -1996,7 +2002,7 @@ s16 Hu3DLightSet(HU3D_MODEL *modelP, Mtx cameraMtx, Mtx cameraMtxXPose, float hi
     flag = 1;
     
     for(lightP=&Hu3DGlobalLight[0], mask=modelP->lightBit, i=0; i<HU3D_GLIGHT_MAX; i++, lightP++, mask >>= 1) {
-        if(lightP->type != HU3D_LIGHT_TYPE_NONE && (mask & 0x1)) {
+        if(lightP->type != HU3D_LIGHT_TYPE_NONE && (mask & 1)) {
             lightSet(lightP, bit, cameraMtxXPose, cameraMtx, hilitePower);
             lightBit |= bit;
             bit <<= 1;
@@ -2628,7 +2634,7 @@ void Hu3DModelDebug(void)
     OSReport("ID :Dir :File\n");
     for(i=0; i<HU3D_MODEL_MAX; i++, modelP++) {
         if(modelP->hsf && (modelP->attr & (HU3D_ATTR_HOOKFUNC|HU3D_ATTR_CAMERA)) == 0) {
-            OSReport("%3d:%04x:%3d", i, HuMemMemoryFileGet(modelP->hsf) >> 16, HuMemMemoryFileGet(modelP->hsf) & 0xFFFF);
+            OSReport("%3d:%04x:%3d", i, HuMemMemoryFileGet(modelP->hsf) >> 16, FILENUM(HuMemMemoryFileGet(modelP->hsf)));
             if(modelP->motId != HU3D_MOTIONID_NONE) {
                 OSReport(" motionNo %d\n", modelP->motId);
             } else {
@@ -2641,7 +2647,7 @@ void Hu3DModelDebug(void)
     OSReport("ID :Dir :File\n");
     for(motionP=Hu3DMotion, i=0; i<HU3D_MOTION_MAX; i++, motionP++) {
         if(motionP->hsf) {
-            OSReport("%3d:%04x:%3d\n", i, HuMemMemoryFileGet(motionP->hsf) >> 16, HuMemMemoryFileGet(motionP->hsf) & 0xFFFF);
+            OSReport("%3d:%04x:%3d\n", i, HuMemMemoryFileGet(motionP->hsf) >> 16, FILENUM(HuMemMemoryFileGet(motionP->hsf)));
         }
     }
 }

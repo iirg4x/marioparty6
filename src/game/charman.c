@@ -20,6 +20,19 @@
 #define EFFECT_LANDDUST 8
 #define EFFECT_MAX 9
 
+#define CHAR_VOICE_OFF (1 << 0)
+#define CHAR_MOTION_UPDATE_OFF (1 << 1)
+#define CHAR_ATTR_BIRD_ACTIVE (1 << 0)
+#define CHAR_ATTR_WIN_VOICE_PLAYED (1 << 1)
+#define CHAR_ATTR_MOTION_FLAG (1 << 2)
+#define CHAR_ATTR_VOICE_PAN_AUTO (1 << 3)
+#define CHAR_ATTR_FX_OFF (1 << 4)
+#define CHAR_EFFECT_SCALE_FLICKER (1 << 0)
+#define CHAR_STEP_GLOBAL_SE (1 << 15)
+#define CHAR_STEP_TYPE4_SE 1345
+#define CHAR_STEP_TYPE5_SE 1353
+#define CHAR_LIGHT_FLAGS_MASK (((1 << 8) - 1) << 8)
+
 typedef struct CharWork_s {
     HU3D_MODELID modelId;
     s16 model;
@@ -64,15 +77,15 @@ typedef struct EffectParam_s {
 } EFFECTPARAM;
 
 static EFFECTDATA effectDataTbl[] = {
-    { 0x00210007, 10, HU3D_PARTICLE_BLEND_NORMAL, 2, { 0x00930018, 0x00930019 } },
-    { 0x00210002, 150, HU3D_PARTICLE_BLEND_ADDCOL, 0, { 0x00930001, 0x00930002, 0x00930023, 0x00930018, 0x0093001D } },
-    { 0x00210003, 70, HU3D_PARTICLE_BLEND_NORMAL, 0, { 0x00930014 } },
-    { 0x00210000, 300, HU3D_PARTICLE_BLEND_NORMAL, 0, { 0x0093000A } },
-    { 0x00210001, 300, HU3D_PARTICLE_BLEND_ADDCOL, 0, {} },
-    { 0x00210005, 200, HU3D_PARTICLE_BLEND_ADDCOL, 0, { 0x00930005 } },
-    { 0x00210008, 12, HU3D_PARTICLE_BLEND_NORMAL, 2, { 0x00930015, 0x00930016, 0x00930076 } },
-    { 0x00210009, 100, HU3D_PARTICLE_BLEND_ADDCOL, 0, { 0x00930022, 0x00930023 } },
-    { 0x00210004, 100, HU3D_PARTICLE_BLEND_NORMAL, 0, { 0x0093000A, 0x00930004 } },
+    { EFFECT_ANM_danger, 10, HU3D_PARTICLE_BLEND_NORMAL, 2, { CHARMOT_HSF_c000m1_324, CHARMOT_HSF_c000m1_325 } },
+    { EFFECT_ANM_dust, 150, HU3D_PARTICLE_BLEND_ADDCOL, 0, { CHARMOT_HSF_c000m1_301, CHARMOT_HSF_c000m1_302, CHARMOT_HSF_c000m1_345, CHARMOT_HSF_c000m1_324, CHARMOT_HSF_c000m1_332 } },
+    { EFFECT_ANM_smoke, 70, HU3D_PARTICLE_BLEND_NORMAL, 0, { CHARMOT_HSF_c000m1_320 } },
+    { EFFECT_ANM_star, 300, HU3D_PARTICLE_BLEND_NORMAL, 0, { CHARMOT_HSF_c000m1_310 } },
+    { EFFECT_ANM_glow, 300, HU3D_PARTICLE_BLEND_ADDCOL, 0, {} },
+    { EFFECT_ANM_circle, 200, HU3D_PARTICLE_BLEND_ADDCOL, 0, { CHARMOT_HSF_c000m1_305 } },
+    { EFFECT_ANM_bird, 12, HU3D_PARTICLE_BLEND_NORMAL, 2, { CHARMOT_HSF_c000m1_321, CHARMOT_HSF_c000m1_322, CHARMOT_HSF_c000m1_465 } },
+    { EFFECT_ANM_cry, 100, HU3D_PARTICLE_BLEND_ADDCOL, 0, { CHARMOT_HSF_c000m1_344, CHARMOT_HSF_c000m1_345 } },
+    { EFFECT_ANM_land_dust, 100, HU3D_PARTICLE_BLEND_NORMAL, 0, { CHARMOT_HSF_c000m1_310, CHARMOT_HSF_c000m1_304 } },
 };
 
 char *CharHeadObjNameTbl[15] = {
@@ -81,24 +94,24 @@ char *CharHeadObjNameTbl[15] = {
 };
 
 unsigned int CharDataDirTbl[CHARNO_MAX][6] = {
-    { 0x008F0000, 0x00900000, 0x00910000, 0x00920000, 0x00930000, 0x008E0000 },
-    { 0x00370000, 0x00380000, 0x00390000, 0x003A0000, 0x003B0000, 0x00360000 },
-    { 0x00C10000, 0x00C20000, 0x00C30000, 0x00C40000, 0x00C50000, 0x00C00000 },
-    { 0x00F40000, 0x00F50000, 0x00F60000, 0x00F70000, 0x00F80000, 0x00F30000 },
-    { 0x00ED0000, 0x00EE0000, 0x00EF0000, 0x00F00000, 0x00F10000, 0x00EC0000 },
-    { 0x00150000, 0x00160000, 0x00170000, 0x00180000, 0x00190000, 0x00140000 },
-    { 0x00E70000, 0x00E80000, 0x00E90000, 0x00EA0000, 0x00EB0000, 0x00E60000 },
-    { 0x00310000, 0x00320000, 0x00330000, 0x00340000, 0x00350000, 0x00300000 },
-    { 0x00D00000, 0x00D10000, 0x00D20000, 0x00D30000, 0x00D40000, 0x00CF0000 },
-    { 0x00B80000, 0x00B90000, 0x00BA0000, 0x00BB0000, 0x00BC0000, 0x00A80000 },
-    { 0x002B0000, 0x002C0000, 0x002D0000, 0x002E0000, 0x002F0000, 0x002A0000 },
-    { 0x00B40000, 0x00B50000, 0x00B60000, 0x00B70000, 0x00BC0000, 0x00A80000 },
-    { 0x00AF0000, 0x00B00000, 0x00B10000, 0x00B20000, 0x00BC0000, 0x00A80000 },
-    { 0x00AA0000, 0x00AB0000, 0x00AC0000, 0x00AD0000, 0x00BC0000, 0x00A80000 },
+    { DATA_mariomdl0, DATA_mariomdl1, DATA_mariomdl2, DATA_mariomdl3, DATA_mariomot, DATA_mario },
+    { DATA_luigimdl0, DATA_luigimdl1, DATA_luigimdl2, DATA_luigimdl3, DATA_luigimot, DATA_luigi },
+    { DATA_peachmdl0, DATA_peachmdl1, DATA_peachmdl2, DATA_peachmdl3, DATA_peachmot, DATA_peach },
+    { DATA_yoshimdl0, DATA_yoshimdl1, DATA_yoshimdl2, DATA_yoshimdl3, DATA_yoshimot, DATA_yoshi },
+    { DATA_wariomdl0, DATA_wariomdl1, DATA_wariomdl2, DATA_wariomdl3, DATA_wariomot, DATA_wario },
+    { DATA_daisymdl0, DATA_daisymdl1, DATA_daisymdl2, DATA_daisymdl3, DATA_daisymot, DATA_daisy },
+    { DATA_waluigimdl0, DATA_waluigimdl1, DATA_waluigimdl2, DATA_waluigimdl3, DATA_waluigimot, DATA_waluigi },
+    { DATA_kinopiomdl0, DATA_kinopiomdl1, DATA_kinopiomdl2, DATA_kinopiomdl3, DATA_kinopiomot, DATA_kinopio },
+    { DATA_teresamdl0, DATA_teresamdl1, DATA_teresamdl2, DATA_teresamdl3, DATA_teresamot, DATA_teresa },
+    { DATA_minikoopamdl0, DATA_minikoopamdl1, DATA_minikoopamdl2, DATA_minikoopamdl3, DATA_minikoopamot, DATA_minikoopa },
+    { DATA_kinopikomdl0, DATA_kinopikomdl1, DATA_kinopikomdl2, DATA_kinopikomdl3, DATA_kinopikomot, DATA_kinopiko },
+    { DATA_minikoopaRmdl0, DATA_minikoopaRmdl1, DATA_minikoopaRmdl2, DATA_minikoopaRmdl3, DATA_minikoopamot, DATA_minikoopa },
+    { DATA_minikoopaGmdl0, DATA_minikoopaGmdl1, DATA_minikoopaGmdl2, DATA_minikoopaGmdl3, DATA_minikoopamot, DATA_minikoopa },
+    { DATA_minikoopaBmdl0, DATA_minikoopaBmdl1, DATA_minikoopaBmdl2, DATA_minikoopaBmdl3, DATA_minikoopamot, DATA_minikoopa },
 };
 
 
-static u8 lbl_8026F7B0[0xE8];
+static u8 lbl_8026F7B0[232];
 static u16 dustFlags[CHAR_NPC_MAX];
 static HUPROCESS *hookDustProc[CHAR_MOT_MAX];
 static EFFECTPARAM *effParamAll[EFFECT_MAX];
@@ -401,6 +414,7 @@ static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
 }
 
 static void UpdateMotPlay(CHARWORK *workP, s16 motNo, s16 motNoShift);
+void CharEffectHipDropCreate(s16 charNo, HuVecF *pos);
 static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voiceFlag, s16 frameNo, HuVecF *ofs);
 static void EyeBmpUpdate(s16 charNo);
 
@@ -560,13 +574,13 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
     if(!motShiftF && (modelP->motAttr & HU3D_MOTATTR_PAUSE)) {
         return;
     }
-    if(voiceFlag & 0x2) {
+    if(voiceFlag & CHAR_MOTION_UPDATE_OFF) {
         return;
     }
     switch(motNo) {
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_315):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_317):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
             }
             break;
@@ -582,7 +596,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             if(motShiftF && modelP->motShiftWork.speed <= 0.5) {
                 break;
             }
-            if((frameNo & 0xF) == 0 && !(workP->attr & 0x10)) {
+            if((frameNo & (16 - 1)) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 dustEffParam.vel.x = -HuSin(modelP->rot.y)*2.0;
                 dustEffParam.vel.y = 1+(0.1*frandmod(10));
                 dustEffParam.vel.z = -HuCos(modelP->rot.y)*2.0;
@@ -614,7 +628,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             if(motShiftF && modelP->motShiftWork.speed <= 0.5) {
                 break;
             }
-            if((frameNo & 0x7) == 0 && !(workP->attr & 0x10)) {
+            if((frameNo & (8 - 1)) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 dustEffParam.vel.x = -HuSin(modelP->rot.y)*4.0;
                 dustEffParam.vel.y = 2+(0.1*frandmod(10));
                 dustEffParam.vel.z = -HuCos(modelP->rot.y)*4.0;
@@ -627,7 +641,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 }
                 EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
             }
-            if(motNo == CHAR_MOTNO(CHARMOT_HSF_c000m1_345) && (frameNo & 0x1)) {
+            if(motNo == CHAR_MOTNO(CHARMOT_HSF_c000m1_345) && (frameNo & 1)) {
                 CharModelCryCreate(charNo, 30, 0.8f);
             }
             for(i=0; i<4; i++) {
@@ -639,7 +653,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_304):
-            if(frameNo == 5 && !(workP->attr & 0x10)) {
+            if(frameNo == 5 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 CharModelLandDustCreate(charNo, &modelP->pos);
             }
             for(i=0; i<2; i++) {
@@ -651,7 +665,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_464):
-            if(frameNo == 1 && !(workP->attr & 0x10)) {
+            if(frameNo == 1 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 CharModelLandDustCreate(charNo, &modelP->pos);
                 PlayStepVoice(charNo, CHARSEID(8), voiceFlag);
             }
@@ -663,7 +677,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 _CharFXPlay(charNo, CHARSEID(22), voiceFlag);
             }
             dotMax = 10;
-            if(frameNo <= dotMax && !(workP->attr & 0x10)) {
+            if(frameNo <= dotMax && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 hitEffParam.vel.x = 0.0f;
                 hitEffParam.vel.y = 0.0f;
                 hitEffParam.vel.z = 0.0f;
@@ -733,7 +747,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_310):
             if(frameNo == 0) {
-                if(!(workP->attr & 0x10)) {
+                if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     CharEffectHipDropCreate(charNo, &modelP->pos);
                 }
                 _CharFXPlay(charNo, CHARSEID(18), voiceFlag);
@@ -741,11 +755,11 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_324):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(8), voiceFlag);
             }
             if(modelP->motIdShift == HU3D_MOTIONID_NONE || motShiftF) {
-                if(!(workP->attr & 0x10)) {
+                if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     if(frameNo == 10) {
                         if(charNo == CHARNO_WALUIGI) {
                             warnSize = 190;
@@ -766,7 +780,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_325):
             if(modelP->motIdShift == HU3D_MOTIONID_NONE || motShiftF) {
-                if(!(workP->attr & 0x10)) {
+                if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     if(frameNo == 0) {
                         if(charNo == CHARNO_WALUIGI) {
                             warnSize = 150;
@@ -777,7 +791,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                         }
                         EffectWarnCreate(modelId, modelP->pos.x, 100.0f+modelP->pos.y, modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
-                    if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+                    if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                         _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
                     }
                 }
@@ -787,18 +801,18 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_321):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_322):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_465):
-            if(!(workP->attr & 0x1) && !(workP->attr & 0x10)) {
+            if(!(workP->attr & CHAR_ATTR_BIRD_ACTIVE) && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARSEID(19), voiceFlag);
                 for(i=0; i<3; i++) {
                     EffectBirdCreate(modelId, modelP->pos.x, modelP->pos.y+(100.0f*modelP->scale.x), modelP->pos.z, 1.0f, charNo, i*120, &warnEffParam);
                 }
-                workP->attr |= 0x1;
+                workP->attr |= CHAR_ATTR_BIRD_ACTIVE;
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_320):
-            if(!(workP->attr & 0x10)) {
-                if(frameNo & 0x1) {
+            if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
+                if(frameNo & 1) {
                     Hu3DModelObjMtxGet(modelId, CharModelItemHookGet(charNo, workP->model, 4), hitMtx);
                     pos.x = hitMtx[0][3];
                     pos.y = hitMtx[1][3];
@@ -824,84 +838,84 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_306):
-            if(!(workP->attr & 0x12)) {
-                if((omcurovl < 0x7B || omcurovl > 0x82) && (omcurovl < 0x72 || omcurovl > 0x74)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
+                if((omcurovl < DLL_w01dll || omcurovl > DLL_w11dll) && (omcurovl < DLL_s01dll || omcurovl > DLL_s03dll)) {
                     if(frameNo == winAnimLen[charNo]) {
                         CharWinVoicePlay(charNo, voiceFlag);
-                        workP->attr |= 0x2;
-                        attrOld |= 0x2;
+                        workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                        attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     }
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_346):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == handUpAnimLen[charNo]) {
                     _CharFXPlay(charNo, CHARVOICEID(6), voiceFlag);
-                    workP->attr |= 0x2;
-                    attrOld |= 0x2;
+                    workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                    attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_349):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == okAnimLen[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
-                    workP->attr |= 0x2;
-                    attrOld |= 0x2;
+                    workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                    attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_350):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == winAnimLen2[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
-                    workP->attr |= 0x2;
-                    attrOld |= 0x2;
+                    workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                    attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_363):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == holdUpAnimLen[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
-                    workP->attr |= 0x2;
-                    attrOld |= 0x2;
+                    workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                    attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_364):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == winJumpUpAnimLen[charNo]) {
                     _CharFXPlay(charNo, CHARVOICEID(2), voiceFlag);
-                    workP->attr |= 0x2;
-                    attrOld |= 0x2;
+                    workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                    attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_352):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == loseAnimLen[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
-                    workP->attr |= 0x2;
-                    attrOld |= 0x2;
+                    workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                    attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_327):
-            if(!(workP->attr & 0x12)) {
+            if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
                     CharWinVoicePlay(charNo, voiceFlag);
                 }
-                workP->attr |= 0x2;
-                attrOld |= 0x2;
+                workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
+                attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
             }
             break;
 
@@ -910,15 +924,15 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_351):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_353):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_354):
-            if(frameNo == 0 && !(workP->attr & 0x14)) {
-                workP->attr |= 0x4;
-                attrOld |= 0x4;
+            if(frameNo == 0 && !(workP->attr & (CHAR_ATTR_MOTION_FLAG | CHAR_ATTR_FX_OFF))) {
+                workP->attr |= CHAR_ATTR_MOTION_FLAG;
+                attrOld |= CHAR_ATTR_MOTION_FLAG;
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_344):
-            if(!(workP->attr & 0x10)) {
-                if(frameNo & 0x1) {
+            if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
+                if(frameNo & 1) {
                     CharModelCryCreate(charNo, 0, 0);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
@@ -928,7 +942,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_370):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(3), voiceFlag);
             }
             if(workP->timingHookNo != 0) {
@@ -937,13 +951,13 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_333):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(11), voiceFlag);
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_311):
-            if(frameNo == jumpAnimLen[charNo] && !(workP->attr & 0x10)) {
+            if(frameNo == jumpAnimLen[charNo] && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 CharModelLandDustCreate(charNo, &modelP->pos);
                 for(i=0; i<2; i++) {
                     if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
@@ -958,50 +972,50 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_316):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_318):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_382):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_357):
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_381):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(15), voiceFlag);
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_361):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(3), voiceFlag);
             }
             break;
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_377):
-            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & 0x10)) {
+            if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARVOICEID(8), voiceFlag);
             }
             break;
     }
     if(!motShiftF) {
-        if(!(attrOld & 0x4)) {
-            workP->attr &= ~0x4;
+        if(!(attrOld & CHAR_ATTR_MOTION_FLAG)) {
+            workP->attr &= ~CHAR_ATTR_MOTION_FLAG;
         }
-        if(!(attrOld & 0x2)) {
-            workP->attr &= ~0x2;
+        if(!(attrOld & CHAR_ATTR_WIN_VOICE_PLAYED)) {
+            workP->attr &= ~CHAR_ATTR_WIN_VOICE_PLAYED;
         }
     }
 }
 
 static s16 winVoiceTbl[][2] = {
-    { 0x1B, 0x243 },
-    { 0x1C, 0x243 },
-    { 0x2F, 0x243 },
-    { 0x4C, 0x243 },
-    { 0x4D, 0x243 },
-    { 0x4E, 0x243 },
-    { 0x4F, 0x243 },
-    { 0x50, 0x243 },
-    { 0x51, 0x243 },
+    { DLL_m622dll, CHARVOICEID(6) },
+    { DLL_m623dll, CHARVOICEID(6) },
+    { DLL_m642dll, CHARVOICEID(6) },
+    { DLL_m671dll, CHARVOICEID(6) },
+    { DLL_m672dll, CHARVOICEID(6) },
+    { DLL_m673dll, CHARVOICEID(6) },
+    { DLL_m674dll, CHARVOICEID(6) },
+    { DLL_m675dll, CHARVOICEID(6) },
+    { DLL_m676dll, CHARVOICEID(6) },
     { -1, 0 },
 };
 
@@ -1010,118 +1024,118 @@ static float CharYOfsTbl2[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 130.0f
 static float birdYOfsTbl[CHARNO_MAX] = { 80.0f, 80.0f, 60.0f, 75.0f, 40.0f, 60.0f, 45.0f, 90.0f, 70.0f, 75.0f, 90.0f, 75.0f, 75.0f, 75.0f };
 
 static s16 stepVoiceTbl[] = {
-    0x7B, 0,
-    0x7C, 0,
-    0x7D, 0,
-    0x7E, 0,
-    0x7F, 0,
-    0x80, 0,
-    0x81, 0,
-    0x82, 0,
-    0x72, 0,
-    0x73, 0,
-    0x74, 0,
-    0x5D, 1,
-    0x5A, 1,
-    0x59, 1,
-    0x5B, 1,
-    0x5E, 1,
-    0x58, 1,
-    0x6C, 1,
-    0x5C, 1,
-    0x63, 0,
-    0x62, 0,
-    0x60, 0,
-    0x65, 0,
-    0x61, 2,
-    0x64, 0,
-    0x66, 0,
-    0x67, 0,
-    0x68, 0,
-    0x69, 0,
-    0x6B, 0,
-    0x6, 0,
-    0x7, 0,
-    0x8, 0,
-    0x9, 1,
-    0xA, 0,
-    0xB, 0,
-    0xC, 0,
-    0xD, 2,
-    0xE, 1,
-    0xF, 0,
-    0x10, 0,
-    0x11, 0,
-    0x12, 2,
-    0x13, 0,
-    0x14, 0,
-    0x15, 0,
-    0x16, 1,
-    0x17, 1,
-    0x18, 0,
-    0x19, 1,
-    0x1A, 2,
-    0x1B, 0,
-    0x1C, 0,
-    0x1D, 0,
-    0x1E, 1,
-    0x1F, 2,
-    0x20, 1,
-    0x21, 0,
-    0x22, 1,
-    0x23, 1,
-    0x24, 1,
-    0x25, 1,
-    0x26, 0,
-    0x27, 0,
-    0x28, 2,
-    0x29, 1,
-    0x2A, 1,
-    0x2B, 0,
-    0x2C, 0,
-    0x2D, 0,
-    0x2E, 0,
-    0x2F, 0,
-    0x30, 0,
-    0x31, 0,
-    0x32, 0,
-    0x33, 1,
-    0x34, 1,
-    0x35, 2,
-    0x36, 1,
-    0x37, 0,
-    0x38, 0,
-    0x39, 0,
-    0x3A, 0,
-    0x3B, 2,
-    0x3C, 0,
-    0x3D, 0,
-    0x3E, 1,
-    0x3F, 0,
-    0x40, 0,
-    0x41, 0,
-    0x42, 0,
-    0x43, 1,
-    0x44, 2,
-    0x45, 1,
-    0x46, 0,
-    0x47, 0,
-    0x48, 0,
-    0x49, 0,
-    0x4A, 0,
-    0x4B, 0,
-    0x4C, 0,
-    0x4D, 0,
-    0x4E, 0,
-    0x4F, 1,
-    0x50, 0,
-    0x51, 1,
-    0x52, 0,
-    0x53, 0,
-    0x54, 0,
-    0x55, 0,
-    0x56, 1,
-    0x57, 0,
+    DLL_w01dll, 0,
+    DLL_w02dll, 0,
+    DLL_w03dll, 0,
+    DLL_w04dll, 0,
+    DLL_w05dll, 0,
+    DLL_w06dll, 0,
+    DLL_w10dll, 0,
+    DLL_w11dll, 0,
+    DLL_s01dll, 0,
+    DLL_s02dll, 0,
+    DLL_s03dll, 0,
+    DLL_mdseldll, 1,
+    DLL_mdminidll, 1,
+    DLL_mdmicdll, 1,
+    DLL_mdpartydll, 1,
+    DLL_mdsingdll, 1,
+    DLL_mdbankdll, 1,
+    DLL_miraclebookdll, 1,
+    DLL_mdpresultdll, 1,
+    DLL_mgmfreedll, 0,
+    DLL_mgmdecathlondll, 0,
+    DLL_mgmbattledll, 0,
+    DLL_mgmtournamentdll, 0,
+    DLL_mgmbingodll, 2,
+    DLL_mgmrenshodll, 0,
+    DLL_micquizdll, 0,
+    DLL_micquizishidll, 0,
+    DLL_micquizmyokodll, 0,
+    DLL_micquizohdedll, 0,
+    DLL_mikeactdll, 0,
+    DLL_m601dll, 0,
+    DLL_m602dll, 0,
+    DLL_m603dll, 0,
+    DLL_m604dll, 1,
+    DLL_m605dll, 0,
+    DLL_m606dll, 0,
+    DLL_m607dll, 0,
+    DLL_m608dll, 2,
+    DLL_m609dll, 1,
+    DLL_m610dll, 0,
+    DLL_m611dll, 0,
+    DLL_m612dll, 0,
+    DLL_m613dll, 2,
+    DLL_m614dll, 0,
+    DLL_m615dll, 0,
+    DLL_m616dll, 0,
+    DLL_m617dll, 1,
+    DLL_m618dll, 1,
+    DLL_m619dll, 0,
+    DLL_m620dll, 1,
+    DLL_m621dll, 2,
+    DLL_m622dll, 0,
+    DLL_m623dll, 0,
+    DLL_m624dll, 0,
+    DLL_m625dll, 1,
+    DLL_m626dll, 2,
+    DLL_m627dll, 1,
+    DLL_m628dll, 0,
+    DLL_m629dll, 1,
+    DLL_m630dll, 1,
+    DLL_m631dll, 1,
+    DLL_m632dll, 1,
+    DLL_m633dll, 0,
+    DLL_m634dll, 0,
+    DLL_m635dll, 2,
+    DLL_m636dll, 1,
+    DLL_m637dll, 1,
+    DLL_m638dll, 0,
+    DLL_m639dll, 0,
+    DLL_m640dll, 0,
+    DLL_m641dll, 0,
+    DLL_m642dll, 0,
+    DLL_m643dll, 0,
+    DLL_m644dll, 0,
+    DLL_m645dll, 0,
+    DLL_m646dll, 1,
+    DLL_m647dll, 1,
+    DLL_m648dll, 2,
+    DLL_m649dll, 1,
+    DLL_m650dll, 0,
+    DLL_m651dll, 0,
+    DLL_m652dll, 0,
+    DLL_m653dll, 0,
+    DLL_m654dll, 2,
+    DLL_m655dll, 0,
+    DLL_m656dll, 0,
+    DLL_m657dll, 1,
+    DLL_m658dll, 0,
+    DLL_m659dll, 0,
+    DLL_m660dll, 0,
+    DLL_m661dll, 0,
+    DLL_m662dll, 1,
+    DLL_m663dll, 2,
+    DLL_m664dll, 1,
+    DLL_m665dll, 0,
+    DLL_m666dll, 0,
+    DLL_m667dll, 0,
+    DLL_m668dll, 0,
+    DLL_m669dll, 0,
+    DLL_m670dll, 0,
+    DLL_m671dll, 0,
+    DLL_m672dll, 0,
+    DLL_m673dll, 0,
+    DLL_m674dll, 1,
+    DLL_m675dll, 0,
+    DLL_m676dll, 1,
+    DLL_m677dll, 0,
+    DLL_m678dll, 0,
+    DLL_m679dll, 0,
+    DLL_m680dll, 0,
+    DLL_m681dll, 1,
+    DLL_m699dll, 0,
     -1, -1,
 };
 
@@ -1129,8 +1143,8 @@ s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
     HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
-    if(!(voiceFlag & 0x1)) {
-        if(workP->attr & 0x8) {
+    if(!(voiceFlag & CHAR_VOICE_OFF)) {
+        if(workP->attr & CHAR_ATTR_VOICE_PAN_AUTO) {
             CharFXPlayPos(charNo, seNo, &modelP->pos);
         } else {
             CharFXPlayVolPan(charNo, seNo, workP->vol, workP->pan);
@@ -1507,8 +1521,8 @@ static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx
             }
             particleDataP->color.a = color;
             if(particleDataP->scale) {
-                if(param[i].attr & 0x1) {
-                    particleDataP->scale = particleDataP->scaleBase*(((particleDataP->time+i) & 0x1) ? 1.0 : 0.5);
+                if(param[i].attr & CHAR_EFFECT_SCALE_FLICKER) {
+                    particleDataP->scale = particleDataP->scaleBase*(((particleDataP->time+i) & 1) ? 1.0 : 0.5);
                 } else {
                     particleDataP->scale = particleDataP->scaleBase;
                 }
@@ -1603,7 +1617,7 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
         particleDataP->scale -= 8.0f*modelP->scale.x;
         if(particleDataP->scale < 0.0f) {
             particleDataP->scale = 0.0f;
-            workP->attr &= ~0x1;
+            workP->attr &= ~CHAR_ATTR_BIRD_ACTIVE;
             if(particleDataP->vel.y == 0.0) {
                 _CharFXPlay(charNo, CHARSEID(24), workP->attr);
 
@@ -1628,7 +1642,7 @@ static inline void MotionParticleInit(unsigned int dataNum)
 {
     s16 i;
     s16 j;
-    dataNum &= 0xFFFF;
+    dataNum = FILENUM(dataNum);
     for(i=0; i<EFFECT_MAX; i++) {
         for(j=0; effectDataTbl[i].motDataNum[j]; j++) {
             if(dataNum == CHAR_MOTNO(effectDataTbl[i].motDataNum[j])) {
@@ -1657,7 +1671,7 @@ HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum)
     if(motNo == CHAR_MOT_MAX) {
         return HU3D_MOTIONID_NONE;
     }
-    dir = dataNum & 0xFFFF0000;
+    dir = DIRNUM(dataNum);
     for(i=0; i<CHARNO_MAX; i++) {
         if(dir == CharDataDirTbl[i][4]) {
             break;
@@ -1677,7 +1691,7 @@ HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum)
             }
         }
         if(i != CHARNO_MAX) {
-            dataNum = DATANUM(CharDataDirTbl[charNo][5], dataNum & 0xFFFF);
+            dataNum = DATANUM(CharDataDirTbl[charNo][5], FILENUM(dataNum));
             data = HuDataReadNumHeapShortForce(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
         } else {
             data = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
@@ -2461,9 +2475,9 @@ void CharMotionVoiceOnSet(s16 charNo, s16 motNo, BOOL voiceOn)
         return;
     }
     if(!voiceOn) {
-        workP->voiceFlag[i] |= 0x1;
+        workP->voiceFlag[i] |= CHAR_VOICE_OFF;
     } else {
-        workP->voiceFlag[i] &= ~0x1;
+        workP->voiceFlag[i] &= ~CHAR_VOICE_OFF;
     }
 }
 
@@ -2471,9 +2485,9 @@ void CharModelVoicePanAutoSet(s16 charNo, BOOL voicePanAuto)
 {
     CHARWORK *workP = &CharWork[charNo];
     if(voicePanAuto) {
-        workP->attr |= 0x8;
+        workP->attr |= CHAR_ATTR_VOICE_PAN_AUTO;
     } else {
-        workP->attr &= ~0x8;
+        workP->attr &= ~CHAR_ATTR_VOICE_PAN_AUTO;
     }
 }
 
@@ -2482,16 +2496,16 @@ void CharModelVoiceFlagSet(s16 charNo, BOOL fxFlag)
     CHARWORK *workP = &CharWork[charNo];
     if(charNo >= CHARNO_MAX) {
         if(!fxFlag) {
-            dustFlags[charNo] |= 0x10;
+            dustFlags[charNo] |= CHAR_ATTR_FX_OFF;
         } else {
-            dustFlags[charNo] &= ~0x10;
+            dustFlags[charNo] &= ~CHAR_ATTR_FX_OFF;
         }
         return;
     } else {
         if(!fxFlag) {
-            workP->attr |= 0x10;
+            workP->attr |= CHAR_ATTR_FX_OFF;
         } else {
-            workP->attr &= ~0x10;
+            workP->attr &= ~CHAR_ATTR_FX_OFF;
         }
     }
 }
@@ -2514,9 +2528,9 @@ void CharMotionUpdateSet(s16 charNo, unsigned int dataNum, BOOL updateF)
         return;
     }
     if(updateF) {
-        workP->voiceFlag[i] &= ~0x2;
+        workP->voiceFlag[i] &= ~CHAR_MOTION_UPDATE_OFF;
     } else {
-        workP->voiceFlag[i] |= 0x2;
+        workP->voiceFlag[i] |= CHAR_MOTION_UPDATE_OFF;
     }
 }
 
@@ -2591,8 +2605,8 @@ static void UpdateNpcDust(void)
         time = Hu3DMotionTimeGet(modelId);
         switch(work->type) {
             case 0:
-                if((time & 0xF) == 0) {
-                    if(!(dustFlags[npcNo] & 0x10)) {
+                if((time & (16 - 1)) == 0) {
+                    if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                         dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
                         dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
@@ -2613,8 +2627,8 @@ static void UpdateNpcDust(void)
                 break;
             
             case 1:
-                if((time & 0x3) == 0) {
-                    if(!(dustFlags[npcNo] & 0x10)) {
+                if((time & (4 - 1)) == 0) {
+                    if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                         dustEffParam.vel.x = -HuSin(modelP->rot.y)*4;
                         dustEffParam.vel.y = 2+(0.1*frandmod(10));
                         dustEffParam.vel.z = -HuCos(modelP->rot.y)*4;
@@ -2638,8 +2652,8 @@ static void UpdateNpcDust(void)
                 if(npcNo == CHAR_NPC_NONE) {
                     continue;
                 }
-                if((time & 0x1F) == 0) {
-                    if(!(dustFlags[npcNo] & 0x10)) {
+                if((time & (32 - 1)) == 0) {
+                    if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                         dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
                         dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
@@ -2661,8 +2675,8 @@ static void UpdateNpcDust(void)
                 if(npcNo == CHAR_NPC_NONE) {
                     continue;
                 }
-                if((time & 0x3) == 0) {
-                    if(!(dustFlags[npcNo] & 0x10)) {
+                if((time & (4 - 1)) == 0) {
+                    if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                         dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
                         dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
@@ -2684,8 +2698,8 @@ static void UpdateNpcDust(void)
                 if(npcNo == CHAR_NPC_NONE) {
                     continue;
                 }
-                if((time & 0x7) == 0) {
-                    if(!(dustFlags[npcNo] & 0x10)) {
+                if((time & (8 - 1)) == 0) {
+                    if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                         dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
                         dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
@@ -2707,7 +2721,7 @@ static void UpdateNpcDust(void)
                 if(time != 0) {
                     continue;
                 }
-                if(!(dustFlags[npcNo] & 0x10)) {
+                if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                     for(i=0; i<8; i++){ 
                         npcHitEffParam.vel.x = 10*HuSin(45.0f*i)*modelP->scale.x;
                         npcHitEffParam.vel.y = 0;
@@ -2740,31 +2754,31 @@ static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
     CHARWORK *workP = &CharWork[charNo];
     HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
     s16 ret;
-    if(voiceFlag & 0x1) {
+    if(voiceFlag & CHAR_VOICE_OFF) {
         return;
     }
     if(workP->stepFx == 4) {
-        seId = 0x8541;
+        seId = (CHAR_STEP_GLOBAL_SE | CHAR_STEP_TYPE4_SE);
     } else if(workP->stepFx == 5) {
-        seId = 0x8549;
+        seId = (CHAR_STEP_GLOBAL_SE | CHAR_STEP_TYPE5_SE);
     } else if(workP->stepFx == 6) {
-        seId = 0xCA;
+        seId = CHARSEID(25);
     } else {
         seId += workP->stepFx;
     }
-    if(!(seId & 0x8000)) {
-        if(workP->attr & 0x8) {
+    if(!(seId & CHAR_STEP_GLOBAL_SE)) {
+        if(workP->attr & CHAR_ATTR_VOICE_PAN_AUTO) {
             return CharFXPlayPos(charNo, seId, &modelP->pos);
         } else {
             _CharFXPlay(charNo, seId, voiceFlag);
             return ret;
         }
     } else {
-        seId &= 0x7FFF;
-        if(voiceFlag & 0x1) {
+        seId &= (CHAR_STEP_GLOBAL_SE - 1);
+        if(voiceFlag & CHAR_VOICE_OFF) {
             return -1;
         }
-        if(workP->attr & 0x8) {
+        if(workP->attr & CHAR_ATTR_VOICE_PAN_AUTO) {
             return HuAudFXEmiterPlay(seId, &modelP->pos);
         } else {
             return HuAudFXPlay(seId);
@@ -3026,7 +3040,7 @@ static void PlayWinLoseVoice(void)
     }
     switch(motNo) {
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_306):
-            if(omcurovl >= 0x7B && omcurovl <= 0x7B) {
+            if(omcurovl >= DLL_w01dll && omcurovl <= DLL_w01dll) {
                 HuPrcSleep(boardWinAnimLen[winLose->charNo]);
             } else {
                 HuPrcSleep(winAnimLen[winLose->charNo]);
@@ -3123,7 +3137,7 @@ HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
             for(j=0; j<HU3D_MODEL_LLIGHT_MAX; j++) {
                 if(modelP->LLightId[j] == HU3D_LIGHTID_NONE) {
                     modelP->LLightId[j] = lightId;
-                    modelP->attr |= 0x1000;
+                    modelP->attr |= HU3D_ATTR_LLIGHT;
                     break;
                 }
             }
@@ -3170,7 +3184,7 @@ void CharLightSpotSet(s32 func, float cutoff)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
-        lightP->type &= 0xFF00;
+        lightP->type &= CHAR_LIGHT_FLAGS_MASK;
         lightP->cutoff = cutoff;
         lightP->func = func;
     }
@@ -3180,7 +3194,7 @@ void CharLightInfinitytSet(void)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
-        lightP->type &= 0xFF00;
+        lightP->type &= CHAR_LIGHT_FLAGS_MASK;
         lightP->type |= HU3D_LIGHT_TYPE_INFINITYT;
     }
 }
@@ -3189,7 +3203,7 @@ void CharLightPointSet(s32 func, float cutoff, float brightness)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
-        lightP->type &= 0xFF00;
+        lightP->type &= CHAR_LIGHT_FLAGS_MASK;
         lightP->type |= HU3D_LIGHT_TYPE_POINT;
         lightP->cutoff = cutoff;
         lightP->brightness = brightness;

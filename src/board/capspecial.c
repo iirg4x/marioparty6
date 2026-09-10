@@ -1,4 +1,5 @@
-#include "math.h"
+#define _MATH_H
+#include "dolphin/math.h"
 #include "dolphin/pad.h"
 #include "datadir_enum.h"
 #include "datanum/charmot.h"
@@ -22,9 +23,34 @@
 #include "game/process.h"
 #include "messdir_enum.h"
 
+/* Approved compatibility primitive: MWCC emits one fabs instruction.
+ * Other compilers use the portable math function; no fixed register is used. */
+#ifdef __MWERKS__
+static inline float CapSpecialAbsFloat(register float value)
+{
+    asm {
+        fabs value, value
+    }
+    return value;
+}
+#else
+static inline float CapSpecialAbsFloat(float value)
+{
+    return (float)fabs((double)value);
+}
+#endif
+
 #define CAPSPECIAL_MASU_ATTR_TERESA_LINK (1 << 13)
 #define CAPSPECIAL_CAPSULE_LIGHT 31
 #define CAPSPECIAL_FADE_OBJ_PRIORITY (-32768)
+#define CAPSPECIAL_DICE_TABLE_END 255
+#define CAPSPECIAL_TERESA_COIN_EFFECT_ARG 65535
+#define CAPSPECIAL_MIRACLE_VIBRATION_FRAMES 300
+#define CAPSPECIAL_MIRACLE_SPR_PULSE 32
+#define CAPSPECIAL_MIRACLE_SPR_HIDE 64
+#define CAPSPECIAL_DONKEY_RETURN_ANGLE 135
+#define CAPSPECIAL_DONKEY_RETURN_MOTION 11
+#define CAPSPECIAL_DONKEY_MOTION_SHIFT_FRAME 27
 
 #define CAPSPECIAL_DATA_MIRACLE_GUIDE_SET0_MODEL \
     DATANUM(DATA_capsulechar4, 1)
@@ -101,7 +127,7 @@
 #define CAPSPECIAL_SE_TERESA_FAILURE 926
 
 typedef int (*TERESA_STEAL_HOOK)(int);
-typedef void (*TERESA_STEAL_BEGIN_HOOK)(int, int);
+typedef int (*TERESA_STEAL_BEGIN_HOOK)(int, int);
 
 #define CAP_WORK_MAX 64
 
@@ -164,10 +190,10 @@ typedef struct CapWork {
     int _unk1C;
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
-    int _unkB6C;
-    int _unkB70;
-    int _unkB74;
-    u8 _unkB78[84];
+    int eventData[6];
+    u8 _unkB84[40];
+    OMOBJ *guideObj;
+    u8 _unkBB0[28];
     int processNo;
     OMOBJ *explodeObj;
     OMOBJ *boostObj;
@@ -232,13 +258,17 @@ static u32 MiracleGuideMotTbl[2][16] = {
         CAPSPECIAL_DATA_MIRACLE_GUIDE_SET1_MOTION8, -1 },
 };
 static char miracleItemHookName[11] = "itemhook_R";
-static u32 miracleMasuEffColorTbl[6] = {
-    0xFF7F7FFF, /* miracle square sparkle palette color */
-    0xFFFF7FFF, /* miracle square sparkle palette color */
-    0xFFBE7FFF, /* miracle square sparkle palette color */
-    0x7F7FFFFF, /* miracle square sparkle palette color */
-    0x7FFFFFFF, /* miracle square sparkle palette color */
-    0x7FBEFFFF, /* miracle square sparkle palette color */
+static GXColor miracleMasuEffColorTbl[2][3] = {
+    {
+        { 255, 127, 127, 255 },
+        { 255, 255, 127, 255 },
+        { 255, 190, 127, 255 },
+    },
+    {
+        { 127, 127, 255, 255 },
+        { 127, 255, 255, 255 },
+        { 127, 190, 255, 255 },
+    },
 };
 static int miracleTradeOrderTbl[3][32] = {
     { 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1,
@@ -281,36 +311,36 @@ static u32 kettouGuideMotTbl[2][16] = {
         DATANUM(DATA_capsulechar4, 46), -1 },
 };
 static u32 kettouPlayerMotTbl[4] = {
-    0x008E0027, /* duel character motion resource pair */
-    0x0093001F, /* duel character motion resource pair */
-    0x008E0078, /* duel character motion resource pair */
-    0x0093004B, /* duel character motion resource pair */
+    DATANUM(DATA_mario, 39), /* duel character motion resource pair */
+    DATANUM(DATA_mariomot, 31), /* duel character motion resource pair */
+    DATANUM(DATA_mario, 120), /* duel character motion resource pair */
+    DATANUM(DATA_mariomot, 75), /* duel character motion resource pair */
 };
 static u32 donkeyMotTbl[12] = {
-    0x000E000F, /* Donkey model motion resource */
-    0x000E0011, /* Donkey model motion resource */
-    0x000E0012, /* Donkey model motion resource */
-    0x000E0015, /* Donkey model motion resource */
-    0x000E0016, /* Donkey model motion resource */
-    0x000E0013, /* Donkey model motion resource */
-    0x000E0014, /* Donkey model motion resource */
-    0x000E0018, /* Donkey model motion resource */
-    0x000E0019, /* Donkey model motion resource */
-    0x000E001A, /* Donkey model motion resource */
-    0x000E001B, /* Donkey model motion resource */
-    0xFFFFFFFF, /* all-bits-set motion table terminator */
+    DATANUM(DATA_capsulechar1, 15), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 17), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 18), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 21), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 22), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 19), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 20), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 24), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 25), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 26), /* Donkey model motion resource */
+    DATANUM(DATA_capsulechar1, 27), /* Donkey model motion resource */
+    HU_DATANUM_NONE, /* all-bits-set motion table terminator */
 };
 static int donkeyDiceResultTbl[5] = { 5, 10, 20, 30, -1 };
 static int donkeyRouletteBankTbl[10] = { 0, 1, 0, 1, 0, 1, 0, 1, 0, 2 };
 static char capTreeFook[12] = "tree_fook";
 static u32 koopaMotTbl[7] = {
-    0x000E0001, /* Koopa model motion resource */
-    0x000E0005, /* Koopa model motion resource */
-    0x000E0003, /* Koopa model motion resource */
-    0x000E0007, /* Koopa model motion resource */
-    0x000E0004, /* Koopa model motion resource */
-    0x000E000A, /* Koopa model motion resource */
-    0xFFFFFFFF, /* all-bits-set motion table terminator */
+    DATANUM(DATA_capsulechar1, 1), /* Koopa model motion resource */
+    DATANUM(DATA_capsulechar1, 5), /* Koopa model motion resource */
+    DATANUM(DATA_capsulechar1, 3), /* Koopa model motion resource */
+    DATANUM(DATA_capsulechar1, 7), /* Koopa model motion resource */
+    DATANUM(DATA_capsulechar1, 4), /* Koopa model motion resource */
+    DATANUM(DATA_capsulechar1, 10), /* Koopa model motion resource */
+    HU_DATANUM_NONE, /* all-bits-set motion table terminator */
 };
 static int koopaDiceResultTbl[5] = { 5, 10, 20, 30, -1 };
 static int koopaLoseMesTbl[3] = {
@@ -327,19 +357,30 @@ static int koopaLoseMesTbl2[3] = {
 static int koopaMdlId = -1;
 static int teresaStealMesId = -1;
 static GXColor teresaLightColor = { 255, 190, 255, 255 };
+static char capspecialMesFormat[3] = "%d";
+static char capspecialMotionNode[5] = "head";
+static char capspecialTargetNode[8] = "target";
 static int miracleBackFile = CAPSPECIAL_DATA_MIRACLE_TRADE_BACK;
-static u32 donkeyMgFile[2] = { 0x0005008C, 0x0005008C }; /* minigame archive resource identifier pair */
-static u8 donkeyDiceTbl[8] = { 1, 2, 3, 4, 0xFF, 0, 0, 0 }; /* dice value table terminator sentinel */
-static u32 koopaMgFile[2] = { 0x0005008D, 0x0005008D }; /* minigame archive resource identifier pair */
-static u8 koopaDiceTbl[8] = { 1, 2, 3, 4, 0xFF, 0, 0, 0 }; /* dice value table terminator sentinel */
+static u32 donkeyMgFile[2] = { DATANUM(DATA_board, 140), DATANUM(DATA_board, 140) }; /* minigame archive resource identifier pair */
+static u8 donkeyDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 }; /* dice value table terminator sentinel */
+static u32 koopaMgFile[2] = { DATANUM(DATA_board, 141), DATANUM(DATA_board, 141) }; /* minigame archive resource identifier pair */
+static u8 koopaDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 }; /* dice value table terminator sentinel */
 static int kettouMotId[12];
-static int mgResultData[4];
-static int diceHitTimer;
-static OMOBJ *miracleSprObj;
-static TERESA_STEAL_HOOK teresaStealHook;
-static TERESA_STEAL_BEGIN_HOOK teresaStealBeginHook;
-static int teresaStealCoinNum;
+typedef struct {
+    s16 playerNo1;
+    s16 playerNo2;
+    s16 coinNum;
+    s16 starNum;
+    s16 resultNo;
+} CAP_MG_RESULT;
+
+static CAP_MG_RESULT mgResultData;
 static TERESA_FADE_WORK *teresaFadeWork;
+static int teresaStealCoinNum;
+static TERESA_STEAL_BEGIN_HOOK teresaStealBeginHook;
+static TERESA_STEAL_HOOK teresaStealHook;
+static OMOBJ *miracleSprObj;
+static int diceHitTimer;
 
 extern void mbDiceObjHit(int playerNo);
 extern int mbDiceExec(int playerNo, int diceType, s8 *valueTbl,
@@ -380,7 +421,7 @@ extern void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type);
 extern void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *pos);
 extern void mbev_CapVibrate(int type);
 extern OMOBJ *mbGuideCreateIn(void);
-extern int mbGuideModelGet(OMOBJ *obj);
+extern MBMODELID mbGuideModelGet(OMOBJ *obj);
 extern void mbGuideKill(OMOBJ *obj);
 extern void mbev_CapObjClose(EVCAPWORK *work, int objId);
 extern void mbev_CapPlayerRotate(int playerNo, float angle);
@@ -425,6 +466,11 @@ extern int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
     int playerNo, BOOL highF);
 extern int mbev_CapStarManNumGet(OMOBJ *obj);
 extern void mbWipeDissolveFadeIn(void);
+extern void mbStatusMoveTo(int playerNo, HuVecF *posBegin, HuVecF *posEnd);
+extern void mbStatusPosOnGet(int statusNo, HuVecF *pos);
+extern void mbStatusPosOffGet(int statusNo, HuVecF *pos);
+extern void mbStatusDispSet(int playerNo, BOOL dispF);
+extern void mbStatusDispForceSet(int playerNo, BOOL dispF);
 extern void mbWipeDissolveFadeOutTime(int time);
 extern int mbStarObjCreate(void);
 extern void mbStarObjPosSetV(int objNo, const HuVecF *pos);
@@ -444,9 +490,9 @@ static void ev_CapMiracleCoinTrade(CAPWORK *work, int playerNo1,
     int playerNo2, int coinNum1, int coinNum2);
 static void ev_CapMiracleStarTrade(CAPWORK *work, int playerNo1,
     int playerNo2, int starNum1, int starNum2);
-static void ev_CapMiracleWindowFadeOut(s16 oldModel, s16 newModel,
+static void ev_CapMiracleWindowFadeOut(int oldModel, int newModel,
     int timeMax, BOOL reverseF);
-static void ev_CapMiracleWindowFadeIn(s16 oldModel, s16 newModel,
+static void ev_CapMiracleWindowFadeIn(int oldModel, int newModel,
     int timeMax, BOOL reverseF, int motionStepFrames, int motionTimeCount,
     int *motionTimes);
 static int ev_CapMiracleDiceExec(int playerNo, int modelId, int timeMax,
@@ -465,9 +511,9 @@ static int ev_CapKettouMesGet(int messNo);
 static void ev_CapKettouReturn(CAPWORK *work);
 static int ev_CapKoopaStart(CAPWORK *work);
 static int ev_CapKoopaCoin(CAPWORK *work);
-static void ev_CapKoopaReturn(CAPWORK *work);
+static int ev_CapKoopaReturn(CAPWORK *work);
 static u16 ev_CapKoopaDicePadBtnHook(void);
-static void ev_CapKoopaDiceMotHook(void);
+static void ev_CapKoopaDiceMotHook(int playerNo);
 static int ev_CapDonkeyStart(CAPWORK *work);
 static void ev_CapDonkeyCoin(CAPWORK *work);
 static void ev_CapDonkeyReturn(CAPWORK *work);
@@ -481,64 +527,56 @@ void mbev_CapTeresa(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
     HuVecF playerPos;
+    HuVecF targetStartPos;
     HuVecF objectPos;
     HuVecF direction;
     HuVecF cameraRot;
-    HuVecF targetPos;
-    HuVecF targetStartPos;
     HuVecF lightAim;
     HuVecF coinPos;
     HuVecF coinVel;
     Mtx hookMtx;
     GXColor lightColors[HU3D_GLIGHT_MAX];
-    int motionFiles[] = {
-        CAPSPECIAL_DATA_TERESA_MOTION_IDLE,
-        CAPSPECIAL_DATA_TERESA_MOTION_STEAL,
-        CAPSPECIAL_DATA_TERESA_MOTION_ITEM,
-        -1,
-    };
-    int targetPlayers[GW_PLAYER_MAX - 1];
-    int enabledPlayers[GW_PLAYER_MAX - 1];
+    HU3D_LIGHT *lightP;
+    int motionFiles[16];
+    int targetPlayers[GW_PLAYER_MAX];
+    int playerMotions[3];
+    int enabledPlayers[GW_PLAYER_MAX];
     char customMes[16];
-    int playerNo = work->playerNo;
-    int linkMasu;
-    int objectId;
-    int targetPlayer = -1;
     int targetNum;
+    int currentMasu;
+    int linkMasu;
+    int turnCoinMax;
+    int coinNum;
+    int pressNum;
+    int coinEffect;
+    int capsuleIndex;
+    int enabledNum;
+    int starEnabledNum;
+    int helpWin;
+    int choice;
+    int playerNo;
+    int targetMasu;
+    int objectId;
+    int targetPlayer;
     int coinTargetNum;
     int starTargetNum;
-    int stealType = -1;
-    int choice;
-    int enabledNum;
-    int capsuleIndex;
+    int stealType;
     int itemObjectId;
-    int idleMotion;
-    int stealMotion;
-    int starMotion;
     int starObjectId;
-    int helpWin;
-    int pressNum;
     int alpha;
-    int coinNum;
-    int coinEffect;
     int lightId;
-    int turnCoinMax;
     int i;
     int j;
-    float angle;
-    float time;
     float weight;
     float stealRate;
-    float randomValue;
     float launchAngle;
     float launchElevation;
-    float launchScale;
-    char *hookName;
+    BOOL cancelF;
     BOOL musicChanged = FALSE;
 
     mbev_CapWait(work);
     if (!GwSystem.curTime) {
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_UNAVAILABLE, 10);
         mbWinTopWait();
         HuPrcEnd();
@@ -548,8 +586,10 @@ void mbev_CapTeresa(void)
     work->glowObj = mbev_CapEffGlowCreate();
     work->coinObj = mbev_CapEffCoinCreate();
     mbev_CapEffCoinGlowSet(work->coinObj, work->glowObj);
+    playerNo = work->playerNo;
+    currentMasu = GwPlayer[playerNo].masuId;
     mbPlayerPosGet(playerNo, &playerPos);
-    linkMasu = mbMasuAttrFindLink(GwPlayer[playerNo].masuId,
+    linkMasu = mbMasuAttrFindLink(currentMasu,
         CAPSPECIAL_MASU_ATTR_TERESA_LINK);
     if (linkMasu != -1) {
         mbMasuPosGet(linkMasu, &objectPos);
@@ -567,19 +607,25 @@ void mbev_CapTeresa(void)
         objectPos.z -= 200.0f;
     }
     PSVECSubtract(&objectPos, &playerPos, &direction);
-    objectId = mbev_CapObjCreate(&work->objWork,
-        CAPSPECIAL_DATA_TERESA_MODEL, motionFiles,
-        FALSE, 5, FALSE);
+    {
+        motionFiles[0] = CAPSPECIAL_DATA_TERESA_MOTION_IDLE;
+        motionFiles[1] = CAPSPECIAL_DATA_TERESA_MOTION_STEAL;
+        motionFiles[2] = CAPSPECIAL_DATA_TERESA_MOTION_ITEM;
+        motionFiles[3] = -1;
+        objectId = mbev_CapObjCreate(&work->objWork,
+            CAPSPECIAL_DATA_TERESA_MODEL, motionFiles,
+            FALSE, 5, FALSE);
+    }
     mbObjMotionSet(objectId, 1, HU3D_MOTATTR_LOOP);
     mbObjLayerSet(objectId, 4);
     mbObjScaleSet(objectId, 2.0f, 2.0f, 2.0f);
     mbObjPosSetV(objectId, &objectPos);
-    angle = (float)(180.0 * (atan2(direction.x, direction.z) / M_PI));
     mbObjRotSet(objectId, 0.0f,
         (float)(180.0 + (180.0 * (atan2(direction.x, direction.z) / M_PI))),
         0.0f);
     mbev_CapTeresaFadeCreate(objectId);
-    mbPlayerRotSet(playerNo, 0.0f, angle, 0.0f);
+    mbPlayerRotSet(playerNo, 0.0f,
+        (float)(180.0 * (atan2(direction.x, direction.z) / M_PI)), 0.0f);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (i != playerNo) {
             mbPlayerDispSet(i, FALSE);
@@ -603,8 +649,7 @@ void mbev_CapTeresa(void)
         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_INSUFFICIENT_COIN, 10);
         mbWinTopWait();
     } else {
-        coinTargetNum = 0;
-        starTargetNum = 0;
+        coinTargetNum = starTargetNum = 0;
         if (mbPlayerCoinGet(playerNo) >= 5) {
             for (i = 0; i < GW_PLAYER_MAX; i++) {
                 if (!mbev_CapPlayerCheck(i, playerNo)
@@ -621,22 +666,21 @@ void mbev_CapTeresa(void)
                 }
             }
         }
-        targetNum = 0;
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+for (i = 0, targetNum = 0; i < GW_PLAYER_MAX; i++) {
             if (i != playerNo) {
-                targetPlayers[targetNum++] = i;
+                targetPlayers[targetNum] = i;
+                targetNum++;
             }
         }
-        enabledNum = 0;
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+for (i = 0, starEnabledNum = 0; i < GW_PLAYER_MAX; i++) {
             if (!mbev_CapPlayerCheck(i, playerNo)
                 && mbPlayerStarGet(i) > 0) {
-                enabledNum++;
+                starEnabledNum++;
             }
         }
 
         if (coinTargetNum <= 0 && starTargetNum <= 0
-            && mbPlayerCoinGet(playerNo) < 40 && enabledNum >= 1) {
+            && mbPlayerCoinGet(playerNo) < 40 && starEnabledNum >= 1) {
             mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
             mbWinCreate(2, CAPSPECIAL_MESS_TERESA_INSUFFICIENT_COIN, 10);
             mbWinTopWait();
@@ -645,12 +689,15 @@ void mbev_CapTeresa(void)
             mbWinCreate(2, CAPSPECIAL_MESS_TERESA_NO_TARGET, 10);
             mbWinTopWait();
         } else {
-            mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
-            mbWinCreate(2, teresaStealMesId == -1
-                ? CAPSPECIAL_MESS_TERESA_INTRO
-                : CAPSPECIAL_MESS_TERESA_CUSTOM_INTRO,
-                10);
-            mbWinTopWait();
+            if (teresaStealMesId == -1) {
+                mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                mbWinCreate(2, CAPSPECIAL_MESS_TERESA_INTRO, 10);
+                mbWinTopWait();
+            } else {
+                mbAudFXPlay(CAPSPECIAL_SE_TERESA_MESSAGE);
+                mbWinCreate(2, CAPSPECIAL_MESS_TERESA_CUSTOM_INTRO, 10);
+                mbWinTopWait();
+            }
 
             for (;;) {
                 if (teresaStealMesId == -1) {
@@ -663,21 +710,24 @@ void mbev_CapTeresa(void)
                         mbWinTopChoiceDisable(1);
                     }
                     if (GwPlayer[playerNo].comF) {
-                        mbComChoiceListDownSet(
-                            coinTargetNum != 0 && starTargetNum != 0);
+                        if (coinTargetNum != 0 && starTargetNum != 0) {
+                            mbComChoiceListDownSet(1);
+                        } else {
+                            mbComChoiceListDownSet(0);
+                        }
                     }
                     mbWinTopWait();
                     stealType = mbWinTopChoiceGet();
                     if (stealType == 2 || stealType == -1) {
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_CANCEL, 10);
                         mbWinTopWait();
-                        stealType = -1;
-                        break;
+                        targetPlayer = -1;
+                        goto cleanup;
                     }
                 } else {
                     mbWinCreateChoice(1, CAPSPECIAL_MESS_TERESA_CUSTOM_CHOICE,
                         10, 0);
-                    sprintf(customMes, "%d", teresaStealCoinNum);
+                    sprintf(customMes, capspecialMesFormat, teresaStealCoinNum);
                     mbWinTopInsertMesSet(teresaStealMesId, 0);
                     mbWinTopInsertMesSet((u32)customMes, 1);
                     if (coinTargetNum == 0) {
@@ -690,70 +740,104 @@ void mbev_CapTeresa(void)
                         mbWinTopChoiceDisable(2);
                     }
                     if (GwPlayer[playerNo].comF) {
-                        mbComChoiceListDownSet(
-                            coinTargetNum != 0 && starTargetNum != 0);
+                        if (coinTargetNum != 0 && starTargetNum != 0) {
+                            mbComChoiceListDownSet(1);
+                        } else {
+                            mbComChoiceListDownSet(0);
+                        }
                     }
                     mbWinTopWait();
                     stealType = mbWinTopChoiceGet();
                     if (stealType == 3 || stealType == -1) {
                         mbWinCreate(2, CAPSPECIAL_MESS_TERESA_CANCEL, 10);
                         mbWinTopWait();
-                        stealType = -1;
-                        break;
+                        targetPlayer = -1;
+                        goto cleanup;
                     }
                     if (stealType == 2) {
                         break;
                     }
                 }
 
+                {
                 mbWinCreateChoice(1, CAPSPECIAL_MESS_TERESA_TARGET_CHOICE, 10,
                     0);
-                for (i = 0; i < targetNum; i++) {
-                    mbWinTopInsertMesSet(
-                        mbPlayerNameMesGet(targetPlayers[i]), i);
+                mbWinTopInsertMesSet(mbPlayerNameMesGet(targetPlayers[0]), 0);
+                mbWinTopInsertMesSet(mbPlayerNameMesGet(targetPlayers[1]), 1);
+                mbWinTopInsertMesSet(mbPlayerNameMesGet(targetPlayers[2]), 2);
+                for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
                     enabledPlayers[i] = targetPlayers[i];
-                    if ((stealType == 0
-                            && mbPlayerCoinGet(targetPlayers[i]) <= 0)
-                        || (stealType == 1
-                            && mbPlayerStarGet(targetPlayers[i]) <= 0)
-                        || (GwSystem.tagF
-                            && mbev_CapPlayerCheck(
-                                playerNo, targetPlayers[i]))) {
+                }
+                if (stealType == 0) {
+                    for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
+                        if (mbPlayerCoinGet(targetPlayers[i]) <= 0) {
+                            mbWinTopChoiceDisable(i);
+                            enabledPlayers[i] = -1;
+                        }
+                    }
+                } else {
+                    for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
+                        if (mbPlayerStarGet(targetPlayers[i]) <= 0) {
+                            mbWinTopChoiceDisable(i);
+                            enabledPlayers[i] = -1;
+                        }
+                    }
+                }
+                for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
+                    if (GWTeamFGet()
+                        && mbev_CapPlayerCheck(playerNo, targetPlayers[i])) {
                         mbWinTopChoiceDisable(i);
                         enabledPlayers[i] = -1;
                     }
                 }
+                {
+                    i = 0;
+                    enabledNum = 0;
+                    for (; i < GW_PLAYER_MAX - 1; i++) {
+                        if (enabledPlayers[i] >= 0) {
+                            enabledNum++;
+                        }
+                    }
+                }
                 if (GwPlayer[playerNo].comF) {
-                    mbComChoiceListDownSet(mbev_CapPlayerComSelKettouGet(
-                        playerNo, stealType, enabledPlayers, targetNum));
+                    if (stealType == 0) {
+                        j = mbev_CapPlayerComSelKettouGet(playerNo,
+                            0, enabledPlayers, GW_PLAYER_MAX - 1);
+                        mbComChoiceListDownSet(j);
+                    } else {
+                        j = mbev_CapPlayerComSelKettouGet(playerNo,
+                            1, enabledPlayers, GW_PLAYER_MAX - 1);
+                        mbComChoiceListDownSet(j);
+                    }
                 }
                 mbWinTopWait();
                 choice = mbWinTopChoiceGet();
+                cancelF = FALSE;
                 if (choice == -1) {
-                    continue;
-                }
-                if (choice < targetNum) {
+                    cancelF = TRUE;
+                } else if (choice < GW_PLAYER_MAX - 1) {
                     targetPlayer = targetPlayers[choice];
                 } else {
-                    j = mbRandMod(targetNum);
+                    j = mbRandMod(GW_PLAYER_MAX - 1);
                     targetPlayer = -1;
-                    for (i = 0; i < targetNum; i++) {
+                    for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
                         if (enabledPlayers[j] >= 0) {
                             targetPlayer = enabledPlayers[j];
                             break;
                         }
-                        if (++j >= targetNum) {
+                        if (++j >= GW_PLAYER_MAX - 1) {
                             j = 0;
                         }
                     }
                 }
-                if (targetPlayer >= 0) {
-                    break;
+                if (cancelF) {
+                    continue;
+                }
+                break;
                 }
             }
 
-            if (stealType >= 0) {
-                if (teresaStealMesId != -1 && stealType == 2) {
+            if (teresaStealMesId != -1 && stealType == 2) {
                     mbCoinAddExec(playerNo, -teresaStealCoinNum);
                 } else if (stealType == 0) {
                     mbCoinAddExec(playerNo, -5);
@@ -764,15 +848,10 @@ void mbev_CapTeresa(void)
                 mbWinCreate(2, CAPSPECIAL_MESS_TERESA_PAYMENT, 10);
                 mbWinTopWait();
 
-                i = 1;
-                for (;;) {
-                    if ((float)i > 60.0f) {
-                        break;
-                    }
-                    mbev_CapTeresaFadeSet(
-                        255.0f * (1.0f - ((float)i / 60.0f)));
+                for (i = 1; (float)i <= 60.0f; i++) {
+                    weight = (float)i / 60.0f;
+                    mbev_CapTeresaFadeSet(255.0f * (1.0f - weight));
                     HuPrcVSleep();
-                    i++;
                 }
                 mbev_CapTeresaFadeSet(0.0f);
 
@@ -782,28 +861,30 @@ void mbev_CapTeresa(void)
                     } else {
                         mbWipeDissolveFadeOutTime(1);
                     }
-                    if (teresaStealBeginHook != NULL) {
-                        teresaStealBeginHook(playerNo, objectId);
-                    }
+                    teresaStealBeginHook(playerNo, objectId);
                 } else {
                     mbWipeDissolveFadeOutTime(1);
-                    capsuleIndex = -1;
-                    for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
+                    for (i = 0, capsuleIndex = -1;
+                        i < mbPlayerCapsuleMaxGet(); i++) {
                         if (mbPlayerCapsuleGet(targetPlayer, i)
                             == CAPSPECIAL_CAPSULE_LIGHT) {
                             capsuleIndex = i;
+                            break;
                         }
                     }
-                    targetPos.x = targetPos.y = targetPos.z = 0.0f;
+                    targetMasu = GwPlayer[targetPlayer].masuId;
                     mbPlayerPosGet(targetPlayer, &targetStartPos);
                     mbev_PlayerColMasu(targetPlayer,
-                        GwPlayer[targetPlayer].masuId, TRUE);
+                        targetMasu, TRUE);
                     for (i = 0; i < GW_PLAYER_MAX; i++) {
-                        mbPlayerDispSet(i, i == targetPlayer);
+                        mbPlayerDispSet(i, TRUE);
+                        if (i != targetPlayer) {
+                            mbPlayerDispSet(i, FALSE);
+                        }
                     }
                     mbCameraPlayerViewSetFast(targetPlayer, 0);
                     mbCameraMoveWait();
-                    mbMasuPosGet(GwPlayer[targetPlayer].masuId, &cameraRot);
+                    mbMasuPosGet(targetMasu, &cameraRot);
                     cameraRot.y += 300.0f;
                     if (capsuleIndex != -1) {
                         cameraRot.y -= 150.0f;
@@ -813,29 +894,30 @@ void mbev_CapTeresa(void)
                     mbObjRotSet(objectId, 0.0f, 0.0f, 0.0f);
                     mbObjDispSet(objectId, FALSE);
 
-                    idleMotion = mbev_CapPlayerMotionCreate(&work->objWork,
+                    playerMotions[0] = mbev_CapPlayerMotionCreate(&work->objWork,
                         targetPlayer, CHARMOT_HSF_c000m1_323);
-                    stealMotion = mbev_CapPlayerMotionCreate(&work->objWork,
+                    playerMotions[1] = mbev_CapPlayerMotionCreate(&work->objWork,
                         targetPlayer, CHARMOT_HSF_c000m1_344);
-                    starMotion = mbev_CapPlayerMotionCreate(&work->objWork,
+                    playerMotions[2] = mbev_CapPlayerMotionCreate(&work->objWork,
                         targetPlayer, CHARMOT_HSF_c000m1_457);
-                    mbPlayerMotionShiftSet(targetPlayer, idleMotion, 0.0f,
+                    mbPlayerMotionShiftSet(targetPlayer, playerMotions[0], 0.0f,
                         8.0f, HU3D_MOTATTR_LOOP);
                     itemObjectId = mbev_CapObjCreate(&work->objWork,
                         CAPSPECIAL_DATA_TERESA_STOLEN_CAPSULE, NULL, FALSE, 0,
                         FALSE);
-                    hookName = CharModelItemHookGet(
-                        GwPlayer[targetPlayer].charNo, 4, 0);
-                    mbObjHookSet(mbPlayerObjIDGet(targetPlayer), hookName,
+                    mbObjHookSet(mbPlayerObjIDGet(targetPlayer),
+                        CharModelItemHookGet(
+                            GwPlayer[targetPlayer].charNo, 4, 0),
                         itemObjectId);
                     mbObjDispSet(itemObjectId, FALSE);
 
-                    for (i = 0; i < HU3D_GLIGHT_MAX; i++) {
-                        lightColors[i] = Hu3DGlobalLight[i].color;
-                        if (Hu3DGlobalLight[i].type != -1) {
-                            Hu3DGlobalLight[i].color.r *= 0.5f;
-                            Hu3DGlobalLight[i].color.g *= 0.5f;
-                            Hu3DGlobalLight[i].color.b *= 0.5f;
+                    lightP = Hu3DGlobalLight;
+                    for (i = 0; i < HU3D_GLIGHT_MAX; i++, lightP++) {
+                        if (lightP->type != -1) {
+                            lightColors[i] = lightP->color;
+                            lightP->color.r *= 0.5f;
+                            lightP->color.g *= 0.5f;
+                            lightP->color.b *= 0.5f;
                         }
                     }
                     lightId = -1;
@@ -851,15 +933,10 @@ void mbev_CapTeresa(void)
                         mbObjLayerSet(itemObjectId, 5);
                         mbPlayerLayerSet(targetPlayer, 5);
                         mbObjDispSet(objectId, TRUE);
-                        i = 1;
-                        for (;;) {
-                            if ((float)i > 60.0f) {
-                                break;
-                            }
-                            mbev_CapTeresaFadeSet(
-                                255.0f * ((float)i / 60.0f));
+                        for (i = 1; (float)i <= 60.0f; i++) {
+                            weight = (float)i / 60.0f;
+                            mbev_CapTeresaFadeSet(255.0f * weight);
                             HuPrcVSleep();
-                            i++;
                         }
                         mbev_CapTeresaFadeSet(255.0f);
                         mbPlayerRotateStart(targetPlayer, 180, 15);
@@ -867,12 +944,12 @@ void mbev_CapTeresa(void)
                             HuPrcVSleep();
                         }
                         omVibrate(targetPlayer, 20, 7, 3);
-                        mbPlayerMotionShiftSet(targetPlayer, starMotion,
+                        mbPlayerMotionShiftSet(targetPlayer, playerMotions[2],
                             0.0f, 8.0f, 0);
                         mbObjDispSet(itemObjectId, TRUE);
                         for (i = 1; (float)i < 18.0f; i++) {
-                            time = (float)i / 18.0f;
-                            mbObjScaleSet(itemObjectId, time, time, time);
+                            weight = (float)i / 18.0f;
+                            mbObjScaleSet(itemObjectId, weight, weight, weight);
                             HuPrcVSleep();
                         }
                         mbObjScaleSet(itemObjectId, 1.0f, 1.0f, 1.0f);
@@ -883,29 +960,31 @@ void mbev_CapTeresa(void)
                             mbObjModelIDGet(objectId), &teresaLightPos,
                             &teresaLightDir, &teresaLightColor);
                         Hu3DLLightSpotSet(mbObjModelIDGet(objectId), lightId,
-                            GX_SP_SHARP, 0.001f);
+                            0.001f, GX_SP_SHARP);
                         Hu3DLLightStaticSet(
                             mbObjModelIDGet(objectId), lightId, TRUE);
                         Hu3DLLightInfinitytSet(
                             mbObjModelIDGet(objectId), lightId);
                         Hu3DMotionCalc(mbObjModelIDGet(
                             mbPlayerObjIDGet(playerNo)));
-                        hookName = CharModelItemHookGet(
-                            GwPlayer[playerNo].charNo, 4, 0);
-                        Hu3DModelObjMtxGet(mbObjModelIDGet(
-                                mbPlayerObjIDGet(playerNo)),
-                            hookName, hookMtx);
-                        objectPos.x = hookMtx[0][3];
-                        objectPos.y = hookMtx[1][3];
-                        objectPos.z = hookMtx[2][3];
-                        lightAim = objectPos;
-                        lightAim.y -= 100.0f;
-                        lightAim.z += 200.0f;
-                        Hu3DLLightPosAimSetV(mbObjModelIDGet(objectId),
-                            lightId, &objectPos, &lightAim);
-                        Hu3DLLightPosAngleSet(mbObjModelIDGet(objectId),
-                            lightId, objectPos.x, objectPos.y, objectPos.z,
-                            -45.0f, 0.0f);
+                        {
+                            Hu3DModelObjMtxGet(mbObjModelIDGet(
+                                    mbPlayerObjIDGet(playerNo)),
+                                CharModelItemHookGet(
+                                    GwPlayer[playerNo].charNo, 4, 0),
+                                hookMtx);
+                            cameraRot.x = hookMtx[0][3];
+                            cameraRot.y = hookMtx[1][3];
+                            cameraRot.z = hookMtx[2][3];
+                            lightAim.x = cameraRot.x;
+                            lightAim.y = cameraRot.y - 100.0f;
+                            lightAim.z = cameraRot.z + 200.0f;
+                            Hu3DLLightPosAimSetV(mbObjModelIDGet(objectId),
+                                lightId, &cameraRot, &lightAim);
+                            Hu3DLLightPosAngleSet(mbObjModelIDGet(objectId),
+                                lightId, cameraRot.x, cameraRot.y,
+                                cameraRot.z, -45.0f, 0.0f);
+                        }
                         mbObjMotionShiftSet(objectId, 3, 0.0f, 8.0f,
                             HU3D_MOTATTR_LOOP);
                         HuPrcSleep(180);
@@ -919,18 +998,13 @@ void mbev_CapTeresa(void)
                         mbWinTopPlayerDisable(targetPlayer);
                         mbWinTopWait();
                         mbObjDispSet(objectId, TRUE);
-                        i = 1;
-                        for (;;) {
-                            if ((float)i > 60.0f) {
-                                break;
-                            }
-                            mbev_CapTeresaFadeSet(
-                                255.0f * ((float)i / 60.0f));
+                        for (i = 1; (float)i <= 60.0f; i++) {
+                            weight = (float)i / 60.0f;
+                            mbev_CapTeresaFadeSet(255.0f * weight);
                             HuPrcVSleep();
-                            i++;
                         }
                         mbev_CapTeresaFadeSet(255.0f);
-                        mbPlayerMotionShiftSet(targetPlayer, stealMotion,
+                        mbPlayerMotionShiftSet(targetPlayer, playerMotions[1],
                             0.0f, 8.0f, HU3D_MOTATTR_LOOP);
                         mbObjMotionShiftSet(objectId, 2, 0.0f, 8.0f,
                             HU3D_MOTATTR_LOOP);
@@ -939,28 +1013,27 @@ void mbev_CapTeresa(void)
                         mbPlayerColSnapPlayerSet(targetPlayer, FALSE);
                         for (i = 0; (float)i < 30.0f; i++) {
                             weight = (float)i / 30.0f;
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &objectPos);
-                            objectPos.y += 100.0f
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 100.0f
                                 * (3.0f - (2.0f * weight));
                             alpha = 255.0f - (127.0f * weight);
-                            mbObjPosSetV(objectId, &objectPos);
+                            mbObjPosSetV(objectId, &cameraRot);
                             mbev_CapTeresaFadeSet(alpha);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 50.0f * weight;
-                            mbPlayerPosSetV(targetPlayer, &targetPos);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 50.0f * weight;
+                            mbPlayerPosSetV(targetPlayer, &cameraRot);
                             HuPrcVSleep();
                         }
-                        pressNum = 0;
-                        for (i = 0; (float)i < 120.0f; i++) {
+                        for (i = 0, pressNum = 0; (float)i < 120.0f; i++) {
                             weight = (float)i / 120.0f;
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &objectPos);
-                            objectPos.y += 100.0f
-                                + (20.0f * (float)sin((M_PI
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 100.0
+                                + (20.0 * sin((M_PI
                                     * (1440.0f * weight)) / 180.0));
-                            mbObjPosSetV(objectId, &objectPos);
+                            mbObjPosSetV(objectId, &cameraRot);
                             mbev_CapTeresaFadeSet(alpha);
                             if (HuPadBtnDown[GwPlayer[targetPlayer].padNo]
                                 & PAD_BUTTON_A) {
@@ -969,8 +1042,8 @@ void mbev_CapTeresa(void)
                                     alpha--;
                                 }
                             }
-                            alpha += (int)(2.5f * (float)sin((M_PI
-                                * (360.0f * weight)) / 180.0));
+                            alpha += 2.5 * sin((M_PI
+                                * (360.0f * weight)) / 180.0);
                             if (alpha < 64 && (i & 7) == 0) {
                                 alpha++;
                             }
@@ -979,20 +1052,20 @@ void mbev_CapTeresa(void)
                             } else if (alpha > 255) {
                                 alpha = 255;
                             }
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 50.0f;
-                            mbPlayerPosSetV(targetPlayer, &targetPos);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 50.0f;
+                            mbPlayerPosSetV(targetPlayer, &cameraRot);
                             HuPrcVSleep();
                         }
                         mbWinKill(helpWin);
                         for (i = 0; (float)i < 30.0f; i++) {
                             weight = 1.0f - ((float)i / 30.0f);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &objectPos);
-                            objectPos.y += 100.0f
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 100.0f
                                 + (100.0f * (2.0f - (2.0f * weight)));
-                            mbObjPosSetV(objectId, &objectPos);
+                            mbObjPosSetV(objectId, &cameraRot);
                             if (alpha < 255) {
                                 alpha += 25;
                             }
@@ -1000,10 +1073,10 @@ void mbev_CapTeresa(void)
                                 alpha = 255;
                             }
                             mbev_CapTeresaFadeSet(alpha);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 50.0f * weight;
-                            mbPlayerPosSetV(targetPlayer, &targetPos);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 50.0f * weight;
+                            mbPlayerPosSetV(targetPlayer, &cameraRot);
                             HuPrcVSleep();
                         }
                         mbPlayerMotionShiftSet(targetPlayer, 6, 0.0f,
@@ -1023,12 +1096,12 @@ void mbev_CapTeresa(void)
                             turnCoinMax = 40;
                         }
                         if (!GwPlayer[targetPlayer].comF) {
-                            stealRate = 1.0f - (pressNum * 0.03125f);
+                            stealRate = 1.0f - ((float)pressNum / 32.0f);
                         } else {
-                            randomValue = MBCapsuleEffRandF();
                             stealRate = 1.0f
                                 - (0.1f + (GwPlayer[targetPlayer].comDif
-                                    * (0.2f + (0.1f * randomValue))));
+                                    * (0.2f
+                                        + (0.1f * MBCapsuleEffRandF()))));
                         }
                         if (stealRate < 0.1f) {
                             stealRate = 0.1f;
@@ -1040,29 +1113,29 @@ void mbev_CapTeresa(void)
                             coinNum = mbPlayerCoinGet(targetPlayer);
                         }
                         omVibrate(targetPlayer, 20, 7, 3);
-                        mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                            &objectPos);
+                        mbMasuPosGet(targetMasu,
+                            &cameraRot);
                         for (i = 0; i < coinNum; i++) {
                             launchAngle = 360.0f * MBCapsuleEffRandF();
-                            coinPos = objectPos;
+                            coinPos = cameraRot;
                             coinPos.y += 100.0f;
                             launchElevation = 70.0f
                                 + (15.0f * MBCapsuleEffRandF());
-                            launchScale = 0.8f
-                                + (0.3f * MBCapsuleEffRandF());
-                            coinVel.x = (float)(65.0f * launchScale
-                                * sin((M_PI * launchAngle) / 180.0)
-                                * cos((M_PI * launchElevation) / 180.0));
-                            coinVel.y = (float)(65.0f * launchScale
+                            weight = 65.0f
+                                * (0.8f + (0.3f * MBCapsuleEffRandF()));
+                            coinVel.x = (float)(weight
+                                * (sin((M_PI * launchAngle) / 180.0)
+                                * cos((M_PI * launchElevation) / 180.0)));
+                            coinVel.z = (float)(weight
+                                * (cos((M_PI * launchAngle) / 180.0)
+                                * cos((M_PI * launchElevation) / 180.0)));
+                            coinVel.y = (float)(weight
                                 * sin((M_PI * launchElevation) / 180.0));
-                            coinVel.z = (float)(65.0f * launchScale
-                                * cos((M_PI * launchAngle) / 180.0)
-                                * cos((M_PI * launchElevation) / 180.0));
                             coinEffect = mbev_CapEffCoinAdd(work->coinObj,
-                                &coinPos, &coinVel, 0.75f, 4.9f, 30, 4);
+                                &coinPos, &coinVel, 0.75f, 4.9f, 30, CAPSPECIAL_TERESA_COIN_EFFECT_ARG);
                             if (coinEffect >= 0) {
                                 mbev_CapEffCoinMaxYSet(work->coinObj,
-                                    coinEffect, objectPos.y + 300.0f);
+                                    coinEffect, cameraRot.y + 300.0f);
                             }
                             mbPlayerCoinAdd(targetPlayer, -1);
                             mbAudFXPlay(14);
@@ -1079,46 +1152,41 @@ void mbev_CapTeresa(void)
                         mbWinTopPlayerDisable(targetPlayer);
                         mbWinTopWait();
                         mbObjDispSet(objectId, TRUE);
-                        i = 1;
-                        for (;;) {
-                            if ((float)i > 60.0f) {
-                                break;
-                            }
-                            mbev_CapTeresaFadeSet(
-                                255.0f * ((float)i / 60.0f));
+                        for (i = 1; (float)i <= 60.0f; i++) {
+                            weight = (float)i / 60.0f;
+                            mbev_CapTeresaFadeSet(255.0f * weight);
                             HuPrcVSleep();
-                            i++;
                         }
                         mbev_CapTeresaFadeSet(255.0f);
                         starObjectId = mbStarObjCreate();
                         mbStarObjDispSet(starObjectId, FALSE);
-                        mbPlayerMotionShiftSet(targetPlayer, stealMotion,
+                        mbPlayerMotionShiftSet(targetPlayer, playerMotions[1],
                             0.0f, 8.0f, HU3D_MOTATTR_LOOP);
                         mbObjMotionShiftSet(objectId, 2, 0.0f, 8.0f,
                             HU3D_MOTATTR_LOOP);
                         mbPlayerColSnapPlayerSet(targetPlayer, FALSE);
                         for (i = 0; (float)i < 30.0f; i++) {
                             weight = (float)i / 30.0f;
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &objectPos);
-                            objectPos.y += 100.0f
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 100.0f
                                 * (3.0f - (2.0f * weight));
                             alpha = 255.0f - (127.0f * weight);
-                            mbObjPosSetV(objectId, &objectPos);
+                            mbObjPosSetV(objectId, &cameraRot);
                             mbev_CapTeresaFadeSet(alpha);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 50.0f * weight;
-                            mbPlayerPosSetV(targetPlayer, &targetPos);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 50.0f * weight;
+                            mbPlayerPosSetV(targetPlayer, &cameraRot);
                             HuPrcVSleep();
                         }
                         for (i = 0; (float)i < 30.0f; i++) {
                             weight = 1.0f - ((float)i / 30.0f);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &objectPos);
-                            objectPos.y += 100.0f
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 100.0f
                                 + (100.0f * (2.0f - (2.0f * weight)));
-                            mbObjPosSetV(objectId, &objectPos);
+                            mbObjPosSetV(objectId, &cameraRot);
                             if (alpha < 255) {
                                 alpha += 25;
                             }
@@ -1126,10 +1194,10 @@ void mbev_CapTeresa(void)
                                 alpha = 255;
                             }
                             mbev_CapTeresaFadeSet(alpha);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 50.0f * weight;
-                            mbPlayerPosSetV(targetPlayer, &targetPos);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 50.0f * weight;
+                            mbPlayerPosSetV(targetPlayer, &cameraRot);
                             HuPrcVSleep();
                         }
                         mbPlayerMotionShiftSet(targetPlayer, 6, 0.0f,
@@ -1138,31 +1206,34 @@ void mbev_CapTeresa(void)
                         mbPlayerStarAdd(targetPlayer, -1);
                         omVibrate(targetPlayer, 20, 20, 0);
                         for (i = 0; (float)i <= 60.0f; i++) {
+                            weight = (float)i / 60.0f;
                             weight = (float)sin((M_PI
-                                * (90.0f * ((float)i / 60.0f))) / 180.0);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 300.0f * weight;
-                            mbStarObjPosSetV(starObjectId, &targetPos);
+                                * (90.0f * weight)) / 180.0);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 3.0f * (100.0f * weight);
+                            mbStarObjPosSetV(starObjectId, &cameraRot);
                             mbStarObjRotSet(starObjectId, 0.0f,
                                 360.0f * weight, 0.0f);
                             mbStarObjScaleSet(
                                 starObjectId, weight, weight, weight);
                             mbStarObjDispSet(starObjectId, TRUE);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &objectPos);
-                            objectPos.y += 300.0f;
-                            objectPos.z -= 200.0f * weight;
-                            mbObjPosSetV(objectId, &objectPos);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 300.0f;
+                            cameraRot.z -= 2.0f * (100.0f * weight);
+                            mbObjPosSetV(objectId, &cameraRot);
                             HuPrcVSleep();
                         }
                         for (i = 0; (float)i <= 60.0f; i++) {
+                            weight = (float)i / 60.0f;
                             weight = (float)sin((M_PI
-                                * (90.0f * ((float)i / 60.0f))) / 180.0);
-                            mbMasuPosGet(GwPlayer[targetPlayer].masuId,
-                                &targetPos);
-                            targetPos.y += 300.0f + (500.0f * weight);
-                            mbStarObjPosSetV(starObjectId, &targetPos);
+                                * (90.0f * weight)) / 180.0);
+                            mbMasuPosGet(targetMasu,
+                                &cameraRot);
+                            cameraRot.y += 300.0f
+                                + (5.0f * (100.0f * weight));
+                            mbStarObjPosSetV(starObjectId, &cameraRot);
                             mbStarObjRotSet(starObjectId, 0.0f,
                                 720.0f * weight, 0.0f);
                             HuPrcVSleep();
@@ -1172,9 +1243,10 @@ void mbev_CapTeresa(void)
 
                     mbWipeDissolveFadeOutTime(1);
                     mbStarObjDispSetAll(TRUE);
-                    for (i = 0; i < HU3D_GLIGHT_MAX; i++) {
-                        if (Hu3DGlobalLight[i].type != -1) {
-                            Hu3DGlobalLight[i].color = lightColors[i];
+                    lightP = Hu3DGlobalLight;
+                    for (i = 0; i < HU3D_GLIGHT_MAX; i++, lightP++) {
+                        if (lightP->type != -1) {
+                            lightP->color = lightColors[i];
                         }
                     }
                     if (lightId != -1) {
@@ -1185,10 +1257,10 @@ void mbev_CapTeresa(void)
                         GwPlayer[targetPlayer].capsuleUseNum++;
                     }
                     mbPlayerLayerSet(targetPlayer, 3);
-                    hookName = CharModelItemHookGet(
-                        GwPlayer[targetPlayer].charNo, 4, 0);
                     mbObjHookObjReset(
-                        mbPlayerObjIDGet(targetPlayer), hookName);
+                        mbPlayerObjIDGet(targetPlayer),
+                        CharModelItemHookGet(
+                            GwPlayer[targetPlayer].charNo, 4, 0));
                     mbObjDispSet(itemObjectId, FALSE);
                     mbPlayerPosSetV(targetPlayer, &targetStartPos);
                     mbPlayerRotSet(targetPlayer, 0.0f, 0.0f, 0.0f);
@@ -1211,7 +1283,10 @@ void mbev_CapTeresa(void)
                         * (atan2(direction.x, direction.z) / M_PI)),
                     0.0f);
                 for (i = 0; i < GW_PLAYER_MAX; i++) {
-                    mbPlayerDispSet(i, i == playerNo);
+                    mbPlayerDispSet(i, TRUE);
+                    if (i != playerNo) {
+                        mbPlayerDispSet(i, FALSE);
+                    }
                 }
                 cameraRot = teresaCameraRot;
                 cameraRot.y = (float)(180.0 + (180.0
@@ -1228,15 +1303,10 @@ void mbev_CapTeresa(void)
                 } else {
                     mbWipeDissolveFadeIn();
                 }
-                i = 1;
-                for (;;) {
-                    if ((float)i > 60.0f) {
-                        break;
-                    }
-                    mbev_CapTeresaFadeSet(
-                        255.0f * ((float)i / 60.0f));
+                for (i = 1; (float)i <= 60.0f; i++) {
+                    weight = (float)i / 60.0f;
+                    mbev_CapTeresaFadeSet(255.0f * weight);
                     HuPrcVSleep();
-                    i++;
                 }
                 mbev_CapTeresaFadeSet(255.0f);
 
@@ -1303,8 +1373,8 @@ void mbev_CapTeresa(void)
                 }
             }
         }
-    }
 
+cleanup:
     if (!musicChanged) {
         mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
     }
@@ -1340,9 +1410,10 @@ void mbev_CapTeresaStealSet(int mesId, int coinNum, TERESA_STEAL_BEGIN_HOOK begi
     teresaStealHook = hook;
 }
 
+static const float lbl_802C42C4 = 255.0f;
+
 void mbev_CapTeresaFadeCreate(int objectId)
 {
-    extern const float lbl_802C42C4;
     int modelId;
     HU3D_MODEL *model;
     HSF_DATA *hsf;
@@ -1407,9 +1478,6 @@ void mbev_CapTeresaFadeKill(int objectId)
 static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     HSF_MATERIAL *material)
 {
-    extern const float lbl_802C4288;
-    extern const float lbl_802C42D0;
-    extern const float lbl_802C42E0;
     extern const float lbl_802C4368;
     extern const float lbl_802C436C;
     TERESA_FADE_WORK *work = teresaFadeWork;
@@ -1422,7 +1490,7 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     Mtx texMtx;
     float fov;
 
-    if (work == NULL) {
+    if (!work) {
         return;
     }
     if (!work->copyF) {
@@ -1435,16 +1503,13 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
         GXPixModeSync();
         work->copyF = TRUE;
     }
-    if (material->attrNum != 1) {
-        return;
-    }
-
+    if (material->attrNum == 1) {
     GXSetNumTexGens(2);
     GXSetNumTevStages(2);
     GXSetTevKAlphaSel(0, 0);
-    GXSetTexCoordGen2(0, 1, 4, 0x3C, GX_FALSE, 0x7D); /* texture-coordinate generation selector for the fade pass */
+    GXSetTexCoordGen2(0, 1, 4, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY); /* texture-coordinate generation selector for the fade pass */
     GXSetTevOrder(0, 0, 0, 0);
-    GXSetTevColorIn(0, 0xF, 8, 0xA, 0xF); /* TEV color-input selectors for sampled fade composition */
+    GXSetTevColorIn(0, GX_CC_ZERO, 8, GX_CC_RASC, GX_CC_ZERO); /* TEV color-input selectors for sampled fade composition */
     GXSetTevColorOp(0, 0, 0, 0, GX_TRUE, 0);
     GXSetTevAlphaIn(0, 7, 7, 7, 6);
     GXSetTevAlphaOp(0, 0, 0, 0, GX_TRUE, 0);
@@ -1452,26 +1517,24 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     Hu3DMatLightSet(drawObj->model, 0, material->hiliteScale);
     camera = &Hu3DCamera[Hu3DCameraNo];
     fov = camera->fov;
-    if (fov <= lbl_802C4288) {
-        fov = lbl_802C42E0;
+    if (fov <= 0.0f) {
+        fov = 30.0f;
     }
     C_MTXLightPerspective(perspective, fov, lbl_802C4368,
-        lbl_802C42D0, lbl_802C436C, lbl_802C42D0, lbl_802C42D0);
+        0.5f, lbl_802C436C, 0.5f, 0.5f);
     PSMTXInverse(Hu3DCameraMtx, cameraInv);
     PSMTXConcat(cameraInv, drawObj->matrix, objectMtx);
     PSMTXConcat(perspective, Hu3DCameraMtx, texMtx);
     PSMTXConcat(texMtx, objectMtx, texMtx);
-    GXLoadTexMtxImm(texMtx, 0x21, 0); /* projected texture matrix slot for the fade pass */
-    GXSetTexCoordGen2(1, 0, 0, 0x21, GX_FALSE, 0x7D); /* texture-coordinate generation selector for the fade pass */
+    GXLoadTexMtxImm(texMtx, GX_TEXMTX1, 0); /* projected texture matrix slot for the fade pass */
+    GXSetTexCoordGen2(1, 0, 0, GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY); /* texture-coordinate generation selector for the fade pass */
 
-    color.r = 255;
-    color.g = 255;
-    color.b = 255;
-    color.a = (u8)work->alpha;
+    color.r = color.g = color.b = 255;
+    color.a = (u8)teresaFadeWork->alpha;
     GXSetTevColor(3, color);
     GXSetTevOrder(1, 1, 1, 4);
     GXSetTevKAlphaSel(1, 0);
-    GXSetTevColorIn(1, 8, 0, 7, 0xF); /* TEV color-input selectors for sampled fade composition */
+    GXSetTevColorIn(1, 8, 0, 7, GX_CC_ZERO); /* TEV color-input selectors for sampled fade composition */
     GXSetTevColorOp(1, 0, 0, 0, GX_TRUE, 0);
     GXSetTevAlphaIn(1, 7, 7, 7, 6);
     GXSetTevAlphaOp(1, 0, 0, 0, GX_TRUE, 0);
@@ -1479,10 +1542,13 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     GXInitTexObj(&texture, work->textureData,
         (u16)work->textureWidth, (u16)work->textureHeight,
         GX_TF_RGB565, 0, 0, GX_FALSE);
-    GXInitTexObjLOD(&texture, 1, 1, lbl_802C4288, lbl_802C4288,
-        lbl_802C4288,
+    GXInitTexObjLOD(&texture, 1, 1, 0.0f, 0.0f,
+        0.0f,
         GX_FALSE, GX_FALSE, 0);
     GXLoadTexObj(&texture, 1);
+    } else {
+        return;
+    }
 }
 
 static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
@@ -1496,74 +1562,88 @@ static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
 
 void mbev_CapTeresaFadeSet(float alpha)
 {
-    extern const float lbl_802C4288;
-    extern const float lbl_802C42C4;
 
     if (teresaFadeWork) {
-        if (alpha < lbl_802C4288) {
-            alpha = lbl_802C4288;
+        if (alpha < 0.0f) {
+            alpha = 0.0f;
         }
-        if (alpha > lbl_802C42C4) {
-            alpha = lbl_802C42C4;
+        if (alpha > 255.0f) {
+            alpha = 255.0f;
         }
         teresaFadeWork->alpha = alpha;
     }
 }
 
+const float lbl_802C4368 = 1.2f;
+const float lbl_802C436C = -0.5f;
+const float lbl_802C4370 = 10.0f;
+const float lbl_802C4374 = -20.0f;
+
 void mbev_CapMiracle(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
     HuVecF savedPos[GW_PLAYER_MAX];
+    HuVecF playerPos;
+    HuVecF firstCameraRot;
+    HuVecF cameraOfs;
     HuVecF masuPos;
+    HuVecF guidePos;
     HuVecF cameraRot;
-    HuVecF cameraOfs = { 0.0f, 150.0f, 0.0f };
-    HuVecF zero = { 0.0f, 0.0f, 0.0f };
-    int playerNo = work->playerNo;
-    int currentMasu = GwPlayer[playerNo].masuId;
+    int playerNo;
+    int currentMasu;
     int nextMasu;
-    int guide0;
-    int guide1;
+    int guideIds[2];
     int guide;
     int i;
 
     mbev_CapWait(work);
     work->glowObj = mbev_CapEffGlowCreate();
-    mbPlayerPosGet(playerNo, &savedPos[playerNo]);
+    playerNo = work->playerNo;
+    currentMasu = GwPlayer[playerNo].masuId;
+    mbPlayerPosGet(playerNo, &playerPos);
+    mbMasuPosGet(currentMasu, &masuPos);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerPosGet(i, &savedPos[i]);
     }
     mbCameraPlayerViewSet(playerNo, 0);
     mbev_CapPlayerRotate(playerNo, 0.0f);
-    guide0 = mbev_CapObjCreate(&work->objWork, 0x00110000, /* event model resource identifier */
+    guideIds[0] = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 0), /* event model resource identifier */
         (int *)MiracleGuideMotTbl[0], FALSE, 5, FALSE);
-    mbObjMotionSet(guide0, 3, 0);
-    mbObjDispSet(guide0, FALSE);
-    guide1 = mbev_CapObjCreate(&work->objWork, 0x0011001B, /* event model resource identifier */
+    mbObjMotionSet(guideIds[0], 3, 0);
+    mbObjDispSet(guideIds[0], FALSE);
+    guideIds[1] = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 27), /* event model resource identifier */
         (int *)MiracleGuideMotTbl[1], FALSE, 5, FALSE);
-    guide = mbev_CapObjCreate(&work->objWork, 0x00110035, NULL, /* event model resource identifier */
-        FALSE, 5, FALSE);
-    mbObjHookSet(guide1, miracleItemHookName, guide);
+    mbObjHookSet(guideIds[1], miracleItemHookName,
+        mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 53), NULL, /* event model resource identifier */
+            FALSE, 5, FALSE));
     HuPrcVSleep();
-    mbObjMotionSet(guide1, 3, 0);
-    mbObjDispSet(guide1, FALSE);
-    work->_unkB6C = guide0;
-    work->_unkB70 = guide1;
+    mbObjMotionSet(guideIds[1], 3, 0);
+    mbObjDispSet(guideIds[1], FALSE);
+    work->eventData[0] = guideIds[0];
+    work->eventData[1] = guideIds[1];
     ev_CapMiracleMasu(work);
     mbWipeDissolveFadeOutTime(1);
-    nextMasu = 1;
-    while (nextMasu < mbMasuNumGet()
-        && !(mbMasuAttrGet(nextMasu) & 0x10000)) { /* board-space link attribute mask */
-        nextMasu++;
+    i = 1;
+    while (i < mbMasuNumGet()) {
+        if (mbMasuAttrGet(i) & MASU_FLAG_START) {
+            break;
+        }
+        i++;
     }
-    if (nextMasu >= mbMasuNumGet()) {
+    if (i < mbMasuNumGet()) {
+        nextMasu = i;
+    } else {
         nextMasu = 1;
     }
-    if (GwSystem.curTime) {
-        mbev_CapObjClose(&work->objWork, guide0);
-        guide = guide1;
+    if (!GwSystem.curTime) {
+        guide = guideIds[0];
     } else {
-        mbev_CapObjClose(&work->objWork, guide1);
-        guide = guide0;
+        guide = guideIds[1];
+    }
+    for (i = 0; i < 2; i++) {
+        if (guide != guideIds[i]) {
+            mbev_CapObjClose(&work->objWork, guideIds[i]);
+        }
     }
     HuPrcSleep(3);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -1574,39 +1654,51 @@ void mbev_CapMiracle(void)
     mbMasuPosGet(nextMasu, &masuPos);
     mbPlayerPosSetV(playerNo, &masuPos);
     mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
-    mbev_CapPlayerPosSet(&work->objWork, playerNo, nextMasu, &zero);
-    masuPos.x -= 200.0f;
-    masuPos.y += 200.0f;
-    mbObjPosSetV(guide, &masuPos);
+    cameraOfs.x = 200.0f;
+    cameraOfs.y = 0.0f;
+    cameraOfs.z = 0.0f;
+    mbev_CapPlayerPosSet(&work->objWork, playerNo, nextMasu, &cameraOfs);
+    guidePos.x = masuPos.x - 200.0f;
+    guidePos.y = masuPos.y + 200.0f;
+    guidePos.z = 0.0f;
+    mbObjPosSetV(guide, &guidePos);
     mbObjRotSet(guide, 0.0f, 0.0f, 0.0f);
     mbObjMotionSet(guide, 1, HU3D_MOTATTR_LOOP);
     mbCameraRotGet(&cameraRot);
-    mbCameraMoveMasu(nextMasu, &cameraRot, &cameraOfs, 1500.0f, -1.0f,
+    cameraOfs.x = 0.0f;
+    cameraOfs.y = 150.0f;
+    cameraOfs.z = 0.0f;
+    firstCameraRot.x = *((const float *)&lbl_802C4374);
+    firstCameraRot.y = firstCameraRot.z = 0.0f;
+    mbCameraMoveMasu(nextMasu, &firstCameraRot, &cameraOfs, 1500.0f, -1.0f,
         -1);
     mbCameraMoveWait();
     work->coinManObj = mbev_CapCoinManCreate();
     work->starManObj = mbev_CapStarManCreate();
     mbStatusDispForceSetAll(FALSE);
-    work->_unkB6C = guide;
-    work->_unkB70 = nextMasu;
+    work->eventData[0] = guide;
+    work->eventData[1] = nextMasu;
     ev_CapMiracleRun(work);
     mbWipeSpecialFadeInCreate(3, 1);
-    mbObjDispSet(guide0, FALSE);
-    mbObjDispSet(guide1, FALSE);
+    for (i = 0; i < 2; i++) {
+        mbObjDispSet(guideIds[i], FALSE);
+    }
     mbMasuPosGet(currentMasu, &masuPos);
     mbPlayerPosSetV(playerNo, &masuPos);
     mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
-    mbev_CapPlayerPosSet(&work->objWork, playerNo, currentMasu, &zero);
+    mbev_CapPlayerPosSet(&work->objWork, playerNo, currentMasu, NULL);
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerPosSetV(i, &savedPos[i]);
         mbPlayerMotionSet(i, 1, HU3D_MOTATTR_LOOP);
+        mbPlayerPosSetV(i, &savedPos[i]);
         mbPlayerRotSet(i, 0.0f, 0.0f, 0.0f);
         mbPlayerColSnapPlayerSet(i, TRUE);
         mbPlayerDispSet(i, TRUE);
     }
-    mbMasuPosGet(currentMasu, &masuPos);
-    mbCameraMoveMasu(currentMasu, &cameraRot, &capsuleCameraOfs,
+    cameraOfs.x = 0.0f;
+    cameraOfs.y = 100.0f;
+    cameraOfs.z = 0.0f;
+    mbCameraMoveMasu(currentMasu, &cameraRot, &cameraOfs,
         -1.0f, -1.0f, -1);
     mbCameraMoveWait();
     mbWipeSpecialFadeOutCreate(3, 60);
@@ -1619,316 +1711,791 @@ void mbev_CapMiracleKill(void)
 
 static void ev_CapMiracleMasu(CAPWORK *work)
 {
+    HuVecF playerPos;
     HuVecF masuPos;
-    HuVecF pos;
-    HuVecF vel = { 0.0f, 0.0f, 0.0f };
-    GXColor color;
+    HuVecF guidePos[2];
+    HuVecF guideRot[2];
+    HuVecF velTemp;
+    HuVecF posTemp;
+    GXColor colorTemp;
+    GXColor color0;
+    GXColor color1;
+    GXColor color2;
+    GXColor color3;
+    GXColor color4;
+    GXColor color5;
+    int glowNo;
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int guide0 = work->_unkB6C;
-    int guide1 = work->_unkB70;
-    int playerMot0;
-    int playerMot1;
+    int guide[2];
+    int playerMot[2];
+    int sound[4];
     int i;
     int j;
-    int glowNo;
+    int k;
     float t;
-    float angle;
 
-    playerMot0 = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
-        0x00930017); /* event resource identifier */
-    playerMot1 = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
-        0x0093004E); /* event resource identifier */
-    mbCameraMoveWait();
-    omVibrate(playerNo, 0x12C, 4, 4); /* event vibration duration */
-    mbCameraMoveMasu(masuId, NULL, &capsuleCameraOfs,
-        -1.0f, -1.0f, 60);
-    mbPlayerMotionShiftSet(playerNo, playerMot0, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
-    mbAudFXPlay(0x443); /* event sound-effect resource */
+    mbPlayerPosGet(playerNo, &playerPos);
     mbMasuPosGet(masuId, &masuPos);
-    for (i = 0; i < 60; i++) {
-        for (j = 0; j < 2; j++) {
-            pos = masuPos;
-            pos.x += (MBCapsuleEffRandF() - 0.5f) * 300.0f;
-            pos.y += (MBCapsuleEffRandF() - 0.5f) * 100.0f;
-            pos.z += (MBCapsuleEffRandF() - 0.5f) * 300.0f;
-            mbev_CapEffColorSet(&color, mbRandMod(6));
-            glowNo = mbev_CapEffGlowAdd(work->glowObj, &pos, &vel,
-                30, 1.0f, 4.9f, 30.0f, &color);
-            if (glowNo >= 0) {
-                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo,
-                    1, 0x5A); /* glow effect lifetime in frames */
-            }
-        }
-        HuPrcVSleep();
-    }
-    mbAudFXPlay(0x444); /* event sound-effect resource */
-    mbObjMotionShiftSet(guide0, 9, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
-    mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbPlayerMotionShiftSet(playerNo, playerMot1, 0.0f, 18.0f,
+    guide[0] = work->eventData[0];
+    guide[1] = work->eventData[1];
+    playerMot[0] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        DATANUM(DATA_mariomot, 23)); /* event resource identifier */
+    playerMot[1] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        DATANUM(DATA_mariomot, 78)); /* event resource identifier */
+    mbCameraMoveWait();
+    omVibrate(playerNo, CAPSPECIAL_MIRACLE_VIBRATION_FRAMES, 4, 4);
+    posTemp.x = 0.0f;
+    posTemp.y = 100.0f;
+    posTemp.z = 0.0f;
+    mbCameraMoveMasu(masuId, NULL, &posTemp, -1.0f, -1.0f, 60);
+    mbPlayerMotionShiftSet(playerNo, playerMot[0], 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
-    for (i = 0; i < 120; i++) {
+    sound[0] = mbAudFXPlay(MSM_SE_BRD00_87); /* event sound-effect resource */
+    {
+        HuVecF pos;
+        HuVecF vel;
+        GXColor *colorP;
+        HuVecF *velP;
+        HuVecF *posP;
+
+        for (i = 0; (float)i < 60.0f; i++) {
+            for (j = 0; j < 2; j++) {
+                posTemp.x = masuPos.x
+                    + 2.0f * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                posTemp.y = masuPos.y + 100.0f * MBCapsuleEffRandF();
+                posTemp.z = masuPos.z
+                    + 2.0f * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                velTemp.x = velTemp.y = velTemp.z = 0.0f;
+                mbev_CapEffColorSet(&colorTemp, mbRandMod(1 << 15));
+                color0 = colorTemp;
+                colorP = &color0;
+                vel = velTemp;
+                velP = &vel;
+                pos = posTemp;
+                posP = &pos;
+                glowNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
+                    (int)(60.0f * (1.0f + (0.3f * MBCapsuleEffRandF()))),
+                    100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
+                    0.05f + (0.02f * MBCapsuleEffRandF()), -0.08166666f,
+                    colorP);
+                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo, 1, 90);
+            }
+            HuPrcVSleep();
+        }
+    }
+    sound[1] = mbAudFXPlay(MSM_SE_BRD00_88); /* event sound-effect resource */
+    for (i = 1; (float)i <= 120.0f; i++) {
         t = (float)i / 120.0f;
-        pos = masuPos;
-        pos.y += 100.0f * (float)sin((M_PI * 180.0 * t) / 180.0);
-        mbPlayerPosSetV(playerNo, &pos);
-        angle = (float)(M_PI * 360.0) * t / 180.0f;
-        mbPlayerRotSet(playerNo, 0.0f,
-            180.0f + 30.0f * (float)sin(angle), 0.0f);
         for (j = 0; j < 2; j++) {
-            pos = masuPos;
-            pos.x += (MBCapsuleEffRandF() - 0.5f) * 300.0f;
-            pos.y += (MBCapsuleEffRandF() - 0.5f) * 100.0f;
-            pos.z += (MBCapsuleEffRandF() - 0.5f) * 300.0f;
-            mbev_CapEffColorSet(&color, mbRandMod(6));
-            glowNo = mbev_CapEffGlowAdd(work->glowObj, &pos, &vel,
-                30, 1.0f, 4.9f, 30.0f, &color);
-            if (glowNo >= 0) {
-                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo,
-                    1, 0x5A); /* glow effect lifetime in frames */
+            guideRot[j].x = 0.0f;
+            guideRot[j].y = 540.0f * t;
+            if (j & 1) {
+                guideRot[j].y += 270.0f;
+            } else {
+                guideRot[j].y += 90.0f;
+            }
+            guideRot[j].z = 0.0f;
+            guidePos[j].x = (float)(masuPos.x
+                + (1.5 * (100.0f
+                    * sin(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
+            guidePos[j].z = (float)(masuPos.z
+                + (1.5 * (100.0f
+                    * cos(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
+            guidePos[j].y = (float)(masuPos.y + 100.0f
+                + (6.0 * (100.0f
+                    * cos(M_PI * (90.0f * t) / 180.0f))));
+            mbObjPosSetV(guide[j], &guidePos[j]);
+            mbObjRotSetV(guide[j], &guideRot[j]);
+            mbObjDispSet(guide[j], TRUE);
+            {
+                HuVecF pos;
+                HuVecF vel;
+                    GXColor *colorP;
+                HuVecF *velP;
+                HuVecF *posP;
+
+                for (k = 0; k < 3; k++) {
+                    posTemp.x = guidePos[j].x
+                        + 2.0f * (100.0f
+                            * (*((const float *)&lbl_802C436C)
+                                + MBCapsuleEffRandF()));
+                    posTemp.y = guidePos[j].y
+                        + 100.0f * MBCapsuleEffRandF();
+                    posTemp.z = guidePos[j].z
+                        + 2.0f * (100.0f
+                            * (*((const float *)&lbl_802C436C)
+                                + MBCapsuleEffRandF()));
+                    velTemp.x = velTemp.y = velTemp.z = 0.0f;
+                    color1 = miracleMasuEffColorTbl[j][mbRandMod(3)];
+                    colorP = &color1;
+                    vel = velTemp;
+                    velP = &vel;
+                    pos = posTemp;
+                    posP = &pos;
+                    glowNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
+                        (int)(60.0f
+                            * (1.0f + (0.3f * MBCapsuleEffRandF()))),
+                        100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
+                        0.05f + (0.02f * MBCapsuleEffRandF()), -0.08166666f,
+                        colorP);
+                    mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo, 2,
+                        (int)(60.0f
+                            * (0.5f + (0.5f * MBCapsuleEffRandF()))));
+                }
+            }
+        }
+        {
+            HuVecF pos;
+            HuVecF vel;
+            GXColor *colorP;
+            HuVecF *velP;
+            HuVecF *posP;
+
+            for (j = 0; j < 2; j++) {
+                posTemp.x = masuPos.x + 2.0f
+                    * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                posTemp.y = masuPos.y
+                    + 100.0f * MBCapsuleEffRandF();
+                posTemp.z = masuPos.z
+                    + 2.0f * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                velTemp.x = velTemp.y = velTemp.z = 0.0f;
+                mbev_CapEffColorSet(&colorTemp, mbRandMod(1 << 15));
+                color2 = colorTemp;
+                colorP = &color2;
+                vel = velTemp;
+                velP = &vel;
+                pos = posTemp;
+                posP = &pos;
+                glowNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
+                    (int)(60.0f * (1.0f + (0.3f * MBCapsuleEffRandF()))),
+                    100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
+                    0.05f + (0.02f * MBCapsuleEffRandF()), -0.08166666f,
+                    colorP);
+                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo, 1, 90);
             }
         }
         HuPrcVSleep();
     }
-    mbAudFXPlay(0x445); /* event sound-effect resource */
-    mbAudFXPlay(0x3FE); /* event sound-effect resource */
-    for (i = 0; i < 120; i++) {
-        t = (float)i / 120.0f;
-        pos = masuPos;
-        pos.y += 100.0f * (float)sin((M_PI * 180.0 * t) / 180.0);
-        mbPlayerPosSetV(playerNo, &pos);
-        mbPlayerRotSet(playerNo, 0.0f,
-            180.0f * (float)sin((M_PI * 180.0 * t) / 180.0), 0.0f);
-        for (j = 0; j < 2; j++) {
-            pos = masuPos;
-            pos.x += (MBCapsuleEffRandF() - 0.5f) * 300.0f;
-            pos.y += (MBCapsuleEffRandF() - 0.5f) * 100.0f;
-            pos.z += (MBCapsuleEffRandF() - 0.5f) * 300.0f;
-            mbev_CapEffColorSet(&color, mbRandMod(6));
-            glowNo = mbev_CapEffGlowAdd(work->glowObj, &pos, &vel,
-                30, 1.0f, 4.9f, 30.0f, &color);
-            if (glowNo >= 0) {
-                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo,
-                    1, 0x5A); /* glow effect lifetime in frames */
-            }
-        }
-        HuPrcVSleep();
+    if (sound[1] != -1) {
+        mbAudFXStop(sound[1]);
     }
-    mbObjMotionShiftSet(guide0, 9, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
-    mbObjMotionShiftSet(guide1, 9, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    for (j = 0; j < 2; j++) {
+        mbObjMotionShiftSet(guide[j], 9, 0.0f, 8.0f,
+            HU3D_MOTATTR_NONE);
+    }
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbPlayerMotionShiftSet(playerNo, playerMot1, 0.0f, 18.0f,
+    mbPlayerMotionShiftSet(playerNo, playerMot[1], 0.0f, 18.0f,
         HU3D_MOTATTR_LOOP);
+    {
+        HuVecF pos;
+        HuVecF vel;
+        GXColor *colorP;
+        HuVecF *velP;
+        HuVecF *posP;
+
+        for (i = 1; (float)i <= 45.0f; i++) {
+            t = (float)i / 45.0f;
+            playerPos.y = masuPos.y + (100.0f
+                * sin(M_PI * (90.0f * t) / 180.0f));
+            mbPlayerPosSetV(playerNo, &playerPos);
+            for (j = 0; j < 2; j++) {
+                posTemp.x = playerPos.x
+                    + 2.0f * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                posTemp.y = playerPos.y
+                    + 2.0f * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                posTemp.z = playerPos.z
+                    + 2.0f * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                velTemp.x = velTemp.y = velTemp.z = 0.0f;
+                mbev_CapEffColorSet(&colorTemp, mbRandMod(1 << 15));
+                color3 = colorTemp;
+                colorP = &color3;
+                vel = velTemp;
+                velP = &vel;
+                pos = posTemp;
+                posP = &pos;
+                glowNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
+                    (int)(60.0f * (1.0f + (0.3f * MBCapsuleEffRandF()))),
+                    100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
+                    0.05f + (0.02f * MBCapsuleEffRandF()), -0.08166666f,
+                    colorP);
+                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo, 1, 90);
+            }
+            HuPrcVSleep();
+        }
+    }
+    sound[2] = mbAudFXPlay(MSM_SE_BRD00_89); /* event sound-effect resource */
+    sound[3] = mbAudFXPlay(MSM_SE_BRD00_18); /* event sound-effect resource */
+    for (i = 1; (float)i <= 120.0f; i++) {
+        t = (float)i / 120.0f;
+        playerPos.y = (float)(masuPos.y + 100.0f
+            + (6.0 * (100.0f
+                * sin(M_PI * (90.0f * t) / 180.0f))));
+        mbPlayerPosSetV(playerNo, &playerPos);
+        mbPlayerRotSet(playerNo, 0.0f,
+            720.0 * sin(M_PI * (90.0f * t) / 180.0f), 0.0f);
+        {
+            HuVecF pos;
+            HuVecF vel;
+            GXColor *colorP;
+            HuVecF *velP;
+            HuVecF *posP;
+
+            for (j = 0; j < 2; j++) {
+                guideRot[j].x = 0.0f;
+                guideRot[j].y = 720.0 * sin(
+                    M_PI * (90.0f * (t * t)) / 180.0f);
+                if (j & 1) {
+                    guideRot[j].y += 90.0f;
+                } else {
+                    guideRot[j].y += 270.0f;
+                }
+                guideRot[j].z = 0.0f;
+                guidePos[j].x = (float)(masuPos.x
+                    + (1.5 * (100.0f
+                        * sin(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
+                guidePos[j].z = (float)(masuPos.z
+                    + (1.5 * (100.0f
+                        * cos(M_PI * (180.0f + guideRot[j].y) / 180.0f))));
+                guidePos[j].y = (float)(masuPos.y + 100.0f
+                    + (6.0 * (100.0f
+                        * sin(M_PI * (90.0f * (t * t)) / 180.0f))));
+                mbObjPosSetV(guide[j], &guidePos[j]);
+                mbObjRotSetV(guide[j], &guideRot[j]);
+                for (k = 0; k < 3; k++) {
+                    posTemp.x = guidePos[j].x + 2.0f * (100.0f
+                        * (*((const float *)&lbl_802C436C)
+                            + MBCapsuleEffRandF()));
+                    posTemp.y = guidePos[j].y
+                        + 100.0f * MBCapsuleEffRandF();
+                    posTemp.z = guidePos[j].z + 2.0f * (100.0f
+                        * (*((const float *)&lbl_802C436C)
+                            + MBCapsuleEffRandF()));
+                    velTemp.x = velTemp.y = velTemp.z = 0.0f;
+                    color4 = miracleMasuEffColorTbl[j][mbRandMod(3)];
+                    colorP = &color4;
+                    vel = velTemp;
+                    velP = &vel;
+                    pos = posTemp;
+                    posP = &pos;
+                    glowNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
+                        (int)(60.0f
+                            * (1.0f + (0.3f * MBCapsuleEffRandF()))),
+                        100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
+                        0.05f + (0.02f * MBCapsuleEffRandF()), -0.08166666f,
+                        colorP);
+                    mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo, 2,
+                        (int)(60.0f
+                            * (0.5f + (0.5f * MBCapsuleEffRandF()))));
+                }
+            }
+        }
+        {
+            HuVecF pos;
+            HuVecF vel;
+            GXColor *colorP;
+            HuVecF *velP;
+            HuVecF *posP;
+
+            for (j = 0; j < 2; j++) {
+                posTemp.x = playerPos.x + 2.0f
+                    * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                posTemp.y = playerPos.y + 2.0f
+                    * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                posTemp.z = playerPos.z + 2.0f
+                    * (100.0f * (*((const float *)&lbl_802C436C)
+                        + MBCapsuleEffRandF()));
+                velTemp.x = velTemp.y = velTemp.z = 0.0f;
+                mbev_CapEffColorSet(&colorTemp, mbRandMod(1 << 15));
+                color5 = colorTemp;
+                colorP = &color5;
+                vel = velTemp;
+                velP = &vel;
+                pos = posTemp;
+                posP = &pos;
+                glowNo = mbev_CapEffGlowAdd(work->glowObj, posP, velP,
+                    (int)(60.0f * (1.0f + (0.3f * MBCapsuleEffRandF()))),
+                    100.0f * (0.15f + (0.05f * MBCapsuleEffRandF())),
+                    0.05f + (0.02f * MBCapsuleEffRandF()), -0.08166666f,
+                    colorP);
+                mbev_CapEffGlowKinokoTimeSet(work->glowObj, glowNo, 1, 90);
+            }
+        }
+        HuPrcVSleep();
+    }
+    if (sound[0] != -1) {
+        mbAudFXStop(sound[0]);
+    }
+    if (sound[2] != -1) {
+        mbAudFXStop(sound[2]);
+    }
+    if (sound[3] != -1) {
+        mbAudFXStop(sound[3]);
+    }
 }
 
 static void ev_CapMiracleRun(CAPWORK *work)
 {
-    HuVecF masuPos;
+    HuVecF guidePos;
+    HuVecF playerPos;
+    HuVecF rot;
     HuVecF pos;
-    HuVecF zero = { 0.0f, 0.0f, 0.0f };
-    int playerNo = work->playerNo;
-    int guide = work->_unkB6C;
-    int nextMasu = work->_unkB70;
-    int modelId;
+    HuVecF masuPos;
+    HuVec2f statusOff;
+    HuVec2f statusOn;
+    Mtx mtx;
+    int playerNo;
+    int guide = work->eventData[0];
+    int rightRow;
+    int nextMasu = work->eventData[1];
     int tradeObj;
+    int targetObj;
     int leftObj;
     int rightObj;
-    int targetObj;
     int order[GW_PLAYER_MAX];
-    int motTimes[32];
-    int leftOrder[32];
-    int rightOrder[32];
+    int playerList[32];
     int tradeOrder[32];
-    int leftCount;
-    int rightCount;
-    int leftChoice;
-    int rightChoice;
-    int targetPlayer;
-    int tradeNo;
+    int motTimes[32];
+    int coin[2];
+    int star[2];
+    int oldCoin[2];
+    int oldStar[2];
+    int players[2];
+    int playerNo1;
+    int playerNo2;
+    int playerCount;
+    int diceNo;
     int tradeRow;
-    int tradeCount;
+    int tradeNo;
     int i;
-    char message[16];
 
     mbMasuPosGet(nextMasu, &masuPos);
-    pos.x = masuPos.x + 200.0f;
-    pos.y = masuPos.y;
-    pos.z = masuPos.z;
-    mbPlayerPosSetV(playerNo, &pos);
-    pos.x = masuPos.x - 200.0f;
-    pos.z = masuPos.z - 30.0f;
-    mbObjPosSetV(guide, &pos);
-    modelId = mbObjModelIDGet(guide);
-    Hu3DMotionForceSet(modelId, "head", 0x80, 0.5f); /* animation keyframe time selector */
-    Hu3DMotionForceSet(modelId, "head", 0x100, 0.5f); /* animation keyframe time selector */
-    Hu3DMotionCalc(modelId);
-    tradeObj = mbev_CapObjCreate(&work->objWork, 0x00110036, NULL, /* event model resource identifier */
-        FALSE, 5, FALSE);
-    leftObj = mbev_CapObjCreate(&work->objWork, 0x00110038, NULL, /* event model resource identifier */
-        FALSE, 5, FALSE);
-    rightObj = mbev_CapObjCreate(&work->objWork, 0x00110039, NULL, /* event model resource identifier */
-        FALSE, 5, FALSE);
-    targetObj = mbev_CapObjCreate(&work->objWork, 0x00110037, NULL, /* event model resource identifier */
-        FALSE, 5, FALSE);
-    for (i = 0; i < 4; i++) {
-        mbObjPosSetV((i == 0) ? tradeObj
-            : (i == 1) ? leftObj : (i == 2) ? rightObj : targetObj,
-            &masuPos);
-        mbObjRotSet((i == 0) ? tradeObj
-            : (i == 1) ? leftObj : (i == 2) ? rightObj : targetObj,
-            0.0f, 0.0f, 0.0f);
-        mbObjScaleSet((i == 0) ? tradeObj
-            : (i == 1) ? leftObj : (i == 2) ? rightObj : targetObj,
-            1.0f, 1.0f, 1.0f);
-    }
-    mbObjDispSet(targetObj, TRUE);
-    mbObjLayerSet(leftObj, 3);
-    mbObjLayerSet(rightObj, 3);
-    mbObjLayerSet(targetObj, 3);
+    playerNo = work->playerNo;
+    playerPos.x = masuPos.x + 200.0f;
+    playerPos.y = masuPos.y;
+    playerPos.z = masuPos.z;
+    mbPlayerPosSetV(playerNo, &playerPos);
+    guidePos.x = masuPos.x - 200.0f;
+    guidePos.y = masuPos.y;
+    guidePos.z = masuPos.z;
+    mbObjPosSetV(guide, &guidePos);
+    Hu3DMotionForceSet(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTX, -5.0f);
+    Hu3DMotionForceSet(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTY, 5.0f);
+    pos.x = playerPos.x - 200.0f;
+    pos.y = playerPos.y;
+    pos.z = playerPos.z - 75.0f;
+    mbCameraRotGet(&rot);
+    tradeObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 54), NULL, /* event model resource identifier */
+        FALSE, 0, FALSE);
+    mbObjPosSetV(tradeObj, &pos);
+    mbObjRotSetV(tradeObj, &rot);
+    mbObjScaleSet(tradeObj, 2.0f, 2.0f, 2.0f);
+    Hu3DMotionCalc(mbObjModelIDGet(tradeObj));
+    Hu3DModelObjMtxGet(mbObjModelIDGet(tradeObj), capspecialTargetNode, mtx);
+    pos.x = mtx[0][3];
+    pos.y = mtx[1][3];
+    pos.z = mtx[2][3];
+    leftObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 56), NULL, /* event model resource identifier */
+        FALSE, 0, FALSE);
+    mbObjMotionTimeSet(leftObj, 0.5f + GwPlayer[playerNo].charNo);
+    mbObjMotionSpeedSet(leftObj, 0.0f);
+    mbObjPosSetV(leftObj, &pos);
+    mbObjRotSetV(leftObj, &rot);
+    mbObjScaleSet(leftObj, 2.0f, 2.0f, 2.0f);
     mbObjDispSet(leftObj, FALSE);
+    mbObjLayerSet(leftObj, 3);
+    rightObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 57), NULL, /* event model resource identifier */
+        FALSE, 0, FALSE);
+    mbObjMotionTimeSet(rightObj, 0.5f);
+    mbObjMotionSpeedSet(rightObj, 0.0f);
+    mbObjPosSetV(rightObj, &pos);
+    mbObjRotSetV(rightObj, &rot);
+    mbObjScaleSet(rightObj, 2.0f, 2.0f, 2.0f);
     mbObjDispSet(rightObj, FALSE);
+    mbObjLayerSet(rightObj, 3);
+    targetObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 55), NULL, /* event model resource identifier */
+        FALSE, 0, FALSE);
+    mbObjAttrSet(targetObj, HU3D_MOTATTR_LOOP);
+    mbObjPosSetV(targetObj, &pos);
+    mbObjRotSetV(targetObj, &rot);
+    mbObjDispSet(targetObj, TRUE);
+    mbObjLayerSet(targetObj, 3);
+    mbObjScaleSet(targetObj, 2.0f, 2.0f, 2.0f);
     ev_CapMiracleSprCreate();
-    mbMusBoardFadeOut(0, 0, 1000, 1000, 0x1F, FALSE); /* board music fade channel mask */
+    mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_END, FALSE);
     mbWipeDissolveFadeIn();
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    mbAudFXPlay(0x3B6); /* event sound-effect resource */
-    mbWinCreate(2, ev_CapMiracleMesGet(0x003C0000), 13); /* miracle scene message resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_26); /* event guide voice resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 0)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
     mbWinTopWait();
-    mbAudFXPlay(0x3B8); /* event sound-effect resource */
-    mbWinCreate(2, ev_CapMiracleMesGet(0x003C0001), 13); /* miracle scene message resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 1)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
     mbWinTopWait();
+    for (i = 1; i < 5; i++) {
+        Hu3DMotionForceSet(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTX,
+            (float)-(5 - i));
+        Hu3DMotionForceSet(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTY,
+            (float)(5 - i));
+        HuPrcVSleep();
+    }
+    Hu3DMotionNoMotReset(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTX);
+    Hu3DMotionNoMotReset(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTY);
+    mbAudFXDelaySet(30);
+    mbAudFXPlay(MSM_SE_BRD00_13); /* event sound-effect resource */
+    mbev_CapPlayerMotShiftSet(guide, 4, HU3D_MOTATTR_NONE, TRUE);
+    mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
     (void)mbev_CapPlayerOrderGet(order, -1, playerNo, TRUE);
-    leftCount = 0;
-    while (leftCount < 32
-        && miracleLeftCharOrderTbl[leftCount] >= 0) {
-        int charNo = miracleLeftCharOrderTbl[leftCount];
-        int candidate = order[charNo];
-        leftOrder[leftCount] = candidate;
-        motTimes[leftCount] = GwPlayer[candidate].charNo;
-        leftCount++;
+    for (i = 0, playerCount = 0; i < 32; i++) {
+        if (miracleLeftCharOrderTbl[i] == -1) {
+            break;
+        }
+        playerList[playerCount] = order[miracleLeftCharOrderTbl[i]];
+        motTimes[playerCount] = GwPlayer[playerList[playerCount]].charNo;
+        playerCount++;
     }
-    if (leftCount <= 0) {
-        leftOrder[0] = playerNo;
-        motTimes[0] = GwPlayer[playerNo].charNo;
-        leftCount = 1;
+    ev_CapMiracleWindowFadeIn(targetObj, leftObj, 60, TRUE,
+        3, playerCount, motTimes);
+    diceNo = ev_CapMiracleDiceExec(playerNo, leftObj, 3,
+        playerCount, motTimes);
+    playerNo1 = playerList[diceNo];
+    mbAudFXPlay(MSM_SE_BRD00_132); /* event sound-effect resource */
+    mbStatusPosOffGet(0, (HuVecF *)&statusOff);
+    mbStatusPosOnGet(0, (HuVecF *)&statusOn);
+    mbStatusDispForceSet(playerNo1, TRUE);
+    mbStatusMoveTo(playerNo1, (HuVecF *)&statusOff, (HuVecF *)&statusOn);
+    ev_CapMiracleWindowFadeOut(leftObj, targetObj, 60,
+        FALSE);
+    HuPrcSleep(60);
+    mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 2)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+    mbWinTopWait();
+    mbAudFXDelaySet(30);
+    mbAudFXPlay(MSM_SE_BRD00_13); /* event sound-effect resource */
+    mbev_CapPlayerMotShiftSet(guide, 4, HU3D_MOTATTR_NONE, TRUE);
+    mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    (void)mbev_CapPlayerOrderGet(order, playerNo1, playerNo, TRUE);
+    {
+        if (playerNo1 == playerNo) {
+            rightRow = 0;
+        } else {
+            rightRow = 1;
+        }
+
+        for (i = 0, playerCount = 0; i < 32; i++) {
+            if (miracleRightCharOrderTbl[rightRow][i] == -1) {
+                break;
+            }
+            playerList[playerCount] =
+                order[miracleRightCharOrderTbl[rightRow][i]];
+            motTimes[playerCount] = GwPlayer[playerList[playerCount]].charNo;
+            playerCount++;
+        }
     }
-    ev_CapMiracleWindowFadeIn((s16)guide, (s16)leftObj, 60, TRUE,
-        3, leftCount, motTimes);
-    leftChoice = ev_CapMiracleDiceExec(playerNo, leftObj, 3,
-        leftCount, motTimes);
-    if (leftChoice < 0 || leftChoice >= leftCount) {
-        leftChoice = 0;
-    }
-    targetPlayer = leftOrder[leftChoice];
-    (void)mbev_CapPlayerOrderGet(order, targetPlayer, playerNo, TRUE);
-    rightCount = 0;
-    i = targetPlayer == playerNo ? 0 : 1;
-    while (rightCount < 32
-        && miracleRightCharOrderTbl[i][rightCount] >= 0) {
-        int charNo = miracleRightCharOrderTbl[i][rightCount];
-        int candidate = order[charNo];
-        rightOrder[rightCount] = candidate;
-        motTimes[rightCount] = GwPlayer[candidate].charNo;
-        rightCount++;
-    }
-    if (rightCount <= 0) {
-        rightOrder[0] = playerNo;
-        motTimes[0] = GwPlayer[playerNo].charNo;
-        rightCount = 1;
-    }
-    ev_CapMiracleWindowFadeIn((s16)leftObj, (s16)rightObj, 60, TRUE,
-        3, rightCount, motTimes);
-    rightChoice = ev_CapMiracleDiceExec(playerNo, rightObj, 3,
-        rightCount, motTimes);
-    if (rightChoice < 0 || rightChoice >= rightCount) {
-        rightChoice = 0;
-    }
-    targetPlayer = rightOrder[rightChoice];
+    mbObjMotionTimeSet(leftObj, 0.5f + (float)motTimes[0]);
+    mbObjMotionSpeedSet(leftObj, 0.0f);
+    ev_CapMiracleWindowFadeIn(targetObj, leftObj, 60, TRUE,
+        3, playerCount, motTimes);
+    diceNo = ev_CapMiracleDiceExec(playerNo, leftObj, 3,
+        playerCount, motTimes);
+    playerNo2 = playerList[diceNo];
+    mbAudFXPlay(MSM_SE_BRD00_133); /* event sound-effect resource */
+    if ((int)GwSystem.tagF != FALSE
+        && mbev_CapPlayerCheck(playerNo1, playerNo2)) {
+        HuPrcSleep(60);
+        mbObjMotionShiftSet(guide, 6, 0.0f, 8.0f,
+            HU3D_MOTATTR_LOOP);
+        mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 5)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+        mbWinTopWait();
+        mbPlayerWinLoseVoicePlay(playerNo, 13, CHARVOICEID(12)); /* player loss voice resource */
+        mbev_CapPlayerMotShiftWait(playerNo, 13, HU3D_MOTATTR_NONE,
+            TRUE);
+        mbev_CapPlayerMotShiftWait(playerNo, 1, HU3D_MOTATTR_LOOP,
+            TRUE);
+        mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+            HU3D_MOTATTR_LOOP);
+        if (mbStatusDispGet(playerNo1)) {
+            mbStatusDispSet(playerNo1, FALSE);
+        }
+        ev_CapMiracleTradeHideSet();
+    } else {
+        mbStatusPosOffGet(1, (HuVecF *)&statusOff);
+        mbStatusPosOnGet(1, (HuVecF *)&statusOn);
+        mbStatusDispForceSet(playerNo2, TRUE);
+        mbStatusMoveTo(playerNo2, (HuVecF *)&statusOff, (HuVecF *)&statusOn);
+        ev_CapMiracleWindowFadeOut(leftObj, targetObj, 60,
+            FALSE);
+        HuPrcSleep(60);
+        mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
+        mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f,
+            HU3D_MOTATTR_LOOP);
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 3)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+        mbWinTopWait();
+        mbAudFXDelaySet(30);
+        mbAudFXPlay(MSM_SE_BRD00_13); /* event sound-effect resource */
+        mbev_CapPlayerMotShiftSet(guide, 4, HU3D_MOTATTR_NONE, TRUE);
+        mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+            HU3D_MOTATTR_LOOP);
     tradeRow = (GwSystem.turnNo * 3) / GwSystem.turnMax;
     if (tradeRow < 0) {
         tradeRow = 0;
-    } else if (tradeRow > 2) {
+    }
+    if (tradeRow > 2) {
         tradeRow = 2;
     }
-    tradeCount = 0;
-    while (tradeCount < 32 && miracleTradeOrderTbl[tradeRow][tradeCount] >= 0) {
-        tradeOrder[tradeCount] = miracleTradeOrderTbl[tradeRow][tradeCount];
-        tradeCount++;
+    for (i = 0, playerCount = 0; i < 32; i++) {
+        if (miracleTradeOrderTbl[tradeRow][i] == -1) {
+            break;
+        }
+        tradeOrder[playerCount] = miracleTradeOrderTbl[tradeRow][i];
+        playerCount++;
     }
-    if (tradeCount <= 0) {
-        tradeOrder[0] = 0;
-        tradeCount = 1;
-    }
-    ev_CapMiracleWindowFadeIn((s16)rightObj, (s16)targetObj, 60, TRUE,
-        3, tradeCount, tradeOrder);
-    rightChoice = ev_CapMiracleDiceExec(playerNo, targetObj, 3,
-        tradeCount, tradeOrder);
-    if (rightChoice < 0 || rightChoice >= tradeCount) {
-        rightChoice = 0;
-    }
-    tradeNo = tradeOrder[rightChoice];
+    ev_CapMiracleWindowFadeIn(targetObj, rightObj, 60, TRUE,
+        3, playerCount, tradeOrder);
+    tradeNo = tradeOrder[diceNo = ev_CapMiracleDiceExec(playerNo,
+        rightObj, 3, playerCount, tradeOrder)];
     if (tradeNo < 0 || tradeNo > 5) {
         tradeNo = 0;
+        mbObjMotionTimeSet(rightObj, 0.5f + (float)tradeNo);
     }
-    mbObjMotionTimeSet(rightObj, 0.5f + (float)tradeNo);
-    pos = miracleTradePosTbl[1];
-    ev_CapMiracleTradeCreate(&pos, tradeNo);
+    ev_CapMiracleTradeCreate(&miracleTradePosTbl[1], tradeNo);
+    ev_CapMiracleWindowFadeOut(rightObj, targetObj, 60,
+        FALSE);
+    HuPrcSleep(60);
     ev_CapMiracleTradeFocusSet();
-    mbAudFXPlay(0x3B8); /* event sound-effect resource */
-    mbWinCreate(2, ev_CapMiracleMesGet(0x003C0004), 13); /* miracle scene message resource */
+    mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f,
+        HU3D_MOTATTR_LOOP);
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 4)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
     mbWinTopWait();
     ev_CapMiracleTradeHideSet();
     HuPrcSleep(60);
+    oldCoin[0] = coin[0] = mbPlayerCoinGet(playerNo1);
+    oldStar[0] = star[0] = mbPlayerStarGet(playerNo1);
+    oldCoin[1] = coin[1] = mbPlayerCoinGet(playerNo2);
+    oldStar[1] = star[1] = mbPlayerStarGet(playerNo2);
     mbWipeSpecialFadeInCreate(3, 1);
-    mbObjDispSet(guide, FALSE);
-    mbObjDispSet(tradeObj, FALSE);
-    mbObjDispSet(leftObj, FALSE);
-    mbObjDispSet(rightObj, FALSE);
     mbObjDispSet(targetObj, FALSE);
-    mbev_CapPlayerPosSet(&work->objWork, playerNo, -1, &zero);
-    ev_CapMiraclePlayerSet(NULL, playerNo, targetPlayer, nextMasu);
+    mbObjDispSet(tradeObj, FALSE);
+    guidePos.x = masuPos.x;
+    guidePos.y = masuPos.y;
+    guidePos.z = masuPos.z - 150.0f;
+    mbObjPosSetV(guide, &guidePos);
+    mbObjRotSet(guide, 0.0f, 0.0f, 0.0f);
+    mbev_CapPlayerPosSet(&work->objWork, playerNo, -1, NULL);
+    ev_CapMiraclePlayerSet(work, playerNo1, playerNo2, nextMasu);
     mbWipeSpecialFadeOutCreate(3, 60);
-    if (tradeNo == 0) {
-        mbWinCreate(2, ev_CapMiracleMesGet(0x003C0006), 13); /* miracle scene message resource */
-        mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo), 0);
-        mbWinTopInsertMesSet(mbPlayerNameMesGet(targetPlayer), 1);
-        mbWinTopWait();
-        ev_CapMiracleCoinTrade(work, playerNo, targetPlayer, 20, 0);
-    } else if (tradeNo == 1) {
-        mbWinCreate(2, ev_CapMiracleMesGet(0x003C0007), 13); /* miracle scene message resource */
-        mbWinTopWait();
-        ev_CapMiracleCoinTrade(work, playerNo, targetPlayer,
-            mbPlayerCoinGet(playerNo), mbPlayerCoinGet(targetPlayer));
-    } else if (tradeNo == 2 || tradeNo == 3) {
-        mbWinCreate(2, ev_CapMiracleMesGet(0x003C0006), 13); /* miracle scene message resource */
-        mbWinTopWait();
-        ev_CapMiracleStarTrade(work, playerNo, targetPlayer,
-            tradeNo == 2 ? 1 : 2, 0);
-    } else if (tradeNo == 4) {
-        ev_CapMiracleStarTrade(work, playerNo, targetPlayer,
-            mbPlayerStarGet(playerNo), mbPlayerStarGet(targetPlayer));
-    } else {
-        ev_CapMiracleCoinTrade(work, playerNo, targetPlayer,
-            mbPlayerCoinGet(playerNo), mbPlayerCoinGet(targetPlayer));
-        ev_CapMiracleStarTrade(work, playerNo, targetPlayer,
-            mbPlayerStarGet(playerNo), mbPlayerStarGet(targetPlayer));
+    switch (tradeNo) {
+        case 0:
+            mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
+                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 1); /* miracle scene insert resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
+            mbWinTopWait();
+            if (mbPlayerCoinGet(playerNo1) <= 0) {
+                mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+                            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
+                    mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 1); /* miracle scene insert resource */
+                mbWinTopWait();
+            } else {
+                mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                ev_CapMiracleCoinTrade(work, playerNo1, playerNo2,
+                    20, 0);
+            }
+            break;
+        case 1:
+            mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
+                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 1);
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 2); /* miracle scene insert resource */
+            mbWinTopWait();
+            if (mbPlayerCoinGet(playerNo1) <= 0
+                && mbPlayerCoinGet(playerNo2) <= 0) {
+                mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+                            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
+                    mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 0); /* miracle scene insert resource */
+                mbWinTopWait();
+            } else {
+                mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                ev_CapMiracleCoinTrade(work, playerNo1, playerNo2,
+                    mbPlayerCoinGet(playerNo1),
+                    mbPlayerCoinGet(playerNo2));
+            }
+            break;
+        case 2:
+            mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
+                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 13), 1); /* miracle scene insert resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
+            mbWinTopWait();
+            if (mbPlayerStarGet(playerNo1) <= 0) {
+                mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+                            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
+                    mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 1); /* miracle scene insert resource */
+                mbWinTopWait();
+            } else {
+                mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                ev_CapMiracleStarTrade(work, playerNo1, playerNo2, 1,
+                    0);
+            }
+            break;
+        case 3:
+            mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
+                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 14), 1); /* miracle scene insert resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
+            mbWinTopWait();
+            if (mbPlayerStarGet(playerNo1) <= 0) {
+                mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+                            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
+                    mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 1); /* miracle scene insert resource */
+                mbWinTopWait();
+            } else {
+                mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                ev_CapMiracleStarTrade(work, playerNo1, playerNo2, 2,
+                    0);
+            }
+            break;
+        case 4:
+            mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
+                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 1);
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 2); /* miracle scene insert resource */
+            mbWinTopWait();
+            if (mbPlayerStarGet(playerNo1) <= 0
+                && mbPlayerStarGet(playerNo2) <= 0) {
+                mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+                            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
+                    mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 0); /* miracle scene insert resource */
+                mbWinTopWait();
+            } else {
+                mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                ev_CapMiracleStarTrade(work, playerNo1, playerNo2,
+                    mbPlayerStarGet(playerNo1),
+                    mbPlayerStarGet(playerNo2));
+            }
+            break;
+        case 5:
+            mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
+                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 1);
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 15), 2); /* miracle scene insert resource */
+            mbWinTopWait();
+            if (mbPlayerCoinGet(playerNo1) <= 0
+                && mbPlayerCoinGet(playerNo2) <= 0
+                && mbPlayerStarGet(playerNo1) <= 0
+                && mbPlayerStarGet(playerNo2) <= 0) {
+                mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
+                            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
+                    mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 15), 0); /* miracle scene insert resource */
+                mbWinTopWait();
+            } else {
+                mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+                ev_CapMiracleCoinTrade(work, playerNo1, playerNo2,
+                    mbPlayerCoinGet(playerNo1),
+                    mbPlayerCoinGet(playerNo2));
+                ev_CapMiracleStarTrade(work, playerNo1, playerNo2,
+                    mbPlayerStarGet(playerNo1),
+                    mbPlayerStarGet(playerNo2));
+            }
+            break;
     }
-    mbev_CapDuelStatusDispSet(playerNo, targetPlayer, TRUE);
-    sprintf(message, "%d", tradeNo);
-    mbWinCreate(2, ev_CapMiracleMesGet(0x003C000A), 13); /* miracle scene message resource */
-    mbWinTopInsertMesSet((u32)message, 0);
-    mbWinTopWait();
+        if (mbStatusDispGet(playerNo1)) {
+            mbStatusDispSet(playerNo1, FALSE);
+        }
+        if (mbStatusDispGet(playerNo2)) {
+            mbStatusDispSet(playerNo2, FALSE);
+        }
+        players[0] = playerNo1;
+        players[1] = playerNo2;
+        {
+            int motionF[2];
+
+            motionF[0] = FALSE;
+        motionF[1] = FALSE;
+        for (i = 0; i < 2; i++) {
+            if (oldStar[i] < mbPlayerStarGet(players[i])) {
+                mbPlayerWinLoseVoicePlay(players[i], 7, CHARVOICEID(0)); /* player win voice resource */
+                mbPlayerMotionShiftSet(players[i], 7, 0.0f, 8.0f,
+                    HU3D_MOTATTR_NONE);
+                motionF[i] = TRUE;
+            } else if (oldStar[i] > mbPlayerStarGet(players[i])) {
+                mbPlayerWinLoseVoicePlay(players[i], 8, CHARVOICEID(12)); /* player loss voice resource */
+                mbPlayerMotionShiftSet(players[i], 8, 0.0f, 8.0f,
+                    HU3D_MOTATTR_NONE);
+                motionF[i] = TRUE;
+            } else if (oldCoin[i] < mbPlayerCoinGet(players[i])) {
+                mbPlayerWinLoseVoicePlay(players[i], 12, CHARVOICEID(6)); /* player win voice resource */
+                mbPlayerMotionShiftSet(players[i], 12, 0.0f, 8.0f,
+                    HU3D_MOTATTR_NONE);
+                motionF[i] = TRUE;
+            } else if (oldCoin[i] > mbPlayerCoinGet(players[i])) {
+                mbPlayerWinLoseVoicePlay(players[i], 13, CHARVOICEID(12)); /* player loss voice resource */
+                mbPlayerMotionShiftSet(players[i], 13, 0.0f, 8.0f,
+                    HU3D_MOTATTR_NONE);
+                motionF[i] = TRUE;
+            }
+        }
+        HuPrcSleep(30);
+        do {
+            for (i = 0; i < 2; i++) {
+                if (motionF[i] && !mbPlayerMotionEndCheck(players[i])) {
+                    break;
+                }
+            }
+            HuPrcVSleep();
+        } while (i < 2);
+        if (motionF[0]) {
+            mbPlayerMotionShiftSet(players[0], 1, 0.0f, 8.0f,
+                HU3D_MOTATTR_LOOP);
+        }
+        if (motionF[1]) {
+            mbPlayerMotionShiftSet(players[1], 1, 0.0f, 8.0f,
+                HU3D_MOTATTR_LOOP);
+        }
+        }
+        mbObjMotionShiftSet(guide, 5, 0.0f, 8.0f,
+            HU3D_MOTATTR_LOOP);
+        mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 10)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+        mbWinTopWait();
+    }
     mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
     ev_CapMiracleSprDestroy();
 }
 static void ev_CapMiraclePlayerSet(void *unused, int playerNo1, int playerNo2,
     int masuId)
 {
-    extern const float lbl_802C4288;
-    extern const float lbl_802C429C;
-    extern const float lbl_802C42E0;
-    extern const float lbl_802C43C0;
     HuVecF masuPos;
     HuVecF pos;
     int i;
@@ -1938,19 +2505,19 @@ static void ev_CapMiraclePlayerSet(void *unused, int playerNo1, int playerNo2,
     }
     mbMasuPosGet(masuId, &masuPos);
 
-    pos.x = masuPos.x - lbl_802C429C;
+    pos.x = masuPos.x - 200.0f;
     pos.y = masuPos.y;
     pos.z = masuPos.z;
     mbPlayerPosSetV(playerNo1, &pos);
-    mbPlayerRotSet(playerNo1, lbl_802C4288, lbl_802C42E0, lbl_802C4288);
+    mbPlayerRotSet(playerNo1, 0.0f, 30.0f, 0.0f);
     mbPlayerDispSet(playerNo1, TRUE);
     mbPlayerColSnapPlayerSet(playerNo1, FALSE);
 
-    pos.x = lbl_802C429C + masuPos.x;
+    pos.x = 200.0f + masuPos.x;
     pos.y = masuPos.y;
     pos.z = masuPos.z;
     mbPlayerPosSetV(playerNo2, &pos);
-    mbPlayerRotSet(playerNo2, lbl_802C4288, lbl_802C43C0, lbl_802C4288);
+    mbPlayerRotSet(playerNo2, 0.0f, -30.0f, 0.0f);
     mbPlayerDispSet(playerNo2, TRUE);
     mbPlayerColSnapPlayerSet(playerNo2, FALSE);
 }
@@ -1958,12 +2525,15 @@ static void ev_CapMiraclePlayerSet(void *unused, int playerNo1, int playerNo2,
 static void ev_CapMiracleCoinTrade(CAPWORK *work, int playerNo1,
     int playerNo2, int coinNum1, int coinNum2)
 {
-    extern const float lbl_802C42CC;
     HuVecF playerPos1;
     HuVecF playerPos2;
-    int coinDelay;
+    int coinDelay = 1;
     int coinAddNum;
 
+    mbPlayerPosGet(playerNo1, &playerPos1);
+    playerPos1.y += 150.0f;
+    mbPlayerPosGet(playerNo2, &playerPos2);
+    playerPos2.y += 150.0f;
     if (coinNum1 + coinNum2 < 20) {
         coinDelay = 5;
     } else if (coinNum1 + coinNum2 < 40) {
@@ -1975,15 +2545,10 @@ static void ev_CapMiracleCoinTrade(CAPWORK *work, int playerNo1,
     } else {
         coinDelay = 1;
     }
-    mbPlayerPosGet(playerNo1, &playerPos1);
-    playerPos1.y += lbl_802C42CC;
-    mbPlayerPosGet(playerNo2, &playerPos2);
-    playerPos2.y += lbl_802C42CC;
     do {
         if (coinNum1 > 0 && mbPlayerCoinGet(playerNo1) > 0) {
-            coinAddNum = mbev_CapCoinManAdd(work->coinManObj,
-                &playerPos1, &playerPos2, playerNo2, TRUE);
-            if (coinAddNum != 0) {
+            if ((coinAddNum = mbev_CapCoinManAdd(work->coinManObj,
+                &playerPos1, &playerPos2, playerNo2, TRUE)) != 0) {
                 mbPlayerCoinAdd(playerNo1, -coinAddNum);
                 coinNum1 -= coinAddNum;
             }
@@ -1992,9 +2557,8 @@ static void ev_CapMiracleCoinTrade(CAPWORK *work, int playerNo1,
             coinNum1 = 0;
         }
         if (coinNum2 > 0 && mbPlayerCoinGet(playerNo2) > 0) {
-            coinAddNum = mbev_CapCoinManAdd(work->coinManObj,
-                &playerPos2, &playerPos1, playerNo1, TRUE);
-            if (coinAddNum != 0) {
+            if ((coinAddNum = mbev_CapCoinManAdd(work->coinManObj,
+                &playerPos2, &playerPos1, playerNo1, TRUE)) != 0) {
                 mbPlayerCoinAdd(playerNo2, -coinAddNum);
                 coinNum2 -= coinAddNum;
             }
@@ -2011,7 +2575,6 @@ static void ev_CapMiracleCoinTrade(CAPWORK *work, int playerNo1,
 static void ev_CapMiracleStarTrade(CAPWORK *work, int playerNo1, int playerNo2,
     int starNum1, int starNum2)
 {
-    extern const float lbl_802C42CC;
     HuVecF playerPos1;
     HuVecF playerPos2;
     int starDelay;
@@ -2029,9 +2592,9 @@ static void ev_CapMiracleStarTrade(CAPWORK *work, int playerNo1, int playerNo2,
         starDelay = 4;
     }
     mbPlayerPosGet(playerNo1, &playerPos1);
-    playerPos1.y += lbl_802C42CC;
+    playerPos1.y += 150.0f;
     mbPlayerPosGet(playerNo2, &playerPos2);
-    playerPos2.y += lbl_802C42CC;
+    playerPos2.y += 150.0f;
     do {
         if (starNum1 > 0 && mbPlayerStarGet(playerNo1) > 0) {
             starAddNum = mbev_CapStarManAdd(work->starManObj,
@@ -2074,22 +2637,24 @@ static void ev_CapMiracleDiceHitHook(int result)
     diceHitTimer = 0;
 }
 
-static void ev_CapMiracleWindowFadeOut(s16 oldModel, s16 newModel,
+static const float lbl_802C42C8 = 1.0f;
+
+static void ev_CapMiracleWindowFadeOut(int oldModel, int newModel,
     int timeMax, BOOL reverseF)
 {
-    extern const float lbl_802C42C4;
-    extern const float lbl_802C42C8;
     int time;
+    float weight;
 
     if (reverseF) {
-        mbObjDispSet(oldModel, TRUE);
-        mbObjLayerSet(oldModel, 3);
-        mbObjDispSet(newModel, TRUE);
-        mbObjAlphaSet(newModel, 255);
-        mbObjLayerSet(newModel, 3);
+        mbObjDispSet((s16)oldModel, TRUE);
+        mbObjLayerSet((s16)oldModel, 3);
+        mbObjDispSet((s16)newModel, TRUE);
+        mbObjAlphaSet((s16)newModel, 255);
+        mbObjLayerSet((s16)newModel, 3);
         for (time = 0; time < timeMax; time++) {
-            mbObjAlphaSet(newModel, (int)(lbl_802C42C4
-                * ((float)time / (float)timeMax)));
+            weight = (float)time / (float)timeMax;
+            mbObjAlphaSet(newModel,
+                (u8)(lbl_802C42C4 * weight));
             HuPrcVSleep();
         }
         mbObjDispSet(oldModel, FALSE);
@@ -2103,9 +2668,9 @@ static void ev_CapMiracleWindowFadeOut(s16 oldModel, s16 newModel,
         mbObjDispSet(newModel, TRUE);
         mbObjLayerSet(newModel, 3);
         for (time = 0; time < timeMax; time++) {
-            mbObjAlphaSet(oldModel, (int)(lbl_802C42C4
-                * (lbl_802C42C8
-                    - ((float)time / (float)timeMax))));
+            weight = (float)time / (float)timeMax;
+            mbObjAlphaSet(oldModel,
+                (u8)(lbl_802C42C4 * (lbl_802C42C8 - weight)));
             HuPrcVSleep();
         }
         mbObjDispSet(oldModel, FALSE);
@@ -2114,16 +2679,16 @@ static void ev_CapMiracleWindowFadeOut(s16 oldModel, s16 newModel,
     }
 }
 
-static void ev_CapMiracleWindowFadeIn(s16 oldModel, s16 newModel,
+static const float lbl_802C42D0 = 0.5f;
+
+static void ev_CapMiracleWindowFadeIn(int oldModel, int newModel,
     int timeMax, BOOL reverseF, int motionStepFrames, int motionTimeCount,
     int *motionTimes)
 {
-    extern const float lbl_802C42C4;
-    extern const float lbl_802C42C8;
-    extern const float lbl_802C42D0;
     int time;
     int motionTime;
     int motionNo;
+    float weight;
 
     motionTime = 0;
     motionNo = 0;
@@ -2134,53 +2699,52 @@ static void ev_CapMiracleWindowFadeIn(s16 oldModel, s16 newModel,
         mbObjAlphaSet(newModel, 255);
         mbObjLayerSet(newModel, 3);
         for (time = 0; time < timeMax; time++) {
-            mbObjAlphaSet(newModel, (int)(lbl_802C42C4
-                * ((float)time / (float)timeMax)));
+            weight = (float)time / (float)timeMax;
+            mbObjAlphaSet(newModel,
+                (u8)(lbl_802C42C4 * weight));
             if (++motionTime >= motionStepFrames) {
                 motionTime = 0;
                 if (++motionNo >= motionTimeCount) {
                     motionNo = 0;
                 }
-                mbObjMotionTimeSet(newModel, lbl_802C42D0
+                mbObjMotionTimeSet((s16)newModel, lbl_802C42D0
                     + (float)motionTimes[motionNo]);
             }
             HuPrcVSleep();
         }
-        mbObjDispSet(oldModel, FALSE);
-        mbObjDispSet(newModel, TRUE);
-        mbObjAlphaSet(newModel, 255);
-        mbObjLayerSet(newModel, 3);
+        mbObjDispSet((s16)oldModel, FALSE);
+        mbObjDispSet((s16)newModel, TRUE);
+        mbObjAlphaSet((s16)newModel, 255);
+        mbObjLayerSet((s16)newModel, 3);
     } else {
-        mbObjDispSet(oldModel, TRUE);
-        mbObjAlphaSet(oldModel, 255);
-        mbObjLayerSet(oldModel, 3);
-        mbObjDispSet(newModel, TRUE);
-        mbObjLayerSet(newModel, 3);
+        mbObjDispSet((s16)oldModel, TRUE);
+        mbObjAlphaSet((s16)oldModel, 255);
+        mbObjLayerSet((s16)oldModel, 3);
+        mbObjDispSet((s16)newModel, TRUE);
+        mbObjLayerSet((s16)newModel, 3);
         for (time = 0; time < timeMax; time++) {
-            mbObjAlphaSet(oldModel, (int)(lbl_802C42C4
-                * (lbl_802C42C8
-                    - ((float)time / (float)timeMax))));
+            weight = (float)time / (float)timeMax;
+            mbObjAlphaSet(oldModel,
+                (u8)(lbl_802C42C4 * (lbl_802C42C8 - weight)));
             if (++motionTime >= motionStepFrames) {
                 motionTime = 0;
                 if (++motionNo >= motionTimeCount) {
                     motionNo = 0;
                 }
-                mbObjMotionTimeSet(newModel, lbl_802C42D0
+                mbObjMotionTimeSet((s16)newModel, lbl_802C42D0
                     + (float)motionTimes[motionNo]);
             }
             HuPrcVSleep();
         }
-        mbObjDispSet(oldModel, FALSE);
-        mbObjDispSet(newModel, TRUE);
-        mbObjAlphaSet(newModel, 255);
-        mbObjLayerSet(newModel, 3);
+        mbObjDispSet((s16)oldModel, FALSE);
+        mbObjDispSet((s16)newModel, TRUE);
+        mbObjLayerSet((s16)newModel, 3);
     }
 }
 
 static int ev_CapMiracleDiceExec(int playerNo, int modelId, int timeMax,
     int valueNum, int *motTimeTbl)
 {
-    extern const float lbl_802C42D0;
     int winNo;
     int value;
     int time;
@@ -2202,7 +2766,7 @@ static int ev_CapMiracleDiceExec(int playerNo, int modelId, int timeMax,
                 }
             }
             mbObjMotionTimeSet(modelId,
-                lbl_802C42D0 + (float)motTimeTbl[value]);
+                0.5f + (float)motTimeTbl[value]);
         }
         HuPrcVSleep();
     } while (!mbDiceKillCheck(playerNo));
@@ -2214,7 +2778,6 @@ static int ev_CapMiracleDiceExec(int playerNo, int modelId, int timeMax,
 
 static void ev_CapMiracleSprCreate(void)
 {
-    extern const float lbl_802C4288;
     MIRACLE_SPR_WORK *work;
     int i;
     int j;
@@ -2235,8 +2798,8 @@ static void ev_CapMiracleSprCreate(void)
         work->focusTime = 0;
         work->focusNo = 0;
         work->hideF = FALSE;
-        work->unk30 = lbl_802C4288;
-        work->unk34 = lbl_802C4288;
+        work->unk30 = 0.0f;
+        work->unk34 = 0.0f;
     }
 }
 
@@ -2245,100 +2808,184 @@ static void ev_CapMiracleSprUpdate(OMOBJ *obj)
     MIRACLE_SPR_WORK *work = obj->data;
     int i;
     int j;
-    float t;
+    float time;
     float angle;
+    float angle2;
+    float angle3;
+    float radius;
     float scale;
-    float alpha;
+    HuVecF pos;
 
     if (mbExitCheck() || miracleSprObj == NULL) {
         for (i = 0; i < 6; i++, work++) {
-            if (work->sprId != -1) {
-                espKill((s16)work->sprId);
-            }
-            if (work->backSprId != -1) {
-                espKill((s16)work->backSprId);
-            }
-            for (j = 0; j < 6; j++) {
-                if (work->sprIdTbl[j] != -1) {
-                    espKill((s16)work->sprIdTbl[j]);
+            if (work->activeF) {
+                if (work->sprId != -1) {
+                    espKill((s16)work->sprId);
                 }
+                if (work->backSprId != -1) {
+                    espKill((s16)work->backSprId);
+                }
+                for (j = 0; j < 6; j++) {
+                    if (work->sprIdTbl[j] != -1) {
+                        espKill((s16)work->sprIdTbl[j]);
+                    }
+                }
+                work->sprId = -1;
+                work->backSprId = -1;
             }
-            work->sprId = -1;
-            work->backSprId = -1;
         }
-        miracleSprObj = NULL;
         omDelObjEx(mbObjMan, obj);
+        miracleSprObj = NULL;
         return;
     }
     for (i = 0; i < 6; i++, work++) {
         if (!work->activeF) {
             continue;
         }
-        if (work->focusTime == 0) {
-            for (j = 0; j < 6; j++) {
-                angle = (float)(j * 60 + work->focusNo * 4)
-                    * (float)(M_PI / 180.0);
-                espPosSet((s16)work->sprIdTbl[j],
-                    work->pos.x + 52.0f * (float)cos(angle),
-                    work->pos.y + 52.0f * (float)sin(angle));
-                espScaleSet((s16)work->sprIdTbl[j], 0.7f, 0.7f);
-                espTPLvlSet((s16)work->sprIdTbl[j], 1.0f);
-            }
-            work->focusNo++;
-            continue;
-        }
-        if (work->focusTime == 1 || work->focusTime == 32) {
-            int maxTime = work->focusTime == 1 ? 18 : 240;
-            work->focusNo++;
-            t = (float)work->focusNo / (float)maxTime;
-            if (t > 1.0f) {
-                t = 1.0f;
-            }
-            scale = (float)sin((M_PI * 90.0 * t) / 180.0);
-            alpha = 1.0f - scale;
-            espScaleSet((s16)work->sprId, scale, scale);
-            espScaleSet((s16)work->backSprId, scale, scale);
-            espTPLvlSet((s16)work->sprId, alpha);
-            espTPLvlSet((s16)work->backSprId, alpha);
-            if (work->focusTime == 32 && work->hideF) {
-                espScaleSet((s16)work->sprId, 0.0f, 0.0f);
-                espScaleSet((s16)work->backSprId, 0.0f, 0.0f);
-            }
-            if (work->focusNo >= maxTime) {
-                work->focusTime = work->focusTime == 1 ? 2 : 64;
-                work->focusNo = 0;
-            }
-            continue;
-        }
-        if (work->focusTime == 2) {
-            work->focusNo++;
-            t = (float)work->focusNo / 30.0f;
-            scale = 1.0f + 0.2f
-                * (float)sin((M_PI * 720.0 * t) / 180.0);
-            espScaleSet((s16)work->sprId, scale, scale);
-            espScaleSet((s16)work->backSprId, scale, scale);
-            if (work->focusNo >= 30) {
-                work->focusTime = 0;
-                work->focusNo = 0;
-            }
-            continue;
-        }
-        if (work->focusTime == 64) {
-            work->focusNo++;
-            t = (float)work->focusNo / 30.0f;
-            angle = (float)(M_PI * 0.5) * t;
-            espPosSet((s16)work->sprId,
-                work->pos.x + 280.0f * (float)sin(angle), work->pos.y);
-            espPosSet((s16)work->backSprId,
-                work->pos.x + 280.0f * (float)sin(angle), work->pos.y);
-            if (work->focusNo >= 30) {
-                espDispOff((s16)work->sprId);
-                espDispOff((s16)work->backSprId);
-                espDispOff((s16)work->sprIdTbl[0]);
-                work->activeF = FALSE;
-                work->focusTime = 0;
-                work->focusNo = 0;
-            }
+        switch (work->focusTime) {
+            case 0:
+                time = (float)++work->focusNo / 30.0f;
+                if (time < 1.0f) {
+                    scale = 1.0 + 5.0 * cos(
+                        (M_PI * (90.0f * time)) / 180.0);
+                    espScaleSet((s16)work->sprId, scale, scale);
+                    espTPLvlSet((s16)work->sprId, time);
+                    espZRotSet((s16)work->sprId, 0.0f);
+                    scale = time + 0.5 * sin(
+                        (M_PI * (180.0f * time)) / 180.0);
+                    espScaleSet((s16)work->backSprId, scale, scale);
+                    angle = 90.0f * time;
+                    radius = 300.0f * (1.0f - time);
+                    for (j = 0; j < 6; j++) {
+                        angle2 = angle + 60.0f * (float)j;
+                        angle3 = angle2 + angle;
+                        pos.x = work->pos.x + radius * sin(
+                            (M_PI * angle3) / 180.0);
+                        pos.y = work->pos.y + radius * cos(
+                            (M_PI * angle3) / 180.0);
+                        espPosSet((s16)work->sprIdTbl[j], pos.x, pos.y);
+                        espScaleSet((s16)work->sprId, scale, scale);
+                        espTPLvlSet((s16)work->sprIdTbl[j], 0.25f * time);
+                        espZRotSet((s16)work->sprIdTbl[j],
+                            (1.0f - time) * angle2);
+                    }
+                } else {
+                    mbAudFXPlay(MSM_SE_BRD00_134); /* event sound-effect resource */
+                    scale = 1.0f;
+                    espTPLvlSet((s16)work->sprId, 1.0f);
+                    espZRotSet((s16)work->sprId, 0.0f);
+                    espScaleSet((s16)work->sprId, scale, scale);
+                    espScaleSet((s16)work->backSprId, scale, scale);
+                    for (j = 0; j < 6; j++) {
+                        espScaleSet((s16)work->sprIdTbl[j], 0.0f, 0.0f);
+                    }
+                    espKill((s16)work->sprIdTbl[1]);
+                    work->sprIdTbl[1] = (s16)espEntry(
+                        DATANUM(DATA_capsulechar4, 58), 500, 0); /* event sprite resource */
+                    espDrawNoSet((s16)work->sprIdTbl[1], 32);
+                    espPosSet((s16)work->sprIdTbl[1],
+                        work->pos.x, work->pos.y);
+                    espScaleSet((s16)work->sprIdTbl[1], 0.0f, 0.0f);
+                    espTPLvlSet((s16)work->sprIdTbl[1], 0.25f);
+                    espAttrSet((s16)work->sprIdTbl[1], HUSPR_ATTR_LINEAR);
+                    work->focusTime++;
+                    work->focusNo = 0;
+                }
+                break;
+
+            case 1:
+                time = (float)++work->focusNo / 18.0f;
+                scale = 1.0 + 10.0 * sin(
+                    (M_PI * (90.0f * time)) / 180.0);
+                if (time < 1.0f) {
+                    {
+                        espPosSet((s16)work->sprIdTbl[0],
+                            work->pos.x, work->pos.y);
+                        espScaleSet((s16)work->sprIdTbl[0], scale, scale);
+                        espTPLvlSet((s16)work->sprIdTbl[0],
+                            cos((M_PI * (90.0f * time)) / 180.0)
+                                * cos((M_PI * (90.0f * time)) / 180.0)
+                                * 0.5);
+                        espZRotSet((s16)work->sprIdTbl[0], 0.0f);
+                    }
+                    {
+                        espPosSet((s16)work->sprIdTbl[1],
+                            work->pos.x, work->pos.y);
+                        espScaleSet((s16)work->sprIdTbl[1], scale, scale);
+                        espTPLvlSet((s16)work->sprIdTbl[1],
+                            cos((M_PI * (90.0f * time)) / 180.0)
+                                * cos((M_PI * (90.0f * time)) / 180.0)
+                                * 0.5);
+                        espZRotSet((s16)work->sprIdTbl[1], 0.0f);
+                    }
+                } else {
+                    scale = 1.0f;
+                    espScaleSet((s16)work->sprId, scale, scale);
+                    espScaleSet((s16)work->backSprId, scale, scale);
+                    espScaleSet((s16)work->sprIdTbl[0], 0.0f, 0.0f);
+                    espScaleSet((s16)work->sprIdTbl[1], 0.0f, 0.0f);
+                    work->focusTime++;
+                    work->focusNo = 0;
+                }
+                break;
+
+            case 2:
+                if (work->hideF) {
+                    scale = 1.0f;
+                    espScaleSet((s16)work->sprId, scale, scale);
+                    espScaleSet((s16)work->backSprId, scale, scale);
+                    work->focusTime = CAPSPECIAL_MIRACLE_SPR_HIDE;
+                    work->focusNo = 0;
+                }
+                break;
+
+            case CAPSPECIAL_MIRACLE_SPR_PULSE:
+                time = (float)++work->focusNo / 240.0f;
+                if (time >= 1.0f && !work->hideF) {
+                    time = fmod(time, 1.0);
+                    work->focusNo = (int)((float)work->focusNo - 240.0f);
+                }
+                scale = 1.0 + 0.5 * fabs(sin(
+                    (M_PI * (1440.0f * time)) / 180.0));
+                if (time < 1.0f && !work->hideF) {
+                    espScaleSet((s16)work->sprIdTbl[0], scale, scale);
+                    espTPLvlSet((s16)work->sprIdTbl[0],
+                        0.25 + 0.25 * fabs(sin(
+                            (M_PI * (1440.0f * time)) / 180.0)));
+                    espZRotSet((s16)work->sprIdTbl[0], 0.0f);
+                    espScaleSet((s16)work->sprIdTbl[1], scale, scale);
+                    espTPLvlSet((s16)work->sprIdTbl[1],
+                        0.25 + 0.25 * fabs(sin(
+                            (M_PI * (1440.0f * time)) / 180.0)));
+                    espZRotSet((s16)work->sprIdTbl[0], 0.0f);
+                } else {
+                    scale = 1.0f;
+                    espScaleSet((s16)work->sprId, scale, scale);
+                    espScaleSet((s16)work->backSprId, scale, scale);
+                    espScaleSet((s16)work->sprIdTbl[0], 0.0f, 0.0f);
+                    espScaleSet((s16)work->sprIdTbl[1], 0.0f, 0.0f);
+                    work->focusTime = CAPSPECIAL_MIRACLE_SPR_HIDE;
+                    work->focusNo = 0;
+                }
+                break;
+
+            case CAPSPECIAL_MIRACLE_SPR_HIDE:
+                time = (float)++work->focusNo / 30.0f;
+                scale = cos((M_PI * (90.0f * time)) / 180.0);
+                if (time < 1.0f) {
+                    espPosSet((s16)work->sprId, work->pos.x,
+                        work->pos.y - 280.0f * time);
+                    espPosSet((s16)work->backSprId, work->pos.x,
+                        work->pos.y - 280.0f * time);
+                } else {
+                    espDispOff((s16)work->sprId);
+                    espDispOff((s16)work->backSprId);
+                    espDispOff((s16)work->sprIdTbl[0]);
+                    espDispOff((s16)work->sprIdTbl[1]);
+                    work->focusTime++;
+                    work->focusNo = 0;
+                }
+                break;
         }
     }
 }
@@ -2350,7 +2997,6 @@ static void ev_CapMiracleSprDestroy(void)
 
 static void ev_CapMiracleTradeCreate(HuVecF *pos, int no)
 {
-    extern const float lbl_802C4288;
     MIRACLE_SPR_WORK *work;
     int i;
     int j;
@@ -2372,8 +3018,8 @@ static void ev_CapMiracleTradeCreate(HuVecF *pos, int no)
     work->activeF = TRUE;
     work->focusTime = 0;
     work->focusNo = 0;
-    work->unk30 = lbl_802C4288;
-    work->unk34 = lbl_802C4288;
+    work->unk30 = 0.0f;
+    work->unk34 = 0.0f;
     work->pos = *pos;
     if (no < 0) {
         no = 0;
@@ -2383,19 +3029,18 @@ static void ev_CapMiracleTradeCreate(HuVecF *pos, int no)
     file = miracleTradeFileTbl[no];
     work->sprId = (s16)espEntry(file, 100, 0);
     espPosSet((s16)work->sprId, pos->x, pos->y);
-    espScaleSet((s16)work->sprId, lbl_802C4288, lbl_802C4288);
+    espScaleSet((s16)work->sprId, 0.0f, 0.0f);
     espAttrSet((s16)work->sprId, HUSPR_ATTR_LINEAR);
     espDrawNoSet((s16)work->sprId, 32);
     work->backSprId = (s16)espEntry(miracleBackFile, 120, 0);
     espPosSet((s16)work->backSprId, pos->x, pos->y);
-    espScaleSet((s16)work->backSprId, lbl_802C4288, lbl_802C4288);
+    espScaleSet((s16)work->backSprId, 0.0f, 0.0f);
     espAttrSet((s16)work->backSprId, HUSPR_ATTR_LINEAR);
     espDrawNoSet((s16)work->backSprId, 32);
     for (j = 0; j < 6; j++) {
         work->sprIdTbl[j] = (s16)espEntry(file, 100, 0);
         espPosSet((s16)work->sprIdTbl[j], pos->x, pos->y);
-        espScaleSet((s16)work->sprIdTbl[j], lbl_802C4288,
-            lbl_802C4288);
+        espScaleSet((s16)work->sprIdTbl[j], 0.0f, 0.0f);
         espAttrSet((s16)work->sprIdTbl[j], HUSPR_ATTR_LINEAR);
         espDrawNoSet((s16)work->sprIdTbl[j], 32);
     }
@@ -2439,51 +3084,110 @@ void mbev_CapKettou(void)
     CAPWORK *work = HuPrcCurrentGet()->property;
     OMOBJ *guideObj;
     int guideModel;
-    int guideSet = GwSystem.curTime ? 1 : 0;
+    int guideSet;
     int i;
-    int winner;
-    int loser;
+    int dif;
+    int total;
 
     mbev_CapWait(work);
+    if (!GwSystem.curTime) {
+        guideSet = 0;
+    } else {
+        guideSet = 1;
+    }
     guideObj = mbGuideCreateIn();
     guideModel = mbGuideModelGet(guideObj);
     mbObjDispSet(guideModel, FALSE);
-    for (i = 0; i < 12 && kettouGuideMotTbl[guideSet][i] != (u32)-1;
-        i++) {
+    for (i = 0; (s32)kettouGuideMotTbl[guideSet][i] >= 0; i++) {
         kettouMotId[i] = mbObjMotionCreate(guideModel,
             kettouGuideMotTbl[guideSet][i]);
     }
     mbObjMotionSet(guideModel, kettouMotId[1], HU3D_MOTATTR_LOOP);
     mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
-    work->_unkB6C = guideModel;
-    *(OMOBJ **)((u8 *)work + 0xBAC) = guideObj; /* retained CAPWORK field offset */
-    if (!work->flags._flag02 && ev_CapKettouStart(work)) {
-        winner = *(s16 *)((u8 *)mgResultData + 0);
-        loser = *(s16 *)((u8 *)mgResultData + 2);
+    work->eventData[0] = guideModel;
+    work->guideObj = guideObj;
+    if (!work->flags._flag02) {
+        if (ev_CapKettouStart(work)) {
+        {
+        int winner = mgResultData.playerNo1;
         if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[winner].masuId = 0;
-            GwPlayer[loser].masuId = 0;
+            GwPlayer[winner].mgCoinBonus = 0;
         }
-        if ((!mbPlayerAllComCheck() || GwSystem.mgComDispF)
-            && mbMgRouletteNumGet(6) > 0) {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D000C), 13); /* duel scene message resource */
-            mbWinTopWait();
-            mbAudFXDelaySet(30);
-            mbAudGuidePlay(0x3B6); /* guide sound-effect resource */
-            mbObjMotionShiftSet(guideModel, kettouMotId[5],
-                0.0f, 0.0f, HU3D_MOTATTR_LOOP);
-            mbev_MgCallKettou();
-        } else {
+        }
+        {
+        int loser = mgResultData.playerNo2;
+        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+            GwPlayer[loser].mgCoinBonus = 0;
+        }
+        }
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            GwPlayerConf[i].grpNo = 2;
+        }
+        GwPlayerConf[mgResultData.playerNo1].grpNo = 0;
+        GwPlayerConf[mgResultData.playerNo2].grpNo = 1;
+        if ((GwPlayer[mgResultData.playerNo1].comF
+                && GwPlayer[mgResultData.playerNo2].comF
+                && !GWMgComDispGet())
+            || mbMgRouletteNumGet(6) <= 0) {
+            int weight[3];
+            int roll;
+
+            dif = abs((int)GwPlayer[
+                mgResultData.playerNo1].comDif
+                - (int)GwPlayer[
+                mgResultData.playerNo2].comDif);
+            if (dif < 0) {
+                dif = 0;
+            } else if (dif > 3) {
+                dif = 3;
+            }
+            weight[0] = 15 - (dif * 4);
+            weight[1] = 50 + ((int)GwPlayer[
+                mgResultData.playerNo1].comDif * 20);
+            weight[2] = 50 + ((int)GwPlayer[
+                mgResultData.playerNo2].comDif * 20);
+            total = weight[0] + weight[1] + weight[2];
+            roll = mbRandMod(total);
+            if (roll < weight[0]) {
+                int winner = mgResultData.playerNo1;
+                if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+                    GwPlayer[winner].mgCoinBonus = 0;
+                }
+                {
+                int loser = mgResultData.playerNo2;
+                if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+                    GwPlayer[loser].mgCoinBonus = 0;
+                }
+                }
+            } else if (roll < weight[1]) {
+                int winner = mgResultData.playerNo1;
+                if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+                    GwPlayer[winner].mgCoinBonus = 10;
+                }
+            } else {
+                int loser = mgResultData.playerNo2;
+                if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+                    GwPlayer[loser].mgCoinBonus = 10;
+                }
+            }
             mbWipeFadeOut();
             ev_CapKettouReturn(work);
+        } else {
+            int guideSpeaker = mbGuideSpeakerNoGet();
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 12)), guideSpeaker); /* duel scene message resource */
+            mbWinTopWait();
+            mbAudFXDelaySet(30);
+            mbAudGuidePlay(MSM_SE_GUIDE_26); /* guide sound-effect resource */
+            mbObjMotionShiftSet(guideModel, kettouMotId[5],
+                0.0f, 8.0f, 0);
+            mbev_MgCallKettou();
+        }
         }
     } else {
-        mbWipeFadeOut();
         ev_CapKettouReturn(work);
     }
-    if (*(OMOBJ **)((u8 *)work + 0xBAC) != NULL) { /* retained CAPWORK field offset */
-        mbGuideKill(*(OMOBJ **)((u8 *)work + 0xBAC)); /* retained CAPWORK field offset */
-        *(OMOBJ **)((u8 *)work + 0xBAC) = NULL; /* retained CAPWORK field offset */
+    if (work->guideObj != NULL) {
+        mbGuideKill(guideObj);
     }
     HuPrcEnd();
 }
@@ -2494,343 +3198,867 @@ void mbev_CapKettouKill(void)
 
 static int ev_CapKettouStart(CAPWORK *work)
 {
+    extern void mbStatusDispForceSetAll(BOOL dispF);
+    extern void mbev_Scroll(int playerNo, BOOL mapF);
+    extern void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
+    extern void mbGuideEnd(OMOBJ *obj, BOOL endF);
+    extern const float lbl_802C4434;
     HuVecF masuPos;
     HuVecF pos;
-    HuVecF avgPos = { 0.0f, 0.0f, 0.0f };
+    HuVecF cameraOfs;
+    HuVecF direction;
+    HuVecF avgPos;
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int modelId = work->_unkB6C;
     int playerList[GW_PLAYER_MAX];
-    int playerMot[GW_PLAYER_MAX];
-    int playerNum = 0;
+    int compactList[GW_PLAYER_MAX];
+    int playerNum;
     int targetPlayer;
-    int targetIndex;
-    int resourceType;
     int amount;
+    int coinTakeNum;
     int i;
-    int motionIndex;
-    int sameMasuNum = 0;
-    int playerObj;
-    int playerMotion;
-    int sprite[5];
+    int counter;
+    int sprId;
+    int sprite0;
+    int sprite1;
+    int sprite[3];
+    int add[GW_PLAYER_MAX];
+    int starObj[2];
+    int coinDisp[2];
+    int modelId;
+    int resourceType;
 
-    BOOL resumeF = work->flags._flag01;
-    if (!resumeF) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+    float t;
+    int prevCoin;
+    int prevCoinDir;
+    int helpWin;
+    int padBtn;
+    int choiceStar;
+
+    BOOL starEnable;
+    BOOL coinEnable;
+    BOOL coinChoiceF;
+    BOOL starChoiceF;
+    BOOL initCoinNumF;
+    BOOL resumeF;
+    BOOL failureF;
+
+    mbPlayerPosGet(playerNo, &masuPos);
+    modelId = work->eventData[0];
+    if (work->flags._flag01) {
+        resumeF = TRUE;
+    } else {
+        int playerMot[GW_PLAYER_MAX];
+
+        resumeF = FALSE;
+        avgPos.x = avgPos.y = avgPos.z = 0.0f;
+        for (i = 0, playerNum = 0; i < GW_PLAYER_MAX; i++) {
         if (GwPlayer[i].masuId == masuId) {
-            if (sameMasuNum < 2) {
-                motionIndex = mbRandMod(2);
+            if (playerNum >= 2) {
+                counter = mbRandMod(3);
             } else {
-                motionIndex = mbRandMod(3);
+                counter = mbRandMod(2);
             }
             playerMot[i] = mbev_CapPlayerMotionCreate(&work->objWork, i,
-                kettouPlayerMotTbl[motionIndex]);
-            if (motionIndex == 2) {
-                playerObj = mbPlayerObjIDGet(i);
-                playerMotion = mbObjMotionIDGet(playerObj, playerMot[i]);
-                Hu3DMotionAttrSet(playerMotion, 1);
+                kettouPlayerMotTbl[counter]);
+            if (counter == 2) {
+                Hu3DMotionAttrSet(
+                    mbObjMotionIDGet(mbPlayerObjIDGet(i), playerMot[i]),
+                    1);
             }
-            mbPlayerPosGet(i, &pos);
-            avgPos.x += pos.x;
-            avgPos.y += pos.y;
-            avgPos.z += pos.z;
-            sameMasuNum++;
+            mbPlayerPosGet(i, &cameraOfs);
+            PSVECAdd(&avgPos, &cameraOfs, &avgPos);
             if (i != playerNo) {
-                playerList[playerNum++] = i;
+                playerList[playerNum] = i;
+                playerNum++;
             }
-        } else {
-            playerMot[i] = -1;
         }
         }
-        if (playerNum < 1) {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D0004), 13); /* duel scene message resource */
-            mbWinTopWait();
-            return 0;
-        }
-        avgPos.x /= (playerNum + 1);
-        avgPos.y /= (playerNum + 1);
-        avgPos.z /= (playerNum + 1);
+        PSVECScale(&avgPos, &avgPos, 1.0f / (playerNum + 1));
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (GwPlayer[i].masuId == masuId) {
-                mbPlayerPosGet(i, &pos);
+                mbPlayerPosGet(i, &cameraOfs);
+                PSVECSubtract(&avgPos, &cameraOfs, &direction);
                 mbPlayerRotateStart(i,
-                    (s16)(180.0 * atan2(avgPos.x - pos.x, avgPos.z - pos.z)
-                        / M_PI), 15);
+                    (s16)((atan2(direction.x, direction.z) / M_PI)
+                        * 180.0), 15);
             }
         }
+        do {
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                if (GwPlayer[i].masuId == masuId
+                    && !mbPlayerRotateCheck(i)) {
+                    break;
+                }
+            }
+            HuPrcVSleep();
+        } while (i < GW_PLAYER_MAX);
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (GwPlayer[i].masuId == masuId) {
-                while (!mbPlayerRotateCheck(i)) {
-                    HuPrcVSleep();
-                }
-                if (playerMot[i] >= 0) {
-                    mbPlayerMotionShiftSet(i, playerMot[i], 0.0f, 8.0f,
-                        HU3D_MOTATTR_LOOP);
-                }
+                mbPlayerMotionShiftSet(i, playerMot[i], 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
             }
         }
         HuPrcSleep(60);
     }
     mbMasuPosGet(masuId, &masuPos);
-    mbObjPosSetV(modelId, &masuPos);
-    masuPos.y += 200.0f;
-    mbObjPosSetV(modelId, &masuPos);
+    mbWipeSpecialFadeInCreate(2, 1);
+    for (i = 0; i < GW_PLAYER_MAX; i++) {
+        mbPlayerMotionSet(i, 1, HU3D_MOTATTR_LOOP);
+        mbPlayerRotSet(i, 0.0f, 0.0f, 0.0f);
+    }
+    pos.x = masuPos.x;
+    pos.y = masuPos.y + 200.0f;
+    pos.z = masuPos.z - 50.0f;
+    mbObjPosSetV(modelId, &pos);
     mbObjDispSet(modelId, TRUE);
     mbStatusDispForceSetAll(TRUE);
-    mbCameraMovePlayer(playerNo, NULL, &capsuleCameraOfs,
+    cameraOfs.x = 0.0f;
+    cameraOfs.y = 100.0f;
+    cameraOfs.z = 0.0f;
+    mbCameraMovePlayer(playerNo, NULL, &cameraOfs,
         1500.0f, -1.0f, -1);
     mbCameraMoveWait();
-    sprite[0] = espEntry(0x00110041, 120, 0); /* event sprite resource identifier */
-    sprite[1] = espEntry(0x00110043, 110, 0); /* event sprite resource identifier */
-    sprite[2] = espEntry(0x00110042, 100, 10); /* event sprite resource identifier */
-    sprite[3] = espEntry(0x00110042, 100, 0); /* event sprite resource identifier */
-    sprite[4] = espEntry(0x00110042, 100, 1); /* event sprite resource identifier */
-    for (i = 0; i < 5; i++) {
-        espDispOff((s16)sprite[i]);
-    }
-    mbMusBoardFadeOut(0, 0, 1000, 1000, 0x19, FALSE); /* board music fade channel mask */
+    sprite0 = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 65), 120, 0); /* event sprite resource identifier */
+    espPosSet((s16)sprId, 288.0f, 224.0f);
+    espTPLvlSet((s16)sprId, 0.8f);
+    espDispOff((s16)sprId);
+    sprite1 = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 67), 110, 0); /* event sprite resource identifier */
+    espPosSet((s16)sprId, 230.0f, 224.0f);
+    espDispOff((s16)sprId);
+    sprite[0] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0); /* event sprite resource identifier */
+    espPosSet((s16)sprId, 272.0f, 224.0f);
+    espBankSet((s16)sprId, 10);
+    espDispOff((s16)sprId);
+    sprite[1] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0); /* event sprite resource identifier */
+    espPosSet((s16)sprId, 312.0f, 224.0f);
+    espBankSet((s16)sprId, 0);
+    espDispOff((s16)sprId);
+    sprite[2] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0); /* event sprite resource identifier */
+    espPosSet((s16)sprId, 352.0f, 224.0f);
+    espBankSet((s16)sprId, 1);
+    espDispOff((s16)sprId);
+    initCoinNumF = FALSE;
+    mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_LOSE, FALSE);
     mbWipeSpecialFadeOutCreate(2, 60);
-    mbAudFXPlay(0x3B6); /* event sound-effect resource */
-    mbWinCreate(2, ev_CapKettouMesGet(0x003D0000), 13); /* duel scene message resource */
+    mbAudGuidePlay(MSM_SE_GUIDE_26); /* event guide-voice resource */
+    mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 0)), mbGuideSpeakerNoGet()); /* duel scene message resource */
     mbWinTopWait();
-    playerNum = 0;
+    if (mbPlayerStarGet(playerNo) <= 0 && mbPlayerCoinGet(playerNo) < 40) {
+        starEnable = FALSE;
+    } else {
+        starEnable = TRUE;
+    }
+    if (mbPlayerCoinGet(playerNo) <= 0) {
+        coinEnable = FALSE;
+    } else {
+        coinEnable = TRUE;
+    }
+
     if (resumeF) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (i == playerNo
-                || (mbPlayerCoinGet(i) <= 0 && mbPlayerStarGet(i) <= 0)) {
+        for (i = 0, playerNum = 0; i < GW_PLAYER_MAX; i++) {
+            if (mbPlayerCoinGet(i) <= 0 && mbPlayerStarGet(i) <= 0) {
                 continue;
             }
-            if (GwSystem.tagF && mbev_CapPlayerCheck(playerNo, i)) {
+            if (!starEnable && mbPlayerCoinGet(i) <= 0) {
                 continue;
             }
-            playerList[playerNum++] = i;
+            if (!coinEnable && mbPlayerStarGet(i) <= 0) {
+                continue;
+            }
+            if (GWTeamFGet() && mbev_CapPlayerCheck(playerNo, i)) {
+                continue;
+            }
+            if (i == playerNo) {
+                continue;
+            }
+            playerList[playerNum] = i;
+                playerNum++;
         }
     } else {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (i == playerNo || GwPlayer[i].masuId != masuId
-                || (mbPlayerCoinGet(i) <= 0 && mbPlayerStarGet(i) <= 0)) {
+        for (i = 0, playerNum = 0; i < GW_PLAYER_MAX; i++) {
+            if (mbPlayerCoinGet(i) <= 0 && mbPlayerStarGet(i) <= 0) {
                 continue;
             }
-            playerList[playerNum++] = i;
+            if (!starEnable && mbPlayerCoinGet(i) <= 0) {
+                continue;
+            }
+            if (!coinEnable && mbPlayerStarGet(i) <= 0) {
+                continue;
+            }
+            if (GWTeamFGet() && mbev_CapPlayerCheck(playerNo, i)) {
+                continue;
+            }
+            if (i == playerNo || GwPlayer[i].masuId != masuId) {
+                continue;
+            }
+            playerList[playerNum] = i;
+                playerNum++;
         }
     }
-    targetIndex = mbev_CapPlayerComSelKettouGet(playerNo,
-        GwPlayer[playerNo].comF ? 0 : -1, playerList, playerNum);
-    if (targetIndex < 0 || targetIndex >= playerNum
-        || playerList[targetIndex] == playerNo) {
-        for (i = 0; i < playerNum; i++) {
-            targetIndex = i;
-            break;
-        }
+    if (mbPlayerCoinGet(playerNo) <= 0 && mbPlayerStarGet(playerNo) <= 0) {
+        playerNum = 0;
     }
-    if (targetIndex < 0 || targetIndex >= playerNum) {
+
+repeatTarget:
+    switch (playerNum) {
+    case 3:
+        do {
+            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 1)), mbGuideSpeakerNoGet(), 0);
+            mbWinTopAttrSet(HUWIN_ATTR_NOCANCEL);
+            for (i = 0; i < playerNum; i++) {
+                compactList[i] = playerList[i];
+            }
+            if (GwPlayer[playerNo].comF) {
+                if (starEnable) {
+                    targetPlayer = mbev_CapPlayerComSelKettouGet(playerNo,
+                        1, compactList, playerNum);
+                } else {
+                    targetPlayer = mbev_CapPlayerComSelKettouGet(playerNo,
+                        0, compactList, playerNum);
+                }
+                mbComChoiceListDownSet(targetPlayer);
+            }
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerList[0]), 0);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerList[1]), 1);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerList[2]), 2);
+            mbWinTopWait();
+            targetPlayer = mbWinTopChoiceGet();
+            if (targetPlayer == 4) {
+                mbev_Scroll(playerNo, FALSE);
+                mbev_CapStatusDispSetAll(TRUE, TRUE);
+            }
+        } while (targetPlayer == 4);
+        if (targetPlayer >= 3 || targetPlayer == -1) {
+            targetPlayer = playerList[mbRandMod(3)];
+            if (targetPlayer < 0) {
+                targetPlayer = playerList[0];
+            }
+        } else {
+            targetPlayer = playerList[targetPlayer];
+        }
+        break;
+    case 2:
+        do {
+            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 2)), mbGuideSpeakerNoGet(), 0);
+            mbWinTopAttrSet(HUWIN_ATTR_NOCANCEL);
+            for (i = 0; i < playerNum; i++) {
+                compactList[i] = playerList[i];
+            }
+            if (GwPlayer[playerNo].comF) {
+                if (starEnable) {
+                    targetPlayer = mbev_CapPlayerComSelKettouGet(playerNo,
+                        1, compactList, playerNum);
+                } else {
+                    targetPlayer = mbev_CapPlayerComSelKettouGet(playerNo,
+                        0, compactList, playerNum);
+                }
+                mbComChoiceListDownSet(targetPlayer);
+            }
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerList[0]), 0);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerList[1]), 1);
+            mbWinTopWait();
+            targetPlayer = mbWinTopChoiceGet();
+            if (targetPlayer == 3) {
+                mbev_Scroll(playerNo, FALSE);
+                mbev_CapStatusDispSetAll(TRUE, TRUE);
+            }
+        } while (targetPlayer == 3);
+        if (targetPlayer >= 2 || targetPlayer == -1) {
+            targetPlayer = playerList[mbRandMod(2)];
+            if (targetPlayer < 0) {
+                targetPlayer = playerList[0];
+            }
+        } else {
+            targetPlayer = playerList[targetPlayer];
+        }
+        break;
+    case 1:
+        targetPlayer = playerList[0];
+        break;
+    default:
+        failureF = FALSE;
+        if (GWTeamFGet() && !resumeF) {
+            for (i = 0, playerNum = 0; i < GW_PLAYER_MAX; i++) {
+                if (i != playerNo
+                    && GwPlayer[playerNo].masuId == GwPlayer[i].masuId) {
+                    playerList[playerNum] = i;
+                    playerNum++;
+                }
+            }
+            if (playerNum == 1
+                && mbev_CapPlayerCheck(playerNo, playerList[0])) {
+                failureF = TRUE;
+            }
+        }
+        mbAudGuidePlay(MSM_SE_GUIDE_27);
+        if (failureF) {
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 21)),
+                mbGuideSpeakerNoGet());
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo), 0);
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(playerList[0]), 1);
+            mbWinTopWait();
+        } else {
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 20)),
+                mbGuideSpeakerNoGet());
+            mbWinTopWait();
+        }
+        mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
+        mbGuideEnd(work->guideObj, TRUE);
+        work->guideObj = NULL;
         return 0;
     }
-    targetPlayer = playerList[targetIndex];
-    for (;;) {
-        mbWinCreateChoice(1, ev_CapKettouMesGet(0x003D0003), 13, 0); /* duel scene message resource */
-        if (mbPlayerCoinGet(playerNo) < 40
-            || mbPlayerCoinGet(targetPlayer) < 40) {
-            mbWinTopChoiceDisable(0);
-        }
-        if (mbPlayerCoinGet(playerNo) <= 0
-            || mbPlayerStarGet(targetPlayer) <= 0) {
-            mbWinTopChoiceDisable(1);
-        }
-        if (mbPlayerStarGet(playerNo) <= 0
-            || mbPlayerStarGet(targetPlayer) <= 0) {
+
+    {
+        extern void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
+        extern void mbev_CapDuelStatusOnSet(int playerNo1, int playerNo2,
+            BOOL waitF);
+        extern s8 mbPadStkYGet(int padNo);
+
+        int coinDir;
+        int coinDelay;
+        float padStk;
+        char message[16];
+        float scaleY;
+
+    repeatWager:
+        mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 3)), mbGuideSpeakerNoGet(), 0);
+        if (playerNum < 2) {
+            mbWinTopAttrSet(HUWIN_ATTR_NOCANCEL);
             mbWinTopChoiceDisable(2);
+        }
+        coinChoiceF = starChoiceF = TRUE;
+        if (mbPlayerCoinGet(targetPlayer) <= 0 || !coinEnable) {
+            mbWinTopChoiceDisable(0);
+            coinChoiceF = FALSE;
+        }
+        if (mbPlayerStarGet(targetPlayer) <= 0 || !starEnable) {
+            mbWinTopChoiceDisable(1);
+            starChoiceF = FALSE;
+        }
+        if (GwPlayer[playerNo].comF) {
+            if (coinChoiceF && starChoiceF) {
+                mbComChoiceDownSet();
+            } else {
+                mbComChoiceUpSet();
+            }
         }
         mbWinTopWait();
         resourceType = mbWinTopChoiceGet();
-        if (resourceType >= 0 && resourceType <= 2) {
-            break;
+        if (resourceType == 2 || resourceType == -1) {
+            goto repeatTarget;
         }
-        mbWinCreate(2, ev_CapKettouMesGet(0x003D0004), 13); /* duel scene message resource */
-        mbWinTopWait();
-        return 0;
-    }
-    memset(mgResultData, 0, 10);
-    *(s16 *)((u8 *)mgResultData + 0) = playerNo;
-    *(s16 *)((u8 *)mgResultData + 2) = targetPlayer;
-    if (resourceType == 0) {
-        amount = mbPlayerCoinGet(playerNo);
-        if (mbPlayerCoinGet(targetPlayer) < amount) {
-            amount = mbPlayerCoinGet(targetPlayer);
+        if (resourceType == 0) {
+            prevCoin = amount = 1;
+            sprintf(message, capspecialMesFormat, amount);
+            prevCoinDir = coinDir = coinDelay = 0;
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 5)), mbGuideSpeakerNoGet());
+            mbWinTopWait();
+            if (!initCoinNumF) {
+                espDispOn((s16)sprite0);
+                espDispOn((s16)sprite1);
+                for (i = 0; i < 3; i++) {
+                    espDispOn((s16)sprite[i]);
+                }
+                espBankSet((s16)sprite[1], 0);
+                espBankSet((s16)sprite[2], 1);
+                for (counter = 0; counter <= 12.0f; counter++) {
+                    t = (float)counter / 12.0f;
+                    scaleY = HuSin(t * 90.0f);
+                    espScaleSet((s16)sprite0, 1, scaleY);
+                    espScaleSet((s16)sprite1, 1, scaleY);
+                    for (i = 0; i < 3; i++) {
+                        espScaleSet((s16)sprite[i], 1, scaleY);
+                    }
+                    HuPrcVSleep();
+                }
+                helpWin = mbWinCreateHelp(MESSNUM(MESS_KETTOU_MASU, 22));
+                mbWinPosSet(helpWin, 115, 288);
+                initCoinNumF = TRUE;
+            }
+            coinTakeNum = mbPlayerCoinGet(playerNo);
+            coinTakeNum = (int)(coinTakeNum * MBCapsuleEffRandF());
+            if (MBCapsuleEffRandF() < 0.3f) {
+                coinTakeNum = mbPlayerCoinGet(playerNo);
+            }
+            if (coinTakeNum > mbPlayerCoinGet(targetPlayer)) {
+                coinTakeNum = mbPlayerCoinGet(targetPlayer);
+            }
+            if (coinTakeNum < 1) {
+                coinTakeNum = 1;
+            }
+            if (coinTakeNum > 99) {
+                coinTakeNum = 99;
+            }
+
+            for (;;) {
+                padBtn = HuPadBtnDown[GwPlayer[playerNo].padNo];
+                padStk = mbPadStkYGet(GwPlayer[playerNo].padNo);
+                if (GwPlayer[playerNo].comF) {
+                    padBtn = 0;
+                    padStk = 0.0f;
+                    if (amount < coinTakeNum) {
+                        padStk = 32.0f;
+                    } else {
+                        HuPrcSleep(5);
+                        padBtn = PAD_BUTTON_A;
+                    }
+                }
+                if (padBtn & PAD_BUTTON_A) {
+                    mbAudFXPlay(2);
+                    break;
+                } else if (padBtn & PAD_BUTTON_B) {
+                    if (!initCoinNumF) {
+                        goto repeatWager;
+                    }
+                    for (counter = 0; counter <= 12.0f; counter++) {
+                        t = (float)counter / 12.0f;
+                        scaleY = HuCos(t * 90.0f);
+                        espScaleSet((s16)sprite0, 1, scaleY);
+                        espScaleSet((s16)sprite1, 1, scaleY);
+                        for (i = 0; i < 3; i++) {
+                            espScaleSet((s16)sprite[i], 1, scaleY);
+                        }
+                        HuPrcVSleep();
+                    }
+                    espDispOff((s16)sprite0);
+                    espDispOff((s16)sprite1);
+                    for (i = 0; i < 3; i++) {
+                        espDispOff((s16)sprite[i]);
+                    }
+                    mbWinKill(helpWin);
+                    initCoinNumF = FALSE;
+                    goto repeatWager;
+                } else {
+                    if (fabs(padStk) >= 8.0) {
+                        if (padStk >= *((const float *)&lbl_802C4370)) {
+                            coinDir = 1;
+                        }
+                        if (padStk <= *((const float *)&lbl_802C4370)) {
+                            coinDir = -1;
+                        }
+                        if (coinDir == 0) {
+                            coinDelay = 0;
+                        } else if (prevCoinDir == coinDir) {
+                            if (++coinDelay > 30.0f) {
+                                amount += coinDir;
+                                coinDelay -= 2;
+                            }
+                        } else {
+                            amount += coinDir;
+                            coinDelay = 0;
+                        }
+                        prevCoinDir = coinDir;
+                        if (amount < 1) {
+                            amount = 1;
+                        } else if (amount > 99) {
+                            amount = 99;
+                        } else if (amount > mbPlayerCoinGet(playerNo)) {
+                            amount = mbPlayerCoinGet(playerNo);
+                        } else if (amount > mbPlayerCoinGet(targetPlayer)) {
+                            amount = mbPlayerCoinGet(targetPlayer);
+                        }
+                    } else {
+                        prevCoinDir = coinDir = coinDelay = 0;
+                    }
+                    if (prevCoin != amount) {
+                        mbAudFXPlay(0);
+                        if (amount >= 100) {
+                            espBankSet((s16)sprite[1], 9);
+                        } else {
+                            espBankSet((s16)sprite[1], amount / 10);
+                        }
+                        espBankSet((s16)sprite[2], amount % 10);
+                        prevCoin = amount;
+                        if (coinDelay < 27.0f) {
+                            HuPrcSleep(3);
+                        }
+                    }
+                }
+                HuPrcVSleep();
+            }
+
+            if (initCoinNumF) {
+                for (counter = 0; counter <= 12.0f; counter++) {
+                    t = (float)counter / 12.0f;
+                    scaleY = HuCos(t * 90.0f);
+                    espScaleSet((s16)sprite0, 1, scaleY);
+                    espScaleSet((s16)sprite1, 1, scaleY);
+                    for (i = 0; i < 3; i++) {
+                        espScaleSet((s16)sprite[i], 1, scaleY);
+                    }
+                    HuPrcVSleep();
+                }
+                espDispOff((s16)sprite0);
+                espDispOff((s16)sprite1);
+                for (i = 0; i < 3; i++) {
+                    espDispOff((s16)sprite[i]);
+                }
+                mbWinKill(helpWin);
+                initCoinNumF = FALSE;
+            }
+            choiceStar = 0;
+        } else {
+            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 4)), mbGuideSpeakerNoGet(), 0);
+            coinChoiceF = starChoiceF = TRUE;
+            if (mbPlayerCoinGet(playerNo) < 40) {
+                mbWinTopChoiceDisable(0);
+                coinChoiceF = FALSE;
+            }
+            if (mbPlayerStarGet(playerNo) <= 0) {
+                mbWinTopChoiceDisable(1);
+                starChoiceF = FALSE;
+            }
+            if (GwPlayer[playerNo].comF) {
+                if (coinChoiceF) {
+                    mbComChoiceUpSet();
+                } else {
+                    mbComChoiceRightSet();
+                }
+            }
+            mbWinTopWait();
+            choiceStar = mbWinTopChoiceGet();
+            if (choiceStar == 2 || choiceStar == -1) {
+                goto repeatWager;
+            }
+            if (choiceStar == 0) {
+                amount = 40;
+            } else {
+                amount = 0;
+            }
         }
-        if (amount > 40) {
-            amount = 40;
-        }
-        if (amount <= 0) {
-            return 0;
-        }
-        {
-            int add[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
-            BOOL disp[GW_PLAYER_MAX] = { FALSE, FALSE, FALSE, FALSE };
+
+        mbev_CapStatusDispSetAll(FALSE, TRUE);
+        mbev_CapDuelStatusOnSet(playerNo, targetPlayer, TRUE);
+        if (resourceType == 0) {
+            coinTakeNum = amount;
+            mbAudGuidePlay(MSM_SE_GUIDE_28);
+            sprintf(message, capspecialMesFormat, amount);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 6)), mbGuideSpeakerNoGet());
+            mbWinTopInsertMesSet((u32)message, 0);
+            mbWinTopWait();
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                add[i] = 0;
+            }
             add[playerNo] = -amount;
             add[targetPlayer] = -amount;
-            disp[playerNo] = TRUE;
-            disp[targetPlayer] = TRUE;
-            mbCoinAddAllProcExecV(add, disp, FALSE);
+            mbCoinAddAllProcExecV(add, (BOOL *)add, FALSE);
+            sprintf(message, capspecialMesFormat, amount + coinTakeNum);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 9)), mbGuideSpeakerNoGet());
+            mbWinTopInsertMesSet((u32)message, 0);
+            mbWinTopWait();
+            memset(&mgResultData, 0, sizeof(mgResultData));
+            mgResultData.playerNo1 = playerNo;
+            mgResultData.playerNo2 = targetPlayer;
+            mgResultData.coinNum = (s16)(amount + coinTakeNum);
+        } else if (choiceStar != 0) {
+            mbAudGuidePlay(MSM_SE_GUIDE_28);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 7)), mbGuideSpeakerNoGet());
+            mbWinTopWait();
+            mbPlayerStarAdd(playerNo, -1);
+            mbPlayerStarAdd(targetPlayer, -1);
+            starObj[0] = mbStarDispPlayerCreate(playerNo, -1);
+            HuPrcVSleep();
+            starObj[1] = mbStarDispPlayerCreate(targetPlayer, -1);
+            do {
+                HuPrcVSleep();
+            } while (!mbStarDispCheck(starObj[0])
+                || !mbStarDispCheck(starObj[1]));
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 10)), mbGuideSpeakerNoGet());
+            mbWinTopWait();
+            memset(&mgResultData, 0, sizeof(mgResultData));
+            mgResultData.playerNo1 = playerNo;
+            mgResultData.playerNo2 = targetPlayer;
+            mgResultData.starNum = 2;
+        } else {
+            mbAudGuidePlay(MSM_SE_GUIDE_28);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 8)), mbGuideSpeakerNoGet());
+            mbWinTopWait();
+            mbCoinAddExec(playerNo, -amount);
+            mbPlayerStarAdd(targetPlayer, -1);
+            mbPlayerPosGet(playerNo, &cameraOfs);
+            cameraOfs.y += lbl_802C4434;
+            coinDisp[0] = mbCoinDispCapsuleCreate(&cameraOfs, -amount);
+            starObj[1] = mbStarDispPlayerCreate(targetPlayer, -1);
+            do {
+                HuPrcVSleep();
+            } while (!mbCoinDispKillCheck(coinDisp[0])
+                || !mbStarDispCheck(starObj[1]));
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 11)), mbGuideSpeakerNoGet());
+            mbWinTopWait();
+            memset(&mgResultData, 0, sizeof(mgResultData));
+            mgResultData.playerNo1 = playerNo;
+            mgResultData.playerNo2 = targetPlayer;
+            mgResultData.coinNum = (s16)amount;
+            mgResultData.starNum = 1;
         }
-        *(s16 *)((u8 *)mgResultData + 4) = (s16)(amount * 2);
-        *(s16 *)((u8 *)mgResultData + 6) = 0;
-    } else if (resourceType == 1) {
-        amount = mbPlayerCoinGet(playerNo);
-        if (amount > 40) {
-            amount = 40;
-        }
-        if (amount <= 0 || mbPlayerStarGet(targetPlayer) <= 0) {
-            return 0;
-        }
-        mbCoinAddExec(playerNo, -amount);
-        mbPlayerStarAdd(targetPlayer, -1);
-        *(s16 *)((u8 *)mgResultData + 4) = (s16)amount;
-        *(s16 *)((u8 *)mgResultData + 6) = 1;
-    } else {
-        if (mbPlayerStarGet(playerNo) <= 0
-            || mbPlayerStarGet(targetPlayer) <= 0) {
-            return 0;
-        }
-        mbPlayerStarAdd(playerNo, -1);
-        mbPlayerStarAdd(targetPlayer, -1);
-        *(s16 *)((u8 *)mgResultData + 4) = 0;
-        *(s16 *)((u8 *)mgResultData + 6) = 2;
+
+        mbev_CapDuelStatusDispSet(playerNo, targetPlayer, TRUE);
+        return 1;
     }
-    for (motionIndex = 0; motionIndex < 5; motionIndex++) {
-        espDispOff((s16)sprite[motionIndex]);
-    }
-    mbev_CapDuelStatusDispSet(playerNo, targetPlayer, TRUE);
-    return 1;
 }
 
 static void ev_CapKettouReturn(CAPWORK *work)
 {
-    HuVecF masuPos;
-    HuVecF pos;
+    extern void mbStatusDispForceSetAll(BOOL dispF);
+    extern void mbGuideEnd(OMOBJ *obj, BOOL motionF);
+    extern const float lbl_802C4434;
+    BOOL dissolveF = FALSE;
     int playerNo = work->playerNo;
-    int initiator = *(s16 *)((u8 *)mgResultData + 0);
-    int targetPlayer = *(s16 *)((u8 *)mgResultData + 2);
-    int amount = *(s16 *)((u8 *)mgResultData + 4);
-    int mode = *(s16 *)((u8 *)mgResultData + 6);
-    int winner = -1;
-    int loser = -1;
-    int coinReward;
-    int starReward;
-    int starObj;
-    int guide = work->_unkB6C;
+    int masuId = GwPlayer[playerNo].masuId;
+    int guideModel;
+    int winner;
+    int otherPlayer;
+    int guidePlayer;
+    int starMotion;
     int i;
-    char message[16];
-
-    mbev_PlayerColMasu(playerNo, GwPlayer[playerNo].masuId, TRUE);
-    mbPlayerPosGet(playerNo, &pos);
-    mbObjPosSetV(guide, &pos);
-    pos.y += 200.0f;
-    mbObjPosSetV(guide, &pos);
-    mbObjDispSet(guide, TRUE);
-    mbObjMotionSet(guide, kettouMotId[1], HU3D_MOTATTR_LOOP);
+    int playerNo1;
+    int playerNo2;
+    int playerNo3;
+    int playerNo4;
+    s16 coinBonus1Source;
+    struct {
+        s16 coinBonus7;
+        s16 coinBonus6;
+        s16 coinBonus5;
+        s16 coinBonus4;
+        s16 coinBonus3;
+        s16 coinBonus2;
+        s16 coinBonus1;
+        int coinDisp[2];
+        int starObj[2];
+        char message[16];
+        HuVecF coinPos;
+        HuVecF pos;
+        HuVecF masuPos;
+    } state;
+    mbev_PlayerColMasu(playerNo, masuId, TRUE);
+    mbPlayerPosGet(playerNo, &state.masuPos);
+    guideModel = work->eventData[0];
+    guidePlayer = playerNo;
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+    mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
+    state.pos.x = state.masuPos.x;
+    state.pos.y = state.masuPos.y + 200.0f;
+    state.pos.z = state.masuPos.z - 50.0f;
+    mbObjPosSetV(guideModel, &state.pos);
+    mbObjDispSet(guideModel, TRUE);
     mbStatusDispForceSetAll(TRUE);
+    state.coinPos.x = 0.0f;
+    state.coinPos.y = 100.0f;
+    state.coinPos.z = 0.0f;
     mbCameraPlayerViewSetFast(playerNo, 0);
     mbCameraMoveWait();
+
+    playerNo1 = mgResultData.playerNo1;
+    coinBonus1Source = GwPlayer[playerNo1].mgCoinBonus;
+    state.coinBonus1 = coinBonus1Source;
+    if (state.coinBonus1 > 0) {
+        playerNo2 = mgResultData.playerNo2;
+        state.coinBonus2 = GwPlayer[playerNo2].mgCoinBonus;
+        state.coinBonus3 = state.coinBonus2;
+        if (state.coinBonus3 == 0) {
+            winner = mgResultData.playerNo1;
+            goto winner_done;
+        }
+    }
+    playerNo3 = mgResultData.playerNo2;
+    state.coinBonus4 = GwPlayer[playerNo3].mgCoinBonus;
+    state.coinBonus5 = state.coinBonus4;
+    if (state.coinBonus5 > 0) {
+        playerNo4 = mgResultData.playerNo1;
+        state.coinBonus6 = GwPlayer[playerNo4].mgCoinBonus;
+        state.coinBonus7 = state.coinBonus6;
+        if (state.coinBonus7 == 0) {
+            winner = mgResultData.playerNo2;
+            goto winner_done;
+        }
+    }
+    winner = -1;
+winner_done:
+
+    if (winner == mgResultData.playerNo2
+        && winner != -1
+        && GwPlayer[mgResultData.playerNo1].masuId
+            != GwPlayer[mgResultData.playerNo2].masuId) {
+        mbMasuPosGet(GwPlayer[winner].masuId, &state.masuPos);
+        state.pos.x = state.masuPos.x;
+        state.pos.y = state.masuPos.y + 200.0f;
+        state.pos.z = state.masuPos.z - 50.0f;
+        mbObjPosSetV(guideModel, &state.pos);
+        mbev_PlayerColMasu(
+            mgResultData.playerNo2,
+            GwPlayer[mgResultData.playerNo2].masuId, TRUE);
+        mbCameraPlayerViewSetFast(
+            mgResultData.playerNo2, 0);
+        mbCameraMoveWait();
+        dissolveF = TRUE;
+    }
+    if (winner == mgResultData.playerNo2
+        && winner != -1) {
+        guidePlayer = winner;
+    }
+
     if (work->flags._flag02) {
         mbMusPlay(0, 26, 127, 0);
     }
     mbWipeFadeIn();
     mbPauseDisableSet(FALSE);
-    if (initiator >= 0 && initiator < GW_PLAYER_MAX
-        && targetPlayer >= 0 && targetPlayer < GW_PLAYER_MAX) {
-        if (GwPlayer[initiator].mgCoinBonus > 0
-            && GwPlayer[targetPlayer].mgCoinBonus <= 0) {
-            winner = initiator;
-            loser = targetPlayer;
-        } else if (GwPlayer[targetPlayer].mgCoinBonus > 0
-            && GwPlayer[initiator].mgCoinBonus <= 0) {
-            winner = targetPlayer;
-            loser = initiator;
-        }
-    }
-    if (winner >= 0 && winner < GW_PLAYER_MAX) {
-        mbMasuPosGet(GwPlayer[winner].masuId, &masuPos);
-        pos = masuPos;
-        pos.y += 200.0f;
-        mbObjPosSetV(guide, &pos);
-        if (loser >= 0 && loser < GW_PLAYER_MAX) {
-            mbev_PlayerColMasu(loser, GwPlayer[loser].masuId, TRUE);
-        }
-        if (winner != playerNo) {
-            mbev_PlayerColMasu(winner, GwPlayer[winner].masuId, TRUE);
-            mbCameraPlayerViewSetFast(winner, 0);
-            mbCameraMoveWait();
-        }
-        coinReward = (mode == 0 || mode == 1) ? amount : 0;
-        starReward = mode == 1 ? 1 : (mode == 2 ? 2 : 0);
-        if (coinReward > 0 && starReward > 0) {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D000F), 13); /* duel scene message resource */
-        } else if (starReward > 0) {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D000E), 13); /* duel scene message resource */
+
+    if (winner != -1) {
+        if (mgResultData.playerNo1
+            == winner) {
+            otherPlayer = mgResultData.playerNo2;
         } else {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D000D), 13); /* duel scene message resource */
+            otherPlayer = mgResultData.playerNo1;
         }
-        mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
-        if (coinReward > 0) {
-            sprintf(message, "%d", coinReward);
-            mbWinTopInsertMesSet((u32)message, 1);
+        if (mgResultData.coinNum > 0
+            && mgResultData.starNum > 0) {
+            mbAudGuidePlay(MSM_SE_GUIDE_28);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 15)),
+                mbGuideSpeakerNoGet()); /* duel scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
+        } else if (mgResultData.starNum > 0) {
+            mbAudGuidePlay(MSM_SE_GUIDE_28);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 14)),
+                mbGuideSpeakerNoGet()); /* duel scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
+        } else {
+            mbAudGuidePlay(MSM_SE_GUIDE_28);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 13)),
+                mbGuideSpeakerNoGet()); /* duel scene message resource */
+            mbWinTopInsertMesSet(mbPlayerNameMesGet(winner), 0);
+            sprintf(state.message, capspecialMesFormat, mgResultData.coinNum);
+            mbWinTopInsertMesSet((u32)state.message, 1);
         }
+        mbWinTopPlayerDisable(guidePlayer);
         mbWinTopWait();
-        if (coinReward > 0) {
-            mbPlayerPosGet(winner, &pos);
-            pos.y += 30.0f;
-            mbCoinDispCapsuleCreate(&pos, coinReward);
-            mbCoinAddExec(winner, coinReward);
-            mbPlayerWinLoseVoicePlay(winner, 12, 0x243); /* win/lose voice resource */
-            mbev_CapPlayerMotShiftWait(winner, 12, 0, TRUE);
-        }
-        if (starReward > 0) {
-            mbPlayerStarAdd(winner, starReward);
-            starObj = mbStarDispPlayerCreate(winner, starReward);
-            while (!mbStarDispCheck(starObj)) {
+
+        if (mgResultData.coinNum != 0) {
+            mbPlayerPosGet(winner, &state.coinPos);
+            state.coinPos.y += lbl_802C4434;
+            state.coinDisp[0] = mbCoinDispCapsuleCreate(
+                &state.coinPos, mgResultData.coinNum);
+            mbCoinAddExec(winner, mgResultData.coinNum);
+            mbPlayerWinLoseVoicePlay(winner, 12, CHARVOICEID(6));
+            mbPlayerMotionShiftSet(winner, 12, 0.0f, 8.0f, 0);
+            mbPlayerMotionShiftSet(otherPlayer, 13, 0.0f, 8.0f, 0);
+            do {
                 HuPrcVSleep();
+            } while (
+                mbObjMotionShiftIDGet(mbPlayerObjIDGet(
+                    mgResultData.playerNo1)) != -1
+                || !mbPlayerMotionEndCheck(
+                    mgResultData.playerNo1)
+                || mbObjMotionShiftIDGet(mbPlayerObjIDGet(
+                    mgResultData.playerNo2)) != -1
+                || !mbPlayerMotionEndCheck(
+                    mgResultData.playerNo2));
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
             }
-            mbPlayerWinLoseVoicePlay(winner, 7, 0x23D); /* win/lose voice resource */
-            mbev_CapPlayerMotShiftWait(winner, 7, 0, TRUE);
+            do {
+                HuPrcVSleep();
+            } while (!mbCoinDispKillCheck(state.coinDisp[0]));
+        }
+        if (mgResultData.starNum != 0) {
+            mbPlayerStarAdd(winner, mgResultData.starNum);
+            state.starObj[0] = mbStarDispPlayerCreate(
+                winner, mgResultData.starNum);
+            mbPlayerWinLoseVoicePlay(winner, 7, CHARVOICEID(0));
+            mbPlayerMotionShiftSet(winner, 7, 0.0f, 8.0f, 0);
+            starMotion = mbev_CapPlayerMotionCreate(
+                &work->objWork, otherPlayer, DATANUM(DATA_mariomot, 40));
+            mbPlayerMotionShiftSet(otherPlayer, starMotion,
+                0.0f, 8.0f, 0);
+            do {
+                HuPrcVSleep();
+            } while (
+                mbObjMotionShiftIDGet(mbPlayerObjIDGet(
+                    mgResultData.playerNo1)) != -1
+                || !mbPlayerMotionEndCheck(
+                    mgResultData.playerNo1)
+                || mbObjMotionShiftIDGet(mbPlayerObjIDGet(
+                    mgResultData.playerNo2)) != -1
+                || !mbPlayerMotionEndCheck(
+                    mgResultData.playerNo2)
+                || !mbStarDispCheck(state.starObj[0]));
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
+                    HU3D_MOTATTR_LOOP);
+            }
+        }
+        if (dissolveF) {
+            mbWipeDissolveFadeOutTime(1);
+            mbPlayerPosGet(playerNo, &state.masuPos);
+            state.pos.x = state.masuPos.x;
+            state.pos.y = state.masuPos.y + 200.0f;
+            state.pos.z = state.masuPos.z - 50.0f;
+            mbObjPosSetV(guideModel, &state.pos);
+            mbCameraPlayerViewSetFast(
+                mgResultData.playerNo1, 0);
+            mbCameraMoveWait();
+            mbWipeDissolveFadeIn();
         }
     } else {
-        coinReward = (mode == 0 || mode == 1) ? amount : 0;
-        starReward = mode == 1 ? 1 : (mode == 2 ? 2 : 0);
-        if (coinReward > 0 && starReward > 0) {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D0012), 13); /* duel scene message resource */
-        } else if (starReward > 0) {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D0011), 13); /* duel scene message resource */
+        mbAudGuidePlay(MSM_SE_GUIDE_27);
+        if (mgResultData.coinNum > 0
+            && mgResultData.starNum > 0) {
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 18)),
+                mbGuideSpeakerNoGet()); /* duel scene message resource */
+        } else if (mgResultData.starNum > 0) {
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 17)),
+                mbGuideSpeakerNoGet()); /* duel scene message resource */
         } else {
-            mbWinCreate(2, ev_CapKettouMesGet(0x003D0010), 13); /* duel scene message resource */
-            sprintf(message, "%d", coinReward);
-            mbWinTopInsertMesSet((u32)message, 1);
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 16)),
+                mbGuideSpeakerNoGet()); /* duel scene message resource */
         }
+        mbWinTopPlayerDisable(guidePlayer);
         mbWinTopWait();
-        if (mode == 1 && amount > 0) {
-            /* Mixed stakes are returned to the players who supplied them. */
-            mbCoinAddExec(initiator, amount);
-            mbPlayerStarAdd(targetPlayer, 1);
-        } else if (mode == 2) {
-            /* The two-star stake is split back equally on a draw. */
-            mbPlayerStarAdd(initiator, starReward / 2);
-            mbPlayerStarAdd(targetPlayer, starReward / 2);
-        } else if (mode == 0 && amount > 0) {
-            /* Coin stakes were stored as the combined amount. */
-            mbCoinAddExec(initiator, amount / 2);
-            mbCoinAddExec(targetPlayer, amount / 2);
+        if (mgResultData.coinNum > 0
+            && mgResultData.starNum > 0) {
+            mbCoinAddExec(
+                mgResultData.playerNo1,
+                mgResultData.coinNum);
+            mbPlayerStarAdd(
+                mgResultData.playerNo2,
+                mgResultData.starNum);
+        } else if (mgResultData.starNum > 0) {
+            mbPlayerStarAdd(
+                mgResultData.playerNo1,
+                mgResultData.starNum / 2);
+            mbPlayerStarAdd(
+                mgResultData.playerNo2,
+                mgResultData.starNum / 2);
+        } else {
+            mbCoinAddExec(
+                mgResultData.playerNo1,
+                mgResultData.coinNum / 2);
+            mbCoinAddExec(
+                mgResultData.playerNo2,
+                mgResultData.coinNum / 2);
         }
+        mbPlayerWinLoseVoicePlay(playerNo, 13, CHARVOICEID(12));
+        mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
+        mbev_CapPlayerMotShiftWait(playerNo, 1,
+            HU3D_MOTATTR_LOOP, TRUE);
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
-            HU3D_MOTATTR_LOOP);
+
+    mbev_CapPlayerMotShiftSet(guideModel, kettouMotId[2],
+        HU3D_MOTATTR_LOOP, TRUE);
+    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 19)),
+        mbGuideSpeakerNoGet()); /* duel scene message resource */
+    if (dissolveF) {
+        mbWinTopPlayerDisable(playerNo);
+    } else {
+        mbWinTopPlayerDisable(guidePlayer);
     }
-    mbObjMotionShiftSet(guide, kettouMotId[2], 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
-    mbAudFXPlay(0x3B8); /* event sound-effect resource */
-    mbWinCreate(2, ev_CapKettouMesGet(0x003D0013), 13); /* duel scene message resource */
     mbWinTopWait();
     mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
+    mbGuideEnd(work->guideObj, TRUE);
+    work->guideObj = NULL;
 }
 
 static int ev_CapKettouMesGet(int messNo)
@@ -2844,13 +4072,12 @@ static int ev_CapKettouMesGet(int messNo)
 void mbev_CapDonkey(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
-    int playerNo = work->playerNo;
     int obj1;
+    int i;
     int obj2;
     int obj3;
-    int i;
 
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
+    mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbev_CapWait(work);
     work->explodeObj = mbev_CapEffExplodeCreate();
@@ -2858,39 +4085,39 @@ void mbev_CapDonkey(void)
     work->coinObj = mbev_CapEffCoinCreate();
     HuPrcVSleep();
 
-    obj1 = mbev_CapObjCreate(&work->objWork, 0x000E000E, /* event model resource identifier */
+    obj1 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 14), /* event model resource identifier */
         (int *)donkeyMotTbl, FALSE, 5, FALSE);
     mbObjDispSet(obj1, FALSE);
-    obj2 = mbev_CapObjCreate(&work->objWork, 0x000E0021, /* event model resource identifier */
+    obj2 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 33), /* event model resource identifier */
         NULL, FALSE, 5, FALSE);
     mbObjDispSet(obj2, FALSE);
     mbObjLayerSet(obj2, 3);
     mbev_CapObjPosSet(&work->objWork, obj2,
-        GwPlayer[playerNo].masuId, NULL);
-    obj3 = mbev_CapObjCreate(&work->objWork, 0x000C0044, /* event model resource identifier */
+        GwPlayer[work->playerNo].masuId, NULL);
+    obj3 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsule, 68), /* event model resource identifier */
         NULL, FALSE, 5, FALSE);
     mbObjDispSet(obj3, FALSE);
-    work->_unkB6C = obj1;
-    work->_unkB70 = obj2;
-    work->_unkB74 = obj3;
+    work->eventData[0] = obj1;
+    work->eventData[1] = obj2;
+    work->eventData[2] = obj3;
 
     if (!work->flags._flag03) {
         if (ev_CapDonkeyStart(work)) {
-            if ((!mbPlayerAllComCheck() || GwSystem.mgComDispF)
-                && mbMgRouletteNumGet(7) > 0) {
-                mbWinCreate(2, 0x003E0008, -1); /* Donkey scene message resource */
-                mbWinTopWait();
-                mbObjMotionShiftSet(obj1, 10, 0.0f, 8.0f, 0);
-                mbev_MgCallDonkey();
-            } else {
+            if ((mbPlayerAllComCheck() && !GWMgComDispGet())
+                || mbMgRouletteNumGet(7) <= 0) {
                 for (i = 0; i < GW_PLAYER_MAX; i++) {
-                    int bonus = (int)mbRandMod(10);
+                    s16 bonus = mbRandMod(10);
                     if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-                        GwPlayer[i].mgCoinBonus = (s16)bonus;
+                        GwPlayer[i].mgCoinBonus = bonus;
                     }
                 }
                 mbWipeFadeOut();
                 ev_CapDonkeyCoin(work);
+            } else {
+                mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 8), -1); /* Donkey scene message resource */
+                mbWinTopWait();
+                mbObjMotionShiftSet(obj1, 10, 0.0f, 8.0f, 0);
+                mbev_MgCallDonkey();
             }
         }
     } else {
@@ -2900,62 +4127,60 @@ void mbev_CapDonkey(void)
     HuPrcEnd();
 }
 
+void mbev_CapDonkeyKill(void)
+{
+}
+
+
+const float lbl_802C4434 = 250.0f;
+
 static int ev_CapDonkeyStart(CAPWORK *work)
 {
-    HuVecF masuPos;
     HuVecF pos;
-    HuVecF direction;
+    HuVecF playerRot;
+    HuVecF objectPos;
     HuVecF cameraRot;
-    HuVecF vel = { 0.0f, 0.0f, 0.0f };
+    HuVecF masuPos;
+    HuVecF direction;
     Mtx mtx;
     OMOBJ *omObj;
-    s16 sprA;
-    s16 sprB;
+    int spr[2];
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int obj1 = work->_unkB6C;
-    int obj2 = work->_unkB70;
-    int obj3 = work->_unkB74;
+    int obj1 = work->eventData[0];
+    int obj2 = work->eventData[1];
+    int prevBank;
+    int obj3 = work->eventData[2];
     int i;
+    int j;
     int mode;
     int diceNo;
-    int amount;
-    int coinNo;
     int bank;
-    int prevBank;
-    int frameCount;
-    int fileNum;
     float time;
     float value;
-    float maxTime;
-    float curTime;
-    float ratio;
-    float x;
-    float y;
     float phase;
     float step;
-    char message[16];
 
     mbMusBoardFadeOut(0, 0, 1000, 1000, 29, FALSE);
-    mbAudFXPlay(0x454); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_104); /* event sound-effect resource */
     mbev_CapObjPosSet(&work->objWork, obj2, masuId, NULL);
     mbObjDispSet(obj2, TRUE);
     mbObjMotionTimeSet(obj2, 0.0f);
     mbObjMotionSpeedSet(obj2, 1.0f);
     mbMasuPosGet(masuId, &masuPos);
-    mbObjPosSetV(obj3, &masuPos);
+    objectPos = masuPos;
+    pos = objectPos;
+    mbObjPosSetV(obj3, &objectPos);
     mbCameraRotGet(&cameraRot);
     mbCameraMoveObj(obj3, NULL, &capsuleCameraOfs, 1500.0f, -1.0f,
         60);
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbAudFXPlay(0x455); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_105); /* event sound-effect resource */
     omVibrate(playerNo, 20, 7, 3);
     do {
-        maxTime = mbObjMotionMaxTimeGet(obj2);
-        curTime = mbObjMotionTimeGet(obj2);
-        ratio = curTime / maxTime;
-        if (ratio > 1.0f) {
-            ratio = 1.0f;
+        time = mbObjMotionTimeGet(obj2) / mbObjMotionMaxTimeGet(obj2);
+        if (time > 1.0f) {
+            time = 1.0f;
         }
         Hu3DMotionCalc(mbObjModelIDGet(obj2));
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
@@ -2963,106 +4188,155 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         pos.y = mtx[1][3];
         pos.z = mtx[2][3];
         mbPlayerPosSetV(playerNo, &pos);
-        mbObjPosSetV(obj3, &pos);
+        objectPos.x = mtx[0][3];
+        objectPos.y = mtx[1][3];
+        objectPos.z = mtx[2][3];
+        mbObjPosSetV(obj3, &objectPos);
         HuPrcVSleep();
-    } while (ratio < 1.0f);
+    } while (time < 1.0f);
     mbMasuPosGet(masuId, &masuPos);
     PSVECSubtract(&pos, &masuPos, &direction);
     mbev_CapPlayerPosSet(&work->objWork, playerNo, masuId, &direction);
-    mbAudFXPlay(0x456); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_106); /* event sound-effect resource */
 
     omObj = omAddObjEx(mbObjMan, -32768, 0, 0, -1, ev_CapDonkeyOMExec);
-    omObj->data = HuMemDirectMallocNum(HEAP_HEAP, 0xBF4, HU_MEMNUM_OVL); /* CAPWORK object storage size */
-    memcpy(omObj->data, work, 0xBF4); /* CAPWORK object storage size */
-    omObj->work[3] = 0;
-    omObj->work[2] = 0;
-    omObj->work[1] = 0;
-    omObj->work[0] = 0;
+    omObj->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPWORK), HU_MEMNUM_OVL);
+    memcpy(omObj->data, work, sizeof(CAPWORK));
+    omObj->work[0] = omObj->work[1] = omObj->work[2] = omObj->work[3] = 0;
     while (omObj->work[0] < 2) {
         HuPrcVSleep();
     }
     mbev_CapPlayerPosSet(&work->objWork, playerNo, -1, &direction);
-    mbPlayerRotGet(playerNo, &cameraRot);
-    mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerRotGet(playerNo, &playerRot);
+    mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 8.0f, 0);
+    for (i = 1; i <= 30.0f; i++) {
+        time = (float)i / 30.0f;
+        Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
+        pos.x = mtx[0][3] - 80.0f * time;
+        pos.y = mtx[1][3] + 100.0
+            * sin((M_PI * (180.0f * time)) / 180.0) * 1.5;
+        pos.z = mtx[2][3] + 80.0f * time;
+        mbPlayerPosSetV(playerNo, &pos);
+        playerRot.y = mbev_CapAngleLerp(135.0f, playerRot.y,
+            *((const float *)&lbl_802C4370));
+        mbPlayerRotSetV(playerNo, &playerRot);
+        HuPrcVSleep();
+    }
+    while (omObj->work[2] == 0) {
+        Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
+        pos.x = mtx[0][3] - 80.0f;
+        pos.y = mtx[1][3];
+        pos.z = mtx[2][3] + 80.0f;
+        mbPlayerPosSetV(playerNo, &pos);
+        HuPrcVSleep();
+    }
+    omObj->work[3] = 1;
+    mbMasuPosGet(masuId, &masuPos);
+    PSVECSubtract(&pos, &masuPos, &direction);
+    mbev_CapPlayerPosSet(&work->objWork, playerNo, masuId, &direction);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
+        HU3D_MOTATTR_LOOP);
 
-    value = MBCapsuleEffRandF();
-    mode = value >= 0.3f;
+    if (MBCapsuleEffRandF() < 0.3f) {
+        mode = 0;
+    } else {
+        mode = 1;
+    }
     mbev_CapPlayerMotShiftSet(obj1, 6, 0, TRUE);
     mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    mbWinCreate(2, 0x003E0000, -1); /* Donkey scene message resource */
+    mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 0), -1); /* Donkey scene message resource */
     mbWinTopWait();
-    mbAudFXPlay(0x3A8); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_12); /* event sound-effect resource */
     mbObjMotionShiftSet(obj1, 10, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
     HuPrcSleep(30);
-    mbAudFXPlay(0x45D); /* event sound-effect resource */
-    fileNum = mbBoardDataNumGet(donkeyMgFile[mode]);
-    sprA = mbev_CapSprCreate(&work->objWork, fileNum, 100, (s16)(mode ^ 1));
-    for (i = 1; i < 60; i++) {
-        time = (float)i / 60.0f;
-        value = (float)sin((M_PI * 90.0 * time) / 180.0);
-        x = 288.0f + 50.0f * (float)cos(
-            (M_PI * 90.0 * time) / 180.0);
-        y = 240.0f - 250.0f * (float)sin(
-            (M_PI * 180.0 * time) / 180.0);
-        espScaleSet(sprA, value, value);
-        espPosSet(sprA, x, y);
-        espZRotSet(sprA, -3.0f * 360.0f * time);
-        HuPrcVSleep();
+    mbAudFXPlay(MSM_SE_BRD00_113); /* event sound-effect resource */
+    {
+        int sprNo;
+        sprNo = mbev_CapSprCreate(&work->objWork,
+            mbBoardDataNumGet(donkeyMgFile[mode]), 100, (s16)(mode ^ 1));
+        for (i = 1; i < 60.0f; i++) {
+            time = (float)i / 60.0f;
+            value = sin((M_PI * (90.0f * time)) / 180.0);
+            espPosSet(sprNo,
+                288.0f + 50.0f * cos(
+                    (M_PI * (90.0f * time)) / 180.0),
+                240.0f - 250.0f * sin(
+                    (M_PI * (180.0f * time)) / 180.0));
+            espScaleSet(sprNo, value, value);
+            espZRotSet(sprNo, 3.0f * (360.0f * -time));
+            HuPrcVSleep();
+        }
+        for (i = 1; i < 60.0f; i++) {
+            time = (float)i / 60.0f;
+            value = 1.0f + 0.2f * sin(
+                (M_PI * (720.0f * time)) / 180.0);
+            espPosSet(sprNo, 288.0f, 240.0f);
+            espScaleSet(sprNo, value, value);
+            espZRotSet(sprNo, 0.0f);
+            HuPrcVSleep();
+        }
+        for (i = 1; i < 18.0f; i++) {
+            time = (float)i / 18.0f;
+            value = 1.0f + 5.0f * sin(
+                (M_PI * (90.0f * time)) / 180.0);
+            espPosSet(sprNo, 288.0f, 240.0f);
+            espScaleSet(sprNo, value, value);
+            espTPLvlSet(sprNo, 1.0f
+                - sin((M_PI * (90.0f * time)) / 180.0));
+            HuPrcVSleep();
+        }
+        espDispOff(sprNo);
     }
-    for (i = 1; i < 60; i++) {
-        time = (float)i / 60.0f;
-        value = 1.0f + 0.2f * (float)sin(
-            (M_PI * 720.0 * time) / 180.0);
-        espScaleSet(sprA, value, value);
-        espPosSet(sprA, 288.0f, 240.0f);
-        espZRotSet(sprA, 0.0f);
-        HuPrcVSleep();
-    }
-    for (i = 1; i < 18; i++) {
-        time = (float)i / 18.0f;
-        value = 1.0f + 5.0f * (float)sin(
-            (M_PI * 90.0 * time) / 180.0);
-        espScaleSet(sprA, value, value);
-        espPosSet(sprA, 288.0f, 240.0f);
-        espTPLvlSet(sprA, 1.0f
-            - (float)sin((M_PI * 90.0 * time) / 180.0));
-        HuPrcVSleep();
-    }
-    espDispOff(sprA);
     mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
 
+    {
+        int coinNo;
+        int frameCount;
+        int boardNo;
+        HuVecF coinPos;
+        HuVecF vel;
+        char message[16];
+
     if (!mode) {
-        mbWinCreate(2, 0x003E0001, -1); /* Donkey scene message resource */
+        mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 1), -1); /* Donkey scene message resource */
         mbWinTopWait();
-        mbWinCreate(2, 0x003E0002, -1); /* Donkey scene message resource */
+        mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 2), -1); /* Donkey scene message resource */
         mbWinTopWait();
         mbPlayerRotateStart(playerNo, 0, 15);
         while (!mbPlayerRotateCheck(playerNo)) {
             HuPrcVSleep();
         }
+        {
+            boardNo = GwSystem.boardNo;
+            if (boardNo != 3) {
+                diceNo = mbRandMod(5);
+            } else {
+                diceNo = mbRandMod(4);
+            }
+        }
         diceNo = mbDiceExec(playerNo, 11, (s8 *)donkeyDiceTbl,
-            (GwSystem.boardNo == 3) ? mbRandMod(4) : mbRandMod(5),
-            TRUE, TRUE, NULL, 0);
-        amount = donkeyDiceResultTbl[diceNo];
-        if (amount >= 0) {
-            sprintf(message, "%d", amount);
-            mbWinCreate(2, 0x003E0003, -1); /* Donkey scene message resource */
+            diceNo, TRUE, TRUE, NULL, 0);
+        if (donkeyDiceResultTbl[diceNo] >= 0) {
+            sprintf(message, capspecialMesFormat, donkeyDiceResultTbl[diceNo]);
+            mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 3), -1); /* Donkey scene message resource */
             mbWinTopInsertMesSet((u32)message, 0);
             mbWinTopWait();
             mbDiceFadeSet(playerNo);
-            mbAudFXPlay(0x3A7); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_GUIDE_11); /* event sound-effect resource */
             mbev_CapPlayerMotShiftSet(obj1, 10, 0, TRUE);
-            mbPlayerPosGet(playerNo, &pos);
-            for (i = 0; i < amount; i++) {
-                HuVecF coinPos = pos;
+            mbPlayerPosGet(playerNo, &direction);
+            for (i = 0; i < donkeyDiceResultTbl[diceNo]; i++) {
+                coinPos = direction;
                 coinPos.y += 600.0f;
-                coinPos.x += (MBCapsuleEffRandF() - 0.5f)
+                coinPos.x += (MBCapsuleEffRandF()
+                    + *((const float *)&lbl_802C436C))
                     * 100.0f * 0.5f;
-                coinNo = mbev_CapEffCoinAdd(work->coinObj, &coinPos, &vel,
-                    0.75f, 4.9f, 30, 4);
+                vel.x = vel.y = vel.z = 0.0f;
+                coinNo = mbev_CapEffCoinAdd(work->coinObj, &coinPos,
+                    &vel, 0.75f, 4.9f, 30, 4);
                 if (coinNo >= 0) {
                     mbev_CapEffCoinMaxYSet(work->coinObj, coinNo,
-                        pos.y + 150.0f);
+                        direction.y + 150.0f);
                 }
                 HuPrcVSleep();
             }
@@ -3071,14 +4345,16 @@ static int ev_CapDonkeyStart(CAPWORK *work)
             }
             mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f,
                 HU3D_MOTATTR_LOOP);
-            mbCoinAddDispExec(playerNo, amount, FALSE, TRUE);
-            mbev_CapCoinDisp(playerNo, amount, TRUE, TRUE);
+            mbCoinAddDispExec(playerNo, donkeyDiceResultTbl[diceNo], FALSE,
+                TRUE);
+            mbev_CapCoinDisp(playerNo, donkeyDiceResultTbl[diceNo], TRUE,
+                TRUE);
         } else {
-            mbWinCreate(2, 0x003E0004, -1); /* Donkey scene message resource */
+            mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 4), -1); /* Donkey scene message resource */
             mbWinTopWait();
             mbMusPauseFadeOut(0, TRUE, -1);
             mbDiceFadeSet(playerNo);
-            mbAudFXPlay(0x3A7); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_GUIDE_11); /* event sound-effect resource */
             mbev_CapObjMotionSet(obj1, 30, 10, 1,
                 0, HU3D_MOTATTR_LOOP, TRUE, TRUE);
             mbStarGetExec(playerNo);
@@ -3091,48 +4367,48 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         return 0;
     }
 
-    mbWinCreate(2, 0x003E0005, -1); /* Donkey scene message resource */
+    mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 5), -1); /* Donkey scene message resource */
     mbWinTopWait();
-    mbWinCreate(2, 0x003E0006, -1); /* Donkey scene message resource */
+    mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 6), -1); /* Donkey scene message resource */
     mbWinTopWait();
-    mbAudFXPlay(0x3A8); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_12); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(obj1, 8, 0, TRUE);
-    sprA = mbev_CapSprCreate(&work->objWork, 0x000E0022, 100, 0); /* event sprite resource identifier */
-    espPosSet(sprA, 288.0f, 240.0f);
-    espScaleSet(sprA, 0.0f, 0.0f);
-    sprB = mbev_CapSprCreate(&work->objWork, 0x000E0023, 100, 0); /* event sprite resource identifier */
-    espPosSet(sprB, 304.0f, 240.0f);
-    espScaleSet(sprB, 0.0f, 0.0f);
-    espAttrSet(sprB, 1);
-    espBankSet(sprB, 0);
-    for (i = 0; i <= 30; i++) {
+    spr[0] = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 34), 100, 0); /* event sprite resource identifier */
+    espPosSet(spr[0], 288.0f, 240.0f);
+    espScaleSet(spr[0], 0.0f, 0.0f);
+    spr[1] = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 35), 100, 0); /* event sprite resource identifier */
+    espPosSet(spr[1], 304.0f, 240.0f);
+    espScaleSet(spr[1], 0.0f, 0.0f);
+    espAttrSet(spr[1], 1);
+    espBankSet(spr[1], 0);
+    for (i = 0; i <= 30.0f; i++) {
         time = (float)i / 30.0f;
-        value = (float)sin((M_PI * 180.0 * time) / 180.0)
-            + (float)sin((M_PI * 90.0 * time) / 180.0);
-        espScaleSet(sprA, value, value);
-        espScaleSet(sprB, value, value);
-        espPosSet(sprB, 288.0f + 16.0f * value, 240.0f);
+        value = sin((M_PI * (90.0f * time)) / 180.0)
+            + sin((M_PI * (180.0f * time)) / 180.0);
+        for (j = 0; j < 2; j++) {
+            espScaleSet(spr[j], value, value);
+        }
+        espPosSet(spr[1], 288.0f + 16.0f * value, 240.0f);
         HuPrcVSleep();
     }
     frameCount = (int)(60.0f + MBCapsuleEffRandF() * 60.0f * 0.5f);
     phase = 0.0f;
     step = 0.3f;
-    bank = 0;
-    prevBank = 0;
+    bank = prevBank = 0;
     for (i = 0; i <= frameCount; i++) {
         phase += step;
-        if (phase >= 10.0f) {
-            phase -= 10.0f;
+        if (phase >= *((const float *)&lbl_802C4370)) {
+            phase -= *((const float *)&lbl_802C4370);
         }
         bank = (int)phase;
         if (bank >= 10) {
             bank = 9;
         }
-        espBankSet(sprB, (s16)donkeyRouletteBankTbl[bank]);
+        espBankSet(spr[1], (s16)donkeyRouletteBankTbl[bank]);
         if (bank != prevBank) {
-            mbAudFXPlay(0x3F1); /* event sound-effect resource */
-            prevBank = bank;
+            mbAudFXPlay(MSM_SE_BRD00_05); /* event sound-effect resource */
         }
+        prevBank = bank;
         HuPrcVSleep();
     }
     for (i = 0; i <= 60; i++) {
@@ -3140,78 +4416,87 @@ static int ev_CapDonkeyStart(CAPWORK *work)
             step -= 0.005f;
         }
         phase += step;
-        if (phase >= 10.0f) {
-            phase -= 10.0f;
+        if (phase >= *((const float *)&lbl_802C4370)) {
+            phase -= *((const float *)&lbl_802C4370);
         }
         bank = (int)phase;
         if (bank >= 10) {
             bank = 9;
         }
-        espBankSet(sprB, (s16)donkeyRouletteBankTbl[bank]);
+        espBankSet(spr[1], (s16)donkeyRouletteBankTbl[bank]);
         if (bank != prevBank) {
-            mbAudFXPlay(0x3F1); /* event sound-effect resource */
-            prevBank = bank;
+            mbAudFXPlay(MSM_SE_BRD00_05); /* event sound-effect resource */
         }
+        prevBank = bank;
         HuPrcVSleep();
     }
-    mbAudFXPlay(0x46E); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_130); /* event sound-effect resource */
     for (i = 0; i <= 60; i++) {
         time = (float)i / 60.0f;
-        value = 1.0f + 0.5f * (float)sin(
-            (M_PI * 720.0 * time) / 180.0);
-        espScaleSet(sprB, value, value);
-        espPosSet(sprB, 288.0f + 16.0f * value, 240.0f);
+        time = 1.0f + 0.5f * sin(
+            (M_PI * (720.0f * time)) / 180.0);
+        espScaleSet(spr[1], time, time);
+        espPosSet(spr[1], 288.0f + 16.0f * time, 240.0f);
         HuPrcVSleep();
     }
-    for (i = 0; i <= 30; i++) {
+    for (i = 0; i <= 30.0f; i++) {
         time = (float)i / 30.0f;
-        value = 1.0f + 7.0f * (float)sin(
-            (M_PI * 90.0 * time) / 180.0);
-        espScaleSet(sprA, value, value);
-        espScaleSet(sprB, value, value);
-        espTPLvlSet(sprA, 1.0f
-            - (float)sin((M_PI * 90.0 * time) / 180.0));
-        espTPLvlSet(sprB, 1.0f
-            - (float)sin((M_PI * 90.0 * time) / 180.0));
-        espPosSet(sprB, 288.0f + 16.0f * value, 240.0f);
+        value = 1.0f + 7.0f * sin(
+            (M_PI * (90.0f * time)) / 180.0);
+        for (j = 0; j < 2; j++) {
+            espScaleSet(spr[j], value, value);
+            espTPLvlSet(spr[j], 1.0f
+                - sin((M_PI * (90.0f * time)) / 180.0));
+        }
+        espPosSet(spr[1], 288.0f + 16.0f * value, 240.0f);
         HuPrcVSleep();
     }
-    espDispOff(sprA);
-    espDispOff(sprB);
+    for (j = 0; j < 2; j++) {
+        espDispOff(spr[j]);
+    }
     mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    sprintf(message, "%d", donkeyRouletteBankTbl[bank] + 1);
-    mbWinCreate(2, 0x003E0007, -1); /* Donkey scene message resource */
+    sprintf(message, capspecialMesFormat, donkeyRouletteBankTbl[bank] + 1);
+    mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 7), -1); /* Donkey scene message resource */
     mbWinTopInsertMesSet((u32)message, 0);
     mbWinTopWait();
-    memset(mgResultData, 0, 10);
-    *(s16 *)((u8 *)mgResultData + 0) = (s16)playerNo;
-    *(s16 *)((u8 *)mgResultData + 4) =
+    memset(&mgResultData, 0, sizeof(mgResultData));
+    mgResultData.playerNo1 = (s16)playerNo;
+    mgResultData.coinNum =
         (s16)(donkeyRouletteBankTbl[bank] + 1);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[i].mgCoinBonus = 0;
-        }
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[0].mgCoinBonus = 0;
     }
-    return 1;
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[1].mgCoinBonus = 0;
+    }
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[2].mgCoinBonus = 0;
+    }
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[3].mgCoinBonus = 0;
+    }
+        return 1;
+        }
 }
 
 static void ev_CapDonkeyCoin(CAPWORK *work)
 {
-    HuVecF masuPos;
+    HuVecF targetPos;
     HuVecF pos;
+    HuVecF objectPos;
+    HuVecF masuPos;
     HuVecF direction;
-    HuVecF vel = { 0.0f, 0.0f, 0.0f };
+    HuVecF coinPos;
+    HuVecF vel;
     Mtx mtx;
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int obj1 = work->_unkB6C;
-    int obj2 = work->_unkB70;
-    int obj3 = work->_unkB74;
+    int obj1 = work->eventData[0];
+    int obj2 = work->eventData[1];
+    int obj3 = work->eventData[2];
     int coinVals[GW_PLAYER_MAX];
     int i;
     int coinNo;
-    int amount = *(s16 *)((u8 *)mgResultData + 4);
-    int ownBonus;
 
     mbStatusDispForceSetAll(TRUE);
     mbev_CapObjPosSet(&work->objWork, obj2, masuId, NULL);
@@ -3219,30 +4504,34 @@ static void ev_CapDonkeyCoin(CAPWORK *work)
     mbObjMotionTimeSet(obj2, 0.0f);
     mbObjMotionSpeedSet(obj2, 1.0f);
     mbMasuPosGet(masuId, &masuPos);
-    mbObjPosSetV(obj3, &masuPos);
+    targetPos = pos = masuPos;
+    mbObjPosSetV(obj3, &pos);
     mbObjMotionTimeSet(obj2, mbObjMotionMaxTimeGet(obj2));
     Hu3DMotionCalc(mbObjModelIDGet(obj2));
     HuPrcVSleep();
     Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
-    pos.x = mtx[0][3] - 80.0f;
+    targetPos.x = mtx[0][3] - 80.0f;
+    targetPos.y = mtx[1][3];
+    targetPos.z = mtx[2][3] + 80.0f;
+    pos.x = mtx[0][3];
     pos.y = mtx[1][3];
-    pos.z = mtx[2][3] + 80.0f;
+    pos.z = mtx[2][3];
     mbObjPosSetV(obj3, &pos);
-    mbev_PlayerColMasu(playerNo, masuId, TRUE);
+    mbev_PlayerColMasu(playerNo, GwPlayer[playerNo].masuId, TRUE);
     mbMasuPosGet(masuId, &masuPos);
-    PSVECSubtract(&pos, &masuPos, &direction);
+    PSVECSubtract(&targetPos, &masuPos, &direction);
     mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
     mbev_CapPlayerPosSet(&work->objWork, playerNo, masuId, &direction);
     mbObjDispSet(obj1, TRUE);
     mbObjRotSet(obj1, 0.0f, -45.0f, 0.0f);
     mbObjMotionSet(obj1, 1, HU3D_MOTATTR_LOOP);
-    pos.x = mtx[0][3];
-    pos.y = mtx[1][3];
-    pos.z = mtx[2][3];
-    mbObjPosSetV(obj1, &pos);
+    objectPos.x = mtx[0][3] + 80.0f;
+    objectPos.y = mtx[1][3];
+    objectPos.z = mtx[2][3] - 80.0f;
+    mbObjPosSetV(obj1, &objectPos);
     mbMasuPosGet(masuId, &masuPos);
-    PSVECSubtract(&pos, &masuPos, &direction);
+    PSVECSubtract(&objectPos, &masuPos, &direction);
     mbev_CapObjPosSet(&work->objWork, obj1, masuId, &direction);
     mbCameraEyeSetV(&pos);
     mbCameraMoveObj(obj3, NULL, &capsuleCameraOfs, 1500.0f, -1.0f, 1);
@@ -3254,116 +4543,122 @@ static void ev_CapDonkeyCoin(CAPWORK *work)
     mbPauseDisableSet(FALSE);
     {
         char message[16];
-        sprintf(message, "%d", amount);
-        mbWinCreate(2, 0x003E0009, -1); /* Donkey scene message resource */
+        sprintf(message, capspecialMesFormat, mgResultData.coinNum);
+        mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 9), -1); /* Donkey scene message resource */
         mbWinTopInsertMesSet((u32)message, 0);
         mbWinTopWait();
     }
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        coinVals[i] = amount * GwPlayer[i].mgCoinBonus;
+        s16 coinBonus = GwPlayer[i].mgCoinBonus;
+        coinVals[i] = mgResultData.coinNum * coinBonus;
     }
     do {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (coinVals[i] > 0) {
-                HuVecF playerPos;
-                HuVecF coinPos;
-                mbPlayerPosGet(i, &playerPos);
-                coinPos = playerPos;
+                mbPlayerPosGet(i, &direction);
+                coinPos = direction;
                 coinPos.y += 1500.0f;
-                coinPos.x += (MBCapsuleEffRandF() - 0.5f)
+                coinPos.x += (*((const float *)&lbl_802C436C)
+                                + MBCapsuleEffRandF())
                     * 100.0f * 0.5f;
+                vel.x = vel.y = vel.z = 0.0f;
                 coinNo = mbev_CapEffCoinAdd(work->coinObj, &coinPos, &vel,
                     0.75f, 4.9f, 30, 4);
                 if (coinNo >= 0) {
                     mbev_CapEffCoinMaxYSet(work->coinObj, coinNo,
-                        playerPos.y + 150.0f);
+                        direction.y + 150.0f);
                     coinVals[i]--;
                 }
             }
         }
+        for (i = 0; i < GW_PLAYER_MAX; i++) {
+            if (coinVals[i] > 0) {
+                break;
+            }
+        }
         HuPrcVSleep();
-    } while (coinVals[0] > 0 || coinVals[1] > 0
-        || coinVals[2] > 0 || coinVals[3] > 0);
-    while (mbev_CapEffCoinNumGet(work->coinObj) > 0) {
-        HuPrcVSleep();
-    }
+    } while (i < GW_PLAYER_MAX
+        || mbev_CapEffCoinNumGet(work->coinObj) > 0);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        coinVals[i] = amount * GwPlayer[i].mgCoinBonus;
+        s16 coinBonus = GwPlayer[i].mgCoinBonus;
+        coinVals[i] = mgResultData.coinNum * coinBonus;
     }
     mbCoinAddAllProcExecV(coinVals, (BOOL *)coinVals, FALSE);
-    ownBonus = GwPlayer[playerNo].mgCoinBonus;
-    if (ownBonus > 0) {
-        mbPlayerWinLoseVoicePlay(playerNo, 12, 0x243); /* win/lose voice resource */
-        mbev_CapPlayerMotShiftWait(playerNo, 12, 0, TRUE);
-    } else {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, 0x249); /* win/lose voice resource */
-        mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
+    {
+        s16 ownBonus = GwPlayer[playerNo].mgCoinBonus;
+        if (ownBonus > 0) {
+            mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6)); /* win/lose voice resource */
+            mbev_CapPlayerMotShiftWait(playerNo, 12, 0, TRUE);
+        } else {
+            mbPlayerWinLoseVoicePlay(playerNo, 13, CHARVOICEID(12)); /* win/lose voice resource */
+            mbev_CapPlayerMotShiftWait(playerNo, 13, 0, TRUE);
+        }
     }
     mbev_CapPlayerMotShiftWait(playerNo, 1, HU3D_MOTATTR_LOOP, TRUE);
 }
 
 static void ev_CapDonkeyReturn(CAPWORK *work)
 {
+    HuVecF playerPos;
     HuVecF pos;
-    HuVecF masuPos;
+    HuVecF objectPos;
     Mtx mtx;
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int obj1 = work->_unkB6C;
-    int obj2 = work->_unkB70;
-    int obj3 = work->_unkB74;
+    int obj1 = work->eventData[0];
+    int obj2 = work->eventData[1];
+    int obj3 = work->eventData[2];
     int i;
     float ratio;
     float scale;
-    float yOffset;
-    float yOffset2;
-    float maxTime;
-    float curTime;
+    HuVecF *dustPosP;
 
-    mbPlayerRotateStart(playerNo, 0x87, 15); /* Donkey return facing angle */
+    mbPlayerRotateStart(playerNo, CAPSPECIAL_DONKEY_RETURN_ANGLE, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
-    mbAudFXPlay(0x3A8); /* event sound-effect resource */
-    mbev_CapPlayerMotShiftSet(obj1, 0x0B, HU3D_MOTATTR_NONE, TRUE); /* Donkey return motion slot */
-    mbWinCreate(2, 0x003E000A, -1); /* Donkey scene message resource */
+    mbAudFXPlay(MSM_SE_GUIDE_12); /* event sound-effect resource */
+    mbev_CapPlayerMotShiftSet(obj1, CAPSPECIAL_DONKEY_RETURN_MOTION, HU3D_MOTATTR_NONE, TRUE);
+    mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 10), -1); /* Donkey scene message resource */
     mbWinTopWait();
     mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
     HuPrcSleep(20);
     mbev_CapObjPosSet(&work->objWork, obj1, -1, NULL);
-    mbAudFXPlay(0x46F); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_131); /* event sound-effect resource */
     mbObjMotionShiftSet(obj1, 4, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
 
-    for (i = 1; i <= 30; i++) {
+    for (i = 1; i <= 30.0f; i++) {
         ratio = (float)i / 30.0f;
-        scale = 1.0f - 0.7f * (float)sin(
-            (M_PI * 90.0 * ratio) / 180.0);
+        scale = 1.0f - 0.7f * sin(
+            (M_PI * (90.0f * ratio)) / 180.0);
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f;
-        yOffset = 100.0f * (float)sin(
-            (M_PI * 90.0 * ratio) / 180.0);
-        yOffset2 = 2.5f * yOffset;
-        yOffset = 100.0f * (float)sin(
-            (M_PI * 180.0 * ratio) / 180.0);
-        pos.y = mtx[1][3] + yOffset + yOffset2;
+        pos.y = mtx[1][3]
+            + 100.0 * sin((M_PI * (90.0f * ratio)) / 180.0)
+            + 2.5 * (100.0
+                * sin((M_PI * (180.0f * ratio)) / 180.0));
         pos.z = mtx[2][3] - 80.0f;
         mbObjPosSetV(obj1, &pos);
         mbObjScaleSet(obj1, scale, scale, scale);
         HuPrcVSleep();
     }
-    mbev_CapEffDustCloudAdd(work->explodeObj, &pos);
+    {
+        HuVecF dustPos = pos;
+        dustPosP = &dustPos;
+        mbev_CapEffDustCloudAdd(work->explodeObj, dustPosP);
+    }
     HuPrcVSleep();
     mbObjDispSet(obj1, FALSE);
     mbev_CapPlayerPosSet(&work->objWork, playerNo, -1, NULL);
     mbPlayerMotionShiftSet(playerNo, 2, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
 
-    for (i = 1; i <= 30; i++) {
+    for (i = 1; i <= 30.0f; i++) {
         ratio = (float)i / 30.0f;
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
-        pos.x = mtx[0][3] - 80.0f * (1.0f - ratio);
-        pos.y = mtx[1][3];
-        pos.z = mtx[2][3] + 80.0f * (1.0f - ratio);
-        mbPlayerPosSetV(playerNo, &pos);
+        playerPos.x = mtx[0][3] - 80.0f * (1.0f - ratio);
+        playerPos.y = mtx[1][3];
+        playerPos.z = mtx[2][3] + 80.0f * (1.0f - ratio);
+        mbPlayerPosSetV(playerNo, &playerPos);
         HuPrcVSleep();
     }
 
@@ -3373,32 +4668,34 @@ static void ev_CapDonkeyReturn(CAPWORK *work)
         HuPrcVSleep();
     }
     mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
-    mbAudFXPlay(0x476); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_138); /* event sound-effect resource */
     mbObjMotionSpeedSet(obj2, -1.0f);
     do {
-        maxTime = mbObjMotionMaxTimeGet(obj2);
-        curTime = mbObjMotionTimeGet(obj2);
-        ratio = curTime / maxTime;
+        ratio = mbObjMotionTimeGet(obj2) / mbObjMotionMaxTimeGet(obj2);
         if (ratio < 0.0f) {
             ratio = 0.0f;
         }
         Hu3DMotionCalc(mbObjModelIDGet(obj2));
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
-        pos.x = mtx[0][3];
-        pos.y = mtx[1][3];
-        pos.z = mtx[2][3];
-        mbPlayerPosSetV(playerNo, &pos);
-        mbObjPosSetV(obj3, &pos);
+        playerPos.x = mtx[0][3];
+        playerPos.y = mtx[1][3];
+        playerPos.z = mtx[2][3];
+        mbPlayerPosSetV(playerNo, &playerPos);
+        objectPos.x = mtx[0][3];
+        objectPos.y = mtx[1][3];
+        objectPos.z = mtx[2][3];
+        mbObjPosSetV(obj3, &objectPos);
         HuPrcVSleep();
     } while (ratio > 0.0f);
-    mbMasuPosGet(masuId, &masuPos);
-    mbPlayerPosSetV(playerNo, &masuPos);
+    mbMasuPosGet(masuId, &playerPos);
+    mbPlayerPosSetV(playerNo, &playerPos);
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
     mbCameraMoveWait();
 }
 
 static void ev_CapDonkeyOMExec(OMOBJ *obj)
 {
+    extern void CharEffectHipDropCreate();
     CAPWORK *work = obj->data;
     HuVecF pos;
     HuVecF masuPos;
@@ -3411,10 +4708,8 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
     int obj3;
     float time;
     float nextTime;
-    float s;
     float scaleA;
     float scaleB;
-    float trig;
 
     if (mbExitCheck() || obj->work[3] != 0) {
         omDelObjEx(mbObjMan, obj);
@@ -3422,9 +4717,9 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
     }
     playerNo = work->playerNo;
     masuId = GwPlayer[playerNo].masuId;
-    obj1 = work->_unkB6C;
-    obj2 = work->_unkB70;
-    obj3 = work->_unkB74;
+    obj1 = work->eventData[0];
+    obj2 = work->eventData[1];
+    obj3 = work->eventData[2];
 
     switch (obj->work[0]) {
     case 0:
@@ -3435,43 +4730,42 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
         obj->work[1] = 0;
         /* fall through */
     case 1:
-        obj->work[1]++;
-        time = (float)obj->work[1] / 48.0f;
+        time = (float)++obj->work[1] / 48.0f;
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f + 100.0f;
-        trig = 100.0f * (float)cos(
-            (M_PI * 90.0 * time) / 180.0);
-        pos.y = mtx[1][3] + trig * 10.0f;
+        pos.y = mtx[1][3] + 100.0f * cos(
+            (M_PI * (90.0f * time)) / 180.0) * 10.0f;
         pos.z = mtx[2][3] - 80.0f - 100.0f;
         mbObjPosSetV(obj1, &pos);
         if (time >= 1.0f) {
             mbObjMotionShiftSet(obj1, 2, 0.0f, 8.0f,
                 HU3D_MOTATTR_NONE);
-            CharEffectHipDropCreate((s16)GwPlayer[playerNo].charNo, &pos);
+            CharEffectHipDropCreate(
+                GwPlayer[playerNo].charNo, &pos);
             obj->work[0]++;
             obj->work[1] = 0;
         }
         break;
     case 2:
-        obj->work[1]++;
-        time = (float)obj->work[1] / 36.0f;
+        time = (float)++obj->work[1] / 36.0f;
         nextTime = (float)(obj->work[1] + 1) / 36.0f;
-        if (nextTime > 1.0f) {
+        if (nextTime >= 1.0f) {
             nextTime = 1.0f;
         }
-        s = (float)sin((M_PI * 180.0 * nextTime) / 180.0);
-        scaleA = 1.0f + 0.33f * s;
-        scaleB = 1.0f - 0.33f * s;
+        scaleA = 1.0f + 0.33f
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
+        scaleB = 1.0f - 0.33f
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
         mbObjScaleSet(obj2, scaleA, scaleB, scaleA);
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
-        trig = 100.0f * (float)cos(
-            (M_PI * 90.0 * time) / 180.0);
-        pos.x = mtx[0][3] + 80.0f + trig;
+        pos.x = mtx[0][3] + 80.0f + 100.0f * cos(
+            (M_PI * (90.0f * time)) / 180.0);
         pos.y = mtx[1][3] + 100.0f
-            * (float)sin((M_PI * 180.0 * time) / 180.0) * 2.0f;
-        pos.z = mtx[2][3] - 80.0f - trig;
+            * sin((M_PI * (180.0f * time)) / 180.0) * 2.0f;
+        pos.z = mtx[2][3] - 80.0f - 100.0f * cos(
+            (M_PI * (90.0f * time)) / 180.0);
         mbObjPosSetV(obj1, &pos);
-        if (obj->work[1] == 0x1B) { /* Donkey animation state tag */
+        if (obj->work[1] == CAPSPECIAL_DONKEY_MOTION_SHIFT_FRAME) {
             mbObjMotionShiftSet(obj1, 3, 0.0f, 8.0f,
                 HU3D_MOTATTR_NONE);
         }
@@ -3482,14 +4776,14 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
         }
         break;
     case 3:
-        obj->work[1]++;
-        time = (float)(obj->work[1] + 1) / 12.0f;
-        if (time > 1.0f) {
-            time = 1.0f;
+        nextTime = (float)(++obj->work[1] + 1) / 12.0f;
+        if (nextTime >= 1.0f) {
+            nextTime = 1.0f;
         }
-        s = (float)sin((M_PI * 180.0 * time) / 180.0);
-        scaleA = 1.0f + 0.1f * s;
-        scaleB = 1.0f - 0.1f * s;
+        scaleA = 1.0f + 0.1f
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
+        scaleB = 1.0f - 0.1f
+            * sin((M_PI * (180.0f * nextTime)) / 180.0);
         mbObjScaleSet(obj2, scaleA, scaleB, scaleA);
         Hu3DModelObjMtxGet(mbObjModelIDGet(obj2), capTreeFook, mtx);
         pos.x = mtx[0][3] + 80.0f;
@@ -3497,7 +4791,7 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
         pos.z = mtx[2][3] - 80.0f;
         mbObjPosSetV(obj1, &pos);
         if (mbObjMotionShiftIDGet(obj1) == -1
-            && mbObjMotionEndCheck(obj1) && time >= 1.0f) {
+            && mbObjMotionEndCheck(obj1) && nextTime >= 1.0f) {
             mbObjMotionShiftSet(obj1, 1, 0.0f, 8.0f,
                 HU3D_MOTATTR_LOOP);
             mbMasuPosGet(masuId, &masuPos);
@@ -3508,52 +4802,47 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
         }
         break;
     default:
-        obj->work[3] = 1;
+        obj->work[2] = 1;
         break;
     }
-}
-
-void mbev_CapDonkeyKill(void)
-{
 }
 
 void mbev_CapKoopa(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
-    int playerNo = work->playerNo;
     int objId;
     int i;
 
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f,
+    mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbev_CapWait(work);
     work->explodeObj = mbev_CapEffExplodeCreate();
     HuPrcVSleep();
     work->coinObj = mbev_CapEffCoinCreate();
     HuPrcVSleep();
-    objId = mbev_CapObjCreate(&work->objWork, 0x000E0000, /* event model resource identifier */
+    objId = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 0), /* event model resource identifier */
         (int *)koopaMotTbl, FALSE, 5, FALSE);
     mbObjDispSet(objId, FALSE);
-    mbPlayerColSnapPlayerSet(playerNo, TRUE);
-    work->_unkB6C = objId;
+    mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
+    work->eventData[0] = objId;
 
     if (!work->flags._flag04) {
         if (ev_CapKoopaStart(work)) {
-            if ((!mbPlayerAllComCheck() || GwSystem.mgComDispF)
-                && mbMgRouletteNumGet(4) > 0) {
-                mbWinCreate(2, 0x003F000D, 13); /* Koopa scene message resource */
-                mbWinTopWait();
-                mbObjMotionShiftSet(objId, 5, 0.0f, 8.0f, 0);
-                mbev_MgCallKoopa();
-            } else {
+            if ((mbPlayerAllComCheck() && !GWMgComDispGet())
+                || mbMgRouletteNumGet(4) <= 0) {
                 for (i = 0; i < GW_PLAYER_MAX; i++) {
-                    int bonus = (int)mbRandMod(2);
+                    s16 bonus = mbRandMod(2);
                     if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-                        GwPlayer[i].mgCoinBonus = (s16)bonus;
+                        GwPlayer[i].mgCoinBonus = bonus;
                     }
                 }
                 mbWipeFadeOut();
                 ev_CapKoopaCoin(work);
+            } else {
+                mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 13), 13); /* Koopa scene message resource */
+                mbWinTopWait();
+                mbObjMotionShiftSet(objId, 5, 0.0f, 8.0f, 0);
+                mbev_MgCallKoopa();
             }
         }
     } else {
@@ -3569,18 +4858,18 @@ void mbev_CapKoopaKill(void)
 
 static int ev_CapKoopaStart(CAPWORK *work)
 {
+    HuVecF playerPos;
     HuVecF masuPos;
-    HuVecF pos;
     HuVecF cameraPos;
     int ids[4];
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int objId = work->_unkB6C;
-    int playerMot0;
-    int playerMot1;
+    int objId = work->eventData[0];
+    int playerMot[2];
     int spr;
+    int rouletteSpr;
     int starObj;
-    int fileNum;
+    int squishCount;
     int diceNo;
     int value;
     int selector;
@@ -3588,15 +4877,14 @@ static int ev_CapKoopaStart(CAPWORK *work)
     int mode;
     float t;
     float scale;
-    float randomValue;
     char message[16];
 
     mbPlayerRotateStart(playerNo, 0, 15);
-    playerMot0 = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
-        0x00930017); /* event resource identifier */
-    playerMot1 = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
-        0x00930019); /* event resource identifier */
-    spr = mbev_CapSprCreate(&work->objWork, 0x000E0024, 100, 0); /* event sprite resource identifier */
+    playerMot[0] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        DATANUM(DATA_mariomot, 23)); /* event resource identifier */
+    playerMot[1] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
+        DATANUM(DATA_mariomot, 25)); /* event resource identifier */
+    spr = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 36), 100, 0); /* event sprite resource identifier */
     espPosSet((s16)spr, 288.0f, 240.0f);
     espScaleSet((s16)spr, 4.0f, 4.0f);
     espTPLvlSet((s16)spr, 0.0f);
@@ -3612,7 +4900,7 @@ static int ev_CapKoopaStart(CAPWORK *work)
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, playerMot0, 0.0f, 8.0f, 0);
+    mbPlayerMotionShiftSet(playerNo, playerMot[0], 0.0f, 8.0f, 0);
     mbCameraPlayerViewSet(playerNo, 0);
     mbEffFadeCreate(30, 160);
     work->flags._flag06 = TRUE;
@@ -3620,18 +4908,18 @@ static int ev_CapKoopaStart(CAPWORK *work)
     espDispOn((s16)spr);
     for (i = 0; i < 360; i += 2) {
         if (i == 60) {
-            mbAudFXPlay(0x453); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_BRD00_103); /* event sound-effect resource */
         }
         if (i == 90 || i == 270 || i == 450) {
             omVibrate(playerNo, 20, 7, 3);
         }
-        t = (float)sin((M_PI * mbAngleWrap((float)i)) / 180.0);
-        espTPLvlSet((s16)spr, (float)fabs(t));
+        espTPLvlSet((s16)spr, CapSpecialAbsFloat((float)sin(
+            (M_PI * mbAngleWrap((float)i)) / 180.0)));
         HuPrcVSleep();
     }
     espDispOff((s16)spr);
-    mbPlayerMotionShiftSet(playerNo, playerMot1, 0.0f, 8.0f, 0);
-    mbPlayerPosGet(playerNo, &cameraPos);
+    mbPlayerMotionShiftSet(playerNo, playerMot[1], 0.0f, 8.0f, 0);
+    mbPlayerPosGet(playerNo, &playerPos);
     mbObjDispSet(objId, TRUE);
     mbObjMotionSet(objId, 2, 0);
     mbObjMotionTimeSet(objId, 30.0f);
@@ -3639,18 +4927,26 @@ static int ev_CapKoopaStart(CAPWORK *work)
     while (mbObjMotionTimeGet(objId) < 60.0f) {
         t = (mbObjMotionTimeGet(objId) - 30.0f) / 30.0f;
         mbMasuPosGet(masuId, &masuPos);
-        masuPos.y += (float)cos((M_PI * 90.0 * t) / 180.0)
-            * 100.0f * 6.0f;
+        masuPos.y += 100.0
+            * cos((M_PI * (90.0f * t)) / 180.0) * 6.0;
         mbObjPosSetV(objId, &masuPos);
         HuPrcVSleep();
     }
-    mbev_CapEffDustHeavyAdd(work->explodeObj, &masuPos);
+    {
+        HuVecF pos;
+        HuVecF *dustPosP;
+
+        pos = masuPos;
+        dustPosP = &pos;
+        mbev_CapEffDustHeavyAdd(work->explodeObj, dustPosP);
+    }
     mbev_CapObjPosSet(&work->objWork, objId, masuId, NULL);
-    mbAudFXPlay(0x45F); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_115); /* event sound-effect resource */
     mbev_CapVibrate(1);
-    work->_unkB70 = mbev_CapPlayerSquishSet(ids, masuId);
+    squishCount = mbev_CapPlayerSquishSet(ids, masuId);
+    work->eventData[1] = squishCount;
     for (i = 0; i < 4; i++) {
-        ((int *)((u8 *)work + 0xB74))[i] = ids[i]; /* retained CAPWORK field offset */
+        work->eventData[i + 2] = ids[i];
     }
     while (!mbObjMotionEndCheck(objId)) {
         HuPrcVSleep();
@@ -3660,112 +4956,122 @@ static int ev_CapKoopaStart(CAPWORK *work)
     HuPrcSleep(30);
     mbEffFadeOutSet(30);
     HuPrcSleep(30);
-    randomValue = MBCapsuleEffRandF();
-    mode = randomValue >= 0.3f;
-    HuDataDirClose(0x000E0000); /* event archive resource identifier */
+    if (MBCapsuleEffRandF() < 0.3f) {
+        mode = FALSE;
+    } else {
+        mode = TRUE;
+    }
+    HuDataDirClose(DATANUM(DATA_capsulechar1, 0)); /* event archive resource identifier */
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CB); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_47); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(objId, 3, 0, TRUE);
     mbObjMotionShiftSet(objId, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    mbWinCreate(2, 0x003F000D, 13); /* Koopa scene message resource */
+    mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 0), 13); /* Koopa scene message resource */
     mbWinTopWait();
     if (mbPlayerCoinGet(playerNo) <= 0) {
         mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        mbWinCreate(2, 0x003F0001, 13); /* Koopa scene message resource */
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 1), 13); /* Koopa scene message resource */
         mbWinTopWait();
         mbev_CapPlayerMotShiftSet(objId, 1, HU3D_MOTATTR_LOOP, TRUE);
         work->flags._flag05 = TRUE;
         return 0;
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CD); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_49); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 5, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
     HuPrcSleep(30);
-    mbAudFXPlay(0x45D); /* event sound-effect resource */
-    fileNum = mbBoardDataNumGet(koopaMgFile[mode]);
-    spr = mbev_CapSprCreate(&work->objWork, fileNum, 100, (s16)(mode ^ 1));
-    for (i = 1; i < 60; i++) {
+    mbAudFXPlay(MSM_SE_BRD00_113); /* event sound-effect resource */
+    rouletteSpr = mbev_CapSprCreate(&work->objWork,
+        mbBoardDataNumGet(koopaMgFile[mode]), 100, (s16)(mode ^ 1));
+    for (i = 1; (float)i < 60.0f; i++) {
         t = (float)i / 60.0f;
-        scale = (float)sin((M_PI * 90.0 * t) / 180.0);
-        pos.x = 288.0f;
-        pos.y = 240.0f
-            - 250.0f * (float)sin((M_PI * 180.0 * t) / 180.0)
-            + 50.0f * (float)cos((M_PI * 180.0 * t) / 180.0);
-        pos.z = 0.0f;
-        espPosSet((s16)spr, pos.x, pos.y);
-        espScaleSet((s16)spr, scale, scale);
-        espZRotSet((s16)spr, 3.0f * 360.0f * t);
+        scale = (float)sin((M_PI * (90.0f * t)) / 180.0);
+        espPosSet((s16)rouletteSpr, 288.0f,
+            (float)(240.0
+                - 250.0 * sin((M_PI * (180.0f * t)) / 180.0)
+                + 50.0 * cos((M_PI * (180.0f * t)) / 180.0)));
+        espScaleSet((s16)rouletteSpr, scale, scale);
+        espZRotSet((s16)rouletteSpr, 3.0f * (360.0f * t));
         HuPrcVSleep();
     }
-    for (i = 1; i < 60; i++) {
+    for (i = 1; (float)i < 60.0f; i++) {
         t = (float)i / 60.0f;
-        scale = 1.0f
-            + 0.2f * (float)sin((M_PI * 720.0 * t) / 180.0);
-        espPosSet((s16)spr, 288.0f, 240.0f);
-        espScaleSet((s16)spr, scale, scale);
-        espZRotSet((s16)spr, 0.0f);
+        scale = (float)(1.0
+            + 0.2f * sin((M_PI * (720.0f * t)) / 180.0));
+        espPosSet((s16)rouletteSpr, 288.0f, 240.0f);
+        espScaleSet((s16)rouletteSpr, scale, scale);
+        espZRotSet((s16)rouletteSpr, 0.0f);
         HuPrcVSleep();
     }
-    for (i = 1; i < 18; i++) {
+    for (i = 1; (float)i < 18.0f; i++) {
         t = (float)i / 18.0f;
-        scale = 1.0f
-            + 5.0f * (float)sin((M_PI * 180.0 * t) / 180.0);
-        espPosSet((s16)spr, 288.0f, 240.0f);
-        espScaleSet((s16)spr, scale, scale);
-        espTPLvlSet((s16)spr,
-            1.0f - (float)sin((M_PI * 90.0 * t) / 180.0));
+        scale = (float)(1.0
+            + 5.0 * sin((M_PI * (90.0f * t)) / 180.0));
+        espPosSet((s16)rouletteSpr, 288.0f, 240.0f);
+        espScaleSet((s16)rouletteSpr, scale, scale);
+        espTPLvlSet((s16)rouletteSpr,
+            (float)(1.0 - sin((M_PI * (90.0f * t)) / 180.0)));
         HuPrcVSleep();
     }
-    espDispOff((s16)spr);
+    espDispOff((s16)rouletteSpr);
     if (!mode) {
+        int boardNo;
+
         mbAudFXDelaySet(30);
-        mbAudFXPlay(0x3CB); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_GUIDE_47); /* event sound-effect resource */
         mbObjMotionShiftSet(objId, 3, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        mbWinCreate(2, 0x003F0002, 13); /* Koopa scene message resource */
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 2), 13); /* Koopa scene message resource */
         mbWinTopWait();
         mbObjMotionShiftSet(objId, 1, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        mbWinCreate(2, 0x003F0003, 13); /* Koopa scene message resource */
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 3), 13); /* Koopa scene message resource */
         mbWinTopWait();
-        mbObjPosGet(objId, &pos);
+        mbObjPosGet(objId, &masuPos);
+        cameraPos.x = masuPos.x;
+        cameraPos.y = (masuPos.y += 50.0f);
+        cameraPos.z = masuPos.z;
         diceHitTimer = (int)(60.0f * (0.33f + MBCapsuleEffRandF()));
         koopaMdlId = objId;
-        selector = (GwSystem.boardNo != 3) ? mbRandMod(5) : mbRandMod(4);
-        mbDiceExec(-1, 12, (s8 *)koopaDiceTbl, selector,
-            FALSE, FALSE, &pos, 2);
+        boardNo = GwSystem.boardNo;
+        if (boardNo != 3) {
+            diceNo = mbRandMod(5);
+        } else {
+            diceNo = mbRandMod(4);
+        }
+        mbDiceExec(-1, 12, (s8 *)koopaDiceTbl, diceNo,
+            FALSE, FALSE, &cameraPos, 2);
         mbDicePadBtnHookSet(-1,
             (u16 (*)(int))ev_CapKoopaDicePadBtnHook);
-        mbDiceMotHookSet(-1,
-            (void (*)(int))ev_CapKoopaDiceMotHook);
+        mbDiceMotHookSet(-1, ev_CapKoopaDiceMotHook);
         while (!mbDiceKillCheck(-1)) {
             HuPrcVSleep();
         }
         diceNo = mbDiceResultGet(-1);
         HuPrcSleep(30);
-        value = koopaDiceResultTbl[diceNo];
-        if (value >= 0) {
-            sprintf(message, "%d", -value);
-            mbWinCreate(2, 0x003F0004, 13); /* Koopa scene message resource */
+        if (koopaDiceResultTbl[diceNo] >= 0) {
+            sprintf(message, capspecialMesFormat, -koopaDiceResultTbl[diceNo]);
+            mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 4), 13); /* Koopa scene message resource */
             mbWinTopInsertMesSet((u32)message, 0);
             mbWinTopWait();
             mbDiceFadeSet(-1);
             mbAudFXDelaySet(30);
-            mbAudFXPlay(0x3CD); /* event sound-effect resource */
+            mbAudFXPlay(MSM_SE_GUIDE_49); /* event sound-effect resource */
             mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
-            if (value > mbPlayerCoinGet(playerNo)) {
+            if ((value = koopaDiceResultTbl[diceNo])
+                > mbPlayerCoinGet(playerNo)) {
                 value = mbPlayerCoinGet(playerNo);
             }
             mbCoinAddProcExec(playerNo, -value, -value, FALSE);
             mbev_CapPlayerMotShiftSet(objId, 1, HU3D_MOTATTR_LOOP, TRUE);
         } else {
-            mbWinCreate(2, 0x003F0005, 13); /* Koopa scene message resource */
+            mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 5), 13); /* Koopa scene message resource */
             mbWinTopWait();
             mbDiceFadeSet(-1);
             if (mbPlayerStarGet(playerNo) > 0) {
                 mbAudFXDelaySet(30);
-                mbAudFXPlay(0x3CD); /* event sound-effect resource */
+                mbAudFXPlay(MSM_SE_GUIDE_49); /* event sound-effect resource */
                 mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
                 HuPrcSleep(12);
                 starObj = mbStarDispPlayerCreate(playerNo, -1);
@@ -3777,10 +5083,10 @@ static int ev_CapKoopaStart(CAPWORK *work)
                     HU3D_MOTATTR_LOOP, TRUE);
             } else {
                 mbAudFXDelaySet(30);
-                mbAudFXPlay(0x3CD); /* event sound-effect resource */
+                mbAudFXPlay(MSM_SE_GUIDE_49); /* event sound-effect resource */
                 mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
                     HU3D_MOTATTR_LOOP);
-                mbWinCreate(2, 0x003F0006, 13); /* Koopa scene message resource */
+                mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 6), 13); /* Koopa scene message resource */
                 mbWinTopWait();
                 mbev_CapPlayerMotShiftSet(objId, 1,
                     HU3D_MOTATTR_LOOP, TRUE);
@@ -3790,53 +5096,71 @@ static int ev_CapKoopaStart(CAPWORK *work)
     }
 
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CB); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_47); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 3, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
-    mbWinCreate(2, 0x003F0007, 13); /* Koopa scene message resource */
+    mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 7), 13); /* Koopa scene message resource */
     mbWinTopWait();
     selector = mbRandMod(3);
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CD); /* event sound-effect resource */
-    mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
-    mbWinCreate(2, GwSystem.tagF ? 0x003F0009 : 0x003F0008, 13); /* Koopa scene message resource */
+    mbAudFXPlay(MSM_SE_GUIDE_49); /* event sound-effect resource */
+    mbObjMotionShiftSet(objId, 5, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    if (!GWTeamFGet()) {
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 8), 13); /* Koopa scene message resource */
+    } else {
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 9), 13); /* Koopa scene message resource */
+    }
     mbWinTopInsertMesSet(koopaLoseMesTbl[selector], 0);
     mbWinTopWait();
     mbev_CapPlayerMotShiftSet(objId, 1, HU3D_MOTATTR_LOOP, TRUE);
-    memset(mgResultData, 0, 10);
-    *(s16 *)((u8 *)mgResultData + 8) = (s16)selector;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[i].mgCoinBonus = 0;
-        }
+    memset(&mgResultData, 0, sizeof(mgResultData));
+    mgResultData.resultNo = (s16)selector;
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[0].mgCoinBonus = 0;
+    }
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[1].mgCoinBonus = 0;
+    }
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[2].mgCoinBonus = 0;
+    }
+    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+        GwPlayer[3].mgCoinBonus = 0;
     }
     return 1;
 }
 
+static inline s16 GWMgCoinBonusGet(s32 playerNo)
+{
+    return GwPlayer[playerNo].mgCoinBonus;
+}
+
 static int ev_CapKoopaCoin(CAPWORK *work)
 {
+    extern void mbStatusDispForceSetAll(BOOL dispF);
+    extern void mbPauseDisableSet(BOOL disableF);
     HuVecF masuPos;
-    int ids[4];
     int add[GW_PLAYER_MAX];
+    int ids[4];
     int teamTbl[2][GW_PLAYER_MAX];
-    int teamCount[2] = { 0, 0 };
-    BOOL teamLose[2] = { FALSE, FALSE };
+    int teamCount[2];
+    BOOL teamLose[2];
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int objId = work->_unkB6C;
-    int resultType = *(s16 *)((u8 *)mgResultData + 8);
-    int loseCount = 0;
-    BOOL hasResource = TRUE;
+    int objId = work->eventData[0];
+    int squishCount;
+    int resultType;
+    int loseCount;
+    BOOL hasResource;
     int i;
     int t;
-    int outer;
     BOOL removed;
-    BOOL tagF = GwSystem.tagF;
 
     mbev_PlayerColMasu(playerNo, masuId, TRUE);
-    work->_unkB70 = mbev_CapPlayerSquishVoiceSet(ids, masuId, TRUE);
+    squishCount = mbev_CapPlayerSquishVoiceSet(ids, masuId, TRUE);
+    work->eventData[1] = squishCount;
     for (i = 0; i < 4; i++) {
-        ((int *)((u8 *)work + 0xB74))[i] = ids[i]; /* retained CAPWORK field offset */
+        work->eventData[i + 2] = ids[i];
     }
     mbMasuPosGet(masuId, &masuPos);
     mbObjPosSetV(objId, &masuPos);
@@ -3853,89 +5177,133 @@ static int ev_CapKoopaCoin(CAPWORK *work)
     mbWipeFadeIn();
     mbPauseDisableSet(FALSE);
 
-    if (!tagF) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (GwPlayer[i].mgCoinBonus <= 0) {
+    resultType = mgResultData.resultNo;
+    if (!GWTeamFGet()) {
+        for (i = 0, loseCount = 0; i < GW_PLAYER_MAX; i++) {
+            if (GWMgCoinBonusGet(i) <= 0) {
                 loseCount++;
-                if (resultType == 2) {
-                    if (mbPlayerCapsuleNumGet(i) > 0) {
-                        hasResource = FALSE;
-                    }
-                } else if (mbPlayerCoinGet(i) > 0) {
+            }
+        }
+        if (resultType == 2) {
+            for (i = 0, hasResource = TRUE; i < GW_PLAYER_MAX; i++) {
+                if (GWMgCoinBonusGet(i) <= 0 && mbPlayerCapsuleNumGet(i) > 0) {
+                    hasResource = FALSE;
+                }
+            }
+        } else {
+            for (i = 0, hasResource = TRUE; i < GW_PLAYER_MAX; i++) {
+                if (GWMgCoinBonusGet(i) <= 0 && mbPlayerCoinGet(i) > 0) {
                     hasResource = FALSE;
                 }
             }
         }
     } else {
+        teamCount[0] = teamCount[1] = 0;
         for (i = 0; i < GW_PLAYER_MAX; i++) {
-            int team = GwPlayer[i].team ? 1 : 0;
-            teamTbl[team][teamCount[team]++] = i;
+            if (mbPlayerGrpGet(i) == 0) {
+                teamTbl[0][teamCount[0]] = i;
+                teamCount[0]++;
+            } else {
+                teamTbl[1][teamCount[1]] = i;
+                teamCount[1]++;
+            }
         }
-        for (t = 0; t < 2; t++) {
-            if (teamCount[t] > 1
-                && GwPlayer[teamTbl[t][0]].mgCoinBonus <= 0
-                && GwPlayer[teamTbl[t][1]].mgCoinBonus <= 0) {
-                teamLose[t] = TRUE;
-                loseCount++;
-                if (resultType == 2) {
-                    if (mbPlayerCapsuleNumGet(teamTbl[t][0]) > 0) {
-                        hasResource = FALSE;
-                    }
-                } else if (mbPlayerCoinGet(teamTbl[t][0]) > 0) {
+        teamLose[0] = teamLose[1] = loseCount = 0;
+        if (GWMgCoinBonusGet(teamTbl[0][0]) <= 0
+            && GWMgCoinBonusGet(teamTbl[0][1]) <= 0) {
+            teamLose[0] = TRUE;
+            loseCount++;
+        }
+        if (GWMgCoinBonusGet(teamTbl[1][0]) <= 0
+            && GWMgCoinBonusGet(teamTbl[1][1]) <= 0) {
+            teamLose[1] = TRUE;
+            loseCount++;
+        }
+        if (resultType == 2) {
+            for (i = 0, hasResource = TRUE; i < 2; i++) {
+                if (teamLose[i]
+                    && mbPlayerCapsuleNumGet(teamTbl[i][0]) > 0) {
+                    hasResource = FALSE;
+                }
+            }
+        } else {
+            for (i = 0, hasResource = TRUE; i < 2; i++) {
+                if (teamLose[i] && mbPlayerCoinGet(teamTbl[i][0]) > 0) {
                     hasResource = FALSE;
                 }
             }
         }
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CB); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_47); /* event sound-effect resource */
     mbObjMotionShiftSet(objId, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    mbWinCreate(2, tagF ? 0x003F000F : 0x003F000E, 13); /* Koopa scene message resource */
+    if (!GWTeamFGet()) {
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 14), 13); /* Koopa scene message resource */
+    } else {
+        mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 15), 13); /* Koopa scene message resource */
+    }
     mbWinTopInsertMesSet(koopaLoseMesTbl2[resultType], 0);
     mbWinTopWait();
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CD); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_49); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(objId, 5, 0, TRUE);
-    mbAudFXPlay(0x427); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_BRD00_59); /* event sound-effect resource */
     if (loseCount == 0) {
         HuPrcSleep(30);
-        mbAudFXPlay(0x3CC); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_GUIDE_48); /* event sound-effect resource */
         mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        mbWinCreate(2, tagF ? 0x003F0013 : 0x003F0012, 13); /* Koopa scene message resource */
+        if (!GWTeamFGet()) {
+            mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 18), 13); /* Koopa scene message resource */
+        } else {
+            mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 19), 13); /* Koopa scene message resource */
+        }
         mbWinTopWait();
     } else if (hasResource) {
         HuPrcSleep(30);
-        mbAudFXPlay(0x3CC); /* event sound-effect resource */
+        mbAudFXPlay(MSM_SE_GUIDE_48); /* event sound-effect resource */
         mbObjMotionShiftSet(objId, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        mbWinCreate(2, resultType == 2 ? 0x003F0011 : 0x003F0010, /* Koopa scene message resource */
-            13);
+        if (resultType == 2) {
+            mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 17), 13); /* Koopa scene message resource */
+        } else {
+            mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 16), 13); /* Koopa scene message resource */
+        }
         mbWinTopWait();
-    } else if (!tagF) {
-        if (resultType == 0 || resultType == 1) {
+    } else if (!GWTeamFGet()) {
+        switch (resultType) {
+        case 0:
             for (i = 0; i < GW_PLAYER_MAX; i++) {
-                if (GwPlayer[i].mgCoinBonus <= 0) {
-                    int coins = mbPlayerCoinGet(i);
-                    add[i] = resultType == 0 ? -((coins + 1) >> 1)
-                        : -coins;
+                if (GWMgCoinBonusGet(i) <= 0) {
+                    add[i] = -((mbPlayerCoinGet(i) + 1) / 2);
                     omVibrate(i, 20, 20, 0);
                 } else {
                     add[i] = 0;
                 }
             }
             mbCoinAddAllProcExecV(add, (BOOL *)add, FALSE);
-        } else {
+            break;
+        case 1:
             for (i = 0; i < GW_PLAYER_MAX; i++) {
-                if (GwPlayer[i].mgCoinBonus <= 0) {
+                if (GWMgCoinBonusGet(i) <= 0) {
+                    add[i] = -mbPlayerCoinGet(i);
+                    omVibrate(i, 20, 20, 0);
+                } else {
+                    add[i] = 0;
+                }
+            }
+            mbCoinAddAllProcExecV(add, (BOOL *)add, FALSE);
+            break;
+        default:
+            for (i = 0; i < GW_PLAYER_MAX; i++) {
+                if (GWMgCoinBonusGet(i) <= 0) {
                     omVibrate(i, 20, 20, 0);
                 }
             }
-            for (outer = 0; outer < mbPlayerCapsuleMaxGet(); outer++) {
-                removed = FALSE;
-                for (i = 0; i < GW_PLAYER_MAX; i++) {
-                    if (GwPlayer[i].mgCoinBonus <= 0) {
-                        mbPlayerCapsuleRemove(i, 0);
+            for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
+                for (t = 0, removed = FALSE; t < GW_PLAYER_MAX; t++) {
+                    if (GWMgCoinBonusGet(t) <= 0) {
+                        mbPlayerCapsuleRemove(t, 0);
                         removed = TRUE;
                     }
                 }
@@ -3943,26 +5311,40 @@ static int ev_CapKoopaCoin(CAPWORK *work)
                     HuPrcSleep(10);
                 }
             }
+            break;
         }
     } else {
-        for (t = 0; t < 2; t++) {
-            if (teamLose[t]) {
-                int leader = teamTbl[t][0];
-                int member = teamTbl[t][teamCount[t] > 1 ? 1 : 0];
-                if (resultType == 0 || resultType == 1) {
-                    int coins = mbPlayerCoinGet(leader);
-                    int delta = resultType == 0 ? -((coins + 1) >> 1)
-                        : -coins;
-                    mbCoinAddDispExec(leader, delta, FALSE, FALSE);
+        switch (resultType) {
+        case 0:
+            for (i = 0; i < 2; i++) {
+                if (teamLose[i]) {
+                    mbCoinAddDispExec(teamTbl[i][0],
+                        -(mbPlayerCoinGet(teamTbl[i][0]) / 2),
+                        FALSE, FALSE);
+                    omVibrate(teamTbl[i][0], 20, 20, 0);
+                    omVibrate(teamTbl[i][1], 20, 20, 0);
                 }
-                omVibrate(leader, 20, 20, 0);
-                omVibrate(member, 20, 20, 0);
             }
-        }
-        if (resultType == 2) {
-            for (outer = 0; outer < mbPlayerCapsuleMaxGet(); outer++) {
-                removed = FALSE;
-                for (t = 0; t < 2; t++) {
+            break;
+        case 1:
+            for (i = 0; i < 2; i++) {
+                if (teamLose[i]) {
+                    mbCoinAddDispExec(teamTbl[i][0],
+                        -mbPlayerCoinGet(teamTbl[i][0]), FALSE, FALSE);
+                    omVibrate(teamTbl[i][0], 20, 20, 0);
+                    omVibrate(teamTbl[i][1], 20, 20, 0);
+                }
+            }
+            break;
+        default:
+            for (i = 0; i < 2; i++) {
+                if (teamLose[i]) {
+                    omVibrate(teamTbl[i][0], 20, 20, 0);
+                    omVibrate(teamTbl[i][1], 20, 20, 0);
+                }
+            }
+            for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
+                for (t = 0, removed = FALSE; t < 2; t++) {
                     if (teamLose[t]) {
                         mbPlayerCapsuleRemove(teamTbl[t][0], 0);
                         removed = TRUE;
@@ -3972,50 +5354,49 @@ static int ev_CapKoopaCoin(CAPWORK *work)
                     HuPrcSleep(10);
                 }
             }
+            break;
         }
     }
     mbev_CapPlayerMotShiftSet(objId, 1, HU3D_MOTATTR_LOOP, TRUE);
     return 0;
 }
 
-static void ev_CapKoopaReturn(CAPWORK *work)
+static int ev_CapKoopaReturn(CAPWORK *work)
 {
     HuVecF masuPos;
     int ids[4];
     int playerNo = work->playerNo;
     int masuId = GwPlayer[playerNo].masuId;
-    int objId = work->_unkB6C;
-    int count = work->_unkB70;
+    int objId = work->eventData[0];
+    int count = work->eventData[1];
     int i;
     float time;
 
     for (i = 0; i < 4; i++) {
-        ids[i] = ((int *)((u8 *)work + 0xB74))[i]; /* retained CAPWORK field offset */
+        ids[i] = work->eventData[i + 2]; /* retained CAPWORK field offset */
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CB); /* event sound-effect resource */
+    mbAudFXPlay(MSM_SE_GUIDE_47); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(objId, 3, 0, TRUE);
     mbObjMotionShiftSet(objId, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    mbWinCreate(2, 0x003F0014, 13); /* Koopa scene message resource */
+    mbWinCreate(2, MESSNUM(MESS_KOOPA_MASU, 20), 13); /* Koopa scene message resource */
     mbWinTopWait();
     mbMusFadeOutSpeed(0, 1000);
     while (mbMusCheck(0)) {
         HuPrcVSleep();
     }
     mbAudFXDelaySet(30);
-    mbAudFXPlay(0x3CE); /* event sound-effect resource */
-    mbObjMotionShiftSet(objId, 2, 0.0f, 0.0f, HU3D_MOTATTR_NONE);
-    while (mbObjMotionShiftIDGet(objId) != -1) {
-        HuPrcVSleep();
-    }
-    while (mbObjMotionTimeGet(objId) <= 25.0f) {
+    mbAudFXPlay(MSM_SE_GUIDE_50); /* event sound-effect resource */
+    mbObjMotionShiftSet(objId, 2, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    while (mbObjMotionShiftIDGet(objId) != -1
+        || mbObjMotionTimeGet(objId) <= 25.0f) {
         HuPrcVSleep();
     }
     mbev_CapObjPosSet(&work->objWork, objId, -1, NULL);
-    for (i = 1; i <= 24; i++) {
+    for (i = 1; i <= 24.0f; i++) {
         time = (float)i / 24.0f;
         mbMasuPosGet(masuId, &masuPos);
-        masuPos.y += (float)sin((M_PI * 90.0 * time) / 180.0)
+        masuPos.y += sin((M_PI * (90.0f * time)) / 180.0)
             * 100.0f * 6.0f;
         mbObjPosSetV(objId, &masuPos);
         HuPrcVSleep();
@@ -4031,6 +5412,7 @@ static void ev_CapKoopaReturn(CAPWORK *work)
     if (work->flags._flag05) {
         mbCoinAddProcExec(playerNo, 10, 1, FALSE);
     }
+    return 0;
 }
 
 static u16 ev_CapKoopaDicePadBtnHook(void)
@@ -4041,7 +5423,7 @@ static u16 ev_CapKoopaDicePadBtnHook(void)
     return 0;
 }
 
-static void ev_CapKoopaDiceMotHook(void)
+static void ev_CapKoopaDiceMotHook(int playerNo)
 {
     int i;
 

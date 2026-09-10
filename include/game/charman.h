@@ -115,7 +115,6 @@ s16 CharMotionExtraTimeGet(s16 charNo, int motNo);
 void CharMotionLoad(s16 *statList);
 void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale);
 void CharModelLandDustCreateStep(s16 charNo, HuVecF *pos);
-void CharEffectHipDropCreate(s16 charNo, HuVecF *pos);
 void CharEffectWarnCreate(s16 charNo, float scale);
 u32 CharAttrGet(s16 charNo);
 HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color);
