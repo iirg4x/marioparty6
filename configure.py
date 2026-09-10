@@ -1036,7 +1036,7 @@ config.libs = [
         "cflags": cflags_game,
         "host": False,
         "objects": [
-            Object(NonMatching, "board/math.c", extra_cflags=["-O4,p"]),
+            Object(Matching, "board/math.c", extra_cflags=["-O4,p", "-schedule off", "-opt nopeephole", "-char signed"]),
             Object(Matching, "board/camera.c"),
             Object(Matching, "board/player.c"),
             Object(Matching, "board/snpc.c"),
