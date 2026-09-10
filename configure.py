@@ -1049,7 +1049,7 @@ config.libs = [
             Object(NonMatching, "board/star.c"),
             Object(Matching, "board/padall.c"),
             Object(
-                NonMatching,
+                Matching,
                 "board/dice.c",
                 extra_cflags=["-O4,p", "-schedule off", "-opt nopeephole"],
             ),
