@@ -49,5 +49,25 @@ about 0.8 seconds for 52,785 bounded diagnostic cells; 26 focused tests pass.
 - Fresh frontier: `build/single-recovery/current-c95.json`.
 - Strict/data proof: `build/single-recovery/c95/.evaluate-nsw8p5a0/`.
 
-Object proof is complete. Source-selected whole-game link and clean-main
-promotion are separate gates and are recorded in the final closure receipt.
+## Source-selected retail proof
+
+The isolated full build selects the compiled Single and gamework objects, not
+extracted target fallbacks. Single is 58/58 raw instruction and physical exact;
+gamework is 54/54. Single's allocated nontext bytes match and its 2261 text plus
+21 data relocation entries are canonically exact. The twelve raw strict rows
+across five functions are aggregate atom names, not differing effective operands.
+
+DTK checksum and an additional direct byte comparison both pass all 137 retail
+containers (DOL plus 136 RELs). DOL SHA-256 is
+`172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+The proof checkout retains the already-verified Masu source; its only subsequent
+changes are the three selected Single/provider source/header files and Single's
+Matching configuration flag.
+
+- `build/single-recovery/final-link-c95.json`, SHA-256
+  `93e5a7568ddf431d48c0be13ae1fc245600d2dfb5ea5a80f5ce365e5e8db7aac`.
+- `build/single-recovery/final-direct-c95.json`: all 137 outputs directly compared
+  with extracted retail files; comparison census SHA-256
+  `958de21f4f570cf504ce8de7389c8027bcc71fe82a85c6dd7a4cf9f708935cfa`.
+
+Clean-main source and Matching/progress promotion remain a separate boundary.
