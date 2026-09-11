@@ -3,13 +3,16 @@
   "cards": {
     "gc26-temporary-pool-reuse-assignment-result": {
       "status": "experimental",
-      "validated_commit": "a9551e405b2808a46b7c493e8b7a5110560aec8b",
-      "validated_at": "2026-09-05",
+      "validated_commit": "55affd2c2a326d57989516ae77827facbbdac3c6",
+      "validated_at": "2026-09-11",
       "watch_paths": [
         "config/recovery/compiler_patterns.json",
         "tools/mwcc_temp_pool_reuse.py",
         "tools/capsule_same_session_capture.py",
-        "tools/tests/test_mwcc_temp_pool_reuse.py"
+        "tools/tests/test_mwcc_temp_pool_reuse.py",
+        "tools/mwcc_win32_varinfo.py",
+        "src/board/opening.c",
+        "docs/opening-closure-20260911.md"
       ],
       "supersedes": [],
       "superseded_by": null

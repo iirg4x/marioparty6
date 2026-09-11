@@ -46,17 +46,21 @@
         "owner_tags": []
       },
       "examples": [
-        "SNpcMoveExec pass5: prizeCount = humanCount = otherCount = eligibleCount = 0; eligibleCount is stack-backed. All four real counters still receive zero. The prior chain ended with register-backed otherCount. Retained function bytes SHA-256 9b69da838551d29c5aff4cb23b6271ac5325387584594b3c08ebd883fcd39040; 231 normalized relocations exact. Owner remains partially recovered, with 42 raw local-target layout differences outside this function's semantics."
+        "SNpcMoveExec pass5: prizeCount = humanCount = otherCount = eligibleCount = 0; eligibleCount is stack-backed. All four real counters still receive zero. The prior chain ended with register-backed otherCount. Retained function bytes SHA-256 9b69da838551d29c5aff4cb23b6271ac5325387584594b3c08ebd883fcd39040; 231 normalized relocations exact. Owner remains partially recovered, with 42 raw local-target layout differences outside this function's semantics.",
+        "Opening ev_OpeningSingle c28->c33: optional native machine-emission capture reproduces all 1063 candidate words, joins 2424 observed GPR operands, leaves 106 unseen operands UNKNOWN, and exposes a pool reset at instruction 835. Equivalent offset fits bound a disturbance before vreg 40 rather than identifying a unique target vreg. The actual cause was an int-return call plus explicit s16 cast versus a target-backed local s16 caller declaration with an int receiving local. Correcting that declaration/conversion boundary closed all 54 data instruction rows and two extra moves (4252->4244 bytes). c36 publication retains22/22 exact functions and the source-selected retail DOL; no shared API was changed. This extends the diagnostic to real call-conversion boundaries, not only assignment chains."
       ],
       "counterexamples": [
         "SNpcMoveExec: splitting a separate team-array zero chain added a real extra li and was rejected despite a higher percentage.",
-        "SNpcMoveExec: postfix-to-prefix loop increment and splitting only the outer counter assignment were object-neutral."
+        "SNpcMoveExec: postfix-to-prefix loop increment and splitting only the outer counter assignment were object-neutral.",
+        "Opening c32: narrowing the receiving local itself to s16 introduced three later sign extensions and grew the function to4264bytes. The successful correction preserved the int local and changed the authenticated caller declaration; a numeric offset fit alone cannot choose between these source hypotheses."
       ],
       "related_exceptions": [],
       "evidence": [
         "tools/mwcc_temp_pool_reuse.py",
         "tools/capsule_same_session_capture.py",
-        "tools/tests/test_mwcc_temp_pool_reuse.py"
+        "tools/tests/test_mwcc_temp_pool_reuse.py",
+        "tools/mwcc_win32_varinfo.py",
+        "docs/opening-closure-20260911.md"
       ]
     },
     {

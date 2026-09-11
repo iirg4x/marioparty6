@@ -31,6 +31,10 @@ Fresh canonical-main compilation reproduces that entire object exactly.
 The source-selected `link-c35/` verification reproduces the same 13 allocated
 sections, 22 final function bodies, 669 relocation sites, and retail DOL.
 Only ELF symbol/string metadata changes from c34 after the source cleanup.
+Final c36 removes the obsolete `_MATH_H` override: the current headers already
+respect `dolphin/math.h` coexistence. The entire object remains byte-identical
+to c35. Final source SHA-256 is
+`b1adc0586d41b6186567346cf3b14f4b85668e2501ae5fd83dec8cab97a8d957`.
 
 This reconstruction uses ordinary C; no inline assembly, fake storage,
 padding declarations, forced registers, or code-generation pragmas were added.
@@ -58,8 +62,9 @@ same-game caller precedent support this local visibility; this is not a
 claim that differing return declarations are a portable modern C interface.
 The callback's old-style type/32-bit function-address conversion follows the
 already inspected same-game callback boundary. It is retained legacy source
-shape, not a generally recommended C idiom. `_MATH_H` visibility follows
-same-game use and prevents the unrelated weak sqrtf constant producer.
+shape, not a generally recommended C idiom. The initial `_MATH_H` prefix was
+unnecessary with the current shared-header coexistence checks and is absent
+from the final source. No header-guard override exception remains.
 
 The final publication cleanup c35 replaces inherited hexadecimal resource and
 message numbers with `DATANUM`/`MESSNUM` domains, names the process and start

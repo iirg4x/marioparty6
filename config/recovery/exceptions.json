@@ -2,12 +2,12 @@
   "schema_version": 1,
   "exceptions": [
     {
-      "id": "opening-math-visibility-and-unresolved-coin-tail",
+      "id": "opening-unresolved-coin-tail",
       "classification": "authenticated",
       "path": "src/board/opening.c",
       "kind": "source_shape",
-      "rules": ["include_guard_override", "opaque_blob"],
-      "rationale": "Only the _MATH_H prefix and existing OPENINGCOINWORK.unk30[3] are covered. The prefix follows same-game branch.c/masu.c visibility and prevents an unrelated weak sqrtf producer; target-backed ordinary curve helpers produce the retained constants. The coin-work tail is inherited unresolved storage at bytes 48..59 of each real 60-byte record: target OpeningCoinExec advances by 60 and the 40-record BSS extent and all consumed field offsets verify. No semantic identity is claimed for the three untouched words. The unnecessary explicit pad02 member is removed in favor of natural C alignment. All 22 function bodies and physical operands remain exact and the allocated linked image is retail-identical. This does not authorize invented padding, other opaque arrays, assembly, or a new caller ABI.",
+      "rules": ["opaque_blob"],
+      "rationale": "Only the existing OPENINGCOINWORK.unk30[3] is covered. The coin-work tail is inherited unresolved storage at bytes 48..59 of each real 60-byte record: target OpeningCoinExec advances by 60 and the 40-record BSS extent and all consumed field offsets verify. No semantic identity is claimed for the three untouched words. The unnecessary explicit pad02 member is removed in favor of natural C alignment. The obsolete _MATH_H override was separately removed with byte-identical object output under current header coexistence. All 22 function bodies and physical operands remain exact and the allocated linked image is retail-identical. This does not authorize invented padding, other opaque arrays, assembly, header guard overrides, or a new caller ABI.",
       "evidence": ["docs/opening-closure-20260911.md", "build/opening-recovery/c35/final-strict.json", "build/opening-recovery/link-c34/inspection.json", "src/board/branch.c", "src/board/masu.c"]
     },
     {
