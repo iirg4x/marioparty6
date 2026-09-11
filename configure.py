@@ -1046,7 +1046,7 @@ config.libs = [
             Object(Matching, "board/scroll.c"),
             Object(NonMatching, "board/masu.c"),
             Object(Matching, "board/coin.c"),
-            Object(NonMatching, "board/star.c"),
+            Object(Matching, "board/star.c"),
             Object(Matching, "board/padall.c"),
             Object(
                 Matching,
