@@ -3,8 +3,10 @@
 Owner `main:board/effect` is function-complete: **35/35 strict and data-value
 matches, 420/420 allocated relocations**, and a real source-selected build
 reproduces **all 137 retail DOL/REL files byte-for-byte**. Clean-main promotion
-is a separate content-transfer boundary; this document is not a promotion
-receipt.
+used the separate content-transfer boundary. Source PR #24 and compiler/profile
+plus progress PR #25 are merged. Clean `main` is
+`82eb260` and its tree equals the verified public promotion tree. Board is
+36/40 Matching owners; Effect is complete.
 
 ## Final bindings and proof
 
@@ -104,3 +106,14 @@ Existing compile/evaluate/retain, DTK/objdiff, and Win32 VarInfo/regalloc captur
 tools supplied the necessary evidence; this owner did not require another
 solver, dashboard, approval protocol, or an expanded probe matrix. Only compact
 champion/trace constraints and final proof are useful durable evidence.
+
+## Final validation note
+
+The full tooling run passed 2,325 tests (18 skipped). Its source-review snapshot
+had loaded before the inherited SNPC native exception was carried forward, so
+that invocation ended with a stale source-review failure. The final committed
+policy was then independently reloaded: strict changed-source review reported
+zero findings, doctor had no failing check, and diff checks passed. No test
+implementation changed between the passed suite and that refresh. Final public
+CI passed, both promotion hooks passed, and the separate fresh 785-step clean
+project build passed all 137 retail hashes and explicit byte comparisons.
