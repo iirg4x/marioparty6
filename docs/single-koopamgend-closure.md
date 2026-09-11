@@ -71,3 +71,11 @@ Matching configuration flag.
   `958de21f4f570cf504ce8de7389c8027bcc71fe82a85c6dd7a4cf9f708935cfa`.
 
 Clean-main source and Matching/progress promotion remain a separate boundary.
+
+The full-file promotion review additionally required replacing the provider's
+inherited numeric literals with the existing SDK `SI_GBA` name and named bitset
+operations. The final provider source is
+`3bcb10efd37b5bd250604be1734bc4ef78578585e388f892ee1bbb88a555cf70`;
+`final-link-c96.json` records its independent no-code-change verification.
+The unchanged `GW_COMMON.unk5C8[8]` remains explicitly unresolved save-record
+storage, with no invented semantic name or layout change.

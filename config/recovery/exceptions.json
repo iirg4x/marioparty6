@@ -2,6 +2,15 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "gamework-existing-common-save-tail",
+      "classification": "authenticated",
+      "path": "include/game/gamework.h",
+      "kind": "source_shape",
+      "rules": ["opaque_blob"],
+      "rationale": "SCOPE: only the unchanged GW_COMMON.unk5C8[8] inherited from clean main. This is unresolved storage at offsets1480..1487 of the real1488-byte save-common record, not invented padding. gamework init/copy and saveload serializers consume sizeof(GW_COMMON); the verified source-selected link preserves their retail byte counts and field layout. The Single change only corrects GWSingleMgFlagSet's return declaration; it does not add, rename, resize, or reinterpret any record storage. No semantic identity for the eight bytes is claimed, and no unrelated opaque field is authorized.",
+      "evidence": ["src/game/gamework.c", "src/game/saveload.c", "include/game/saveload_layout.h", "build/single-recovery/final-link-c95.json", "build/single-recovery/final-direct-c95.json"]
+    },
+    {
       "id": "single-target-fabs-primitive",
       "classification": "authenticated",
       "path": "src/board/single.c",
