@@ -13,6 +13,8 @@ Opt-in ``--regalloc`` observes optimized FPR coloring (or GPR coloring with
 creation/range-split provenance, or ``--cse`` for GPR LI/LIS CSE observations.
 ``--machine-emit`` adds authenticated emitted offsets/words and GPR operand
 color joins. Missing pre-color ancestry remains explicitly UNKNOWN.
+``--return-temps`` adds bounded return births and paired pool-reset events,
+with direct callee names only from matched call-handler frames.
 These are facts about the supplied compilation, not recovered retail virtual
 register identities. Unsupported frontend nodes remain explicitly incomplete.
 
@@ -119,6 +121,14 @@ CSE_UPPER_BOUND = 0x5EA650
 MAX_CSE_OBSERVATIONS = 8192
 MAX_MACHINE_EMISSIONS = 16384
 MAX_MACHINE_COLOR_OBSERVATIONS = 131072
+RETURN_TEMP_HOOK_BYTES = {
+    0x528907: bytes.fromhex("6a030fbf400250"),
+    0x4FE3B1: bytes.fromhex("8b048d589f5e00"),
+    0x4FE3BF: bytes.fromhex("fec280fa057cca"),
+    0x44D130: bytes.fromhex("53558b6c240c"),
+    0x44D161: bytes.fromhex("c3"),
+}
+MAX_RETURN_TEMP_EVENTS = 4096
 IG_TABLE = 0x5EA768
 # The allocator keeps one graph count and one register limit per coloring
 # class.  Pinned GC/2.6 static evidence at function 0x4D06E0 stores class-name
@@ -585,6 +595,7 @@ class Debugger:
         regalloc_class: int = 3,
         capture_cse: bool = False,
         capture_machine_emit: bool = False,
+        capture_return_temps: bool = False,
     ) -> None:
         if not isinstance(target_name, str) or not target_name.strip():
             raise ValueError("target_name must be a nonempty function name")
@@ -599,6 +610,12 @@ class Debugger:
             raise ValueError("capture_cse requires GPR regalloc_class")
         if capture_machine_emit and (not capture_regalloc or regalloc_class != REGALLOC_CLASS_IDS["gpr"]):
             raise ValueError("capture_machine_emit requires GPR capture_regalloc")
+        if capture_return_temps and (not capture_regalloc or regalloc_class != 4
+                                     or compiler_sha256 != PINNED_COMPILER_SHA256):
+            raise ValueError("capture_return_temps requires pinned GPR capture_regalloc")
+        self.capture_return_temps = capture_return_temps
+        self.return_call_stacks: dict[int, list[dict[str, Any]]] = {}
+        self.return_reset_pending: dict[int, dict[str, Any]] = {}
         self.process = process
         self.output = output
         self.target_name = target_name
@@ -610,6 +627,8 @@ class Debugger:
         self.capture_cse = capture_cse
         self.capture_machine_emit = capture_machine_emit
         self.observation_hooks = dict(REGALLOC_HOOK_BYTES)
+        if capture_return_temps:
+            self.observation_hooks.update(RETURN_TEMP_HOOK_BYTES)
         if capture_frontend:
             self.observation_hooks.update(FRONTEND_HOOK_BYTES)
             self.observation_hooks.update(TEMP_ORIGIN_HOOK_BYTES)
@@ -657,6 +676,9 @@ class Debugger:
         }
         if capture_frontend:
             self.result["temporary_origins"] = []
+        if capture_return_temps:
+            self.result.update(capture_return_temps=True, return_temp_events=[],
+                               return_temp_scope="observed source compilation only; target IDs UNKNOWN")
         if capture_cse:
             self.result["capture_cse"] = True
             self.result["cse_li_eligibility"] = []
@@ -789,6 +811,7 @@ class Debugger:
         )
         if self.capture_regalloc:
             if self.regalloc_active:
+                self.validate_return_temp_boundary()
                 if self.regalloc_pending is not None:
                     raise RuntimeError("function boundary with incomplete allocation observation")
                 self.cse_pending_eligibility = None
@@ -1143,10 +1166,100 @@ class Debugger:
                           "gpr_joins_complete": all(x["join_status"] != "UNKNOWN" for x in operands),
                           "authority_advanced": False})
 
+    def validate_return_temp_boundary(self) -> None:
+        if self.capture_return_temps and (self.return_reset_pending or any(self.return_call_stacks.values())):
+            raise RuntimeError("unfinished return-temp call/reset context")
+
+    def observe_return_temp(self, event: DEBUG_EVENT, site: int) -> None:
+        """Layouts reused from capsule_same_session_capture's pinned GC2.6 readers."""
+        if not self.capture_return_temps or not self.regalloc_active:
+            raise RuntimeError("return-temp observation outside requested target")
+        thread = self.threads.get(event.dwThreadId)
+        if not thread:
+            raise RuntimeError("return-temp observation without thread")
+        context = self.get_context(thread)
+        def word(address: int) -> int:
+            return u32(self.read_exact(address, 4))
+        def glob(address: int) -> int:
+            return word(self.runtime(address))
+        def line() -> int | None:
+            codegen = glob(0x5E9F10)
+            return word(codegen + 0x16) if codegen else None
+        stack = self.return_call_stacks.setdefault(event.dwThreadId, [])
+        if site in (0x44D130, 0x44D161):
+            frame = {"stack": int(context.Esp), "return": word(context.Esp)}
+            if site == 0x44D130:
+                if len(stack) >= 16:
+                    raise ValueError("return-temp call depth exceeded")
+                expression = word(context.Esp + 4)
+                if not expression or self.read_exact(expression, 1)[0] not in (54, 55):
+                    raise ValueError("return-temp call expression kind mismatch")
+                callee = word(expression + 0xE)
+                name = None
+                if callee and self.read_exact(callee, 1)[0] == 0x38:
+                    obj = word(callee + 0xE)
+                    candidate = self.read_object_name(obj) if obj else None
+                    name = candidate if isinstance(candidate, str) and candidate.isidentifier() else None
+                stack.append(dict(frame, name=name))
+            elif not stack or any(stack[-1][key] != frame[key] for key in frame):
+                raise ValueError("return-temp call return frame mismatch")
+            else:
+                stack.pop()
+            return
+        if site in (0x4FE3B1, 0x4FE3BF):
+            lane = int(context.Ecx)
+            if not 0 <= lane < 5:
+                raise ValueError("invalid return-temp reset class")
+            state = {"temporary_class": lane, "current": glob(0x5EAA2C + 4 * lane),
+                     "saved_base": glob(0x5E9F58 + 4 * lane),
+                     "high_water": glob(0x5EA640 + 4 * lane),
+                     "reset_inhibition": glob(0x5EA810), "source_offset": line()}
+            if site == 0x4FE3B1:
+                if event.dwThreadId in self.return_reset_pending:
+                    raise ValueError("nested return-temp reset")
+                self.return_reset_pending[event.dwThreadId] = state
+                return
+            before = self.return_reset_pending.pop(event.dwThreadId, None)
+            # The post site also executes on loop iterations that did not reset.
+            if before is None:
+                return
+            if (lane != before['temporary_class'] or before['current'] <= 256
+                    or state['current'] != before['saved_base']
+                    or state['saved_base'] != before['saved_base']
+                    or before['reset_inhibition'] != 0 or state['reset_inhibition'] != 0):
+                raise ValueError("return-temp reset post-store mismatch")
+            row = dict(event_kind="temporary_lane_reset", temporary_class=lane,
+                       counter_before=before['current'], counter_after=state['current'],
+                       saved_base=before['saved_base'], high_water=state['high_water'],
+                       reset_inhibition=before['reset_inhibition'], source_offset=before['source_offset'])
+        elif site == 0x528907:
+            allocated = int(context.Ecx)
+            stored = int.from_bytes(self.read_exact(context.Eax + 2, 2), 'little')
+            counter = glob(0x5EAA3C)
+            if allocated != stored or counter != allocated + 1:
+                raise ValueError("return-temp allocation post-store mismatch")
+            typ = word(context.Esp + 0xC)
+            kind = self.read_exact(typ, 1)[0]
+            row = dict(event_kind="return_temp_allocation", allocated_vreg=allocated,
+                       counter_after=counter, native_return_type_kind=kind,
+                       native_return_type_width=word(typ + 2),
+                       native_return_type_code=self.read_exact(typ + 6, 1)[0] if kind in (1, 2) else None,
+                       source_offset=line(), direct_callee_name=stack[-1]['name'] if stack else None,
+                       callee_binding="paired_call_context" if stack and stack[-1]['name'] else "UNKNOWN")
+        else:
+            raise ValueError("unsupported return-temp hook")
+        events = self.result['return_temp_events']
+        if len(events) >= MAX_RETURN_TEMP_EVENTS:
+            raise ValueError("return-temp event limit exceeded")
+        events.append(dict(row, sequence=len(events), target_ids="UNKNOWN"))
+
     def observe_regalloc(self, event: DEBUG_EVENT, address: int) -> None:
         if not self.regalloc_active:
             raise RuntimeError("optimized allocator observation outside target function")
         site = address - self.base + KNOWN_IMAGE_BASE
+        if site in RETURN_TEMP_HOOK_BYTES:
+            self.observe_return_temp(event, site)
+            return
         if self.machine_hook and site == self.machine_hook["address"]:
             self.observe_machine_emission(event)
             return
@@ -1758,6 +1871,7 @@ class Debugger:
         """Validate and publish identically for debug-event and polled exits."""
         self.result["exit_code"] = exit_code
         self.exited = True
+        self.validate_return_temp_boundary()
         if self.capture_regalloc:
             if self.regalloc_pending is not None:
                 raise RuntimeError("compiler exited with unfinished allocator observation")
@@ -1981,6 +2095,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
                         help="with --regalloc, capture AST stages and temporary/range-split origins")
     parser.add_argument("--machine-emit", action="store_true",
                         help="with GPR --regalloc, capture emitted PPC words/offsets and operand color joins")
+    parser.add_argument("--return-temps", action="store_true",
+                        help="with GPR --regalloc, observe return births and paired temporary resets")
     parser.add_argument("--trace", action="store_true", help="log debug events to stderr")
     parser.add_argument(
         "--assign",
@@ -2027,6 +2143,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.machine_emit and (not args.regalloc or args.regalloc_class != "gpr"):
         print("--machine-emit requires --regalloc --regalloc-class gpr", file=sys.stderr)
+        return 2
+    if args.return_temps and (not args.regalloc or args.regalloc_class != "gpr"):
+        print("--return-temps requires --regalloc --regalloc-class gpr", file=sys.stderr)
         return 2
     if os.name != "nt":
         print(
@@ -2097,6 +2216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         regalloc_class=REGALLOC_CLASS_IDS[args.regalloc_class],
         capture_cse=args.cse,
         capture_machine_emit=args.machine_emit,
+        capture_return_temps=args.return_temps,
     )
     debugger.result["command"] = command
     debugger.result["cwd"] = str(cwd)

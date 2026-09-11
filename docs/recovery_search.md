@@ -98,6 +98,30 @@ color/machine-word join centrally. Default output is bounded to 32 rewrites and
 32 unions; `--details` is explicit. It verifies every captured function word
 against the supplied object and rejects mixed-session evidence.
 
+For the lightweight `mwcc_win32_varinfo.py --frontend --machine-emit` format,
+use `recovery_expression_join.py native-region --native CAPTURE --source SOURCE
+--source-sha256 SHA --object OBJECT --object-sha256 SHA --function SYMBOL
+--stage final --line-start N --line-end M`. The reader verifies captured
+function words against the object and emits a bounded rooted AST with normalized
+node IDs; `--native-sha256` additionally pins the capture. Missing edges and
+truncation remain explicit. The source hash is caller-supplied identity, not an
+inferred compiler provenance link. This is navigation, not a target-owner or
+source-causality proof. On Single c51 it reduced the unlock/type conversion
+region to 54 nodes instead of loading a 2,570-node frontend snapshot; it did not
+discover a source fix. The later allocator/color view still cannot explain
+return-temporary births that were merged before coloring.
+
+Use the lightweight tracer's opt-in `--return-temps` with
+`--regalloc --regalloc-class gpr` when that birth/reset gap is the question.
+It reuses the existing pinned GC2.6 call-frame, return-allocation and paired
+pool-reset sites. Bounded events include actual counters, formal return type,
+enclosing source line and a callee name only when the frame pair closes. They
+are not recovered target IDs or a complete alias graph. Single c65 reproduced
+its object with 73 return births and two actual GPR resets (257 to 34 after
+source line2299, 259 to34 at2518). This distinguishes real reset events from
+the older heuristic ID-drop boundaries. It does not prescribe changing a true
+API return type to void or inserting a disposable owner to adjust a counter.
+
 The live unchanged-source Koopa test reproduced object `84a892dc...39c40` and
 all 667 words. It joined the initial `mulli` at instruction 7 to the active
 expression at source coordinate 5133, its V32-to-3 rewrite and GPR3 color; the

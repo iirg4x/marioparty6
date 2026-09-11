@@ -1,10 +1,101 @@
 import struct
+import json
+import contextlib
+import io
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from tools import recovery_expression_join as j
 
 
 class JoinTests(unittest.TestCase):
+    def native_fixture(self, change=None, **limits):
+        source, obj = b'int f(void) {\n return 1;\n}\n', b'object-fixture'
+        data = {'tool': 'mwcc_win32_varinfo', 'schema_version': 1, 'target': 'f',
+                'machine_emissions': [dict(function='f', instruction_index=0, emitted_offset=0,
+                                           ppc_word=0x38600001, ppc_bytes='38600001')],
+                'frontend': [{'stage': 'initial', 'statements': [dict(line=2, kind=4, expression='0x1234')],
+                              'expressions': [dict(address='0x1234', kind='ETYPCON', type_raw='01000200000004',
+                                                   children=['0x5678']),
+                                              dict(address='0x5678', kind='EOBJREF', object_name='modelId', children=[])]}]}
+        if change:
+            change(data)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'native.json').write_text(json.dumps(data))
+            (root/'source.c').write_bytes(source)
+            (root/'object.o').write_bytes(obj)
+            with patch.object(j, 'function_bytes', return_value=struct.pack('>I', 0x38600001)):
+                return j.native_region(root/'native.json', root/'object.o', root/'source.c',
+                                       'f', 2, 2, 'initial', limits.pop('source_sha256', j.sha(source)),
+                                       j.sha(obj), **limits)
+
+    def test_native_region_normalizes_rooted_graph_without_addresses(self):
+        result = self.native_fixture()
+        self.assertEqual(result['comparison']['status'], 'exact_words')
+        self.assertEqual([n['kind'] for n in result['nodes']], ['ETYPCON', 'EOBJREF'])
+        self.assertEqual(result['nodes'][1]['object_name'], 'modelId')
+        self.assertNotIn('0x1234', json.dumps(result))
+        self.assertNotIn('address', json.dumps(result))
+        self.assertEqual(result['source_causality'], 'UNKNOWN')
+
+    def test_native_region_cycle_missing_and_limits_are_explicit(self):
+        def cycle(data):
+            data['frontend'][0]['expressions'][1]['children'] = ['0x1234', '0x9999']
+        result = self.native_fixture(cycle)
+        self.assertEqual(result['unknown_edges'], ['cycle', 'missing_reference'])
+        result = self.native_fixture(max_nodes=1)
+        self.assertTrue(result['truncated'])
+        self.assertIn('node_limit', result['unknown_edges'])
+        with self.assertRaisesRegex(ValueError, 'output budget'):
+            self.native_fixture(max_output_bytes=1)
+
+    def test_native_region_rejects_hash_word_and_stage_drift(self):
+        with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+            self.native_fixture(source_sha256='0'*64)
+        def bad_word(data):
+            data['machine_emissions'][0].update(ppc_word=0, ppc_bytes='00000000')
+        with self.assertRaisesRegex(ValueError, 'not exact'):
+            self.native_fixture(bad_word)
+        with self.assertRaisesRegex(ValueError, 'missing or ambiguous'):
+            self.native_fixture(lambda data: data['frontend'].clear())
+
+    def test_native_region_statement_limit_and_duplicate_ids(self):
+        def extra(data):
+            data['frontend'][0]['statements'] *= 2
+        result = self.native_fixture(extra, max_statements=1)
+        self.assertEqual(result['statement_count'], 2)
+        self.assertEqual(len(result['statements']), 1)
+        self.assertTrue(result['truncated'])
+        def duplicate(data):
+            data['frontend'][0]['expressions'].append(data['frontend'][0]['expressions'][0])
+        with self.assertRaisesRegex(ValueError, 'duplicate'):
+            self.native_fixture(duplicate)
+
+    def test_native_region_child_limit_and_nonexpression_statement(self):
+        def many(data):
+            data['frontend'][0]['expressions'][0]['children'] = ['0x5678'] * 40
+        result = self.native_fixture(many)
+        self.assertTrue(result['truncated'])
+        self.assertEqual(len(result['nodes'][0]['children']), 32)
+        def nonexpression(data):
+            data['frontend'][0]['statements'][0]['kind'] = 2
+        result = self.native_fixture(nonexpression)
+        self.assertEqual(result['nodes'], [])
+        self.assertIn('statement_kind_has_no_decoded_expression', result['unknown_edges'])
+
+    def test_native_region_cli_dispatch_is_separate_from_old_id_join(self):
+        argv = ['native-region', '--native', 'capture', '--object', 'object', '--source', 'source',
+                '--function', 'f', '--source-sha256', 'a'*64, '--object-sha256', 'b'*64,
+                '--line-start', '2', '--line-end', '3', '--stage', 'optimized']
+        with patch.object(j, 'native_region', return_value={'status': 'bounded'}) as native, \
+                patch.object(j, 'analyze') as old, contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(j.main(argv), 0)
+        self.assertEqual(native.call_args.kwargs['object_path'], 'object')
+        self.assertEqual(native.call_args.kwargs['stage'], 'optimized')
+        old.assert_not_called()
+
     def test_actionable_regions_binding_and_no_trace(self):
         source = b'int f(void) { return 0; }'
         with self.assertRaises(ValueError):

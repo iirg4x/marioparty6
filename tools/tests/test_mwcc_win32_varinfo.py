@@ -15,6 +15,89 @@ from tools import mwcc_win32_varinfo as varinfo
 
 
 class MwccWin32VarInfoTests(unittest.TestCase):
+    def return_fixture(self):
+        debugger, event, context, write, _ = self.allocator_fixture(regalloc_class=4)
+        debugger.capture_return_temps = True
+        debugger.result['return_temp_events'] = []
+        write(0x5E9F10, struct.pack('<I', 0x9000))
+        write(0x9016, struct.pack('<I', 123))
+        context.Esp = 0xA000
+        context.Eax = 0xB000
+        context.Ecx = 58
+        write(0xB002, struct.pack('<H', 58))
+        write(0x5EAA3C, struct.pack('<I', 59))
+        write(0xA00C, struct.pack('<I', 0xC000))
+        write(0xC000, bytes.fromhex('01000400000007'))
+        return debugger, event, context, write
+
+    def test_return_birth_and_call_pairing_are_address_free(self):
+        d, e, c, write = self.return_fixture()
+        write(c.Esp, struct.pack('<II', 0x445566, 0xD000))
+        write(0xD000, bytes([54]))
+        write(0xD00E, struct.pack('<I', 0xE000))
+        write(0xE000, bytes([0x38]))
+        write(0xE00E, struct.pack('<I', 0xF000))
+        d.read_object_name = lambda address: 'Api'
+        d.observe_return_temp(e, 0x44D130)
+        d.observe_return_temp(e, 0x528907)
+        d.observe_return_temp(e, 0x44D161)
+        d.validate_return_temp_boundary()
+        row = d.result['return_temp_events'][0]
+        self.assertEqual((row['allocated_vreg'], row['counter_after'], row['source_offset']), (58, 59, 123))
+        self.assertEqual(row['direct_callee_name'], 'Api')
+        self.assertEqual(row['native_return_type_code'], 7)
+        self.assertNotIn('0x', json.dumps(row))
+        d.observe_return_temp(e, 0x528907)
+        self.assertEqual(d.result['return_temp_events'][1]['callee_binding'], 'UNKNOWN')
+
+    def test_return_birth_rejects_short_reads_counters_and_limit(self):
+        for mode in ('short', 'counter', 'limit'):
+            d, e, c, write = self.return_fixture()
+            if mode == 'short':
+                c.Eax = 0xDEAD
+            elif mode == 'counter':
+                write(0x5EAA3C, struct.pack('<I', 61))
+            else:
+                d.result['return_temp_events'] = [{}] * varinfo.MAX_RETURN_TEMP_EVENTS
+            with self.subTest(mode=mode), self.assertRaises((ValueError, RuntimeError)):
+                d.observe_return_temp(e, 0x528907)
+
+    def test_return_call_mismatch_and_unfinished_boundary_rejected(self):
+        d, e, c, write = self.return_fixture()
+        write(c.Esp, struct.pack('<I', 0x112233))
+        with self.assertRaisesRegex(ValueError, 'frame mismatch'):
+            d.observe_return_temp(e, 0x44D161)
+        d.return_call_stacks[e.dwThreadId] = [{'stack': c.Esp, 'return': 0x332211}]
+        with self.assertRaisesRegex(ValueError, 'frame mismatch'):
+            d.observe_return_temp(e, 0x44D161)
+        with self.assertRaisesRegex(RuntimeError, 'unfinished'):
+            d.validate_return_temp_boundary()
+
+    def test_return_reset_pair_and_inhibition_are_checked(self):
+        for inhibition in (0, 1):
+            d, e, c, write = self.return_fixture()
+            c.Ecx = 4
+            for address, value in ((0x5EAA3C, 258), (0x5E9F68, 34), (0x5EA650, 258), (0x5EA810, inhibition)):
+                write(address, struct.pack('<I', value))
+            d.observe_return_temp(e, 0x4FE3B1)
+            write(0x5EAA3C, struct.pack('<I', 34))
+            if inhibition:
+                with self.assertRaisesRegex(ValueError, 'reset post-store'):
+                    d.observe_return_temp(e, 0x4FE3BF)
+            else:
+                d.observe_return_temp(e, 0x4FE3BF)
+                row = d.result['return_temp_events'][0]
+                self.assertEqual((row['counter_before'], row['counter_after']), (258, 34))
+
+    def test_return_option_is_opt_in_and_requires_gpr(self):
+        d = varinfo.Debugger(0, Path('unused'), 'f')
+        self.assertNotIn(0x528907, d.observation_hooks)
+        with self.assertRaises(ValueError):
+            varinfo.Debugger(0, Path('unused'), 'f', capture_return_temps=True)
+        d = varinfo.Debugger(0, Path('unused'), 'f', capture_regalloc=True, regalloc_class=4, capture_return_temps=True)
+        self.assertTrue(set(varinfo.RETURN_TEMP_HOOK_BYTES) <= set(d.observation_hooks))
+        self.assertTrue(varinfo.parse_args(['--return-temps']).return_temps)
+
     def test_polled_process_exit_publishes_and_preserves_exit_code(self):
         for exit_code in (0, 7):
             debugger, _, _, _, _ = self.allocator_fixture()

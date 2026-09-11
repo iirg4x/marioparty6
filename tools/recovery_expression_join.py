@@ -6,6 +6,7 @@ Source text identity is checked, not historical source authenticity or retail id
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import struct
 import sys
@@ -413,7 +414,176 @@ def analyze(envelope, object_path, source, function, original_id, details=False)
     return result
 
 
+def native_region(native, object_path, source, function, line_start, line_end, stage,
+                  source_sha256, object_sha256, native_sha256=None,
+                  max_statements=16, max_nodes=128, max_output_bytes=32768):
+    """Address-free rooted native AST navigation; not source/target causality."""
+    for value, limit, label in ((max_statements, 64, 'max_statements'),
+                                (max_nodes, 512, 'max_nodes'),
+                                (max_output_bytes, 65536, 'max_output_bytes')):
+        if type(value) is not int or not 1 <= value <= limit:
+            raise ValueError(f'{label} must be between 1 and {limit}')
+    if stage not in ('initial', 'optimized', 'final'):
+        raise ValueError('unsupported native frontend stage')
+    if type(line_start) is not int or type(line_end) is not int or not 1 <= line_start <= line_end:
+        raise ValueError('invalid native source line range')
+
+    def read_bound(path, expected, limit):
+        with Path(path).open('rb') as stream:
+            raw = stream.read(limit + 1)
+        if len(raw) > limit:
+            raise ValueError(f'input exceeds byte limit: {path}')
+        if expected is not None and (not isinstance(expected, str)
+                or not re.fullmatch('[0-9a-f]{64}', expected) or sha(raw) != expected):
+            raise ValueError(f'input hash mismatch: {path}')
+        return raw
+
+    if not source_sha256 or not object_sha256:
+        raise ValueError('source and object hashes are required')
+    raw = read_bound(native, native_sha256, 64 * 1024 * 1024)
+    src = read_bound(source, source_sha256, 16 * 1024 * 1024)
+    obj = read_bound(object_path, object_sha256, 16 * 1024 * 1024)
+    if line_end > len(src.splitlines()):
+        raise ValueError('native source line range exceeds bound source')
+    data = json.loads(raw)
+    if (not isinstance(data, dict) or data.get('tool') != 'mwcc_win32_varinfo'
+            or data.get('schema_version') != 1 or data.get('target') != function):
+        raise ValueError('native schema/function mismatch')
+    emissions = data.get('machine_emissions')
+    if not isinstance(emissions, list) or any(not isinstance(e, dict) or e.get('function') != function for e in emissions):
+        raise ValueError('native emissions missing or function mismatch')
+    comparison = compare_words([dict(e, event_kind='machine_emission') for e in emissions],
+                               function_bytes(obj, function), function)
+    if comparison['status'] != 'exact_words':
+        raise ValueError('native emission/object words are not exact')
+    snapshots = data.get('frontend')
+    if not isinstance(snapshots, list):
+        raise ValueError('native frontend snapshots missing')
+    selected = [x for x in snapshots if isinstance(x, dict) and x.get('stage') == stage]
+    if len(selected) != 1:
+        raise ValueError('native frontend stage missing or ambiguous')
+    snapshot = selected[0]
+    statements, expressions = snapshot.get('statements'), snapshot.get('expressions')
+    if (not isinstance(statements, list) or len(statements) > 16384
+            or not isinstance(expressions, list) or len(expressions) > 65536):
+        raise ValueError('native frontend graph missing or excessive')
+    index = {}
+    for number, expression in enumerate(expressions):
+        if not isinstance(expression, dict) or not isinstance(expression.get('address'), str):
+            raise ValueError(f'malformed native expression record {number}')
+        address = expression['address']
+        if address in index:
+            raise ValueError(f'duplicate native expression identity at record {number}')
+        index[address] = expression
+    chosen = []
+    for number, statement in enumerate(statements):
+        if not isinstance(statement, dict) or type(statement.get('line')) is not int:
+            raise ValueError(f'malformed native statement record {number}')
+        if line_start <= statement['line'] <= line_end:
+            chosen.append(statement)
+    nodes, roots, ids, active = [], [], {}, set()
+    unknown = set()
+    truncated = len(chosen) > max_statements
+    for statement in chosen[:max_statements]:
+        root = {'line': statement['line'], 'kind': statement.get('kind'), 'root': {}}
+        roots.append(root)
+        if statement.get('kind') not in (4, 5, 6, 7, 8, 12, 13, 14, 15):
+            root['root'] = {'status': 'UNKNOWN', 'reason': 'statement_kind_has_no_decoded_expression'}
+            unknown.add('statement_kind_has_no_decoded_expression')
+            continue
+        pending = [(statement.get('expression'), root['root'], False)]
+        while pending:
+            address, edge, exiting = pending.pop()
+            if exiting:
+                active.remove(address)
+                continue
+            if not address or address == '0x0':
+                edge.update(status='UNKNOWN', reason='no_expression')
+                unknown.add('no_expression')
+                continue
+            if address in ids:
+                edge.update(node=ids[address], status='UNKNOWN' if address in active else 'observed')
+                if address in active:
+                    edge['reason'] = 'cycle'
+                    unknown.add('cycle')
+                continue
+            if address not in index:
+                edge.update(status='UNKNOWN', reason='missing_reference')
+                unknown.add('missing_reference')
+                continue
+            if len(nodes) >= max_nodes:
+                edge.update(status='UNKNOWN', reason='node_limit')
+                unknown.add('node_limit')
+                truncated = True
+                continue
+            original = index[address]
+            node_id = f'n{len(nodes)}'
+            ids[address] = node_id
+            edge.update(node=node_id, status='observed')
+            kind, typ, name = original.get('kind'), original.get('type_raw'), original.get('object_name')
+            if not isinstance(kind, str) or not re.fullmatch('[A-Za-z_][A-Za-z_0-9]{0,63}', kind):
+                raise ValueError('invalid native decoded expression kind')
+            node = {'id': node_id, 'kind': kind, 'children': []}
+            if typ is not None:
+                if not isinstance(typ, str) or not re.fullmatch('[0-9a-fA-F]{14}', typ):
+                    raise ValueError('invalid native type_raw')
+                node['type_raw'] = typ
+            if name is not None:
+                if not isinstance(name, str) or len(name) > 256:
+                    raise ValueError('invalid or oversized native object name')
+                node['object_name'] = name
+            if original.get('incomplete'):
+                node['status'] = 'UNKNOWN'
+                unknown.add('incomplete_node')
+            children = original.get('children')
+            if not isinstance(children, list) or any(not isinstance(c, str) for c in children):
+                raise ValueError('invalid native expression children')
+            if len(children) > 32:
+                node['children_truncated'] = True
+                unknown.add('child_limit')
+                truncated = True
+            nodes.append(node)
+            active.add(address)
+            pending.append((address, None, True))
+            edges = [{'ordinal': i} for i in range(min(len(children), 32))]
+            node['children'] = edges
+            pending.extend((child, child_edge, False) for child, child_edge in reversed(list(zip(children, edges))))
+    result = {'schema': 'recovery_native_region/v1', 'function': function, 'stage': stage,
+              'lines': [line_start, line_end], 'native_sha256': sha(raw),
+              'source_sha256': sha(src), 'object_sha256': sha(obj), 'comparison': comparison,
+              'statement_count': len(chosen), 'statements': roots, 'nodes': nodes,
+              'truncated': truncated, 'unknown_edges': sorted(unknown),
+              'snapshot_incomplete': snapshot.get('incomplete') is True,
+              'source_binding': 'caller-supplied source hash; compiler provenance not inferred',
+              'diagnostic_only': True, 'source_causality': 'UNKNOWN', 'target_ids': 'UNKNOWN',
+              'authority_advanced': False}
+    if len(json.dumps(result, sort_keys=True, separators=(',', ':')).encode()) > max_output_bytes:
+        raise ValueError('native region output budget exceeded; narrow lines or node/statement limits')
+    return result
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == 'native-region':
+        parser = argparse.ArgumentParser(description=native_region.__doc__)
+        for field in ('native', 'object', 'source', 'function', 'source-sha256', 'object-sha256'):
+            parser.add_argument('--' + field, required=True)
+        parser.add_argument('--native-sha256')
+        parser.add_argument('--line-start', type=int, required=True)
+        parser.add_argument('--line-end', type=int, required=True)
+        parser.add_argument('--stage', choices=('initial', 'optimized', 'final'), required=True)
+        parser.add_argument('--max-statements', type=int, default=16)
+        parser.add_argument('--max-nodes', type=int, default=128)
+        parser.add_argument('--max-output-bytes', type=int, default=32768)
+        args = vars(parser.parse_args(argv[1:]))
+        args['object_path'] = args.pop('object')
+        try:
+            result = native_region(**args)
+        except (ValueError, TypeError, KeyError, OSError, struct.error) as error:
+            print(json.dumps({'status': 'UNKNOWN', 'reason': str(error), 'diagnostic_only': True}))
+            return 2
+        print(json.dumps(result, sort_keys=True, separators=(',', ':')))
+        return 0
     parser = argparse.ArgumentParser(description=__doc__)
     for field in ('envelope', 'object', 'source', 'function'):
         parser.add_argument('--' + field, required=True)
