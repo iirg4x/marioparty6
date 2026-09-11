@@ -14,8 +14,9 @@
 #define MB_PARTICLE_ATTR_UPAUSE (1 << 3)
 #define MB_PARTICLE_ATTR_3D (1 << 4)
 
-#define mbParticleRandF() (0.000015258789f * (frand() & 0xFFFF))
-#define mbParticleSRandF() ((0.000030517578f * (frand() & 0xFFFF)) - 1.0f)
+#define MB_PARTICLE_RANDOM_MASK 65535
+#define mbParticleRandF() (0.000015258789f * (frand() & MB_PARTICLE_RANDOM_MASK))
+#define mbParticleSRandF() ((0.000030517578f * (frand() & MB_PARTICLE_RANDOM_MASK)) - 1.0f)
 
 typedef struct MbParticle_s MBPARTICLE;
 

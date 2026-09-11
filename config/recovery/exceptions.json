@@ -2,6 +2,15 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "snpc-target-native-float-primitives",
+      "classification": "authenticated",
+      "path": "src/board/snpc.c",
+      "kind": "source_shape",
+      "rules": ["register", "inline_asm"],
+      "rationale": "Inherited unchanged from already-promoted SNPC source fb902286a4bd3ab3c530ae6528efabe9a07f6ffcb07a05217c03b17c88446c71: only SNpcAbsFloat and SNpcVecCopy. The SNPC verified-owner record authenticates one unary fabs and four typed HuVecF load/store operations with MWCC register operands, not original helper spelling. This Effect change only adds a truthful model-ID conversion at SNpcStarObjExec; both native helpers are token-unchanged. Final SNPC object reproduces its former exact object byte-for-byte (8f9958a50d3f1243715e0d3961c1bff3d32a0aca43404dbe99752abc04fe8460) and the full source-selected link is retail-identical. No new native operation, fixed physical register, fake storage, padding, or gameplay ASM is admitted.",
+      "evidence": ["D:/Games/Emulation/GameCube-Wii/mp6-board-snpc-verified-20260906/config/recovery/exceptions.json", "docs/board-effect-recovery.md", "build/effect-recovery/promotion-proof.json"]
+    },
+    {
       "id": "board-effect-native-particle-kernels",
       "classification": "authenticated",
       "path": "src/board/effect.c",

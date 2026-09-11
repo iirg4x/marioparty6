@@ -65,6 +65,9 @@ object is byte-identical to the old-header champion,
 `8f9958a50d3f1243715e0d3961c1bff3d32a0aca43404dbe99752abc04fe8460`.
 No incompatible prototype or non-prototype exception was used. The final
 full-project source-selected build rechecks every affected Matching consumer.
+The existing 16-bit random mask in the public header is now a named decimal
+constant, with no value/type change. SNPC's two already-promoted native
+primitives are unchanged; their prior narrow exception is carried forward.
 
 ### Source portability debt
 
