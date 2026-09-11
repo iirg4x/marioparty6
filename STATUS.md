@@ -4,19 +4,20 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 11, 2026**
+Last published full-project snapshot: **September 12, 2026**
 
 This snapshot was generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 21.31% | 42.26% | 373 / 926 |
-| Main DOL | 83.30% | 96.27% | 334 / 396 |
+| Entire project | 21.63% | 42.37% | 374 / 926 |
+| Main DOL | 85.10% | 96.57% | 335 / 396 |
 | REL modules | 8.17% | 8.03% | 39 / 530 |
 
-Board recovery is **39 / 40 owners Matching**. Board Masu now matches all
-**119 functions**, including their physical relocation targets and storage
-layout, with a source-selected retail-identical build. Single remains.
+Board recovery is **40 / 40 owners Matching**. Board Single closes the final
+owner with **58 / 58 functions** matching instructions and effective physical
+relocations. Its source-selected build, including the consistent gamework
+provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
