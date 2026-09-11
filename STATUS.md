@@ -10,15 +10,13 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 20.84% | 41.49% | 370 / 926 |
-| Main DOL | 80.61% | 94.30% | 331 / 396 |
+| Entire project | 20.93% | 41.67% | 371 / 926 |
+| Main DOL | 81.12% | 94.75% | 332 / 396 |
 | REL modules | 8.17% | 8.03% | 39 / 530 |
 
-Board recovery is **36 / 40 owners Matching**. Board Effect now matches all
-**35 functions and 420 allocated relocations**, with unchanged SNPC consumer
-code and a source-selected retail-identical build. Its four small native
-paired-single particle kernels include readable C fallbacks; this is not a
-pure-C-only matching claim.
+Board recovery is **37 / 40 owners Matching**. Board Opening now matches all
+**22 functions and 669 linked relocation sites**, with a source-selected
+retail-identical build and no new inline assembly. Masu, Star, and Single remain.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
