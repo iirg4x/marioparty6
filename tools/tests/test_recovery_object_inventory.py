@@ -138,6 +138,7 @@ def _write_pool_elf(
     instruction_opcode: int = 48,
     relocation_bias: int = 0,
     duplicate_owner_name: str | None = None,
+    duplicate_owner_offset: int | None = None,
 ) -> None:
     """Small relocatable fixture with shared pool consumers and a moved owner."""
     section_names = ["", ".text", ".sdata2", ".shstrtab", ".symtab", ".strtab", ".rela.text"]
@@ -153,7 +154,8 @@ def _write_pool_elf(
     owner_index = len(symbols)
     symbols.append(_symbol(symbol_name_offsets[owner_name], pool_offset, len(pool_bytes), 0x11, 2))
     if duplicate_owner_name is not None:
-        duplicate_offset = pool_offset + len(pool_bytes) + 4
+        duplicate_offset = (pool_offset + len(pool_bytes) + 4 if duplicate_owner_offset is None
+                            else duplicate_owner_offset)
         symbols.append(_symbol(symbol_name_offsets[duplicate_owner_name], duplicate_offset, len(pool_bytes), 0x11, 2))
     symbols.append(_symbol(symbol_name_offsets["fixture.c"], 0, 0, 0x04, 0))
     symbol_bytes = b"".join(symbols)
@@ -199,6 +201,83 @@ def _write_pool_elf(
 
 
 class RecoveryObjectInventoryTests(unittest.TestCase):
+    def test_named_storage_reverse_and_paired_exact_instruction_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target_path, candidate_path = Path(directory) / "t.o", Path(directory) / "c.o"
+            _write_pool_elf(target_path, duplicate_owner_name="second", duplicate_owner_offset=8)
+            _write_pool_elf(candidate_path, pool_offset=8, duplicate_owner_name="second", duplicate_owner_offset=0)
+            target, candidate = inventory.inventory(target_path), inventory.inventory(candidate_path)
+            report = inventory.compare(target, target, candidate, ["foo"])
+        storage = report["storage_layout"]["candidate"]
+        self.assertEqual(storage["sections"][0]["classification"], "reverse-permutation")
+        self.assertEqual(storage["changed_owners_count"], 2)
+        self.assertEqual(storage["reference_evidence_count"], 2)
+        self.assertEqual(storage["reference_evidence"][0]["source_cause_class"], "upstream-object-storage-layout")
+        self.assertEqual(storage["reference_evidence"][0]["target"]["offset"], 0)
+        self.assertEqual(storage["reference_evidence"][0]["candidate"]["offset"], 8)
+        self.assertFalse(storage["authority_advanced"])
+
+    def test_storage_overlap_and_unpaired_names_never_infer_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target_path, candidate_path = Path(directory) / "t.o", Path(directory) / "c.o"
+            _write_pool_elf(target_path, duplicate_owner_name="second", duplicate_owner_offset=8)
+            target = inventory.inventory(target_path)
+            for extra in ({"duplicate_owner_name": "alias", "duplicate_owner_offset": 0},
+                          {"duplicate_owner_name": "renamed", "duplicate_owner_offset": 8},
+                          {"duplicate_owner_name": "pool_owner", "duplicate_owner_offset": 8}):
+                _write_pool_elf(candidate_path, **extra)
+                report = inventory.compare(target, target, inventory.inventory(candidate_path), [])
+                storage = report["storage_layout"]["candidate"]
+                self.assertEqual(storage["sections"][0]["classification"], "unknown")
+                self.assertGreater(storage["unknowns_count"], 0)
+
+    def test_storage_old_inventory_compatibility_and_semantic_hash_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "t.o"
+            _write_pool_elf(path)
+            value = inventory.inventory(path)
+        old = dict(value)
+        del old["storage_layout"]
+        report = inventory.compare(old, old, value, [])
+        self.assertTrue(report["semantic_object_equal_target"])
+        self.assertEqual(report["storage_layout"]["candidate"]["status"], "unknown")
+
+    def test_storage_details_are_bounded_and_counted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "t.o"
+            _write_pool_elf(path)
+            value = inventory.inventory(path)
+        candidate = dict(value)
+        candidate["storage_layout"] = dict(value["storage_layout"])
+        candidate["storage_layout"]["owners"] = [
+            {**value["storage_layout"]["owners"][0], "name": f"renamed{i}", "value": i*4}
+            for i in range(100)]
+        report = inventory.compare(value, value, candidate, [])["storage_layout"]["candidate"]
+        self.assertEqual(report["unknowns_count"], 101)
+        self.assertEqual(len(report["unknowns"]), 64)
+        self.assertEqual(report["unknowns_omitted"], 37)
+
+    def test_unreferenced_alignment_tail_is_not_elf_equality(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "t.o"
+            _write_pool_elf(path)
+            value = inventory.inventory(path)
+        symbols = [{"name": "scalar", "type": 1, "binding": 0, "section": ".bss", "value": 0, "size": 4}]
+        section = {"name": ".bss", "type": 8, "flags": 3, "align": 8, "size": 8, "content": b""}
+        left, right = dict(value), dict(value)
+        left["allocated_sections"] = {".bss": {k: section[k] for k in ("type", "flags", "align", "size")}}
+        left["allocated_sections"][".bss"]["content_sha256"] = hashlib.sha256(b"").hexdigest()
+        right["allocated_sections"] = {".bss": {**left["allocated_sections"][".bss"], "size": 4}}
+        left["storage_layout"] = inventory._storage_inventory(symbols, [section], [])
+        right["storage_layout"] = inventory._storage_inventory(symbols, [{**section, "size": 4}], [])
+        report = inventory._storage_compare(left, right)
+        self.assertEqual(report["alignment_tail_candidates_count"], 1)
+        self.assertFalse(report["alignment_tail_candidates"][0]["linker_equivalence_proven"])
+        reference = {"section": ".text", "offset": 0,
+                     "effective_target": {"section": ".bss", "offset": 4}}
+        left["storage_layout"] = inventory._storage_inventory(symbols, [section], [reference])
+        self.assertEqual(inventory._storage_compare(left, right)["alignment_tail_candidates_count"], 0)
+
     def test_pool_census_uses_actual_bytes_and_typed_consumers(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "pool.o"

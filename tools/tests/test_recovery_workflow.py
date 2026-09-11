@@ -8,6 +8,7 @@ from pathlib import Path
 
 from tools.recovery_core import (
     Function,
+    added_lines,
     build_index,
     context_pack,
     load,
@@ -338,6 +339,60 @@ class RecoveryWorkflowTests(unittest.TestCase):
                     ("include/new.h", "raw_hex_literal"),
                     ("include/new.hpp", "raw_hex_literal"),
                 ],
+            )
+
+    def test_quality_diff_scan_covers_live_committed_staged_and_unstaged_lines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", *args], cwd=root, check=True,
+                    capture_output=True, text=True,
+                ).stdout.strip()
+
+            git("init", "-q")
+            git("config", "user.email", "test@example.com")
+            git("config", "user.name", "Test")
+            git("add", ".")
+            git("commit", "-qm", "fixture")
+            base = git("rev-parse", "HEAD")
+            source = root / "src/a.c"
+            original = source.read_text(encoding="utf-8")
+            source.write_text("#define _MATH_H\n" + original, encoding="utf-8")
+            git("add", "src/a.c")
+            git("commit", "-qm", "committed guard")
+            source.write_text(
+                "volatile int staged;\n#define _MATH_H\n" + original,
+                encoding="utf-8",
+            )
+            git("add", "src/a.c")
+            # A staged new canonical file must also be included.
+            (root / "src/new.cp").write_text("int value = 0x2A;\n", encoding="utf-8")
+            git("add", "src/new.cp")
+            source.write_text(
+                "#if 0\n#endif\nvolatile int staged;\n#define _MATH_H\n" + original,
+                encoding="utf-8",
+            )
+            lines = added_lines(root, base)
+            coordinates = [(path, line) for path, line, _ in lines]
+            self.assertEqual(len(coordinates), len(set(coordinates)))
+            findings = quality_findings(load(root), base=base)
+            self.assertEqual(
+                [(item["path"], item["line"], item["rule"]) for item in findings],
+                [("src/a.c", 1, "dead_branch"),
+                 ("src/a.c", 3, "volatile"),
+                 ("src/a.c", 4, "include_guard_override"),
+                 ("src/new.cp", 1, "raw_hex_literal")],
+            )
+            # Removing the committed guard locally must not review its old
+            # line against unrelated current text or retain an obsolete finding.
+            source.write_text(original, encoding="utf-8")
+            findings = quality_findings(load(root), base=base)
+            self.assertEqual(
+                [(item["path"], item["rule"]) for item in findings],
+                [("src/new.cp", "raw_hex_literal")],
             )
 
     def test_quality_diff_scan_includes_cp_sources(self):

@@ -763,12 +763,152 @@ def inventory(path: Path) -> dict[str, Any]:
             "functions": {name: function_output[name] for name in sorted(function_output)},
             "allocated_sections": allocated,
             "allocated_relocations": semantic_relocations,
+            "storage_layout": _storage_inventory(semantic_symbols, sections, semantic_relocations),
             "semantic_sha256": _sha(semantic_payload),
         }
     except ObjectInventoryError:
         raise
     except (EvidenceError, OSError, struct.error, TypeError, ValueError, KeyError) as exc:
         raise ObjectInventoryError(f"{path}: inventory failed: {exc}") from exc
+
+
+def _storage_inventory(symbols: Sequence[Mapping[str, Any]], sections: Sequence[Mapping[str, Any]],
+                       relocations: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Diagnostic attribution only; deliberately excluded from semantic hashes."""
+    allocated = {s["name"]: s for s in sections if int(s["flags"]) & SHF_ALLOC}
+    owners = [dict(s) for s in symbols if s["type"] == STT_OBJECT and s["section"] in allocated
+              and not int(allocated[s["section"]]["flags"]) & SHF_EXECINSTR]
+    owners.sort(key=lambda s: (s["section"], s["value"], s["name"], s["size"]))
+    names: dict[str, int] = {}
+    for owner in owners:
+        names[owner["name"]] = names.get(owner["name"], 0) + 1
+    for owner in owners:
+        reasons = []
+        start, size = owner["value"], owner["size"]
+        if not owner["name"] or names[owner["name"]] != 1:
+            reasons.append("anonymous-or-duplicate-name")
+        if size <= 0 or start < 0 or start + size > allocated[owner["section"]]["size"]:
+            reasons.append("unknown-or-invalid-extent")
+        if any(other is not owner and other["section"] == owner["section"] and
+               (other["value"] == start or (other["size"] > 0 and size > 0 and
+                other["value"] < start + size and start < other["value"] + other["size"]))
+               for other in owners):
+            reasons.append("alias-or-overlapping-owner")
+        owner["unknowns"] = reasons
+    tails = {}
+    for name, section in sorted(allocated.items()):
+        defined = [s for s in symbols if s["section"] == name and s["size"] > 0]
+        end = max((s["value"] + s["size"] for s in defined), default=0)
+        if end > section["size"]:
+            continue
+        references = [r for r in relocations if
+                      (r["section"] == name and r["offset"] >= end) or
+                      (r["effective_target"].get("section") == name and
+                       r["effective_target"].get("offset", -1) >= end)]
+        tails[name] = {"defined_end": end, "tail_size": section["size"] - end,
+                       "prefix_sha256": _sha(section["content"][:end]),
+                       "zero_or_nobits": not any(section["content"][end:]),
+                       "tail_reference_count": len(references)}
+        tails[name]["alignment_prefixes"] = {
+            str(section["size"] - trim): _sha(section["content"][:section["size"] - trim])
+            for trim in range(min(max(1, section["align"]), 256, section["size"] + 1))
+            if not any(section["content"][section["size"] - trim:]) and not any(
+                (r["section"] == name and r["offset"] >= section["size"] - trim) or
+                (r["effective_target"].get("section") == name and
+                 r["effective_target"].get("offset", -1) >= section["size"] - trim)
+                for r in relocations)}
+    return {"authority_advanced": False, "owners": owners[:_MAX_POOL_OWNERS],
+            "owner_count": len(owners), "owners_omitted": max(0, len(owners) - _MAX_POOL_OWNERS),
+            "section_tails": tails}
+
+
+def _storage_compare(target: Mapping[str, Any], candidate: Mapping[str, Any]) -> dict[str, Any]:
+    left, right = target.get("storage_layout"), candidate.get("storage_layout")
+    result: dict[str, Any] = {"authority_advanced": False, "status": "unknown",
+                              "unknowns": [], "sections": [], "changed_owners": [],
+                              "reference_evidence": [], "alignment_tail_candidates": []}
+    if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+        result["unknowns"] = ["storage-inventory-unavailable"]
+        return result
+    if left.get("owners_omitted") or right.get("owners_omitted"):
+        result["unknowns"] = ["storage-inventory-truncated"]
+        return result
+    safe = lambda value: {s["name"]: s for s in value["owners"] if not s["unknowns"]}
+    a, b = safe(left), safe(right)
+    common = set(a) & set(b)
+    for name in sorted(set(a) ^ set(b)):
+        result["unknowns"].append({"name": name, "reason": "unpaired-name-no-rename-inference"})
+    for label, value in (("target", left), ("candidate", right)):
+        for owner in value["owners"]:
+            if owner["unknowns"]:
+                result["unknowns"].append({"side": label, "name": owner["name"], "reasons": owner["unknowns"]})
+    extent = lambda s: {"section": s["section"], "offset": s["value"], "size": s["size"]}
+    tail_sections = set()
+    for section in sorted(set(left["section_tails"]) & set(right["section_tails"])):
+        sx, sy = target["allocated_sections"][section], candidate["allocated_sections"][section]
+        end = min(sx["size"], sy["size"])
+        x, y = left["section_tails"][section], right["section_tails"][section]
+        px, py = x.get("alignment_prefixes", {}).get(str(end)), y.get("alignment_prefixes", {}).get(str(end))
+        if (sx["size"] != sy["size"] and px is not None and px == py and
+            all(sx[k] == sy[k] for k in ("type", "flags", "align"))):
+            tail_sections.add(section)
+            result["alignment_tail_candidates"].append({"section": section, "common_end": end,
+                "target_tail_size": sx["size"]-end, "candidate_tail_size": sy["size"]-end,
+                "linker_equivalence_proven": False})
+    changed = {n for n in common if extent(a[n]) != extent(b[n])}
+    result["changed_owners"] = [{"name": n, "target": extent(a[n]), "candidate": extent(b[n])}
+                                for n in sorted(changed)]
+    for section in sorted({s["section"] for s in left["owners"] + right["owners"]}):
+        la = [s for s in left["owners"] if s["section"] == section]
+        lb = [s for s in right["owners"] if s["section"] == section]
+        excluded = []
+        if section in tail_sections:
+            end = min(target["allocated_sections"][section]["size"], candidate["allocated_sections"][section]["size"])
+            excluded = [s["name"] for s in la + lb if s["name"] not in common and s["value"] >= end]
+            la = [s for s in la if s["name"] not in excluded]
+            lb = [s for s in lb if s["name"] not in excluded]
+        order_a, order_b = [s["name"] for s in la], [s["name"] for s in lb]
+        justified = (bool(la) and not any(s["unknowns"] for s in la + lb) and
+                     set(order_a) == set(order_b) and all(a[n]["size"] == b[n]["size"] for n in order_a))
+        classification = "unknown"
+        if justified:
+            classification = ("exact-layout" if all(extent(a[n]) == extent(b[n]) for n in order_a)
+                              else "same-owner-order" if order_a == order_b
+                              else "reverse-permutation" if len(order_a) > 1 and order_a == order_b[::-1]
+                              else "owner-permutation")
+        result["sections"].append({"section": section, "classification": classification,
+                                   "unpaired_alignment_tail_names": excluded[:64],
+                                   "unpaired_alignment_tail_names_omitted": max(0, len(excluded)-64),
+                                   "target_order": order_a[:64], "candidate_order": order_b[:64],
+                                   "target_order_omitted": max(0, len(order_a)-64),
+                                   "candidate_order_omitted": max(0, len(order_b)-64)})
+    for function in sorted(set(target["functions"]) & set(candidate["functions"])):
+        ta, cb = target["functions"][function], candidate["functions"][function]
+        if ta["raw_sha256"] != cb["raw_sha256"]:
+            continue
+        refs_a = {(r["offset"], r["type"]): r for r in ta["physical_relocations"]}
+        refs_b = {(r["offset"], r["type"]): r for r in cb["physical_relocations"]}
+        for key in sorted(set(refs_a) & set(refs_b)):
+            x, y = refs_a[key], refs_b[key]
+            if x["effective_target"] == y["effective_target"]:
+                continue
+            matches = []
+            for n in changed:
+                ex, ey = x["effective_target"], y["effective_target"]
+                if (ex.get("section") == a[n]["section"] and ey.get("section") == b[n]["section"] and
+                    0 <= ex.get("offset", -1)-a[n]["value"] < a[n]["size"] and
+                    ex.get("offset", -1)-a[n]["value"] == ey.get("offset", -1)-b[n]["value"]):
+                    matches.append(n)
+            if len(matches) == 1:
+                result["reference_evidence"].append({"function": function, "offset": key[0], "type": key[1],
+                    "owner": matches[0], "target": x["effective_target"], "candidate": y["effective_target"],
+                    "instruction_bytes_exact": True, "source_cause_class": "upstream-object-storage-layout"})
+    result["status"] = "divergent" if changed else "unknown" if result["unknowns"] else "exact-named-layout"
+    for field in ("unknowns", "sections", "changed_owners", "reference_evidence", "alignment_tail_candidates"):
+        result[field + "_count"] = len(result[field])
+        result[field + "_omitted"] = max(0, len(result[field]) - _MAX_CLOSED_DETAILS)
+        result[field] = result[field][:_MAX_CLOSED_DETAILS]
+    return result
 
 
 def _inventory_map(value: Mapping[str, Any], label: str) -> Mapping[str, Any]:
@@ -1020,6 +1160,8 @@ def compare(
         nontext_changes.append("<allocated-relocations>")
     return {
         "authority_advanced": False,
+        "storage_layout": {"base": _storage_compare(target, base),
+                           "candidate": _storage_compare(target, candidate)},
         "focus": focus_names,
         "function_census_equal": census_base == census_candidate,
         "function_census": {
@@ -1051,9 +1193,14 @@ __all__ = ["ObjectInventoryError", "compare", "inventory", "pool_census"]
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("object", type=Path, help="big-endian PowerPC ELF object")
+    parser.add_argument("--compare-target", type=Path, help="diagnostic target comparison; does not advance authority")
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(inventory(args.object), sort_keys=True, separators=(",", ":")))
+        value = inventory(args.object)
+        if args.compare_target:
+            target = inventory(args.compare_target)
+            value = compare(target, target, value, [])
+        print(json.dumps(value, sort_keys=True, separators=(",", ":")))
     except ObjectInventoryError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

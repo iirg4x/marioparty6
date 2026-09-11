@@ -262,7 +262,16 @@ def canonical_header_guard_lines(path: str, text: str) -> set[int]:
 
 
 def added_lines(root: Path, base: str) -> list[tuple[str, int, str]]:
-    process = subprocess.run(["git", "diff", "--unified=0", f"{base}...HEAD", "--", "*.c", "*.cp", "*.h", "*.cc", "*.cpp", "*.cxx", "*.hpp"], cwd=root, text=True, capture_output=True, check=False)
+    ancestor = subprocess.run(
+        ["git", "merge-base", base, "HEAD"], cwd=root, text=True,
+        capture_output=True, check=False,
+    )
+    if ancestor.returncode:
+        raise RecoveryError(ancestor.stderr.strip() or "git merge-base failed")
+    # Compare the branch's original base directly with the live tracked tree.
+    # One diff includes committed, staged, and unstaged edits without duplicate
+    # hunks or stale line numbers after local insertions/removals.
+    process = subprocess.run(["git", "diff", "--unified=0", ancestor.stdout.strip(), "--", "*.c", "*.cp", "*.h", "*.cc", "*.cpp", "*.cxx", "*.hpp"], cwd=root, text=True, capture_output=True, check=False)
     if process.returncode:
         raise RecoveryError(process.stderr.strip() or "git diff failed")
     path = ""

@@ -666,7 +666,8 @@ def _changed_forbidden(root: Path, base: str) -> list[str]:
     ]
 
 
-def public_check(data: dict[str, Any], *, base: str | None) -> int:
+def _public_preflight(data: dict[str, Any], *, base: str | None) -> bool:
+    """Review live inputs before spending time on the public test suite."""
     root: Path = data["root"]
     failed = False
     checks = doctor_checks(data)
@@ -674,55 +675,11 @@ def public_check(data: dict[str, Any], *, base: str | None) -> int:
     if any(item.status == "fail" for item in checks):
         failed = True
 
-    for command in (
-        [sys.executable, "-m", "compileall", "-q", "tools"],
-        [sys.executable, "-m", "unittest", "discover", "-s", "tools/tests", "-v"],
-    ):
-        print(f"\n$ {' '.join(command)}")
-        if _run(command, root=root, capture=False).returncode:
-            failed = True
-
     errors = _metadata_errors(data)
     if errors:
         for error in errors:
             print(f"metadata: {error}")
         failed = True
-    else:
-        catalog = _catalog(data)
-        catalog_path = root / "build/context/owner-catalog.json"
-        write_catalog(catalog, catalog_path)
-        print(f"catalog: {len(catalog['owners'])} owners")
-        database = root / "build/context/recovery.sqlite"
-        counts = build_recovery_index(data, database)
-        print(
-            "index: "
-            + ", ".join(
-                f"{key}={value}" for key, value in sorted(counts.items())
-            )
-        )
-        report = root / "build/context/recovery-report.md"
-        report.parent.mkdir(parents=True, exist_ok=True)
-        report.write_text(
-            recovery_report(data).rstrip()
-            + "\n\n"
-            + render_freshness_report(data)
-            + "\n",
-            encoding="utf-8",
-        )
-        model = next(
-            (
-                item
-                for item in data["owners"]
-                if "model-owner" in item.get("tags", [])
-            ),
-            None,
-        )
-        if model:
-            smoke = root / "build/context/agent-smoke-context.md"
-            smoke.write_text(
-                build_context(data, "owner", str(model["id"]), budget=6000),
-                encoding="utf-8",
-            )
 
     if base:
         print(f"\nchanged-line review against {base}")
@@ -752,6 +709,58 @@ def public_check(data: dict[str, Any], *, base: str | None) -> int:
         except QueueError as exc:
             print(f"queue: {exc}")
             failed = True
+
+    return failed
+
+
+def _public_context(data: dict[str, Any]) -> None:
+    """Generate public context once, using the final validated metadata."""
+    root: Path = data["root"]
+    catalog = _catalog(data)
+    write_catalog(catalog, root / "build/context/owner-catalog.json")
+    print(f"catalog: {len(catalog['owners'])} owners")
+    counts = build_recovery_index(data, root / "build/context/recovery.sqlite")
+    print("index: " + ", ".join(f"{key}={value}" for key, value in sorted(counts.items())))
+    report = root / "build/context/recovery-report.md"
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text(
+        recovery_report(data).rstrip() + "\n\n" + render_freshness_report(data) + "\n",
+        encoding="utf-8",
+    )
+    model = next(
+        (item for item in data["owners"] if "model-owner" in item.get("tags", [])),
+        None,
+    )
+    if model:
+        (root / "build/context/agent-smoke-context.md").write_text(
+            build_context(data, "owner", str(model["id"]), budget=6000),
+            encoding="utf-8",
+        )
+
+
+def public_check(data: dict[str, Any], *, base: str | None) -> int:
+    root: Path = data["root"]
+    # Callers may have loaded metadata before a source/review edit. Neither
+    # preflight nor the final review should inherit that stale snapshot.
+    data = load(root, validate=False)
+    failed = _public_preflight(data, base=base)
+    if failed:
+        print("\npreflight failed; public test suite not run")
+    else:
+        for command in (
+            [sys.executable, "-m", "compileall", "-q", "tools"],
+            [sys.executable, "-m", "unittest", "discover", "-s", "tools/tests", "-v"],
+        ):
+            print(f"\n$ {' '.join(command)}")
+            if _run(command, root=root, capture=False).returncode:
+                failed = True
+
+        print("\npost-test live-input review")
+        data = load(root, validate=False)
+        review_failed = _public_preflight(data, base=base)
+        failed = failed or review_failed
+        if not review_failed:
+            _public_context(data)
 
     print(
         "\npublic agent gate: "
