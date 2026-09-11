@@ -427,6 +427,41 @@
         "config/GP6E01/build.sha1",
         "STATUS.md"
       ]
+    },
+    {
+      "id": "board-math-sdk-native-kernels",
+      "classification": "authenticated",
+      "path": "src/board/math.c",
+      "kind": "native_math_boundary",
+      "rules": [
+        "include_guard_override",
+        "register",
+        "inline_asm",
+        "compiler_pragma"
+      ],
+      "rationale": "Limited to the retained _MATH_H visibility prefix, native MathAbsFloat and translation setter, the six paired rotation/scale kernels, mbMtxTransCat, ObjectBBoxUpdate, and their measured inline/fp-contract boundaries. The user explicitly authorized the MP4/SDK style of native math kernels plus readable C fallbacks. Target operations, typed HSF field offsets, same-game interfaces and MP4 PSMTX implementations support this boundary; 56/56 strict/data/physical exact functions and the source-selected retail-identical DOL verify it. This authenticates the disclosed native recovery exception, not an original Hudson source spelling or C-only credit. Portable fallback equivalence on malformed/empty buffers and exceptional floating-point inputs is not claimed. No exception for padding, raw data, dead storage, ABI invention, or unrelated assembly is granted.",
+      "evidence": [
+        "docs/math-recovery-20260910.md",
+        "build/math-takeover/live-native-index.json",
+        "build/math-takeover/native-link-proof/link-proof.json",
+        "https://github.com/mariopartyrd/marioparty4/blob/147b165a83187ac9e6cfdc3bf52f2e73437b1ffd/src/dolphin/mtx/mtx.c"
+      ]
+    },
+    {
+      "id": "coin-target-native-operation-contracts",
+      "classification": "authenticated",
+      "path": "src/board/coin.c",
+      "kind": "source_shape",
+      "rules": [
+        "register",
+        "inline_asm"
+      ],
+      "rationale": "SCOPE: only the three user-authorized tiny native math contracts and their reviewed consumers in retained c49 source SHA256 b0a21fadb1fde90bc0bc7cb2c2d82096cf0f302d53c7a949f3bacd0a71cc1e72: CoinVecCopy's paired XY/scalar Z copy, CoinAbsFloat's one-instruction fabs, and CoinMtxTranslationSet's three loads/three stores. Each has a readable C fallback. The translation macro explicitly uses fixed fp4/fp5/fp6 and evaluates its real matrix and position pointers once in matrix-then-position order; this does not inherit Dice's no-fixed-physical-register claim. The exception admits these disclosed operation boundaries, not gameplay assembly, blanket register allocation controls, unrelated native bodies, fabricated storage, raw data, or unsupported semantic names. Authentication is of the reviewed native recovery contracts under the user's authorization, not original Hudson tokens or pure-C-only matching. Retained c49 has 52/52 strict/data-exact and 52 physically zero-difference functions; final source-selected link/retail proof and clean promotion remain pending. Further native changes require renewed review. The separate retail-overread record retains an empty rules list.",
+      "evidence": [
+        "docs/board_coin_recovery.md",
+        "build/coin-recovery/c49/evaluation.json",
+        "build/coin-recovery/c49/coin.o.receipt.json"
+      ]
     }
   ]
 }

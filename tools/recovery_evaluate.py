@@ -493,6 +493,86 @@ def _code_quality(before: dict, after: dict, name: str) -> dict:
     return result
 
 
+def _structural_closure(before: dict, after: dict, name: str) -> dict:
+    """A narrow partial-gain proof, not semantic equivalence or source fidelity.
+
+    Missing operations may close while allocation coordinates become less exact.
+    Require complete target-anchored operation/CFG closure, a global nonvolatile
+    register permutation, and a byte-bijective permutation of observed stack homes.
+    Unknown address-taking, overlapping homes and ABI register changes fail shut.
+    """
+    result = {"function": name, "qualified": False, "authority_advanced": False}
+    try:
+        old = causal_groups.summarize_groups(before, name)
+        new = causal_groups.summarize_groups(after, name)
+        if old["target_binding"] != new["target_binding"]:
+            raise ValueError("target instruction stream changed")
+        missing = old["category_rows"].get("deleted_instruction", 0) + old["category_rows"].get("deleted_move", 0)
+        if not missing or not set(old["category_rows"]) <= {
+                "deleted_instruction", "deleted_move", "cfg_changed",
+                "register_relation_unknown", "register_permutation"}:
+            raise ValueError("baseline is not a missing-operation/coordinate residual")
+        if (not new["size_exact"] or new["unresolved_row_count"]
+                or not set(new["category_rows"]) <= {"register_permutation"}):
+            raise ValueError("candidate has unresolved noncoordinate residuals")
+        mapping = new["register_mapping"]
+        if mapping["status"] != "confirmed" or any(
+                a[0] != b[0] or int(a[1:]) < 14 or int(b[1:]) < 14
+                for a, b in mapping["mapping"].items()):
+            raise ValueError("register relation is not a nonvolatile permutation")
+        old_target, old_candidate = _diagnostic_rows(before, name)
+        target, candidate = _diagnostic_rows(after, name)
+        if (len(target) != len(candidate) or len(old_target) != len(old_candidate)
+                or any(not r.get("instruction") for r in old_target)
+                or sum(not r.get("instruction") for r in old_candidate) != missing):
+            raise ValueError("unanchored or ambiguous instruction gaps")
+        byte_map, inverse = {}, {}
+        pointer_offsets = set()
+        for rows in (target, candidate):
+            addresses = [_prediction_address(r["instruction"]["address"], "instruction address") for r in rows]
+            if any(r["instruction"].get("size") != 4 for r in rows) or addresses != list(range(addresses[0], addresses[0] + 4 * len(rows), 4)):
+                raise ValueError("candidate/target instructions are not contiguous PPC words")
+        for index, pair in enumerate(zip(target, candidate)):
+            texts = [r["instruction"]["formatted"] for r in pair]
+            if not any("r1" in frontier._register_tokens(text) for text in texts):
+                continue
+            accesses = [frontier._stack_instruction(text, index) for text in texts]
+            if any(a is None for a in accesses):
+                raise ValueError("unresolved stack address use")
+            a, b = accesses
+            if a["kind"] != b["kind"] or a["opcode"] != b["opcode"]:
+                raise ValueError("stack operation changed")
+            if a["kind"] == "addi_pointer":
+                if texts[0] != texts[1]:
+                    raise ValueError("stack address-taking changed")
+                pointer_offsets.add(a["offset"])
+                continue
+            width = frontier._STACK_ACCESS_WIDTHS.get(a["opcode"])
+            if width is None:
+                raise ValueError("unresolved stack access width")
+            if a["opcode"].startswith("psq_"):
+                parts = frontier._instruction_parts(pair[0])
+                if texts[0] != texts[1] or parts[1][-2:] != ["0", "qr0"]:
+                    raise ValueError("unresolved paired stack access width")
+            if a["opcode"].endswith("u") and texts[0] != texts[1]:
+                raise ValueError("stack update changed")
+            for delta in range(width):
+                x, y = a["offset"] + delta, b["offset"] + delta
+                if byte_map.setdefault(x, y) != y or inverse.setdefault(y, x) != x:
+                    raise ValueError("stack byte relation is not bijective")
+        if byte_map.keys() != inverse.keys():
+            raise ValueError("observed stack byte census changed")
+        if any(x != y and (x >= offset or y >= offset) for x, y in byte_map.items()
+               for offset in pointer_offsets if offset >= 0):
+            raise ValueError("address-taken stack region moved")
+        result.update(qualified=True, closed_missing_instructions=missing,
+                      target_binding=new["target_binding"], stack_bytes_checked=len(byte_map),
+                      register_mapping=mapping["mapping"])
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        result["reason"] = str(exc)[:180]
+    return result
+
+
 def _classify(before_strict: list[dict], before_data: list[dict],
               after_strict: list[dict], after_data: list[dict],
               object_comparison: dict, functions: list[str], *,
@@ -502,6 +582,45 @@ def _classify(before_strict: list[dict], before_data: list[dict],
     regressions, gains, changes, positional_shifts = [], [], [], []
     focus = set(functions)
     quality = []
+    structural_closures = []
+    # Only waive aggregate row growth after all independent structural channels
+    # close. Never waive score, sibling, data, relocation or authenticity gates.
+    if baseline_documents and after_documents:
+        for name in functions:
+            row = object_comparison.get("functions", {}).get(name, {})
+            target, base, candidate = [frontier.focus._integer(row.get(k)) for k in
+                                       ("target_size", "base_size", "candidate_size")]
+            if (None in (target, base, candidate) or not 0 <= base < candidate == target
+                    or object_comparison.get("function_census_equal") is not True
+                    or object_comparison.get("allocated_nontext_changed") is not False
+                    or object_comparison.get("allocated_nontext_relocations_changed") is not False
+                    or row.get("candidate_normalized_exact") is not True
+                    or row.get("candidate_physical_exact") is not True
+                    or row.get("ordered_normalized_relocations_equal") is not True
+                    or row.get("normalized_diff_after") != 0 or row.get("physical_diff_after") != 0
+                    or not isinstance(row.get("normalized_diff_before"), int) or row["normalized_diff_before"] <= 0
+                    or row.get("closed_normalized_row_loss_count") != 0
+                    or row.get("closed_normalized_row_losses") != []
+                    or row.get("closed_physical_row_loss_count") != 0
+                    or row.get("closed_physical_row_losses") != []
+                    or any(other.get("raw_equal_base") is not True for sibling, other in
+                           object_comparison.get("functions", {}).items() if sibling != name)):
+                continue
+            metrics = [(_metric_map(before).get(name), _metric_map(after).get(name))
+                       for before, after in ((before_strict, after_strict), (before_data, after_data))]
+            if any(not a or not b or a["instruction_exact"]
+                   or (a["target_bytes"], a["candidate_bytes"], b["target_bytes"], b["candidate_bytes"])
+                   != (target, base, target, candidate) for a, b in metrics):
+                continue
+            findings = [_structural_closure(baseline_documents.get(channel, {}),
+                                            after_documents.get(channel, {}), name)
+                        for channel in ("strict", "data")]
+            for channel, finding in zip(("strict", "data"), findings):
+                finding["channel"] = channel
+            if all(f["qualified"] and 4 * f["closed_missing_instructions"] == candidate - base for f in findings):
+                structural_closures.append({"function": name, "channels": findings})
+                gains.append(f"structural:{name}: size, missing operations, CFG and physical relocations closed")
+    structural_names = {row["function"] for row in structural_closures}
     for channel, before, after in (("strict", before_strict, after_strict),
                                     ("data", before_data, after_data)):
         left, right = _metric_map(before), _metric_map(after)
@@ -518,7 +637,7 @@ def _classify(before_strict: list[dict], before_data: list[dict],
                 regressions.append(f"{channel}:{name}: exact function lost")
             if a["candidate_bytes"] == a["target_bytes"] and b["candidate_bytes"] != b["target_bytes"]:
                 regressions.append(f"{channel}:{name}: exact size lost")
-            if b["diff_rows"] > a["diff_rows"]:
+            if b["diff_rows"] > a["diff_rows"] and name not in structural_names:
                 regressions.append(f"{channel}:{name}: differing rows increased")
             if a.get("match_percent") is not None and b.get("match_percent") is not None:
                 if b["match_percent"] < a["match_percent"]:
@@ -597,6 +716,7 @@ def _classify(before_strict: list[dict], before_data: list[dict],
             "gains": gains, "regressions": sorted(set(regressions)),
             "review_required": review, "metric_changes": changes, "code_quality": quality,
             "qualified_positional_relocation_shifts": positional_shifts,
+            "qualified_structural_closures": structural_closures,
             "retention_ready": status in {"exact", "improved"} and not review}
 
 

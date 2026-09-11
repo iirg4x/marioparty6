@@ -104,7 +104,7 @@ typedef struct CoinEffData_s {
 
 extern void mbMtxRotYDeg(Mtx mtx, float angle);
 extern void mbMtxRotZDeg(Mtx mtx, float angle);
-extern void mbMtxScaleRotXDeg(Mtx mtx, float angle, HuVecF *scale);
+extern void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle);
 extern float mbSinDeg(float angle);
 extern float mbCosDeg(float angle);
 extern void mbPos3Dto2D(HuVecF *src, HuVecF *dst);
@@ -200,9 +200,53 @@ static u8 coinEffBankTbl2[] = {
 
 static COINEFFDATA coinEffData[COIN_EFF_MAX];
 static MBCOINOBJDATA coinObjData;
-static int coin1MdlId;
-static int coin2MdlId;
 static HUPROCESS *coinMdlProc;
+static int coin2MdlId;
+static int coin1MdlId;
+
+/* Same native HuVecF copy primitive used by the recovered Board Dice code. */
+static inline void CoinVecCopy(register const HuVecF *src, register HuVecF *dst)
+{
+#ifdef __MWERKS__
+    register __vec2x32float__ xy;
+    register float z;
+    asm {
+        psq_l xy, 0(src), 0, 0
+        lfs z, 8(src)
+        psq_st xy, 0(dst), 0, 0
+        stfs z, 8(dst)
+    }
+#else
+    HuVecF value = *src;
+    *dst = value;
+#endif
+}
+
+#ifdef __MWERKS__
+/* Bind each input once, in matrix-then-position order, before the native kernel. */
+#define CoinMtxTranslationSet(matrix, position) do { \
+    register MtxPtr coinMatrixPtr = (matrix); \
+    register const HuVecF *coinPositionPtr = (position); \
+    asm { \
+        lfs fp4, 0(coinPositionPtr); \
+        lfs fp5, 4(coinPositionPtr); \
+        lfs fp6, 8(coinPositionPtr); \
+        stfs fp4, 12(coinMatrixPtr); \
+        stfs fp5, 28(coinMatrixPtr); \
+        stfs fp6, 44(coinMatrixPtr); \
+    } \
+} while (0)
+#else
+static inline void CoinMtxTranslationSet(Mtx mtx, const HuVecF *pos)
+{
+    float x = pos->x;
+    float y = pos->y;
+    float z = pos->z;
+    mtx[0][3] = x;
+    mtx[1][3] = y;
+    mtx[2][3] = z;
+}
+#endif
 
 void mbCoinInit(void)
 {
@@ -308,47 +352,45 @@ static void CoinClose(void)
 
 static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
 {
-    float motTimeTbl[] = { 0.5f, 1.5f, 2.5f };
-    HU3D_MODEL *modelData[COIN_MODEL_MAX];
-    int modelId[COIN_MODEL_MAX];
-    int motNo[COIN_MODEL_MAX];
-    int alpha[COIN_MODEL_MAX];
     Mtx mtx;
-    MBCOINOBJBANK **bankPP;
     MBCOINOBJ *objP;
-    u32 *attrP;
-    u16 cameraBit;
+    int alpha[COIN_MODEL_MAX];
+    int motNo[COIN_MODEL_MAX];
+    int modelId[COIN_MODEL_MAX];
+    HU3D_MODEL *modelData[COIN_MODEL_MAX];
     int bankNo;
-    int objNo;
+    MBCOINOBJBANK **bankPP;
+    int *attrP;
     int modelNo;
+    int objNo;
     int alphaVal;
-    s8 motion;
-    int i;
+    int motion;
+    int cameraBit = (u16)modelP->cameraBit;
+    float motTimeTbl[] = { 0.5f, 1.5f, 2.5f };
 
-    cameraBit = modelP->cameraBit;
     Hu3DModelObjDrawInit();
-    for (i = 0; i < COIN_MODEL_MAX; i++) {
-        alpha[i] = -1;
-        motNo[i] = -1;
-        modelId[i] = mbObjModelIDGet(coinObjData.modelId[i]);
-        modelData[i] = &Hu3DData[modelId[i]];
+    for (bankNo = 0; bankNo < COIN_MODEL_MAX; bankNo++) {
+        alpha[bankNo] = -1;
+        motNo[bankNo] = -1;
+        modelId[bankNo] = mbObjModelIDGet(coinObjData.modelId[bankNo]);
+        modelData[bankNo] = &Hu3DData[modelId[bankNo]];
     }
     for (bankPP = &coinObjData.bank[0], bankNo = 0;
          bankNo < COIN_OBJ_BANK_MAX;
          bankNo++, bankPP++) {
         if (*bankPP != NULL && (*bankPP)->count != 0) {
-            attrP = &(*bankPP)->attr[0];
+            attrP = (int *)&(*bankPP)->attr[0];
             for (objNo = 0; objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
                 if (*attrP != 0
                     && (*attrP & cameraBit) != 0
                     && (*attrP & COIN_OBJ_ATTR_DISP) != 0) {
                     objP = &(*bankPP)->obj[objNo];
-                    if (objP->alpha > 0.0f
+                    if (!(objP->alpha <= 0.0f)
                         && objP->scale.x != 0.0f
                         && objP->scale.y != 0.0f
                         && objP->scale.z != 0.0f) {
                         if (objP->rot.x != 0.0f) {
-                            mbMtxScaleRotXDeg(mtx, objP->rot.x, &objP->scale);
+                            mbMtxScaleRotXDeg(mtx, &objP->scale, objP->rot.x);
                         } else {
                             PSMTXScale(mtx, objP->scale.x, objP->scale.y, objP->scale.z);
                         }
@@ -358,9 +400,7 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
                         if (objP->rot.z != 0.0f) {
                             mbMtxRotZDeg(mtx, objP->rot.z);
                         }
-                        mtx[0][3] = objP->pos.x;
-                        mtx[1][3] = objP->pos.y;
-                        mtx[2][3] = objP->pos.z;
+                        CoinMtxTranslationSet(mtx, &objP->pos);
                         PSMTXConcat(*mtxP, mtx, mtx);
                         modelNo = (*attrP & COIN_OBJ_KIND_MASK) >> COIN_OBJ_KIND_SHIFT;
                         alphaVal = 255.0f * objP->alpha;
@@ -384,35 +424,49 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
     }
 }
 
-s16 mbCoinCreate(void)
+static inline void *CoinBankAlloc(void)
+{
+    return HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
+}
+
+static inline MBCOINOBJBANK *CoinBankCreate(void)
 {
     MBCOINOBJBANK *bankP;
-    MBCOINOBJ *objP;
+
+    bankP = CoinBankAlloc();
+    bankP->count = 0;
+    memset(bankP->attr, 0, sizeof(bankP->attr));
+    memset(bankP->motNo, 0, sizeof(bankP->motNo));
+    return bankP;
+}
+
+static inline s16 CoinCreate(void)
+{
+    MBCOINOBJBANK *bankP;
+    int *attrP;
     int bankNo;
+    MBCOINOBJ *objP;
     int objNo;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        bankP = coinObjData.bank[bankNo];
-        if (!bankP) {
-            bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
-            bankP->count = 0;
-            memset(bankP->attr, 0, sizeof(bankP->attr));
-            memset(bankP->motNo, 0, sizeof(bankP->motNo));
-            coinObjData.bank[bankNo] = bankP;
-            break;
-        }
-        if (bankP->count < COIN_OBJ_BANK_SIZE) {
+        if (coinObjData.bank[bankNo] != NULL) {
+            if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+                break;
+            }
+        } else {
+            coinObjData.bank[bankNo] = CoinBankCreate();
             break;
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (objNo = 0; objNo < COIN_OBJ_BANK_SIZE; objNo++) {
-        if (!bankP->attr[objNo]) {
+    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+         objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
+        if (*attrP == 0) {
             break;
         }
     }
     bankP->count++;
-    bankP->attr[objNo] = COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
+    *attrP = COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
     bankP->motNo[objNo] = 0;
     objP = &bankP->obj[objNo];
     memset(objP, 0, sizeof(MBCOINOBJ));
@@ -422,35 +476,74 @@ s16 mbCoinCreate(void)
     return objNo;
 }
 
+s16 mbCoinCreate(void)
+{
+    return CoinCreate();
+}
+
 s16 mbCoinCreate2(void)
 {
+    int *attrP;
     MBCOINOBJBANK *bankP;
-    MBCOINOBJ *objP;
     int bankNo;
     int objNo;
+    MBCOINOBJ *objP;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        bankP = coinObjData.bank[bankNo];
-        if (!bankP) {
-            bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
-            bankP->count = 0;
-            memset(bankP->attr, 0, sizeof(bankP->attr));
-            memset(bankP->motNo, 0, sizeof(bankP->motNo));
-            coinObjData.bank[bankNo] = bankP;
-            break;
-        }
-        if (bankP->count < COIN_OBJ_BANK_SIZE) {
+        if (coinObjData.bank[bankNo] != NULL) {
+            if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+                break;
+            }
+        } else {
+            coinObjData.bank[bankNo] = CoinBankCreate();
             break;
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (objNo = 0; objNo < COIN_OBJ_BANK_SIZE; objNo++) {
-        if (!bankP->attr[objNo]) {
+    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+         objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
+        if (*attrP == 0) {
             break;
         }
     }
     bankP->count++;
-    bankP->attr[objNo] = (1 << 16) | COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
+    *attrP = (1 << 16) | COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
+    bankP->motNo[objNo] = 0;
+    objP = &bankP->obj[objNo];
+    memset(objP, 0, sizeof(MBCOINOBJ));
+    objP->scale.x = objP->scale.y = objP->scale.z = 1.0f;
+    objP->alpha = 1.0f;
+    objNo |= (bankNo << 6) | COIN_OBJ_ID_BASE;
+    return objNo;
+}
+
+static inline s16 CoinModelCreate(int modelNo)
+{
+    MBCOINOBJBANK *bankP;
+    int *attrP;
+    int bankNo;
+    MBCOINOBJ *objP;
+    int objNo;
+
+    for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
+        if (coinObjData.bank[bankNo] != NULL) {
+            if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+                break;
+            }
+        } else {
+            coinObjData.bank[bankNo] = CoinBankCreate();
+            break;
+        }
+    }
+    bankP = coinObjData.bank[bankNo];
+    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+         objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
+        if (*attrP == 0) {
+            break;
+        }
+    }
+    bankP->count++;
+    *attrP = ((modelNo + 2) << 16) | COIN_OBJ_ATTR_USED | COIN_OBJ_ATTR_DISP;
     bankP->motNo[objNo] = 0;
     objP = &bankP->obj[objNo];
     memset(objP, 0, sizeof(MBCOINOBJ));
@@ -462,82 +555,54 @@ s16 mbCoinCreate2(void)
 
 s16 mbCoinObjCreate(int modelNo, int motNo)
 {
-    MBCOINOBJBANK *bankP;
-    MBCOINOBJ *objP;
-    int bankNo;
-    int objNo;
-    s16 objId;
+    int objId;
 
-    for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        bankP = coinObjData.bank[bankNo];
-        if (!bankP) {
-            bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
-            bankP->count = 0;
-            memset(bankP->attr, 0, sizeof(bankP->attr));
-            memset(bankP->motNo, 0, sizeof(bankP->motNo));
-            coinObjData.bank[bankNo] = bankP;
-            break;
-        }
-        if (bankP->count < COIN_OBJ_BANK_SIZE) {
-            break;
-        }
-    }
-    bankP = coinObjData.bank[bankNo];
-    for (objNo = 0; objNo < COIN_OBJ_BANK_SIZE; objNo++) {
-        if (!bankP->attr[objNo]) {
-            break;
-        }
-    }
-    bankP->count++;
-    bankP->attr[objNo] = ((modelNo + 2) << 16) | COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
-    bankP->motNo[objNo] = 0;
-    objP = &bankP->obj[objNo];
-    memset(objP, 0, sizeof(MBCOINOBJ));
-    objP->scale.x = objP->scale.y = objP->scale.z = 1.0f;
-    objP->alpha = 1.0f;
-    objNo |= (bankNo << 6) | COIN_OBJ_ID_BASE;
-    objId = objNo;
+    objId = CoinModelCreate(modelNo);
     mbCoinObjMotSet(objId, motNo);
     return objId;
 }
 
-s16 mbCoinObjCreate2(int modelNo, int motNo)
+static inline s16 CoinModelCreate2(int modelNo)
 {
     MBCOINOBJBANK *bankP;
-    MBCOINOBJ *objP;
+    int *attrP;
     int bankNo;
+    MBCOINOBJ *objP;
     int objNo;
-    s16 objId;
 
     for (bankNo = 0; bankNo < COIN_OBJ_BANK_MAX; bankNo++) {
-        bankP = coinObjData.bank[bankNo];
-        if (!bankP) {
-            bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
-            bankP->count = 0;
-            memset(bankP->attr, 0, sizeof(bankP->attr));
-            memset(bankP->motNo, 0, sizeof(bankP->motNo));
-            coinObjData.bank[bankNo] = bankP;
-            break;
-        }
-        if (bankP->count < COIN_OBJ_BANK_SIZE) {
+        if (coinObjData.bank[bankNo] != NULL) {
+            if (coinObjData.bank[bankNo]->count < COIN_OBJ_BANK_SIZE) {
+                break;
+            }
+        } else {
+            coinObjData.bank[bankNo] = CoinBankCreate();
             break;
         }
     }
     bankP = coinObjData.bank[bankNo];
-    for (objNo = 0; objNo < COIN_OBJ_BANK_SIZE; objNo++) {
-        if (!bankP->attr[objNo]) {
+    for (attrP = (int *)&bankP->attr[0], objNo = 0;
+         objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
+        if (*attrP == 0) {
             break;
         }
     }
     bankP->count++;
-    bankP->attr[objNo] = ((modelNo + 12) << 16) | COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
+    *attrP = ((modelNo + 12) << 16) | COIN_OBJ_ATTR_USED | COIN_OBJ_ATTR_DISP;
     bankP->motNo[objNo] = 0;
     objP = &bankP->obj[objNo];
     memset(objP, 0, sizeof(MBCOINOBJ));
     objP->scale.x = objP->scale.y = objP->scale.z = 1.0f;
     objP->alpha = 1.0f;
     objNo |= (bankNo << 6) | COIN_OBJ_ID_BASE;
-    objId = objNo;
+    return objNo;
+}
+
+s16 mbCoinObjCreate2(int modelNo, int motNo)
+{
+    int objId;
+
+    objId = CoinModelCreate2(modelNo);
     mbCoinObjMotSet(objId, motNo);
     return objId;
 }
@@ -609,9 +674,17 @@ void mbCoinObjPosSetV(s16 objId, HuVecF *pos)
 
 void mbCoinObjPosGet(s16 objId, HuVecF *pos)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJ *objP;
+    MBCOINOBJBANK *bankP;
+    int bankNo;
+    int objNo;
 
-    *pos = objP->pos;
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
+    CoinVecCopy(&objP->pos, pos);
 }
 
 void mbCoinObjRotSet(s16 objId, float x, float y, float z)
@@ -639,9 +712,17 @@ void mbCoinObjRotSetV(s16 objId, HuVecF *rot)
 
 void mbCoinObjRotGet(s16 objId, HuVecF *rot)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJ *objP;
+    MBCOINOBJBANK *bankP;
+    int bankNo;
+    int objNo;
 
-    *rot = objP->rot;
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
+    CoinVecCopy(&objP->rot, rot);
 }
 
 void mbCoinObjScaleSet(s16 objId, float x, float y, float z)
@@ -669,9 +750,17 @@ void mbCoinObjScaleSetV(s16 objId, HuVecF *scale)
 
 void mbCoinObjScaleGet(s16 objId, HuVecF *scale)
 {
-    MBCOINOBJ *objP = mbCoinObjGet(objId);
+    MBCOINOBJ *objP;
+    MBCOINOBJBANK *bankP;
+    int bankNo;
+    int objNo;
 
-    *scale = objP->scale;
+    objId &= COIN_OBJ_ID_MASK;
+    bankNo = objId >> 6;
+    objNo = objId & COIN_OBJ_SLOT_MASK;
+    bankP = coinObjData.bank[bankNo];
+    objP = &bankP->obj[objNo];
+    CoinVecCopy(&objP->scale, scale);
 }
 
 void mbCoinObjAlphaSet(s16 objId, float alpha)
@@ -766,8 +855,8 @@ static void CoinMain(void)
 {
     HuVecF pos = { 0.0f, 0.0f, 0.0f };
     MBCOINOBJBANK *bankP;
-    MBCOINOBJBANK **bankPP;
     COINEFFDATA *effP;
+    MBCOINOBJBANK **bankPP;
     int i;
     int bankNo;
     int num;
@@ -776,14 +865,10 @@ static void CoinMain(void)
     for (i = 0; i < 5; i++) {
         CoinEffCreate(i, &pos);
     }
-    for (bankNo = 0, num = 0; num < 2; bankNo++) {
+    for (bankNo = 0, no = 0; no < 2; bankNo++) {
         if (coinObjData.bank[bankNo] == NULL) {
-            bankP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
-            bankP->count = 0;
-            memset(bankP->attr, 0, sizeof(bankP->attr));
-            memset(bankP->motNo, 0, sizeof(bankP->motNo));
-            coinObjData.bank[bankNo] = bankP;
-            num++;
+            coinObjData.bank[bankNo] = CoinBankCreate();
+            no++;
         }
     }
     while (TRUE) {
@@ -811,18 +896,31 @@ static void CoinMain(void)
     }
 }
 
+/* Same one-instruction absolute-value primitive as Board Math and Dice. */
+static inline float CoinAbsFloat(register float value)
+{
+#ifdef __MWERKS__
+    asm {
+        fabs value, value
+    }
+    return value;
+#else
+    return __fabsf(value);
+#endif
+}
+
 void mbCoinEffCreate(HuVecF *pos)
 {
     COINEFFDATA *effP;
+    int colorNo;
     MBPARTICLE *particleP;
     MBPARTICLEDATA *particleDataP;
     HuVecF offset;
+    int unused;
     float angle;
     float angleY;
-    float cosY;
     int effNo;
     int remaining;
-    int colorNo;
     int i;
 
     mbAudFXPlay(COIN_SE_GAIN);
@@ -834,9 +932,9 @@ void mbCoinEffCreate(HuVecF *pos)
                 break;
             }
             if (effP->count <= 80
-                && __fabsf(pos->x - effP->pos.x) < 300.0f
-                && __fabsf(pos->y - effP->pos.y) < 300.0f
-                && __fabsf(pos->z - effP->pos.z) < 300.0f) {
+                && CoinAbsFloat(pos->x - effP->pos.x) < 300.0f
+                && CoinAbsFloat(pos->y - effP->pos.y) < 300.0f
+                && CoinAbsFloat(pos->z - effP->pos.z) < 300.0f) {
                 effNo = i;
                 break;
             }
@@ -850,6 +948,8 @@ void mbCoinEffCreate(HuVecF *pos)
     }
     CoinEffCreate(effNo, pos);
     effP = &coinEffData[effNo];
+    /* Retail initializes this scalar but never reads it. */
+    unused = 0;
     particleP = Hu3DData[effP->modelId].hookData;
     VECSubtract(pos, &effP->pos, &offset);
     remaining = 20;
@@ -867,12 +967,10 @@ void mbCoinEffCreate(HuVecF *pos)
             particleDataP->pos.x = particleDataP->pos.y = particleDataP->pos.z = 0.0f;
             angle = 360.0f * frandf();
             angleY = (1.7f * frandf()) - 0.7f;
-            angleY = 90.0f * (angleY * __fabsf(angleY));
-            cosY = mbCosDeg(angleY);
-            particleDataP->vel.x = mbSinDeg(angle) * cosY;
+            angleY = 90.0f * (angleY * CoinAbsFloat(angleY));
+            particleDataP->vel.x = mbSinDeg(angle) * mbCosDeg(angleY);
             particleDataP->vel.y = mbSinDeg(angleY);
-            cosY = mbCosDeg(angleY);
-            particleDataP->vel.z = mbCosDeg(angle) * cosY;
+            particleDataP->vel.z = mbCosDeg(angle) * mbCosDeg(angleY);
             VECScale(&particleDataP->vel, &particleDataP->pos,
                 100.0f * (0.5f * frandf()));
             VECScale(&particleDataP->vel, &particleDataP->vel,
@@ -907,7 +1005,9 @@ static void CoinEffCreate(int no, HuVecF *pos)
             100);
         mbParticleHookSet(effP->modelId, CoinEffHook);
         Hu3DModelLayerSet(effP->modelId, 5);
-        effP->pos = *pos;
+        effP->pos.x = pos->x;
+        effP->pos.y = pos->y;
+        effP->pos.z = pos->z;
         Hu3DModelPosSetV(effP->modelId, pos);
         effP->count = 0;
         particleP = Hu3DData[effP->modelId].hookData;
@@ -918,10 +1018,12 @@ static void CoinEffCreate(int no, HuVecF *pos)
             particleDataP->color.a = 0;
             particleDataP->time = 0;
         }
-        particleP->attr = MB_PARTICLE_ATTR_LOOP;
+        particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
         particleP->time = no;
     } else if (effP->count == 0) {
-        effP->pos = *pos;
+        effP->pos.x = pos->x;
+        effP->pos.y = pos->y;
+        effP->pos.z = pos->z;
         Hu3DModelPosSetV(effP->modelId, pos);
     }
 }
@@ -1029,13 +1131,14 @@ s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum)
 
 static void CoinDispCreate(OMOBJ *obj, int coinNum)
 {
+    int modelNum;
+    int digit;
     int digitVal;
     COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
     COINDISPMODEL *model = obj->data;
     BOOL dispF = FALSE;
     float motTime;
     int i;
-    int modelNum;
 
     obj->mdlId[0] = mbCoinCreate();
     if (work->sign) {
@@ -1043,31 +1146,27 @@ static void CoinDispCreate(OMOBJ *obj, int coinNum)
     } else {
         motTime = 1.5f;
     }
-    obj->mdlId[1] = mbCoinObjCreate(
-        work->sign + 10,
-        work->sign ? 2 : 1);
+    obj->mdlId[1] = mbCoinObjCreate2(work->sign, work->sign ? 2 : 1);
     digitVal = 100;
     work->modelNum = 0;
     modelNum = 2;
     coinNum = abs(coinNum);
     for (i = 0; i < 3; i++) {
-        int digit = coinNum / digitVal;
+        digit = coinNum / digitVal;
 
         if (i == 2) {
             dispF = TRUE;
         }
         if (dispF || digit != 0) {
             dispF = TRUE;
-            obj->mdlId[modelNum] = mbCoinObjCreate(
-                digit,
-                work->sign ? 2 : 1);
+            obj->mdlId[modelNum] = mbCoinObjCreate(digit, work->sign ? 2 : 1);
             modelNum++;
         }
         coinNum -= digit * digitVal;
         digitVal /= 10;
     }
     work->modelNum = modelNum;
-    for (i = 0; i < work->modelNum; i++, model++) {
+    for (model = obj->data, i = 0; i < work->modelNum; i++, model++) {
         model->pos.x = model->pos.y = model->pos.z = 0.0f;
         model->rotY = 0.0f;
         model->scale.x = model->scale.y = model->scale.z = 0.001f;
@@ -1279,13 +1378,13 @@ BOOL mbCoinDispKillCheck(s16 no)
     return TRUE;
 }
 
-int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
+static inline int CoinAdd(int playerNo, int coinNum, BOOL fastF)
 {
+    int num;
+    int coinChg;
     int coinDiff;
-    s16 dispNo;
     int i;
     int delay;
-    int coinChg;
     int coinNew;
     s16 seId;
 
@@ -1297,16 +1396,17 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
         delay = 6;
     }
     coinNew = coinNum + mbPlayerCoinGet(playerNo);
+    num = coinNum;
     if (coinNew > 999) {
-        coinNum = 999 - mbPlayerCoinGet(playerNo);
+        num = 999 - mbPlayerCoinGet(playerNo);
     } else if (coinNew < 0) {
-        coinNum = -mbPlayerCoinGet(playerNo);
+        num = -mbPlayerCoinGet(playerNo);
     }
-    coinDiff = coinNum;
+    coinDiff = num;
     if (!fastF) {
-        coinChg = (coinNum >= 0) ? 1 : -1;
+        coinChg = (num >= 0) ? 1 : -1;
         seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
-        for (i = 0; i < abs(coinNum); i++) {
+        for (i = 0; i < abs(num); i++) {
             mbPlayerCoinAdd(playerNo, coinChg);
             mbAudFXPlay(seId);
             HuPrcSleep(delay);
@@ -1314,6 +1414,15 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     } else {
         mbPlayerCoinAdd(playerNo, coinDiff);
     }
+    return coinDiff;
+}
+
+int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
+{
+    int coinDiff;
+    int dispNo;
+
+    coinDiff = CoinAdd(playerNo, coinNum, fastF);
     if (coinDiff != 0 || dispF) {
         HuVecF pos;
 
@@ -1331,38 +1440,9 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 {
     int coinDiff;
-    s16 dispNo;
-    int i;
-    int delay;
-    int coinChg;
-    int coinNew;
-    s16 seId;
+    int dispNo;
 
-    if (abs(coinNum) >= 50) {
-        delay = 1;
-    } else if (abs(coinNum) >= 20) {
-        delay = 3;
-    } else {
-        delay = 6;
-    }
-    coinNew = coinNum + mbPlayerCoinGet(playerNo);
-    if (coinNew > 999) {
-        coinNum = 999 - mbPlayerCoinGet(playerNo);
-    } else if (coinNew < 0) {
-        coinNum = -mbPlayerCoinGet(playerNo);
-    }
-    coinDiff = coinNum;
-    if (!fastF) {
-        coinChg = (coinNum >= 0) ? 1 : -1;
-        seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
-        for (i = 0; i < abs(coinNum); i++) {
-            mbPlayerCoinAdd(playerNo, coinChg);
-            mbAudFXPlay(seId);
-            HuPrcSleep(delay);
-        }
-    } else {
-        mbPlayerCoinAdd(playerNo, coinDiff);
-    }
+    coinDiff = CoinAdd(playerNo, coinNum, fastF);
     if (coinDiff != 0) {
         mbAudFXPlay(COIN_SE_CHANGE_END);
     }
@@ -1371,7 +1451,7 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 
         mbPlayerPosGet(playerNo, &pos);
         pos.y += 250.0f;
-        dispNo = mbCoinDispCreate(&pos, coinDiff, TRUE, TRUE);
+        dispNo = mbCoinDispCapsuleCreate(&pos, coinDiff);
         while (!mbCoinDispKillCheck(dispNo)) {
             HuPrcVSleep();
         }
@@ -1381,38 +1461,7 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 
 int mbCoinAddExec(int playerNo, int coinNum)
 {
-    int coinDiff;
-    int i;
-    int delay;
-    int coinChg;
-    int coinNew;
-    s16 seId;
-
-    if (abs(coinNum) >= 50) {
-        delay = 1;
-    } else if (abs(coinNum) >= 20) {
-        delay = 3;
-    } else {
-        delay = 6;
-    }
-    coinNew = coinNum + mbPlayerCoinGet(playerNo);
-    if (coinNew > 999) {
-        coinNum = 999 - mbPlayerCoinGet(playerNo);
-    } else if (coinNew < 0) {
-        coinNum = -mbPlayerCoinGet(playerNo);
-    }
-    coinDiff = coinNum;
-    coinChg = (coinNum >= 0) ? 1 : -1;
-    seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
-    for (i = 0; i < abs(coinNum); i++) {
-        mbPlayerCoinAdd(playerNo, coinChg);
-        mbAudFXPlay(seId);
-        HuPrcSleep(delay);
-    }
-    if (coinDiff != 0) {
-        mbAudFXPlay(COIN_SE_CHANGE_END);
-    }
-    return coinDiff;
+    return mbCoinAddDispExec(playerNo, coinNum, FALSE, FALSE);
 }
 
 int mbStatTeamMinValGet(int teamNo, int value, int max, int *addNum,
@@ -1576,7 +1625,7 @@ void mbCoinAddAllProcExec(int num0, int num1, int num2, int num3,
     int addNum[4];
     int result[4];
     HuVecF pos;
-    s16 dispNo;
+    int dispNo;
     int i;
 
     addNum[0] = num0;
@@ -1589,7 +1638,7 @@ void mbCoinAddAllProcExec(int num0, int num1, int num2, int num3,
             if (result[i] != 0) {
                 mbPlayerPosGet(i, &pos);
                 pos.y += 250.0f;
-                dispNo = mbCoinDispCreate(&pos, result[i], TRUE, TRUE);
+                dispNo = mbCoinDispCapsuleCreate(&pos, result[i]);
             }
         }
         while (!mbCoinDispKillCheck(dispNo)) {

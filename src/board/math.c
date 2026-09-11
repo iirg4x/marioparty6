@@ -1,3 +1,7 @@
+#define _MATH_H
+#include "dolphin/math.h"
+#include <stddef.h>
+
 #include "game/board/camera.h"
 #include "game/board/object.h"
 #include "game/disp.h"
@@ -7,15 +11,32 @@
 
 #include "humath.h"
 
+/* One-instruction native primitive, following the SDK inline-helper style.
+ * No fixed-register binding; projection and culling remain ordinary C. */
+#ifdef __MWERKS__
+static inline float MathAbsFloat(register float value)
+{
+    asm {
+        fabs value, value
+    }
+    return value;
+}
+#else
+static inline float MathAbsFloat(float value)
+{
+    return (float)fabs((double)value);
+}
+#endif
+
 #define MB_TRIG_TABLE_COUNT 2048
 #define MB_TRIG_TABLE_BYTES (MB_TRIG_TABLE_COUNT * sizeof(float))
 #define MB_TRIG_BYTE_MASK (MB_TRIG_TABLE_BYTES - sizeof(float))
 #define MB_TRIG_DEG_SCALE (MB_TRIG_TABLE_BYTES / 360.0f)
 #define MB_TRIG_RAD_SCALE 1303.7972412109375f
-#define MB_TRIG_COS_INDEX(angle, scale) \
-    ((((s32)((angle) * (scale)) + 2) & MB_TRIG_BYTE_MASK) >> 2)
-#define MB_TRIG_SIN_INDEX(angle, scale) \
-    ((((s32)((angle) * (scale)) - 2046) & MB_TRIG_BYTE_MASK) >> 2)
+#define MB_TRIG_COS_OFFSET(angle, scale) \
+    (((s32)((angle) * (scale)) + 2) & MB_TRIG_BYTE_MASK)
+#define MB_TRIG_SIN_OFFSET(angle, scale) \
+    (((s32)((angle) * (scale)) - 2046) & MB_TRIG_BYTE_MASK)
 
 static float *cosTab;
 static HuVecF objectBBox[8];
@@ -26,8 +47,9 @@ void mbMathInit(void)
     s32 i;
 
     cosTab = HuMemDirectMallocNum(HEAP_HEAP, MB_TRIG_TABLE_BYTES, HU_MEMNUM_OVL);
-    for (i = 0; i < MB_TRIG_TABLE_COUNT; i++) {
+    for (i = 0; i < MB_TRIG_TABLE_COUNT;) {
         cosTab[i] = HuCos((360.0f / MB_TRIG_TABLE_COUNT) * i);
+        i++;
     }
 }
 
@@ -41,24 +63,111 @@ void mbMathClose(void)
 
 float mbCosDeg(float deg)
 {
-    return cosTab[MB_TRIG_COS_INDEX(deg, MB_TRIG_DEG_SCALE)];
+    return *(float *)((char *)cosTab + MB_TRIG_COS_OFFSET(deg, MB_TRIG_DEG_SCALE));
 }
 
 float mbCosRad(float rad)
 {
-    return cosTab[MB_TRIG_COS_INDEX(rad, MB_TRIG_RAD_SCALE)];
+    return *(float *)((char *)cosTab + MB_TRIG_COS_OFFSET(rad, MB_TRIG_RAD_SCALE));
 }
 
 float mbSinDeg(float deg)
 {
-    return cosTab[MB_TRIG_SIN_INDEX(deg, MB_TRIG_DEG_SCALE)];
+    return *(float *)((char *)cosTab + MB_TRIG_SIN_OFFSET(deg, MB_TRIG_DEG_SCALE));
 }
 
 float mbSinRad(float rad)
 {
-    return cosTab[MB_TRIG_SIN_INDEX(rad, MB_TRIG_RAD_SCALE)];
+    return *(float *)((char *)cosTab + MB_TRIG_SIN_OFFSET(rad, MB_TRIG_RAD_SCALE));
 }
 
+#ifdef __MWERKS__
+/* MP4/SDK-style native paired-single kernels; portable C follows below. */
+#pragma fp_contract on
+
+void mbMtxRotTrigX(register Mtx mtx, register float sin, register float cos)
+{
+    /* Two paired rows are snapshotted before the in-place rotation. */
+    asm {
+        frsp sin, sin
+        frsp cos, cos
+        ps_merge00 sin, sin, sin
+        ps_merge00 cos, cos, cos
+        psq_l fp6, 32(mtx), 0, 0
+        psq_l fp7, 40(mtx), 0, 0
+        psq_l fp4, 16(mtx), 0, 0
+        psq_l fp5, 24(mtx), 0, 0
+        ps_mul fp8, sin, fp6
+        ps_mul fp9, sin, fp7
+        ps_msub fp8, cos, fp4, fp8
+        ps_msub fp9, cos, fp5, fp9
+        psq_st fp8, 16(mtx), 0, 0
+        psq_st fp9, 24(mtx), 0, 0
+        ps_mul fp8, sin, fp4
+        ps_mul fp9, sin, fp5
+        ps_madd fp8, cos, fp6, fp8
+        ps_madd fp9, cos, fp7, fp9
+        psq_st fp8, 32(mtx), 0, 0
+        psq_st fp9, 40(mtx), 0, 0
+    }
+}
+
+void mbMtxRotTrigY(register Mtx mtx, register float sin, register float cos)
+{
+    /* Two paired rows are snapshotted before the in-place rotation. */
+    asm {
+        frsp sin, sin
+        frsp cos, cos
+        ps_merge00 sin, sin, sin
+        ps_merge00 cos, cos, cos
+        psq_l fp4, 0(mtx), 0, 0
+        psq_l fp5, 8(mtx), 0, 0
+        psq_l fp6, 32(mtx), 0, 0
+        psq_l fp7, 40(mtx), 0, 0
+        ps_mul fp8, cos, fp4
+        ps_mul fp9, cos, fp5
+        ps_madd fp8, sin, fp6, fp8
+        ps_madd fp9, sin, fp7, fp9
+        psq_st fp8, 0(mtx), 0, 0
+        psq_st fp9, 8(mtx), 0, 0
+        ps_mul fp8, sin, fp4
+        ps_mul fp9, sin, fp5
+        ps_msub fp8, cos, fp6, fp8
+        ps_msub fp9, cos, fp7, fp9
+        psq_st fp8, 32(mtx), 0, 0
+        psq_st fp9, 40(mtx), 0, 0
+    }
+}
+
+void mbMtxRotTrigZ(register Mtx mtx, register float sin, register float cos)
+{
+    /* Two paired rows are snapshotted before the in-place rotation. */
+    asm {
+        frsp sin, sin
+        frsp cos, cos
+        ps_merge00 sin, sin, sin
+        ps_merge00 cos, cos, cos
+        psq_l fp6, 16(mtx), 0, 0
+        psq_l fp7, 24(mtx), 0, 0
+        psq_l fp4, 0(mtx), 0, 0
+        psq_l fp5, 8(mtx), 0, 0
+        ps_mul fp8, sin, fp6
+        ps_mul fp9, sin, fp7
+        ps_msub fp8, cos, fp4, fp8
+        ps_msub fp9, cos, fp5, fp9
+        psq_st fp8, 0(mtx), 0, 0
+        psq_st fp9, 8(mtx), 0, 0
+        ps_mul fp8, sin, fp4
+        ps_mul fp9, sin, fp5
+        ps_madd fp8, cos, fp6, fp8
+        ps_madd fp9, cos, fp7, fp9
+        psq_st fp8, 16(mtx), 0, 0
+        psq_st fp9, 24(mtx), 0, 0
+    }
+}
+
+#pragma fp_contract off
+#else
 void mbMtxRotTrigX(Mtx mtx, float sin, float cos)
 {
     float y;
@@ -101,6 +210,33 @@ void mbMtxRotTrigZ(Mtx mtx, float sin, float cos)
     }
 }
 
+#endif
+
+#ifdef __MWERKS__
+void mbMtxRotTrigScaleX(register Mtx mtx, register float sin, register float cos,
+    register HuVecF *scale)
+{
+    asm {
+        frsp sin, sin
+        frsp cos, cos
+        lfs fp4, 0(scale)
+        psq_l fp5, 4(scale), 0, 0
+        fneg fp6, sin
+        ps_sub fp7, fp5, fp5
+        ps_merge00 fp8, cos, fp6
+        ps_merge00 fp9, sin, cos
+        ps_mul fp8, fp8, fp5
+        ps_mul fp9, fp9, fp5
+        stfs fp4, 0(mtx)
+        psq_st fp7, 4(mtx), 0, 0
+        psq_st fp7, 12(mtx), 0, 0
+        psq_st fp8, 20(mtx), 0, 0
+        psq_st fp7, 28(mtx), 0, 0
+        psq_st fp9, 36(mtx), 0, 0
+        stfs fp7, 44(mtx)
+    }
+}
+#else
 void mbMtxRotTrigScaleX(Mtx mtx, float sin, float cos, HuVecF *scale)
 {
     mtx[0][0] = scale->x;
@@ -117,6 +253,37 @@ void mbMtxRotTrigScaleX(Mtx mtx, float sin, float cos, HuVecF *scale)
     mtx[2][3] = 0.0f;
 }
 
+#endif
+
+#ifdef __MWERKS__
+void mbMtxRotTrigScaleY(register Mtx mtx, register float sin, register float cos,
+    register HuVecF *scale)
+{
+    asm {
+        frsp sin, sin
+        frsp cos, cos
+        psq_l fp4, 0(scale), 0, 0
+        lfs fp6, 8(scale)
+        ps_sub fp7, fp4, fp4
+        fmuls fp8, cos, fp4
+        fmuls fp9, sin, fp6
+        ps_merge11 fp5, fp7, fp4
+        ps_merge00 fp8, fp8, fp7
+        ps_merge00 fp9, fp9, fp7
+        psq_st fp5, 16(mtx), 0, 0
+        psq_st fp7, 24(mtx), 0, 0
+        fneg fp5, sin
+        psq_st fp8, 0(mtx), 0, 0
+        psq_st fp9, 8(mtx), 0, 0
+        fmuls fp8, fp5, fp4
+        fmuls fp9, cos, fp6
+        ps_merge00 fp8, fp8, fp7
+        ps_merge00 fp9, fp9, fp7
+        psq_st fp8, 32(mtx), 0, 0
+        psq_st fp9, 40(mtx), 0, 0
+    }
+}
+#else
 void mbMtxRotTrigScaleY(Mtx mtx, float sin, float cos, HuVecF *scale)
 {
     mtx[0][0] = cos * scale->x;
@@ -132,7 +299,33 @@ void mbMtxRotTrigScaleY(Mtx mtx, float sin, float cos, HuVecF *scale)
     mtx[2][2] = cos * scale->z;
     mtx[2][3] = 0.0f;
 }
+#endif
 
+#ifdef __MWERKS__
+void mbMtxRotTrigScaleZ(register Mtx mtx, register float sin, register float cos,
+    register HuVecF *scale)
+{
+    asm {
+        frsp sin, sin
+        frsp cos, cos
+        psq_l fp4, 0(scale), 0, 0
+        lfs fp5, 8(scale)
+        fneg fp6, sin
+        ps_sub fp7, fp4, fp4
+        ps_merge00 fp8, cos, fp6
+        ps_merge00 fp9, sin, cos
+        ps_merge00 fp5, fp5, fp7
+        ps_mul fp8, fp8, fp4
+        ps_mul fp9, fp9, fp4
+        psq_st fp8, 0(mtx), 0, 0
+        psq_st fp7, 8(mtx), 0, 0
+        psq_st fp9, 16(mtx), 0, 0
+        psq_st fp7, 24(mtx), 0, 0
+        psq_st fp7, 32(mtx), 0, 0
+        psq_st fp5, 40(mtx), 0, 0
+    }
+}
+#else
 void mbMtxRotTrigScaleZ(Mtx mtx, float sin, float cos, HuVecF *scale)
 {
     mtx[0][0] = cos * scale->x;
@@ -149,59 +342,123 @@ void mbMtxRotTrigScaleZ(Mtx mtx, float sin, float cos, HuVecF *scale)
     mtx[2][3] = 0.0f;
 }
 
-void mbMtxRotAxisDeg(Mtx mtx, char axis, float angle)
+#endif
+
+void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle)
 {
-    MTXRotTrig(mtx, axis, mbSinDeg(angle), mbCosDeg(angle));
+    float *table;
+    s32 offset;
+
+    offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    table = cosTab;
+    MTXRotTrig(mtx, axis,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
-void mbMtxRotAxisRad(Mtx mtx, char axis, float angle)
+void mbMtxRotAxisRad(Mtx mtx, u8 axis, float angle)
 {
-    MTXRotTrig(mtx, axis, mbSinRad(angle), mbCosRad(angle));
+    float *table;
+    s32 offset;
+
+    offset = (s32)(angle * MB_TRIG_RAD_SCALE);
+    table = cosTab;
+    MTXRotTrig(mtx, axis,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+#ifdef __MWERKS__
+#pragma fp_contract on
+#endif
 void mbMtxRotXDeg(Mtx mtx, float angle)
 {
-    mbMtxRotTrigX(mtx, mbSinDeg(angle), mbCosDeg(angle));
+    s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigX(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
 void mbMtxRotXRad(Mtx mtx, float angle)
 {
-    mbMtxRotTrigX(mtx, mbSinRad(angle), mbCosRad(angle));
+    s32 offset = (s32)(angle * MB_TRIG_RAD_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigX(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
 void mbMtxRotYDeg(Mtx mtx, float angle)
 {
-    mbMtxRotTrigY(mtx, mbSinDeg(angle), mbCosDeg(angle));
+    s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigY(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
 void mbMtxRotYRad(Mtx mtx, float angle)
 {
-    mbMtxRotTrigY(mtx, mbSinRad(angle), mbCosRad(angle));
+    s32 offset = (s32)(angle * MB_TRIG_RAD_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigY(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
 void mbMtxRotZDeg(Mtx mtx, float angle)
 {
-    mbMtxRotTrigZ(mtx, mbSinDeg(angle), mbCosDeg(angle));
+    s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigZ(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
 void mbMtxRotZRad(Mtx mtx, float angle)
 {
-    mbMtxRotTrigZ(mtx, mbSinRad(angle), mbCosRad(angle));
+    s32 offset = (s32)(angle * MB_TRIG_RAD_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigZ(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
-void mbMtxScaleRotXDeg(Mtx mtx, float angle, HuVecF *scale)
+void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle)
 {
-    mbMtxRotTrigScaleX(mtx, mbSinDeg(angle), mbCosDeg(angle), scale);
+    s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigScaleX(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
 }
 
 void mbMtxScaleRotYDeg(Mtx mtx, float angle, HuVecF *scale)
 {
-    mbMtxRotTrigScaleY(mtx, mbSinDeg(angle), mbCosDeg(angle), scale);
+    s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigScaleY(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
 }
 
 void mbMtxScaleRotZDeg(Mtx mtx, float angle, HuVecF *scale)
 {
-    mbMtxRotTrigScaleZ(mtx, mbSinDeg(angle), mbCosDeg(angle), scale);
+    s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
+    float *table = cosTab;
+
+    mbMtxRotTrigScaleZ(mtx,
+        *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK)),
+        *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
 }
 
 void mbMtxRot(Mtx mtx, float x, float y, float z)
@@ -219,20 +476,52 @@ void mbMtxRot(Mtx mtx, float x, float y, float z)
     }
 }
 
+#ifdef __MWERKS__
+#pragma fp_contract off
+#endif
+
+/* Native double-precision sums, rounded once by the final single stores. */
+#ifdef __MWERKS__
+void mbMtxTransCat(register Mtx mtx, register float x, register float y, register float z)
+{
+    asm {
+        lfs fp4, 12(mtx)
+        lfs fp5, 28(mtx)
+        lfs fp6, 44(mtx)
+        fadd fp4, fp4, x
+        fadd fp5, fp5, y
+        fadd fp6, fp6, z
+        stfs fp4, 12(mtx)
+        stfs fp5, 28(mtx)
+        stfs fp6, 44(mtx)
+    }
+}
+#else
 void mbMtxTransCat(Mtx mtx, float x, float y, float z)
 {
-    mtx[0][3] += x;
-    mtx[1][3] += y;
-    mtx[2][3] += z;
+    double tx = mtx[0][3];
+    double ty = mtx[1][3];
+    double tz = mtx[2][3];
+
+    tx += x;
+    ty += y;
+    tz += z;
+    mtx[0][3] = (float)tx;
+    mtx[1][3] = (float)ty;
+    mtx[2][3] = (float)tz;
 }
+#endif
+
+#define MB_RAND_HIGH_BIT (1U << 31)
+#define MB_RAND_VALUE_MASK (MB_RAND_HIGH_BIT - 1U)
 
 u32 mbRandMod(u32 mod)
 {
     u32 value = frand();
 
-    value &= 0x7FFFFFFF;
+    value &= MB_RAND_VALUE_MASK;
     if (value % 2 != 0) {
-        value |= 0x80000000;
+        value |= MB_RAND_HIGH_BIT;
     }
     return ((u64)value * mod) >> 32;
 }
@@ -269,11 +558,12 @@ float mbAngleWrap(float angle)
 
 void mbAngleWrapV(HuVecF *angle)
 {
-    float *dest = (float *)angle;
     int i;
+    float *dest = (float *)angle;
 
-    for (i = 0; i < 3; dest++, i++) {
+    for (i = 0; i < 3; i++) {
         *dest = mbAngleWrap(*dest);
+        dest++;
     }
 }
 
@@ -302,8 +592,9 @@ BOOL mbAngleAdd(float *dest, float angle, float speed)
 BOOL mbAngleMoveTo(float *dest, float angle, float speed)
 {
     float wrapAngle = fmod(angle - *dest, 360);
+    float threshold = 1.0f;
 
-    if (fabs(wrapAngle) < 1.0) {
+    if (fabs(wrapAngle) < threshold) {
         *dest = angle;
         return TRUE;
     }
@@ -437,8 +728,11 @@ void mbPos2Dto3D(HuVecF *src, HuVecF *dst)
 void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst)
 {
     HU3D_CAMERA *cameraP;
-    float tanFov;
     float depth;
+    float halfFov;
+    float cosine;
+    float absoluteDepth;
+    float fovTan;
     Mtx lookAt;
     Mtx lookAtInv;
     s32 cameraNo;
@@ -449,8 +743,11 @@ void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst)
         }
     }
     cameraP = &Hu3DCamera[cameraNo];
-    tanFov = mbSinDeg(cameraP->fov * 0.5f) / mbCosDeg(cameraP->fov * 0.5f);
-    depth = tanFov * fabs(src->z);
+    halfFov = cameraP->fov * 0.5f;
+    cosine = mbCosDeg(halfFov);
+    absoluteDepth = MathAbsFloat(src->z);
+    fovTan = mbSinDeg(halfFov) / cosine;
+    depth = fovTan * absoluteDepth;
     dst->x = src->x * (HU_DISP_ASPECT * depth);
     dst->y = src->y * depth;
     dst->z = src->z;
@@ -462,7 +759,7 @@ void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst)
 void mbNormPosto2D(HuVecF *src, HuVecF *dst)
 {
     dst->x = HU_DISP_CENTERX * (1.0f + src->x);
-    dst->y = HU_DISP_HEIGHT * (src->y - 1.0f);
+    dst->y = -HU_DISP_CENTERY * (src->y - 1.0f);
     dst->z = src->z;
 }
 
@@ -581,13 +878,14 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     HuVecF centerView;
     ROMtx cullMtx;
     float fov;
+    float fovTan;
     float near;
     float aspect;
-    float fovTan;
     float cameraH;
     float aspectInv;
     s32 i;
     BOOL cullF;
+    BOOL verticalCullF;
 
     object->flags &= ~HSF_MATERIAL_DISPOFF;
     if (shadowModelDrawF == FALSE) {
@@ -604,9 +902,9 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     PSVECAdd(&object->mesh.mesh.min, &object->mesh.mesh.max, &center);
     PSVECScale(&center, &center, 0.5f);
     PSMTXMultVec(mtx, &center, &centerView);
-    cameraH = fabs(centerView.z * fovTan);
-    if (fabs(centerView.x) <= cameraH * aspect
-        && fabs(centerView.y) <= cameraH
+    cameraH = MathAbsFloat(centerView.z * fovTan);
+    if (MathAbsFloat(centerView.x) <= cameraH * aspect
+        && MathAbsFloat(centerView.y) <= cameraH
         && centerView.y < -near) {
         return;
     }
@@ -683,7 +981,7 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
         return;
     }
 
-    cullF = FALSE;
+    verticalCullF = FALSE;
     if (centerView.y >= 0.0f) {
         for (i = 0; i < 8; i++) {
             if (objectBBoxView[i].y < objectBBoxView[i].z) {
@@ -691,7 +989,7 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
             }
         }
         if (i >= 8) {
-            cullF = TRUE;
+            verticalCullF = TRUE;
         }
     } else {
         for (i = 0; i < 8; i++) {
@@ -700,27 +998,107 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
             }
         }
         if (i >= 8) {
-            cullF = TRUE;
+            verticalCullF = TRUE;
         }
     }
-    if (cullF) {
+    if (verticalCullF) {
         object->flags |= HSF_MATERIAL_DISPOFF;
     }
 }
 
 #pragma dont_inline on
+#ifdef __MWERKS__
+/* Native paired-single extrema kernel, with offsets derived from the HSF ABI. */
+enum {
+    BBOX_VERTEX = offsetof(HSF_OBJECT, mesh.vertex),
+    BBOX_DATA = offsetof(HSF_BUFFER, data),
+    BBOX_COUNT = offsetof(HSF_BUFFER, count),
+    BBOX_MAX_X = offsetof(HSF_OBJECT, mesh.mesh.max.x),
+    BBOX_MAX_Y = offsetof(HSF_OBJECT, mesh.mesh.max.y),
+    BBOX_MAX_Z = offsetof(HSF_OBJECT, mesh.mesh.max.z),
+    BBOX_MIN_X = offsetof(HSF_OBJECT, mesh.mesh.min.x),
+    BBOX_MIN_Y = offsetof(HSF_OBJECT, mesh.mesh.min.y),
+    BBOX_MIN_Z = offsetof(HSF_OBJECT, mesh.mesh.min.z)
+};
+static const float bboxMaxInitial = -1000000.0f;
+static const float bboxMinInitial = 1000000.0f;
+
+static asm void ObjectBBoxUpdate(register HSF_OBJECT *object)
+{
+    nofralloc
+    lwz r4, BBOX_VERTEX(object)
+    lwz r6, BBOX_DATA(r4)
+    lwz r0, BBOX_COUNT(r4)
+    lfs fp6, bboxMaxInitial
+    stfs fp6, BBOX_MAX_Y(object)
+    stfs fp6, BBOX_MAX_X(object)
+    lfs fp6, bboxMinInitial
+    stfs fp6, BBOX_MIN_Y(object)
+    stfs fp6, BBOX_MIN_X(object)
+    subi r6, r6, 4
+    mtctr r0
+    psq_l fp0, BBOX_MAX_X(object), 0, 0
+    psq_l fp2, BBOX_MIN_X(object), 0, 0
+    ps_mr fp1, fp0
+    ps_mr fp3, fp2
+vertex_loop:
+    psq_l fp4, 4(r6), 0, 0
+    psq_lu fp5, 12(r6), 1, 0
+    ps_cmpo0 cr0, fp0, fp4
+    bge max_x_unchanged
+    ps_cmpo1 cr0, fp0, fp4
+    bge max_x_only
+    ps_mr fp0, fp4
+    b max_xy_done
+max_x_only:
+    ps_merge01 fp0, fp4, fp0
+    b max_xy_done
+max_x_unchanged:
+    ps_cmpo1 cr0, fp0, fp4
+    bge max_xy_done
+    ps_merge01 fp0, fp0, fp4
+max_xy_done:
+    ps_cmpo0 cr0, fp1, fp5
+    bge max_z_done
+    ps_mr fp1, fp5
+max_z_done:
+    ps_cmpo0 cr0, fp2, fp4
+    ble min_x_unchanged
+    ps_cmpo1 cr0, fp2, fp4
+    ble min_x_only
+    ps_mr fp2, fp4
+    b min_xy_done
+min_x_only:
+    ps_merge01 fp2, fp4, fp2
+    b min_xy_done
+min_x_unchanged:
+    ps_cmpo1 cr0, fp2, fp4
+    ble min_xy_done
+    ps_merge01 fp2, fp2, fp4
+min_xy_done:
+    ps_cmpo0 cr0, fp3, fp5
+    ble min_z_done
+    ps_mr fp3, fp5
+min_z_done:
+    bdnz vertex_loop
+    psq_st fp0, BBOX_MAX_X(object), 0, 0
+    psq_st fp1, BBOX_MAX_Z(object), 1, 0
+    psq_st fp2, BBOX_MIN_X(object), 0, 0
+    psq_st fp3, BBOX_MIN_Z(object), 1, 0
+    blr
+}
+#else
 static void ObjectBBoxUpdate(HSF_OBJECT *object)
 {
     HuVecF *vertex = object->mesh.vertex->data;
+    s32 count = object->mesh.vertex->count;
     s32 i;
 
-    object->mesh.mesh.max.x = -1000000.0f;
-    object->mesh.mesh.max.y = -1000000.0f;
-    object->mesh.mesh.max.z = -1000000.0f;
-    object->mesh.mesh.min.x = 1000000.0f;
-    object->mesh.mesh.min.y = 1000000.0f;
-    object->mesh.mesh.min.z = 1000000.0f;
-    for (i = 0; i < object->mesh.vertex->count; i++, vertex++) {
+    object->mesh.mesh.max.x = object->mesh.mesh.max.y = -1000000.0f;
+    object->mesh.mesh.min.x = object->mesh.mesh.min.y = 1000000.0f;
+    object->mesh.mesh.max.z = object->mesh.mesh.max.x;
+    object->mesh.mesh.min.z = object->mesh.mesh.min.x;
+    for (i = 0; i < count; i++, vertex++) {
         if (object->mesh.mesh.max.x < vertex->x) {
             object->mesh.mesh.max.x = vertex->x;
         }
@@ -741,7 +1119,36 @@ static void ObjectBBoxUpdate(HSF_OBJECT *object)
         }
     }
 }
+#endif
 #pragma dont_inline reset
+
+#ifdef __MWERKS__
+#pragma fp_contract on
+#endif
+/* Set only the translation column, after snapshotting the three inputs. */
+#ifdef __MWERKS__
+static inline void MathMtxTranslationSet(register Mtx mtx, register const HuVecF *pos)
+{
+    asm {
+        lfs fp4, 0(pos)
+        lfs fp5, 4(pos)
+        lfs fp6, 8(pos)
+        stfs fp4, 12(mtx)
+        stfs fp5, 28(mtx)
+        stfs fp6, 44(mtx)
+    }
+}
+#else
+static inline void MathMtxTranslationSet(Mtx mtx, const HuVecF *pos)
+{
+    float x = pos->x;
+    float y = pos->y;
+    float z = pos->z;
+    mtx[0][3] = x;
+    mtx[1][3] = y;
+    mtx[2][3] = z;
+}
+#endif
 
 static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
     Mtx *prevMtx, Mtx *currMtx)
@@ -751,45 +1158,52 @@ static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
 
     if (transform->rot.x != 0.0f) {
         rotF = TRUE;
-        mbMtxRotTrigScaleX(objectMtx, mbSinDeg(transform->rot.x),
-            mbCosDeg(transform->rot.x), &transform->scale);
+        mbMtxScaleRotXDeg(objectMtx, &transform->scale, transform->rot.x);
     }
     if (transform->rot.y != 0.0f) {
+        s32 offset = (s32)(transform->rot.y * MB_TRIG_DEG_SCALE);
+        float *table = cosTab;
+        float sine = *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK));
+        float cosine = *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK));
+
         if (rotF == FALSE) {
             rotF = TRUE;
-            mbMtxRotTrigScaleY(objectMtx, mbSinDeg(transform->rot.y),
-                mbCosDeg(transform->rot.y), &transform->scale);
+            mbMtxRotTrigScaleY(objectMtx, sine, cosine, &transform->scale);
         } else {
-            mbMtxRotTrigY(objectMtx, mbSinDeg(transform->rot.y),
-                mbCosDeg(transform->rot.y));
+            mbMtxRotTrigY(objectMtx, sine, cosine);
         }
     }
     if (transform->rot.z != 0.0f) {
+        s32 offset = (s32)(transform->rot.z * MB_TRIG_DEG_SCALE);
+        float *table = cosTab;
+        float sine = *(float *)((char *)table + ((offset - 2046) & MB_TRIG_BYTE_MASK));
+        float cosine = *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK));
+
         if (rotF == FALSE) {
             rotF = TRUE;
-            mbMtxRotTrigScaleZ(objectMtx, mbSinDeg(transform->rot.z),
-                mbCosDeg(transform->rot.z), &transform->scale);
+            mbMtxRotTrigScaleZ(objectMtx, sine, cosine, &transform->scale);
         } else {
-            mbMtxRotTrigZ(objectMtx, mbSinDeg(transform->rot.z),
-                mbCosDeg(transform->rot.z));
+            mbMtxRotTrigZ(objectMtx, sine, cosine);
         }
     }
     if (rotF == FALSE) {
         PSMTXScale(objectMtx, transform->scale.x, transform->scale.y,
             transform->scale.z);
     }
-    objectMtx[0][3] = transform->pos.x;
-    objectMtx[1][3] = transform->pos.y;
-    objectMtx[2][3] = transform->pos.z;
+    MathMtxTranslationSet(objectMtx, &transform->pos);
     PSMTXConcat(*prevMtx, objectMtx, *currMtx);
     ObjectCullUpdate(object, *currMtx);
 }
 
+#ifdef __MWERKS__
+#pragma fp_contract off
+#endif
+
 void mbObjCullInit(MBMODELID modelId)
 {
     HSF_DATA *hsf;
-    HSF_OBJECT *object;
     s16 i;
+    HSF_OBJECT *object;
     BOOL cullF = FALSE;
 
     hsf = Hu3DData[mbObjModelIDGet(modelId)].hsf;

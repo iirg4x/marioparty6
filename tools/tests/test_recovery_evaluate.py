@@ -49,6 +49,148 @@ class RecoveryEvaluateTests(unittest.TestCase):
                                   baseline_documents={"strict": before, "data": before},
                                   after_documents={"strict": after, "data": after})
 
+    def _structural_case(self) -> tuple[dict, dict, dict]:
+        before = _report(focus_exact=False, sibling_exact=True)
+        after = copy.deepcopy(before)
+        target_text = ["stwu r1, -0x40(r1)", "li r14, 7", "stw r14, 0x10(r1)",
+                       "lwz r15, 0x10(r1)", "stw r15, 0x14(r1)", "lwz r14, 0x14(r1)",
+                       "addi r1, r1, 0x40", "blr"]
+        new_text = ["stwu r1, -0x40(r1)", "li r15, 7", "stw r15, 0x14(r1)",
+                    "lwz r14, 0x14(r1)", "stw r14, 0x10(r1)", "lwz r15, 0x10(r1)",
+                    "addi r1, r1, 0x40", "blr"]
+        for document, is_new in ((before, False), (after, True)):
+            target = [_instruction(256 + 4 * i, text) for i, text in enumerate(target_text)]
+            candidate = [_instruction(512 + 4 * (i if is_new or i == 0 else i - 1), text)
+                         for i, text in enumerate(new_text if is_new else target_text)]
+            if is_new:
+                for i in range(1, 6):
+                    for row in (target[i], candidate[i]):
+                        row["diff_kind"] = "DIFF_ARG_MISMATCH"
+                        row["arg_diff"] = [{"diff_index": 0}]
+            else:
+                target[1]["diff_kind"] = "DIFF_DELETE"
+                candidate[1] = {"diff_kind": "DIFF_DELETE"}
+            for side, rows, size in (("left", target, 32), ("right", candidate, 32 if is_new else 28)):
+                document[side]["symbols"][1].update(instructions=rows, size=str(size))
+            document["left"]["symbols"][1]["match_percent"] = 90 if is_new else 70
+        comparison = self._comparison()
+        comparison["allocated_nontext_relocations_changed"] = False
+        comparison["functions"]["ProtectedSibling"]["raw_equal_base"] = True
+        comparison["functions"]["FocusFunction"].update(
+            target_size=32, base_size=28, candidate_size=32, candidate_normalized_exact=True,
+            ordered_normalized_relocations_equal=True, closed_physical_row_loss_count=0,
+            raw_exact_target=False)
+        return before, after, comparison
+
+    def test_structural_closure_retains_more_coordinate_rows_not_exactness(self) -> None:
+        before, after, comparison = self._structural_case()
+        result = self._quality_classify(before, after, comparison)
+        self.assertEqual(result["status"], "improved")
+        self.assertTrue(result["retention_ready"])
+        self.assertFalse(result["owner_exact"])
+        self.assertEqual(result["regressions"], [])
+        proof = result["qualified_structural_closures"][0]["channels"][0]
+        self.assertEqual(proof["closed_missing_instructions"], 1)
+        self.assertFalse(proof["authority_advanced"])
+        self.assertGreater(result["metric_changes"][0]["after"]["diff_rows"],
+                           result["metric_changes"][0]["before"]["diff_rows"])
+
+    def test_structural_closure_requires_all_independent_protections(self) -> None:
+        for gate in ("sibling_bytes", "sibling_exact", "nontext", "nontext_relocation", "physical",
+                     "canonical", "closed_relocation", "ordered_calls", "size", "census", "score"):
+            with self.subTest(gate=gate):
+                before, after, comparison = self._structural_case()
+                row = comparison["functions"]["FocusFunction"]
+                if gate == "sibling_bytes":
+                    comparison["functions"]["ProtectedSibling"]["raw_equal_base"] = False
+                elif gate == "sibling_exact":
+                    after["left"]["symbols"][2]["instructions"][0]["diff_kind"] = "DIFF_REPLACE"
+                elif gate == "nontext":
+                    comparison["allocated_nontext_changed"] = True
+                elif gate == "nontext_relocation":
+                    comparison["allocated_nontext_relocations_changed"] = True
+                elif gate == "physical":
+                    row["candidate_physical_exact"] = False
+                elif gate == "canonical":
+                    row["normalized_diff_after"] = 1
+                elif gate == "closed_relocation":
+                    row["closed_normalized_row_loss_count"] = 1
+                elif gate == "ordered_calls":
+                    row["ordered_normalized_relocations_equal"] = False
+                elif gate == "size":
+                    row["candidate_size"] = 36
+                elif gate == "census":
+                    comparison["function_census_equal"] = False
+                elif gate == "score":
+                    after["left"]["symbols"][1]["match_percent"] = 69
+                self.assertFalse(self._quality_classify(before, after, comparison)["retention_ready"])
+
+    def test_structural_closure_rejects_semantic_or_unproved_coordinate_changes(self) -> None:
+        for gate in ("opcode", "immediate", "object_offset", "stack_alias", "stack_census", "frame",
+                     "volatile_register", "insert", "gap", "target_change", "address_taken", "call", "branch"):
+            with self.subTest(gate=gate):
+                before, after, comparison = self._structural_case()
+                target, candidate = evaluate._diagnostic_rows(after, "FocusFunction")
+                if gate == "opcode":
+                    candidate[1]["instruction"]["formatted"] = "lis r15, 7"
+                elif gate == "immediate":
+                    candidate[1]["instruction"]["formatted"] = "li r15, 8"
+                elif gate == "object_offset":
+                    target[2]["instruction"]["formatted"] = "stw r14, 0x10(r3)"
+                    evaluate._diagnostic_rows(before, "FocusFunction")[0][2]["instruction"]["formatted"] = "stw r14, 0x10(r3)"
+                    candidate[2]["instruction"]["formatted"] = "stw r15, 0x14(r3)"
+                elif gate == "stack_alias":
+                    candidate[3]["instruction"]["formatted"] = "lwz r14, 0x10(r1)"
+                elif gate == "stack_census":
+                    for r in candidate:
+                        r["instruction"]["formatted"] = r["instruction"]["formatted"].replace("0x14(r1)", "0x18(r1)")
+                elif gate == "frame":
+                    candidate[0]["instruction"]["formatted"] = "stwu r1, -0x50(r1)"
+                elif gate == "volatile_register":
+                    for document in (before, after):
+                        for rows in evaluate._diagnostic_rows(document, "FocusFunction"):
+                            for r in rows:
+                                if r.get("instruction"):
+                                    r["instruction"]["formatted"] = r["instruction"]["formatted"].replace("r14", "r3")
+                elif gate == "insert":
+                    after["left"]["symbols"][1]["instructions"].append({"diff_kind": "DIFF_INSERT"})
+                    after["right"]["symbols"][1]["instructions"].append(_instruction(544, "nop"))
+                elif gate == "gap":
+                    candidate[1].clear()
+                    candidate[1]["diff_kind"] = "DIFF_DELETE"
+                elif gate == "target_change":
+                    target[1]["instruction"]["formatted"] = "li r14, 9"
+                elif gate == "address_taken":
+                    for document in (before, after):
+                        for rows in evaluate._diagnostic_rows(document, "FocusFunction"):
+                            rows[-1]["instruction"]["formatted"] = "addi r11, r1, 0x10"
+                elif gate == "call":
+                    for document in (before, after):
+                        for rows in evaluate._diagnostic_rows(document, "FocusFunction"):
+                            rows[-1]["instruction"].update(formatted="bl pool", relocation={
+                                "target_symbol": 3, "type": 10, "type_name": "R_PPC_REL24"})
+                    candidate[-1]["instruction"]["formatted"] = "bl ProtectedSibling"
+                    candidate[-1]["instruction"]["relocation"]["target_symbol"] = 2
+                elif gate == "branch":
+                    for document in (before, after):
+                        for rows in evaluate._diagnostic_rows(document, "FocusFunction"):
+                            origin = int(rows[0]["instruction"]["address"])
+                            rows[-1]["instruction"].update(formatted=f"b {origin:#x}", branch_dest=str(origin))
+                    candidate[-1]["instruction"].update(formatted="b 0x208", branch_dest="520")
+                result = self._quality_classify(before, after, comparison)
+                self.assertFalse(result["retention_ready"])
+                self.assertEqual(result["qualified_structural_closures"], [])
+
+    def test_structural_closure_requires_both_full_reports_not_percent_or_cached_summary(self) -> None:
+        before, after, comparison = self._structural_case()
+        args = (frontier.summarize(before, "strict"), frontier.summarize(before, "data"),
+                frontier.summarize(after, "strict"), frontier.summarize(after, "data"),
+                comparison, ["FocusFunction"])
+        for documents in ({}, {"strict": after}):
+            result = evaluate._classify(*args, baseline_documents={"strict": before, "data": before},
+                                        after_documents=documents)
+            self.assertEqual(result["status"], "rejected")
+
     def test_same_row_opcode_and_operand_closures_are_improvements(self) -> None:
         for opcode in (False, True):
             with self.subTest(opcode=opcode):
