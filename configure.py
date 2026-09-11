@@ -1075,7 +1075,7 @@ config.libs = [
             Object(Matching, "board/last5.c"),
             Object(Matching, "board/telop.c"),
             Object(Matching, "board/wipe.c"),
-            Object(NonMatching, "board/single.c"),
+            Object(Matching, "board/single.c"),
         ],
     },
     {
