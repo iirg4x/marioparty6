@@ -376,13 +376,14 @@ BOOL GWSinglePrizeSaveFlagGet(GW_SINGLE_PRIZE_FLAG flag)
     return GwCommon.singlePrizeFlag[flag >> 5] & (1 << (flag & 0x1F));
 }
 
-void GWSingleMgFlagSet(int mgNo)
+int GWSingleMgFlagSet(int mgNo)
 {
     mgNo -= GW_MGNO_BASE;
     if(mgNo >= 96 || mgNo < 0) {
-        return;
+        return mgNo;
     }
     GwSingleMgFlag[mgNo >> 5] |= 1 << (mgNo & 0x1F);
+    return mgNo;
 }
 
 BOOL GWSingleMgFlagGet(int mgNo)

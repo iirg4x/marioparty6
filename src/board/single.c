@@ -57,6 +57,9 @@ extern s32 HuMCInit(s16 mountResult);
 extern s16 HuMCContextCreate(char *path);
 extern void mbSingleSaveFlush(int value);
 extern int mbCoinAddExec(int playerNo, int coinNum);
+extern void mbWipeFadeOut(void);
+extern void mbWipeFadeIn(void);
+extern void mbWipeWhiteFadeInTime(int time);
 extern BOOL mbWipeSpecialStatGet(void);
 extern void mbWipeSpecialCreate(int state, int type, int time);
 extern void mbWipeSpecialFadeInCreate(int type, int time);
@@ -2161,7 +2164,6 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     u8 unlockedMg[128];
 
     if (!mbWipeSpecialStatGet()) {
-        void mbWipeFadeOut(void);
         mbWipeFadeOut();
     }
     mbStatusDispForceSet(playerNo, TRUE);
@@ -2199,10 +2201,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_GUIDE_48);
         mbObjMotionSet(guideModel, 6, HU3D_MOTATTR_LOOP);
-        {
-            void mbWipeFadeIn(void);
-            mbWipeFadeIn();
-        }
+        mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 14), 13);
         mbWinWait(winId);
@@ -2210,8 +2209,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXPlay(MSM_SE_GUIDE_48);
         mbObjMotionShiftSet(guideModel, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        unlocked = SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE);
-        if (!unlocked) {
+        if (!(unlocked = SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE))) {
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 15), 13);
             mbWinWait(winId);
         } else {
@@ -2288,10 +2286,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_GUIDE_47);
         mbObjMotionSet(guideModel, 3, HU3D_MOTATTR_LOOP);
-        {
-            void mbWipeFadeIn(void);
-            mbWipeFadeIn();
-        }
+        mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 16), 13);
         mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
@@ -2459,7 +2454,6 @@ static void ev_SingleKoopaMgEnd(int playerNo)
             }
             mbWipeWhiteFadeOutTime(1);
             {
-                void mbWipeWhiteFadeInTime(int time);
                 mbAudFXPlay(MSM_SE_BRD00_59);
                 mbWipeWhiteFadeInTime(90);
             }
@@ -2485,10 +2479,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_GUIDE_47);
         mbObjMotionSet(guideModel, 3, HU3D_MOTATTR_LOOP);
-        {
-            void mbWipeFadeIn(void);
-            mbWipeFadeIn();
-        }
+        mbWipeFadeIn();
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 20), 13);
         mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
