@@ -14,8 +14,9 @@
 #define MB_PARTICLE_ATTR_UPAUSE (1 << 3)
 #define MB_PARTICLE_ATTR_3D (1 << 4)
 
-#define mbParticleRandF() (0.000015258789f * (frand() & 0xFFFF))
-#define mbParticleSRandF() ((0.000030517578f * (frand() & 0xFFFF)) - 1.0f)
+#define MB_PARTICLE_RANDOM_MASK 65535
+#define mbParticleRandF() (0.000015258789f * (frand() & MB_PARTICLE_RANDOM_MASK))
+#define mbParticleSRandF() ((0.000030517578f * (frand() & MB_PARTICLE_RANDOM_MASK)) - 1.0f)
 
 typedef struct MbParticle_s MBPARTICLE;
 
@@ -140,8 +141,8 @@ int mbParticleUnkTotalGet(ANIMDATA *anim, int bankNo);
 
 HU3D_MODELID mbParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *param);
 void mbParManKill(HU3D_MODELID modelId);
-void mbParticleBlendModeSet(HU3D_MODELID modelId, u8 blendMode);
-void mbParManPosSet(HU3D_MODELID modelId, float x, float y, float z);
+void mbParticleBlendModeSet(HU3D_MODELID modelId, int blendMode);
+void mbParManPosSet(int modelId, float x, float y, float z);
 void mbParManVecSet(HU3D_MODELID modelId, float x, float y, float z);
 void mbParManRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ);
 void mbParManAttrSet(HU3D_MODELID modelId, s32 attr);

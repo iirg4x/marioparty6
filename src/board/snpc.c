@@ -3592,7 +3592,7 @@ static void SNpcStarObjExec(OMOBJ *obj)
         0.0f);
     mbObjScaleSet(obj->mdlId[0], obj->scale.x, obj->scale.y,
         obj->scale.z);
-    mbParManPosSet((int)obj->mdlId[1], obj->trans.x,
+    mbParManPosSet((HU3D_MODELID)(int)obj->mdlId[1], obj->trans.x,
         obj->trans.y + obj->rot.z, obj->trans.z);
 }
 
