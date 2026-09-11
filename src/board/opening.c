@@ -1,3 +1,4 @@
+#include "dolphin/math.h"
 #include "game/board/opening.h"
 #include "game/board/audio.h"
 #include "game/board/camera.h"
@@ -5,7 +6,6 @@
 #include "game/board/comchoice.h"
 #include "game/board/effect.h"
 #include "game/board/main.h"
-#include "game/board/masu.h"
 #include "game/board/object.h"
 #include "game/board/player.h"
 #include "game/board/status.h"
@@ -19,11 +19,16 @@
 #include "game/pad.h"
 #include "game/process.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
+#include "msm_se.h"
 
 #include "dolphin/mtx.h"
 #include "dolphin/os.h"
 #include "dolphin/pad.h"
 
+extern void mbMasuPosGet(s16 id, HuVecF *pos);
+extern s16 mbMasuFind_AttrIdGet(s16 id, u16 attr);
+extern s16 mbMasuFind_TypeListGet2(s16 id, s16 type, BOOL hookF, BOOL dispF, s16 *list);
 extern float mbHermiteCalcSlope(float a, float b, float c, float d, float t);
 extern void mbHermiteCalcV(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d,
     HuVecF *dst, float t);
@@ -36,7 +41,7 @@ extern void mbDirClose(void);
 extern OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF,
     BOOL altMtxF, BOOL layerF);
 extern void mbGuideKill(OMOBJ *obj);
-extern int mbGuideModelGet(OMOBJ *obj);
+extern MBMODELID mbGuideModelGet(OMOBJ *obj);
 extern void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo);
 extern void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF);
 extern void mbPlayerColSnapSet(BOOL enable);
@@ -50,9 +55,12 @@ extern void mbWipeFadeIn(void);
 extern void mbWipeFadeOut(void);
 extern void mbWipeWait(void);
 
+#define OPENING_PROCESS_PRIORITY 8204
+#define OPENING_PROCESS_STACK_SIZE 16384
+#define OPENING_MASU_FLAG_START (1 << 15)
+
 typedef struct OpeningCoinWork_s {
     s16 coinId;
-    u16 pad02;
     HuVecF pos;
     HuVecF rot;
     HuVecF vel;
@@ -67,17 +75,17 @@ typedef struct SingleGuideWork_s {
 } SINGLEGUIDEWORK;
 
 static int guideMotFileTbl[] = {
-    0x00110001, 0x00110002, 0x00110003, 0x00110004,
-    0x00110005, 0x00110006, 0x00110007, 0x00110008,
-    0x00110009, 0x0011000A, 0x0011000B, 0x0011000C,
-    0x0011000D, 0x0011000E, 0x0011000F, 0x00110010,
-    0x00110011, 0x00110012, 0x00110013, 0x00110014,
-    0x00110015, 0x00110016, 0x00110017, -1
+    DATANUM(DATA_capsulechar4, 1), DATANUM(DATA_capsulechar4, 2), DATANUM(DATA_capsulechar4, 3), DATANUM(DATA_capsulechar4, 4),
+    DATANUM(DATA_capsulechar4, 5), DATANUM(DATA_capsulechar4, 6), DATANUM(DATA_capsulechar4, 7), DATANUM(DATA_capsulechar4, 8),
+    DATANUM(DATA_capsulechar4, 9), DATANUM(DATA_capsulechar4, 10), DATANUM(DATA_capsulechar4, 11), DATANUM(DATA_capsulechar4, 12),
+    DATANUM(DATA_capsulechar4, 13), DATANUM(DATA_capsulechar4, 14), DATANUM(DATA_capsulechar4, 15), DATANUM(DATA_capsulechar4, 16),
+    DATANUM(DATA_capsulechar4, 17), DATANUM(DATA_capsulechar4, 18), DATANUM(DATA_capsulechar4, 19), DATANUM(DATA_capsulechar4, 20),
+    DATANUM(DATA_capsulechar4, 21), DATANUM(DATA_capsulechar4, 22), DATANUM(DATA_capsulechar4, 23), -1
 };
 
 static u32 welcomeMesTbl[] = {
-    0x002C0000, 0x002C0001, 0x002C0002,
-    0x002C0003, 0x002C0004, 0x002C0005
+    MESSNUM(MESS_BOARD_OPENING, 0), MESSNUM(MESS_BOARD_OPENING, 1), MESSNUM(MESS_BOARD_OPENING, 2),
+    MESSNUM(MESS_BOARD_OPENING, 3), MESSNUM(MESS_BOARD_OPENING, 4), MESSNUM(MESS_BOARD_OPENING, 5)
 };
 
 static HuVecF lbl_80248620[] = {
@@ -96,8 +104,12 @@ static HuVecF singleGuidePosTbl[] = {
     { 0.0f, 0.0f, 0.0f },
     { -28.0f, 0.0f, 0.0f },
     { 0.0f, 0.0f, 500.0f },
-    { 0.0f, 250.0f, 0.0f },
-    { -20.0f, 0.0f, 0.0f },
+    { 0.0f, 250.0f, 0.0f }
+};
+
+static HuVecF singleGuideCameraRot = { -20.0f, 0.0f, 0.0f };
+
+static HuVecF singleGuidePathOfsTbl[] = {
     { 800.0f, -100.0f, 2000.0f },
     { -700.0f, -100.0f, 0.0f },
     { -700.0f, 600.0f, 0.0f },
@@ -106,13 +118,13 @@ static HuVecF singleGuidePosTbl[] = {
 };
 
 static int singleGuideMotFileTbl[] = {
-    0x00110001, 0x00110004, 0x00110005, 0x00110006,
-    0x00110007, 0x0011000A, 0x0011000C, 0x0011000F,
-    0x00110011, 0x00110013, 0x00110014, -1
+    DATANUM(DATA_capsulechar4, 1), DATANUM(DATA_capsulechar4, 4), DATANUM(DATA_capsulechar4, 5), DATANUM(DATA_capsulechar4, 6),
+    DATANUM(DATA_capsulechar4, 7), DATANUM(DATA_capsulechar4, 10), DATANUM(DATA_capsulechar4, 12), DATANUM(DATA_capsulechar4, 15),
+    DATANUM(DATA_capsulechar4, 17), DATANUM(DATA_capsulechar4, 19), DATANUM(DATA_capsulechar4, 20), -1
 };
 
 static u32 singleWelcomeMesTbl[] = {
-    0x002C0006, 0x002C0007, 0x002C0008
+    MESSNUM(MESS_BOARD_OPENING, 6), MESSNUM(MESS_BOARD_OPENING, 7), MESSNUM(MESS_BOARD_OPENING, 8)
 };
 
 static HuVecF openingRot;
@@ -122,21 +134,21 @@ static OPENINGCOINWORK openingCoinWork[GW_PLAYER_MAX * 10];
 static HuVecF guideCurPos;
 static HuVecF openingCameraRestoreRot = { -20.0f, 0.0f, 0.0f };
 static HuVecF openingCameraRestorePos = { 0.0f, 250.0f, 0.0f };
-static HUPROCESS *openingProc;
-static HUPROCESS *openingSingleProc;
 static MBMODELID openingGuideObjId = -1;
-static void (*openingStarInstHook)(void);
-static void (*openingInstHook)(void);
-static int singleFXNo;
-static HU3D_MODELID singleEff1MdlId;
-static s16 singleWinId;
-static float *singleOpeningZoomTbl;
-static HuVecF *singleOpeningPosTbl;
-static HuVecF *singleOpeningPosTbl2;
-static OMOBJ *singleGuideObj;
-static SINGLEGUIDEWORK singleGuideWork;
-static BOOL singleGuideEffOnF;
 static float openingZoom;
+static BOOL singleGuideEffOnF;
+static SINGLEGUIDEWORK singleGuideWork;
+static OMOBJ *singleGuideObj;
+static HuVecF *singleOpeningPosTbl2;
+static HuVecF *singleOpeningPosTbl;
+static float *singleOpeningZoomTbl;
+static s16 singleWinId;
+static HU3D_MODELID singleEff1MdlId;
+static int singleFXNo;
+static void (*openingInstHook)(void);
+static void (*openingStarInstHook)(void);
+static HUPROCESS *openingSingleProc;
+static HUPROCESS *openingProc;
 
 static void ev_OpeningParty(void);
 static u16 OpeningPadBtn(int playerNo);
@@ -159,13 +171,112 @@ static float OpeningCurveEval(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float 
     return VECMag(&vec);
 }
 
-typedef float (*OPENINGCURVEEVALFUNC)(HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t);
+typedef float (*OPENINGCURVEEVALFUNC)();
 
-static inline float OpeningCurveEvalCall(HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t, OPENINGCURVEEVALFUNC func)
+static float OpeningCurveIntegrate(OPENINGCURVEEVALFUNC eval,
+    HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
 {
-    return func(a, b, c, d, t);
+    int i;
+    int div;
+    float sampleLength;
+    float baseT;
+    float sampleT;
+    float deltaT;
+
+    div = 10;
+    baseT = 0.0f;
+    deltaT = (t - baseT) / div;
+    sampleT = baseT;
+    sampleLength = 0.0f;
+    for (i = 0; i < div - 1; i++) {
+        sampleT += deltaT;
+        sampleLength += eval(a, b, c, d, sampleT);
+    }
+    sampleLength = deltaT * 0.5
+        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t)
+            + (2.0 * sampleLength));
+    return sampleLength;
+}
+
+static float OpeningCurveNewton(OPENINGCURVEEVALFUNC eval, HuVecF *a,
+    HuVecF *b, HuVecF *c, HuVecF *d, float t, float distance, int maxStep)
+{
+    int step;
+    float sampleLength;
+    float pathLength;
+    float oldT;
+    float minLength;
+
+    minLength = 0.1f;
+    step = 0;
+    do {
+        pathLength = OpeningCurveIntegrate(eval, a, b, c, d, t) - distance;
+        if (fabs(sampleLength = eval(a, b, c, d, t)) < minLength) {
+            sampleLength = 1.0f;
+        }
+        oldT = t;
+        t -= pathLength / sampleLength;
+        step++;
+    } while (t != oldT && step < maxStep);
+    return t;
+}
+
+static float OpeningCurveLength(OPENINGCURVEEVALFUNC eval, HuVecF *a, HuVecF *b, HuVecF *c,
+    HuVecF *d, float t)
+{
+    int div = 10;
+    float baseT = 0.0f;
+    float pathLength = 0.0f;
+    float deltaT = t - baseT;
+    float edgeLength = deltaT
+        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t))
+        * 0.5f;
+    float sampleLength;
+    int j;
+    int i;
+
+    for (i = 1; i <= div; i *= 2) {
+        sampleLength = 0.0f;
+        for (j = 1; j <= i; j++) {
+            sampleLength += eval(a, b, c, d,
+                baseT + deltaT * (j - 0.5f));
+        }
+        sampleLength *= deltaT;
+        pathLength = (1.0f / 3.0f)
+            * (edgeLength + (2.0f * sampleLength));
+        deltaT *= 0.5f;
+        edgeLength = (edgeLength + sampleLength) * 0.5f;
+    }
+    return pathLength;
+}
+
+static inline void OpeningCurveControlGet(HuVecF *path, int point, int count,
+    HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d)
+{
+    HuVecF tangentIn;
+    HuVecF tangentOut;
+    HuVecF *segment;
+
+    if (point > count - 1) {
+        point = count - 1;
+    }
+    segment = &path[point];
+    if (point == 0) {
+        VECSubtract(&segment[1], &segment[0], &tangentIn);
+    } else {
+        VECSubtract(&segment[1], &segment[-1], &tangentIn);
+    }
+    if (point == count - 2) {
+        VECSubtract(&segment[1], &segment[0], &tangentOut);
+    } else {
+        VECSubtract(&segment[2], &segment[0], &tangentOut);
+    }
+    VECScale(&tangentIn, &tangentIn, 0.5f);
+    VECScale(&tangentOut, &tangentOut, 0.5f);
+    *a = segment[0];
+    *b = segment[1];
+    *c = tangentIn;
+    *d = tangentOut;
 }
 
 void mbev_Opening(void)
@@ -182,7 +293,7 @@ void mbev_Opening(void)
 void mbev_OpeningParty(void)
 {
     if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        openingProc = HuPrcChildCreate(ev_OpeningParty, 0x200C, 0x4000, 0, mbMainProc);
+        openingProc = HuPrcChildCreate(ev_OpeningParty, OPENING_PROCESS_PRIORITY, OPENING_PROCESS_STACK_SIZE, 0, mbMainProc);
     }
     HuPrcDestructorSet2(openingProc, ev_OpeningPartyKill);
     while (openingProc != NULL) {
@@ -192,19 +303,6 @@ void mbev_OpeningParty(void)
 
 static void ev_OpeningParty(void)
 {
-    extern const float lbl_802C39D8;
-    extern const float lbl_802C3A0C;
-    extern const float lbl_802C3A10;
-    extern const float lbl_802C3A14;
-    extern const float lbl_802C3A18;
-    extern const float lbl_802C3A1C;
-    extern const float lbl_802C3A20;
-    extern const float lbl_802C3A24;
-    extern const float lbl_802C3A28;
-    extern const float lbl_802C3A48;
-    extern const double lbl_802C3A30;
-    extern const double lbl_802C3A38;
-    extern const double lbl_802C3A40;
     int orderTbl[10];
     HuVecF playerPos;
     HuVecF cameraOfs = { 0.0f, 250.0f, 0.0f };
@@ -218,7 +316,7 @@ static void ev_OpeningParty(void)
     s16 playerRotAngle;
     s16 masuId;
     int manPlayerNo;
-    float cameraZoom = lbl_802C3A0C;
+    float cameraZoom = 20000.0f;
     int comNum;
     int order1;
     int order2;
@@ -227,10 +325,10 @@ static void ev_OpeningParty(void)
     GW_PLAYER *playerP;
     MBPLAYERWORK *playerWorkP;
 
-    mbCameraNearFarSet(lbl_802C3A10, lbl_802C3A14);
-    HuDataDirRead(0x00110000);
-    openingGuideObjId = mbObjCreate(0x00110000, guideMotFileTbl, FALSE);
-    HuDataDirClose(0x00110000);
+    mbCameraNearFarSet(10.0f, 30000.0f);
+    HuDataDirRead(DATA_capsulechar4);
+    openingGuideObjId = mbObjCreate(DATA_capsulechar4, guideMotFileTbl, FALSE);
+    HuDataDirClose(DATA_capsulechar4);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbObjDispSet(mbPlayerObjIDGet(i), FALSE);
@@ -253,12 +351,12 @@ static void ev_OpeningParty(void)
     mbCameraRotSetV(&openingRot);
     mbCameraCenterSetV(&openingPos);
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     mbMasuPosGet(masuId, &masuPos);
     guidePos = masuPos;
-    guidePos.z -= lbl_802C3A18;
+    guidePos.z -= 200.0f;
     mbObjPosSetV(openingGuideObjId, &guidePos);
-    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
 
     mbWipeFadeIn();
@@ -271,9 +369,9 @@ static void ev_OpeningParty(void)
     HuPrcSleep(72);
 
     cameraPos = masuPos;
-    cameraPos.y -= lbl_802C3A20;
+    cameraPos.y -= 50.0f;
     mbCameraMovePos(&cameraPos, &cameraRot, &cameraOfs,
-        lbl_802C3A24, lbl_802C3A28,
+        1800.0f, -1.0f,
         180);
     mbCameraMoveWait();
 
@@ -284,16 +382,16 @@ static void ev_OpeningParty(void)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerPosGet(i, &playerPos);
         VECSubtract(&guidePos, &playerPos, &playerRotDir);
-        playerRotAngle = lbl_802C3A30
-            - (lbl_802C3A38
-                * (atan2(playerRotDir.z, playerRotDir.x) / lbl_802C3A40));
+        playerRotAngle = 90.0
+            - (180.0
+                * (atan2(playerRotDir.z, playerRotDir.x) / M_PI));
         mbPlayerRotateStart(i, playerRotAngle, 30);
     }
     while (!mbPlayerRotateCheckAll()) {
         HuPrcVSleep();
     }
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
     {
@@ -304,7 +402,7 @@ static void ev_OpeningParty(void)
     mbWinTopWait();
 
     mbAudGuidePlay(952);
-    mbWinCreateChoice(2, 0x002C0009, 6, 0);
+    mbWinCreateChoice(2, MESSNUM(MESS_BOARD_OPENING, 9), 6, 0);
     if (allComF) {
         GwSystem.turnPlayerNo = 0;
         mbComChoiceDownSet();
@@ -314,12 +412,12 @@ static void ev_OpeningParty(void)
         openingInstHook();
     }
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(952);
-    mbWinCreate(2, 0x002C000A, 6);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 10), 6);
     mbWinTopWait();
-    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -347,7 +445,7 @@ static void ev_OpeningParty(void)
             mbDicePadBtnHookSet(i, OpeningPadBtn);
         }
     }
-    mbWinCreateHelp(0x00260002);
+    mbWinCreateHelp(MESSNUM(MESS_BOARD_OPE, 2));
     mbWinTopPosSet(228, 392);
     while (!mbDiceKillCheckAll()) {
         HuPrcVSleep();
@@ -359,7 +457,7 @@ static void ev_OpeningParty(void)
     mbStatusReset();
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbAudGuidePlay(952);
-        mbWinCreateTime(2, 0x002C000B + i, -1);
+        mbWinCreateTime(2, MESSNUM(MESS_BOARD_OPENING, 11) + i, -1);
         mbWinTopInsertMesSet(mbPlayerNameMesGet(i), 0);
         if (GwPlayer[i].comF || HuPadStatGet(GwPlayer[i].padNo) != PAD_ERR_NONE) {
             mbWinTopPlayerDisable(-1);
@@ -375,15 +473,15 @@ static void ev_OpeningParty(void)
         if (!GWTeamFGet()) {
             mbStatusDispSet(i, TRUE);
         }
-        mbPlayerWinLoseVoicePlay(i, 12, 0x243);
-        mbPlayerMotionShiftSet(i, 12, lbl_802C39D8, lbl_802C3A1C,
+        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
+        mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
         omVibrate(i, 20, 20, 0);
         HuPrcSleep(8);
         while (!mbPlayerMotionEndCheck(i)) {
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(i, 1, lbl_802C39D8, lbl_802C3A1C,
+        mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
     }
 
@@ -396,22 +494,22 @@ static void ev_OpeningParty(void)
     }
     HuPrcSleep(30);
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(952);
-    mbWinCreate(2, 0x002C000F, 6);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 15), 6);
     mbWinTopWait();
-    mbObjMotionShiftSet(openingGuideObjId, 6, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 6, 0.0f, 8.0f,
         HU3D_MOTATTR_NONE);
     HuPrcSleep(40);
     OpeningCoinExec();
     HuPrcSleep(30);
-    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, 0x243);
-        mbPlayerMotionShiftSet(i, 7, lbl_802C39D8, lbl_802C3A1C,
+        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
+        mbPlayerMotionShiftSet(i, 7, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
     }
     while (!mbPlayerMotionEndCheckAll()) {
@@ -427,16 +525,16 @@ static void ev_OpeningParty(void)
         mbStarMapViewProcExec();
     }
 
-    mbObjMotionShiftSet(openingGuideObjId, 12, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
-    mbWinCreate(2, 0x002C0010, 6);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 16), 6);
     mbWinTopWait();
-    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8, lbl_802C3A1C,
+    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, 0x243);
-        mbPlayerMotionShiftSet(i, 12, lbl_802C39D8, lbl_802C3A1C,
+        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
+        mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
     }
     while (!mbPlayerMotionEndCheckAll()) {
@@ -453,7 +551,7 @@ static void ev_OpeningParty(void)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbPlayerMotionSet(i, 1, HU3D_MOTATTR_LOOP);
     }
-    mbCameraNearFarSet(lbl_802C3A48, lbl_802C3A0C);
+    mbCameraNearFarSet(100.0f, 20000.0f);
     mbObjKill(openingGuideObjId);
     openingGuideObjId = -1;
     mbMusBoardPlay();
@@ -475,7 +573,6 @@ static void ev_OpeningPartyKill(void)
 
 void mbOpeningViewSet(HuVecF *rot, HuVecF *pos, float zoom)
 {
-    extern const float lbl_802C39D8;
 
     if (rot) {
         openingRot = *rot;
@@ -483,7 +580,7 @@ void mbOpeningViewSet(HuVecF *rot, HuVecF *pos, float zoom)
     if (pos) {
         openingPos = *pos;
     }
-    if (zoom >= lbl_802C39D8) {
+    if (zoom >= 0.0f) {
         openingZoom = zoom;
     }
 }
@@ -548,12 +645,6 @@ static void OpeningCoinExec(void)
 
 static void PlayerDropExec(HuVecF *center)
 {
-    extern const float lbl_802C39D8;
-    extern const float lbl_802C3A1C;
-    extern const float lbl_802C3A48;
-    extern const float lbl_802C3A4C;
-    extern const float lbl_802C3A50;
-    extern const float lbl_802C3A70;
     int delay[GW_PLAYER_MAX] = { 0, 30, 60, 90 };
     BOOL landF[GW_PLAYER_MAX];
     HuVecF pos[GW_PLAYER_MAX];
@@ -563,15 +654,15 @@ static void PlayerDropExec(HuVecF *center)
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbObjDispSet(mbPlayerObjIDGet(i), TRUE);
-        mbPlayerRotYSet(i, lbl_802C39D8);
-        pos[i].x = center->x + lbl_802C3A48 * playerCenterDist[i];
-        pos[i].y = lbl_802C3A50 + center->y;
+        mbPlayerRotYSet(i, 0.0f);
+        pos[i].x = center->x + 100.0f * playerCenterDist[i];
+        pos[i].y = 800.0f + center->y;
         pos[i].z = center->z;
-        vel[i].y = lbl_802C3A70;
-        vel[i].x = vel[i].z = lbl_802C39D8;
+        vel[i].y = -20.0f;
+        vel[i].x = vel[i].z = 0.0f;
         landF[i] = FALSE;
         mbPlayerPosSetV(i, &pos[i]);
-        mbPlayerMotionShiftSet(i, 4, lbl_802C39D8, lbl_802C3A1C,
+        mbPlayerMotionShiftSet(i, 4, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
         mbPlayerMotionVoiceOnSet(i, 4, FALSE);
     }
@@ -580,17 +671,17 @@ static void PlayerDropExec(HuVecF *center)
     while (TRUE) {
         for (i = 0; i < GW_PLAYER_MAX; i++) {
             if (landF[i] && mbPlayerMotionEndCheck(i)) {
-                mbPlayerMotionShiftSet(i, 1, lbl_802C39D8, lbl_802C3A1C,
+                mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
                     HU3D_MOTATTR_LOOP);
                 endNum++;
             }
             if (delay[i]-- <= 0 && !landF[i]) {
                 VECAdd(&pos[i], &vel[i], &pos[i]);
-                vel[i].y -= lbl_802C3A4C;
+                vel[i].y -= 0.2f;
                 if (pos[i].y <= center->y) {
                     pos[i].y = center->y;
                     landF[i] = TRUE;
-                    mbPlayerMotionShiftSet(i, 5, lbl_802C39D8, lbl_802C3A1C,
+                    mbPlayerMotionShiftSet(i, 5, 0.0f, 8.0f,
                         HU3D_MOTATTR_NONE);
                 }
                 mbPlayerPosSetV(i, &pos[i]);
@@ -669,14 +760,14 @@ void mbev_OpeningSingle(void)
     singleFXNo = -1;
     winId = -1;
     if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        openingSingleProc = HuPrcChildCreate(ev_OpeningSingle, 0x200C,
-            0x4000, 0, mbMainProc);
+        openingSingleProc = HuPrcChildCreate(ev_OpeningSingle, OPENING_PROCESS_PRIORITY,
+            OPENING_PROCESS_STACK_SIZE, 0, mbMainProc);
     }
     HuPrcDestructorSet2(openingSingleProc, ev_OpeningSingleKill);
     do {
         if (work->dispF && mbTelopCheck()) {
             if (winId < 0) {
-                winId = mbWinCreateHelp(0x0026000C);
+                winId = mbWinCreateHelp(MESSNUM(MESS_BOARD_OPE, 12));
                 mbWinPosSet(winId, 228, 408);
             }
             for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
@@ -718,65 +809,75 @@ void mbev_OpeningSingle(void)
     }
     if (singleEff1MdlId != -1) {
         mbParticleKill(singleEff1MdlId);
-        HuDataDirClose(0x00210000);
+        HuDataDirClose(DATA_effect);
     }
     if (singleFXNo != -1) {
         mbAudFXStop(singleFXNo);
     }
 }
 
+static inline void *OpeningAlloc(s32 size)
+{
+    return HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+}
+
+static inline void OpeningFree(void *ptr)
+{
+    HuMemDirectFree(ptr);
+}
+
+static inline void OpeningBezierCalc(HuVecF *points, int count, HuVecF *dst, float t)
+{
+    HuVecF *work = OpeningAlloc(count * sizeof(HuVecF));
+    int j;
+    int k;
+
+    memcpy(work, points, count * sizeof(HuVecF));
+    for (j = 1; j < count; j++) {
+        for (k = 0; k < count - j; k++) {
+            work[k].x = work[k].x + t * (work[k + 1].x - work[k].x);
+            work[k].y = work[k].y + t * (work[k + 1].y - work[k].y);
+            work[k].z = work[k].z + t * (work[k + 1].z - work[k].z);
+        }
+    }
+    *dst = work[0];
+    OpeningFree(work);
+}
+
 static void ev_OpeningSingle(void)
 {
     s16 masuList[256];
     HuVecF guidePath[5];
+    HuVecF fallVelocity;
     HuVecF cameraPos;
+    HuVecF cameraCurvePos;
     HuVecF cameraRot;
     HuVecF cameraCenter;
-    HuVecF masuPos;
     HuVecF guidePos;
-    HuVecF guideDir;
-    HuVecF prevGuidePos;
-    HuVecF segmentDir;
-    HuVecF prevSegmentDir;
-    HuVecF tangentIn;
-    HuVecF tangentOut;
-    HuVecF curveStart;
-    HuVecF curveEnd;
+    HuVecF masuPos;
     HuVecF curveTangentIn;
     HuVecF curveTangentOut;
+    HuVecF curveStart;
+    HuVecF curveEnd;
+    HuVecF segmentDir;
+    HuVecF prevSegmentDir;
     HuVec2f winPos;
-    HuVecF *masuPosTbl;
-    HuVecF *cameraPathTbl;
-    HuVecF *segmentP;
-    HuVecF *bezierTbl;
-    ANIMDATA *animP;
     MBMODELID guideMdlId;
     s16 startMasuId;
-    s16 masuNum;
+    int masuNum;
     int cameraPathNum;
     int cameraPathNo;
-    int boardNo;
-    int cameraType;
-    int playerNo;
-    int size;
-    int div;
-    int step;
-    int i;
+    SINGLEGUIDEWORK *work = &singleGuideWork;
     int j;
-    int k;
+    int playerNo;
+    int cameraType;
+    int size;
     float baseY;
-    float baseT;
-    float deltaT;
-    float edgeLength;
-    float sampleLength;
-    float pathLength;
-    float oldT;
-    float minLength;
+    ANIMDATA *animP;
+    int i;
     float distance;
     float t;
-    float sampleT;
     float angle;
-    float weight;
 
     playerNo = 0;
     singleGuideObj = mbGuideCreateFlag(&singleGuidePosTbl[0],
@@ -786,14 +887,12 @@ static void ev_OpeningSingle(void)
     mbObjDispSet(guideMdlId, FALSE);
     mbObjMotionSet(guideMdlId, 5, HU3D_MOTATTR_NONE);
 
-    startMasuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    startMasuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     masuNum = mbMasuFind_TypeListGet2(startMasuId, 7, FALSE, FALSE,
         masuList);
     size = masuNum * sizeof(HuVecF);
-    cameraPathTbl = HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
-    singleOpeningPosTbl2 = cameraPathTbl;
-    masuPosTbl = HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
-    singleOpeningPosTbl = masuPosTbl;
+    singleOpeningPosTbl2 = OpeningAlloc(size);
+    singleOpeningPosTbl = OpeningAlloc(size);
     for (i = masuNum - 1, j = 0; i > -1; i--, j++) {
         mbMasuPosGet(masuList[i], &singleOpeningPosTbl[j]);
     }
@@ -823,151 +922,56 @@ static void ev_OpeningSingle(void)
     mbCameraCenterSetV(&cameraCenter);
     mbWipeFadeIn();
     mbMusBoardPlay();
-    boardNo = GwSystem.boardNo;
-    cameraType = boardNo - 5;
-    boardNo = GwSystem.boardNo;
-    mbTelopCreate(-1, boardNo + 16, FALSE);
+    cameraType = MBBoardNoGet() - 5;
+    mbTelopCreate(-1, MBBoardNoGet() + 16, FALSE);
     HuPrcSleep(90);
-    singleGuideWork.dispF = TRUE;
+    work->dispF = TRUE;
     cameraPos = singleOpeningPosTbl2[0];
 
     if (cameraType < 3) {
-        mbCameraMovePos(&cameraPos, &singleGuidePosTbl[4], NULL, 800.0f,
+        mbCameraMovePos(&cameraPos, &singleGuideCameraRot, NULL, 2400.0f,
             -1.0f, 180);
         mbCameraMoveWait();
         HuPrcSleep(12);
         baseY = cameraPos.y;
-        singleOpeningZoomTbl = HuMemDirectMallocNum(HEAP_HEAP,
-            cameraPathNum * sizeof(float), HU_MEMNUM_OVL);
-        for (cameraPathNo = 0; cameraPathNo < cameraPathNum - 1;
-            cameraPathNo++) {
-            i = cameraPathNo;
-            if (i > cameraPathNum - 1) {
-                i = cameraPathNum - 1;
-            }
-            cameraPathTbl = singleOpeningPosTbl2;
-            segmentP = &cameraPathTbl[i];
-            if (i == 0) {
-                VECSubtract(&segmentP[1], &segmentP[0], &tangentIn);
-            } else {
-                VECSubtract(&segmentP[1], &segmentP[-1], &tangentIn);
-            }
-            if (i == cameraPathNum - 2) {
-                VECSubtract(&segmentP[1], &segmentP[0], &tangentOut);
-            } else {
-                VECSubtract(&segmentP[2], &segmentP[0], &tangentOut);
-            }
-            VECScale(&tangentIn, &tangentIn, 0.5f);
-            VECScale(&tangentOut, &tangentOut, 0.5f);
-            curveStart = segmentP[0];
-            curveEnd = segmentP[1];
-            curveTangentIn = tangentIn;
-            curveTangentOut = tangentOut;
+        singleOpeningZoomTbl = OpeningAlloc(cameraPathNum * sizeof(float));
+        for (i = 0; i < cameraPathNum - 1; i++) {
+            OpeningCurveControlGet(singleOpeningPosTbl2, i, cameraPathNum,
+                &curveStart, &curveEnd, &curveTangentIn, &curveTangentOut);
 
-            div = 10;
-            baseT = 0.0f;
-            pathLength = 0.0f;
-            deltaT = 1.0f - baseT;
-            edgeLength = deltaT
-                * (OpeningCurveEvalCall(&curveStart, &curveEnd,
-                       &curveTangentIn, &curveTangentOut, baseT,
-                       OpeningCurveEval)
-                    + OpeningCurveEvalCall(&curveStart, &curveEnd,
-                        &curveTangentIn, &curveTangentOut, 1.0f,
-                        OpeningCurveEval))
-                * 0.5f;
-            for (i = 1; i <= div; i *= 2) {
-                sampleLength = 0.0f;
-                for (j = 1; j <= i; j++) {
-                    sampleLength += OpeningCurveEvalCall(&curveStart, &curveEnd,
-                        &curveTangentIn, &curveTangentOut,
-                        baseT + deltaT * (j - 0.5f), OpeningCurveEval);
-                }
-                sampleLength *= deltaT;
-                pathLength = (edgeLength + (2.0f * sampleLength)) / 3.0f;
-                deltaT *= 0.5f;
-                edgeLength = (edgeLength + sampleLength) * 0.5f;
-            }
-            singleOpeningZoomTbl[cameraPathNo] = pathLength;
+            distance = OpeningCurveLength((OPENINGCURVEEVALFUNC)(u32)OpeningCurveEval,
+                &curveStart, &curveEnd, &curveTangentIn, &curveTangentOut, 1.0f);
+            singleOpeningZoomTbl[i] = distance;
         }
 
         t = 0.0f;
         distance = 0.0f;
         cameraPathNo = 0;
-        while (cameraPathNo < cameraPathNum - 1) {
-            i = cameraPathNo;
-            if (i > cameraPathNum - 1) {
-                i = cameraPathNum - 1;
-            }
-            cameraPathTbl = singleOpeningPosTbl2;
-            segmentP = &cameraPathTbl[i];
-            if (i == 0) {
-                VECSubtract(&segmentP[1], &segmentP[0], &tangentIn);
-            } else {
-                VECSubtract(&segmentP[1], &segmentP[-1], &tangentIn);
-            }
-            if (i == cameraPathNum - 2) {
-                VECSubtract(&segmentP[1], &segmentP[0], &tangentOut);
-            } else {
-                VECSubtract(&segmentP[2], &segmentP[0], &tangentOut);
-            }
-            VECScale(&tangentIn, &tangentIn, 0.5f);
-            VECScale(&tangentOut, &tangentOut, 0.5f);
-            curveStart = segmentP[0];
-            curveEnd = segmentP[1];
-            curveTangentIn = tangentIn;
-            curveTangentOut = tangentOut;
+        do {
+            OpeningCurveControlGet(singleOpeningPosTbl2, cameraPathNo, cameraPathNum,
+                &curveStart, &curveEnd, &curveTangentIn, &curveTangentOut);
 
-            minLength = 0.1f;
-            step = 0;
-            do {
-                div = 10;
-                baseT = 0.0f;
-                deltaT = (t - baseT) / div;
-                sampleT = baseT;
-                sampleLength = 0.0f;
-                for (i = 0; i < div - 1; i++) {
-                    sampleT += deltaT;
-                    sampleLength += OpeningCurveEvalCall(&curveStart, &curveEnd,
-                        &curveTangentIn, &curveTangentOut, sampleT,
-                        OpeningCurveEval);
-                }
-                pathLength = deltaT * 0.5f
-                    * (OpeningCurveEvalCall(&curveStart, &curveEnd,
-                            &curveTangentIn, &curveTangentOut, baseT,
-                            OpeningCurveEval)
-                        + OpeningCurveEvalCall(&curveStart, &curveEnd,
-                            &curveTangentIn, &curveTangentOut, t,
-                            OpeningCurveEval)
-                        + (2.0f * sampleLength));
-                pathLength -= distance;
-                sampleLength = OpeningCurveEvalCall(&curveStart, &curveEnd,
-                    &curveTangentIn, &curveTangentOut, t, OpeningCurveEval);
-                if (fabs(sampleLength) < minLength) {
-                    sampleLength = 1.0f;
-                }
-                oldT = t;
-                t -= pathLength / sampleLength;
-                step++;
-            } while (t != oldT && step < 10);
+            t = OpeningCurveNewton((OPENINGCURVEEVALFUNC)(u32)OpeningCurveEval,
+                &curveStart, &curveEnd, &curveTangentIn, &curveTangentOut,
+                t, distance, 10);
             mbHermiteCalcV(&curveStart, &curveEnd, &curveTangentIn,
-                &curveTangentOut, &cameraCenter, t);
-            mbCameraCenterSetV(&cameraCenter);
-            distance += 5.0f;
+                &curveTangentOut, &cameraCurvePos, t);
+            mbCameraCenterSetV(&cameraCurvePos);
+            distance += 20.0f;
             if (distance >= singleOpeningZoomTbl[cameraPathNo]) {
                 distance -= singleOpeningZoomTbl[cameraPathNo];
                 cameraPathNo++;
                 t -= 1.0f;
             }
             HuPrcVSleep();
-        }
+        } while (cameraPathNo < cameraPathNum - 1);
     } else {
-        mbCameraMovePos(&cameraPos, &singleGuidePosTbl[4], NULL, 3700.0f,
+        mbCameraMovePos(&cameraPos, &singleGuideCameraRot, NULL, 3700.0f,
             -1.0f, 180);
         mbCameraMoveWait();
         HuPrcSleep(12);
         singleOpeningZoomTbl = NULL;
-        mbCameraMoveMasu(startMasuId, &singleGuidePosTbl[4], NULL, 800.0f,
+        mbCameraMoveMasu(startMasuId, &singleGuideCameraRot, NULL, 2400.0f,
             -1.0f, 300);
         mbCameraMoveWait();
     }
@@ -976,49 +980,35 @@ static void ev_OpeningSingle(void)
     mbMasuPosGet(startMasuId, &masuPos);
     for (i = 0; i < 5; i++) {
         guidePath[i] = masuPos;
-        guidePath[i].x += singleGuidePosTbl[i + 5].x;
-        guidePath[i].y += singleGuidePosTbl[i + 5].y;
-        guidePath[i].z += singleGuidePosTbl[i + 5].z;
+        guidePath[i].x += singleGuidePathOfsTbl[i].x;
+        guidePath[i].y += singleGuidePathOfsTbl[i].y;
+        guidePath[i].z += singleGuidePathOfsTbl[i].z;
     }
-    prevGuidePos = guidePath[0];
-    animP = HuSprAnimRead(HuDataReadNum(0x00210001, HU_MEMNUM_OVL));
+    prevSegmentDir = guidePath[0];
+    animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 1), HU_MEMNUM_OVL));
     singleEff1MdlId = mbParticleCreate(animP, 128);
     mbParticleHookSet(singleEff1MdlId, OpeningSingleEffHook);
     Hu3DModelLayerSet(singleEff1MdlId, 5);
     singleGuideEffOnF = TRUE;
-    mbCameraMovePlayer(playerNo, NULL, NULL, 2400.0f, -1.0f, 60);
+    mbCameraMovePlayer(playerNo, NULL, NULL, 1800.0f, -1.0f, 60);
     mbObjDispSet(guideMdlId, TRUE);
     singleFXNo = mbAudFXPlay(1093);
     for (i = 0; i <= 180u; i++) {
-        weight = i / 180.0f;
-        bezierTbl = HuMemDirectMallocNum(HEAP_HEAP, sizeof(guidePath),
-            HU_MEMNUM_OVL);
-        memcpy(bezierTbl, guidePath, sizeof(guidePath));
-        for (j = 1; j < 5; j++) {
-            for (k = 0; k < 5 - j; k++) {
-                bezierTbl[k].x += weight
-                    * (bezierTbl[k + 1].x - bezierTbl[k].x);
-                bezierTbl[k].y += weight
-                    * (bezierTbl[k + 1].y - bezierTbl[k].y);
-                bezierTbl[k].z += weight
-                    * (bezierTbl[k + 1].z - bezierTbl[k].z);
-            }
-        }
-        guidePos = bezierTbl[0];
-        HuMemDirectFree(bezierTbl);
+        t = i / 180.0f;
+        OpeningBezierCalc(guidePath, 5, &guidePos, t);
         mbObjPosSetV(guideMdlId, &guidePos);
         guideCurPos = guidePos;
-        VECSubtract(&guidePos, &prevGuidePos, &guideDir);
-        angle = HuAtan(guideDir.z, guideDir.x);
+        VECSubtract(&guidePos, &prevSegmentDir, &segmentDir);
+        angle = HuAtan(segmentDir.x, segmentDir.z);
         if (i == 150u) {
             mbObjMotionShiftSet(guideMdlId, 4, 0.0f, 16.0f,
                 HU3D_MOTATTR_LOOP);
         } else if (i > 150u) {
-            weight = (i - 150) / 30.0f;
-            angle *= 1.0f - weight;
+            t = (i - 150u) / 30.0f;
+            angle = (1.0f - t) * angle;
         }
         mbObjRotYSet(guideMdlId, angle);
-        prevGuidePos = guidePos;
+        prevSegmentDir = guidePos;
         HuPrcVSleep();
     }
     singleGuideEffOnF = FALSE;
@@ -1030,39 +1020,36 @@ static void ev_OpeningSingle(void)
 
     mbGuideMotionSet(singleGuideObj, 12, TRUE);
     mbAudGuidePlay(950);
-    boardNo = GwSystem.boardNo;
-    singleWinId = mbWinCreate(2, singleWelcomeMesTbl[boardNo - 6], 6);
+    singleWinId = mbWinCreate(2, singleWelcomeMesTbl[MBBoardNoGet() - 6], 6);
     mbWinTopPosGet(&winPos);
-    winPos.y -= 20.0f;
+    winPos.y -= 35.0f;
     mbWinTopPosSet(winPos.x, winPos.y);
     mbWinTopWait();
     singleWinId = -1;
 
     mbAudGuidePlay(952);
-    singleWinId = mbWinCreate(2, 0x002C0011, 6);
+    singleWinId = mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 17), 6);
     mbWinTopPosGet(&winPos);
-    winPos.y -= 20.0f;
+    winPos.y -= 35.0f;
     mbWinTopPosSet(winPos.x, winPos.y);
     mbWinTopWait();
     singleWinId = -1;
 
     mbAudGuidePlay(950);
-    singleWinId = mbWinCreate(2, 0x002C0012, 6);
+    singleWinId = mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 18), 6);
     mbWinTopPosGet(&winPos);
-    winPos.y -= 20.0f;
+    winPos.y -= 35.0f;
     mbWinTopPosSet(winPos.x, winPos.y);
     mbWinTopWait();
     singleWinId = -1;
 
     mbObjMotionShiftSet(guideMdlId, 5, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
-    tangentIn.x = 0.0f;
-    tangentIn.y = 0.0f;
-    tangentIn.z = 0.0f;
+    fallVelocity.x = fallVelocity.y = fallVelocity.z = 0.0f;
     mbObjPosGet(guideMdlId, &guidePos);
     singleFXNo = mbAudFXPlay(1093);
     for (i = 0; i < 120u; i++) {
-        tangentIn.y += -16.333334f;
-        guidePos.y -= 0.016666668f * tangentIn.y;
+        fallVelocity.y += -16.333334f;
+        guidePos.y -= 0.016666668f * fallVelocity.y;
         mbObjPosSetV(guideMdlId, &guidePos);
         guideCurPos = guidePos;
         if (i == 12u) {
@@ -1075,8 +1062,8 @@ static void ev_OpeningSingle(void)
     }
     HuPrcSleep(30);
     mbWipeFadeOut();
-    singleGuideWork.dispF = FALSE;
-    singleGuideWork.endF = TRUE;
+    work->dispF = FALSE;
+    work->endF = TRUE;
     HuPrcEnd();
 }
 
@@ -1117,37 +1104,31 @@ MBMODELID mbOpeningGuideObjIdGet(void)
 
 void mbOpeningGuidePosRestore(void)
 {
-    extern const float lbl_802C39D8;
-    extern const float lbl_802C3A18;
-    extern const float lbl_802C3A1C;
     s16 masuId;
     HuVecF masuPos;
     HuVecF pos;
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     mbMasuPosGet(masuId, &masuPos);
     pos = masuPos;
-    pos.z -= lbl_802C3A18;
+    pos.z -= 200.0f;
     mbObjPosSetV(openingGuideObjId, &pos);
-    mbObjMotionShiftSet(openingGuideObjId, 1, lbl_802C39D8,
-        lbl_802C3A1C, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f,
+        8.0f, HU3D_MOTATTR_LOOP);
 }
 
 void mbOpeningCameraPosRestore(void)
 {
-    extern const float lbl_802C3A20;
-    extern const float lbl_802C3A24;
-    extern const float lbl_802C3A28;
     s16 masuId;
     HuVecF masuPos;
     HuVecF pos;
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     mbMasuPosGet(masuId, &masuPos);
     pos = masuPos;
-    pos.y -= lbl_802C3A20;
+    pos.y -= 50.0f;
     mbCameraMovePos(&pos, &openingCameraRestoreRot, &openingCameraRestorePos,
-        lbl_802C3A24, lbl_802C3A28, 0);
+        1800.0f, -1.0f, 0);
 }
 
 static void OpeningSingleEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
