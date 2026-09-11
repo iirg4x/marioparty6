@@ -19,6 +19,128 @@ from tools.tests.test_focus_symbol_report import _instruction, _report
 class RecoveryEvaluateTests(unittest.TestCase):
     """Exercise one bounded evaluation without a compiler or retail inputs."""
 
+    def _quality_case(self, *, opcode: bool = False) -> tuple[dict, dict, dict]:
+        before = _report(focus_exact=False, sibling_exact=True)
+        after = copy.deepcopy(before)
+        for document, text, flags in ((before, "fneg f2, f3" if opcode else "fmr f2, f3", [0, 1]),
+                                      (after, "fmr f1, f3", [1])):
+            target, candidate = evaluate._diagnostic_rows(document, "FocusFunction")
+            target[0].clear()
+            target[0].update(_instruction(256, "fmr f1, f4"))
+            candidate[0].clear()
+            candidate[0].update(_instruction(256, text))
+            kind = "DIFF_REPLACE" if text.startswith("fneg") else "DIFF_ARG_MISMATCH"
+            for row in (target[0], candidate[0]):
+                row["diff_kind"] = kind
+                row["arg_diff"] = [{"diff_index": 0} if i in flags else {} for i in range(2)]
+            # _rows returns the original list; mutate the function's score too.
+            document["left"]["symbols"][1]["match_percent"] = 80 if document is after else 75
+        comparison = self._comparison()
+        row = comparison["functions"]["FocusFunction"]
+        row.update(physical_diff_before=0, physical_diff_after=0,
+                   normalized_diff_before=0, normalized_diff_after=0,
+                   raw_exact_target=False, candidate_physical_exact=True)
+        return before, after, comparison
+
+    def _quality_classify(self, before: dict, after: dict, comparison: dict) -> dict:
+        return evaluate._classify(frontier.summarize(before, "strict"), frontier.summarize(before, "data"),
+                                  frontier.summarize(after, "strict"), frontier.summarize(after, "data"),
+                                  comparison, ["FocusFunction"],
+                                  baseline_documents={"strict": before, "data": before},
+                                  after_documents={"strict": after, "data": after})
+
+    def test_same_row_opcode_and_operand_closures_are_improvements(self) -> None:
+        for opcode in (False, True):
+            with self.subTest(opcode=opcode):
+                result = self._quality_classify(*self._quality_case(opcode=opcode))
+                self.assertEqual(result["status"], "improved")
+                self.assertTrue(result["retention_ready"])
+                self.assertEqual(result["code_quality"][0]["closed_opcodes" if opcode else "closed_operands"], 1)
+
+    def test_score_only_or_same_score_closure_does_not_gain(self) -> None:
+        before, after, comparison = self._quality_case(opcode=True)
+        after["left"]["symbols"][1]["match_percent"] = 75
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "no_gain")
+        after = copy.deepcopy(before)
+        after["left"]["symbols"][1]["match_percent"] = 80
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "no_gain")
+
+    def test_changed_still_wrong_opcode_is_not_ranked_as_quality_gain(self) -> None:
+        before, after, comparison = self._quality_case(opcode=True)
+        candidate = after["right"]["symbols"][1]["instructions"][0]
+        candidate["instruction"]["formatted"] = "fabs f1, f3"
+        candidate["diff_kind"] = "DIFF_REPLACE"
+        result = self._quality_classify(before, after, comparison)
+        self.assertEqual(result["status"], "no_gain")
+        self.assertFalse(result["code_quality"][0]["complete"])
+
+    def test_math_load_closures_preserve_unchanged_alignment_gaps(self) -> None:
+        before, after, comparison = self._quality_case()
+        for document, old in ((before, True), (after, False)):
+            targets = [_instruction(100, "lfs f4, 0x0(r29)"),
+                       _instruction(104, "lfs f5, 0x4(r29)"),
+                       _instruction(108, "lfs f6, 0x8(r29)"),
+                       {"diff_kind": "DIFF_INSERT"}, _instruction(112, "blr")]
+            values = ("lfs f1, 0x4(r29)", "lfs f2, 0x8(r29)", "lfs f0, 0x0(r29)") if old else (
+                "lfs f0, 0x0(r29)", "lfs f1, 0x4(r29)", "lfs f2, 0x8(r29)")
+            candidates = [_instruction(200 + 4 * i, value) for i, value in enumerate(values)]
+            candidates.extend([_instruction(212, "nop"), {"diff_kind": "DIFF_DELETE"}])
+            for target, candidate in zip(targets[:3], candidates[:3]):
+                for row in (target, candidate):
+                    row["diff_kind"] = "DIFF_ARG_MISMATCH"
+                    row["arg_diff"] = [{"diff_index": 8}, {"diff_index": 14} if old else {}, {}]
+            for side, rows in (("left", targets), ("right", candidates)):
+                document[side]["symbols"][1]["instructions"] = rows
+                document[side]["symbols"][1]["size"] = "16"
+        result = self._quality_classify(before, after, comparison)
+        self.assertEqual(result["status"], "improved")
+        self.assertTrue(all(row["complete"] and row["closed_operands"] == 3 for row in result["code_quality"]))
+        self.assertEqual(self._quality_classify(before, before, comparison)["status"], "no_gain")
+        # An unanchored inserted-instruction change cannot be silently accepted.
+        after["right"]["symbols"][1]["instructions"][3]["instruction"]["formatted"] = "blr"
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "no_gain")
+        after = copy.deepcopy(before)
+        after["left"]["symbols"][1]["match_percent"] = 80
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "no_gain")
+
+    def test_quality_rejects_offset_drift_but_allows_whole_function_slide(self) -> None:
+        before, after, comparison = self._quality_case()
+        _, candidate = evaluate._diagnostic_rows(after, "FocusFunction")
+        candidate[0]["instruction"]["address"] = "252"
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "no_gain")
+        candidate[1]["instruction"]["address"] = "256"
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "improved")
+        target, _ = evaluate._diagnostic_rows(after, "FocusFunction")
+        target[0]["instruction"]["address"] = "252"
+        self.assertEqual(self._quality_classify(before, after, comparison)["status"], "no_gain")
+
+    def test_quality_gain_preserves_existing_sibling_size_relocation_and_data_gates(self) -> None:
+        for gate in ("sibling", "size", "relocation", "data", "rows", "new_operand_loss"):
+            with self.subTest(gate=gate):
+                before, after, comparison = self._quality_case()
+                if gate == "sibling":
+                    after["left"]["symbols"][2]["instructions"][0]["diff_kind"] = "DIFF_REPLACE"
+                elif gate == "size":
+                    after["right"]["symbols"][1]["size"] = "12"
+                elif gate == "relocation":
+                    comparison["functions"]["FocusFunction"]["closed_normalized_row_loss_count"] = 1
+                elif gate == "data":
+                    comparison["allocated_nontext_changed"] = True
+                else:
+                    target, candidate = evaluate._diagnostic_rows(after, "FocusFunction")
+                    candidate[1]["diff_kind"] = "DIFF_ARG_MISMATCH"
+                    candidate[1]["arg_diff"] = [{"diff_index": 0}]
+                    if gate == "new_operand_loss":
+                        old_target, old_candidate = evaluate._diagnostic_rows(before, "FocusFunction")
+                        for row in (old_target[1], old_candidate[1]):
+                            row["diff_kind"] = "DIFF_ARG_MISMATCH"
+                            row["arg_diff"] = [{}]
+                result = self._quality_classify(before, after, comparison)
+                self.assertFalse(result["retention_ready"])
+                self.assertEqual(result["status"], "improved" if gate == "data" else "no_gain" if gate == "new_operand_loss" else "rejected")
+                if gate == "rows":
+                    self.assertEqual(result["code_quality"][0]["closed_operands"], 1)
+
     def test_causal_groups_keep_observations_after_report_cleanup(self) -> None:
         with self._patch_measurement(), \
                 mock.patch.object(evaluate, "_compile_candidate", side_effect=self._fake_compile), \

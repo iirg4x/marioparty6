@@ -344,3 +344,95 @@ unions, duplicate event identities, invalid variadic declarations, and failed
 compiles masquerading as reusable measurements. Verified semantic-object aliases
 remain reusable. The real Koopa667-word replay and Donkey declaration CLI also
 pass; no new owner compile/capture or math-source change was made for this work.
+
+## Dice/Math closeout: retain useful measurements (2026-09-11)
+
+Use this central tooling checkout with `--root` pointing at the active owner;
+do not copy an older owner's `tools/` directory over it. KoopaCoin's shared
+producer analysis, dual working/champion lineage, and hypothesis-aware memory
+above already exist. They are not new work or a prerequisite to every compile.
+
+### A row can improve before it becomes exact
+
+`recovery_evaluate.py` now compares the bound strict/data instruction streams
+at stable target addresses. Its compact `code_quality` findings identify
+corrected opcodes and operand positions, as well as lost constraints. An
+unchanged row count no longer hides an evidenced improvement. Unchanged
+unresolved insert/delete regions are allowed to remain unresolved; changed or
+ambiguous regions cannot certify this additional monotonic-gain path.
+
+The historical Math `ObjectCullHook` input-read correction changed three
+`lfs` field operands while keeping 111 strict/data rows and 728 bytes. Its score
+rose from 93.33517 to 93.35165. Replaying the saved, hash-checked objects and
+reports now returns `improved` instead of `no_gain`, with three closed operand
+positions in each report view and no losses. These are the same three code
+changes, not six independent gains. Index identities:
+
+- Before: `2a55dc5e9903794ae4c8a95c686c118d13fcd4d6c64d1770e1d3f38a28d3b50f`.
+- After: `d97b787d0c98cf50a92a050c0e880de2658063b9838bf69ca578118a61f01dd7`.
+
+A percentage alone is still insufficient. Exact siblings, exact size,
+relocations, compiler/source binding, typed-data review, and source fidelity
+remain protected. Structural changes that trip those gates can expose a useful
+quality finding without replacing the champion. This is a known-gain replay,
+not a new crack, new source inference, or measured throughput improvement.
+
+### Use the already-developed optimized compiler observer centrally
+
+Dice's verified GC/2.6 `mwcc_win32_varinfo.py` additions are now in this central
+tool set: optimized GPR/FPR selection, frontend temporary/range-split origins,
+and LI/LIS common-subexpression eligibility/reuse. They supplement, not replace,
+the existing O0 local-assignment observer. Example option sets:
+
+```text
+--regalloc --regalloc-class fpr
+--regalloc --regalloc-class gpr
+--regalloc --regalloc-class gpr --frontend --cse
+```
+
+Invoke `python tools/mwcc_win32_varinfo.py --help` for the complete interface.
+Always supply the active `--compiler`, `--cwd`, `--target`, `--output`, and the
+complete compiler arguments after `--`, including the source/output and actual
+optimization flags. The legacy default command is a Telop example, not the
+current owner's recipe. `--assign` and `--regalloc` select different stages;
+frontend requires regalloc, and CSE requires its GPR class. The observer is
+Windows/WOW64 and pinned-GC/2.6 only; it does not establish GC/2.7 support.
+
+Compiler fingerprints, optional hook byte seals, register-class identities,
+range-split caller checks, bounded observations, and explicit incomplete joins
+remain enforced. Output describes the supplied compilation, never retail
+virtual IDs or the source edit to choose. The integration uses the existing
+Dice dependency chain through `206f470`; no new native capture was needed.
+
+Dice's final Zorome repair itself needed no new source generator: distinguish
+the real read-only pitch input, magnitude output, and later color/alpha owner.
+An authorized native operation's input/output contract is not an in-place
+clobber. Keep that reconstruction question visible rather than expanding a
+declaration-order matrix or automatically extending its native authorization.
+
+### Clean promotion hooks must not require tools inside public branches
+
+Install the managed hooks from the central tooling checkout. The wrapper pins
+that tooling root and the shared Git directory; it does not try to execute a
+nonexistent `tools/agent.py` in a clean `recovery/*` or `project/*` worktree.
+Verified public promotions use the existing manifest, queue/source proof,
+allowlisted blob and branch-boundary checks. Source exceptions are checked
+against the verified source commit's policy, not whichever tool branch happens
+to invoke Git. Supporting progress is checked against the prospective staged
+tree or pushed commit, so generating its required sidecars is not blocked by
+their absence in the preceding commit.
+
+An ordinary public promotion does not rerun the unrelated AI tooling test
+suite. AI workspace pushes retain their startup, metadata, benchmark, and test
+checks; public main retains its progress and clean-boundary checks. Unknown or
+mixed AI/public pushes are rejected. This does not waive object, consumer,
+source-selected link, or retail proof, and is not a branch-name-only bypass.
+
+Read-only replay against the real completed Dice branches passed:
+`recovery/board-dice` at `d1cc86575876968888549cc82bb995a2f2b9094a`
+and `project/board-dice-matching` at
+`d5ba03e2a017c8f362b5cf064037a369eea139fd`.
+The two existing-proof audits took about nine seconds locally, without a new
+compile or push. The old hook had rerun the full unrelated suite for 525 and
+463 seconds on those promotions. This measures avoided verification work,
+not faster source discovery.

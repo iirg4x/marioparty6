@@ -392,12 +392,116 @@ def _qualified_positional_shift(name: str, row: dict, comparison: dict,
     return True
 
 
+def _code_quality(before: dict, after: dict, name: str) -> dict:
+    """Measure report-backed closures, never source intent or score alone."""
+    result: dict[str, Any] = {"function": name, "status": "unknown",
+                              "closed_opcodes": 0, "closed_operands": 0, "losses": 0,
+                              "sites": [], "diagnostic_only": True, "authority_advanced": False}
+    try:
+        old, new = _diagnostic_rows(before, name), _diagnostic_rows(after, name)
+        if old is None or new is None:
+            raise ValueError("function report rows unavailable")
+
+        def anchors(rows: list[dict]) -> dict[int, tuple[int, dict]]:
+            entries = {}
+            for index, row in enumerate(rows):
+                payload = frontier._diagnose_payload(row, index)
+                if payload is None:
+                    continue
+                address = _prediction_address(row["instruction"].get("address"), "instruction address")
+                if address in entries:
+                    raise ValueError("ambiguous target address")
+                entries[address] = (index, payload)
+            return entries
+
+        left, right = anchors(old[0]), anchors(new[0])
+        if not left or [(k, v[1]) for k, v in left.items()] != [(k, v[1]) for k, v in right.items()]:
+            raise ValueError("target instruction stream changed")
+        complete = len(old[0]) == len(old[1]) and len(new[0]) == len(new[1])
+        # Existing unchanged gaps are unresolved evidence, not new losses.
+        # New/moved gaps remain diagnostic-only, as do changes to unanchored
+        # inserted instructions that cannot be ranked against a target site.
+        complete = complete and len(old[0]) == len(new[0])
+        for side in (0, 1):
+            complete = complete and [i for i, r in enumerate(old[side]) if not r.get("instruction")] == [
+                i for i, r in enumerate(new[side]) if not r.get("instruction")]
+        for index, row in enumerate(old[0]):
+            if not row.get("instruction") and index < len(new[1]) and index < len(old[1]):
+                complete = complete and frontier._diagnose_payload(old[1][index], index) == frontier._diagnose_payload(new[1][index], index)
+        old_candidates, new_candidates = anchors(old[1]), anchors(new[1])
+        if not old_candidates or not new_candidates:
+            raise ValueError("candidate instruction stream unavailable")
+        old_origin, new_origin = min(old_candidates), min(new_candidates)
+        for address, (old_index, _) in left.items():
+            new_index = right[address][0]
+            target = old[0][old_index]
+            a = old[1][old_index] if old_index < len(old[1]) else {}
+            b = new[1][new_index] if new_index < len(new[1]) else {}
+            parsed = [frontier._instruction_parts(row) for row in (target, a, b)]
+            if not a.get("instruction") and not b.get("instruction") and a == b:
+                continue
+            if any(value is None for value in parsed):
+                complete = False
+                continue
+            target_parts, before_parts, after_parts = parsed
+            a_address = _prediction_address(a["instruction"].get("address"), "candidate address")
+            b_address = _prediction_address(b["instruction"].get("address"), "candidate address")
+            if a_address - old_origin != b_address - new_origin:
+                complete = False
+            if (frontier._diagnose_payload(a, old_index) == frontier._diagnose_payload(b, new_index)
+                    and a.get("arg_diff") == b.get("arg_diff")
+                    and a.get("diff_kind") == b.get("diff_kind")):
+                # An unchanged unresolved site is not a new loss. It need not
+                # become interpretable merely to credit a different closure.
+                continue
+            old_opcode = before_parts[0] != target_parts[0]
+            new_opcode = after_parts[0] != target_parts[0]
+            closed_opcodes, closed_operands, losses = 0, 0, 0
+            if old_opcode and not new_opcode:
+                closed_opcodes = 1
+            elif not old_opcode and new_opcode:
+                losses = 1
+            elif not old_opcode and not new_opcode:
+                def operands(row: dict, parts: tuple) -> set[int] | None:
+                    # Objdiff's argument flags respect its relocation channel;
+                    # formatted symbolic aliases alone cannot prove a closure.
+                    flags = row.get("arg_diff")
+                    if isinstance(flags, list) and all(isinstance(flag, dict) for flag in flags):
+                        return {i for i, flag in enumerate(flags) if "diff_index" in flag}
+                    if row.get("diff_kind") in (None, "DIFF_NONE") and parts == target_parts:
+                        return set()
+                    return None
+                old_args, new_args = operands(a, before_parts), operands(b, after_parts)
+                if old_args is None or new_args is None:
+                    complete = False
+                    continue
+                closed_operands = len(old_args - new_args)
+                losses = len(new_args - old_args)
+            elif before_parts != after_parts:
+                # A changed, still-wrong opcode is an unranked tradeoff.
+                complete = False
+            result["closed_opcodes"] += closed_opcodes
+            result["closed_operands"] += closed_operands
+            result["losses"] += losses
+            if (closed_opcodes or closed_operands or losses) and len(result["sites"]) < _DIAGNOSTIC_SITE_LIMIT:
+                result["sites"].append({"target_address": address, "closed_opcodes": closed_opcodes,
+                                        "closed_operands": closed_operands, "losses": losses})
+        result.update(status="observed", complete=complete,
+                      target_stream_sha256=_sha(frontier.canonical([(k, v[1]) for k, v in left.items()])))
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        result.update(reason=str(exc)[:180], complete=False)
+    return result
+
+
 def _classify(before_strict: list[dict], before_data: list[dict],
               after_strict: list[dict], after_data: list[dict],
-              object_comparison: dict, functions: list[str]) -> dict:
+              object_comparison: dict, functions: list[str], *,
+              baseline_documents: dict[str, dict] | None = None,
+              after_documents: dict[str, dict] | None = None) -> dict:
     """Conservative measurement gate, independent of percentage-only ranking."""
     regressions, gains, changes, positional_shifts = [], [], [], []
     focus = set(functions)
+    quality = []
     for channel, before, after in (("strict", before_strict, after_strict),
                                     ("data", before_data, after_data)):
         left, right = _metric_map(before), _metric_map(after)
@@ -421,6 +525,23 @@ def _classify(before_strict: list[dict], before_data: list[dict],
                     regressions.append(f"{channel}:{name}: score regressed")
             if name in focus and b["diff_rows"] < a["diff_rows"]:
                 gains.append(f"{channel}:{name}: {a['diff_rows']} -> {b['diff_rows']} differing rows")
+            if baseline_documents and after_documents and name in focus:
+                finding = _code_quality(baseline_documents.get(channel, {}), after_documents.get(channel, {}), name)
+                finding["channel"] = channel
+                quality.append(finding)
+    for name in functions:
+        findings = [row for row in quality if row["function"] == name]
+        if len(findings) != 2 or not all(row.get("complete") and not row["losses"] for row in findings):
+            continue
+        for row in findings:
+            channel = row["channel"]
+            before, after = ((before_strict, after_strict) if channel == "strict" else (before_data, after_data))
+            a, b = _metric_map(before)[name], _metric_map(after)[name]
+            if (row["closed_opcodes"] or row["closed_operands"]) and b["diff_rows"] == a["diff_rows"] \
+                    and a.get("match_percent") is not None and b.get("match_percent") is not None \
+                    and b["match_percent"] > a["match_percent"]:
+                gains.append(f"{channel}:{name}: closed {row['closed_opcodes']} opcode and "
+                             f"{row['closed_operands']} operand mismatches at stable target anchors")
     if not object_comparison.get("function_census_equal", False):
         regressions.append("object function census changed")
     for name, row in object_comparison.get("functions", {}).items():
@@ -474,7 +595,7 @@ def _classify(before_strict: list[dict], before_data: list[dict],
     status = "rejected" if regressions else "exact" if exact else "improved" if gains else "no_gain"
     return {"status": status, "exact_scope": "selected_functions_only", "owner_exact": False,
             "gains": gains, "regressions": sorted(set(regressions)),
-            "review_required": review, "metric_changes": changes,
+            "review_required": review, "metric_changes": changes, "code_quality": quality,
             "qualified_positional_relocation_shifts": positional_shifts,
             "retention_ready": status in {"exact", "improved"} and not review}
 
@@ -1020,7 +1141,7 @@ def _dispatch_summary(result: dict) -> dict:
     summary.update(gains=result.get("gains", [])[:8], regressions=result.get("regressions", [])[:8],
                    regression_count=len(result.get("regressions", [])), reason=result.get("reason"),
                    changed_result_diagnostics=result.get("changed_result_diagnostics"),
-                   physical_progress=result.get("physical_progress"))
+                   physical_progress=result.get("physical_progress"), code_quality=result.get("code_quality", [])[:6])
     if "prediction_feedback" in result:
         summary["prediction_feedback"] = result["prediction_feedback"]
     encoded = json.dumps(summary, sort_keys=True).encode("utf-8")
@@ -1272,8 +1393,6 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                     result[channel + "_report"] = _descriptor(path)
                     result[channel + "_functions"] = summaries[channel]
                     result["next_mismatch_evidence"][channel] = _focus_evidence(document, functions)
-                result.update(_classify(base["functions"], base["data_functions"],
-                                        summaries["strict"], summaries["data"], comparison, functions))
                 baseline_documents = {}
                 try:
                     for channel in ("strict", "data"):
@@ -1289,6 +1408,9 @@ def evaluate(*, root: Path, index: Path, candidate: Path, functions: list[str], 
                         baseline_documents[channel] = baseline_document
                 except (OSError, ValueError, RuntimeError, KeyError, TypeError):
                     baseline_documents = {}
+                result.update(_classify(base["functions"], base["data_functions"],
+                                        summaries["strict"], summaries["data"], comparison, functions,
+                                        baseline_documents=baseline_documents, after_documents=after_documents))
                 result["changed_result_diagnostics"] = _changed_result_diagnostics(
                     root=root, baseline_documents=baseline_documents, after_documents=after_documents,
                     strict_path=strict_path, data_path=data_path, metric_changes=result.get("metric_changes", []),
