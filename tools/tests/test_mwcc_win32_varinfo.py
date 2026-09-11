@@ -15,6 +15,50 @@ from tools import mwcc_win32_varinfo as varinfo
 
 
 class MwccWin32VarInfoTests(unittest.TestCase):
+    def test_polled_process_exit_publishes_and_preserves_exit_code(self):
+        for exit_code in (0, 7):
+            debugger, _, _, _, _ = self.allocator_fixture()
+            debugger.result.update(regalloc_selections=[{}], regalloc_pcode=[{}])
+            debugger.write_result = mock.Mock()
+            native = mock.Mock()
+            native.WaitForDebugEvent.return_value = False
+            def process_exit(process, pointer):
+                pointer._obj.value = exit_code
+                return True
+            native.GetExitCodeProcess.side_effect = process_exit
+            with mock.patch.object(varinfo, "kernel32", native), mock.patch.object(
+                varinfo.ctypes, "get_last_error", return_value=varinfo.ERROR_SEM_TIMEOUT,
+                create=True,
+            ):
+                self.assertEqual(debugger.run(), exit_code)
+                debugger.close()
+            debugger.write_result.assert_called_once()
+            self.assertEqual(debugger.result["exit_code"], exit_code)
+            self.assertEqual(debugger.result["status"], "regalloc_observed")
+            self.assertTrue(debugger.exited)
+            native.TerminateProcess.assert_not_called()
+
+    def test_polled_process_exit_does_not_bypass_capture_validation(self):
+        debugger, _, _, _, _ = self.allocator_fixture()
+        debugger.write_result = mock.Mock()
+        native = mock.Mock()
+        native.WaitForDebugEvent.return_value = False
+        def process_exit(process, pointer):
+            pointer._obj.value = 0
+            return True
+        native.GetExitCodeProcess.side_effect = process_exit
+        with mock.patch.object(varinfo, "kernel32", native), mock.patch.object(
+            varinfo.ctypes, "get_last_error", return_value=varinfo.ERROR_SEM_TIMEOUT,
+            create=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "without target optimized"):
+                debugger.run()
+            debugger.close()
+        self.assertTrue(debugger.exited)
+        self.assertEqual(debugger.result["exit_code"], 0)
+        debugger.write_result.assert_not_called()
+        native.TerminateProcess.assert_not_called()
+
     def test_object_varinfo_layouts_include_implicit_section_owner(self):
         debugger, _, _, write, _ = self.allocator_fixture()
         debugger.read_object_name = lambda address: "...bss.0"

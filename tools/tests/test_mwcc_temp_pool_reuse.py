@@ -90,6 +90,69 @@ def _fixture(
 
 
 class MwccTempPoolReuseTests(unittest.TestCase):
+    def _native_fixture(self):
+        envelope, report = _fixture([3, 4], [58, 58], ordinals=[0, 0])
+        native = {"tool": "mwcc_win32_varinfo", "schema_version": 1,
+                  "target": FUNCTION, "machine_emissions": [], "regalloc_pcode": []}
+        for index in range(2):
+            machine = dict(envelope["events"][index * 2])
+            raw = "00040200" + (58).to_bytes(2, "little").hex() + "000000000000"
+            colored = "00040200" + (3).to_bytes(2, "little").hex() + "000000000000"
+            machine.update(opcode=137, operand_count=1, source_offset=100 + index,
+                           pcode=hex(0x3000 + index * 64))
+            capture = {key: machine[key] for key in
+                       ("pcode", "pcode_token", "opcode", "operand_count", "source_offset")}
+            capture.update(observation_index=index, operand_ordinal=0, operand_index=58,
+                           operand_flags=2, operand_raw=raw, color=3, **{"class": 4, "pass": 1})
+            machine["operands"] = [{"ordinal": 0, "kind": 0, "class": 4, "color": 3,
+                                    "join_status": "observed", "vreg": 58,
+                                    "color_observation": index, "allocation_pass": 1,
+                                    "pre_color_flags": 2, "raw": colored}]
+            native["machine_emissions"].append(machine)
+            native["regalloc_pcode"].append(capture)
+        return native, report
+
+    def test_native_join_keeps_source_offsets_and_target_role_conflicts(self):
+        native, report = self._native_fixture()
+        result = self._analyze(native, report)
+        self.assertEqual(result["input_format"], "native")
+        self.assertFalse(result["authority_advanced"])
+        self.assertEqual(result["collisions"]["count"], 1)
+        examples = result["collisions"]["items"][0]["exemplars"]
+        self.assertEqual([x["source_offset"] for x in examples], [100, 101])
+        self.assertEqual([x["operand_ordinal"] for x in examples], [0, 0])
+
+    def test_native_rejects_stale_join_fields_and_raw_operands(self):
+        for key in ("opcode", "source_offset", "operand_ordinal", "operand_count",
+                    "operand_index", "color", "observation_index", "operand_raw"):
+            native, report = self._native_fixture()
+            native["regalloc_pcode"][0][key] = "bad" if key == "operand_raw" else -1
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "native"):
+                self._analyze(native, report)
+
+    def test_native_unknown_operand_never_gets_a_virtual_id(self):
+        native, report = self._native_fixture()
+        for emission in native["machine_emissions"]:
+            emission["operands"][0]["join_status"] = "UNKNOWN"
+        result = self._analyze(native, report)
+        self.assertEqual(result["observations"]["pooled_roles"], 0)
+        self.assertEqual(result["status"], "no_confirmed_gpr_evidence")
+
+    def test_native_candidate_word_and_source_offset_drift_rejected(self):
+        for key, value in (("ppc_word", 0), ("source_offset", 999)):
+            native, report = self._native_fixture()
+            report["right"]["symbols"][0]["instructions"][0]["instruction"][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "drift"):
+                self._analyze(native, report)
+
+    def test_native_id_drops_do_not_claim_allocator_resets(self):
+        result = pool._reset([{"virtual_id": x, "machine_index": i}
+                              for i, x in enumerate((58, 59, 35, 60, 58))], native=True)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertFalse(result["detected"])
+        self.assertEqual(result["nonmonotonic_transitions"], 2)
+        self.assertEqual(result["repeated_definition_ids"], [58])
+
     def _analyze(
         self,
         envelope: dict[str, object],

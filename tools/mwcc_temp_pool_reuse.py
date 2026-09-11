@@ -225,6 +225,8 @@ def _verify_machine_rows(
             raise ValueError(f"machine word drift at candidate row {report_index}")
         if row_word is not None:
             row_word_pairs += 1
+        if "source_offset" in instruction and instruction["source_offset"] != event.get("source_offset"):
+            raise ValueError(f"source offset drift at candidate row {report_index}")
     verification: dict[str, int | str] = {
         "status": "verified" if row_word_pairs == len(machine) else "unverified",
         "machine_event_count": len(machine),
@@ -266,6 +268,72 @@ def _captures(events: list[dict[str, Any]], function: str) -> dict[str, list[dic
         ):
             raise ValueError(f"invalid confirmed GPR identity for pcode token {token}")
     return grouped
+
+
+def _native_events(document: dict[str, Any], function: str) -> list[dict[str, Any]]:
+    """Adapt only independently cross-checked native observed color joins.
+
+    A native UNKNOWN operand is never promoted from its physical register.
+    source_offset is a compiler location, not authenticated source ownership.
+    """
+    if document.get("schema_version") != 1 or document.get("target") != function:
+        raise ValueError("native schema/target mismatch")
+    machine, captures = document.get("machine_emissions"), document.get("regalloc_pcode")
+    if not isinstance(machine, list) or not isinstance(captures, list):
+        raise ValueError("native capture requires machine_emissions and regalloc_pcode lists")
+    events: list[dict[str, Any]] = []
+    seen_captures: set[tuple[str, int, int]] = set()
+    for emission in machine:
+        if not isinstance(emission, dict) or emission.get("function") != function:
+            raise ValueError("native machine function mismatch")
+        operands = emission.get("operands")
+        if not isinstance(operands, list) or len(operands) != emission.get("operand_count"):
+            raise ValueError("native operand count mismatch")
+        event = dict(emission, event_kind="machine_emission", native=True)
+        event["native_gpr_operands"] = []
+        events.append(event)
+        for ordinal, operand in enumerate(operands):
+            if not isinstance(operand, dict) or operand.get("ordinal") != ordinal:
+                raise ValueError("native operand ordinal mismatch")
+            if operand.get("kind") != 0 or operand.get("class") != 4:
+                continue
+            item = {"operand_ordinal": ordinal, "final_color": operand.get("color"),
+                    "virtual_id": None}
+            event["native_gpr_operands"].append(item)
+            if operand.get("join_status") != "observed":
+                events.append({"event_kind": "pcode_capture", "function": function,
+                               "operand_bank": "GPR", "confirmed": False})
+                continue
+            index = _integer(operand.get("color_observation"), "native color_observation")
+            if not 0 <= index < len(captures) or not isinstance(captures[index], dict):
+                raise ValueError("native color observation out of range")
+            capture = captures[index]
+            for key in ("pcode", "pcode_token", "opcode", "operand_count", "source_offset"):
+                if capture.get(key) != emission.get(key):
+                    raise ValueError(f"native {key} join mismatch")
+            for key, value in (("operand_ordinal", ordinal), ("operand_index", operand.get("vreg")),
+                               ("color", operand.get("color")), ("class", 4),
+                               ("observation_index", index), ("pass", operand.get("allocation_pass")),
+                               ("operand_flags", operand.get("pre_color_flags"))):
+                if capture.get(key) != value:
+                    raise ValueError(f"native {key} join mismatch")
+            try:
+                before = bytes.fromhex(capture["operand_raw"])
+                after = bytes.fromhex(operand["raw"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("native operand raw encoding invalid") from exc
+            if (len(before) != 12 or len(after) != 12 or before[:4] != after[:4]
+                    or before[6:] != after[6:]
+                    or int.from_bytes(before[4:6], "little", signed=True) != operand["vreg"]
+                    or int.from_bytes(after[4:6], "little", signed=True) != operand["color"]):
+                raise ValueError("native operand raw join mismatch")
+            item["virtual_id"] = operand["vreg"]
+            key = (capture["pcode_token"], ordinal, index)
+            if key not in seen_captures:
+                events.append(dict(capture, event_kind="pcode_capture", function=function,
+                                   confirmed=True, operand_bank="GPR", final_color=capture["color"]))
+                seen_captures.add(key)
+    return events
 
 
 def _operand_coverage(events: list[dict[str, Any]], function: str) -> dict[str, Any]:
@@ -334,6 +402,8 @@ def _collision_items(observations: list[dict[str, Any]], adjustments: dict[int, 
         group["observation_count"] += 1
         if len(group["observations"]) < MAX_EXEMPLARS:
             group["observations"].append(observation)
+        elif observation["target_color"] not in {x["target_color"] for x in group["observations"]}:
+            group["observations"][-1] = observation
     collisions = []
     for virtual_id, group in groups.items():
         if len(group["target_colors"]) <= 1:
@@ -344,7 +414,7 @@ def _collision_items(observations: list[dict[str, Any]], adjustments: dict[int, 
             "candidate_colors": sorted(group["candidate_colors"]),
             "observation_count": group["observation_count"],
             "exemplars": [
-                {key: item[key] for key in ("machine_index", "row_index", "target_color", "candidate_color", "operand_ordinal", "opcode")}
+                {key: item.get(key) for key in ("machine_index", "row_index", "target_color", "candidate_color", "operand_ordinal", "opcode", "source_offset", "pcode_token")}
                 for item in group["observations"]
             ],
         })
@@ -352,7 +422,7 @@ def _collision_items(observations: list[dict[str, Any]], adjustments: dict[int, 
     return len(collisions), collisions[:MAX_COLLISIONS]
 
 
-def _reset(definitions: list[dict[str, int]]) -> dict[str, Any]:
+def _reset(definitions: list[dict[str, int]], *, native: bool = False) -> dict[str, Any]:
     pool = [item for item in definitions if item["virtual_id"] >= POOL_BASE]
     drops = []
     for before, after in zip(pool, pool[1:]):
@@ -360,6 +430,26 @@ def _reset(definitions: list[dict[str, int]]) -> dict[str, Any]:
             drops.append((before, after))
     if not drops:
         return {"status": "none", "detected": False, "pool_definition_count": len(pool)}
+    if native:
+        seen: set[int] = set()
+        repeated = set()
+        for item in pool:
+            if item["virtual_id"] in seen:
+                repeated.add(item["virtual_id"])
+            seen.add(item["virtual_id"])
+        return {
+            "status": "UNKNOWN", "detected": False,
+            "pool_definition_count": len(pool), "nonmonotonic_transitions": len(drops),
+            "repeated_definition_ids": sorted(repeated)[:MAX_COLLISIONS],
+            "repeated_definition_id_count": len(repeated),
+            "transition_examples": [
+                {"before": {key: before.get(key) for key in ("machine_index", "virtual_id", "source_offset")},
+                 "after": {key: after.get(key) for key in ("machine_index", "virtual_id", "source_offset")}}
+                for before, after in drops[:8]
+            ],
+            "reason": "ID drops/redefinitions do not prove allocator reset or distinct lifetimes",
+            "alternatives": ["pool reuse", "existing local redefinition or scheduling"],
+        }
     if len(drops) != 1:
         return {
             "status": "UNKNOWN",
@@ -382,7 +472,7 @@ def _suffix_fit(observations: list[dict[str, Any]], reset: dict[str, Any], basel
     if baseline == 0:
         return {"status": "exact", "suppressed": True, "reason": "zero target-role collisions"}
     if reset.get("status") == "UNKNOWN":
-        return {"status": "UNKNOWN", "reason": "multiple observed pool resets"}
+        return {"status": "UNKNOWN", "reason": "pool reset boundary is unproved"}
     boundary = int(reset["machine_index"]) if reset.get("detected") else None
     partitions = sorted({0 if boundary is None or item["machine_index"] < boundary else 1 for item in observations})
     candidates: list[dict[str, int]] = []
@@ -413,9 +503,13 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
     function = function.strip()
     envelope, envelope_binding = _read_json(Path(envelope_path), "envelope")
     report, report_binding = _read_json(Path(report_path), "report")
-    if not isinstance(envelope, dict) or not isinstance(envelope.get("events"), list):
+    native = isinstance(envelope, dict) and envelope.get("tool") == "mwcc_win32_varinfo"
+    if native:
+        events = _native_events(envelope, function)
+    elif not isinstance(envelope, dict) or not isinstance(envelope.get("events"), list):
         raise ValueError("envelope.events must be a list")
-    events = envelope["events"]
+    else:
+        events = envelope["events"]
     if not all(isinstance(event, dict) for event in events):
         raise ValueError("envelope.events contains a non-object")
     left_symbols = _symbols(report, "left", "report")
@@ -444,9 +538,10 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
     for token, machine_index in machine_by_token.items():
         for capture in captures.get(token, []):
             if capture["operand_flags"] & 2 and capture["virtual_id"] >= POOL_BASE:
-                definitions.append({"machine_index": machine_index, **capture})
+                definitions.append({"machine_index": machine_index,
+                                    "source_offset": machine[machine_index].get("source_offset"), **capture})
     definitions.sort(key=lambda item: (item["machine_index"], item["operand_ordinal"]))
-    reset = _reset(definitions)
+    reset = _reset(definitions, native=native)
     reset_index = int(reset["machine_index"]) if reset.get("detected") else None
     observations: list[dict[str, Any]] = []
     candidate_index = 0
@@ -459,7 +554,8 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
         machine_event = machine[candidate_index]
         candidate_index += 1
         token = machine_event.get("pcode_token")
-        observed = sorted(captures.get(token, []), key=lambda item: item["operand_ordinal"]) if isinstance(token, str) else []
+        observed = (machine_event["native_gpr_operands"] if native else
+                    sorted(captures.get(token, []), key=lambda item: item["operand_ordinal"]) if isinstance(token, str) else [])
         target_roles = _gpr_roles(target_text)
         candidate_roles = _gpr_roles(candidate_text)
         if (
@@ -470,9 +566,13 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
             continue
         if any(item["final_color"] != candidate_role for item, candidate_role in zip(observed, candidate_roles)):
             continue
+        if native and (not target_text or target_text.split(None, 1)[0].lower() != candidate_text.split(None, 1)[0].lower()):
+            continue
         partition = 0 if reset_index is None or int(machine_event["instruction_index"]) < reset_index else 1
         opcode = candidate_text.split(None, 1)[0].lower() if candidate_text else ""
         for item, target_role, candidate_role in zip(observed, target_roles, candidate_roles):
+            if item["virtual_id"] is None:
+                continue
             observations.append({
                 "machine_index": int(machine_event["instruction_index"]),
                 "row_index": report_index,
@@ -481,6 +581,8 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
                 "candidate_color": candidate_role,
                 "operand_ordinal": item["operand_ordinal"],
                 "opcode": opcode,
+                "source_offset": machine_event.get("source_offset"),
+                "pcode_token": token,
                 "partition": partition,
             })
     pooled = [item for item in observations if item["virtual_id"] >= POOL_BASE]
@@ -517,6 +619,10 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
         },
         "suffix_fit": fit,
         "diagnostic_only": True,
+        "input_format": "native" if native else "capsule_events",
+        "authority_advanced": False,
+        "target_virtual_ids": "NOT_RECOVERED",
+        "source_authority": "NOT_ESTABLISHED; compiler source offsets are location evidence only",
     }
     encoded = canonical(result)
     if len(encoded) > MAX_OUTPUT_BYTES:

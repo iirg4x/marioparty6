@@ -1754,6 +1754,27 @@ class Debugger:
         if handle:
             kernel32.CloseHandle(handle)
 
+    def finish_process(self, exit_code: int) -> None:
+        """Validate and publish identically for debug-event and polled exits."""
+        self.result["exit_code"] = exit_code
+        self.exited = True
+        if self.capture_regalloc:
+            if self.regalloc_pending is not None:
+                raise RuntimeError("compiler exited with unfinished allocator observation")
+            if not self.result.get("regalloc_selections") or not self.result.get("regalloc_pcode"):
+                raise RuntimeError(
+                    f"compiler exited without target optimized "
+                    f"{self.regalloc_class_label} evidence"
+                )
+            stages = [x["stage"] for x in self.result.get("frontend", [])]
+            if self.capture_frontend and stages != list(FRONTEND_STAGES.values()):
+                raise RuntimeError("compiler exited without all requested frontend stages")
+            if self.capture_machine_emit and not self.result.get("machine_emissions"):
+                raise RuntimeError("compiler exited without requested machine emissions")
+            self.result["status"] = "regalloc_observed"
+        self.log(f"EXIT_PROCESS code=0x{exit_code:08x} target_seen={self.target_seen} dumped={self.dumped}")
+        self.write_result()
+
     def run(self) -> int:
         event = DEBUG_EVENT()
         while True:
@@ -1771,6 +1792,7 @@ class Debugger:
                 if error == ERROR_SEM_TIMEOUT:
                     code = DWORD()
                     if kernel32.GetExitCodeProcess(self.process, ctypes.byref(code)) and code.value != 259:
+                        self.finish_process(int(code.value))
                         return int(code.value)
                     continue
                 raise winerr("WaitForDebugEvent")
@@ -1803,24 +1825,7 @@ class Debugger:
                     self.log(f"EXIT_THREAD tid={tid} code={event.u.ExitThread.dwExitCode}")
                     self.close_thread(tid)
                 elif code == EXIT_PROCESS_DEBUG_EVENT:
-                    self.result["exit_code"] = int(event.u.ExitProcess.dwExitCode)
-                    self.exited = True
-                    if self.capture_regalloc:
-                        if self.regalloc_pending is not None:
-                            raise RuntimeError("compiler exited with unfinished allocator observation")
-                        if not self.result.get("regalloc_selections") or not self.result.get("regalloc_pcode"):
-                            raise RuntimeError(
-                                f"compiler exited without target optimized "
-                                f"{self.regalloc_class_label} evidence"
-                            )
-                        stages = [x["stage"] for x in self.result.get("frontend", [])]
-                        if self.capture_frontend and stages != list(FRONTEND_STAGES.values()):
-                            raise RuntimeError("compiler exited without all requested frontend stages")
-                        if self.capture_machine_emit and not self.result.get("machine_emissions"):
-                            raise RuntimeError("compiler exited without requested machine emissions")
-                        self.result["status"] = "regalloc_observed"
-                    self.log(f"EXIT_PROCESS code=0x{int(event.u.ExitProcess.dwExitCode):08x} target_seen={self.target_seen} dumped={self.dumped}")
-                    self.write_result()
+                    self.finish_process(int(event.u.ExitProcess.dwExitCode))
                     break
                 elif code == EXCEPTION_DEBUG_EVENT:
                     exception = event.u.Exception.ExceptionRecord

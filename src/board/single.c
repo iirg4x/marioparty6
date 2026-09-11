@@ -58,6 +58,7 @@ extern void mbCoinAddExec(int playerNo, int coinNum);
 extern BOOL mbWipeSpecialStatGet(void);
 extern void mbWipeSpecialCreate(int state, int type, int time);
 extern void mbWipeSpecialFadeInCreate(int type, int time);
+extern void mbWipeSpecialFadeOutCreate(int type, int time);
 extern void mbWipeSpecialWait(void);
 extern void mbWipeFadeOutTime(int time);
 extern void mbWipeSpecialKill(void);
@@ -3639,4 +3640,5 @@ BOOL mbSingleMgUnlockCheck(void)
 {
     return SingleMgListGet(-1, NULL) == 0;
 }
+
 
