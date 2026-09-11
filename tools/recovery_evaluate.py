@@ -573,6 +573,57 @@ def _structural_closure(before: dict, after: dict, name: str) -> dict:
     return result
 
 
+def _qualified_relocation_alias(document: dict, name: str, physical: dict,
+                                strict: dict, data: dict) -> dict | None:
+    """Waive only label/addend spelling rows, never change strict measurements."""
+    if (physical.get("raw_exact_target") is not True
+            or physical.get("candidate_normalized_exact") is not True
+            or physical.get("candidate_physical_exact") is not True
+            or physical.get("normalized_diff_after") != 0
+            or physical.get("physical_diff_after") != 0
+            or data.get("instruction_exact") is not True or data.get("diff_rows") != 0
+            or strict.get("instruction_exact") is not False or not strict.get("diff_rows")
+            or not strict["candidate_bytes"] == strict["target_bytes"] == data["candidate_bytes"] == data["target_bytes"]):
+        return None
+    try:
+        target, candidate = _diagnostic_rows(document, name)
+        symbols = [frontier.focus._symbols(document, side, "strict") for side in ("left", "right")]
+        if len(target) != len(candidate) or 4 * len(target) != strict["target_bytes"]:
+            return None
+        aliases = []
+        for index, pair in enumerate(zip(target, candidate)):
+            if any(not r.get("instruction") or r["instruction"].get("size") != 4 for r in pair):
+                return None
+            if all(r.get("diff_kind") in (None, "DIFF_NONE") for r in pair):
+                continue
+            if any(r.get("diff_kind") != "DIFF_ARG_MISMATCH" for r in pair):
+                return None
+            parts = [r["instruction"].get("parts") for r in pair]
+            if not parts[0] or parts[0] != parts[1]:
+                return None
+            args = [p["arg"] for p in parts[0] if "arg" in p]
+            relocation_args = {i for i, arg in enumerate(args) if arg == {"reloc": True}}
+            if not relocation_args:
+                return None
+            for r in pair:
+                flags = r.get("arg_diff")
+                if not isinstance(flags, list) or len(flags) != len(args) or not all(isinstance(f, dict) for f in flags):
+                    return None
+                changed = {i for i, f in enumerate(flags) if "diff_index" in f}
+                if not changed or not changed <= relocation_args:
+                    return None
+            relocs = [frontier.relocation_key(r, table) for r, table in zip(pair, symbols)]
+            if not all(relocs) or relocs[0]["type"] != relocs[1]["type"] or relocs[0] == relocs[1]:
+                return None
+            aliases.append(index)
+        if len(aliases) != strict["diff_rows"]:
+            return None
+        return {"function": name, "rows": aliases, "proof": "raw+canonical+physical+data exact; strict relocation operands only",
+                "strict_measurements_unchanged": True, "authority_advanced": False}
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError):
+        return None
+
+
 def _classify(before_strict: list[dict], before_data: list[dict],
               after_strict: list[dict], after_data: list[dict],
               object_comparison: dict, functions: list[str], *,
@@ -621,6 +672,16 @@ def _classify(before_strict: list[dict], before_data: list[dict],
                 structural_closures.append({"function": name, "channels": findings})
                 gains.append(f"structural:{name}: size, missing operations, CFG and physical relocations closed")
     structural_names = {row["function"] for row in structural_closures}
+    relocation_aliases = []
+    strict_map, data_map = _metric_map(after_strict), _metric_map(after_data)
+    if after_documents:
+        for name in functions:
+            if name in strict_map and name in data_map:
+                alias = _qualified_relocation_alias(after_documents.get("strict", {}), name,
+                    object_comparison.get("functions", {}).get(name, {}), strict_map[name], data_map[name])
+                if alias:
+                    relocation_aliases.append(alias)
+    alias_names = {row["function"] for row in relocation_aliases}
     for channel, before, after in (("strict", before_strict, after_strict),
                                     ("data", before_data, after_data)):
         left, right = _metric_map(before), _metric_map(after)
@@ -633,14 +694,15 @@ def _classify(before_strict: list[dict], before_data: list[dict],
                 changes.append({"channel": channel, "function": name,
                                 "before": {k: a[k] for k in fields},
                                 "after": {k: b[k] for k in fields}})
-            if a["instruction_exact"] and not b["instruction_exact"]:
+            alias_only = channel == "strict" and name in alias_names
+            if a["instruction_exact"] and not b["instruction_exact"] and not alias_only:
                 regressions.append(f"{channel}:{name}: exact function lost")
             if a["candidate_bytes"] == a["target_bytes"] and b["candidate_bytes"] != b["target_bytes"]:
                 regressions.append(f"{channel}:{name}: exact size lost")
-            if b["diff_rows"] > a["diff_rows"] and name not in structural_names:
+            if b["diff_rows"] > a["diff_rows"] and name not in structural_names and not alias_only:
                 regressions.append(f"{channel}:{name}: differing rows increased")
             if a.get("match_percent") is not None and b.get("match_percent") is not None:
-                if b["match_percent"] < a["match_percent"]:
+                if b["match_percent"] < a["match_percent"] and not alias_only:
                     regressions.append(f"{channel}:{name}: score regressed")
             if name in focus and b["diff_rows"] < a["diff_rows"]:
                 gains.append(f"{channel}:{name}: {a['diff_rows']} -> {b['diff_rows']} differing rows")
@@ -716,6 +778,7 @@ def _classify(before_strict: list[dict], before_data: list[dict],
             "gains": gains, "regressions": sorted(set(regressions)),
             "review_required": review, "metric_changes": changes, "code_quality": quality,
             "qualified_positional_relocation_shifts": positional_shifts,
+            "qualified_relocation_aliases": relocation_aliases,
             "qualified_structural_closures": structural_closures,
             "retention_ready": status in {"exact", "improved"} and not review}
 

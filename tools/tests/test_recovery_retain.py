@@ -89,6 +89,33 @@ class RetainTests(unittest.TestCase):
         self.assertEqual(json.loads(self.index.read_text())["inputs"]["source"]["path"], "src/owner.c")
         self.assertFalse((self.directory / "pending.json").exists())
 
+    def test_explicit_data_review_is_bound_and_preserves_measurement(self):
+        self.measurement["review_required"] = [retain.DATA_REVIEW]
+        self.measured_path.write_text(json.dumps(self.measurement))
+        with self.assertRaisesRegex(ValueError, "reviewed"):
+            retain.retain_gain(**self.args)
+        result = retain.retain_gain(**self.args, data_reviewed=True)
+        review = json.loads(Path(result["data_review"]["path"]).read_text())
+        self.assertTrue(review["explicitly_reviewed"])
+        self.assertEqual(review["source"]["sha256"], retain.compiler.digest(self.candidate))
+        self.assertEqual(review["candidate_object"]["sha256"], retain.compiler.digest(self.obj))
+        self.assertEqual(review["measured_evaluation"], retain._desc(self.measured_path))
+        fresh = json.loads(Path(review["reproduced_evaluation"]["path"]).read_text())
+        self.assertEqual(fresh["review_required"], [retain.DATA_REVIEW])
+        self.assertEqual(json.loads(self.measured_path.read_text())["review_required"], [retain.DATA_REVIEW])
+
+    def test_data_review_never_waives_regressions_other_reviews_or_binding(self):
+        for change in ({"regressions": ["lost sibling"]}, {"review_required": [retain.DATA_REVIEW, "other"]},
+                       {"review_required": ["other"]}, {"candidate_source": {"sha256": "wrong"}},
+                       {"baseline_index": {"sha256": "wrong"}}, {"status": "rejected"}):
+            doc = {**self.measurement, "review_required": [retain.DATA_REVIEW], **change}
+            with self.assertRaises(ValueError):
+                retain._gate(doc, retain.compiler.digest(self.index), retain.compiler.digest(self.candidate), ["f"], True)
+        for truthy in (1, "yes"):
+            with self.assertRaises(ValueError):
+                retain._gate({**self.measurement, "review_required": [retain.DATA_REVIEW]},
+                    retain.compiler.digest(self.index), retain.compiler.digest(self.candidate), ["f"], truthy)
+
     def test_exact_retained(self):
         self.measurement["status"] = "exact"
         self.measured_path.write_text(json.dumps(self.measurement))

@@ -19,6 +19,56 @@ from tools.tests.test_focus_symbol_report import _instruction, _report
 class RecoveryEvaluateTests(unittest.TestCase):
     """Exercise one bounded evaluation without a compiler or retail inputs."""
 
+    def _alias_case(self):
+        before = _report(focus_exact=True, sibling_exact=True)
+        strict = copy.deepcopy(before)
+        target, candidate = evaluate._diagnostic_rows(strict, "FocusFunction")
+        for row in (target[0], candidate[0]):
+            row["instruction"]["parts"] += [{"arg": {"opaque": "f1"}}, {"arg": {"reloc": True}}]
+            row["diff_kind"] = "DIFF_ARG_MISMATCH"
+            row["arg_diff"] = [{}, {"diff_index": 0}]
+        candidate[0]["instruction"]["relocation"]["addend"] = "1"
+        candidate[0]["instruction"]["formatted"] = "lfs f1, @1+1@sda21"
+        strict["left"]["symbols"][1]["match_percent"] = 99.0
+        physical = self._comparison()
+        physical["functions"]["FocusFunction"].update(candidate_normalized_exact=True)
+        return before, strict, physical
+
+    def test_physical_alias_waives_only_strict_spelling_not_measurements(self):
+        before, strict, physical = self._alias_case()
+        result = evaluate._classify(frontier.summarize(before, "strict"), frontier.summarize(before, "data"),
+            frontier.summarize(strict, "strict"), frontier.summarize(before, "data"), physical, ["FocusFunction"],
+            after_documents={"strict": strict, "data": before})
+        self.assertEqual(result["status"], "improved")
+        self.assertEqual(result["regressions"], [])
+        self.assertEqual(result["qualified_relocation_aliases"][0]["rows"], [0])
+        self.assertEqual(result["metric_changes"][0]["after"]["match_percent"], 99)
+        self.assertFalse(result["metric_changes"][0]["after"]["instruction_exact"])
+
+    def test_alias_requires_raw_physical_data_and_relocation_only_operands(self):
+        for fault in ("raw", "physical", "canonical", "data", "register", "opcode", "unbound", "missing_flags", "gap"):
+            with self.subTest(fault=fault):
+                before, strict, comparison = self._alias_case()
+                physical = comparison["functions"]["FocusFunction"]
+                target, candidate = evaluate._diagnostic_rows(strict, "FocusFunction")
+                data = evaluate._metric_map(frontier.summarize(before, "data"))["FocusFunction"]
+                if fault in ("raw", "physical", "canonical"):
+                    physical[{"raw": "raw_exact_target", "physical": "candidate_physical_exact", "canonical": "candidate_normalized_exact"}[fault]] = False
+                elif fault == "data":
+                    data["instruction_exact"] = False
+                elif fault == "register":
+                    candidate[0]["arg_diff"][0] = {"diff_index": 1}
+                elif fault == "opcode":
+                    candidate[0]["instruction"]["parts"][0] = {"opcode": {"mnemonic": "lfd"}}
+                elif fault == "unbound":
+                    candidate[0]["instruction"].pop("relocation")
+                elif fault == "missing_flags":
+                    candidate[0].pop("arg_diff")
+                elif fault == "gap":
+                    candidate[1].clear()
+                metric = evaluate._metric_map(frontier.summarize(strict, "strict"))["FocusFunction"]
+                self.assertIsNone(evaluate._qualified_relocation_alias(strict, "FocusFunction", physical, metric, data))
+
     def _quality_case(self, *, opcode: bool = False) -> tuple[dict, dict, dict]:
         before = _report(focus_exact=False, sibling_exact=True)
         after = copy.deepcopy(before)

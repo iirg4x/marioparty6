@@ -52,9 +52,14 @@ def _write(path: Path, doc: dict) -> None:
     compiler.atomic(path, data)
 
 
-def _gate(doc: dict, index_sha: str, source_sha: str, functions: list[str]) -> None:
+DATA_REVIEW = "allocated nontext changed; typed data/consumer review required"
+
+
+def _gate(doc: dict, index_sha: str, source_sha: str, functions: list[str], data_reviewed: bool = False) -> None:
+    reviews = doc.get("review_required")
+    reviewed = reviews == [] or (data_reviewed is True and reviews == [DATA_REVIEW])
     if (doc.get("schema") != evaluator.SCHEMA or doc.get("status") not in {"exact", "improved"}
-            or doc.get("regressions") != [] or doc.get("review_required") != []
+            or doc.get("regressions") != [] or not reviewed
             or doc.get("cleanup_errors") != [] or doc.get("stage") != "complete"
             or doc.get("baseline_index", {}).get("sha256") != index_sha
             or doc.get("candidate_source", {}).get("sha256") != source_sha
@@ -138,6 +143,8 @@ def _resume(root: Path, directory: Path) -> dict:
               "authority_advanced": False, "linked_exact": None, "search_memory": memory}
     if "source_lineage" in doc:
         result["source_lineage"] = doc["source_lineage"]
+    if "data_review" in doc:
+        result["data_review"] = doc["data_review"]
     return result
 
 
@@ -153,7 +160,8 @@ def _retain_gain(root: Path, index: Path, candidate: Path, functions: list[str],
                 measured_result: Path, scratch: Path, source_relpath: str,
                 object_relpath: str, compiler_script: Path, objdiff: Path,
                 readelf: Path, tools: list[Path] | None, out_dir: Path, timeout: float = 120,
-                source_reviewed: bool = False, working_source: dict | None = None) -> dict:
+                source_reviewed: bool = False, working_source: dict | None = None,
+                data_reviewed: bool = False) -> dict:
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("retention timeout must be finite and positive")
     deadline = time.monotonic() + timeout
@@ -185,7 +193,7 @@ def _retain_gain(root: Path, index: Path, candidate: Path, functions: list[str],
         if _local(root, base["inputs"]["source"]["path"]) != live:
             raise ValueError("retention requires the live champion as measurement baseline")
         measured = _read(measured_result, EVALUATION_LIMIT)
-        _gate(measured, old_index["sha256"], source_desc["sha256"], functions)
+        _gate(measured, old_index["sha256"], source_desc["sha256"], functions, data_reviewed)
         lineage = measured.get("source_lineage")
         working = lineage.get("working_source") if isinstance(lineage, dict) else None
         if working_source is not None:
@@ -246,7 +254,7 @@ def _retain_gain(root: Path, index: Path, candidate: Path, functions: list[str],
         fresh = evaluator.evaluate(root=root, index=index, candidate=frozen, functions=functions,
             out=directory / "evaluation.json", objdiff=Path(objdiff), readelf=Path(readelf),
             candidate_object=output, timeout=remaining(), keep_reports=True, **lineage_kwargs)
-        _gate(fresh, old_index["sha256"], source_desc["sha256"], functions)
+        _gate(fresh, old_index["sha256"], source_desc["sha256"], functions, data_reviewed)
         if lineage is not None and fresh.get("source_lineage") != lineage:
             raise ValueError("fresh evaluation source lineage differs")
         if fresh.get("candidate_object", {}).get("sha256") != compiler.digest(output):
@@ -272,6 +280,16 @@ def _retain_gain(root: Path, index: Path, candidate: Path, functions: list[str],
             "proof_tools": [_desc(Path(p).resolve()) for p in (objdiff, readelf)]
                            + [_desc(Path(p)) for p in evaluator._implementation_binding()],
             "compile_context": context_spec, "compile_context_sha256": compiler.context_digest(context)}
+        if data_reviewed is True:
+            review = {"schema": "recovery_data_review/v1", "explicitly_reviewed": True,
+                "scope": DATA_REVIEW, "source": _desc(frozen), "candidate_object": _desc(output),
+                "baseline_index": old_index, "measured_evaluation": result_desc,
+                "reproduced_evaluation": _desc(directory / "evaluation.json"),
+                "authority_advanced": False}
+            review_path = directory / "data-review.json"
+            _write(review_path, review)
+            pending["data_review"] = _desc(review_path)
+            pending["artifacts"] += [_desc(review_path), result_desc]
         if lineage is not None:
             pending["source_lineage"] = lineage
             pending["artifacts"] += [_desc(Path(p)) for p in lineage_watched]
@@ -283,7 +301,8 @@ def retain_gain(root: Path, index: Path, candidate: Path, functions: list[str],
                 measured_result: Path, scratch: Path, source_relpath: str,
                 object_relpath: str, compiler_script: Path, objdiff: Path,
                 readelf: Path, tools: list[Path] | None, out_dir: Path, timeout: float = 120,
-                source_reviewed: bool = False, working_source: dict | None = None) -> dict:
+                source_reviewed: bool = False, working_source: dict | None = None,
+                data_reviewed: bool = False) -> dict:
     """Retain under one deadline; failed pre-journal attempts keep compact proof."""
     root = Path(root).resolve()
     directory = _local(root, out_dir)
@@ -292,7 +311,7 @@ def retain_gain(root: Path, index: Path, candidate: Path, functions: list[str],
     try:
         return _retain_gain(root, index, candidate, functions, measured_result, scratch,
                             source_relpath, object_relpath, compiler_script, objdiff,
-                            readelf, tools, directory, timeout, source_reviewed, working_source)
+                            readelf, tools, directory, timeout, source_reviewed, working_source, data_reviewed)
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
         if not existed and directory.is_dir() and not (directory / "pending.json").exists():
             # Only named files in this newly created attempt are disposable.
@@ -320,6 +339,8 @@ def main() -> int:
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument("--resume-pending", action="store_true")
     parser.add_argument("--source-reviewed", action="store_true")
+    parser.add_argument("--data-reviewed", action="store_true",
+                        help="explicitly acknowledge only the bound allocated-nontext typed-data/consumer review")
     for name in ("index", "candidate", "measured-result", "scratch", "compiler-script", "objdiff", "readelf"):
         parser.add_argument("--" + name, type=Path)
     for name in ("source-relpath", "object-relpath"):
