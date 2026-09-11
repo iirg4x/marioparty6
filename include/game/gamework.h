@@ -358,7 +358,7 @@ BOOL GWSinglePrizeFlagGet(GW_SINGLE_PRIZE_FLAG flag);
 void GWSingleDataInit(void);
 void GWSinglePrizeSaveFlagSet(void);
 BOOL GWSinglePrizeSaveFlagGet(GW_SINGLE_PRIZE_FLAG flag);
-void GWSingleMgFlagSet(int mgNo);
+int GWSingleMgFlagSet(int mgNo);
 BOOL GWSingleMgFlagGet(int mgNo);
 void GWBankStarAdd(u16 num);
 void GWBankStarSub(u16 num);
