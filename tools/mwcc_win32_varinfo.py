@@ -214,6 +214,9 @@ DEFAULT_OUTPUT = (
 GFUNCTION = 0x005E9EC0
 LOCALS_LIST = 0x005EA8D4
 ARGUMENTS_LIST = 0x005EAA28
+# Pinned O0 GPR allocator 0x435C39 scans this third ObjectList after
+# arguments/locals. Its identity must come from object names, not PPC colors.
+IMPLICIT_GPR_LIST = 0x005EA69C
 
 OBJECT_DATATYPE = 0x02
 OBJECT_NAME = 0x0A
@@ -1647,7 +1650,10 @@ class Debugger:
     def object_record(self, address: int) -> dict[str, Any]:
         datatype_data = self.read(address + OBJECT_DATATYPE, 1)
         datatype = datatype_data[0] if datatype_data else None
-        info_address = self.read_u32(address + OBJECT_VARINFO) if datatype == 1 else 0
+        # Pinned get_varinfo (0x4CFFE0): datatype 1 stores +0x2A;
+        # datatype 0/2 (including compiler section objects) store +0x32.
+        info_offset = {0: 0x32, 1: OBJECT_VARINFO, 2: 0x32}.get(datatype)
+        info_address = self.read_u32(address + info_offset) if info_offset is not None else 0
         record: dict[str, Any] = {
             "object": hex(address),
             "name": self.read_object_name(address),
@@ -1700,6 +1706,19 @@ class Debugger:
                 "breakpoint_address": hex(self.runtime(ALLOCATE_LOCAL_FPRS)),
                 "locals": locals_records,
                 "arguments": arguments_records,
+                "implicit_gpr_objects": self.object_list(IMPLICIT_GPR_LIST),
+                "implicit_gpr_evidence": {
+                    "list_global": hex(IMPLICIT_GPR_LIST),
+                    "scan_address": "0x435c39",
+                    "eligibility": "reg == 0 and used != 0 and usage >= 3; noregister not tested for this list",
+                    "usage_override": "flags & 0x40 forces usage to 100000 before ranking",
+                    "ranking": "scanned after arguments/locals; usage >= current best wins",
+                    "stage": "FPR entry, after O0 GPR allocation",
+                    "missing_edges": [
+                        "contributing source/data uses not captured",
+                        "section-object to individual storage-symbol edges not captured",
+                    ],
+                },
                 "varinfo_layout": {
                     "usage": "+0x04 s32",
                     "noregister": "+0x22 u8",

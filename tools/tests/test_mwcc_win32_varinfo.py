@@ -15,6 +15,43 @@ from tools import mwcc_win32_varinfo as varinfo
 
 
 class MwccWin32VarInfoTests(unittest.TestCase):
+    def test_object_varinfo_layouts_include_implicit_section_owner(self):
+        debugger, _, _, write, _ = self.allocator_fixture()
+        debugger.read_object_name = lambda address: "...bss.0"
+        for datatype, offset in ((0, 0x32), (1, 0x2A), (2, 0x32), (3, None)):
+            header = bytearray(0x36)
+            header[2] = datatype
+            if offset is not None:
+                struct.pack_into("<I", header, offset, 0x31000)
+            write(0x30000, header)
+            info = bytearray(0x2A)
+            struct.pack_into("<i", info, 4, 14)
+            info[0x23:0x26] = bytes((1, 2, 4))
+            struct.pack_into("<h", info, 0x26, 27)
+            write(0x31000, info)
+            record = debugger.object_record(0x30000)
+            if offset is None:
+                self.assertIsNone(record["varinfo"])
+                self.assertNotIn("usage", record)
+            else:
+                self.assertEqual((record["usage"], record["reg"]), (14, 27))
+                self.assertEqual(record["varinfo"], "0x31000")
+
+    def test_implicit_list_is_bounded_and_needs_no_extra_hook(self):
+        debugger, _, _, write, _ = self.allocator_fixture()
+        write(varinfo.IMPLICIT_GPR_LIST, struct.pack("<I", 0x30000))
+        debugger.object_record = lambda address: {"object": hex(address)}
+        # A cycle terminates after one object; an acyclic oversized list caps.
+        write(0x30000, struct.pack("<II", 0x30000, 0x40000))
+        self.assertEqual(len(debugger.object_list(varinfo.IMPLICIT_GPR_LIST)), 1)
+        for index in range(1025):
+            write(0x30000 + index * 8,
+                  struct.pack("<II", 0x30000 + (index + 1) * 8, 0x40000))
+        self.assertEqual(len(debugger.object_list(varinfo.IMPLICIT_GPR_LIST)), 1024)
+        self.assertEqual(set(varinfo.EXPECTED_HOOK_BYTES),
+                         {varinfo.CODEGEN_START, varinfo.ALLOCATE_LOCAL_FPRS,
+                          varinfo.ASSIGN_LOCAL_FPR})
+
     def test_frontend_snapshot_preserves_shared_object_identity(self):
         debugger, event, context, write, node = self.allocator_fixture()
         write(varinfo.NODE_NAMES, b"".join(struct.pack("<I", i + 1) for i in range(77)))
