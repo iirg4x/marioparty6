@@ -2,6 +2,15 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "single-target-fabs-primitive",
+      "classification": "authenticated",
+      "path": "src/board/single.c",
+      "kind": "native_math_boundary",
+      "rules": ["register", "inline_asm"],
+      "rationale": "SCOPE: only SingleAbsFloat, the previously user-authorized small math helper: one target fabs with a compiler-selected operand and a readable C fallback. The register parameter is the native operand binding, not a fixed physical register or gameplay allocation control. No additional assembly, fake storage, padding, save/restore scaffolding, original Hudson spelling, or pure-C-only matching is claimed. Retained c95 source d8fbad86190a8ac052b1d5a07081873d9e0f97b0a4fa39bcb3bfd4cd07ceb375 has all 58 instruction- and canonical-physical-exact functions with identical allocated nontext bytes. The closure itself changes only the consistent flag-return contract, unlock expression, and void wipe declarations; it does not alter this helper. Final source-selected retail proof is recorded separately.",
+      "evidence": ["docs/single-koopamgend-closure.md", "build/single-recovery/current-c95.json", "build/single-recovery/c95-normal/single.o.receipt.json"]
+    },
+    {
       "id": "opening-unresolved-coin-tail",
       "classification": "authenticated",
       "path": "src/board/opening.c",
