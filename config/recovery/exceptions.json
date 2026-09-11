@@ -2,6 +2,15 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "board-effect-native-particle-kernels",
+      "classification": "authenticated",
+      "path": "src/board/effect.c",
+      "kind": "native_math_boundary",
+      "rules": ["include_guard_override", "register", "inline_asm"],
+      "rationale": "SCOPE: the _MATH_H translation-unit visibility prefix and four disclosed small paired-single kernels: ParticleQuadTransform (four scaled/translated Vecs), ParticleQuadClear (48 bytes of zero vertices), ParticleQuadTexCopy (four UV pairs), and ParticleVecCopy (paired XY/scalar Z). These implement target-emitted native arithmetic/copy operations and have readable C fallbacks. Pointer aliases denote real buffers; no numeric stack homes, fake storage, gameplay assembly, or save/restore scaffolding is admitted. QuadClear and QuadTexCopy deliberately use fixed FPRs inside the native kernel. Standing user approval covers this MP4/SDK-style native math boundary, not original Hudson token identity or pure-C-only matching. Fallback equivalence for partially overlapping buffers, exceptional floating-point values, and fused rounding is not claimed. All 35 functions, all 420 allocated relocation rows, and the source-selected 137 retail DOL/REL outputs verify the retained implementation. The only allocated section-size difference is four zero alignment-tail bytes in sdata, independently proved linker-equivalent. This exception does not authorize unrelated inline assembly or register shaping.",
+      "evidence": ["docs/board-effect-recovery.md", "build/effect-recovery/current.json", "build/effect-recovery/promotion-proof.json", "build/effect-recovery/final/effect.o.receipt.json"]
+    },
+    {
       "id": "mdparty-late-owner-definitions",
       "classification": "authenticated",
       "path": "src/REL/mdpartydll/mdparty.c",
