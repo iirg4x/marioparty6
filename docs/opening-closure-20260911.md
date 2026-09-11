@@ -22,6 +22,16 @@ committed binary artifacts. Promotion is not implied by this local proof.
 
 ## Source fidelity and linker behavior
 
+Publication c35 source SHA-256 is
+`18b4192309acea103f844a08ad0fe2c7835632edfc9ffe679483d1b92d49d716`;
+its source object is
+`84ed7b252b7a3d43feeac25bcedad74cfce99e7bcc9ac3094c50b0c6726de0a3`.
+Fresh canonical-main compilation reproduces that entire object exactly.
+`build/opening-recovery/c35/final-{strict,data}.json` remains 22/22 exact.
+The source-selected `link-c35/` verification reproduces the same 13 allocated
+sections, 22 final function bodies, 669 relocation sites, and retail DOL.
+Only ELF symbol/string metadata changes from c34 after the source cleanup.
+
 This reconstruction uses ordinary C; no inline assembly, fake storage,
 padding declarations, forced registers, or code-generation pragmas were added.
 Curve integration, Newton iteration, and length helpers are ordinary static
