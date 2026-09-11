@@ -40,6 +40,17 @@ index. A pending journal preserves a proved gain across interrupted publication;
 `--resume-pending` finishes that publication without another compile. This does
 not commit, promote to main, or claim linked exactness.
 
+Partial relocation progress is judged by reference identity as well as position.
+Within an already-unmatched focus, strictly fewer strict/data mismatch rows and
+canonical relocation differences can qualify even when the still-inexact size
+distance increases. The full ordered relocation sequence must equal the target
+and baseline; exact functions, exact sizes and sibling protections remain hard
+gates. This does not declare the remaining physical positions exact.
+Nontext movement is eligible only if it is proved to follow unchanged named
+code bodies: same data payload/layout, reference sites/types/addends, and raw
+plus normalized referenced-function identity. It still requires explicit data
+review. Changed data, references or target identities cannot use this exception.
+
 ## Inputs and execution
 
 Supply a current `recovery_frontier.py snapshot` index with source/object compile
@@ -121,6 +132,16 @@ its object with 73 return births and two actual GPR resets (257 to 34 after
 source line2299, 259 to34 at2518). This distinguishes real reset events from
 the older heuristic ID-drop boundaries. It does not prescribe changing a true
 API return type to void or inserting a disposable owner to adjust a counter.
+
+Add opt-in `--aliases` to that same pinned GPR capture when the missing edge is
+an allocator union or operand rewrite. It reuses the existing GC2.6 paired
+alias/split store sites, bounds events, and gives them the same PCode tokens
+as color observations. A union's operand bank and allocator iteration are not
+inferred; missing source or target identities remain unknown. On unchanged
+Single c65, 63 unions and 164 rewrites exposed genuine cross-region reuse:
+later call-result unions for V183/186/187/196/198 rewrote earlier operands.
+V184 itself was not rewritten. This rules out describing its first load as a
+local alias defect, but does not prescribe a source edit or prove a new crack.
 
 The live unchanged-source Koopa test reproduced object `84a892dc...39c40` and
 all 667 words. It joined the initial `mulli` at instruction 7 to the active
@@ -514,3 +535,15 @@ The Single initializer/accessor cleanup also reproduced exact `SingleEffInit`
 and `SingleEffCreate` while removing manual callee/return alias chains. Shared
 particle creation and a typed particle-data accessor preserve 57/58 matching
 instruction bodies. This is source-fidelity improvement, not two new cracks.
+
+The subsequent c65 reconstruction was independently retained on 2026-09-12:
+KoopaEnd data rows 162 -> 84, strict rows 164 -> 86, canonical relocation
+differences 483 -> 144, with all 57 exact siblings preserved. This is retention
+of an already-measured partial gain, not a tool-discovered exact function.
+The existing evaluator's positional-shift qualification now handles strict/data
+and normalized-reference improvement when the focus size was already inexact.
+It still rejects loss of exact size/siblings or normalized reference identity.
+The 13 changed nontext entries in this case are the same exact mbSingleCall
+jump-table destinations following its +4 movement; explicit typed-data review
+remains recorded. Full source fidelity and the source-selected retail link are
+still required; local wipe visibility remains an unresolved reconstruction debt.

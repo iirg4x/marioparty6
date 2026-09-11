@@ -19,6 +19,49 @@ from tools.tests.test_focus_symbol_report import _instruction, _report
 class RecoveryEvaluateTests(unittest.TestCase):
     """Exercise one bounded evaluation without a compiler or retail inputs."""
 
+    def test_partial_positional_gain_with_inexact_size_growth(self):
+        row = dict(raw_equal_base=False, base_raw_exact_target=False,
+                   ordered_normalized_relocations_equal=True, target_size=6116,
+                   base_size=6120, candidate_size=6124,
+                   normalized_diff_before=483, normalized_diff_after=144)
+        comparison = dict(function_census_equal=True, allocated_nontext_changed=True,
+                          allocated_nontext_relocations_only_code_motion=True,
+                          functions={"f": row, "s": dict(base_raw_exact_target=True,
+                          base_normalized_exact=True, raw_equal_base=True,
+                          candidate_normalized_exact=True)})
+        def metric(n):
+            return dict(function="f", target_bytes=6116, candidate_bytes=6120,
+                        diff_rows=n, instruction_exact=False, match_percent=90)
+        channels = [([metric(164)], [metric(86)]), ([metric(162)], [metric(84)])]
+        self.assertTrue(evaluate._qualified_positional_shift("f", row, comparison, channels, {"f"}))
+        exact_channels = copy.deepcopy(channels)
+        for before, after in exact_channels:
+            after[0].update(instruction_exact=True, diff_rows=0)
+        exact_comparison = copy.deepcopy(comparison)
+        exact_comparison["functions"]["f"].update(closed_normalized_row_losses=[{}],
+            closed_normalized_row_loss_count=1, raw_exact_target=False, candidate_physical_exact=False)
+        result = evaluate._classify(exact_channels[0][0], exact_channels[1][0],
+            exact_channels[0][1], exact_channels[1][1], exact_comparison, ["f"])
+        self.assertEqual(result["status"], "improved")
+        self.assertFalse(result["owner_exact"])
+        self.assertFalse(result["retention_ready"])
+        for fault in ("refs", "missing_refs", "size", "exact", "sibling", "rows",
+                      "data_rows", "canonical", "payload", "focus"):
+            with self.subTest(fault=fault):
+                r, c, ch = copy.deepcopy(row), copy.deepcopy(comparison), copy.deepcopy(channels)
+                focus = {"f"}
+                if fault == "refs": r["ordered_normalized_relocations_equal"] = False
+                elif fault == "missing_refs": r.pop("ordered_normalized_relocations_equal")
+                elif fault == "size": r["base_size"] = r["target_size"]
+                elif fault == "exact": ch[0][0][0]["instruction_exact"] = True
+                elif fault == "sibling": c["functions"]["s"]["raw_equal_base"] = False
+                elif fault == "rows": ch[0][1][0]["diff_rows"] = 164
+                elif fault == "data_rows": ch[1][1][0]["diff_rows"] = 163
+                elif fault == "canonical": r["normalized_diff_after"] = 483
+                elif fault == "payload": c["allocated_nontext_relocations_only_code_motion"] = False
+                else: focus = set()
+                self.assertFalse(evaluate._qualified_positional_shift("f", r, c, ch, focus))
+
     def _alias_case(self):
         before = _report(focus_exact=True, sibling_exact=True)
         strict = copy.deepcopy(before)

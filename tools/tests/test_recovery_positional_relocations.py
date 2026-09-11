@@ -30,13 +30,13 @@ class PositionalRelocationTests(unittest.TestCase):
                        relocations_sha256=inventory._sha(references),
                        physical_relocations=copy.deepcopy(references))
 
-    def classify(self, *, exact=False, focus=None):
+    def classify(self, *, exact=False, focus=None, after_rows=15):
         comparison = inventory.compare(self.target, self.base, self.candidate, ["foo"])
         def metric(size, differences, is_exact=False):
             return [{"function": "foo", "candidate_bytes": size, "target_bytes": 40,
                      "diff_rows": differences, "instruction_exact": is_exact, "match_percent": None}]
         before = metric(self.base["functions"]["foo"]["size"], 18, exact)
-        after = metric(self.candidate["functions"]["foo"]["size"], 15)
+        after = metric(self.candidate["functions"]["foo"]["size"], after_rows)
         return evaluate._classify(before, before, after, after, comparison,
                                   ["foo"] if focus is None else focus), comparison
 
@@ -84,9 +84,21 @@ class PositionalRelocationTests(unittest.TestCase):
         self.assertEqual(result["status"], "rejected")
         self.assertEqual(result["qualified_positional_relocation_shifts"], [])
 
-    def test_no_size_gain_is_not_eligible(self):
+    def test_same_inexact_size_with_code_and_canonical_gain_is_eligible(self):
         self.candidate["functions"]["foo"]["size"] = 48
-        self.assertEqual(self.classify()[0]["status"], "rejected")
+        self.assertEqual(self.classify()[0]["status"], "improved")
+        self.assertEqual(self.classify(after_rows=18)[0]["status"], "rejected")
+
+    def test_raw_unchanged_nontext_reference_with_changed_code_owner_fails(self):
+        for value in (self.base, self.candidate):
+            value["allocated_relocations"].append(dict(section=".data", offset=1000,
+                type=1, symbol={}, addend=0,
+                effective_target=dict(kind="section", section=".text", offset=4)))
+        self.candidate["functions"]["foo"]["offset"] += 4
+        result, comparison = self.classify()
+        self.assertFalse(comparison["allocated_nontext_changed"])
+        self.assertFalse(comparison["allocated_nontext_normalized_relocations_equal"])
+        self.assertEqual(result["status"], "rejected")
 
     def test_exact_raw_function_is_not_eligible(self):
         self.base["functions"]["foo"]["raw_sha256"] = "target"

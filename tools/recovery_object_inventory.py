@@ -1068,6 +1068,81 @@ def _nontext_relocations(value: Mapping[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
+def _normalized_nontext_references(value: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+    result = []
+    for row in _nontext_relocations(value):
+        target = row.get("effective_target")
+        if not isinstance(target, Mapping):
+            return None
+        target = dict(target)
+        if target.get("kind") == "section":
+            section = value["allocated_sections"].get(target.get("section"), {})
+            if section.get("flags", 0) & SHF_EXECINSTR:
+                offset = target.get("offset")
+                if not isinstance(offset, int):
+                    return None
+                matches = [(name, f) for name, f in value["functions"].items()
+                           if f.get("section") == target.get("section")
+                           and f["offset"] <= offset < f["offset"] + f["size"]]
+                if len(matches) != 1:
+                    return None
+                name, function = matches[0]
+                target = {"kind": "function", "name": name, "offset": offset - function["offset"]}
+        result.append({"section": row["section"], "offset": row["offset"],
+                       "type": row["type"], "effective_target": target})
+    return result
+
+
+def _nontext_code_motion(base: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
+    """Prove unchanged nontext references merely followed unchanged code bodies."""
+    if _nontext_sections(base) != _nontext_sections(candidate):
+        return False
+    normalized_before = _normalized_nontext_references(base)
+    normalized_after = _normalized_nontext_references(candidate)
+    if (normalized_before is None or normalized_after is None
+            or normalized_before != normalized_after):
+        return False
+    before, after = _nontext_relocations(base), _nontext_relocations(candidate)
+    key = lambda row: (row.get("section"), row.get("offset"), row.get("type"))
+    left, right = {key(row): row for row in before}, {key(row): row for row in after}
+    if len(left) != len(before) or len(right) != len(after) or left.keys() != right.keys():
+        return False
+    changed = False
+    for site, old in left.items():
+        new = right[site]
+        if old == new:
+            continue
+        changed = True
+        a, b = old.get("symbol"), new.get("symbol")
+        if not isinstance(a, Mapping) or not isinstance(b, Mapping):
+            return False
+        if ({k: v for k, v in a.items() if k != "value"}
+                != {k: v for k, v in b.items() if k != "value"}):
+            return False
+        name = a.get("name")
+        f, g = base["functions"].get(name), candidate["functions"].get(name)
+        if (not f or not g or not f.get("raw_sha256") or f["raw_sha256"] != g.get("raw_sha256")
+                or not f.get("relocations_sha256")
+                or f["relocations_sha256"] != g.get("relocations_sha256")):
+            return False
+        if (a.get("type") != 2 or f.get("size") != g.get("size")
+                or a.get("size") != f.get("size") or b.get("size") != g.get("size")
+                or a.get("value") != f.get("offset") or b.get("value") != g.get("offset")
+                or a.get("section") != f.get("section") or b.get("section") != g.get("section")):
+            return False
+        addend = old.get("addend")
+        if not isinstance(addend, int) or isinstance(addend, bool) or not 0 <= addend < f["size"]:
+            return False
+        if ({k: v for k, v in old.items() if k not in {"symbol", "effective_target"}}
+                != {k: v for k, v in new.items() if k not in {"symbol", "effective_target"}}):
+            return False
+        for row, function in ((old, f), (new, g)):
+            if row.get("effective_target") != {"kind": "section", "section": function["section"],
+                                                "offset": function["offset"] + addend}:
+                return False
+    return changed
+
+
 def compare(
     target: Mapping[str, Any],
     base: Mapping[str, Any],
@@ -1156,6 +1231,8 @@ def compare(
         if base_nontext.get(name) != candidate_nontext.get(name)
     )
     nontext_relocations_changed = _nontext_relocations(base) != _nontext_relocations(candidate)
+    normalized_nontext_base = _normalized_nontext_references(base)
+    normalized_nontext_candidate = _normalized_nontext_references(candidate)
     if nontext_relocations_changed:
         nontext_changes.append("<allocated-relocations>")
     return {
@@ -1175,6 +1252,10 @@ def compare(
         "functions": rows,
         "allocated_nontext_changed": bool(nontext_changes),
         "allocated_nontext_relocations_changed": nontext_relocations_changed,
+        "allocated_nontext_normalized_relocations_equal": (
+            normalized_nontext_base is not None and normalized_nontext_candidate is not None
+            and normalized_nontext_base == normalized_nontext_candidate),
+        "allocated_nontext_relocations_only_code_motion": _nontext_code_motion(base, candidate),
         "allocated_nontext_change_count": len(nontext_changes),
         "allocated_nontext_changes": nontext_changes[:_MAX_CLOSED_DETAILS],
         "semantic_object_equal_baseline": base["semantic_sha256"] == candidate["semantic_sha256"],

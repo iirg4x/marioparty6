@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import copy
 import struct
 import tempfile
 import unittest
@@ -201,6 +202,39 @@ def _write_pool_elf(
 
 
 class RecoveryObjectInventoryTests(unittest.TestCase):
+    def test_nontext_motion_requires_unchanged_function_and_relative_reference(self):
+        def value(offset):
+            return dict(allocated_sections={".data": dict(flags=2, sha256="same"),
+                                           ".text": dict(flags=6)},
+                functions={"f": dict(size=16, section=".text", offset=offset,
+                    raw_sha256="body", relocations_sha256="refs")},
+                allocated_relocations=[dict(section=".data", offset=0, type=1,
+                    symbol=dict(name="f", binding=1, type=2, section=".text", value=offset, size=16),
+                    addend=4, effective_target=dict(kind="section", section=".text", offset=offset+4))])
+        base, candidate = value(100), value(104)
+        self.assertTrue(inventory._nontext_code_motion(base, candidate))
+        mixed_base, mixed_candidate = copy.deepcopy(base), copy.deepcopy(candidate)
+        unchanged = copy.deepcopy(base["allocated_relocations"][0])
+        unchanged["offset"] = 8
+        for item in (mixed_base, mixed_candidate):
+            item["allocated_relocations"].append(copy.deepcopy(unchanged))
+        # One entry follows f; the raw-unchanged second entry now selects a
+        # different offset within f. The entire bundle must fail qualification.
+        self.assertFalse(inventory._nontext_code_motion(mixed_base, mixed_candidate))
+        for fault in ("payload", "body", "refs", "missing", "addend", "site", "type", "target", "size", "symbol"):
+            with self.subTest(fault=fault):
+                other = copy.deepcopy(candidate)
+                r = other["allocated_relocations"][0]
+                if fault == "payload": other["allocated_sections"][".data"]["sha256"] = "new"
+                elif fault in ("body", "refs"):
+                    other["functions"]["f"]["raw_sha256" if fault == "body" else "relocations_sha256"] = "new"
+                elif fault == "missing": other["allocated_relocations"] = []
+                elif fault == "target": r["effective_target"]["offset"] += 4
+                elif fault == "size": r["symbol"]["size"] += 4
+                elif fault == "symbol": r["symbol"]["name"] = "unknown"
+                else: r[{"site": "offset"}.get(fault, fault)] += 4
+                self.assertFalse(inventory._nontext_code_motion(base, other))
+
     def test_named_storage_reverse_and_paired_exact_instruction_reference(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target_path, candidate_path = Path(directory) / "t.o", Path(directory) / "c.o"

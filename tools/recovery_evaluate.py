@@ -368,15 +368,23 @@ def _qualified_positional_shift(name: str, row: dict, comparison: dict,
             or row.get("base_raw_exact_target") is not False
             or row.get("ordered_normalized_relocations_equal") is not True
             or comparison.get("function_census_equal") is not True
-            or comparison.get("allocated_nontext_changed") is not False):
+            or (comparison.get("allocated_nontext_changed") is not False
+                and comparison.get("allocated_nontext_relocations_only_code_motion") is not True)):
         return False
     sizes = [frontier.focus._integer(row.get(key)) for key in
              ("target_size", "base_size", "candidate_size")]
     if any(value is None or value < 0 for value in sizes):
         return False
     target, base, candidate = sizes
-    if abs(candidate - target) >= abs(base - target):
+    if (comparison.get("allocated_nontext_changed") is False
+            and comparison.get("function_layout_equal") is not True
+            and comparison.get("allocated_nontext_normalized_relocations_equal") is not True):
         return False
+    if base == target and candidate != target:
+        return False
+    size_closer = (abs(candidate - target) < abs(base - target)
+                   and comparison.get("allocated_nontext_changed") is False)
+    strict_gain = True
     for before, after in channels:
         left, right = _metric_map(before), _metric_map(after)
         if name not in left or name not in right:
@@ -384,6 +392,13 @@ def _qualified_positional_shift(name: str, row: dict, comparison: dict,
         a, b = left[name], right[name]
         if a["instruction_exact"] or b["diff_rows"] > a["diff_rows"]:
             return False
+        strict_gain &= b["diff_rows"] < a["diff_rows"]
+    canonical = [frontier.focus._integer(row.get(key)) for key in
+                 ("normalized_diff_before", "normalized_diff_after")]
+    if not size_closer and not (len(channels) == 2 and strict_gain
+            and all(value is not None and value >= 0 for value in canonical)
+            and canonical[1] < canonical[0]):
+        return False
     for sibling in comparison.get("functions", {}).values():
         if sibling.get("base_raw_exact_target") and sibling.get("base_normalized_exact"):
             if (sibling.get("raw_equal_base") is not True

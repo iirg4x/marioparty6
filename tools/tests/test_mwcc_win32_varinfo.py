@@ -15,6 +15,71 @@ from tools import mwcc_win32_varinfo as varinfo
 
 
 class MwccWin32VarInfoTests(unittest.TestCase):
+    def alias_fixture(self, kind='alias_rewrite'):
+        d, e, c, write, _ = self.allocator_fixture(regalloc_class=4)
+        d.capture_aliases = True
+        d.result['alias_events'] = []
+        pointer = 0x30000
+        header = bytearray(0x24)
+        struct.pack_into('<Ihh', header, 0x1C, 123, 15, 1)
+        write(pointer, header)
+        raw = bytearray(12)
+        raw[1] = 4
+        struct.pack_into('<Hh', raw, 2, 1, 184)
+        write(pointer + 0x24, raw)
+        c.Edi, c.Ecx, c.Eax = pointer, pointer + 0x24, 42
+        if kind == 'alias_union':
+            c.Edi, c.Ecx, c.Eax = 184, 42, 0x40000
+            write(c.Esp + 0xC, struct.pack('<I', pointer))
+            write(c.Eax + 368, struct.pack('<h', 184))
+        elif kind == 'split_rewrite':
+            c.Ebp, c.Edx, c.Edi, c.Ebx, c.Esi = pointer, pointer + 0x24, 184, 42, 0
+        return d, e, c, write, pointer
+
+    def test_alias_pairs_capture_exact_stores_and_tokens(self):
+        for pre, (post, kind) in varinfo.ALIAS_PAIRS.items():
+            d, e, c, write, pointer = self.alias_fixture(kind)
+            d.observe_alias(e, pre)
+            pending = d.alias_pending[e.dwThreadId]
+            write(pending['store'], struct.pack('<h', 42))
+            d.observe_alias(e, post)
+            row = d.result['alias_events'][0]
+            self.assertEqual((row['old_index'], row['new_index'], row['source_offset']), (184, 42, 123))
+            self.assertEqual(row['pcode_token'], d.machine_pcode_token(pointer))
+            self.assertNotIn('0x', json.dumps(row))
+            d.validate_return_temp_boundary()
+
+    def test_alias_pair_drift_shortread_and_bounds_rejected(self):
+        for mode in ('value', 'header', 'short', 'limit', 'phase'):
+            d, e, c, write, pointer = self.alias_fixture()
+            if mode == 'short':
+                c.Ecx += 0x10000
+                with self.assertRaises(ValueError):
+                    d.observe_alias(e, 0x57BDDA)
+                continue
+            d.observe_alias(e, 0x57BDDA)
+            if mode != 'value':
+                write(pointer + 0x28, struct.pack('<h', 42))
+            if mode == 'header':
+                write(pointer + 0x1C, struct.pack('<I', 124))
+            elif mode == 'phase':
+                write(varinfo.COLORING_CLASS, bytes([3]))
+            elif mode == 'limit':
+                d.result['alias_events'] = [{}] * varinfo.MAX_ALIAS_EVENTS
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                d.observe_alias(e, 0x57BDDE)
+
+    def test_alias_default_unchanged_and_unpaired_boundary_rejected(self):
+        d, e, c, write, pointer = self.alias_fixture()
+        self.assertFalse(set(varinfo.ALIAS_HOOK_BYTES) & set(d.observation_hooks))
+        d.observe_alias(e, 0x57BDDE)
+        self.assertEqual(d.result['alias_events'], [])
+        d.observe_alias(e, 0x57BDDA)
+        with self.assertRaisesRegex(RuntimeError, 'unfinished alias'):
+            d.validate_return_temp_boundary()
+        with self.assertRaises(ValueError):
+            varinfo.Debugger(0, Path('unused'), 'f', capture_aliases=True)
+
     def return_fixture(self):
         debugger, event, context, write, _ = self.allocator_fixture(regalloc_class=4)
         debugger.capture_return_temps = True

@@ -37,6 +37,8 @@
 #define SINGLE_PRIZE_FLAG_WORD_MASK ((1 << 5) - 1)
 
 extern void mbExitReq(void);
+extern int mbCapObjCreate(int capsuleNo, BOOL flag);
+extern void mbCapObjKill(int objId);
 extern OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF,
     BOOL altMtxF, BOOL layerF);
 extern void mbGuideEnd(OMOBJ *obj, BOOL endF);
@@ -54,13 +56,14 @@ extern s32 HuMCProbe(s32 channel);
 extern s32 HuMCInit(s16 mountResult);
 extern s16 HuMCContextCreate(char *path);
 extern void mbSingleSaveFlush(int value);
-extern void mbCoinAddExec(int playerNo, int coinNum);
+extern int mbCoinAddExec(int playerNo, int coinNum);
 extern BOOL mbWipeSpecialStatGet(void);
 extern void mbWipeSpecialCreate(int state, int type, int time);
 extern void mbWipeSpecialFadeInCreate(int type, int time);
 extern void mbWipeSpecialFadeOutCreate(int type, int time);
 extern void mbWipeSpecialWait(void);
 extern void mbWipeFadeOutTime(int time);
+extern void mbWipeWhiteFadeOutTime(int time);
 extern void mbWipeSpecialKill(void);
 extern BOOL mbMgCallSingleOnCheck(u16 ovl);
 extern BOOL mbSaveNewF;
@@ -2061,6 +2064,67 @@ static void ev_SingleKoopaMgSkip(MBMODELID modelId)
     mbMusBoardPlay();
 }
 
+
+
+static inline s16 SingleMgCoinGet(int playerNo)
+{
+    return GwPlayer[playerNo].mgCoin;
+}
+
+static inline s16 SingleMgCoinBonusGet(int playerNo)
+{
+    return GwPlayer[playerNo].mgCoinBonus;
+}
+
+static inline BOOL SingleEffBusyCheck(s16 effNo)
+{
+    SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
+    return work->state != 0;
+}
+
+static inline void SingleMasuTypeAdd(s16 type)
+{
+    masuType[masuTypeNum++] = (u8)type;
+    masuTypeNum %= 5;
+}
+
+static inline void SingleEffPrizeStart(s16 effNo)
+{
+    SINGLE_EFF_DATA *work;
+    int i;
+
+    work = &singleEffData[effNo - 1];
+    work->state = 3;
+    work->targetPos = work->pos;
+    work->timer = 0;
+    work->timerMax = 58;
+    Hu3DModelCameraSet(work->modelId, 2);
+    Hu3DModelLayerSet(work->modelId, 7);
+    for (i = 0; i < 2; i++) {
+        Hu3DModelCameraSet(work->childModelId[i], 2);
+        Hu3DModelLayerSet(work->childModelId[i], 7);
+    }
+    mbAudFXPlay(MSM_SE_SBRD_02);
+}
+
+static inline void SingleMgUnlock(int mgNo)
+{
+    mbSingleMgUnlockSet(mgNo);
+    GWSingleMgFlagSet(mgNo);
+}
+
+static inline void SingleEffUnk04Set(s16 effNo, BOOL value)
+{
+    SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
+    work->unk04 = value;
+}
+
+static inline void SingleEffPosGet(s16 effNo, HuVecF *pos)
+{
+    SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
+    *pos = work->pos;
+}
+
 static void ev_SingleKoopaMgEnd(int playerNo)
 {
     static int guideMot[] = {
@@ -2081,73 +2145,18 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     HuVecF effectPos;
     HuVecF pos;
     HuVecF startPos;
-    SINGLE_EFF_DATA *work;
     s16 masuId;
     s16 masuStart;
     s16 winId;
     int resultMode;
-    SINGLE_EFF_DATA *prizeWork;
-    SINGLE_EFF_DATA *cleanupWork;
-    s16 effectTemp0;
-    s16 unlockedMasuType;
-    s16 effectTemp2;
-    s16 effectTemp1;
-    s16 effectTemp4;
-    s16 effectTemp5;
-    s16 effectTemp3;
-    s16 effectTemp6;
     int seNo;
     BOOL unlocked;
-    BOOL unlockResult;
-    ANIMDATA *particleAnim0;
-    SINGLE_EFF_DATA *workTemp0;
-    int j;
-    SINGLE_EFF_DATA *workTemp3;
-    ANIMDATA *particleAnim2;
     MBMODELID guideModel;
-    SINGLE_EFF_DATA *workTemp1;
-    SINGLE_EFF_DATA *workTemp2;
-    HU3D_MODELID particleCreate3;
-    HU3D_MODELID particleTransfer3;
-    HU3D_MODELID particleStored3;
-    ANIMDATA *particleAnim5;
-    HU3D_MODELID particleCreate5;
-    HU3D_MODELID particleTransfer5;
-    HU3D_MODELID particleStored5;
-    ANIMDATA *particleAnim6;
-    HU3D_MODELID particleCreate6;
-    HU3D_MODELID particleTransfer6;
-    HU3D_MODELID particleStored6;
-    SINGLE_EFF_DATA *workTemp4;
-    HU3D_MODELID particleCreate2;
-    HU3D_MODELID particleTransfer2;
-    HU3D_MODELID particleStored2;
-    ANIMDATA *particleAnim4;
-    HU3D_MODELID particleCreate4;
-    HU3D_MODELID particleTransfer4;
-    HU3D_MODELID particleStored4;
-    ANIMDATA *particleAnim1;
-    HU3D_MODELID particleTransfer1;
-    HU3D_MODELID particleStored1;
-    HU3D_MODELID particleCreate1;
     static const HuVecF cameraOffset = { 0.0f, 100.0f, 100.0f };
-    s16 playerMgCoin;
-    s16 playerMgBonus;
-    s16 otherPlayerMgCoin;
-    s16 otherPlayerMgBonus;
-    HU3D_MODELID particleModel;
-    HU3D_MODELID particleTransfer0;
-    HU3D_MODELID particleStored0;
-    s16 playerMgBonus2;
-    s16 playerMgCoin2;
     int mgNo;
-    int unlockedCount;
-    int capsuleCount;
     int effectCount;
     int particleCount;
     int i;
-    int childIndex;
-    ANIMDATA *particleAnim3;
     u8 effectMasuType;
     u8 unlockedMg[128];
 
@@ -2173,15 +2182,11 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     mbCameraMoveWait();
     mbMusPlay(MB_MUS_CHAN_BG, 28, MSM_VOL_MAX, 0);
 
-    particleTransfer6 = GwPlayer[playerNo].mgCoin;
-    particleStored6 = GwPlayer[playerNo].mgCoinBonus;
-    if (particleStored6 + particleTransfer6 > 0) {
+    if (SingleMgCoinBonusGet(playerNo) + SingleMgCoinGet(playerNo) > 0) {
         resultMode = 0;
     } else {
         for (i = 1; i < GW_PLAYER_MAX; i++) {
-            particleCreate2 = GwPlayer[i].mgCoin;
-            particleTransfer2 = GwPlayer[i].mgCoinBonus;
-            if (particleTransfer2 + particleCreate2 > 0) {
+            if (SingleMgCoinBonusGet(i) + SingleMgCoinGet(i) > 0) {
                 break;
             }
         }
@@ -2205,14 +2210,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXPlay(MSM_SE_GUIDE_48);
         mbObjMotionShiftSet(guideModel, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        if (GWMgUnlockGet(mgNo + GW_MGNO_BASE)
-            || mbSingleMgUnlockGet(mgNo + GW_MGNO_BASE)) {
-            unlockResult = TRUE;
-        } else {
-            unlockResult = FALSE;
-        }
-        unlocked = unlockResult;
-        if (!unlocked) {
+        if (!(unlocked = SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE))) {
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 15), 13);
             mbWinWait(winId);
         } else {
@@ -2223,25 +2221,14 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXPlay(MSM_SE_GUIDE_49);
         mbObjMotionShiftSet(guideModel, 5, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
-        while ((effectCount = mbObjMotionEndCheck(guideModel)),
-            !effectCount) {
+        while (!mbObjMotionEndCheck(guideModel)) {
             HuPrcVSleep();
         }
 
         pos.x = startPos.x;
         pos.y = startPos.y + 200.0f;
         pos.z = startPos.z + 200.0f;
-        {
-            particleAnim0 = singleEffAnim[2];
-            mbParticleHookSet(
-                particleModel = mbParticleCreate(particleAnim0, 100),
-                SingleEffMgCapsuleHook);
-            Hu3DModelCameraSet(particleModel, 1);
-            Hu3DModelLayerSet(particleModel, 5);
-            particleStored2 = particleModel;
-            particleCreate4 = particleStored2;
-            particleCapsule[0] = particleCreate4;
-        }
+        particleCapsule[0] = SingleParticleCreate(2, 100, SingleEffMgCapsuleHook);
         effectPos.x = pos.x;
         effectPos.y = pos.y + 80.0f;
         effectPos.z = pos.z + 100.0f;
@@ -2253,41 +2240,22 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXPlay(MSM_SE_BRD00_59);
         effects[0] = SingleEffCreate(&effectPos, miniKoopaMgType);
         HuPrcSleep(30);
-        effectTemp0 = effects[0];
-        prizeWork = &singleEffData[effectTemp0 - 1];
-        prizeWork->state = 3;
-        prizeWork->targetPos = prizeWork->pos;
-        prizeWork->timer = 0;
-        prizeWork->timerMax = 58;
-        Hu3DModelCameraSet(prizeWork->modelId, 2);
-        Hu3DModelLayerSet(prizeWork->modelId, 7);
-        for (childIndex = 0; childIndex < 2; childIndex++) {
-            Hu3DModelCameraSet(prizeWork->childModelId[childIndex], 2);
-            Hu3DModelLayerSet(prizeWork->childModelId[childIndex], 7);
-        }
-        mbAudFXPlay(MSM_SE_SBRD_02);
+        SingleEffPrizeStart(effects[0]);
         HuPrcSleep(60);
         if (!unlocked) {
-            mbSingleMgUnlockSet(mgNo + GW_MGNO_BASE);
-            GWSingleMgFlagSet(mgNo + GW_MGNO_BASE);
-            unlockedMasuType = (s16)miniKoopaMgType;
-            masuType[masuTypeNum++] = (u8)unlockedMasuType;
-            masuTypeNum %= 5;
+            SingleMgUnlock(mgNo + GW_MGNO_BASE);
+            SingleMasuTypeAdd(miniKoopaMgType);
             mbSingleCall(9, mgNo);
         }
         SingleMgRecordPrizeSet();
-        while ((effectTemp2 = effects[0],
-                workTemp0 = &singleEffData[effectTemp2 - 1],
-                workTemp0->state != 0)) {
+        while (SingleEffBusyCheck(effects[0])) {
             HuPrcVSleep();
         }
         HuPrcSleep(30);
         if (!(MgDataTbl[mgNo].flag & MG_FLAG_COIN)) {
             mbCoinAddExec(playerNo, 10);
         } else {
-            particleTransfer4 = GwPlayer[playerNo].mgCoinBonus;
-            particleStored4 = GwPlayer[playerNo].mgCoin;
-            mbCoinAddExec(playerNo, particleStored4 + particleTransfer4);
+            mbCoinAddExec(playerNo, SingleMgCoinGet(playerNo) + SingleMgCoinBonusGet(playerNo));
         }
         mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
@@ -2340,17 +2308,8 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 for (i = 0; i < effectCount; i++) {
                     effectMasuType = masuType[i];
                     effects[i] = SingleEffCreate(&effectPos, effectMasuType);
-                    effectTemp1 = effects[i];
-                    workTemp3 = &singleEffData[effectTemp1 - 1];
-                    workTemp3->unk04 = FALSE;
-                    particleAnim2 = singleEffAnim[2];
-                    effectTemp4 = mbParticleCreate(particleAnim2, 100);
-                    mbParticleHookSet(effectTemp4, SingleEffMgCapsuleHook);
-                    Hu3DModelCameraSet(effectTemp4, 1);
-                    Hu3DModelLayerSet(effectTemp4, 5);
-                    particleTransfer1 = effectTemp4;
-                    particleStored1 = particleTransfer1;
-                    particleCapsule[i] = particleStored1;
+                    SingleEffUnk04Set(effects[i], FALSE);
+                    particleCapsule[i] = SingleParticleCreate(2, 100, SingleEffMgCapsuleHook);
                     Hu3DModelPosSet(particleCapsule[i], effectPos.x,
                         effectPos.y + 80.0f, effectPos.z + 100.0f);
                     Hu3DModelCameraSet(particleCapsule[i], 2);
@@ -2360,9 +2319,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 mbAudFXPlay(MSM_SE_SBRD_06);
                 HuPrcSleep(12);
                 for (i = 0; i < effectCount; i++) {
-                    effectTemp5 = effects[i];
-                    workTemp1 = &singleEffData[effectTemp5 - 1];
-                    workTemp1->unk04 = TRUE;
+                    SingleEffUnk04Set(effects[i], TRUE);
                 }
                 seNo = mbAudFXPlay(MSM_SE_SBRD_01);
                 HuPrcSleep(12);
@@ -2385,47 +2342,26 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 omVibrate(playerNo, 20, 20, 0);
                 particleCount = 0;
                 for (i = 0; i < effectCount; i++) {
-                    effectTemp3 = effects[i];
-                    workTemp2 = &singleEffData[effectTemp3 - 1];
-                    effectPos = workTemp2->pos;
-                    particleAnim5 = singleEffAnim[3];
-                    effectTemp6 = mbParticleCreate(particleAnim5, 256);
-                    mbParticleHookSet(effectTemp6, SingleEffMgFireHook);
-                    Hu3DModelCameraSet(effectTemp6, 1);
-                    Hu3DModelLayerSet(effectTemp6, 5);
-                    particleCreate1 = effectTemp6;
-                    playerMgCoin = particleCreate1;
-                    particles[particleCount] = playerMgCoin;
+                    SingleEffPosGet(effects[i], &effectPos);
+                    particles[particleCount] = SingleParticleCreate(3, 256, SingleEffMgFireHook);
                     Hu3DModelPosSetV(particles[particleCount], &effectPos);
                     particleCount++;
-                    particleAnim6 = singleEffAnim[3];
-                    particleCreate3 = mbParticleCreate(particleAnim6, 64);
-                    mbParticleHookSet(particleCreate3, SingleEffMgFire2Hook);
-                    Hu3DModelCameraSet(particleCreate3, 1);
-                    Hu3DModelLayerSet(particleCreate3, 5);
-                    playerMgBonus = particleCreate3;
-                    otherPlayerMgCoin = playerMgBonus;
-                    particles[particleCount] = otherPlayerMgCoin;
+                    particles[particleCount] = SingleParticleCreate(3, 64, SingleEffMgFire2Hook);
                     Hu3DModelPosSet(particles[particleCount], 0.0f, 0.05f, 0.05f);
                     Hu3DModelPosSetV(particles[particleCount], &effectPos);
                     particleCount++;
                 }
                 HuPrcSleep(12);
-                memset(singleMgUnlock, 0, sizeof(singleMgUnlock));
-                masuTypeNum = 0;
-                memset(masuType, 0, sizeof(masuType));
-                GwSingleMgFlag[2] = 0;
-                GwSingleMgFlag[1] = 0;
-                GwSingleMgFlag[0] = 0;
+                mbSingleMgUnlockInit();
+                SingleMasuTypeReset();
+                GwSingleMgFlag[0] = GwSingleMgFlag[1] = GwSingleMgFlag[2] = 0;
                 mbSinglePrizeFlagReset(6);
                 GWSingleMgWinNumSet(0);
                 mbSinglePrizeFlagReset(5);
                 GWSingleMgRecordNumSet(0);
                 SingleMgRecordRestore();
                 for (i = 0; i < effectCount; i++) {
-                    particleTransfer3 = effects[i];
-                    workTemp4 = &singleEffData[particleTransfer3 - 1];
-                    workTemp4->unk04 = FALSE;
+                    SingleEffUnk04Set(effects[i], FALSE);
                 }
                 HuPrcSleep(60);
                 mbPlayerMotionShiftSet(playerNo, 8, 0.0f, 8.0f,
@@ -2439,12 +2375,12 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         case 1:
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 19), 13);
             mbWinWait(winId);
-            capsuleCount = mbPlayerCapsuleNumGet(playerNo);
+            effectCount = mbPlayerCapsuleNumGet(playerNo);
             effectPos.x = startPos.x
-                - (100.0f * (0.75f * (float)(capsuleCount - 1)));
+                - (100.0f * (0.75f * (float)(effectCount - 1)));
             effectPos.y = startPos.y + 200.0f;
             effectPos.z = startPos.z + 200.0f;
-            for (i = 0; i < capsuleCount; i++) {
+            for (i = 0; i < effectCount; i++) {
                 capsuleObj[i] = mbCapObjCreate(
                     mbPlayerCapsuleGet(playerNo, i), FALSE);
                 mbObjDispSet(capsuleObj[i], FALSE);
@@ -2452,14 +2388,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 mbObjCameraSet(capsuleObj[i], 1);
                 mbObjLayerSet(capsuleObj[i], 4);
                 mbObjMotionSpeedSet(capsuleObj[i], 0.0f);
-                particleAnim4 = singleEffAnim[2];
-                particleStored3 = mbParticleCreate(particleAnim4, 100);
-                mbParticleHookSet(particleStored3, SingleEffMgCapsuleHook);
-                Hu3DModelCameraSet(particleStored3, 1);
-                Hu3DModelLayerSet(particleStored3, 5);
-                otherPlayerMgBonus = particleStored3;
-                particleStored4 = otherPlayerMgBonus;
-                particleCapsule[i] = particleStored4;
+                particleCapsule[i] = SingleParticleCreate(2, 100, SingleEffMgCapsuleHook);
                 Hu3DModelPosSet(particleCapsule[i], effectPos.x,
                     effectPos.y + 80.0f, effectPos.z + 100.0f);
                 Hu3DModelCameraSet(particleCapsule[i], 2);
@@ -2467,11 +2396,11 @@ static void ev_SingleKoopaMgEnd(int playerNo)
                 effectPos.x += 150.0f;
             }
             mbAudFXPlay(MSM_SE_SBRD_06);
-            for (i = 0; i < capsuleCount; i++) {
+            for (i = 0; i < effectCount; i++) {
                 mbPlayerCapsuleRemove(playerNo, 0);
             }
             HuPrcSleep(12);
-            for (i = 0; i < capsuleCount; i++) {
+            for (i = 0; i < effectCount; i++) {
                 mbObjDispSet(capsuleObj[i], TRUE);
             }
             HuPrcSleep(12);
@@ -2492,29 +2421,18 @@ static void ev_SingleKoopaMgEnd(int playerNo)
             mbAudFXPlay(MSM_SE_SBRD_07);
             omVibrate(playerNo, 20, 20, 0);
             particleCount = 0;
-            for (i = 0; i < capsuleCount; i++) {
+            for (i = 0; i < effectCount; i++) {
                 mbObjPosGet(capsuleObj[i], &effectPos);
-                particleAnim1 = singleEffAnim[3];
-                particleCreate5 = mbParticleCreate(particleAnim1, 256);
-                mbParticleHookSet(particleCreate5, SingleEffMgFireHook);
-                Hu3DModelCameraSet(particleCreate5, 1);
-                Hu3DModelLayerSet(particleCreate5, 5);
-                particleStored0 = particleTransfer0 = particleCreate5;
-                particles[particleCount] = particleStored0;
+                particles[particleCount] = SingleParticleCreate(3, 256, SingleEffMgFireHook);
                 Hu3DModelPosSetV(particles[particleCount], &effectPos);
                 particleCount++;
-                particleAnim3 = singleEffAnim[3];
-                particleTransfer5 = mbParticleCreate(particleAnim3, 64);
-                mbParticleHookSet(particleTransfer5, SingleEffMgFire2Hook);
-                Hu3DModelCameraSet(particleTransfer5, 1);
-                Hu3DModelLayerSet(particleTransfer5, 5);
-                particles[particleCount] = playerMgCoin2 = playerMgBonus2 = particleTransfer5;
+                particles[particleCount] = SingleParticleCreate(3, 64, SingleEffMgFire2Hook);
                 Hu3DModelPosSet(particles[particleCount], 0.0f, 0.05f, 0.05f);
                 Hu3DModelPosSetV(particles[particleCount], &effectPos);
                 particleCount++;
             }
             HuPrcSleep(12);
-            for (i = 0; i < capsuleCount; i++) {
+            for (i = 0; i < effectCount; i++) {
                 mbObjDispSet(capsuleObj[i], FALSE);
             }
             HuPrcSleep(60);
@@ -2563,23 +2481,20 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_GUIDE_47);
         mbObjMotionSet(guideModel, 3, HU3D_MOTATTR_LOOP);
-        mbWipeFadeIn();
+        {
+            void mbWipeFadeIn(void);
+            mbWipeFadeIn();
+        }
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 20), 13);
         mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
         mbWinWait(winId);
-        mbWinWait(mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 21), 13));
+        winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 21), 13);
+        mbWinWait(winId);
         break;
     }
 
-    particleStored5 = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 7), 13);
-    mbWinWait(particleStored5);
-    mbWipeSpecialFadeInCreate(7, 30);
-    mbWipeSpecialWait();
-    mbWipeFadeOutTime(1);
-    mbWipeSpecialKill();
-    mbObjDispSet(guideModel, FALSE);
-    mbMusBoardPlay();
+    ev_SingleKoopaMgSkip(guideModel);
     mbPlayerPosReset(playerNo);
     mbCameraPlayerViewSetFast(playerNo, 0);
     mbObjKill(guideModel);
@@ -2600,13 +2515,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     }
     for (i = 0; i < 5; i++) {
         if (effects[i] > 0) {
-            particleCreate6 = effects[i];
-            cleanupWork = &singleEffData[particleCreate6 - 1];
-            cleanupWork->unk04 = cleanupWork->active = FALSE;
-            Hu3DModelAttrSet(cleanupWork->modelId, HU3D_ATTR_DISPOFF);
-            for (j = 0; j < 2; j++) {
-                Hu3DModelAttrSet(cleanupWork->childModelId[j], HU3D_ATTR_DISPOFF);
-            }
+            SingleEffKill(effects[i]);
         }
     }
     HuDataDirClose(DATA_capsulechar1);
@@ -2774,56 +2683,6 @@ opponentPlayerNo = miniKoopaType + 1;
     GwPlayer[opponentPlayerNo].masuId = 0;
 }
 
-static inline s16 SingleMgCoinGet(int playerNo)
-{
-    return GwPlayer[playerNo].mgCoin;
-}
-
-static inline s16 SingleMgCoinBonusGet(int playerNo)
-{
-    return GwPlayer[playerNo].mgCoinBonus;
-}
-
-static inline void SingleEffWait(s16 effNo)
-{
-    SINGLE_EFF_DATA *work;
-
-    while ((work = &singleEffData[effNo - 1]), work->state != 0) {
-        HuPrcVSleep();
-    }
-}
-
-static inline void SingleMasuTypeAdd(s16 type)
-{
-    masuType[masuTypeNum++] = (u8)type;
-    masuTypeNum %= 5;
-}
-
-static inline void SingleEffPrizeStart(s16 effNo)
-{
-    SINGLE_EFF_DATA *work;
-    int i;
-
-    work = &singleEffData[effNo - 1];
-    work->state = 3;
-    work->targetPos = work->pos;
-    work->timer = 0;
-    work->timerMax = 58;
-    Hu3DModelCameraSet(work->modelId, 2);
-    Hu3DModelLayerSet(work->modelId, 7);
-    for (i = 0; i < 2; i++) {
-        Hu3DModelCameraSet(work->childModelId[i], 2);
-        Hu3DModelLayerSet(work->childModelId[i], 7);
-    }
-    mbAudFXPlay(MSM_SE_SBRD_02);
-}
-
-static inline void SingleMgUnlock(int mgNo)
-{
-    mbSingleMgUnlockSet(mgNo);
-    GWSingleMgFlagSet(mgNo);
-}
-
 static void ev_SingleMKoopaMgEnd(int playerNo)
 {
     HuVecF effectPos;
@@ -2909,7 +2768,9 @@ static void ev_SingleMKoopaMgEnd(int playerNo)
                     SingleMasuTypeAdd(miniKoopaType + 9);
                     mbSingleCall(9, mgNo);
                 }
-                SingleEffWait(effNo);
+                while (SingleEffBusyCheck(effNo)) {
+                    HuPrcVSleep();
+                }
                 HuPrcSleep(30);
                 mbCoinAddExec(playerNo, 10);
                 mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f,

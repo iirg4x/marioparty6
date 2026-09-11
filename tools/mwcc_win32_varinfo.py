@@ -15,6 +15,8 @@ creation/range-split provenance, or ``--cse`` for GPR LI/LIS CSE observations.
 color joins. Missing pre-color ancestry remains explicitly UNKNOWN.
 ``--return-temps`` adds bounded return births and paired pool-reset events,
 with direct callee names only from matched call-handler frames.
+``--aliases`` adds bounded paired alias/split stores with same-session PCode
+tokens; union bank ancestry and allocator iteration remain explicitly limited.
 These are facts about the supplied compilation, not recovered retail virtual
 register identities. Unsupported frontend nodes remain explicitly incomplete.
 
@@ -129,6 +131,18 @@ RETURN_TEMP_HOOK_BYTES = {
     0x44D161: bytes.fromhex("c3"),
 }
 MAX_RETURN_TEMP_EVENTS = 4096
+ALIAS_HOOK_BYTES = {
+    0x57BC77: bytes.fromhex("66890c7831ed396c2410"),
+    0x57BC7B: bytes.fromhex("31ed396c24100f86c6000000"),
+    0x57BDDA: bytes.fromhex("6689410483c10c"),
+    0x57BDDE: bytes.fromhex("83c10c83eb0173ba"),
+    0x57C9D1: bytes.fromhex("66895a0466834a0240"),
+    0x57C9D5: bytes.fromhex("66834a02404683c20c"),
+}
+ALIAS_PAIRS = {0x57BC77: (0x57BC7B, "alias_union"),
+               0x57BDDA: (0x57BDDE, "alias_rewrite"),
+               0x57C9D1: (0x57C9D5, "split_rewrite")}
+MAX_ALIAS_EVENTS = 16384
 IG_TABLE = 0x5EA768
 # The allocator keeps one graph count and one register limit per coloring
 # class.  Pinned GC/2.6 static evidence at function 0x4D06E0 stores class-name
@@ -596,6 +610,7 @@ class Debugger:
         capture_cse: bool = False,
         capture_machine_emit: bool = False,
         capture_return_temps: bool = False,
+        capture_aliases: bool = False,
     ) -> None:
         if not isinstance(target_name, str) or not target_name.strip():
             raise ValueError("target_name must be a nonempty function name")
@@ -614,6 +629,11 @@ class Debugger:
                                      or compiler_sha256 != PINNED_COMPILER_SHA256):
             raise ValueError("capture_return_temps requires pinned GPR capture_regalloc")
         self.capture_return_temps = capture_return_temps
+        if capture_aliases and (not capture_regalloc or regalloc_class != 4
+                                or compiler_sha256 != PINNED_COMPILER_SHA256):
+            raise ValueError("capture_aliases requires pinned GPR capture_regalloc")
+        self.capture_aliases = capture_aliases
+        self.alias_pending: dict[int, dict[str, Any]] = {}
         self.return_call_stacks: dict[int, list[dict[str, Any]]] = {}
         self.return_reset_pending: dict[int, dict[str, Any]] = {}
         self.process = process
@@ -629,6 +649,8 @@ class Debugger:
         self.observation_hooks = dict(REGALLOC_HOOK_BYTES)
         if capture_return_temps:
             self.observation_hooks.update(RETURN_TEMP_HOOK_BYTES)
+        if capture_aliases:
+            self.observation_hooks.update(ALIAS_HOOK_BYTES)
         if capture_frontend:
             self.observation_hooks.update(FRONTEND_HOOK_BYTES)
             self.observation_hooks.update(TEMP_ORIGIN_HOOK_BYTES)
@@ -679,6 +701,9 @@ class Debugger:
         if capture_return_temps:
             self.result.update(capture_return_temps=True, return_temp_events=[],
                                return_temp_scope="observed source compilation only; target IDs UNKNOWN")
+        if capture_aliases:
+            self.result.update(capture_aliases=True, alias_events=[],
+                               alias_scope="observed candidate writes; source ownership and target IDs UNKNOWN")
         if capture_cse:
             self.result["capture_cse"] = True
             self.result["cse_li_eligibility"] = []
@@ -1167,6 +1192,8 @@ class Debugger:
                           "authority_advanced": False})
 
     def validate_return_temp_boundary(self) -> None:
+        if self.alias_pending:
+            raise RuntimeError("unfinished alias pre/post context")
         if self.capture_return_temps and (self.return_reset_pending or any(self.return_call_stacks.values())):
             raise RuntimeError("unfinished return-temp call/reset context")
 
@@ -1253,10 +1280,84 @@ class Debugger:
             raise ValueError("return-temp event limit exceeded")
         events.append(dict(row, sequence=len(events), target_ids="UNKNOWN"))
 
+    def observe_alias(self, event: DEBUG_EVENT, site: int) -> None:
+        """Observe the existing GC2.6 capsule alias/split write pairs only."""
+        if not self.capture_aliases or not self.regalloc_active:
+            raise RuntimeError("alias capture outside requested target")
+        phase = self.read_exact(self.runtime(COLORING_CLASS), 1)[0]
+        thread = self.threads.get(event.dwThreadId)
+        if not thread:
+            raise RuntimeError("alias observation without thread")
+        context = self.get_context(thread)
+        if site in ALIAS_PAIRS:
+            if event.dwThreadId in self.alias_pending:
+                raise ValueError("nested alias write")
+            if phase != 4:
+                return
+            post, kind = ALIAS_PAIRS[site]
+            row: dict[str, Any] = {"event_kind": kind, "phase": phase,
+                                   "allocator_iteration": "UNKNOWN"}
+            if kind == 'alias_union':
+                old, new = context.Edi & 0xFFFF, context.Ecx & 0xFFFF
+                pointer = u32(self.read_exact(context.Esp + 0xC, 4))
+                store = context.Eax + old * 2
+                self.read_exact(store, 2)
+                row['bank_binding'] = 'GPR_phase_only; no operand-bank edge'
+            else:
+                pointer = context.Edi if kind == 'alias_rewrite' else context.Ebp
+                operand = context.Ecx if kind == 'alias_rewrite' else context.Edx
+                new = (context.Eax if kind == 'alias_rewrite' else context.Ebx) & 0xFFFF
+                header = self.read_exact(pointer, 0x24)
+                count = s16(header, 0x22)
+                delta = operand - pointer - 0x24
+                if not 1 <= count <= 256 or delta < 0 or delta % 12 or delta // 12 >= count:
+                    raise ValueError("alias operand ordinal/count mismatch")
+                raw = self.read_exact(operand, 12)
+                old = s16(raw, 4)
+                if raw[0] != 0 or raw[1] != 4:
+                    raise ValueError("alias GPR phase/operand bank mismatch")
+                if kind == 'split_rewrite' and (context.Esi != delta // 12 or (context.Edi & 0xFFFF) != old):
+                    raise ValueError("split register/operand mismatch")
+                store = operand + 4
+                row.update(operand_ordinal=delta // 12, operand_count=count,
+                           operand_flags=int.from_bytes(raw[2:4], 'little'), bank_binding='GPR_operand',
+                           operand_raw_before=raw.hex())
+            if not pointer or not 0 <= old <= 32767 or not 0 <= new <= 32767 or old == new:
+                raise ValueError("invalid alias ID tuple")
+            header = self.read_exact(pointer, 0x24)
+            row.update(old_index=old, new_index=new, pcode_token=self.machine_pcode_token(pointer),
+                       opcode=s16(header, 0x20), source_offset=u32(header, 0x1C))
+            self.alias_pending[event.dwThreadId] = dict(post=post, store=store, pointer=pointer,
+                                                       header=header, row=row)
+            return
+        pending = self.alias_pending.pop(event.dwThreadId, None)
+        if pending is None:
+            # As in the existing capsule backend, these post addresses can
+            # also be reached by branches which skipped the observed store.
+            # Such a visit proves no rewrite and emits no event.
+            return
+        row = pending['row']
+        if (site != pending['post'] or phase != row['phase']
+                or self.read_exact(pending['pointer'], 0x24) != pending['header']
+                or s16(self.read_exact(pending['store'], 2), 0) != row['new_index']):
+            raise ValueError("alias post-write identity/value mismatch")
+        if 'operand_raw_before' in row:
+            before = bytes.fromhex(row.pop('operand_raw_before'))
+            after = self.read_exact(pending['store'] - 4, 12)
+            if before[:4] != after[:4] or before[6:] != after[6:]:
+                raise ValueError("alias operand changed outside index store")
+        events = self.result['alias_events']
+        if len(events) >= MAX_ALIAS_EVENTS:
+            raise ValueError("alias event limit exceeded")
+        events.append(dict(row, sequence=len(events), confirmed=True))
+
     def observe_regalloc(self, event: DEBUG_EVENT, address: int) -> None:
         if not self.regalloc_active:
             raise RuntimeError("optimized allocator observation outside target function")
         site = address - self.base + KNOWN_IMAGE_BASE
+        if site in ALIAS_HOOK_BYTES:
+            self.observe_alias(event, site)
+            return
         if site in RETURN_TEMP_HOOK_BYTES:
             self.observe_return_temp(event, site)
             return
@@ -1321,7 +1422,7 @@ class Debugger:
                     or node["color"] != (context.Eax & 0xFFFF)):
                 raise ValueError("PCode operand/IG/color join mismatch")
             observations = self.result.setdefault("regalloc_pcode", [])
-            if self.capture_machine_emit and len(observations) >= MAX_MACHINE_COLOR_OBSERVATIONS:
+            if (self.capture_machine_emit or self.capture_aliases) and len(observations) >= MAX_MACHINE_COLOR_OBSERVATIONS:
                 raise ValueError("excessive machine color observations")
             row = {
                 "pass": self.regalloc_pass, "class": cls, "node": node["node"],
@@ -1331,7 +1432,7 @@ class Debugger:
                 "operand_flags": int.from_bytes(operand[2:4], "little"),
                 "color": node["color"],
             }
-            if self.capture_machine_emit:
+            if self.capture_machine_emit or self.capture_aliases:
                 row.update(pcode_token=self.machine_pcode_token(context.Esi),
                            source_offset=u32(header, 0x1C), operand_raw=operand.hex(),
                            observation_index=len(observations))
@@ -2097,6 +2198,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
                         help="with GPR --regalloc, capture emitted PPC words/offsets and operand color joins")
     parser.add_argument("--return-temps", action="store_true",
                         help="with GPR --regalloc, observe return births and paired temporary resets")
+    parser.add_argument("--aliases", action="store_true",
+                        help="with GPR --regalloc, observe paired alias union/rewrite/split stores")
     parser.add_argument("--trace", action="store_true", help="log debug events to stderr")
     parser.add_argument(
         "--assign",
@@ -2146,6 +2249,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.return_temps and (not args.regalloc or args.regalloc_class != "gpr"):
         print("--return-temps requires --regalloc --regalloc-class gpr", file=sys.stderr)
+        return 2
+    if args.aliases and (not args.regalloc or args.regalloc_class != "gpr"):
+        print("--aliases requires --regalloc --regalloc-class gpr", file=sys.stderr)
         return 2
     if os.name != "nt":
         print(
@@ -2217,6 +2323,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         capture_cse=args.cse,
         capture_machine_emit=args.machine_emit,
         capture_return_temps=args.return_temps,
+        capture_aliases=args.aliases,
     )
     debugger.result["command"] = command
     debugger.result["cwd"] = str(cwd)
