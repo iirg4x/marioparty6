@@ -51,6 +51,16 @@ already inspected same-game callback boundary. It is retained legacy source
 shape, not a generally recommended C idiom. `_MATH_H` visibility follows
 same-game use and prevents the unrelated weak sqrtf constant producer.
 
+The final publication cleanup c35 replaces inherited hexadecimal resource and
+message numbers with `DATANUM`/`MESSNUM` domains, names the process and start
+flag constants, and uses the existing Mario voice ID plus six. It removes
+the explicit coin-work pad member; natural alignment preserves its fields.
+The existing three unknown words at offsets 48..59 remain explicitly unknown:
+the 60-byte record stride and 40-record BSS extent are target-backed, but their
+semantic meaning is not established. The narrowly scoped metadata exception
+records this distinction. These changes preserve all 22 strict instruction
+matches; they are source-quality cleanup, not additional cracks.
+
 ## What actually closed the last mismatch
 
 c28 already had exact saved-register roles, stack homes, and the middle of

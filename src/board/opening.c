@@ -20,6 +20,8 @@
 #include "game/pad.h"
 #include "game/process.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
+#include "msm_se.h"
 
 #include "dolphin/mtx.h"
 #include "dolphin/os.h"
@@ -54,9 +56,12 @@ extern void mbWipeFadeIn(void);
 extern void mbWipeFadeOut(void);
 extern void mbWipeWait(void);
 
+#define OPENING_PROCESS_PRIORITY 8204
+#define OPENING_PROCESS_STACK_SIZE 16384
+#define OPENING_MASU_FLAG_START (1 << 15)
+
 typedef struct OpeningCoinWork_s {
     s16 coinId;
-    u16 pad02;
     HuVecF pos;
     HuVecF rot;
     HuVecF vel;
@@ -71,17 +76,17 @@ typedef struct SingleGuideWork_s {
 } SINGLEGUIDEWORK;
 
 static int guideMotFileTbl[] = {
-    0x00110001, 0x00110002, 0x00110003, 0x00110004,
-    0x00110005, 0x00110006, 0x00110007, 0x00110008,
-    0x00110009, 0x0011000A, 0x0011000B, 0x0011000C,
-    0x0011000D, 0x0011000E, 0x0011000F, 0x00110010,
-    0x00110011, 0x00110012, 0x00110013, 0x00110014,
-    0x00110015, 0x00110016, 0x00110017, -1
+    DATANUM(DATA_capsulechar4, 1), DATANUM(DATA_capsulechar4, 2), DATANUM(DATA_capsulechar4, 3), DATANUM(DATA_capsulechar4, 4),
+    DATANUM(DATA_capsulechar4, 5), DATANUM(DATA_capsulechar4, 6), DATANUM(DATA_capsulechar4, 7), DATANUM(DATA_capsulechar4, 8),
+    DATANUM(DATA_capsulechar4, 9), DATANUM(DATA_capsulechar4, 10), DATANUM(DATA_capsulechar4, 11), DATANUM(DATA_capsulechar4, 12),
+    DATANUM(DATA_capsulechar4, 13), DATANUM(DATA_capsulechar4, 14), DATANUM(DATA_capsulechar4, 15), DATANUM(DATA_capsulechar4, 16),
+    DATANUM(DATA_capsulechar4, 17), DATANUM(DATA_capsulechar4, 18), DATANUM(DATA_capsulechar4, 19), DATANUM(DATA_capsulechar4, 20),
+    DATANUM(DATA_capsulechar4, 21), DATANUM(DATA_capsulechar4, 22), DATANUM(DATA_capsulechar4, 23), -1
 };
 
 static u32 welcomeMesTbl[] = {
-    0x002C0000, 0x002C0001, 0x002C0002,
-    0x002C0003, 0x002C0004, 0x002C0005
+    MESSNUM(MESS_BOARD_OPENING, 0), MESSNUM(MESS_BOARD_OPENING, 1), MESSNUM(MESS_BOARD_OPENING, 2),
+    MESSNUM(MESS_BOARD_OPENING, 3), MESSNUM(MESS_BOARD_OPENING, 4), MESSNUM(MESS_BOARD_OPENING, 5)
 };
 
 static HuVecF lbl_80248620[] = {
@@ -114,13 +119,13 @@ static HuVecF singleGuidePathOfsTbl[] = {
 };
 
 static int singleGuideMotFileTbl[] = {
-    0x00110001, 0x00110004, 0x00110005, 0x00110006,
-    0x00110007, 0x0011000A, 0x0011000C, 0x0011000F,
-    0x00110011, 0x00110013, 0x00110014, -1
+    DATANUM(DATA_capsulechar4, 1), DATANUM(DATA_capsulechar4, 4), DATANUM(DATA_capsulechar4, 5), DATANUM(DATA_capsulechar4, 6),
+    DATANUM(DATA_capsulechar4, 7), DATANUM(DATA_capsulechar4, 10), DATANUM(DATA_capsulechar4, 12), DATANUM(DATA_capsulechar4, 15),
+    DATANUM(DATA_capsulechar4, 17), DATANUM(DATA_capsulechar4, 19), DATANUM(DATA_capsulechar4, 20), -1
 };
 
 static u32 singleWelcomeMesTbl[] = {
-    0x002C0006, 0x002C0007, 0x002C0008
+    MESSNUM(MESS_BOARD_OPENING, 6), MESSNUM(MESS_BOARD_OPENING, 7), MESSNUM(MESS_BOARD_OPENING, 8)
 };
 
 static HuVecF openingRot;
@@ -289,7 +294,7 @@ void mbev_Opening(void)
 void mbev_OpeningParty(void)
 {
     if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        openingProc = HuPrcChildCreate(ev_OpeningParty, 0x200C, 0x4000, 0, mbMainProc);
+        openingProc = HuPrcChildCreate(ev_OpeningParty, OPENING_PROCESS_PRIORITY, OPENING_PROCESS_STACK_SIZE, 0, mbMainProc);
     }
     HuPrcDestructorSet2(openingProc, ev_OpeningPartyKill);
     while (openingProc != NULL) {
@@ -322,9 +327,9 @@ static void ev_OpeningParty(void)
     MBPLAYERWORK *playerWorkP;
 
     mbCameraNearFarSet(10.0f, 30000.0f);
-    HuDataDirRead(0x00110000);
-    openingGuideObjId = mbObjCreate(0x00110000, guideMotFileTbl, FALSE);
-    HuDataDirClose(0x00110000);
+    HuDataDirRead(DATA_capsulechar4);
+    openingGuideObjId = mbObjCreate(DATA_capsulechar4, guideMotFileTbl, FALSE);
+    HuDataDirClose(DATA_capsulechar4);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbObjDispSet(mbPlayerObjIDGet(i), FALSE);
@@ -347,7 +352,7 @@ static void ev_OpeningParty(void)
     mbCameraRotSetV(&openingRot);
     mbCameraCenterSetV(&openingPos);
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     mbMasuPosGet(masuId, &masuPos);
     guidePos = masuPos;
     guidePos.z -= 200.0f;
@@ -398,7 +403,7 @@ static void ev_OpeningParty(void)
     mbWinTopWait();
 
     mbAudGuidePlay(952);
-    mbWinCreateChoice(2, 0x002C0009, 6, 0);
+    mbWinCreateChoice(2, MESSNUM(MESS_BOARD_OPENING, 9), 6, 0);
     if (allComF) {
         GwSystem.turnPlayerNo = 0;
         mbComChoiceDownSet();
@@ -411,7 +416,7 @@ static void ev_OpeningParty(void)
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(952);
-    mbWinCreate(2, 0x002C000A, 6);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 10), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
@@ -441,7 +446,7 @@ static void ev_OpeningParty(void)
             mbDicePadBtnHookSet(i, OpeningPadBtn);
         }
     }
-    mbWinCreateHelp(0x00260002);
+    mbWinCreateHelp(MESSNUM(MESS_BOARD_OPE, 2));
     mbWinTopPosSet(228, 392);
     while (!mbDiceKillCheckAll()) {
         HuPrcVSleep();
@@ -453,7 +458,7 @@ static void ev_OpeningParty(void)
     mbStatusReset();
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         mbAudGuidePlay(952);
-        mbWinCreateTime(2, 0x002C000B + i, -1);
+        mbWinCreateTime(2, MESSNUM(MESS_BOARD_OPENING, 11) + i, -1);
         mbWinTopInsertMesSet(mbPlayerNameMesGet(i), 0);
         if (GwPlayer[i].comF || HuPadStatGet(GwPlayer[i].padNo) != PAD_ERR_NONE) {
             mbWinTopPlayerDisable(-1);
@@ -469,7 +474,7 @@ static void ev_OpeningParty(void)
         if (!GWTeamFGet()) {
             mbStatusDispSet(i, TRUE);
         }
-        mbPlayerWinLoseVoicePlay(i, 12, 0x243);
+        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
         omVibrate(i, 20, 20, 0);
@@ -493,7 +498,7 @@ static void ev_OpeningParty(void)
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(952);
-    mbWinCreate(2, 0x002C000F, 6);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 15), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 6, 0.0f, 8.0f,
         HU3D_MOTATTR_NONE);
@@ -504,7 +509,7 @@ static void ev_OpeningParty(void)
         HU3D_MOTATTR_LOOP);
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, 0x243);
+        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
         mbPlayerMotionShiftSet(i, 7, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
     }
@@ -524,12 +529,12 @@ static void ev_OpeningParty(void)
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(950);
-    mbWinCreate(2, 0x002C0010, 6);
+    mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 16), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, 0x243);
+        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
             HU3D_MOTATTR_NONE);
     }
@@ -756,14 +761,14 @@ void mbev_OpeningSingle(void)
     singleFXNo = -1;
     winId = -1;
     if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        openingSingleProc = HuPrcChildCreate(ev_OpeningSingle, 0x200C,
-            0x4000, 0, mbMainProc);
+        openingSingleProc = HuPrcChildCreate(ev_OpeningSingle, OPENING_PROCESS_PRIORITY,
+            OPENING_PROCESS_STACK_SIZE, 0, mbMainProc);
     }
     HuPrcDestructorSet2(openingSingleProc, ev_OpeningSingleKill);
     do {
         if (work->dispF && mbTelopCheck()) {
             if (winId < 0) {
-                winId = mbWinCreateHelp(0x0026000C);
+                winId = mbWinCreateHelp(MESSNUM(MESS_BOARD_OPE, 12));
                 mbWinPosSet(winId, 228, 408);
             }
             for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
@@ -805,7 +810,7 @@ void mbev_OpeningSingle(void)
     }
     if (singleEff1MdlId != -1) {
         mbParticleKill(singleEff1MdlId);
-        HuDataDirClose(0x00210000);
+        HuDataDirClose(DATA_effect);
     }
     if (singleFXNo != -1) {
         mbAudFXStop(singleFXNo);
@@ -883,7 +888,7 @@ static void ev_OpeningSingle(void)
     mbObjDispSet(guideMdlId, FALSE);
     mbObjMotionSet(guideMdlId, 5, HU3D_MOTATTR_NONE);
 
-    startMasuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    startMasuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     masuNum = mbMasuFind_TypeListGet2(startMasuId, 7, FALSE, FALSE,
         masuList);
     size = masuNum * sizeof(HuVecF);
@@ -981,7 +986,7 @@ static void ev_OpeningSingle(void)
         guidePath[i].z += singleGuidePathOfsTbl[i].z;
     }
     prevSegmentDir = guidePath[0];
-    animP = HuSprAnimRead(HuDataReadNum(0x00210001, HU_MEMNUM_OVL));
+    animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 1), HU_MEMNUM_OVL));
     singleEff1MdlId = mbParticleCreate(animP, 128);
     mbParticleHookSet(singleEff1MdlId, OpeningSingleEffHook);
     Hu3DModelLayerSet(singleEff1MdlId, 5);
@@ -1024,7 +1029,7 @@ static void ev_OpeningSingle(void)
     singleWinId = -1;
 
     mbAudGuidePlay(952);
-    singleWinId = mbWinCreate(2, 0x002C0011, 6);
+    singleWinId = mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 17), 6);
     mbWinTopPosGet(&winPos);
     winPos.y -= 35.0f;
     mbWinTopPosSet(winPos.x, winPos.y);
@@ -1032,7 +1037,7 @@ static void ev_OpeningSingle(void)
     singleWinId = -1;
 
     mbAudGuidePlay(950);
-    singleWinId = mbWinCreate(2, 0x002C0012, 6);
+    singleWinId = mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 18), 6);
     mbWinTopPosGet(&winPos);
     winPos.y -= 35.0f;
     mbWinTopPosSet(winPos.x, winPos.y);
@@ -1104,7 +1109,7 @@ void mbOpeningGuidePosRestore(void)
     HuVecF masuPos;
     HuVecF pos;
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     mbMasuPosGet(masuId, &masuPos);
     pos = masuPos;
     pos.z -= 200.0f;
@@ -1119,7 +1124,7 @@ void mbOpeningCameraPosRestore(void)
     HuVecF masuPos;
     HuVecF pos;
 
-    masuId = mbMasuFind_AttrIdGet(-1, 0x8000);
+    masuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     mbMasuPosGet(masuId, &masuPos);
     pos = masuPos;
     pos.y -= 50.0f;
