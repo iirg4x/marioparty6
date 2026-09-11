@@ -1054,7 +1054,7 @@ config.libs = [
                 extra_cflags=["-O4,p", "-schedule off", "-opt nopeephole"],
             ),
             Object(Matching, "board/status.c"),
-            Object(NonMatching, "board/opening.c"),
+            Object(Matching, "board/opening.c"),
             Object(Matching, "board/pause.c"),
             Object(Matching, "board/tutorial.c"),
             Object(Matching, "board/roulette.c"),
