@@ -431,7 +431,7 @@ void mbMtxRotZRad(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
-void mbMtxScaleRotXDeg(Mtx mtx, float angle, HuVecF *scale)
+void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
     float *table = cosTab;
@@ -1158,7 +1158,7 @@ static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
 
     if (transform->rot.x != 0.0f) {
         rotF = TRUE;
-        mbMtxScaleRotXDeg(objectMtx, transform->rot.x, &transform->scale);
+        mbMtxScaleRotXDeg(objectMtx, &transform->scale, transform->rot.x);
     }
     if (transform->rot.y != 0.0f) {
         s32 offset = (s32)(transform->rot.y * MB_TRIG_DEG_SCALE);
