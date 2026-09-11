@@ -11,6 +11,8 @@ modify the reconstruction tree.
 Opt-in ``--regalloc`` observes optimized FPR coloring (or GPR coloring with
 ``--regalloc-class gpr``).  Add ``--frontend`` for AST stages and temporary
 creation/range-split provenance, or ``--cse`` for GPR LI/LIS CSE observations.
+``--machine-emit`` adds authenticated emitted offsets/words and GPR operand
+color joins. Missing pre-color ancestry remains explicitly UNKNOWN.
 These are facts about the supplied compilation, not recovered retail virtual
 register identities. Unsupported frontend nodes remain explicitly incomplete.
 
@@ -115,6 +117,8 @@ CSE_MODE = 0x5E18A8
 CSE_LOWER_BOUND = 0x5EB218
 CSE_UPPER_BOUND = 0x5EA650
 MAX_CSE_OBSERVATIONS = 8192
+MAX_MACHINE_EMISSIONS = 16384
+MAX_MACHINE_COLOR_OBSERVATIONS = 131072
 IG_TABLE = 0x5EA768
 # The allocator keeps one graph count and one register limit per coloring
 # class.  Pinned GC/2.6 static evidence at function 0x4D06E0 stores class-name
@@ -551,6 +555,18 @@ def s32(data: bytes, offset: int = 0) -> int:
     return int.from_bytes(data[offset : offset + 4], "little", signed=True)
 
 
+def machine_emission_layout() -> tuple[dict[str, Any], int, int, int]:
+    """Reuse the existing authenticated GC/2.6 hook; no new native sites."""
+    if __package__:
+        from . import capsule_same_session_capture as capture
+    else:
+        import capsule_same_session_capture as capture
+    if capture.GC26_COMPILER_SHA256 != PINNED_COMPILER_SHA256:
+        raise ValueError("machine-emission compiler profile mismatch")
+    return (dict(capture.GC26_MACHINE_EMIT_HOOK), capture.PCODE_OPCODE_DESCRIPTOR_TABLE,
+            capture.PCODE_OPCODE_DESCRIPTOR_STRIDE, capture.PCODE_OPCODE_DESCRIPTOR_BASE_OFFSET)
+
+
 class Debugger:
     def __init__(
         self,
@@ -565,6 +581,7 @@ class Debugger:
         capture_frontend: bool = False,
         regalloc_class: int = 3,
         capture_cse: bool = False,
+        capture_machine_emit: bool = False,
     ) -> None:
         if not isinstance(target_name, str) or not target_name.strip():
             raise ValueError("target_name must be a nonempty function name")
@@ -577,6 +594,8 @@ class Debugger:
             raise ValueError("capture_cse requires capture_regalloc")
         if capture_cse and regalloc_class != REGALLOC_CLASS_IDS["gpr"]:
             raise ValueError("capture_cse requires GPR regalloc_class")
+        if capture_machine_emit and (not capture_regalloc or regalloc_class != REGALLOC_CLASS_IDS["gpr"]):
+            raise ValueError("capture_machine_emit requires GPR capture_regalloc")
         self.process = process
         self.output = output
         self.target_name = target_name
@@ -586,12 +605,21 @@ class Debugger:
         self.capture_frontend = capture_frontend
         self.regalloc_class = regalloc_class
         self.capture_cse = capture_cse
+        self.capture_machine_emit = capture_machine_emit
         self.observation_hooks = dict(REGALLOC_HOOK_BYTES)
         if capture_frontend:
             self.observation_hooks.update(FRONTEND_HOOK_BYTES)
             self.observation_hooks.update(TEMP_ORIGIN_HOOK_BYTES)
         if capture_cse:
             self.observation_hooks.update(CSE_HOOK_BYTES)
+        self.machine_hook = None
+        self.machine_colors: dict[tuple[int, int], dict[str, Any]] = {}
+        self.machine_tokens: dict[int, str] = {}
+        if capture_machine_emit:
+            if compiler_sha256 != PINNED_COMPILER_SHA256:
+                raise ValueError("machine emission requires pinned GC/2.6 compiler")
+            self.machine_hook, self.machine_descriptor_table, self.machine_descriptor_stride, self.machine_descriptor_offset = machine_emission_layout()
+            self.observation_hooks[self.machine_hook["address"]] = bytes.fromhex(self.machine_hook["prefix"])
         self.regalloc_active = False
         self.regalloc_pass = 0
         self.regalloc_pending: dict[str, Any] | None = None
@@ -630,6 +658,10 @@ class Debugger:
             self.result["capture_cse"] = True
             self.result["cse_li_eligibility"] = []
             self.result["cse_li_reuse"] = []
+        if capture_machine_emit:
+            self.result.update(capture_machine_emit=True, machine_emissions=[],
+                               machine_emission_scope="target-function; same-session PCode identity only",
+                               authority_advanced=False)
 
     @property
     def regalloc_class_label(self) -> str:
@@ -1033,10 +1065,88 @@ class Debugger:
         rows.append(row)
         self.cse_pending_eligibility = None
 
+    def machine_pcode_token(self, address: int) -> str:
+        if not address:
+            raise ValueError("machine emission has null PCode identity")
+        if address not in self.machine_tokens:
+            if len(self.machine_tokens) >= MAX_MACHINE_EMISSIONS:
+                raise ValueError("excessive machine PCode identities")
+            self.machine_tokens[address] = f"pcode-{len(self.machine_tokens):06d}"
+        return self.machine_tokens[address]
+
+    def observe_machine_emission(self, event: DEBUG_EVENT) -> None:
+        """GC/2.6 post-encoder: EBX=PCode, EBP=offset, EAX=encoded bytes.
+
+        All operands are serialized, including raw flags and nonregister forms.
+        Only a matching observed pre-color write supplies an original GPR vreg;
+        physical-only operands or later rewrites never acquire invented ancestry.
+        """
+        if not self.capture_machine_emit or not self.regalloc_active:
+            raise RuntimeError("machine emission outside requested target capture")
+        emissions = self.result["machine_emissions"]
+        if len(emissions) >= MAX_MACHINE_EMISSIONS:
+            raise ValueError("excessive machine emission observations")
+        thread = self.threads.get(event.dwThreadId)
+        if not thread:
+            raise RuntimeError("machine emission without thread handle")
+        context = self.get_context(thread)
+        pointer, offset, encoded = int(context.Ebx), int(context.Ebp), int(context.Eax)
+        token = self.machine_pcode_token(pointer)
+        if offset < 0 or offset % 4 or (emissions and offset <= emissions[-1]["emitted_offset"]):
+            raise ValueError("machine emitted offsets are unaligned or nonmonotonic")
+        if not 0 <= encoded <= 0xFFFFFFFF:
+            raise ValueError("invalid machine encoded word")
+        header = self.read_exact(pointer, 0x24)
+        opcode, count = s16(header, 0x20), s16(header, 0x22)
+        if not 0 <= opcode <= 0x1D4 or not 0 <= count <= 256:
+            raise ValueError("unsupported machine PCode opcode/count")
+        raw = self.read_exact(pointer + 0x24, count * 12) if count else b""
+        descriptor = self.runtime(self.machine_descriptor_table + opcode * self.machine_descriptor_stride
+                                  + self.machine_descriptor_offset)
+        descriptor_base = u32(self.read_exact(descriptor, 4))
+        encoded_bytes = encoded.to_bytes(4, "little")
+        word = int.from_bytes(encoded_bytes, "big")
+        if (word & 0xFC000000) != (descriptor_base & 0xFC000000):
+            raise ValueError("machine descriptor opcode mismatch")
+        operands = []
+        for ordinal in range(count):
+            operand = raw[ordinal * 12:(ordinal + 1) * 12]
+            kind, cls, flags, index = operand[0], operand[1], int.from_bytes(operand[2:4], "little"), s16(operand, 4)
+            item = {"ordinal": ordinal, "kind": kind, "class": cls, "flags": flags,
+                    "index": index, "raw": operand.hex(), "vreg": None, "color": None,
+                    "join_status": "not_gpr"}
+            if kind == 0 and cls == REGALLOC_CLASS_IDS["gpr"]:
+                if not 0 <= index <= 31:
+                    raise ValueError("emitted GPR operand is not a physical color")
+                item.update(color=index, join_status="UNKNOWN", reason="no observed pre-color operand")
+                prior = self.machine_colors.get((pointer, ordinal))
+                if prior:
+                    prior_raw = bytes.fromhex(prior["operand_raw"])
+                    if (prior["opcode"] == opcode and prior["operand_count"] == count
+                            and prior["source_offset"] == u32(header, 0x1C)
+                            and prior["color"] == index
+                            and prior_raw[:4] == operand[:4] and prior_raw[6:] == operand[6:]):
+                        item.update(vreg=prior["operand_index"], join_status="observed",
+                                    color_observation=prior["observation_index"],
+                                    allocation_pass=prior["pass"], pre_color_flags=prior["operand_flags"])
+                        item.pop("reason")
+                    else:
+                        item["reason"] = "PCode operand changed since observed color write"
+            operands.append(item)
+        emissions.append({"function": self.target_name, "pcode": hex(pointer), "pcode_token": token, "emitted_offset": offset,
+                          "instruction_index": offset // 4, "opcode": opcode, "operand_count": count,
+                          "source_offset": u32(header, 0x1C), "ppc_word": word,
+                          "ppc_bytes": encoded_bytes.hex(), "operands": operands,
+                          "gpr_joins_complete": all(x["join_status"] != "UNKNOWN" for x in operands),
+                          "authority_advanced": False})
+
     def observe_regalloc(self, event: DEBUG_EVENT, address: int) -> None:
         if not self.regalloc_active:
             raise RuntimeError("optimized allocator observation outside target function")
         site = address - self.base + KNOWN_IMAGE_BASE
+        if self.machine_hook and site == self.machine_hook["address"]:
+            self.observe_machine_emission(event)
+            return
         if site in FRONTEND_HOOK_BYTES:
             if not self.capture_frontend:
                 raise RuntimeError("frontend observation was not requested")
@@ -1094,14 +1204,23 @@ class Debugger:
                     or u32(self.read_exact(table + index * 4, 4)) != context.Ecx
                     or node["color"] != (context.Eax & 0xFFFF)):
                 raise ValueError("PCode operand/IG/color join mismatch")
-            self.result.setdefault("regalloc_pcode", []).append({
+            observations = self.result.setdefault("regalloc_pcode", [])
+            if self.capture_machine_emit and len(observations) >= MAX_MACHINE_COLOR_OBSERVATIONS:
+                raise ValueError("excessive machine color observations")
+            row = {
                 "pass": self.regalloc_pass, "class": cls, "node": node["node"],
                 "node_vreg": node["vreg"], "pcode": hex(context.Esi),
                 "opcode": s16(header, 0x20), "operand_count": count,
                 "operand_ordinal": offset // 12, "operand_index": index,
                 "operand_flags": int.from_bytes(operand[2:4], "little"),
                 "color": node["color"],
-            })
+            }
+            if self.capture_machine_emit:
+                row.update(pcode_token=self.machine_pcode_token(context.Esi),
+                           source_offset=u32(header, 0x1C), operand_raw=operand.hex(),
+                           observation_index=len(observations))
+                self.machine_colors[(int(context.Esi), offset // 12)] = row
+            observations.append(row)
             return
         if site == 0x5088C6:
             if self.regalloc_pending is not None:
@@ -1678,6 +1797,8 @@ class Debugger:
                         stages = [x["stage"] for x in self.result.get("frontend", [])]
                         if self.capture_frontend and stages != list(FRONTEND_STAGES.values()):
                             raise RuntimeError("compiler exited without all requested frontend stages")
+                        if self.capture_machine_emit and not self.result.get("machine_emissions"):
+                            raise RuntimeError("compiler exited without requested machine emissions")
                         self.result["status"] = "regalloc_observed"
                     self.log(f"EXIT_PROCESS code=0x{int(event.u.ExitProcess.dwExitCode):08x} target_seen={self.target_seen} dumped={self.dumped}")
                     self.write_result()
@@ -1834,6 +1955,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     )
     parser.add_argument("--frontend", action="store_true",
                         help="with --regalloc, capture AST stages and temporary/range-split origins")
+    parser.add_argument("--machine-emit", action="store_true",
+                        help="with GPR --regalloc, capture emitted PPC words/offsets and operand color joins")
     parser.add_argument("--trace", action="store_true", help="log debug events to stderr")
     parser.add_argument(
         "--assign",
@@ -1877,6 +2000,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.frontend and not args.regalloc:
         print("--frontend requires --regalloc", file=sys.stderr)
+        return 2
+    if args.machine_emit and (not args.regalloc or args.regalloc_class != "gpr"):
+        print("--machine-emit requires --regalloc --regalloc-class gpr", file=sys.stderr)
         return 2
     if os.name != "nt":
         print(
@@ -1946,6 +2072,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         capture_frontend=args.frontend,
         regalloc_class=REGALLOC_CLASS_IDS[args.regalloc_class],
         capture_cse=args.cse,
+        capture_machine_emit=args.machine_emit,
     )
     debugger.result["command"] = command
     debugger.result["cwd"] = str(cwd)

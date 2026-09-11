@@ -357,7 +357,7 @@ class MwccWin32VarInfoTests(unittest.TestCase):
             debugger.range_split_expression_graph(addresses["root"])
 
     def allocator_fixture(self, *, regalloc_class=3, graph_count=64,
-                          register_limit=32):
+                          register_limit=32, capture_machine_emit=False):
         memory = {}
 
         def write(address, data):
@@ -391,6 +391,7 @@ class MwccWin32VarInfoTests(unittest.TestCase):
         debugger = varinfo.Debugger(
             0, Path("unused.json"), "test", capture_regalloc=True,
             regalloc_class=regalloc_class,
+            capture_machine_emit=capture_machine_emit,
         )
         debugger.base = varinfo.KNOWN_IMAGE_BASE
         debugger.read = read
@@ -569,6 +570,122 @@ class MwccWin32VarInfoTests(unittest.TestCase):
         context.Eax = 2
         with self.assertRaisesRegex(ValueError, "join mismatch"):
             debugger.observe_regalloc(event, 0x5087A4)
+
+    def machine_fixture(self):
+        debugger, event, context, write, node = self.allocator_fixture(
+            regalloc_class=4, graph_count=68, capture_machine_emit=True)
+        node(36, 1, [62])
+        header = bytearray(0x24 + 3 * 12)
+        struct.pack_into("<Ihh", header, 0x1C, 123, 167, 3)
+        struct.pack_into("<BBHh", header, 0x24, 0, 4, 8194, 36)
+        struct.pack_into("<BBHh", header, 0x30, 0, 4, 1, 3)
+        struct.pack_into("<BBHh", header, 0x3C, 2, 0, 0, 7)
+        write(0x9000, header)
+        context.Esi, context.Edx, context.Ecx = 0x9000, 0x9024, context.Ebx
+        debugger.observe_regalloc(event, 0x5087A4)
+        # The actual color-write is observed again in the emitted operand.
+        write(0x9028, struct.pack("<h", 1))
+        context.Ebx, context.Ebp = 0x9000, 12
+        context.Eax = int.from_bytes(bytes.fromhex("80230007"), "little")
+        descriptor = debugger.runtime(debugger.machine_descriptor_table + 167 * debugger.machine_descriptor_stride
+                                      + debugger.machine_descriptor_offset)
+        write(descriptor, struct.pack("<I", 0x80000000))
+        return debugger, event, context, write, descriptor
+
+    def test_machine_emission_joins_all_operands_without_inventing_unseen_vregs(self):
+        debugger, event, context, write, _ = self.machine_fixture()
+        # Unlike color hooks, machine observation must not consult COLORING_CLASS.
+        write(varinfo.COLORING_CLASS, b"\x03")
+        debugger.observe_regalloc(event, debugger.runtime(debugger.machine_hook["address"]))
+        row = debugger.result["machine_emissions"][0]
+        self.assertEqual((row["emitted_offset"], row["ppc_bytes"], row["ppc_word"]),
+                         (12, "80230007", 0x80230007))
+        self.assertEqual(row["pcode_token"], debugger.result["regalloc_pcode"][0]["pcode_token"])
+        self.assertEqual(len(row["operands"]), 3)
+        joined, fixed, immediate = row["operands"]
+        self.assertEqual((joined["vreg"], joined["flags"], joined["color"], joined["join_status"]),
+                         (36, 8194, 1, "observed"))
+        self.assertEqual(joined["color_observation"], 0)
+        self.assertIsNone(fixed["vreg"])
+        self.assertEqual((fixed["color"], fixed["join_status"]), (3, "UNKNOWN"))
+        self.assertEqual(immediate["join_status"], "not_gpr")
+        self.assertFalse(row["gpr_joins_complete"])
+        self.assertFalse(row["authority_advanced"])
+
+    def test_machine_emission_rejects_unsupported_layout_and_preserves_unknown_joins(self):
+        for fault in ("pointer", "offset", "opcode", "count", "truncated", "descriptor", "physical", "limit", "inactive"):
+            with self.subTest(fault=fault):
+                debugger, event, context, write, descriptor = self.machine_fixture()
+                if fault == "pointer":
+                    context.Ebx = 0
+                elif fault == "offset":
+                    context.Ebp = 3
+                elif fault == "opcode":
+                    write(0x9020, struct.pack("<h", 0x1D5))
+                elif fault == "count":
+                    write(0x9022, struct.pack("<h", 257))
+                elif fault == "truncated":
+                    context.Ebx = 0xA000
+                elif fault == "descriptor":
+                    write(descriptor, struct.pack("<I", 0x38000000))
+                elif fault == "physical":
+                    write(0x9028, struct.pack("<h", 32))
+                elif fault == "limit":
+                    debugger.result["machine_emissions"] = [{}] * varinfo.MAX_MACHINE_EMISSIONS
+                else:
+                    debugger.regalloc_active = False
+                with self.assertRaises((ValueError, RuntimeError)):
+                    debugger.observe_machine_emission(event)
+        for field, value in ((0x9028, struct.pack("<h", 2)), (0x9026, b"\x01\x00"),
+                             (0x901C, struct.pack("<I", 124))):
+            debugger, event, _, write, _ = self.machine_fixture()
+            write(field, value)
+            debugger.observe_machine_emission(event)
+            operand = debugger.result["machine_emissions"][0]["operands"][0]
+            self.assertEqual(operand["join_status"], "UNKNOWN")
+            self.assertIsNone(operand["vreg"])
+        debugger, event, _, _, _ = self.machine_fixture()
+        debugger.observe_machine_emission(event)
+        with self.assertRaisesRegex(ValueError, "nonmonotonic"):
+            debugger.observe_machine_emission(event)
+
+    def test_machine_emission_rebases_hook_and_descriptor_not_heap_identity(self):
+        debugger, event, _, write, old_descriptor = self.machine_fixture()
+        debugger.base = 0x500000
+        write(old_descriptor + 0x100000, struct.pack("<I", 0x80000000))
+        debugger.observe_regalloc(event, debugger.runtime(debugger.machine_hook["address"]))
+        row = debugger.result["machine_emissions"][0]
+        self.assertEqual(row["pcode"], "0x9000")
+        self.assertEqual(row["ppc_bytes"], "80230007")
+        self.assertEqual(row["operands"][0]["vreg"], 36)
+
+    def test_machine_emission_is_opt_in_authenticated_and_target_scoped(self):
+        default = varinfo.Debugger(0, Path("unused.json"), "test", capture_regalloc=True)
+        self.assertIsNone(default.machine_hook)
+        self.assertNotIn("machine_emissions", default.result)
+        for kwargs in ({}, {"capture_regalloc": True},
+                       {"capture_regalloc": True, "regalloc_class": 4, "compiler_sha256": "0" * 64}):
+            with self.assertRaises(ValueError):
+                varinfo.Debugger(0, Path("unused.json"), "test", capture_machine_emit=True, **kwargs)
+        for args in (["--machine-emit"], ["--regalloc", "--machine-emit"]):
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(varinfo.main(args), 2)
+        debugger, event, _, _, _ = self.machine_fixture()
+        hooks = {**varinfo.EXPECTED_HOOK_BYTES, **debugger.observation_hooks}
+        debugger.read = lambda address, size: hooks[address][:size]
+        debugger.validate_hooks()
+        machine = debugger.machine_hook["address"]
+        self.assertIn(hex(machine), debugger.result["validated_hooks"])
+        debugger.read = lambda address, size: b"\0" * size if address == machine else hooks[address][:size]
+        with self.assertRaisesRegex(RuntimeError, "hook byte validation"):
+            debugger.validate_hooks()
+        debugger.step_over = lambda *args, **kwargs: None
+        debugger.read_u32 = lambda address: 1
+        debugger.read_object_name = lambda address: "other"
+        retired = []
+        debugger.remove_breakpoint = retired.append
+        debugger.handle_codegen_breakpoint(event, varinfo.CODEGEN_START)
+        self.assertIn(machine, retired)
 
     def test_gpr_error_labels_name_selected_class(self):
         debugger, _, context, write, _ = self.allocator_fixture(regalloc_class=4)
