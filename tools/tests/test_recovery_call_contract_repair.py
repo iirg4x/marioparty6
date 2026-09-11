@@ -1,4 +1,6 @@
 import copy
+import contextlib
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -165,6 +167,62 @@ class ContractRepairTests(unittest.TestCase):
 
 
 class DeclarationDiagnosticTests(unittest.TestCase):
+    def test_declarations_cli_accepts_relative_root_without_emitting_patch(self):
+        request = dict(caller=self.bound("caller.c", "void Api(void);"),
+                       provider=self.bound("provider.c", "int Api(void) {"))
+        (self.root / "request.json").write_text(json.dumps(request))
+        stdout = io.StringIO()
+        with contextlib.chdir(self.root), contextlib.redirect_stdout(stdout), mock.patch.object(
+            repair.sys, "argv", ["tool", "declarations", "--root", ".", "--request", "request.json"]
+        ):
+            self.assertEqual(repair.main(), 0)
+        result = json.loads(stdout.getvalue())
+        self.assertTrue(result["return_comparison"]["drift"])
+        self.assertFalse(result["source_patch_emitted"])
+
+    def test_return_drift_and_corrected_int_contract(self):
+        report = self.diagnose(caller="extern void Api(int);", provider="int Api(int value) {")
+        self.assertEqual(report["parameter_compatibility"], "COMPATIBLE")
+        self.assertEqual(report["compatibility"], "INCOMPATIBLE")
+        self.assertTrue(report["return_comparison"]["drift"])
+        self.assertFalse(report["source_authority"])
+        report = self.diagnose(caller="extern int Api(int);", provider="int Api(int value) {")
+        self.assertEqual(report["compatibility"], "COMPATIBLE")
+        self.assertFalse(report["return_comparison"]["drift"])
+
+    def test_missing_declaration_is_bound_conditional_old_c_int(self):
+        caller = dict(self.bound("caller.c", "Api(8, 30);"),
+                      declaration_status="missing", symbol="Api")
+        provider = self.bound("provider.c", "void Api(int type, int time) {")
+        report = repair.diagnose_declarations(root=self.root, caller=caller, provider=provider)
+        self.assertEqual(report["return_comparison"]["caller_type"], "int")
+        self.assertTrue(report["return_comparison"]["drift"])
+        self.assertIn("if caller visibility claim holds", report["observed_declarations"][0]["implicit_int_status"])
+        self.assertIn("not resolved", report["missing_declaration_proof"])
+        with self.assertRaisesRegex(ValueError, "bound callsite"):
+            repair.diagnose_declarations(root=self.root, caller=dict(caller, symbol="Other"), provider=provider)
+        with self.assertRaisesRegex(ValueError, "hash drift"):
+            repair.diagnose_declarations(root=self.root, caller=dict(caller, sha256="0"*64), provider=provider)
+
+    def test_unknown_return_typedef_and_ambiguous_visibility_stay_unknown(self):
+        for spelling in ("Opaque", "Opaque *", "const int"):
+            report = self.diagnose(caller=f"{spelling} Api(void);", provider="int Api(void) {")
+            self.assertEqual(report["compatibility"], "UNKNOWN")
+            self.assertIsNone(report["return_comparison"]["drift"])
+        caller = dict(self.bound("caller.c", "void Api(void);"), visibility="ambiguous")
+        provider = self.bound("provider.c", "int Api(void) {")
+        report = repair.diagnose_declarations(root=self.root, caller=caller, provider=provider)
+        self.assertEqual(report["compatibility"], "UNKNOWN")
+        self.assertIsNone(report["return_comparison"]["drift"])
+
+    def test_supported_return_pointer_alias_and_generator_restriction(self):
+        report = self.diagnose(caller="s16 Api(void);", provider="short Api(void) {")
+        self.assertEqual(report["compatibility"], "COMPATIBLE")
+        report = self.diagnose(caller="void *Api(void);", provider="void *Api(void) {")
+        self.assertEqual(report["compatibility"], "COMPATIBLE")
+        with self.assertRaisesRegex(ValueError, "canonical void"):
+            repair._signature("int Api(void);")
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

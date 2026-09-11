@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from tools import mwcc_temp_pool_reuse as pool
 
@@ -90,6 +91,37 @@ def _fixture(
 
 
 class MwccTempPoolReuseTests(unittest.TestCase):
+    def test_hypothetical_wrap_fit_is_bounded_nonmutating_and_not_reset_authority(self):
+        definitions = [{"machine_index": i, "virtual_id": vid, "source_offset": 100 + i}
+                       for i, vid in enumerate((40, 100, 96, 160, 34, 40, 160, 34, 40))]
+        observations = [{"machine_index": i, "virtual_id": 40, "target_color": color,
+                         "candidate_color": 3, "source_offset": 100 + i, "partition": 0}
+                        for i, color in ((0, 3), (5, 4), (8, 3))]
+        original = copy.deepcopy((observations, definitions))
+        result = pool._hypothetical_wrap_fits(observations, definitions, 1)
+        self.assertEqual(result["boundary_count"], 2)  # 100->96 is not a wrap hypothesis.
+        self.assertEqual(result["reset_authority"], "UNKNOWN")
+        self.assertEqual(result["target_virtual_ids"], "NOT_RECOVERED")
+        self.assertEqual(len(result["independent_wrap_fits"]), 2)
+        self.assertEqual(result["epoch_fits"][1]["best_conflicts"], 0)
+        self.assertEqual(result["epoch_fits"][1]["hypotheses"][0]["source_offset"], 105)
+        self.assertEqual((observations, definitions), original)
+        with mock.patch.object(pool, "MAX_ALIGNMENT_CELLS", 1):
+            limited = pool._hypothetical_wrap_fits(observations, definitions, 1)
+        self.assertEqual(limited["cells_evaluated"], 1)
+        self.assertEqual(limited["status"], "UNKNOWN")
+        self.assertFalse(limited["epoch_fits"][1]["search_complete"])
+
+    def test_hypothetical_wrap_fit_suppresses_small_drops_and_caps_boundaries(self):
+        definitions = [{"machine_index": i, "virtual_id": vid}
+                       for i, vid in enumerate((100, 96, 101))]
+        self.assertEqual(pool._hypothetical_wrap_fits([], definitions, 1)["status"], "suppressed")
+        definitions = [{"machine_index": i, "virtual_id": vid}
+                       for i, vid in enumerate((160, 34) * 5)]
+        result = pool._hypothetical_wrap_fits([], definitions, 1)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertEqual(result["cells_evaluated"], 0)
+
     def _native_fixture(self):
         envelope, report = _fixture([3, 4], [58, 58], ordinals=[0, 0])
         native = {"tool": "mwcc_win32_varinfo", "schema_version": 1,

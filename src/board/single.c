@@ -489,46 +489,46 @@ static void SingleMasuTypeReset(void)
     memset(masuType, 0, sizeof(masuType));
 }
 
+static inline HU3D_MODELID SingleParticleCreate(int animNo, s16 maxCount,
+    MBPARTICLEHOOK hook)
+{
+    ANIMDATA *anim = singleEffAnim[animNo];
+    HU3D_MODELID modelId;
+
+    modelId = mbParticleCreate(anim, maxCount);
+    mbParticleHookSet(modelId, hook);
+    Hu3DModelCameraSet(modelId, 1);
+    Hu3DModelLayerSet(modelId, 5);
+    return modelId;
+}
+
+static inline MBPARTICLE *SingleParticleDataGet(HU3D_MODELID modelId)
+{
+    return (MBPARTICLE *)Hu3DData[modelId].hookData;
+}
+
 static void SingleEffInit(void)
 {
     MBPARTICLE *particle;
     SINGLE_EFF_DATA *work = singleEffData;
     s32 i;
-    HU3D_MODELID modelId0, modelId1, modelId2; ANIMDATA *anim0; HU3D_MODELID hookModelId0; ANIMDATA *anim1;
-    HU3D_MODELID hookModelId1; ANIMDATA *anim2; HU3D_MODELID workModelId0, storedModelId0; void *hookData0;
-    MBPARTICLE *particleWork0; void *hookData1; MBPARTICLE *particleWork1; HU3D_MODELID workModelId1, storedModelId1, workModelId2, storedModelId2;
 
     memset(work, 0, sizeof(singleEffData));
     for (i = 0; i < 5; ++i, ++work) {
-        anim0 = singleEffAnim[0];
-        modelId0 = mbParticleCreate(anim0, 1);
-        mbParticleHookSet(modelId0, SingleEffMgMasuHook);
-        Hu3DModelCameraSet(modelId0, 1);
-        Hu3DModelLayerSet(modelId0, 5);
-        workModelId0 = modelId0; storedModelId0 = workModelId0; work->modelId = storedModelId0;
+        work->modelId = SingleParticleCreate(0, 1, SingleEffMgMasuHook);
         mbParticleAttrSet(work->modelId, MB_PARTICLE_ATTR_3D);
         Hu3DModelAttrSet(work->modelId, HU3D_ATTR_DISPOFF | HU3D_ATTR_NOPAUSE);
-        hookModelId0 = work->modelId; hookData0 = Hu3DData[hookModelId0].hookData;
-        particleWork0 = hookData0; particle = particleWork0; particle->hookData = work;
+        particle = SingleParticleDataGet(work->modelId);
+        particle->hookData = work;
 
-        anim1 = singleEffAnim[1];
-        modelId1 = mbParticleCreate(anim1, 20);
-        mbParticleHookSet(modelId1, SingleEffMgHook);
-        Hu3DModelCameraSet(modelId1, 1);
-        Hu3DModelLayerSet(modelId1, 5);
-        workModelId1 = modelId1; storedModelId1 = workModelId1; work->childModelId[0] = storedModelId1;
+        work->childModelId[0] = SingleParticleCreate(1, 20, SingleEffMgHook);
         mbParticleAttrSet(work->childModelId[0], MB_PARTICLE_ATTR_UPAUSE);
         Hu3DModelAttrSet(work->childModelId[0], HU3D_ATTR_DISPOFF);
         mbParticleBlendModeSet((int)work->childModelId[0], MB_PARTICLE_BLEND_ADDCOL);
-        hookModelId1 = work->childModelId[0]; hookData1 = Hu3DData[hookModelId1].hookData;
-        particleWork1 = hookData1; particle = particleWork1; particle->hookData = work;
+        particle = SingleParticleDataGet(work->childModelId[0]);
+        particle->hookData = work;
 
-        anim2 = singleEffAnim[1];
-        modelId2 = mbParticleCreate(anim2, 100);
-        mbParticleHookSet(modelId2, SingleEffMgExplodeHook);
-        Hu3DModelCameraSet(modelId2, 1);
-        Hu3DModelLayerSet(modelId2, 5);
-        workModelId2 = modelId2; storedModelId2 = workModelId2; work->childModelId[1] = storedModelId2;
+        work->childModelId[1] = SingleParticleCreate(1, 100, SingleEffMgExplodeHook);
         Hu3DModelAttrSet(work->childModelId[1], HU3D_ATTR_DISPOFF);
         mbParticleBlendModeSet((int)work->childModelId[1], MB_PARTICLE_BLEND_ADDCOL);
 
@@ -552,9 +552,6 @@ static void SingleEffClose(void)
 
 static s16 SingleEffCreate(HuVecF *pos, int masuType)
 {
-    HU3D_MODELID modelId;
-    void *hookData;
-    MBPARTICLE *particleWork;
     MBPARTICLE *particle;
     SINGLE_EFF_DATA *work = singleEffData;
     int i;
@@ -578,10 +575,7 @@ static s16 SingleEffCreate(HuVecF *pos, int masuType)
     work->unk54 = TRUE;
     Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
     Hu3DModelAttrReset(work->childModelId[0], HU3D_ATTR_DISPOFF);
-    modelId = work->childModelId[0];
-    hookData = Hu3DData[modelId].hookData;
-    particleWork = hookData;
-    particle = particleWork;
+    particle = SingleParticleDataGet(work->childModelId[0]);
     particle->mode = 0;
     Hu3DModelCameraSet(work->modelId, 1);
     Hu3DModelLayerSet(work->modelId, 5);
@@ -2780,19 +2774,6 @@ opponentPlayerNo = miniKoopaType + 1;
     GwPlayer[opponentPlayerNo].masuId = 0;
 }
 
-static inline HU3D_MODELID SingleParticleCreate(int animNo, s16 maxCount,
-    MBPARTICLEHOOK hook)
-{
-    ANIMDATA *anim = singleEffAnim[animNo];
-    HU3D_MODELID modelId;
-
-    modelId = mbParticleCreate(anim, maxCount);
-    mbParticleHookSet(modelId, hook);
-    Hu3DModelCameraSet(modelId, 1);
-    Hu3DModelLayerSet(modelId, 5);
-    return modelId;
-}
-
 static inline s16 SingleMgCoinGet(int playerNo)
 {
     return GwPlayer[playerNo].mgCoin;
@@ -3640,5 +3621,4 @@ BOOL mbSingleMgUnlockCheck(void)
 {
     return SingleMgListGet(-1, NULL) == 0;
 }
-
 

@@ -448,3 +448,45 @@ with hook tests run separately. After the final observer edge corrections,
 all 194 affected observer/capture tests passed (one skipped). The saved Math
 gain, existing Koopa/Donkey regressions, real Dice promotion branches, and
 installed-wrapper smoke check passed without a new owner compile or capture.
+
+### Single: audit return contracts before interpreting temporary reuse
+
+Two Single residuals exposed caller/provider return-contract mistakes. A missing
+`void mbWipeSpecialFadeOutCreate(int, int)` declaration made an implicit integer
+result compete with later sound-table/tail temporaries. The truthful declaration
+closed `ev_SingleMKoopaMg` at 2540 bytes with zero strict/data and physical
+differences (retained c42). In a separate working reconstruction of
+`ev_SingleKoopaMgEnd`, changing the false `void mbCoinAddExec(int, int)` declaration
+to its matching provider's actual `int` return made the first 437 aligned
+instructions exact. That working c51 result is NOT a retained closure: 124 data
+rows and a 12-byte size excess remain, with positional relocation losses.
+
+Use the existing read-only diagnostic, not a new candidate generator:
+
+```text
+rtk proxy python tools/recovery_call_contract_repair.py declarations --root . --request request.json
+```
+
+The request binds caller/provider signature spans by file hash and byte range.
+It now compares supported return types as well as parameter conversions. A
+missing declaration can instead bind the callsite with `declaration_status:
+"missing"` and `symbol`; old-C implicit-int inference is explicitly conditional
+on the caller's visibility assertion. Includes/scopes are not automatically
+resolved. Unknown typedefs or ambiguous visibility stay UNKNOWN; the tool never
+changes source or authorizes a prototype. The four Single replay requests under
+`build/single-recovery/call-contract-audit/` distinguish both bad declarations
+from their corrected versions. These replays validate the diagnostic, not a
+claim that it discovered the earlier fixes.
+
+`mwcc_temp_pool_reuse.py` accepts native Win32 VarInfo captures and emits bounded
+hypothetical +/-1 alignments around large observed ID drops. Use the source
+offsets to narrow a real lifetime/producer question. Neither an ID drop nor a
+lower collision score proves a reset, target virtual IDs, or a source edit.
+Current native objdiff input has no raw instruction-word field; cross-report
+word verification remains explicitly unverified. Keep the captured object hash
+and observed operand joins separate from that limitation.
+
+The Single initializer/accessor cleanup also reproduced exact `SingleEffInit`
+and `SingleEffCreate` while removing manual callee/return alias chains. Shared
+particle creation and a typed particle-data accessor preserve 57/58 matching
+instruction bodies. This is source-fidelity improvement, not two new cracks.

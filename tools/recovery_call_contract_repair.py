@@ -84,26 +84,43 @@ def _parameter_type(text: str, aliases: dict[str, str]) -> str | None:
 
 
 def _declaration_view(text: str, aliases: dict[str, str]) -> dict:
-    name, _ = _signature(text)
     masked = mask_c(text).strip()
-    params = masked[masked.index("(") + 1:masked.rindex(")")].strip()
+    match = re.fullmatch(r"((?:(?:extern|static|inline)\s+)*)([A-Za-z_][\w \t*]*?)\b([A-Za-z_]\w*)\s*\(([^{};]*)\)\s*[;{]?", masked)
+    if not match:
+        raise ValueError("declaration diagnostic requires a plain function signature")
+    spelling, name, params = " ".join(match[2].split()), match[3], match[4].strip()
+    # Reuse the existing parameter syntax checks without widening the
+    # separately reviewed void-only candidate generator.
+    _signature("void " + name + "(" + params + ");")
+    return_type = "void" if spelling == "void" else _C_TYPES.get(spelling, aliases.get(spelling))
+    pointer = re.fullmatch(r"(.+?)\s*\*", spelling)
+    if pointer:
+        base = pointer[1].strip()
+        scalar = "void" if base == "void" else _C_TYPES.get(base, aliases.get(base))
+        if scalar is not None:
+            return_type = scalar + " *"
+    common = {"name": name, "return_type": return_type, "return_spelling": spelling,
+              "declaration_status": "present"}
     if not params:
-        return {"name": name, "kind": "nonprototype", "parameters": None}
+        return dict(common, kind="nonprototype", parameters=None)
     if params == "void":
-        return {"name": name, "kind": "prototype", "parameters": []}
+        return dict(common, kind="prototype", parameters=[])
     parts = params.split(",")
     if len(parts) > 16:
         raise ValueError("declaration diagnostic supports at most 16 parameters")
     types = [_parameter_type(p.strip(), aliases) for p in parts]
-    return {"name": name, "kind": "prototype", "parameters": types,
-            "unknown_parameters": [i for i, t in enumerate(types) if t is None]}
+    return dict(common, kind="prototype", parameters=types,
+                unknown_parameters=[i for i, t in enumerate(types) if t is None])
 
 
 def diagnose_declarations(*, root: Path, caller: dict, provider: dict,
                           reviewed_type_aliases: dict | None = None) -> dict:
     """Compare bound visible signatures; never infer visibility or emit a patch.
 
-    The caller selects the declaration visible at its callsite. This reader
+    The caller selects the declaration visible at its callsite. A missing
+    declaration uses a hash-bound callsite span plus declaration_status="missing"
+    and symbol; implicit int is conditional on that caller assertion. Optional
+    visibility="ambiguous" forces UNKNOWN. This reader
     binds that claim to a source span but does not resolve includes/scopes or
     invent a same-session compiler-to-formal edge. The conversion model is the
     MP6 GC2.6/2.7 C ABI (32-bit int, 16-bit short), not host Python/C types.
@@ -126,7 +143,24 @@ def diagnose_declarations(*, root: Path, caller: dict, provider: dict,
                 or not 0 <= start < end <= len(raw) or end-start > 1024):
             raise ValueError("invalid bounded declaration span")
         span = raw[start:end]
-        view = _declaration_view(span.decode("utf-8"), aliases)
+        visibility = desc.get("visibility", "caller_selected")
+        if visibility not in ("caller_selected", "ambiguous"):
+            raise ValueError("visibility must be caller_selected or ambiguous")
+        status = desc.get("declaration_status", "present")
+        if status == "missing":
+            name = desc.get("symbol")
+            if (role != "caller" or not isinstance(name, str)
+                    or not re.fullmatch(r"[A-Za-z_]\w*", name)
+                    or not re.search(r"\b" + re.escape(name) + r"\s*\(", mask_c(span.decode("utf-8")))):
+                raise ValueError("missing declaration requires a caller-selected bound callsite and symbol")
+            view = {"name": name, "kind": "nonprototype", "parameters": None,
+                    "return_type": "int", "return_spelling": None,
+                    "declaration_status": "missing", "implicit_int_status": "old-C implicit int if caller visibility claim holds"}
+        elif status == "present":
+            view = _declaration_view(span.decode("utf-8"), aliases)
+        else:
+            raise ValueError("declaration_status must be present or missing")
+        view["visibility"] = visibility
         views.append(dict(view, role=role, source=actual, start_byte=start,
                           end_byte=end, span_sha256=_sha(span), spelling=span.decode("utf-8")))
         watched.append((path, actual["sha256"]))
@@ -156,14 +190,28 @@ def diagnose_declarations(*, root: Path, caller: dict, provider: dict,
         # Opaque pointer typedefs may name the same type with different names;
         # only identical supported type lists establish agreement here.
         compatibility = "COMPATIBLE" if left["parameters"] == right["parameters"] else "UNKNOWN"
+    parameter_compatibility = compatibility
+    return_compatibility = ("UNKNOWN" if left["return_type"] is None or right["return_type"] is None
+                            else "COMPATIBLE" if left["return_type"] == right["return_type"] else "INCOMPATIBLE")
+    ambiguous = any(view["visibility"] == "ambiguous" for view in views)
+    if ambiguous or return_compatibility == "UNKNOWN":
+        compatibility = "UNKNOWN"
+    elif return_compatibility == "INCOMPATIBLE":
+        compatibility = "INCOMPATIBLE"
     result = {"schema": "recovery_call_declaration_diagnostic/v1", "function": left["name"],
               "observed_declarations": views, "reviewed_type_aliases": aliases,
               "model": "MP6 GC2.6/2.7 C: int32, short16; default argument promotions",
               "compatibility": compatibility, "parameter_conversions": conversions,
-              "visibility_status": "caller-selected source spans; include/scope resolution not proved",
+              "parameter_compatibility": parameter_compatibility,
+              "return_comparison": {"caller_type": left["return_type"], "provider_type": right["return_type"],
+                                    "compatibility": "UNKNOWN" if ambiguous else return_compatibility,
+                                    "drift": None if ambiguous or return_compatibility == "UNKNOWN" else return_compatibility == "INCOMPATIBLE"},
+              "visibility_status": ("UNKNOWN; ambiguous caller/provider visibility supplied" if ambiguous
+                                    else "caller-selected source spans; include/scope resolution not proved"),
               "native_formal_join": "UNKNOWN; no same-session formal-parameter edge supplied",
               "requires_source_exception": compatibility == "INCOMPATIBLE",
-              "diagnostic_only": True, "source_patch_emitted": False, "authority_advanced": False}
+              "missing_declaration_proof": "caller assertion only; includes/scopes not resolved",
+              "diagnostic_only": True, "source_patch_emitted": False, "source_authority": False, "authority_advanced": False}
     if any(compiler.digest(path) != sha for path, sha in watched):
         raise ValueError("declaration inputs changed during analysis")
     result["diagnostic_sha256"] = _sha(frontier.canonical(result))
@@ -401,11 +449,12 @@ def generate(*, root: Path, index: Path, capture: Path, capture_sha256: str,
 
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "declarations":
-        parser = argparse.ArgumentParser(description="Read-only caller/provider parameter-conversion diagnostic")
+        parser = argparse.ArgumentParser(description="Read-only caller/provider return-contract and parameter-conversion diagnostic")
         parser.add_argument("--root", type=Path, required=True)
         parser.add_argument("--request", type=Path, required=True,
-                            help="bound caller/provider signature descriptors and optional reviewed_type_aliases")
+                            help="bound caller/provider spans; caller may assert missing declaration at a callsite; optional reviewed_type_aliases")
         args = parser.parse_args(sys.argv[2:])
+        args.root = args.root.absolute()
         try:
             raw, _ = _read(args.root, frontier.local(args.root, args.request))
             request = frontier.load_json(raw)

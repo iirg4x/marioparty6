@@ -25,6 +25,9 @@ MAX_INPUT_BYTES = 64 * 1024 * 1024
 MAX_OUTPUT_BYTES = 256 * 1024
 MAX_COLLISIONS = 128
 MAX_EXEMPLARS = 3
+MAX_WRAP_BOUNDARIES = 4
+MAX_ALIGNMENT_CELLS = 4096
+MAX_ALIGNMENT_BEST = 4
 POOL_BASE = 32  # GPR 0..31 are pre-coloured; pool IDs begin at 32.
 SUPPORTED_OPERAND_BANKS = ("GPR",)
 OFFSET_DELTAS = (-3, -2, -1, 1, 2, 3)
@@ -496,6 +499,92 @@ def _suffix_fit(observations: list[dict[str, Any]], reset: dict[str, Any], basel
     return result
 
 
+def _hypothetical_wrap_fits(observations: list[dict[str, Any]],
+                           definitions: list[dict[str, Any]], baseline: int) -> dict[str, Any]:
+    """Bounded +/-1 alignment diagnostics, never evidence of reset/target IDs.
+
+    A drop of at least one physical-bank width and a fourfold ID decrease
+    selects a *hypothetical* wrap boundary. Small local redefinitions are not
+    boundaries. Independent binary cuts and separated epochs are scored without
+    combining adjustments or applying anything to source/capture data.
+    """
+    pool = [x for x in definitions if x["virtual_id"] >= POOL_BASE]
+    boundaries = [{"machine_index": after["machine_index"],
+                   "source_offset": after.get("source_offset"),
+                   "from_virtual_id": before["virtual_id"], "to_virtual_id": after["virtual_id"]}
+                  for before, after in zip(pool, pool[1:])
+                  if before["virtual_id"] - after["virtual_id"] >= POOL_BASE
+                  and after["virtual_id"] * 4 <= before["virtual_id"]]
+    result: dict[str, Any] = {
+        "status": "hypothetical", "baseline_conflicts": baseline,
+        "boundary_rule": "ID drop >= physical-bank width and at least fourfold decrease; heuristic only",
+        "boundary_count": len(boundaries), "boundaries": boundaries[:MAX_WRAP_BOUNDARIES],
+        "reset_authority": "UNKNOWN", "target_virtual_ids": "NOT_RECOVERED",
+        "source_authority": "NOT_ESTABLISHED", "cells_evaluated": 0,
+        "independent_wrap_fits": [], "epoch_fits": [],
+    }
+    if not boundaries or baseline == 0:
+        result.update(status="suppressed", reason="no selected boundaries or no baseline conflicts")
+        return result
+    if len(boundaries) > MAX_WRAP_BOUNDARIES:
+        result.update(status="UNKNOWN", reason="too many hypothetical boundaries; no fit attempted")
+        return result
+
+    def fit(selected: list[dict[str, Any]], partition: int,
+            lower: int, upper: int | None) -> dict[str, Any]:
+        ids = sorted({x["virtual_id"] for x in selected if x["partition"] == partition})
+        best, matches, count = baseline, [], 0
+        exhausted = False
+        for start in ids:
+            for delta in (-1, 1):
+                if start + delta < POOL_BASE:
+                    continue
+                if result["cells_evaluated"] >= MAX_ALIGNMENT_CELLS:
+                    exhausted = True
+                    break
+                result["cells_evaluated"] += 1
+                score, _ = _collision_items(selected, {partition: (partition, start, delta)})
+                if score >= baseline or score > best:
+                    continue
+                if score < best:
+                    best, matches, count = score, [], 0
+                count += 1
+                if len(matches) < MAX_ALIGNMENT_BEST:
+                    uses = [x for x in definitions if x["virtual_id"] == start
+                            and x["machine_index"] >= lower
+                            and (upper is None or x["machine_index"] < upper)]
+                    basis = "observed_definition"
+                    if not uses:
+                        uses = [x for x in selected if x["virtual_id"] == start and x["partition"] == partition]
+                        basis = "observed_operand_only"
+                    first = min(uses, key=lambda x: x["machine_index"])
+                    matches.append({"start_virtual_id": start, "delta": delta,
+                                    "boundary_machine_index": first["machine_index"],
+                                    "source_offset": first.get("source_offset"), "boundary_basis": basis})
+            if exhausted:
+                break
+        return {"status": "UNKNOWN" if exhausted else "hypothetical",
+                "machine_start": lower, "machine_end_exclusive": upper,
+                "best_conflicts": best, "net_conflicts_removed": baseline - best,
+                "best_hypothesis_count": count, "hypotheses": matches,
+                "hypotheses_truncated": count > len(matches), "search_complete": not exhausted}
+
+    cuts = [x["machine_index"] for x in boundaries]
+    for cut in cuts:
+        selected = [dict(x, partition=int(x["machine_index"] >= cut)) for x in observations]
+        result["independent_wrap_fits"].append({
+            "boundary_machine_index": cut,
+            "before": fit(selected, 0, 0, cut), "after": fit(selected, 1, cut, None),
+        })
+    selected = [dict(x, partition=sum(x["machine_index"] >= cut for cut in cuts)) for x in observations]
+    for epoch, lower in enumerate([0, *cuts]):
+        upper = cuts[epoch] if epoch < len(cuts) else None
+        result["epoch_fits"].append(fit(selected, epoch, lower, upper))
+    if result["cells_evaluated"] >= MAX_ALIGNMENT_CELLS:
+        result["status"] = "UNKNOWN"
+    return result
+
+
 def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -> dict[str, Any]:
     """Analyze one function's confirmed GPR observations without mutation."""
     if not isinstance(function, str) or not function.strip():
@@ -624,6 +713,8 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
         "target_virtual_ids": "NOT_RECOVERED",
         "source_authority": "NOT_ESTABLISHED; compiler source offsets are location evidence only",
     }
+    if native:
+        result["hypothetical_alignment"] = _hypothetical_wrap_fits(pooled, definitions, baseline_count)
     encoded = canonical(result)
     if len(encoded) > MAX_OUTPUT_BYTES:
         raise ValueError(f"diagnostic result exceeds {MAX_OUTPUT_BYTES} bytes")
