@@ -91,6 +91,96 @@ def _fixture(
 
 
 class MwccTempPoolReuseTests(unittest.TestCase):
+    def test_window_alignment_matches_brute_force_and_preserves_outside(self):
+        ids = [40, 41, 42, 44, 40, 42, 43, 44]
+        colors = [3, 4, 5, 6, 3, 4, 5, 6]
+        observations = [dict(machine_index=i, virtual_id=vid, target_color=color,
+                             candidate_color=3, partition=0, source_offset=100+i)
+                        for i, (vid, color) in enumerate(zip(ids, colors))]
+        definitions = [dict(machine_index=3, virtual_id=160),
+                       dict(machine_index=4, virtual_id=34)]
+        original = copy.deepcopy(observations)
+        baseline, _ = pool._collision_items(observations)
+        result = pool._hypothetical_window_fits(observations, definitions, baseline)
+        scores = []
+        for lower, upper in ((0, 4), (4, None)):
+            bounds = sorted({x["virtual_id"] for x in observations
+                             if x["machine_index"] >= lower
+                             and (upper is None or x["machine_index"] < upper)})
+            bounds.append(bounds[-1] + 1)
+            for start_index, start in enumerate(bounds[:-1]):
+                for end in bounds[start_index+1:]:
+                    for delta in (-1, 1):
+                        changed = [dict(x, virtual_id=x["virtual_id"] + delta)
+                                   if x["machine_index"] >= lower
+                                   and (upper is None or x["machine_index"] < upper)
+                                   and start <= x["virtual_id"] < end else dict(x)
+                                   for x in observations]
+                        scores.append(pool._collision_items(changed)[0])
+        self.assertEqual(result["best_conflicts"], min(scores))
+        self.assertEqual(result["best_hypothesis_count"], scores.count(min(scores)))
+        self.assertEqual(result["best_conflicts"], 0)
+        self.assertTrue(result["exact_fit_found"])
+        self.assertGreater(result["best_hypothesis_count"], 1)
+        self.assertLessEqual(len(result["hypotheses"]), pool.MAX_ALIGNMENT_BEST)
+        self.assertFalse(result["authority"])
+        self.assertEqual(result["target_virtual_ids"], "NOT_RECOVERED")
+        self.assertEqual(result["source_authority"], "NOT_ESTABLISHED")
+        for hypothesis in result["hypotheses"]:
+            changed = copy.deepcopy(observations)
+            inside_count = 0
+            for item, before in zip(changed, observations):
+                inside = (item["machine_index"] >= hypothesis["machine_start"]
+                          and (hypothesis["machine_end_exclusive"] is None
+                               or item["machine_index"] < hypothesis["machine_end_exclusive"])
+                          and hypothesis["start_virtual_id"] <= item["virtual_id"]
+                          < hypothesis["end_virtual_id_exclusive"])
+                if inside:
+                    item["virtual_id"] += hypothesis["delta"]
+                    inside_count += 1
+                else:
+                    self.assertEqual(item, before)
+            self.assertEqual(pool._collision_items(changed)[0], 0)
+            self.assertEqual(hypothesis["observations_shifted"], inside_count)
+            self.assertIsNotNone(hypothesis["observed_span"]["source_offset"])
+        self.assertEqual(observations, original)
+
+    def test_window_no_fit_and_budgets(self):
+        observations = [dict(machine_index=i, virtual_id=40, target_color=i+3,
+                             candidate_color=3, partition=0) for i in range(2)]
+        result = pool._hypothetical_window_fits(observations, [], 1)
+        self.assertFalse(result["exact_fit_found"])
+        self.assertEqual(result["best_conflicts"], 1)
+        self.assertEqual(result["hypotheses"], [])
+        with mock.patch.object(pool, "MAX_WINDOW_CELLS", 1):
+            result = pool._hypothetical_window_fits(observations, [], 1)
+        self.assertEqual(result["cells_evaluated"], 1)
+        self.assertFalse(result["search_complete"])
+        self.assertEqual(result["status"], "UNKNOWN")
+        with mock.patch.object(pool, "MAX_WINDOW_OBSERVATIONS", 1):
+            result = pool._hypothetical_window_fits(observations, [], 1)
+        self.assertFalse(result["search_complete"])
+        self.assertEqual(result["cells_evaluated"], 0)
+
+    def test_window_api_is_opt_in_and_does_not_change_existing_analysis(self):
+        envelope, report = _fixture([3, 4], [40, 40])
+        with tempfile.TemporaryDirectory() as directory:
+            envelope_path, report_path = Path(directory)/"native.json", Path(directory)/"data.json"
+            envelope_path.write_text(json.dumps(envelope), encoding="utf-8")
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            normal = pool.analyze(envelope_path, report_path, FUNCTION)
+            optional = pool.analyze(envelope_path, report_path, FUNCTION, window_alignment=True)
+            self.assertNotIn("hypothetical_window_alignment", normal)
+            self.assertFalse(optional.pop("hypothetical_window_alignment")["exact_fit_found"])
+            self.assertEqual(normal, optional)
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                status = pool.main(["--envelope", str(envelope_path), "--report", str(report_path),
+                                    "--function", FUNCTION, "--window-alignment"])
+            self.assertEqual(status, 0)
+            self.assertIn("hypothetical_window_alignment", json.loads(stdout.getvalue()))
+            self.assertLessEqual(len(stdout.getvalue().encode()), pool.MAX_OUTPUT_BYTES)
+
     def test_hypothetical_wrap_fit_is_bounded_nonmutating_and_not_reset_authority(self):
         definitions = [{"machine_index": i, "virtual_id": vid, "source_offset": 100 + i}
                        for i, vid in enumerate((40, 100, 96, 160, 34, 40, 160, 34, 40))]

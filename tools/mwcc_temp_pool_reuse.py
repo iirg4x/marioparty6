@@ -28,6 +28,9 @@ MAX_EXEMPLARS = 3
 MAX_WRAP_BOUNDARIES = 4
 MAX_ALIGNMENT_CELLS = 4096
 MAX_ALIGNMENT_BEST = 4
+MAX_WINDOW_CELLS = 262144
+MAX_WINDOW_OBSERVATIONS = 100000
+MAX_WINDOW_BOUNDARIES = 512
 POOL_BASE = 32  # GPR 0..31 are pre-coloured; pool IDs begin at 32.
 SUPPORTED_OPERAND_BANKS = ("GPR",)
 OFFSET_DELTAS = (-3, -2, -1, 1, 2, 3)
@@ -585,7 +588,116 @@ def _hypothetical_wrap_fits(observations: list[dict[str, Any]],
     return result
 
 
-def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -> dict[str, Any]:
+def _hypothetical_window_fits(observations: list[dict[str, Any]],
+                              definitions: list[dict[str, Any]], baseline: int) -> dict[str, Any]:
+    """Shift IDs only inside one [start,end) window in one heuristic epoch.
+
+    Incremental role counts avoid rescanning observations for every paired cut.
+    Bounds are observed IDs plus a terminal successor, not recovered birth/death IDs;
+    sparse gaps can produce observationally equivalent, separately counted ties.
+    """
+    result: dict[str, Any] = {
+        "status": "hypothetical", "authority": False, "authority_advanced": False,
+        "target_virtual_ids": "NOT_RECOVERED", "source_authority": "NOT_ESTABLISHED",
+        "reset_authority": "UNKNOWN", "baseline_conflicts": baseline,
+        "best_conflicts": baseline, "best_hypothesis_count": 0, "hypotheses": [],
+        "cells_evaluated": 0, "search_complete": True,
+        "boundary_basis": "observed IDs plus terminal successor; sparse bounds may be equivalent",
+        "scope": "one +/-1 ID window in one heuristic wrap epoch; outside unchanged",
+    }
+    if baseline == 0 or not observations:
+        result.update(status="suppressed", reason="no baseline conflicts or observations")
+        return result
+    if len(observations) > MAX_WINDOW_OBSERVATIONS:
+        result.update(status="UNKNOWN", search_complete=False, reason="observation budget exceeded")
+        return result
+    pool = [x for x in definitions if x["virtual_id"] >= POOL_BASE]
+    cuts = sorted({after["machine_index"] for before, after in zip(pool, pool[1:])
+                   if before["virtual_id"] - after["virtual_id"] >= POOL_BASE
+                   and after["virtual_id"] * 4 <= before["virtual_id"]})
+    if len(cuts) > MAX_WRAP_BOUNDARIES:
+        result.update(status="UNKNOWN", search_complete=False, reason="wrap boundary budget exceeded")
+        return result
+    total: dict[int, dict[int, int]] = {}
+    for item in observations:
+        colors = total.setdefault(item["virtual_id"], {})
+        color = item["target_color"]
+        colors[color] = colors.get(color, 0) + 1
+    if len(total) > MAX_WINDOW_BOUNDARIES * 2:
+        result.update(status="UNKNOWN", search_complete=False, reason="global ID budget exceeded")
+        return result
+    for epoch, lower in enumerate([0, *cuts]):
+        upper = cuts[epoch] if epoch < len(cuts) else None
+        selected = [x for x in observations if x["machine_index"] >= lower
+                    and (upper is None or x["machine_index"] < upper)]
+        by_id: dict[int, dict[int, int]] = {}
+        for item in selected:
+            colors = by_id.setdefault(item["virtual_id"], {})
+            color = item["target_color"]
+            colors[color] = colors.get(color, 0) + 1
+        bounds = sorted(by_id)
+        if bounds:
+            bounds.append(bounds[-1] + 1)
+        if len(bounds) > MAX_WINDOW_BOUNDARIES:
+            result.update(status="UNKNOWN", search_complete=False, reason="ID boundary budget exceeded")
+            break
+        for start_index, start in enumerate(bounds[:-1]):
+            for delta in (-1, 1):
+                if start + delta < POOL_BASE:
+                    continue
+                counts = {vid: dict(colors) for vid, colors in total.items()}
+                score = baseline
+                moved = 0
+                for end_index in range(start_index + 1, len(bounds)):
+                    end = bounds[end_index]
+                    if result["cells_evaluated"] >= MAX_WINDOW_CELLS:
+                        result.update(status="UNKNOWN", search_complete=False, reason="cell budget exceeded")
+                        break
+                    previous = bounds[end_index - 1]
+                    for color, amount in by_id.get(previous, {}).items():
+                        moved += amount
+                        for vid, change in ((previous, -amount), (previous + delta, amount)):
+                            colors = counts.setdefault(vid, {})
+                            score -= len(colors) > 1
+                            colors[color] = colors.get(color, 0) + change
+                            if colors[color] == 0:
+                                del colors[color]
+                            score += len(colors) > 1
+                    result["cells_evaluated"] += 1
+                    if not moved or score >= baseline or score > result["best_conflicts"]:
+                        continue
+                    if score < result["best_conflicts"]:
+                        result.update(best_conflicts=score, best_hypothesis_count=0, hypotheses=[])
+                    result["best_hypothesis_count"] += 1
+                    if len(result["hypotheses"]) < MAX_ALIGNMENT_BEST:
+                        result["hypotheses"].append({"epoch": epoch, "machine_start": lower,
+                            "machine_end_exclusive": upper, "start_virtual_id": start,
+                            "end_virtual_id_exclusive": end, "delta": delta})
+                if not result["search_complete"]:
+                    break
+            if not result["search_complete"]:
+                break
+        if not result["search_complete"]:
+            break
+    for hypothesis in result["hypotheses"]:
+        uses = [x for x in observations
+                if x["machine_index"] >= hypothesis["machine_start"]
+                and (hypothesis["machine_end_exclusive"] is None
+                     or x["machine_index"] < hypothesis["machine_end_exclusive"])
+                and hypothesis["start_virtual_id"] <= x["virtual_id"] < hypothesis["end_virtual_id_exclusive"]]
+        hypothesis["observed_span"] = {
+            key: ([min(values), max(values)] if values else None)
+            for key in ("machine_index", "source_offset")
+            for values in [[x[key] for x in uses if isinstance(x.get(key), int)]]}
+        hypothesis["observations_shifted"] = len(uses)
+    result["hypotheses_truncated"] = result["best_hypothesis_count"] > len(result["hypotheses"])
+    result["net_conflicts_removed"] = baseline - result["best_conflicts"]
+    result["exact_fit_found"] = result["best_conflicts"] == 0
+    return result
+
+
+def analyze(envelope_path: Path | str, report_path: Path | str, function: str,
+            *, window_alignment: bool = False) -> dict[str, Any]:
     """Analyze one function's confirmed GPR observations without mutation."""
     if not isinstance(function, str) or not function.strip():
         raise ValueError("function must be nonempty text")
@@ -715,6 +827,8 @@ def analyze(envelope_path: Path | str, report_path: Path | str, function: str) -
     }
     if native:
         result["hypothetical_alignment"] = _hypothetical_wrap_fits(pooled, definitions, baseline_count)
+    if window_alignment:
+        result["hypothetical_window_alignment"] = _hypothetical_window_fits(pooled, definitions, baseline_count)
     encoded = canonical(result)
     if len(encoded) > MAX_OUTPUT_BYTES:
         raise ValueError(f"diagnostic result exceeds {MAX_OUTPUT_BYTES} bytes")
@@ -726,9 +840,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--envelope", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--function", required=True)
+    parser.add_argument("--window-alignment", action="store_true",
+                        help="include bounded hypothetical paired-boundary ID windows")
     args = parser.parse_args(argv)
     try:
-        result = analyze(args.envelope, args.report, args.function)
+        result = analyze(args.envelope, args.report, args.function, window_alignment=args.window_alignment)
         print(canonical(result).decode("utf-8"))
     except (OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
