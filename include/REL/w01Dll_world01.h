@@ -23,7 +23,7 @@ float mbAngleLerp(float a, float b, float t);
 float mbSinDeg(float angle);
 float mbCosDeg(float angle);
 float mbSinRad(float angle);
-void mbMtxRotAxisDeg(Mtx mtx, s8 axis, float angle);
+void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle);
 void mbMtxRot(Mtx mtx, float x, float y, float z);
 
 void mbScrollInit(int dataNum);
@@ -34,7 +34,7 @@ void mbev_ShopExInit(int dataNum, void (*hook)(int modelId, int shopNo));
 void mbev_ShopBackCreate(int dataNum, int motDataNum, int motNo, BOOL linkF);
 
 void mbStarMoveHookSet(void (*hook)(void));
-void mbStarMasuNextSet(s16 masuId);
+void mbStarMasuNextSet(int masuId);
 
 void mbTelopTimeChangeCreate(void);
 BOOL mbTelopTimeChangeCheck(void);
