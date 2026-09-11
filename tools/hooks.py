@@ -124,11 +124,21 @@ def _sidecars() -> set[str]:
 
 def _manifests(tool_root: Path) -> list[dict[str, Any]]:
     result = []
+    common = _common(tool_root)
     roots = [native_git_path(line[len("worktree "):], relative_to=tool_root)
              for line in _run(tool_root, "git", "worktree", "list", "--porcelain").splitlines()
              if line.startswith("worktree ")]
     for root in roots:
-        if not (root / "tools/agent.py").is_file() or _common(root) != _common(tool_root):
+        if not (root / "tools/agent.py").is_file():
+            continue
+        try:
+            if _common(root) != common:
+                continue
+        except (HookError, OSError):
+            # Registered but abandoned worktrees can retain a broken .git
+            # pointer (including an old MSYS /home path). They are not trusted
+            # manifest sources and must not veto another valid promotion.
+            # A missing selected manifest still fails closed in _public_range.
             continue
         for path in (root / "build/promotion").glob("*/manifest.json"):
             try:

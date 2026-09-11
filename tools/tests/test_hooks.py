@@ -104,6 +104,14 @@ class HookTests(unittest.TestCase):
         uninstall_hooks(self.root)
         self.assertEqual(set(hook_status(self.root).values()), {"missing"})
 
+    def test_unrelated_registered_worktree_with_broken_git_pointer_is_ignored(self):
+        stale = self.temp / "abandoned worktree"
+        run(self.root, "git", "worktree", "add", "-q", "--detach", str(stale), self.source)
+        self.assertTrue((stale / "tools/agent.py").is_file())
+        (stale / ".git").write_text("gitdir: /missing/retired-common/worktrees/old\n", encoding="utf-8")
+        self.assertPass(self.hook())
+        self.assertFalse(self.log.exists())
+
     def test_clean_precommit_sidecars_and_source_rejection(self):
         self.write("STATUS.md", "Recovered example\n", self.clean)
         run(self.clean, "git", "add", "STATUS.md")

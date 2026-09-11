@@ -436,3 +436,15 @@ The two existing-proof audits took about nine seconds locally, without a new
 compile or push. The old hook had rerun the full unrelated suite for 525 and
 463 seconds on those promotions. This measures avoided verification work,
 not faster source discovery.
+
+The installed wrapper also passed from the actual clean Dice worktree. An
+abandoned registered worktree with a broken old MSYS `.git` path is ignored as
+an untrusted manifest source; it cannot veto an unrelated valid promotion.
+Missing selected proof still rejects the promotion. Pre-commit preserves Git's
+alternate staging index, while pre-push clears inherited local Git variables.
+
+Integration validation: 2,310 non-hook regression tests passed (18 skipped),
+with hook tests run separately. After the final observer edge corrections,
+all 194 affected observer/capture tests passed (one skipped). The saved Math
+gain, existing Koopa/Donkey regressions, real Dice promotion branches, and
+installed-wrapper smoke check passed without a new owner compile or capture.
