@@ -547,3 +547,14 @@ The 13 changed nontext entries in this case are the same exact mbSingleCall
 jump-table destinations following its +4 movement; explicit typed-data review
 remains recorded. Full source fidelity and the source-selected retail link are
 still required; local wipe visibility remains an unresolved reconstruction debt.
+
+The coupled c75 test then corrected the remaining implicit wipe return while
+separating the live unlock-result assignment. Retained KoopaEnd improved to
+82 data rows, 84 strict rows, 6120/6116 bytes, with 57 exact siblings preserved.
+Its positional relocation count grows despite identical ordered references;
+the size-closer path accepts this only with both-channel code gains and proved
+normalized nontext destinations (here unchanged mbSingleCall jump targets).
+The actual native reset remains at the same logical call with 257 -> 34.
+Earlier temporary identities change, post-reset return identities do not, yet
+later register colors improve. Do not mistake a physical color change for a
+changed reset or infer retail virtual IDs. This is partial progress only.

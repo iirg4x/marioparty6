@@ -45,6 +45,22 @@ class RecoveryEvaluateTests(unittest.TestCase):
         self.assertEqual(result["status"], "improved")
         self.assertFalse(result["owner_exact"])
         self.assertFalse(result["retention_ready"])
+        # Size/code progress can move canonical row positions farther from
+        # target while preserving the ordered identities and proved code motion.
+        closer = copy.deepcopy(exact_comparison)
+        closer["functions"]["f"].update(base_size=6124, candidate_size=6120,
+            normalized_diff_before=144, normalized_diff_after=576)
+        result = evaluate._classify(channels[0][0], channels[1][0],
+            channels[0][1], channels[1][1], closer, ["f"])
+        self.assertEqual(result["status"], "improved")
+        self.assertTrue(result["review_required"])
+        self.assertFalse(result["retention_ready"])
+        for channel in (0, 1):
+            unchanged = copy.deepcopy(channels)
+            unchanged[channel][1][0]["diff_rows"] = unchanged[channel][0][0]["diff_rows"]
+            result = evaluate._classify(unchanged[0][0], unchanged[1][0],
+                unchanged[0][1], unchanged[1][1], closer, ["f"])
+            self.assertEqual(result["status"], "rejected")
         for fault in ("refs", "missing_refs", "size", "exact", "sibling", "rows",
                       "data_rows", "canonical", "payload", "focus"):
             with self.subTest(fault=fault):

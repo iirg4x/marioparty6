@@ -2210,7 +2210,8 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXPlay(MSM_SE_GUIDE_48);
         mbObjMotionShiftSet(guideModel, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-        if (!(unlocked = SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE))) {
+        unlocked = SingleMgUnlockedCheck(mgNo + GW_MGNO_BASE);
+        if (!unlocked) {
             winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 15), 13);
             mbWinWait(winId);
         } else {
@@ -2287,7 +2288,10 @@ static void ev_SingleKoopaMgEnd(int playerNo)
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_GUIDE_47);
         mbObjMotionSet(guideModel, 3, HU3D_MOTATTR_LOOP);
-        mbWipeFadeIn();
+        {
+            void mbWipeFadeIn(void);
+            mbWipeFadeIn();
+        }
         mbPauseDisableSet(FALSE);
         winId = mbWinCreate(2, MESSNUM(MESS_BOARD_SINGLE, 16), 13);
         mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerNo), 0);
@@ -3482,4 +3486,3 @@ BOOL mbSingleMgUnlockCheck(void)
 {
     return SingleMgListGet(-1, NULL) == 0;
 }
-

@@ -382,8 +382,7 @@ def _qualified_positional_shift(name: str, row: dict, comparison: dict,
         return False
     if base == target and candidate != target:
         return False
-    size_closer = (abs(candidate - target) < abs(base - target)
-                   and comparison.get("allocated_nontext_changed") is False)
+    size_closer = abs(candidate - target) < abs(base - target)
     strict_gain = True
     for before, after in channels:
         left, right = _metric_map(before), _metric_map(after)
@@ -395,6 +394,8 @@ def _qualified_positional_shift(name: str, row: dict, comparison: dict,
         strict_gain &= b["diff_rows"] < a["diff_rows"]
     canonical = [frontier.focus._integer(row.get(key)) for key in
                  ("normalized_diff_before", "normalized_diff_after")]
+    if comparison.get("allocated_nontext_changed") is not False:
+        size_closer &= len(channels) == 2 and strict_gain
     if not size_closer and not (len(channels) == 2 and strict_gain
             and all(value is not None and value >= 0 for value in canonical)
             and canonical[1] < canonical[0]):
@@ -757,14 +758,15 @@ def _classify(before_strict: list[dict], before_data: list[dict],
             and normalized_loss_count is not None and normalized_loss_count >= 0
         )
         if use_normalized:
+            qualified_shift = (not regressions and _qualified_positional_shift(
+                name, row, object_comparison,
+                [(before_strict, after_strict), (before_data, after_data)], focus))
             if normalized_loss_count or normalized_losses:
-                if (normalized_after < normalized_before and not regressions
-                        and _qualified_positional_shift(name, row, object_comparison,
-                            [(before_strict, after_strict), (before_data, after_data)], focus)):
+                if qualified_shift:
                     positional_shifts.append(name)
                 else:
                     regressions.append(f"relocation:{name}: canonical relocation rows lost")
-            if normalized_after > normalized_before:
+            if normalized_after > normalized_before and not qualified_shift:
                 regressions.append(f"relocation:{name}: canonical differences increased")
             if name in focus and normalized_after < normalized_before:
                 gains.append(f"relocation:{name}: {normalized_before} -> {normalized_after}")
