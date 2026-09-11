@@ -2,6 +2,11 @@
 #include "game/pad.h"
 #include "game/flag.h"
 
+#define GW_FLAG_WORD_BITS 32
+#define GW_FLAG_BIT_MASK (GW_FLAG_WORD_BITS - 1)
+#define GW_MG_UNLOCK_BIT(mgNo) (1 << (((mgNo) - GW_MGNO_BASE) & GW_FLAG_BIT_MASK))
+#define GW_MG_UNLOCK_ALL_BITS (~0U)
+
 
 GW_DECA_SCORE GwMgDecaScore[GW_PLAYER_MAX];
 u32 GwSingleMgFlag[3];
@@ -34,7 +39,7 @@ void GWInit(void)
         conf->padNo = i;
         conf->comDif = GW_PLAYER_COM_DIF_EASY;
         conf->grpNo = i;
-        if(omPadErrChk(i) == PAD_ERR_NONE || SIProbe(i) == 0x00040000) {
+        if(omPadErrChk(i) == PAD_ERR_NONE || SIProbe(i) == SI_GBA) {
             conf->type = GW_PLAYER_TYPE_MAN;
         } else {
             conf->type = GW_PLAYER_TYPE_COM;
@@ -75,11 +80,11 @@ void GWCommonInit(void)
     commonP->mgUnlock[2] = 0;
     commonP->mgUnlock[3] = 0;
     //Pre-Unlock Mic Minigames
-    commonP->mgUnlock[2] |= 0x1; //M665
-    commonP->mgUnlock[2] |= 0x2; //M666
-    commonP->mgUnlock[2] |= 0x4; //M667
-    commonP->mgUnlock[2] |= 0x10; //M669
-    commonP->mgUnlock[2] |= 0x20; //M670
+    commonP->mgUnlock[2] |= GW_MG_UNLOCK_BIT(665);
+    commonP->mgUnlock[2] |= GW_MG_UNLOCK_BIT(666);
+    commonP->mgUnlock[2] |= GW_MG_UNLOCK_BIT(667);
+    commonP->mgUnlock[2] |= GW_MG_UNLOCK_BIT(669);
+    commonP->mgUnlock[2] |= GW_MG_UNLOCK_BIT(670);
     commonP->record[GW_RECORD_M606] = 60*60;
     commonP->record[GW_RECORD_M608] = 1080;
     commonP->record[GW_RECORD_M618] = 120*60;
@@ -344,7 +349,7 @@ void GWSinglePrizeFlagSet(GW_SINGLE_PRIZE_FLAG flag)
     if(flag > GW_SINGLE_PRIZE_FLAG_MAX) {
         return;
     }
-    GwSinglePrizeFlag[flag >> 5] |= 1 << (flag & 0x1F);
+    GwSinglePrizeFlag[flag >> 5] |= 1 << (flag & GW_FLAG_BIT_MASK);
 }
 
 BOOL GWSinglePrizeFlagGet(GW_SINGLE_PRIZE_FLAG flag)
@@ -352,7 +357,7 @@ BOOL GWSinglePrizeFlagGet(GW_SINGLE_PRIZE_FLAG flag)
     if(flag > GW_SINGLE_PRIZE_FLAG_MAX) {
         return FALSE;
     }
-    return GwSinglePrizeFlag[flag >> 5] & (1 << (flag & 0x1F));
+    return GwSinglePrizeFlag[flag >> 5] & (1 << (flag & GW_FLAG_BIT_MASK));
 }
 
 void GWSingleDataInit(void)
@@ -373,16 +378,17 @@ BOOL GWSinglePrizeSaveFlagGet(GW_SINGLE_PRIZE_FLAG flag)
     if(flag > GW_SINGLE_PRIZE_FLAG_MAX) {
         return FALSE;
     }
-    return GwCommon.singlePrizeFlag[flag >> 5] & (1 << (flag & 0x1F));
+    return GwCommon.singlePrizeFlag[flag >> 5] & (1 << (flag & GW_FLAG_BIT_MASK));
 }
 
-void GWSingleMgFlagSet(int mgNo)
+int GWSingleMgFlagSet(int mgNo)
 {
     mgNo -= GW_MGNO_BASE;
     if(mgNo >= 96 || mgNo < 0) {
-        return;
+        return mgNo;
     }
-    GwSingleMgFlag[mgNo >> 5] |= 1 << (mgNo & 0x1F);
+    GwSingleMgFlag[mgNo >> 5] |= 1 << (mgNo & GW_FLAG_BIT_MASK);
+    return mgNo;
 }
 
 BOOL GWSingleMgFlagGet(int mgNo)
@@ -391,7 +397,7 @@ BOOL GWSingleMgFlagGet(int mgNo)
     if(mgNo >= 96 || mgNo < 0) {
         return FALSE;
     }
-    return GwSingleMgFlag[mgNo >> 5] & (1 << (mgNo & 0x1F));
+    return GwSingleMgFlag[mgNo >> 5] & (1 << (mgNo & GW_FLAG_BIT_MASK));
 }
 
 void GWBankStarAdd(u16 num)
@@ -437,7 +443,7 @@ void GWBankFlagSet(GW_BANK_FLAG flag)
     if(flag > GW_BANK_FLAG_MAX) {
         return;
     }
-    GwCommon.bankFlag[flag >> 5] |= 1 << (flag & 0x1F);
+    GwCommon.bankFlag[flag >> 5] |= 1 << (flag & GW_FLAG_BIT_MASK);
 }
 
 void GWBankFlagReset(GW_BANK_FLAG flag)
@@ -445,7 +451,7 @@ void GWBankFlagReset(GW_BANK_FLAG flag)
     if(flag > GW_BANK_FLAG_MAX) {
         return;
     }
-    GwCommon.bankFlag[flag >> 5] &= ~(1 << (flag & 0x1F));
+    GwCommon.bankFlag[flag >> 5] &= ~(1 << (flag & GW_FLAG_BIT_MASK));
 }
 
 BOOL GWBankFlagGet(GW_BANK_FLAG flag)
@@ -453,7 +459,7 @@ BOOL GWBankFlagGet(GW_BANK_FLAG flag)
     if(flag > GW_BANK_FLAG_MAX) {
         return FALSE;
     }
-    return GwCommon.bankFlag[flag >> 5] & (1 << (flag & 0x1F));
+    return GwCommon.bankFlag[flag >> 5] & (1 << (flag & GW_FLAG_BIT_MASK));
 }
 
 void GWMiracleBookFlagSet(GW_MIRACLE_BOOK_FLAG flag)
@@ -461,7 +467,7 @@ void GWMiracleBookFlagSet(GW_MIRACLE_BOOK_FLAG flag)
     if(flag > GW_MIRACLE_BOOK_FLAG_MAX) {
         return;
     }
-    GwCommon.miracleBookFlag[flag >> 5] |= 1 << (flag & 0x1F);
+    GwCommon.miracleBookFlag[flag >> 5] |= 1 << (flag & GW_FLAG_BIT_MASK);
 }
 
 BOOL GWMiracleBookFlagGet(GW_MIRACLE_BOOK_FLAG flag)
@@ -469,7 +475,7 @@ BOOL GWMiracleBookFlagGet(GW_MIRACLE_BOOK_FLAG flag)
     if(flag > GW_MIRACLE_BOOK_FLAG_MAX) {
         return FALSE;
     }
-    return GwCommon.miracleBookFlag[flag >> 5] & (1 << (flag & 0x1F));
+    return GwCommon.miracleBookFlag[flag >> 5] & (1 << (flag & GW_FLAG_BIT_MASK));
 }
 
 void GWMgPlayNumSet(u16 num)
@@ -528,7 +534,7 @@ void GWSaveDebugSet(void)
 {
     s16 i;
     for(i=0; i<4; i++) {
-        GwCommon.mgUnlock[i] = 0xFFFFFFFF;
+        GwCommon.mgUnlock[i] = GW_MG_UNLOCK_ALL_BITS;
     }
     GwCommon.map7Unlock = TRUE;
     GwCommon.veryHardUnlock = TRUE;
