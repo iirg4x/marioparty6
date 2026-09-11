@@ -10,13 +10,14 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 20.93% | 41.67% | 371 / 926 |
-| Main DOL | 81.12% | 94.75% | 332 / 396 |
+| Entire project | 21.12% | 42.13% | 372 / 926 |
+| Main DOL | 82.20% | 95.93% | 333 / 396 |
 | REL modules | 8.17% | 8.03% | 39 / 530 |
 
-Board recovery is **37 / 40 owners Matching**. Board Opening now matches all
-**22 functions and 669 linked relocation sites**, with a source-selected
-retail-identical build and no new inline assembly. Masu, Star, and Single remain.
+Board recovery is **38 / 40 owners Matching**. Board Star now matches all
+**90 functions**, including their effective physical relocation targets, with a
+source-selected retail-identical build and no new inline assembly. Masu and
+Single remain.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
