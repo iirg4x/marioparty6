@@ -144,27 +144,29 @@ static void GenderFixedGender(Gender *block, u32 genderMask)
     u32 matchingGenderCount;
     u16 matchingGender;
     u32 i;
+    u8 fixedGender;
 
     warpFactor = block->language->getpWarpFactors(block->language);
     matchingGenderCount = 0;
     matchingGender = 0;
-    for (i = 0; i < block->genderCount; i++, warpFactor += 2) {
+    for (i = 0; i < block->genderCount; warpFactor += 2, i++) {
         if (genderMask & *warpFactor) {
             matchingGender = i;
             matchingGenderCount++;
         }
     }
 
-    if ((matchingGenderCount == 1) != block->fixedGender) {
+    fixedGender = matchingGenderCount == 1;
+    if (fixedGender != block->fixedGender) {
         ResetGender(block);
     }
-    if (matchingGenderCount == 1) {
+    if (fixedGender != 0) {
         block->selectedGender = matchingGender + 1;
         if (block->state == 0) {
             block->state = 1;
         }
     }
-    block->fixedGender = matchingGenderCount == 1;
+    block->fixedGender = fixedGender;
     block->genderMask = genderMask;
 }
 

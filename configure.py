@@ -960,7 +960,7 @@ config.libs = [
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/gender.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/logexp.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/mel.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/mtx.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/mtx.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/mtxopt.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/smoother.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/spline.c"),

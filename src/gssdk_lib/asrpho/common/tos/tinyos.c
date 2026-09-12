@@ -604,14 +604,14 @@ static u8 InitializeArchitecture(TosContext *context)
 {
     TosBaseBlock *block;
     TosQueue *queue;
-    u32 blockNumber;
-    u32 queueNumber;
+    s32 blockNumber;
+    s32 queueNumber;
 
     for (blockNumber = 0; blockNumber < context->blockCount;
          blockNumber++) {
         block = context->blocks[blockNumber];
         if (block != NULL && block->init != NULL &&
-            block->init(block) != 0) {
+            (u8)block->init(block) != 0) {
             return 1;
         }
     }

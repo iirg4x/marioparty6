@@ -27,8 +27,8 @@ static u8 MelInitBands(Mel *block, f32 sampleScale);
 static void ProcessMel(
     TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
 {
-    Mel *block = (Mel *)baseBlock;
     f32 *input = inputs[0];
+    Mel *block = (Mel *)baseBlock;
     f32 *output;
     u32 band;
 
@@ -38,13 +38,15 @@ static void ProcessMel(
 
     output = qEnQueueOne(block->base.output->queue);
     for (band = 0; band < block->bandCount; band++, output++) {
-        f32 *weight = block->weights[band];
-        f32 *weightEnd = weight + block->binCounts[band];
-        f32 *inputValue = input + block->firstBins[band];
-
         *output = 10.0f;
-        while (weight < weightEnd) {
-            *output += *weight++ * *inputValue++;
+        {
+            f32 *weight = block->weights[band];
+            f32 *weightEnd = weight + block->binCounts[band];
+            f32 *inputValue = input + block->firstBins[band];
+
+            while (weight < weightEnd) {
+                *output += *weight++ * *inputValue++;
+            }
         }
     }
 }

@@ -92,13 +92,12 @@ extern void heap_Free(void *heap, void *ptr);
 static DpGenUwBacktrace *AllocateBacktrace(
     DpGenUw *block, DpGenUwBacktrace *lastBacktrace)
 {
-    u32 oldChunkCount = block->backtraceChunkCount;
+    u16 oldChunkCount = block->backtraceChunkCount;
     TosContext *context = block->base.context;
     DpGenUwBacktrace **chunks = heap_Alloc(
         context->heap,
         (oldChunkCount + 1) * sizeof(DpGenUwBacktrace *));
     DpGenUwBacktrace *backtraces;
-    u32 backtracesPerChunk;
 
     if (chunks == NULL) {
         _tosErrorLog(block, 2);
@@ -113,22 +112,23 @@ static DpGenUwBacktrace *AllocateBacktrace(
     }
     block->backtraceChunks = chunks;
 
-    backtracesPerChunk =
-        block->backtraceChunkBytes / sizeof(DpGenUwBacktrace);
     backtraces = heap_Alloc(
         context->heap,
-        backtracesPerChunk * sizeof(DpGenUwBacktrace));
+        (block->backtraceChunkBytes / sizeof(DpGenUwBacktrace)) *
+            sizeof(DpGenUwBacktrace));
     if (backtraces == NULL) {
         _tosErrorLog(block, 2);
         return NULL;
     }
 
     if (lastBacktrace != NULL) {
+        u32 lastBacktraceIndex =
+            block->backtraceChunkBytes / sizeof(DpGenUwBacktrace) - 1;
         u32 backtraceIndex;
 
         lastBacktrace->next = backtraces;
         for (backtraceIndex = 0;
-             backtraceIndex < backtracesPerChunk - 1;
+             backtraceIndex < lastBacktraceIndex;
              backtraceIndex++) {
             backtraces[backtraceIndex].next =
                 &backtraces[backtraceIndex + 1];
@@ -136,8 +136,8 @@ static DpGenUwBacktrace *AllocateBacktrace(
         backtraces[backtraceIndex].next = NULL;
     }
 
-    block->backtraceChunks[oldChunkCount] = backtraces;
-    block->backtraceChunkCount = oldChunkCount + 1;
+    block->backtraceChunks[oldChunkCount++] = backtraces;
+    block->backtraceChunkCount = oldChunkCount;
     return backtraces;
 }
 
@@ -211,12 +211,11 @@ static void InitViterbi(DpGenUw *block)
     backtrace->frame = 0;
 
     state = block->states;
-    for (stateIndex = 0; stateIndex < DPGENUW_WORD_STATE_COUNT;
-         stateIndex++) {
+    for (stateIndex = 0; stateIndex < DPGENUW_WORD_STATE_COUNT; state++) {
         state->score = DPGENUW_MAX_SCORE;
         state->distribution = block->stateDistributions[stateIndex];
+        stateIndex++;
         state->backtrace = backtrace;
-        state++;
     }
 
     state->score = 0;

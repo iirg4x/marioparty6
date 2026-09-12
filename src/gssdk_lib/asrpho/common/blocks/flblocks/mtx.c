@@ -102,11 +102,18 @@ FloatMatrix *mtxInitCopy(
     return matrix;
 }
 
+static s32 *imtxColumnAddress(IntMatrix *matrix, u32 column)
+{
+    return matrix->values + matrix->rows * column;
+}
+
 void imtxDeleteCol(IntMatrix *matrix, u32 column)
 {
+    s32 *destination = imtxColumnAddress(matrix, column);
+
     memcpy(
-        matrix->values + matrix->rows * column,
-        matrix->values + matrix->rows * column + matrix->rows,
+        destination,
+        destination + matrix->rows,
         (matrix->rows * matrix->columns - matrix->rows -
          matrix->rows * column) *
             sizeof(s32));

@@ -85,14 +85,30 @@ class RunnerReplayTests(unittest.TestCase):
         self.body = answer(self.packet)
         self.finish = "stop"
         self.calls = []
+        self.slot_count = 4
+        self.concurrency_barrier = None
+        self.active = self.peak_active = 0
+        self.active_lock = threading.Lock()
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *args):
                 pass
 
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps([{"id":i,"n_ctx":65536,"is_processing":False}
+                                            for i in range(owner.slot_count)]).encode())
+
             def do_POST(self):
                 owner.calls.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+                with owner.active_lock:
+                    owner.active += 1
+                    owner.peak_active = max(owner.peak_active, owner.active)
+                if owner.concurrency_barrier:
+                    owner.concurrency_barrier.wait(timeout=20)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.end_headers()
@@ -104,6 +120,8 @@ class RunnerReplayTests(unittest.TestCase):
                 for event in events:
                     self.wfile.write(("data: "+json.dumps(event)+"\n\n").encode())
                 self.wfile.write(b"data: [DONE]\n\n")
+                with owner.active_lock:
+                    owner.active -= 1
 
         self.server = ThreadingHTTPServer(("127.0.0.1",0), Handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -187,6 +205,32 @@ class RunnerReplayTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Duplicate prompt", result.stderr)
         self.assertNotEqual(self.batch([self.job()], backend="ollama").returncode, 0)
+        self.assertEqual(self.calls, [])
+
+    def test_four_real_concurrent_requests_and_no_generation_cap(self):
+        self.concurrency_barrier = threading.Barrier(4)
+        jobs = []
+        for i in range(4):
+            prompt = self.root / f"plain-{i}.txt"
+            prompt.write_text(f"Independent recovery question {i}", encoding="utf-8")
+            jobs.append({"id":f"worker-{i}","prompt_file":str(prompt),
+                         "output_dir":str(self.root/f"out-{i}")})
+        result = self.batch(jobs, parallelism=4,
+                            endpoint=f"http://127.0.0.1:{self.server.server_port}/v1/chat/completions")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.peak_active, 4)
+        self.assertEqual(len(self.calls), 4)
+        for call in self.calls:
+            self.assertEqual(call["reasoning_effort"], "xhigh")
+            self.assertNotIn("max_tokens", call)
+        self.assertEqual({j["state"] for j in json.loads((self.root/"jobs.json.status.json").read_bytes())["jobs"]}, {"completed"})
+
+    def test_more_workers_than_backend_slots_rejected_without_inference(self):
+        self.slot_count = 2
+        result = self.batch([self.job()], parallelism=4,
+                            endpoint=f"http://127.0.0.1:{self.server.server_port}/v1/chat/completions")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requested real slots", result.stderr)
         self.assertEqual(self.calls, [])
 
 

@@ -1,5 +1,65 @@
 # Small DOL batch, 2026-09-12
 
+## Matrix closure and current throughput decision
+
+Matrix is now **12/12 strict/data exact**, with **25/25 effective relocation
+applications** and all eleven exact siblings preserved. Normal source-selected
+Ninja/MWLD passes all 137 retail checksums and direct DOL byte equality. The
+verified local batch is **4/10 owners ready** (Median, FFT, Window, Matrix),
+**341/396** DOL owners locally; public main remains **337/396**.
+
+imtxDeleteCol's last 12 frame/register rows closed in one compile by recovering
+a live column-address helper and consuming its result in both memcpy pointers.
+This is an ordinary inferred C abstraction, not an extracted original name.
+The normal object contains its unused 24-byte standalone copy; MWLD strips it,
+as independently confirmed by the retail-identical source-selected link. All
+twelve target functions are exact; no fake storage, hints, or assembly was used.
+Normal and isolated objects differ in STT_FILE filename metadata only, with
+identical code/constants/relocation bytes/compiler metadata. Raw GC1.2.5n SDA21
+offsets remain separately reported from DTK instruction-application equivalence.
+
+Source SHA256 `9a37b383be0d1c057f49abdd8ccb50dd28a6b049500e0ae95c7fd847affe4ad0`;
+normal object `e5c396278640402eaf438ca255d97a2672cc08e4873a5f2de054002db8ae7556`.
+Evidence: `build/qwen-owner-next-20260912/mtx/final-link-proof.json`,
+`normal-physical.json`, and `normal-ninja-{strict,data}.json`.
+
+Three other functions reached strict/data exact during the same round:
+InitializeArchitecture (signed loop bounds and low-byte callback status),
+GenderFixedGender (one Boolean result reused across ResetGender), and qQueueInitEx
+(the real ternary/merged store). InitializeArchitecture has independently exact
+2/2 target relocations. Gender/MQueue still inherit unresolved local provider
+address shifts; neither is a closed owner. ProcessMel retains 91.681816 -> 93.5
+by putting the real output initialization before its following loads. All exact
+siblings survive. Evidence: the respective `init-domains-*` / `consumer-order-*`
+files under `build/dol-gssdk-current-inventory-20260912/`.
+
+The four-slot Qwen batch completed all six questions, but several answers arrived
+after Astra had already compiled their clear fixes (roughly nine minutes for
+the initial batch). More workers alone did not discover these gains. Dispatch
+Qwen on unresolved structural decisions while compiling clear type/control/
+consumer fixes immediately. Favor completion of whole owners; reuse bound
+evidence and batch final integration. Never make worker consensus or answer
+arrival a compile gate, and do not claim this as a controlled throughput benchmark.
+
+InitViterbi then closed **65.95098 -> 100**, 440 -> target408 bytes, in two
+compiles. Moving the state cursor increment to the loop update produced the
+target ten-way unrolling; keeping the distribution-index increment as its own
+statement after the actual load enabled strength reduction and eliminated the
+remaining cascade. The intermediate postincrement-in-subscript form recovered
+unrolling but added index shifts, so it was not retained. Qwen's completed
+recurrence analysis correctly distinguished ten-way from eight-way-plus-remainder;
+Astra chose the source change. This is reconstruction of the induction, not a
+request for every spelling of the same arithmetic expression.
+
+AllocateBacktrace then closed **91.84252 -> 100**, 500 -> target508 bytes, in
+one compile. The target reloads the mutable chunk-size field after allocation;
+the old code cached it across the call. A local traversal bound created after
+the call, plus the actual u16 chunk-index postincrement, restores that chronology
+and all 70 differing rows. DpGenUw is now **9/12 instruction-exact**; the remaining
+SendResultUserWords, DynProgUserWords, ControlDpGenUw prevent owner promotion.
+No previously exact function was lost. Evidence:
+`build/dol-viterbi-induction-20260912/{dpgenuw,allocate}/`.
+
 ## Window owner closure (latest)
 
 Window is **5/5 strict/data exact**, 3068 code bytes and **31/31 effective
@@ -79,9 +139,9 @@ policy. No static current-percentage claim is added to either README.
 
 Recover every remaining main DOL owner and promote verified source closures in
 batches, using Qwen-only parallel support. Current fetched main `a1aa433` has
-337/396 Matching DOL owners (59 remaining); FFT, Median and Window are verified
+337/396 Matching DOL owners (59 remaining); FFT, Median, Window and Matrix are verified
 locally and pending promotion. User requirement: promote exactly 10 verified owners per
-batch (except the final remainder). Current batch is 3/10 ready. Do not push a
+batch (except the final remainder). Current batch is 4/10 ready. Do not push a
 smaller intermediate source/status batch or count function partials as owners.
 Pivot among eligible owners when a particular residual stalls; retain completed
 owners safely while filling the same batch.
@@ -541,6 +601,29 @@ entry is neutral; direct composition of existing ContextData tail accessors
 regresses and still merges the target's duplicated count load. None replaces
 the champion or exhausts its function. Artifacts are under
 `build/qwen-owner-next-20260912/` and `build/dol-small-tail-20260912/`.
+# Four concurrent Qwen workers — 2026-09-12
+
+User-requested expansion is live: four actual simultaneously processing slots,
+not four queued clients. The installed llama-server shares one model copy and
+the existing 131072-token q8 KV pool across four slots, with unchanged 65536
+per-request context and highest uncapped reasoning. All 66 layers are on GPU.
+Observed during four real jobs: GPU 22453/24564 MiB, utilization 93%, system RAM
+available 2071 MiB. Aggregate long-context contention remains possible; neither
+context exhaustion nor a truncated response counts as a completed finding.
+
+Independent current-source questions: InitializeArchitecture, GenderFixedGender,
+qQueueInitEx, ProcessMel; InitViterbi (DpGenUw) and ControlExtraEventDP queue next.
+Evidence is reused without baseline recompiles under
+`build/qwen-four-workers-20260912/`. Astra remains the source integrator; these
+questions do not delegate owner decisions or count as new cracks.
+
+Existing installed launch/batch wrappers now accept 1-4 workers and verify real
+backend capacity, unchanged per-request context and startup GPU headroom. A
+cached-only batch does not query or start inference. The Qwen suite passed
+12/12, including a four-party HTTP barrier proving concurrent dispatch and a
+too-small-backend rejection before inference. There is no speedup claim until
+useful outputs/retained gains are measured.
+
 # Qwen decision-first validation and DpGenUw gain — 2026-09-12
 
 The support workflow now uses one factual source/compiler question instead of

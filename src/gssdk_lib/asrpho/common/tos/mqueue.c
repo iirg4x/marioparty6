@@ -267,10 +267,8 @@ TosQueue *qQueueInitEx(
 {
     u32 i;
 
-    if (elementSize == 0) {
-        elementSize = (u16)_tosGetProfileU32(queue, 2, -1);
-    }
-    queue->elementSize = elementSize;
+    queue->elementSize = elementSize != 0
+        ? elementSize : (u16)_tosGetProfileU32(queue, 2, -1);
     qQueueReset(queue);
 
     if (initializeReaders == 0xFF) {
