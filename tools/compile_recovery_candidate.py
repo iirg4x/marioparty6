@@ -107,12 +107,16 @@ def _resolved_command(command: list[str], scratch: Path) -> list[str]:
 
 
 def include_context(command: list[str], scratch: Path,
-                    references: dict[str, Path] | None = None) -> dict:
+                    references: dict[str, Path] | None = None,
+                    reference_include_roots: list[Path] | None = None) -> dict:
     """Bind explicit search roots, not a claim of preprocessor dependency tracing.
 
     Reference keys are include spellings (e.g. musyx/snd.h), values intended
     files. SDK-only roots need no reference. Relative response paths and include
     roots use the compiler working directory, including nested response files.
+    An optional reference root binds every file by its root-relative spelling;
+    absent spellings fail closed. Selection still covers explicit roots only,
+    not source-local/system precedence or recursive-search ordering.
     """
     executable = Path(command[0]).stem.lower()
     opaque = executable in {'powershell', 'pwsh', 'cmd', 'sh', 'bash', 'ninja', 'make'}
@@ -166,8 +170,18 @@ def include_context(command: list[str], scratch: Path,
             raise ValueError(f'missing compiler include directory ({flag}): {path}')
         search.append({'flag': flag, 'path': str(path), 'files': tree(path)})
         index += 1
+    intended = dict(references or {})
+    reference_roots = []
+    for root in reference_include_roots or []:
+        root = Path(root).resolve()
+        files = tree(root)
+        reference_roots.append({'path': str(root), 'files': files})
+        for name, sha in files.items():
+            if name in intended and digest(Path(intended[name])) != sha:
+                raise ValueError(f'conflicting reference headers for {name}: {intended[name]} != {root / name}')
+            intended.setdefault(name, root / name)
     bound = {}
-    for name, reference in (references or {}).items():
+    for name, reference in intended.items():
         if Path(name).is_absolute() or '..' in Path(name).parts:
             raise ValueError(f'reference include name must be relative: {name}')
         reference = Path(reference).resolve()
@@ -192,12 +206,14 @@ def include_context(command: list[str], scratch: Path,
         bound[name] = {'actual': str(selected), 'reference': str(reference), 'sha256': digest(reference)}
     return {'coverage': 'opaque-command' if opaque else 'explicit-search-roots-only',
             'limitations': 'Not a dependency trace: implicit/system/source-local paths and recursive search resolution are not inferred.',
-            'search': search, 'response_files': responses, 'references': bound}
+            'search': search, 'response_files': responses, 'references': bound,
+            'reference_roots': reference_roots}
 
 
 def preflight_context(*, root: Path, scratch: Path, command: list[str],
                       tools: list[Path], command_descriptor: Path | None = None,
-                      reference_headers: dict[str, Path] | None = None) -> dict:
+                      reference_headers: dict[str, Path] | None = None,
+                      reference_include_roots: list[Path] | None = None) -> dict:
     """Read-only context used identically by CLI preflight and compilation."""
     root = Path(os.path.abspath(root))
     scratch = safe(scratch, root)
@@ -214,7 +230,7 @@ def preflight_context(*, root: Path, scratch: Path, command: list[str],
     return {'headers': headers, 'generated_headers': tree(scratch / 'build/GP6E01/include'),
             'tools': {str(p): digest(p) for p in sorted(tool_paths)},
             'command': command, 'command_descriptor': descriptor,
-            'actual_includes': include_context(command, scratch, reference_headers),
+            'actual_includes': include_context(command, scratch, reference_headers, reference_include_roots),
             'environment_sha256': hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True).encode()).hexdigest()}
 
 
@@ -285,7 +301,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
                       tools: list[Path], timeout: float = 120,
                       mutex_name: str = 'Global\\CodexBoardCapspecialCandidateCompile',
                       command_descriptor: Path | None = None,
-                      reference_headers: dict[str, Path] | None = None) -> dict:
+                      reference_headers: dict[str, Path] | None = None,
+                      reference_include_roots: list[Path] | None = None) -> dict:
     root = Path(os.path.abspath(root))
     scratch = safe(scratch, root)
     source, output = safe(source, root), safe(output, root / 'build')
@@ -300,11 +317,14 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
         raise ValueError('positive finite compiler timeout required')
     context = preflight_context(root=root, scratch=scratch, command=command,
                                 tools=tools, command_descriptor=command_descriptor,
-                                reference_headers=reference_headers)
+                                reference_headers=reference_headers,
+                                reference_include_roots=reference_include_roots)
     command = context['command']
     includes = context['actual_includes']
     dependencies = {Path(p) for p in includes['response_files']}
     dependencies.update(Path(binding['reference']) for binding in includes['references'].values())
+    dependencies.update(Path(entry['path']) / name
+                        for entry in includes['reference_roots'] for name in entry['files'])
     dependencies.update(Path(entry['path']) / name
                         for entry in includes['search'] for name in entry['files'])
     if obj in dependencies:
@@ -320,7 +340,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
     with compiler_lock(root, mutex_name, timeout):
         if preflight_context(root=root, scratch=scratch, command=command,
                              tools=tools, command_descriptor=command_descriptor,
-                             reference_headers=reference_headers) != context:
+                             reference_headers=reference_headers,
+                             reference_include_roots=reference_include_roots) != context:
             raise ValueError('compiler context changed before launch')
         candidate = source.read_bytes()
         if len(candidate) > 4*1024*1024:
@@ -364,7 +385,7 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
             if descriptor is not None and digest(Path(descriptor['path'])) != descriptor['sha256']:
                 raise RuntimeError(f'command JSON changed during compilation: {descriptor["path"]}')
             try:
-                current_includes = include_context(command, scratch, reference_headers)
+                current_includes = include_context(command, scratch, reference_headers, reference_include_roots)
             except (ValueError, OSError) as exc:
                 raise RuntimeError(f'actual compiler include context changed during compilation: {exc}') from exc
             if current_includes != context['actual_includes']:
@@ -404,9 +425,13 @@ def main() -> int:
     parser.add_argument('--source')
     parser.add_argument('--output')
     parser.add_argument('--preflight', action='store_true')
+    parser.add_argument('--summary', action='store_true',
+                        help='print compact CLI result; compilation receipt retains full context binding')
     parser.add_argument('--tool', action='append', default=[])
     parser.add_argument('--reference-header', action='append', default=[], metavar='INCLUDE=FILE',
                         help='bind an explicit-search include spelling to an intended header (repeatable)')
+    parser.add_argument('--reference-include-root', action='append', default=[], metavar='DIR',
+                        help='require every file in DIR to match its first explicit-search selection; missing files fail (repeatable)')
     parser.add_argument('--timeout', type=float, default=120)
     parser.add_argument('--mutex-name', default='Global\\CodexBoardCapspecialCandidateCompile')
     args = parser.parse_args()
@@ -418,6 +443,7 @@ def main() -> int:
         descriptor = path(args.command_json) if args.command_json else None
         tool_paths = [path(p) for p in args.tool]
         references = {}
+        reference_roots = [path(p) for p in args.reference_include_root]
         for value in args.reference_header:
             name, separator, filename = value.partition('=')
             if not separator or not name or not filename or name in references:
@@ -437,11 +463,24 @@ def main() -> int:
                 raise ValueError(f'missing scratch source: {staged}')
             context = preflight_context(root=root, scratch=scratch, command=command,
                                         tools=tool_paths, command_descriptor=descriptor,
-                                        reference_headers=references)
-            print(json.dumps({'status': 'context preflight passed; no compiler launched or source changed',
+                                        reference_headers=references, reference_include_roots=reference_roots)
+            result = {'status': 'context preflight passed; no compiler launched or source changed',
                               'context_sha256': context_digest(context), 'context': context,
                               'command': context['command'], 'tools': context['tools'],
-                              'command_descriptor': context['command_descriptor']}, sort_keys=True))
+                              'command_descriptor': context['command_descriptor']}
+            if args.summary:
+                includes = context['actual_includes']
+                result.pop('context')
+                result.update({'coverage': includes['coverage'],
+                               'command_sha256': hashlib.sha256(json.dumps(context['command']).encode()).hexdigest(),
+                               'header_count': len(context['headers']),
+                               'generated_header_count': len(context['generated_headers']),
+                               'include_root_count': len(includes['search']),
+                               'include_file_count': sum(len(entry['files']) for entry in includes['search']),
+                               'reference_root_count': len(includes['reference_roots']),
+                               'reference_header_count': len(includes['references']),
+                               'response_file_count': len(includes['response_files'])})
+            print(json.dumps(result, sort_keys=True))
             return 0
         if not args.source or not args.output:
             parser.error('--source and --output are required unless --preflight is used')
@@ -450,7 +489,11 @@ def main() -> int:
                                    object_relpath=args.object_relpath, command=command,
                                    tools=tool_paths, timeout=args.timeout,
                                    mutex_name=args.mutex_name, command_descriptor=descriptor,
-                                   reference_headers=references)
+                                   reference_headers=references, reference_include_roots=reference_roots)
+        if args.summary:
+            result = {key: result[key] for key in ('source_sha256', 'object_sha256',
+                      'context_sha256', 'object_size', 'seconds')}
+            result['receipt_path'] = str(path(args.output).with_suffix(path(args.output).suffix + '.receipt.json'))
         print(json.dumps(result, sort_keys=True))
         return 0
     except (OSError, ValueError, RuntimeError) as exc:

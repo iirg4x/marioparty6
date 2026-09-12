@@ -137,6 +137,100 @@ class CandidateCompileTests(unittest.TestCase):
         self.assertEqual(result['coverage'], 'opaque-command')
         self.assertEqual(result['search'], [])
 
+    def test_reference_root_rejects_stale_shadow_and_accepts_current_first(self):
+        external = self.external_headers()
+        for base in (self.root/'include', self.scratch/'include', external):
+            (base/'gssdk').mkdir()
+            (base/'gssdk/triggerlr.h').write_bytes(b'void SlidingHisto_Init(int);')
+        (external/'gssdk/triggerlr.h').write_bytes(b'void SlidingHisto_Init(unsigned);')
+        self.write_command([sys.executable, '-i', str(external), '-i', 'include'])
+        self.seed_products()
+        before = self.snapshot()
+        with mock.patch.object(cc.bounded_process, 'run') as run:
+            result, _, stderr = self.cli('--command-json', 'build/compiler-command.json',
+                '--reference-include-root', 'include', *self.compile_options)
+        self.assertEqual(result, 2)
+        self.assertIn('gssdk/triggerlr.h', stderr)
+        self.assertIn('differs from reference', stderr)
+        run.assert_not_called()
+        self.assertEqual(self.snapshot(), before)
+        # A stale lower-priority duplicate is not selected and must not fail.
+        self.write_command([sys.executable, '-i', 'include', '-i', str(external)])
+        with mock.patch.object(cc.bounded_process, 'run', side_effect=self.mocked_compile):
+            result, stdout, stderr = self.cli('--command-json', 'build/compiler-command.json',
+                '--reference-include-root', 'include', *self.compile_options)
+        self.assertEqual(result, 0, stderr)
+        includes = json.loads(stdout)['actual_includes']
+        self.assertEqual(includes['coverage'], 'explicit-search-roots-only')
+        self.assertEqual(includes['references']['gssdk/triggerlr.h']['actual'],
+                         str(self.scratch/'include/gssdk/triggerlr.h'))
+        self.assertIn('source-local', includes['limitations'])
+
+    def test_reference_root_missing_file_and_opaque_command_fail_closed(self):
+        external = self.external_headers()
+        (external/'snd.h').unlink()
+        with self.assertRaisesRegex(ValueError, 'absent from explicit include search: snd.h'):
+            cc.include_context(['mwcc', '-i', str(external)], self.scratch,
+                               reference_include_roots=[self.root/'include'])
+        with self.assertRaisesRegex(ValueError, 'opaque compiler command'):
+            cc.include_context(['powershell.exe', '-File', 'compile.ps1'], self.scratch,
+                               reference_include_roots=[self.root/'include'])
+
+    def test_reference_root_new_file_during_compile_rejects_publication(self):
+        external = self.external_headers()
+        reference = self.root/'build/intended'
+        reference.mkdir()
+        (reference/'snd.h').write_bytes((external/'snd.h').read_bytes())
+        self.write_command([sys.executable, '-i', str(external)])
+        def mutate(command, **kwargs):
+            result = self.mocked_compile(command, **kwargs)
+            (reference/'new.h').write_bytes(b'new contract')
+            return result
+        with mock.patch.object(cc.bounded_process, 'run', side_effect=mutate):
+            result, _, stderr = self.cli('--command-json', 'build/compiler-command.json',
+                '--reference-include-root', str(reference), *self.compile_options)
+        self.assertEqual(result, 2)
+        self.assertIn('include context changed', stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_summary_is_compact_and_receipt_keeps_full_binding(self):
+        self.external_headers()
+        for index in range(310):
+            for base in (self.root/'include', self.scratch/'include'):
+                (base/f'header_{index}.h').write_bytes(b'header')
+        self.write_command([sys.executable, '-i', 'include'])
+        options = ['--command-json', 'build/compiler-command.json',
+                   '--reference-include-root', 'include']
+        before = self.snapshot()
+        result, stdout, stderr = self.cli(*options, '--preflight', '--summary')
+        self.assertEqual(result, 0, stderr)
+        summary = json.loads(stdout)
+        self.assertLess(len(stdout), 3000)
+        self.assertNotIn('context', summary)
+        self.assertNotIn('header_0.h', stdout)
+        self.assertEqual(summary['header_count'], 312)
+        self.assertEqual(summary['reference_header_count'], 312)
+        self.assertEqual(summary['reference_root_count'], 1)
+        self.assertIn('command', summary)
+        self.assertIn('tools', summary)
+        self.assertEqual(self.snapshot(), before)
+        result, stdout, stderr = self.cli(*options, '--preflight')
+        self.assertEqual(result, 0, stderr)
+        full = json.loads(stdout)
+        self.assertEqual(full['context_sha256'], summary['context_sha256'])
+        self.assertIn('header_0.h', full['context']['headers'])
+        with mock.patch.object(cc.bounded_process, 'run', side_effect=self.mocked_compile):
+            result, stdout, stderr = self.cli(*options, *self.compile_options, '--summary')
+        self.assertEqual(result, 0, stderr)
+        compiled = json.loads(stdout)
+        self.assertLess(len(stdout), 1000)
+        self.assertNotIn('actual_includes', compiled)
+        receipt = json.loads(Path(compiled['receipt_path']).read_text(encoding='utf-8'))
+        self.assertIn('header_0.h', receipt['actual_includes']['references'])
+        self.assertEqual(compiled['context_sha256'], summary['context_sha256'])
+        for key in ('source_sha256', 'object_sha256', 'context_sha256', 'object_size', 'seconds'):
+            self.assertEqual(compiled[key], receipt[key])
+
     def test_external_mutation_between_preflight_and_lock_never_launches(self):
         external = self.external_headers()
         self.write_command([sys.executable, '-i', str(external)])

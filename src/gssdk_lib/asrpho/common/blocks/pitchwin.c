@@ -135,7 +135,7 @@ static u32 InitPitchWindow(TosBaseBlock *baseBlock)
     inputSampleRate = (u16)_tosGetProfileU32(block, 4, 11000);
 
     windowLength = block->windowLength = sampleRate * windowDuration + 0.5;
-    inputWindowLength = 0.5 + windowDuration * inputSampleRate;
+    inputWindowLength = 0.5 + (windowDuration *= inputSampleRate);
     if ((u32)inputWindowLength % inputFrameLength != 0) {
         _tosErrorLog(block, 100);
         return 1;
