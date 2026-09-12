@@ -14,10 +14,8 @@ u8 *readPtr;
 u8 *writePtr;
 u8 *bufferEnd;
 u8 priming;
-u8 reserved41;
 u16 filledFrames;
 u8 flushActive;
-u8 reserved45;
 u16 flushRemaining;
 } DelayBlock;
 
@@ -69,11 +67,19 @@ if (source != NULL) {
 }
 }
 
+static void FillDelayBlock(DelayBlock *block, u8 value)
+{
+    u32 i;
+
+    for (i = 0; i < block->bufferSize; i++) {
+        *block->writePtr = value;
+    }
+}
+
 static u32 ControlDelayBlock(
     TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
 {
 DelayBlock *block = (DelayBlock *)baseBlock;
-u32 i;
 
 switch ((u8)command) {
 case 101:
@@ -82,9 +88,7 @@ case 101:
     break;
 case 100:
     block->writePtr = block->buffer;
-    for (i = 0; i < block->bufferSize; i++) {
-        *block->writePtr = 0;
-    }
+    FillDelayBlock(block, 0);
     block->readPtr = block->buffer;
     block->writePtr = block->buffer;
     block->priming = 1;
