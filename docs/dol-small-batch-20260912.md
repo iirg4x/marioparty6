@@ -1,5 +1,29 @@
 # Small DOL batch, 2026-09-12
 
+## Small-owner priority: Exev initializer retained, 4/6 exact
+
+Smallest credible owner closures take priority over the 76-function LangData
+tail. The pending fully verified batch remains **7/10 owners**; function gains
+below do not increment that count.
+
+`InitExtraEventDP` is now **76/76 bytes, strict/data 100%, physical relocations
+exact**, preserving the three previously exact siblings. The live C stores the
+explicitly narrowed profile result in a live `u32 inputSize`, then assigns it to
+the input port. A `u16` result local was neutral; the promoted result boundary
+restores the target normalization/load/store/return order. No ABI, constant,
+header, or compiler change is involved.
+
+Exev now has **4/6 exact functions**; all six function relocation inventories
+are target-exact. `DynProgExtraEventsProcess` remains 95.740740% and
+`ControlExtraEventDP` 97.567566%, both at exact size. No owner closure or new
+source-selected link is claimed. Source SHA-256:
+`b077d7223565a2e55fbe687559d9214fe2051f36898a72c596432bb95fa12ed1`.
+Proof: `build/small-exev-current-20260912/exev_dp/retained-initializer-proof.json`.
+The current-base state-release/context-birth probes were neutral, a larger
+context helper stayed outlined, and phase-iterator reuse regressed. None was
+retained. Qwen independently confirmed the score-cache cross-call lifetime;
+it did not identify a new structural difference or discover a gain.
+
 ## NMWException closed: seven verified owners in the pending batch
 
 The unchanged `Runtime.PPCEABI.H/NMWException.cpp` is **8/8 strict/data exact**

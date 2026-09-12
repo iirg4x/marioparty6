@@ -158,9 +158,11 @@ return 0;
 static u32 InitExtraEventDP(TosBaseBlock *baseBlock)
 {
 ExtraEventDP *block = (ExtraEventDP *)baseBlock;
+u32 inputSize;
 
 block->input = baseBlock->input;
-block->input->inputSize = (u16)_tosGetProfileU32(baseBlock, 0x0F, 4);
+inputSize = (u16)_tosGetProfileU32(baseBlock, 0x0F, 4);
+block->input->inputSize = inputSize;
 return 0;
 }
 
