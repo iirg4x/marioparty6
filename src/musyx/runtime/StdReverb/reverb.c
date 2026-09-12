@@ -136,13 +136,17 @@ static asm void DoCrossTalk(s32* a, s32* b, f32 start, f32 end) {
   stw r5, 32(r1)
   ps_merge00 f3, f2, f1
   ps_merge00 f4, f1, f2
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
   lis r5, value0_6@ha
   lfs f5, value0_6@l(r5)
+#endif
   li r5, 79
   mtctr r5
   li r10, -8
   li r11, -4
+#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 0)
   ps_muls0 f4, f4, f5
+#endif
   lwz r6, 0(r3)
   lwz r7, 0(r4)
   xoris r6, r6, 32768

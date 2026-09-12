@@ -1,5 +1,40 @@
 # Small DOL batch, 2026-09-12
 
+## StdReverb closed: ninth verified owner (2026-09-13)
+
+`musyx/runtime/StdReverb/reverb.c` is source-selected `Matching`: **5/5
+instruction bodies**, strict/data 100% after authenticated alias mapping,
+**49/49 physical relocation sites/types/resolved targets**, and a retail-identical
+DOL. All **137 container checksums pass**; the proof workspace is **346/396**
+DOL owners. The pending batch is **9/10**; main has not been advanced yet.
+
+The actual cause was a missing SDK version conditional. The three crosstalk
+instructions that load/apply `value0_6` belong only to MUSYX <=2.0.0; this
+target uses 2.0.4. Restoring both existing guards changes DoCrossTalk from
+400 to 388 bytes and restores the 0.3-before-0.6 constant producer order.
+The clean MP4 MUSYX donor is AxioDL/musyx commit
+`adc8df9a959f1e37f71bdf3155e229f9f87ad166`, file blob
+`8e50bc904e8dd789630c1dabc1c17fb0ef6045d0`, same relative source path.
+
+Source-fidelity disclosure: this owner already contains the authentic SDK
+native-assembly kernels DoCrossTalk and HandleReverb. This change restores
+version selection; it is **not an all-C rewrite** and adds no instruction,
+padding, or register hint. The target's address names fn_800EC408/fn_800EC58C
+map to those SDK names at identical linked addresses. A names-only disposable
+target view leaves original allocated bytes untouched. Unreferenced
+ReverbHIModify and weak sqrtf constants are stripped naturally; no synthetic
+data or math-header workaround was introduced.
+
+Source SHA-256: `c5a5e1b26d9cbbc5ad1279ed742e3f7a87fd764cbbe503e2aaca303e59fe27e1`.
+Object SHA-256: `0b2a09de9e197b46ba1f8c5a508f99ee04567efdb223e81aaa95efe828adb20e`.
+Target SHA-256: `18b56068fa1f4330626e3fd8fee707944cad7333c6b3f16e9b071c1db30dbff2`.
+DOL SHA-256: `172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+Evidence: `build/small-remaining-baseline-20260913/musyx/runtime/StdReverb/reverb/sdk-201-guard/live-*`.
+
+Small-owner scheduling lesson: estimate the remaining causal work, not just
+file size or match percentage. A version-selection defect closed this whole
+owner in one source candidate; several tiny 99% register tails remain harder.
+
 ## Allocator closed: eighth verified owner (2026-09-13)
 
 `MSL_C.PPCEABI.bare.H/alloc.c` is now source-selected `Matching`: **11/11
