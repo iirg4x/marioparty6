@@ -1,5 +1,52 @@
 # Small DOL batch, 2026-09-12
 
+## Grouped language-data reconstruction: 29 new exact functions
+
+`langdata.c` now retains **37 newly implemented functions**. Of these,
+**29 are strict/data instruction-exact and 28 also have raw-exact physical
+relocations**. The remaining instruction-exact function,
+`_langGetpPhenUserWordTraining`, still has a local-provider address shift.
+Eight new functions have partial matches; the existing
+`_langGetpErgodicPenalty` improves from 77.04 to 78.04. Every other pre-existing
+function's bytes are unchanged, including both getters affected by a duplicate
+target symbol name. No owner Matching gate or main progress changed: the
+verified pending batch remains six owners, not seven.
+
+The first shared-layout compile produced 24 new exact leaf functions. The
+next coherent section-chain reconstruction added the speech-unit, translation,
+training and tone traversal bodies together. Two useful source causes then
+closed five more functions: ordinary incremental section-size accumulation
+preserved the target arithmetic boundaries; consuming the existing lexicon
+accessor preserved its inline boundary. Removing an unnecessary named offset
+from the translation pointer expression also closed its frame and the inlined
+training consumer. These were related source-layout repairs, not a syntax
+matrix or per-register search. No assembly, padding, forced inlining, or shared
+header change was used. New local layout names are descriptive reconstructions.
+
+Speed practice applied: batch independent getters with one shared layout;
+reconstruct related section consumers together; reuse completed compiler
+objects/reports for proof; let two narrow Qwen layout questions run without
+blocking primary compilation. A duplicate target name must not force a rebuild
+or silently count two matches: the proof checks the two getter byte ranges
+separately and leaves the symbol-configuration correction explicit. These
+results demonstrate retained function output, not a promised owner/hour rate.
+
+Evidence: `build/language-accessors-20260912/langdata/family-champion-*`,
+`frontier-proof.json`, `live-source-proof.json`, and non-leaf physical receipts.
+The post-patch live-source rebuild reproduced the proved code/data sections,
+strict/data results and independently rechecked physical receipts. Its whole
+object differs only in the non-loadable symbol/string tables; whole-object
+byte identity is not claimed.
+Live source SHA-256
+`90eacc5b4c54f334acd4360bbbc80d7a1675f834a7102da67991e3e176097991`;
+live-source object `f34299f10b033d9c7364ab2db38a5aed8aed5129730b745e317bae05c3705de2`;
+strict `ba87ccf7086c9c9cc1325381a0f4245e79e4fb5443f0901db7ba4503ad7c0b60`;
+data `d23790ae7139177343726755403994d4c2d7051eec43747dbdfde04316bf0242`.
+The target's second `_langGetNbrSpeechUnit` at `.text+0xec` loads the warp-factor
+count and byte-matches `_langGetNbrWarpFactors`; the target input was not edited.
+Virtual-table reconstruction, remaining source causes, and real source-selected
+link proof are still required before this owner can be promoted.
+
 ## Reconstruction-first throughput: missing result callback recovered
 
 `asrspi_cbResult` is now implemented in ordinary C and retained at
