@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import subprocess
 import sys
@@ -1304,6 +1305,67 @@ class RecoveryEvaluateTests(unittest.TestCase):
         self.assertEqual(result["cleanup_errors"], [])
         self.assertEqual(self.candidate.read_bytes(), source_before)
         self.assertFalse(list((self.root / "build").glob(".evaluate-*")))
+
+    def _cli_argv(self, name: str) -> list[str]:
+        return ["--root", str(self.root), "--index", str(self.index),
+                "--candidate", str(self.candidate), "--function", "FocusFunction",
+                "--out", str(self.root / "build" / name),
+                "--objdiff", str(self.objdiff), "--readelf", str(self.readelf),
+                "--command-json", str(self.command_json),
+                "--compiler-tool", str(self.compiler_tool)]
+
+    def test_cli_limit_failure_reports_stage_diagnostics_and_durable_result(self) -> None:
+        fault = evaluate.bounded_process.ProcessLimitError(
+            "process deadline exceeded", b"compiler started", b"sentinel compiler detail")
+        with mock.patch.object(evaluate, "_compile_candidate", side_effect=fault), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+            code = evaluate.main(self._cli_argv("cli-limit.json"))
+        value = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(value["stage"], "compile")
+        self.assertIn("sentinel compiler detail", value["diagnostics"])
+        receipt = self.root / "build/cli-limit.json"
+        self.assertEqual(value["result"]["sha256"], evaluate.compiler.digest(receipt))
+        self.assertFalse(value["retention_ready"])
+        self.assertFalse(list((self.root / "build").glob(".evaluate-*")))
+
+    def test_cli_preflight_failure_never_overwrites_existing_result(self) -> None:
+        receipt = self.root / "build/already.json"
+        receipt.write_bytes(b"preserve previous measurement")
+        with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+            code = evaluate.main(self._cli_argv("already.json"))
+        value = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(value["stage"], "entry_or_publication")
+        self.assertIn("already exists", value["reason"])
+        self.assertIsNone(value["result_published"])
+        self.assertEqual(receipt.read_bytes(), b"preserve previous measurement")
+        self.assertEqual(self.compile_calls, [])
+
+    def test_cli_success_returns_zero_and_exact_result_descriptor(self) -> None:
+        with self._patch_measurement(), \
+                mock.patch.object(evaluate, "_compile_candidate", side_effect=self._fake_compile), \
+                mock.patch.object(evaluate, "_report", side_effect=self._fake_report), \
+                mock.patch.object(evaluate.bounded_process, "run", side_effect=self._fake_readelf), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+            code = evaluate.main(self._cli_argv("cli-success.json"))
+        value = json.loads(output.getvalue())
+        self.assertEqual(code, 0, value)
+        self.assertEqual(value["status"], "exact")
+        self.assertEqual(value["stage"], "complete")
+        self.assertEqual(value["result"]["sha256"],
+                         evaluate.compiler.digest(self.root / "build/cli-success.json"))
+
+    def test_direct_cli_missing_input_has_structured_error_without_traceback(self) -> None:
+        argv = self._cli_argv("absent.json")
+        argv[argv.index("--index") + 1] = str(self.root / "missing-index.json")
+        result = subprocess.run([sys.executable, str(Path(evaluate.__file__)), *argv],
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 2)
+        value = json.loads(result.stdout)
+        self.assertIn("missing-index.json", value["reason"])
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertFalse((self.root / "build/absent.json").exists())
 
     def test_evaluate_batch_runs_jobs_concurrently_with_worker_bound(self) -> None:
         jobs = []

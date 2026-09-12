@@ -10,6 +10,126 @@ from unittest import mock
 from tools import recovery_call_contract_repair as repair
 
 
+class CalleeReturnTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def diagnose(self, instructions, **extra):
+        rows = [{"instruction": {"address": str(i*4), "formatted": text}} for i, text in enumerate(instructions)]
+        path = self.root / "report.json"
+        path.write_text(json.dumps({"left": {"symbols": [{"name": "api", "address": "0", "size": str(4*len(rows)), "instructions": rows}]}}), encoding="utf-8")
+        return repair.diagnose_callee_return(root=self.root, report=path,
+            report_sha256=extra.pop("report_sha256", repair._sha(path.read_bytes())), symbol="api", **extra)
+
+    def test_common_entry_value_multiple_returns(self):
+        result = self.diagnose(["subi r3, r3, 0x259", "cmpwi r3, 0", "bge 0x10", "blr", "blr"])
+        self.assertEqual(result["status"], "COMMON_VALUE")
+        self.assertEqual(result["common_normalized_entry_value"]["addend"], -601)
+        self.assertEqual(result["common_normalized_entry_value"]["base"], "entry.r3")
+        self.assertEqual(result["reachable_return_count"], 2)
+        self.assertEqual(result["returns"][0]["r3_reaching_definition_indices"], [0])
+        self.assertEqual(result["c_abi_return_type"], "UNKNOWN")
+        self.assertFalse(result["source_patch_emitted"])
+
+    def test_call_clobber_and_conflicting_exits(self):
+        for code in (["addi r3, r3, -601", "bl 0x100", "blr"],
+                     ["beq 0xc", "li r3, 1", "blr", "li r3, 2", "blr"],
+                     ["lwz r3, 0(r4)", "blr"]):
+            self.assertEqual(self.diagnose(code)["status"], "UNKNOWN")
+
+    def test_unsupported_flow_and_multi_register_write(self):
+        for code in (["bctr", "blr"], ["bc 12, 2, 0x8", "blr", "blr"],
+                     ["lmw r0, 0(r1)", "blr"], ["lwzu r4, 4(r3)", "blr"],
+                     ["b 0x100", "blr"], ["nop"]):
+            self.assertEqual(self.diagnose(code)["status"], "UNKNOWN")
+
+    def test_join_loop_and_unreachable_unknown(self):
+        result = self.diagnose(["addi r3, r3, -601", "bdnz 0x4", "blr", "bctr"])
+        self.assertEqual(result["status"], "COMMON_VALUE")
+        self.assertEqual(self.diagnose(["addi r3, r3, 1", "bdnz 0x0", "blr"])["status"], "UNKNOWN")
+        joined = self.diagnose(["beq 0xc", "li r3, 1", "b 0x10", "li r3, 1", "blr"])
+        self.assertEqual(joined["status"], "COMMON_VALUE")
+        self.assertEqual(joined["returns"][0]["r3_reaching_definition_indices"], [1, 3])
+
+    def test_call_provenance_and_unknown_relocation(self):
+        restored = self.diagnose(["mr r31, r3", "bl 0x100", "mr r3, r31", "blr"])
+        self.assertEqual(restored["common_normalized_entry_value"]["base"], "entry.r3")
+        self.assertEqual(self.diagnose(["addi r3, r4, symbol@l", "blr"])["status"], "UNKNOWN")
+
+    def test_signed16_immediates_and_out_of_range(self):
+        for code, addend in (("addi r3, r3, 0xffff", -1), ("li r3, 0xffff", -1),
+                             ("addis r3, r3, 0xffff", -65536),
+                             ("subi r3, r3, 0x8000", -32768)):
+            self.assertEqual(self.diagnose([code, "blr"])["common_normalized_entry_value"]["addend"], addend)
+        for code in ("addi r3, r3, 0x10000", "li r3, -32769", "subi r3, r3, 0xffff"):
+            self.assertEqual(self.diagnose([code, "blr"])["status"], "UNKNOWN")
+
+    def test_separate_exits_same_value_different_definitions(self):
+        result = self.diagnose(["beq 0xc", "li r3, 1", "blr", "li r3, 1", "blr"])
+        self.assertEqual(result["status"], "COMMON_VALUE")
+        self.assertEqual([r["r3_reaching_definition_indices"] for r in result["returns"]], [[1], [3]])
+
+    def test_malformed_operand_counts_cannot_prove_return(self):
+        for code in ("mr r3, r3, r4", "mr r4, r4, r5", "mr r3", "mr",
+                     "li r3, 1, 2", "li r3", "addi r3, r3, 1, 2",
+                     "addis r3, r3", "subi r3, r3, 1, 2", "subis r3",
+                     "blr r3"):
+            with self.subTest(instruction=code):
+                result = self.diagnose([code, "blr"])
+                self.assertEqual(result["status"], "UNKNOWN")
+                self.assertTrue(result["issues"])
+
+    def test_report_drift_and_signature_binding(self):
+        with self.assertRaisesRegex(ValueError, "hash drift"):
+            self.diagnose(["blr"], report_sha256="0"*64)
+        path = self.root / "api.h"
+        path.write_text("void api(int id);", encoding="utf-8")
+        desc = dict(path=str(path), sha256=repair._sha(path.read_bytes()), start_byte=0, end_byte=path.stat().st_size)
+        result = self.diagnose(["blr"], source_signature=desc)
+        self.assertEqual(result["source_signature"]["return_type"], "void")
+        with mock.patch.object(repair.compiler, "digest", return_value="0"*64):
+            with self.assertRaisesRegex(ValueError, "changed during analysis"):
+                self.diagnose(["blr"])
+
+    def test_cli_read_only(self):
+        self.diagnose(["blr"])
+        path = self.root / "report.json"
+        args = ["repair", "callee-return", "--root", str(self.root), "--report", str(path),
+                "--report-sha256", repair._sha(path.read_bytes()), "--symbol", "api"]
+        with mock.patch("sys.argv", args), contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(repair.main(), 0)
+        self.assertEqual(json.loads(output.getvalue())["status"], "COMMON_VALUE")
+        self.assertEqual(len(list(self.root.iterdir())), 1)
+
+    def test_malformed_truncated_rows_and_null_alignment(self):
+        self.diagnose(["nop", "blr"])
+        path = self.root / "report.json"
+        document = json.loads(path.read_text())
+        for mutation in ("formatted", "address", "truncate", "gap", "size"):
+            changed = copy.deepcopy(document)
+            symbol = changed["left"]["symbols"][0]
+            rows = symbol["instructions"]
+            if mutation in {"formatted", "address"}:
+                del rows[0]["instruction"][mutation]
+            elif mutation == "truncate":
+                rows.pop(0)
+            elif mutation == "gap":
+                rows[1]["instruction"]["address"] = "8"
+            else:
+                del symbol["size"]
+            path.write_text(json.dumps(changed))
+            with self.assertRaises(ValueError):
+                repair.diagnose_callee_return(root=self.root, report=path,
+                    report_sha256=repair._sha(path.read_bytes()), symbol="api")
+        document["left"]["symbols"][0]["instructions"].insert(1, {"instruction": None})
+        path.write_text(json.dumps(document))
+        result = repair.diagnose_callee_return(root=self.root, report=path,
+                    report_sha256=repair._sha(path.read_bytes()), symbol="api")
+        self.assertEqual(result["status"], "COMMON_VALUE")
+
+
 class EnvelopeAdapterTests(unittest.TestCase):
     def fixture(self):
         common = dict(session_id='session-test', process_id=1, function='f', status='CAPTURED')

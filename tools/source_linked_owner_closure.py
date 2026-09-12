@@ -11,6 +11,13 @@ An optional, equally closed sub-packet can diagnose the minimum live,
 addressable, read-only one-f32 owner behind a single SDA21 seam.  That diagnosis
 is evidence-only.  This module never edits source, changes configuration,
 retains a candidate, promotes an owner, or advances authority.
+
+``verify-workspace`` is an opt-in private-input observation of an existing MP6
+Ninja graph and SHA1 container manifest. It hashes current selected source and
+object files and directly compares every configured container to an explicitly
+supplied retail root. It does not establish compile/link execution provenance,
+source fidelity, clean-build status, or owner closure; the legacy packet gate
+remains separate. No build commands run and only an optional build/ JSON is written.
 """
 
 from __future__ import annotations
@@ -21,6 +28,7 @@ import json
 import os
 import re
 import tempfile
+import sys
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
 
@@ -810,6 +818,281 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
         raise
 
 
+def _workspace_path(root: Path, value: str) -> Path:
+    value = value.replace("\\", "/")
+    parts = PurePosixPath(value)
+    if (not value or len(value) > 2048 or parts.is_absolute() or
+            any(x in {"..", "."} for x in value.split("/")) or ":" in value):
+        raise SourceLinkedClosureInputError(f"unsafe workspace path: {value!r}")
+    path = (root / value).resolve()
+    if not path.is_relative_to(root):
+        raise SourceLinkedClosureInputError(f"workspace path escapes root: {value}")
+    return path
+
+
+def _bounded_text(path: Path, limit: int) -> str:
+    with path.open("rb") as stream:
+        data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise SourceLinkedClosureInputError(f"input exceeds {limit} bytes: {path}")
+    return data.decode("utf-8")
+
+
+def _ninja_edges(text: str) -> dict[str, tuple[str, list[str]]]:
+    """Small literal-only Ninja reader. Unknown expansion is never guessed."""
+    # An odd run of dollars escapes the newline; preserve preceding literal $$.
+    text = re.sub(r"(\$+)\r?\n[ \t]*", lambda m: (
+        m[1][:-1] if len(m[1]) % 2 else m[0]), text)
+    edges: dict[str, tuple[str, list[str]]] = {}
+    for line in text.splitlines():
+        if line.startswith(("include ", "subninja ")):
+            raise SourceLinkedClosureInputError("UNKNOWN: included Ninja graphs unsupported")
+        if not line.startswith("build "):
+            continue
+        tokens: list[str] = []
+        word = ""
+        i = 6
+        while i < len(line):
+            ch = line[i]
+            if ch == "$":
+                i += 1
+                if i == len(line) or line[i] not in "$ :":
+                    raise SourceLinkedClosureInputError("UNKNOWN: Ninja variable/escape in build edge")
+                word += line[i]
+            elif ch.isspace() or ch in ":|":
+                if word:
+                    tokens.append(word.replace("\\", "/"))
+                    word = ""
+                if ch in ":|":
+                    tokens.append(ch)
+            else:
+                word += ch
+            i += 1
+        if word:
+            tokens.append(word.replace("\\", "/"))
+        if tokens.count(":") != 1:
+            raise SourceLinkedClosureInputError("UNKNOWN: malformed Ninja build edge")
+        split = tokens.index(":")
+        outputs = [v for v in tokens[:split] if v != "|"]
+        if not outputs or len(tokens) <= split + 1:
+            raise SourceLinkedClosureInputError("malformed Ninja build edge")
+        rule = tokens[split + 1]
+        inputs = tokens[split + 2:]
+        if "|" in inputs:
+            inputs = inputs[:inputs.index("|")]
+        for output in outputs:
+            if output in edges:
+                raise SourceLinkedClosureInputError(f"ambiguous duplicate Ninja output: {output}")
+            edges[output] = (rule, inputs)
+    return edges
+
+
+def _stream_hash(path: Path) -> str:
+    if path.stat().st_size > 1024 ** 3:
+        raise SourceLinkedClosureInputError(f"file exceeds 1 GiB: {path}")
+    digest = hashlib.sha256()
+    read_bytes = 0
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 ** 2), b""):
+            read_bytes += len(chunk)
+            if read_bytes > 1024 ** 3:
+                raise SourceLinkedClosureInputError(f"file exceeds 1 GiB while reading: {path}")
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_workspace(*, root: Path, ninja: str, manifest: str,
+                     retail_root: Path, link_output: str,
+                     selected: Sequence[Sequence[str]],
+                     expected_hashes: Sequence[Sequence[str]] = (),
+                     output: str | None = None) -> dict[str, Any]:
+    """Read existing MP6 outputs only; never configure, compile, link, or copy.
+
+    Manifest paths follow config/<version>/build.sha1: main.dol maps to
+    retail_root/sys/main.dol and <module>/<module>.rel to files/dll/<module>.rel.
+    selected pairs are canonical source and expected build/<version>/src object.
+    Hash bindings describe current files, not authenticated compile provenance.
+    """
+    root, retail_root = root.resolve(), retail_root.resolve()
+    if not 1 <= len(selected) <= 64 or len(expected_hashes) > 256:
+        raise SourceLinkedClosureInputError("expected 1..64 selected mappings and <=256 hashes")
+    ninja_path, manifest_path = _workspace_path(root, ninja), _workspace_path(root, manifest)
+    input_hashes = {ninja_path: _stream_hash(ninja_path), manifest_path: _stream_hash(manifest_path)}
+    ninja_text = _bounded_text(ninja_path, 32 * 1024 ** 2)
+    manifest_text = _bounded_text(manifest_path, 1024 ** 2)
+    edges = _ninja_edges(ninja_text)
+    link_output = link_output.replace("\\", "/")
+    link_path = _workspace_path(root, link_output)
+    if link_output not in edges or edges[link_output][0] != "link":
+        raise SourceLinkedClosureInputError(f"missing exact link edge: {link_output}")
+    inputs = edges[link_output][1]
+    read_paths = {ninja_path, manifest_path, link_path}
+    hashes: dict[str, str] = {}
+    mappings = []
+    seen_sources: set[str] = set()
+    seen_objects: set[str] = set()
+    for pair in selected:
+        if len(pair) != 2:
+            raise SourceLinkedClosureInputError("selected mapping must be SOURCE OBJECT")
+        source, obj = (x.replace("\\", "/") for x in pair)
+        source_path, obj_path = _workspace_path(root, source), _workspace_path(root, obj)
+        if source_path == obj_path or os.path.samefile(source_path, obj_path):
+            raise SourceLinkedClosureInputError(f"aliased source/object: {source}")
+        sp, op = PurePosixPath(source), PurePosixPath(obj)
+        if (not source.startswith("src/") or sp.suffix not in {".c", ".cp", ".cpp"} or
+                len(op.parts) < 4 or op.parts[0] != "build" or
+                PurePosixPath(*op.parts[2:]) != sp.with_suffix(".o")):
+            raise SourceLinkedClosureInputError(f"not a canonical source/object mapping: {source} -> {obj}")
+        if source in seen_sources or obj in seen_objects:
+            raise SourceLinkedClosureInputError(f"duplicate selected mapping: {source}")
+        seen_sources.add(source)
+        seen_objects.add(obj)
+        if inputs.count(obj) != 1:
+            raise SourceLinkedClosureInputError(f"link does not select exactly once: {obj}")
+        # A second object with this owner basename is an ambiguous/fallback selection.
+        if any(PurePosixPath(v).name == op.name and v != obj for v in inputs):
+            raise SourceLinkedClosureInputError(f"ambiguous additional owner object: {obj}")
+        if obj not in edges or edges[obj][0] not in {"mwcc", "mwcc_sjis", "cc", "cxx"} or edges[obj][1] != [source]:
+            raise SourceLinkedClosureInputError(f"missing direct compile edge: {source} -> {obj}")
+        read_paths.update((source_path, obj_path))
+        hashes[source], hashes[obj] = _stream_hash(source_path), _stream_hash(obj_path)
+        mappings.append({"source": source, "source_sha256": hashes[source],
+                         "selected_object": obj, "selected_object_sha256": hashes[obj]})
+    entries: list[tuple[str, str, Path, Path]] = []
+    seen_files: set[Path] = set()
+    for line in manifest_text.splitlines():
+        if not line.strip():
+            continue
+        match = re.fullmatch(r"([0-9a-fA-F]{40}) [ *](.+)", line)
+        if not match or len(entries) >= 4096:
+            raise SourceLinkedClosureInputError("invalid or oversized SHA1 manifest")
+        sha1, name = match.groups()
+        name = name.replace("\\", "/")
+        built = _workspace_path(root, name)
+        p = PurePosixPath(name)
+        if p.parts[:2] != PurePosixPath(link_output).parts[:2]:
+            raise SourceLinkedClosureInputError(f"manifest version/prefix mismatch: {name}")
+        if len(p.parts) == 3 and p.name == "main.dol":
+            if edges.get(name) != ("elf2dol", [link_output]):
+                raise SourceLinkedClosureInputError(f"main.dol does not convert selected link output: {name}")
+            retail = retail_root / "sys/main.dol"
+        elif len(p.parts) == 4 and p.suffix == ".rel" and p.parent.name == p.stem:
+            retail = retail_root / "files/dll" / p.name
+        else:
+            raise SourceLinkedClosureInputError(f"unsupported manifest container: {name}")
+        retail = retail.resolve()
+        if (built in seen_files or retail in seen_files or built == retail or
+                os.path.samefile(built, retail)):
+            raise SourceLinkedClosureInputError(f"aliased/duplicate container: {name}")
+        seen_files.update((built, retail))
+        entries.append((name, sha1.lower(), built, retail))
+    if not entries or not any(n.endswith("/main.dol") for n, _, _, _ in entries):
+        raise SourceLinkedClosureInputError("manifest lacks main.dol")
+    graph_containers = {n for n in edges if n.startswith(str(PurePosixPath(link_output).parent) + "/")
+                        and PurePosixPath(n).suffix in {".dol", ".rel"}}
+    if graph_containers != {n for n, _, _, _ in entries}:
+        raise SourceLinkedClosureInputError("manifest and Ninja container output sets differ")
+    read_paths.update(seen_files)
+    expected_seen: set[str] = set()
+    for pair in expected_hashes:
+        if len(pair) != 2:
+            raise SourceLinkedClosureInputError("expected hash must be PATH SHA256")
+        name, expected = pair
+        if name in expected_seen:
+            raise SourceLinkedClosureInputError(f"duplicate expected hash: {name}")
+        expected_seen.add(name)
+        path = _workspace_path(root, name)
+        read_paths.add(path)
+        hashes[name] = _stream_hash(path)
+        if hashes[name] != _sha256(expected, name):
+            raise SourceLinkedClosureInputError(f"SHA256 drift: {name}")
+    result_path = _workspace_path(root, output) if output else None
+    graph_paths = {_workspace_path(root, n) for n in edges if n.startswith("build/")}
+    if result_path is not None and (not result_path.is_relative_to(root / "build") or
+            result_path in read_paths | graph_paths or any(result_path.exists() and p.exists() and
+            os.path.samefile(result_path, p) for p in read_paths | graph_paths)):
+        raise SourceLinkedClosureInputError(f"unsafe/aliased result output: {result_path}")
+    containers = []
+    total_bytes = 0
+    total_read_bytes = 0
+    for name, expected, built, retail in entries:
+        total_bytes += built.stat().st_size + retail.stat().st_size
+        if total_bytes > 8 * 1024 ** 3:
+            raise SourceLinkedClosureInputError("container total exceeds 8 GiB")
+        if max(built.stat().st_size, retail.stat().st_size) > 1024 ** 3:
+            raise SourceLinkedClosureInputError(f"container exceeds 1 GiB: {name}")
+        left_sha1, right_sha1 = hashlib.sha1(), hashlib.sha1()
+        left_sha256, right_sha256 = hashlib.sha256(), hashlib.sha256()
+        equal = True
+        read_bytes = 0
+        with built.open("rb") as left, retail.open("rb") as right:
+            while True:
+                a, b = left.read(1024 ** 2), right.read(1024 ** 2)
+                if not a and not b:
+                    break
+                read_bytes += max(len(a), len(b))
+                total_read_bytes += len(a) + len(b)
+                if total_read_bytes > 8 * 1024 ** 3:
+                    raise SourceLinkedClosureInputError("container total exceeds 8 GiB while reading")
+                if read_bytes > 1024 ** 3:
+                    raise SourceLinkedClosureInputError(f"container exceeds 1 GiB while reading: {name}")
+                equal = equal and a == b
+                left_sha1.update(a)
+                right_sha1.update(b)
+                left_sha256.update(a)
+                right_sha256.update(b)
+        if not equal or left_sha1.hexdigest() != expected or right_sha1.hexdigest() != expected:
+            raise SourceLinkedClosureInputError(f"container byte/SHA1 mismatch: {name}")
+        containers.append({"path": name, "sha1": expected, "sha256": left_sha256.hexdigest(),
+                           "retail_sha256": right_sha256.hexdigest(), "byte_equal": True})
+    for path, expected in input_hashes.items():
+        if _stream_hash(path) != expected:
+            raise SourceLinkedClosureInputError(f"input changed during observation: {path}")
+    for name, expected in hashes.items():
+        if _stream_hash(_workspace_path(root, name)) != expected:
+            raise SourceLinkedClosureInputError(f"file changed during observation: {name}")
+    result = _with_self_hash({
+        "schema": "source_linked_workspace_observation/v1", "status": "VERIFIED_OBSERVATION",
+        "root": str(root), "retail_root": str(retail_root),
+        "ninja_sha256": _stream_hash(ninja_path), "manifest_sha256": _stream_hash(manifest_path),
+        "link_output": link_output, "link_output_sha256": _stream_hash(link_path),
+        "selected": mappings, "current_hashes": hashes,
+        "containers": containers, "containers_exact": len(containers),
+        "compile_provenance": "UNKNOWN", "link_execution_provenance": "UNKNOWN",
+        "source_recovery_proven": False, "closure_ready": False, "authority_advanced": False,
+        "limitations": ["Existing graph selection and current file hashes only; no build was executed.",
+                        "Current objects and output are not proven to originate from the current sources or graph.",
+                        "Container byte equality alone does not prove faithful source recovery."]})
+    if result_path is not None:
+        _write_json(result_path, result)
+    return result
+
+
+def _workspace_main(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(description="Read-only cached MP6 link/container observation")
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--ninja", required=True)
+    parser.add_argument("--manifest", required=True)
+    parser.add_argument("--retail-root", type=Path, required=True)
+    parser.add_argument("--link-output", required=True)
+    parser.add_argument("--selected", nargs=2, action="append", required=True, metavar=("SOURCE", "OBJECT"))
+    parser.add_argument("--expect-sha256", nargs=2, action="append", default=[], metavar=("PATH", "SHA256"))
+    parser.add_argument("--output", help="optional root-relative result path under build/")
+    args = parser.parse_args(argv)
+    try:
+        result = verify_workspace(root=args.root, ninja=args.ninja, manifest=args.manifest,
+                                  retail_root=args.retail_root, link_output=args.link_output,
+                                  selected=args.selected, expected_hashes=args.expect_sha256,
+                                  output=args.output)
+    except (SourceLinkedClosureInputError, OSError, UnicodeError) as exc:
+        print(f"workspace observation rejected: {exc}")
+        return 1
+    print(json.dumps(result if not args.output else {
+        "status": result["status"], "containers_exact": result["containers_exact"],
+        "output": args.output}, indent=2, sort_keys=True))
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--context", required=True, type=Path)
@@ -825,6 +1108,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "verify-workspace":
+        return _workspace_main(argv[1:])
     args = _build_parser().parse_args(argv)
     try:
         result = evaluate(

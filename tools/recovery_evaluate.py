@@ -1342,6 +1342,11 @@ def _dispatch_summary(result: dict) -> dict:
                    regression_count=len(result.get("regressions", [])), reason=result.get("reason"),
                    changed_result_diagnostics=result.get("changed_result_diagnostics"),
                    physical_progress=result.get("physical_progress"), code_quality=result.get("code_quality", [])[:6])
+    # Process-limit diagnostics otherwise disappear from the CLI even though
+    # the durable result kept them. Do not require a second run to learn why
+    # no object/report was produced.
+    summary.update(stage=result.get("stage"),
+                   diagnostics=str(result.get("diagnostics") or "")[-2048:])
     if "prediction_feedback" in result:
         summary["prediction_feedback"] = result["prediction_feedback"]
     encoded = json.dumps(summary, sort_keys=True).encode("utf-8")
@@ -1364,6 +1369,8 @@ def _dispatch_summary(result: dict) -> dict:
             "cleanup_error_count": len(result.get("cleanup_errors", [])),
             "gains_count": len(result.get("gains", [])), "regressions_count": len(result.get("regressions", [])),
             "reason": str(result.get("reason") or "")[:500],
+            "stage": str(result.get("stage") or "unknown")[:64],
+            "diagnostics": str(result.get("diagnostics") or "")[-2048:],
             "changed_result_diagnostics": {
                 "diagnostic_only": True, "status": diagnostic.get("status", "unknown"),
                 "affected_function_count": diagnostic.get("affected_function_count", 0),
@@ -2233,14 +2240,34 @@ def add_arguments(parser: Any) -> None:
 def dispatch(args: Any) -> int:
     values = vars(args).copy()
     values.pop("action", None)
-    result = evaluate(**values)
-    print(json.dumps(_dispatch_summary(result), sort_keys=True))
+    try:
+        result = evaluate(**values)
+        summary = _dispatch_summary(result)
+        # Only describe the durable file after evaluate publishes it. A missing
+        # or unreadable receipt is an entry/publication error, not a new probe.
+        output = Path(os.path.abspath(Path(args.root) / args.out))
+        summary["result"] = _descriptor(output)
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        # Preflight and publication errors may occur before/after evaluate's
+        # private transaction. Never write to an unvalidated --out or replace
+        # an earlier receipt just to manufacture a failed result.
+        failure = {"schema": "recovery_evaluation_cli/v1", "status": "failed",
+                   "stage": "entry_or_publication", "error_type": type(exc).__name__,
+                   "reason": str(exc)[:2048], "result_published": None,
+                   "retained": False, "authority_advanced": False}
+        print(json.dumps(failure, sort_keys=True), flush=True)
+        return 2
+    print(json.dumps(summary, sort_keys=True), flush=True)
     return 2 if result["status"] == "failed" else 0
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> int:
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     add_arguments(parser)
-    raise SystemExit(dispatch(parser.parse_args()))
+    return dispatch(parser.parse_args(argv))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

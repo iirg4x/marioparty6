@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import contextlib
 import io
+import hashlib
+import os
 import json
 import tempfile
 import unittest
@@ -390,6 +392,130 @@ class SourceLinkedOwnerClosureTests(unittest.TestCase):
         blocked_evaluation = fixtures._evaluation(blocked, closure.RULE_ID)
         self.assertTrue(blocked_evaluation["matched"])
         self.assertFalse(blocked_evaluation["evidence"]["closure"]["closure_ready"])
+
+
+class WorkspaceObservationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.source = "src/board/single.c"
+        self.obj = "build/GP6E01/src/board/single.o"
+        self.graph = (f"build {self.obj}: mwcc_sjis {self.source}\n"
+                      "build build/GP6E01/other.elf: link build/GP6E01/board/single.o\n"
+                      "build build/GP6E01/main.elf: link $\n"
+                      f"    {self.obj}\n"
+                      "build build/GP6E01/main.dol: elf2dol build/GP6E01/main.elf\n")
+        for name, data in ((self.source, b"source"), (self.obj, b"object"),
+                           ("build/GP6E01/main.elf", b"elf"),
+                           ("build/GP6E01/main.dol", b"retail"),
+                           ("retail/sys/main.dol", b"retail")):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        (self.root / "build.ninja").write_text(self.graph, encoding="utf-8")
+        self.manifest = hashlib.sha1(b"retail").hexdigest() + "  build/GP6E01/main.dol\n"
+        (self.root / "build.sha1").write_text(self.manifest, encoding="utf-8")
+
+    def verify(self, **kwargs):
+        return closure.verify_workspace(root=self.root, ninja="build.ninja", manifest="build.sha1",
+            retail_root=self.root / "retail", link_output="build/GP6E01/main.elf",
+            selected=[(self.source, self.obj)], **kwargs)
+
+    def test_multiline_fallback_elsewhere_and_hash_binding(self):
+        result = self.verify(expected_hashes=[(self.source, hashlib.sha256(b"source").hexdigest())])
+        self.assertEqual(result["containers_exact"], 1)
+        self.assertEqual(result["compile_provenance"], "UNKNOWN")
+        self.assertFalse(result["source_recovery_proven"])
+        self.assertTrue(closure.verify_self_hash(result))
+
+    def test_selected_fallback_rejected(self):
+        (self.root / "build.ninja").write_text(self.graph.replace(
+            f"    {self.obj}", "    build/GP6E01/board/single.o"), encoding="utf-8")
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "select exactly"):
+            self.verify()
+
+    def test_extra_owner_object_rejected(self):
+        (self.root / "build.ninja").write_text(self.graph.replace(
+            f"    {self.obj}", f"    {self.obj} build/GP6E01/board/single.o"), encoding="utf-8")
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "ambiguous"):
+            self.verify()
+
+    def test_source_cannot_be_target_fallback(self):
+        self.source = "build/GP6E01/board/single.o"
+        (self.root / self.source).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / self.source).write_bytes(b"fallback")
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "canonical"):
+            self.verify()
+
+    def test_source_and_object_hash_drift(self):
+        for name in (self.source, self.obj):
+            with self.subTest(name=name), self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "drift"):
+                self.verify(expected_hashes=[(name, "0" * 64)])
+
+    def test_missing_output(self):
+        (self.root / "build/GP6E01/main.dol").unlink()
+        with self.assertRaises(OSError):
+            self.verify()
+
+    def test_one_differing_byte(self):
+        (self.root / "build/GP6E01/main.dol").write_bytes(b"retaiX")
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "mismatch"):
+            self.verify()
+
+    def test_main_dol_must_convert_selected_link_output(self):
+        (self.root / "build.ninja").write_text(self.graph.replace(
+            "elf2dol build/GP6E01/main.elf", "elf2dol build/GP6E01/other.elf"), encoding="utf-8")
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "does not convert selected"):
+            self.verify()
+
+    def test_built_retail_hardlink_rejected(self):
+        built = self.root / "build/GP6E01/main.dol"
+        built.unlink()
+        os.link(self.root / "retail/sys/main.dol", built)
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "aliased/duplicate"):
+            self.verify()
+
+    def test_output_alias_and_outside_build(self):
+        for output in (self.obj, "build/GP6E01/main.dol", "src/result.json"):
+            with self.subTest(output=output), self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "result output"):
+                self.verify(output=output)
+        alias = self.root / "build/alias.json"
+        os.link(self.root / self.obj, alias)
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "result output"):
+            self.verify(output="build/alias.json")
+        self.assertEqual((self.root / self.obj).read_bytes(), b"object")
+
+    def test_manifest_tampering_duplicate_and_omission(self):
+        for text in (self.manifest.replace(self.manifest[:40], "0" * 40), self.manifest * 2, ""):
+            (self.root / "build.sha1").write_text(text, encoding="utf-8")
+            with self.assertRaises(closure.SourceLinkedClosureInputError):
+                self.verify()
+
+    def test_unmanifested_graph_container(self):
+        (self.root / "build.ninja").write_text(self.graph +
+            "build build/GP6E01/foo/foo.rel: makerel foo.plf\n", encoding="utf-8")
+        with self.assertRaisesRegex(closure.SourceLinkedClosureInputError, "sets differ"):
+            self.verify()
+
+    def test_ninja_escaping_variables_and_ambiguity(self):
+        edges = closure._ninja_edges("build build/a$ b.o: cc src/a$ b.c\n"
+                                    "build a$$b: link build/a$ b.o\n")
+        self.assertEqual(edges["a$b"][1], ["build/a b.o"])
+        for text in ("build $out: link a\n", "build out: link ${in}\n",
+                     "include more.ninja\n", "build out: link a\nbuild out: link b\n"):
+            with self.assertRaises(closure.SourceLinkedClosureInputError):
+                closure._ninja_edges(text)
+
+    def test_atomic_result_and_cli(self):
+        result = self.verify(output="build/observation.json")
+        self.assertEqual(json.loads((self.root / "build/observation.json").read_text()), result)
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = closure.main(["verify-workspace", "--root", str(self.root),
+                "--ninja", "build.ninja", "--manifest", "build.sha1", "--retail-root",
+                str(self.root / "retail"), "--link-output", "build/GP6E01/main.elf",
+                "--selected", self.source, self.obj])
+        self.assertEqual(code, 0)
 
 
 if __name__ == "__main__":

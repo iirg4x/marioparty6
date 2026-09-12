@@ -558,3 +558,68 @@ The actual native reset remains at the same logical call with 257 -> 34.
 Earlier temporary identities change, post-reset return identities do not, yet
 later register colors improve. Do not mistake a physical color change for a
 changed reset or infer retail virtual IDs. This is partial progress only.
+
+## Single/DOL tooling closeout (2026-09-12)
+
+Single subsequently closed all 58 instruction/physical bodies and was promoted
+with its provider/header contract. The source cause and final proof are in
+[`single-koopamgend-closure.md`](single-koopamgend-closure.md). The paired-boundary
+temporary diagnostic is already implemented; do not build another search engine
+or treat its best alignment as a recovered target virtual ID.
+
+### Check what a provider actually leaves in the return register
+
+Extend declaration comparison with the existing call-contract tool:
+
+```text
+rtk proxy python tools/recovery_call_contract_repair.py callee-return --root . --report REPORT.json --report-sha256 SHA256 --symbol GWSingleMgFlagSet --side left
+```
+
+This read-only mode follows bounded PPC32 control flow and affine entry-register
+values through every reachable return. It reports source-independent reaching
+definition indices, unknown clobbers and unsupported instructions. Malformed or
+truncated instruction coverage and drifted reports reject the analysis. Optional
+`--source-signature` binds a signature descriptor for human comparison; it does
+not infer include visibility or rewrite a declaration.
+
+The real 18-instruction provider replay reports `entry.r3 - 601` modulo 2^32
+at the return, defined by instruction 0. That is the missing machine fact that
+made the consistent normalized-index return contract worth investigating.
+Residual r3 alone does **not** establish an original C return type: the output
+keeps `c_abi_return_type=UNKNOWN`. The actual source decision still requires
+caller consumers and a consistent provider implementation.
+
+### Reuse the final link and retail comparison, without ad hoc scripts
+
+After the normal build, the existing closure tool can inspect its outputs:
+
+```text
+rtk proxy python tools/source_linked_owner_closure.py verify-workspace --root PROOF_ROOT --ninja build.ninja --manifest config/GP6E01/build.sha1 --retail-root RETAIL_ROOT --link-output build/GP6E01/main.elf --selected src/board/single.c build/GP6E01/src/board/single.o --selected src/game/gamework.c build/GP6E01/src/game/gamework.o --output build/retail-observation.json
+```
+
+Repeat `--expect-sha256 PATH HASH` for verified source, header or object bindings.
+The reader joins continued Ninja lines, checks the exact selected link and DOL
+conversion edges, rejects fallback/ambiguous selections, checks the complete
+container manifest and compares files directly with bounded streaming. It does
+not run configure, compile or link. Existing Single outputs pass 137/137 direct
+retail comparisons, with the compiled Single/gamework objects selected.
+
+This is a **current-file observation**, not a new compile attestation: current
+files can be stale relative to their build graph. Both execution-provenance
+fields remain UNKNOWN and `closure_ready=false`. Combine it with the existing
+source/object compile receipts, strict/data/physical/sibling evidence and the
+real source-selected build. Never use fallback-linked retail equality to claim
+that the DOL source has been recovered.
+
+### Evaluation failures must be visible without another compile
+
+Both direct `recovery_evaluate.py` and frontier `evaluate` now print the failing
+stage and bounded available process diagnostics, plus the hash/path of the
+published result. Preflight or publication exceptions return structured failure
+JSON and exit 2; they never overwrite an existing result or write an unvalidated
+output just to create a failure receipt. The importable `main(argv)` uses the
+same entry point. A failed process is not a measured source dead end.
+
+These changes replay known Single evidence and remove manual diagnostic/proof
+steps. They do not claim a new crack or a measured increase in cracks/hour.
+No owner source or previously retained gain was changed during this tooling pass.

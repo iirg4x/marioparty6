@@ -218,6 +218,202 @@ def diagnose_declarations(*, root: Path, caller: dict, provider: dict,
     return result
 
 
+def diagnose_callee_return(*, root: Path, report: Path, report_sha256: str,
+                          symbol: str, side: str = "left",
+                          source_signature: dict | None = None) -> dict:
+    """Read-only, conservative PPC32 r3 provenance over a bounded CFG.
+
+    Abstract values are entry-GPR plus a constant modulo 2**32, or UNKNOWN.
+    Branch predicates are not evaluated: all syntactically reachable paths
+    participate. This is machine evidence, not inference of a C return type.
+    """
+    root = Path(root).absolute()
+    if side not in {"left", "right"}:
+        raise ValueError("callee-return side must be left or right")
+    if not isinstance(symbol, str) or not 1 <= len(symbol) <= 256:
+        raise ValueError("bounded callee symbol required")
+    if not isinstance(report_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", report_sha256):
+        raise ValueError("callee report requires SHA-256")
+    report = frontier.local(root, Path(report))
+    raw, binding = frontier.read_bound(root, report, frontier.REPORT_LIMIT)
+    if binding["sha256"] != report_sha256:
+        raise ValueError(f"hash drift: {report}")
+    document = frontier.load_json(raw)
+    selected = frontier._stack_function(frontier.focus._symbols(document, side, "callee"), symbol, side)
+    if selected is None:
+        raise ValueError(f"missing callee symbol: {symbol}")
+    rows = frontier.focus._rows(selected, symbol)
+    if len(rows) > 4096:
+        raise ValueError("callee CFG exceeds 4096 aligned rows")
+    actual_rows = []
+    for i, row in enumerate(rows):
+        if row.get("instruction") is None:
+            continue  # objdiff alignment gap, checked against full size below
+        instruction = row["instruction"]
+        if (not isinstance(instruction, dict) or not instruction.get("formatted")
+                or instruction.get("address") is None or instruction.get("size", 4) != 4):
+            raise ValueError(f"malformed PPC32 instruction at callee row {i}")
+        frontier._access_row(row, i)
+        actual_rows.append(row)
+    rows = actual_rows
+    if not rows:
+        raise ValueError("callee has no instructions")
+    addresses = [frontier._parse_access_offset(row["instruction"]["address"]) for row in rows]
+    if len(set(addresses)) != len(addresses):
+        raise ValueError("ambiguous callee instruction addresses")
+    if any(b != a + 4 for a, b in zip(addresses, addresses[1:])):
+        raise ValueError("callee instructions are not a contiguous PPC32 stream")
+    if selected.get("size") is None or selected.get("address") is None:
+        raise ValueError("callee symbol address and size required for full coverage")
+    if (frontier._parse_access_offset(selected["size"]) != len(rows)*4
+            or frontier._parse_access_offset(selected["address"]) != addresses[0]):
+        raise ValueError("callee symbol size does not cover the supplied instructions")
+    positions = {address: i for i, address in enumerate(addresses)}
+    watched = [(report, report_sha256)]
+    signature = None
+    if source_signature is not None:
+        desc = source_signature
+        if not isinstance(desc.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", desc["sha256"]):
+            raise ValueError("signature descriptor requires SHA-256")
+        path = frontier.local(root, Path(desc["path"]))
+        source, actual = _read(root, path, desc["sha256"])
+        start, end = desc["start_byte"], desc["end_byte"]
+        if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(source) or end-start > 1024:
+            raise ValueError("invalid bounded signature span")
+        signature = _declaration_view(source[start:end].decode("utf-8"), {})
+        if signature["name"] != symbol:
+            raise ValueError("callee signature name mismatch")
+        signature.update(source=actual, start_byte=start, end_byte=end)
+        watched.append((path, actual["sha256"]))
+    # Join unequal reaching values to UNKNOWN. The finite-height domain makes
+    # loops converge without enumerating paths or growing symbolic expressions.
+    states = {0: tuple((f"entry.r{i}", 0, frozenset({-1})) for i in range(32))}
+    pending, exits, issues = [0], {}, set()
+    conditional = {"beq", "bne", "blt", "ble", "bgt", "bge", "bso", "bns", "bdnz", "bdz"}
+    safe = {"cmpwi", "cmplwi", "cmpw", "cmplw", "cmpi", "cmpli", "nop",
+            "stw", "stb", "sth", "stwx", "stbx", "sthx", "stfd", "stfs",
+            "mtlr", "mtctr", "mtcrf", "cror", "crxor"}
+    writes = {"lwz", "lbz", "lhz", "lha", "lwzx", "lbzx", "lhzx", "lhax",
+              "lis", "mflr", "mfctr", "mfcr", "rlwinm", "rlwimi", "slw", "srw",
+              "srawi", "slwi", "clrlwi", "and", "andi.", "or", "ori", "xor", "xori", "add", "subf",
+              "mulli", "mullw", "extsb", "extsh", "neg", "cntlzw"}
+    def reg(value):
+        return int(value[1:]) if re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", value) else None
+    def immediate(value, subtract=False):
+        number = int(value, 0)
+        if subtract:
+            # subi/subis display the negation of the encoded signed operand;
+            # unlike a raw addi operand, 0xffff here cannot mean -1.
+            if not -32767 <= number <= 32768:
+                raise ValueError("subtraction pseudo immediate outside signed16 encoding")
+            return number
+        if not -32768 <= number <= 65535:
+            raise ValueError("immediate outside 16-bit encoding")
+        return number - 65536 if number >= 32768 else number
+    while pending:
+        i = pending.pop()
+        state = list(states[i])
+        parts = frontier._instruction_parts(rows[i])
+        op, args = parts if parts else ("", [])
+        if args == [""]:
+            args = []
+        op = op.rstrip("+-")
+        successors = [i + 1]
+        if op == "blr":
+            if args:
+                issues.add((i, "UNKNOWN unsupported operands"))
+            exits[i] = None if args else state[3]
+            continue
+        if op in {"bl", "bla", "bctrl", "blrl"}:
+            for r in (0, *range(3, 13)):
+                state[r] = None
+            issues.add((i, "call clobbers volatile GPRs; return value UNKNOWN"))
+        elif op in {"b", "ba"} | conditional:
+            branch = frontier._branch_instruction(rows[i]["instruction"]["formatted"], i,
+                                                  rows[i]["instruction"].get("branch_dest"))
+            dest = positions.get(branch["destination"]) if branch else None
+            if dest is None or rows[i]["instruction"].get("relocation"):
+                issues.add((i, "UNKNOWN branch destination"))
+                continue
+            successors = [dest] + ([i + 1] if op in conditional else [])
+        elif op in {"mr", "addi", "addis", "subi", "subis", "li"}:
+            try:
+                if len(args) != (2 if op in {"mr", "li"} else 3):
+                    raise ValueError("unexpected operand count")
+                dst = reg(args[0])
+                if dst is None:
+                    raise ValueError()
+                if op == "li":
+                    value = ("constant", immediate(args[1]) & 0xffffffff)
+                else:
+                    src = reg(args[1])
+                    if src is None:
+                        raise ValueError()
+                    value = ("constant", 0) if src == 0 and op != "mr" else state[src]
+                    if op != "mr" and value is not None:
+                        factor = (65536 if op in {"addis", "subis"} else 1) * (-1 if op.startswith("sub") else 1)
+                        value = (value[0], (value[1] + immediate(args[2], op.startswith("sub")) * factor) & 0xffffffff)
+                if rows[i]["instruction"].get("relocation"):
+                    value = None
+                state[dst] = (*value[:2], frozenset({i})) if value is not None else None
+            except (IndexError, ValueError):
+                issues.add((i, "UNKNOWN unsupported operands"))
+                if args and reg(args[0]) is not None:
+                    state[reg(args[0])] = None
+                else:
+                    state = [None] * 32
+        elif op in writes and args and reg(args[0]) is not None:
+            state[reg(args[0])] = None
+        elif op not in safe:
+            # Unknown opcodes may write multiple registers or alter control
+            # flow. Never assume the first operand is the only destination.
+            state = [None] * 32
+            issues.add((i, "UNKNOWN unsupported instruction/flow"))
+            if op.startswith("b") or op in {"rfi", "sc", "tw", "twi"}:
+                continue
+        for nxt in successors:
+            if nxt >= len(rows):
+                issues.add((i, "UNKNOWN fallthrough outside callee"))
+                continue
+            incoming = tuple(state)
+            old = states.get(nxt)
+            merged = incoming if old is None else tuple(
+                (a[0], a[1], a[2] | b[2]) if a is not None and b is not None and a[:2] == b[:2]
+                else None for a, b in zip(old, incoming))
+            if old != merged:
+                states[nxt] = merged
+                pending.append(nxt)
+    def expression(value):
+        if value is None:
+            return None
+        offset = value[1] if value[1] < 0x80000000 else value[1] - 0x100000000
+        return {"base": value[0], "addend": offset, "arithmetic": "modulo_2^32"}
+    values = {v[:2] if v is not None else None for v in exits.values()}
+    common = next(iter(values)) if len(values) == 1 else None
+    # Any unmodelled instruction/flow blocks an all-path statement, even when
+    # a later write happens to reconstruct a recognizable r3 value.
+    complete = not any("call clobbers" not in reason for _, reason in issues)
+    result = {"schema": "recovery_callee_return_flow/v1", "report": binding,
+              "symbol": symbol, "side": side, "instruction_count": len(rows),
+              "reachable_instruction_count": len(states), "reachable_return_count": len(exits),
+              "status": "COMMON_VALUE" if complete and common is not None else "UNKNOWN",
+              "common_normalized_entry_value": expression(common) if complete else None,
+              "returns": [{"instruction_index": i, "address": addresses[i], "r3": expression(v),
+                           "r3_reaching_definition_indices": sorted(v[2]) if v is not None else None}
+                          for i, v in sorted(exits.items())],
+              "definition_index_convention": "-1 is incoming entry value; other indices are filtered instruction indices",
+              "issues": [{"instruction_index": i, "reason": reason} for i, reason in sorted(issues)],
+              "source_signature": signature, "diagnostic_only": True,
+              "source_patch_emitted": False, "authority_advanced": False,
+              "c_abi_return_type": "UNKNOWN",
+              "interpretation": "Machine r3 provenance supports human contract review; residual r3 does not recover the original declaration or prove a C return type."}
+    if any(compiler.digest(path) != sha for path, sha in watched):
+        raise ValueError("callee-return inputs changed during analysis")
+    if len(frontier.canonical(result)) > 256 * 1024:
+        raise ValueError("callee-return diagnostic exceeds 256 KiB")
+    return result
+
+
 def _contracts(root: Path, items: list[dict]) -> tuple[list[dict], dict[str, str]]:
     if not isinstance(items, list) or not 1 <= len(items) <= 32:
         raise ValueError("1..32 ordered reviewed contracts required")
@@ -448,6 +644,24 @@ def generate(*, root: Path, index: Path, capture: Path, capture_sha256: str,
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "callee-return":
+        parser = argparse.ArgumentParser(description="Read-only bounded callee r3 return-flow diagnostic")
+        parser.add_argument("--root", type=Path, required=True)
+        parser.add_argument("--report", type=Path, required=True)
+        parser.add_argument("--report-sha256", required=True)
+        parser.add_argument("--symbol", required=True)
+        parser.add_argument("--side", choices=("left", "right"), default="left")
+        parser.add_argument("--source-signature", type=Path, help="JSON hash-bound source span descriptor")
+        args = vars(parser.parse_args(sys.argv[2:]))
+        try:
+            if args["source_signature"] is not None:
+                raw, _ = _read(args["root"].absolute(), args["source_signature"])
+                args["source_signature"] = frontier.load_json(raw)
+            print(json.dumps(diagnose_callee_return(**args), sort_keys=True))
+            return 0
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print(f"callee-return diagnostic: {exc}", file=sys.stderr)
+            return 2
     if len(sys.argv) > 1 and sys.argv[1] == "declarations":
         parser = argparse.ArgumentParser(description="Read-only caller/provider return-contract and parameter-conversion diagnostic")
         parser.add_argument("--root", type=Path, required=True)
