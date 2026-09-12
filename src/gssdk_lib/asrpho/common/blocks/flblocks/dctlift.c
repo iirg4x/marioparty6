@@ -38,8 +38,8 @@ static void ProcessDCTLift(
     coefficients = block->coefficients;
     scale = block->scale;
     *output++ = *input++;
-    inputEnd = input + block->inputEnd;
     outputEnd = output + block->outputCount;
+    inputEnd = input + block->inputEnd;
     input += block->inputStart;
 
     while (output < outputEnd) {
@@ -51,7 +51,7 @@ static void ProcessDCTLift(
         *output++ *= scale;
     }
 
-    output -= block->outputCount;
+    output = outputEnd - block->outputCount;
     *output *= 0.5f;
 }
 
@@ -75,12 +75,12 @@ static u32 InitDCTLift(TosBaseBlock *baseBlock)
 {
     DCTLift *block = (DCTLift *)baseBlock;
     u32 outputCount;
-    s16 liftPeriod;
-    u32 inputSpan;
-    u32 i;
-    u32 j;
-    f32 lift;
+    s32 liftPeriod;
     f32 *coefficient;
+    u32 j;
+    u32 i;
+    u32 inputSpan;
+    f32 lift;
 
     outputCount = (u16)_tosGetProfileU32(block, 2, 13);
     block->outputCount = outputCount;
@@ -88,23 +88,23 @@ static u32 InitDCTLift(TosBaseBlock *baseBlock)
     block->inputEnd = (u16)_tosGetProfileU32(block, 1, 21);
     block->inputStart = (u16)_tosGetProfileU32(block, 4, 0);
 
+    inputSpan = block->inputEnd - block->inputStart;
     block->base.input->inputSize =
         (block->inputEnd + 1) * sizeof(f32);
     block->base.output->outputSize =
         (outputCount + 1) * sizeof(f32);
 
-    inputSpan = block->inputEnd - block->inputStart;
-    block->scale = 2.0 / inputSpan;
+    block->scale = 2.0 / (f32)inputSpan;
     block->coefficients = heap_Alloc(
         block->base.context->heap,
         outputCount * inputSpan * sizeof(f32));
 
     coefficient = block->coefficients;
     for (i = 0; i < outputCount; i++) {
-        lift = 1.0f + 6.0f * sinf(M_PI * i / liftPeriod);
+        lift = 1.0f + 6.0f * sinf(M_PI * (f32)i / (f32)liftPeriod);
         for (j = 0; j < inputSpan; j++) {
             *coefficient++ =
-                lift * cosf(M_PI * (j + 0.5) * i / inputSpan);
+                lift * cosf(M_PI * ((f32)j + 0.5) * (f32)i / (f32)inputSpan);
         }
     }
     return 0;
