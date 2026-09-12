@@ -2,7 +2,7 @@
 
 #include "gssdk/tos.h"
 
-typedef s16 (*ExtraEventStateScoreFunction)(void *context);
+typedef s16 (*ExtraEventStateScoreFunction)(void *context, u32 stateId);
 typedef s32 (*ExtraEventFrameScoreFunction)(void *context);
 typedef s16 *(*ExtraEventScoreCacheFunction)(void *context);
 
@@ -56,7 +56,7 @@ extern void heap_Free(void *heap, void *ptr);
 static void InitViterbi(ExtraEventDP *block)
 {
 ExtraEventState *state;
-u16 i;
+u32 i = 0;
 
 block->bestScore = 0;
 block->accumulatedScore = 0;
@@ -66,8 +66,9 @@ state = block->states;
 state->score = block->initialScore;
 state->stateId = block->stateIds[0];
 state++;
+i++;
 
-for (i = 1; i < block->stateCount; i++) {
+for (; i < block->stateCount; i++) {
     state->score = 0x7FFFF7FF;
     state->stateId = block->stateIds[i];
     state++;
@@ -82,8 +83,9 @@ ExtraEventState *state;
 ExtraEventState *endState;
 s16 *scoreCache;
 s32 previousLastScore;
-s32 nextScore;
+s32 nextScore = 0x7FFFFFFF;
 s32 score;
+s16 stateScore;
 u16 transition;
 u16 stateIndex;
 
@@ -91,21 +93,18 @@ states = block->states;
 lastState = &states[block->stateCount - 1];
 scoreCache = block->scoreCache;
 previousLastScore = lastState->score;
-nextScore = 0x7FFFFFFF;
 
 for (transition = 1; transition <= block->transitionCount; transition++) {
-    endState = &states[block->transitionBounds[transition + 1] - 1];
-    state = &states[block->transitionBounds[transition]];
+    endState = block->states + block->transitionBounds[transition + 1] - 1;
+    state = block->states + block->transitionBounds[transition];
     score = states[0].score + block->transitionScore;
 
     while (state < endState) {
-        s32 currentScore = state->score;
-
         nextScore = score;
-        if (nextScore < currentScore) {
+        score = state->score;
+        if (nextScore < score) {
             state->score = nextScore;
         }
-        score = currentScore;
         state++;
     }
 
@@ -121,15 +120,14 @@ if (previousLastScore < states[0].score) {
     states[0].score = lastState->score;
 }
 
-state = states;
+state = block->states;
 for (stateIndex = 0; stateIndex < block->stateCount; stateIndex++) {
-    score = scoreCache[state->stateId];
-    if (score == 0x7FFF) {
-        score = block->readStateScore(block->callbackContext);
-        scoreCache[state->stateId] = score;
+    if ((stateScore = scoreCache[state->stateId]) == 0x7FFF) {
+        stateScore = block->readStateScore(block->callbackContext, state->stateId);
+        scoreCache[state->stateId] = stateScore;
     }
 
-    state->score += (s16)score;
+    state->score += stateScore;
     if (state->score > 0x7FFFF7FF) {
         state->score = 0x7FFFF7FF;
     }
@@ -170,16 +168,15 @@ static u32 ControlExtraEventDP(
 TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
 {
 ExtraEventDP *block = (ExtraEventDP *)baseBlock;
-ExtraEventCallbacks *callbacks = (ExtraEventCallbacks *)argument;
-ExtraEventContextInfo *contextInfo = (ExtraEventContextInfo *)argument;
 TosContext *context;
 
 switch ((u8)command) {
 case 1:
-    if (argument == NULL) {
+    if (argument != NULL) {
+        *(s32 *)argument = block->bestScore + block->accumulatedScore;
+    } else {
         return 1;
     }
-    *(s32 *)argument = block->bestScore + block->accumulatedScore;
     break;
 case 2:
     InitViterbi(block);
@@ -187,17 +184,14 @@ case 2:
     break;
 case 3:
     break;
-case 6:
-    block->readStateScore = callbacks->readStateScore;
-    block->getScoreCache = callbacks->getScoreCache;
-    block->readFrameScore = callbacks->readFrameScore;
-    block->callbackContext = callbacks->context;
-    break;
 case 7:
     break;
-case 8:
+case 8: {
+    ExtraEventContextInfo *contextInfo = (ExtraEventContextInfo *)argument;
+    TosContext *freeContext = block->base.context;
+
     if (block->states != NULL) {
-        heap_Free(block->base.context->heap, block->states);
+        heap_Free(freeContext->heap, block->states);
         block->states = NULL;
     }
 
@@ -215,13 +209,26 @@ case 8:
         _tosErrorLog(block, 1);
     }
     break;
-case 0xFF:
+}
+case 6: {
+    ExtraEventCallbacks *callbacks = (ExtraEventCallbacks *)argument;
+
+    block->readStateScore = callbacks->readStateScore;
+    block->getScoreCache = callbacks->getScoreCache;
+    block->readFrameScore = callbacks->readFrameScore;
+    block->callbackContext = callbacks->context;
+    break;
+}
+case 0xFF: {
+    TosContext *freeContext = block->base.context;
+
     if (block->states != NULL) {
-        heap_Free(block->base.context->heap, block->states);
+        heap_Free(freeContext->heap, block->states);
         block->states = NULL;
     }
     tosBaseBlockDestruct(block);
     break;
+}
 default:
     return 0;
 }

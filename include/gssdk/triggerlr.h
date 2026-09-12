@@ -11,10 +11,10 @@ typedef struct TriggerLR {
     TosBaseBlock base;
     u32 frameCount;
     u32 speechStartFrame;
-    u32 triggerEventMode;
+    s32 triggerEventMode;
     u32 resetStartsInputQueues;
-    u32 holdInputQueuesAfterTrigger;
-    u32 speechActive;
+    s32 holdInputQueuesAfterTrigger;
+    s32 speechActive;
     u32 activitySeen;
     u32 endSilenceFrames;
     u32 endSilenceMilliseconds;
@@ -35,8 +35,8 @@ typedef struct TriggerLR {
     f32 peakActivityLog;
     f32 noiseFloorOffsetLog;
     f32 histogramThresholdOffsetLog;
-    u32 processMode;
-    u32 speechState;
+    s32 processMode;
+    s32 speechState;
     f32 histogramQuantile;
     f32 histogramCandidatePeak;
     f32 histogramLowerQuantile;

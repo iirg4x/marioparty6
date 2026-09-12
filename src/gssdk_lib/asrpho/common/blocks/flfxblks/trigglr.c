@@ -7,8 +7,6 @@ extern void heap_Free(void *heap, void *ptr);
 extern f32 logf_check(f32 value);
 extern u8 qQueueControl(
     TosQueue *queue, u32 command, u32 elementSize, void *argument);
-extern u8 _tosControl(
-    TosBaseBlock *block, u32 command, u32 argument0, u32 argument1);
 extern u8 tosBaseBlockStartInputQueues(TosBaseBlock *block, u32 reader);
 extern u8 tosBaseBlockDisableInputQueues(TosBaseBlock *block);
 
@@ -324,11 +322,11 @@ static void ProcessTriggerLR(
 
     block->frameCount++;
     if (block->processMode == 0) {
-        if (Voicing_AddSignal(block, (s16 *)inputs[0])) {
+        s16 *input = (s16 *)inputs[0];
+        if (Voicing_AddSignal(block, input)) {
             return;
         }
-        block->triggerLookbackFrames++;
-        if (block->triggerLookbackFrames > block->triggerLookbackLimit) {
+        if (++block->triggerLookbackFrames > block->triggerLookbackLimit) {
             block->triggerLookbackFrames = block->triggerLookbackLimit;
         }
     }
@@ -351,10 +349,16 @@ static void ProcessTriggerLR(
             return;
         }
 
-        if (_tosControl(
-                baseBlock, block->triggerEventMode ? 0xCB : 0xC8,
-                block->triggerLookbackFrames, block->frameCount)) {
-            return;
+        if (block->triggerEventMode) {
+            if (_tosControl(baseBlock, 0xCB,
+                    block->triggerLookbackFrames, block->frameCount)) {
+                return;
+            }
+        } else {
+            if (_tosControl(baseBlock, 0xC8,
+                    block->triggerLookbackFrames, block->frameCount)) {
+                return;
+            }
         }
 
         if (block->holdInputQueuesAfterTrigger) {

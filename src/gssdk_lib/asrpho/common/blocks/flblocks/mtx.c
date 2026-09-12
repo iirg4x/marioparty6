@@ -156,15 +156,14 @@ void mtxCompress(FloatMatrix *matrix, f32 center)
 
 u32 QrDeleteCol(FloatMatrix *matrix, FloatMatrix *vector, u32 column)
 {
+    f32 *source;
+    f32 *diagonal;
     f32 *matrixEnd = matrix->values + matrix->rows * matrix->columns;
     f32 *vectorEnd = vector->values + vector->elementCount;
     u32 currentColumn;
 
     for (currentColumn = column + 1; currentColumn < matrix->columns;
          currentColumn++) {
-        f32 *source =
-            matrix->values + currentColumn * matrix->rows;
-        f32 *diagonal = source + currentColumn;
         f32 upper;
         f32 lower;
         f32 absoluteUpper;
@@ -175,6 +174,8 @@ u32 QrDeleteCol(FloatMatrix *matrix, FloatMatrix *vector, u32 column)
         f32 *destination;
         u32 row;
 
+        source = matrix->values + currentColumn * matrix->rows;
+        diagonal = source + currentColumn;
         lower = *diagonal--;
         upper = *diagonal;
         destination = source - matrix->rows;

@@ -289,3 +289,89 @@ source, compile-context failures, exact siblings and structural residuals.
 It is selection evidence, not newly recovered progress. Two further Qwen jobs
 in `build/qwen-dol-structural-followup-20260912/` run concurrently while the
 primary works; no Luna workers or new user-owned lanes were started.
+
+#### Subsequent exact QR closure
+
+QrDeleteCol subsequently reached **100 strict/data, 776 bytes**, with every
+other function unchanged. Moving only the two reusable traversal cursors
+`source`/`diagonal` to function scope closes the four-pointer cycle; the
+per-column destination stays local. This is the important distinction from the
+regressing all-outer-declarations probe. mtx is now **11/12 exact**, with
+imtxDeleteCol at 98.67647 remaining. The composed live source is
+`3ccc87d3759aeb50d8af939bf6927629b8e1cb65e6a560f6385c76e538365120`,
+object `2a0e7e353a701dffcb834cf2aec2c4b976adc4d61a2cd7556093860cabb9412e`.
+Evidence: `build/dol-current-mtx-followup-20260912/mtx/`.
+Named row/offset snapshots for imtxDeleteCol remain neutral, not retained.
+
+The next structural owner, exev_dp, retains its full-width InitViterbi index:
+71.17242 -> 74.793106 and 120 -> target 116 bytes. The target has no 16-bit
+mask on this loop's comparison; the other process loop's masks remain intact.
+ControlExtraEventDP also improves 53.63964 -> 54.585587 from the corrected
+inlined copy. Its unwanted inlining is still unresolved; no pragma is added.
+The exact Process/Construct instructions remain exact; their local relocation
+offsets move with the four-byte size correction and still require final linked
+proof. Source `fc36aeb4c3fe6ca0a36b9387adf3d4d8b7ea3013f4cc01be2ff73f09652cfbcc`,
+object `9c937181d7e0635dfd5eb0b477f7700905c9af67450b8512e44ded1ae1f3dbdc`.
+Evidence: `build/dol-current-exev-20260912/exev_dp/verification.json`.
+Reusing a zero index through the first-state assignment regresses size and the
+control function; switching the full-width index to signed is neutral. Neither
+replaces the retained unsigned source.
+
+### Current continuation and token discipline
+
+The later, distinct peeled-count reconstruction keeps the first state-ID read
+at constant index zero, then advances the real count after that state. It makes
+InitViterbi 116/116 strict/data exact and naturally restores the outlined call
+in ControlExtraEventDP. The prior failing state-cursor probe indexed that first
+read; it did not test this source shape. Control's case order, positive result
+branch, and context snapshots then improve it to 97.567566 at 444/444 bytes.
+DynProgExtraEventsProcess is 95.74074 at 432/432 after the state-ID callback
+argument, explicit transition bounds, rolling score reuse, and cache-test
+assignment are reconstructed. All prior exact functions remain exact. Current
+source is 6b8abed938c734d5c9d2ad0651579db3a7d1773aea8790f3a89cbae619d877d6;
+object 2ce16b207eab7bd8acc3a0694259283d65f9f953c9f250f7fc3c04be68f9b060.
+Evidence: `build/qwen-dol-bounds-20260912/exev_control/control-topology-*`.
+This is 3/6 functions exact, not a completed owner or main promotion.
+
+User-requested token optimization applies immediately:
+- Read bounded source ranges and the first causal mismatch group; do not repeat
+  whole source/report/instruction-policy dumps within an intact context.
+- Reuse hash-bound evidence and report changed functions, exact losses, and
+  physical changes only. Full verification remains in its local artifact.
+- Keep independent research on the two local Qwen GPU slots; no Luna or paid
+  support fan-out. Astra integrates and compiler-tests credible answers.
+- Consume completed support answers once. Do not poll unchanged work repeatedly
+  or turn speculative suggestions into long approval/report exchanges.
+- Keep commentary short; communicate verified gains, closures, and actionable
+  blockers. Never hide regressions to save tokens or weaken final link proof.
+
+### TriggerLR type/control reconstruction
+
+ProcessTriggerLR improves **86.15888 -> 99.85981**, retaining target size
+428 bytes and independently exact **7/7 physical relocations**. The source
+reconstructs the two distinct control-call branches, consumes the incremented
+lookback count directly, and snapshots the real input pointer before its call.
+The remaining two differences are conditional-branch topology, not register
+ownership. A common call-result local incorrectly merged a target test and
+shortened the function; that variant is not retained.
+
+Five 32-bit mode/flag fields in `triggerlr.h` are signed, as demonstrated by
+the target's signed comparisons: triggerEventMode, holdInputQueuesAfterTrigger,
+speechActive, processMode, speechState. Width, offsets and total layout are
+unchanged. A frozen private include overlay tested all four consumers;
+voicing, subsamp and slidhist have unchanged function/physical results, including
+all existing exact siblings. FindSpeech improves to 85.80272 and Control to
+66.75 as additional consequences. The conflicting redundant `_tosControl`
+declaration was removed; its canonical included prototype is unchanged.
+
+Retained evidence:
+`build/qwen-dol-causal-next-20260912/trigger_find/process-input-*` and
+`build/dol-trigger-header-20260912/{trigglr,voicing,subsamp,slidhist}/`.
+InitViterbi also has an independent exact 0/0 physical receipt. These are local
+partial-owner gains, not a new Matching owner or a main promotion.
+
+Qwen's named matrix-offset proposal regressed imtxDeleteCol and was rejected.
+Its later InitViterbi definition-move suggestion was stale and not compiled:
+the primary had already solved that inlining boundary by the real peeled loop.
+Two fresh bounded Qwen questions cover the remaining Exev control owner cycle
+and TriggerLR FindSpeech structure; neither is a source-authority gate.
