@@ -4,19 +4,23 @@
 
 u32 QrPreMult(FloatMatrix *matrix, FloatMatrix *multipliers, FloatMatrix *vector)
 {
-    u32 column;
-    u32 row;
-    u32 offset = 0;
-    f32 *matrixValue = matrix->values;
-    f32 *vectorValue = vector->values;
-    f32 *multiplier = multipliers->values;
+    f32 *multiplier;
+    f32 *matrixValue;
     f32 *matrixCursor;
+    f32 *vectorValue;
     f32 *vectorCursor;
+    u32 row;
+    u32 column;
 
-    for (column = 0; column < matrix->columns; column++, offset++) {
+    column = 0;
+    vectorValue = vector->values;
+    multiplier = multipliers->values;
+    matrixValue = matrix->values;
+
+    while (column++ < matrix->columns) {
         f32 sum;
 
-        matrixValue += offset;
+        matrixValue += column;
         sum = *vectorValue++;
         matrixCursor = matrixValue;
         vectorCursor = vectorValue;

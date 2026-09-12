@@ -21,6 +21,56 @@ def report(left, right):
 
 
 class CausalGroupsTests(unittest.TestCase):
+    def test_producer_field_order_and_downstream_use(self):
+        left = [row("lwz r4, 0x28(r30)", 0), row("lwz r3, 0x2c(r30)", 4), row("add r6, r5, r3", 8)]
+        right = [row("lwz r4, 0x2c(r30)", 0), row("lwz r3, 0x28(r30)", 4), row("add r4, r5, r4", 8)]
+        result = groups.summarize_groups(report(left, right), "f", producers=8)["producer_slice"]
+        self.assertEqual(result["target"]["nodes"][0]["memory_root"]["offset"], 40)
+        self.assertEqual(result["candidate"]["nodes"][0]["memory_root"]["offset"], 44)
+        self.assertEqual(result["target"]["nodes"][2]["uses"][1]["definition_row"], 1)
+        self.assertEqual(result["candidate"]["nodes"][2]["uses"][1]["definition_row"], 0)
+
+    def test_producer_boundaries(self):
+        for text, reason in (("bl helper", "call boundary"), ("b 0x8", "CFG/function entry"), ("mystery r8", "unsupported opcode")):
+            result = groups.producer_slice([row("li r3, 1", 0), row(text, 4), row("mr r4, r3", 8)], [2])
+            self.assertEqual(result["nodes"][-1]["uses"][0]["reason"], reason)
+            self.assertNotIn("definition_row", result["nodes"][-1]["uses"][0])
+
+    def test_producer_branch_entry_alias_and_symbolic_memory(self):
+        rows = [row("li r3, 1", 0), row("b 0xc", 4, branch_dest="12"), row("li r3, 2", 8),
+                row("mr r4, r3", 12), row("lfs f0, label@sda21(r2)", 12)]
+        result = groups.producer_slice(rows, [3, 4])
+        self.assertEqual(result["nodes"][0]["uses"][0]["status"], "UNKNOWN")
+        self.assertEqual(result["nodes"][1]["memory_root"]["status"], "UNKNOWN")
+
+    def test_producer_bounds_and_optional_default(self):
+        rows = [row("addi r3, r3, 1", i * 4) for i in range(100)]
+        result = groups.producer_slice(rows, [99, 98], limit=1)
+        self.assertEqual(len(result["nodes"]), 4)
+        self.assertTrue(result["truncated"])
+        self.assertNotIn("producer_slice", groups.summarize_groups(report(rows, rows), "f"))
+        with self.assertRaises(ValueError):
+            groups.producer_slice(rows, [1], limit=65)
+
+    def test_producer_label_and_zero_base(self):
+        rows = [row("li r3, 1", 0), {"label": "alias"}, row("mr r4, r3", 4),
+                row("lwz r5, 0x28(r0)", 8), row("addi r6, r0, 4", 12)]
+        nodes = groups.producer_slice(rows, [2, 3, 4])["nodes"]
+        self.assertEqual(nodes[0]["uses"][0]["reason"], "unsupported/label boundary")
+        self.assertEqual(nodes[1]["uses"], [])
+        self.assertTrue(nodes[1]["memory_root"]["zero_base"])
+        self.assertEqual(nodes[2]["uses"], [])
+
+    def test_rotate_mask_aliases_preserve_unrelated_definitions(self):
+        for alias in ("clrlwi r0, r3, 16", "clrlslwi r0, r3, 16, 2"):
+            rows = [row("li r5, 1", 0), row("li r6, 2", 4), row("li r3, 3", 8),
+                    row(alias, 12), row("add r7, r5, r6", 16)]
+            nodes = groups.producer_slice(rows, [3, 4])["nodes"]
+            self.assertEqual(nodes[3]["defines"], "r0")
+            self.assertEqual(nodes[3]["uses"], [{"register": "r3", "definition_row": 2}])
+            self.assertEqual(nodes[4]["uses"], [{"register": "r5", "definition_row": 0},
+                                                {"register": "r6", "definition_row": 1}])
+
     def test_identical(self):
         rows = [row("li r3, 0", 0), row("blr", 4)]
         result = groups.summarize_groups(report(rows, copy.deepcopy(rows)), "f")

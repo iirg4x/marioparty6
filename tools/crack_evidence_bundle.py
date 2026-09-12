@@ -521,6 +521,7 @@ def _parse_elf_structure(path: Path) -> dict[str, Any]:
             raise EvidenceError("truncated ELF section table")
         sections.append({
             "name_off": _elf_u32(data, off), "type": _elf_u32(data, off + 4),
+            "flags": _elf_u32(data, off + 8),
             "offset": _elf_u32(data, off + 16), "size": _elf_u32(data, off + 20),
             "link": _elf_u32(data, off + 24), "info": _elf_u32(data, off + 28),
             "entsize": _elf_u32(data, off + 36),
@@ -609,6 +610,65 @@ def _parse_elf_relocations(path: Path, function: str, *, structure: Mapping[str,
     }
 
 
+def _sda21_application_equivalence(target: Mapping[str, Any], candidate: Mapping[str, Any],
+                                  target_elf: Mapping[str, Any], candidate_elf: Mapping[str, Any]) -> dict[str, Any]:
+    """Separate DTK site equivalence, never a replacement for raw/link proof.
+
+    DTK v0.9.2 src/obj/relocations.rs::to_elf and ::insert align SDA21
+    to the instruction. Its elf fixup preserves raw offsets. Accept only the
+    observed 0/+2 convention on identical, non-update D-form instructions;
+    arbitrary byte offsets, overlapping relocations and other types stay raw.
+    https://github.com/encounter/decomp-toolkit/blob/v0.9.2/src/obj/relocations.rs
+    https://github.com/encounter/decomp-toolkit/blob/v0.9.2/src/cmd/elf.rs
+    """
+    keys = ("offset", "type", "effective_target")
+    left = [{k: r[k] for k in keys} for r in target["physical_relocations"]]
+    right = [{k: r[k] for k in keys} for r in candidate["physical_relocations"]]
+    mappings = []
+    shape = (target["section"] == candidate["section"] == ".text"
+             and target["size"] == candidate["size"]
+             and target["offset"] % 4 == candidate["offset"] % 4 == 0)
+    for a, b in zip(left, right):
+        if a == b or not shape:
+            continue
+        site = a["offset"] & ~3
+        effective = a["effective_target"]
+        if not (a["type"] == b["type"] == 109 and effective == b["effective_target"]
+                and effective.get("kind") == "section"
+                and effective.get("section") in {".sdata", ".sdata2", ".sbss", ".sbss2"}
+                and {a["offset"] - site, b["offset"] - site} == {0, 2}
+                and site + 4 <= target["size"]):
+            continue
+        if any(sum((r["offset"] & ~3) == site for r in rows) != 1 for rows in (left, right)):
+            continue
+        words = []
+        for focus, elf in ((target, target_elf), (candidate, candidate_elf)):
+            sections = [s for s in elf["sections"] if s["name"] == focus["section"]]
+            if len(sections) != 1 or sections[0]["type"] != 1 or not sections[0].get("flags", 0) & 4:
+                break
+            section = sections[0]
+            offset = focus["offset"] + site
+            if offset + 4 > section["size"]:
+                break
+            raw = elf["data"][section["offset"] + offset:section["offset"] + offset + 4]
+            if len(raw) != 4:
+                break
+            words.append(int.from_bytes(raw, "big"))
+        # addi and non-update integer/FP D-form memory instructions only.
+        if (len(words) != 2 or words[0] != words[1]
+                or words[0] >> 26 not in {14, 32, 34, 36, 38, 40, 42, 44, 48, 50, 52, 54}
+                or words[0] & 0x1fffff):
+            continue
+        mappings.append({"target_raw_offset": a["offset"], "candidate_raw_offset": b["offset"],
+                         "instruction_offset": site, "instruction_word": f"{words[0]:08x}",
+                         "type": 109, "effective_target": effective})
+        a["offset"] = b["offset"] = site
+    return {"equivalent": left == right, "mappings": mappings,
+            "basis": "DTK v0.9.2 instruction-site convention; identical zero-relocation D-form word and effective target",
+            "raw_exact_unchanged": True, "linked_application_proven": False,
+            "authority_advanced": False}
+
+
 def _physical_receipt(target: Path, candidate: Path, function: str, strict_report: Path, readelf: Path,
                       *, cache: dict[str, Any] | None = None) -> dict[str, Any]:
     # Run the pinned external tool first.  The independent parser below provides
@@ -637,6 +697,8 @@ def _physical_receipt(target: Path, candidate: Path, function: str, strict_repor
         "target": target_row, "candidate": candidate_row,
         "physical_relocations_exact": not differences,
         "physical_relocation_differences": differences,
+        "dtk_instruction_application_equivalence": _sda21_application_equivalence(
+            target_row, candidate_row, cache[str(target.resolve())], cache[str(candidate.resolve())]),
         "symbol_attribution_aliases": [],
     }
     receipt["receipt_sha256"] = _json_sha(receipt)

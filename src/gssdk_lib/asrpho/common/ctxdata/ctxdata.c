@@ -156,7 +156,7 @@ void *_contextGetpSyntax(ContextData *context)
     return syntax + syntaxCount * sizeof(u16);
 }
 
-const ContextV2Function _ContextV2VirtualTable[] = {
+static const ContextV2Function _ContextV2VirtualTable[] = {
     NULL,
     (ContextV2Function)_contextCheckDataType,
     (ContextV2Function)_contextGetSize,

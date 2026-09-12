@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import copy
 import json
 import os
 import shutil
@@ -24,6 +25,38 @@ def digest(path: Path) -> str:
 
 
 class EvidenceContainmentTests(unittest.TestCase):
+    def test_sda21_site_equivalence_is_separate_and_narrow(self):
+        relocation = {"offset": 0, "type": 109,
+                      "effective_target": {"kind": "section", "section": ".sdata2", "offset": 4}}
+        target = {"section": ".text", "offset": 0, "size": 8, "physical_relocations": [relocation]}
+        candidate = copy.deepcopy(target)
+        candidate["physical_relocations"][0]["offset"] = 2
+        elf = {"data": bytes.fromhex("c06000004e800020"),
+               "sections": [{"name": ".text", "type": 1, "flags": 6, "offset": 0, "size": 8}]}
+        result = bundle._sda21_application_equivalence(target, candidate, elf, elf)
+        self.assertTrue(result["equivalent"])
+        self.assertEqual(result["mappings"][0]["candidate_raw_offset"], 2)
+        self.assertEqual(candidate["physical_relocations"][0]["offset"], 2)
+        self.assertFalse(result["linked_application_proven"])
+        for offset in (1, 3, 4, 6):
+            bad = copy.deepcopy(candidate)
+            bad["physical_relocations"][0]["offset"] = offset
+            self.assertFalse(bundle._sda21_application_equivalence(target, bad, elf, elf)["equivalent"])
+        for field, value in (("type", 4), ("effective_target", {"kind": "section", "section": ".sdata2", "offset": 8})):
+            bad = copy.deepcopy(candidate)
+            bad["physical_relocations"][0][field] = value
+            self.assertFalse(bundle._sda21_application_equivalence(target, bad, elf, elf)["equivalent"])
+        for word in ("c0000000", "c0600001", "4e800020"):
+            bad_elf = copy.deepcopy(elf)
+            bad_elf["data"] = bytes.fromhex(word + "4e800020")
+            self.assertFalse(bundle._sda21_application_equivalence(target, candidate, elf, bad_elf)["equivalent"])
+        bad_elf = copy.deepcopy(elf)
+        bad_elf["sections"][0]["flags"] = 2
+        self.assertFalse(bundle._sda21_application_equivalence(target, candidate, elf, bad_elf)["equivalent"])
+        duplicate = copy.deepcopy(candidate)
+        duplicate["physical_relocations"].append(copy.deepcopy(relocation))
+        self.assertFalse(bundle._sda21_application_equivalence(target, duplicate, elf, elf)["equivalent"])
+
     def test_output_root_symlink_is_rejected_before_external_write(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             disposable = Path(temp) / "temp"

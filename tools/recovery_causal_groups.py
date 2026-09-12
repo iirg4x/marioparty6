@@ -6,6 +6,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import re
 from pathlib import Path
 import sys
 from typing import Any
@@ -23,7 +24,86 @@ def ranking_tuple(summary: dict, *, exact_function_count: int = 0,
             len(summary["groups"]), -score)
 
 
-def summarize_groups(document: dict, function: str) -> dict[str, Any]:
+def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> dict:
+    """Bounded block-local physical-register DAG; no source/alias inference.
+
+    Native trace slicing needs a compiler capture; frontier's definition state
+    only answers must-defined FPRs. Reuse its objdiff/branch parsers here.
+    """
+    if not 1 <= limit <= 64:
+        raise ValueError("producer limit must be between 1 and 64")
+    branches, addresses = frontier._branch_rows(rows)
+    entries = {0}
+    for branch in branches:
+        entries.update(addresses.get(branch.get("destination"), []))
+    # Duplicate addresses/label aliases are not unique block identities.
+    for indices in addresses.values():
+        if len(indices) > 1:
+            entries.update(indices)
+    definitions = {}
+    records = {}
+    boundary = {"status": "UNKNOWN", "reason": "CFG/function entry"}
+    loads = {"lwz", "lhz", "lha", "lbz", "lfs", "lfd"}
+    arithmetic = {"mr", "fmr", "add", "addi", "addis", "subf", "mullw", "mulli",
+                  "slwi", "srwi", "srawi", "rlwinm", "clrlwi", "clrlslwi", "neg", "extsh", "extsb",
+                  "and", "andi.", "or", "xor", "fadd", "fadds", "fsub", "fsubs",
+                  "fmul", "fmuls", "fdiv", "fdivs", "fneg", "fabs", "frsp"}
+    harmless = {"nop", "cmpw", "cmplw", "cmpwi", "cmplwi", "fcmpo", "fcmpu",
+                "stw", "sth", "stb", "stfs", "stfd", "mtctr"}
+    for index, row in enumerate(rows):
+        if index in entries:
+            definitions = {}
+            boundary = {"status": "UNKNOWN", "reason": "CFG/function entry", "row": index}
+        parts = frontier._instruction_parts(row)
+        if parts is None:
+            if row.get("instruction") or row.get("label"):
+                definitions = {}
+                boundary = {"status": "UNKNOWN", "reason": "unsupported/label boundary", "row": index}
+            continue
+        op, operands = parts
+        registers = frontier._register_tokens(",".join(operands))
+        record = {"row": index, "instruction": row["instruction"]["formatted"], "uses": []}
+        supported = op in loads | arithmetic | harmless | {"li", "lis"}
+        is_def = op in loads | arithmetic | {"li", "lis"}
+        uses = registers[1:] if is_def else registers
+        if op in {"li", "lis"}:
+            uses = []
+        if op in {"addi", "addis"} and len(operands) > 1 and operands[1] == "r0":
+            uses = []  # PPC RA=0 is a literal zero here, not the r0 value.
+        if op in loads and len(operands) > 1 and operands[1].endswith("(r0)"):
+            uses = []
+        for register in uses if supported else []:
+            record["uses"].append({"register": register, **(
+                {"definition_row": definitions[register]} if register in definitions else boundary)})
+        if op in loads and len(operands) == 2:
+            match = re.fullmatch(r"(-?(?:0x[0-9a-f]+|\d+))\((r\d+)\)", operands[1])
+            record["memory_root"] = ({"base": match[2], "offset": int(match[1], 0),
+                                       "zero_base": match[2] == "r0", "alias_identity": "UNKNOWN"} if match else
+                                      {"status": "UNKNOWN", "reason": "symbolic/unsupported address"})
+        if not supported:
+            reason = "call boundary" if op in {"bl", "bla", "bctrl", "blrl"} else "CFG boundary" if op.startswith("b") else "unsupported opcode"
+            record.update(status="UNKNOWN", reason=reason)
+            definitions = {}
+            boundary = {"status": "UNKNOWN", "reason": reason, "row": index}
+        elif is_def and registers:
+            record["defines"] = registers[0]
+            definitions[registers[0]] = index
+        records[index] = record
+    selected = sites[:limit]
+    pending = list(selected)
+    included = {}
+    while pending and len(included) < limit * 4:
+        index = pending.pop(0)
+        if index in included or index not in records:
+            continue
+        included[index] = records[index]
+        pending.extend(use["definition_row"] for use in records[index]["uses"] if "definition_row" in use)
+    return {"sites": selected, "nodes": [included[i] for i in sorted(included)],
+            "truncated": len(sites) > limit or bool(pending), "node_limit": limit * 4,
+            "scope": "block-local physical definitions; memory identity and source causality UNKNOWN"}
+
+
+def summarize_groups(document: dict, function: str, *, producers: int = 0) -> dict[str, Any]:
     """Summarize canonical objdiff aligned rows using existing frontier parsers.
 
     Group IDs use target addresses (insertions use the next target address).
@@ -146,6 +226,10 @@ def summarize_groups(document: dict, function: str) -> dict[str, Any]:
     if result["first_machine_divergence"]:
         result["first_machine_divergence"].pop("context", None)
     result["ranking_tuple"] = ranking_tuple(result)
+    if producers:
+        sites = sorted({m["row"] for group in groups for m in group["members"]})
+        result["producer_slice"] = {side: producer_slice(stream, sites, limit=producers)
+                                    for side, stream in zip(("target", "candidate"), rows)}
     return result
 
 
@@ -203,6 +287,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--strict", type=Path, required=True)
     parser.add_argument("--function", required=True)
     parser.add_argument("--before", type=Path)
+    parser.add_argument("--producers", type=int, default=0, metavar="LIMIT",
+                        help="optional block-local producer slice, 1..64 residual sites")
     args = parser.parse_args(argv)
     try:
         def read(path: Path) -> dict:
@@ -210,7 +296,9 @@ def main(argv: list[str] | None = None) -> int:
                 raw = stream.read(frontier.REPORT_LIMIT + 1)
             if len(raw) > frontier.REPORT_LIMIT:
                 raise ValueError(f"report exceeds limit: {path}")
-            return summarize_groups(frontier.load_json(raw), args.function)
+            if not 0 <= args.producers <= 64:
+                raise ValueError("producers must be between 0 and 64")
+            return summarize_groups(frontier.load_json(raw), args.function, producers=args.producers)
         result = read(args.strict)
         if args.before:
             result["comparison"] = compare_groups(read(args.before), result)
