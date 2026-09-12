@@ -19,9 +19,9 @@ void SlidingHisto_NewItem(TriggerLR *block, f32 item)
     } else if (item < block->histogramMinimum) {
         bin = 0;
     } else {
+        item -= block->histogramMinimum;
         bin = (s32)floorf(
-            (item - block->histogramMinimum +
-             0.5f * block->histogramBinWidth) /
+            (item + block->histogramBinWidth * 0.5f) /
             block->histogramBinWidth);
     }
 
@@ -30,8 +30,7 @@ void SlidingHisto_NewItem(TriggerLR *block, f32 item)
 
     oldBin = *block->histogramHistoryWrite;
     *block->histogramHistoryWrite = bin;
-    block->histogramHistoryWrite++;
-    if (block->histogramHistoryWrite == block->histogramHistoryEnd) {
+    if (++block->histogramHistoryWrite == block->histogramHistoryEnd) {
         block->histogramHistoryWrite = block->histogramHistory;
     }
 
@@ -43,10 +42,9 @@ void SlidingHisto_NewItem(TriggerLR *block, f32 item)
 
 f32 SlidingHisto_LowerQuantile(TriggerLR *block, f32 quantile)
 {
+    u32 *bin = block->histogramBins;
     u32 count = 0;
     u32 target;
-    u32 *bin = block->histogramBins;
-    s32 binIndex;
 
     target = (u32)ceilf(
         (f32)(0.001 + quantile * block->histogramItemCount));
@@ -54,8 +52,8 @@ f32 SlidingHisto_LowerQuantile(TriggerLR *block, f32 quantile)
         count += *bin++;
     } while (count < target);
 
-    binIndex = (s32)(bin - block->histogramBins) - 1;
-    return block->histogramMinimum + block->histogramBinWidth * binIndex;
+    return block->histogramMinimum +
+           block->histogramBinWidth * ((bin - block->histogramBins) - 1);
 }
 
 void SlidingHisto_Clear(TriggerLR *block)

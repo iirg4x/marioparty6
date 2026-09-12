@@ -88,12 +88,13 @@ static u32 ControlPitchWindow(
 #pragma dont_inline on
 static void CreateWindow(f32 *window, u16 sampleRate, u16 windowLength)
 {
-    u16 halfLength;
     s32 i;
+    u16 halfLength;
     f32 angularFrequency;
     f32 samplePeriod;
     f32 time;
 
+    i = 1;
     halfLength = windowLength / 2;
     angularFrequency =
         (2.0 * M_PI) / ((f32)windowLength / (f32)sampleRate);
@@ -101,7 +102,7 @@ static void CreateWindow(f32 *window, u16 sampleRate, u16 windowLength)
     samplePeriod = 1.0f / sampleRate;
     time = (halfLength - 1) * samplePeriod;
 
-    for (i = 1; i < halfLength; i++) {
+    for (; i < halfLength; i++) {
         window[halfLength - i] =
             0.54 - 0.46 * cosf(angularFrequency * time);
         window[halfLength + i] = window[halfLength - i];

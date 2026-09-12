@@ -1,6 +1,6 @@
 #include "gssdk/mtx.h"
 
-#include <math.h>
+#include "dolphin/math.h"
 #include <string.h>
 
 extern void *heap_Alloc(void *heap, u32 size);
@@ -142,15 +142,15 @@ f32 mtxMax(const FloatMatrix *matrix)
 
 void mtxCompress(FloatMatrix *matrix, f32 center)
 {
-    u32 elementCount = matrix->rows * matrix->columns;
+    f32 *values = matrix->values;
     u32 i = 0;
-    f32 *value = matrix->values + i;
+    u32 elementCount = matrix->rows * matrix->columns;
 
-    for (; i < elementCount; i++, value++) {
+    for (; i < elementCount; i++) {
         f32 reduction =
-            0.5 * logf_check(1.0f + expf((f32)(2.0 * (*value - center))));
+            0.5 * logf_check(1.0f + expf((f32)(2.0 * (values[i] - center))));
 
-        *value = *value - reduction;
+        values[i] = values[i] - reduction;
     }
 }
 
@@ -163,7 +163,7 @@ u32 QrDeleteCol(FloatMatrix *matrix, FloatMatrix *vector, u32 column)
     for (currentColumn = column + 1; currentColumn < matrix->columns;
          currentColumn++) {
         f32 *source =
-            matrix->values + matrix->rows * currentColumn;
+            matrix->values + currentColumn * matrix->rows;
         f32 *diagonal = source + currentColumn;
         f32 upper;
         f32 lower;
@@ -173,12 +173,11 @@ u32 QrDeleteCol(FloatMatrix *matrix, FloatMatrix *vector, u32 column)
         f32 cosine;
         f32 sine;
         f32 *destination;
-        f32 *value;
         u32 row;
 
-        lower = *diagonal;
-        diagonal--;
+        lower = *diagonal--;
         upper = *diagonal;
+        destination = source - matrix->rows;
         absoluteUpper = upper > 0.0f ? upper : -upper;
         absoluteLower = lower > 0.0f ? lower : -lower;
 
@@ -192,30 +191,29 @@ u32 QrDeleteCol(FloatMatrix *matrix, FloatMatrix *vector, u32 column)
             sine = cosine * ratio;
         }
 
-        destination = source - matrix->rows;
         for (row = 1; row < currentColumn; row++) {
             *destination++ = *source++;
         }
         *destination = cosine * upper - sine * lower;
 
-        value = diagonal + matrix->rows;
-        while (value < matrixEnd) {
-            f32 first = value[0];
-            f32 second = value[1];
+        diagonal += matrix->rows;
+        while (diagonal < matrixEnd) {
+            upper = diagonal[0];
+            lower = diagonal[1];
 
-            value[0] = cosine * first - sine * second;
-            value[1] = sine * first + cosine * second;
-            value += matrix->rows;
+            diagonal[0] = cosine * upper - sine * lower;
+            diagonal[1] = sine * upper + cosine * lower;
+            diagonal += matrix->rows;
         }
 
-        value = vector->values + currentColumn;
-        while (value < vectorEnd) {
-            f32 first = value[-1];
-            f32 second = value[0];
+        diagonal = vector->values + currentColumn;
+        while (diagonal < vectorEnd) {
+            upper = diagonal[-1];
+            lower = diagonal[0];
 
-            value[-1] = cosine * first - sine * second;
-            value[0] = sine * first + cosine * second;
-            value += vector->rows;
+            diagonal[-1] = cosine * upper - sine * lower;
+            diagonal[0] = sine * upper + cosine * lower;
+            diagonal += vector->rows;
         }
     }
     matrix->columns--;

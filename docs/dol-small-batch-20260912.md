@@ -1,5 +1,26 @@
 # Small DOL batch, 2026-09-12
 
+## Active completion goal
+
+Recover every remaining main DOL owner and promote verified source closures in
+batches, using Qwen-only parallel support. Current fetched main `a1aa433` has
+337/396 Matching DOL owners (59 remaining); Median is additionally verified
+locally and pending promotion. Aim for 3-5 ready owners per batch, without
+holding a verified batch indefinitely for a difficult unrelated residual.
+Partial gains remain in the protected local champion, not counted as main
+closures. Finish only when main's full DOL owner census and source-selected
+retail link pass. No fixed crack-rate guarantee is made.
+
+Next batch uses two genuine Qwen slots on SlidingHisto_NewItem and CreateWindow;
+the primary continues independent reconstruction. Current packets and queue:
+`build/qwen-dol-next-batch-20260912/`. The GenderFilter constructor's two direct
+hypotheses did not supply a gain: nonconstant narrowed aggregate initialization
+is rejected by GC1.2.5n, and a separate full-width profile-result owner regresses
+79.0 -> 53.19355 and 124 -> 128 bytes. Original source and its three exact
+siblings remain intact. The next source question is the profile-construction/
+call-expression boundary, not a repeated register-order guess. Compact measured
+evidence: `build/dol-current-primary-20260912/genfilt/verification.json`.
+
 ## Retained closure
 
 | Owner | Functions exact | Code bytes | Effective relocations |
@@ -126,6 +147,69 @@ last use. Its declaration boundary plus the spline/working-matrix identities
 close the saved-register cycle. The remaining frame and volatile-loop owner
 differences are unresolved; do not mark this owner Matching.
 
+### Maximum-reasoning local support trial
+
+Qwen3.8-27B Q4_K_M supplied a further retained Smoothing gain: 95.481310 ->
+96.556076 strict/data, 36 -> 31 mismatch rows, still 856 bytes. It moved the
+independent matrixEnd assignment between initial inputValue creation and the
+final inputValue adjustment. This changes actual value-creation chronology;
+it is ordinary C, without new locals or forced registers. Both exact siblings
+remain exact and all per-function physical relocations are unchanged relative
+to the baseline (45 total, including Smoothing's 9). Existing SDA21 raw
+offset/application distinctions are unchanged. This is partial, not a new
+Matching owner or public promotion.
+
+Live source SHA256 `9d1339e9f38b230440a8c4d805d4826bc24028338678317c9fad00b55f3c0c2f`;
+object `ae0414d3e40e7a8a4511a5e407fd3d33f709e8f62a66d25fe91a66ba4c5a2a3d`;
+strict/data report `08bc3e961ea9a07e692109f4639879041bf6f3001212cfcc424a6a477fff72c8`.
+Current champion evidence is `build/model-support-test/qwen-max/`, replacing
+`c30/smoother.json` as the newest source-bound frontier.
+
+The user requested highest reasoning without a token-cost cap. Native Ollama
+`think=max`, `num_predict=-1`, 65,536 context returned a complete answer after
+808.168 seconds and 31,158 generated tokens. One candidate compile produced
+the gain. Earlier 8K/32K truncated thinking runs had no answer; the completed
+non-thinking Qwen and Luna/max candidates both regressed. Keep those distinct:
+one useful max-reasoning sample does not establish a universal model ranking.
+Compact comparison: `build/model-support-test/RESULTS.md`. No global Codex
+model substitution or new lane was configured.
+
+### Qwen-only support, 2026-09-12
+
+The user's latest support-model instruction supersedes the Luna tier for this
+batch: use local Qwen at highest reasoning with no fixed output-token cap;
+do not spawn Luna. Astra remains the sole live-source integrator and reviews
+each proposed source cause before compiling. Qwen receives independent frozen
+source/object/diff packets, not concurrent write access or a consensus role.
+
+Ollama 0.34.0 serializes the qwen35 architecture even when parallelism is set
+to two. The initial four-job queue therefore was not parallel inference:
+Smoothing and ControlDelayBlock answered sequentially; Combiner and
+Undersampler received no tokens before their queue-wait timeout. Those two
+are infrastructure failures, not tested source hypotheses. They are assigned
+to the shared-weight llama.cpp backend for actual concurrent inference.
+
+The second completed Smoothing recommendation swapped independent input and
+coefficient pointer creation. One isolated compile regressed 96.556076 to
+96.369156 with exact size/siblings and unchanged baseline relocations; the
+96.556076 champion remains untouched. Evidence:
+`build/qwen-parallel-20260912/smoothing/verification.json`. ControlDelayBlock's
+answer proposes an extra zero-valued local solely to induce an addi producer;
+it has no stronger source-cause evidence and is not automatically compiled.
+
+The standalone backend passed two simultaneous isolated requests, then real
+Combiner and Undersampler jobs starting together at 2026-09-12T09:21:49Z.
+They completed naturally in 754.415 and 504.935 seconds, respectively. Two
+64K slots shared fully GPU-offloaded weights, using about 21.3 GiB of the
+24 GiB GPU. Both used xhigh reasoning with no fixed output-token cap. Answers
+and scalar metrics are retained; reasoning text is not stored.
+
+Compiler validation did not yield a further gain: Undersampler stayed
+99.6875% with exact siblings/unchanged physical relocations; Combiner's proposed
+declaration after a statement is not accepted by the pinned C89 compiler.
+Neither source was retained. Future packets explicitly require C89 declaration
+placement. Parallel inference is verified, but it is not itself a cracked owner.
+
 Context BeginOfWords becomes instruction-exact using the existing typed
 accessor composition, retaining the static virtual-table gain. WordProp and
 Syntax's flattened-source champions are preserved; subsequent cursor/grouping
@@ -139,3 +223,69 @@ that is recovered historical progress, not a new crack. Prefer a coherent
 structural reconstruction such as Median's bound snapshot over repeatedly
 probing isolated high-score register colors. Parallel support is bounded by a
 specific source question, not an exhaustive inventory or a consensus gate.
+
+### Retained continuation, 2026-09-12 10:49 UTC
+
+Two additional functions are strict/data exact locally, not two completed
+owners: `SlidingHisto_LowerQuantile` (200 bytes) and `mtxCompress` (196 bytes).
+Independent physical receipts bind all five relocations in each function to
+the correct effective targets. Their three SDA21 entries retain the documented
+GC1.2.5n instruction+2 convention; DTK instruction-application equivalence is
+true, raw equality is false. Final owner-selected link proof is still pending.
+
+| Function | Earlier strict/data | Retained strict/data | Target/source bytes |
+| --- | ---: | ---: | ---: |
+| SlidingHisto_NewItem | 93.45 | 95.21667 | 240/240 |
+| SlidingHisto_LowerQuantile | 94.90 | 100 | 200/200 |
+| CreateWindow | 76.7033 | 81.52747 | 364/364 |
+| mtxCompress | 94.79592 | 100 | 196/196 |
+| QrDeleteCol | 94.11855 | 99.175255 | 776/776 |
+
+NewItem consumes the history-write increment directly in its wrap comparison;
+the redundant field reload disappears. LowerQuantile creates the bin pointer
+before its count and directly consumes the pointer difference in the final
+float expression. Slidhist is now 6/8 strict/data exact. The source is
+`5f2886aaf033420b8f6397b96f06ab1f26e91f35a8f81347472e929dd2a06116`;
+the composed object is `9c3f237346e8dd4922b2db3831e0f76e6a024de003d8c8f1a27db1fc617ec35a`.
+Evidence: `build/dol-current-quantile-20260912/slidhist/` and the preceding
+`build/qwen-dol-next-batch-20260912/slidhist/`.
+
+CreateWindow initializes the real sample counter before calculating halfLength.
+It preserves the target's two distinct sampleRate conversions; the Qwen proposal
+to cache and reuse one conversion was not compiled because it contradicted
+that target relationship. Source `463f889af70b79bf7a09e1021dc31e8ad880ddc089380197a80b34865f4b17ad`,
+object `d573fbb39ab87c14e4ad7b66f0aab38596f0c7a5d03675a40f5eed337fd7f3a5`.
+Evidence: `build/qwen-dol-next-batch-20260912/pitchwin/`.
+
+mtxCompress needed actual indexed traversal over a saved values base, not the
+hand-strength-reduced pointer loop. Counter creation before elementCount then
+restored the saved-owner relationship. Selecting the existing Dolphin math
+header removes the other header's two weak static sqrtf constants; it yields
+the target's 48-byte constant section rather than 64 bytes. No shared header,
+math primitive body, compiler flag, or pragma was changed.
+
+QrDeleteCol snapshots the destination before the coefficient calculation,
+consumes the first diagonal decrement in the lower-value load, and reuses the
+live diagonal cursor and upper/lower pair for the two rotation phases. This
+removes the extra reload/cursor instructions and restores target size. Its
+remaining 26 rows are a four-pointer register cycle. All nine originally exact
+mtx siblings remain exact; the owner is now 10/12 strict/data exact. Source
+`fba8d4edf56c6c89c945d5ac3df46a5c6c837ee7fffbc37e75fe84934f34f886`,
+object `1c984f4f82c5e8db804ac41142735c9ea22ab14ff1bd4b0f7e7780b0753dcb4a`.
+Champion evidence: `build/dol-current-mtx-20260912/mtx/pair-step-*`.
+
+Bound constraints, not function bans: moving all matrix traversal declarations
+to function scope regresses allocation; moving end calculations inside the
+column loop changes the loop topology and regresses. imtxDeleteCol's named
+offset/destination is neutral; parameter-offset reuse regresses one operand.
+Neither is retained. SlidingHisto_Clear inlining is object-neutral for
+PutSession; extra named min/max/center floats do not improve NewItem. VQ indexed
+and loop-latch indices advances regress; Stationarity's fresh maximum local is
+neutral. Keep the respective champions instead of those probes.
+
+A single current-source GSSDK inventory now exists at
+`build/dol-gssdk-current-inventory-20260912/inventory.json`. It separates absent
+source, compile-context failures, exact siblings and structural residuals.
+It is selection evidence, not newly recovered progress. Two further Qwen jobs
+in `build/qwen-dol-structural-followup-20260912/` run concurrently while the
+primary works; no Luna workers or new user-owned lanes were started.
