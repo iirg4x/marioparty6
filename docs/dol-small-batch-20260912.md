@@ -60,6 +60,41 @@ SendResultUserWords, DynProgUserWords, ControlDpGenUw prevent owner promotion.
 No previously exact function was lost. Evidence:
 `build/dol-viterbi-induction-20260912/{dpgenuw,allocate}/`.
 
+The subsequent command-handler reconstruction closes ControlDpGenUw
+**10.130435 -> 97.690216 -> 100**, 884 -> 744 -> target736 bytes. Target case
+order, a shared cleanup helper defined before FreeBacktrace's body, the real
+ergodic-phenome callback at slot0x9c, and a full-width helper status consumed as
+a low byte restore the target outline/inline/return boundaries. These helper
+names are semantic reconstructions, not claims of original symbol provenance.
+
+SendResultUserWords closes **72.732025 -> 98.95425 -> 100**, 520 -> target612
+bytes. Preserve the heap-context snapshot; reload the final backtrace after
+allocation; consume each descending distribution index in the actual store;
+then restore the count/frame and result/silence owner chronology. Moving all
+those declarations to the top was worse and is not retained. Both helpers are
+ordinary C; all existing exact functions survive.
+
+DpGenUw is now **11/12 instruction-exact**. Its last function, DynProgUserWords,
+retains **69.133514 -> 85.77929 -> 94.39237**, 1600 ->1496 ->1456 bytes against
+target1468. Evidence distinguishes u16 bounded state scans from full-width
+update/distribution traversals; a cached distribution cursor, consumed reference
+decrement, post-score backtrace snapshot, shared normalization producer, and
+actual distribution-identity comparison repair structural/dataflow causes.
+An extra shared-backtrace/getter variant regressed and was not retained. The
+remaining frame/value-boundary and register differences are unresolved; this
+owner stays NonMatching and is not a fifth batch closure.
+
+Current source SHA256
+`544cd34edf62ca8be305308b67dcf675a2695558cc5357a230a98d1e31b3d229`,
+object `16591fb94d7c8c9ebe1f3ff195b0bc09b951d6c45d6e2bcb207dbbb0545ef838`.
+Evidence: `build/dol-viterbi-induction-20260912/`
+`control/typed-consumers-*`, `result/traversal-owners-*`,
+`recurrence/phase-traversals-*`. Physical/local call positions still depend on
+the final provider layout and helper stripping; final linked owner proof remains
+required. All four structural Qwen questions completed. They corroborated case
+order and loop facts; Smoothing's proposed helper boundary remained explicitly
+underdetermined, not a prohibition on further primary reconstruction.
+
 ## Window owner closure (latest)
 
 Window is **5/5 strict/data exact**, 3068 code bytes and **31/31 effective

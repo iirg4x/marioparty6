@@ -61,7 +61,7 @@ struct DpGenUw {
     u32 profile2Scale;
     u32 field48;
     u16 ergodicDistributionCount;
-    void *ergodicPenalty;
+    u16 *ergodicPhenomes;
     s16 ergodicDistributionOffset;
     u32 phenomeCount;
     u32 userWordTrainingPhenomeCount;
@@ -139,6 +139,19 @@ static DpGenUwBacktrace *AllocateBacktrace(
     block->backtraceChunks[oldChunkCount++] = backtraces;
     block->backtraceChunkCount = oldChunkCount;
     return backtraces;
+}
+
+static void FreeBacktrace(DpGenUw *block);
+
+static void FreeUserWordStates(DpGenUw *block)
+{
+    TosContext *context = block->base.context;
+
+    FreeBacktrace(block);
+    if (block->states != NULL) {
+        heap_Free(context->heap, block->states);
+    }
+    block->states = NULL;
 }
 
 static void FreeBacktrace(DpGenUw *block)
@@ -267,14 +280,14 @@ static u32 InitDpGenUw(TosBaseBlock *baseBlock)
 static void SendResultUserWords(
     DpGenUw *block, void *argument, u32 argumentSize)
 {
-    DpGenUwBacktrace *backtrace =
+    TosContext *context = block->base.context;
+    DpGenUwBacktrace *currentBacktrace =
         block->states[DPGENUW_STATE_COUNT - 1].backtrace;
-    DpGenUwBacktrace *currentBacktrace = backtrace;
-    u32 lastFrame = backtrace->frame;
-    u32 silenceFrameCount = 0;
     u16 backtraceCount = 0;
-    s32 backtraceIndex;
+    u32 lastFrame = currentBacktrace->frame;
     DpGenUwResult *result;
+    u32 silenceFrameCount = 0;
+    s32 backtraceIndex;
 
     while (currentBacktrace->next != NULL) {
         DpGenUwBacktrace *nextBacktrace = currentBacktrace->next;
@@ -296,7 +309,7 @@ static void SendResultUserWords(
     }
 
     result = heap_Alloc(
-        block->base.context->heap,
+        context->heap,
         sizeof(DpGenUwResult) +
             (backtraceCount - 1) * sizeof(u16));
     if (result == NULL) {
@@ -308,25 +321,24 @@ static void SendResultUserWords(
     result->distributionCount = backtraceCount;
     if (block->frame != 0) {
         result->averageScore =
-            (f32)(block->accumulatedScore + block->finalScore) /
+            (f32)(block->finalScore + block->accumulatedScore) /
             (f32)block->frame;
     } else {
         result->averageScore = 0.0f;
     }
 
-    currentBacktrace = backtrace;
+    currentBacktrace = block->states[DPGENUW_STATE_COUNT - 1].backtrace;
     for (backtraceIndex = backtraceCount - 1;
          backtraceIndex >= 0;
-         backtraceIndex--) {
-        result->distributions[backtraceIndex] =
+         currentBacktrace = currentBacktrace->next) {
+        result->distributions[backtraceIndex--] =
             currentBacktrace->distribution;
-        currentBacktrace = currentBacktrace->next;
     }
 
     if (_tosControl(block, 0x0C, (u32)result, 1)) {
         _tosErrorLog(block, 1);
     }
-    heap_Free(block->base.context->heap, result);
+    heap_Free(context->heap, result);
 }
 
 static u16 MakeUserWordsActiveDist(
@@ -339,8 +351,7 @@ static u16 MakeUserWordsActiveDist(
 static inline void ReleaseBacktrace(
     DpGenUw *block, DpGenUwBacktrace *backtrace)
 {
-    backtrace->references--;
-    if (backtrace->references <= 0) {
+    if (--backtrace->references <= 0) {
         DpGenUwBacktrace *firstBacktrace = backtrace;
         DpGenUwBacktrace *lastBacktrace = backtrace;
         DpGenUwBacktrace *sharedBacktrace = backtrace->next;
@@ -357,6 +368,25 @@ static inline void ReleaseBacktrace(
     }
 }
 
+static DpGenUwBacktrace *AddUserWordBacktrace(
+    DpGenUw *block, DpGenUwBacktrace *previous, u16 distribution)
+{
+    DpGenUwBacktrace *backtrace = block->freeBacktraces;
+
+    if (backtrace->next == NULL) {
+        block->freeBacktraces = AllocateBacktrace(block, backtrace);
+    } else {
+        block->freeBacktraces = backtrace->next;
+    }
+    backtrace->next = previous;
+    previous->references++;
+    backtrace->distribution = distribution;
+    backtrace->references = 0;
+    backtrace->frame = block->frame;
+    block->activeBacktraceCount++;
+    return backtrace;
+}
+
 static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
 {
     DpGenUwState *state;
@@ -365,39 +395,36 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
     DpGenUwState *entryState;
     DpGenUwBacktrace *transitionBacktrace;
     DpGenUwBacktrace *finalBacktrace;
-    DpGenUwBacktrace *newBacktrace;
     u16 bestWordDistribution;
     u16 entryDistribution;
-    s16 normalization;
+    s32 normalization;
     s16 silenceScore;
     s32 wordEntryScore;
     s32 entryScore;
-    u32 stateIndex;
+    u16 stateIndex;
 
     state = block->states;
     for (stateIndex = 1; stateIndex < DPGENUW_STATE_COUNT;
-         stateIndex++) {
+         stateIndex++, state++) {
         if (state->score > DPGENUW_MAX_SCORE) {
             state->score = DPGENUW_MAX_SCORE;
         }
-        state++;
     }
 
     bestWordState = block->states;
     state = &block->states[1];
     for (stateIndex = 1; stateIndex < DPGENUW_WORD_STATE_COUNT;
-         stateIndex++) {
+         stateIndex++, state++) {
         if (state->score < bestWordState->score) {
             bestWordState = state;
         }
-        state++;
     }
 
     state = &block->states[DPGENUW_WORD_STATE_COUNT];
     normalization = bestWordState->score;
     bestWordDistribution = bestWordState->distribution;
     wordEntryScore =
-        bestWordState->score + block->wordTransitionPenalty;
+        normalization + block->wordTransitionPenalty;
 
     if (state->score < normalization) {
         normalization = state->score;
@@ -424,63 +451,42 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
         entryState = &state[1];
     }
 
-    newBacktrace = block->freeBacktraces;
-    if (newBacktrace->next == NULL) {
-        block->freeBacktraces =
-            AllocateBacktrace(block, newBacktrace);
-    } else {
-        block->freeBacktraces = newBacktrace->next;
-    }
-    newBacktrace->next = entryState->backtrace;
-    entryState->backtrace->references++;
-    newBacktrace->distribution = entryDistribution;
-    newBacktrace->references = 0;
-    newBacktrace->frame = block->frame;
-    block->activeBacktraceCount++;
-    newBacktrace->references++;
-    transitionBacktrace = newBacktrace;
+    transitionBacktrace = AddUserWordBacktrace(
+        block, entryState->backtrace, entryDistribution);
+    transitionBacktrace->references++;
 
-    if (bestWordDistribution != 0) {
-        newBacktrace = block->freeBacktraces;
-        if (newBacktrace->next == NULL) {
-            block->freeBacktraces =
-                AllocateBacktrace(block, newBacktrace);
-        } else {
-            block->freeBacktraces = newBacktrace->next;
-        }
-        newBacktrace->next = bestWordState->backtrace;
-        bestWordState->backtrace->references++;
-        newBacktrace->distribution = bestWordDistribution;
-        newBacktrace->references = 0;
-        newBacktrace->frame = block->frame;
-        block->activeBacktraceCount++;
-        newBacktrace->references++;
-        finalBacktrace = newBacktrace;
+    if (bestWordDistribution != entryDistribution) {
+        finalBacktrace = AddUserWordBacktrace(
+            block, bestWordState->backtrace, bestWordDistribution);
+        finalBacktrace->references++;
     } else {
         finalBacktrace = transitionBacktrace;
         finalBacktrace->references++;
     }
 
     state = block->states;
-    for (stateIndex = 0; stateIndex < DPGENUW_WORD_STATE_COUNT;
-         stateIndex++) {
+    {
+    u32 wordIndex;
+    for (wordIndex = 0; wordIndex < DPGENUW_WORD_STATE_COUNT;
+         wordIndex++, state++) {
         if (state->score < entryScore) {
             state->score =
                 state->score + scores[state->distribution] -
                 normalization;
         } else {
-            DpGenUwBacktrace *oldBacktrace = state->backtrace;
+            DpGenUwBacktrace *oldBacktrace;
 
             state->score =
                 entryScore + scores[state->distribution] -
                 normalization;
+            oldBacktrace = state->backtrace;
             state->backtrace = transitionBacktrace;
             transitionBacktrace->references++;
             ReleaseBacktrace(block, oldBacktrace);
         }
 
         scores[state->distribution] = 1024;
-        state++;
+    }
     }
 
     state->score = state->score + silenceScore - normalization;
@@ -488,10 +494,11 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
         state[1].score =
             state[1].score + silenceScore - normalization;
     } else {
-        DpGenUwBacktrace *oldBacktrace = state[1].backtrace;
+        DpGenUwBacktrace *oldBacktrace;
 
         state[1].score =
             wordEntryScore + silenceScore - normalization;
+        oldBacktrace = state[1].backtrace;
         state[1].backtrace = finalBacktrace;
         finalBacktrace->references++;
         ReleaseBacktrace(block, oldBacktrace);
@@ -501,17 +508,19 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
     worstWordState = block->states;
     state = &block->states[1];
     for (stateIndex = 1; stateIndex < DPGENUW_WORD_STATE_COUNT;
-         stateIndex++) {
+         stateIndex++, state++) {
         if (state->score >= worstWordState->score) {
             worstWordState = state;
         }
-        state++;
     }
 
-    for (stateIndex = 0;
-         stateIndex < block->userWordDistributionCount;
-         stateIndex++) {
-        u16 distribution = block->stateDistributions[stateIndex];
+    {
+    u32 distributionIndex;
+    u16 *distributionCursor = block->stateDistributions;
+    for (distributionIndex = 0;
+         distributionIndex < block->userWordDistributionCount;
+         distributionIndex++, distributionCursor++) {
+        u16 distribution = *distributionCursor;
         s32 candidateScore =
             entryScore + scores[distribution] - normalization;
 
@@ -528,18 +537,18 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
             worstWordState = block->states;
             state = &block->states[1];
             {
-                u32 worstStateIndex;
+                u16 worstStateIndex;
 
                 for (worstStateIndex = 1;
                      worstStateIndex < DPGENUW_WORD_STATE_COUNT;
-                     worstStateIndex++) {
+                     worstStateIndex++, state++) {
                     if (state->score >= worstWordState->score) {
                         worstWordState = state;
                     }
-                    state++;
                 }
             }
         }
+    }
     }
 
     ReleaseBacktrace(block, transitionBacktrace);
@@ -602,6 +611,31 @@ static void DpGenUwProcess(
     }
 }
 
+static u32 SetUserWordLanguage(
+    DpGenUw *block, DpGenUwLanguageInfo *languageInfo)
+{
+    TosContext *context = block->base.context;
+
+    block->userWordDistributionCount = languageInfo->distributionCount;
+    block->stateDistributions = languageInfo->distributions;
+    block->silenceDistribution = languageInfo->silenceDistribution;
+    block->input->inputSize = block->input->queue->elementSize;
+    block->phenomeCount16 = block->phenomeCount;
+
+    FreeUserWordStates(block);
+    if (AllocateBacktrace(block, NULL) == NULL) {
+        return _tosErrorLog(block, 0x71);
+    }
+    block->states = heap_Alloc(
+        context->heap, DPGENUW_STATE_COUNT * sizeof(DpGenUwState));
+    if (block->states == NULL) {
+        return _tosErrorLog(block, 0x71);
+    }
+    block->initialized = 0;
+    InitViterbi(block);
+    return 0;
+}
+
 static u32 ControlDpGenUw(
     TosBaseBlock *baseBlock, u32 command, void *argument,
     u32 argumentSize)
@@ -609,6 +643,10 @@ static u32 ControlDpGenUw(
     DpGenUw *block = (DpGenUw *)baseBlock;
 
     switch ((u8)command) {
+    case 4:
+        block->base.process = IdleDpGenUwProcess;
+        block->sendResult(block, argument, argumentSize);
+        break;
     case 3:
         InitViterbi(block);
         qQueueReset(block->output->queue);
@@ -621,56 +659,34 @@ static u32 ControlDpGenUw(
         }
         block->base.process = DpGenUwProcess;
         break;
-    case 4:
-        block->base.process = IdleDpGenUwProcess;
-        block->sendResult(block, argument, argumentSize);
-        break;
     case 5:
         block->base.process = IdleDpGenUwProcess;
         break;
-    case 0x15:
+    case 0x22:
+        {
+            block->ergodicDistributionCount =
+                ((LanguageData *)argument)->getNbrErgodicPhenomes(argument);
+            block->ergodicPhenomes =
+                ((LanguageData *)argument)->getpErgodicPhenomes(argument);
+            block->ergodicDistributionOffset =
+                -block->ergodicDistributionCount;
+            block->phenomeCount =
+                ((LanguageData *)argument)->getNbrPhenome(argument);
+            block->userWordTrainingPhenomeCount =
+                ((LanguageData *)argument)->getNbrPhenUserWordTraining(argument);
+            if (block->output->queue != NULL) {
+                block->output->outputSize = block->output->queue->elementSize;
+            }
+        }
         break;
     case 0x17:
-        {
-            DpGenUwLanguageInfo *languageInfo = argument;
-            TosContext *context = block->base.context;
-            u8 error;
-
-            block->userWordDistributionCount =
-                languageInfo->distributionCount;
-            block->stateDistributions = languageInfo->distributions;
-            block->silenceDistribution =
-                languageInfo->silenceDistribution;
-            block->input->inputSize =
-                block->input->queue->elementSize;
-            block->phenomeCount16 = block->phenomeCount;
-
-            FreeBacktrace(block);
-            if (block->states != NULL) {
-                heap_Free(context->heap, block->states);
-            }
-            block->states = NULL;
-
-            if (AllocateBacktrace(block, NULL) == NULL) {
-                error = _tosErrorLog(block, 0x71);
-            } else {
-                block->states = heap_Alloc(
-                    context->heap,
-                    DPGENUW_STATE_COUNT * sizeof(DpGenUwState));
-                if (block->states == NULL) {
-                    error = _tosErrorLog(block, 0x71);
-                } else {
-                    error = 0;
-                }
-            }
-
-            if (error) {
-                return 0;
-            }
-
-            block->initialized = 0;
-            InitViterbi(block);
+        if ((u8)SetUserWordLanguage(block, argument)) {
+            return 0;
         }
+        break;
+    case 0xFF:
+        FreeUserWordStates(block);
+        tosBaseBlockDestruct(block);
         break;
     case 0x1A:
         block->wordTransitionPenalty = ((s32 *)argument)[3];
@@ -680,37 +696,7 @@ static u32 ControlDpGenUw(
         ((s32 *)argument)[3] = block->wordTransitionPenalty;
         ((s32 *)argument)[2] = block->silenceTransitionPenalty;
         break;
-    case 0x22:
-        {
-            LanguageData *language = argument;
-
-            block->ergodicDistributionCount =
-                language->getNbrErgodicPhenomes(language);
-            block->ergodicPenalty =
-                language->getpErgodicPenalty(language);
-            block->ergodicDistributionOffset =
-                -block->ergodicDistributionCount;
-            block->phenomeCount =
-                language->getNbrPhenome(language);
-            block->userWordTrainingPhenomeCount =
-                language->getNbrPhenUserWordTraining(language);
-            if (block->output->queue != NULL) {
-                block->output->outputSize =
-                    block->output->queue->elementSize;
-            }
-        }
-        break;
-    case 0xFF:
-        {
-            TosContext *context = block->base.context;
-
-            FreeBacktrace(block);
-            if (block->states != NULL) {
-                heap_Free(context->heap, block->states);
-            }
-            block->states = NULL;
-            tosBaseBlockDestruct(block);
-        }
+    case 0x15:
         break;
     default:
         return 0;
